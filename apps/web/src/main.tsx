@@ -6,27 +6,27 @@ import { routeTree } from "./routeTree.gen";
 
 const queryClient = new QueryClient();
 const router = createRouter({
-  routeTree,
-  defaultPreload: "intent",
-  defaultPendingComponent: () => <Loader />,
-  Wrap: function WrapComponent({ children }) {
-    return (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    );
-  },
+	routeTree,
+	defaultPreload: "intent",
+	defaultPendingComponent: () => <Loader />,
+	Wrap: function WrapComponent({ children }) {
+		return (
+			<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+		);
+	},
 });
 
 // Register things for typesafety
 declare module "@tanstack/react-router" {
-  interface Register {
-    router: typeof router;
-  }
+	interface Register {
+		router: typeof router;
+	}
 }
 
 const rootElement = document.getElementById("app");
 if (!rootElement) throw new Error("Root element not found");
 
 if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(<RouterProvider router={router} />);
+	const root = ReactDOM.createRoot(rootElement);
+	root.render(<RouterProvider router={router} />);
 }
