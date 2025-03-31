@@ -6,17 +6,17 @@ export default function Header() {
 
   return (
     <div>
-      <div className="flex flex-row items-center justify-between px-2 py-1">
-        <nav className="flex gap-4 text-lg border-none shadow-none">
+      <div className="fixed w-full flex flex-row items-center justify-between px-2 py-2">
+        <nav className="flex gap-4 text-xl border-none shadow-none">
           {links.map(({ to, label }) => (
             <Link
               key={to}
               to={to}
-              activeProps={{ className: "font-semibold pl-2" }}
+              activeProps={{ className: "font-semibold font-lg pl-2" }}
               activeOptions={{ exact: true }}
             >
               <span className="inline-flex items-center">
-                <span className="h-5 w-5 rounded-full bg-white mr-3"></span>
+                <span className="h-6 w-6 text-lg rounded-full bg-white mr-3"></span>
                 {label}
               </span>
             </Link>
