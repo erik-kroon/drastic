@@ -16,7 +16,7 @@ export default function Header() {
 							activeOptions={{ exact: true }}
 						>
 							<span className="inline-flex items-center">
-								<span className="h-6 w-6 text-lg rounded-full bg-white mr-3" />
+								<span className="h-6 w-6 text-lg rounded-full bg-primary mr-3" />
 								{label}
 							</span>
 						</Link>

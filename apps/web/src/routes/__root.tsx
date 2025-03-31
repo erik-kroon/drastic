@@ -28,7 +28,7 @@ export const Route = createRootRouteWithContext()({
 		links: [
 			{
 				rel: "icon",
-				href: "/favicon.ico",
+				href: "/public/favicon.ico",
 			},
 		],
 	}),

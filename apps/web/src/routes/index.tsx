@@ -30,8 +30,8 @@ function HomeComponent() {
 							style={{ animationDelay: "0.2s" }}
 						>
 							a digital agency that helps businesses scale through software,
-							automation, and AI. we build internal tools and automate processes
-							to help save your business time and money.
+							automation, and AI. we build web applications, internal tools and
+							automate processes to help save your business time and money.
 						</p>
 
 						<div className="animate-fade-up" style={{ animationDelay: "0.4s" }}>
