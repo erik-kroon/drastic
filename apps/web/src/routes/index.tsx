@@ -8,8 +8,8 @@ export const Route = createFileRoute("/")({
 function HomeComponent() {
 	return (
 		<div className=" w-full flex justify-center">
-			<div className=" max-w-3xl min-h-screen flex flex-col justify-around items-center w-full px-4 py-2  interactive-content relative z-10 ">
-				<div className="flex flex-col items-center justify-center text-center space-y-8 pt-6">
+			<div className=" max-w-3xl min-h-screen flex flex-col justify-evenly items-center w-full px-4 py-8  interactive-content relative z-10 ">
+				<div className="flex flex-col items-center justify-center text-center space-y-8">
 					<h1
 						className={cn(
 							"text-4xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter",
@@ -34,7 +34,7 @@ function HomeComponent() {
 				>
 					<a
 						href="mailto:erik@drastic.dev"
-						className="inline-flex rounded-full items-center justify-center px-8 py-3.5 text-lg font-semibold text-white bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-700 hover:to-blue-700 transition-colors duration-300"
+						className="inline-flex mb-2 rounded-full items-center justify-center px-8 py-3.5 text-lg font-semibold text-white bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-700 hover:to-blue-700 transition-colors duration-300"
 					>
 						Get in touch
 					</a>
