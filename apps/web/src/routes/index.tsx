@@ -37,7 +37,7 @@ function HomeComponent() {
             style={{ animationDelay: "0.2s" }}
           >
             a digital agency that helps your business save money and grow through
-            software, automation, and AI
+            software, automation and AI
           </p>
 
           <div className="group ml-8 flex h-16 shrink-0 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 px-8 text-center font-semibold text-white transition-colors duration-300 hover:from-purple-700 hover:to-blue-700">
