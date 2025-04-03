@@ -1,7 +1,8 @@
-import { cn } from "@/lib/utils";
 import { createFileRoute } from "@tanstack/react-router";
-import { GlowingEffectDemo } from "../components/grid";
-import ColourfulText from "../components/ui/colourful-text";
+import { ArrowRightIcon } from "lucide-react";
+import { cn } from "~/lib/utils";
+import { GlowingEffectDemo } from "/src/components/grid";
+import ColourfulText from "/src/components/ui/colourful-text";
 
 export const Route = createFileRoute("/")({
   component: HomeComponent,
@@ -9,12 +10,12 @@ export const Route = createFileRoute("/")({
 
 function HomeComponent() {
   return (
-    <div className=" w-full flex justify-center">
-      <div className=" max-w-3xl  flex flex-col justify-evenly items-center w-full px-4 lg:pt-26 pt-20 gap-16   interactive-content relative z-10 ">
-        <div className="flex flex-col items-center justify-center text-center space-y-8">
+    <div className="flex min-h-screen w-full justify-center">
+      <div className="interactive-content relative z-10 flex w-full max-w-3xl flex-col items-center justify-evenly gap-16 px-4 pt-20 lg:pt-26">
+        <div className="flex flex-col items-center justify-center space-y-8 text-center">
           <h1
             className={cn(
-              "text-4xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter",
+              "text-4xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl",
               "animate-fade-up",
             )}
           >
@@ -22,52 +23,37 @@ function HomeComponent() {
             <span className="ml-4">
               <ColourfulText text="scale" />
             </span>
+            <br />
             with AI
           </h1>
-
-          <p
-            className="max-w-2xl lg:text-lg sm:text-md text-primary/80 animate-fade-up"
-            style={{ animationDelay: "0.2s" }}
-          >
-            a digital agency that helps businesses save money and grow through
-            software, automation, and AI. we build web applications, internal
-            tools and automate processes to help save your business time and
-            money.
-          </p>
         </div>
 
         <div
-          className="animate-fade-up flex justify-center"
+          className="animate-fade-up flex items-center justify-center"
           style={{ animationDelay: "0.4s" }}
         >
-          <a
-            href="mailto:erik@drastic.dev"
-            className="inline-flex mb-2 rounded-full items-center justify-center px-8 py-3.5 text-lg font-semibold text-white bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-700 hover:to-blue-700 transition-colors duration-300"
+          <p
+            className="text-primary/94 animate-fade-up max-w-2xl sm:text-xl lg:text-xl"
+            style={{ animationDelay: "0.2s" }}
           >
-            Get in touch
-          </a>
+            a digital agency that helps your business save money and grow through
+            software, automation, and AI
+          </p>
+
+          <div className="group ml-8 flex h-16 shrink-0 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 px-8 text-center font-semibold text-white transition-colors duration-300 hover:from-purple-700 hover:to-blue-700">
+            <a
+              href="mailto:erik@drastic.dev"
+              className="flex items-center justify-center gap-3"
+            >
+              <span className="text-xl">Book a call</span>
+              <ArrowRightIcon className="h-8 w-8 transition-transform duration-300 group-hover:translate-x-1.25" />
+            </a>
+          </div>
         </div>
 
         <GlowingEffectDemo />
       </div>
     </div>
-  );
-}
-
-function FeatureItem({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <li className="border-l-2 border-primary py-1 pl-5">
-      <div className="h-full">
-        <h3 className="font-medium">{title}</h3>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </div>
-    </li>
   );
 }
 

@@ -7,7 +7,7 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 
-import { Button } from "../ui/button";
+import { Button } from "./button";
 
 export function DefaultCatchBoundary({ error }: Readonly<ErrorComponentProps>) {
   const router = useRouter();
@@ -20,9 +20,9 @@ export function DefaultCatchBoundary({ error }: Readonly<ErrorComponentProps>) {
 
   return (
     <div>
-      <div className="flex mt-64 min-w-0 flex-1 flex-col items-center justify-center gap-6 p-4">
+      <div className="mt-64 flex min-w-0 flex-1 flex-col items-center justify-center gap-6 p-4">
         <ErrorComponent error={error} />
-        <div className="flex gap-4 items-center">
+        <div className="flex items-center gap-4">
           <Button
             type="button"
             onClick={() => {

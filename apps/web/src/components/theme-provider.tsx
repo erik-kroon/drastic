@@ -1,32 +1,103 @@
-import { MoonIcon, SunIcon } from "lucide-react";
-import { Button } from "./ui/button";
+import { createContext, use, useEffect, useMemo, useReducer } from "react";
 
-export default function ThemeToggle() {
-  function toggleTheme() {
-    if (
-      document.documentElement.classList.contains("dark") ||
-      (!("theme" in localStorage) &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches)
-    ) {
-      document.documentElement.classList.remove("dark");
-      localStorage.theme = "light";
-    } else {
-      document.documentElement.classList.add("dark");
-      localStorage.theme = "dark";
-    }
+type Theme = "dark" | "light" | "system";
+
+type ThemeProviderProps = {
+  children: React.ReactNode;
+  defaultTheme?: Theme;
+  storageKey?: string;
+};
+
+type ThemeProviderState = {
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+};
+
+const initialState: ThemeProviderState = {
+  theme: "dark",
+  setTheme: () => null,
+};
+
+const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
+
+type Action = { type: "SET_THEME"; theme: Theme };
+
+function themeReducer(state: Theme, action: Action): Theme {
+  switch (action.type) {
+    case "SET_THEME":
+      return action.theme;
+    default:
+      return state;
   }
+}
+
+export function ThemeProvider({
+  children,
+  defaultTheme = "dark",
+  storageKey = "vite-ui-theme",
+  ...props
+}: ThemeProviderProps) {
+  const [theme, dispatch] = useReducer(themeReducer, defaultTheme);
+
+  useEffect(() => {
+    // This code will run only on the client (browser) after the component mounts
+    const storedTheme = localStorage?.getItem(storageKey) as Theme | undefined;
+    dispatch({ type: "SET_THEME", theme: storedTheme || defaultTheme });
+
+    const root = window.document.documentElement;
+    root.classList.remove("light", "dark");
+
+    if (theme === "system") {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+
+      root.classList.add(systemTheme);
+      return;
+    }
+
+    root.classList.add(theme);
+  }, [defaultTheme, storageKey, theme]);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove("light", "dark");
+
+    if (theme === "system") {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+
+      root.classList.add(systemTheme);
+      return;
+    }
+
+    root.classList.add(theme);
+  }, [theme]);
+
+  const value = useMemo(
+    () => ({
+      theme,
+      setTheme: (theme: Theme) => {
+        localStorage.setItem(storageKey, theme);
+        dispatch({ type: "SET_THEME", theme: theme });
+      },
+    }),
+    [theme, storageKey],
+  );
 
   return (
-    <Button
-      variant="outline"
-      size="icon"
-      type="button"
-      onClick={toggleTheme}
-      className="cursor-pointer"
-    >
-      <SunIcon className="size-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-      <MoonIcon className="absolute size-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-      <span className="sr-only">Toggle theme</span>
-    </Button>
+    <ThemeProviderContext {...props} value={value}>
+      {children}
+    </ThemeProviderContext>
   );
+}
+
+export function useTheme() {
+  const context = use(ThemeProviderContext);
+
+  if (context === undefined)
+    throw new Error("useTheme must be used within a ThemeProvider");
+
+  return context;
 }
