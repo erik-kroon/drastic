@@ -1,10 +1,15 @@
 import { Link } from "@tanstack/react-router";
+import { ArrowRightIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useIsMobile } from "../hooks/use-mobile";
+import { AuroraButton } from "./aurora-button";
 import { Navbar } from "./navbar";
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const links = [{ to: "/", label: "drastic" }];
+
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -26,10 +31,10 @@ export default function Header() {
   return (
     <div
       className={`fixed top-0 left-0 z-50 w-full transition-all duration-300 ${
-        isScrolled ? "bg-background/70 backdrop-blur-sm" : "bg-transparent"
+        isScrolled ? "bg-background/40 backdrop-blur-sm" : "bg-transparent"
       }`}
     >
-      <div className="flex w-full flex-row items-center justify-between px-24 py-2">
+      <div className="flex w-full flex-row items-center justify-between gap-2 px-12 py-2 md:px-24">
         <nav className="border-b-muted flex text-xl shadow-none">
           {links.map(({ to, label }) => (
             <Link
@@ -54,21 +59,18 @@ export default function Header() {
           ))}
         </nav>
         <div className="z-50 flex items-center justify-center">
-          <Navbar />
+          {!isMobile && <Navbar />}
         </div>
-        <div className="flex items-center gap-2">
-          <div
-            className="animate-fade-up flex justify-center"
-            style={{ animationDelay: "0.4s" }}
-          >
-            <a
-              href="mailto:erik@drastic.dev"
-              className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-purple-500 to-blue-500 px-4 py-2 text-xs font-semibold text-white transition-colors duration-300 hover:from-purple-700 hover:to-blue-700"
-            >
-              Contact us
-            </a>
-          </div>
-        </div>
+        <AuroraButton
+          className="animate-fade-up z-50 flex justify-center whitespace-nowrap"
+          style={{ animationDelay: "0.4s" }}
+          href="mailto:erik@drastic.dev"
+          size="sm"
+          glowSize="sm"
+        >
+          Contact us
+          <ArrowRightIcon className="ml-1.5 h-5 w-5 transition-transform duration-300 group-hover:translate-x-0.5" />
+        </AuroraButton>
       </div>
     </div>
   );

@@ -1,0 +1,16 @@
+{
+  "projectId": "prj_fT2IweaZWWd13tNh2ZYfG",
+  "locale": {
+    "source": "en",
+    "targets": [
+      "se"
+    ]
+  },
+  "files": {
+    "json": {
+      "include": [
+        "src/locales/[locale].json"
+      ]
+    }
+  }
+}

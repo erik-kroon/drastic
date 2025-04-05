@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "/*": ["./apps/web/*", "./apps/web/public/*"],
+      "@/*": ["./apps/web/src/*"],
+      "~/*": ["./apps/web/src/*"]
+    }
+  }
+}

@@ -1,26 +1,26 @@
 ("use client");
 
-import { GlowingEffect } from "@/components/ui/glowing-effect";
+import { GlowingEffect } from "@/lib/components/ui/glowing-effect";
 
-export function GlowingEffectDemo() {
+export function ServicesGrid() {
   return (
-    <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
+    <ul className="grid grid-cols-3 gap-3 lg:grid-cols-3">
       <FeatureItem
         title="Internal tools"
-        description="Custom software that streamlines workflows."
+        description="Custom software to streamline your business."
       />
       <FeatureItem
         title="Web applications"
         description="Modern, scalable web applications tailored to your needs."
       />
       <FeatureItem
-        title="Automation"
-        description="Automate repetitive tasks to free up valuable time."
+        title="AI Workflows"
+        description="Automate tasks to free up time for what truly matters."
       />
 
       <FeatureItem
         title="MVPs"
-        description="Rapid prototype development and validation of your business ideas."
+        description="Rapid prototype development to validate your business ideas."
       />
       <FeatureItem
         title="Landing pages"
@@ -42,7 +42,7 @@ interface FeatureItemProps {
 const FeatureItem = ({ title, description }: FeatureItemProps) => {
   return (
     <li className="list-none">
-      <div className="border-border relative rounded-[1.25rem] border-[0.75px] p-2 md:rounded-[1.5rem] md:p-3">
+      <div className="border-border bg-secondary/60 relative rounded-[1.25rem] border-[0.75px] p-2 md:rounded-[1rem] md:p-1.5">
         <GlowingEffect
           spread={40}
           glow={true}
@@ -53,11 +53,11 @@ const FeatureItem = ({ title, description }: FeatureItemProps) => {
         />
         <div className="bg-background relative flex flex-col justify-between gap-3 overflow-hidden rounded-xl border-[0.75px] shadow-sm md:p-4 dark:shadow-[0px_0px_27px_0px_rgba(45,45,45,0.3)]">
           <div className="relative flex flex-1 flex-col justify-between">
-            <div className="p-1 px-2">
+            <div className="p-1 px-2 pl-3">
               <h3 className="text-foreground pb-2 font-sans text-lg leading-[1.375rem] font-semibold tracking-[-0.04em] text-balance">
                 {title}
               </h3>
-              <h2 className="text-muted-foreground h-18 font-sans text-sm leading-[1.125rem] [&_b]:md:font-semibold [&_strong]:md:font-semibold">
+              <h2 className="text-muted-foreground h-14 font-sans text-sm leading-[1.125rem] [&_b]:md:font-semibold [&_strong]:md:font-semibold">
                 {description}
               </h2>
             </div>

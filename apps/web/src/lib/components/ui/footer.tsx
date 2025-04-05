@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@/lib/components/ui/button";
 import { GithubIcon, TwitterIcon } from "lucide-react";
 
 interface FooterProps {
@@ -55,7 +55,7 @@ function FooterComponent() {
           text: "© 2024 drastic",
           license: "All rights reserved",
         }}
-      />
+      ></Footer>
     </div>
   );
 }

@@ -1,17 +1,17 @@
 "use client";
-import React, { useState } from "react";
 import {
   HoveredLink,
   Menu,
   MenuItem,
   ProductItem,
-} from "@/components/ui/navbar-menu";
+} from "@/lib/components/ui/navbar-menu";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 export function Navbar({ className }: { className?: string }) {
   const [active, setActive] = useState<string | null>(null);
   return (
-    <div className={cn("inset-x-0 max-w-2xl mx-auto z-50", className)}>
+    <div className={cn("inset-x-0 z-50 mx-auto max-w-2xl", className)}>
       <Menu setActive={setActive}>
         <MenuItem setActive={setActive} active={active} item="Services">
           <div className="flex flex-col space-y-4 text-sm">
@@ -22,7 +22,7 @@ export function Navbar({ className }: { className?: string }) {
           </div>
         </MenuItem>
         <MenuItem setActive={setActive} active={active} item="Products">
-          <div className="  text-sm grid grid-cols-2 gap-10 p-4">
+          <div className="grid grid-cols-2 gap-10 p-1 text-sm">
             <ProductItem
               title="Algochurn"
               href="https://algochurn.com"

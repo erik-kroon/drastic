@@ -10,13 +10,13 @@ import {
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
-import Header from "@/components/header";
-import Loader from "@/components/loader";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/sonner";
+import Header from "@/lib/components/header";
+import Loader from "@/lib/components/loader";
+import { ThemeProvider } from "@/lib/components/theme-provider";
+import { Toaster } from "@/lib/components/ui/sonner";
 import React from "react";
 import appCss from "~/lib/styles/app.css?url";
-import { Footer } from "../components/ui/footer";
+import { Footer } from "../lib/components/ui/footer";
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
   theme: string;
@@ -56,6 +56,8 @@ function RootComponent() {
   return (
     <RootDocument>
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+        {/* <GridBackground />
+        <Spotlight /> */}
         <Header />
         {isFetching && <Loader />}
         <Outlet />
