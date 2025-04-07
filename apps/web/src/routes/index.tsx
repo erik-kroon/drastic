@@ -28,8 +28,8 @@ function HomeComponent() {
   }, [titleNumber, titles]);
 
   return (
-    <div className="flex w-full flex-col items-center">
-      <div className="interactive-content relative z-10 flex w-full max-w-3xl flex-col h-[90vh] items-center px-8 lg:max-w-4xl">
+    <div className="flex min-h-screen w-full flex-col items-center">
+      <div className="interactive-content relative z-10 min-h-[calc(90vh)] flex w-full max-w-4xl flex-col flex-grow items-center px-8 lg:max-w-4xl">
         <div className="flex flex-col items-center justify-center space-y-8 text-center">
           <HeroPill
             text="1 spot left for April"
@@ -49,11 +49,11 @@ function HomeComponent() {
                 <circle cx="12" cy="12" r="10" />
               </svg>
             }
-            className="pt-18 pb-1"
+            className="pt-20 pb-1"
           />
           <h1
             className={cn(
-              "text-4xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl",
+              " py-2 text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl",
               "animate-fade-up",
             )}
           >
@@ -88,11 +88,10 @@ function HomeComponent() {
           </AuroraButton>
         </div>
         <ServicesGrid />
-        {/* <FAQ /> */}
       </div>
-      {/* <div className="w-full flex justify-center">
-        <GradientBg1 />
-      </div> */}
+      <div className="pt-4 pb-32"></div>
+      {/* <FAQ /> */}
+
       <GridBackground />
       <Spotlight />
     </div>

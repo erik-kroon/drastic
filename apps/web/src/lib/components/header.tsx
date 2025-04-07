@@ -28,12 +28,12 @@ export default function Header() {
 
   return (
     <div
-      className={`fixed top-0 left-0 z-50 w-full transition-all duration-300 ${
+      className={`fixed top-0 left-0 z-50 w-full transition-all duration-400 ${
         isScrolled ? "bg-background/40 backdrop-blur-sm" : "bg-transparent"
       }`}
     >
       <div
-        className={`flex w-full flex-row items-center justify-between gap-2 px-12 ${isScrolled ? "py-3" : "py-5"} md:px-24 transition-padding duration-450`}
+        className={`flex w-full flex-row items-center justify-between gap-2 px-12 ${isScrolled ? "py-3" : "py-5"} md:px-24 transition-padding duration-400`}
       >
         <nav className="border-b-muted flex text-xl shadow-none">
           {links.map(({ to, label }) => (
@@ -66,6 +66,7 @@ export default function Header() {
           style={{ animationDelay: "0.4s" }}
           href="mailto:erik@drastic.dev"
           size="sm"
+          // size={isScrolled ? "sm" : "md"}
           glowSize="sm"
         >
           Contact us
