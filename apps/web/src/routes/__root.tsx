@@ -7,9 +7,6 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-
 import Header from "@/lib/components/header";
 import Loader from "@/lib/components/loader";
 import { ThemeProvider } from "@/lib/components/theme-provider";
@@ -56,8 +53,6 @@ function RootComponent() {
   return (
     <RootDocument>
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-        {/* <GridBackground />
-        <Spotlight /> */}
         <Header />
         {isFetching && <Loader />}
         <Outlet />
@@ -81,14 +76,15 @@ function RootDocument({ children }: { readonly children: React.ReactNode }) {
     }
   });
   return (
-    <html className="supressHydrationWarnings dark">
+    <html className="supressHydrationWarnings dark ">
       <head>
         <HeadContent />
       </head>
+
       {children}
       <Scripts />
-      <TanStackRouterDevtools position="bottom-left" />
-      <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
+      {/* <TanStackRouterDevtools position="bottom-left" />
+      <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" /> */}
     </html>
   );
 }

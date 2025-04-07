@@ -1,15 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRightIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useIsMobile } from "../hooks/use-mobile";
 import { AuroraButton } from "./aurora-button";
-import { Navbar } from "./navbar";
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const links = [{ to: "/", label: "drastic" }];
 
-  const isMobile = useIsMobile();
+  // const isMobile = useIsMobile();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -58,9 +56,9 @@ export default function Header() {
             </Link>
           ))}
         </nav>
-        <div className="z-50 flex items-center justify-center">
+        {/* <div className="z-50 flex items-center justify-center">
           {!isMobile && <Navbar />}
-        </div>
+        </div> */}
         <AuroraButton
           className="animate-fade-up z-50 flex justify-center whitespace-nowrap"
           style={{ animationDelay: "0.4s" }}

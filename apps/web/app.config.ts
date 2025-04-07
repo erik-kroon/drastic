@@ -3,6 +3,9 @@ import { defineConfig } from "@tanstack/react-start/config";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import tsConfigPaths from "vite-tsconfig-paths";
+
+//"prettier-plugin-tailwindcss"
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   vite: {

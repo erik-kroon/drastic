@@ -3,7 +3,7 @@ import { ArrowRightIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "~/lib/utils";
 import { AuroraButton } from "../lib/components/aurora-button";
-import { GridBackground, Spotlight } from "../lib/components/blocks/spotlight-new";
+import { GridBackground, Spotlight } from "../lib/components/blocks/spotlight";
 import { ServicesGrid } from "../lib/components/services-grid";
 import ColourfulText from "../lib/components/ui/colourful-text";
 import { HeroPill } from "../lib/components/ui/hero-pill";
@@ -28,10 +28,8 @@ function HomeComponent() {
   }, [titleNumber, titles]);
 
   return (
-    <div className="flex w-full justify-center">
-      <GridBackground />
-      <Spotlight />
-      <div className="interactive-content relative z-10 flex w-full max-w-3xl flex-col items-center px-8">
+    <div className="flex w-full flex-col items-center">
+      <div className="interactive-content relative z-10 flex w-full max-w-3xl flex-col items-center px-8 lg:max-w-4xl">
         <div className="flex flex-col items-center justify-center space-y-8 text-center">
           <HeroPill
             text="1 spot left for April"
@@ -68,13 +66,12 @@ function HomeComponent() {
             with AI
           </h1>
         </div>
-
         <div
           className="animate-fade-up flex flex-col items-center justify-center gap-8 pt-8 pb-12 sm:pt-12 sm:pb-16 md:flex-row"
           style={{ animationDelay: "0.4s" }}
         >
           <p
-            className="text-primary/94 animate-fade-up max-w-2xl text-center text-lg sm:text-lg"
+            className="text-primary/94 animate-fade-up max-w-md pr-0 text-left text-lg sm:text-lg"
             style={{ animationDelay: "0.2s" }}
           >
             drastic is a digital agency that helps your business save money and grow
@@ -91,7 +88,13 @@ function HomeComponent() {
           </AuroraButton>
         </div>
         <ServicesGrid />
+        {/* <FAQ /> */}
       </div>
+      {/* <div className="w-full flex justify-center">
+        <GradientBg1 />
+      </div> */}
+      <GridBackground />
+      <Spotlight />
     </div>
   );
 }

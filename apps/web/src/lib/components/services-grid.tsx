@@ -4,7 +4,7 @@ import { GlowingEffect } from "@/lib/components/ui/glowing-effect";
 
 export function ServicesGrid() {
   return (
-    <ul className="grid grid-cols-3 gap-3 lg:grid-cols-3">
+    <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:px-16">
       <FeatureItem
         title="Internal tools"
         description="Custom software to streamline your business."
@@ -27,8 +27,8 @@ export function ServicesGrid() {
         description="High-converting pages to convert visitors and capture leads."
       />
       <FeatureItem
-        title="AI Marketing"
-        description="Cutting-edge strategies for unparalleled campaign performance."
+        title="AI TikTok Ads"
+        description="Ultra-realistic AI-generated UGC for maximum engagement."
       />
     </ul>
   );
@@ -51,13 +51,13 @@ const FeatureItem = ({ title, description }: FeatureItemProps) => {
           inactiveZone={0.01}
           borderWidth={3}
         />
-        <div className="bg-background relative flex flex-col justify-between gap-3 overflow-hidden rounded-xl border-[0.75px] shadow-sm md:p-4 dark:shadow-[0px_0px_27px_0px_rgba(45,45,45,0.3)]">
-          <div className="relative flex flex-1 flex-col justify-between">
-            <div className="p-1 px-2 pl-3">
-              <h3 className="text-foreground pb-2 font-sans text-lg leading-[1.375rem] font-semibold tracking-[-0.04em] text-balance">
+        <div className="bg-background relative flex flex-col justify-between gap-3 overflow-hidden rounded-xl border-[0.75px] p-2  shadow-sm md:p-3 md:pt-4 dark:shadow-[0px_0px_27px_0px_rgba(45,45,45,0.3)]">
+          <div className="relative flex flex-1 flex-col justify-between sm:w-44 md:w-44">
+            <div className="pl-2.5 md:pl-3">
+              <h3 className="text-foreground text-sm pt-0 pb-1 font-sans leading-[1.375rem] font-semibold tracking-[-0.04em] text-balance md:pb-2 md:text-lg">
                 {title}
               </h3>
-              <h2 className="text-muted-foreground h-14 font-sans text-sm leading-[1.125rem] [&_b]:md:font-semibold [&_strong]:md:font-semibold">
+              <h2 className="text-muted-foreground h-20 font-sans text-xs leading-[1.125rem] sm:h-16 md:h-16 md:text-sm [&_b]:md:font-semibold [&_strong]:md:font-semibold">
                 {description}
               </h2>
             </div>

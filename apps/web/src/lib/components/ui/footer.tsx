@@ -71,7 +71,7 @@ function Footer({
   copyright,
 }: FooterProps) {
   return (
-    <footer className="pt-16 pb-6 lg:pt-24 lg:pb-8">
+    <footer className="pt-16 pb-2 lg:pt-24 lg:pb-4">
       <div className="px-4 lg:px-8">
         <div className="md:flex md:items-start md:justify-between">
           <a href="/" className="flex items-center gap-x-2" aria-label={brandName}>
