@@ -29,7 +29,7 @@ function HomeComponent() {
 
   return (
     <div className="flex w-full flex-col items-center">
-      <div className="interactive-content relative z-10 flex w-full max-w-3xl flex-col items-center px-8 lg:max-w-4xl">
+      <div className="interactive-content relative z-10 flex w-full max-w-3xl flex-col h-[90vh] items-center px-8 lg:max-w-4xl">
         <div className="flex flex-col items-center justify-center space-y-8 text-center">
           <HeroPill
             text="1 spot left for April"

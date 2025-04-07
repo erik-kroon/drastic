@@ -1,6 +1,6 @@
 export const GradientBg1 = () => {
   return (
-    <div className=" relative w-full h-[100vh] overflow-hidden blur-lg flex justify-center">
+    <div className="absolute top-0   w-full h-[55vh] overflow-hidden blur-lg flex justify-center">
       <svg
         width="968"
         height="587"

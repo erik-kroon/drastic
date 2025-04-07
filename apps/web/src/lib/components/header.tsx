@@ -32,7 +32,9 @@ export default function Header() {
         isScrolled ? "bg-background/40 backdrop-blur-sm" : "bg-transparent"
       }`}
     >
-      <div className="flex w-full flex-row items-center justify-between gap-2 px-12 py-2 md:px-24">
+      <div
+        className={`flex w-full flex-row items-center justify-between gap-2 px-12 ${isScrolled ? "py-3" : "py-5"} md:px-24 transition-padding duration-450`}
+      >
         <nav className="border-b-muted flex text-xl shadow-none">
           {links.map(({ to, label }) => (
             <Link
