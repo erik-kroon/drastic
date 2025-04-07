@@ -33,7 +33,7 @@ export default function Header() {
       }`}
     >
       <div
-        className={`flex w-full flex-row items-center justify-between gap-2 px-12 ${isScrolled ? "py-3" : "py-5"} md:px-24 transition-padding duration-400`}
+        className={`flex w-full flex-row items-center justify-between gap-2 px-12 ${isScrolled ? "py-3" : "py-6"} md:px-24 transition-padding duration-400`}
       >
         <nav className="border-b-muted flex text-xl shadow-none">
           {links.map(({ to, label }) => (

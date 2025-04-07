@@ -25,7 +25,7 @@ interface FooterProps {
 
 function FooterComponent() {
   return (
-    <div className="w-full">
+    <div className="w-full text-center md:text-left">
       <Footer
         logo={<span className="bg-primary mr-3 h-6 w-6 rounded-full text-lg" />}
         brandName="drastic"
@@ -73,12 +73,16 @@ function Footer({
   return (
     <footer className="pt-16 pb-2 lg:pt-24 lg:pb-4">
       <div className="px-4 lg:px-8">
-        <div className="md:flex md:items-start md:justify-between">
-          <a href="/" className="flex items-center gap-x-2" aria-label={brandName}>
+        <div className="flex items-center justify-between">
+          <a
+            href="/"
+            className="flex items-center h-full h-22 gap-x-2 "
+            aria-label={brandName}
+          >
             {logo}
-            <span className="text-xl font-bold">{brandName}</span>
+            <span className="text-xl h-full font-bold">{brandName}</span>
           </a>
-          <ul className="mt-6 flex list-none space-x-3 md:mt-0">
+          <ul className="flex list-none space-x-3 mt-0">
             {socialLinks.map((link) => (
               <li key={link.label}>
                 <Button
@@ -97,7 +101,7 @@ function Footer({
         </div>
         <div className="mt-6 border-t pt-6 md:mt-4 md:pt-8 lg:grid lg:grid-cols-10">
           <nav className="lg:col-[4/11] lg:mt-0">
-            <ul className="-mx-2 -my-1 flex list-none flex-wrap lg:justify-end">
+            <ul className="-mx-2 -my-1 flex list-none flex-wrap justify-center lg:justify-end">
               {mainLinks.map((link) => (
                 <li key={link.href} className="mx-2 my-1 shrink-0">
                   <a
@@ -111,7 +115,7 @@ function Footer({
             </ul>
           </nav>
           <div className="mt-6 lg:col-[4/11] lg:mt-0">
-            <ul className="-mx-3 -my-1 flex list-none flex-wrap lg:justify-end">
+            <ul className="-mx-3 -my-1 flex list-none flex-wrap justify-center lg:justify-end">
               {legalLinks.map((link, i) => (
                 <li key={i} className="mx-3 my-1 shrink-0">
                   <a
