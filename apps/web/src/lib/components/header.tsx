@@ -36,7 +36,7 @@ export default function Header() {
       }`}
     >
       <div
-        className={`flex w-full z-50 flex-row items-center justify-between gap-2  transition-all duration-600 ease-in-out ${
+        className={`flex w-full z-50 flex-row items-center justify-between gap-2  transition-all duration-600 ease-out ${
           isScrolled ? "py-3 px-6 md:px-12" : "py-6  px-12 md:px-24"
         }`}
       >

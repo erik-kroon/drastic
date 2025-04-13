@@ -17,7 +17,7 @@ const sizeClasses = {
 
 const glowSizeClasses = {
   sm: "-inset-0.25 blur-lg",
-  md: "-inset-0.1875 blur-lg",
+  md: "-inset-0.25 blur-lg",
   lg: "-inset-0.5 blur-xl",
 };
 
@@ -31,7 +31,8 @@ export function AuroraButton({
   ...props
 }: AuroraButtonProps) {
   const buttonSizeClass = sizeClasses[size];
-  const glowSizeClass = glowSizeClasses[glowSize || size] || glowSizeClasses["lg"];
+  const glowSizeClass =
+    glowSizeClasses[glowSize || size] || glowSizeClasses["lg"];
 
   return (
     <div className="group relative inline-flex">
