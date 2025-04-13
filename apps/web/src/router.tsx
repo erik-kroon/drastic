@@ -19,12 +19,14 @@ export function createRouter() {
   return routerWithQueryClient(
     createTanStackRouter({
       routeTree,
-      context: { queryClient, theme: "dark" },
+      context: {
+        queryClient,
+        theme: "dark",
+      },
       defaultPreload: "intent",
       defaultSsr: true,
       defaultErrorComponent: DefaultCatchBoundary,
       defaultNotFoundComponent: NotFound,
-      scrollRestoration: true,
       defaultStructuralSharing: true,
     }),
     queryClient,

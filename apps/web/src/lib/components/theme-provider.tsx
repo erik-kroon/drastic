@@ -20,7 +20,10 @@ const initialState: ThemeProviderState = {
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 
-type Action = { type: "SET_THEME"; theme: Theme };
+type Action = {
+  type: "SET_THEME";
+  theme: Theme;
+};
 
 function themeReducer(state: Theme, action: Action): Theme {
   switch (action.type) {
@@ -42,7 +45,10 @@ export function ThemeProvider({
   useEffect(() => {
     // This code will run only on the client (browser) after the component mounts
     const storedTheme = localStorage?.getItem(storageKey) as Theme | undefined;
-    dispatch({ type: "SET_THEME", theme: storedTheme || defaultTheme });
+    dispatch({
+      type: "SET_THEME",
+      theme: storedTheme || defaultTheme,
+    });
 
     const root = window.document.documentElement;
     root.classList.remove("light", "dark");
@@ -80,7 +86,10 @@ export function ThemeProvider({
       theme,
       setTheme: (theme: Theme) => {
         localStorage.setItem(storageKey, theme);
-        dispatch({ type: "SET_THEME", theme: theme });
+        dispatch({
+          type: "SET_THEME",
+          theme: theme,
+        });
       },
     }),
     [theme, storageKey],

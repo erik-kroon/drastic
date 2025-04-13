@@ -1,4 +1,5 @@
-import type { QueryClient } from "@tanstack/react-query";
+// app/routes/__root.tsx
+
 import {
   createRootRouteWithContext,
   HeadContent,
@@ -6,16 +7,14 @@ import {
   Scripts,
   useRouterState,
 } from "@tanstack/react-router";
-
-import Header from "@/lib/components/header";
-import Loader from "@/lib/components/loader";
-import { ThemeProvider } from "@/lib/components/theme-provider";
-import { Toaster } from "@/lib/components/ui/sonner";
-import React from "react";
+import type { ReactNode } from "react";
 import appCss from "~/lib/styles/app.css?url";
-import { Footer } from "../lib/components/ui/footer";
+import utilsCss from "~/lib/styles/utils.css?url";
+import Header from "../lib/components/header";
+import Loader from "../lib/components/loader";
+import { ThemeProvider } from "../lib/components/theme-provider";
+import { Footer } from "../lib/components/ui/footer-2";
 export const Route = createRootRouteWithContext<{
-  queryClient: QueryClient;
   theme: string;
 }>()({
   head: () => ({
@@ -40,7 +39,15 @@ export const Route = createRootRouteWithContext<{
         rel: "icon",
         href: "/favicon.ico",
       },
-      { rel: "stylesheet", href: appCss },
+      {
+        rel: "stylesheet",
+        href: appCss,
+      },
+
+      {
+        rel: "stylesheet",
+        href: utilsCss,
+      },
     ],
   }),
   component: RootComponent,
@@ -57,34 +64,21 @@ function RootComponent() {
         {isFetching && <Loader />}
         <Outlet />
         <Footer />
-        <Toaster richColors />
       </ThemeProvider>
     </RootDocument>
   );
 }
 
-function RootDocument({ children }: { readonly children: React.ReactNode }) {
-  React.useEffect(() => {
-    if (localStorage.theme === "light") {
-      document.documentElement.classList.remove("dark");
-    } else if (
-      localStorage.theme === "dark" ||
-      (!("theme" in localStorage) &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches)
-    ) {
-      document.documentElement.classList.add("dark");
-    }
-  });
+function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html className="supressHydrationWarnings dark ">
+    <html className="dark" suppressHydrationWarning={true}>
       <head>
         <HeadContent />
       </head>
-
-      {children}
-      <Scripts />
-      {/* <TanStackRouterDevtools position="bottom-left" />
-      <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" /> */}
+      <body>
+        {children}
+        <Scripts />
+      </body>
     </html>
   );
 }

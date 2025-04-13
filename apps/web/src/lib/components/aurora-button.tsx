@@ -54,7 +54,9 @@ export function AuroraButton({
           buttonSizeClass, // Apply size class
           className,
         )}
-        style={{ lineHeight: "1" }}
+        style={{
+          lineHeight: "1",
+        }}
         {...props}
       >
         {children}

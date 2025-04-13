@@ -30,11 +30,21 @@ const GlowingEffect = memo(
     disabled = true,
   }: GlowingEffectProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
-    const lastPosition = useRef({ x: 0, y: 0 });
+    const lastPosition = useRef({
+      x: 0,
+      y: 0,
+    });
     const animationFrameRef = useRef<number>(0);
 
     const handleMove = useCallback(
-      (e?: MouseEvent | { x: number; y: number }) => {
+      (
+        e?:
+          | MouseEvent
+          | {
+              x: number;
+              y: number;
+            },
+      ) => {
         if (!containerRef.current) return;
 
         if (animationFrameRef.current) {
@@ -50,7 +60,10 @@ const GlowingEffect = memo(
           const mouseY = e?.y ?? lastPosition.current.y;
 
           if (e) {
-            lastPosition.current = { x: mouseX, y: mouseY };
+            lastPosition.current = {
+              x: mouseX,
+              y: mouseY,
+            };
           }
 
           const center = [left + width * 0.5, top + height * 0.5];
@@ -97,7 +110,9 @@ const GlowingEffect = memo(
       const handleScroll = () => handleMove();
       const handlePointerMove = (e: PointerEvent) => handleMove(e);
 
-      window.addEventListener("scroll", handleScroll, { passive: true });
+      window.addEventListener("scroll", handleScroll, {
+        passive: true,
+      });
       document.body.addEventListener("pointermove", handlePointerMove, {
         passive: true,
       });

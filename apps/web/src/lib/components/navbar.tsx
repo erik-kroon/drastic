@@ -21,6 +21,7 @@ export function Navbar({ className }: { className?: string }) {
             <HoveredLink href="/branding">Branding</HoveredLink>
           </div>
         </MenuItem>
+
         <MenuItem setActive={setActive} active={active} item="Products">
           <div className="grid grid-cols-2 gap-10 p-1 text-sm">
             <ProductItem
