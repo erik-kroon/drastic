@@ -1,5 +1,7 @@
 // logos
 
+import { ArrowRightIcon } from "@radix-ui/react-icons";
+import { AuroraButton } from "../aurora-button";
 import { ServicesGrid } from "../services-grid";
 import { useTheme } from "../theme-provider";
 import { BorderBeamImage } from "../ui/border-beam-image";
@@ -33,8 +35,8 @@ export function SecondSection() {
           color={theme === "dark" ? "#ffffff" : "#000000"}
         />
       </div>
-      <div className="h-[1900px] -mt-20 text-4xl w-full flex justify-center items-center flex-col gap-32">
-        <div className="px-4 w-full flex justify-center flex-col items-center gap-6">
+      <div className="h-[1800px] -mt-20 text-4xl w-full flex justify-center items-center flex-col gap-16">
+        <div className="px-4 w-full flex justify-center flex-col items-center gap-4">
           <div className="flex flex-col gap-2 pb-2 text-center">
             <div>Your own internal tools. Built uniquely for you.</div>
             <div className="text-2xl text-zinc-600 dark:text-zinc-400">
@@ -45,13 +47,28 @@ export function SecondSection() {
             </div>
           </div>
 
-          <BorderBeamImage />
+          <div className="pb-4">
+            <BorderBeamImage imagePath="/drastic_dashboard.png" />
+          </div>
+
+          <BorderBeamImage reverse imagePath="/drastic_dashboard_2.png" />
         </div>
 
         <ServicesGrid />
-        <div className="px-4 md:px-">
-          <BorderBeamImage reverse={true} />
-        </div>
+        {/* <div className="px-4 md:px-8 flex flex-col gap-8">
+          <BorderBeamImage imagePath="/drastic_calendar.png" reverse={true} />
+        </div> */}
+        <AuroraButton
+          className="animate-fade-up z-50 mt-4 flex justify-center whitespace-nowrap md:mt-0"
+          style={{
+            animationDelay: "0.4s",
+          }}
+          size="md"
+          href="mailto:erik@drastic.dev"
+        >
+          Book a 15-min call
+          <ArrowRightIcon className="ml-3 h-8 w-8 transition-transform duration-300 group-hover:translate-x-1" />
+        </AuroraButton>
       </div>
       <div className="relative  h-96 w-full overflow-hidden [mask-image:radial-gradient(50%_50%,white,transparent)]">
         <div className="absolute inset-0 before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_center,#8350e8,transparent_70%)] before:opacity-40" />

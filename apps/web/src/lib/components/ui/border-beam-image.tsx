@@ -9,7 +9,7 @@ interface BorderBeamImageProps {
 }
 
 export function BorderBeamImage({
-  imagePath = "/drastic_calendar.png",
+  imagePath,
   duration = 10,
   size = 125,
   reverse = false,
