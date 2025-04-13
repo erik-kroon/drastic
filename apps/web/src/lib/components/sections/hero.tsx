@@ -21,7 +21,7 @@ export function Hero() {
   }, [titleNumber, titles]);
 
   return (
-    <div className=" min-h-[calc(90vh)] interactive-content relative z-10 flex w-full max-w-4xl flex-grow flex-col justify-center items-center px-8 lg:max-w-4xl gap-16">
+    <div className=" min-h-[calc(80vh)] interactive-content relative z-10 flex w-full max-w-4xl flex-grow flex-col justify-center items-center px-8 lg:max-w-4xl gap-16">
       <HeroPill
         text="1 spot left for May"
         icon={
