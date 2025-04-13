@@ -5,6 +5,7 @@ import { AuroraButton } from "../aurora-button";
 import { ServicesGrid } from "../services-grid";
 import { useTheme } from "../theme-provider";
 import { BorderBeamImage } from "../ui/border-beam-image";
+import { Card, CardContent } from "../ui/card";
 import { ProgressiveBlur } from "../ui/progressive-blur";
 import { Sparkles } from "../ui/sparkles";
 
@@ -35,7 +36,7 @@ export function SecondSection() {
           color={theme === "dark" ? "#ffffff" : "#000000"}
         />
       </div>
-      <div className="h-[1800px] -mt-20 text-4xl w-full flex justify-center items-center flex-col gap-16">
+      <div className="h-[1400px] sm:h-[1600px] md:h-[1800px]  text-4xl w-full flex justify-center items-center flex-col gap-16">
         <div className="px-4 w-full flex justify-center flex-col items-center gap-4">
           <div className="flex flex-col gap-2 pb-2 text-center">
             <div>Your own internal tools. Built uniquely for you.</div>
@@ -51,7 +52,15 @@ export function SecondSection() {
             <BorderBeamImage imagePath="/drastic_dashboard.png" />
           </div>
 
-          <BorderBeamImage reverse imagePath="/drastic_dashboard_2.png" />
+          <Card className="relative max-w-4xl p-0 pr-0 overflow-hidden">
+            <CardContent className="px-0">
+              <img
+                src={"/drastic_dashboard_2.png"}
+                alt="dashboard_2"
+                className="w-full"
+              />
+            </CardContent>
+          </Card>
         </div>
 
         <ServicesGrid />

@@ -133,26 +133,27 @@ export default function FAQ({
 }: FAQProps) {
   return (
     <Section className={className}>
-      <div className="pt-8 mx-auto flex max-w-3xl flex-col items-center gap-8">
-        <h2 className="text-center text-3xl font-semibold sm:text-5xl whitespace-nowrap">
-          {title}
-        </h2>
-        {items !== false && items.length > 0 && (
-          <div className="relative w-[400px] md:w-[600px]">
-            <Accordion type="single" collapsible>
-              {items.map((item, index) => (
-                <AccordionItem
-                  key={item.question}
-                  value={item.value || `item-${index + 1}`}
-                  className="pl-6"
-                >
-                  <AccordionTrigger>{item.question}</AccordionTrigger>
-                  <AccordionContent>{item.answer}</AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </div>
-        )}
+      <div className="flex justify-center w-full">
+        <div className="pt-8 flex max-w-3xl flex-col items-center gap-8">
+          <h2 className="text-center text-3xl font-semibold sm:text-5xl whitespace-nowrap">
+            {title}
+          </h2>
+          {items !== false && items.length > 0 && (
+            <div className="relative w-[400px] md:w-[600px]">
+              <Accordion type="single" collapsible>
+                {items.map((item, index) => (
+                  <AccordionItem
+                    key={item.question}
+                    value={item.value || `item-${index + 1}`}
+                  >
+                    <AccordionTrigger>{item.question}</AccordionTrigger>
+                    <AccordionContent>{item.answer}</AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </div>
+          )}
+        </div>
       </div>
     </Section>
   );

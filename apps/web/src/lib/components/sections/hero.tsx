@@ -23,7 +23,7 @@ export function Hero() {
   return (
     <div className=" min-h-[calc(80vh)] interactive-content relative z-10 flex w-full max-w-4xl flex-grow flex-col justify-center items-center px-8 lg:max-w-4xl gap-16">
       <HeroPill
-        text="1 spot left for May"
+        text="2 spots left"
         icon={
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -37,15 +37,15 @@ export function Hero() {
             strokeLinejoin="round"
             className="h-3 w-3"
           >
-            <circle cx="12" cy="12" r="10" />
+            <circle cx="12" cy="12" r="10" fill="#11CC2A" />
           </svg>
         }
-        className=""
+        className="pt-24 lg:pt-12"
       />
       <div className="flex flex-col items-center justify-center space-y-8 text-center">
         <h1
           className={cn(
-            " text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl",
+            " text-5xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl",
             "animate-fade-up",
           )}
         >
