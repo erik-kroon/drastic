@@ -1,5 +1,3 @@
-// logos
-
 import { ArrowRightIcon } from "@radix-ui/react-icons";
 import { AuroraButton } from "../aurora-button";
 import { ServicesGrid } from "../services-grid";

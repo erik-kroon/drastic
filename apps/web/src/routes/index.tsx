@@ -20,7 +20,6 @@ function HomeComponent() {
         </div>
       </div>
       <div className="h-[800px]" aria-hidden="true" />
-
       <GridBackground />
       <Spotlight />
     </div>
