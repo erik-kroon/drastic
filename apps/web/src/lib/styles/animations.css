@@ -16,6 +16,17 @@
   }
 }
 
+@keyframes pulse-radar {
+  0% {
+    transform: scale(0.25);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(1.75);
+    opacity: 0;
+  }
+}
+
 @layer utilities {
   .animate-accordion-down {
     animation: accordion-down 400ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -23,5 +34,9 @@
 
   .animate-accordion-up {
     animation: accordion-up 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .animate-pulse-radar {
+    animation: pulse-radar 2s cubic-bezier(0.2, 0, 0.6, 1) infinite;
   }
 }

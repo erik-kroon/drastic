@@ -28,10 +28,17 @@ export const Work = () => {
   return (
     <section className="w-full min-h-screen bg-background pt-8">
       <div className="container mx-auto px-4">
-        <div className="space-y-4 text-center mb-16">
+        <div className="space-y-4 text-center mb-16 relative z-10">
           <h2 className="text-2xl font-semibold text-foreground">
             previous work
           </h2>
+          {/* <AuroraButton
+            className="z-50 mt-4 flex justify-center whitespace-nowrap md:mt-0"
+            href="mailto:erik@drastic.dev"
+          >
+            Schedule a call
+            <ThickArrowRightIcon className="ml-3 h-8 w-8 mt-0.25 transition-transform duration-500 group-hover:translate-x-2" />
+          </AuroraButton> */}
         </div>
 
         <div className="flex flex-col gap-16 w-full items-center">

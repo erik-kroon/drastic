@@ -34,20 +34,23 @@ export function Hero() {
         <HeroPill
           text="2 spots left"
           icon={
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="8"
-              height="8"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              stroke="none"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-3 w-3"
-            >
-              <circle cx="12" cy="12" r="10" fill="#11CC2A" />
-            </svg>
+            <div className="relative flex h-3 w-3 items-center justify-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="8"
+                height="8"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                stroke="none"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-3 w-3"
+              >
+                <circle cx="12" cy="12" r="10" fill="#11CC2A" />
+              </svg>
+              <div className="absolute h-3 w-3 rounded-full bg-[#11CC2A] opacity-60 animate-pulse-radar"></div>
+            </div>
           }
           className="pt-24 lg:pt-12"
         />
@@ -96,7 +99,7 @@ export function Hero() {
             href="mailto:erik@drastic.dev"
           >
             Schedule a call
-            <ArrowRightIcon className="ml-3 h-8 w-8 transition-transform duration-300 group-hover:translate-x-2" />
+            <ArrowRightIcon className="ml-3 h-8 w-8 mt-0.25 transition-transform duration-500 group-hover:translate-x-2" />
           </AuroraButton>
         </motion.div>
       </motion.div>

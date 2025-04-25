@@ -62,7 +62,7 @@ export function AuroraButton({
       {/* Gradient border container */}
       <div
         className={cn(
-          "absolute z-[-1] rounded-full bg-gradient-to-l opacity-40 transition-all duration-400 group-hover:opacity-85",
+          "absolute z-[-1] rounded-full bg-gradient-to-l opacity-0 transition-all duration-400 group-hover:opacity-85",
           gradientClasses,
           glowSizeClass,
           glowClassName,

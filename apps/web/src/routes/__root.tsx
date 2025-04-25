@@ -8,8 +8,10 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import animationsCss from "~/lib/styles/animations.css?url";
 import appCss from "~/lib/styles/app.css?url";
 import utilsCss from "~/lib/styles/utils.css?url";
+
 import Header from "../lib/components/header";
 import Loader from "../lib/components/loader";
 import { ThemeProvider } from "../lib/components/theme-provider";
@@ -47,6 +49,10 @@ export const Route = createRootRouteWithContext<{
       {
         rel: "stylesheet",
         href: utilsCss,
+      },
+      {
+        rel: "stylesheet",
+        href: animationsCss,
       },
     ],
   }),
