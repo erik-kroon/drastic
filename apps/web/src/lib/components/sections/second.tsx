@@ -2,7 +2,6 @@ import { ArrowRightIcon } from "@radix-ui/react-icons";
 import { AuroraButton } from "../aurora-button";
 import { ServicesGrid } from "../services-grid";
 import { useTheme } from "../theme-provider";
-import { BorderBeamImage } from "../ui/border-beam-image";
 import { Card, CardContent } from "../ui/card";
 import { ProgressiveBlur } from "../ui/progressive-blur";
 import { Sparkles } from "../ui/sparkles";
@@ -34,7 +33,7 @@ export function SecondSection() {
           color={theme === "dark" ? "#ffffff" : "#000000"}
         />
       </div>
-      <div className="h-[1400px] sm:h-[1600px] md:h-[1800px]  text-4xl w-full flex justify-center items-center flex-col gap-16">
+      <div className="h-[1400px] sm:h-[1400px] md:h-[1400px]  text-4xl w-full flex justify-center items-center flex-col gap-12">
         <div className="px-4 w-full flex justify-center flex-col items-center gap-4">
           <div className="flex flex-col gap-2 pb-2 text-center">
             <div>Your own internal tools. Built uniquely for you.</div>
@@ -46,9 +45,9 @@ export function SecondSection() {
             </div>
           </div>
 
-          <div className="pb-4">
+          {/* <div className="pb-4">
             <BorderBeamImage imagePath="/drastic_dashboard.png" />
-          </div>
+          </div> */}
 
           <Card className="relative max-w-4xl p-0 pr-0 overflow-hidden">
             <CardContent className="px-0">
@@ -60,11 +59,6 @@ export function SecondSection() {
             </CardContent>
           </Card>
         </div>
-
-        <ServicesGrid />
-        {/* <div className="px-4 md:px-8 flex flex-col gap-8">
-          <BorderBeamImage imagePath="/drastic_calendar.png" reverse={true} />
-        </div> */}
         <AuroraButton
           className="animate-fade-up z-50 mt-4 flex justify-center whitespace-nowrap md:mt-0"
           style={{
@@ -76,6 +70,21 @@ export function SecondSection() {
           Book a 15-min call
           <ArrowRightIcon className="ml-3 h-8 w-8 transition-transform duration-300 group-hover:translate-x-1" />
         </AuroraButton>
+        <ServicesGrid />
+        {/* <div className="px-4 md:px-8 flex flex-col gap-8">
+          <BorderBeamImage imagePath="/drastic_calendar.png" reverse={true} />
+        </div> */}
+        {/* <AuroraButton
+          className="animate-fade-up z-50 mt-4 flex justify-center whitespace-nowrap md:mt-0"
+          style={{
+            animationDelay: "0.4s",
+          }}
+          size="md"
+          href="mailto:erik@drastic.dev"
+        >
+          Book a 15-min call
+          <ArrowRightIcon className="ml-3 h-8 w-8 transition-transform duration-300 group-hover:translate-x-1" />
+        </AuroraButton> */}
       </div>
       <div className="relative  h-96 w-full overflow-hidden [mask-image:radial-gradient(50%_50%,white,transparent)]">
         <div className="absolute inset-0 before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_center,#8350e8,transparent_70%)] before:opacity-40" />

@@ -27,9 +27,9 @@ export function Hero() {
       className="min-h-[calc(80vh)] interactive-content relative z-10 flex w-full max-w-4xl flex-grow flex-col justify-center items-center px-8 lg:max-w-4xl gap-16"
     >
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 1.8 }}
+        transition={{ duration: 0.2, delay: 2.1 }}
       >
         <HeroPill
           text="2 spots left"

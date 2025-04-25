@@ -1,12 +1,36 @@
 ("use client");
 
 import { GlowingEffect } from "@/lib/components/ui/glowing-effect";
+import {
+  BetterAuth,
+  Bun,
+  Cloudflare,
+  DrizzleORM,
+  ElysiaJS,
+  Hono,
+  Motion,
+  Nextjs,
+  shadcnui,
+  TanStack,
+  Threejs,
+  TRPC,
+} from "./logos";
+import { LogoCarousel } from "./ui/logo-carousel";
 
 export function ServicesGrid() {
   return (
     <div>
-      <h2 className="text-center text-4xl mb-12">we build</h2>
-      <ul className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:px-16">
+      <div className="flex flex-col items-center pb-4">
+        {/* <h2 className="text-center text-lg mb-8 text-muted-foreground">
+          we build secure, modern & scalable solutions
+      </h2> */}
+
+        <h3 className="text-center text-primary text-lg font-semibold mb-2">
+          we build secure, modern & scalable solutions
+        </h3>
+      </div>
+
+      <ul className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:px-16 mb-12">
         <FeatureItem
           title="Internal tools"
           description="Custom AI-powered software to streamline your business."
@@ -29,6 +53,36 @@ export function ServicesGrid() {
           description="High-converting pages to convert visitors and capture leads."
         />
       </ul>
+
+      <div className="flex flex-col items-center py-8">
+        {/* <h2 className="text-center text-lg mb-8 text-muted-foreground">
+          powered by battle-tested technology
+        </h2> */}
+        <h3 className="text-center text-primary text-lg font-semibold mb-2">
+          powered by battle-tested technology
+        </h3>
+      </div>
+
+      <div className="w-full flex justify-center py-6">
+        <LogoCarousel
+          columnCount={2}
+          logos={[
+            { name: "TanStack", id: 1, img: TanStack },
+            { name: "Bun", id: 2, img: Bun },
+            { name: "BetterAuth", id: 3, img: BetterAuth },
+            { name: "Hono", id: 4, img: Hono },
+            { name: "Drizzle", id: 5, img: DrizzleORM },
+            { name: "Cloudflare", id: 6, img: Cloudflare },
+            { name: "TRPC", id: 7, img: TRPC },
+            { name: "ElysiaJS", id: 8, img: ElysiaJS },
+            { name: "shadcn/ui", id: 9, img: shadcnui },
+            { name: "next", id: 10, img: Nextjs },
+            // { name: "Vercel", id: 11, img: Vercel },
+            { name: "Three.js", id: 11, img: Threejs },
+            { name: "Motion", id: 12, img: Motion },
+          ]}
+        ></LogoCarousel>
+      </div>
     </div>
   );
 }
