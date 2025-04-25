@@ -15,6 +15,7 @@ import {
   Threejs,
   TRPC,
 } from "./logos";
+import { AvatarButton } from "./ui/avatar-button";
 import { LogoCarousel } from "./ui/logo-carousel";
 
 export function ServicesGrid() {
@@ -25,12 +26,16 @@ export function ServicesGrid() {
           we build secure, modern & scalable solutions
       </h2> */}
 
-        <h3 className="text-center text-primary text-lg font-semibold mb-2">
-          we build secure, modern & scalable solutions
-        </h3>
+        <p className="text-center text-primary text-3xl font-semibold ">
+          we build secure, modern & scalable solutions of any kind
+          <br />
+          <p className="text-muted-foreground text-2xl">
+            but this is what we're best at
+          </p>
+        </p>
       </div>
 
-      <ul className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:px-16 mb-12">
+      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-8 lg:px-16 py-8 pb-12 place-items-center">
         <FeatureItem
           title="Internal tools"
           description="Custom AI-powered software to streamline your business."
@@ -39,10 +44,15 @@ export function ServicesGrid() {
           title="Web applications"
           description="Modern, scalable B2B or B2C applications tailored to your needs. "
         />
-        {/* <FeatureItem
+
+        <FeatureItem
           title="AI-powered apps"
           description="Automate tasks to free up time for what truly matters."
-        /> */}
+        />
+        <FeatureItem
+          title="Mobile applications"
+          description="Modern cross-platform apps for iOS and Android built with Expo."
+        />
 
         <FeatureItem
           title="MVPs"
@@ -54,12 +64,12 @@ export function ServicesGrid() {
         />
       </ul>
 
-      <div className="flex flex-col items-center py-8">
+      <div className="flex flex-col items-center pb-4">
         {/* <h2 className="text-center text-lg mb-8 text-muted-foreground">
           powered by battle-tested technology
         </h2> */}
         <h3 className="text-center text-primary text-lg font-semibold mb-2">
-          powered by battle-tested technology
+          powered by state-of-the-art tools
         </h3>
       </div>
 
@@ -83,6 +93,18 @@ export function ServicesGrid() {
           ]}
         ></LogoCarousel>
       </div>
+      <div className="flex flex-row w-full justify-center pt-16">
+        <AvatarButton
+          href="/book-call"
+          withAvatar={true}
+          mainAvatarSrc="https://media.licdn.com/dms/image/v2/C4E03AQGU6pdKYmHYLw/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1653492715062?e=1750896000&v=beta&t=TLW2CGwLMW6XxHXiVSiY8sG9LM7OkF600naE23AmbPA"
+          secondaryAvatarSrc="/path/to/secondary-avatar.jpg"
+          mainAvatarAlt="me"
+          secondaryAvatarAlt="you"
+        >
+          Book a 15-min call
+        </AvatarButton>
+      </div>
     </div>
   );
 }
@@ -94,8 +116,8 @@ interface FeatureItemProps {
 
 const FeatureItem = ({ title, description }: FeatureItemProps) => {
   return (
-    <li className="list-none">
-      <div className="border-border bg-secondary/60 relative rounded-[1.25rem] border-[0.75px] p-2 md:rounded-[1rem] md:p-1.5">
+    <li className="w-full max-w-[256px] h-full list-none">
+      <div className="border-border bg-secondary/60 relative rounded-[1.25rem] border-[0.75px] p-2 md:rounded-[1rem] md:p-1.5 h-full">
         <GlowingEffect
           spread={40}
           glow={true}
@@ -104,9 +126,9 @@ const FeatureItem = ({ title, description }: FeatureItemProps) => {
           inactiveZone={0.01}
           borderWidth={3}
         />
-        <div className="bg-background relative flex h-27 w-48 flex-col justify-between gap-3 overflow-hidden rounded-xl border-[0.75px] p-2 shadow-sm md:h-28 md:w-52 dark:shadow-[0px_0px_27px_0px_rgba(45,45,45,0.3)]">
-          <div className="relative flex flex-1 flex-col justify-between">
-            <div className="p-1 px-3">
+        <div className="bg-background relative flex h-full flex-col justify-between gap-3 overflow-hidden rounded-xl border-[0.75px] p-2 shadow-sm dark:shadow-[0px_0px_27px_0px_rgba(45,45,45,0.3)]">
+          <div className="relative flex flex-1 flex-col">
+            <div className="p-1 px-3 flex flex-col h-full">
               <h3 className="text-foreground pt-0 pb-1 font-sans text-sm leading-[1.375rem] font-semibold tracking-[-0.04em] text-balance md:pb-2 md:text-lg">
                 {title}
               </h3>
