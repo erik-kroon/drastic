@@ -1,34 +1,37 @@
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { ArrowRightIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react"; // Import useCallback and memo
 import { AuroraButton } from "./aurora-button";
 
-export default function Header() {
+// Move links outside the component as it's static data
+const links = [
+  {
+    to: "/",
+    label: "drastic",
+  },
+];
+
+const Header = memo(function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
-  const links = [
-    {
-      to: "/",
-      label: "drastic",
-    },
-  ];
+
+  // Memoize handleScroll using useCallback as it's used in useEffect
+  const handleScroll = useCallback(() => {
+    const scrollPosition = window.scrollY;
+    if (scrollPosition > 10) {
+      setIsScrolled(true);
+    } else {
+      setIsScrolled(false);
+    }
+  }, []); // Empty dependency array because handleScroll doesn't depend on any component state or props
 
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY;
-      if (scrollPosition > 10) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
-      }
-    };
-
     window.addEventListener("scroll", handleScroll);
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
-  }, []);
+  }, [handleScroll]); // Add handleScroll to the dependency array of useEffect
 
   return (
     <motion.div
@@ -47,38 +50,37 @@ export default function Header() {
           }`}
         >
           <nav className="border-b-muted flex text-xl shadow-none">
-            {links.map(({ to, label }) => (
-              <Link
-                key={to}
-                to={to}
-                activeProps={{
-                  className: "font-semibold font-lg p-0",
-                }}
-                activeOptions={{
-                  exact: true,
-                }}
-                className="inline-block transition-all duration-400 ease-in-out"
-                style={{
-                  lineHeight: 1,
-                  margin: 0,
-                  padding: 0,
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
-                <span className="inline-flex items-center">
-                  <span className="bg-primary mr-3 h-6 w-6 rounded-full text-lg" />
-                  {label}
-                </span>
-              </Link>
-            ))}
+            <Link
+              to={links[0].to}
+              resetScroll={true}
+              activeProps={{
+                className: "font-semibold font-lg p-0",
+              }}
+              activeOptions={{
+                exact: true,
+              }}
+              className="inline-block transition-all duration-400 ease-in-out"
+              style={{
+                lineHeight: 1,
+                margin: 0,
+                padding: 0,
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              <span className="font-semibold  text-primary inline-flex items-center">
+                <span className="  bg-primary mr-3 h-6 w-6 rounded-full text-lg" />
+                {links[0].label}
+              </span>
+            </Link>
           </nav>
+          {/* <Navbar></Navbar> */}
           <AuroraButton
-            className="animate-fade-up z-50 flex justify-center whitespace-nowrap transition-all duration-400 ease-in-out"
+            className="z-50 mt-4 flex justify-center whitespace-nowrap md:mt-0"
             style={{
               animationDelay: "0.4s",
             }}
-            href="mailto:erik@drastic.dev"
+            href="https://cal.com/drastic"
             size="sm"
             glowSize="sm"
           >
@@ -89,4 +91,6 @@ export default function Header() {
       </div>
     </motion.div>
   );
-}
+});
+
+export default Header; // Export the memoized component

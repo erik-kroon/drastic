@@ -96,7 +96,7 @@ export function Hero() {
         >
           <AuroraButton
             className="z-50 mt-4 flex justify-center whitespace-nowrap md:mt-0"
-            href="mailto:erik@drastic.dev"
+            href="https://cal.com/drastic"
           >
             Schedule a call
             <ArrowRightIcon className="ml-3 h-8 w-8 mt-0.25 transition-transform duration-500 group-hover:translate-x-2" />

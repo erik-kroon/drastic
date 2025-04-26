@@ -95,7 +95,7 @@ export function ServicesGrid() {
       </div>
       <div className="flex flex-row w-full justify-center pt-16">
         <AvatarButton
-          href="/book-call"
+          href="https://cal.com/drastic"
           withAvatar={true}
           mainAvatarSrc="https://media.licdn.com/dms/image/v2/C4E03AQGU6pdKYmHYLw/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1653492715062?e=1750896000&v=beta&t=TLW2CGwLMW6XxHXiVSiY8sG9LM7OkF600naE23AmbPA"
           secondaryAvatarSrc="/path/to/secondary-avatar.jpg"

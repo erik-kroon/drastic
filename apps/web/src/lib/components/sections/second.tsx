@@ -57,8 +57,8 @@ export function SecondSection() {
             </CardContent>
           </Card>
         </div>
-        <div className="flex pb-8">
-          <AuroraButton
+        <div className="flex pb-0">
+          {/* <AuroraButton
             className="animate-fade-up z-50  flex justify-center whitespace-nowrap "
             style={{
               animationDelay: "0.4s",
@@ -69,9 +69,22 @@ export function SecondSection() {
           >
             See more work
             <ArrowRightIcon className="ml-1 h-8 w-8 transition-transform duration-300 group-hover:translate-x-0.75" />
-          </AuroraButton>
+          </AuroraButton> */}
         </div>
+
         <ServicesGrid />
+        <AuroraButton
+          className="animate-fade-up z-40 flex justify-center whitespace-nowrap "
+          style={{
+            animationDelay: "0.4s",
+          }}
+          size="md"
+          href="/work"
+          variant="yellow-to-red"
+        >
+          See more work
+          <ArrowRightIcon className="ml-1 h-8 w-8 transition-transform duration-300 group-hover:translate-x-0.75" />
+        </AuroraButton>
       </div>
       <div className="relative  h-96 w-full overflow-hidden [mask-image:radial-gradient(50%_50%,white,transparent)]">
         <div className="absolute inset-0 before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_top_center,#8350e8,transparent_70%)] before:opacity-40" />

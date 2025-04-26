@@ -1,4 +1,15 @@
-# shadcn/ui with Tailwind v4 Design System Guidelines
+1. Use tools available to edit files given as context or search up files for more context you deem necessary.
+2. Only alter code that is related to the request.
+3. Never delete files, let me handle that.
+
+
+
+
+This repo is built using React with TanStack Start, Router and shadcn/ui with Tailwind v4.
+
+
+
+# Design System Guidelines
 
 This document outlines design principles and implementation guidelines for applications using shadcn/ui with Tailwind v4. These guidelines ensure consistency, accessibility, and best practices throughout the UI development process.
 

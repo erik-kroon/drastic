@@ -5,7 +5,6 @@ import {
   HeadContent,
   Outlet,
   Scripts,
-  useRouterState,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import animationsCss from "~/lib/styles/animations.css?url";
@@ -13,7 +12,6 @@ import appCss from "~/lib/styles/app.css?url";
 import utilsCss from "~/lib/styles/utils.css?url";
 
 import Header from "../lib/components/header";
-import Loader from "../lib/components/loader";
 import { ThemeProvider } from "../lib/components/theme-provider";
 import { Footer } from "../lib/components/ui/footer-2";
 export const Route = createRootRouteWithContext<{
@@ -60,14 +58,14 @@ export const Route = createRootRouteWithContext<{
 });
 
 function RootComponent() {
-  const isFetching = useRouterState({
-    select: (s) => s.isLoading,
-  });
+  // const isFetching = useRouterState({
+  //   select: (s) => s.isLoading,
+  // });
   return (
     <RootDocument>
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
         <Header />
-        {isFetching && <Loader />}
+        {/* {isFetching && <Loader />} */}
         <Outlet />
         <Footer />
       </ThemeProvider>

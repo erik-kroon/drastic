@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { Link } from "@tanstack/react-router"; // Import Link from Tanstack Router
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 
 type AuroraButtonVariant =
@@ -16,6 +17,7 @@ interface AuroraButtonProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   glowSize?: "sm" | "md" | "lg";
   variant?: AuroraButtonVariant; // Use variant instead of dynamic colors
   scaleOnHover?: boolean; // Optional flag for size increase on hover
+  isExternal?: boolean; // Flag to indicate if the link is external
 }
 
 const sizeClasses = {
@@ -25,7 +27,7 @@ const sizeClasses = {
 };
 
 const glowSizeClasses = {
-  sm: "-inset-x-1 inset-y-0.25 blur-lg",
+  sm: "-inset-x-1 inset-y-0 blur-md",
   md: "-inset-x-1.5 inset-y-0.25 blur-lg", // Modified for more horizontal glow
   lg: "-inset-0.5 blur-xl",
 };
@@ -34,7 +36,7 @@ const glowSizeClasses = {
 const variantClasses: Record<AuroraButtonVariant, string> = {
   "purple-to-blue": "from-purple-600 to-blue-600",
   "cyan-to-blue": "from-cyan-500 to-blue-500",
-  "yellow-to-red": "from-yellow-600 to-red-600",
+  "yellow-to-red": "from-amber-700 to-orange-800",
   "green-to-teal": "from-green-500 to-teal-500",
   "light-purple": "from-purple-400 to-blue-400",
 };
@@ -53,9 +55,22 @@ export function AuroraButton({
   const buttonSizeClass = sizeClasses[size];
   const glowSizeClass =
     glowSizeClasses[glowSize || size] || glowSizeClasses["lg"];
-
   // Get gradient classes based on the selected variant
   const gradientClasses = variantClasses[variant];
+
+  const commonClasses = cn(
+    "relative cursor-pointer rounded-full bg-gradient-to-r text-white shadow-md transition-all duration-400",
+    scaleOnHover && "hover:scale-105 active:scale-95",
+    gradientClasses,
+    "border-none outline-none",
+    "inline-flex items-center justify-center gap-2",
+    buttonSizeClass,
+    className,
+  );
+
+  const style = {
+    lineHeight: "1",
+  };
 
   return (
     <div className="group relative inline-flex">
@@ -68,26 +83,29 @@ export function AuroraButton({
           glowClassName,
         )}
       />
-
-      {/* Link */}
-      <a
-        href={href}
-        className={cn(
-          "relative cursor-pointer rounded-full bg-gradient-to-r text-white shadow-md transition-all duration-400",
-          scaleOnHover && "hover:scale-105 active:scale-95",
-          gradientClasses,
-          "border-none outline-none",
-          "inline-flex items-center justify-center gap-2",
-          buttonSizeClass,
-          className,
-        )}
-        style={{
-          lineHeight: "1",
-        }}
+      <Link
+        to={href} // Use 'to' prop for internal links
+        className={commonClasses}
+        style={style}
+        resetScroll={true}
         {...props}
       >
         {children}
-      </a>
+      </Link>
     </div>
   );
 }
+
+/*
+
+{/* Link or Anchor */
+// <a
+//   href={href}
+//   className={commonClasses}
+//   style={style}
+//   target="_blank" // Often good practice for external links
+//   rel="noopener noreferrer" // Security measure for target="_blank"
+//   {...props}
+// >
+//   {children}
+// </a>

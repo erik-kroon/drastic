@@ -6,6 +6,7 @@ import {
   ProductItem,
 } from "@/lib/components/ui/navbar-menu";
 import { cn } from "@/lib/utils";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 export function Navbar({ className }: { className?: string }) {
@@ -13,6 +14,12 @@ export function Navbar({ className }: { className?: string }) {
   return (
     <div className={cn("inset-x-0 z-50 mx-auto max-w-2xl", className)}>
       <Menu setActive={setActive}>
+        <Link to="/" preload="intent">
+          home
+        </Link>
+        <Link to="/work" preload="intent">
+          work
+        </Link>
         <MenuItem setActive={setActive} active={active} item="Services">
           <div className="flex flex-col space-y-4 text-sm">
             <HoveredLink href="/web-dev">Web Development</HoveredLink>
