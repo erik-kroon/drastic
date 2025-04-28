@@ -104,15 +104,17 @@ export const Work = () => {
       </div>
       <div className="w-full flex justify-center py-16">
         <AuroraButton
-          className="animate-fade-up z-40 whitespace-nowrap"
+          className="animate-fade-up z-40 whitespace-nowrap px-8 gap-4 pr-10"
           style={{
             animationDelay: "0.4s",
           }}
           size="md"
           href="/"
           variant="yellow-to-red"
+          withPreview={true}
+          staticPreviewImage="/home.png"
         >
-          <ArrowLeftIcon className="mr-2 mt-0.25 h-8 w-8 transition-transform duration-300 group-hover:-translate-x-1.25" />
+          <ArrowLeftIcon className=" mt-0.25 h-8 w-8 transition-transform duration-300 group-hover:-translate-x-1.25" />
           Go back
         </AuroraButton>
       </div>

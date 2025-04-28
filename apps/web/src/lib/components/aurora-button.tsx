@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router"; // Import Link from Tanstack Router
 import type { AnchorHTMLAttributes, ReactNode } from "react";
+import { LinkPreview } from "./ui/link-preview";
 
 type AuroraButtonVariant =
   | "purple-to-blue"
@@ -18,6 +19,11 @@ interface AuroraButtonProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   variant?: AuroraButtonVariant; // Use variant instead of dynamic colors
   scaleOnHover?: boolean; // Optional flag for size increase on hover
   isExternal?: boolean; // Flag to indicate if the link is external
+  withPreview?: boolean; // Optional flag for link preview
+  previewWidth?: number; // Optional preview width
+  previewHeight?: number; // Optional preview height
+  previewQuality?: number; // Optional preview quality
+  staticPreviewImage?: string; // Optional static preview image
 }
 
 const sizeClasses = {
@@ -50,6 +56,11 @@ export function AuroraButton({
   glowSize,
   variant = "purple-to-blue",
   scaleOnHover = true, // Default to true
+  withPreview = false,
+  previewWidth = 200,
+  previewHeight = 125,
+  previewQuality = 50,
+  staticPreviewImage,
   ...props
 }: AuroraButtonProps) {
   const buttonSizeClass = sizeClasses[size];
@@ -72,7 +83,7 @@ export function AuroraButton({
     lineHeight: "1",
   };
 
-  return (
+  const buttonContent = (
     <div className="group relative inline-flex">
       {/* Gradient border container */}
       <div
@@ -94,6 +105,34 @@ export function AuroraButton({
       </Link>
     </div>
   );
+
+  if (withPreview) {
+    return staticPreviewImage ? (
+      <LinkPreview
+        url={href}
+        width={previewWidth}
+        height={previewHeight}
+        quality={previewQuality}
+        isStatic={true}
+        imageSrc={staticPreviewImage}
+        className={`data-button-size-${size}`}
+      >
+        {buttonContent}
+      </LinkPreview>
+    ) : (
+      <LinkPreview
+        url={href}
+        width={previewWidth}
+        height={previewHeight}
+        quality={previewQuality}
+        className={`data-button-size-${size}`}
+      >
+        {buttonContent}
+      </LinkPreview>
+    );
+  }
+
+  return buttonContent;
 }
 
 /*

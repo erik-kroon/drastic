@@ -74,7 +74,7 @@ export function Hero() {
       </motion.div>
 
       <motion.div
-        className="flex flex-col items-center justify-center gap-8 md:flex-row"
+        className="flex flex-col items-center justify-center gap-12 md:flex-row"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 1.4 }}
@@ -97,6 +97,8 @@ export function Hero() {
           <AuroraButton
             className="z-50 mt-4 flex justify-center whitespace-nowrap md:mt-0"
             href="https://cal.com/drastic"
+            // withPreview
+            // staticPreviewImage="/cal_com.png"
           >
             Schedule a call
             <ArrowRightIcon className="ml-3 h-8 w-8 mt-0.25 transition-transform duration-500 group-hover:translate-x-2" />

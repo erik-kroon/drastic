@@ -35,7 +35,7 @@ export function ServicesGrid() {
         </p>
       </div>
 
-      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-8 lg:px-16 py-8 pb-12 place-items-center">
+      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-2 lg:px-16 py-8 pb-12 place-items-center">
         <FeatureItem
           title="Internal tools"
           description="Custom AI-powered software to streamline your business."
@@ -126,7 +126,7 @@ const FeatureItem = ({ title, description }: FeatureItemProps) => {
           inactiveZone={0.01}
           borderWidth={3}
         />
-        <div className="bg-background relative flex h-full flex-col justify-between gap-3 overflow-hidden rounded-xl border-[0.75px] p-2 shadow-sm dark:shadow-[0px_0px_27px_0px_rgba(45,45,45,0.3)]">
+        <div className="bg-secondary relative flex h-full flex-col justify-between gap-2 overflow-hidden rounded-xl border-[0.75px] p-2 shadow-sm dark:shadow-[0px_0px_27px_0px_rgba(45,45,45,0.3)]">
           <div className="relative flex flex-1 flex-col">
             <div className="p-1 px-3 flex flex-col h-full">
               <h3 className="text-foreground pt-0 pb-1 font-sans text-sm leading-[1.375rem] font-semibold tracking-[-0.04em] text-balance md:pb-2 md:text-lg">
