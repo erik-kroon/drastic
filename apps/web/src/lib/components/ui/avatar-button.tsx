@@ -7,8 +7,13 @@ interface RoundedAvatarProps {
   src: string;
   alt: string;
   className?: string;
-  textClassName?: string;
 }
+
+const glowSizeClasses = {
+  sm: "-inset-x-1 inset-y-0 blur-md",
+  md: "-inset-x-1.5 inset-y-0.25 blur-lg", // Modified for more horizontal glow
+  lg: "-inset-x-2 inset-y-0.5 blur-xl",
+};
 
 interface AvatarButtonProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   children: ReactNode;
@@ -17,14 +22,17 @@ interface AvatarButtonProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   withAvatar?: boolean;
   mainAvatarSrc?: string;
   mainAvatarAlt?: string;
-  secondaryAvatarSrc?: string;
-  secondaryAvatarAlt?: string;
+  // secondaryAvatarSrc is removed
+  // secondaryAvatarAlt is removed
+  glow?: boolean; // Optional glow prop, defaults to false
+  glowClassName?: string; // Optional className for the glow element
+  glowSize?: "sm" | "md" | "lg"; // Optional glow size
 }
 
 const sizeClasses = {
   sm: "px-4 py-2 text-sm",
   md: "px-5 py-2 text-base",
-  lg: "px-8 py-4 text-xl",
+  lg: "px-6 py-4 text-lg",
 };
 
 const RoundedAvatar = ({ src, alt, className }: RoundedAvatarProps) => {
@@ -35,7 +43,14 @@ const RoundedAvatar = ({ src, alt, className }: RoundedAvatarProps) => {
         className,
       )}
     >
-      <AvatarImage src={src} alt={alt} className="object-cover rounded-full" />
+      {/* Only render AvatarImage if src is provided */}
+      {src ? (
+        <AvatarImage
+          src={src}
+          alt={alt}
+          className="object-cover rounded-full"
+        />
+      ) : null}
       <AvatarFallback>{alt}</AvatarFallback>
     </Avatar>
   );
@@ -49,14 +64,31 @@ export function AvatarButton({
   withAvatar = false,
   mainAvatarSrc,
   mainAvatarAlt = "me",
-  secondaryAvatarSrc,
-  secondaryAvatarAlt = "you",
+  // secondaryAvatarSrc and secondaryAvatarAlt are removed from destructuring
+  glow = false, // Default glow to false
+  glowClassName,
+  glowSize,
   ...props
 }: AvatarButtonProps) {
   const buttonSizeClass = sizeClasses[size];
+  const glowSizeClass =
+    glowSizeClasses[glowSize || size] || glowSizeClasses["md"]; // Default glow size based on button size
 
   return (
     <div className="group relative inline-flex">
+      {/* Optional Gradient Glow */}
+      {glow && (
+        <div
+          className={cn(
+            "absolute z-[-1] rounded-full bg-gradient-to-l opacity-40 transition-all duration-400 group-hover:opacity-85",
+            "from-purple-600 to-blue-600", // Using the same gradient as the button
+            glowSizeClass, // Default glow size based on button size
+            "md:group-hover:-inset-x-5", // Adjust glow size on hover to account for scaling and expansion
+            glowClassName,
+          )}
+        />
+      )}
+
       {/* Main Link Button */}
       <a
         href={href}
@@ -82,7 +114,7 @@ export function AvatarButton({
               className={cn(
                 "relative flex text-[11px] items-center",
                 "w-8",
-                "group-hover:w-[calc(16px+32px+16px+32px)]",
+                "md:group-hover:w-[calc(16px+32px+16px+32px)]", // gap + main avatar + gap + second avatar
                 "transition-[width] duration-500 ease-in-out",
               )}
             >
@@ -100,15 +132,24 @@ export function AvatarButton({
                   "flex items-center gap-2",
                   "transition-all duration-500 ease-in-out",
                   "opacity-0 invisible",
-                  "group-hover:opacity-100 group-hover:visible group-hover:translate-x-[calc(66%)]",
+                  "md:group-hover:opacity-100 md:group-hover:visible md:group-hover:translate-x-[calc(66%)]", // Translate to the right of the main avatar + gap
+                  "pointer-events-none",
                 )}
               >
                 <PlusIcon className="h-5 w-5 shrink-0 text-primary" />
-                <RoundedAvatar
-                  src={secondaryAvatarSrc || ""}
-                  alt={secondaryAvatarAlt}
-                  className="bg-gray-600/70   p-2"
-                />
+                {/* Always the 'you' avatar with text */}
+                <div
+                  className={cn(
+                    "h-8 w-8 shrink-0 rounded-full flex items-center justify-center", // Size and shape
+                    "bg-gray-600/70", // Background
+                    "text-zinc-200 text-[11px] font-semibold", // Text style
+                    "border-1 border-zinc-500/40", // Border
+                    "p-0", // Remove padding
+                    "text-center", // Center text
+                  )}
+                >
+                  you
+                </div>
               </div>
             </div>
             {/* Text Content */}

@@ -1,5 +1,44 @@
 import type { SVGProps } from "react";
 
+export const Expo = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    preserveAspectRatio="xMidYMid"
+    viewBox="0 0 256 231"
+    width="1em"
+    height="1em"
+    {...props}
+  >
+    <path
+      d="M121 85c2-3 5-4 7-4 1 0 5 1 7 4 16 22 43 67 63 101l26 40c7 8 18 3 24-6s8-15 8-22c0-4-88-168-97-182-9-13-11-16-26-16h-11c-14 0-16 3-25 16C88 30 0 194 0 198c0 7 2 13 8 22s17 14 24 6l26-40c20-34 47-79 63-101Z"
+      fill="#404040"
+    />
+  </svg>
+);
+
+export const Turbopack = (props: SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 256 293"
+    xmlns="http://www.w3.org/2000/svg"
+    width="1em"
+    height="1em"
+    preserveAspectRatio="xMidYMid"
+    {...props}
+  >
+    <defs>
+      <linearGradient id="a" x1="50%" x2="49.855%" y1="7.896%" y2="93.343%">
+        <stop offset="0%" stopColor="#0096FF" />
+        <stop offset="100%" stopColor="#FF1E56" />
+      </linearGradient>
+    </defs>
+    <path
+      fill="url(#a)"
+      d="M128 0 46.16 46.768l.16 36.752L128 36.848l96 54.864L256 110V73.136L128 0Zm-14.4 247.488L32 200.864V91.792l-.032-.016-.176-36.8L0 73.136v146.288l81.68 46.672 31.92-18.608ZM224 200.864v-92.56l32 18.288v92.832l-128 73.152-31.888-18.224L128 255.76v-.048l96-54.848Z"
+    />
+    <path d="M46.4 108.369v84.128l81.6 46.64v-84.144zM128 53.441l-74.352 42.48 81.616 46.64 74.336-42.496z" />
+  </svg>
+);
+
 export const BetterAuth = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"

@@ -14,12 +14,10 @@ function HomeComponent() {
       <Hero />
       <SecondSection />
 
-      <div className="relative z-10">
-        <div className="absolute inset-0 h-[800px]">
-          <FAQ />
-        </div>
-      </div>
-      <div className="h-[800px]" aria-hidden="true" />
+      <div className="h-[100px] lg:h-[200px]" aria-hidden="true" />
+      <FAQ />
+
+      <div className="h-[100px]" aria-hidden="true" />
       <GridBackground />
       <Spotlight />
     </div>

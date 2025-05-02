@@ -139,7 +139,7 @@ export default function FAQ({
             {title}
           </h2>
           {items !== false && items.length > 0 && (
-            <div className="relative w-[400px] md:w-[600px]">
+            <div className="relative w-[300px] md:w-[600px]">
               <Accordion type="single" collapsible>
                 {items.map((item, index) => (
                   <AccordionItem

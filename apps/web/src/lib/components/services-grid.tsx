@@ -7,6 +7,7 @@ import {
   Cloudflare,
   DrizzleORM,
   ElysiaJS,
+  Expo,
   Hono,
   Motion,
   Nextjs,
@@ -14,6 +15,7 @@ import {
   TanStack,
   Threejs,
   TRPC,
+  Turbopack,
 } from "./logos";
 import { AvatarButton } from "./ui/avatar-button";
 import { LogoCarousel } from "./ui/logo-carousel";
@@ -29,9 +31,9 @@ export function ServicesGrid() {
         <p className="text-center text-primary text-3xl font-semibold ">
           we build secure, modern & scalable solutions of any kind
           <br />
-          <p className="text-muted-foreground text-2xl">
+          <span className="text-muted-foreground text-2xl">
             but this is what we're best at
-          </p>
+          </span>
         </p>
       </div>
 
@@ -90,6 +92,8 @@ export function ServicesGrid() {
             // { name: "Vercel", id: 11, img: Vercel },
             { name: "Three.js", id: 11, img: Threejs },
             { name: "Motion", id: 12, img: Motion },
+            { name: "Expo", id: 13, img: Expo },
+            { name: "Turbopack", id: 14, img: Turbopack },
           ]}
         ></LogoCarousel>
       </div>
@@ -98,9 +102,7 @@ export function ServicesGrid() {
           href="https://cal.com/drastic"
           withAvatar={true}
           mainAvatarSrc="https://media.licdn.com/dms/image/v2/C4E03AQGU6pdKYmHYLw/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1653492715062?e=1750896000&v=beta&t=TLW2CGwLMW6XxHXiVSiY8sG9LM7OkF600naE23AmbPA"
-          secondaryAvatarSrc="/path/to/secondary-avatar.jpg"
           mainAvatarAlt="me"
-          secondaryAvatarAlt="you"
         >
           Book a 15-min call
         </AvatarButton>
@@ -117,7 +119,7 @@ interface FeatureItemProps {
 const FeatureItem = ({ title, description }: FeatureItemProps) => {
   return (
     <li className="w-full max-w-[256px] h-full list-none">
-      <div className="border-border bg-secondary/60 relative rounded-[1.25rem] border-[0.75px] p-2 md:rounded-[1rem] md:p-1.5 h-full">
+      <div className="border-border bg-secondary/40 relative rounded-[1.25rem] border-[0.75px] p-2 md:rounded-[1rem] md:p-1.5 h-full">
         <GlowingEffect
           spread={40}
           glow={true}
@@ -126,7 +128,7 @@ const FeatureItem = ({ title, description }: FeatureItemProps) => {
           inactiveZone={0.01}
           borderWidth={3}
         />
-        <div className="bg-secondary relative flex h-full flex-col justify-between gap-2 overflow-hidden rounded-xl border-[0.75px] p-2 shadow-sm dark:shadow-[0px_0px_27px_0px_rgba(45,45,45,0.3)]">
+        <div className="bg-background relative flex h-full flex-col justify-between gap-2 overflow-hidden rounded-xl border-[0.75px] p-2 shadow-sm dark:shadow-[0px_0px_27px_0px_rgba(45,45,45,0.3)]">
           <div className="relative flex flex-1 flex-col">
             <div className="p-1 px-3 flex flex-col h-full">
               <h3 className="text-foreground pt-0 pb-1 font-sans text-sm leading-[1.375rem] font-semibold tracking-[-0.04em] text-balance md:pb-2 md:text-lg">

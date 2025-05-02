@@ -1,3 +1,4 @@
+import * as React from "react";
 import { cn } from "src/lib/utils";
 
 interface HeroPillProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -19,17 +20,24 @@ export function HeroPill({
 }: HeroPillProps) {
   return (
     <div
-      className={cn("mb-0", animate && "animate-slide-up-fade", className)}
+      className={cn(
+        "mb-0",
+        // Only apply animation if 'animate' is true AND component is mounted
+        animate && "animate-slide-up-fade",
+        className,
+      )}
       {...props}
     >
-      <p className="bg-background text-foreground dark:bg-accent hover:bg-accent/80 inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-medium whitespace-nowrap shadow-sm shadow-black/[.12] transition-colors">
+      {/* Changed from <p> to <div> as <p> cannot contain block-level elements like <div>,
+          which might be rendered by the 'icon' prop. */}
+      <div className="bg-background text-foreground dark:bg-accent hover:bg-accent/80 inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-medium whitespace-nowrap shadow-sm shadow-black/[.12] transition-colors">
         {icon && (
           <span className="border-border mr-2 flex shrink-0 border-r pr-2">
             {icon}
           </span>
         )}
         {text}
-      </p>
+      </div>
     </div>
   );
 }

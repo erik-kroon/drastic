@@ -1,7 +1,6 @@
-import { motion } from "framer-motion";
-import { ArrowRightIcon } from "lucide-react";
+import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import { AuroraButton } from "../aurora-button";
+import { AvatarButton } from "../ui/avatar-button";
 import ColourfulText from "../ui/colourful-text";
 import { HeroPill } from "../ui/hero-pill";
 
@@ -24,7 +23,7 @@ export function Hero() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-[calc(80vh)] interactive-content relative z-10 flex w-full max-w-4xl flex-grow flex-col justify-center items-center px-8 lg:max-w-4xl gap-16"
+      className="min-h-[calc(72vh)] lg:min-h-[calc(50vh)] interactive-content relative z-10 flex w-full max-w-4xl flex-grow flex-col justify-center items-center px-8 lg:max-w-4xl gap-8"
     >
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -52,12 +51,12 @@ export function Hero() {
               <div className="absolute h-3 w-3 rounded-full bg-[#11CC2A] opacity-60 animate-pulse-radar"></div>
             </div>
           }
-          className="pt-24 lg:pt-12"
+          className="pt-24 lg:pt-32"
         />
       </motion.div>
 
       <motion.div
-        className="flex flex-col items-center justify-center space-y-8 text-center"
+        className="flex flex-col items-center justify-center space-y-3 text-center"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.5 }}
@@ -74,19 +73,19 @@ export function Hero() {
       </motion.div>
 
       <motion.div
-        className="flex flex-col items-center justify-center gap-12 md:flex-row"
+        className="flex flex-col items-center justify-center gap-12 md:flex-col"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 1.4 }}
       >
         <motion.p
-          className="text-primary/94 max-w-md pr-0 text-left text-lg sm:text-lg"
+          className="text-primary/94 max-w-md pr-0 text-center text-lg sm:text-lg "
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 1.6 }}
         >
-          drastic is a digital agency that helps your business save money and
-          grow through software, automation and AI.
+          drastic is a digital agency that saves your business money and
+          helpssss you grow through software, automation and AI.
         </motion.p>
 
         <motion.div
@@ -94,7 +93,17 @@ export function Hero() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.8 }}
         >
-          <AuroraButton
+          <AvatarButton
+            href="https://cal.com/drastic"
+            withAvatar={true}
+            size="lg"
+            glow
+            mainAvatarSrc="https://media.licdn.com/dms/image/v2/C4E03AQGU6pdKYmHYLw/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1653492715062?e=1750896000&v=beta&t=TLW2CGwLMW6XxHXiVSiY8sG9LM7OkF600naE23AmbPA"
+            mainAvatarAlt="me"
+          >
+            Book a 15-min call
+          </AvatarButton>
+          {/* <AuroraButton
             className="z-50 mt-4 flex justify-center whitespace-nowrap md:mt-0"
             href="https://cal.com/drastic"
             // withPreview
@@ -102,7 +111,7 @@ export function Hero() {
           >
             Schedule a call
             <ArrowRightIcon className="ml-3 h-8 w-8 mt-0.25 transition-transform duration-500 group-hover:translate-x-2" />
-          </AuroraButton>
+          </AuroraButton> */}
         </motion.div>
       </motion.div>
       <div className="absolute bottom-0"></div>

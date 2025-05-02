@@ -43,7 +43,11 @@ export const Work = () => {
       ref={sectionRef}
       className="max-w-4xl min-h-screen bg-background p-8"
     >
-      <div className="container mx-auto px-4">
+      <motion.div
+        animate={{ opacity: [0, 1] }}
+        transition={{ duration: 1.69 }}
+        className="container mx-auto px-4"
+      >
         <div className="space-y-4 text-center mb-16 relative z-10">
           <div ref={textWrapperRef}>
             <h2 className="text-2xl font-semibold text-foreground">
@@ -51,7 +55,7 @@ export const Work = () => {
             </h2>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-8 w-full">
+        {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-8 w-full">
           {projects.map((project) => (
             <Card
               className="relative p-0 overflow-hidden"
@@ -67,7 +71,7 @@ export const Work = () => {
               </CardContent>
             </Card>
           ))}
-        </div>
+        </div> */}
 
         <Card className="relative my-8 p-0 overflow-hidden">
           <CardContent className="px-0">
@@ -80,11 +84,7 @@ export const Work = () => {
           </CardContent>
         </Card>
 
-        <motion.div
-          animate={{ opacity: [0, 1] }}
-          transition={{ duration: 2 }}
-          className="flex flex-col gap-8 w-full items-center "
-        >
+        <motion.div className="flex flex-col gap-8 w-full items-center ">
           {projects.map((project) => (
             <Card
               className="relative max-w-4xl p-0 pr-0 overflow-hidden"
@@ -101,7 +101,7 @@ export const Work = () => {
             </Card>
           ))}
         </motion.div>
-      </div>
+      </motion.div>
       <div className="w-full flex justify-center py-16">
         <AuroraButton
           className="animate-fade-up z-40 whitespace-nowrap px-8 gap-4 pr-10"
