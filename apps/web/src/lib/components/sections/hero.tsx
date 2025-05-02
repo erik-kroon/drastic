@@ -84,8 +84,8 @@ export function Hero() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 1.6 }}
         >
-          drastic is a digital agency that saves your business money and
-          helpssss you grow through software, automation and AI.
+          drastic is a digital agency that saves your business money and helps
+          you grow through software, automation and AI.
         </motion.p>
 
         <motion.div
