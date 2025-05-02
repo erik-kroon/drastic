@@ -11,7 +11,7 @@ export function SecondSection() {
   return (
     <div className=" w-full overflow-hidden">
       <SpaceGlobe theme={theme} />
-      <div className="h-[1700px]  md:h-[1900px]  text-4xl w-full flex justify-center items-center flex-col gap-12">
+      <div className="h-[1650px]  md:h-[1800px]  text-4xl w-full flex justify-center items-center flex-col gap-12">
         <div className="px-4 w-full flex justify-center flex-col items-center gap-4">
           <div className="flex flex-col gap-2 pb-4 text-center text-primary">
             <div className="z-40">
