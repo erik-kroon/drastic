@@ -23,7 +23,7 @@ export function Hero() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-[calc(72vh)] lg:min-h-[calc(50vh)] interactive-content relative z-10 flex w-full max-w-4xl flex-grow flex-col justify-center items-center px-8 lg:max-w-4xl gap-8"
+      className="min-h-[calc(72vh)] lg:min-h-[calc(69vh)] interactive-content relative z-10 flex w-full max-w-4xl flex-grow flex-col justify-center items-center px-8 lg:max-w-4xl gap-8"
     >
       <motion.div
         initial={{ opacity: 0, y: -10 }}

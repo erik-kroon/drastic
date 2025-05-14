@@ -19,123 +19,94 @@ interface FAQProps {
   className?: string;
 }
 
-export default function FAQ({
-  title = "Questions and Answers",
-  items = [
-    {
-      question: "How can automation and AI help my business save money?",
-      answer: (
-        <>
-          <p className="text-muted-foreground mb-4 max-w-[640px] text-balance">
-            In today's competitive landscape, automation and AI can streamline
-            your operations, reduce manual work, and help your team focus on
-            high-value tasks.
-          </p>
-          <p className="text-muted-foreground mb-4 max-w-[640px] text-balance">
-            Our solutions help identify and eliminate inefficiencies while
-            scaling your capabilities without scaling costs.
-          </p>
-        </>
-      ),
-    },
-    {
-      question:
-        "Why do I need custom software instead of off-the-shelf solutions?",
-      answer: (
-        <>
-          <p className="text-muted-foreground mb-4 max-w-[600px]">
-            Generic software often means compromising on functionality or paying
-            for features you don't need. Custom solutions are built specifically
-            for your unique business processes and goals.
-          </p>
-          <p className="text-muted-foreground mb-4 max-w-[600px]">
-            As your business grows, custom software grows with you - no need to
-            switch platforms or deal with integration headaches.
-          </p>
-          <p className="text-muted-foreground mb-4 max-w-[600px]">
-            With custom internal tools, you get exactly what your business
-            needs, optimized for your workflow and ready to scale.
-          </p>
-        </>
-      ),
-    },
-    {
-      question:
-        "How does Drastic's approach differ from other digital agencies?",
-      answer: (
-        <>
-          <p className="text-muted-foreground mb-4 max-w-[580px]">
-            We focus specifically on creating solutions that drive measurable
-            cost savings and growth through modern technology.
-          </p>
-          <p className="text-muted-foreground mb-4 max-w-[580px]">
-            Our expertise in automation and AI means we can identify
-            opportunities others miss to streamline your operations.
-          </p>
-          <p className="text-muted-foreground mb-4 max-w-[640px] text-balance">
-            We build long-term partnerships focused on your business success,
-            not just delivering a project and moving on.
-          </p>
-        </>
-      ),
-    },
-    {
-      question: "What types of businesses do you work with?",
-      answer: (
-        <>
-          <p className="text-muted-foreground mb-4 max-w-[580px]">
-            We work with businesses of all sizes who are looking to grow through
-            technology and automation.
-          </p>
-          <p className="text-muted-foreground mb-4 max-w-[580px]">
-            Whether you're a startup looking to scale efficiently or an
-            established company seeking to modernize operations, we can help
-            create custom solutions for your needs.
-          </p>
-        </>
-      ),
-    },
-    {
-      question: "How do you ensure solutions scale with my business?",
-      answer: (
-        <p className="text-muted-foreground mb-4 max-w-[580px]">
-          We design all our solutions with scalability in mind from day one. Our
-          modern technology stack and focus on automation means your tools can
-          handle growth without requiring constant rebuilds or updates.
+const defaultFAQItems: FAQItemProps[] = [
+  {
+    question: "How can AI actually help my business?",
+    answer: (
+      <>
+        <p className="text-muted-foreground mb-4 max-w-[640px] text-balance">
+          AI can transform your business by automating repetitive workflows,
+          freeing up your team to focus on strategic, high-impact tasks. It
+          boosts productivity by streamlining processes and provides
+          data-driven insights to make smarter decisions.
         </p>
-      ),
-    },
-    {
-      question: "What's the process of working with Drastic?",
-      answer: (
-        <>
-          <p className="text-muted-foreground mb-4 max-w-[580px]">
-            We start with understanding your business goals and current
-            challenges. Then we identify opportunities for automation and
-            improvement, create a strategic plan, and implement solutions that
-            drive real results.
-          </p>
-          <p className="text-muted-foreground mb-4 max-w-[580px]">
-            Ready to learn more? Don't hesitate to{" "}
-            <a
-              href="mailto:contact@drastic.com"
-              className="text-foreground underline"
-            >
-              reach out to us
-            </a>
-            .
-          </p>
-        </>
-      ),
-    },
-  ],
+        <p className="text-muted-foreground mb-4 max-w-[640px] text-balance">
+          At Drastic, we identify specific opportunities where AI can deliver
+          measurable results, from optimizing operations to enhancing customer
+          experiences, ultimately driving growth and efficiency.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: "Why should I invest in custom software?",
+    answer: (
+      <>
+        <p className="text-muted-foreground mb-4 max-w-[600px]">
+          While off-the-shelf software offers generic solutions, custom software
+          is built around your unique product vision and business needs. It's
+          like the difference between a ready-made suit and a tailored one –
+          the fit and function are unparalleled.
+        </p>
+        <p className="text-muted-foreground mb-4 max-w-[600px]">
+          With a Drastic custom solution, you get a product people love using
+          because it’s designed for them. It scales with you, integrates
+          seamlessly, and gives you a distinct competitive advantage by
+          perfectly aligning technology with your strategic goals.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: "How can Drastic specifically help my business succeed?",
+    answer: (
+      <>
+        <p className="text-muted-foreground mb-4 max-w-[640px] text-balance">
+          We don't just build products; we build experiences that drive
+          results. Drastic helps you define and refine your product vision,
+          strategizing with you to ensure we're building something people truly
+          want and need.
+        </p>
+        <p className="text-muted-foreground mb-4 max-w-[640px] text-balance">
+          Our expertise in AI and automation, combined with modern software
+          development, allows us to create solutions that streamline your
+          operations, unlock new efficiencies, and position your business for
+          sustainable growth and innovation.
+        </p>
+      </>
+    ),
+  },
+  {
+    question: "What's it like working with Drastic?",
+    answer: (
+      <>
+        <p className="text-muted-foreground mb-4 max-w-[640px] text-balance">
+          Collaboration is at the heart of our process. It begins with a
+          discovery call where we listen to understand your vision and
+          challenges. Together, we'll outline your needs, identify bottlenecks,
+          and pinpoint processes ripe for AI-driven automation or optimization.
+        </p>
+        <p className="text-muted-foreground mb-4 max-w-[640px] text-balance">
+          We then move to build, iterate, and launch, keeping you involved every
+          step of the way. After launch, our partnership continues; we work with
+          you to iterate on your product, ensuring it evolves with your business
+          and continues to deliver value.
+        </p>
+      </>
+    ),
+  },
+];
+
+export default function FAQ({
+  title = "Frequently Asked Questions",
+  items = defaultFAQItems,
   className,
 }: FAQProps) {
   return (
     <Section className={className}>
       <div className="flex justify-center w-full">
         <div className="pt-8 flex max-w-3xl flex-col items-center gap-8">
-          <h2 className="text-center text-3xl font-semibold sm:text-5xl whitespace-nowrap">
+          <h2 className="text-center text-3xl font-semibold sm:text-5xl">
             {title}
           </h2>
           {items !== false && items.length > 0 && (

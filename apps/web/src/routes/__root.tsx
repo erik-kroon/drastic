@@ -13,7 +13,7 @@ import utilsCss from "~/lib/styles/utils.css?url";
 
 import Header from "../lib/components/header";
 import { ThemeProvider } from "../lib/components/theme-provider";
-import { Footer } from "../lib/components/ui/footer-2";
+import { Footer } from "../lib/components/ui/footer";
 export const Route = createRootRouteWithContext<{
   theme: string;
 }>()({

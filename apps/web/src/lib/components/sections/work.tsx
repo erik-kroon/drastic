@@ -7,6 +7,14 @@ export const Work = () => {
   const sectionRef = useRef<HTMLElement>(null);
   const textWrapperRef = useRef<HTMLDivElement>(null);
 
+  const components = [
+    {
+      title: "autoseo.dev",
+      description: "Grow organic traffic on autopilot.",
+      imageSrc: "/autoseo_auth.png",
+      altText: "autoseo auth",
+    },
+  ];
   const projects = [
     {
       title: "Drastic Dashboard Analytics",
@@ -19,7 +27,7 @@ export const Work = () => {
       title: "autoseo.dev",
       description: "Grow organic traffic on autopilot.",
       imageSrc: "/autoseo.png",
-      altText: "autoseo waitlist",
+      altText: "autoseo auth",
     },
     {
       title: "Drastic Calendar",
@@ -41,50 +49,50 @@ export const Work = () => {
   return (
     <section
       ref={sectionRef}
-      className="max-w-4xl min-h-screen bg-background p-8"
+      className="max-w-5xl min-h-screen bg-background p-4"
     >
       <motion.div
         animate={{ opacity: [0, 1] }}
-        transition={{ duration: 1.69 }}
+        transition={{ duration: 0.4 }}
         className="container mx-auto px-4"
       >
-        <div className="space-y-4 text-center mb-16 relative z-10">
+        <div className="space-y-4 text-center mb-8 relative z-10">
           <div ref={textWrapperRef}>
             <h2 className="text-2xl font-semibold text-foreground">
               previous work
             </h2>
           </div>
         </div>
-        {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-8 w-full">
-          {projects.map((project) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-8 w-full">
+          {components.map((project) => (
             <Card
-              className="relative p-0 overflow-hidden"
+              className="relative p-0 overflow-hidden w-fit "
               key={project.altText}
             >
-              <CardContent className="px-0">
+              <CardContent className="px-0 w-fit ">
                 <img
                   src={project.imageSrc}
                   alt={project.altText}
-                  className="w-full h-64 object-cover"
+                  className="h-96 rounded-lg"
                   loading="eager"
                 />
               </CardContent>
             </Card>
           ))}
-        </div> */}
+        </div>
 
         <Card className="relative my-8 p-0 overflow-hidden">
           <CardContent className="px-0">
             <img
               src={"/autoseo_2.png"}
               alt={"waitlist"}
-              className="w-full h-full object-cover"
+              className="w-full  h-96"
               loading="eager"
             />
           </CardContent>
         </Card>
 
-        <motion.div className="flex flex-col gap-8 w-full items-center ">
+        <div className="flex flex-col gap-8 w-full items-center ">
           {projects.map((project) => (
             <Card
               className="relative max-w-4xl p-0 pr-0 overflow-hidden"
@@ -100,7 +108,7 @@ export const Work = () => {
               </CardContent>
             </Card>
           ))}
-        </motion.div>
+        </div>
       </motion.div>
       <div className="w-full flex justify-center py-16">
         <AuroraButton

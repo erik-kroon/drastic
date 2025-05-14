@@ -4,7 +4,7 @@ import { GithubIcon, TwitterIcon } from "lucide-react";
 
 export const Footer = () => {
   return (
-    <footer className="w-full flex-col p-6">
+    <footer className="w-full flex-col p-8">
       <div className="w-full flex flex-row justify-between items-center">
         <Link
           to={"/"}
