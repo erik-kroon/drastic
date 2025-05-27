@@ -14,6 +14,7 @@ import utilsCss from "~/lib/styles/utils.css?url";
 import Header from "../lib/components/header";
 import { ThemeProvider } from "../lib/components/theme-provider";
 import { Footer } from "../lib/components/ui/footer";
+import { seo } from "../lib/utils";
 export const Route = createRootRouteWithContext<{
   theme: string;
 }>()({
@@ -35,10 +36,10 @@ export const Route = createRootRouteWithContext<{
       },
     ],
     links: [
-      {
-        rel: "icon",
-        href: "/favicon.ico",
-      },
+      ...seo({
+        title: "drastic | scale your business with AI",
+        description: `drastic is a software development company helping businesses scale their operations with AI-powered solutions.`,
+      }),
       {
         rel: "stylesheet",
         href: appCss,
