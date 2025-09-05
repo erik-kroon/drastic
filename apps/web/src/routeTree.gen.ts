@@ -12,6 +12,8 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as WorkImport } from './routes/work'
+import { Route as TanshipImport } from './routes/tanship'
+import { Route as AutoseoImport } from './routes/autoseo'
 import { Route as IndexImport } from './routes/index'
 
 // Create/Update Routes
@@ -19,6 +21,18 @@ import { Route as IndexImport } from './routes/index'
 const WorkRoute = WorkImport.update({
   id: '/work',
   path: '/work',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const TanshipRoute = TanshipImport.update({
+  id: '/tanship',
+  path: '/tanship',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const AutoseoRoute = AutoseoImport.update({
+  id: '/autoseo',
+  path: '/autoseo',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -39,6 +53,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
+    '/autoseo': {
+      id: '/autoseo'
+      path: '/autoseo'
+      fullPath: '/autoseo'
+      preLoaderRoute: typeof AutoseoImport
+      parentRoute: typeof rootRoute
+    }
+    '/tanship': {
+      id: '/tanship'
+      path: '/tanship'
+      fullPath: '/tanship'
+      preLoaderRoute: typeof TanshipImport
+      parentRoute: typeof rootRoute
+    }
     '/work': {
       id: '/work'
       path: '/work'
@@ -53,36 +81,46 @@ declare module '@tanstack/react-router' {
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/autoseo': typeof AutoseoRoute
+  '/tanship': typeof TanshipRoute
   '/work': typeof WorkRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/autoseo': typeof AutoseoRoute
+  '/tanship': typeof TanshipRoute
   '/work': typeof WorkRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
+  '/autoseo': typeof AutoseoRoute
+  '/tanship': typeof TanshipRoute
   '/work': typeof WorkRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/work'
+  fullPaths: '/' | '/autoseo' | '/tanship' | '/work'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/work'
-  id: '__root__' | '/' | '/work'
+  to: '/' | '/autoseo' | '/tanship' | '/work'
+  id: '__root__' | '/' | '/autoseo' | '/tanship' | '/work'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AutoseoRoute: typeof AutoseoRoute
+  TanshipRoute: typeof TanshipRoute
   WorkRoute: typeof WorkRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AutoseoRoute: AutoseoRoute,
+  TanshipRoute: TanshipRoute,
   WorkRoute: WorkRoute,
 }
 
@@ -97,11 +135,19 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
+        "/autoseo",
+        "/tanship",
         "/work"
       ]
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/autoseo": {
+      "filePath": "autoseo.tsx"
+    },
+    "/tanship": {
+      "filePath": "tanship.tsx"
     },
     "/work": {
       "filePath": "work.tsx"

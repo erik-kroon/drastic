@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { ArrowRightIcon } from "lucide-react";
 import { memo, useCallback, useEffect, useState } from "react"; // Import useCallback and memo
 import { AuroraButton } from "./aurora-button";
+import { Navbar } from "./navbar";
 
 // Move links outside the component as it's static data
 const links = [
@@ -74,7 +75,7 @@ const Header = memo(function Header() {
               </span>
             </Link>
           </nav>
-          {/* <Navbar></Navbar> */}
+          <Navbar />
           <AuroraButton
             className="z-50 mt-4 flex justify-center whitespace-nowrap md:mt-0"
             style={{
