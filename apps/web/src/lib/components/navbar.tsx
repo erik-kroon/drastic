@@ -18,7 +18,7 @@ export function Navbar({ className }: { className?: string }) {
         to={"/tanship"}
         className="transition-opacity duration-300 hover:opacity-80"
       >
-        Boilerplate
+        Tanship
       </Link>
       <Link
         to={"/autoseo"}
