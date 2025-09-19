@@ -62,7 +62,7 @@ export const Footer = () => {
         </div>
       </div>
       <div className="mt-4 border-t pt-4 flex justify-between items-center">
-        <div className="text-muted-foreground text-sm">© 2025 drastic</div>
+        <div className="text-muted-foreground text-sm">© 2025 Drastic AB</div>
         <div className="flex space-x-6">
           <Link
             to="/"
