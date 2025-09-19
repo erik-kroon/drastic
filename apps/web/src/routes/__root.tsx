@@ -37,8 +37,8 @@ export const Route = createRootRouteWithContext<{
     ],
     links: [
       ...seo({
-        title: "drastic | scale your business with AI",
-        description: `drastic is a software development company helping businesses scale their operations with AI-powered solutions.`,
+        title: "Drastic | Scale your business with AI",
+        description: `Drastic is a software development company helping businesses scale their operations with AI-powered solutions.`,
       }),
       {
         rel: "stylesheet",
