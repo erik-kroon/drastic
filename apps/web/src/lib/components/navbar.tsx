@@ -9,7 +9,7 @@ export function Navbar({ className }: { className?: string }) {
     >
       <Link
         to={"/work"}
-        className="transition-opacity duration-300 hover:opacity-80 md:hidden"
+        className="transition-opacity duration-300 hover:opacity-80 hidden md:block"
       >
         Previous work
       </Link>
