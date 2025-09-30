@@ -9,20 +9,20 @@ export function Navbar({ className }: { className?: string }) {
     >
       <Link
         to={"/work"}
-        className="transition-opacity duration-300 hover:opacity-80"
+        className="transition-opacity duration-300 hover:opacity-80 md:hidden"
       >
         Previous work
       </Link>
 
       <Link
         to={"/tanship"}
-        className="transition-opacity duration-300 hover:opacity-80"
+        className="transition-opacity duration-300 hover:opacity-80 hidden md:block"
       >
         Tanship
       </Link>
       <Link
         to={"/autoseo"}
-        className="transition-opacity duration-300 hover:opacity-80"
+        className="transition-opacity duration-300 hover:opacity-80 hidden md:block"
       >
         AutoSEO
       </Link>
