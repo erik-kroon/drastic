@@ -39,8 +39,8 @@
   --card-foreground: var(--neutral-950);
   --popover: oklch(0.9958 0.0025 228.7829);
   --popover-foreground: var(--neutral-950);
-  --primary: var(--accent-color);
-  --primary-foreground: var(--neutral-950);
+  --primary: #2448a5;
+  --primary-foreground: #fff;
   --secondary: oklch(0.9493 0.0103 247.9351);
   --secondary-foreground: var(--neutral-950);
   --muted: oklch(0.9307 0.0121 247.957);
@@ -56,7 +56,7 @@
   --success-foreground: color-mix(in srgb, var(--success-color) 40%, var(--neutral-950));
   --success-border: var(--success-color);
   --border: oklch(0.875 0.0158 248.0085);
-  --input: oklch(0.8004 0.0219 241.4251);
+  --input: #d3d8df;
   --ring: var(--accent-color);
   --chart-1: var(--accent-color);
   --chart-2: oklch(0.6812 0.0894 249.7507);

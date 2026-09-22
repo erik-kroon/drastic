@@ -24,10 +24,15 @@ import { SubledgerHandlers } from "./subledgers";
 import { ClosingHandlers } from "./closing";
 
 import { CommerceHandlers } from "./commerce";
+import { RegisterReportHandlers } from "./register-reports";
+import { VatReturnsHandlers } from "./vat-returns";
+import { SieHandlers } from "./sie";
+import { InvoiceDraftHandlers } from "./invoice-drafts";
 import { AccountantReviewHandlers } from "./accountant-review";
 import { SourceIntakeHandlers } from "./source-intake";
 import { ExpenseTaxHandlers } from "./expense-tax";
 import { OwnerRegisterHandlers } from "./owner-register";
+import { WorkspaceHandlers } from "./workspace";
 
 const SystemHandlers = HttpApiBuilder.group(Api, "system", (handlers) =>
   handlers
@@ -48,6 +53,7 @@ const SystemHandlers = HttpApiBuilder.group(Api, "system", (handlers) =>
 const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }).pipe(
   Layer.provide([
     SystemHandlers,
+    WorkspaceHandlers,
     AccountingHandlers,
     ReportHandlers,
     ReconciliationHandlers,
@@ -57,6 +63,10 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     CorrectionHandlers,
     SettlementHandlers,
     CommerceHandlers,
+    RegisterReportHandlers,
+    VatReturnsHandlers,
+    SieHandlers,
+    InvoiceDraftHandlers,
     AccountantReviewHandlers,
     SourceIntakeHandlers,
     ExpenseTaxHandlers,

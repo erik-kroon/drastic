@@ -41,6 +41,9 @@ services:
       OPENERP_PUBLIC_URL: ${OPENERP_PUBLIC_URL:-http://localhost:3000}
       OPENERP_BIND_ADDRESS: 0.0.0.0
       PORT: "3000"
+      OPENERP_OBJECT_DIRECTORY: /data/evidence/objects
+    volumes:
+      - evidence-data:/data/evidence
     ports:
       - "127.0.0.1:${OPENERP_PORT:-3000}:3000"
     depends_on:
@@ -52,3 +55,4 @@ services:
 
 volumes:
   postgres-data:
+  evidence-data:

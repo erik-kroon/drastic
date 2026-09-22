@@ -13,10 +13,15 @@ import { SubledgerCapabilities } from "./subledgers";
 import { ClosingCapabilities } from "./closing";
 
 import { CommerceCapabilities } from "./commerce";
+import { RegisterReportCapabilities } from "./register-reports";
+import { VatReturnCapabilities } from "./vat-returns";
+import { SieCapabilities } from "./sie";
+import { InvoiceDraftCapabilities } from "./invoice-drafts";
 import { AccountantReviewCapabilities } from "./accountant-review";
 import { SourceIntakeCapabilities } from "./source-intake";
 import { ExpenseTaxCapabilities } from "./expense-tax";
 import { OwnerRegisterCapabilities } from "./owner-register";
+import { WorkspaceCapabilities } from "./workspace";
 
 const scoped = { scope: Accounting.Scope };
 const mutation = {
@@ -27,11 +32,30 @@ const change = { ...scoped, changeSetId: Accounting.Identifier };
 const changeMutation = { ...mutation, changeSetId: Accounting.Identifier };
 
 export const Capabilities = {
+  runs_start_background: {
+    description:
+      "Admit a ready preparation run for durable background execution. Authority is rechecked for every chunk; manual changes stop the job. Posting requires separate approval.",
+    input: Schema.Struct({ ...mutation, runId: Accounting.Identifier }),
+    output: Automation.PreparationJob,
+    readOnly: false,
+  },
+  runs_get_background: {
+    description:
+      "Read the latest durable background preparation job, including its stopped or blocked reason.",
+    input: Schema.Struct({ ...scoped, runId: Accounting.Identifier }),
+    output: Schema.NullOr(Automation.PreparationJob),
+    readOnly: true,
+  },
+  ...WorkspaceCapabilities,
   ...AccountantReviewCapabilities,
   ...SourceIntakeCapabilities,
   ...ExpenseTaxCapabilities,
   ...OwnerRegisterCapabilities,
   ...CommerceCapabilities,
+  ...RegisterReportCapabilities,
+  ...VatReturnCapabilities,
+  ...SieCapabilities,
+  ...InvoiceDraftCapabilities,
   ...ClosingCapabilities,
   ...SubledgerCapabilities,
   ...PostingRecoveryCapabilities,

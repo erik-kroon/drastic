@@ -1,4 +1,5 @@
 import * as Effect from "effect/Effect";
+import type { R2Bucket } from "@cloudflare/workers-types";
 import * as Schema from "effect/Schema";
 import { maxSourceBytes } from "@open-erp/contracts/source-intake";
 import { failure, RequestEnvironment } from "./database";
@@ -57,9 +58,7 @@ export const readRetainedObject = Effect.fn("Source.readObject")(function* (
     try: () => store.get(reference.objectKey),
     catch: () => failure("Unavailable"),
   });
-  if (!bytes || bytes.byteLength !== reference.byteLength)
-    return yield* failure("MissingEvidence");
-  if ((yield* sourceDigest(bytes)) !== reference.sha256)
-    return yield* failure("MissingEvidence");
+  if (!bytes || bytes.byteLength !== reference.byteLength) return yield* failure("MissingEvidence");
+  if ((yield* sourceDigest(bytes)) !== reference.sha256) return yield* failure("MissingEvidence");
   return bytes;
 });

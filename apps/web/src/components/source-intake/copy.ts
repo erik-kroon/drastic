@@ -1,14 +1,16 @@
 import type { Locale } from "@/paraglide/runtime";
 const en = {
-  title: "Retain and review bank CSV",
+  title: "Retain source documents",
   scope:
     "Observed sources only. This is not required-source coverage, accounting classification or proof that company records are complete. No posting or automatic matching occurs.",
+  retainedOnly:
+    "Original retained. Bank CSV interpretation supports CSV files up to 64 KiB; other documents remain available for download.",
   limits:
     "Supported profile: UTF-8 bank_csv_utf8_v1. Maximum 64 KiB, 200 data records, 32 columns and 4000 bytes per field. Current observation admission supports synthetic-core-v1 books only.",
   retain: "Retain original file",
-  file: "Original CSV file",
+  file: "Original file",
   sourceSystem: "Source system",
-  sourceAccountId: "Source bank account identity",
+  sourceAccountId: "Source account identity",
   occurrenceKey: "Stable occurrence identity",
   sourceRevision: "Source revision identity",
   identityHelp:
@@ -20,7 +22,7 @@ const en = {
   load: "Open retained source",
   empty: "No retained source occurrences on this page. This does not mean no sources are required.",
   invalid: "Review all required fields and supported values.",
-  invalidFile: "Select a nonempty file of at most 65536 bytes.",
+  invalidFile: "Select a nonempty file of at most 5 MiB.",
   readFailure: "Could not read the file. No new file was sent.",
   original: "Original bytes",
   download: "Download original file",
@@ -104,15 +106,17 @@ const en = {
     "Approval expires after one hour. If admission outcome is uncertain, retry without changing the input, or refresh this source to recover its durable receipt.",
 };
 const sv = {
-  title: "Bevara och granska bank-CSV",
+  title: "Bevara källdokument",
   scope:
     "Endast observerade källor. Detta är inte en förteckning över obligatoriska källor, bokföringsklassificering eller bevis på fullständigt företagsunderlag. Ingen bokföring eller automatisk matchning sker.",
+  retainedOnly:
+    "Originalet har bevarats. Bank-CSV-tolkning stöder CSV-filer upp till 64 KiB. Övriga dokument kan hämtas som original.",
   limits:
-    "Profil: UTF-8 bank_csv_utf8_v1. Högst 64 KiB, 200 datarader, 32 kolumner och 4000 byte per fält. Import av observationer stöder för närvarande endast synthetic-core-v1.",
+    "Originaldokument: högst 5 MiB med konfigurerad arkivlagring. CSV-profil: UTF-8 bank_csv_utf8_v1. Högst 64 KiB, 200 datarader, 32 kolumner och 4000 byte per fält. Import av observationer stöder för närvarande endast synthetic-core-v1.",
   retain: "Bevara originalfil",
-  file: "CSV-originalfil",
+  file: "Originalfil",
   sourceSystem: "Källsystem",
-  sourceAccountId: "Bankkontots källidentitet",
+  sourceAccountId: "Källkontots identitet",
   occurrenceKey: "Stabil identitet för källförekomsten",
   sourceRevision: "Källans revisionsidentitet",
   identityHelp:
@@ -124,7 +128,7 @@ const sv = {
   load: "Öppna bevarad källa",
   empty: "Inga bevarade källförekomster på denna sida. Det betyder inte att inga källor behövs.",
   invalid: "Kontrollera obligatoriska fält och tillåtna värden.",
-  invalidFile: "Välj en fil med 1–65536 byte.",
+  invalidFile: "Välj en fil med högst 5 MiB och minst 1 byte.",
   readFailure: "Filen kunde inte läsas. Ingen ny fil skickades.",
   original: "Originalbyte",
   download: "Hämta originalfil",

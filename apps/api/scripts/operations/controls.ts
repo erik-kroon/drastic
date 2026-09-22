@@ -6,6 +6,7 @@ import { refuse } from "./safety";
 export async function recoveryControls(
   client: Client,
   tables: ReadonlyArray<typeof TableFingerprint.Type>,
+  originalsVerified = false,
 ) {
   const integrity = await client.query<{ invalid: boolean }>(`
     SELECT EXISTS(SELECT FROM openerp.books WHERE profile <> 'synthetic-core-v1')
@@ -37,8 +38,15 @@ export async function recoveryControls(
       [table.schema, table.table],
     );
     if (
-      columns.rows.some((column) =>
-        /^(object_key|storage_key|blob_key|object_version|storage_version)$/.test(column.name),
+      columns.rows.some(
+        (column) =>
+          /^(object_key|storage_key|blob_key|object_version|storage_version)$/.test(column.name) &&
+          !(
+            originalsVerified &&
+            table.schema === "openerp" &&
+            table.table === "intake_contents" &&
+            column.name === "object_key"
+          ),
       )
     ) {
       refuse(
@@ -107,8 +115,11 @@ export async function recoveryControls(
       'ledgerDebitMinor',(SELECT coalesce(sum(debit_minor),0)::text FROM openerp.journal_lines),
       'ledgerCreditMinor',(SELECT coalesce(sum(credit_minor),0)::text FROM openerp.journal_lines),
       'inlineEvidenceClosure','matched','receiptLinks','matched','historicalReportControls','matched',
-      'externalObjects','unsupported-pointers-refused') AS body`,
-    [String(jsonReferences)],
+      'externalObjects',$2::text) AS body`,
+    [
+      String(jsonReferences),
+      originalsVerified ? "retained-originals-matched" : "unsupported-pointers-refused",
+    ],
   );
   return Schema.decodeUnknownSync(RecoveryControls)(counts.rows[0]?.body);
 }

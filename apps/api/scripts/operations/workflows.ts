@@ -23,6 +23,7 @@ import { readPreflight, tableFingerprints } from "./snapshot";
 import { copyArtifacts, filesIn, inspectRelease, readRecoveryPlan } from "./artifacts";
 import { databaseInventory, roleInventory } from "./inventory";
 import { recoveryControls } from "./controls";
+import { captureObjects, objectReferences, verifyObjects } from "./objects";
 
 async function diagnostic(
   directory: string,
@@ -101,7 +102,9 @@ export async function backup(targetPath: string, bundle: string, recoveryPlanPat
     const release = await inspectRelease(plan.releaseDirectory);
     stage = "inventory-and-closure";
     const inventory = await databaseInventory(client, release);
-    const controls = await recoveryControls(client, tables);
+    const objects = await objectReferences(client, tables);
+    await captureObjects(bundle, objects);
+    const controls = await recoveryControls(client, tables, true);
     await diagnostic(
       diagnostics,
       stage,
@@ -199,7 +202,8 @@ export async function inspectBundle(bundle: string, expectedDigest: string) {
       (path) =>
         path !== "database.dump" &&
         !path.startsWith("supplementary/") &&
-        !path.startsWith("release/"),
+        !path.startsWith("release/") &&
+        !/^objects\/v1\/[a-z][a-z0-9_-]{2,127}\/[a-f0-9]{64}$/.test(path),
     )
   )
     refuse("Unexpected bundle file inventory.");
@@ -348,7 +352,13 @@ export async function restore(
         JSON.stringify(manifest.inventory)
       )
         refuse("Restored schema/migration/environment inventory differs.");
-      verifiedControls = await recoveryControls(restored, actual);
+      const objects = await objectReferences(restored, actual);
+      await verifyObjects(bundle, objects);
+      verifiedControls = await recoveryControls(
+        restored,
+        actual,
+        manifest.controls.externalObjects === "retained-originals-matched",
+      );
       if (JSON.stringify(verifiedControls) !== JSON.stringify(manifest.controls))
         refuse("Restored evidence/receipt/report controls differ.");
       await restored.query("ROLLBACK");
@@ -358,6 +368,8 @@ export async function restore(
     stage = "recovered-files";
     await copyArtifacts(join(bundle, "supplementary"), join(receiptDirectory, "supplementary"));
     await copyArtifacts(join(bundle, "release"), join(receiptDirectory, "release"));
+    if (manifest.files.some((file) => file.path.startsWith("objects/")))
+      await copyArtifacts(join(bundle, "objects"), join(receiptDirectory, "objects"));
     for (const file of manifest.files.filter((file) => file.path !== "database.dump")) {
       const recovered = await fingerprint(artifactPath(receiptDirectory, file.path));
       if (recovered.sha256 !== file.sha256 || recovered.bytes !== file.bytes)

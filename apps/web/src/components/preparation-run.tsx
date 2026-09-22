@@ -10,6 +10,7 @@ import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { PreparationSelection } from "@/components/preparation-selection";
+import { PreparationBackground } from "@/components/preparation-background";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
@@ -43,6 +44,7 @@ export function PreparationRunPanel({
       return result;
     },
     retry: false,
+    refetchInterval: (query) => (query.state.data?.state === "ready" ? 3000 : false),
   });
   const state = {
     ready: copy.auto_ready,
@@ -102,6 +104,12 @@ export function PreparationRunPanel({
             ) : null}
           </Box>
           <RunCommands book={book} run={run.data} locale={locale} readReady={readReady} />
+          <PreparationBackground
+            book={book}
+            runId={id}
+            locale={locale}
+            ready={readReady && run.data.state === "ready"}
+          />
           <details>
             <summary>{copy.auto_selection}</summary>
             <Box display="grid" gap="lg" paddingBlock="lg" minWidth="zero">

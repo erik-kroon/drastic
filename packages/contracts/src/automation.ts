@@ -136,11 +136,35 @@ export const PreparationRun = Schema.Struct({
   requiresPostingApproval: Schema.Literal(true),
 });
 
+export const PreparationJob = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  runId: Accounting.Identifier,
+  requestedBy: Accounting.Identifier,
+  executorId: Accounting.Identifier,
+  checkpoint: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 50 })),
+  state: Schema.Literals(["ready", "completed", "blocked", "stopped"]),
+  reason: Schema.NullOr(Schema.String),
+  createdAt: Schema.String,
+  checkedAt: Schema.String,
+  requiresPostingApproval: Schema.Literal(true),
+});
+
 const path = "/v1/entities/:entityId/books/:bookId";
 const scoped = { params: Accounting.Scope, error: accountingErrors };
 const mutation = { ...scoped, headers: Accounting.IdempotencyHeaders };
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
 export const AutomationApi = HttpApiGroup.make("automation").add(
+  HttpApiEndpoint.post("startPreparationJob", `${path}/preparation-runs/:id/background`, {
+    ...identified,
+    headers: Accounting.IdempotencyHeaders,
+    payload: Schema.Struct({}).annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: PreparationJob,
+  }),
+  HttpApiEndpoint.get("getPreparationJob", `${path}/preparation-runs/:id/background`, {
+    ...identified,
+    success: Schema.NullOr(PreparationJob),
+  }),
   HttpApiEndpoint.post("proposeRecurringRule", `${path}/recurring-rules`, {
     ...mutation,
     payload: ProposeRecurringRule.annotate({ parseOptions: { onExcessProperty: "error" } }),

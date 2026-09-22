@@ -4,7 +4,11 @@ import * as Accounting from "./accounting";
 import * as Reports from "./reports";
 import * as Owners from "./owner-register";
 import * as ExpenseTax from "./expense-tax";
-import { OwnerPeriodStatus, ExpenseTaxDependencies } from "./closing-providers";
+import {
+  OwnerPeriodStatus,
+  ExpenseTaxDependencies,
+  VatReturnDependencies,
+} from "./closing-providers";
 import { accountingErrors } from "./accounting-errors";
 
 export const PrepareReviewPack = Schema.Struct({
@@ -192,6 +196,7 @@ export const ReviewBasis = Schema.Struct({
   closingStateDigest: Accounting.Digest,
   owners: OwnerPeriodStatus,
   expenseTax: ExpenseTaxDependencies,
+  vatReturns: Schema.optional(VatReturnDependencies),
   ownerInventoryDigest: Accounting.Digest,
   bank: BankBasis,
   commerce: CommerceBasis,
@@ -233,7 +238,7 @@ export const ReviewPack = Schema.Struct({
   }),
   companyCompleteness: Schema.Literal("not_established"),
   statutoryReady: Schema.Literal(false),
-  generatorVersion: Schema.Literal("accountant-review-v1"),
+  generatorVersion: Schema.Literals(["accountant-review-v1", "accountant-review-v2"]),
   createdBy: Accounting.Identifier,
   createdAt: Schema.String,
 });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Recovery from "@open-erp/contracts/posting-recovery";
@@ -6,25 +6,27 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Heading, Text } from "@open-erp/ui/components/typography";
-import { SealedAction } from "@/components/journal-review";
+import { ReviewEntry } from "./review-entry";
+import { Disclosure, WorkflowSurface } from "@open-erp/ui/components/workflow";
 import { bookKey, bookPath, booksKey, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { postingCopy } from "./copy";
 import { sendSavedPostingCommand } from "./request";
 import { SavedPostingOutcome } from "./saved-requests";
 import { InputField } from "@open-erp/ui/components/field";
+import { Link } from "@open-erp/ui/components/link";
+import { reviewPath, workspacePath } from "@/lib/book-context";
+import { accountingCopy } from "@/lib/accounting-copy";
 
-export function PostingRecoveryReview({
-  book,
-  id,
-  locale,
-  accounts,
-}: {
+export function PostingRecoveryReview(props: {
   book: typeof Accounting.Book.Type;
   id: string;
   locale: Locale;
   accounts: typeof Accounting.BookSetup.Type.accounts;
+  expectedDigest?: string;
+  returnSearch?: string;
 }) {
+  const { book, id, locale, accounts } = props;
   const copy = postingCopy(locale);
   const [after, setAfter] = useState<string | null>(null);
   const recovery = useQuery({
@@ -47,8 +49,18 @@ export function PostingRecoveryReview({
   });
   return (
     <Box as="section" id="journal-review" tabIndex={-1} display="grid" gap="lg" minWidth="zero">
-      <Heading>{copy.review}</Heading>
-      <Box>
+      <Box display="flex" flexWrap="wrap" justifyContent="between" alignItems="center" gap="md">
+        {recovery.data && !recovery.isError ? (
+          <Box role="status" display="grid" gap="sm">
+            <Text>{copy[recovery.data.summary.postingStatus]}</Text>
+            <Text tone="muted">
+              {copy.checked}:{" "}
+              {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
+                new Date(recovery.data.checkedAt),
+              )}
+            </Text>
+          </Box>
+        ) : null}
         <Button
           size="xl"
           variant="outline"
@@ -66,7 +78,21 @@ export function PostingRecoveryReview({
           {copy.unknown} {recovery.error.message}
         </Text>
       ) : null}
-      {recovery.data && !recovery.isError ? (
+      {recovery.data &&
+      props.expectedDigest &&
+      recovery.data.plan.planDigest !== props.expectedDigest ? (
+        <Box display="grid" gap="md">
+          <Text role="alert">{accountingCopy(locale).workspace_revision_mismatch}</Text>
+          <Link
+            href={`${reviewPath(book, id, recovery.data.plan.planDigest)}${props.returnSearch ?? ""}`}
+          >
+            {accountingCopy(locale).workspace_current_revision}
+          </Link>
+        </Box>
+      ) : null}
+      {recovery.data &&
+      !recovery.isError &&
+      (!props.expectedDigest || recovery.data.plan.planDigest === props.expectedDigest) ? (
         <>
           <RecoveryDetail
             key={recovery.data.plan.planDigest}
@@ -76,23 +102,25 @@ export function PostingRecoveryReview({
             accounts={accounts}
             refreshing={recovery.isFetching}
           />
-          <RequestHistory current={recovery.data} locale={locale} />
-          <Box display="flex" flexWrap="wrap" gap="md">
-            {after ? (
-              <Button size="xl" variant="outline" onClick={() => setAfter(null)}>
-                {copy.newestRequests}
-              </Button>
-            ) : null}
-            {recovery.data.nextRequest ? (
-              <Button
-                size="xl"
-                variant="outline"
-                onClick={() => setAfter(recovery.data?.nextRequest ?? null)}
-              >
-                {copy.olderRequests}
-              </Button>
-            ) : null}
-          </Box>
+          <Disclosure title={copy.history}>
+            <RequestHistory current={recovery.data} locale={locale} />
+            <Box display="flex" flexWrap="wrap" gap="md">
+              {after ? (
+                <Button size="xl" variant="outline" onClick={() => setAfter(null)}>
+                  {copy.newestRequests}
+                </Button>
+              ) : null}
+              {recovery.data.nextRequest ? (
+                <Button
+                  size="xl"
+                  variant="outline"
+                  onClick={() => setAfter(recovery.data?.nextRequest ?? null)}
+                >
+                  {copy.olderRequests}
+                </Button>
+              ) : null}
+            </Box>
+          </Disclosure>
         </>
       ) : null}
     </Box>
@@ -172,77 +200,74 @@ function RecoveryDetail(props: {
   const receipt = current.summary.executionReceipt;
   return (
     <Box display="grid" gap="lg" minWidth="zero">
-      <Box role="status" aria-live="polite" display="grid" gap="sm">
-        <Text>{copy[current.summary.postingStatus]}</Text>
-        <Text tone="muted">
-          {copy.checked}: {current.checkedAt} · {copy.sequence}: {current.sequence}
-        </Text>
-      </Box>
-      <Text>ID: {current.plan.id}</Text>
-      <Text>
-        {copy.digest}: {current.plan.planDigest}
-      </Text>
       {current.plan.groups.map((group) => (
         <Box key={group.id} display="grid" gap="lg" minWidth="zero">
           {group.actions.map((action) => (
-            <SealedAction
+            <ReviewEntry
               key={`${action.eventId}/${action.occurrenceKey}`}
               book={book}
               action={action}
               locale={locale}
-              setupAccounts={accounts}
+              accounts={accounts}
             />
           ))}
         </Box>
       ))}
       {receipt ? (
-        <Box
-          as="section"
-          display="grid"
-          gap="sm"
-          padding="lg"
-          backgroundColor="surface"
-          borderRadius="surface"
-        >
-          <Heading>{copy.receipt}</Heading>
+        <WorkflowSurface>
+          <Heading>
+            {accountingCopy(locale).workspace_posted_receipt} {receipt.voucherNumber}
+          </Heading>
           <Text>
-            {receipt.id} · {receipt.committedAt}
+            {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
+              new Date(receipt.committedAt),
+            )}
           </Text>
-          <Text>
-            {copy.voucher}: {receipt.voucherId} · {receipt.voucherNumber}
-          </Text>
-          <Text>
-            {copy.sequence}: {receipt.sequence}
-          </Text>
-          <Text>
-            {copy.digest}: {receipt.planDigest}
-          </Text>
-        </Box>
+          <Link href={`${workspacePath(book)}/books?view=vouchers`}>
+            {accountingCopy(locale).workspace_view_vouchers}
+          </Link>
+          <Disclosure title={copy.receipt}>
+            <Text tone="muted">
+              {receipt.id} · {receipt.committedAt}
+            </Text>
+            <Text tone="muted">
+              {copy.voucher}: {receipt.voucherId} · {receipt.voucherNumber}
+            </Text>
+            <Text tone="muted">
+              {copy.sequence}: {receipt.sequence}
+            </Text>
+            <Text tone="muted">
+              {copy.digest}: {receipt.planDigest}
+            </Text>
+          </Disclosure>
+        </WorkflowSurface>
       ) : null}
-      {approve.data ? <SavedPostingOutcome saved={approve.data} locale={locale} /> : null}
-      {execute.data ? <SavedPostingOutcome saved={execute.data} locale={locale} /> : null}
-      {revoke.data ? <SavedPostingOutcome saved={revoke.data} locale={locale} /> : null}
+      <CommandOutcome saved={approve.data} locale={locale} />
+      <CommandOutcome saved={execute.data} locale={locale} />
+      <CommandOutcome saved={revoke.data} locale={locale} />
       {unposted ? (
-        <>
+        <WorkflowSurface>
           {current.validation.blocker ? (
             <Text role="alert">
               {copy.blocked} {current.validation.blocker.message}
             </Text>
           ) : null}
-          <Text>{copy.approvalHelp}</Text>
+          <Heading>{current.availableApproval ? copy.saveExecute : copy.saveApprove}</Heading>
+          <Text tone="muted">{copy.approvalHelp}</Text>
           {current.availableApproval ? (
             <Box display="grid" gap="sm">
-              <Text>
-                {copy.approval}: {current.availableApproval.id}
-              </Text>
-              <Text>
-                {current.availableApproval.actorId} · {copy.expires}:{" "}
-                {current.availableApproval.expiresAt}
+              <Text>{accountingCopy(locale).workspace_approved_ready}</Text>
+              <Text tone="muted">
+                {copy.expires}:{" "}
+                {new Intl.DateTimeFormat(locale, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                }).format(new Date(current.availableApproval.expiresAt))}
               </Text>
             </Box>
-          ) : (
+          ) : book.role === "agent" ? (
             <Text>{copy.operatorOnly}</Text>
-          )}
+          ) : null}
           <Box as="label" display="flex" alignItems="center" gap="md" paddingBlock="md">
             <input
               type="checkbox"
@@ -253,7 +278,7 @@ function RecoveryDetail(props: {
             {copy.reviewCheck}
           </Box>
           <Box display="flex" flexWrap="wrap" gap="md">
-            {book.role === "operator" ? (
+            {book.role === "operator" && current.availableApproval === null ? (
               <Button
                 size="xl"
                 disabled={!actionable || current.availableApproval !== null}
@@ -262,39 +287,39 @@ function RecoveryDetail(props: {
                 {copy.saveApprove}
               </Button>
             ) : null}
-            <Button
-              size="xl"
-              disabled={!actionable || current.availableApproval === null}
-              onClick={() => execute.mutate()}
-            >
-              {copy.saveExecute}
-            </Button>
+            {current.availableApproval ? (
+              <Button size="xl" disabled={!actionable} onClick={() => execute.mutate()}>
+                {copy.saveExecute}
+              </Button>
+            ) : null}
           </Box>
           {book.role === "operator" && current.availableApproval ? (
-            <Box
-              as="form"
-              display="grid"
-              gap="md"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const reason = new FormData(event.currentTarget).get("reason");
-                if (typeof reason === "string" && reason.trim()) revoke.mutate(reason);
-              }}
-            >
-              <Text>{copy.revokeHelp}</Text>
-              <InputField
-                label={copy.revokeReason}
-                name="reason"
-                required
-                maxLength={2000}
-                disabled={busy}
-              />
-              <Box>
-                <Button type="submit" size="xl" variant="outline" disabled={busy}>
-                  {copy.revoke}
-                </Button>
+            <Disclosure title={copy.revoke}>
+              <Box
+                as="form"
+                display="grid"
+                gap="md"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const reason = new FormData(event.currentTarget).get("reason");
+                  if (typeof reason === "string" && reason.trim()) revoke.mutate(reason);
+                }}
+              >
+                <Text>{copy.revokeHelp}</Text>
+                <InputField
+                  label={copy.revokeReason}
+                  name="reason"
+                  required
+                  maxLength={2000}
+                  disabled={busy}
+                />
+                <Box>
+                  <Button type="submit" size="xl" variant="outline" disabled={busy}>
+                    {copy.revoke}
+                  </Button>
+                </Box>
               </Box>
-            </Box>
+            </Disclosure>
           ) : null}
           {approve.isPending || execute.isPending || revoke.isPending ? (
             <Text role="status">{copy.pending}</Text>
@@ -305,8 +330,14 @@ function RecoveryDetail(props: {
               {approve.error?.message ?? execute.error?.message ?? revoke.error?.message}
             </Text>
           ) : null}
-        </>
+        </WorkflowSurface>
       ) : null}
+      <Disclosure title={accountingCopy(locale).workspace_reference_details}>
+        <Text tone="muted">{current.plan.id}</Text>
+        <Text tone="muted">
+          {copy.digest}: {current.plan.planDigest}
+        </Text>
+      </Disclosure>
     </Box>
   );
 }
@@ -347,4 +378,15 @@ function RequestHistory({
       />
     </Box>
   );
+}
+
+function CommandOutcome({
+  saved,
+  locale,
+}: {
+  saved: ComponentProps<typeof SavedPostingOutcome>["saved"] | undefined;
+  locale: Locale;
+}) {
+  if (!saved || saved.outcome?.state === "committed") return null;
+  return <SavedPostingOutcome saved={saved} locale={locale} />;
 }

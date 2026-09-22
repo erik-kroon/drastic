@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
+import { Disclosure } from "@open-erp/ui/components/workflow";
 import { Label } from "@open-erp/ui/components/label";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -10,17 +11,15 @@ import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
-export function EvidenceInspector({
-  book,
-  reference,
-  locale,
-}: {
+export function EvidenceInspector(props: {
   book: typeof Accounting.Book.Type;
   reference: (typeof Accounting.PostingAction.Type)["evidenceRefs"][number];
   locale: Locale;
+  expanded?: boolean;
 }) {
+  const { book, reference, locale } = props;
   const copy = accountingCopy(locale);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(props.expanded ?? false);
   const panelId = useId();
   const contentId = `${panelId}-content`;
   const evidence = useQuery({
@@ -40,28 +39,27 @@ export function EvidenceInspector({
   });
   return (
     <Box display="grid" gap="md" minWidth="zero">
-      <Text tone="muted">
-        {reference.evidenceId} · {reference.sha256} · {reference.locator}
-      </Text>
-      <Box>
-        <Button
-          size="xl"
-          variant="outline"
-          aria-expanded={open}
-          aria-controls={panelId}
-          onClick={() => setOpen(!open)}
-        >
-          {open ? copy.journal_hide_evidence : copy.journal_inspect_evidence}
-        </Button>
-      </Box>
+      {!props.expanded ? (
+        <Box>
+          <Button
+            size="xl"
+            variant="outline"
+            aria-expanded={open}
+            aria-controls={panelId}
+            onClick={() => setOpen(!open)}
+          >
+            {open ? copy.journal_hide_evidence : copy.journal_inspect_evidence}
+          </Button>
+        </Box>
+      ) : null}
       <Box
         id={panelId}
         hidden={!open}
         display={open ? "grid" : "none"}
         gap="md"
         minWidth="zero"
-        padding="lg"
-        borderWidth="thin"
+        padding={props.expanded ? "none" : "lg"}
+        borderWidth={props.expanded ? "none" : "thin"}
         borderColor="default"
         borderRadius="surface"
       >
@@ -92,11 +90,15 @@ export function EvidenceInspector({
             <Text>
               {copy.journal_origin}: {evidence.data.origin}
             </Text>
-            <Text tone="muted">
-              {copy.journal_evidence_format}: {evidence.data.mediaType} ·{" "}
-              {copy.journal_evidence_created}: {evidence.data.createdAt}
-            </Text>
-            <Text tone="muted">SHA-256: {evidence.data.sha256}</Text>
+            <Disclosure title={copy.workspace_source_details}>
+              <Text tone="muted">
+                {evidence.data.mediaType} · {evidence.data.createdAt}
+              </Text>
+              <Text tone="muted">
+                {reference.evidenceId} · {reference.locator}
+              </Text>
+              <Text tone="muted">SHA-256: {evidence.data.sha256}</Text>
+            </Disclosure>
             <Label htmlFor={contentId}>{copy.journal_content}</Label>
             <Box
               display="grid"

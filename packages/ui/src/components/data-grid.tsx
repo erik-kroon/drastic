@@ -9,16 +9,17 @@ const features = tableFeatures({});
 const styles = stylex.create({
   scroll: {
     minWidth: 0,
+    containerType: "inline-size",
     overflowX: "auto",
     outline: "none",
     ":focus-visible": { boxShadow: tokens.focusRing },
   },
   table: { borderCollapse: "collapse", width: "100%", fontSize: tokens.fontSizeSm },
   wide: { minWidth: "36rem" },
-  stackedTable: { "@media (max-width: 599px)": { display: "block", minWidth: 0 } },
-  stackedBody: { "@media (max-width: 599px)": { display: "block" } },
+  stackedTable: { "@container (max-width: 36rem)": { display: "block", minWidth: 0 } },
+  stackedBody: { "@container (max-width: 36rem)": { display: "block" } },
   stackedHeader: {
-    "@media (max-width: 599px)": {
+    "@container (max-width: 36rem)": {
       position: "absolute",
       width: 1,
       height: 1,
@@ -27,7 +28,7 @@ const styles = stylex.create({
     },
   },
   stackedRow: {
-    "@media (max-width: 599px)": {
+    "@container (max-width: 36rem)": {
       display: "grid",
       paddingBlock: tokens.space3,
       borderBottomWidth: 1,
@@ -36,7 +37,7 @@ const styles = stylex.create({
     },
   },
   stackedCell: {
-    "@media (max-width: 599px)": {
+    "@container (max-width: 36rem)": {
       display: "grid",
       gridTemplateColumns: "minmax(6rem, 0.8fr) minmax(0, 1.4fr)",
       gap: tokens.space3,
@@ -47,7 +48,7 @@ const styles = stylex.create({
     },
   },
   mobileLabel: {
-    display: { default: "none", "@media (max-width: 599px)": "block" },
+    display: { default: "none", "@container (max-width: 36rem)": "block" },
     color: tokens.mutedForeground,
     fontWeight: tokens.fontWeightMedium,
   },
@@ -61,7 +62,7 @@ const styles = stylex.create({
     textAlign: "start",
     overflowWrap: "anywhere",
   },
-  stackedDetail: { "@media (max-width: 599px)": { display: "block" } },
+  stackedDetail: { "@container (max-width: 36rem)": { display: "block" } },
   header: { backgroundColor: tokens.background, position: "sticky", top: 0, zIndex: 1 },
   cell: {
     textAlign: "start",

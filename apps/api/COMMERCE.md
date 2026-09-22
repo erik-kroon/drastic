@@ -72,6 +72,7 @@ after sending. This is not crash-safe automatic recovery.
 - Stable idempotency keys recover committed command responses. Different inputs/actor/operation conflict.
   A plan read also exposes its applied receipt. Clients must retain retry keys across uncertain outcomes.
 - Lists and revision history use live keyset pages of 50. These are not frozen whole-register reports.
+- The additive [register snapshot slice](REGISTER-REPORTS.md) captures bounded immutable ageing and declared-control-account comparisons separately. Its source is implemented; shared integration and runtime/browser verification are separate gates. It retains explicit `coverage: not_established`.
 - New registration requires an open recognition period. Allocation requires an open payment period;
   the invoice may have been recognized in an earlier locked period. Metadata revisions do not rewrite
   the immutable financial identity used by closing dependencies.
@@ -112,3 +113,7 @@ closing. Unpaid invoices alone do not. `coverage: not_established` always remain
 
 No tests or fixtures were added. No migration, database mutation, server, build, repository-wide
 check, deployment or commit was run by this worker for this slice.
+
+## Separate native commercial drafts
+
+The [invoice-draft packet](INVOICE-DRAFTS.md) adds an operator-owned, bounded customer commercial-draft path in migration1200. It is separate from this module's posted-recognition registration. It retains source identity evidence, exact line amounts/discounts/charges, unknown tax facts, totals and immutable editable-by-supersession revisions. Native commercial draft saving does not allocate legal invoice numbers, post, register a receivable, activate tax treatment or deliver. The local panel labels both paths separately. Source implementation is not runtime verification, and issuance/recognition/delivery dependencies remain open.

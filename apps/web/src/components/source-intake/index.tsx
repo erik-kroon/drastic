@@ -151,10 +151,17 @@ function RetainForm({
       } catch {
         throw new Error(copy.readFailure);
       }
+      const chunks: string[] = [];
+      for (let offset = 0; offset < bytes.length; offset += 8192)
+        chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + 8192)));
+      const mediaType = file.name.toLowerCase().endsWith(".csv") ? "text/csv" : file.type;
       const input = Schema.decodeUnknownSync(Intake.RetainSource)({
         ...fields,
         filename: file.name,
-        contentBase64: btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join("")),
+        mediaType: Schema.is(Intake.SourceMediaType)(mediaType)
+          ? mediaType
+          : "application/octet-stream",
+        contentBase64: btoa(chunks.join("")),
       });
       const path = `${bookPath(book)}/source-occurrences`;
       return readAccounting(
@@ -178,7 +185,7 @@ function RetainForm({
         event.preventDefault();
         const data = new FormData(event.currentTarget);
         const file = data.get("file");
-        if (!(file instanceof File) || file.size < 1 || file.size > 65536) {
+        if (!(file instanceof File) || file.size < 1 || file.size > Intake.maxSourceBytes) {
           setError(copy.invalidFile);
           return;
         }
@@ -204,7 +211,13 @@ function RetainForm({
         margin="none"
         padding="none"
       >
-        <InputField label={copy.file} name="file" type="file" accept=".csv,text/csv" required />
+        <InputField
+          label={copy.file}
+          name="file"
+          type="file"
+          accept=".csv,.txt,.pdf,.json,.xml,.jpg,.jpeg,.png"
+          required
+        />
         {(["sourceSystem", "sourceAccountId", "occurrenceKey", "sourceRevision"] as const).map(
           (name) => (
             <InputField key={name} label={copy[name]} name={name} maxLength={200} required />

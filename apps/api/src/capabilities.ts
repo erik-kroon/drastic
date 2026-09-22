@@ -3,6 +3,9 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import { getSourceOccurrence, retainSource } from "./source-retention";
+import { startPreparationJob } from "./preparation-jobs";
+import { prepareVatDraft } from "./vat-returns";
+import { prepareSie, getSie, listSie, resumeSie } from "./sie";
 import type { RequestEnvironment } from "./database";
 import { query, scopeParameter, type DatabaseOperation } from "./database";
 
@@ -28,7 +31,10 @@ function effectCapability<I, O extends Schema.Json>(
     readonly description: string;
     readonly readOnly: boolean;
   },
-  execute: (token: string, input: I) => Effect.Effect<O, Accounting.AccountingError, RequestEnvironment>,
+  execute: (
+    token: string,
+    input: I,
+  ) => Effect.Effect<O, Accounting.AccountingError, RequestEnvironment>,
 ) {
   return {
     ...definition,
@@ -41,6 +47,75 @@ function effectCapability<I, O extends Schema.Json>(
 }
 
 export const capabilities = {
+  commerce_get_invoice_draft: bindCapability(
+    Capabilities.commerce_get_invoice_draft,
+    "getInvoiceDraft",
+    (input) => [scopeParameter(input.scope), input.id, input.revision ?? ""],
+  ),
+  commerce_list_invoice_drafts: bindCapability(
+    Capabilities.commerce_list_invoice_drafts,
+    "listInvoiceDrafts",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  commerce_invoice_draft_history: bindCapability(
+    Capabilities.commerce_invoice_draft_history,
+    "invoiceDraftHistory",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  sie_prepare: effectCapability(Capabilities.sie_prepare, prepareSie),
+  sie_get: effectCapability(Capabilities.sie_get, getSie),
+  sie_list: effectCapability(Capabilities.sie_list, listSie),
+  sie_resume: effectCapability(Capabilities.sie_resume, resumeSie),
+  vat_return_basis: bindCapability(Capabilities.vat_return_basis, "vatReturnBasis", (input) => [
+    scopeParameter(input.scope),
+  ]),
+  vat_return_get_fact: bindCapability(Capabilities.vat_return_get_fact, "getVatFact", (input) => [
+    scopeParameter(input.scope),
+    input.factId,
+  ]),
+  vat_return_prepare_draft: effectCapability(Capabilities.vat_return_prepare_draft, prepareVatDraft),
+  vat_return_get_draft: bindCapability(Capabilities.vat_return_get_draft, "getVatDraft", (input) => [
+    scopeParameter(input.scope),
+    input.draftId,
+  ]),
+  vat_return_list_drafts: bindCapability(Capabilities.vat_return_list_drafts, "listVatDrafts", (input) => [
+    scopeParameter(input.scope),
+  ]),
+  commerce_create_register_report: bindCapability(
+    Capabilities.commerce_create_register_report,
+    "createRegisterReport",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  commerce_get_register_report: bindCapability(
+    Capabilities.commerce_get_register_report,
+    "getRegisterReport",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_list_register_reports: bindCapability(
+    Capabilities.commerce_list_register_reports,
+    "listRegisterReports",
+    (input) => [scopeParameter(input.scope), input.after ?? ""],
+  ),
+  runs_start_background: effectCapability(Capabilities.runs_start_background, startPreparationJob),
+  runs_get_background: bindCapability(
+    Capabilities.runs_get_background,
+    "getPreparationJob",
+    (input) => [scopeParameter(input.scope), input.runId],
+  ),
+  workspace_list_work: bindCapability(
+    Capabilities.workspace_list_work,
+    "workspaceListWork",
+    (input) => [
+      scopeParameter(input.scope),
+      JSON.stringify({
+        period: input.period,
+        status: input.status,
+        sort: input.sort,
+        q: input.q,
+        after: input.after,
+      }),
+    ],
+  ),
   schedules_create: bindCapability(Capabilities.schedules_create, "createSchedule", (input) => [
     scopeParameter(input.scope),
     input.idempotencyKey,
@@ -647,4 +722,4 @@ export const capabilities = {
     scopeParameter(input.scope),
     input.key,
   ]),
-};
+} satisfies Record<keyof typeof Capabilities, { readonly readOnly: boolean }>;

@@ -25,6 +25,7 @@ import { commerceCopy } from "@/components/commerce/copy";
 import { reviewCopy } from "@/components/accountant-review/copy";
 import { intakeCopy } from "@/components/source-intake/copy";
 import { expenseTaxCopy } from "@/components/expense-tax/copy";
+import { vatCopy } from "@/components/vat-returns/copy";
 import { CaseSnapshots } from "@/components/case-snapshots";
 import { RecurringPreparation } from "@/components/recurring-preparation";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
@@ -60,6 +61,10 @@ const SourceIntake = lazy(() =>
 
 const ExpenseTaxPanel = lazy(() =>
   import("@/components/expense-tax/panel").then((module) => ({ default: module.ExpenseTaxPanel })),
+);
+
+const VatReturnsPanel = lazy(() =>
+  import("@/components/vat-returns/panel").then((module) => ({ default: module.VatReturnsPanel })),
 );
 
 const OwnerRegisterPanel = lazy(() =>
@@ -295,6 +300,9 @@ export function AccountingWorkspace({
       <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
         <ExpenseTaxPanel key={book.id} book={book} locale={locale} onPrepared={setPlanId} />
       </Suspense>
+      <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
+        <VatReturnsPanel key={JSON.stringify(bookKey(book))} book={book} locale={locale} />
+      </Suspense>
       <InternalReports book={book} locale={locale} />
       <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
         <AccountantReviewPanel key={book.id} book={book} locale={locale} />
@@ -325,6 +333,7 @@ function WorkspaceSections({
     { id: "internal-reports", label: copy.section_reports, disabled: false },
     { id: "accountant-review", label: reviewCopy(locale).title, disabled: false },
     { id: "expense-tax", label: expenseTaxCopy(locale).title, disabled: false },
+    { id: "vat-returns", label: vatCopy(locale).title, disabled: false },
     { id: "case-snapshots", label: copy.section_cases, disabled: false },
     { id: "recurring-preparation", label: copy.section_preparation, disabled: false },
     { id: "bank-allocations", label: settlementCopy(locale).title, disabled: !bankAvailable },

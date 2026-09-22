@@ -29,10 +29,15 @@ export default Alchemy.Stack(
     });
     const api = yield* Cloudflare.Worker("Api", {
       compatibility: { date: "2026-09-22", flags: ["nodejs_compat"] },
-      main: path.resolve(import.meta.dirname, "../../apps/api/src/index.ts"),
+      main: path.resolve(import.meta.dirname, "../../apps/api/src/cloudflare.ts"),
+      crons: ["* * * * *"],
       env: {
         HYPERDRIVE: database,
         EVIDENCE_BUCKET: evidence,
+        PREPARATION_WORKFLOW: Cloudflare.Workflows.Workflow("Preparation", {
+          className: "PreparationWorkflow",
+        }),
+        OPENERP_PREPARATION_TOKEN: yield* Config.redacted("OPENERP_PREPARATION_TOKEN"),
         BETTER_AUTH_URL: yield* Config.string("BETTER_AUTH_URL"),
         BETTER_AUTH_SECRET: yield* Config.redacted("BETTER_AUTH_SECRET"),
       },

@@ -10,7 +10,10 @@ export default defineConfig({
     strictPort: true,
     proxy: { "/api": { target: "http://127.0.0.1:8788", changeOrigin: false } },
   },
-  preview: { proxy: { "/api": { target: "http://127.0.0.1:8788", changeOrigin: false } } },
+  preview: {
+    host: "127.0.0.1",
+    proxy: { "/api": { target: "http://127.0.0.1:8788", changeOrigin: false } },
+  },
   resolve: {
     extensions: [".ts", ".tsx", ".mjs", ".js", ".mts", ".jsx", ".json"],
     tsconfigPaths: true,

@@ -120,3 +120,180 @@ Owner/tax mutation after proposal capture changes the pinned provider digest and
 A digest-current expense review can still contain unknown facts. Zero missing/stale reviews must never imply resolved tax treatment or ledger reconciliation. The current provider supplies neither posting nor reconciled close coverage, so any represented expense source conservatively blocks that coverage check, even after review. No represented sources does not prove company completeness. Count owner sources/effects/allocation legs before calling aggregating provider hooks; refuse unsupported sizes without truncated digests.
 
 Before the owner/tax hooks, bounded count queries refuse more than1000 owner sources/effects,5000 allocation legs or200 expense sources. No partial provider digest is returned. This limit applies to every live closing-basis caller (including readiness/reopen); larger books need a supported larger-scope implementation.
+
+
+## END-01 family inventory: scope and acceptance before0930
+
+Planned slice: an operator declares every close family for a synthetic period as required,
+not applicable, unsupported or unknown. Every decision includes a real calendar review date,
+rationale and retained evidence in this book. The server retains evidence hashes and reviewer
+identity. The existing bank-source list remains required. The declaration never claims
+company completeness or statutory readiness.
+
+The new live basis always requires the complete family inventory. Legacy bank-only inputs
+and exact command replays remain supported and explicitly labeled, but do not satisfy the
+new gate. Historical proposals, certificates and receipts keep their bytes and decoding;
+old unexecuted approvals become stale. New reopen proposals remain available while checks
+fail. No applied migration is edited.
+
+Failure/acceptance cases (recorded before source changes; not new tests):
+
+- Missing, duplicate, unknown or extra families/fields, invalid status/date, blank rationale,
+  wrong-book or missing evidence refuse atomically. Exactly one declaration per named family
+  is required. A future review date is refused at declaration; stored dates do not change later.
+- Not-applicable decisions cannot hide represented bank accounts, registered invoices,
+  expense sources, owner records or schedules. All existing provider failures stay mandatory
+  regardless of declarations. Missing module rows never supply a default decision.
+- Required bank checks use the explicit expected bank list and existing exact reconciliation.
+  Other provider families expose their represented-state checks AND unavailable full coverage;
+  required missing/unsupported controls block rather than treating a balanced ledger as proof.
+  Required payroll, FX, other balances, external schedules and disclosures have no provider
+  and remain blocked. Unsupported and unknown declarations always block.
+- Evidence hashes, declaration revision, provider basis and statuses enter the proposal basis
+  and dependency digest. Replacing the declaration or changing a provider after preparation
+  must stale approval/execution under the existing book barrier. No declaration edits history.
+- A complete evidenced synthetic no-obligation inventory may pass its family gate only when
+  no represented records contradict it; independent bank/report/profile/period checks still
+  apply. This is not proof of a real company's lack of obligations.
+- Exhausted bigint inventory revisions refuse before incrementing; no raw overflow or partial declaration is saved.
+- Operator-only declaration, scope admission, same-key replay/conflict, immutable append,
+  approval expiry/revocation, and lock ordering remain owned by the existing SQL workflow.
+- UI exposes every decision, evidence/date/reviewer and unavailable check, labels historical
+  bank-only scope, preserves drafts on failures, and leaves explicit repair/reopen available.
+  Keyboard, narrow-width, zoom and actual API/database outcomes need root verification.
+
+No new tests/fixtures, database execution, browser session, build or repository-wide checks
+are authorized for this domain owner. Root must exercise the accepted cases through the
+real scoped API/browser and retain receipts before marking them verified.
+
+
+## 0930 implementation and integration (source only)
+
+`0930-closing-family-inventory.sql` replaces only `declare_closing_inventory` and private
+`closing_basis`. It adds no tables, grants no new runtime privileges and edits no applied
+migration. Existing scoped REST/MCP/read/approval/execution bindings call these functions
+unchanged. No shared composition or database dispatcher edits are needed.
+
+The existing operator-only inventory endpoint accepts optional `families`. When supplied,
+it must contain exactly one decision for each of `bank_sources`, `invoices`, `tax`, `payroll`,
+`assets_deferrals`, `foreign_currency`, `owner_balances`, `other_balances`,
+`external_schedules` and `disclosures`. Each has `status`, `reviewedOn`, `evidenceId` and
+`rationale`. Status is `required`, `not_applicable`, `unsupported` or `unknown`.
+The saved declaration adds a period-local revision, evidence hashes, actor and timestamp.
+Old inputs retain `synthetic_bank_sources_only`; new inputs retain
+`synthetic_family_inventory_v1`. Exact old receipts replay before new validation.
+
+Every new readiness result identifies `inventoryScope: synthetic_family_inventory_v1` and
+returns per-family declaration, represented count (null when unavailable), provider version,
+passed/failed/unavailable checks and `coverage: not_established`. An additional mandatory
+`CompleteFamilyInventory` check blocks missing declarations. `familyInventoryDigest` binds
+the retained inventory and assessment in dependencies. Historical contracts allow these
+new fields to be absent; their absence is visibly labeled as legacy scope, not backfilled.
+Existing approval/execution basis equality supplies the transactional stale check.
+
+Bank-required readiness reuses explicit inventory and exact reconciliation checks. Other
+families currently lack full source/control coverage, even where represented-state providers
+exist, so `required` blocks them. This conservative limit is deliberate, not evidence that
+their activity is unsupported for all other product workflows. A dated `not_applicable`
+decision can satisfy applicability only without contradicting known represented records or
+waiving an existing failed check. Unavailable checks remain visible even in such a decision;
+this is a synthetic operator assertion, not domain/legal activation. The existing expense,
+owner, bank, commerce and schedule checks remain mandatory independently.
+
+New reopen proposals still use the current basis but are not conditioned on passing close
+checks. Old certificates and plans remain immutable and readable; they become noncurrent
+or stale after the live dependency shape changes. Committed receipts remain replayable.
+Statutory readiness is still always false. No financial close, opening set, tax release,
+SIE/statutory artifact or filing is implemented here.
+
+The domain UI submits all decisions through the existing form, displays date/evidence/reviewer
+and retained revision, explains unavailable controls and labels legacy scope. It uses the
+owned field/select/table components and native fieldsets/disclosures. Draft fields are not
+reset by server rejection. Request keys are retained in memory as before; reload recovery
+reads the retained declaration rather than promising durable unsent drafts.
+
+Validation by this owner: owned-file formatter and type-aware lint passed; contract workspace
+type check passed. No database migration, real API flow, browser rendering, concurrency,
+fault/recovery or company behavior was exercised. The pre-change acceptance cases above
+remain root-owned runtime gates. Effect Schema length validation uses installed
+`isMinLength`/`isMaxLength`; no unsupported helper remains.
+
+## VAT dependency integration — risk contract before1001
+
+Forward-only1001 will extend live closing and accountant-review dependency capture after1000.
+Applied0930 and every older migration stay byte-for-byte unchanged. No existing stored proposal,
+certificate, pack, artifact or receipt is rewritten. Optional response fields preserve old decoding;
+missing historical VAT scope is labelled as missing, never reconstructed into the saved record.
+
+Failure cases and ownership:
+
+- A VAT fact or even a draft-only inventory must contradict tax `not_applicable`. Count both
+  representations; neither can bypass family checks. Required tax still lacks complete controls.
+- Pin the entire private `vat_return_dependencies` result, including draftCount and all unavailable
+  readiness flags, not only its fact basis digest. New drafts do not change the fact digest but must
+  change close/pack currentness. Fact revision, linked expense freshness, posting and reversal do too.
+- All live hooks execute inside the caller's established book lock. Approval, uncommitted execution,
+  proposal/certificate reads and accountant capture/currentness must observe the same extended basis.
+- Replayed committed commands return their old stored result before recomputing dependencies.
+  Old pending approvals become stale against the new shape. Reopen remains available for repair.
+- Exceeding a bounded VAT provider refuses new capture. Historical accountant pack reads must still
+  return retained content with dependenciesCurrent=false instead of calling an over-bound provider.
+- New accountant JSON and CSV manifests must retain the complete hook; a visible unavailable VAT
+  control row must explain source and draft counts. Do not turn synthetic calculations into real tax.
+- Old artifact bytes/hashes are never regenerated. Generation version identifies new pack output.
+
+This task adds no tests or fixtures and runs no validation commands. Source review cannot prove
+SQL execution, migration behavior, concurrency, decoding or rendering.
+
+## 1001 VAT closing/accountant integration (implemented source; unvalidated)
+
+`1001-closing-vat-dependencies.sql` is a new forward migration after0930 and1000.
+It replaces `closing_basis`, `accountant_review_providers_bounded`,
+`accountant_review_basis` and `prepare_accountant_review`. It edits no old migration,
+adds no table, grants no new capability and leaves every historical stored body unchanged.
+
+Live closing now retains the whole private VAT hook at `ownerTaxStatus.vatReturns` and
+hashes that whole object as `dependencies.vatReturnDependencyDigest`. The tax family's
+represented count includes expense-source records, VAT fact components and saved VAT
+drafts. This counts representations, not distinct taxable transactions; a linked expense
+and its VAT fact can both be represented. Nonzero VAT sourceCount **or** draftCount fails
+`VatReturnControlCoverage` and contradicts a tax-not-applicable declaration. Required tax
+still fails the existing unavailable `FullFamilyCoverage`; no empty provider proves
+non-applicability or complete tax reconciliation.
+
+The hook is deliberately book-wide. A source/draft outside the selected period still changes
+live currentness and prevents a not-applicable shortcut. A finer period-scoped provider is
+not claimed. The full hook includes draftCount because creating a saved VAT draft does not
+change its source/ledger basisDigest. Pinning only that digest would miss a draft-only change.
+
+### Currentness and replay consumers inspected in source
+
+| Consumer | Existing boundary | Effect of the extended provider |
+| --- | --- | --- |
+| `get_closing_readiness` | Shared book and period locks | Returns new checks, whole hook and digest. |
+| `prepare_closing` | Exclusive book then period locks | Captures new immutable basis; close requires all gates; reopen still permits repair. |
+| `get_closing_proposal` | Shared book lock | Exact live/stored basis equality now includes VAT. |
+| `approve_closing` | Exclusive book then period locks | A changed hook or old basis shape refuses a fresh approval; a completed key replays first. |
+| `execute_closing` | Exclusive book then period locks | Exact basis comparison fences uncommitted execution; prior committed receipt recovery runs before currentness. |
+| Certificate creation/read | Caller-held book lock | Effective dependencies contain full-hook digest; later hook changes make the certificate noncurrent. |
+| `prepare_accountant_review` | Exclusive book lock | Pins whole hook in ReviewBasis and JSON; every CSV manifest providerBasis retains the whole hook. |
+| `get_accountant_review` | Shared book lock | Whole ReviewBasis digest includes VAT; over-bound provider returns old pack with dependenciesCurrent=false. |
+| Stored pack rows/artifacts and command replays | Existing scoped immutable reads/receipts | Return saved meanings and bytes; no live data backfill or regeneration. |
+
+The accountant bounded-provider guard now includes200 VAT fact components and500 saved
+drafts before calling the hook. New captures fail on overflow; historical currentness reads
+skip the over-bound live basis rather than losing access to the old pack. New packs add an
+unavailable `vat_return_controls` coverage row with source/draft counts. They use generator
+`accountant-review-v2`; old `accountant-review-v1` records remain accepted unchanged.
+
+Shared contracts add optional `VatReturnDependencies` fields for old-record decoding and
+optional `vatReturnDependencyDigest`. The local closing review shows captured VAT counts,
+basis digest and unavailable coverage; absence is labelled historical scope, never zero.
+The accountant inspector already renders the captured basis and coverage rows, so it needs
+no new UI section or raw-data reinterpretation.
+
+No root API/capability/SQL-dispatch wiring is needed for1001: existing callers reach the
+replacement functions. Root must keep migration ordering1000→1001 and include the contract
+changes with the application. Migration application and all checks remain unperformed here,
+as requested. This is implementation presence and source review, not verified SQL behavior,
+concurrency/replay proof, rendered UI or financial readiness.

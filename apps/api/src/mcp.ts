@@ -74,7 +74,7 @@ function dispatch(request: typeof McpRequest.Type, token: string) {
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: "open-erp-accounting", version: "1.0.0" },
           instructions:
-            "Synthetic-core-v1 only: manual journals, case context, bank reconciliation, internal reports and recurring preparation. Not verified for production accounting, tax, whole-period source completeness or Swedish compliance. Prepare, validate, obtain operator approval outside MCP, then execute the exact digest and version. Reuse idempotency keys when retrying unchanged commands. Stateless JSON responses only; no SSE, subscriptions or MCP background-task protocol.",
+            "Discover available operations with tools/list and inspect book_get_status for scope and blockers. Installed capabilities are not proof of production accounting, tax, whole-period source completeness or Swedish compliance. Prepare, validate, obtain operator approval outside MCP, then execute the exact approved digest and version. Reuse idempotency keys when retrying unchanged commands; recover durable requests and receipts after an uncertain response. Stateless JSON responses only; no SSE, subscriptions or MCP background-task protocol.",
         });
       }
       case "ping":

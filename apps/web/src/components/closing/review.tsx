@@ -21,6 +21,7 @@ export function ClosingFacts({
   const copy = closingCopy(locale);
   return (
     <Box display="grid" gap="md" minWidth="zero">
+      <Text>{basis.inventoryScope ? copy.familyScope : copy.legacyFamilyScope}</Text>
       <Heading>{copy.checks}</Heading>
       <DataTable
         title={copy.checks}
@@ -47,6 +48,62 @@ export function ClosingFacts({
       ) : (
         <Text>{copy.missingInventory}</Text>
       )}
+      <Heading>{copy.familyInventory}</Heading>
+      {basis.families ? (
+        basis.families.map((family) => (
+          <details key={family.family}>
+            <summary>
+              {copy.familyLabels[family.family]} · {family.passed ? copy.passed : copy.blocked}
+            </summary>
+            <Box display="grid" gap="sm" paddingBlock="md" minWidth="zero">
+              <Text>
+                {family.declaration
+                  ? copy.familyStatuses[family.declaration.status]
+                  : copy.familyMissing}
+              </Text>
+              {family.declaration ? (
+                <>
+                  <Text>
+                    {copy.familyDate}: {family.declaration.reviewedOn} · {basis.inventory?.actorId}
+                  </Text>
+                  <Text>
+                    {copy.familyEvidence}: {family.declaration.evidenceId}
+                  </Text>
+                  <Text>{family.declaration.rationale}</Text>
+                </>
+              ) : null}
+              <DataTable
+                title={copy.familyLabels[family.family]}
+                narrow="stack"
+                columns={[
+                  { id: "check", label: copy.check },
+                  { id: "status", label: copy.passed },
+                  { id: "detail", label: copy.detail },
+                ]}
+                rows={family.checks.map((check) => ({
+                  id: check.code,
+                  cells: [
+                    check.code,
+                    check.status === "unavailable"
+                      ? copy.familyUnavailable
+                      : check.status === "passed"
+                        ? copy.passed
+                        : copy.blocked,
+                    check.detail,
+                  ],
+                }))}
+              />
+            </Box>
+          </details>
+        ))
+      ) : (
+        <Text>{copy.legacyFamilyScope}</Text>
+      )}
+      {basis.inventory?.revision ? (
+        <Text>
+          {copy.familyRevision}: {basis.inventory.revision}
+        </Text>
+      ) : null}
       <details>
         <summary>{copy.dependencies}</summary>
         <DataTable
@@ -76,6 +133,20 @@ export function ClosingFacts({
             {copy.expenseKnownCount}: {basis.ownerTaxStatus.expenseTax.sourceCount}
           </Text>
           <Text>{copy.unpaidAllowed}</Text>
+          {basis.ownerTaxStatus.vatReturns ? (
+            <>
+              <Text>
+                {copy.vatReviewCounts}: {basis.ownerTaxStatus.vatReturns.sourceCount} /{" "}
+                {basis.ownerTaxStatus.vatReturns.draftCount}
+              </Text>
+              <Text>
+                {copy.vatDependency}: {basis.ownerTaxStatus.vatReturns.basisDigest}
+              </Text>
+              <Text>{copy.vatBoundary}</Text>
+            </>
+          ) : (
+            <Text>{copy.legacyVatScope}</Text>
+          )}
         </>
       ) : (
         <Text>{copy.legacyProviderScope}</Text>

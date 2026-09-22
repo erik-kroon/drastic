@@ -120,7 +120,7 @@ export const RecoveryControls = Schema.Struct({
   inlineEvidenceClosure: Schema.Literal("matched"),
   receiptLinks: Schema.Literal("matched"),
   historicalReportControls: Schema.Literal("matched"),
-  externalObjects: Schema.Literal("unsupported-pointers-refused"),
+  externalObjects: Schema.Literals(["unsupported-pointers-refused", "retained-originals-matched"]),
 });
 export const BackupManifest = Schema.Struct({
   version: Schema.Literal(2),

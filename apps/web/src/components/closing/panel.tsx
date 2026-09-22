@@ -11,6 +11,7 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { closingCopy } from "./copy";
+import { FamilyInventoryFields, readFamilyDecisions } from "./inventory";
 import { ClosingReview, ClosingFacts, ClosingHistoryPanel } from "./review";
 
 export function ClosingPanel({
@@ -200,6 +201,7 @@ function PeriodClosing({
                 const result = Schema.decodeUnknownOption(Closing.DeclareClosingInventory)({
                   evidenceId: values.get("evidenceId"),
                   bankAccountIds: accountIds ? accountIds.split(",").map((id) => id.trim()) : [],
+                  families: readFamilyDecisions(values),
                 });
                 if (result._tag === "None") {
                   setError(copy.invalid);
@@ -222,6 +224,7 @@ function PeriodClosing({
                 required
                 disabled={inventory.isPending}
               />
+              <FamilyInventoryFields locale={locale} disabled={inventory.isPending} />
               <label>
                 <input type="checkbox" required disabled={inventory.isPending} />{" "}
                 {copy.confirmInventory}

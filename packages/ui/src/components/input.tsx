@@ -19,7 +19,7 @@ const styles = stylex.create({
     borderStyle: "solid",
     borderWidth: 1,
     boxShadow: {
-      default: tokens.shadowRaised,
+      default: "none",
       ":focus-visible": tokens.controlFocusShadow,
       "[aria-invalid='true']": tokens.controlInvalidShadow,
     },

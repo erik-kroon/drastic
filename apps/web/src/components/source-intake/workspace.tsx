@@ -92,23 +92,27 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
               {copy.download}
             </Button>
           </Box>
-          <details>
-            <summary>{copy.original}</summary>
-            <Box
-              overflow="auto"
-              minWidth="zero"
-              tabIndex={0}
-              role="region"
-              aria-label={copy.original}
-            >
-              <pre>{retainedText(source.data.contentBase64, copy.plainUnavailable)}</pre>
-            </Box>
-          </details>
+          {source.data.occurrence.mediaType.startsWith("text/") &&
+          source.data.occurrence.byteLength <= 65536 ? (
+            <details>
+              <summary>{copy.original}</summary>
+              <Box
+                overflow="auto"
+                minWidth="zero"
+                tabIndex={0}
+                role="region"
+                aria-label={copy.original}
+              >
+                <pre>{retainedText(source.data.contentBase64, copy.plainUnavailable)}</pre>
+              </Box>
+            </details>
+          ) : null}
           {source.data.admission ? (
             <Text role="status">
               {copy.admitted} {source.data.admission.imported.statement.id}
             </Text>
-          ) : (
+          ) : source.data.occurrence.mediaType === "text/csv" &&
+            source.data.occurrence.byteLength <= 65536 ? (
             <MappingForm
               key={mappingSeed?.id ?? id}
               book={book}
@@ -121,6 +125,8 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
                 void source.refetch();
               }}
             />
+          ) : (
+            <Text>{copy.retainedOnly}</Text>
           )}
           {source.data.previewIds.length > 0 ? (
             <Box

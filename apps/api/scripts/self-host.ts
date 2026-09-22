@@ -1,6 +1,7 @@
 import { resolve, sep } from "node:path";
 import api from "../src/index";
 import type { Bindings } from "../src/database";
+import { fileObjectStore } from "./file-object-store";
 
 const databaseUrl = process.env.DATABASE_URL;
 const authSecret = process.env.BETTER_AUTH_SECRET;
@@ -30,12 +31,15 @@ const bindings: Bindings = {
   DATABASE_URL: databaseUrl,
   BETTER_AUTH_SECRET: authSecret,
   BETTER_AUTH_URL: origin.origin,
+  EVIDENCE_STORE: process.env.OPENERP_OBJECT_DIRECTORY
+    ? await fileObjectStore(process.env.OPENERP_OBJECT_DIRECTORY)
+    : undefined,
 };
 
 const server = Bun.serve({
   hostname: process.env.OPENERP_BIND_ADDRESS ?? "127.0.0.1",
   port,
-  maxRequestBodySize: 2 * 1024 * 1024,
+  maxRequestBodySize: 8 * 1024 * 1024,
   async fetch(request, server) {
     if (request.headers.get("host") !== origin.host) {
       return new Response("Unrecognized host", { status: 421 });

@@ -2,7 +2,7 @@ import type { Locale } from "@/paraglide/runtime";
 
 const english = {
   revoked: "Revoked",
-  savedTitle: "Saved posting requests",
+  savedTitle: "Resume saved work",
   savedHelp:
     "These requests survive reload. Saving does not run a command. Only a committed execution receipt proves posting. Pages are live, not a complete source inventory.",
   savedEmpty: "No saved requests on this page. A delayed save may still arrive.",
@@ -27,11 +27,11 @@ const english = {
   revokeReason: "Reason for revocation",
   revokeHelp:
     "Revocation prevents later consumption. It does not undo a committed posting. Any current operator in this book can revoke an unused approval.",
-  anotherEvidence: "Retain another evidence item",
-  saveEvidence: "Save request and retain evidence",
-  savePrepare: "Save request and prepare proposal",
-  saveApprove: "Save request and approve this proposal",
-  saveExecute: "Save request and post this proposal",
+  anotherEvidence: "Use a different source",
+  saveEvidence: "Save source & continue",
+  savePrepare: "Review entry",
+  saveApprove: "Approve proposal",
+  saveExecute: "Post entry",
   outcome: "Saved command outcome",
 
   title: "Recover posting work",
@@ -45,9 +45,9 @@ const english = {
   unknown: "Current state is unknown. Check the server again before sending another command.",
   checked: "Checked at",
   sequence: "Ledger sequence",
-  posted: "Posted — committed receipt found",
+  posted: "Posted",
   posted_by_other_proposal: "This event was posted by another proposal",
-  unposted_at_check: "Not posted at this check — a pending request may still arrive",
+  unposted_at_check: "Not posted at last check",
   createdBy: "Prepared by",
   receipt: "Committed execution receipt",
   voucher: "Voucher",
@@ -93,7 +93,7 @@ const english = {
 };
 const swedish: typeof english = {
   revoked: "Återkallat",
-  savedTitle: "Sparade bokföringsbegäranden",
+  savedTitle: "Återuppta sparat arbete",
   savedHelp:
     "Begärandena finns kvar efter omladdning. Att spara kör inget kommando. Endast en sparad bokföringskvittens bevisar bokföring. Sidorna är aktuella läsningar, inte en fullständig underlagsförteckning.",
   savedEmpty:
@@ -120,11 +120,11 @@ const swedish: typeof english = {
   revokeReason: "Skäl för återkallelse",
   revokeHelp:
     "Återkallelse förhindrar senare förbrukning. Den gör inte genomförd bokföring ogjord. En aktuell operatör i denna bok kan återkalla ett oförbrukat godkännande.",
-  anotherEvidence: "Bevara ytterligare ett underlag",
-  saveEvidence: "Spara begäran och bevara underlaget",
-  savePrepare: "Spara begäran och förbered förslag",
-  saveApprove: "Spara begäran och godkänn förslaget",
-  saveExecute: "Spara begäran och bokför förslaget",
+  anotherEvidence: "Använd ett annat underlag",
+  saveEvidence: "Spara underlag och fortsätt",
+  savePrepare: "Granska kontering",
+  saveApprove: "Godkänn förslag",
+  saveExecute: "Bokför posten",
   outcome: "Sparat kommandoutfall",
 
   title: "Återuppta bokföringsarbete",
@@ -138,9 +138,9 @@ const swedish: typeof english = {
   unknown: "Aktuellt läge är okänt. Kontrollera servern igen innan du skickar ett nytt kommando.",
   checked: "Kontrollerat",
   sequence: "Huvudbokssekvens",
-  posted: "Bokfört — sparad kvittens finns",
+  posted: "Bokfört",
   posted_by_other_proposal: "Händelsen bokfördes genom ett annat förslag",
-  unposted_at_check: "Inte bokfört vid kontrollen — en väntande begäran kan fortfarande komma fram",
+  unposted_at_check: "Inte bokfört vid senaste kontrollen",
   createdBy: "Förberett av",
   receipt: "Sparad bokföringskvittens",
   voucher: "Verifikation",

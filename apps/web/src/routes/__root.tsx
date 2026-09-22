@@ -62,7 +62,7 @@ function RootComponent() {
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   const locale = usePageLocale();
   return (
-    <html lang={locale} className="dark">
+    <html lang={locale}>
       <head>
         <HeadContent />
         {import.meta.env.DEV && (

@@ -16,10 +16,15 @@ import { SubledgersApi } from "./subledgers";
 import { ClosingApi } from "./closing";
 
 import { CommerceApi } from "./commerce";
+import { RegisterReportsApi } from "./register-reports";
+import { VatReturnsApi } from "./vat-returns";
+import { SieApi } from "./sie";
+import { InvoiceDraftsApi } from "./invoice-drafts";
 import { AccountantReviewApi } from "./accountant-review";
 import { SourceIntakeApi } from "./source-intake";
 import { ExpenseTaxApi } from "./expense-tax";
 import { OwnerRegisterApi } from "./owner-register";
+import { WorkspaceApi } from "./workspace";
 
 export { AccountingErrorStatus } from "./accounting-errors";
 
@@ -112,6 +117,7 @@ const AccountingApi = HttpApiGroup.make("accounting").add(
 export class Api extends HttpApi.make("open-erp")
   .add(
     SystemApi,
+    WorkspaceApi,
     AccountingApi,
     ReportApi,
     ReconciliationApi,
@@ -121,6 +127,10 @@ export class Api extends HttpApi.make("open-erp")
     CorrectionApi,
     SettlementsApi,
     CommerceApi,
+    RegisterReportsApi,
+    VatReturnsApi,
+    SieApi,
+    InvoiceDraftsApi,
     AccountantReviewApi,
     SourceIntakeApi,
     ExpenseTaxApi,

@@ -2,7 +2,14 @@ import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
-import { OwnerTaxStatus } from "./closing-providers";
+import {
+  OwnerTaxStatus,
+  ClosingFamilyDeclaration,
+  RetainedClosingFamily,
+  ClosingFamilyReadiness,
+} from "./closing-providers";
+
+export { ClosingFamily, ClosingFamilyStatus } from "./closing-providers";
 
 export const PeriodPath = Schema.Struct({
   ...Accounting.Scope.fields,
@@ -29,19 +36,26 @@ export const ClosingDependencies = Schema.Struct({
   inventoryDigest: Accounting.Digest,
   ownerSourceDigest: Schema.optional(Accounting.Digest),
   expenseTaxBasisDigest: Schema.optional(Accounting.Digest),
+  vatReturnDependencyDigest: Schema.optional(Accounting.Digest),
+  familyInventoryDigest: Schema.optional(Accounting.Digest),
   reportId: Schema.NullOr(Accounting.Identifier),
 });
 export const DeclareClosingInventory = Schema.Struct({
   evidenceId: Accounting.Identifier,
   bankAccountIds: Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(100)),
+  families: Schema.optional(
+    Schema.Array(ClosingFamilyDeclaration).check(Schema.isMinLength(10), Schema.isMaxLength(10)),
+  ),
 });
 export const ClosingInventory = Schema.Struct({
   ...DeclareClosingInventory.fields,
+  families: Schema.optional(Schema.Array(RetainedClosingFamily)),
+  revision: Schema.optional(Accounting.MinorUnits),
   id: Accounting.Identifier,
   evidenceSha256: Schema.String,
   actorId: Accounting.Identifier,
   declaredAt: Schema.String,
-  coverage: Schema.Literal("synthetic_bank_sources_only"),
+  coverage: Schema.Literals(["synthetic_bank_sources_only", "synthetic_family_inventory_v1"]),
 });
 export const ClosingReadiness = Schema.Struct({
   scope: Accounting.Scope,
@@ -51,6 +65,8 @@ export const ClosingReadiness = Schema.Struct({
   locked: Schema.Boolean,
   inventory: Schema.NullOr(ClosingInventory),
   ownerTaxStatus: Schema.optional(OwnerTaxStatus),
+  inventoryScope: Schema.optional(Schema.Literal("synthetic_family_inventory_v1")),
+  families: Schema.optional(Schema.Array(ClosingFamilyReadiness)),
   dependencies: ClosingDependencies,
   checks: Schema.Array(ClosingCheck),
   technicalCloseAllowed: Schema.Boolean,
@@ -177,7 +193,7 @@ const mutation = {
 export const ClosingCapabilities = {
   periods_closing_readiness: {
     description:
-      "Inspect live synthetic technical-lock prerequisites. Missing company obligations remain statutory blockers.",
+      "Inspect evidenced family decisions, unavailable controls and live synthetic technical-lock prerequisites. This is not statutory readiness.",
     input: Schema.Struct({ ...scoped, periodId: Accounting.Identifier }),
     output: ClosingReadiness,
     readOnly: true,

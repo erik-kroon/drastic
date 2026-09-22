@@ -1,4 +1,5 @@
 import * as Accounting from "@open-erp/contracts/accounting";
+import type { R2Bucket, Workflow } from "@cloudflare/workers-types";
 import { sql, type SQL } from "drizzle-orm";
 import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core/errors";
 import * as Cause from "effect/Cause";
@@ -10,9 +11,14 @@ import * as Schema from "effect/Schema";
 import * as SqlError from "effect/unstable/sql/SqlError";
 import { Database, databaseLayer } from "./db/connection";
 import { sourceIntakeStatements } from "./source-intake-statements";
+import { registerReportStatements } from "./register-report-statements";
+import { sieStatements } from "./sie-statements";
+import { invoiceDraftStatements } from "./invoice-draft-statements";
 import type { RetainedObjectStore } from "./retained-objects";
 
 export interface Bindings {
+  readonly PREPARATION_WORKFLOW?: Workflow<{ jobId: string; scope: typeof Accounting.Scope.Type }>;
+  readonly OPENERP_PREPARATION_TOKEN?: string;
   readonly EVIDENCE_BUCKET?: R2Bucket;
   readonly EVIDENCE_STORE?: RetainedObjectStore;
   readonly BETTER_AUTH_SECRET?: string;
@@ -56,6 +62,28 @@ const PostgresFailure = Schema.Struct({
 });
 
 const statements = {
+  recordVatFact: (parameters) =>
+    sql`select openerp.record_vat_fact(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  vatReturnBasis: (parameters) =>
+    sql`select openerp.vat_return_basis(${parameters[0]}::text,${parameters[1]}::jsonb) as result`,
+  getVatFact: (parameters) =>
+    sql`select openerp.get_vat_fact(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  sealVatReturnDraft: (parameters) =>
+    sql`select openerp.seal_vat_return_draft(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb,${parameters[4]}::jsonb,${parameters[5]}::jsonb) as result`,
+  getVatDraft: (parameters) =>
+    sql`select openerp.get_vat_return_draft(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  listVatDrafts: (parameters) =>
+    sql`select openerp.list_vat_return_drafts(${parameters[0]}::text,${parameters[1]}::jsonb) as result`,
+  admitPreparationJob: (parameters) =>
+    sql`select openerp.admit_preparation_job(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::text) as result`,
+  getPreparationJob: (parameters) =>
+    sql`select openerp.get_preparation_job(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  pendingPreparationJobs: (parameters) =>
+    sql`select openerp.pending_preparation_jobs(${parameters[0]}::text) as result`,
+  executePreparationJob: (parameters) =>
+    sql`select openerp.execute_preparation_job(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::integer) as result`,
+  workspaceListWork: (parameters) =>
+    sql`select openerp.workspace_list_work(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::jsonb) as result`,
   ownersCreateOwner: (parameters) =>
     sql`select openerp.owners_create_owner(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   ownersGetOwner: (parameters) =>
@@ -109,6 +137,9 @@ const statements = {
     sql`select openerp.list_expense_tax_snapshots(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
 
   ...sourceIntakeStatements,
+  ...registerReportStatements,
+  ...sieStatements,
+  ...invoiceDraftStatements,
   savePostingRequest: (parameters) =>
     sql`select openerp.save_posting_request(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   savePostingAuthorityRequest: (parameters) =>

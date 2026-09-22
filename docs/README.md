@@ -8,6 +8,8 @@ The repository contains a synthetic accounting implementation and ongoing domain
 
 The [open-accounting decision](adr/0005-open-accounting-and-managed-services.md), [architecture follow-up](architecture-followup.md), [licensing policy](../LICENSING.md) and [self-host setup](../infra/self-host/README.md) describe the open-source distribution and the latest design reconciliation.
 
+[Cloudflare delivery and verification](operations/cloudflare.md) records stage isolation, private originals, durable preparation and the hosted observations still required.
+
 | Document                                               | Question it answers                                                                                      |
 | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
 | [Product scope](product.md)                            | Who is the product for, and what must it do?                                                             |

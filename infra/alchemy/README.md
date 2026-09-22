@@ -1,6 +1,7 @@
 # Alchemy deployment
 
-The stack defines the TanStack Start web Worker, the Effect API Worker and a Hyperdrive connection
+The stack defines the TanStack Start web Worker, the Effect API Worker, a private R2 evidence bucket,
+a preparation Workflow with a recovery Cron Trigger, and a Hyperdrive connection
 to an existing PostgreSQL database. Hyperdrive query caching is disabled for all accounting reads.
 Only the API Worker receives the database binding. The web Worker forwards `/api/*` to Core with
 the original request URL and Origin.
@@ -23,6 +24,10 @@ the plan for replacement of the former fixed-name `open-erp-api` Worker and the 
   `OPENERP_DATABASE_PASSWORD`. `OPENERP_DATABASE_PORT` defaults to 5432. Alchemy receives the
   password as a redacted secret. Do not use a maintenance connection for Hyperdrive.
 - Review access-token lifecycle, supported company profile and all production-readiness gates.
+- Set `OPENERP_ARCHIVE_JURISDICTION` explicitly to `eu` or `default`. This is an environment
+  decision, not a settled company-retention policy. The bucket is private and retained on removal.
+- Supply `OPENERP_PREPARATION_TOKEN` for a dedicated API actor with the `agent` role in each
+  allowed book. A user's browser session or an operator credential must not be used as the runner.
 - Set `BETTER_AUTH_URL` to the public web origin and `BETTER_AUTH_SECRET` to a cryptographically
   random secret of at least 32 characters. The API Worker receives the secret; the web Worker does
   not. Provision email/password accounts using `apps/api/scripts/create-user.ts` after creating
@@ -43,4 +48,9 @@ of provisioning Hyperdrive. The Worker enables `nodejs_compat` for `pg`. A local
 proves neither live Hyperdrive behavior nor production readiness. Live infrastructure has not been
 deployed or exercised in this work.
 
-Alchemy stores local state under the ignored `.alchemy/` directory.
+The stack selects `Cloudflare.state()` for deployment state; `.alchemy/` holds local artifacts.
+Use this Alchemy stack for staged deployments. The API's Wrangler configuration is for local
+development and dry-run builds, and does not provision the hosted bindings.
+
+See [Cloudflare delivery and verification](../../docs/operations/cloudflare.md) for object recovery,
+job authority, unresolved operational gates and the hosted journey that still needs verification.

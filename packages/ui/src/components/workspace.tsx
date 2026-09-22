@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "@open-erp/ui/components/button";
+import { Link } from "@open-erp/ui/components/link";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 
 const styles = stylex.create({
@@ -8,7 +9,7 @@ const styles = stylex.create({
     "--card": tokens.workspaceSurface,
     display: "grid",
     gridTemplateColumns: {
-      default: "14rem minmax(0, 1fr)",
+      default: "15rem minmax(0, 1fr)",
       "@media (max-width: 959px)": "minmax(0, 1fr)",
     },
     minHeight: "100svh",
@@ -24,7 +25,7 @@ const styles = stylex.create({
     height: "100svh",
     insetBlockStart: 0,
     overflowY: "auto",
-    padding: tokens.space4,
+    padding: tokens.space5,
     position: "sticky",
   },
   brand: {
@@ -59,6 +60,15 @@ const styles = stylex.create({
     textAlign: "start",
     width: "100%",
   },
+  navLink: {
+    alignItems: "center",
+    borderRadius: tokens.radiusControl,
+    display: "flex",
+    gap: tokens.space3,
+    paddingBlock: tokens.space2,
+    textDecoration: "none",
+    ":focus-visible": { outline: "none", boxShadow: tokens.focusRing },
+  },
   navActive: {
     backgroundColor: { default: tokens.sidebarAccent, ":hover": tokens.sidebarAccent },
     color: { default: tokens.accentForeground, ":hover": tokens.accentForeground },
@@ -70,7 +80,7 @@ const styles = stylex.create({
     marginBlockStart: "auto",
     paddingInline: tokens.space2,
   },
-  body: { minWidth: 0, backgroundColor: tokens.background },
+  body: { minWidth: 0, backgroundColor: tokens.background, containerType: "inline-size" },
   topbar: {
     alignItems: "center",
     display: "flex",
@@ -78,6 +88,7 @@ const styles = stylex.create({
     gap: tokens.space3,
     justifyContent: "space-between",
     minHeight: "4rem",
+    backgroundColor: tokens.card,
     borderBlockEndWidth: 1,
     borderBlockEndStyle: "solid",
     borderBlockEndColor: tokens.border,
@@ -90,12 +101,19 @@ const styles = stylex.create({
   },
   content: {
     marginInline: "auto",
-    maxWidth: "100rem",
+    maxWidth: "84rem",
     minWidth: 0,
     padding: { default: tokens.space8, "@media (max-width: 599px)": tokens.space4 },
     paddingBlockEnd: tokens.space12,
   },
-  header: { display: "grid", gap: tokens.space2, marginBlockEnd: tokens.space6 },
+  header: { display: "grid", gap: tokens.space2 },
+  scope: {
+    display: "flex",
+    alignItems: "center",
+    gap: tokens.space3,
+    minWidth: 0,
+    width: "min(100%, 24rem)",
+  },
   toolbar: {
     display: "grid",
     alignItems: "end",
@@ -247,13 +265,25 @@ export function WorkspaceBrand({
   );
 }
 
-export function WorkspaceNavigation({ label, children }: { label: string; children: ReactNode }) {
+export function WorkspaceNavigation({
+  label,
+  children,
+  showLabel = true,
+}: {
+  label: string;
+  children: ReactNode;
+  showLabel?: boolean;
+}) {
   return (
     <nav aria-label={label} {...stylex.props(styles.navGroup)}>
-      <p {...stylex.props(styles.navigationLabel)}>{label}</p>
+      {showLabel ? <p {...stylex.props(styles.navigationLabel)}>{label}</p> : null}
       <div {...stylex.props(styles.navigation)}>{children}</div>
     </nav>
   );
+}
+
+export function WorkspaceScope({ children }: { children: ReactNode }) {
+  return <div {...stylex.props(styles.scope)}>{children}</div>;
 }
 
 export function WorkspaceNavItem({
@@ -273,6 +303,19 @@ export function WorkspaceNavItem({
 
 export function WorkspaceHeader({ children }: { children: ReactNode }) {
   return <header {...stylex.props(styles.header)}>{children}</header>;
+}
+
+export function WorkspaceNavLink({
+  active = false,
+  ...props
+}: ComponentProps<typeof Link> & { active?: boolean }) {
+  return (
+    <Link
+      {...props}
+      aria-current={active ? "page" : undefined}
+      {...stylex.props(styles.navItem, styles.navLink, active && styles.navActive)}
+    />
+  );
 }
 
 export function WorkspaceToolbar(props: Omit<ComponentProps<"form">, "className" | "style">) {

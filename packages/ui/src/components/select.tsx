@@ -32,7 +32,7 @@ const styles = stylex.create({
   placeholder: { color: tokens.mutedForeground },
   trigger: {
     alignItems: "center",
-    backgroundColor: { default: tokens.background, ":hover": tokens.muted },
+    backgroundColor: { default: tokens.card, ":hover": tokens.secondary },
     borderColor: {
       default: tokens.input,
       ":focus-visible": tokens.ring,
@@ -42,7 +42,7 @@ const styles = stylex.create({
     borderStyle: "solid",
     borderWidth: 1,
     boxShadow: {
-      default: tokens.shadowXs,
+      default: "none",
       ":focus-visible": tokens.controlFocusShadow,
       "[aria-invalid='true']": tokens.controlInvalidShadow,
     },

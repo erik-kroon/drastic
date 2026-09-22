@@ -11,6 +11,7 @@ import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { reviewCopy } from "./copy";
 import { ReviewProviderRows } from "./provider-rows";
+import { SiePanel } from "./sie-panel";
 
 const sections: ReadonlyArray<typeof Review.ReviewSection.Type> = [
   "coverage",
@@ -126,6 +127,7 @@ export function ReviewPackInspector({
             section={section}
             locale={locale}
           />
+          <SiePanel key={pack.id} book={book} pack={pack} locale={locale} />
           <Heading>{copy.downloads}</Heading>
           <Text>{copy.downloadWarning}</Text>
           {view.data?.artifacts.map((descriptor) => (

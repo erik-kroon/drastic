@@ -1,9 +1,52 @@
 import type { Locale } from "@/paraglide/runtime";
 
 const en = {
-  title: "Invoice register and allocations",
+  registerReports: "Saved register snapshots",
+  captureRegister: "Save register snapshot",
+  asOfDate: "Economic as-of date",
+  capturedAt: "Captured at",
+  registerBasis:
+    "Synthetic report of currently declared control accounts. Uses facts known at capture and posting dates through the as-of date, not what was known on that date. Due dates use the metadata revision saved at capture. Source completeness is not established.",
+  registerLimits:
+    "At most 100 declared accounts, 2,000 combined invoices, allocation legs and ledger lines, and 2 MiB per report. Larger scopes are rejected, not truncated. No posting or payment is created.",
+  registerListNote:
+    "Saved reports in capture order, 20 per page at a fixed inventory cutoff. First page keeps that cutoff. Refresh starts a new inventory that includes later reports.",
+  registerInventoryCount: "Reports in this inventory",
+  registerInventoryCutoff: "Inventory ordinal cutoff",
+  registerBalanced:
+    "Registered amounts agree with declared control accounts. Source completeness is not established.",
+  registerDifferences:
+    "Unexplained control-account entries remain. Inspect each contribution, even when differences net to zero.",
+  registerNoAccounts:
+    "No commerce control accounts have been declared. This is not evidence that no invoices exist.",
+  registerControls: "Control-account comparison",
+  registerLedger: "Retained ledger contributions",
+  registerInvoices: "Invoice ageing at capture",
+  registerAllocations: "Retained allocation legs",
+  registerAgeing: "Outstanding amounts by overdue age",
+  registerDownload: "Download full snapshot JSON",
+  registerPage:
+    "Saved snapshot rows, 50 per page. The JSON download always contains the full snapshot.",
+  previous: "Previous page",
+  ledgerSequence: "Ledger cutoff sequence",
+  ledgerAmount: "Ledger balance (direction-positive)",
+  registerDifference: "Ledger minus register",
+  unexplainedLines: "Unexplained lines",
+  unexplainedAmount: "Unexplained minor units",
+  registerEffect: "Register effect minor units",
+  registerSign:
+    "Customer balances are debit-positive. Supplier balances are credit-positive. Unexplained settlement-side entries are not proof of payment. All amounts are exact minor units.",
+  notDue: "Not overdue",
+  days1To30: "1–30 days",
+  days31To60: "31–60 days",
+  days61To90: "61–90 days",
+  over90: "Over 90 days",
+  daysOverdue: "Days overdue",
+  allocationReceipt: "Allocation receipt / leg",
+  postingDate: "Posting date",
+  title: "Invoice drafts, register and allocations",
   limit:
-    "Synthetic register only. Register existing posted recognition; do not issue invoices, post accounting or initiate payments here. VAT and legal identity are not verified.",
+    "Commercial drafts and the synthetic posted-invoice register are separate. Saving a draft does not register recognition. Nothing here issues invoices, posts accounting or initiates payments. VAT and legal identity are not verified.",
   parties: "Counterparties",
   invoices: "Registered invoices",
   allocations: "Payment allocations",
@@ -100,9 +143,51 @@ const en = {
 };
 
 const sv = {
-  title: "Fakturaregister och fördelningar",
+  registerReports: "Sparade registerrapporter",
+  captureRegister: "Spara registerrapport",
+  asOfDate: "Ekonomiskt avstämningsdatum",
+  capturedAt: "Sparad tidpunkt",
+  registerBasis:
+    "Syntetisk rapport över nu deklarerade kontrollkonton. Använder uppgifter kända när rapporten sparas och bokföringsdatum till och med avstämningsdatumet, inte vad som var känt då. Förfallodatum hämtas från den fakturarevision som sparas i rapporten. Underlagens fullständighet är inte fastställd.",
+  registerLimits:
+    "Högst 100 deklarerade konton, sammanlagt 2 000 fakturor, fördelningsrader och huvudboksrader samt 2 MiB per rapport. Större urval avvisas, inte trunkeras. Ingen bokföring eller betalning skapas.",
+  registerListNote:
+    "Sparade rapporter i sparordning, 20 per sida med en fast inventeringsgräns. Första sidan behåller gränsen. Uppdatera startar en ny inventering med senare rapporter.",
+  registerInventoryCount: "Rapporter i denna inventering",
+  registerInventoryCutoff: "Inventeringens ordningsgräns",
+  registerBalanced:
+    "Registrerade belopp stämmer med deklarerade kontrollkonton. Underlagens fullständighet är inte fastställd.",
+  registerDifferences:
+    "Oförklarade kontrollrader återstår. Granska varje bidrag även om differenserna tar ut varandra.",
+  registerNoAccounts:
+    "Inga kontrollkonton för fakturor har deklarerats. Det bevisar inte att fakturor saknas.",
+  registerControls: "Jämförelse med kontrollkonton",
+  registerLedger: "Bevarade huvudboksbidrag",
+  registerInvoices: "Fakturornas ålder i rapporten",
+  registerAllocations: "Bevarade fördelningsrader",
+  registerAgeing: "Utestående belopp efter förfallen tid",
+  registerDownload: "Ladda ner hela rapporten som JSON",
+  registerPage: "Sparade rapportrader, 50 per sida. JSON-filen innehåller alltid hela rapporten.",
+  previous: "Föregående sida",
+  ledgerSequence: "Huvudbokens avgränsningssekvens",
+  ledgerAmount: "Huvudbokssaldo (positivt i kontots riktning)",
+  registerDifference: "Huvudbok minus register",
+  unexplainedLines: "Oförklarade rader",
+  unexplainedAmount: "Oförklarade minor units",
+  registerEffect: "Registereffekt i minor units",
+  registerSign:
+    "Kundsaldo är positivt i debet. Leverantörssaldo är positivt i kredit. Oförklarade rader på regleringssidan bevisar inte betalning. Alla belopp är exakta minor units.",
+  notDue: "Inte förfallen",
+  days1To30: "1–30 dagar",
+  days31To60: "31–60 dagar",
+  days61To90: "61–90 dagar",
+  over90: "Över 90 dagar",
+  daysOverdue: "Förfallna dagar",
+  allocationReceipt: "Fördelningskvitto / rad",
+  postingDate: "Bokföringsdatum",
+  title: "Fakturautkast, register och fördelningar",
   limit:
-    "Endast syntetiskt register. Registrera redan bokförda fakturor; utfärda inte fakturor, bokför inte och initiera inte betalningar här. Moms och juridisk identitet är inte verifierade.",
+    "Kommersiella utkast och det syntetiska registret över bokförda fakturor är separata. Ett sparat utkast registrerar ingen bokföring. Inget här utfärdar fakturor, bokför eller initierar betalningar. Moms och juridisk identitet är inte verifierade.",
   parties: "Motparter",
   invoices: "Registrerade fakturor",
   allocations: "Betalningsfördelningar",

@@ -168,6 +168,7 @@ const sizeStyles = {
 } as const;
 
 type ButtonProps = WithStyleX<ButtonPrimitive.Props> & {
+  static?: boolean;
   variant?: ButtonVariant;
   size?: ButtonSize;
   withArrow?: boolean;
@@ -224,6 +225,7 @@ function Button({
   size = "default",
   styleX,
   withArrow = false,
+  static: staticFeedback = false,
   ...props
 }: ButtonProps) {
   return (
@@ -232,7 +234,10 @@ function Button({
       {...stateStylexProps(
         (state) => [
           variant !== "unstyled" && styles.root,
-          variant !== "unstyled" && props["aria-haspopup"] == null && styles.pressable,
+          variant !== "unstyled" &&
+            !staticFeedback &&
+            props["aria-haspopup"] == null &&
+            styles.pressable,
           variantStyles[variant],
           variant !== "unstyled" && sizeStyles[size],
           state.disabled && styles.disabled,

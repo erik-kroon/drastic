@@ -103,4 +103,7 @@ Every mutating tool requires an `idempotencyKey`. Scoped tools require
 edit or delete a posted voucher.
 
 REST and MCP use the same capability dispatcher, accounting schemas and
-parameterized PostgreSQL functions. MCP adds no bookkeeping rules.
+parameterized PostgreSQL functions. MCP adds no bookkeeping rules. The runtime
+catalog must bind every capability declared in the shared contract catalog;
+TypeScript rejects missing or extra bindings. Operator-only REST operations are
+not added to that catalog merely to make the transports look alike.
