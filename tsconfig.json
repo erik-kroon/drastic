@@ -1,0 +1,7 @@
+{
+  "$schema": "./node_modules/@effect/tsgo/schema.json",
+  "extends": "@open-erp/config/tsconfig.base.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true
+  }
+}

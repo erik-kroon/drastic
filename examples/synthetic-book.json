@@ -1,0 +1,42 @@
+{
+  "entity": {
+    "id": "entity_synthetic",
+    "name": "Synthetic development entity \u2014 not a real company"
+  },
+  "book": {
+    "id": "book_synthetic",
+    "name": "Synthetic bookkeeping workspace",
+    "currency": "SEK",
+    "profile": "synthetic-core-v1"
+  },
+  "actor": {
+    "id": "actor_operator",
+    "name": "Local development operator",
+    "role": "operator",
+    "tokenExpiresAt": "2026-12-31T23:59:59Z"
+  },
+  "fiscalYear": {
+    "id": "year_synthetic_2026",
+    "startsOn": "2026-01-01",
+    "endsOn": "2026-12-31"
+  },
+  "periods": [
+    {
+      "id": "period_synthetic_2026",
+      "startsOn": "2026-01-01",
+      "endsOn": "2026-12-31"
+    }
+  ],
+  "accounts": [
+    {
+      "id": "account_bank",
+      "code": "1930",
+      "name": "Synthetic bank account"
+    },
+    {
+      "id": "account_clearing",
+      "code": "2999",
+      "name": "Synthetic clearing account"
+    }
+  ]
+}

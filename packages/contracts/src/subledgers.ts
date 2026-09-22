@@ -1,0 +1,174 @@
+import * as Schema from "effect/Schema";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import * as Accounting from "./accounting";
+import { accountingErrors } from "./accounting-errors";
+import { CommandReceipt } from "./reconciliation";
+
+export const SchedulePeriod = Schema.Struct({
+  postingDate: Accounting.AccountingDate,
+  accountingPeriodId: Accounting.Identifier,
+});
+export const ScheduleTerms = Schema.Struct({
+  kind: Schema.Literals(["asset", "deferral"]),
+  name: Accounting.Description,
+  evidenceId: Accounting.Identifier,
+  rationale: Accounting.Description,
+  costMinor: Accounting.MinorUnits,
+  residualMinor: Accounting.MinorUnits,
+  usefulPeriods: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 120 })),
+  allocationPolicy: Schema.Literal("equal_minor_final_remainder_v1"),
+  debitAccountId: Accounting.Identifier,
+  creditAccountId: Accounting.Identifier,
+  series: Schema.String.check(Schema.isPattern(/^[A-Z0-9]{1,16}$/)),
+  periods: Schema.Array(SchedulePeriod).check(Schema.isMinLength(1), Schema.isMaxLength(120)),
+  taxAssessment: Schema.Literal("not_applicable"),
+});
+export const CreateSchedule = Schema.Struct({
+  sourceKey: Schema.String.check(Schema.isPattern(/^[a-zA-Z0-9_-]{1,128}$/)),
+  terms: ScheduleTerms,
+});
+export const ReviseSchedule = Schema.Struct({
+  expectedDigest: Accounting.Digest,
+  terms: ScheduleTerms,
+});
+export const ScheduleOccurrence = Schema.Struct({
+  ordinal: Schema.Int,
+  ...SchedulePeriod.fields,
+  eventKey: Schema.String,
+  amountMinor: Accounting.MinorUnits,
+});
+export const ScheduleRevision = Schema.Struct({
+  scheduleId: Accounting.Identifier,
+  sourceKey: Schema.String,
+  revision: Schema.Int,
+  scope: Accounting.Scope,
+  terms: ScheduleTerms,
+  currency: Schema.String,
+  currencyScale: Schema.Int,
+  sourceSha256: Schema.String,
+  previousDigest: Schema.NullOr(Accounting.Digest),
+  digest: Accounting.Digest,
+  occurrences: Schema.Array(ScheduleOccurrence),
+  allocatedMinor: Accounting.MinorUnits,
+  createdAt: Schema.String,
+  receipt: CommandReceipt,
+});
+export const OccurrenceState = Schema.Struct({
+  ...ScheduleOccurrence.fields,
+  changeSetId: Schema.NullOr(Accounting.Identifier),
+  planDigest: Schema.NullOr(Accounting.Digest),
+  voucherId: Schema.NullOr(Accounting.Identifier),
+  reversalVoucherId: Schema.NullOr(Accounting.Identifier),
+  state: Schema.Literals(["unprepared", "prepared", "posted", "reversed", "conflicted"]),
+});
+export const ScheduleView = Schema.Struct({
+  current: ScheduleRevision,
+  revisions: Schema.Array(ScheduleRevision),
+  occurrences: Schema.Array(OccurrenceState),
+  recognizedMinor: Accounting.MinorUnits,
+  remainingMinor: Accounting.MinorUnits,
+  revisionAllowed: Schema.Boolean,
+  controlAccountReconciled: Schema.Literal(false),
+  requiresPostingApproval: Schema.Literal(true),
+});
+export const ScheduleSummary = Schema.Struct({
+  id: Accounting.Identifier,
+  sourceKey: Schema.String,
+  name: Accounting.Description,
+  kind: ScheduleTerms.fields.kind,
+  revision: Schema.Int,
+  digest: Accounting.Digest,
+});
+export const SchedulePage = Schema.Struct({
+  items: Schema.Array(ScheduleSummary),
+  next: Schema.NullOr(Accounting.Identifier),
+});
+export const ScheduleQuery = Schema.Struct({ after: Schema.optional(Accounting.Identifier) });
+export const PrepareScheduleOccurrence = Schema.Struct({
+  expectedDigest: Accounting.Digest,
+  ordinal: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 120 })),
+});
+export const SchedulePreparation = Schema.Struct({
+  scheduleId: Accounting.Identifier,
+  revisionDigest: Accounting.Digest,
+  ordinal: Schema.Int,
+  changeSetId: Accounting.Identifier,
+  planDigest: Accounting.Digest,
+  requiresPostingApproval: Schema.Literal(true),
+  receipt: CommandReceipt,
+});
+const path = "/v1/entities/:entityId/books/:bookId/schedules";
+const scoped = { params: Accounting.Scope, error: accountingErrors };
+const identified = { params: Accounting.ChangePath, error: accountingErrors };
+export const SubledgersApi = HttpApiGroup.make("subledgers").add(
+  HttpApiEndpoint.post("createSchedule", path, {
+    ...scoped,
+    headers: Accounting.IdempotencyHeaders,
+    payload: CreateSchedule.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: ScheduleRevision,
+  }),
+  HttpApiEndpoint.get("listSchedules", path, {
+    ...scoped,
+    query: ScheduleQuery,
+    success: SchedulePage,
+  }),
+  HttpApiEndpoint.get("getSchedule", `${path}/:id`, { ...identified, success: ScheduleView }),
+  HttpApiEndpoint.post("reviseSchedule", `${path}/:id/revisions`, {
+    ...identified,
+    headers: Accounting.IdempotencyHeaders,
+    payload: ReviseSchedule.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: ScheduleRevision,
+  }),
+  HttpApiEndpoint.post("prepareScheduleOccurrence", `${path}/:id/prepare`, {
+    ...identified,
+    headers: Accounting.IdempotencyHeaders,
+    payload: PrepareScheduleOccurrence.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: SchedulePreparation,
+  }),
+);
+const scope = { scope: Accounting.Scope };
+const mutation = {
+  ...scope,
+  idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
+};
+export const SubledgerCapabilities = {
+  schedules_create: {
+    description:
+      "Retain an evidence-backed synthetic asset or deferral schedule. Exact caller-selected allocation, dates and accounts; no legal policy or posting approval.",
+    input: Schema.Struct({ ...mutation, input: CreateSchedule }),
+    output: ScheduleRevision,
+    readOnly: false,
+  },
+  schedules_list: {
+    description:
+      "Page through retained schedules in this book. Absence does not establish complete source coverage.",
+    input: Schema.Struct({ ...scope, ...ScheduleQuery.fields }),
+    output: SchedulePage,
+    readOnly: true,
+  },
+  schedules_get: {
+    description:
+      "Read immutable schedule revisions and live proposal, posting, reversal and remaining-amount state. Not control-account reconciliation.",
+    input: Schema.Struct({ ...scope, scheduleId: Accounting.Identifier }),
+    output: ScheduleView,
+    readOnly: true,
+  },
+  schedules_revise: {
+    description:
+      "Append an immutable schedule revision before any occurrence has been prepared. Sealed proposals freeze the schedule; no history is reset.",
+    input: Schema.Struct({ ...mutation, scheduleId: Accounting.Identifier, input: ReviseSchedule }),
+    output: ScheduleRevision,
+    readOnly: false,
+  },
+  schedules_prepare: {
+    description:
+      "Prepare or recover one ordinary kernel proposal with stable schedule occurrence identity. Stale dependencies may create a fresh proposal; human posting approval remains separate.",
+    input: Schema.Struct({
+      ...mutation,
+      scheduleId: Accounting.Identifier,
+      input: PrepareScheduleOccurrence,
+    }),
+    output: SchedulePreparation,
+    readOnly: false,
+  },
+};

@@ -1,0 +1,16 @@
+.git
+**/node_modules
+**/.env
+**/.env.*
+**/.dev.vars*
+**/.wrangler
+**/.alchemy
+**/dist
+**/test-results
+**/playwright-report
+**/*.log
+**/*.dump
+**/*.backup
+.agents
+references
+docs

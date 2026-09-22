@@ -1,0 +1,39 @@
+{
+  "name": "web",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "build": "vp build",
+    "dev": "vp dev",
+    "serve": "vp preview",
+    "start": "vp dev",
+    "check-types": "vp build && tsc --noEmit"
+  },
+  "dependencies": {
+    "@inlang/paraglide-js": "catalog:",
+    "@open-erp/contracts": "workspace:*",
+    "@open-erp/ui": "workspace:*",
+    "@stylexjs/stylex": "catalog:",
+    "@tanstack/react-query": "^5.102.0",
+    "@tanstack/react-router": "^1.170.33",
+    "@tanstack/react-router-ssr-query": "1.167.3",
+    "@tanstack/react-start": "^1.168.54",
+    "better-auth": "1.7.5",
+    "effect": "4.0.0-rc.112",
+    "lucide-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@open-erp/config": "workspace:*",
+    "@stylexjs/unplugin": "catalog:",
+    "@types/node": "^26.2.0",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^6.1.0",
+    "typescript": "catalog:",
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.2.9"
+  }
+}

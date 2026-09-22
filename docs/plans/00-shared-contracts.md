@@ -1,0 +1,87 @@
+# Shared contracts and ownership
+
+These rules apply to all seven area plans. Existing Effect Schema definitions remain the executable wire authority; this document specifies additions and acceptance requirements. New operation families are added only with their owning handler and consumer. No generic financial scripting language, plugin framework or second ledger is introduced.
+
+## Runtime and transaction ownership
+
+Retain `apps/api` as an Effect modular monolith. Effect owns authenticated request context, resource lifetime, domain preparation, typed errors and adapters. Pure calculation functions take immutable facts/rule revisions and return exact proposed effects. PostgreSQL owns short atomic transitions, locks, integrity constraints, approval consumption, semantic uniqueness, command receipts and outbox writes. No model, object download, network provider call or rendering process runs inside the financial transaction.
+
+Existing SQL preparation functions may remain where they are small and deterministic. As domain calculations grow, compute a plan in the owning domain and seal it through a named database operation that validates scope, conservation, dependencies and admissible effect types. Do not maintain competing tax/payroll calculators in SQL and TypeScript. The database still independently enforces monetary/scope invariants; trusting a TypeScript result never grants arbitrary table-write authority.
+
+Preparation follows capture → pure compilation → persistence. Capture a consistent short database snapshot and its dependency versions, release the snapshot, calculate from those immutable inputs, then persist the exact plan and basis. No model or provider wait extends the capture transaction. A changed basis makes the plan stale; execution never silently recompiles it under an existing approval.
+
+Keep posting-eligibility versions separate from period-content/coverage versions. Close/reopen changes eligibility; another ordinary posting changes period contents. An independent purchase depends on its own facts, accounts, rules and eligibility, while aggregate VAT, reconciliation and close assessments also depend on relevant contents and coverage. An informational book sequence is not automatically every proposal's precondition. Each mutation introducing a relevant new row must advance the corresponding collection dependency under the shared lock protocol.
+
+Use the existing PostgreSQL adapter and restricted runtime role. Deployment uses the configured Worker connection path; self-host Bun composes the same operations. Runtime acceptance covers both before portability is claimed. Keep maintenance credentials, migration ownership and restore authority separate from runtime credentials. Verify effective grants after clean install and populated upgrade, including new functions' default privileges.
+
+Preserve the implemented admission prefix: acquire a shared lock on the credential and executor membership before the book barrier. Within the book, acquire relevant period/account rows in stable ID order, domain capacity rows in stable type/ID order, approval and approver-authority rows, then transactional counters. Nested calls may reacquire locks already held. All financial and domain-readiness mutations participate in the book barrier; cross-book financial groups remain unsupported.
+
+Credential/membership revocation is an authority-only transaction: initially one authority row per transaction, with no book, configuration or posting writes. Its exclusive row lock orders it against admitted work holding the shared authority lock. Do not introduce a book-first membership updater alongside the current authority-first admission path: that reverses lock order and can deadlock. New bulk policy/identity operations need an explicit complete lock analysis and FND-02 proof before support. This reconciles the plan with migration 0210; it does not certify every current concurrency case. Outbox claiming never calls back into a posting transaction while holding delivery locks. A report can materialize its immutable input manifest under the barrier, then calculate/render outside it.
+
+## Exact values and canonical identity
+
+| Type | Selected contract |
+| --- | --- |
+| Posted amount | Canonical nonnegative integer string, at most 38 digits, currency and its pinned minor-unit scale. Retain current paired `debitMinor`/`creditMinor`; exactly one is positive. |
+| Signed balance | Canonical signed integer string; aggregates may exceed the per-line bound and must not be cast to JS number. |
+| Current sequence/number counter | PostgreSQL `bigint`, nonnegative with positive allocated values, serialized as a decimal string. Its maximum is `9223372036854775807`; the wider amount-string schema does not enlarge storage capacity. Counter exhaustion requires explicit refusal before allocation. |
+| Source decimal, rate or quantity | Original lexeme retained; normalized sign/coefficient/scale with up to 38 coefficient digits and scale 0–18 for the first implementation. Reject unsupported precision; never silently round input to fit. |
+| Arithmetic | Integer/rational arithmetic through multiplication and allocation. Round only at a named rule boundary. Rounding mode, quantum, residual allocation and rule revision are stored with the result. |
+| Dates | Valid calendar dates for accounting/tax facts; UTC instants for recording/approval; explicit fiscal/period references. Retried commands retain selected dates. |
+| Identity | Opaque scoped IDs; no customer-visible meaning inferred from a generated ID. Preserve source/legal identifiers separately. |
+
+The paired monetary wire shape supersedes only the side-plus-value representation choice in ADR 0002; exactness and one-sided-line invariants remain. Retain `openerp-c14n-v1` for already sealed records. New plans use the same algorithm only when independently checked vectors establish its behavior: UTF-8, recursive object keys sorted by byte order, array order preserved, no whitespace between tokens, no Unicode normalization, no undefined values, and only safe bounded integer JSON numbers for counters/ordinals. Financial decimals are strings. Reject duplicate JSON keys and invalid Unicode before sealing at public admission. A stricter admission rule cannot reinterpret an existing stored digest.
+
+The digest input includes schema/canonicalization version, full scope, operation/economic identities, all effects and evidence references, dependency revisions, rule/mapping revisions and explicit date/currency policy. It excludes the digest itself and mutable execution progress. Store the canonical bytes or an independently reproducible equivalent alongside the immutable plan. A necessary algorithm change receives a new version; old receipt verification remains available.
+
+## Persistent record families
+
+Every row carrying accounting meaning has `(book_id, id)` identity and scoped foreign keys. The entity/book relationship is checked at admission and by the database. Unique identities below are scoped to the book unless noted otherwise.
+
+| Owner | Required records and uniqueness |
+| --- | --- |
+| Evidence/imports | `ContentObject(hash,size,mediaType,storageVersion,availability)`; `SourceOccurrence(sourceSystem,sourceAccount,externalId/revision or import+ordinal,contentRef)`; immutable parser result/diagnostic; source inventory revision. Same bytes may have many occurrences. |
+| Accounting work | Causal event; observation/event links with accepted/contested basis; immutable plan revision/group; dependency manifest; validation result; scoped approval and revocation events. |
+| Kernel | Voucher and lines; `(event,postingPurpose,occurrenceKey)` uniqueness; series counter; book commit counter; command and group execution receipts. |
+| Registers | Immutable business revisions and effect links; append-only allocations/reversals with capacity protected under lock; separate projections for current balances/status. |
+| Reporting | Opening set; source/ledger/register snapshot; rule and mapping release; contribution/exclusion records; artifact manifest; validation run. |
+| Delivery/operations | Outbox; attempt/lease with fencing identity; external submission; provider observations; archive/backup manifest; restore/cutover receipts. |
+
+No source hash alone identifies an economic event. No generic mutable `paid`, `booked` or `reconciled` boolean is authoritative; derive status from its durable facts and mark uncertain historical state separately. Projections are rebuildable and can never authorize a write without rechecking authoritative rows.
+
+## Common operation contract
+
+Each operation declares owner, permission, input/output/error schema, scope, side effects, approval requirement, idempotency identity, transaction boundary, dependency freshness and recovery method. Retain existing REST routes and MCP capability IDs. New resource families use `/api/v1/entities/:entityId/books/:bookId/<resource>`; additions use immutable `/revisions`, `/approvals` and `/execute` actions where a prior public spelling does not already exist. Do not rename an existing route merely for symmetry.
+
+Commands use the existing book-scoped idempotency key namespace; the fingerprint binds actor, operation, target IDs and canonical input. Same key/fingerprint returns the original committed result; different content or actor conflicts. A new key cannot bypass semantic effect uniqueness. Retain command receipts for as long as their financial/audit effects are retained. Recovery reads may reveal a permitted colleague's receipt; replay remains actor-bound.
+
+Business refusals return no financial effect and a typed recovery action. Preserve existing error codes and status mappings: unauthorized is 401, forbidden and `ApprovalRequired` are 403, scoped absence 404, invalid domain input 422, and existing stale/period/idempotency/duplicate-effect conflicts 409. Malformed transport is 400; future capacity/snapshot conflicts use explicit typed 409 errors. Extend the current CamelCase code family, including planned `InvalidSnapshotBoundary`, without silently changing existing client semantics. Existing narrower errors may be extended through shared contracts, never mapped to generic retryable 500s. Temporary service failure is 503. An uncertain commit must include the original operation/key reference when a response is possible; neither 503 nor a missing response means rollback. HTTP 202 means a durable job was actually admitted, not merely that work may still be running; MCP notification acknowledgment is a distinct transport-only use and admits no job.
+
+`not_observed` means no committed result was found at a specific observation time. It never permits the UI to label an in-flight command definitely cancelled. A fresh unchanged replay can converge under the database lock; do not issue a changed economic command just to escape an uncertain outcome.
+
+All collection reads declare a stable snapshot/cutoff, deterministic ordering, page limit, continuation cursor and truncation/coverage state. A cursor binds book, snapshot and filters. Cursor possession grants no access. The server does not emit a complete total from partially fetched pages.
+
+## Human and machine authority
+
+Production human identity maps a verified external identity to an internal actor and explicit entity/book grants. The selected session design is a same-origin, HttpOnly/Secure cookie with CSRF/origin enforcement, short-lived sessions and server-side revocation. Use an established OIDC provider through authorization-code/PKCE; the actual provider, issuer/audience and provisioning arrangement remain D-01 inputs. Local manually provisioned operator tokens stay explicitly synthetic and cannot establish production human review.
+
+Agent credentials are independently scoped, hash-stored, expiring/revocable and attributable. An ordinary agent can prepare, inspect and execute an already authorized effect within its scope; it cannot mint human approval, change membership, activate a mandate, sign a filing or authorize payment merely by possessing an API key. Human and machine permissions are checked again during mutation, not only at HTTP authentication.
+
+Separate powers: read sensitive evidence, prepare, approve/post, issue a commercial document, allocate/settle, close/reopen, activate a rule/mandate, authorize payment, sign/submit, administer membership, and restore/promote a writer. A configured segregation requirement can require different preparer/reviewer identities; the first product does not silently claim two-person review where one operator is permitted.
+
+## Rules, readiness and UI
+
+A rule release records primary source/version, effective interval, applicability predicates, required facts, calculation/rounding policy, examples/counterexamples, reviewer and activation. Company facts have their own effective dates and evidence. Retrieval date is not legal commencement. Unknown, unsupported, incomplete, unavailable, failed, waived and passed remain distinct outcomes. Required checks that did not run block readiness. A waiver preserves the failed finding and decision; it does not become a pass.
+
+Capabilities report design/implementation/profile/proof states separately. Technical close, generated report, signed artifact, uploaded file and externally accepted filing are distinct labels. Unsupported modules do not offer misleading enabled primary actions.
+
+The UI uses existing StyleX components, Paraglide and request-scoped TanStack Query. Query keys include entity/book, resource revision and snapshot/filter scope. Every area supplies loading, empty, blocked, stale, permission-limited, pending, uncertain and recoverable error behavior. Durable work is rediscoverable after reload; browser memory is not the sole place a request key or receipt can be found. Review surfaces show original evidence, exact effects, assumptions, freshness, authority and resulting receipts. Financial success appears only after a receipt. Keyboard, narrow layout, actual 200% zoom, focus/error recovery, reduced motion and readable contrast are acceptance evidence.
+
+## Shared foundation packets
+
+| ID | Deliverable | Depends on | Acceptance |
+| --- | --- | --- | --- |
+| FND-01 | Reconcile existing contracts/migrations with ADR 0004; inventory real callers; preserve old digests/routes. | — | No contradictory money/digest/transaction ownership contract; populated migration plan documented. |
+| FND-02 | Trusted human/agent admission, permission catalogue and effective restricted-role grants. | FND-01 | E-01/E-11: real identity boundaries, revocation races and database bypass attempts. |
+| FND-03 | Versioned company/rule/source inventory and mandatory-check coverage contract. | FND-01 | Missing fact/check remains explicit; every activation cites evidence and scope. |
+| FND-04 | Fixed-revision runtime/E2E evidence harness and release manifest using existing suite. | FND-01 | E-20: real Worker/PostgreSQL/Bun paths, cleanup and populated upgrade evidence; test changes within authorization. |

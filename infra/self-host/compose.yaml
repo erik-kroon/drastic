@@ -1,0 +1,54 @@
+name: openerp
+
+services:
+  postgres:
+    image: postgres:17.11-bookworm
+    environment:
+      POSTGRES_DB: openerp
+      POSTGRES_USER: openerp_owner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run bun infra/self-host/setup.ts first}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openerp_owner -d openerp"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: infra/self-host/Dockerfile
+    image: openerp-local
+    command: ["sh", "infra/self-host/migrate.sh"]
+    environment:
+      DATABASE_ADMIN_URL: postgresql://openerp_owner:${POSTGRES_PASSWORD:?Missing maintenance password}@postgres:5432/openerp
+      OPENERP_RUNTIME_PASSWORD: ${OPENERP_RUNTIME_PASSWORD:?Missing runtime password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: ../..
+      dockerfile: infra/self-host/Dockerfile
+    image: openerp-local
+    environment:
+      DATABASE_URL: postgresql://openerp_app:${OPENERP_RUNTIME_PASSWORD:?Missing runtime password}@postgres:5432/openerp
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Missing session secret}
+      OPENERP_PUBLIC_URL: ${OPENERP_PUBLIC_URL:-http://localhost:3000}
+      OPENERP_BIND_ADDRESS: 0.0.0.0
+      PORT: "3000"
+    ports:
+      - "127.0.0.1:${OPENERP_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    init: true
+    stop_grace_period: 40s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

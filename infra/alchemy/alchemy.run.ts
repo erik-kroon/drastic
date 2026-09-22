@@ -1,0 +1,49 @@
+import * as Alchemy from "alchemy";
+import * as Cloudflare from "alchemy/Cloudflare";
+import * as Config from "effect/Config";
+import { Path } from "effect/Path";
+import * as Effect from "effect/Effect";
+
+export default Alchemy.Stack(
+  "OpenErpWeb",
+  {
+    providers: Cloudflare.providers(),
+    state: Cloudflare.state(),
+  },
+  Effect.gen(function* () {
+    const path = yield* Path;
+    const database = yield* Cloudflare.Hyperdrive.Connection("AccountingDatabase", {
+      origin: {
+        scheme: "postgres",
+        host: yield* Config.string("OPENERP_DATABASE_HOST"),
+        port: yield* Config.port("OPENERP_DATABASE_PORT").pipe(Config.withDefault(5432)),
+        database: yield* Config.string("OPENERP_DATABASE_NAME"),
+        user: yield* Config.string("OPENERP_DATABASE_USER"),
+        password: yield* Config.redacted("OPENERP_DATABASE_PASSWORD"),
+      },
+      caching: { disabled: true },
+    });
+    const api = yield* Cloudflare.Worker("Api", {
+      name: "open-erp-api",
+      compatibility: { date: "2026-09-22", flags: ["nodejs_compat"] },
+      main: path.resolve(import.meta.dirname, "../../apps/api/src/index.ts"),
+      env: {
+        HYPERDRIVE: database,
+        BETTER_AUTH_URL: yield* Config.string("BETTER_AUTH_URL"),
+        BETTER_AUTH_SECRET: yield* Config.redacted("BETTER_AUTH_SECRET"),
+      },
+      observability: { enabled: true },
+    });
+    const website = yield* Cloudflare.Website.Vite("Website", {
+      rootDir: path.resolve(import.meta.dirname, "../../apps/web"),
+      main: "src/worker.ts",
+      env: { API: api },
+      assets: { runWorkerFirst: ["/api/*"] },
+    });
+
+    return {
+      apiUrl: api.url.as<string>(),
+      webUrl: website.url.as<string>(),
+    };
+  }),
+);

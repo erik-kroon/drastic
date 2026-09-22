@@ -1,0 +1,5 @@
+{
+  "extends": "@open-erp/config/tsconfig.base.json",
+  "compilerOptions": { "types": ["node"], "lib": ["ESNext", "DOM"] },
+  "include": ["**/*.ts", "../../web/tests/**/*.ts"]
+}

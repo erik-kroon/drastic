@@ -1,0 +1,77 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+dist
+build
+/output/
+*.tsbuildinfo
+
+# Generated files
+apps/web/src/routeTree.gen.ts
+graphify-out/
+local.db
+local.db-*
+
+# Environment variables
+.env
+.env*.local
+
+# IDEs and editors
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs
+.evlog/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Turbo
+.turbo
+.nx
+
+# Better-T-Stack
+.alchemy
+.vercel
+
+# Testing
+coverage
+.nyc_output
+test-results
+playwright-report
+
+# Misc
+*.tgz
+.cache
+tmp
+temp
+
+# Agent work packs contain coordination text, not raw execution artifacts.
+.agents/work/**/*.exit
+.agents/work/**/*.patch
+.agents/work/**/*.pid
+.agents/work/**/*.png
+.agents/work/**/*.sha256
+.agents/work/**/*.webm
+.agents/work/**/*.zip
+.agents/work/**/.last-run.json
+.agents/work/**/error-context.md
+
+# Local Cloudflare runtime and development secrets
+.wrangler/
+.dev.vars

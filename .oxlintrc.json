@@ -1,0 +1,139 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc"],
+  "ignorePatterns": [
+    ".agent/**",
+    ".agents/**",
+    ".claude/**",
+    ".codex/**",
+    ".continue/**",
+    ".cursor/**",
+    ".gemini/**",
+    ".opencode/**",
+    ".pi/**",
+    ".primestack/**",
+    ".roo/**",
+    ".windsurf/**",
+    "config/oxlint/anti-slop/**"
+  ],
+  "jsPlugins": [
+    {
+      "name": "anti-slop",
+      "specifier": "./config/oxlint/anti-slop/index.ts"
+    },
+    {
+      "name": "stylex",
+      "specifier": "@stylexjs/eslint-plugin"
+    }
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "options": {
+    "typeAware": false
+  },
+  "rules": {
+    "typescript/await-thenable": "off",
+    "typescript/no-empty-object-type": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-extra-non-null-assertion": "error",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/no-non-null-asserted-optional-chain": "error",
+    "typescript/no-restricted-types": [
+      "error",
+      {
+        "types": {
+          "Record<string, unknown>": {
+            "message": "Use a domain-specific type, a validated schema, or object when only object-ness matters."
+          }
+        }
+      }
+    ],
+    "typescript/no-unnecessary-type-constraint": "error",
+    "typescript/no-unsafe-declaration-merging": "error",
+    "typescript/no-unsafe-function-type": "error",
+    "typescript/no-wrapper-object-types": "error",
+    "anti-slop/no-chained-type-assertions": "error",
+    "anti-slop/no-conditional-empty-object-spread": "error",
+    "anti-slop/no-deprecated-zod-api": "error",
+    "anti-slop/no-design-system-escape-hatches": "error",
+    "anti-slop/no-hardcoded-design-values": "error",
+    "anti-slop/no-feature-react-hooks": "error",
+    "anti-slop/no-known-value-widening": "error",
+    "anti-slop/no-object-parameters": "error",
+    "anti-slop/no-overzealous-destructuring": "error",
+    "anti-slop/no-reflect-apply": "error",
+    "anti-slop/no-reflect-get": "error",
+    "anti-slop/no-raw-html-layout": "error",
+    "anti-slop/no-unknown-type-aliases": "error",
+    "anti-slop/no-type-assertions": "error",
+    "anti-slop/no-widen-then-assert": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "react",
+            "importNames": ["useEffect", "useLayoutEffect", "default", "*"],
+            "message": "Use derived state, event handlers, TanStack Query, a keyed boundary, or the explicit useMountEffect escape hatch."
+          }
+        ]
+      }
+    ],
+    "anti-slop/no-long-comments": "error",
+    "anti-slop/no-module-mocking": "error",
+    "anti-slop/no-runtime-typeof": [
+      "error",
+      {
+        "allowInTypeGuards": true
+      }
+    ],
+    "anti-slop/no-shape-in-symbol-names": "error",
+    "anti-slop/no-unknown-parameters": "error",
+    "anti-slop/no-unknown-returns": "error",
+    "anti-slop/no-ui-presence-tests": "error",
+    "anti-slop/no-unsafe-dictionary-type": "error",
+    "anti-slop/require-safety-comment-for-type-assertion": "error",
+    "stylex/valid-styles": [
+      "error",
+      {
+        "allowOuterPseudoAndMedia": true,
+        "styleResolution": "application-order"
+      }
+    ],
+    "stylex/enforce-extension": "error",
+    "stylex/no-unused": "error",
+    "stylex/no-conflicting-props": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "apps/api/src/**/*.ts",
+        "apps/web/src/**/*.ts",
+        "apps/web/src/**/*.tsx",
+        "packages/config/**/*.ts",
+        "packages/contracts/src/**/*.ts",
+        "packages/ui/src/**/*.ts"
+      ],
+      "rules": {
+        "complexity": ["error", 30]
+      }
+    },
+    {
+      "files": ["apps/web/src/lib/use-mount-effect.ts"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    },
+    {
+      "files": ["packages/ui/src/**"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
+  "env": {
+    "builtin": true
+  }
+}

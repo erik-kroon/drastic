@@ -1,0 +1,31 @@
+{
+  "name": "api",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "db:migrate": "bun scripts/migrate.ts",
+    "db:create-user": "bun scripts/create-user.ts",
+    "db:provision": "bun scripts/provision.ts",
+    "check-types": "tsc --noEmit && tsc --project scripts/tsconfig.json --noEmit",
+    "dev": "wrangler dev src/index.ts --port 8788"
+  },
+  "dependencies": {
+    "@better-auth/drizzle-adapter": "1.7.5",
+    "@effect/sql-pg": "4.0.0-rc.112",
+    "@open-erp/contracts": "workspace:*",
+    "better-auth": "1.7.5",
+    "drizzle-orm": "1.0.0-rc.5-169397b",
+    "effect": "4.0.0-rc.112",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260916.1",
+    "@open-erp/config": "workspace:*",
+    "@types/pg": "^8.23.1",
+    "typescript": "catalog:",
+    "wrangler": "^4.105.0"
+  }
+}

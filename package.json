@@ -1,0 +1,75 @@
+{
+  "name": "open-erp",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "workspaces": {
+    "packages": [
+      "apps/api",
+      "apps/web",
+      "packages/config",
+      "packages/contracts",
+      "packages/ui"
+    ],
+    "catalog": {
+      "typescript": "7.0.2",
+      "@types/bun": "^1.4.0",
+      "lucide-react": "^1.33.0",
+      "react": "^19.2.8",
+      "react-dom": "^19.2.8",
+      "@types/react": "^19.2.18",
+      "@types/react-dom": "^19.2.4",
+      "@stylexjs/stylex": "^0.19.0",
+      "@stylexjs/unplugin": "^0.19.0",
+      "@inlang/paraglide-js": "^2.24.1"
+    }
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vp run --filter api --filter web dev",
+    "build": "vp run --filter api --filter web build",
+    "alchemy:dev": "bun alchemy dev --config infra/alchemy/alchemy.run.ts",
+    "alchemy:plan": "bun alchemy plan --config infra/alchemy/alchemy.run.ts",
+    "alchemy:deploy": "bun alchemy deploy --config infra/alchemy/alchemy.run.ts",
+    "alchemy:destroy": "bun alchemy destroy --config infra/alchemy/alchemy.run.ts",
+    "check:infra": "tsc --project infra/alchemy/tsconfig.json --noEmit",
+    "check-types": "vp run --filter api --filter web --filter @open-erp/ui --filter @open-erp/contracts check-types && bun run check:infra && bun run check:tests",
+    "check": "oxlint apps/api/src apps/api/scripts apps/api/tests apps/web/src apps/web/tests infra/alchemy packages/contracts/src packages/ui/src config/oxlint && oxfmt --write apps/api apps/web/src apps/web/tests infra/alchemy packages/contracts packages/ui/src packages/config apps/web/vite.config.ts vite.config.ts",
+    "lint": "oxlint --config .oxlintrc.type-aware.json apps/api/src apps/api/scripts apps/api/tests apps/web/src apps/web/tests infra/alchemy packages/contracts/src packages/ui/src",
+    "format": "oxfmt --write apps/api apps/web/src apps/web/tests infra/alchemy packages/contracts packages/ui/src packages/config apps/web/vite.config.ts vite.config.ts",
+    "format:check": "oxfmt --check apps/api apps/web/src apps/web/tests infra/alchemy packages/contracts packages/ui/src packages/config apps/web/vite.config.ts vite.config.ts",
+    "staged": "vp staged",
+    "tsgo": "tsc",
+    "prepare": "effect-tsgo patch --typescript",
+    "test": "vp test run",
+    "test:e2e": "vp test run",
+    "check:tests": "tsc --project apps/api/tests/tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@effect/platform-bun": "4.0.0-rc.112",
+    "@effect/platform-node-shared": "4.0.0-rc.112",
+    "@effect/tsgo": "0.41.0",
+    "@open-erp/config": "workspace:*",
+    "@oxlint/plugins": "1.79.0",
+    "@stylexjs/eslint-plugin": "0.19.0",
+    "@types/bun": "catalog:",
+    "@types/node": "26.2.0",
+    "alchemy": "2.0.0-beta.77",
+    "effect": "4.0.0-rc.112",
+    "oxfmt": "^0.64.0",
+    "oxlint": "1.79.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "playwright": "1.58.2",
+    "typescript": "catalog:",
+    "vite-plus": "0.2.9",
+    "vitest": "4.1.10"
+  },
+  "overrides": {
+    "@effect/platform-node-shared": "4.0.0-rc.112",
+    "@effect/sql-d1": "4.0.0-rc.112",
+    "@effect/sql-sqlite-do": "4.0.0-rc.112",
+    "@effect/vitest": "4.0.0-rc.112",
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.2.9",
+    "vitest": "4.1.10"
+  },
+  "packageManager": "bun@1.4.0"
+}

@@ -1,0 +1,4 @@
+{
+  "extends": "@open-erp/config/tsconfig.base.json",
+  "include": ["src/**/*.ts"]
+}

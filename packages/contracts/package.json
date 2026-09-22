@@ -1,0 +1,34 @@
+{
+  "name": "@open-erp/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    "./api": "./src/api.ts",
+    "./system": "./src/system.ts",
+    "./accounting": "./src/accounting.ts",
+    "./capabilities": "./src/capabilities.ts",
+    "./reconciliation": "./src/reconciliation.ts",
+    "./reports": "./src/reports.ts",
+    "./cases": "./src/cases.ts",
+    "./automation": "./src/automation.ts",
+    "./subledgers": "./src/subledgers.ts",
+    "./closing": "./src/closing.ts",
+    "./posting-recovery": "./src/posting-recovery.ts",
+    "./corrections": "./src/corrections.ts",
+    "./operations": "./src/operations.ts",
+    "./settlements": "./src/settlements.ts",
+    "./commerce": "./src/commerce.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "effect": "4.0.0-rc.112"
+  },
+  "devDependencies": {
+    "@open-erp/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

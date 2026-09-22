@@ -1,0 +1,7 @@
+{
+  "extends": "@open-erp/config/tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["bun"]
+  },
+  "include": ["*.ts", "operations/*.ts"]
+}
