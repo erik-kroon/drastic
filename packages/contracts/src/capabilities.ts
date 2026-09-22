@@ -13,6 +13,10 @@ import { SubledgerCapabilities } from "./subledgers";
 import { ClosingCapabilities } from "./closing";
 
 import { CommerceCapabilities } from "./commerce";
+import { AccountantReviewCapabilities } from "./accountant-review";
+import { SourceIntakeCapabilities } from "./source-intake";
+import { ExpenseTaxCapabilities } from "./expense-tax";
+import { OwnerRegisterCapabilities } from "./owner-register";
 
 const scoped = { scope: Accounting.Scope };
 const mutation = {
@@ -23,6 +27,10 @@ const change = { ...scoped, changeSetId: Accounting.Identifier };
 const changeMutation = { ...mutation, changeSetId: Accounting.Identifier };
 
 export const Capabilities = {
+  ...AccountantReviewCapabilities,
+  ...SourceIntakeCapabilities,
+  ...ExpenseTaxCapabilities,
+  ...OwnerRegisterCapabilities,
   ...CommerceCapabilities,
   ...ClosingCapabilities,
   ...SubledgerCapabilities,

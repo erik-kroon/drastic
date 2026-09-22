@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Corrections from "@open-erp/contracts/corrections";
 import { Box } from "@open-erp/ui/components/box";
@@ -18,6 +18,7 @@ import {
 } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { correctionCopy } from "./copy";
+import { CorrectionChainView, CorrectionImpactDetails } from "./impact-review";
 
 export function CorrectionReview({
   book,
@@ -49,18 +50,26 @@ export function CorrectionReview({
     },
     retry: false,
   });
+  const [requestKey, setRequestKey] = useState("");
+  const impactId = view.data?.bundle.impactReview?.id;
+  const impact = useQuery({
+    queryKey: [...bookKey(book), "correction-impact", impactId],
+    queryFn: ({ signal }) =>
+      readAccounting(
+        `${bookPath(book)}/correction-impact-reviews/${encodeURIComponent(impactId ?? "")}`,
+        Corrections.CorrectionImpactView,
+        { signal },
+      ),
+    enabled: !!impactId,
+    retry: false,
+  });
   const approval = useMutation({
     mutationFn: (bundle: typeof Corrections.CorrectionBundle.Type) => {
       const path = `${base}/approvals`;
-      return readAccounting(
-        path,
-        Corrections.CorrectionBundleApproval,
-        mutationOptions(
-          path,
-          JSON.stringify({ bundleDigest: bundle.bundleDigest, version: bundle.version }),
-          keys.current,
-        ),
-      );
+      const body = JSON.stringify({ bundleDigest: bundle.bundleDigest, version: bundle.version });
+      const options = mutationOptions(path, body, keys.current);
+      setRequestKey(keys.current.get(`${path}:${body}`) ?? "");
+      return readAccounting(path, Corrections.CorrectionBundleApproval, options);
     },
     onSuccess: () => {
       void view.refetch();
@@ -69,11 +78,10 @@ export function CorrectionReview({
   const execution = useMutation({
     mutationFn: (input: typeof Corrections.ExecuteCorrectionBundle.Type) => {
       const path = `${base}/execute`;
-      return readAccounting(
-        path,
-        Corrections.CorrectionBundleReceipt,
-        mutationOptions(path, JSON.stringify(input), keys.current),
-      );
+      const body = JSON.stringify(input);
+      const options = mutationOptions(path, body, keys.current);
+      setRequestKey(keys.current.get(`${path}:${body}`) ?? "");
+      return readAccounting(path, Corrections.CorrectionBundleReceipt, options);
     },
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: bookKey(book) });
@@ -83,7 +91,11 @@ export function CorrectionReview({
   const bundle = view.data?.bundle;
   const currentApproval = view.data?.approval;
   const receipt = execution.data ?? view.data?.receipt;
-  const busy = approval.isPending || execution.isPending || view.isFetching;
+  const busy = [approval.isPending, execution.isPending, view.isFetching, impact.isFetching].some(
+    Boolean,
+  );
+  const impactBlocked =
+    !!impactId && (!impact.data?.snapshotCurrent || impact.data.impact.basis.blockers.length > 0);
   const expired = currentApproval ? Date.parse(currentApproval.expiresAt) <= Date.now() : false;
   const stale = requiresNewProposal(approval.error) || requiresNewProposal(execution.error);
   return (
@@ -98,6 +110,7 @@ export function CorrectionReview({
           disabled={busy}
           onClick={() => {
             void view.refetch();
+            if (impactId) void impact.refetch();
           }}
         >
           {copy.refresh}
@@ -116,6 +129,27 @@ export function CorrectionReview({
           </Text>
           <Text>{copy.policy}</Text>
           <Text>{copy.reviewHelp}</Text>
+          <CorrectionChainView
+            book={book}
+            setup={setup}
+            locale={locale}
+            id={bundle.originalVoucher.id}
+          />
+          <SavedImpactReview
+            book={book}
+            locale={locale}
+            impact={impact}
+            reference={bundle.impactReview}
+            committed={!!receipt}
+          />
+          {requestKey ? (
+            <Box role="status" display="grid" gap="sm">
+              <Text>
+                {copy.requestKey}: {requestKey}
+              </Text>
+              <Text tone="muted">{copy.requestHint}</Text>
+            </Box>
+          ) : null}
           <details>
             <summary>
               {copy.original} · {bundle.originalVoucher.id}
@@ -226,7 +260,9 @@ export function CorrectionReview({
                   <Button
                     size="xl"
                     variant="outline"
-                    disabled={!confirmed || busy || (!!currentApproval && !expired)}
+                    disabled={
+                      !confirmed || busy || impactBlocked || (!!currentApproval && !expired)
+                    }
                     onClick={() => {
                       // A read-confirmed invalid approval needs a new command. An
                       // uncertain response keeps its key for refresh/retry.
@@ -245,7 +281,7 @@ export function CorrectionReview({
                 ) : null}
                 <Button
                   size="xl"
-                  disabled={!confirmed || busy || !currentApproval || expired}
+                  disabled={!confirmed || busy || impactBlocked || !currentApproval || expired}
                   onClick={() => {
                     if (currentApproval)
                       execution.mutate({
@@ -269,5 +305,32 @@ export function CorrectionReview({
         </>
       ) : null}
     </Box>
+  );
+}
+
+function SavedImpactReview(props: {
+  book: typeof Accounting.Book.Type;
+  locale: Locale;
+  impact: UseQueryResult<typeof Corrections.CorrectionImpactView.Type, Error>;
+  reference: typeof Corrections.ImpactReference.Type | undefined;
+  committed: boolean;
+}) {
+  const { book, locale, impact } = props;
+  const copy = correctionCopy(locale);
+  if (!props.reference) return <Text tone="muted">{copy.legacyImpact}</Text>;
+  return (
+    <>
+      <AccountingStatus locale={locale} pending={impact.isPending} error={impact.error} />
+      {impact.data ? (
+        <>
+          {!props.committed ? (
+            <Text role="status">
+              {impact.data.snapshotCurrent ? copy.impactCurrent : copy.impactStale}
+            </Text>
+          ) : null}
+          <CorrectionImpactDetails book={book} impact={impact.data.impact} locale={locale} />
+        </>
+      ) : null}
+    </>
   );
 }

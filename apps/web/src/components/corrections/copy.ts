@@ -1,6 +1,39 @@
 import type { Locale } from "@/paraglide/runtime";
 
 const en = {
+  impact: "Correction impact review",
+  prepareImpact: "Review proposed correction impacts",
+  impactConfirm: "I reviewed the exact replacement, affected records and limits below.",
+  editImpact: "Edit or refresh impact snapshot",
+  impactDigest: "Impact snapshot digest",
+  impactCurrent: "Snapshot matches the current represented state. This is not permission to post.",
+  impactStale:
+    "The represented state changed. Create a new impact review and bundle; do not reuse this approval.",
+  impactBlocked:
+    "This correction is blocked. Use the named owning workflow; generic register release is unavailable.",
+  affected: "Affected retained records",
+  affectedDigest: "Affected record dependency digest",
+  inspectResource: "Inspect retained record",
+  netChange: "Proposed account balance changes (minor units)",
+  delta: "Net change",
+  chain: "Connected correction history",
+  chainBalances: "Cumulative chain balances (minor units)",
+  chainHelp:
+    "All retained originals, reversals and replacements stay in these sums. A standalone reversal remains visible even without a bundle.",
+  discover: "Find correction bundles",
+  noBundles: "No bundles on this page. A standalone reversal may still exist in voucher history.",
+  next: "Next page",
+  first: "First page",
+  requestKey: "Original correction request key",
+  recoverRequest: "Recover request receipt",
+  requestUnknown:
+    "No receipt was recorded for your actor at this check. This is not proof the request failed. Keep the same key and inspect the original or bundle before retrying.",
+  requestRecorded: "A committed command receipt was recovered.",
+  requestHint: "Keep this request key if the response is lost. It contains no credential.",
+  impactId: "Impact review ID",
+  legacyImpact:
+    "This older bundle has no frozen downstream impact review. Live register and no-op guards still apply; prefer a new reviewed bundle before approval.",
+
   title: "Reversal and replacement",
   scope:
     "Synthetic manual journals only. The original stays in the ledger. Both correction parts post together, or neither posts. Tax corrections and statutory date policies are not supported.",
@@ -51,6 +84,43 @@ const en = {
   reason: "Reason",
 };
 const sv: typeof en = {
+  impact: "Granskning av rättelsens följder",
+  prepareImpact: "Granska den föreslagna rättelsens följder",
+  impactConfirm:
+    "Jag har granskat den exakta ersättningen, berörda poster och begränsningarna nedan.",
+  editImpact: "Ändra eller uppdatera granskningsbilden",
+  impactDigest: "Granskningsbildens kontrollsumma",
+  impactCurrent:
+    "Granskningsbilden stämmer med aktuella registrerade uppgifter. Det är inte ett bokföringstillstånd.",
+  impactStale:
+    "Registrerade uppgifter har ändrats. Skapa en ny granskning och ett nytt paket; återanvänd inte godkännandet.",
+  impactBlocked:
+    "Rättelsen är spärrad. Använd det angivna registrets arbetsflöde; generell frikoppling stöds inte.",
+  affected: "Berörda bevarade poster",
+  affectedDigest: "Kontrollsumma för berörd posts beroenden",
+  inspectResource: "Granska bevarad post",
+  netChange: "Föreslagna saldoförändringar (minsta valutaenhet)",
+  delta: "Nettoförändring",
+  chain: "Sammanhängande rättelsehistorik",
+  chainBalances: "Rättelsekedjans sammanlagda saldon (minsta valutaenhet)",
+  chainHelp:
+    "Alla bevarade original, motbokningar och ersättningar ingår i summorna. En fristående motbokning visas även utan rättelsepaket.",
+  discover: "Hitta rättelsepaket",
+  noBundles:
+    "Inga paket på denna sida. En fristående motbokning kan ändå finnas i verifikationshistoriken.",
+  next: "Nästa sida",
+  first: "Första sidan",
+  requestKey: "Rättelsebegärans ursprungliga nyckel",
+  recoverRequest: "Hämta begärans kvitto",
+  requestUnknown:
+    "Inget kvitto var registrerat för din användare vid kontrollen. Det bevisar inte att begäran misslyckades. Behåll samma nyckel och granska originalet eller paketet innan du försöker igen.",
+  requestRecorded: "Ett kvitto för en genomförd begäran har hämtats.",
+  requestHint:
+    "Behåll denna nyckel om svaret försvinner. Den innehåller inga inloggningsuppgifter.",
+  impactId: "Granskningens ID",
+  legacyImpact:
+    "Det äldre paketet saknar en fryst granskning av följderna. Aktuella registerspärrar och kontroll av ekonomisk ändring gäller ändå; välj helst ett nytt granskat paket före godkännande.",
+
   title: "Motbokning och ersättning",
   scope:
     "Endast syntetiska manuella verifikationer. Originalet finns kvar i huvudboken. Båda rättelsedelarna bokförs tillsammans, eller inte alls. Skatterättelser och lagstadgade datumregler stöds inte.",

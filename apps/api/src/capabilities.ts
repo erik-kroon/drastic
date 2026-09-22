@@ -207,6 +207,239 @@ export const capabilities = {
     "getBankCapacityReconciliation",
     (input) => [scopeParameter(input.scope), input.reconciliationId],
   ),
+  accountant_review_prepare: bindCapability(
+    Capabilities.accountant_review_prepare,
+    "prepareAccountantReview",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  accountant_review_list: bindCapability(
+    Capabilities.accountant_review_list,
+    "listAccountantReviews",
+    (input) => [scopeParameter(input.scope), input.after ?? ""],
+  ),
+  accountant_review_get: bindCapability(
+    Capabilities.accountant_review_get,
+    "getAccountantReview",
+    (input) => [scopeParameter(input.scope), input.packId],
+  ),
+  accountant_review_rows: bindCapability(
+    Capabilities.accountant_review_rows,
+    "accountantReviewRows",
+    (input) => [scopeParameter(input.scope), input.packId, input.section, input.after ?? ""],
+  ),
+  accountant_review_artifact: bindCapability(
+    Capabilities.accountant_review_artifact,
+    "getAccountantReviewArtifact",
+    (input) => [scopeParameter(input.scope), input.packId, input.format],
+  ),
+  posting_save_request: bindCapability(
+    Capabilities.posting_save_request,
+    "savePostingRequest",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.command)],
+  ),
+  posting_run_request: bindCapability(
+    Capabilities.posting_run_request,
+    "runPostingRequest",
+    (input) => [scopeParameter(input.scope), input.key],
+  ),
+  posting_get_saved_request: bindCapability(
+    Capabilities.posting_get_saved_request,
+    "getSavedPostingRequest",
+    (input) => [scopeParameter(input.scope), input.key],
+  ),
+  posting_list_saved_requests: bindCapability(
+    Capabilities.posting_list_saved_requests,
+    "listSavedPostingRequests",
+    (input) => [scopeParameter(input.scope), input.after ?? ""],
+  ),
+  source_retain: bindCapability(Capabilities.source_retain, "retainSource", (input) => [
+    scopeParameter(input.scope),
+    input.idempotencyKey,
+    JSON.stringify(input.input),
+  ]),
+  source_list_occurrences: bindCapability(
+    Capabilities.source_list_occurrences,
+    "listSourceOccurrences",
+    (input) => [scopeParameter(input.scope), input.cursor ?? ""],
+  ),
+  source_get_occurrence: bindCapability(
+    Capabilities.source_get_occurrence,
+    "getSourceOccurrence",
+    (input) => [scopeParameter(input.scope), input.occurrenceId],
+  ),
+  source_preview_csv: bindCapability(
+    Capabilities.source_preview_csv,
+    "previewSourceCsv",
+    (input) => [
+      scopeParameter(input.scope),
+      input.idempotencyKey,
+      input.occurrenceId,
+      JSON.stringify(input.input),
+    ],
+  ),
+  source_get_preview: bindCapability(
+    Capabilities.source_get_preview,
+    "getSourcePreview",
+    (input) => [scopeParameter(input.scope), input.previewId],
+  ),
+  expense_tax_record_source: bindCapability(
+    Capabilities.expense_tax_record_source,
+    "recordExpenseTaxSource",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  expense_tax_inventory: bindCapability(
+    Capabilities.expense_tax_inventory,
+    "expenseTaxInventory",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  expense_tax_get_source: bindCapability(
+    Capabilities.expense_tax_get_source,
+    "getExpenseTaxSource",
+    (input) => [scopeParameter(input.scope), input.sourceId],
+  ),
+  expense_tax_prepare_snapshot: bindCapability(
+    Capabilities.expense_tax_prepare_snapshot,
+    "prepareExpenseTaxSnapshot",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  expense_tax_get_snapshot: bindCapability(
+    Capabilities.expense_tax_get_snapshot,
+    "getExpenseTaxSnapshot",
+    (input) => [scopeParameter(input.scope), input.snapshotId],
+  ),
+  expense_tax_list_snapshots: bindCapability(
+    Capabilities.expense_tax_list_snapshots,
+    "listExpenseTaxSnapshots",
+    (input) => [scopeParameter(input.scope), input.after ?? ""],
+  ),
+  owners_create_owner: bindCapability(
+    Capabilities.owners_create_owner,
+    "ownersCreateOwner",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  owners_get_owner: bindCapability(Capabilities.owners_get_owner, "ownersGetOwner", (input) => [
+    scopeParameter(input.scope),
+    input.id,
+  ]),
+  owners_list_owners: bindCapability(
+    Capabilities.owners_list_owners,
+    "ownersListOwners",
+    (input) => [scopeParameter(input.scope), input.after ?? ""],
+  ),
+  owners_create_record: bindCapability(
+    Capabilities.owners_create_record,
+    "ownersCreateRecord",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  owners_revise_record: bindCapability(
+    Capabilities.owners_revise_record,
+    "ownersReviseRecord",
+    (input) => [
+      scopeParameter(input.scope),
+      input.id,
+      input.idempotencyKey,
+      JSON.stringify(input.input),
+    ],
+  ),
+  owners_get_record: bindCapability(Capabilities.owners_get_record, "ownersGetRecord", (input) => [
+    scopeParameter(input.scope),
+    input.id,
+  ]),
+  owners_list_records: bindCapability(
+    Capabilities.owners_list_records,
+    "ownersListRecords",
+    (input) => [scopeParameter(input.scope), input.after ?? ""],
+  ),
+  owners_record_history: bindCapability(
+    Capabilities.owners_record_history,
+    "ownersRecordHistory",
+    (input) => [scopeParameter(input.scope), input.id, input.after ?? ""],
+  ),
+  owners_attach_proposal: bindCapability(
+    Capabilities.owners_attach_proposal,
+    "ownersAttachProposal",
+    (input) => [
+      scopeParameter(input.scope),
+      input.id,
+      input.idempotencyKey,
+      JSON.stringify(input.input),
+    ],
+  ),
+  owners_attach_posted_line: bindCapability(
+    Capabilities.owners_attach_posted_line,
+    "ownersAttachPostedLine",
+    (input) => [
+      scopeParameter(input.scope),
+      input.id,
+      input.idempotencyKey,
+      JSON.stringify(input.input),
+    ],
+  ),
+  owners_prepare_allocation: bindCapability(
+    Capabilities.owners_prepare_allocation,
+    "ownersPrepareAllocation",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  owners_get_allocation: bindCapability(
+    Capabilities.owners_get_allocation,
+    "ownersGetAllocation",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  owners_apply_allocation: bindCapability(
+    Capabilities.owners_apply_allocation,
+    "ownersApplyAllocation",
+    (input) => [
+      scopeParameter(input.scope),
+      input.id,
+      input.idempotencyKey,
+      JSON.stringify(input.input),
+    ],
+  ),
+  owners_prepare_control: bindCapability(
+    Capabilities.owners_prepare_control,
+    "ownersPrepareControl",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  owners_get_control: bindCapability(
+    Capabilities.owners_get_control,
+    "ownersGetControl",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  owners_recover_command: bindCapability(
+    Capabilities.owners_recover_command,
+    "ownersRecoverCommand",
+    (input) => [scopeParameter(input.scope), input.key],
+  ),
+  corrections_review_impact: bindCapability(
+    Capabilities.corrections_review_impact,
+    "prepareCorrectionImpact",
+    (input) => [
+      scopeParameter(input.scope),
+      input.voucherId,
+      input.idempotencyKey,
+      JSON.stringify(input.input),
+    ],
+  ),
+  corrections_get_impact: bindCapability(
+    Capabilities.corrections_get_impact,
+    "getCorrectionImpact",
+    (input) => [scopeParameter(input.scope), input.impactId],
+  ),
+  corrections_chain: bindCapability(
+    Capabilities.corrections_chain,
+    "getCorrectionChain",
+    (input) => [scopeParameter(input.scope), input.voucherId],
+  ),
+  corrections_list: bindCapability(
+    Capabilities.corrections_list,
+    "listCorrectionBundles",
+    (input) => [scopeParameter(input.scope), input.after ?? ""],
+  ),
+  corrections_recover_request: bindCapability(
+    Capabilities.corrections_recover_request,
+    "recoverCorrectionRequest",
+    (input) => [scopeParameter(input.scope), input.key],
+  ),
   corrections_prepare: bindCapability(
     Capabilities.corrections_prepare,
     "prepareCorrectionBundle",

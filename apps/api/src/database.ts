@@ -9,6 +9,7 @@ import * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
 import * as SqlError from "effect/unstable/sql/SqlError";
 import { Database, databaseLayer } from "./db/connection";
+import { sourceIntakeStatements } from "./source-intake-statements";
 
 export interface Bindings {
   readonly BETTER_AUTH_SECRET?: string;
@@ -52,6 +53,83 @@ const PostgresFailure = Schema.Struct({
 });
 
 const statements = {
+  ownersCreateOwner: (parameters) =>
+    sql`select openerp.owners_create_owner(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  ownersGetOwner: (parameters) =>
+    sql`select openerp.owners_get_owner(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  ownersListOwners: (parameters) =>
+    sql`select openerp.owners_list_owners(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  ownersCreateRecord: (parameters) =>
+    sql`select openerp.owners_create_record(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  ownersReviseRecord: (parameters) =>
+    sql`select openerp.owners_revise_record(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
+  ownersGetRecord: (parameters) =>
+    sql`select openerp.owners_get_record(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  ownersListRecords: (parameters) =>
+    sql`select openerp.owners_list_records(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  ownersRecordHistory: (parameters) =>
+    sql`select openerp.owners_record_history(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text) as result`,
+  ownersReviewRecord: (parameters) =>
+    sql`select openerp.owners_review_record(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
+  ownersAttachProposal: (parameters) =>
+    sql`select openerp.owners_attach_proposal(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
+  ownersAttachPostedLine: (parameters) =>
+    sql`select openerp.owners_attach_posted_line(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
+  ownersPrepareAllocation: (parameters) =>
+    sql`select openerp.owners_prepare_allocation(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  ownersGetAllocation: (parameters) =>
+    sql`select openerp.owners_get_allocation(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  ownersApproveAllocation: (parameters) =>
+    sql`select openerp.owners_approve_allocation(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
+  ownersApplyAllocation: (parameters) =>
+    sql`select openerp.owners_apply_allocation(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
+  ownersPrepareControl: (parameters) =>
+    sql`select openerp.owners_prepare_control(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  ownersGetControl: (parameters) =>
+    sql`select openerp.owners_get_control(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  ownersRecoverCommand: (parameters) =>
+    sql`select openerp.owners_recover_command(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+
+  recordExpenseTaxSource: (parameters) =>
+    sql`select openerp.record_expense_tax_source(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  expenseTaxInventory: (parameters) =>
+    sql`select openerp.expense_tax_inventory(${parameters[0]}::text,${parameters[1]}::jsonb) as result`,
+  getExpenseTaxSource: (parameters) =>
+    sql`select openerp.get_expense_tax_source(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  reviewExpenseTaxSource: (parameters) =>
+    sql`select openerp.review_expense_tax_source(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
+  prepareExpenseTaxSnapshot: (parameters) =>
+    sql`select openerp.prepare_expense_tax_snapshot(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  getExpenseTaxSnapshot: (parameters) =>
+    sql`select openerp.get_expense_tax_snapshot(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  listExpenseTaxSnapshots: (parameters) =>
+    sql`select openerp.list_expense_tax_snapshots(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+
+  ...sourceIntakeStatements,
+  savePostingRequest: (parameters) =>
+    sql`select openerp.save_posting_request(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  savePostingAuthorityRequest: (parameters) =>
+    sql`select openerp.save_posting_authority_request(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  runPostingRequest: (parameters) =>
+    sql`select openerp.run_posting_request(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  runPostingAuthorityRequest: (parameters) =>
+    sql`select openerp.run_posting_authority_request(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  getSavedPostingRequest: (parameters) =>
+    sql`select openerp.get_saved_posting_request(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  listSavedPostingRequests: (parameters) =>
+    sql`select openerp.list_saved_posting_requests(${parameters[0]}::text,${parameters[1]}::jsonb,NULLIF(${parameters[2]}::text,'')) as result`,
+
+  prepareAccountantReview: (parameters) =>
+    sql`select openerp.prepare_accountant_review(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  listAccountantReviews: (parameters) =>
+    sql`select openerp.list_accountant_reviews(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  getAccountantReview: (parameters) =>
+    sql`select openerp.get_accountant_review(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  accountantReviewRows: (parameters) =>
+    sql`select openerp.accountant_review_rows_page(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::text) as result`,
+  getAccountantReviewArtifact: (parameters) =>
+    sql`select openerp.get_accountant_review_artifact(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text) as result`,
+
   createSchedule: (parameters) =>
     sql`select openerp.create_schedule(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   listSchedules: (parameters) =>
@@ -120,6 +198,16 @@ const statements = {
     sql`select openerp.reconcile_bank_capacity(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   getBankCapacityReconciliation: (parameters) =>
     sql`select openerp.get_bank_capacity_reconciliation(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  prepareCorrectionImpact: (parameters) =>
+    sql`select openerp.prepare_correction_impact(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
+  getCorrectionImpact: (parameters) =>
+    sql`select openerp.get_correction_impact(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  getCorrectionChain: (parameters) =>
+    sql`select openerp.get_correction_chain(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  listCorrectionBundles: (parameters) =>
+    sql`select openerp.list_correction_bundles(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  recoverCorrectionRequest: (parameters) =>
+    sql`select openerp.recover_correction_request(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
   prepareCorrectionBundle: (parameters) =>
     sql`select openerp.prepare_correction_bundle(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
   getCorrectionBundle: (parameters) =>

@@ -1,10 +1,12 @@
 import * as Effect from "effect/Effect";
 import { OperationsFailure, refuse } from "./safety";
 import { backup, inspectBundle, preflight, restore } from "./workflows";
+import { captureRelease } from "./artifacts";
 
 const usage = `Local synthetic operations only. No production action exists.
   preflight <private-target.json> <new-private-receipt.json>
-  backup <private-target.json> <new-bundle-directory> <private-supplementary-directory|none> --confirm-local-backup
+  capture-release <explicit-source-root> <new-private-release-directory>
+  backup <private-target.json> <new-bundle-directory> <private-recovery-plan.json> --confirm-local-backup
   inspect <bundle-directory> <separately-recorded-manifest-sha256>
   restore <private-admin-target.json> <bundle-directory> <manifest-sha256> <fresh-openerp_restore_name> <new-receipt-directory> --confirm-fresh-local-restore
 All paths must be absolute. Read docs/operations/local-recovery.md first.`;
@@ -24,7 +26,9 @@ const command = Effect.tryPromise({
     const fourth = args[3];
     const fifth = args[4];
     const sixth = args[5];
-    if (action === "preflight" && args.length === 2 && first && second) {
+    if (action === "capture-release" && args.length === 2 && first && second) {
+      await captureRelease(first, second);
+    } else if (action === "preflight" && args.length === 2 && first && second) {
       await preflight(first, second);
     } else if (
       action === "backup" &&

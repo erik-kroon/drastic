@@ -10,7 +10,11 @@ const MaybeDate = Schema.NullOr(Accounting.AccountingDate);
 const MaybeAmount = Schema.NullOr(Accounting.MinorUnits);
 const PositiveInteger = Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,37}$/));
 const Country = Schema.NullOr(Schema.String.check(Schema.isPattern(/^[A-Z]{2}$/)));
-export const TaxAmounts = Schema.Struct({ grossMinor: MaybeAmount, netMinor: MaybeAmount, vatMinor: MaybeAmount });
+export const TaxAmounts = Schema.Struct({
+  grossMinor: MaybeAmount,
+  netMinor: MaybeAmount,
+  vatMinor: MaybeAmount,
+});
 export const TaxSourceFacts = Schema.Struct({
   evidenceId: Accounting.Identifier,
   sourceLocator: Accounting.Description,
@@ -46,7 +50,16 @@ export const TaxReviewFacts = Schema.Struct({
   taxPointOn: MaybeDate,
   dateBasis: MaybeText,
   dateEvidenceId: MaybeId,
-  treatment: Schema.Literals(["unknown", "domestic_purchase", "foreign_purchase", "reverse_charge", "import", "exempt", "out_of_scope", "other"]),
+  treatment: Schema.Literals([
+    "unknown",
+    "domestic_purchase",
+    "foreign_purchase",
+    "reverse_charge",
+    "import",
+    "exempt",
+    "out_of_scope",
+    "other",
+  ]),
   profileId: MaybeText,
   profileVersion: MaybeText,
   rateNumerator: MaybeAmount,
@@ -73,11 +86,18 @@ const RecordFields = {
   receipt: CommandReceipt,
 };
 export const TaxSourceRevision = Schema.Struct({
-  ...RecordFields, sourceKey: Schema.String, facts: TaxSourceFacts, evidenceSha256: Schema.String,
+  ...RecordFields,
+  sourceKey: Schema.String,
+  facts: TaxSourceFacts,
+  evidenceSha256: Schema.String,
 });
 export const TaxReview = Schema.Struct({
-  ...RecordFields, sourceDigest: Accounting.Digest, facts: TaxReviewFacts,
-  evidenceRefs: Schema.Array(Schema.Struct({ evidenceId: Accounting.Identifier, sha256: Schema.String })),
+  ...RecordFields,
+  sourceDigest: Accounting.Digest,
+  facts: TaxReviewFacts,
+  evidenceRefs: Schema.Array(
+    Schema.Struct({ evidenceId: Accounting.Identifier, sha256: Schema.String }),
+  ),
   authority: Schema.Literal("operator_fact_review_only"),
 });
 export const TaxSourceView = Schema.Struct({
@@ -88,11 +108,35 @@ export const TaxSourceView = Schema.Struct({
   reviewHistory: Schema.Array(TaxReview),
 });
 export const ExpenseTaxBlocker = Schema.Literals([
-  "missing_review", "stale_review", "wrong_record_class", "production_profile_unapproved", "unsupported_profile",
-  "missing_source_amounts", "missing_review_amounts", "source_amount_difference", "review_amount_difference", "source_review_difference",
-  "missing_currency", "foreign_currency", "missing_jurisdiction", "foreign_supply", "missing_source_dates", "missing_review_dates", "date_difference", "outside_interval",
-  "registration_unknown_or_unsupported", "method_unknown_or_unsupported", "unsupported_treatment", "missing_rate", "missing_deduction_basis",
-  "invalid_deduction_fraction", "rounding_policy_unavailable", "fractional_tax", "fractional_deduction", "calculated_tax_difference", "amount_out_of_range",
+  "missing_review",
+  "stale_review",
+  "wrong_record_class",
+  "production_profile_unapproved",
+  "unsupported_profile",
+  "missing_source_amounts",
+  "missing_review_amounts",
+  "source_amount_difference",
+  "review_amount_difference",
+  "source_review_difference",
+  "missing_currency",
+  "foreign_currency",
+  "missing_jurisdiction",
+  "foreign_supply",
+  "missing_source_dates",
+  "missing_review_dates",
+  "date_difference",
+  "outside_interval",
+  "registration_unknown_or_unsupported",
+  "method_unknown_or_unsupported",
+  "unsupported_treatment",
+  "missing_rate",
+  "missing_deduction_basis",
+  "invalid_deduction_fraction",
+  "rounding_policy_unavailable",
+  "fractional_tax",
+  "fractional_deduction",
+  "calculated_tax_difference",
+  "amount_out_of_range",
 ]);
 const Difference = Schema.NullOr(Accounting.SignedMinorUnits);
 export const TaxControls = Schema.Struct({
@@ -116,62 +160,178 @@ export const TaxCalculation = Schema.Struct({
   expenseMinor: MaybeAmount,
 });
 export const TaxContribution = Schema.Struct({
-  grossMinor: Accounting.MinorUnits, netMinor: Accounting.MinorUnits, vatMinor: Accounting.MinorUnits,
-  deductibleMinor: Accounting.MinorUnits, nonDeductibleMinor: Accounting.MinorUnits, expenseMinor: Accounting.MinorUnits,
+  grossMinor: Accounting.MinorUnits,
+  netMinor: Accounting.MinorUnits,
+  vatMinor: Accounting.MinorUnits,
+  deductibleMinor: Accounting.MinorUnits,
+  nonDeductibleMinor: Accounting.MinorUnits,
+  expenseMinor: Accounting.MinorUnits,
 });
 export const TaxAssessment = Schema.Struct({
-  state: Schema.Literals(["included_synthetic", "excluded"]), blockers: Schema.Array(ExpenseTaxBlocker),
-  controls: TaxControls, calculation: Schema.NullOr(TaxCalculation), contribution: Schema.NullOr(TaxContribution),
+  state: Schema.Literals(["included_synthetic", "excluded"]),
+  blockers: Schema.Array(ExpenseTaxBlocker),
+  controls: TaxControls,
+  calculation: Schema.NullOr(TaxCalculation),
+  contribution: Schema.NullOr(TaxContribution),
 });
 export const PrepareTaxSnapshot = Schema.Struct({
   mode: Schema.Literals(["actual_review", "synthetic_demonstration"]),
-  startsOn: Accounting.AccountingDate, endsOn: Accounting.AccountingDate,
+  startsOn: Accounting.AccountingDate,
+  endsOn: Accounting.AccountingDate,
 });
 export const TaxSnapshot = Schema.Struct({
-  id: Accounting.Identifier, scope: Accounting.Scope, input: PrepareTaxSnapshot,
-  digest: Accounting.Digest, basisDigest: Accounting.Digest, recordedAt: Schema.String, receipt: CommandReceipt,
-  bookSequence: Accounting.MinorUnits, currency: Schema.String, currencyScale: Schema.Int,
-  entries: Schema.Array(Schema.Struct({ source: TaxSourceRevision, review: Schema.NullOr(TaxReview), assessment: TaxAssessment })),
-  includedCount: Schema.Int, excludedCount: Schema.Int,
+  schemaVersion: Schema.Literal("1"),
+  calculationEngine: Schema.Literal("expense-tax-controls-v1"),
+  bookProfile: Schema.String,
+  bookProfileVersion: Accounting.MinorUnits,
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  input: PrepareTaxSnapshot,
+  digest: Accounting.Digest,
+  basisDigest: Accounting.Digest,
+  recordedAt: Schema.String,
+  receipt: CommandReceipt,
+  bookSequence: Accounting.MinorUnits,
+  currency: Schema.String,
+  currencyScale: Schema.Int,
+  entries: Schema.Array(
+    Schema.Struct({
+      source: TaxSourceRevision,
+      review: Schema.NullOr(TaxReview),
+      assessment: TaxAssessment,
+    }),
+  ),
+  includedCount: Schema.Int,
+  excludedCount: Schema.Int,
   syntheticTotals: Schema.Struct({
-    grossMinor: Accounting.AggregateMinorUnits, netMinor: Accounting.AggregateMinorUnits, vatMinor: Accounting.AggregateMinorUnits,
-    deductibleMinor: Accounting.AggregateMinorUnits, nonDeductibleMinor: Accounting.AggregateMinorUnits, expenseMinor: Accounting.AggregateMinorUnits,
+    grossMinor: Accounting.AggregateMinorUnits,
+    netMinor: Accounting.AggregateMinorUnits,
+    vatMinor: Accounting.AggregateMinorUnits,
+    deductibleMinor: Accounting.AggregateMinorUnits,
+    nonDeductibleMinor: Accounting.AggregateMinorUnits,
+    expenseMinor: Accounting.AggregateMinorUnits,
   }),
-  coverageEstablished: Schema.Literal(false), ledgerReconciled: Schema.Literal(false), vatReturnReady: Schema.Literal(false),
-  productionProfileApproved: Schema.Literal(false), postingEnabled: Schema.Literal(false),
+  coverageEstablished: Schema.Literal(false),
+  ledgerReconciled: Schema.Literal(false),
+  vatReturnReady: Schema.Literal(false),
+  productionProfileApproved: Schema.Literal(false),
+  postingEnabled: Schema.Literal(false),
 });
-export const TaxSnapshotView = Schema.Struct({ snapshot: TaxSnapshot, basisCurrent: Schema.Boolean });
+export const TaxSnapshotView = Schema.Struct({
+  snapshot: TaxSnapshot,
+  basisCurrent: Schema.Boolean,
+});
 export const TaxInventory = Schema.Struct({
   basisDigest: Accounting.Digest,
   observedAt: Schema.String,
   coverageEstablished: Schema.Literal(false),
-  sources: Schema.Array(Schema.Struct({ current: TaxSourceRevision, latestReview: Schema.NullOr(TaxReview), reviewCurrent: Schema.Boolean })),
+  sources: Schema.Array(
+    Schema.Struct({
+      current: TaxSourceRevision,
+      latestReview: Schema.NullOr(TaxReview),
+      reviewCurrent: Schema.Boolean,
+    }),
+  ),
 });
+const SnapshotCursor = Schema.String.check(
+  Schema.isPattern(/^[a-f0-9]{16}_[0-9]{1,18}_[0-9]{1,18}$/),
+);
 export const TaxSnapshotPage = Schema.Struct({
-  items: Schema.Array(Schema.Struct({ id: Accounting.Identifier, digest: Accounting.Digest, input: PrepareTaxSnapshot, recordedAt: Schema.String })),
-  next: Schema.NullOr(Accounting.Identifier),
+  items: Schema.Array(
+    Schema.Struct({
+      id: Accounting.Identifier,
+      digest: Accounting.Digest,
+      input: PrepareTaxSnapshot,
+      recordedAt: Schema.String,
+    }),
+  ),
+  next: Schema.NullOr(SnapshotCursor),
 });
-export const TaxAfter = Schema.Struct({ after: Schema.optional(Accounting.Identifier) });
+export const TaxAfter = Schema.Struct({ after: Schema.optional(SnapshotCursor) });
 const path = "/v1/entities/:entityId/books/:bookId/expense-tax";
 const scoped = { params: Accounting.Scope, error: accountingErrors };
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
 const mutation = { ...scoped, headers: Accounting.IdempotencyHeaders };
 export const ExpenseTaxApi = HttpApiGroup.make("expenseTax").add(
-  HttpApiEndpoint.post("recordExpenseTaxSource", `${path}/sources`, { ...mutation, payload: RecordTaxSource.annotate({ parseOptions: { onExcessProperty: "error" } }), success: TaxSourceRevision }),
-  HttpApiEndpoint.get("expenseTaxInventory", `${path}/sources`, { ...scoped, success: TaxInventory }),
-  HttpApiEndpoint.get("getExpenseTaxSource", `${path}/sources/:id`, { ...identified, success: TaxSourceView }),
-  HttpApiEndpoint.post("reviewExpenseTaxSource", `${path}/sources/:id/reviews`, { ...identified, headers: Accounting.IdempotencyHeaders, payload: ReviewTaxSource.annotate({ parseOptions: { onExcessProperty: "error" } }), success: TaxReview }),
-  HttpApiEndpoint.post("prepareExpenseTaxSnapshot", `${path}/snapshots`, { ...mutation, payload: PrepareTaxSnapshot.annotate({ parseOptions: { onExcessProperty: "error" } }), success: TaxSnapshot }),
-  HttpApiEndpoint.get("getExpenseTaxSnapshot", `${path}/snapshots/:id`, { ...identified, success: TaxSnapshotView }),
-  HttpApiEndpoint.get("listExpenseTaxSnapshots", `${path}/snapshots`, { ...scoped, query: TaxAfter, success: TaxSnapshotPage }),
+  HttpApiEndpoint.post("recordExpenseTaxSource", `${path}/sources`, {
+    ...mutation,
+    payload: RecordTaxSource.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: TaxSourceRevision,
+  }),
+  HttpApiEndpoint.get("expenseTaxInventory", `${path}/sources`, {
+    ...scoped,
+    success: TaxInventory,
+  }),
+  HttpApiEndpoint.get("getExpenseTaxSource", `${path}/sources/:id`, {
+    ...identified,
+    success: TaxSourceView,
+  }),
+  HttpApiEndpoint.post("reviewExpenseTaxSource", `${path}/sources/:id/reviews`, {
+    ...identified,
+    headers: Accounting.IdempotencyHeaders,
+    payload: ReviewTaxSource.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: TaxReview,
+  }),
+  HttpApiEndpoint.post("prepareExpenseTaxSnapshot", `${path}/snapshots`, {
+    ...mutation,
+    payload: PrepareTaxSnapshot.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: TaxSnapshot,
+  }),
+  HttpApiEndpoint.get("getExpenseTaxSnapshot", `${path}/snapshots/:id`, {
+    ...identified,
+    success: TaxSnapshotView,
+  }),
+  HttpApiEndpoint.get("listExpenseTaxSnapshots", `${path}/snapshots`, {
+    ...scoped,
+    query: TaxAfter,
+    success: TaxSnapshotPage,
+  }),
 );
 const scope = { scope: Accounting.Scope };
-const command = { ...scope, idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"] };
+const command = {
+  ...scope,
+  idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
+};
 export const ExpenseTaxCapabilities = {
-  expense_tax_record_source: { input: Schema.Struct({ ...command, input: RecordTaxSource }), output: TaxSourceRevision, readOnly: false, description: "Retain or append scoped expense tax source observations. Unknown values remain null; no invoice issuance, tax activation or posting." },
-  expense_tax_inventory: { input: Schema.Struct(scope), output: TaxInventory, readOnly: true, description: "Read the bounded current expense tax source/reviewer inventory and basis digest. Source completeness is unestablished." },
-  expense_tax_get_source: { input: Schema.Struct({ ...scope, sourceId: Accounting.Identifier }), output: TaxSourceView, readOnly: true, description: "Read immutable expense source/reviewer history and whether the latest operator review covers the current source." },
-  expense_tax_prepare_snapshot: { input: Schema.Struct({ ...command, input: PrepareTaxSnapshot }), output: TaxSnapshot, readOnly: false, description: "Freeze accountant-facing expense tax controls and explicit exclusions. Only the named synthetic exact-arithmetic demonstration may contribute. Never a VAT return or filing." },
-  expense_tax_get_snapshot: { input: Schema.Struct({ ...scope, snapshotId: Accounting.Identifier }), output: TaxSnapshotView, readOnly: true, description: "Recover immutable expense-tax controls, source/reviewer lineage, synthetic totals and current basis freshness." },
-  expense_tax_list_snapshots: { input: Schema.Struct({ ...scope, ...TaxAfter.fields }), output: TaxSnapshotPage, readOnly: true, description: "Page immutable accountant review snapshot references. These are not tax returns." },
+  expense_tax_record_source: {
+    input: Schema.Struct({ ...command, input: RecordTaxSource }),
+    output: TaxSourceRevision,
+    readOnly: false,
+    description:
+      "Retain or append scoped expense tax source observations. Unknown values remain null; no invoice issuance, tax activation or posting.",
+  },
+  expense_tax_inventory: {
+    input: Schema.Struct(scope),
+    output: TaxInventory,
+    readOnly: true,
+    description:
+      "Read the bounded current expense tax source/reviewer inventory and basis digest. Source completeness is unestablished.",
+  },
+  expense_tax_get_source: {
+    input: Schema.Struct({ ...scope, sourceId: Accounting.Identifier }),
+    output: TaxSourceView,
+    readOnly: true,
+    description:
+      "Read immutable expense source/reviewer history and whether the latest operator review covers the current source.",
+  },
+  expense_tax_prepare_snapshot: {
+    input: Schema.Struct({ ...command, input: PrepareTaxSnapshot }),
+    output: TaxSnapshot,
+    readOnly: false,
+    description:
+      "Freeze accountant-facing expense tax controls and explicit exclusions. Only the named synthetic exact-arithmetic demonstration may contribute. Never a VAT return or filing.",
+  },
+  expense_tax_get_snapshot: {
+    input: Schema.Struct({ ...scope, snapshotId: Accounting.Identifier }),
+    output: TaxSnapshotView,
+    readOnly: true,
+    description:
+      "Recover immutable expense-tax controls, source/reviewer lineage, synthetic totals and current basis freshness.",
+  },
+  expense_tax_list_snapshots: {
+    input: Schema.Struct({ ...scope, ...TaxAfter.fields }),
+    output: TaxSnapshotPage,
+    readOnly: true,
+    description: "Page immutable accountant review snapshot references. These are not tax returns.",
+  },
 };

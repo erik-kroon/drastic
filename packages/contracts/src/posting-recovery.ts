@@ -44,7 +44,7 @@ export const RecoveryRequest = Schema.Struct({
   resultId: Schema.NullOr(Accounting.Identifier),
   planDigest: Schema.NullOr(Accounting.Digest),
   approvalState: Schema.NullOr(
-    Schema.Literals(["consumed", "expired", "authority_lost", "unconsumed_at_check"]),
+    Schema.Literals(["consumed", "revoked", "expired", "authority_lost", "unconsumed_at_check"]),
   ),
 });
 export const PostingRecovery = Schema.Struct({
@@ -95,7 +95,124 @@ export const RecoveryListQuery = Schema.Struct({ after: Schema.optional(Accounti
 export const RecoveryDetailQuery = Schema.Struct({
   after: Schema.optional(Accounting.IdempotencyHeaders.fields["idempotency-key"]),
 });
+
+export const SavedRequestKey = Accounting.IdempotencyHeaders.fields["idempotency-key"];
+export const PostingCommand = Schema.Union([
+  Schema.Struct({ operation: Schema.Literal("create_evidence"), input: Accounting.CreateEvidence }),
+  Schema.Struct({ operation: Schema.Literal("prepare_journal"), input: Accounting.PrepareJournal }),
+  Schema.Struct({
+    operation: Schema.Literal("execute_change"),
+    id: Accounting.Identifier,
+    input: Accounting.ExecuteChange,
+  }),
+]);
+export const PostingAuthorityCommand = Schema.Union([
+  Schema.Struct({
+    operation: Schema.Literal("approve_change"),
+    id: Accounting.Identifier,
+    input: Accounting.ApproveChange,
+  }),
+  Schema.Struct({
+    operation: Schema.Literal("revoke_approval"),
+    id: Accounting.Identifier,
+    input: Schema.Struct({ reason: Accounting.Description }),
+  }),
+]);
+export const SavedPostingCommand = Schema.Union([PostingCommand, PostingAuthorityCommand]);
+export const ApprovalRevocation = Schema.Struct({
+  approvalId: Accounting.Identifier,
+  changeSetId: Accounting.Identifier,
+  planDigest: Accounting.Digest,
+  actorId: Accounting.Identifier,
+  reason: Accounting.Description,
+  revokedAt: Schema.String,
+});
+export const SavedPostingOutcome = Schema.Union([
+  Schema.Struct({
+    state: Schema.Literal("committed"),
+    result: Schema.Union([
+      Accounting.Evidence,
+      Accounting.ChangeSet,
+      Accounting.Approval,
+      Accounting.ExecutionReceipt,
+      ApprovalRevocation,
+    ]),
+    refusal: Schema.Null,
+    recordedAt: Schema.String,
+  }),
+  Schema.Struct({
+    state: Schema.Literal("refused"),
+    result: Schema.Null,
+    refusal: Schema.Struct({ code: Accounting.FailureCode, message: Schema.String }),
+    recordedAt: Schema.String,
+  }),
+]);
+export const SavedPostingSummary = Schema.Struct({
+  key: SavedRequestKey,
+  actorId: Accounting.Identifier,
+  operation: Schema.Literals([
+    "create_evidence",
+    "prepare_journal",
+    "approve_change",
+    "execute_change",
+    "revoke_approval",
+  ]),
+  requestDigest: Accounting.Digest,
+  commandKey: SavedRequestKey,
+  savedAt: Schema.String,
+  state: Schema.Literals(["unknown", "committed", "refused"]),
+});
+export const SavedPostingRequest = Schema.Struct({
+  scope: Accounting.Scope,
+  checkedAt: Schema.String,
+  request: SavedPostingSummary,
+  command: SavedPostingCommand,
+  sameActor: Schema.Boolean,
+  outcome: Schema.NullOr(SavedPostingOutcome),
+});
+export const SavedPostingRequests = Schema.Struct({
+  scope: Accounting.Scope,
+  actorId: Accounting.Identifier,
+  checkedAt: Schema.String,
+  items: Schema.Array(SavedPostingSummary),
+  next: Schema.NullOr(SavedRequestKey),
+});
+export const SavedPostingQuery = Schema.Struct({ after: Schema.optional(SavedRequestKey) });
+const savedPath = Schema.Struct({ ...Accounting.Scope.fields, key: SavedRequestKey });
+
 export const PostingRecoveryCapabilities = {
+  posting_save_request: {
+    description:
+      "Save an immutable actor-bound evidence, preparation or execution request without running it. No approval grants. Run explicitly by the saved key after review.",
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      idempotencyKey: SavedRequestKey,
+      command: PostingCommand,
+    }),
+    output: SavedPostingRequest,
+    readOnly: false,
+  },
+  posting_run_request: {
+    description:
+      "Deliberately run the original actor's saved request using its retained body and kernel key. Returns the same terminal outcome on replay. Unknown is not refusal. Cannot grant or revoke human approval.",
+    input: Schema.Struct({ scope: Accounting.Scope, key: SavedRequestKey }),
+    output: SavedPostingRequest,
+    readOnly: false,
+  },
+  posting_get_saved_request: {
+    description:
+      "Read the exact saved request and durable committed/refused outcome. No outcome means unknown at checkedAt, not failed or cancelled. Does not run work.",
+    input: Schema.Struct({ scope: Accounting.Scope, key: SavedRequestKey }),
+    output: SavedPostingRequest,
+    readOnly: true,
+  },
+  posting_list_saved_requests: {
+    description:
+      "Discover saved requests in this book after reload, including unknown and refused requests. Live pages are not complete source coverage. Does not run work.",
+    input: Schema.Struct({ scope: Accounting.Scope, ...SavedPostingQuery.fields }),
+    output: SavedPostingRequests,
+    readOnly: true,
+  },
   posting_list_recovery: {
     description:
       "Discover retained single-action proposals after reload. Status is observed at checkedAt, not a promise about an in-flight request. Does not post.",
@@ -127,6 +244,45 @@ export const PostingRecoveryCapabilities = {
 };
 const path = "/v1/entities/:entityId/books/:bookId";
 export const PostingRecoveryApi = HttpApiGroup.make("postingRecovery").add(
+  HttpApiEndpoint.post("savePostingRequest", `${path}/saved-posting-requests`, {
+    params: Accounting.Scope,
+    headers: Accounting.IdempotencyHeaders,
+    payload: PostingCommand.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: SavedPostingRequest,
+    error: accountingErrors,
+  }),
+  HttpApiEndpoint.post("savePostingAuthorityRequest", `${path}/saved-posting-authority-requests`, {
+    params: Accounting.Scope,
+    headers: Accounting.IdempotencyHeaders,
+    payload: PostingAuthorityCommand.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: SavedPostingRequest,
+    error: accountingErrors,
+  }),
+  HttpApiEndpoint.post("runPostingRequest", `${path}/saved-posting-requests/:key/run`, {
+    params: savedPath,
+    success: SavedPostingRequest,
+    error: accountingErrors,
+  }),
+  HttpApiEndpoint.post(
+    "runPostingAuthorityRequest",
+    `${path}/saved-posting-authority-requests/:key/run`,
+    {
+      params: savedPath,
+      success: SavedPostingRequest,
+      error: accountingErrors,
+    },
+  ),
+  HttpApiEndpoint.get("getSavedPostingRequest", `${path}/saved-posting-requests/:key`, {
+    params: savedPath,
+    success: SavedPostingRequest,
+    error: accountingErrors,
+  }),
+  HttpApiEndpoint.get("listSavedPostingRequests", `${path}/saved-posting-requests`, {
+    params: Accounting.Scope,
+    query: SavedPostingQuery,
+    success: SavedPostingRequests,
+    error: accountingErrors,
+  }),
   HttpApiEndpoint.get("listPostingRecovery", `${path}/posting-recovery`, {
     params: Accounting.Scope,
     query: RecoveryListQuery,

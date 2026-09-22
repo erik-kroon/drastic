@@ -83,12 +83,20 @@ export async function tableFingerprints(client: Client) {
     "outbox",
     "vouchers",
     "journal_lines",
+    "report_snapshots",
+    "report_lines",
   ];
   if (
     required.some(
       (name) => !tables.rows.some((table) => table.schema === "openerp" && table.table === name),
     ) ||
-    !tables.rows.some((table) => table.schema === "public" && table.table === "openerp_migrations")
+    !tables.rows.some(
+      (table) => table.schema === "public" && table.table === "openerp_migrations",
+    ) ||
+    ["user", "session", "account", "verification", "rate_limit"].some(
+      (name) =>
+        !tables.rows.some((table) => table.schema === "openerp_auth" && table.table === name),
+    )
   ) {
     refuse("The database is missing required accounting or migration records.");
   }
@@ -111,11 +119,4 @@ export async function tableFingerprints(client: Client) {
     );
   }
   return result;
-}
-
-export async function roleNames(client: Client) {
-  const roles = await client.query<{ rolname: string }>(
-    `SELECT rolname FROM pg_roles WHERE rolname !~ '^pg_' ORDER BY rolname COLLATE "C"`,
-  );
-  return roles.rows.map((role) => role.rolname);
 }

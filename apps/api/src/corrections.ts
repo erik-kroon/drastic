@@ -8,6 +8,36 @@ import { query, scopeParameter } from "./database";
 
 export const CorrectionHandlers = HttpApiBuilder.group(Api, "corrections", (handlers) =>
   handlers
+    .handle("prepareCorrectionImpact", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        capabilities.corrections_review_impact.execute(token, {
+          scope: params,
+          voucherId: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("getCorrectionImpact", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        capabilities.corrections_get_impact.execute(token, { scope: params, impactId: params.id }),
+      ),
+    )
+    .handle("getCorrectionChain", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        capabilities.corrections_chain.execute(token, { scope: params, voucherId: params.id }),
+      ),
+    )
+    .handle("listCorrectionBundles", ({ params, query: page }) =>
+      Effect.flatMap(authenticate, (token) =>
+        capabilities.corrections_list.execute(token, { scope: params, after: page.after }),
+      ),
+    )
+    .handle("recoverCorrectionRequest", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        capabilities.corrections_recover_request.execute(token, { scope: params, key: params.key }),
+      ),
+    )
     .handle("prepareCorrectionBundle", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.corrections_prepare.execute(token, {

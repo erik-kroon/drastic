@@ -94,3 +94,31 @@ Root must serialize permitted local execution. Static success cannot establish a
 - Same-key retry and lost-response recovery return the same committed receipt; wrong scope and changed-key payloads do not leak/replay another operation.
 - Concurrent posting/import/registration/schedule mutation versus closing obeys lock order and cannot commit stale readiness.
 - Rendered keyboard, narrow-width and 200% zoom behavior are usable. Source structure alone does not verify browser behavior.
+
+
+## Owner and expense-review integration risks (recorded before0820)
+
+-0820 must replace only the private live closing basis in a new forward migration. Existing0800 bytes, certificates, approvals and receipts remain unchanged. Older proposals lack these dependencies and must become stale rather than receive implied approval for new checks.
+- Capture and recheck owner `sourceDigest` and expense-tax `basisDigest` under the existing book barrier. Unresolved/unlinked owner sources and missing/stale expense reviews block technical close. Unpaid but linked owner expense/loan claims do not block it merely because capacity remains.
+- Empty provider inventories do not establish source completeness, zero openings, no liabilities or tax eligibility. Reviewed facts are not statutory acceptance. Reopen remains available for repair when close prerequisites fail.
+- Accountant packs must materialize provider-owned source/review/controls and explicit outside-interval rows at one basis. Bound owner identities/sources/effects/allocations and expense sources before materialization; fail atomically rather than omit rows.
+- Reuse provider control/assessment helpers, without recreating owner allocation or tax eligibility rules. Expense assessment is captured in `actual_review` mode: no tax contribution or legal profile is activated by this package.
+- Old pack bytes/page meanings must not change.0810 remains unapplied and may be extended before root applies it;0820 independently upgrades current closing behavior. Root owns migration ordering, runtime observations and concurrency proof.
+
+
+##0820 forward owner/expense-review checks
+
+`0820-closing-owner-tax-dependencies.sql` replaces only private `closing_basis(text,text)`; applied0800 remains unchanged. It requires0610 owner register and0710 expense review. Existing authorized close/read/approve/execute calls already hold the book barrier and automatically consume the replacement.
+
+The new basis includes `ownerTaxStatus`, `dependencies.ownerSourceDigest` and `dependencies.expenseTaxBasisDigest`. Owner unresolved reviews and unlinked records through period end block technical close. Expense missing/stale source reviews (conservatively book-wide) block close. Independently, every represented expense source blocks close coverage because supported posting/ledger reconciliation is unavailable, including sources with digest-current but unknown reviews. Unpaid linked owner claims are not errors. These checks do not certify opening balances, owner repayment rights, tax eligibility or source/control completeness.
+
+Existing proposals/certificates retain their original bytes/digests. Their contracts allow absent provider fields for historical decoding, and the UI identifies that legacy scope. Comparing their old basis to the new live basis makes unexecuted old approvals stale and old certificates noncurrent. Existing committed command receipts still replay exactly. Repair through a newly prepared explicit reopen remains available; no old lock or journal is silently changed.
+
+Owner/tax mutation after proposal capture changes the pinned provider digest and fails existing approval/execution basis equality. Actual race/failure behavior remains for root runtime validation; this source change is not that proof.
+
+
+### Additional pre-change risk review
+
+A digest-current expense review can still contain unknown facts. Zero missing/stale reviews must never imply resolved tax treatment or ledger reconciliation. The current provider supplies neither posting nor reconciled close coverage, so any represented expense source conservatively blocks that coverage check, even after review. No represented sources does not prove company completeness. Count owner sources/effects/allocation legs before calling aggregating provider hooks; refuse unsupported sizes without truncated digests.
+
+Before the owner/tax hooks, bounded count queries refuse more than1000 owner sources/effects,5000 allocation legs or200 expense sources. No partial provider digest is returned. This limit applies to every live closing-basis caller (including readiness/reopen); larger books need a supported larger-scope implementation.

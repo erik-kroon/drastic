@@ -5,6 +5,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
+import { Link } from "@open-erp/ui/components/link";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingWorkspace } from "@/components/accounting-workspace";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -12,6 +13,7 @@ import { Books, booksKey, readAccounting } from "@/lib/accounting-api";
 import { authClient } from "@/lib/auth-client";
 import { accountingCopy } from "@/lib/accounting-copy";
 import { usePageLocale } from "@/lib/use-page-locale";
+import { statementCopy } from "@/components/statement-preview/copy";
 import { setLocale, type Locale } from "@/paraglide/runtime";
 
 export const Route = createFileRoute("/")({ component: HomePage });
@@ -109,6 +111,7 @@ function HomePage() {
         <Box padding="lg" backgroundColor="muted" borderRadius="surface">
           <Text>{copy.journal_warning}</Text>
         </Box>
+        <Link href="/intake">{statementCopy(locale).title}</Link>
         <AccountingStatus
           locale={locale}
           pending={books.isPending}

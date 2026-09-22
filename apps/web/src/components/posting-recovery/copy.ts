@@ -1,6 +1,39 @@
 import type { Locale } from "@/paraglide/runtime";
 
 const english = {
+  revoked: "Revoked",
+  savedTitle: "Saved posting requests",
+  savedHelp:
+    "These requests survive reload. Saving does not run a command. Only a committed execution receipt proves posting. Pages are live, not a complete source inventory.",
+  savedEmpty: "No saved requests on this page. A delayed save may still arrive.",
+  inspect: "Inspect saved request",
+  savedCommand: "Exact saved command",
+  commandDigest: "Saved request digest",
+  commandKey: "Kernel command key",
+  savedUnknown:
+    "No terminal outcome observed. This request may be unattempted or still in flight. Keep its identity.",
+  savedCommitted: "This command committed. Preparation and approval do not mean posting.",
+  savedRefused:
+    "This request was refused. Its attempted changes were rolled back. This does not say that another request did not post the event.",
+  replayCheck: "I reviewed the exact saved command. Run it unchanged under my current authority.",
+  run: "Run this saved request",
+  newRequest: "Save as a new request and run",
+  terminalHelp:
+    "A refused request stays refused. After resolving its blocker, you can deliberately create a new request. An unknown request must keep its original identity.",
+  otherActor:
+    "Only the actor who saved this request can run it. Current book access still permits reading its history.",
+  resumeEvidence: "Use this retained evidence",
+  revoke: "Revoke this approval",
+  revokeReason: "Reason for revocation",
+  revokeHelp:
+    "Revocation prevents later consumption. It does not undo a committed posting. Any current operator in this book can revoke an unused approval.",
+  anotherEvidence: "Retain another evidence item",
+  saveEvidence: "Save request and retain evidence",
+  savePrepare: "Save request and prepare proposal",
+  saveApprove: "Save request and approve this proposal",
+  saveExecute: "Save request and post this proposal",
+  outcome: "Saved command outcome",
+
   title: "Recover posting work",
   help: "Find retained proposals after a reload or timeout. This reads PostgreSQL history; it does not retry a command.",
   refresh: "Check current state",
@@ -59,6 +92,41 @@ const english = {
   unconsumed_at_check: "Unconsumed at this check",
 };
 const swedish: typeof english = {
+  revoked: "Återkallat",
+  savedTitle: "Sparade bokföringsbegäranden",
+  savedHelp:
+    "Begärandena finns kvar efter omladdning. Att spara kör inget kommando. Endast en sparad bokföringskvittens bevisar bokföring. Sidorna är aktuella läsningar, inte en fullständig underlagsförteckning.",
+  savedEmpty:
+    "Inga sparade begäranden på denna sida. En fördröjd begäran kan fortfarande komma fram.",
+  inspect: "Granska sparad begäran",
+  savedCommand: "Exakt sparat kommando",
+  commandDigest: "Sparad begärans hash",
+  commandKey: "Kärnkommandots nyckel",
+  savedUnknown:
+    "Inget slutligt utfall har observerats. Begäran kan vara oprövad eller fortfarande på väg. Behåll dess identitet.",
+  savedCommitted: "Kommandot genomfördes. Förberedelse och godkännande innebär inte bokföring.",
+  savedRefused:
+    "Begäran avvisades. Dess försök till ändringar rullades tillbaka. Det säger inte att en annan begäran inte bokförde händelsen.",
+  replayCheck:
+    "Jag har granskat det exakta sparade kommandot. Kör det oförändrat med min nuvarande behörighet.",
+  run: "Kör denna sparade begäran",
+  newRequest: "Spara som ny begäran och kör",
+  terminalHelp:
+    "En avvisad begäran förblir avvisad. När hindret är löst kan du uttryckligen skapa en ny begäran. En begäran med okänt utfall måste behålla sin ursprungliga identitet.",
+  otherActor:
+    "Endast aktören som sparade begäran kan köra den. Aktuell åtkomst till boken medger fortfarande läsning av historiken.",
+  resumeEvidence: "Använd detta sparade underlag",
+  revoke: "Återkalla detta godkännande",
+  revokeReason: "Skäl för återkallelse",
+  revokeHelp:
+    "Återkallelse förhindrar senare förbrukning. Den gör inte genomförd bokföring ogjord. En aktuell operatör i denna bok kan återkalla ett oförbrukat godkännande.",
+  anotherEvidence: "Bevara ytterligare ett underlag",
+  saveEvidence: "Spara begäran och bevara underlaget",
+  savePrepare: "Spara begäran och förbered förslag",
+  saveApprove: "Spara begäran och godkänn förslaget",
+  saveExecute: "Spara begäran och bokför förslaget",
+  outcome: "Sparat kommandoutfall",
+
   title: "Återuppta bokföringsarbete",
   help: "Hitta sparade förslag efter omladdning eller timeout. Detta läser PostgreSQL-historiken och skickar inte om något kommando.",
   refresh: "Kontrollera aktuellt läge",

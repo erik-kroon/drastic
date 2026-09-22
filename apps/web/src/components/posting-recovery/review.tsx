@@ -10,7 +10,9 @@ import { SealedAction } from "@/components/journal-review";
 import { bookKey, bookPath, booksKey, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { postingCopy } from "./copy";
-import { postingRequestOptions } from "./request";
+import { sendSavedPostingCommand } from "./request";
+import { SavedPostingOutcome } from "./saved-requests";
+import { InputField } from "@open-erp/ui/components/field";
 
 export function PostingRecoveryReview({
   book,
@@ -108,58 +110,66 @@ function RecoveryDetail(props: {
   const copy = postingCopy(locale);
   const client = useQueryClient();
   const [reviewed, setReviewed] = useState(false);
-  const base = `${bookPath(book)}/change-sets/${encodeURIComponent(current.plan.id)}`;
   const refresh = () => {
     void client.invalidateQueries({ queryKey: bookKey(book) });
     void client.invalidateQueries({ queryKey: booksKey });
+    setReviewed(false);
   };
   const approve = useMutation({
-    mutationFn: async () => {
-      const path = `${base}/approvals`;
-      const payload = { planDigest: current.plan.planDigest, version: current.plan.version };
-      const options = await postingRequestOptions({
+    mutationFn: () =>
+      sendSavedPostingCommand({
         book,
         actorId: current.actorId,
-        path,
-        payload,
-        checkedAt: current.checkedAt,
+        command: {
+          operation: "approve_change",
+          id: current.plan.id,
+          input: { planDigest: current.plan.planDigest, version: current.plan.version },
+        },
         storageMessage: copy.storage,
-      });
-      const result = await readAccounting(path, Accounting.Approval, options);
-      if (result.changeSetId !== current.plan.id || result.planDigest !== current.plan.planDigest)
-        throw new Error("Response scope mismatch");
-      return result;
-    },
+        replaceTerminal: true,
+      }),
     onSettled: refresh,
   });
   const execute = useMutation({
-    mutationFn: async () => {
+    mutationFn: () => {
       if (!current.availableApproval) throw new Error(copy.operatorOnly);
-      const path = `${base}/execute`;
-      const payload = {
-        planDigest: current.plan.planDigest,
-        version: current.plan.version,
-        approvalId: current.availableApproval.id,
-      };
-      const options = await postingRequestOptions({
+      return sendSavedPostingCommand({
         book,
         actorId: current.actorId,
-        path,
-        payload,
-        checkedAt: current.checkedAt,
+        command: {
+          operation: "execute_change",
+          id: current.plan.id,
+          input: {
+            planDigest: current.plan.planDigest,
+            version: current.plan.version,
+            approvalId: current.availableApproval.id,
+          },
+        },
         storageMessage: copy.storage,
       });
-      const result = await readAccounting(path, Accounting.ExecutionReceipt, options);
-      if (result.changeSetId !== current.plan.id || result.planDigest !== current.plan.planDigest)
-        throw new Error("Response scope mismatch");
-      return result;
     },
     onSettled: refresh,
   });
-  const busy = props.refreshing || approve.isPending || execute.isPending;
+  const revoke = useMutation({
+    mutationFn: (reason: string) => {
+      if (!current.availableApproval) throw new Error(copy.operatorOnly);
+      return sendSavedPostingCommand({
+        book,
+        actorId: current.actorId,
+        command: {
+          operation: "revoke_approval",
+          id: current.availableApproval.id,
+          input: { reason },
+        },
+        storageMessage: copy.storage,
+      });
+    },
+    onSettled: refresh,
+  });
+  const busy = props.refreshing || approve.isPending || execute.isPending || revoke.isPending;
   const unposted = current.summary.postingStatus === "unposted_at_check";
   const actionable = unposted && current.validation.status === "current" && reviewed && !busy;
-  const receipt = current.summary.executionReceipt ?? execute.data;
+  const receipt = current.summary.executionReceipt;
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Box role="status" aria-live="polite" display="grid" gap="sm">
@@ -209,6 +219,9 @@ function RecoveryDetail(props: {
           </Text>
         </Box>
       ) : null}
+      {approve.data ? <SavedPostingOutcome saved={approve.data} locale={locale} /> : null}
+      {execute.data ? <SavedPostingOutcome saved={execute.data} locale={locale} /> : null}
+      {revoke.data ? <SavedPostingOutcome saved={revoke.data} locale={locale} /> : null}
       {unposted ? (
         <>
           {current.validation.blocker ? (
@@ -246,7 +259,7 @@ function RecoveryDetail(props: {
                 disabled={!actionable || current.availableApproval !== null}
                 onClick={() => approve.mutate()}
               >
-                {copy.approve}
+                {copy.saveApprove}
               </Button>
             ) : null}
             <Button
@@ -254,15 +267,42 @@ function RecoveryDetail(props: {
               disabled={!actionable || current.availableApproval === null}
               onClick={() => execute.mutate()}
             >
-              {copy.execute}
+              {copy.saveExecute}
             </Button>
           </Box>
-          {approve.isPending || execute.isPending ? (
+          {book.role === "operator" && current.availableApproval ? (
+            <Box
+              as="form"
+              display="grid"
+              gap="md"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const reason = new FormData(event.currentTarget).get("reason");
+                if (typeof reason === "string" && reason.trim()) revoke.mutate(reason);
+              }}
+            >
+              <Text>{copy.revokeHelp}</Text>
+              <InputField
+                label={copy.revokeReason}
+                name="reason"
+                required
+                maxLength={2000}
+                disabled={busy}
+              />
+              <Box>
+                <Button type="submit" size="xl" variant="outline" disabled={busy}>
+                  {copy.revoke}
+                </Button>
+              </Box>
+            </Box>
+          ) : null}
+          {approve.isPending || execute.isPending || revoke.isPending ? (
             <Text role="status">{copy.pending}</Text>
           ) : null}
-          {approve.isError || execute.isError ? (
+          {approve.isError || execute.isError || revoke.isError ? (
             <Text role="alert">
-              {copy.commandUnknown} {approve.error?.message ?? execute.error?.message}
+              {copy.commandUnknown}{" "}
+              {approve.error?.message ?? execute.error?.message ?? revoke.error?.message}
             </Text>
           ) : null}
         </>

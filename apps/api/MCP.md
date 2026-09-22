@@ -22,9 +22,13 @@ completeness or Swedish compliance.
   server notifications, the MCP background-task protocol and session persistence are not supported. Domain preparation runs advance synchronously through explicit commands.
 - Accepted `notifications/initialized` messages return HTTP 202 with no body.
   Other HTTP methods return 405 after authentication.
-- All API request bodies have an 8 MiB byte limit and a 15-second read timeout.
-  Session login bodies have a 16 KiB limit. Oversized bodies return 413;
+- API request bodies have an 8 MiB byte limit and a 15-second read timeout.
+  Better Auth request bodies have a 16 KiB limit. Oversized bodies return 413;
   slow bodies return 408. Limits apply even without `Content-Length`.
+- JSON bodies must use valid UTF-8, unique object keys (including escaped-equivalent
+  keys), and at most 128 nested objects/arrays. Violations return HTTP 400 before
+  dispatch. Repeating a key in different objects is valid. Evidence strings and
+  original request bytes are not rewritten. Non-JSON Better Auth forms are unchanged.
 
 ## Messages
 

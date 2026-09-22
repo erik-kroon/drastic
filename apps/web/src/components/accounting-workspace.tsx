@@ -8,7 +8,7 @@ import { DataTable } from "@open-erp/ui/components/data-table";
 import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { JournalDraft } from "@/components/journal-draft";
+import { PostingDraft } from "@/components/posting-recovery/draft";
 import { PostingRecoveryReview } from "@/components/posting-recovery/review";
 import { PostingRecoveryPanel } from "@/components/posting-recovery/panel";
 import { postingCopy } from "@/components/posting-recovery/copy";
@@ -22,6 +22,9 @@ import { settlementCopy } from "@/components/settlements/copy";
 import { subledgerCopy } from "@/components/subledgers/copy";
 import { closingCopy } from "@/components/closing/copy";
 import { commerceCopy } from "@/components/commerce/copy";
+import { reviewCopy } from "@/components/accountant-review/copy";
+import { intakeCopy } from "@/components/source-intake/copy";
+import { expenseTaxCopy } from "@/components/expense-tax/copy";
 import { CaseSnapshots } from "@/components/case-snapshots";
 import { RecurringPreparation } from "@/components/recurring-preparation";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
@@ -42,6 +45,26 @@ const ClosingPanel = lazy(() =>
 const CommercePanel = lazy(() =>
   import("@/components/commerce/commerce-panel").then((module) => ({
     default: module.CommercePanel,
+  })),
+);
+
+const AccountantReviewPanel = lazy(() =>
+  import("@/components/accountant-review/panel").then((module) => ({
+    default: module.AccountantReviewPanel,
+  })),
+);
+
+const SourceIntake = lazy(() =>
+  import("@/components/source-intake").then((module) => ({ default: module.SourceIntake })),
+);
+
+const ExpenseTaxPanel = lazy(() =>
+  import("@/components/expense-tax/panel").then((module) => ({ default: module.ExpenseTaxPanel })),
+);
+
+const OwnerRegisterPanel = lazy(() =>
+  import("@/components/owner-register/owner-register-panel").then((module) => ({
+    default: module.OwnerRegisterPanel,
   })),
 );
 
@@ -154,7 +177,7 @@ export function AccountingWorkspace({
             </Text>
           ))}
           {setup.data.blockers.length === 0 ? (
-            <JournalDraft
+            <PostingDraft
               key={draftNumber}
               book={book}
               setup={setup.data}
@@ -230,12 +253,27 @@ export function AccountingWorkspace({
         </Box>
       </details>
       {setup.data ? <CorrectionsPanel book={book} setup={setup.data} locale={locale} /> : null}
+      {setup.data ? (
+        <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
+          <SourceIntake book={book} setup={setup.data} locale={locale} />
+        </Suspense>
+      ) : null}
       {setup.data ? <BankReconciliation book={book} setup={setup.data} locale={locale} /> : null}
       {setup.data ? (
         <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
           <BankAllocations book={book} setup={setup.data} locale={locale} />
         </Suspense>
       ) : null}
+      <details id="owner-register" tabIndex={-1}>
+        <summary>
+          {locale === "sv" ? "Ägarutlägg och finansiering" : "Owner expenses and funding"}
+        </summary>
+        <Box paddingBlock="lg" minWidth="zero">
+          <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
+            <OwnerRegisterPanel book={book} locale={locale} />
+          </Suspense>
+        </Box>
+      </details>
       <details id="commerce" tabIndex={-1}>
         <summary>{commerceCopy(locale).title}</summary>
         <Box paddingBlock="lg" minWidth="zero">
@@ -254,7 +292,13 @@ export function AccountingWorkspace({
           <ClosingPanel book={book} setup={setup.data} locale={locale} />
         </Suspense>
       ) : null}
+      <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
+        <ExpenseTaxPanel key={book.id} book={book} locale={locale} onPrepared={setPlanId} />
+      </Suspense>
       <InternalReports book={book} locale={locale} />
+      <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
+        <AccountantReviewPanel key={book.id} book={book} locale={locale} />
+      </Suspense>
       <CaseSnapshots book={book} locale={locale} onPrepared={setPlanId} />
       <RecurringPreparation book={book} setup={setup.data} locale={locale} onPrepared={setPlanId} />
     </Box>
@@ -276,12 +320,20 @@ function WorkspaceSections({
     { id: "posting-recovery-section", label: postingCopy(locale).title, disabled: false },
     { id: "posted-records", label: copy.section_vouchers, disabled: false },
     { id: "corrections", label: correctionCopy(locale).title, disabled: !bankAvailable },
+    { id: "source-intake", label: intakeCopy(locale).title, disabled: !bankAvailable },
     { id: "bank-reconciliation", label: copy.section_bank, disabled: !bankAvailable },
     { id: "internal-reports", label: copy.section_reports, disabled: false },
+    { id: "accountant-review", label: reviewCopy(locale).title, disabled: false },
+    { id: "expense-tax", label: expenseTaxCopy(locale).title, disabled: false },
     { id: "case-snapshots", label: copy.section_cases, disabled: false },
     { id: "recurring-preparation", label: copy.section_preparation, disabled: false },
     { id: "bank-allocations", label: settlementCopy(locale).title, disabled: !bankAvailable },
     { id: "commerce", label: commerceCopy(locale).title, disabled: false },
+    {
+      id: "owner-register",
+      label: locale === "sv" ? "Ägarutlägg och finansiering" : "Owner expenses and funding",
+      disabled: false,
+    },
     { id: "subledgers", label: subledgerCopy(locale).title, disabled: !bankAvailable },
     { id: "technical-closing", label: closingCopy(locale).title, disabled: !bankAvailable },
     { id: "book-readiness", label: copy.section_readiness, disabled: false },

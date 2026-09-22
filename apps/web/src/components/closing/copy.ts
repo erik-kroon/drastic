@@ -1,5 +1,13 @@
 const english = {
   title: "Technical period lock",
+  ownerTax: "Owner and expense review checks",
+  legacyProviderScope:
+    "Historical basis: owner and expense-review dependencies were not captured by this version.",
+  ownerReviewCounts: "Unresolved owner reviews / unlinked sources",
+  expenseReviewCount: "Missing or stale expense reviews",
+  expenseKnownCount: "Known expense sources without supported posting/reconciliation coverage",
+  unpaidAllowed:
+    "Unpaid linked owner claims are allowed. Unknown openings, company completeness and tax eligibility remain unresolved.",
   warning:
     "Synthetic records only. Locking a period is not a statutory close, an annual report, or proof that company records are complete. No filing is sent.",
   period: "Accounting period",
@@ -66,6 +74,14 @@ const english = {
 };
 const swedish: typeof english = {
   title: "Teknisk periodlåsning",
+  ownerTax: "Kontroller av ägar- och utgiftsgranskning",
+  legacyProviderScope:
+    "Historiskt underlag: denna version sparade inte beroenden för ägar- och utgiftsgranskning.",
+  ownerReviewCounts: "Olösta ägargranskningar / källor utan bokföringslänk",
+  expenseReviewCount: "Saknade eller inaktuella utgiftsgranskningar",
+  expenseKnownCount: "Kända utgiftskällor utan stödd bokförings- och avstämningstäckning",
+  unpaidAllowed:
+    "Obetalda, bokföringslänkade ägarfordringar är tillåtna. Ingående balans, företagets fullständighet och skatterättslig bedömning är fortfarande olösta.",
   warning:
     "Endast syntetiska poster. En låst period är inte ett lagstadgat bokslut, en årsredovisning eller bevis på att företagets underlag är fullständiga. Ingen inlämning skickas.",
   period: "Redovisningsperiod",

@@ -62,6 +62,24 @@ export function ClosingFacts({
           }))}
         />
       </details>
+      <Heading>{copy.ownerTax}</Heading>
+      {basis.ownerTaxStatus ? (
+        <>
+          <Text>
+            {copy.ownerReviewCounts}: {basis.ownerTaxStatus.owners.unresolvedReviewCount} /{" "}
+            {basis.ownerTaxStatus.owners.unlinkedRecordCount}
+          </Text>
+          <Text>
+            {copy.expenseReviewCount}: {basis.ownerTaxStatus.expenseTax.missingOrStaleReviewCount}
+          </Text>
+          <Text>
+            {copy.expenseKnownCount}: {basis.ownerTaxStatus.expenseTax.sourceCount}
+          </Text>
+          <Text>{copy.unpaidAllowed}</Text>
+        </>
+      ) : (
+        <Text>{copy.legacyProviderScope}</Text>
+      )}
       <Heading>{copy.statutory}</Heading>
       <Box as="ul" display="grid" gap="sm">
         {basis.statutoryBlockers.map((blocker) => (

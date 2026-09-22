@@ -4,7 +4,17 @@ const headers = ["Bokförd", "Valutadatum", "Text", "Typ", "Insättningar/uttag"
 
 export class StatementProblem extends Error {
   constructor(
-    readonly code: "size" | "encoding" | "csv" | "header" | "empty" | "rows" | "date" | "amount" | "order" | "read",
+    readonly code:
+      | "size"
+      | "encoding"
+      | "csv"
+      | "header"
+      | "empty"
+      | "rows"
+      | "date"
+      | "amount"
+      | "order"
+      | "read",
     readonly line: number = 1,
   ) {
     super(code);
@@ -105,13 +115,19 @@ function exactMinor(value: string, line: number) {
 }
 
 function movement(record: CsvRecord, ordinal: number): StatementMovement {
-  const [bookedOn, valuedOn, description, transactionType, amount, balance] = record.fields;
+  const [bookedOn, valuedOn, description, transactionType] = record.fields;
+  const amount = record.fields[4];
+  const balance = record.fields[5];
   if (
     record.fields.length !== 6 ||
-    bookedOn === undefined || valuedOn === undefined ||
-    !description?.trim() || !transactionType?.trim() ||
-    amount === undefined || balance === undefined
-  ) throw new StatementProblem("csv", record.line);
+    bookedOn === undefined ||
+    valuedOn === undefined ||
+    !description?.trim() ||
+    !transactionType?.trim() ||
+    amount === undefined ||
+    balance === undefined
+  )
+    throw new StatementProblem("csv", record.line);
   return {
     ordinal,
     sourceLine: record.line,
@@ -135,7 +151,11 @@ export async function previewSebStatement(file: File): Promise<StatementPreview>
   }
   const records = csvRecords(source);
   const header = records[0];
-  if (!header || header.fields.length !== headers.length || headers.some((value, index) => value !== header.fields[index]))
+  if (
+    !header ||
+    header.fields.length !== headers.length ||
+    headers.some((value, index) => value !== header.fields[index])
+  )
     throw new StatementProblem("header");
   const rows = records.slice(1).map((record, index) => movement(record, index + 1));
   const newest = rows[0];
@@ -144,9 +164,7 @@ export async function previewSebStatement(file: File): Promise<StatementPreview>
   let deposits = 0n;
   let withdrawals = 0n;
   const balanceDifferenceRows: number[] = [];
-  for (let index = 0; index < rows.length; index++) {
-    const row = rows[index];
-    if (!row) continue;
+  for (const [index, row] of rows.entries()) {
     const amount = BigInt(row.amountMinor);
     if (amount > 0n) deposits += amount;
     else withdrawals -= amount;
@@ -163,7 +181,9 @@ export async function previewSebStatement(file: File): Promise<StatementPreview>
     source: {
       name: file.name,
       byteLength: bytes.byteLength,
-      sha256: Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(""),
+      sha256: Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(
+        "",
+      ),
     },
     selectedCurrency: "SEK",
     coverage: "unconfirmed",

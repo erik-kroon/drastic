@@ -13,6 +13,8 @@ import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accoun
 import type { Locale } from "@/paraglide/runtime";
 import { correctionCopy } from "./copy";
 import { CorrectionReview } from "./correction-review";
+import { CorrectionDiscovery } from "./discovery";
+import { CorrectionChainView, CorrectionImpactDetails } from "./impact-review";
 
 export function CorrectionsPanel({
   book,
@@ -51,6 +53,7 @@ export function CorrectionsPanel({
       <summary>{copy.title}</summary>
       <Box display="grid" gap="2xl" paddingBlock="lg" minWidth="zero">
         <Text tone="muted">{copy.scope}</Text>
+        <CorrectionDiscovery book={book} locale={locale} onSelected={setBundleId} />
         <Box
           as="form"
           display="grid"
@@ -137,6 +140,7 @@ export function CorrectionsPanel({
         ) : null}
         {original.data && !bundleId ? (
           <>
+            <CorrectionChainView book={book} setup={setup} locale={locale} id={original.data.id} />
             <Heading>{copy.original}</Heading>
             <Text>{original.data.id}</Text>
             <SealedAction
@@ -182,14 +186,24 @@ function ReplacementDraft(props: {
   const nextLine = useRef(original.action.lines.length);
   const [lines, setLines] = useState(original.action.lines.map((_, index) => index));
   const [error, setError] = useState("");
+  const [impactConfirmed, setImpactConfirmed] = useState(false);
+  const [requestKey, setRequestKey] = useState("");
+  const impact = useMutation({
+    mutationFn: (input: typeof Corrections.CorrectionIntent.Type) => {
+      const path = `${bookPath(book)}/vouchers/${encodeURIComponent(original.id)}/correction-impact-reviews`;
+      const body = JSON.stringify(input);
+      const options = mutationOptions(path, body, keys.current);
+      setRequestKey(keys.current.get(`${path}:${body}`) ?? "");
+      return readAccounting(path, Corrections.CorrectionImpact, options);
+    },
+  });
   const prepare = useMutation({
     mutationFn: (input: typeof Corrections.PrepareCorrectionBundle.Type) => {
       const path = `${bookPath(book)}/vouchers/${encodeURIComponent(original.id)}/correction-bundles`;
-      return readAccounting(
-        path,
-        Corrections.CorrectionBundle,
-        mutationOptions(path, JSON.stringify(input), keys.current),
-      );
+      const body = JSON.stringify(input);
+      const options = mutationOptions(path, body, keys.current);
+      setRequestKey(keys.current.get(`${path}:${body}`) ?? "");
+      return readAccounting(path, Corrections.CorrectionBundle, options);
     },
     onSuccess: (bundle) => props.onPrepared(bundle.id),
   });
@@ -201,7 +215,7 @@ function ReplacementDraft(props: {
       onSubmit={(event) => {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
-        const decoded = Schema.decodeUnknownOption(Corrections.PrepareCorrectionBundle)({
+        const decoded = Schema.decodeUnknownOption(Corrections.CorrectionIntent)({
           datePolicy: "explicit_open_period",
           accountingPeriodId: fields.get("period"),
           postingDate: fields.get("date"),
@@ -240,7 +254,8 @@ function ReplacementDraft(props: {
           return;
         }
         setError("");
-        prepare.mutate(draft);
+        setImpactConfirmed(false);
+        impact.mutate(draft);
       }}
     >
       <Heading>{copy.draft}</Heading>
@@ -248,7 +263,11 @@ function ReplacementDraft(props: {
       <Box
         as="fieldset"
         disabled={
-          prepare.isPending || prepare.isSuccess || original.action.postingPurpose === "reversal"
+          impact.isPending ||
+          impact.isSuccess ||
+          prepare.isPending ||
+          prepare.isSuccess ||
+          original.action.postingPurpose === "reversal"
         }
         borderWidth="none"
         margin="none"
@@ -365,11 +384,71 @@ function ReplacementDraft(props: {
             {copy.add}
           </Button>
           <Button type="submit" size="xl">
-            {copy.seal}
+            {copy.prepareImpact}
           </Button>
         </Box>
       </Box>
       <Text role="status">{error}</Text>
+      <AccountingStatus write locale={locale} pending={impact.isPending} error={impact.error} />
+      {requestKey ? (
+        <Box role="status" display="grid" gap="sm">
+          <Text>
+            {copy.requestKey}: {requestKey}
+          </Text>
+          <Text tone="muted">{copy.requestHint}</Text>
+        </Box>
+      ) : null}
+      {impact.data ? (
+        <Box display="grid" gap="lg" minWidth="zero">
+          <CorrectionImpactDetails book={book} impact={impact.data} locale={locale} />
+          <Box as="label" display="flex" alignItems="center" gap="md" paddingBlock="md">
+            <input
+              type="checkbox"
+              checked={impactConfirmed}
+              disabled={prepare.isPending}
+              onChange={(event) => setImpactConfirmed(event.target.checked)}
+            />
+            {copy.impactConfirm}
+          </Box>
+          <Box display="flex" flexWrap="wrap" gap="md">
+            <Button
+              type="button"
+              size="xl"
+              variant="outline"
+              disabled={prepare.isPending}
+              onClick={() => {
+                const path = `${bookPath(book)}/vouchers/${encodeURIComponent(original.id)}/correction-impact-reviews`;
+                if (impact.variables)
+                  keys.current.delete(`${path}:${JSON.stringify(impact.variables)}`);
+                impact.reset();
+                prepare.reset();
+                setImpactConfirmed(false);
+              }}
+            >
+              {copy.editImpact}
+            </Button>
+            <Button
+              type="button"
+              size="xl"
+              disabled={
+                !impactConfirmed ||
+                prepare.isPending ||
+                prepare.isSuccess ||
+                impact.data.basis.blockers.length > 0
+              }
+              onClick={() => {
+                if (impact.data)
+                  prepare.mutate({
+                    ...impact.data.basis.intent,
+                    impactReview: { id: impact.data.id, digest: impact.data.digest },
+                  });
+              }}
+            >
+              {copy.seal}
+            </Button>
+          </Box>
+        </Box>
+      ) : null}
       <AccountingStatus write locale={locale} pending={prepare.isPending} error={prepare.error} />
     </Box>
   );

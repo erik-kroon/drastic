@@ -38,7 +38,11 @@ export async function newDirectory(path: string) {
 export async function writePrivate(path: string, value: string) {
   await writeFile(path, value, { mode: 0o600, flag: "wx" });
   const file = await open(path, "r");
-  try { await file.sync(); } finally { await file.close(); }
+  try {
+    await file.sync();
+  } finally {
+    await file.close();
+  }
 }
 export async function readTarget(path: string) {
   await privatePath(path, false);
@@ -122,21 +126,30 @@ export async function runPostgres(
   process.once("SIGINT", stop);
   process.once("SIGTERM", stop);
   try {
-    if ((await child.exited) !== 0)
-      refuse("PostgreSQL tool failed. No successful operation receipt was issued.");
+    const exitCode = await child.exited;
+    if (exitCode !== 0)
+      refuse(`${tool} exited with status ${exitCode}. No successful operation receipt was issued.`);
   } finally {
     process.removeListener("SIGINT", stop);
     process.removeListener("SIGTERM", stop);
   }
 }
 export async function fingerprint(path: string, privateFile = true) {
-  if (!isAbsolute(path) || await realpath(path) !== path) refuse("Use an absolute file path without symlinks.");
+  if (!isAbsolute(path) || (await realpath(path)) !== path)
+    refuse("Use an absolute file path without symlinks.");
   const info = privateFile ? await privatePath(path, false) : await lstat(path);
-  if (!info.isFile() || info.nlink !== 1 || info.uid !== process.getuid?.()) refuse("Release files must be owned regular files without hardlinks.");
+  if (!info.isFile() || info.nlink !== 1 || info.uid !== process.getuid?.())
+    refuse("Release files must be owned regular files without hardlinks.");
   const hash = createHash("sha256");
   for await (const chunk of createReadStream(path)) hash.update(chunk);
   const after = await lstat(path);
-  if (info.size !== after.size || info.mtimeMs !== after.mtimeMs || info.ino !== after.ino) {
+  if (
+    info.size !== after.size ||
+    info.mtimeMs !== after.mtimeMs ||
+    info.ino !== after.ino ||
+    after.nlink !== 1 ||
+    info.mode !== after.mode
+  ) {
     refuse("An artifact changed during checksum calculation.");
   }
   return { bytes: String(info.size), sha256: hash.digest("hex") };

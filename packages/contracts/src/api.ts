@@ -16,6 +16,10 @@ import { SubledgersApi } from "./subledgers";
 import { ClosingApi } from "./closing";
 
 import { CommerceApi } from "./commerce";
+import { AccountantReviewApi } from "./accountant-review";
+import { SourceIntakeApi } from "./source-intake";
+import { ExpenseTaxApi } from "./expense-tax";
+import { OwnerRegisterApi } from "./owner-register";
 
 export { AccountingErrorStatus } from "./accounting-errors";
 
@@ -117,6 +121,10 @@ export class Api extends HttpApi.make("open-erp")
     CorrectionApi,
     SettlementsApi,
     CommerceApi,
+    AccountantReviewApi,
+    SourceIntakeApi,
+    ExpenseTaxApi,
+    OwnerRegisterApi,
     ClosingApi,
     SubledgersApi,
   )

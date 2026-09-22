@@ -85,13 +85,24 @@ export const RoleInventory = Schema.Struct({
   replication: Schema.Boolean,
   bypassRls: Schema.Boolean,
   connectionLimit: Schema.Int,
-  memberships: Schema.Array(Schema.Struct({ role: Schema.String, admin: Schema.Boolean, inherit: Schema.Boolean, set: Schema.Boolean })),
+  expiresAt: Schema.NullOr(Schema.String),
+  memberships: Schema.Array(
+    Schema.Struct({
+      role: Schema.String,
+      grantor: Schema.String,
+      admin: Schema.Boolean,
+      inherit: Schema.Boolean,
+      set: Schema.Boolean,
+    }),
+  ),
 });
 export const DatabaseInventory = Schema.Struct({
+  owner: Schema.String,
   encoding: Schema.String,
   collation: Schema.String,
   ctype: Schema.String,
   localeProvider: Schema.Literal("c"),
+  schemaSha256: Digest,
   extensions: Schema.Array(Schema.Struct({ name: Schema.String, version: Schema.String })),
   migrations: Schema.Array(Schema.Struct({ name: Schema.String, sha256: Digest })),
   roles: Schema.Array(RoleInventory),

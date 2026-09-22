@@ -24,6 +24,10 @@ import { SubledgerHandlers } from "./subledgers";
 import { ClosingHandlers } from "./closing";
 
 import { CommerceHandlers } from "./commerce";
+import { AccountantReviewHandlers } from "./accountant-review";
+import { SourceIntakeHandlers } from "./source-intake";
+import { ExpenseTaxHandlers } from "./expense-tax";
+import { OwnerRegisterHandlers } from "./owner-register";
 
 const SystemHandlers = HttpApiBuilder.group(Api, "system", (handlers) =>
   handlers
@@ -53,6 +57,10 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     CorrectionHandlers,
     SettlementHandlers,
     CommerceHandlers,
+    AccountantReviewHandlers,
+    SourceIntakeHandlers,
+    ExpenseTaxHandlers,
+    OwnerRegisterHandlers,
     ClosingHandlers,
     SubledgerHandlers,
   ]),

@@ -17,4 +17,24 @@ Impact snapshots are conservative book snapshots: any ledger movement, account/p
 
 ## Delivery status
 
-Implementation in progress. Existing migrations through0900 are immutable. New SQL is0410+. Root alone integrates dispatcher/catalog and runs application/static/runtime checks. No Git operations, installs, tests, fixtures, servers or database writes by this owner.
+Implemented in source; integration and runtime observations pending. Existing migrations through0900 are immutable. New SQL is0410+. Root alone integrates dispatcher/catalog and runs application/static/runtime checks. No Git operations, installs, tests, fixtures, servers or database writes by this owner.
+
+## Implemented shape
+
+`0410-correction-impact-workbench.sql` adds the immutable impact review and read/recovery functions. New bundles require an exact `impactReview` reference and include it under their digest. The basis binds complete connected committed chain/totals, exact intended lines/date/rationale, affected stable relationships, ledger sequence and configuration. Both pre-seal and approval/execute recheck it. An explicit list of blockers prevents sealing; the response always reports `executable:false`.
+
+The domain-local UI now discovers bundles, reads chains, preserves request keys for uncertain results, freezes/shows exact replacement impacts before sealing, and reads the saved impact during approval. Affected-resource links use existing scoped read endpoints. Old bundles still decode; committed replay remains unchanged. Old unposted bundles and reversal-only preparations/execution receive live register/no-op guards where applicable.
+
+No-op equivalence for this plain-journal profile compares net minor units per account and posting date/period, ignoring labels, line order and equivalent splits. This does not claim equivalence for unsupported dimensions, tax facts or register effects.
+
+Stable inputs are the retained bank matches/allocation legs, commerce invoice/payment links, schedule preparation/event identities, reports and technical certificates in existing migrations through0900. Future register-release or filing hooks are not guessed. The module never writes another owner's tables, decrements capacity, replaces artifacts or reopens a period.
+
+Integration mappings and the remaining root actions are in [CORRECTIONS-HANDOFF.md](CORRECTIONS-HANDOFF.md). Source checks and earlier0400/0401 receipts do not verify the new package's runtime, crash/recovery or browser behavior.
+
+## Owner-register integration acceptance cases (0890, before implementation)
+
+Root reserved0890 for correction integration after0410 and0610. A known owner source must block generic correction even without an `owner_effects` row. Match original event evidence/locator, posted-effect voucher identity and posted proposal provenance. Review/source revision, attached proposal, effect and allocation changes must change the frozen dependency digest without requiring a ledger/account-version change.
+
+Required cases: owner source before impact; source or effect registered after impact or approval; posted proposal without captured effect; changed owner review/revision; additional allocation against a linked effect; unrelated-book or unrelated-voucher registration; old snapshot read without rewriting its body; old unposted bundle and reversal-only preflight; committed same/new-key receipt recovery unaffected. Each correction must fail before a misleading seal/approval or financial write when the new link is known. Existing owner and paired-posting guards remain defense in depth. Source implementation cannot prove concurrent admission/rollback behavior; no SQL execution or tests are authorized here.
+
+0890 implementation: the private owner-impact helper selects source records by original event evidence/locator, owner effects by voucher and posted proposal provenance by change set. Each blocking `owner_record` resource links to the existing owner-register record endpoint and carries a digest of its retained source/current revision/current review, proposal links, effects and applied allocation legs. Those resources enter the existing frozen basis; no separate permission flag or compensation action is added. Normal book-lock serialization and existing seal/approval/execute comparisons now observe these owner changes even when ledger/configuration versions do not move. Both source-only and posted-effect cases fail closed. Unaffected old resource shapes remain unchanged; historical review bodies/receipts are not rewritten. Source-only review is not runtime/concurrency/rollback proof.

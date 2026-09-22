@@ -19,7 +19,11 @@
     "./corrections": "./src/corrections.ts",
     "./operations": "./src/operations.ts",
     "./settlements": "./src/settlements.ts",
-    "./commerce": "./src/commerce.ts"
+    "./commerce": "./src/commerce.ts",
+    "./accountant-review": "./src/accountant-review.ts",
+    "./source-intake": "./src/source-intake.ts",
+    "./expense-tax": "./src/expense-tax.ts",
+    "./owner-register": "./src/owner-register.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

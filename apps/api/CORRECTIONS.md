@@ -1,6 +1,10 @@
 # Atomic corrections
 
-## Implemented boundary
+## Current workbench layer
+
+The new0410 source adds snapshot-bound impact review, chain/discovery and request recovery. See [CORRECTIONS-WORKBENCH.md](CORRECTIONS-WORKBENCH.md) for acceptance cases and supported/blocked behavior, and [CORRECTIONS-HANDOFF.md](CORRECTIONS-HANDOFF.md) for root integration. Its runtime evidence is separate from the earlier0400/0401 observation below. New bundle sealing requires a reviewed impact reference; registered downstream compensation remains unavailable rather than inferred.
+
+## Original bundle boundary
 
 `0400-correction-bundles.sql` adds a linked reversal **and** replacement workflow for the existing `synthetic-core-v1` manual journal profile. It depends on migrations through0211 and0300 (the posting recovery hook). It does not replace the reversal-only API.
 

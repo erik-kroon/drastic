@@ -2,6 +2,7 @@ import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
+import { OwnerTaxStatus } from "./closing-providers";
 
 export const PeriodPath = Schema.Struct({
   ...Accounting.Scope.fields,
@@ -26,6 +27,8 @@ export const ClosingDependencies = Schema.Struct({
   bankDigest: Accounting.Digest,
   scheduleDigest: Accounting.Digest,
   inventoryDigest: Accounting.Digest,
+  ownerSourceDigest: Schema.optional(Accounting.Digest),
+  expenseTaxBasisDigest: Schema.optional(Accounting.Digest),
   reportId: Schema.NullOr(Accounting.Identifier),
 });
 export const DeclareClosingInventory = Schema.Struct({
@@ -47,6 +50,7 @@ export const ClosingReadiness = Schema.Struct({
   endsOn: Accounting.AccountingDate,
   locked: Schema.Boolean,
   inventory: Schema.NullOr(ClosingInventory),
+  ownerTaxStatus: Schema.optional(OwnerTaxStatus),
   dependencies: ClosingDependencies,
   checks: Schema.Array(ClosingCheck),
   technicalCloseAllowed: Schema.Boolean,
