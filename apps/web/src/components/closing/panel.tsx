@@ -18,17 +18,19 @@ export function ClosingPanel({
   book,
   setup,
   locale,
+  open = false,
 }: {
   book: typeof Accounting.Book.Type;
   setup: typeof Accounting.BookSetup.Type | undefined;
   locale: Locale;
+  open?: boolean;
 }) {
   const copy = closingCopy(locale);
   const [periodId, setPeriodId] = useState("");
   const [proposalId, setProposalId] = useState("");
   const [error, setError] = useState("");
   return (
-    <details id="technical-closing" tabIndex={-1}>
+    <details open={open} id="technical-closing" tabIndex={-1}>
       <summary>{copy.title}</summary>
       <Box display="grid" gap="xl" paddingBlock="xl" minWidth="zero">
         <Heading>{copy.title}</Heading>

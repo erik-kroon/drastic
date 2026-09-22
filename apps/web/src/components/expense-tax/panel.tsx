@@ -17,11 +17,12 @@ import { TaxEvidenceForm, TaxReviewForm, TaxSourceForm } from "./forms";
 import { TaxFactsTable, TaxSnapshotEntry } from "./views";
 
 type Props = {
+  open?: boolean;
   book: typeof Accounting.Book.Type;
   locale: Locale;
   onPrepared: (id: string) => void;
 };
-export function ExpenseTaxPanel({ book, locale, onPrepared }: Props) {
+export function ExpenseTaxPanel({ book, locale, onPrepared, open = false }: Props) {
   const copy = expenseTaxCopy(locale);
   const client = useQueryClient();
   const [sourceId, setSourceId] = useState<string | null>(null);
@@ -38,7 +39,7 @@ export function ExpenseTaxPanel({ book, locale, onPrepared }: Props) {
     void client.invalidateQueries({ queryKey: [...bookKey(book), "expense-tax"] });
   };
   return (
-    <details id="expense-tax" tabIndex={-1}>
+    <details open={open} id="expense-tax" tabIndex={-1}>
       <summary>{copy.title}</summary>
       <Box display="grid" gap="2xl" paddingBlock="xl" minWidth="zero">
         <Heading>{copy.title}</Heading>

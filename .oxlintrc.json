@@ -114,7 +114,9 @@
         "apps/web/src/**/*.tsx",
         "packages/config/**/*.ts",
         "packages/contracts/src/**/*.ts",
-        "packages/ui/src/**/*.ts"
+        "packages/ui/src/**/*.ts",
+        "packages/domain/src/**/*.ts",
+        "jurisdictions/se/src/**/*.ts"
       ],
       "rules": {
         "complexity": ["error", 30]
@@ -130,6 +132,48 @@
       "files": ["packages/ui/src/**"],
       "rules": {
         "no-restricted-imports": "off"
+      }
+    },
+    {
+      "files": ["packages/domain/src/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@open-erp/contracts",
+                  "@open-erp/contracts/*",
+                  "@open-erp/jurisdiction-*",
+                  "node:*",
+                  "bun",
+                  "cloudflare:*",
+                  "effect/unstable/*",
+                  "react",
+                  "react/*"
+                ],
+                "message": "Domain models must remain independent of transports, jurisdiction rules and runtime adapters."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["jurisdictions/se/src/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["node:*", "bun", "cloudflare:*", "effect/unstable/*", "react", "react/*"],
+                "message": "Jurisdiction calculations take values and return values. Keep runtime and transport access in apps/api."
+              }
+            ]
+          }
+        ]
       }
     }
   ],

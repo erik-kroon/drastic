@@ -20,12 +20,17 @@ for unimplemented profiles. Synthetic dates and accounts are not company facts.
 
 ```text
 apps/web           TanStack Start routes, Query state and review screens
-apps/api           Effect 4 Worker, authenticated REST/MCP adapters
+apps/api           Effect workflows, authenticated REST/MCP and runtime adapters
 apps/api/migrations PostgreSQL authority and restricted command functions
-packages/contracts Effect Schema transport contracts
+packages/domain    Accounting models, exact-money schemas and domain errors
+packages/contracts Effect Schema transport contracts using shared domain models
+jurisdictions/se   Pure Swedish VAT calculations and SIE rendering
 packages/ui        Shared StyleX controls and tokens
 infra/alchemy      Workers and uncached Hyperdrive connection
+infra/self-host    Bun/PostgreSQL distribution
 ```
+
+The [API layout](apps/api/README.md) separates transports, application workflows, database access and runtime adapters. [ADR 0007](docs/adr/0007-domain-and-jurisdiction-layout.md) records package dependencies and the preserved public contracts.
 
 Effect is pinned to `4.0.0-rc.112`. Database access uses Drizzle's native Effect PostgreSQL adapter,
 backed by `@effect/sql-pg` and the Worker-compatible `pg` driver. Each database operation owns its

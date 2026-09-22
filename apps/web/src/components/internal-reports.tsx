@@ -16,15 +16,17 @@ import type { Locale } from "@/paraglide/runtime";
 export function InternalReports({
   book,
   locale,
+  open = false,
 }: {
   book: typeof Accounting.Book.Type;
   locale: Locale;
+  open?: boolean;
 }) {
   const copy = accountingCopy(locale);
   const [reportId, setReportId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState("");
   return (
-    <details id="internal-reports" tabIndex={-1}>
+    <details open={open} id="internal-reports" tabIndex={-1}>
       <summary>{copy.report_title}</summary>
       <Box display="grid" gap="2xl" paddingBlock="xl" minWidth="zero">
         <Heading>{copy.report_title}</Heading>

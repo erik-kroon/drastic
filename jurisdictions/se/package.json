@@ -1,0 +1,22 @@
+{
+  "name": "@open-erp/jurisdiction-se",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    "./vat": "./src/vat/calculation.ts",
+    "./sie": "./src/sie/encoder.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@open-erp/contracts": "workspace:*",
+    "@open-erp/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@open-erp/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

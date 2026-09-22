@@ -1,0 +1,24 @@
+{
+  "name": "@open-erp/domain",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    "./values": "./src/values.ts",
+    "./money": "./src/money.ts",
+    "./errors": "./src/errors.ts",
+    "./ledger": "./src/ledger.ts",
+    "./books": "./src/books.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "effect": "4.0.0-rc.112"
+  },
+  "devDependencies": {
+    "@open-erp/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

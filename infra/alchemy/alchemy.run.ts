@@ -29,7 +29,7 @@ export default Alchemy.Stack(
     });
     const api = yield* Cloudflare.Worker("Api", {
       compatibility: { date: "2026-09-22", flags: ["nodejs_compat"] },
-      main: path.resolve(import.meta.dirname, "../../apps/api/src/cloudflare.ts"),
+      main: path.resolve(import.meta.dirname, "../../apps/api/src/runtime/cloudflare.ts"),
       crons: ["* * * * *"],
       env: {
         HYPERDRIVE: database,

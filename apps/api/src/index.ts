@@ -6,33 +6,33 @@ import * as Layer from "effect/Layer";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 
-import { AccountingHandlers } from "./accounting";
-import { authHandler } from "./better-auth";
-import { boundedRequest } from "./body";
-import { McpRoutes } from "./mcp";
-import { type Bindings, RequestEnvironment } from "./database";
-import { ReportHandlers } from "./reports";
-import { CaseHandlers } from "./cases";
-import { AutomationHandlers } from "./automation";
-import { PostingRecoveryHandlers } from "./posting-recovery";
-import { CorrectionHandlers } from "./corrections";
-import { SettlementHandlers } from "./settlements";
-import { ReconciliationHandlers } from "./reconciliation";
+import { AccountingHandlers } from "./transport/http/routes/accounting";
+import { authHandler } from "./adapters/auth/better-auth";
+import { boundedRequest } from "./transport/http/body";
+import { McpRoutes } from "./transport/mcp";
+import { type Bindings, RequestEnvironment } from "./runtime/environment";
+import { ReportHandlers } from "./transport/http/routes/reports";
+import { CaseHandlers } from "./transport/http/routes/cases";
+import { AutomationHandlers } from "./transport/http/routes/automation";
+import { PostingRecoveryHandlers } from "./transport/http/routes/posting-recovery";
+import { CorrectionHandlers } from "./transport/http/routes/corrections";
+import { SettlementHandlers } from "./transport/http/routes/settlements";
+import { ReconciliationHandlers } from "./transport/http/routes/reconciliation";
 
-import { SubledgerHandlers } from "./subledgers";
+import { SubledgerHandlers } from "./transport/http/routes/subledgers";
 
-import { ClosingHandlers } from "./closing";
+import { ClosingHandlers } from "./transport/http/routes/closing";
 
-import { CommerceHandlers } from "./commerce";
-import { RegisterReportHandlers } from "./register-reports";
-import { VatReturnsHandlers } from "./vat-returns";
-import { SieHandlers } from "./sie";
-import { InvoiceDraftHandlers } from "./invoice-drafts";
-import { AccountantReviewHandlers } from "./accountant-review";
-import { SourceIntakeHandlers } from "./source-intake";
-import { ExpenseTaxHandlers } from "./expense-tax";
-import { OwnerRegisterHandlers } from "./owner-register";
-import { WorkspaceHandlers } from "./workspace";
+import { CommerceHandlers } from "./transport/http/routes/commerce";
+import { RegisterReportHandlers } from "./transport/http/routes/register-reports";
+import { VatReturnsHandlers } from "./transport/http/routes/vat-returns";
+import { SieHandlers } from "./transport/http/routes/sie";
+import { InvoiceDraftHandlers } from "./transport/http/routes/invoice-drafts";
+import { AccountantReviewHandlers } from "./transport/http/routes/accountant-review";
+import { SourceIntakeHandlers } from "./transport/http/routes/source-intake";
+import { ExpenseTaxHandlers } from "./transport/http/routes/expense-tax";
+import { OwnerRegisterHandlers } from "./transport/http/routes/owner-register";
+import { WorkspaceHandlers } from "./transport/http/routes/workspace";
 
 const SystemHandlers = HttpApiBuilder.group(Api, "system", (handlers) =>
   handlers

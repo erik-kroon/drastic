@@ -2,20 +2,19 @@ import { type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import * as Accounting from "@open-erp/contracts/accounting";
-import { BookOpen, CheckSquare, LayoutDashboard, Settings, Layers, Building2 } from "lucide-react";
-import { Box } from "@open-erp/ui/components/box";
+import { BookOpen, CheckSquare, Building2 } from "lucide-react";
 import { Button } from "@open-erp/ui/components/button";
 import { SelectControl } from "@open-erp/ui/components/select";
 import { SelectField } from "@open-erp/ui/components/field";
 import { Link } from "@open-erp/ui/components/link";
-import { Text } from "@open-erp/ui/components/typography";
 import {
   Workspace,
   WorkspaceBrand,
-  WorkspaceNavigation,
-  WorkspaceNavLink,
-  WorkspaceScope,
+  WorkspaceAccount,
+  WorkspaceMobileNavigation,
 } from "@open-erp/ui/components/workspace";
+import { BookNavigation } from "@/components/book-navigation";
+import { frontendCopy } from "@/lib/frontend-copy";
 import { BookContext, workspacePath } from "@/lib/book-context";
 import { AccountingStatus } from "@/components/accounting-status";
 import { SignOut } from "@/components/accounting-access";
@@ -44,88 +43,76 @@ export function BookWorkspace({
       readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
     retry: false,
   });
-  const navigation = (
-    <WorkspaceNavigation label={copy.workspace_navigation} showLabel={false}>
-      <WorkspaceNavLink href={`${base}/`} active={pathname === base || pathname === `${base}/`}>
-        <LayoutDashboard aria-hidden="true" size={18} strokeWidth={1.5} />
-        {copy.workspace_overview}
-      </WorkspaceNavLink>
-      <WorkspaceNavLink
-        href={`${base}/work`}
-        active={pathname.includes("/work") || pathname.includes("/reviews/")}
-      >
-        <CheckSquare aria-hidden="true" size={18} strokeWidth={1.5} />
-        {copy.workspace_work}
-      </WorkspaceNavLink>
-      <WorkspaceNavLink href={`${base}/books`} active={pathname.endsWith("/books")}>
-        <BookOpen aria-hidden="true" size={18} strokeWidth={1.5} />
-        {copy.workspace_books}
-      </WorkspaceNavLink>
-      <WorkspaceNavLink href={`${base}/tools`} active={pathname.endsWith("/tools")}>
-        <Layers aria-hidden="true" size={18} strokeWidth={1.5} />
-        {copy.workspace_legacy}
-      </WorkspaceNavLink>
-      <WorkspaceNavLink href={`${base}/settings`} active={pathname.endsWith("/settings")}>
-        <Settings aria-hidden="true" size={18} strokeWidth={1.5} />
-        {copy.workspace_settings}
-      </WorkspaceNavLink>
-    </WorkspaceNavigation>
+  const labels = frontendCopy(locale);
+  const navigation = <BookNavigation base={base} pathname={pathname} locale={locale} />;
+  const account = (
+    <WorkspaceAccount
+      name={book.name}
+      detail={`${book.currency} · ${book.profile === "synthetic-core-v1" ? copy.workspace_synthetic : copy.workspace_book_context}`}
+    >
+      {books.length > 1 ? (
+        <SelectControl
+          aria-label={copy.journal_book}
+          value={`${book.entityId}/${book.id}`}
+          options={books.map((item) => ({
+            value: `${item.entityId}/${item.id}`,
+            label: item.name,
+          }))}
+          onValueChange={(value) => {
+            const selected = books.find((item) => `${item.entityId}/${item.id}` === value);
+            if (selected) void navigate({ to: `${workspacePath(selected)}/` });
+          }}
+        />
+      ) : null}
+      <Link href={`${base}/settings`}>{labels.settings}</Link>
+      <Link href="/">{copy.workspace_switch}</Link>
+      <Link href={`${base}/tools`}>{labels.tools}</Link>
+      <SignOut locale={locale} />
+    </WorkspaceAccount>
   );
   return (
     <Workspace
+      pageKey={pathname}
       brand={
         <WorkspaceBrand
-          icon={<BookOpen aria-hidden="true" size={24} />}
+          icon={<BookOpen aria-hidden="true" size={20} strokeWidth={1.5} />}
           name="OpenERP"
-          detail={book.currency}
         />
       }
       navigation={navigation}
-      footer={
-        <>
-          <Link href="/">{copy.workspace_switch}</Link>
-          <SignOut locale={locale} />
-        </>
-      }
-      topbar={
-        <>
-          <WorkspaceScope>
-            <Building2 size={18} strokeWidth={1.5} aria-hidden="true" />
-            {books.length === 1 ? (
-              <Text>{book.name}</Text>
-            ) : (
-              <SelectControl
-                aria-label={copy.journal_book}
-                size="comfortable"
-                value={`${book.entityId}/${book.id}`}
-                options={books.map((item) => ({
-                  value: `${item.entityId}/${item.id}`,
-                  label: item.name,
-                }))}
-                onValueChange={(value) => {
-                  const selected = books.find((item) => `${item.entityId}/${item.id}` === value);
-                  if (selected) void navigate({ to: `${workspacePath(selected)}/` });
-                }}
-              />
-            )}
-          </WorkspaceScope>
-          <Text tone="muted">
-            {book.currency} ·{" "}
-            {book.profile === "synthetic-core-v1"
-              ? copy.workspace_synthetic
-              : copy.workspace_book_context}
-          </Text>
-        </>
-      }
+      footer={account}
       mobileNavigation={
-        <details>
-          <summary>{copy.workspace_menu}</summary>
-          <Box paddingBlock="md">
-            {navigation}
-            <Link href="/">{copy.workspace_switch}</Link>
-            <SignOut locale={locale} />
-          </Box>
-        </details>
+        <WorkspaceMobileNavigation
+          label={labels.menu}
+          closeLabel={labels.close}
+          items={[
+            {
+              label: labels.todo,
+              href: `${base}/`,
+              active:
+                pathname === base ||
+                pathname === `${base}/` ||
+                pathname.endsWith("/work") ||
+                pathname.includes("/reviews/"),
+              icon: <CheckSquare size={20} strokeWidth={1.5} aria-hidden="true" />,
+            },
+            {
+              label: labels.accounts,
+              href: `${base}/accounts`,
+              active: pathname === `${base}/accounts`,
+              icon: <Building2 size={20} strokeWidth={1.5} aria-hidden="true" />,
+            },
+            {
+              label: labels.bookkeeping,
+              href: `${base}/books`,
+              active: pathname === `${base}/books`,
+              icon: <BookOpen size={20} strokeWidth={1.5} aria-hidden="true" />,
+            },
+          ]}
+        >
+          {navigation}
+          {account}
+        </WorkspaceMobileNavigation>
       }
     >
       <AccountingStatus locale={locale} pending={setup.isPending} error={setup.error} />

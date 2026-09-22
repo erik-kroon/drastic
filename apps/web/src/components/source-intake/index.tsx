@@ -14,6 +14,7 @@ import { intakeCopy } from "./copy";
 import { SourceWorkspace } from "./workspace";
 
 export interface IntakeProps {
+  open?: boolean;
   book: typeof Accounting.Book.Type;
   setup: typeof Accounting.BookSetup.Type;
   locale: Locale;
@@ -39,7 +40,7 @@ function IntakeWorkspace(props: IntakeProps) {
       ),
   });
   return (
-    <details id="source-intake" tabIndex={-1}>
+    <details open={props.open} id="source-intake" tabIndex={-1}>
       <summary>{copy.title}</summary>
       <Box display="grid" gap="xl" paddingBlock="xl" minWidth="zero">
         <Heading>{copy.title}</Heading>

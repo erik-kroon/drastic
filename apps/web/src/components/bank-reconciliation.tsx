@@ -19,17 +19,19 @@ export function BankReconciliation({
   book,
   setup,
   locale,
+  open = false,
 }: {
   book: typeof Accounting.Book.Type;
   setup: typeof Accounting.BookSetup.Type;
   locale: Locale;
+  open?: boolean;
 }) {
   const copy = accountingCopy(locale);
   const [statementId, setStatementId] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState("");
   return (
-    <details id="bank-reconciliation" tabIndex={-1}>
+    <details open={open} id="bank-reconciliation" tabIndex={-1}>
       <summary>{copy.bank_title}</summary>
       <Box display="grid" gap="2xl" paddingBlock="xl" minWidth="zero">
         <Heading>{copy.bank_title}</Heading>

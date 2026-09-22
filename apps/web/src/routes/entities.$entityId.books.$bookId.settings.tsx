@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Box } from "@open-erp/ui/components/box";
 import { DataTable } from "@open-erp/ui/components/data-table";
-import { Heading, Text } from "@open-erp/ui/components/typography";
+import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
+import { Text } from "@open-erp/ui/components/typography";
 import { LanguagePreference } from "@/components/book-workspace";
 import { useBookWorkspace } from "@/lib/book-context";
 import { accountingCopy } from "@/lib/accounting-copy";
@@ -15,7 +16,7 @@ function Settings() {
   const copy = accountingCopy(locale);
   return (
     <Box display="grid" gap="xl" minWidth="zero">
-      <Heading level={1}>{copy.workspace_settings}</Heading>
+      <WorkspaceHeader title={copy.workspace_settings} />
       <LanguagePreference locale={locale} />
       <Text>
         {book.profile} · {book.role} · {book.currency}

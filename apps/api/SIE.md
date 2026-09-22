@@ -66,7 +66,7 @@ actual company profile and legal review remain separate gates.
 ## Source implementation and integration
 
 Implemented source: `1100-sie-transaction-artifacts.sql`, `packages/contracts/src/sie.ts`,
-`src/sie-encoder.ts`, `src/sie.ts`, `src/sie-statements.ts`, and accountant-review
+`jurisdictions/se/src/sie/encoder.ts`, `src/application/sie.ts`, `src/db/statements/sie.ts`, and accountant-review
 `sie-panel.tsx`/`sie-copy.ts`. The existing pack inspector mounts the new local panel;
 raw pack tables, rows, contracts and JSON/CSV generators are unchanged.
 
@@ -96,7 +96,7 @@ Captured-but-unrenderable work remains discoverable; no ready artifact is fabric
 
 1. Export `"./sie": "./src/sie.ts"` from `packages/contracts/package.json`.
 2. Add `SieApi` to shared `Api`; spread `SieCapabilities` into shared contracts capabilities.
-3. Spread `sieStatements` from `src/sie-statements.ts` into database `statements`.
+3. Spread `sieStatements` from `src/db/statements/sie.ts` into database `statements`.
 4. Register `SieHandlers` in API composition.
 5. In backend `capabilities`, bind `sie_prepare`, `sie_get`, `sie_list`, `sie_resume` to the
    exported `prepareSie`, `getSie`, `listSie`, `resumeSie` Effect functions, respectively.

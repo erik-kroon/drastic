@@ -13,8 +13,8 @@ import { vatCopy } from "./copy";
 import { VatDraftForm, VatFactForm } from "./forms";
 import { VatDraftView, VatFactSummary } from "./views";
 
-type Props = { book: typeof Accounting.Book.Type; locale: Locale };
-export function VatReturnsPanel({ book, locale }: Props) {
+type Props = { open?: boolean; book: typeof Accounting.Book.Type; locale: Locale };
+export function VatReturnsPanel({ book, locale, open = false }: Props) {
   const copy = vatCopy(locale);
   const client = useQueryClient();
   const [creating, setCreating] = useState(false);
@@ -24,7 +24,7 @@ export function VatReturnsPanel({ book, locale }: Props) {
   const drafts = useQuery({ queryKey: [...bookKey(book), "vat-returns", "drafts"], queryFn: ({ signal }) => readAccounting(`${bookPath(book)}/vat-returns/drafts`, Vat.VatDraftList, { signal }), retry: false });
   const refresh = () => { void client.invalidateQueries({ queryKey: [...bookKey(book), "vat-returns"] }); };
   const factSaved = (id: string) => { setCreating(false); setFactId(id); refresh(); };
-  return <details id="vat-returns" tabIndex={-1}>
+  return <details open={open} id="vat-returns" tabIndex={-1}>
     <summary>{copy.title}</summary>
     <Box display="grid" gap="2xl" paddingBlock="xl" minWidth="zero">
       <Heading>{copy.title}</Heading><Text>{copy.boundary}</Text>

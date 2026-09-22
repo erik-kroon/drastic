@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Box } from "@open-erp/ui/components/box";
-import { Heading, Text } from "@open-erp/ui/components/typography";
+import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
+import { Text } from "@open-erp/ui/components/typography";
 import { AccountingWorkspace } from "@/components/accounting-workspace";
 import { useBookWorkspace } from "@/lib/book-context";
 import { accountingCopy } from "@/lib/accounting-copy";
@@ -14,7 +15,7 @@ function ExistingTools() {
   const copy = accountingCopy(locale);
   return (
     <Box display="grid" gap="xl" minWidth="zero">
-      <Heading level={1}>{copy.workspace_legacy}</Heading>
+      <WorkspaceHeader title={copy.workspace_legacy} />
       <Text tone="muted">{copy.workspace_legacy_help}</Text>
       <AccountingWorkspace book={book} locale={locale} />
     </Box>

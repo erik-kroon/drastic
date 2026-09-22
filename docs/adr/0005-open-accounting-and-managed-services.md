@@ -16,6 +16,8 @@ Customer-derived private evaluations, credentials and operational/customer data 
 
 Retain the existing monorepo paths. Do not rename or pre-create the many packages from the proposal. Extract a domain, provider SDK or jurisdiction package when a real consumer and coherent boundary exist. Swedish rules stay in explicit dated modules; the kernel must not accumulate scattered country branches. Additional countries are deferred until demanded and independently qualified.
 
+[ADR 0007](0007-domain-and-jurisdiction-layout.md) implements the user's subsequent layout request: shared accounting schemas now live in `packages/domain`, existing Swedish calculations in `jurisdictions/se`, and API internals are grouped by boundary. Existing contract exports and application entrypoints remain supported. Other proposed packages remain deferred.
+
 `infra/self-host` owns the local distribution recipe; `apps/api/scripts/self-host.ts` supplies a Bun HTTP boundary around the same API used by the Worker. It serves the existing prerendered web build. `infra/alchemy` retains hosted Cloudflare composition. Backend workflows run only at an owning runtime boundary, whether Worker or Bun; shared domain code does not start runtimes itself.
 
 The future managed control plane belongs in a separate repository once there is actual service implementation. No private repository, remote service or credential vault is created by this decision. Keep a narrow versioned API between it and the accounting product, with scoped authority, idempotency and recoverable outcomes. This separation does not itself determine license obligations; [the licensing policy](../../LICENSING.md) applies.

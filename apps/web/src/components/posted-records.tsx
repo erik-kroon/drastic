@@ -1,145 +1,231 @@
+import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import * as Accounting from "@open-erp/contracts/accounting";
+import type * as Accounting from "@open-erp/contracts/accounting";
+import { VoucherPage } from "@open-erp/contracts/accounting";
+import { RefreshCw } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
-import { DataTable } from "@open-erp/ui/components/data-table";
-import { Heading, Text } from "@open-erp/ui/components/typography";
+import { DataGrid } from "@open-erp/ui/components/data-grid";
+import { SelectControl } from "@open-erp/ui/components/select";
+import {
+  PageEmpty,
+  PageAction,
+  PageCaption,
+  RecordToggle,
+  RegisterFilters,
+  RegisterFilter,
+  RegisterSearch,
+} from "@open-erp/ui/components/accounting-page";
+import { Disclosure } from "@open-erp/ui/components/workflow";
 import { AccountingStatus } from "@/components/accounting-status";
 import { JournalCorrection } from "@/components/journal-correction";
-import { SealedAction } from "@/components/journal-review";
+import { ReviewEntry } from "@/components/posting-recovery/review-entry";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { workspacePath } from "@/lib/book-context";
 import { accountingCopy } from "@/lib/accounting-copy";
+import { frontendCopy } from "@/lib/frontend-copy";
+import { formatMinorAmount, workQueryOptions } from "@/lib/workspace-api";
 import type { Locale } from "@/paraglide/runtime";
 
-export function PostedRecords({
-  book,
-  locale,
-  setup,
-  onPrepared,
-}: {
+type PostedRecordsProps = {
   book: typeof Accounting.Book.Type;
   locale: Locale;
   setup: typeof Accounting.BookSetup.Type | undefined;
   onPrepared: (id: string) => void;
-}) {
-  const copy = accountingCopy(locale);
+};
+
+export function PostedRecords(props: PostedRecordsProps) {
+  const { book, locale } = props;
+  const copy = frontendCopy(locale);
+  const accounting = accountingCopy(locale);
+  const [query, setQuery] = useState("");
+  const [period, setPeriod] = useState("");
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const metadata = useQuery(workQueryOptions(book, {}));
+  const scale = metadata.data?.currencyScale;
   const vouchers = useInfiniteQuery({
     queryKey: [...bookKey(book), "vouchers"],
     initialPageParam: "0",
     queryFn: ({ signal, pageParam }) =>
       readAccounting(
         `${bookPath(book)}/vouchers?after=${encodeURIComponent(pageParam)}`,
-        Accounting.VoucherPage,
+        VoucherPage,
         { signal },
       ),
     getNextPageParam: (page) => page.next,
     retry: false,
   });
-  const ledger = useQuery({
-    queryKey: [...bookKey(book), "ledger"],
-    queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/ledger`, Accounting.LedgerSnapshot, { signal }),
-    retry: false,
-  });
+  const loaded = vouchers.isError ? [] : (vouchers.data?.pages.flatMap((page) => page.items) ?? []);
+  const matching = loaded.filter(
+    (voucher) =>
+      (!period || voucher.action.accountingPeriodId === period) &&
+      `${voucher.action.series}${voucher.number} ${voucher.action.description} ${voucher.action.postingDate}`
+        .toLocaleLowerCase(locale)
+        .includes(query.toLocaleLowerCase(locale)),
+  );
   return (
-    <Box as="section" display="grid" gap="2xl" minWidth="zero">
-      <Box display="flex" justifyContent="between" alignItems="center" flexWrap="wrap" gap="lg">
-        <Heading>{copy.journal_vouchers}</Heading>
+    <Box as="section" display="grid" gap="lg" minWidth="zero">
+      <RegisterFilters>
+        <RegisterSearch
+          aria-label={copy.search}
+          placeholder={copy.search}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <RegisterFilter>
+          <SelectControl
+            aria-label={accounting.workspace_period}
+            value={period}
+            options={[
+              { value: "", label: copy.allPeriods },
+              ...(props.setup?.periods.map((item) => ({
+                value: item.id,
+                label: `${item.startsOn} – ${item.endsOn}`,
+              })) ?? []),
+            ]}
+            onValueChange={(value) => setPeriod(value ?? "")}
+          />
+        </RegisterFilter>
         <Button
-          size="xl"
-          variant="outline"
-          disabled={vouchers.isFetching || ledger.isFetching}
+          static
+          variant="ghost"
+          aria-label={accounting.journal_refresh}
+          disabled={vouchers.isFetching}
           onClick={() => {
             void vouchers.refetch();
-            void ledger.refetch();
+            void metadata.refetch();
           }}
         >
-          {copy.journal_refresh}
+          <RefreshCw size={14} strokeWidth={1.5} aria-hidden="true" />
         </Button>
-      </Box>
-      <Text tone="muted">{copy.journal_units}</Text>
+      </RegisterFilters>
       <AccountingStatus locale={locale} pending={vouchers.isPending} error={vouchers.error} />
-      {vouchers.data?.pages[0]?.items.length === 0 ? (
-        <Text>{copy.journal_empty_vouchers}</Text>
+      {metadata.isError ? (
+        <PageCaption role="alert">{accounting.workspace_currency_unavailable}</PageCaption>
       ) : null}
-      {vouchers.data?.pages
-        .flatMap((page) => page.items)
-        .map((voucher) => (
-          <details key={voucher.id}>
-            <summary>
-              {voucher.action.series}
-              {voucher.number} · {voucher.action.postingDate} · {voucher.action.description}
-            </summary>
-            <Box display="grid" gap="md" paddingBlock="lg" minWidth="zero">
-              <Text>
-                {copy.journal_voucher}: {voucher.id} · {copy.journal_sequence}: {voucher.sequence}
-              </Text>
-              <Text tone="muted">
-                {copy.journal_committed}: {voucher.recordedAt}
-              </Text>
-              <SealedAction
-                book={book}
-                action={voucher.action}
-                locale={locale}
-                setupAccounts={setup?.accounts ?? []}
-              />
-              {setup && setup.blockers.length === 0 ? (
-                <JournalCorrection
-                  book={book}
-                  voucherId={voucher.id}
-                  periods={setup.periods}
-                  locale={locale}
-                  onPrepared={onPrepared}
-                />
-              ) : null}
-            </Box>
-          </details>
-        ))}
+      {matching.length ? (
+        <DataGrid
+          title={copy.vouchers}
+          narrow="stack"
+          rows={matching}
+          getRowId={(voucher) => voucher.id}
+          columns={[
+            {
+              id: "number",
+              width: "content",
+              label: copy.voucher,
+              cell: (voucher) => (
+                <RecordToggle
+                  expanded={expanded === voucher.id}
+                  aria-label={`${copy.voucher} ${voucher.action.series}${voucher.number}`}
+                  onClick={() => setExpanded(expanded === voucher.id ? null : voucher.id)}
+                >
+                  {voucher.action.series}
+                  {voucher.number}
+                </RecordToggle>
+              ),
+            },
+            {
+              id: "date",
+              width: "content",
+              label: copy.date,
+              cell: (voucher) => voucher.action.postingDate,
+            },
+            {
+              id: "description",
+              width: "fill",
+              label: copy.description,
+              cell: (voucher) => voucher.action.description,
+            },
+            {
+              id: "amount",
+              width: "content",
+              label: `${copy.amount} · ${book.currency}`,
+              numeric: true,
+              cell: (voucher) => {
+                const total = voucher.action.lines.reduce(
+                  (sum, line) => sum + BigInt(line.debitMinor),
+                  0n,
+                );
+                return scale === undefined
+                  ? "—"
+                  : formatMinorAmount(total.toString(), scale, locale);
+              },
+            },
+          ]}
+          renderDetail={(voucher) =>
+            expanded === voucher.id ? <VoucherDetails {...props} voucher={voucher} /> : null
+          }
+        />
+      ) : null}
+      {vouchers.isSuccess && !matching.length ? (
+        <PageEmpty
+          title={loaded.length ? copy.noMatches : copy.noVouchers}
+          detail={loaded.length ? undefined : copy.noVouchersDetail}
+        >
+          {!loaded.length ? (
+            <PageAction href={`${workspacePath(book)}/books?view=journal`}>
+              {copy.newEntry}
+            </PageAction>
+          ) : null}
+        </PageEmpty>
+      ) : null}
       {vouchers.hasNextPage ? (
-        <Box>
-          <Button
-            size="xl"
-            variant="outline"
-            disabled={vouchers.isFetchingNextPage}
-            onClick={() => {
-              void vouchers.fetchNextPage();
-            }}
-          >
-            {copy.journal_more}
-          </Button>
-        </Box>
-      ) : null}
-      <Heading>{copy.journal_ledger}</Heading>
-      <AccountingStatus locale={locale} pending={ledger.isPending} error={ledger.error} />
-      {ledger.data ? (
         <>
-          <Text>
-            {copy.journal_sequence}: {ledger.data.sequence}
-          </Text>
-          {ledger.data.accounts.length === 0 ? (
-            <Text>{copy.journal_no_accounts}</Text>
-          ) : (
-            <DataTable
-              title={`${copy.journal_ledger} · ${book.currency}`}
-              narrow="stack"
-              columns={[
-                { id: "account", label: copy.journal_account },
-                { id: "debit", label: copy.journal_debit, numeric: true },
-                { id: "credit", label: copy.journal_credit, numeric: true },
-                { id: "balance", label: copy.journal_balance, numeric: true },
-              ]}
-              rows={ledger.data.accounts.map((account) => ({
-                id: account.accountId,
-                cells: [
-                  `${account.code} · ${account.name}`,
-                  account.debitMinor,
-                  account.creditMinor,
-                  account.balanceMinor,
-                ],
-              }))}
-            />
-          )}
+          <PageCaption>
+            {locale === "sv"
+              ? "Filtren söker bland inlästa verifikat. Läs in fler för att utöka sökningen."
+              : "Filters search the loaded vouchers. Load more to extend the search."}
+          </PageCaption>
+          <Box>
+            <Button
+              static
+              variant="outline"
+              disabled={vouchers.isFetchingNextPage}
+              onClick={() => {
+                void vouchers.fetchNextPage();
+              }}
+            >
+              {accounting.journal_more}
+            </Button>
+          </Box>
         </>
+      ) : null}
+    </Box>
+  );
+}
+
+function VoucherDetails(props: PostedRecordsProps & { voucher: typeof Accounting.Voucher.Type }) {
+  const copy = frontendCopy(props.locale);
+  return (
+    <Box display="grid" gap="lg" paddingBlock="lg" minWidth="zero">
+      <ReviewEntry
+        book={props.book}
+        action={props.voucher.action}
+        locale={props.locale}
+        accounts={props.setup?.accounts ?? []}
+      />
+      <PageCaption>
+        {copy.recorded} ·{" "}
+        {new Intl.DateTimeFormat(props.locale, { dateStyle: "medium", timeStyle: "short" }).format(
+          new Date(props.voucher.recordedAt),
+        )}
+      </PageCaption>
+      <Disclosure title={copy.details}>
+        <PageCaption>
+          {props.voucher.id} · {props.voucher.sequence}
+        </PageCaption>
+      </Disclosure>
+      {props.setup && props.setup.blockers.length === 0 ? (
+        <Disclosure title={accountingCopy(props.locale).journal_correction}>
+          <JournalCorrection
+            book={props.book}
+            voucherId={props.voucher.id}
+            periods={props.setup.periods}
+            locale={props.locale}
+            onPrepared={props.onPrepared}
+          />
+        </Disclosure>
       ) : null}
     </Box>
   );

@@ -34,6 +34,7 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@open-erp/domain": "workspace:*",
     "effect": "4.0.0-rc.112"
   },
   "devDependencies": {

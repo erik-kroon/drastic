@@ -11,8 +11,10 @@ This repository is the starting point for the OpenERP product.
 ## Scope
 
 - `apps/web` owns product routes, application composition, and visible product behavior.
-- `apps/api` owns the Effect 4 backend and Cloudflare Worker entrypoint.
-- `packages/contracts` owns shared Effect Schema API contracts.
+- `apps/api` owns Effect application workflows, HTTP/MCP transports, database access and runtime adapters. See `apps/api/README.md` for internal boundaries.
+- `packages/domain` owns transport-independent accounting models, exact-money schemas and errors.
+- `packages/contracts` owns shared Effect Schema API contracts and composes the domain schemas.
+- `jurisdictions/se` owns pure Swedish VAT calculations and SIE rendering.
 - `packages/ui` owns reusable interface primitives, StyleX tokens, and global styles.
 - `packages/config` owns shared TypeScript configuration.
 - `infra/alchemy` owns Cloudflare Worker deployment.

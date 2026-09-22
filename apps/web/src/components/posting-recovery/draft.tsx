@@ -5,14 +5,11 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
-import { ArrowRight, FileText, ShieldCheck } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import {
   EntryRow,
   EntryTotals,
   Disclosure,
-  WorkflowLayout,
-  WorkflowNote,
-  WorkflowSteps,
   WorkflowSurface,
 } from "@open-erp/ui/components/workflow";
 import { Label } from "@open-erp/ui/components/label";
@@ -72,181 +69,159 @@ export function PostingDraft({
   });
   return (
     <Box id="journal-draft" tabIndex={-1} display="grid" gap="md">
-      <WorkflowSteps
-        label={copy.workspace_journal_steps}
-        labels={[copy.workspace_source_step, copy.workspace_entry_step, copy.workspace_review_step]}
-        current={retainedEvidence ? 1 : 0}
-      />
-      <WorkflowLayout
-        aside={
-          <>
-            <WorkflowNote>
-              <FileText size={20} strokeWidth={1.5} aria-hidden="true" />
-              <Heading>{copy.workspace_source_why}</Heading>
-              <Text tone="muted">{copy.workspace_source_why_help}</Text>
-            </WorkflowNote>
-            <WorkflowNote>
-              <ShieldCheck size={20} strokeWidth={1.5} aria-hidden="true" />
-              <Heading>{copy.workspace_review_first}</Heading>
-              <Text tone="muted">{copy.workspace_review_first_help}</Text>
-            </WorkflowNote>
-          </>
-        }
-      >
-        <Box display="grid" gap="xl" minWidth="zero">
-          <WorkflowSurface>
-            <Box
-              as="form"
-              ref={evidenceForm}
-              display="grid"
-              gap="lg"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const fields = new FormData(event.currentTarget);
-                const decoded = Schema.decodeUnknownOption(Accounting.CreateEvidence)({
-                  title: fields.get("title"),
-                  content: fields.get("content"),
-                  origin: fields.get("origin"),
-                  mediaType: "text/plain",
-                });
-                if (decoded._tag === "None") {
-                  setInputError(copy.journal_invalid);
-                  return;
-                }
-                setInputError("");
-                evidence.mutate(decoded.value);
-              }}
-            >
-              <Box display="grid" gap="sm">
-                <Heading>
-                  {retainedEvidence ? copy.workspace_source_saved : copy.journal_evidence}
-                </Heading>
-                <Text tone="muted">
-                  {retainedEvidence ? retainedEvidence.title : copy.journal_evidence_help}
-                </Text>
-              </Box>
-              {!retainedEvidence ? (
-                <>
-                  <Box
-                    as="fieldset"
-                    disabled={
-                      evidence.isPending ||
-                      retainedEvidence !== null ||
-                      requests.isPending ||
-                      requests.isError
-                    }
-                    borderWidth="none"
-                    padding="none"
-                    margin="none"
-                    minWidth="zero"
-                    display="grid"
-                    gap="lg"
-                  >
-                    <Box display="grid" columns={1} columnsAtSm={2} gap="lg">
-                      <InputField
-                        label={copy.journal_title_field}
-                        name="title"
-                        placeholder={copy.workspace_source_title_example}
+      <Box display="grid" gap="xl" minWidth="zero">
+        <WorkflowSurface>
+          <Box
+            as="form"
+            ref={evidenceForm}
+            display="grid"
+            gap="lg"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const fields = new FormData(event.currentTarget);
+              const decoded = Schema.decodeUnknownOption(Accounting.CreateEvidence)({
+                title: fields.get("title"),
+                content: fields.get("content"),
+                origin: fields.get("origin"),
+                mediaType: "text/plain",
+              });
+              if (decoded._tag === "None") {
+                setInputError(copy.journal_invalid);
+                return;
+              }
+              setInputError("");
+              evidence.mutate(decoded.value);
+            }}
+          >
+            <Box display="grid" gap="sm">
+              <Heading>
+                {retainedEvidence ? copy.workspace_source_saved : copy.journal_evidence}
+              </Heading>
+              <Text tone="muted">
+                {retainedEvidence ? retainedEvidence.title : copy.journal_evidence_help}
+              </Text>
+            </Box>
+            {!retainedEvidence ? (
+              <>
+                <Box
+                  as="fieldset"
+                  disabled={
+                    evidence.isPending ||
+                    retainedEvidence !== null ||
+                    requests.isPending ||
+                    requests.isError
+                  }
+                  borderWidth="none"
+                  padding="none"
+                  margin="none"
+                  minWidth="zero"
+                  display="grid"
+                  gap="lg"
+                >
+                  <Box display="grid" columns={1} columnsAtSm={2} gap="lg">
+                    <InputField
+                      label={copy.journal_title_field}
+                      name="title"
+                      placeholder={copy.workspace_source_title_example}
+                      required
+                      maxLength={2000}
+                    />
+                    <InputField
+                      label={copy.journal_origin}
+                      name="origin"
+                      placeholder={copy.workspace_source_origin_example}
+                      required
+                      maxLength={2000}
+                    />
+                  </Box>
+                  <Box display="grid" gap="sm" minWidth="zero">
+                    <Label htmlFor="evidence-content">{copy.journal_content}</Label>
+                    <Box
+                      display="grid"
+                      minWidth="zero"
+                      borderWidth="thin"
+                      borderColor="default"
+                      borderRadius="control"
+                      backgroundColor="surface"
+                      padding="md"
+                    >
+                      <textarea
+                        id="evidence-content"
+                        name="content"
+                        placeholder={copy.workspace_source_content_example}
+                        rows={7}
+                        cols={16}
                         required
-                        maxLength={2000}
+                        maxLength={65536}
                       />
-                      <InputField
-                        label={copy.journal_origin}
-                        name="origin"
-                        placeholder={copy.workspace_source_origin_example}
-                        required
-                        maxLength={2000}
-                      />
-                    </Box>
-                    <Box display="grid" gap="sm" minWidth="zero">
-                      <Label htmlFor="evidence-content">{copy.journal_content}</Label>
-                      <Box
-                        display="grid"
-                        minWidth="zero"
-                        borderWidth="thin"
-                        borderColor="default"
-                        borderRadius="control"
-                        backgroundColor="surface"
-                        padding="md"
-                      >
-                        <textarea
-                          id="evidence-content"
-                          name="content"
-                          placeholder={copy.workspace_source_content_example}
-                          rows={7}
-                          cols={16}
-                          required
-                          maxLength={65536}
-                        />
-                      </Box>
-                    </Box>
-                    <Box>
-                      <Button type="submit" size="xl">
-                        {posting.saveEvidence} <ArrowRight size={16} aria-hidden="true" />
-                      </Button>
                     </Box>
                   </Box>
-                </>
-              ) : null}
-              {inputError ? <Text role="status">{inputError}</Text> : null}
-              {evidence.isPending ? <Text role="status">{posting.pending}</Text> : null}
-              {evidence.isError ? (
-                <Text role="alert">
-                  {posting.commandUnknown} {evidence.error.message}
-                </Text>
-              ) : null}
-              {evidence.data && !retainedEvidence ? (
-                <SavedPostingOutcome saved={evidence.data} locale={locale} />
-              ) : null}
-              {retainedEvidence ? (
-                <Box role="status" display="grid" gap="sm">
-                  <Disclosure title={copy.workspace_source_details}>
-                    <Text tone="muted">{retainedEvidence.origin}</Text>
-                    <Text tone="muted">
-                      {retainedEvidence.id} · SHA-256: {retainedEvidence.sha256}
-                    </Text>
-                  </Disclosure>
                   <Box>
-                    <Button
-                      size="xl"
-                      variant="outline"
-                      onClick={() => {
-                        setRetainedEvidence(null);
-                        evidence.reset();
-                        setInputError("");
-                        evidenceForm.current?.reset();
-                      }}
-                    >
-                      {posting.anotherEvidence}
+                    <Button type="submit" size="xl">
+                      {posting.saveEvidence} <ArrowRight size={16} aria-hidden="true" />
                     </Button>
                   </Box>
                 </Box>
-              ) : null}
-            </Box>
-          </WorkflowSurface>
-          {retainedEvidence ? (
-            <WorkflowSurface>
-              <JournalForm
-                key={retainedEvidence.id}
-                book={book}
-                setup={setup}
-                evidenceId={retainedEvidence.id}
-                locale={locale}
-                onPrepared={onPrepared}
-              />
-            </WorkflowSurface>
-          ) : null}
-          <Disclosure title={posting.savedTitle}>
-            <SavedPostingRequestsPanel
+              </>
+            ) : null}
+            {inputError ? <Text role="status">{inputError}</Text> : null}
+            {evidence.isPending ? <Text role="status">{posting.pending}</Text> : null}
+            {evidence.isError ? (
+              <Text role="alert">
+                {posting.commandUnknown} {evidence.error.message}
+              </Text>
+            ) : null}
+            {evidence.data && !retainedEvidence ? (
+              <SavedPostingOutcome saved={evidence.data} locale={locale} />
+            ) : null}
+            {retainedEvidence ? (
+              <Box role="status" display="grid" gap="sm">
+                <Disclosure title={copy.workspace_source_details}>
+                  <Text tone="muted">{retainedEvidence.origin}</Text>
+                  <Text tone="muted">
+                    {retainedEvidence.id} · SHA-256: {retainedEvidence.sha256}
+                  </Text>
+                </Disclosure>
+                <Box>
+                  <Button
+                    size="xl"
+                    variant="outline"
+                    onClick={() => {
+                      setRetainedEvidence(null);
+                      evidence.reset();
+                      setInputError("");
+                      evidenceForm.current?.reset();
+                    }}
+                  >
+                    {posting.anotherEvidence}
+                  </Button>
+                </Box>
+              </Box>
+            ) : null}
+          </Box>
+        </WorkflowSurface>
+        {retainedEvidence ? (
+          <WorkflowSurface>
+            <JournalForm
+              key={retainedEvidence.id}
               book={book}
+              setup={setup}
+              evidenceId={retainedEvidence.id}
               locale={locale}
-              accounts={setup.accounts}
               onPrepared={onPrepared}
-              onEvidence={setRetainedEvidence}
             />
-          </Disclosure>
-        </Box>
-      </WorkflowLayout>
+          </WorkflowSurface>
+        ) : null}
+        <Disclosure title={posting.savedTitle}>
+          <SavedPostingRequestsPanel
+            book={book}
+            locale={locale}
+            accounts={setup.accounts}
+            onPrepared={onPrepared}
+            onEvidence={setRetainedEvidence}
+          />
+        </Disclosure>
+      </Box>
     </Box>
   );
 }

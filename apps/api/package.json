@@ -16,6 +16,8 @@
     "@better-auth/drizzle-adapter": "1.7.5",
     "@effect/sql-pg": "4.0.0-rc.112",
     "@open-erp/contracts": "workspace:*",
+    "@open-erp/domain": "workspace:*",
+    "@open-erp/jurisdiction-se": "workspace:*",
     "better-auth": "1.7.5",
     "drizzle-orm": "1.0.0-rc.5-169397b",
     "effect": "4.0.0-rc.112",

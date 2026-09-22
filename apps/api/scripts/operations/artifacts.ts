@@ -18,6 +18,8 @@ const releaseDirectories = [
   "apps/api/migrations",
   "apps/web/src",
   "packages/contracts/src",
+  "packages/domain/src",
+  "jurisdictions/se/src",
   "packages/ui/src",
   "packages/config",
 ];
@@ -27,6 +29,10 @@ const releaseFiles = [
   "apps/api/package.json",
   "apps/web/package.json",
   "packages/contracts/package.json",
+  "packages/domain/package.json",
+  "packages/domain/tsconfig.json",
+  "jurisdictions/se/package.json",
+  "jurisdictions/se/tsconfig.json",
   "packages/ui/package.json",
 ];
 const sourceExtensions = /\.(ts|tsx|js|jsx|json|sql|css|svg|md)$/;
@@ -34,8 +40,8 @@ const sourceMetadataFiles = [".gitignore", ".prettierignore"];
 const requiredRuntimeFiles = [
   "apps/api/src/db/connection.ts",
   "apps/api/src/db/auth-schema.ts",
-  "apps/api/src/better-auth.ts",
-  "apps/api/src/auth.ts",
+  "apps/api/src/adapters/auth/better-auth.ts",
+  "apps/api/src/transport/http/auth.ts",
   "apps/api/migrations/0900-better-auth.sql",
 ];
 

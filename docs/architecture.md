@@ -6,14 +6,16 @@ Status: existing ownership is established by [AGENTS.md](../AGENTS.md); accounti
 
 This map defines ownership. The [planning baseline](plans/evidence/planning-baseline.json) is a dated source inventory; the [roadmap](roadmap.md) records evidence and remaining gates.
 
-| Owner                | Observed responsibility                                                                                 |
-| -------------------- | ------------------------------------------------------------------------------------------------------- |
-| `apps/web`           | TanStack Start/Router, request-scoped TanStack Query, Paraglide and product composition.                |
-| `apps/api`           | Effect 4 Worker, shared accounting operations, PostgreSQL transitions and runtime/maintenance adapters. |
-| `packages/contracts` | Effect Schema and shared `HttpApi`; generated OpenAPI at `/api/openapi.json`.                           |
-| `packages/ui`        | Owned interface components, StyleX tokens and global styles.                                            |
-| `packages/config`    | Shared strict TypeScript configuration.                                                                 |
-| `infra/alchemy`      | Web/API Worker deployment definition and service binding.                                               |
+| Owner                | Observed responsibility                                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `apps/web`           | TanStack Start/Router, request-scoped TanStack Query, Paraglide and product composition.                            |
+| `apps/api`           | Effect 4 Worker, shared accounting operations, PostgreSQL transitions and runtime/maintenance adapters.             |
+| `packages/domain`    | Accounting values, exact-money schemas, ledger/book models and domain errors, without transport or runtime imports. |
+| `packages/contracts` | Effect Schema API contracts composed from domain models; generated OpenAPI at `/api/openapi.json`.                  |
+| `jurisdictions/se`   | Pure VAT draft calculation and SIE 4I rendering, using retained contract inputs.                                    |
+| `packages/ui`        | Owned interface components, StyleX tokens and global styles.                                                        |
+| `packages/config`    | Shared strict TypeScript configuration.                                                                             |
+| `infra/alchemy`      | Web/API Worker deployment definition and service binding.                                                           |
 
 The browser calls same-origin `/api/*`. Vite proxies it locally; the deployed web Worker forwards it through the API service binding. The web server has no accounting database connection. The API sets `Cache-Control: no-store`; database caching is configured separately.
 
@@ -39,7 +41,7 @@ flowchart TD
 
 PostgreSQL owns financial records, approvals, dependency revisions, receipts and durable business-run state. Object storage holds original bytes and generated artifacts referenced by immutable manifests. Read caches and analytics are rebuildable projections. No browser cache, queue, workflow engine or model maintains an alternative accounting balance.
 
-Keep an Effect modular monolith. Start domain ownership as modules within the existing backend. Extract shared packages when a second real runtime consumer requires them. Domain calculations must not import HTTP, React or provider clients. Layers compose dependencies at owning Worker or Bun runtime boundaries.
+Keep an Effect modular monolith. The [API layout](../apps/api/README.md) separates HTTP/MCP transports, application operations, database access, runtime configuration and adapters. Shared accounting models live in `packages/domain`; existing pure Swedish VAT and SIE calculations live in `jurisdictions/se`. The jurisdiction package imports captured input/output contracts as types and the shared domain error at runtime; it does not load HTTP handlers, SQL or provider clients. Layers compose dependencies at owning Worker or Bun runtime boundaries. [ADR 0007](adr/0007-domain-and-jurisdiction-layout.md) records this extraction; additional packages still need concrete responsibilities and callers.
 
 [ADR 0005](adr/0005-open-accounting-and-managed-services.md) keeps the accounting, jurisdiction and agent layers open under AGPL-3.0-only, with optional managed operations outside the core. The [self-host package](../infra/self-host/README.md) composes the current API and prerendered UI using Bun and PostgreSQL. Rust/Wasm extraction remains deferred until a stable pure contract and a measured consumer justify it.
 

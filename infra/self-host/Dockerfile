@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package.json bun.lock vite.config.ts ./
 COPY apps ./apps
 COPY packages ./packages
+COPY jurisdictions ./jurisdictions
 COPY config ./config
 COPY examples ./examples
 COPY infra/self-host ./infra/self-host

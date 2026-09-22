@@ -3,7 +3,7 @@ import { link, lstat, mkdir, open, realpath, unlink } from "node:fs/promises";
 import { dirname, isAbsolute, join } from "node:path";
 import * as Schema from "effect/Schema";
 import { maxSourceBytes } from "@open-erp/contracts/source-intake";
-import { RetainedObject, type RetainedObjectStore } from "../src/retained-objects";
+import { RetainedObject, type RetainedObjectStore } from "../src/adapters/storage/retained-objects";
 
 const exists = Schema.Struct({ code: Schema.Literal("EEXIST") });
 const missing = Schema.Struct({ code: Schema.Literal("ENOENT") });

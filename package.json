@@ -8,7 +8,9 @@
       "apps/web",
       "packages/config",
       "packages/contracts",
-      "packages/ui"
+      "packages/ui",
+      "packages/domain",
+      "jurisdictions/se"
     ],
     "catalog": {
       "typescript": "7.0.2",
@@ -32,11 +34,11 @@
     "alchemy:deploy": "bun alchemy deploy --config infra/alchemy/alchemy.run.ts",
     "alchemy:destroy": "bun alchemy destroy --config infra/alchemy/alchemy.run.ts",
     "check:infra": "tsc --project infra/alchemy/tsconfig.json --noEmit",
-    "check-types": "vp run --filter api --filter web --filter @open-erp/ui --filter @open-erp/contracts check-types && bun run check:infra && bun run check:tests",
-    "check": "oxlint apps/api/src apps/api/scripts apps/api/tests apps/web/src apps/web/tests infra/alchemy packages/contracts/src packages/ui/src config/oxlint && oxfmt --write apps/api apps/web/src apps/web/tests infra/alchemy packages/contracts packages/ui/src packages/config apps/web/vite.config.ts vite.config.ts",
-    "lint": "oxlint --config .oxlintrc.type-aware.json apps/api/src apps/api/scripts apps/api/tests apps/web/src apps/web/tests infra/alchemy packages/contracts/src packages/ui/src",
-    "format": "oxfmt --write apps/api apps/web/src apps/web/tests infra/alchemy packages/contracts packages/ui/src packages/config apps/web/vite.config.ts vite.config.ts",
-    "format:check": "oxfmt --check apps/api apps/web/src apps/web/tests infra/alchemy packages/contracts packages/ui/src packages/config apps/web/vite.config.ts vite.config.ts",
+    "check-types": "vp run --filter api --filter web --filter @open-erp/ui --filter @open-erp/contracts --filter @open-erp/domain --filter @open-erp/jurisdiction-se check-types && bun run check:infra && bun run check:tests",
+    "check": "oxlint apps/api/src apps/api/scripts apps/api/tests apps/web/src apps/web/tests infra/alchemy packages/contracts/src packages/domain/src jurisdictions/se/src packages/ui/src config/oxlint && oxfmt --write apps/api apps/web/src apps/web/tests infra/alchemy packages/contracts packages/domain jurisdictions/se packages/ui/src packages/config apps/web/vite.config.ts vite.config.ts",
+    "lint": "oxlint --config .oxlintrc.type-aware.json apps/api/src apps/api/scripts apps/api/tests apps/web/src apps/web/tests infra/alchemy packages/contracts/src packages/domain/src jurisdictions/se/src packages/ui/src",
+    "format": "oxfmt --write apps/api apps/web/src apps/web/tests infra/alchemy packages/contracts packages/domain jurisdictions/se packages/ui/src packages/config apps/web/vite.config.ts vite.config.ts",
+    "format:check": "oxfmt --check apps/api apps/web/src apps/web/tests infra/alchemy packages/contracts packages/domain jurisdictions/se packages/ui/src packages/config apps/web/vite.config.ts vite.config.ts",
     "staged": "vp staged",
     "tsgo": "tsc",
     "prepare": "effect-tsgo patch --typescript",

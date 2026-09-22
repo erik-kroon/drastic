@@ -5,8 +5,8 @@ Status: blocked at a shared admission boundary. The local CLI does not grant an 
 ## Observed source boundary
 
 - `apps/api/src/db/connection.ts` owns scoped PostgreSQL acquisition and the Drizzle Effect adapter for application work.
-- `apps/api/src/better-auth.ts` uses the official Better Auth Drizzle Promise adapter over that scoped connection. Auth needs `DATABASE_URL`/Hyperdrive, `BETTER_AUTH_SECRET`, and `BETTER_AUTH_URL`; cookies and origin are part of the configuration contract.
-- `apps/api/src/auth.ts` calls `getSession` with refresh disabled, then passes the session token to the accounting boundary. This does not make every auth or accounting operation read-only.
+- `apps/api/src/adapters/auth/better-auth.ts` uses the official Better Auth Drizzle Promise adapter over that scoped connection. Auth needs `DATABASE_URL`/Hyperdrive, `BETTER_AUTH_SECRET`, and `BETTER_AUTH_URL`; cookies and origin are part of the configuration contract.
+- `apps/api/src/transport/http/auth.ts` calls `getSession` with refresh disabled, then passes the session token to the accounting boundary. This does not make every auth or accounting operation read-only.
 - Applied0210 and0900 retain `FOR SHARE` admission locks for credentials, browser sessions and membership. Ordinary accounting getters reach this authority check. PostgreSQL read-only transactions reject the lock clause. Running the normal application as superuser or changing these global functions would evade the intended proof.
 - The restored database has connection limit zero throughout and all connections disabled at completion. Reusing copied Better Auth sessions or API tokens as live admission is prohibited.
 

@@ -5,6 +5,7 @@ import { DataTable } from "@open-erp/ui/components/data-table";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { Disclosure, ReviewColumns } from "@open-erp/ui/components/workflow";
 import { EvidenceInspector } from "@/components/evidence-inspector";
+import { frontendCopy } from "@/lib/frontend-copy";
 import { accountingCopy } from "@/lib/accounting-copy";
 import { formatMinorAmount, workQueryOptions } from "@/lib/workspace-api";
 import type { Locale } from "@/paraglide/runtime";
@@ -55,7 +56,7 @@ export function ReviewEntry({
           </>
         }
       >
-        <Heading>{copy.journal_prepare}</Heading>
+        <Heading>{frontendCopy(locale).accounting}</Heading>
         <Text>{action.rationale}</Text>
         <DataTable
           title={copy.journal_prepare}

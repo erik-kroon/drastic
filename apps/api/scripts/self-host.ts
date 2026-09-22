@@ -1,6 +1,6 @@
 import { resolve, sep } from "node:path";
 import api from "../src/index";
-import type { Bindings } from "../src/database";
+import type { Bindings } from "../src/runtime/environment";
 import { fileObjectStore } from "./file-object-store";
 
 const databaseUrl = process.env.DATABASE_URL;

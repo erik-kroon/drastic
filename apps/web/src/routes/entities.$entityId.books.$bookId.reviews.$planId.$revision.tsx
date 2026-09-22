@@ -3,7 +3,7 @@ import { WorkQuery } from "@open-erp/contracts/workspace";
 import { createFileRoute, defaultStringifySearch } from "@tanstack/react-router";
 import { Box } from "@open-erp/ui/components/box";
 import { Link } from "@open-erp/ui/components/link";
-import { Heading } from "@open-erp/ui/components/typography";
+import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { PostingRecoveryReview } from "@/components/posting-recovery/review";
 import { accountingCopy } from "@/lib/accounting-copy";
@@ -19,10 +19,14 @@ function Review() {
   const copy = accountingCopy(locale);
   return (
     <Box display="grid" gap="xl" minWidth="zero">
-      <Link href={`${workspacePath(book)}/work${defaultStringifySearch(filters)}`}>
-        {copy.workspace_back}
-      </Link>
-      <Heading level={1}>{copy.workspace_review}</Heading>
+      <WorkspaceHeader
+        title={copy.workspace_review}
+        action={
+          <Link href={`${workspacePath(book)}/work${defaultStringifySearch(filters)}`}>
+            {copy.workspace_back}
+          </Link>
+        }
+      />
       <PostingRecoveryReview
         key={`${planId}/${revision}`}
         book={book}

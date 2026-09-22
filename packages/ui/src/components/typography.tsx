@@ -4,7 +4,7 @@ import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 
 const styles = stylex.create({
   text: {
-    fontSize: tokens.fontSizeBase,
+    fontSize: tokens.fontSizeSm,
     lineHeight: tokens.lineHeightNormal,
     overflowWrap: "anywhere",
   },
@@ -17,8 +17,8 @@ const styles = stylex.create({
     textWrap: "balance",
   },
   heading: {
-    fontSize: tokens.fontSizeLg,
-    fontWeight: tokens.fontWeightSemibold,
+    fontSize: tokens.fontSizeBody,
+    fontWeight: tokens.fontWeightMedium,
     lineHeight: tokens.lineHeightHeading,
   },
   metric: {

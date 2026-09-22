@@ -45,8 +45,8 @@ Implementation source is ready for shared registration. Migration is **1000-vat-
 Owned paths:
 
 - `packages/contracts/src/vat-returns.ts`
-- `apps/api/src/vat-returns.ts`
-- `apps/api/src/vat-return-calculation.ts` — the sole exact arithmetic/control owner
+- `apps/api/src/application/vat-returns.ts`
+- `jurisdictions/se/src/vat/calculation.ts` — the sole exact arithmetic/control owner
 - `apps/api/migrations/1000-vat-return-drafts.sql`
 - `apps/web/src/components/vat-returns/{panel,forms,views,copy,blockers}`
 - This handoff and `docs/sources/vat-return-profile-research.md`.
@@ -55,9 +55,9 @@ Owned paths:
 
 1. Add contract export `"./vat-returns": "./src/vat-returns.ts"`.
 2. Add `VatReturnsApi` to `packages/contracts/src/api.ts` and `VatReturnsHandlers` to the API Worker handler composition. Group is `vatReturns`.
-3. Spread `VatReturnCapabilities` into the shared catalog. Bind the read entries below with existing `bindCapability`. Bind `vat_return_prepare_draft` using existing `effectCapability(Capabilities.vat_return_prepare_draft, prepareVatDraft)`, importing `prepareVatDraft` from `apps/api/src/vat-returns.ts`. This is the **same** Effect workflow the HTTP handler calls; never map public preparation directly to SQL seal.
+3. Spread `VatReturnCapabilities` into the shared catalog. Bind the read entries below with existing `bindCapability`. Bind `vat_return_prepare_draft` using existing `effectCapability(Capabilities.vat_return_prepare_draft, prepareVatDraft)`, importing `prepareVatDraft` from `apps/api/src/application/vat-returns.ts`. This is the **same** Effect workflow the HTTP handler calls; never map public preparation directly to SQL seal.
 4. `recordVatFact` is operator-only REST. Do not expose it as an ordinary MCP fact-review capability. No public HTTP/MCP endpoint accepts a calculator result or raw seal basis.
-5. Register the fixed SQL statements below in `apps/api/src/database.ts`; retain existing parameterized Drizzle dispatch and scoped Effect connections.
+5. Register the fixed SQL statements below in `apps/api/src/db/query.ts`; retain existing parameterized Drizzle dispatch and scoped Effect connections.
 6. Lazy-mount `VatReturnsPanel` from `components/vat-returns/panel` with `{book, locale}`. Section ID: `vat-returns`. Use a scoped mount key and existing query-cache/auth isolation; local drafts must not survive identity/book changes. No `onPrepared` kernel plan action exists because this module does not create proposals.
 
 | Database operation | SQL function | Parameters following token | Decoded result |

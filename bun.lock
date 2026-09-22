@@ -31,6 +31,8 @@
         "@better-auth/drizzle-adapter": "1.7.5",
         "@effect/sql-pg": "4.0.0-rc.112",
         "@open-erp/contracts": "workspace:*",
+        "@open-erp/domain": "workspace:*",
+        "@open-erp/jurisdiction-se": "workspace:*",
         "better-auth": "1.7.5",
         "drizzle-orm": "1.0.0-rc.5-169397b",
         "effect": "4.0.0-rc.112",
@@ -73,12 +75,36 @@
         "vite": "npm:@voidzero-dev/vite-plus-core@0.2.9",
       },
     },
+    "jurisdictions/se": {
+      "name": "@open-erp/jurisdiction-se",
+      "version": "0.0.0",
+      "dependencies": {
+        "@open-erp/contracts": "workspace:*",
+        "@open-erp/domain": "workspace:*",
+      },
+      "devDependencies": {
+        "@open-erp/config": "workspace:*",
+        "typescript": "catalog:",
+      },
+    },
     "packages/config": {
       "name": "@open-erp/config",
       "version": "0.0.0",
     },
     "packages/contracts": {
       "name": "@open-erp/contracts",
+      "version": "0.0.0",
+      "dependencies": {
+        "@open-erp/domain": "workspace:*",
+        "effect": "4.0.0-rc.112",
+      },
+      "devDependencies": {
+        "@open-erp/config": "workspace:*",
+        "typescript": "catalog:",
+      },
+    },
+    "packages/domain": {
+      "name": "@open-erp/domain",
       "version": "0.0.0",
       "dependencies": {
         "effect": "4.0.0-rc.112",
@@ -592,6 +618,10 @@
     "@open-erp/config": ["@open-erp/config@workspace:packages/config"],
 
     "@open-erp/contracts": ["@open-erp/contracts@workspace:packages/contracts"],
+
+    "@open-erp/domain": ["@open-erp/domain@workspace:packages/domain"],
+
+    "@open-erp/jurisdiction-se": ["@open-erp/jurisdiction-se@workspace:jurisdictions/se"],
 
     "@open-erp/ui": ["@open-erp/ui@workspace:packages/ui"],
 

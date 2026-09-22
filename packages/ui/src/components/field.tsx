@@ -19,7 +19,7 @@ const styles = stylex.create({
     lineHeight: tokens.lineHeightBodyCompact,
   },
   control: {
-    height: tokens.space11,
+    minHeight: { default: tokens.space9, "@media (pointer: coarse)": tokens.space11 },
     paddingInline: tokens.space3,
     fontSize: { default: tokens.fontSizeBase, "@media (min-width: 768px)": tokens.fontSizeSm },
   },

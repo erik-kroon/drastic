@@ -2,7 +2,7 @@ import { Client } from "pg";
 import * as Schema from "effect/Schema";
 import { maxSourceBytes } from "@open-erp/contracts/source-intake";
 import { TableFingerprint } from "@open-erp/contracts/operations";
-import { RetainedObject } from "../../src/retained-objects";
+import { RetainedObject } from "../../src/adapters/storage/retained-objects";
 import { fileObjectStore } from "../file-object-store";
 import { filesIn } from "./artifacts";
 import { artifactPath, fingerprint, privatePath, refuse } from "./safety";
