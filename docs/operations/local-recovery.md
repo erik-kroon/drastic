@@ -30,13 +30,13 @@ Use an independently provisioned isolated PostgreSQL 17 cluster, installed match
 
 **Recovery plan JSON** is a private version1 document with:
 
-| Field | Meaning |
-|---|---|
-| `operatorId` | Explicit operator declaration; not an authenticated approval |
-| `releaseDirectory` | Absolute private directory from `capture-release` |
-| `supplementaryDirectory` | Absolute private directory of explicitly retained artifacts/procedures |
-| `artifacts[]` | Each file exactly once: relative `path`, decimal-string `bytes`, bare lowercase `sha256`, unique `referenceId`, `kind` (`evidence`, `rule`, `filing`, `configuration`, `key-recovery`) |
-| `configuration[]` | Exactly `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`; each has a non-secret `custodyReference` and `procedurePath` resolving to a configuration/key-recovery artifact |
+| Field                    | Meaning                                                                                                                                                                                |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `operatorId`             | Explicit operator declaration; not an authenticated approval                                                                                                                           |
+| `releaseDirectory`       | Absolute private directory from `capture-release`                                                                                                                                      |
+| `supplementaryDirectory` | Absolute private directory of explicitly retained artifacts/procedures                                                                                                                 |
+| `artifacts[]`            | Each file exactly once: relative `path`, decimal-string `bytes`, bare lowercase `sha256`, unique `referenceId`, `kind` (`evidence`, `rule`, `filing`, `configuration`, `key-recovery`) |
+| `configuration[]`        | Exactly `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`; each has a non-secret `custodyReference` and `procedurePath` resolving to a configuration/key-recovery artifact       |
 
 The plan stores key/custody identifiers and recovery instructions, **not secret values**. Procedure files must not contain passwords, tokens or private keys. Actual custody access, decryption and configuration recovery remain unexercised. Supplementary references are operator declarations; they do not establish unknown company-source completeness or prove which rules legally apply.
 

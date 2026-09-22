@@ -11,6 +11,7 @@ The [open-accounting decision](adr/0005-open-accounting-and-managed-services.md)
 | Document                                               | Question it answers                                                                                      |
 | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
 | [Product scope](product.md)                            | Who is the product for, and what must it do?                                                             |
+| [Customer frontend plan](frontend.md)                  | How should founders, finance teams and accountants navigate, review and finish work?                     |
 | [Architecture](architecture.md)                        | Which module owns each responsibility, and where does it run?                                            |
 | [Domain and invariants](domain.md)                     | What do the records mean, and what must never become false?                                              |
 | [Operations and review](operations.md)                 | How do people and agents prepare, approve, execute and recover work?                                     |

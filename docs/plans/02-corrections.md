@@ -18,13 +18,13 @@ Unique constraints prevent a second independent full reversal of the same origin
 
 ## Operations and failure policy
 
-| Operation | Contract |
-| --- | --- |
-| Prepare reversal | Original + explicit target period/date + reason → exact opposite original amounts/accounts/dimensions, same event/evidence lineage. |
-| Prepare bundle | Original + intended replacement facts/lines + date policy + reason → immutable reversal/replacement and dependency manifest. |
-| Review / validate | Original, chain, net effect, source and all register consequences visible; missing downstream semantics block preparation. |
-| Approve / execute | Human-approved bundle digest + original request key → one aggregate receipt; constituent execution denied. |
-| Recover / trace | Bundle ID, original voucher or request key → aggregate/current state and linked history, with timed absence semantics. |
+| Operation         | Contract                                                                                                                            |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Prepare reversal  | Original + explicit target period/date + reason → exact opposite original amounts/accounts/dimensions, same event/evidence lineage. |
+| Prepare bundle    | Original + intended replacement facts/lines + date policy + reason → immutable reversal/replacement and dependency manifest.        |
+| Review / validate | Original, chain, net effect, source and all register consequences visible; missing downstream semantics block preparation.          |
+| Approve / execute | Human-approved bundle digest + original request key → one aggregate receipt; constituent execution denied.                          |
+| Recover / trace   | Bundle ID, original voucher or request key → aggregate/current state and linked history, with timed absence semantics.              |
 
 The first policy permits an explicitly selected **open** accounting period. Never silently backdate to the original locked period or reopen it. If a supported accounting treatment requires original-period correction, use the separately approved reopen workflow, invalidate affected close/report readiness and then prepare a new bundle. Filed artifacts retain their history and receive an impact case. Legal treatment/date requirements are profile inputs, not a generic date convenience.
 
@@ -34,24 +34,24 @@ Economic equivalence includes supported dimensions, tax facts, allocation/regist
 
 ## Register consequences
 
-| Affected owner | Required correction behavior |
-| --- | --- |
-| Invoice recognition | Reverse/replace the recognition link and GL effect atomically; preserve issued invoice content. Require an explicit credit/reissue workflow if commercial facts change. |
-| Invoice payment allocation | Reverse identified allocation legs under capacity locks; recompute residual from immutable allocations, never decrement a cached paid amount twice. |
-| Bank matching | Keep historical match receipt; append reversal/supersession of the relationship when its supporting line is reversed. Do not invent a new bank observation. |
-| Asset/deferral schedule | Preserve posted occurrence identity and its reversal; remaining-plan amendments must be explicit. A lost link cannot make the occurrence appear never posted. |
-| Payroll | Correct against the frozen pay-run revision and its liabilities/declaration lineage; never recalculate old approved rows from current employee settings. |
-| VAT/report/close | Append changed treatment/impact facts and stale relevant readiness; retain old snapshots and submitted bytes. |
+| Affected owner             | Required correction behavior                                                                                                                                            |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Invoice recognition        | Reverse/replace the recognition link and GL effect atomically; preserve issued invoice content. Require an explicit credit/reissue workflow if commercial facts change. |
+| Invoice payment allocation | Reverse identified allocation legs under capacity locks; recompute residual from immutable allocations, never decrement a cached paid amount twice.                     |
+| Bank matching              | Keep historical match receipt; append reversal/supersession of the relationship when its supporting line is reversed. Do not invent a new bank observation.             |
+| Asset/deferral schedule    | Preserve posted occurrence identity and its reversal; remaining-plan amendments must be explicit. A lost link cannot make the occurrence appear never posted.           |
+| Payroll                    | Correct against the frozen pay-run revision and its liabilities/declaration lineage; never recalculate old approved rows from current employee settings.                |
+| VAT/report/close           | Append changed treatment/impact facts and stale relevant readiness; retain old snapshots and submitted bytes.                                                           |
 
 A domain-specific original whose register consequences cannot be expressed safely is unsupported for generic correction. The UI names the owning workflow instead of attempting a partial voucher-only repair.
 
 ## Delivery packets
 
-| ID | Deliverable | Depends on | Acceptance |
-| --- | --- | --- | --- |
-| COR-01 | Complete and integrate existing bundle prepare/review/approve/execute path and constituent isolation. | PST-03 | E-09: invalid replacement and midpoint failure leave neither posting; exact original retained. |
-| COR-02 | Stable correction-chain identity, reversal-only conflict handling and receipt discovery. | COR-01 | E-04/E-05/E-09: concurrent alternatives produce one permitted correction; reload recovers aggregate. |
-| COR-03 | Register-specific correction contributions and capacity reconciliation. | COR-02, COM-03, AST-02 | E-09/E-13: invoice, payment and schedule assertions agree with corrected GL. |
-| COR-04 | Closed-period policy, downstream impact cases and all-channel correction workbench. | COR-02, END-01 | E-06/E-11/E-16: no silent reopening/backdating; old report preserved and affected readiness stale. |
+| ID     | Deliverable                                                                                           | Depends on             | Acceptance                                                                                           |
+| ------ | ----------------------------------------------------------------------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------- |
+| COR-01 | Complete and integrate existing bundle prepare/review/approve/execute path and constituent isolation. | PST-03                 | E-09: invalid replacement and midpoint failure leave neither posting; exact original retained.       |
+| COR-02 | Stable correction-chain identity, reversal-only conflict handling and receipt discovery.              | COR-01                 | E-04/E-05/E-09: concurrent alternatives produce one permitted correction; reload recovers aggregate. |
+| COR-03 | Register-specific correction contributions and capacity reconciliation.                               | COR-02, COM-03, AST-02 | E-09/E-13: invoice, payment and schedule assertions agree with corrected GL.                         |
+| COR-04 | Closed-period policy, downstream impact cases and all-channel correction workbench.                   | COR-02, END-01         | E-06/E-11/E-16: no silent reopening/backdating; old report preserved and affected readiness stale.   |
 
 The plain-journal P1 correction gate is COR-01/COR-02 with relevant PST proofs. It does not wait for asset/payroll implementation. COR-03 extends the gate whenever those domains become supported. This distinction prevents a circular dependency while keeping register-aware correction mandatory before their release.

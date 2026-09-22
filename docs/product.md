@@ -15,6 +15,8 @@ The initial candidate profile is one Swedish AB. Its actual legal form, accounti
 | Reviewer            | Trace a report amount through its calculation and ledger entries to decisions and original evidence.                                 |
 | Operator            | Restore books, evidence and receipts together; establish which system is the active writer.                                          |
 
+The [customer frontend plan](frontend.md) turns these outcomes into starting views for founders, in-house finance and accountants working across clients. [ADR 0006](adr/0006-customer-workspaces.md) selects one application with shared records and different entry hierarchy/density. Audience preferences confer no accounting authority; firm membership and assignments require their owning contracts.
+
 ## Requirements
 
 These requirements define the target; implementation and acceptance are recorded separately. The identifiers connect implementation slices to [verification](verification.md).

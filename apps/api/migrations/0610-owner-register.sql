@@ -462,7 +462,7 @@ BEGIN
   IF v_leg->>'claimId'=ANY(v_ids) THEN PERFORM openerp.fail('InvalidJournal','Each selected claim occurs once.'); END IF;
   v_ids:=array_append(v_ids,v_leg->>'claimId'); v_amount:=openerp.commerce_positive_minor(v_leg,'amountMinor');
   v_claim:=openerp.owner_capacity(p_book,v_leg->>'claimId');
-  IF v_claim->'effect'->>'classification' IS DISTINCT FROM CASE WHEN v_settlement->'effect'->>'classification'='owner_reimbursement' THEN 'owner_expense' ELSE 'shareholder_loan' END
+  IF v_claim->'effect'->>'classification' IS DISTINCT FROM (CASE WHEN v_settlement->'effect'->>'classification'='owner_reimbursement' THEN 'owner_expense' ELSE 'shareholder_loan' END)
    OR v_claim->'effect'->>'side'<>'credit'
    OR (v_claim->'effect'->>'ownerId',v_claim->'effect'->>'accountId',v_claim->'effect'->>'currency',v_claim->'effect'->>'currencyScale') IS DISTINCT FROM
       (v_settlement->'effect'->>'ownerId',v_settlement->'effect'->>'accountId',v_settlement->'effect'->>'currency',v_settlement->'effect'->>'currencyScale')
@@ -586,7 +586,7 @@ BEGIN
   IF v_leg.claim_id IS DISTINCT FROM v_expected->'claim'->'effect'->>'id' OR v_leg.settlement_id<>v_settlement.id OR v_leg.amount_minor<>(v_expected->>'amountMinor')::numeric
    OR v_claim.side<>'credit' OR v_settlement.side<>'debit' OR v_claim.owner_id<>v_settlement.owner_id OR v_claim.account_id<>v_settlement.account_id
    OR (v_claim.body->>'currency',v_claim.body->>'currencyScale') IS DISTINCT FROM (v_settlement.body->>'currency',v_settlement.body->>'currencyScale')
-   OR v_claim.posting_date>v_settlement.posting_date OR (v_claim.body->>'occurredOn')::date>(v_settlement.body->>'occurredOn')::date OR v_claim.classification IS DISTINCT FROM CASE WHEN v_settlement.classification='owner_reimbursement' THEN 'owner_expense' WHEN v_settlement.classification='loan_repayment' THEN 'shareholder_loan' ELSE NULL END THEN
+   OR v_claim.posting_date>v_settlement.posting_date OR (v_claim.body->>'occurredOn')::date>(v_settlement.body->>'occurredOn')::date OR v_claim.classification IS DISTINCT FROM (CASE WHEN v_settlement.classification='owner_reimbursement' THEN 'owner_expense' WHEN v_settlement.classification='loan_repayment' THEN 'shareholder_loan' ELSE NULL END) THEN
    PERFORM openerp.fail('InvalidJournal','Owner allocation identity, classification or approved amount differs.'); END IF;
   SELECT coalesce(sum(l.amount_minor),0) INTO v_sum FROM openerp.owner_allocation_legs l WHERE l.book_id=p_book AND l.claim_id=v_leg.claim_id;
   IF v_sum>v_claim.amount_minor THEN PERFORM openerp.fail('InvalidJournal','Owner claim capacity was exceeded.'); END IF;

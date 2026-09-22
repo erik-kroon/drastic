@@ -10,26 +10,26 @@ The first accepted slice remains the explicit synthetic profile. Production acti
 
 ## Records and transitions
 
-| Record | Required behavior |
-| --- | --- |
-| Plan revision | Immutable identity, scope, canonicalization/digest, exact actions/groups, evidence/rule/dependency references, preparer and time. A change creates another revision. |
-| Validation | Records which checks ran and against which revisions. Informational before execution; execution repeats relevant checks under lock. |
-| Approval | Exact revision/group identities, allowed effects, approver/authority basis, expiry and consumption. Revocation is append-only and prevents later consumption. |
-| Execution receipt | Group/effect IDs, approval, command identity, digest, allocated numbers, committed sequence and time. It remains readable after approval expires or actor access is revoked, subject to the reader's current access. |
-| Recovery observation | Receipt or timed `not_observed`, fresh blockers and authority state; not a fabricated terminal failure. |
+| Record               | Required behavior                                                                                                                                                                                                    |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Plan revision        | Immutable identity, scope, canonicalization/digest, exact actions/groups, evidence/rule/dependency references, preparer and time. A change creates another revision.                                                 |
+| Validation           | Records which checks ran and against which revisions. Informational before execution; execution repeats relevant checks under lock.                                                                                  |
+| Approval             | Exact revision/group identities, allowed effects, approver/authority basis, expiry and consumption. Revocation is append-only and prevents later consumption.                                                        |
+| Execution receipt    | Group/effect IDs, approval, command identity, digest, allocated numbers, committed sequence and time. It remains readable after approval expires or actor access is revoked, subject to the reader's current access. |
+| Recovery observation | Receipt or timed `not_observed`, fresh blockers and authority state; not a fabricated terminal failure.                                                                                                              |
 
 The immutable plan has no mutable “posting” status. A projection combines pending/blocked/current/approved/executed facts. Approval can be active, expired, revoked, authority-lost or consumed; consumption cannot be undone to repeat an effect. Superseding a plan prevents new execution where appropriate without hiding already committed effects.
 
 ## Operations
 
-| Operation family | Input and result | Authority / boundary |
-| --- | --- | --- |
-| Retain evidence; prepare journal | Exact source reference, event/purpose identity, dates, accounts and amount strings → sealed proposal or blockers. | Prepare permission; scoped evidence admission and no financial effects. |
-| Inspect / validate | Proposal ID → exact stored plan, evidence access and current dependency findings. | Read/prepare as appropriate; no implied approval. |
-| Approve / revoke | Exact digest/version/groups and selected expiry; revocation identifies approval and reason → immutable authority event. | Human permission; checked under book barrier. Ordinary MCP catalogue excludes these grants. |
-| Execute | Plan/group references, digest/version, approval ID, stable key → original or new execution receipt. | Posting scope plus valid approval; one transaction. |
-| Recover / discover | Original key or retained proposal ID, paged book list → committed receipt or timed observation. | Scoped read; discovery survives lost browser state. |
-| Inspect ledger / voucher | Snapshot/cutoff and scoped cursor → exact immutable effects and complete-prefix amounts. | Read permission; no live-list assumption for snapshot reports. |
+| Operation family                 | Input and result                                                                                                        | Authority / boundary                                                                        |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Retain evidence; prepare journal | Exact source reference, event/purpose identity, dates, accounts and amount strings → sealed proposal or blockers.       | Prepare permission; scoped evidence admission and no financial effects.                     |
+| Inspect / validate               | Proposal ID → exact stored plan, evidence access and current dependency findings.                                       | Read/prepare as appropriate; no implied approval.                                           |
+| Approve / revoke                 | Exact digest/version/groups and selected expiry; revocation identifies approval and reason → immutable authority event. | Human permission; checked under book barrier. Ordinary MCP catalogue excludes these grants. |
+| Execute                          | Plan/group references, digest/version, approval ID, stable key → original or new execution receipt.                     | Posting scope plus valid approval; one transaction.                                         |
+| Recover / discover               | Original key or retained proposal ID, paged book list → committed receipt or timed observation.                         | Scoped read; discovery survives lost browser state.                                         |
+| Inspect ledger / voucher         | Snapshot/cutoff and scoped cursor → exact immutable effects and complete-prefix amounts.                                | Read permission; no live-list assumption for snapshot reports.                              |
 
 Retain current endpoint/capability names in `accounting.ts` and `posting-recovery.ts`. Add approval revocation and explicit group-aware receipts through the shared contract when their consumers are implemented. Existing one-voucher receipt readers remain valid; domain bundles link constituent receipts through an aggregate receipt instead of rewriting historical ones.
 
@@ -57,25 +57,25 @@ A later standing mandate is a separate human-authorized record, never inferred f
 
 ## Failure and UI behavior
 
-| Trigger | Product response |
-| --- | --- |
-| Evidence/account/period/profile changed | Name the changed dependency; keep the old plan readable; prepare a new revision and approval. |
+| Trigger                                                      | Product response                                                                                                        |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Evidence/account/period/profile changed                      | Name the changed dependency; keep the old plan readable; prepare a new revision and approval.                           |
 | Approval revoked or approver lost authority during execution | Exactly one ordered result under the barrier: prior valid consumption or rejection. No use of an old cached permission. |
-| Missing receipt while an old request is in flight | Show “result not yet established”; recover or replay unchanged identity. Do not invite a new posting with a new key. |
-| Same event proposed twice under new keys | Show the original effect/receipt and relationship; refuse duplicate recognition. |
-| Browser reload after preparation/approval | Rediscover retained work and evidence; derive current actions from the server. |
-| Receipt says posted but read projection lags | Display the receipt and bounded refresh state; never resubmit to fix the view. |
+| Missing receipt while an old request is in flight            | Show “result not yet established”; recover or replay unchanged identity. Do not invite a new posting with a new key.    |
+| Same event proposed twice under new keys                     | Show the original effect/receipt and relationship; refuse duplicate recognition.                                        |
+| Browser reload after preparation/approval                    | Rediscover retained work and evidence; derive current actions from the server.                                          |
+| Receipt says posted but read projection lags                 | Display the receipt and bounded refresh state; never resubmit to fix the view.                                          |
 
 The review screen displays currency/scale, date/period, source evidence, exact lines, rationale, rule identity, dependency changes and approval scope. Hide technical hashes behind inspectable details while keeping the actual decision clear. Recovery must be keyboard reachable and must not require copying a key from developer tools.
 
 ## Delivery packets
 
-| ID | Deliverable | Depends on | Acceptance |
-| --- | --- | --- | --- |
-| PST-01 | Complete sealed plan/admission and immutable evidence inspection over current journal APIs. | FND-01, FND-03 | E-02/E-03: exact large values; duplicate-key/Unicode admission; no ledger mutation during review. |
-| PST-02 | Trusted approval/revocation and permission-expiry lifecycle with review UI. | PST-01, FND-02 | E-01/E-06: agent refusal, revoked/expired approval and permission races leave no effect. |
-| PST-03 | Atomic posting, durable receipt, uncertainty recovery and reload discovery. | PST-02, FND-04 | E-04/E-08/E-10: competing first calls, lost response, injected rollback and complete-prefix reads. |
-| PST-04 | Shared REST/MCP/browser behavior and precise errors/capability metadata. | PST-03 | E-11: equivalent effects and receipt identity; browser recovery and accessibility evidence. |
-| PST-05 | Transactional outbox and bounded durable runs; recurring preparation and explicitly scoped mandate consumption where enabled. | PST-03 | E-08/E-17: committed posting survives delivery failure; applied/remaining groups distinct; changed facts/revocation block future consumption and concurrent limits cannot be exceeded. |
+| ID     | Deliverable                                                                                                                   | Depends on     | Acceptance                                                                                                                                                                             |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PST-01 | Complete sealed plan/admission and immutable evidence inspection over current journal APIs.                                   | FND-01, FND-03 | E-02/E-03: exact large values; duplicate-key/Unicode admission; no ledger mutation during review.                                                                                      |
+| PST-02 | Trusted approval/revocation and permission-expiry lifecycle with review UI.                                                   | PST-01, FND-02 | E-01/E-06: agent refusal, revoked/expired approval and permission races leave no effect.                                                                                               |
+| PST-03 | Atomic posting, durable receipt, uncertainty recovery and reload discovery.                                                   | PST-02, FND-04 | E-04/E-08/E-10: competing first calls, lost response, injected rollback and complete-prefix reads.                                                                                     |
+| PST-04 | Shared REST/MCP/browser behavior and precise errors/capability metadata.                                                      | PST-03         | E-11: equivalent effects and receipt identity; browser recovery and accessibility evidence.                                                                                            |
+| PST-05 | Transactional outbox and bounded durable runs; recurring preparation and explicitly scoped mandate consumption where enabled. | PST-03         | E-08/E-17: committed posting survives delivery failure; applied/remaining groups distinct; changed facts/revocation block future consumption and concurrent limits cannot be exceeded. |
 
 Exit: a fixed-revision artifact covers E-01–E-11 and E-20 relevant cases, including negative/cancellation/commit uncertainty paths. Existing happy-path and post-commit replay observations are reused as historical evidence, not counted as competing-first-execution proof.

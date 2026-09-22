@@ -17,10 +17,7 @@ function checksFeatureCode(filename: string): boolean {
 }
 
 function projectFilename(filename: string): string {
-  return (
-    filename.replaceAll("\\", "/").match(/(?:^|\/)apps\/web\/src\/(.*)$/u)?.[1] ??
-    filename
-  );
+  return filename.replaceAll("\\", "/").match(/(?:^|\/)apps\/web\/src\/(.*)$/u)?.[1] ?? filename;
 }
 
 function checkImport(

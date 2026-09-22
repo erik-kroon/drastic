@@ -2,13 +2,14 @@
 
 The status describes a decision's authority, not implementation progress. “Established” means the current repository settles it. “Working decision” means the product design selects it; it remains revisable. Unresolved prerequisites live in [open decisions](../open-decisions.md).
 
-| ADR                                                      | Status                          | Decision                                                                                        |
-| -------------------------------------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------- |
-| [0001](0001-checkout-runtime-and-accounting-boundary.md) | Established repository baseline | Preserve the existing stack, ownership and transport foundation.                                |
-| [0002](0002-exact-posting-and-approval.md)               | Working decision                | Exact PostgreSQL posting, immutable approval and group receipts.                                |
-| [0003](0003-native-accounting-and-migration.md)          | Working decision                | Native accounting with explicit company migration and one writer.                               |
-| [0004](0004-complete-accounting-delivery-contract.md)    | Working decision                | Seven-area delivery contract, compatible exact values, domain/SQL ownership and fenced cutover. |
-| [0005](0005-open-accounting-and-managed-services.md) | Accepted product direction | Open accounting and agent/jurisdiction layers, AGPL-3.0-only, optional managed operations and deferred Rust. |
+| ADR                                                      | Status                          | Decision                                                                                                     |
+| -------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| [0001](0001-checkout-runtime-and-accounting-boundary.md) | Established repository baseline | Preserve the existing stack, ownership and transport foundation.                                             |
+| [0002](0002-exact-posting-and-approval.md)               | Working decision                | Exact PostgreSQL posting, immutable approval and group receipts.                                             |
+| [0003](0003-native-accounting-and-migration.md)          | Working decision                | Native accounting with explicit company migration and one writer.                                            |
+| [0004](0004-complete-accounting-delivery-contract.md)    | Working decision                | Seven-area delivery contract, compatible exact values, domain/SQL ownership and fenced cutover.              |
+| [0005](0005-open-accounting-and-managed-services.md)     | Accepted product direction      | Open accounting and agent/jurisdiction layers, AGPL-3.0-only, optional managed operations and deferred Rust. |
+| [0006](0006-customer-workspaces.md)                     | Working decision                | One customer application with shared records, task-based navigation and audience-specific starting views. |
 
 The separately authored [Swedish VAT profile boundary](0002-swedish-vat-profile-boundary.md) also uses the number 0002 in its filename. Refer to it by title and full filename to distinguish it from the posting ADR. It records a bounded research profile and source limitations; it does not activate statutory support.
 

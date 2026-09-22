@@ -1,6 +1,9 @@
 import { Capabilities } from "@open-erp/contracts/capabilities";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
+import type * as Accounting from "@open-erp/contracts/accounting";
+import { getSourceOccurrence, retainSource } from "./source-retention";
+import type { RequestEnvironment } from "./database";
 import { query, scopeParameter, type DatabaseOperation } from "./database";
 
 function bindCapability<I, O extends Schema.Json>(
@@ -15,6 +18,18 @@ function bindCapability<I, O extends Schema.Json>(
 ) {
   const execute = (token: string, input: I) =>
     query(operation, [token, ...parameters(input)], definition.output);
+  return effectCapability(definition, execute);
+}
+
+function effectCapability<I, O extends Schema.Json>(
+  definition: {
+    readonly input: Schema.Decoder<I>;
+    readonly output: Schema.Decoder<O>;
+    readonly description: string;
+    readonly readOnly: boolean;
+  },
+  execute: (token: string, input: I) => Effect.Effect<O, Accounting.AccountingError, RequestEnvironment>,
+) {
   return {
     ...definition,
     execute,
@@ -252,21 +267,13 @@ export const capabilities = {
     "listSavedPostingRequests",
     (input) => [scopeParameter(input.scope), input.after ?? ""],
   ),
-  source_retain: bindCapability(Capabilities.source_retain, "retainSource", (input) => [
-    scopeParameter(input.scope),
-    input.idempotencyKey,
-    JSON.stringify(input.input),
-  ]),
+  source_retain: effectCapability(Capabilities.source_retain, retainSource),
   source_list_occurrences: bindCapability(
     Capabilities.source_list_occurrences,
     "listSourceOccurrences",
     (input) => [scopeParameter(input.scope), input.cursor ?? ""],
   ),
-  source_get_occurrence: bindCapability(
-    Capabilities.source_get_occurrence,
-    "getSourceOccurrence",
-    (input) => [scopeParameter(input.scope), input.occurrenceId],
-  ),
+  source_get_occurrence: effectCapability(Capabilities.source_get_occurrence, getSourceOccurrence),
   source_preview_csv: bindCapability(
     Capabilities.source_preview_csv,
     "previewSourceCsv",

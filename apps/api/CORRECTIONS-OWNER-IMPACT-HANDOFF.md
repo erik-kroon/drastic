@@ -28,5 +28,6 @@ Next root action: inspect0890 and apply it after0610/0410 in the authorized loca
 - `apps/api/CORRECTIONS-WORKBENCH.md`: `82c0fdd2c68f6e3c02f92e29eaa90e0cae071a5246f9d9913a35a344ff3b6513`
 
 Consumed unchanged prerequisites:
+
 - `apps/api/migrations/0410-correction-impact-workbench.sql`: `17d09cbd78cf8230b1ed5ebbe1b4b403d0248c9c397033ef9a08d1a5095d5981`
 - `apps/api/migrations/0610-owner-register.sql`: `5e54e781e33993df5a39a6613b3950b07e72063c136113c7c6e164eba6daee64`

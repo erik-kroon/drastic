@@ -1,6 +1,12 @@
 import { sql, type SQL } from "drizzle-orm";
 
 export const sourceIntakeStatements = {
+  beginSourceUpload: (parameters) =>
+    sql`select openerp.begin_source_upload(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  completeSourceUpload: (parameters) =>
+    sql`select openerp.complete_source_upload(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  getSourceStorage: (parameters) =>
+    sql`select openerp.get_source_storage(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
   retainSource: (parameters) =>
     sql`select openerp.retain_source(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   listSourceOccurrences: (parameters) =>

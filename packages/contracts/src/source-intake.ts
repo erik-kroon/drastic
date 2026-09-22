@@ -6,15 +6,27 @@ import { accountingErrors } from "./accounting-errors";
 
 const Label = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200));
 const Amount = Bank.StatementSource.fields.openingMinor;
+export const maxSourceBytes = 5 * 1024 * 1024;
+export const SourceMediaType = Schema.Literals([
+  "text/csv",
+  "text/plain",
+  "application/pdf",
+  "application/json",
+  "application/xml",
+  "image/jpeg",
+  "image/png",
+  "application/octet-stream",
+]);
 export const RetainSource = Schema.Struct({
   sourceSystem: Label,
   sourceAccountId: Label,
   occurrenceKey: Label,
   sourceRevision: Label,
   filename: Label,
+  mediaType: Schema.optional(SourceMediaType),
   contentBase64: Schema.String.check(
     Schema.isMinLength(4),
-    Schema.isMaxLength(87384),
+    Schema.isMaxLength(6990508),
     Schema.isPattern(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/),
   ),
 });
@@ -28,7 +40,7 @@ export const SourceOccurrence = Schema.Struct({
   filename: Label,
   sha256: A.Digest,
   byteLength: Schema.Int,
-  mediaType: Schema.Literal("text/csv"),
+  mediaType: SourceMediaType,
   retainedBy: A.Identifier,
   retainedAt: Schema.String,
   receipt: Bank.CommandReceipt,
@@ -188,7 +200,7 @@ export const SourceIntakeApi = HttpApiGroup.make("sourceIntake").add(
 export const SourceIntakeCapabilities = {
   source_retain: {
     description:
-      "Retain exact original CSV bytes and explicit source occurrence identity. Does not import observations or post.",
+      "Retain original file bytes and explicit source occurrence identity. Files above 64 KiB and non-CSV documents require configured object storage. Does not import observations or post.",
     input: Schema.Struct({
       scope: A.Scope,
       idempotencyKey: A.IdempotencyHeaders.fields["idempotency-key"],

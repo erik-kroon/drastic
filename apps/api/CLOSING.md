@@ -95,16 +95,15 @@ Root must serialize permitted local execution. Static success cannot establish a
 - Concurrent posting/import/registration/schedule mutation versus closing obeys lock order and cannot commit stale readiness.
 - Rendered keyboard, narrow-width and 200% zoom behavior are usable. Source structure alone does not verify browser behavior.
 
-
 ## Owner and expense-review integration risks (recorded before0820)
 
 -0820 must replace only the private live closing basis in a new forward migration. Existing0800 bytes, certificates, approvals and receipts remain unchanged. Older proposals lack these dependencies and must become stale rather than receive implied approval for new checks.
+
 - Capture and recheck owner `sourceDigest` and expense-tax `basisDigest` under the existing book barrier. Unresolved/unlinked owner sources and missing/stale expense reviews block technical close. Unpaid but linked owner expense/loan claims do not block it merely because capacity remains.
 - Empty provider inventories do not establish source completeness, zero openings, no liabilities or tax eligibility. Reviewed facts are not statutory acceptance. Reopen remains available for repair when close prerequisites fail.
 - Accountant packs must materialize provider-owned source/review/controls and explicit outside-interval rows at one basis. Bound owner identities/sources/effects/allocations and expense sources before materialization; fail atomically rather than omit rows.
 - Reuse provider control/assessment helpers, without recreating owner allocation or tax eligibility rules. Expense assessment is captured in `actual_review` mode: no tax contribution or legal profile is activated by this package.
 - Old pack bytes/page meanings must not change.0810 remains unapplied and may be extended before root applies it;0820 independently upgrades current closing behavior. Root owns migration ordering, runtime observations and concurrency proof.
-
 
 ##0820 forward owner/expense-review checks
 
@@ -115,7 +114,6 @@ The new basis includes `ownerTaxStatus`, `dependencies.ownerSourceDigest` and `d
 Existing proposals/certificates retain their original bytes/digests. Their contracts allow absent provider fields for historical decoding, and the UI identifies that legacy scope. Comparing their old basis to the new live basis makes unexecuted old approvals stale and old certificates noncurrent. Existing committed command receipts still replay exactly. Repair through a newly prepared explicit reopen remains available; no old lock or journal is silently changed.
 
 Owner/tax mutation after proposal capture changes the pinned provider digest and fails existing approval/execution basis equality. Actual race/failure behavior remains for root runtime validation; this source change is not that proof.
-
 
 ### Additional pre-change risk review
 

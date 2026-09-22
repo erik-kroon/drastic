@@ -20,15 +20,15 @@ Credential/membership revocation is an authority-only transaction: initially one
 
 ## Exact values and canonical identity
 
-| Type | Selected contract |
-| --- | --- |
-| Posted amount | Canonical nonnegative integer string, at most 38 digits, currency and its pinned minor-unit scale. Retain current paired `debitMinor`/`creditMinor`; exactly one is positive. |
-| Signed balance | Canonical signed integer string; aggregates may exceed the per-line bound and must not be cast to JS number. |
-| Current sequence/number counter | PostgreSQL `bigint`, nonnegative with positive allocated values, serialized as a decimal string. Its maximum is `9223372036854775807`; the wider amount-string schema does not enlarge storage capacity. Counter exhaustion requires explicit refusal before allocation. |
-| Source decimal, rate or quantity | Original lexeme retained; normalized sign/coefficient/scale with up to 38 coefficient digits and scale 0–18 for the first implementation. Reject unsupported precision; never silently round input to fit. |
-| Arithmetic | Integer/rational arithmetic through multiplication and allocation. Round only at a named rule boundary. Rounding mode, quantum, residual allocation and rule revision are stored with the result. |
-| Dates | Valid calendar dates for accounting/tax facts; UTC instants for recording/approval; explicit fiscal/period references. Retried commands retain selected dates. |
-| Identity | Opaque scoped IDs; no customer-visible meaning inferred from a generated ID. Preserve source/legal identifiers separately. |
+| Type                             | Selected contract                                                                                                                                                                                                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Posted amount                    | Canonical nonnegative integer string, at most 38 digits, currency and its pinned minor-unit scale. Retain current paired `debitMinor`/`creditMinor`; exactly one is positive.                                                                                            |
+| Signed balance                   | Canonical signed integer string; aggregates may exceed the per-line bound and must not be cast to JS number.                                                                                                                                                             |
+| Current sequence/number counter  | PostgreSQL `bigint`, nonnegative with positive allocated values, serialized as a decimal string. Its maximum is `9223372036854775807`; the wider amount-string schema does not enlarge storage capacity. Counter exhaustion requires explicit refusal before allocation. |
+| Source decimal, rate or quantity | Original lexeme retained; normalized sign/coefficient/scale with up to 38 coefficient digits and scale 0–18 for the first implementation. Reject unsupported precision; never silently round input to fit.                                                               |
+| Arithmetic                       | Integer/rational arithmetic through multiplication and allocation. Round only at a named rule boundary. Rounding mode, quantum, residual allocation and rule revision are stored with the result.                                                                        |
+| Dates                            | Valid calendar dates for accounting/tax facts; UTC instants for recording/approval; explicit fiscal/period references. Retried commands retain selected dates.                                                                                                           |
+| Identity                         | Opaque scoped IDs; no customer-visible meaning inferred from a generated ID. Preserve source/legal identifiers separately.                                                                                                                                               |
 
 The paired monetary wire shape supersedes only the side-plus-value representation choice in ADR 0002; exactness and one-sided-line invariants remain. Retain `openerp-c14n-v1` for already sealed records. New plans use the same algorithm only when independently checked vectors establish its behavior: UTF-8, recursive object keys sorted by byte order, array order preserved, no whitespace between tokens, no Unicode normalization, no undefined values, and only safe bounded integer JSON numbers for counters/ordinals. Financial decimals are strings. Reject duplicate JSON keys and invalid Unicode before sealing at public admission. A stricter admission rule cannot reinterpret an existing stored digest.
 
@@ -38,14 +38,14 @@ The digest input includes schema/canonicalization version, full scope, operation
 
 Every row carrying accounting meaning has `(book_id, id)` identity and scoped foreign keys. The entity/book relationship is checked at admission and by the database. Unique identities below are scoped to the book unless noted otherwise.
 
-| Owner | Required records and uniqueness |
-| --- | --- |
-| Evidence/imports | `ContentObject(hash,size,mediaType,storageVersion,availability)`; `SourceOccurrence(sourceSystem,sourceAccount,externalId/revision or import+ordinal,contentRef)`; immutable parser result/diagnostic; source inventory revision. Same bytes may have many occurrences. |
-| Accounting work | Causal event; observation/event links with accepted/contested basis; immutable plan revision/group; dependency manifest; validation result; scoped approval and revocation events. |
-| Kernel | Voucher and lines; `(event,postingPurpose,occurrenceKey)` uniqueness; series counter; book commit counter; command and group execution receipts. |
-| Registers | Immutable business revisions and effect links; append-only allocations/reversals with capacity protected under lock; separate projections for current balances/status. |
-| Reporting | Opening set; source/ledger/register snapshot; rule and mapping release; contribution/exclusion records; artifact manifest; validation run. |
-| Delivery/operations | Outbox; attempt/lease with fencing identity; external submission; provider observations; archive/backup manifest; restore/cutover receipts. |
+| Owner               | Required records and uniqueness                                                                                                                                                                                                                                         |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Evidence/imports    | `ContentObject(hash,size,mediaType,storageVersion,availability)`; `SourceOccurrence(sourceSystem,sourceAccount,externalId/revision or import+ordinal,contentRef)`; immutable parser result/diagnostic; source inventory revision. Same bytes may have many occurrences. |
+| Accounting work     | Causal event; observation/event links with accepted/contested basis; immutable plan revision/group; dependency manifest; validation result; scoped approval and revocation events.                                                                                      |
+| Kernel              | Voucher and lines; `(event,postingPurpose,occurrenceKey)` uniqueness; series counter; book commit counter; command and group execution receipts.                                                                                                                        |
+| Registers           | Immutable business revisions and effect links; append-only allocations/reversals with capacity protected under lock; separate projections for current balances/status.                                                                                                  |
+| Reporting           | Opening set; source/ledger/register snapshot; rule and mapping release; contribution/exclusion records; artifact manifest; validation run.                                                                                                                              |
+| Delivery/operations | Outbox; attempt/lease with fencing identity; external submission; provider observations; archive/backup manifest; restore/cutover receipts.                                                                                                                             |
 
 No source hash alone identifies an economic event. No generic mutable `paid`, `booked` or `reconciled` boolean is authoritative; derive status from its durable facts and mark uncertain historical state separately. Projections are rebuildable and can never authorize a write without rechecking authoritative rows.
 
@@ -79,9 +79,9 @@ The UI uses existing StyleX components, Paraglide and request-scoped TanStack Qu
 
 ## Shared foundation packets
 
-| ID | Deliverable | Depends on | Acceptance |
-| --- | --- | --- | --- |
-| FND-01 | Reconcile existing contracts/migrations with ADR 0004; inventory real callers; preserve old digests/routes. | — | No contradictory money/digest/transaction ownership contract; populated migration plan documented. |
-| FND-02 | Trusted human/agent admission, permission catalogue and effective restricted-role grants. | FND-01 | E-01/E-11: real identity boundaries, revocation races and database bypass attempts. |
-| FND-03 | Versioned company/rule/source inventory and mandatory-check coverage contract. | FND-01 | Missing fact/check remains explicit; every activation cites evidence and scope. |
-| FND-04 | Fixed-revision runtime/E2E evidence harness and release manifest using existing suite. | FND-01 | E-20: real Worker/PostgreSQL/Bun paths, cleanup and populated upgrade evidence; test changes within authorization. |
+| ID     | Deliverable                                                                                                 | Depends on | Acceptance                                                                                                         |
+| ------ | ----------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------ |
+| FND-01 | Reconcile existing contracts/migrations with ADR 0004; inventory real callers; preserve old digests/routes. | —          | No contradictory money/digest/transaction ownership contract; populated migration plan documented.                 |
+| FND-02 | Trusted human/agent admission, permission catalogue and effective restricted-role grants.                   | FND-01     | E-01/E-11: real identity boundaries, revocation races and database bypass attempts.                                |
+| FND-03 | Versioned company/rule/source inventory and mandatory-check coverage contract.                              | FND-01     | Missing fact/check remains explicit; every activation cites evidence and scope.                                    |
+| FND-04 | Fixed-revision runtime/E2E evidence harness and release manifest using existing suite.                      | FND-01     | E-20: real Worker/PostgreSQL/Bun paths, cleanup and populated upgrade evidence; test changes within authorization. |

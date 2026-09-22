@@ -10,8 +10,11 @@ import * as Schema from "effect/Schema";
 import * as SqlError from "effect/unstable/sql/SqlError";
 import { Database, databaseLayer } from "./db/connection";
 import { sourceIntakeStatements } from "./source-intake-statements";
+import type { RetainedObjectStore } from "./retained-objects";
 
 export interface Bindings {
+  readonly EVIDENCE_BUCKET?: R2Bucket;
+  readonly EVIDENCE_STORE?: RetainedObjectStore;
   readonly BETTER_AUTH_SECRET?: string;
   readonly BETTER_AUTH_URL?: string;
   readonly DATABASE_URL?: string;

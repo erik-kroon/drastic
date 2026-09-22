@@ -3,17 +3,18 @@ import * as Intake from "@open-erp/contracts/source-intake";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "./auth";
+import { capabilities } from "./capabilities";
 import { query, scopeParameter } from "./database";
 
 export const SourceIntakeHandlers = HttpApiBuilder.group(Api, "sourceIntake", (handlers) =>
   handlers
     .handle("retainSource", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "retainSource",
-          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-          Intake.SourceOccurrence,
-        ),
+        capabilities.source_retain.execute(token, {
+          scope: params,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("listSourceOccurrences", ({ params, query: search }) =>
@@ -27,11 +28,10 @@ export const SourceIntakeHandlers = HttpApiBuilder.group(Api, "sourceIntake", (h
     )
     .handle("getSourceOccurrence", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "getSourceOccurrence",
-          [token, scopeParameter(params), params.id],
-          Intake.SourceOccurrenceView,
-        ),
+        capabilities.source_get_occurrence.execute(token, {
+          scope: params,
+          occurrenceId: params.id,
+        }),
       ),
     )
     .handle("previewSourceCsv", ({ params, headers, payload }) =>

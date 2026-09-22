@@ -12,6 +12,10 @@ export default Alchemy.Stack(
   },
   Effect.gen(function* () {
     const path = yield* Path;
+    const evidence = yield* Cloudflare.R2.Bucket("Evidence", {
+      jurisdiction: yield* Config.literals(["eu", "default"], "OPENERP_ARCHIVE_JURISDICTION"),
+      publicAccess: false,
+    }).pipe(Alchemy.RemovalPolicy.retain());
     const database = yield* Cloudflare.Hyperdrive.Connection("AccountingDatabase", {
       origin: {
         scheme: "postgres",
@@ -24,11 +28,11 @@ export default Alchemy.Stack(
       caching: { disabled: true },
     });
     const api = yield* Cloudflare.Worker("Api", {
-      name: "open-erp-api",
       compatibility: { date: "2026-09-22", flags: ["nodejs_compat"] },
       main: path.resolve(import.meta.dirname, "../../apps/api/src/index.ts"),
       env: {
         HYPERDRIVE: database,
+        EVIDENCE_BUCKET: evidence,
         BETTER_AUTH_URL: yield* Config.string("BETTER_AUTH_URL"),
         BETTER_AUTH_SECRET: yield* Config.redacted("BETTER_AUTH_SECRET"),
       },

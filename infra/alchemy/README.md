@@ -5,6 +5,12 @@ to an existing PostgreSQL database. Hyperdrive query caching is disabled for all
 Only the API Worker receives the database binding. The web Worker forwards `/api/*` to Core with
 the original request URL and Origin.
 
+Alchemy derives both Worker names from the stack, stage and resource ID. Use a distinct stage
+for each environment and supply that stage's database and authentication settings. Stage-scoped
+Workers and Hyperdrive configurations do not isolate a shared PostgreSQL origin: staging must use
+its own database and restricted runtime login. Before upgrading an existing deployment, inspect
+the plan for replacement of the former fixed-name `open-erp-api` Worker and the web service binding.
+
 ## Prerequisites
 
 - Install dependencies with `bun install` and authenticate Alchemy with `bun alchemy profile edit`.
