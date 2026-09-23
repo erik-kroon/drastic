@@ -79,7 +79,10 @@ BEGIN
         AND j.debit_minor=(l->>'debitMinor')::numeric AND j.credit_minor=(l->>'creditMinor')::numeric)) THEN
     PERFORM openerp.fail('UnsupportedProfile','Disposal requires intact represented gross controls and a separate schedule accumulated control. Direct net write-down and mixed accumulated controls are unsupported.'); END IF;
   IF p_input->>'lossAccountId'=d_schedule->'terms'->>'creditAccountId'
-    OR EXISTS(SELECT FROM jsonb_array_elements(d_basis->'lines') l WHERE l->>'accountId'=p_input->>'lossAccountId') THEN
+    OR EXISTS(SELECT FROM openerp.subledger_bases b CROSS JOIN LATERAL jsonb_array_elements(b.body->'lines') l
+      WHERE b.book_id=p_book AND l->>'accountId'=p_input->>'lossAccountId')
+    OR EXISTS(SELECT FROM openerp.subledger_schedules s WHERE s.book_id=p_book
+      AND openerp.subledger_current(p_book,s.id)->'terms'->>'creditAccountId'=p_input->>'lossAccountId') THEN
     PERFORM openerp.fail('InvalidJournal','Choose an explicit loss account distinct from every represented carrying control.'); END IF;
   IF EXISTS(WITH accounts AS (
       SELECT l->>'accountId' id FROM jsonb_array_elements(d_basis->'lines') l

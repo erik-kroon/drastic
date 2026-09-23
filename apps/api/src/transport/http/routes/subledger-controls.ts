@@ -7,6 +7,31 @@ import { query, scopeParameter } from "../../../db/query";
 
 export const SubledgerControlsHandlers = HttpApiBuilder.group(Api, "subledgerControls", (handlers) =>
   handlers
+    .handle("prepareAssetDisposal", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) => query("prepareAssetDisposal", [
+        token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload),
+      ], Controls.AssetDisposalReview)),
+    )
+    .handle("approveAssetDisposal", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) => query("approveAssetDisposal", [
+        token, scopeParameter(params), params.id, headers["idempotency-key"], JSON.stringify(payload),
+      ], Controls.AssetDisposalApproval)),
+    )
+    .handle("executeAssetDisposal", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) => query("executeAssetDisposal", [
+        token, scopeParameter(params), params.id, headers["idempotency-key"], JSON.stringify(payload),
+      ], Controls.AssetDisposal)),
+    )
+    .handle("getAssetDisposalReview", ({ params }) =>
+      Effect.flatMap(authenticate, (token) => query("getAssetDisposalReview", [
+        token, scopeParameter(params), params.id,
+      ], Controls.AssetDisposalReviewView)),
+    )
+    .handle("listAssetDisposalReviews", ({ params }) =>
+      Effect.flatMap(authenticate, (token) => query("listAssetDisposalReviews", [
+        token, scopeParameter(params), params.id,
+      ], Controls.AssetDisposalReviewList)),
+    )
     .handle("recordSubledgerBasis", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) => query("recordSubledgerBasis", [
         token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload),
