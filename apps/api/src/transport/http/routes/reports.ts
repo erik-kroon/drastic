@@ -6,6 +6,16 @@ import { capabilities } from "../../../application/capabilities";
 
 export const ReportHandlers = HttpApiBuilder.group(Api, "reports", (handlers) =>
   handlers
+    .handle("compareReports", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        capabilities.reports_compare.execute(token, {
+          scope: params,
+          leftReportId: params.id,
+          rightReportId: params.otherId,
+          after: query.after,
+        }),
+      ),
+    )
     .handle("listReports", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.reports_list.execute(token, { scope: params, after: query.after }),

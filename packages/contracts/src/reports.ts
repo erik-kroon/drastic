@@ -14,6 +14,8 @@ export const ReportSnapshot = Schema.Struct({
   scope: Accounting.Scope,
   sequence: Accounting.MinorUnits,
   currency: Schema.String,
+  // Only new snapshots retain scale; old headers and exact-key replays remain readable.
+  currencyScale: Schema.optional(Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 6 }))),
   createdAt: Schema.String,
   accountCount: Schema.Int,
   voucherCount: Schema.Int,
@@ -96,9 +98,74 @@ export const ExplanationPath = Schema.Struct({
   ...Accounting.ChangePath.fields,
   lineId: Accounting.Identifier,
 });
+export const ReportComparisonCursor = Schema.String.check(
+  Schema.isPattern(/^[a-z][a-z0-9_-]{2,127}:[a-z][a-z0-9_-]{2,127}:[a-z][a-z0-9_-]{2,127}$/),
+);
+export const ReportComparisonQuery = Schema.Struct({ after: Schema.optional(ReportComparisonCursor) });
+export const ReportComparisonPath = Schema.Struct({ ...Accounting.ChangePath.fields, otherId: Accounting.Identifier });
+const ComparisonAmounts = Schema.Struct({
+  openingMinor: Accounting.SignedMinorUnits,
+  debitMinor: Accounting.SignedMinorUnits,
+  creditMinor: Accounting.SignedMinorUnits,
+  movementMinor: Accounting.SignedMinorUnits,
+  closingMinor: Accounting.SignedMinorUnits,
+});
+const ComparisonSource = Schema.Struct({
+  report: ReportSnapshot,
+  digest: Accounting.Digest,
+  digestScope: Schema.Literal("saved_header_and_account_lines"),
+});
+const ComparisonLine = Schema.Struct({ ...ReportLine.fields, movementMinor: Accounting.SignedMinorUnits });
+export const ReportComparisonPage = Schema.Struct({
+  left: ComparisonSource,
+  right: ComparisonSource,
+  currency: Schema.String,
+  currencyScale: Schema.Int,
+  order: Schema.Literal("account_identity"),
+  differenceFormula: Schema.Literal("difference = right - left"),
+  movementFormula: Schema.Literal("movement = debits - credits"),
+  closingFormula: Schema.Literal("closing = opening + debits - credits"),
+  sameInterval: Schema.Boolean,
+  sameCutoff: Schema.Boolean,
+  totalAccounts: Schema.Int,
+  bothPresentCount: Schema.Int,
+  leftOnlyCount: Schema.Int,
+  rightOnlyCount: Schema.Int,
+  totals: Schema.Struct({ left: ComparisonAmounts, right: ComparisonAmounts, difference: Schema.NullOr(ComparisonAmounts) }),
+  items: Schema.Array(Schema.Struct({
+    accountId: Accounting.Identifier,
+    presence: Schema.Literals(["both", "left_only", "right_only"]),
+    left: Schema.NullOr(ComparisonLine),
+    right: Schema.NullOr(ComparisonLine),
+    labelsChanged: Schema.NullOr(Schema.Boolean),
+    difference: Schema.NullOr(ComparisonAmounts),
+  })).check(Schema.isMaxLength(100)),
+  next: Schema.NullOr(ReportComparisonCursor),
+  interpretation: Schema.Literal("saved_snapshot_arithmetic_only"),
+  coverage: Schema.Literal("not_established"),
+  reviewedOpening: Schema.Literal(false),
+  statutoryComparability: Schema.Literal(false),
+  financialCloseReady: Schema.Literal(false),
+  warnings: Schema.Array(Schema.String),
+});
+// Kept local to report ownership; root composes this read-only capability into the registry.
+export const ReportComparisonCapabilities = {
+  reports_compare: {
+    input: Schema.Struct({ scope: Accounting.Scope, leftReportId: Accounting.Identifier, rightReportId: Accounting.Identifier, ...ReportComparisonQuery.fields }),
+    output: ReportComparisonPage,
+    readOnly: true,
+    description: "Compare two immutable saved synthetic report snapshots with exact right-minus-left signed differences, frozen account labels and explicit missing sides. Stable paged union with full-source totals; never reviewed opening, statutory comparability or financial close readiness.",
+  },
+};
 const scoped = { params: Accounting.Scope, error: errors };
 const identified = { params: Accounting.ChangePath, error: errors };
 export const ReportApi = HttpApiGroup.make("reports").add(
+  HttpApiEndpoint.get("compareReports", "/v1/entities/:entityId/books/:bookId/report-snapshots/:id/compare/:otherId", {
+    params: ReportComparisonPath,
+    error: errors,
+    query: ReportComparisonQuery,
+    success: ReportComparisonPage,
+  }),
   HttpApiEndpoint.get("listReports", "/v1/entities/:entityId/books/:bookId/report-snapshots", {
     ...scoped,
     query: LinesQuery,
