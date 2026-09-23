@@ -12,7 +12,7 @@ import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useSavedPostingRequests } from "@/components/posting-recovery/saved-requests";
 import { checkScope, type CommerceProps } from "./shared";
-import { editableInvoiceLine, type EditableInvoiceLine } from "./invoice-editor-lines";
+import { editableInvoiceLine } from "./invoice-editor-lines";
 
 type Draft = typeof Drafts.InvoiceDraftRevision.Type;
 const PendingSave = Schema.Struct({
@@ -46,7 +46,6 @@ export type DraftEditingState = typeof EditingState.Type;
 export type DraftSession = {
   state: DraftEditingState;
   actorId: string;
-  restored: boolean;
   storageError: boolean;
   update: (patch: Partial<DraftEditingState>) => boolean;
   saved: (record: Draft) => void;
@@ -71,7 +70,9 @@ export function InvoiceDraftSession(props: SessionProps) {
   const local = useQuery({
     queryKey: ["invoice-editor", identity],
     enabled: actor.isSuccess && !actor.isFetching && typeof window !== "undefined",
-    staleTime: 0,
+    staleTime: Infinity,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: false,
     gcTime: 0,
     retry: false,
     queryFn: () => {
@@ -125,6 +126,12 @@ export function InvoiceDraftSession(props: SessionProps) {
   );
 }
 
+function canonical(text: string | null) {
+  return text === null
+    ? null
+    : JSON.stringify(Schema.decodeUnknownSync(EditingState)(JSON.parse(text)));
+}
+
 function initialState(baseline?: Draft): DraftEditingState {
   return {
     baseline: baseline ?? null,
@@ -148,6 +155,7 @@ function EditingSession(
   const current = useRef(state);
   const leaving = useRef(false);
   const retained = useRef(props.restored ? JSON.stringify(props.restored) : null);
+  const [restored] = useState(props.restored !== null);
   const [dirty, setDirty] = useState(props.restored !== null);
   const [storageError, setStorageError] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -163,14 +171,9 @@ function EditingSession(
     setDirty(true);
     try {
       const existing = localStorage.getItem(props.identity);
-      if (
-        (existing === null
-          ? null
-          : JSON.stringify(Schema.decodeUnknownSync(EditingState)(JSON.parse(existing)))) !==
-        retained.current
-      )
+      if (canonical(existing) !== canonical(retained.current))
         throw new Error("Invoice edits changed in another tab");
-      const text = JSON.stringify(next);
+      const text = JSON.stringify(Schema.decodeUnknownSync(EditingState)(next));
       localStorage.setItem(props.identity, text);
       if (localStorage.getItem(props.identity) !== text) throw new Error("Draft not retained");
       retained.current = text;
@@ -183,12 +186,7 @@ function EditingSession(
   }
   function clear() {
     const existing = localStorage.getItem(props.identity);
-    if (
-      (existing === null
-        ? null
-        : JSON.stringify(Schema.decodeUnknownSync(EditingState)(JSON.parse(existing)))) !==
-      retained.current
-    )
+    if (canonical(existing) !== canonical(retained.current))
       throw new Error("Invoice edits changed in another tab");
     localStorage.removeItem(props.identity);
     if (localStorage.getItem(props.identity) !== null)
@@ -232,7 +230,7 @@ function EditingSession(
         onClose={() => (dirty ? setClosing(true) : props.onClose())}
       >
         <Box display="grid" gap="md">
-          {props.restored && !state.pending ? (
+          {restored && !state.pending ? (
             <Text tone="muted">
               {sv
                 ? "Dina osparade ändringar har återställts från den här webbläsaren."
@@ -254,7 +252,6 @@ function EditingSession(
           {props.children({
             state,
             actorId: props.actorId,
-            restored: props.restored !== null,
             storageError,
             update,
             saved,
@@ -307,7 +304,4 @@ export function selectDraftCustomer(
   for (const key of ["customerName", "customerRegistration", "customerAddress", "customerCountry"])
     delete fields[key];
   session.update({ customer, fields });
-}
-export function updateDraftLines(session: DraftSession, lines: EditableInvoiceLine[]) {
-  session.update({ lines });
 }

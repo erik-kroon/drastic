@@ -33,7 +33,6 @@ import {
   InvoiceDraftSession,
   restoredField,
   selectDraftCustomer,
-  updateDraftLines,
   type DraftSession,
 } from "./invoice-draft-session";
 import { readAccounting } from "@/lib/accounting-api";
@@ -316,7 +315,7 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
           <InvoiceEditorLines
             lines={lines}
             fields={session.state.fields}
-            onChange={(next) => updateDraftLines(session, next)}
+            onChange={(next) => session.update({ lines: next })}
             scale={scale}
             currency={content?.currency ?? props.book.currency}
             locale={props.locale}

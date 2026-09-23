@@ -56,3 +56,30 @@ New captures/inspection/restores retain and compare complete bounded outbox/job/
 request state, then bind a truthful quarantine/suspension report into the restore receipt.
 No remote Workflow/provider observation, resumption, schema migration or restricted-read
 promotion is introduced. Root owns shared static checks; runtime remains unverified.
+
+## Saved posting intent closure follow-up
+
+Implemented source-only in `apps/api/scripts/operations/controls.ts`. The failure contract was
+recorded first in `recovery-acceptance.md`. The existing backup and restore workflows already
+call this control; no CLI, workflow, contract, migration or quarantine change is needed.
+
+The generic JSON evidence scan now distinguishes only the exact
+`openerp.posting_saved_requests.command` input column. Missing/foreign input evidence can remain
+as pending or refused intent when there is neither a committed outcome nor a command receipt at
+the same book's reserved `command_key`.0310 can commit an exact older kernel request through
+that key before recording a saved-request outcome, so receipt presence also requires strict
+closure. Any outcome other than refused and any scoped reserved-key receipt select strict
+validation; malformed receipt identity never makes input exempt.
+
+Every other JSON column and all relational/committed evidence owners keep their prior checks.
+The full JSON object set is unchanged: every evidence-reference object is counted and every
+object is still scanned for unsupported external pointers. Raw request/outcome rows, dumps,
+table fingerprints, durable-work inventory and recovery control counts are unchanged. This
+preserves comparisons for previously valid v2 bundles without adding an artifact version or
+pretending an absent outcome proves nonexecution. No request is run, rewritten or resumed.
+
+Source review traced0310's shape-only save, caught refusal, reserved command identity trigger
+and exact legacy kernel receipt path. SQL/TypeScript compilation, backup/restore and runtime
+behavior remain unverified. No CLI, tests/helpers/fixtures, SQL/runtime/database/provider or
+VCS actions were performed for this follow-up. Root owns static validation and independent
+review; any later native recovery observation needs separate authority.

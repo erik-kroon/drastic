@@ -175,7 +175,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
                     }
                   >
                     {item.label}
-                    {register.data ? ` ${register.data.counts[item.value]}` : ""}
+                    {register.isSuccess ? ` ${register.data.counts[item.value]}` : ""}
                   </Button>
                 ))}
               </RegisterFilters>
@@ -250,6 +250,13 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
             ) : null}
             {register.data && !register.isError ? (
               <>
+                <SalesPagination
+                  data={register.data}
+                  page={pageNumber}
+                  locale={locale}
+                  searching={!!search.q}
+                  onPage={(page) => change({ ...search, page: String(page) })}
+                />
                 {register.data.items.length ? (
                   <DataTable
                     title={labels.invoices}
@@ -282,22 +289,51 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
                         >
                           {rowStatus(row)}
                         </Badge>,
-                        new Intl.DateTimeFormat(locale, {
-                          dateStyle: "medium",
-                          timeZone: "UTC",
-                        }).format(new Date(row.date)),
+                        <Box key="date" display="grid" gap="xs">
+                          <Text>
+                            {new Intl.DateTimeFormat(locale, {
+                              dateStyle: "medium",
+                              timeZone: "UTC",
+                            }).format(new Date(row.date))}
+                          </Text>
+                          <Text tone="muted">
+                            {row.kind === "draft" ? labels.updated : labels.issued}
+                          </Text>
+                        </Box>,
                         row.dueOn
                           ? new Intl.DateTimeFormat(locale, {
                               dateStyle: "medium",
                               timeZone: "UTC",
                             }).format(new Date(row.dueOn))
                           : "—",
-                        row.amountMinor === null
-                          ? "—"
-                          : `${formatMinorAmount(row.amountMinor, row.currencyScale, locale)} ${row.currency}`,
+                        <Box key="amount" display="grid" gap="xs">
+                          <Text>
+                            {row.amountMinor === null
+                              ? "—"
+                              : `${formatMinorAmount(row.amountMinor, row.currencyScale, locale)} ${row.currency}`}
+                          </Text>
+                          {row.status === "partially_allocated" && row.outstandingMinor !== null ? (
+                            <Text tone="muted">
+                              {formatMinorAmount(row.outstandingMinor, row.currencyScale, locale)}{" "}
+                              {row.currency} {labels.remaining}
+                            </Text>
+                          ) : null}
+                        </Box>,
                       ],
                     }))}
                   />
+                ) : register.data.total > 0 ? (
+                  <Box display="grid" gap="md">
+                    <PageEmpty title={labels.noPage} detail={labels.returnToFirst} />
+                    <Box>
+                      <Button
+                        variant="outline"
+                        onClick={() => change({ ...search, page: undefined })}
+                      >
+                        {labels.firstPage}
+                      </Button>
+                    </Box>
+                  </Box>
                 ) : (
                   <PageEmpty
                     title={search.q || status !== "all" ? labels.noMatches : labels.firstInvoice}
@@ -306,42 +342,15 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
                     }
                   />
                 )}
-                <Box display="flex" justifyContent="between" alignItems="center" gap="lg">
-                  <PageCaption>
-                    {register.data.total}{" "}
-                    {(register.data.total === 1
-                      ? labels.invoice
-                      : labels.invoices
-                    ).toLocaleLowerCase(locale)}
-                    {search.q ? ` · ${labels.matchingSearch}` : ""}
-                  </PageCaption>
-                  {pageNumber > 1 || register.data.total > register.data.pageSize ? (
-                    <Box display="flex" gap="sm" alignItems="center">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={pageNumber <= 1}
-                        onClick={() => change({ ...search, page: String(pageNumber - 1) })}
-                      >
-                        <ArrowLeft size={14} />
-                        {labels.previous}
-                      </Button>
-                      <PageCaption>
-                        {pageNumber} /{" "}
-                        {Math.max(1, Math.ceil(register.data.total / register.data.pageSize))}
-                      </PageCaption>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={pageNumber * register.data.pageSize >= register.data.total}
-                        onClick={() => change({ ...search, page: String(pageNumber + 1) })}
-                      >
-                        {labels.next}
-                        <ArrowRight size={14} />
-                      </Button>
-                    </Box>
-                  ) : null}
-                </Box>
+                {register.data.items.length > 10 ? (
+                  <SalesPagination
+                    data={register.data}
+                    page={pageNumber}
+                    locale={locale}
+                    searching={!!search.q}
+                    onPage={(page) => change({ ...search, page: String(page) })}
+                  />
+                ) : null}
               </>
             ) : null}
             <SalesRecord search={search} close={close} open={open} change={change} />
@@ -349,6 +358,55 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
         )}
       </PageContent>
     </>
+  );
+}
+
+function SalesPagination(props: {
+  data: typeof Sales.SalesPage.Type;
+  page: number;
+  locale: "en" | "sv";
+  searching: boolean;
+  onPage: (page: number) => void;
+}) {
+  const { data, page, locale } = props;
+  const labels = locale === "sv" ? swedish : english;
+  const pages = Math.max(1, Math.ceil(data.total / data.pageSize));
+  const first = (page - 1) * data.pageSize + 1;
+  const last = first + data.items.length - 1;
+  return (
+    <Box display="flex" justifyContent="between" alignItems="center" gap="lg">
+      <PageCaption>
+        {data.items.length > 0 && pages > 1 ? `${first}–${last} ${labels.of} ` : ""}
+        {data.total}{" "}
+        {(data.total === 1 ? labels.invoice : labels.invoices).toLocaleLowerCase(locale)}
+        {props.searching ? ` · ${labels.matchingSearch}` : ""}
+      </PageCaption>
+      {page > 1 || pages > 1 ? (
+        <Box display="flex" gap="sm" alignItems="center">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => props.onPage(Math.min(page - 1, pages))}
+          >
+            <ArrowLeft size={14} />
+            {labels.previous}
+          </Button>
+          <PageCaption>
+            {page} / {pages}
+          </PageCaption>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={page >= pages}
+            onClick={() => props.onPage(page + 1)}
+          >
+            {labels.next}
+            <ArrowRight size={14} />
+          </Button>
+        </Box>
+      ) : null}
+    </Box>
   );
 }
 
@@ -465,6 +523,13 @@ const english = {
   customer: "Customer",
   dueDate: "Due date",
   date: "Date",
+  updated: "Last saved",
+  issued: "Invoice date",
+  remaining: "remaining",
+  of: "of",
+  noPage: "This page has no invoices",
+  returnToFirst: "The register has changed. Return to the first page of this view.",
+  firstPage: "Go to first page",
   amount: "Amount",
   status: "Status",
   search: "Search customer, invoice or description…",
@@ -506,6 +571,13 @@ const swedish: typeof english = {
   customer: "Kund",
   dueDate: "Förfallodatum",
   date: "Datum",
+  updated: "Senast sparad",
+  issued: "Fakturadatum",
+  remaining: "kvar",
+  of: "av",
+  noPage: "Den här sidan saknar fakturor",
+  returnToFirst: "Registret har ändrats. Gå till första sidan i den här vyn.",
+  firstPage: "Gå till första sidan",
   amount: "Belopp",
   status: "Status",
   search: "Sök kund, faktura eller beskrivning…",

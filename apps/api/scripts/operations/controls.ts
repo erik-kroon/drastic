@@ -66,14 +66,25 @@ export async function recoveryControls(
     }
     for (const column of columns.rows.filter((column) => column.json)) {
       const field = client.escapeIdentifier(column.name);
+      // Saved intent needs strict closure when a committed outcome or reserved-key receipt exists.
+      // A missing outcome alone is not proof of nonexecution through older kernel endpoints.
+      const requiresEvidence =
+        table.schema === "openerp" &&
+        table.table === "posting_saved_requests" &&
+        column.name === "command"
+          ? `EXISTS(SELECT FROM openerp.posting_request_outcomes o
+              WHERE o.book_id=r.book_id AND o.key=r.key AND o.state IS DISTINCT FROM 'refused')
+            OR EXISTS(SELECT FROM openerp.command_receipts c
+              WHERE c.book_id=r.book_id AND c.key=r.command_key)`
+          : "true";
       const refs = await client.query<{ count: string; invalid: boolean; external: boolean }>(`
-        WITH objects AS (SELECT to_jsonb(r)->>'book_id' AS book, j.value
+        WITH objects AS (SELECT to_jsonb(r)->>'book_id' AS book, (${requiresEvidence}) AS requires_evidence, j.value
           FROM ONLY ${identifier} r CROSS JOIN LATERAL jsonb_path_query(r.${field}::jsonb, '$.** ? (@.type() == "object")') j(value)),
         refs AS (SELECT * FROM objects WHERE value ? 'evidenceId')
         SELECT (SELECT count(*)::text FROM refs) AS count,
           EXISTS(SELECT FROM refs r LEFT JOIN openerp.evidence e ON e.book_id=r.book AND e.id=r.value->>'evidenceId'
-            WHERE e.id IS NULL OR (r.value ? 'sha256' AND r.value->>'sha256' IS DISTINCT FROM e.sha256)
-              OR (r.value ? 'evidenceSha256' AND r.value->>'evidenceSha256' IS DISTINCT FROM e.sha256)) AS invalid,
+            WHERE r.requires_evidence AND (e.id IS NULL OR (r.value ? 'sha256' AND r.value->>'sha256' IS DISTINCT FROM e.sha256)
+              OR (r.value ? 'evidenceSha256' AND r.value->>'evidenceSha256' IS DISTINCT FROM e.sha256))) AS invalid,
           EXISTS(SELECT FROM objects WHERE value ?| ARRAY['objectKey','storageKey','blobKey','objectVersion','storageVersion','object_key','storage_key','blob_key']) AS external`);
       const result = refs.rows[0];
       if (!result || result.invalid || result.external)

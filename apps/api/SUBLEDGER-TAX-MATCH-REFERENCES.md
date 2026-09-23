@@ -72,3 +72,10 @@ IDs on different vouchers/books; zero/multiple/20 active references; overflow re
 unmatch/rematch; invalid-but-reserved matches; and byte-identical immutable fields/digests
 before and after a reference change. SQL compilation and runtime/isolation behavior remain
 unverified. No tests, fixtures, SQL/runtime/provider execution or UI change was performed.
+
+Owned checks: Oxfmt passed on the contract and this handoff. Oxlint passed on the contract
+with zero warnings/errors. Source comparison confirmed only the getter's new local reference
+query and live response field differ from4200. Owned files have no trailing whitespace.
+No shared typecheck, tests/helpers/fixtures, SQL/runtime/migration execution, external/provider
+access, dependency installation, deployment or VCS action was performed. Root owns shared
+type validation and any later authorized runtime evidence.

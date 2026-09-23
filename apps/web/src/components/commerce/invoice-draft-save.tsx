@@ -158,34 +158,30 @@ export function InvoiceDraftSave(props: SaveProps) {
       />
       {pending && !save.isPending && !save.isSuccess && (refused || invalidInput) ? (
         <Box ref={problem} display="grid" gap="md">
-          {refused || invalidInput ? (
-            <>
-              {conflict && baseline ? (
-                <DraftConflict
-                  {...props}
-                  onUseLatest={(latest) => {
-                    if (
-                      session.update({
-                        expected: { revision: latest.revision, digest: latest.digest },
-                        pending: null,
-                      })
-                    )
-                      save.reset();
-                  }}
-                />
-              ) : null}
-              <Box>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    if (session.update({ pending: null })) save.reset();
-                  }}
-                >
-                  {sv ? "Tillbaka till mina ändringar" : "Back to my changes"}
-                </Button>
-              </Box>
-            </>
+          {conflict && baseline ? (
+            <DraftConflict
+              {...props}
+              onUseLatest={(latest) => {
+                if (
+                  session.update({
+                    expected: { revision: latest.revision, digest: latest.digest },
+                    pending: null,
+                  })
+                )
+                  save.reset();
+              }}
+            />
           ) : null}
+          <Box>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (session.update({ pending: null })) save.reset();
+              }}
+            >
+              {sv ? "Tillbaka till mina ändringar" : "Back to my changes"}
+            </Button>
+          </Box>
         </Box>
       ) : null}
       <DraftSaveFooter
