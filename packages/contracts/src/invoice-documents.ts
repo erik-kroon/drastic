@@ -4,10 +4,10 @@ import * as Accounting from "./accounting";
 import * as Issuance from "./invoice-issuance";
 import { accountingErrors } from "./accounting-errors";
 
-export const invoiceDocumentLegacyGenerator = "openerp-synthetic-invoice-html-v1";
+export const invoiceDocumentV1Generator = "openerp-synthetic-invoice-html-v1";
 export const invoiceDocumentGenerator = "openerp-synthetic-invoice-html-v2";
 const InvoiceDocumentGenerator = Schema.Literals([
-  invoiceDocumentLegacyGenerator,
+  invoiceDocumentV1Generator,
   invoiceDocumentGenerator,
 ]);
 export const invoiceDocumentMaxBytes = 1048576;

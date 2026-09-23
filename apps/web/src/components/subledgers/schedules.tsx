@@ -7,6 +7,10 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Heading, Text } from "@open-erp/ui/components/typography";
+import { FormDialog } from "@open-erp/ui/components/form-dialog";
+import { RecordHeading } from "@open-erp/ui/components/record-layout";
+import { PageEmpty, RecordOpen } from "@open-erp/ui/components/accounting-page";
+import { Disclosure } from "@open-erp/ui/components/workflow";
 import { InputField } from "@open-erp/ui/components/field";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
@@ -21,13 +25,16 @@ type Props = {
   setup: typeof Accounting.BookSetup.Type | undefined;
   locale: Locale;
   onPrepared: (id: string) => void;
+  open?: boolean;
 };
-export function SubledgersPanel({ book, setup, locale, onPrepared }: Props) {
+export function SubledgersPanel(props: Props) {
+  const { book, setup, locale, onPrepared } = props;
   const copy = subledgerCopy(locale);
   const client = useQueryClient();
   const [selected, setSelected] = useState<string | null>(null);
   const [after, setAfter] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
+  const [creating, setCreating] = useState(false);
   const schedules = useQuery({
     queryKey: [...bookKey(book), "schedules", after],
     queryFn: ({ signal }) =>
@@ -40,28 +47,33 @@ export function SubledgersPanel({ book, setup, locale, onPrepared }: Props) {
   });
   const saved = (id: string) => {
     setSelected(id);
+    setCreating(false);
     void client.invalidateQueries({ queryKey: [...bookKey(book), "schedules"] });
     void client.invalidateQueries({ queryKey: [...bookKey(book), "schedule", id] });
   };
   return (
-    <details id="subledgers" tabIndex={-1}>
+    <details open={props.open} id="subledgers" tabIndex={-1}>
       <summary>{copy.title}</summary>
       <Box display="grid" gap="2xl" paddingBlock="xl" minWidth="zero">
-        <Heading>{copy.title}</Heading>
-        <Box padding="lg" backgroundColor="muted" borderRadius="surface" display="grid" gap="md">
-          <Text>{copy.warning}</Text>
-          <Text>{copy.unsupported}</Text>
-        </Box>
-        {setup?.blockers.length === 0 ? (
-          <>
-            <ScheduleEvidence book={book} locale={locale} />
-            <details>
-              <summary>{copy.create}</summary>
-              <Box paddingBlock="lg" display="grid" gap="lg" minWidth="zero">
-                <ScheduleForm book={book} setup={setup} locale={locale} onSaved={saved} />
-              </Box>
-            </details>
-          </>
+        <RecordHeading
+          title={copy.title}
+          action={
+            setup?.blockers.length === 0 ? (
+              <Button onClick={() => setCreating(true)}>{copy.create}</Button>
+            ) : undefined
+          }
+        />
+        {creating && setup ? (
+          <FormDialog
+            title={copy.create}
+            closeLabel={locale === "sv" ? "Stäng" : "Close"}
+            onClose={() => setCreating(false)}
+          >
+            <Box display="grid" gap="lg">
+              <ScheduleForm book={book} setup={setup} locale={locale} onSaved={saved} />
+              <ScheduleEvidence book={book} locale={locale} />
+            </Box>
+          </FormDialog>
         ) : null}
         <Box display="flex" flexWrap="wrap" gap="md">
           <Button
@@ -84,7 +96,7 @@ export function SubledgersPanel({ book, setup, locale, onPrepared }: Props) {
         {schedules.data ? (
           <>
             {schedules.data.items.length === 0 ? (
-              <Text>{copy.empty}</Text>
+              <PageEmpty title={copy.empty} />
             ) : (
               <DataTable
                 title={copy.title}
@@ -98,7 +110,9 @@ export function SubledgersPanel({ book, setup, locale, onPrepared }: Props) {
                 rows={schedules.data.items.map((schedule) => ({
                   id: schedule.id,
                   cells: [
-                    schedule.name,
+                    <RecordOpen key="name" onClick={() => setSelected(schedule.id)}>
+                      {schedule.name}
+                    </RecordOpen>,
                     schedule.sourceKey,
                     schedule.revision,
                     <Button
@@ -122,29 +136,37 @@ export function SubledgersPanel({ book, setup, locale, onPrepared }: Props) {
             ) : null}
           </>
         ) : null}
-        <Box
-          as="form"
-          display="grid"
-          gap="md"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const id = new FormData(event.currentTarget).get("scheduleId");
-            if (!Schema.is(Accounting.Identifier)(id)) {
-              setInvalid(true);
-              return;
-            }
-            setInvalid(false);
-            setSelected(id);
-          }}
-        >
-          <InputField label="ID" name="scheduleId" required pattern="[a-z][a-z0-9_\-]{2,127}" />
-          <Box>
-            <Button type="submit" size="xl" variant="outline">
-              {copy.load}
-            </Button>
+        <Disclosure title={locale === "sv" ? "Öppna med referens" : "Open by reference"}>
+          <Box
+            as="form"
+            display="grid"
+            gap="md"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const id = new FormData(event.currentTarget).get("scheduleId");
+              if (!Schema.is(Accounting.Identifier)(id)) {
+                setInvalid(true);
+                return;
+              }
+              setInvalid(false);
+              setSelected(id);
+            }}
+          >
+            <InputField label="ID" name="scheduleId" required pattern="[a-z][a-z0-9_\-]{2,127}" />
+            <Box>
+              <Button type="submit" size="xl" variant="outline">
+                {copy.load}
+              </Button>
+            </Box>
+            <Text role="status">{invalid ? copy.invalid : ""}</Text>
           </Box>
-          <Text role="status">{invalid ? copy.invalid : ""}</Text>
-        </Box>
+        </Disclosure>
+        <Disclosure
+          title={locale === "sv" ? "Omfattning och begränsningar" : "Scope and limitations"}
+        >
+          <Text>{copy.warning}</Text>
+          <Text>{copy.unsupported}</Text>
+        </Disclosure>
         {selected ? (
           <ScheduleDetail
             key={selected}

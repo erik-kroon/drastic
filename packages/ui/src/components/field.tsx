@@ -32,6 +32,7 @@ const styles = stylex.create({
     lineHeight: tokens.lineHeightNormal,
     ":focus-visible": { outline: "none", boxShadow: tokens.controlFocusShadow },
   },
+  numeric: { textAlign: "end", fontVariantNumeric: "tabular-nums" },
   control: {
     minHeight: { default: tokens.space9, "@media (pointer: coarse)": tokens.space11 },
     paddingInline: tokens.space3,
@@ -58,7 +59,7 @@ export function InputField({
         {...props}
         id={controlId}
         list={suggestions?.length ? `${controlId}-options` : props.list}
-        styleX={[styles.control, styleX]}
+        styleX={[styles.control, props.inputMode === "decimal" && styles.numeric, styleX]}
       />
       {suggestions?.length ? (
         <datalist id={`${controlId}-options`}>

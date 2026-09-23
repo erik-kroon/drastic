@@ -317,7 +317,7 @@ function SavedImpactReview(props: {
 }) {
   const { book, locale, impact } = props;
   const copy = correctionCopy(locale);
-  if (!props.reference) return <Text tone="muted">{copy.legacyImpact}</Text>;
+  if (!props.reference) return <Text tone="muted">{copy.missingImpact}</Text>;
   return (
     <>
       <AccountingStatus locale={locale} pending={impact.isPending} error={impact.error} />

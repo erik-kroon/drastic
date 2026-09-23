@@ -14,7 +14,7 @@ const LAYOUT_ELEMENTS = new Set([
   "ul",
 ]);
 
-const LEGACY_FILES = new Set(["routes/__root.tsx"]);
+const ROOT_ROUTE_EXCEPTIONS = new Set(["routes/__root.tsx"]);
 
 function webSourcePath(filename: string): string | null {
   const normalized = filename.replaceAll("\\", "/");
@@ -35,7 +35,7 @@ export const noRawHtmlLayoutRule = defineRule({
   },
   create(context) {
     const sourcePath = webSourcePath(context.filename);
-    if (sourcePath === null || LEGACY_FILES.has(sourcePath)) return {};
+    if (sourcePath === null || ROOT_ROUTE_EXCEPTIONS.has(sourcePath)) return {};
     return {
       JSXOpeningElement(node) {
         if (node.name.type === "JSXIdentifier" && LAYOUT_ELEMENTS.has(node.name.name)) {

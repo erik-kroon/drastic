@@ -56,7 +56,7 @@ function SelectedDraftIssue(props: Props & { recordId: string; onOpen: (id: stri
     retry: false,
   });
   const issued = history.data?.items.find((item) => item.issueId !== null);
-  // Do not expose the legacy editor from an unchecked cache or failed live issue lookup.
+  // Do not expose the draft editor from an unchecked cache or failed live issue lookup.
   const checked = history.isFetchedAfterMount && history.isSuccess;
   if (checked && !issued)
     return (

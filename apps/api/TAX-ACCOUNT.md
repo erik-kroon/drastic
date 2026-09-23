@@ -161,3 +161,11 @@ source gaps/overlaps, unknown classifications, all unmatched items and exact dif
 Matching, source completeness, tax settlement, legal applicability and close readiness remain
 unavailable. This is the bounded VAT-03 register/control subset, not full VAT-03 acceptance;
 migration and runtime proof remain open.”
+
+## Unknown-event classification resolution
+
+Forward6700 provides a one-shot operator review for originally unknown events. It does not
+rewrite the statement or event. Use the event classification GET to distinguish the recorded
+label from the effective reviewed label. Known classifications cannot be revised by this
+command. New matching captures and controlv3 consume the immutable resolution; old artifacts
+and matching capacity remain unchanged. See [the selected contract and implementation](TAX-ACCOUNT-CLASSIFICATION.md).

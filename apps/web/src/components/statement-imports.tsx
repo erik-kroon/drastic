@@ -12,7 +12,7 @@ import {
   PageCaption,
   PageEmpty,
   RegisterSearch,
-  RecordToggle,
+  RecordOpen,
 } from "@open-erp/ui/components/accounting-page";
 import { DocumentUpload } from "./document-inbox";
 import { SourceWorkspace } from "./source-intake/workspace";
@@ -104,13 +104,13 @@ export function StatementImports(props: { recordId?: string; onOpen: (id: string
             rows={rows.map((item) => ({
               id: item.occurrence.id,
               cells: [
-                <RecordToggle
+                <RecordOpen
                   key="open"
-                  expanded={false}
+
                   onClick={() => props.onOpen(item.occurrence.id)}
                 >
                   {item.occurrence.filename}
-                </RecordToggle>,
+                </RecordOpen>,
                 new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
                   new Date(item.occurrence.retainedAt),
                 ),

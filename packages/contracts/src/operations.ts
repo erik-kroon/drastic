@@ -24,7 +24,7 @@ export const TableFingerprint = Schema.Struct({
 });
 export const BookBoundary = Schema.Struct({
   id: Schema.String,
-  authority: Schema.Literals(["native", "legacy"]),
+  authority: Schema.Literal("native"),
   writerEpoch: Count,
   committedSequence: Count,
 });

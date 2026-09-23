@@ -6,7 +6,7 @@ DECLARE et_ceiling bigint;et_last bigint:=0;et_through bigint:=0;et_examined int
   et_items jsonb:='[]';et_matches jsonb;et_entry jsonb;et_membership jsonb;et_result jsonb;et_snapshot record;
 BEGIN
   IF coalesce(p_source,'')='' THEN
-    -- Existing authorization, book barrier, fixed ceiling and legacy cursor semantics remain authoritative.
+    -- Existing authorization, book barrier, fixed ceiling and cursor semantics remain authoritative.
     et_result:=openerp.list_expense_tax_snapshots(p_token,p_scope,p_after);
   ELSE
     PERFORM openerp.authorize(p_token,p_scope);
@@ -71,7 +71,7 @@ BEGIN
           'sourceDigest',et_entry->'review'->'sourceDigest') END,
         -- Both supported engines construct this assessment inside the private0710/4500 SQL calculation owner.
         'assessment',et_entry->'assessment');
-      -- Absent legacy metadata is distinct from a captured explicit null withdrawal.
+      -- Absent metadata is distinct from a captured explicit null withdrawal.
       IF et_entry ? 'withdrawal' THEN
         et_membership:=et_membership||jsonb_build_object('withdrawal',CASE WHEN et_entry->'withdrawal'='null'::jsonb THEN NULL ELSE jsonb_build_object(
           'id',et_entry->'withdrawal'->'id','digest',et_entry->'withdrawal'->'digest',

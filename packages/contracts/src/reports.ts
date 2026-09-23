@@ -61,7 +61,7 @@ export const ExplanationCursor = Schema.String.check(
     /^[a-z][a-z0-9_-]{2,127}:[a-z][a-z0-9_-]{2,127}:[1-9][0-9]{0,18}:[1-9][0-9]{0,9}$/,
     {
       message:
-        "Use the report/account-bound cursor returned for this explanation. Legacy sequence:ordinal cursors require restarting from the first page.",
+        "Use the contribution cursor returned for this report and account. Omit after to restart the explanation.",
     },
   ),
 );

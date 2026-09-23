@@ -11,8 +11,7 @@ or an unobserved position can skip retained contributions and return an empty fi
   contribution at the saved cutoff, including opening rows before the report start.
 - Bound syntax before numeric casts; catch bigint/integer overflow and refuse malformed,
   zero/negative, cross-context, nonexistent, excluded-after-end and after-cutoff anchors.
-- Reject legacy two-part continuation explicitly. Restart from page1; do not reinterpret an
-  unbound legacy position or mutate/backfill an old report to accommodate it.
+- Reject the earlier unbound two-part cursor as malformed. Omit `after` to start from page1.
 - Preserve report headers, labels, cutoff, formula, totals, exact amounts, evidence and all
   original/reversal contributions. Keep100-row sequence/ordinal order and page1 behavior.
 - Change only explanation SQL and its local cursor input/output schema. General-ledger,
@@ -29,13 +28,9 @@ actual contribution within the frozen sequence and end date. It intentionally ha
 start-date lower bound: opening contributions remain valid continuation anchors.
 
 The local `ExplanationCursor` schema constrains only `ExplanationQuery.after` and
-`ReportExplanation.next`. Its validation message explicitly tells legacy-cursor callers to
-restart from the first page. SQL independently rejects legacy two-part cursors with the same
-restart instruction. No legacy continuation is silently accepted. Omit `after` to start again;
-every existing saved report remains readable without rewriting its header, rows or digest.
-Clients that validate the old two-part cursor schema must update their shared contracts (or
-reload the updated web client) before continuing. A first-page restart does not make an old
-client-side schema accept the new cursor format.
+`ReportExplanation.next`. SQL rejects the earlier two-part format through the same bounded
+syntax check as other malformed cursors. Omit `after` to start again; saved reports remain
+readable without rewriting their header, rows or digest. No deployed old client is assumed.
 
 The original page selection, full contribution count, formula and output data are unchanged.
 Later/backdated postings beyond the saved sequence cannot enter. Reversals remain separate
@@ -50,7 +45,7 @@ composition change or UI edit is needed.
 
 Compared the forward owner with0120: only continuation validation and emission changed.
 Reviewed valid opening/movement anchors, cross-report/account reuse, missing/wrong ordinal,
-excluded-after-end and after-cutoff rows, numeric overflow, legacy refusal, later postings,
+excluded-after-end and after-cutoff rows, numeric overflow, two-part cursor refusal, later postings,
 empty pages and last-page semantics. These are source checks, not executed cases.
 
 Reports contract Oxlint, owned Oxfmt and `git diff --check` passed. Shared type checks and peer

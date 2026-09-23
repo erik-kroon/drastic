@@ -1,7 +1,7 @@
 const english = {
   familyInventory: "Family applicability and controls",
   familyScope: "This technical scope requires a decision for every family.",
-  legacyFamilyScope: "Historical bank-only scope. No complete family inventory was captured.",
+  bankOnlyFamilyScope: "Historical bank-only scope. No complete family inventory was captured.",
   familyHelp:
     "Choose every decision. Not applicable needs dated evidence and cannot override represented records. Required unavailable controls block closing. No values are assumed.",
   familyStatus: "Applicability decision",
@@ -36,9 +36,9 @@ const english = {
   vatDependency: "VAT source and ledger basis digest",
   vatBoundary:
     "These are book-wide represented records, not complete period coverage. Any facts or drafts contradict tax not applicable; required tax controls remain unavailable.",
-  legacyVatScope:
+  missingVatScope:
     "Historical basis: this snapshot did not capture VAT return dependencies. No missing VAT counts are assumed to be zero.",
-  legacyProviderScope:
+  missingProviderScope:
     "Historical basis: owner and expense-review dependencies were not captured by this version.",
   ownerReviewCounts: "Unresolved owner reviews / unlinked sources",
   expenseReviewCount: "Missing or stale expense reviews",
@@ -116,7 +116,7 @@ const english = {
 const swedish: typeof english = {
   familyInventory: "Områden och kontroller",
   familyScope: "Denna tekniska omfattning kräver ett beslut för varje område.",
-  legacyFamilyScope: "Historiskt bankunderlag. Ingen fullständig områdesförteckning sparades.",
+  bankOnlyFamilyScope: "Historiskt bankunderlag. Ingen fullständig områdesförteckning sparades.",
   familyHelp:
     "Välj varje beslut. Ej tillämpligt kräver daterat underlag och kan inte åsidosätta registrerade poster. Nödvändiga kontroller som saknas blockerar låsning. Inga värden antas.",
   familyStatus: "Tillämplighetsbeslut",
@@ -151,9 +151,9 @@ const swedish: typeof english = {
   vatDependency: "Kontrollsumma för momsunderlag och huvudbok",
   vatBoundary:
     "Detta är registrerade poster i hela boken, inte fullständig periodtäckning. Fakta eller utkast motsäger att skatt inte är tillämplig; nödvändiga skattekontroller saknas fortfarande.",
-  legacyVatScope:
+  missingVatScope:
     "Historiskt underlag: ögonblicksbilden sparade inte momsdeklarationens beroenden. Saknade momsantal antas inte vara noll.",
-  legacyProviderScope:
+  missingProviderScope:
     "Historiskt underlag: denna version sparade inte beroenden för ägar- och utgiftsgranskning.",
   ownerReviewCounts: "Olösta ägargranskningar / källor utan bokföringslänk",
   expenseReviewCount: "Saknade eller inaktuella utgiftsgranskningar",

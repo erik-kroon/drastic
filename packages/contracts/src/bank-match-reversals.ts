@@ -8,7 +8,7 @@ import * as Settlement from "./settlements";
 export const BankMatchReversalTarget = Schema.Union([
   Schema.Struct({ kind: Schema.Literal("allocation"), allocationPlanId: Accounting.Identifier }),
   Schema.Struct({
-    kind: Schema.Literal("legacy_exact"),
+    kind: Schema.Literal("exact_match"),
     statementId: Accounting.Identifier,
     rowOrdinal: Bank.RowOrdinal,
   }),
@@ -132,7 +132,7 @@ const capabilityMutation = {
 // Human approval and revocation are intentionally absent from ordinary MCP.
 export const BankMatchReversalCapabilities = {
   bank_prepare_match_reversal: {
-    description: "Prepare an immutable whole-allocation or legacy exact unmatch for human review. No ledger or invoice change.",
+    description: "Prepare an immutable whole-allocation or exact unmatch for human review. No ledger or invoice change.",
     input: Schema.Struct({ ...capabilityMutation, input: PrepareBankMatchReversal }),
     output: BankMatchReversalPlan,
     readOnly: false,

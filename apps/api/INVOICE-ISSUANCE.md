@@ -60,7 +60,7 @@ Reads hold a book SHARE barrier. History returns all at most 50 review summaries
 
 ## Root integration map
 
-The root has connected the shared files and routed/legacy UI composition below in source. Runtime acceptance remains open.
+The root has connected the shared files and routed and tools UI composition below in source. Runtime acceptance remains open.
 
 1. `packages/contracts/package.json`: export `"./invoice-issuance": "./src/invoice-issuance.ts"`.
 2. `packages/contracts/src/api.ts`: import/add `InvoiceIssuanceApi` from `./invoice-issuance`.
@@ -106,6 +106,6 @@ No real-company issuance, legal numbering, VAT determination, cash-method timing
 
 `InvoiceIssuance` accepts optional `recordId` as the initial draft ID. It remounts by entity/book/record, supporting the Sales `view=issue&record=<draft>` route without stale local selection.
 
-`apps/web/src/components/commerce/invoice-draft-issue-overlay.tsx` exports `InvoiceDraftIssueOverlay({book, locale, recordId?, onOpen?})`. The Sales draft view and legacy commerce panel use it instead of `InvoiceDrafts`. It reads live bounded issue history before mounting a selected record's legacy editor. Initial cached history is not sufficient; failed current reads show an explicit error and no editor. An issued record instead shows a historical/read-only explanation and opens its exact `InvoiceIssueReviewPanel` with `readOnly`, so even inconsistent receipt reads cannot expose mutation forms. Lists carry a prominent retained-snapshot/current-issue distinction; selected unissued records link to the issue route. Existing dirty draft/shared UI remains unchanged.
+`apps/web/src/components/commerce/invoice-draft-issue-overlay.tsx` exports `InvoiceDraftIssueOverlay({book, locale, recordId?, onOpen?})`. The Sales draft view and commerce tools panel use it instead of `InvoiceDrafts`. It reads live bounded issue history before mounting a selected record's draft editor. Initial cached history is not sufficient; failed current reads show an explicit error and no editor. An issued record instead shows a historical/read-only explanation and opens its exact `InvoiceIssueReviewPanel` with `readOnly`, so even inconsistent receipt reads cannot expose mutation forms. Lists carry a prominent retained-snapshot/current-issue distinction; selected unissued records link to the issue route. Existing dirty draft/shared UI remains unchanged.
 
 `InvoiceIssueReviewPanel` is now exported from `invoice-issuance.tsx`, accepting `{book, locale, id, readOnly?}`. No browser, type or runtime verification was run for this source-only amendment.

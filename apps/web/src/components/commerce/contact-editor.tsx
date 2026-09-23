@@ -5,7 +5,8 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Commerce from "@open-erp/contracts/commerce";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
-import { InputField, SelectField, TextareaField } from "@open-erp/ui/components/field";
+import { InputField, TextareaField } from "@open-erp/ui/components/field";
+import { ChoiceField } from "@open-erp/ui/components/choice-field";
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useSavedPostingRequests } from "@/components/posting-recovery/saved-requests";
@@ -24,6 +25,7 @@ export function ContactEditor(
   props: CommerceProps & {
     baseline?: Party;
     customerOnly?: boolean;
+    defaultRole?: "customer" | "supplier";
     onSaved: (party: Party) => void;
   },
 ) {
@@ -127,12 +129,12 @@ export function ContactEditor(
           defaultValue={baseline?.displayName}
         />
         {!baseline ? (
-          <Box display="grid" columns={2} gap="lg">
+          <Box display="grid" gap="lg">
             {!props.customerOnly ? (
-              <SelectField
+              <ChoiceField
                 name="role"
                 label={sv ? "Kontakttyp" : "Contact type"}
-                defaultValue="customer"
+                defaultValue={props.defaultRole ?? "customer"}
                 options={[
                   { value: "customer", label: sv ? "Kund" : "Customer" },
                   { value: "supplier", label: sv ? "Leverantör" : "Supplier" },

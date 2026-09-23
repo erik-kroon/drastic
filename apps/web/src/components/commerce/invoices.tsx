@@ -4,8 +4,9 @@ import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import {
   PageEmpty,
   RegisterFilters,
+  RegisterChoices,
   RegisterSearch,
-  RecordToggle,
+  RecordOpen,
 } from "@open-erp/ui/components/accounting-page";
 import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
 import { formatMinorAmount } from "@/lib/workspace-api";
@@ -14,11 +15,10 @@ import { InvoicePaymentsWorkspace, type InvoicePaymentNavigation } from "./invoi
 import { invoicePaymentCopy } from "./invoice-payment-copy";
 import { InvoiceRegistration } from "./invoice-registration";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Commerce from "@open-erp/contracts/commerce";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
-import { SelectField } from "@open-erp/ui/components/field";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -51,23 +51,24 @@ export function Invoices(
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
   const copy = commerceCopy(locale);
-  const [after, setAfter] = useState("");
   const [local, setLocal] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const selected = props.recordId ?? local;
   const select = props.onOpen ?? setLocal;
-  const page = useQuery({
-    queryKey: [...commerceKey(book), "invoices", after],
-    queryFn: async ({ signal }) => {
+  const page = useInfiniteQuery({
+    queryKey: [...commerceKey(book), "invoice-register"],
+    initialPageParam: "",
+    queryFn: async ({ signal, pageParam }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/invoices${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+        `${commercePath(book)}/invoices${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
         Commerce.InvoicePage,
         { signal },
       );
       result.items.forEach((invoice) => checkScope(book, invoice.scope));
       return result;
     },
+    getNextPageParam: (last) => last.next ?? undefined,
     retry: false,
   });
   const statuses = {
@@ -78,14 +79,16 @@ export function Invoices(
     cancelled: labels.cancelled,
   };
   const invoices =
-    page.data?.items.filter(
-      (item) =>
-        (!props.direction || item.direction === props.direction) &&
-        (!status || item.status === status) &&
-        `${item.documentNumber} ${item.counterpartyName}`
-          .toLocaleLowerCase(locale)
-          .includes(search.toLocaleLowerCase(locale)),
-    ) ?? [];
+    page.data?.pages
+      .flatMap((batch) => batch.items)
+      .filter(
+        (item) =>
+          (!props.direction || item.direction === props.direction) &&
+          (!status || item.status === status) &&
+          `${item.documentNumber} ${item.counterpartyName}`
+            .toLocaleLowerCase(locale)
+            .includes(search.toLocaleLowerCase(locale)),
+      ) ?? [];
   if (selected && selected !== "new")
     return (
       <Box display="grid" gap="xl">
@@ -119,7 +122,7 @@ export function Invoices(
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
-        <SelectField
+        <RegisterChoices
           label="Status"
           value={status}
           onValueChange={(value) => setStatus(value ?? "")}
@@ -146,9 +149,9 @@ export function Invoices(
               rows={invoices.map((invoice) => ({
                 id: invoice.id,
                 cells: [
-                  <RecordToggle key="open" expanded={false} onClick={() => select(invoice.id)}>
+                  <RecordOpen key="open" onClick={() => select(invoice.id)}>
                     {invoice.documentNumber}
-                  </RecordToggle>,
+                  </RecordOpen>,
                   invoice.counterpartyName,
                   invoice.currentRevision.dueOn,
                   <Badge
@@ -175,7 +178,24 @@ export function Invoices(
               detail={labels.registerAnInvoiceOnceIts}
             />
           )}
-          <Pager locale={locale} first={!after} next={page.data.next} onPage={setAfter} />
+          {page.hasNextPage ? (
+            <Box display="grid" gap="sm">
+              <Text tone="muted">
+                {sv
+                  ? "Filtren gäller inlästa fakturor. Läs in fler för att utöka sökningen."
+                  : "Filters cover loaded invoices. Load more to extend the search."}
+              </Text>
+              <Box>
+                <Button
+                  variant="outline"
+                  disabled={page.isFetchingNextPage}
+                  onClick={() => void page.fetchNextPage()}
+                >
+                  {sv ? "Läs in fler fakturor" : "Load more invoices"}
+                </Button>
+              </Box>
+            </Box>
+          ) : null}
         </>
       ) : null}
       {selected === "new" ? (

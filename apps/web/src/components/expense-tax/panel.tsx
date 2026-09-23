@@ -1,5 +1,6 @@
 import { Plus, ArrowLeft } from "lucide-react";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
+import { Disclosure } from "@open-erp/ui/components/disclosure";
 import { Badge } from "@open-erp/ui/components/badge";
 import {
   RecordHeading,
@@ -8,12 +9,7 @@ import {
   RecordColumns,
   RecordSection,
 } from "@open-erp/ui/components/record-layout";
-import {
-  RegisterSearch,
-  RecordToggle,
-  PageEmpty,
-  PageCaption,
-} from "@open-erp/ui/components/accounting-page";
+import { RegisterSearch, PageEmpty, PageCaption } from "@open-erp/ui/components/accounting-page";
 import { ExpenseEditor, ExpenseRevisionEditor } from "./expense-editor";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { useRef, useState } from "react";
@@ -24,8 +20,9 @@ import * as Tax from "@open-erp/contracts/expense-tax";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
-import { InputField, SelectField } from "@open-erp/ui/components/field";
-import { Heading, Text } from "@open-erp/ui/components/typography";
+import { ChoiceField } from "@open-erp/ui/components/choice-field";
+import { InputField } from "@open-erp/ui/components/field";
+import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
@@ -69,6 +66,8 @@ export function ExpenseTaxPanel(props: Props) {
         .toLocaleLowerCase(locale)
         .includes(search.toLocaleLowerCase(locale)),
     ) ?? [];
+  if (selected === "snapshots" || selected.startsWith("snapshot:"))
+    return <ExpenseReviewArchive book={book} locale={locale} selected={selected} select={select} />;
   if (sourceId)
     return (
       <Box display="grid" gap="xl">
@@ -99,10 +98,15 @@ export function ExpenseTaxPanel(props: Props) {
             : "Review source records, amounts and tax treatment."
         }
         action={
-          <Button onClick={() => select("new")}>
-            <Plus size={14} />
-            {sv ? "Ny utgift" : "New expense"}
-          </Button>
+          <Box display="flex" gap="md">
+            <Button variant="outline" onClick={() => select("snapshots")}>
+              {sv ? "Sparade granskningar" : "Saved reviews"}
+            </Button>
+            <Button onClick={() => select("new")}>
+              <Plus size={14} />
+              {sv ? "Ny utgift" : "New expense"}
+            </Button>
+          </Box>
         }
       />
       <RegisterSearch
@@ -126,13 +130,9 @@ export function ExpenseTaxPanel(props: Props) {
             rows={rows.map((row) => ({
               id: row.current.sourceId,
               cells: [
-                <RecordToggle
-                  key="open"
-                  expanded={false}
-                  onClick={() => select(row.current.sourceId)}
-                >
+                <Button key="open" variant="ghost" onClick={() => select(row.current.sourceId)}>
                   {row.current.facts.description}
-                </RecordToggle>,
+                </Button>,
                 row.current.facts.issuedOn ?? "—",
                 <Badge key="status" variant={row.reviewCurrent ? "secondary" : "warning"}>
                   {row.reviewCurrent
@@ -166,12 +166,7 @@ export function ExpenseTaxPanel(props: Props) {
           ? "Att spara en utgift bokför eller betalar den inte. Saknade uppgifter behöver granskas."
           : "Saving an expense does not post or pay it. Missing details still need review."}
       </PageCaption>
-      <details>
-        <summary>{copy.snapshots}</summary>
-        <Box paddingBlock="lg">
-          <ExpenseTaxSnapshots book={book} locale={locale} />
-        </Box>
-      </details>
+
       {creating ? (
         <FormDialog
           title={sv ? "Ny utgift" : "New expense"}
@@ -186,6 +181,37 @@ export function ExpenseTaxPanel(props: Props) {
           />
         </FormDialog>
       ) : null}
+    </Box>
+  );
+}
+
+function ExpenseReviewArchive({
+  book,
+  locale,
+  selected,
+  select,
+}: Pick<Props, "book" | "locale"> & { selected: string; select: (id: string) => void }) {
+  const sv = locale === "sv";
+  return (
+    <Box display="grid" gap="xl">
+      <Box>
+        <Button variant="ghost" onClick={() => select(selected === "snapshots" ? "" : "snapshots")}>
+          <ArrowLeft size={14} />
+          {selected === "snapshots"
+            ? sv
+              ? "Alla utgifter"
+              : "All expenses"
+            : sv
+              ? "Sparade granskningar"
+              : "Saved reviews"}
+        </Button>
+      </Box>
+      <ExpenseTaxSnapshots
+        book={book}
+        locale={locale}
+        snapshotId={selected.startsWith("snapshot:") ? selected.slice(9) : null}
+        onOpen={(id) => select(`snapshot:${id}`)}
+      />
     </Box>
   );
 }
@@ -268,23 +294,36 @@ function ExpenseTaxSourceDetail(props: Props & { sourceId: string; onChanged: ()
                 }}
               />
             </RecordSection>
-            <RecordSection title={locale === "sv" ? "Uppgifter" : "Details"}>
-              <TaxFactsTable facts={view.current.facts} locale={locale} />
+            <RecordSection
+              title={
+                view.reviewCurrent
+                  ? locale === "sv"
+                    ? "Aktuell momsbedömning"
+                    : "Current VAT assessment"
+                  : locale === "sv"
+                    ? "Uppgifter"
+                    : "Details"
+              }
+            >
+              <TaxFactsTable
+                facts={
+                  view.reviewCurrent && view.latestReview
+                    ? view.latestReview.facts
+                    : view.current.facts
+                }
+                locale={locale}
+              />
               <PageCaption>
                 {locale === "sv"
                   ? "Sparade uppgifter är inte en bokföring eller betalning."
                   : "Saved details do not constitute a posting or payment."}
               </PageCaption>
-              {view.latestReview ? (
+              {view.latestReview && !view.reviewCurrent ? (
                 <Box display="grid" gap="sm">
                   <PageCaption>
-                    {view.reviewCurrent
-                      ? locale === "sv"
-                        ? "Granskningsanteckning"
-                        : "Review note"
-                      : locale === "sv"
-                        ? "Tidigare granskning — underlaget har ändrats"
-                        : "Previous review — the source has changed"}
+                    {locale === "sv"
+                      ? "Tidigare granskning — underlaget har ändrats"
+                      : "Previous review — the source has changed"}
                   </PageCaption>
                   <Text>{view.latestReview.facts.rationale}</Text>
                 </Box>
@@ -331,59 +370,88 @@ function ExpenseTaxSourceDetail(props: Props & { sourceId: string; onChanged: ()
               )}
             </FormDialog>
           ) : null}
-          <details>
-            <summary>{copy.history}</summary>
-            <Box display="grid" gap="lg" paddingBlock="lg" minWidth="zero">
-              {view.sourceHistory.map((revision) => (
-                <details key={revision.id}>
-                  <summary>
-                    {copy.sourceRevision} {revision.revision} · {revision.recordedAt}
-                  </summary>
-                  <Box display="grid" gap="md" paddingBlock="lg" minWidth="zero">
-                    <Text>{revision.digest}</Text>
-                    <TaxFactsTable facts={revision.facts} locale={locale} />
-                    <EvidenceInspector
-                      book={book}
-                      locale={locale}
-                      reference={{
-                        evidenceId: revision.facts.evidenceId,
-                        sha256: revision.evidenceSha256,
-                        locator: revision.facts.sourceLocator,
-                      }}
-                    />
-                  </Box>
-                </details>
-              ))}
-              {view.reviewHistory.map((review) => (
-                <details key={review.id}>
-                  <summary>
-                    {copy.reviewRevision} {review.revision} · {review.recordedAt}
-                  </summary>
-                  <Box display="grid" gap="md" paddingBlock="lg" minWidth="zero">
-                    <Text>
-                      {copy.reviewedBy}: {review.receipt.actorId}
-                    </Text>
-                    <Text>{review.sourceDigest}</Text>
-                    <Text>{review.digest}</Text>
-                    <TaxFactsTable facts={review.facts} locale={locale} />
-                    {review.evidenceRefs.map((ref) => (
-                      <EvidenceInspector
-                        key={ref.evidenceId}
-                        book={book}
-                        locale={locale}
-                        reference={{ ...ref, locator: review.id }}
-                      />
-                    ))}
-                  </Box>
-                </details>
-              ))}
-            </Box>
-          </details>
+          <ExpenseTaxHistory book={book} locale={locale} view={view} />
         </>
       ) : null}
     </Box>
   );
 }
+function ExpenseTaxHistory({
+  book,
+  locale,
+  view,
+}: Pick<Props, "book" | "locale"> & { view: typeof Tax.TaxSourceView.Type }) {
+  const copy = expenseTaxCopy(locale);
+  const [selected, setSelected] = useState<string | null>(null);
+  const source = view.sourceHistory.find((entry) => entry.id === selected);
+  const review = view.reviewHistory.find((entry) => entry.id === selected);
+  const entries = [
+    ...view.sourceHistory.map((entry) => ({
+      id: entry.id,
+      label: copy.sourceRevision,
+      revision: entry.revision,
+      recordedAt: entry.recordedAt,
+    })),
+    ...view.reviewHistory.map((entry) => ({
+      id: entry.id,
+      label: copy.reviewRevision,
+      revision: entry.revision,
+      recordedAt: entry.recordedAt,
+    })),
+  ].sort((a, b) => b.recordedAt.localeCompare(a.recordedAt));
+  return (
+    <RecordSection title={copy.history}>
+      <Box display="flex" gap="sm" flexWrap="wrap">
+        {entries.map((entry) => (
+          <Button
+            key={entry.id}
+            variant={selected === entry.id ? "secondary" : "outline"}
+            onClick={() => setSelected(selected === entry.id ? null : entry.id)}
+          >
+            {entry.label} {entry.revision} · {new Date(entry.recordedAt).toLocaleDateString(locale)}
+          </Button>
+        ))}
+      </Box>
+      {source ? (
+        <RecordColumns>
+          <TaxFactsTable facts={source.facts} locale={locale} />
+          <EvidenceInspector
+            book={book}
+            locale={locale}
+            expanded
+            compact
+            reference={{
+              evidenceId: source.facts.evidenceId,
+              sha256: source.evidenceSha256,
+              locator: source.facts.sourceLocator,
+            }}
+          />
+        </RecordColumns>
+      ) : null}
+      {review ? (
+        <RecordColumns>
+          <TaxFactsTable facts={review.facts} locale={locale} />
+          <Box display="grid" gap="md">
+            <PageCaption>
+              {copy.reviewedBy}: {review.receipt.actorId}
+            </PageCaption>
+            {review.evidenceRefs.map((reference) => (
+              <EvidenceInspector
+                key={reference.evidenceId}
+                book={book}
+                locale={locale}
+                expanded
+                compact
+                reference={{ ...reference, locator: review.id }}
+              />
+            ))}
+          </Box>
+        </RecordColumns>
+      ) : null}
+    </RecordSection>
+  );
+}
+
 function expenseDisplayAmount(
   source: typeof Tax.TaxSourceRevision.Type,
   name: "grossMinor" | "vatMinor",
@@ -395,10 +463,15 @@ function expenseDisplayAmount(
     : "—";
 }
 
-function ExpenseTaxSnapshots({ book, locale }: Pick<Props, "book" | "locale">) {
+function ExpenseTaxSnapshots({
+  book,
+  locale,
+  snapshotId,
+  onOpen,
+}: Pick<Props, "book" | "locale"> & { snapshotId: string | null; onOpen: (id: string) => void }) {
   const client = useQueryClient();
   const copy = expenseTaxCopy(locale);
-  const [snapshotId, setSnapshotId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const [after, setAfter] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
   const keys = useRef(new Map<string, string>());
@@ -423,72 +496,110 @@ function ExpenseTaxSnapshots({ book, locale }: Pick<Props, "book" | "locale">) {
     },
     onSuccess: (snapshot, input) => {
       keys.current.delete(`${bookPath(book)}/expense-tax/snapshots:${JSON.stringify(input)}`);
-      setSnapshotId(snapshot.id);
+      onOpen(snapshot.id);
+      setCreating(false);
       setAfter(null);
       void client.invalidateQueries({ queryKey: [...bookKey(book), "expense-tax", "snapshots"] });
     },
   });
+  if (snapshotId)
+    return (
+      <ExpenseTaxSnapshotDetail key={snapshotId} book={book} locale={locale} id={snapshotId} />
+    );
   return (
     <Box display="grid" gap="lg" minWidth="zero">
-      <Heading>{copy.snapshots}</Heading>
-      <Box
-        as="form"
-        display="grid"
-        gap="md"
-        minWidth="zero"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const fields = new FormData(event.currentTarget);
-          const decoded = Schema.decodeUnknownOption(Tax.PrepareTaxSnapshot)({
-            mode: fields.get("mode"),
-            startsOn: fields.get("startsOn"),
-            endsOn: fields.get("endsOn"),
-          });
-          if (decoded._tag === "None") {
-            setInvalid(true);
-            return;
-          }
-          setInvalid(false);
-          prepare.mutate(decoded.value);
-        }}
-      >
-        <Box
-          as="fieldset"
-          display="grid"
-          gap="md"
-          borderWidth="none"
-          padding="none"
-          margin="none"
-          minWidth="zero"
-          disabled={prepare.isPending}
+      <RecordHeading
+        title={locale === "sv" ? "Sparade granskningar" : "Saved reviews"}
+        subtitle={
+          locale === "sv"
+            ? "Spara underlag och bedömningar för en bestämd period."
+            : "Keep the records and assessments for a specific period."
+        }
+        action={
+          <Button onClick={() => setCreating(true)}>
+            <Plus size={14} />
+            {copy.prepareSnapshot}
+          </Button>
+        }
+      />
+      {creating ? (
+        <FormDialog
+          size="compact"
+          title={copy.prepareSnapshot}
+          closeLabel={copy.cancel}
+          onClose={() => setCreating(false)}
         >
-          <SelectField
-            label={copy.mode}
-            name="mode"
-            required
-            defaultValue=""
-            options={[
-              { value: "", label: "—" },
-              { value: "actual_review", label: copy.actual },
-              { value: "synthetic_demonstration", label: copy.synthetic },
-            ]}
-          />
-          <InputField label={copy.startsOn} name="startsOn" type="date" required />
-          <InputField label={copy.endsOn} name="endsOn" type="date" required />
-          <Box>
-            <Button type="submit" size="xl">
-              {copy.prepareSnapshot}
-            </Button>
+          <Box
+            as="form"
+            display="grid"
+            gap="md"
+            minWidth="zero"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const fields = new FormData(event.currentTarget);
+              const decoded = Schema.decodeUnknownOption(Tax.PrepareTaxSnapshot)({
+                mode: fields.get("mode"),
+                startsOn: fields.get("startsOn"),
+                endsOn: fields.get("endsOn"),
+              });
+              if (decoded._tag === "None") {
+                setInvalid(true);
+                return;
+              }
+              setInvalid(false);
+              prepare.mutate(decoded.value);
+            }}
+          >
+            <Box
+              as="fieldset"
+              display="grid"
+              gap="md"
+              borderWidth="none"
+              padding="none"
+              margin="none"
+              minWidth="zero"
+              disabled={prepare.isPending}
+            >
+              <ChoiceField
+                label={copy.mode}
+                name="mode"
+                required
+                defaultValue=""
+                options={[
+                  {
+                    value: "actual_review",
+                    label: locale === "sv" ? "Företagsgranskning" : "Company review",
+                  },
+                  {
+                    value: "synthetic_demonstration",
+                    label: locale === "sv" ? "Beräkningsexempel" : "Calculation example",
+                  },
+                ]}
+              />
+              <Box display="grid" columns={2} gap="md">
+                <InputField label={copy.startsOn} name="startsOn" type="date" required />
+                <InputField label={copy.endsOn} name="endsOn" type="date" required />
+              </Box>
+              <Box>
+                <Button type="submit" size="xl">
+                  {copy.prepareSnapshot}
+                </Button>
+              </Box>
+            </Box>
+            <Text role="status">
+              {invalid ? copy.invalid : prepare.isSuccess ? copy.snapshotSaved : ""}
+            </Text>
+            <AccountingStatus
+              locale={locale}
+              write
+              pending={prepare.isPending}
+              error={prepare.error}
+            />
           </Box>
-        </Box>
-        <Text role="status">
-          {invalid ? copy.invalid : prepare.isSuccess ? copy.snapshotSaved : ""}
-        </Text>
-        <AccountingStatus locale={locale} write pending={prepare.isPending} error={prepare.error} />
-      </Box>
+        </FormDialog>
+      ) : null}
       <Box display="flex" flexWrap="wrap" gap="md">
         <Button
-          size="xl"
           variant="outline"
           disabled={snapshots.isFetching}
           onClick={() => {
@@ -507,7 +618,7 @@ function ExpenseTaxSnapshots({ book, locale }: Pick<Props, "book" | "locale">) {
       {snapshots.data?.items.length === 0 ? <Text>{copy.noSnapshots}</Text> : null}
       {snapshots.data?.items.map((snapshot) => (
         <Box key={snapshot.id}>
-          <Button size="xl" variant="outline" onClick={() => setSnapshotId(snapshot.id)}>
+          <Button size="xl" variant="outline" onClick={() => onOpen(snapshot.id)}>
             {copy.open} · {snapshot.input.startsOn} – {snapshot.input.endsOn} ·{" "}
             {snapshot.recordedAt}
           </Button>
@@ -523,9 +634,6 @@ function ExpenseTaxSnapshots({ book, locale }: Pick<Props, "book" | "locale">) {
             {copy.next}
           </Button>
         </Box>
-      ) : null}
-      {snapshotId ? (
-        <ExpenseTaxSnapshotDetail key={snapshotId} book={book} locale={locale} id={snapshotId} />
       ) : null}
     </Box>
   );
@@ -553,20 +661,20 @@ function ExpenseTaxSnapshotDetail({
     "nonDeductibleMinor",
     "expenseMinor",
   ] as const;
+  const sv = locale === "sv";
   const amountLabels = {
-    grossMinor: copy.gross,
-    netMinor: copy.net,
-    vatMinor: copy.vat,
-    deductibleMinor: copy.deductible,
-    nonDeductibleMinor: copy.nonDeductible,
-    expenseMinor: copy.expense,
+    grossMinor: sv ? "Totalt" : "Total",
+    netMinor: sv ? "Exkl. moms" : "Before tax",
+    vatMinor: sv ? "Moms" : "Tax",
+    deductibleMinor: sv ? "Avdragsgill moms" : "Deductible tax",
+    nonDeductibleMinor: sv ? "Ej avdragsgill moms" : "Non-deductible tax",
+    expenseMinor: sv ? "Kostnad" : "Expense",
   };
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <AccountingStatus locale={locale} pending={result.isPending} error={result.error} />
       <Box>
         <Button
-          size="xl"
           variant="outline"
           onClick={() => {
             void result.refetch();
@@ -577,19 +685,30 @@ function ExpenseTaxSnapshotDetail({
       </Box>
       {snapshot ? (
         <>
-          <Text>
-            {snapshot.id} · {snapshot.recordedAt}
-          </Text>
-          <Text>{snapshot.digest}</Text>
-          <Text>
-            {snapshot.input.mode === "actual_review" ? copy.actual : copy.synthetic} ·{" "}
-            {snapshot.input.startsOn} – {snapshot.input.endsOn}
-          </Text>
-          <Text>{result.data?.basisCurrent ? copy.fresh : copy.stale}</Text>
-          <Text>{copy.boundary}</Text>
-          <Text>
-            {copy.included}: {snapshot.includedCount} · {copy.excluded}: {snapshot.excludedCount}
-          </Text>
+          <RecordHeading
+            title={`${snapshot.input.startsOn} – ${snapshot.input.endsOn}`}
+            subtitle={snapshot.input.mode === "actual_review" ? copy.actual : copy.synthetic}
+          />
+          <Box>
+            <Badge variant={result.data?.basisCurrent ? "secondary" : "warning"}>
+              {result.data?.basisCurrent
+                ? locale === "sv"
+                  ? "Aktuellt underlag"
+                  : "Current basis"
+                : locale === "sv"
+                  ? "Behöver uppdateras"
+                  : "Needs updating"}
+            </Badge>
+          </Box>
+          {!result.data?.basisCurrent ? <PageCaption>{copy.stale}</PageCaption> : null}
+          <RecordSummary>
+            <RecordFact label={copy.included}>{snapshot.includedCount}</RecordFact>
+            <RecordFact label={copy.excluded}>{snapshot.excludedCount}</RecordFact>
+            <RecordFact label={locale === "sv" ? "Sparat" : "Saved"}>
+              {new Date(snapshot.recordedAt).toLocaleDateString(locale)}
+            </RecordFact>
+          </RecordSummary>
+          <PageCaption>{copy.boundary}</PageCaption>
           {snapshot.input.mode === "synthetic_demonstration" ? (
             <DataTable
               title={copy.totals}
@@ -600,7 +719,10 @@ function ExpenseTaxSnapshotDetail({
               ]}
               rows={amountNames.map((name) => ({
                 id: name,
-                cells: [amountLabels[name], snapshot.syntheticTotals[name]],
+                cells: [
+                  amountLabels[name],
+                  formatMinorAmount(snapshot.syntheticTotals[name], snapshot.currencyScale, locale),
+                ],
               }))}
             />
           ) : (
@@ -608,7 +730,6 @@ function ExpenseTaxSnapshotDetail({
           )}
           <Box>
             <Button
-              size="xl"
               variant="outline"
               onClick={() => {
                 const url = URL.createObjectURL(
@@ -624,6 +745,16 @@ function ExpenseTaxSnapshotDetail({
               {copy.download}
             </Button>
           </Box>
+          <Disclosure
+            label={locale === "sv" ? "Sparade granskningsreferenser" : "Saved review references"}
+          >
+            <Box display="grid" gap="sm" paddingBlock="md">
+              <PageCaption>
+                {snapshot.id} · {snapshot.recordedAt}
+              </PageCaption>
+              <PageCaption>{snapshot.digest}</PageCaption>
+            </Box>
+          </Disclosure>
           {snapshot.entries.map((entry) => (
             <TaxSnapshotEntry
               key={entry.source.sourceId}

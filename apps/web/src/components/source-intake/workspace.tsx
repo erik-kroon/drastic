@@ -76,45 +76,36 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
         }
         action={
           <Box display="flex" gap="md" flexWrap="wrap">
-            {" "}
-            <Box>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={source.isFetching}
+              onClick={() => {
+                void source.refetch();
+              }}
+            >
+              {copy.refresh}
+            </Button>
+            {source.data ? (
               <Button
                 type="button"
                 variant="outline"
-                disabled={source.isFetching}
                 onClick={() => {
-                  void source.refetch();
+                  downloadIntake(
+                    new Blob(
+                      [
+                        Uint8Array.from(atob(source.data.contentBase64), (char) =>
+                          char.charCodeAt(0),
+                        ),
+                      ],
+                      { type: "application/octet-stream" },
+                    ),
+                    source.data.occurrence.filename,
+                  );
                 }}
               >
-                {copy.refresh}
+                {copy.download}
               </Button>
-            </Box>
-            {source.data ? (
-              <>
-                {" "}
-                <Box>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      if (source.data)
-                        downloadIntake(
-                          new Blob(
-                            [
-                              Uint8Array.from(atob(source.data.contentBase64), (char) =>
-                                char.charCodeAt(0),
-                              ),
-                            ],
-                            { type: "application/octet-stream" },
-                          ),
-                          source.data.occurrence.filename,
-                        );
-                    }}
-                  >
-                    {copy.download}
-                  </Button>
-                </Box>
-              </>
             ) : null}
           </Box>
         }

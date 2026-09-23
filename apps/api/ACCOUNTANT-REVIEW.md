@@ -41,7 +41,7 @@ Private existing providers are consumed exactly: `bank_close_dependencies`, `com
 
 ### Pagination and historical versions
 
-Pack, materialized rows and artifacts are append-only. Page size is25. Every page repeats pack ID/digest, selected section, total and next ordinal. The page function never re-queries live ledger/source rows. The book-local pack ordinal is allocated under its existing lock; no sequence-backed state is introduced.
+Pack, materialized rows and artifacts are append-only. Page size is25. Every page repeats pack ID/digest, selected section, total and next continuation. The page function never re-queries live ledger/source rows. The book-local pack ordinal is allocated under its existing lock; no sequence-backed state is introduced.
 
 Live `dependenciesCurrent` is returned separately from immutable pack content. It compares current sequence/profile/writer, account/year/period configuration, retained evidence inventory, relevant closing history, bank declarations and provider snapshots. It is intentionally conservative: later unrelated activity can mark a pack historical. A true value is not an accounting signoff. Exact creation-key replay returns the original command result; callers should GET the pack for currentness rather than interpreting a replayed creation response as a fresh check.
 
@@ -83,3 +83,60 @@ No real-company opening balances, VAT/deductibility, owner-funding classificatio
 - Old pack bytes/page meanings must not change.0810 remains unapplied and may be extended before root applies it;0820 independently upgrades current closing behavior. Root owns migration ordering, runtime observations and concurrency proof.
 
 Provider inventory limits are checked before aggregating source hooks, including currentness reads. If live provider state exceeds supported bounds, an old pack/descriptor read remains available with `dependenciesCurrent=false`; stored pages and artifact bytes stay readable and unchanged. Known expense sources remain explicit missing close coverage regardless of whether their review digest is current.
+
+##6400 row continuation binding — failure contract before code
+
+0810 row continuation accepts an unbound ordinal. A continuation from another pack/section,
+or a nonexistent position, can silently skip materialized rows and appear terminal. For example,
+`25` from a30-row journal yields an empty final evidence page when that section has only one row.
+This is a REST/MCP continuation defect, not ledger loss or corruption of complete file exports.
+The web client already separates pack/digest/section query keys; no browser reproduction is claimed.
+
+- Replace only `accountant_review_rows_page`. Preserve current scoped authorization and the
+  section whitelist. Resolve the authorized immutable pack before inspecting an anchor.
+- Bind each continuation to `packId:section:ordinal`. Require bounded syntax, positive numeric
+  position, exact pack/section identity and a real retained row in that section. Refuse malformed,
+  overflowing, zero, cross-context, missing-anchor and numeric-only cursors without fallback.
+- Omitting `after` starts the first page. The existing internal empty-string sentinel also means
+  no cursor; public schema validation does not admit an explicit empty cursor.
+- Keep materialized row selection,25-row ordering/lookahead, total, pack digest, empty first pages
+  and exactly25-row final pages unchanged. Later posting/reopen cannot change saved content.
+- Use a separate local row cursor/query contract. Pack-list continuation and the private
+  ordinal parser remain unchanged. No existing shared binding/signature or UI edit is needed.
+- Stored pack JSON/CSV contain complete section arrays, not row-page responses. SIE reads those
+  stored rows directly. Their bytes, hashes, selections and recovery paths must remain unchanged.
+- The earlier numeric-only cursor is malformed under the new contract. Omit `after` to restart
+  the section. The in-repo client already treats continuation as an opaque string.
+
+Source review and static checks are not runtime proof. No tests, SQL compilation/application,
+runtime, provider, browser/UI or VCS actions are authorized for this packet.
+
+###6400 implemented source and integration
+
+`6400-accountant-review-row-cursors.sql` replaces only the existing row-page function. New
+continuation is `packId:section:ordinal`. SQL bounds it to163 characters (128-character pack
+ID,14-character maximum section name,19-digit positive position and two separators), validates
+syntax/context, catches bigint overflow, and requires an exact stored row anchor. All failures
+use structured accounting errors. Current authorization and immutable pack lookup precede
+anchor access. The25-row query, lookahead, totals, digest and response items are unchanged.
+
+`ReviewRowCursor` and `ReviewRowQuery` apply only to row-query inputs and `ReviewPage.next`.
+The existing REST route and MCP binding still pass the same string parameter. The web row
+consumer already treats continuation as an opaque string, URL-encodes it, and separates queries
+by book/pack/digest/section; no UI change or browser reproduction is claimed. Pack-list output,
+query and SQL ordinal parser retain their existing contract.
+
+The complete JSON/CSV exports are materialized from stored section arrays. They do not contain
+`ReviewPage` responses or row cursors. SIE capture reads stored rows directly, without this
+pager. No saved pack, row, artifact, filename, digest, byte hash or SIE capture/seal path changes.
+Old packs remain readable through the new pager and unchanged file-download APIs.
+
+The previous in-repo numeric cursor shape is rejected by the new query contract. No deployed
+old client or production data is assumed; the current web client already accepts the bound
+cursor returned by the new pager.
+
+Fresh source review covered all local schema consumers, the full function/schema diff, saved
+JSON/CSV construction, direct SIE row selection, empty sections, real terminal anchors and exact
+page-size boundaries. Whitespace inspection passed. These are source checks only. No tests,
+SQL compilation/application, runtime/provider/browser/UI or VCS actions were performed. Root
+owns shared static checks and maintained plan06/wave integration; no shared wiring edit is needed.

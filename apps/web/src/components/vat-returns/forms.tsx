@@ -7,6 +7,12 @@ import * as Tax from "@open-erp/contracts/expense-tax";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
+import { Disclosure } from "@open-erp/ui/components/disclosure";
+import { ChoiceField } from "@open-erp/ui/components/choice-field";
+import { RecordSection } from "@open-erp/ui/components/record-layout";
+import { FormActions } from "@open-erp/ui/components/form-actions";
+import { PageCaption } from "@open-erp/ui/components/accounting-page";
+import { VatFactEditor } from "./fact-editor";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
@@ -18,37 +24,6 @@ function nullable(fields: FormData, name: string) {
   const value = fields.get(name);
   return typeof value === "string" && value !== "" ? value : null;
 }
-const requiredText = [
-  "sourceLocator",
-  "description",
-  "evidenceId",
-  "reviewEvidenceId",
-  "reviewRationale",
-  "netMinor",
-  "vatMinor",
-  "grossMinor",
-] as const;
-const optionalText = [
-  "currency",
-  "issuedOn",
-  "receivedOn",
-  "suppliedOn",
-  "taxPointOn",
-  "dateBasis",
-  "periodEvidenceId",
-  "registrationEvidenceId",
-  "methodEvidenceId",
-  "treatmentEvidenceId",
-  "deductionEvidenceId",
-  "voucherId",
-] as const;
-const stateFields = [
-  "registration",
-  "method",
-  "treatment",
-  "domesticEligibility",
-  "fullDeduction",
-] as const;
 export function VatFactForm(
   props: Common & { current?: typeof Vat.VatFact.Type; onSaved: (id: string) => void },
 ) {
@@ -62,9 +37,11 @@ export function VatFactForm(
     retry: false,
     enabled: !current,
   });
-  const source = expenses.data?.sources.find(
-    (row) => row.current.sourceId === expenseId && row.reviewCurrent,
-  );
+  const importable =
+    expenses.data?.sources.filter(
+      (row) => row.reviewCurrent && row.latestReview?.facts.treatment === "domestic_purchase",
+    ) ?? [];
+  const source = importable.find((row) => row.current.sourceId === expenseId && row.reviewCurrent);
   const review = source?.latestReview;
   const imported: Partial<typeof Vat.VatFactInput.Type> | undefined =
     source && review
@@ -77,9 +54,9 @@ export function VatFactForm(
           reviewEvidenceId: review.facts.evidenceId,
           reviewRationale: review.facts.rationale,
           treatment: "domestic_purchase",
-          netMinor: source.current.facts.amounts.netMinor ?? undefined,
-          vatMinor: source.current.facts.amounts.vatMinor ?? undefined,
-          grossMinor: source.current.facts.amounts.grossMinor ?? undefined,
+          netMinor: review.facts.amounts.netMinor ?? undefined,
+          vatMinor: review.facts.amounts.vatMinor ?? undefined,
+          grossMinor: review.facts.amounts.grossMinor ?? undefined,
           currency: source.current.facts.currency,
           issuedOn: source.current.facts.issuedOn,
           receivedOn: source.current.facts.receivedOn,
@@ -103,23 +80,20 @@ export function VatFactForm(
     <Box display="grid" gap="lg" minWidth="zero">
       {!current ? (
         <>
-          <SelectField
-            label={copy.importExpense}
-            value={expenseId}
-            onValueChange={(value) => setExpenseId(value ?? "")}
-            options={[
-              { value: "", label: copy.noImport },
-              ...(expenses.data?.sources
-                .filter(
-                  (row) =>
-                    row.reviewCurrent && row.latestReview?.facts.treatment === "domestic_purchase",
-                )
-                .map((row) => ({
+          {importable.length ? (
+            <SelectField
+              label={copy.importExpense}
+              value={expenseId}
+              onValueChange={(value) => setExpenseId(value ?? "")}
+              options={[
+                { value: "", label: copy.noImport },
+                ...importable.map((row) => ({
                   value: row.current.sourceId,
                   label: row.current.facts.description,
-                })) ?? []),
-            ]}
-          />
+                })),
+              ]}
+            />
+          ) : null}
           <AccountingStatus locale={locale} pending={expenses.isPending} error={expenses.error} />
         </>
       ) : null}
@@ -131,188 +105,13 @@ export function VatFactForm(
     </Box>
   );
 }
-function VatFactEditor(
-  props: Common & {
-    current?: typeof Vat.VatFact.Type;
-    initial?: Partial<typeof Vat.VatFactInput.Type>;
-    onSaved: (id: string) => void;
-  },
-) {
-  const { book, locale, current, initial } = props;
-  const copy = vatCopy(locale);
-  const [invalid, setInvalid] = useState(false);
-  const keys = useRef(new Map<string, string>());
-  const save = useMutation({
-    mutationFn: (input: typeof Vat.VatFactInput.Type) => {
-      const path = `${bookPath(book)}/vat-returns/facts`;
-      return readAccounting(
-        path,
-        Vat.VatFact,
-        mutationOptions(path, JSON.stringify(input), keys.current),
-      );
-    },
-    onSuccess: (fact) => props.onSaved(fact.factId),
-  });
-  const options = {
-    registration: [
-      { value: "registered", label: copy.registered },
-      { value: "not_registered", label: copy.notRegistered },
-    ],
-    method: [
-      { value: "accrual", label: copy.accrual },
-      { value: "cash", label: copy.cash },
-    ],
-    treatment: [
-      { value: "domestic_sale", label: copy.sale },
-      { value: "domestic_purchase", label: copy.purchase },
-      { value: "unsupported", label: copy.unsupported },
-    ],
-    domesticEligibility: [
-      { value: "confirmed", label: copy.confirmed },
-      { value: "unsupported", label: copy.unsupported },
-    ],
-    fullDeduction: [
-      { value: "confirmed", label: copy.confirmed },
-      { value: "unsupported", label: copy.unsupported },
-    ],
-  };
-  return (
-    <Box
-      as="form"
-      display="grid"
-      gap="lg"
-      minWidth="zero"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const fields = new FormData(event.currentTarget);
-        const linked = nullable(fields, "expenseSourceId");
-        const decoded = Schema.decodeUnknownOption(Vat.VatFactInput)({
-          sourceKey: current?.input.sourceKey ?? fields.get("sourceKey"),
-          expectedDigest: current?.digest ?? null,
-          recordClass: current?.input.recordClass ?? fields.get("recordClass"),
-          ...Object.fromEntries(requiredText.map((name) => [name, fields.get(name)])),
-          ...Object.fromEntries(optionalText.map((name) => [name, nullable(fields, name)])),
-          ...Object.fromEntries(stateFields.map((name) => [name, fields.get(name)])),
-          taxLineIds: (nullable(fields, "taxLineIds") ?? "")
-            .split(",")
-            .map((id) => id.trim())
-            .filter(Boolean),
-          expenseLink: linked
-            ? {
-                sourceId: linked,
-                sourceDigest: fields.get("expenseSourceDigest"),
-                reviewDigest: fields.get("expenseReviewDigest"),
-              }
-            : null,
-        });
-        setInvalid(decoded._tag === "None");
-        if (decoded._tag === "Some") save.mutate(decoded.value);
-      }}
-    >
-      <Text>{copy.amountHelp}</Text>
-      <Text>{copy.optional}</Text>
-      <Box
-        as="fieldset"
-        disabled={save.isPending || save.isSuccess}
-        borderWidth="none"
-        padding="none"
-        margin="none"
-        display="grid"
-        gap="md"
-        minWidth="zero"
-      >
-        <InputField
-          label={copy.sourceKey}
-          name="sourceKey"
-          required
-          pattern="[a-zA-Z0-9_\-]{1,128}"
-          readOnly={Boolean(current)}
-          defaultValue={initial?.sourceKey}
-        />
-        {current ? (
-          <Text>{current.input.recordClass === "synthetic" ? copy.synthetic : copy.actual}</Text>
-        ) : (
-          <SelectField
-            label={copy.recordClass}
-            name="recordClass"
-            required
-            defaultValue={initial?.recordClass ?? ""}
-            options={[
-              { value: "", label: "—" },
-              { value: "actual_company", label: copy.actual },
-              { value: "synthetic", label: copy.synthetic },
-            ]}
-          />
-        )}
-        {requiredText.map((name) => (
-          <InputField
-            key={name}
-            label={copy[name]}
-            name={name}
-            required
-            maxLength={name.endsWith("Minor") ? 38 : 2000}
-            pattern={name.endsWith("Minor") ? "(0|[1-9][0-9]{0,37})" : undefined}
-            inputMode={name.endsWith("Minor") ? "numeric" : undefined}
-            defaultValue={initial?.[name]}
-          />
-        ))}
-        {stateFields.map((name) => (
-          <SelectField
-            key={name}
-            label={copy[name]}
-            name={name}
-            defaultValue={initial?.[name] ?? "unknown"}
-            options={[{ value: "unknown", label: copy.unknown }, ...options[name]]}
-          />
-        ))}
-        {optionalText.map((name) => (
-          <InputField
-            key={name}
-            label={copy[name]}
-            name={name}
-            type={name.endsWith("On") ? "date" : "text"}
-            maxLength={2000}
-            defaultValue={initial?.[name] ?? ""}
-          />
-        ))}
-        <Text>{copy.linksHelp}</Text>
-        <InputField
-          label={copy.taxLineIds}
-          name="taxLineIds"
-          defaultValue={initial?.taxLineIds?.join(", ") ?? ""}
-        />
-        <InputField
-          label={copy.expenseSourceId}
-          name="expenseSourceId"
-          defaultValue={initial?.expenseLink?.sourceId ?? ""}
-        />
-        <InputField
-          label={copy.expenseSourceDigest}
-          name="expenseSourceDigest"
-          defaultValue={initial?.expenseLink?.sourceDigest ?? ""}
-        />
-        <InputField
-          label={copy.expenseReviewDigest}
-          name="expenseReviewDigest"
-          defaultValue={initial?.expenseLink?.reviewDigest ?? ""}
-        />
-        <Box>
-          <Button size="xl" type="submit">
-            {copy.save}
-          </Button>
-        </Box>
-      </Box>
-      <Text role="status">{invalid ? copy.invalid : save.isSuccess ? copy.saved : ""}</Text>
-      <AccountingStatus locale={locale} write pending={save.isPending} error={save.error} />
-    </Box>
-  );
-}
 export function VatDraftForm({
   book,
   locale,
   onSaved,
 }: Common & { onSaved: (id: string) => void }) {
   const copy = vatCopy(locale);
+  const sv = locale === "sv";
   const [mode, setMode] = useState<(typeof Vat.PrepareVatDraft.Type)["mode"]>("actual_review");
   const [invalid, setInvalid] = useState(false);
   const keys = useRef(new Map<string, string>());
@@ -357,10 +156,10 @@ export function VatDraftForm({
         padding="none"
         margin="none"
         display="grid"
-        gap="md"
+        gap="xl"
         minWidth="zero"
       >
-        <SelectField
+        <ChoiceField
           label={copy.mode}
           value={mode}
           onValueChange={(value) =>
@@ -369,15 +168,43 @@ export function VatDraftForm({
             )
           }
           options={[
-            { value: "actual_review", label: copy.actual },
-            { value: "synthetic_demonstration", label: copy.synthetic },
+            {
+              value: "actual_review",
+              label: copy.actual,
+              description: sv
+                ? "Granska företagets underlag. Deklarationsbelopp är ännu inte tillgängliga."
+                : "Review company records. Return amounts are not available yet.",
+            },
+            {
+              value: "synthetic_demonstration",
+              label: copy.synthetic,
+              description: sv
+                ? "Beräkna ett exempel med syntetiska underlag."
+                : "Calculate an example using synthetic records.",
+            },
           ]}
         />
-        <InputField label={copy.startsOn} name="startsOn" type="date" required />
-        <InputField label={copy.endsOn} name="endsOn" type="date" required />
-        <InputField label={copy.periodEvidenceId} name="periodEvidenceId" />
+        <RecordSection title={sv ? "Rapportperiod" : "Reporting period"}>
+          <Box display="grid" columns={2} gap="md">
+            <InputField label={copy.startsOn} name="startsOn" type="date" required />
+            <InputField label={copy.endsOn} name="endsOn" type="date" required />
+          </Box>
+          <Disclosure
+            label={sv ? "Periodunderlag (valfritt)" : "Period evidence (optional)"}
+            variant="inline"
+          >
+            <Box display="grid" gap="md" paddingBlock="md">
+              <InputField label={copy.periodEvidenceId} name="periodEvidenceId" />
+              <PageCaption>
+                {sv
+                  ? "Referens till ett sparat underlag som fastställer rapportperioden."
+                  : "Reference to retained evidence establishing the reporting period."}
+              </PageCaption>
+            </Box>
+          </Disclosure>
+        </RecordSection>
         {mode === "synthetic_demonstration" ? (
-          <SelectField
+          <ChoiceField
             label={copy.otherBoxes}
             name="otherBoxes"
             defaultValue="unknown"
@@ -386,14 +213,15 @@ export function VatDraftForm({
               { value: "absent_in_synthetic_example", label: copy.absence },
             ]}
           />
-        ) : (
-          <Text>{copy.actualBlocked}</Text>
-        )}
-        <Box>
-          <Button size="xl" type="submit">
-            {copy.prepare}
+        ) : null}
+        <FormActions>
+          <PageCaption>
+            {sv ? "Utkastet sparas för granskning." : "The draft is saved for review."}
+          </PageCaption>
+          <Button type="submit">
+            {prepare.isPending ? (sv ? "Sparar…" : "Saving…") : copy.prepare}
           </Button>
-        </Box>
+        </FormActions>
       </Box>
       <Text role="status">{invalid ? copy.invalid : prepare.isSuccess ? copy.saved : ""}</Text>
       <AccountingStatus locale={locale} write pending={prepare.isPending} error={prepare.error} />

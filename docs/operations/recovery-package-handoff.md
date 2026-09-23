@@ -78,7 +78,7 @@ preserves comparisons for previously valid v2 bundles without adding an artifact
 pretending an absent outcome proves nonexecution. No request is run, rewritten or resumed.
 
 Source review traced0310's shape-only save, caught refusal, reserved command identity trigger
-and exact legacy kernel receipt path. SQL/TypeScript compilation, backup/restore and runtime
+and exact original kernel receipt path. SQL/TypeScript compilation, backup/restore and runtime
 behavior remain unverified. No CLI, tests/helpers/fixtures, SQL/runtime/database/provider or
 VCS actions were performed for this follow-up. Root owns static validation and independent
 review; any later native recovery observation needs separate authority.

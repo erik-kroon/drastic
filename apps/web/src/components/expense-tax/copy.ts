@@ -220,7 +220,7 @@ const sv: typeof en = {
   reviewRevision: "Granskningsversion",
   reviewedBy: "Registrerad av",
   digest: "Kontrollsumma",
-  prepareSnapshot: "Frys granskningsunderlag",
+  prepareSnapshot: "Spara periodgranskning",
   snapshots: "Sparade granskningsunderlag",
   startsOn: "Intervallets början",
   endsOn: "Intervallets slut",

@@ -18,16 +18,18 @@ export function CaseSnapshots({
   book,
   locale,
   onPrepared,
+  open,
 }: {
   book: typeof Accounting.Book.Type;
   locale: Locale;
   onPrepared: (id: string) => void;
+  open?: boolean;
 }) {
   const copy = accountingCopy(locale);
   const [snapshotId, setSnapshotId] = useState<string | null>(null);
   const [inputError, setInputError] = useState("");
   return (
-    <details id="case-snapshots" tabIndex={-1}>
+    <details open={open} id="case-snapshots" tabIndex={-1}>
       <summary>{copy.case_title}</summary>
       <Box display="grid" gap="2xl" paddingBlock="xl" minWidth="zero">
         <Heading>{copy.case_title}</Heading>

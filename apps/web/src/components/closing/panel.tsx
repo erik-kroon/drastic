@@ -108,17 +108,14 @@ export function ClosingPanel({
   );
 }
 
-export function PeriodClosing({
-  book,
-  periodId,
-  locale,
-  onPrepared,
-}: {
+export function PeriodClosing(props: {
   book: typeof Accounting.Book.Type;
   periodId: string;
   locale: Locale;
   onPrepared: (id: string) => void;
+  customerView?: boolean;
 }) {
+  const { book, periodId, locale, onPrepared } = props;
   const copy = closingCopy(locale);
   const keys = useRef(new Map<string, string>());
   const queryClient = useQueryClient();
@@ -182,11 +179,10 @@ export function PeriodClosing({
       {basis ? (
         <>
           <Text>
-            {periodId} · {basis.startsOn} – {basis.endsOn} ·{" "}
-            {basis.locked ? copy.locked : copy.open}
+            {basis.startsOn} – {basis.endsOn} · {basis.locked ? copy.locked : copy.open}
           </Text>
-          <ClosingFacts basis={basis} locale={locale} />
-          {book.role === "operator" ? (
+          {!props.customerView ? <ClosingFacts basis={basis} locale={locale} /> : null}
+          {book.role === "operator" && !props.customerView ? (
             <Box
               as="form"
               display="grid"
@@ -268,6 +264,13 @@ export function PeriodClosing({
             }}
           >
             <Text>{copy.prepareHelp}</Text>
+            {!basis.locked && !basis.technicalCloseAllowed ? (
+              <Text role="status">
+                {locale === "sv"
+                  ? "Slutför de öppna kontrollerna i checklistan innan perioden kan låsas."
+                  : "Complete the outstanding checklist items before locking the period."}
+              </Text>
+            ) : null}
             {basis.locked ? <Text>{copy.reopenHelp}</Text> : null}
             <InputField
               label={copy.reason}

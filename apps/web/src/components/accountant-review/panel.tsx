@@ -12,7 +12,7 @@ import { ArrowLeft, Plus } from "lucide-react";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { RecordHeading, RecordSection } from "@open-erp/ui/components/record-layout";
-import { PageCaption, RecordToggle } from "@open-erp/ui/components/accounting-page";
+import { PageCaption, RecordOpen } from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
@@ -316,9 +316,9 @@ function RetainedPacks({
           rows={packs.map((pack) => ({
             id: pack.id,
             cells: [
-              <RecordToggle key="open" expanded={false} onClick={() => onSelected(pack.id)}>
+              <RecordOpen key="open" onClick={() => onSelected(pack.id)}>
                 {pack.startsOn} – {pack.endsOn}
-              </RecordToggle>,
+              </RecordOpen>,
               new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
                 new Date(pack.createdAt),
               ),

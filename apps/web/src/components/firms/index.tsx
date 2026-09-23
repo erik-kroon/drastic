@@ -168,7 +168,7 @@ function FirmPicker(props: {
   const sv = props.locale === "sv";
   return (
     <Box display="flex" gap="md" alignItems="center" justifyContent="between">
-      {props.firms.length ? (
+      {props.firms.length > 1 ? (
         <RegisterFilter>
           <SelectControl
             aria-label={sv ? "Välj byrå" : "Choose firm"}

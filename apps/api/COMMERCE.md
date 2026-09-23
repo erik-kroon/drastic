@@ -80,7 +80,7 @@ after sending. This is not crash-safe automatic recovery.
 ## Cross-domain guards
 
 `commerce_voucher_reversal_boundary` is a commerce-owned trigger on voucher insertion. It rejects
-reversals/corrections of registered recognition vouchers or payment vouchers with active allocations. Both legacy
+reversals/corrections of registered recognition vouchers or payment vouchers with active allocations. Both existing
 reversal-only and bundled corrections pass through this guard. Migration1700 adds [reviewed whole-allocation unallocation](COMMERCE-ALLOCATION-REVERSALS.md), not invoice-recognition correction. Original allocations remain immutable. The1400 issue guard is unchanged; no generic bypass or automatic residual rewrite is permitted.
 
 `commerce_bank_source_boundary` and `commerce_control_account_boundary` keep declared commerce control
@@ -116,3 +116,45 @@ check, deployment or commit was run by this worker for this slice.
 ## Separate native commercial drafts
 
 The [invoice-draft packet](INVOICE-DRAFTS.md) adds an operator-owned, bounded customer commercial-draft path in migration1200. It is separate from this module's posted-recognition registration. It retains source identity evidence, exact line amounts/discounts/charges, unknown tax facts, totals and immutable editable-by-supersession revisions. Native commercial draft saving does not allocate legal invoice numbers, post, register a receivable, activate tax treatment or deliver. The local panel labels both paths separately. Source implementation is not runtime verification, and issuance/recognition/delivery dependencies remain open.
+
+## 6500 allocation approval recovery — pre-edit failure contract
+
+A supported sequence can approve one allocation plan twice (A1, then A2) and apply it
+with still-valid A1. The old getter selects A2 by latest expiry, but the application
+receipt names A1. Existing REST/MCP `AllocationView` and the commerce allocation review
+then recover an approval that did not authorize the retained application.
+
+The approved repair changes only `commerce_get_allocation` in a forward migration:
+
+- Preserve authorization, the book SHARE barrier, scoped plan lookup and currentness.
+- Read the immutable application row first. Its scoped `approval_id` foreign key owns
+  committed approval identity; require the approval to belong to the same plan.
+- Confirm receipt and approval body identities agree with their rows and the saved plan.
+  Missing or inconsistent committed linkage must refuse, never fall back to another approval.
+- Recover the consumed approval after expiry or whole-allocation unallocation. This is
+  historical evidence, not fresh execution authority. Do not filter it by live membership.
+- Without an application, preserve the existing latest-approval query and ordering exactly.
+- Preserve stored bodies, successful command replay, writes, capacity/correction guards,
+  grants, schemas, shared wiring and UI. Do not add an artifact or approval-selection policy.
+
+Source inspection is the authorized check. No tests, SQL compilation/application, runtime,
+provider calls or VCS actions are authorized. Runtime recovery remains unverified.
+
+### Implemented source and validation limit
+
+`migrations/6500-commerce-allocation-approval-recovery.sql` replaces only the existing
+getter. It loads the application row under the unchanged book SHARE barrier. A committed
+read follows that row's `(book_id, approval_id)` foreign key and requires the same plan
+and plan digest. It checks approval body ID/plan/digest and application body
+ID/plan/approval/digest against the retained row identities. Inconsistent linkage raises
+`UnsupportedProfile`; another approval is never substituted. Expiry and later unallocation
+do not filter or rewrite the historical consumed approval. Pending reads retain the old
+latest-expiry/ID ordering, including its existing null and expired-approval behavior.
+
+The returned `plan`, `application` and `dependenciesCurrent` owners are unchanged.
+REST/MCP and existing allocation review screens already decode `AllocationView`; no shared
+integration or schema change is needed. No write, replay, grant or financial guard changes.
+
+Source comparison confirmed the authorization/plan-read prefix and returned currentness
+expression are unchanged, and the pending approval query differs only in branch indentation.
+No tests or SQL/runtime validation ran. The migration remains unapplied and runtime-unverified.

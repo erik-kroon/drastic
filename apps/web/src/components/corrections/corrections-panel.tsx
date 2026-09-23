@@ -20,10 +20,12 @@ export function CorrectionsPanel({
   book,
   setup,
   locale,
+  open,
 }: {
   book: typeof Accounting.Book.Type;
   setup: typeof Accounting.BookSetup.Type;
   locale: Locale;
+  open?: boolean;
 }) {
   const copy = correctionCopy(locale);
   const [originalId, setOriginalId] = useState("");
@@ -49,7 +51,7 @@ export function CorrectionsPanel({
     onSuccess: (view) => setBundleId(view.bundle.id),
   });
   return (
-    <details id="corrections" tabIndex={-1}>
+    <details open={open} id="corrections" tabIndex={-1}>
       <summary>{copy.title}</summary>
       <Box display="grid" gap="2xl" paddingBlock="lg" minWidth="zero">
         <Text tone="muted">{copy.scope}</Text>

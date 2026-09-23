@@ -104,7 +104,7 @@ BEGIN
     SELECT jsonb_agg(jsonb_build_object('statementId',a.statement_id,'rowOrdinal',a.row_ordinal,
       'voucherId',a.voucher_id,'lineId',a.line_id,'amountMinor',a.amount_minor::text) ORDER BY a.ordinal) INTO br_legs
       FROM openerp.bank_allocation_legs a WHERE a.book_id=p_book AND a.plan_id=p_target->>'allocationPlanId';
-  ELSIF p_target->>'kind'='legacy_exact' THEN
+  ELSIF p_target->>'kind'='exact_match' THEN
     IF p_target-ARRAY['kind','statementId','rowOrdinal']<>'{}'::jsonb
       OR jsonb_typeof(p_target->'statementId') IS DISTINCT FROM 'string'
       OR coalesce(p_target->>'statementId','')!~'^[a-z][a-z0-9_-]{2,127}$'
@@ -333,7 +333,7 @@ LANGUAGE sql STABLE SET search_path=pg_catalog,openerp AS $$
       WHERE a.book_id=bank_allocated_line.book AND a.voucher_id=bank_allocated_line.voucher AND a.line_id=bank_allocated_line.line),0)
 $$;
 
-CREATE OR REPLACE FUNCTION openerp.bank_legacy_allocation_guard() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+CREATE OR REPLACE FUNCTION openerp.bank_exact_match_capacity_guard() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,openerp AS $$
 BEGIN
   PERFORM 1 FROM openerp.books WHERE id=NEW.book_id FOR UPDATE;
@@ -729,7 +729,7 @@ BEGIN
       FROM openerp.bank_match_reversals r WHERE r.book_id=ba_plan.book_id AND r.allocation_plan_id=ba_plan.id));
 END $$;
 
--- Both legacy exact insertion and reviewed allocation execution must reject closed or reversed lines.
+-- Both exact-match insertion and reviewed allocation execution must reject closed or reversed lines.
 CREATE FUNCTION openerp.bank_matching_admission_guard() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,openerp AS $$
 BEGIN

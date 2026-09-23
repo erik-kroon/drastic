@@ -2,10 +2,7 @@ import { defineRule } from "@oxlint/plugins";
 
 import type { ESTree } from "@oxlint/plugins";
 
-import { checksDestructuringSource, projectFilename } from "../shared/source-scope.ts";
-
-// Reduce these counts when a file simplifies a pattern. New files start at zero.
-const legacyDestructuringCounts = new Map<string, number>();
+import { checksDestructuringSource } from "../shared/source-scope.ts";
 
 type DestructuringPattern = ESTree.ArrayPattern | ESTree.ObjectPattern;
 
@@ -44,14 +41,8 @@ export const noOverzealousDestructuringRule = defineRule({
   },
   create(context) {
     if (!checksDestructuringSource(context.filename)) return {};
-    let remainingLegacyPatterns =
-      legacyDestructuringCounts.get(projectFilename(context.filename)) ?? 0;
     const checkPattern = (node: DestructuringPattern) => {
       if (!isOverzealous(node)) return;
-      if (remainingLegacyPatterns > 0) {
-        remainingLegacyPatterns -= 1;
-        return;
-      }
       context.report({ node, messageId: "destructuring" });
     };
     return { ArrayPattern: checkPattern, ObjectPattern: checkPattern };

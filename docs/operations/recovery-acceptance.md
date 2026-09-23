@@ -35,7 +35,7 @@ an otherwise valid snapshot solely for that missing input target.
 - Exempt only JSON evidence-link validation inside the exact
   `openerp.posting_saved_requests.command` column, and only when its same-book/key outcome is
   absent or refused AND no same-book `command_receipts.key = command_key` exists.
-- An absent outcome does not prove nonexecution.0310 permits an exact legacy kernel call using
+- An absent outcome does not prove nonexecution.0310 permits an exact original kernel call using
   the reserved command key. Its committed command receipt requires strict evidence closure
   even before the saved-request outcome is recorded.
 - A committed outcome, any other outcome state or any receipt at the scoped reserved command

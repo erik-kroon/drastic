@@ -111,7 +111,7 @@ Root must serialize permitted local execution. Static success cannot establish a
 
 The new basis includes `ownerTaxStatus`, `dependencies.ownerSourceDigest` and `dependencies.expenseTaxBasisDigest`. Owner unresolved reviews and unlinked records through period end block technical close. Expense missing/stale source reviews (conservatively book-wide) block close. Independently, every represented expense source blocks close coverage because supported posting/ledger reconciliation is unavailable, including sources with digest-current but unknown reviews. Unpaid linked owner claims are not errors. These checks do not certify opening balances, owner repayment rights, tax eligibility or source/control completeness.
 
-Existing proposals/certificates retain their original bytes/digests. Their contracts allow absent provider fields for historical decoding, and the UI identifies that legacy scope. Comparing their old basis to the new live basis makes unexecuted old approvals stale and old certificates noncurrent. Existing committed command receipts still replay exactly. Repair through a newly prepared explicit reopen remains available; no old lock or journal is silently changed.
+Existing proposals/certificates retain their original bytes/digests. Their contracts allow absent provider fields for historical decoding, and the UI identifies that narrower saved scope. Comparing their old basis to the new live basis makes unexecuted old approvals stale and old certificates noncurrent. Existing committed command receipts still replay exactly. Repair through a newly prepared explicit reopen remains available; no old lock or journal is silently changed.
 
 Owner/tax mutation after proposal capture changes the pinned provider digest and fails existing approval/execution basis equality. Actual race/failure behavior remains for root runtime validation; this source change is not that proof.
 
@@ -129,7 +129,7 @@ rationale and retained evidence in this book. The server retains evidence hashes
 identity. The existing bank-source list remains required. The declaration never claims
 company completeness or statutory readiness.
 
-The new live basis always requires the complete family inventory. Legacy bank-only inputs
+The new live basis always requires the complete family inventory. Earlier bank-only inputs
 and exact command replays remain supported and explicitly labeled, but do not satisfy the
 new gate. Historical proposals, certificates and receipts keep their bytes and decoding;
 old unexecuted approvals become stale. New reopen proposals remain available while checks
@@ -186,7 +186,7 @@ returns per-family declaration, represented count (null when unavailable), provi
 passed/failed/unavailable checks and `coverage: not_established`. An additional mandatory
 `CompleteFamilyInventory` check blocks missing declarations. `familyInventoryDigest` binds
 the retained inventory and assessment in dependencies. Historical contracts allow these
-new fields to be absent; their absence is visibly labeled as legacy scope, not backfilled.
+new fields to be absent; their absence is visibly labeled as narrower saved scope, not backfilled.
 Existing approval/execution basis equality supplies the transactional stale check.
 
 Bank-required readiness reuses explicit inventory and exact reconciliation checks. Other
@@ -205,7 +205,7 @@ Statutory readiness is still always false. No financial close, opening set, tax 
 SIE/statutory artifact or filing is implemented here.
 
 The domain UI submits all decisions through the existing form, displays date/evidence/reviewer
-and retained revision, explains unavailable controls and labels legacy scope. It uses the
+and retained revision, explains unavailable controls and labels narrower saved scope. It uses the
 owned field/select/table components and native fieldsets/disclosures. Draft fields are not
 reset by server rejection. Request keys are retained in memory as before; reload recovery
 reads the retained declaration rather than promising durable unsent drafts.
@@ -375,7 +375,7 @@ Pending observations if separately authorized: known/foreign/empty periods; lost
 proposal rediscovery;50/51+ records; malformed/switched/absent-anchor cursors; no duplicates or
 omissions across a quiescent history; restart for new arrivals; retained execution ID only;
 provider overflow independent recovery; stale proposal not presented as current authority; and
-all legacy captured fields unchanged. Source inspection is not database/transport proof.
+all earlier captured fields unchanged. Source inspection is not database/transport proof.
 
 Owned-file4800 checks: `oxfmt --write` passed for the three TypeScript modules and two domain
 documents; `oxlint` passed for the three TypeScript modules with zero warnings/errors. Source

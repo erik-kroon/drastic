@@ -10,7 +10,7 @@ import { refuse } from "./safety";
 export async function readPreflight(client: Client, target: typeof LocalTarget.Type) {
   const books = await client.query<{
     id: string;
-    authority: "native" | "legacy";
+    authority: "native";
     writerEpoch: string;
     committedSequence: string;
   }>(`

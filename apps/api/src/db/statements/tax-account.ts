@@ -1,6 +1,12 @@
 import { sql, type SQL } from "drizzle-orm";
 
 export const taxAccountStatements = {
+  listUnclassifiedTaxAccountEvents: (parameters) =>
+    sql`select openerp.list_unclassified_tax_account_events(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text) as result`,
+  resolveTaxAccountEventClassification: (parameters) =>
+    sql`select openerp.resolve_tax_account_event_classification(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
+  getTaxAccountEventClassification: (parameters) =>
+    sql`select openerp.get_tax_account_event_classification(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
   previewTaxAccountMatch: (parameters) =>
     sql`select openerp.preview_tax_account_match(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::jsonb) as result`,
   matchTaxAccountEvent: (parameters) =>

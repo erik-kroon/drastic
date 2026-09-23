@@ -55,6 +55,60 @@ export const TaxAccountStatement = Schema.Struct({
   createdAt: Schema.String,
   receipt: CommandReceipt,
 });
+export const ResolveTaxAccountEventClassification = Schema.Struct({
+  expectedStatementDigest: A.Digest,
+  classification: Schema.Literals([
+    "tax_charge",
+    "tax_credit",
+    "interest",
+    "payment",
+    "transfer",
+    "other",
+  ]),
+  evidenceId: A.Identifier,
+  rationale: A.Description,
+});
+export const TaxAccountEventResolution = Schema.Struct({
+  id: A.Identifier,
+  digest: A.Digest,
+  scope: A.Scope,
+  eventId: A.Identifier,
+  statementId: A.Identifier,
+  statementDigest: A.Digest,
+  input: ResolveTaxAccountEventClassification,
+  evidenceSha256: Schema.String,
+  createdAt: Schema.String,
+  receipt: CommandReceipt,
+});
+export const TaxAccountResolutionReference = Schema.Struct({
+  id: A.Identifier,
+  digest: A.Digest,
+  eventId: A.Identifier,
+  classification: ResolveTaxAccountEventClassification.fields.classification,
+});
+export const TaxAccountEventClassificationView = Schema.Struct({
+  statementId: A.Identifier,
+  statementDigest: A.Digest,
+  event: Schema.Struct({ id: A.Identifier, ordinal: Schema.Int, input: TaxAccountEventInput }),
+  resolution: Schema.NullOr(TaxAccountEventResolution),
+  effectiveClassification: TaxAccountEventInput.fields.classification,
+});
+export const TaxAccountUnclassifiedCursor = Schema.String.check(
+  Schema.isMaxLength(199),
+  Schema.isPattern(/^taue1:[a-f0-9]{64}:[a-z][a-z0-9_-]{2,127}$/),
+);
+export const TaxAccountUnclassifiedEventQuery = Schema.Struct({
+  accountId: A.Identifier,
+  after: Schema.optional(TaxAccountUnclassifiedCursor),
+});
+export const TaxAccountUnclassifiedEventPage = Schema.Struct({
+  scope: A.Scope,
+  accountId: A.Identifier,
+  items: Schema.Array(TaxAccountEventClassificationView).check(Schema.isMaxLength(50)),
+  scanned: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 50 })),
+  next: Schema.NullOr(TaxAccountUnclassifiedCursor),
+  consistency: Schema.Literal("live_unclassified_events"),
+});
 export const TaxAccountStatementList = Schema.Struct({
   items: Schema.Array(
     Schema.Struct({
@@ -78,6 +132,8 @@ export const SelectTaxAccountMatch = Schema.Struct({
 export const TaxAccountMatchBasis = Schema.Struct({
   scope: A.Scope,
   selection: SelectTaxAccountMatch,
+  // Absent when the original event already had a known classification.
+  classificationResolution: Schema.optional(TaxAccountResolutionReference),
   statementId: A.Identifier,
   accountId: A.Identifier,
   accountVersion: A.MinorUnits,
@@ -168,7 +224,10 @@ export const TaxAccountControl = Schema.Struct({
   kind: Schema.Literals([
     "synthetic_tax_account_gl_control_v1",
     "synthetic_tax_account_gl_control_v2",
+    "synthetic_tax_account_gl_control_v3",
   ]),
+  // Historical v1/v2 controls did not capture classification resolutions.
+  classificationResolutions: Schema.optional(Schema.Array(TaxAccountResolutionReference)),
   matches: Schema.optional(Schema.Array(TaxAccountMatchView)),
   unmatchedLedgerLines: Schema.optional(
     Schema.Array(Schema.Struct({ voucherId: A.Identifier, lineId: A.Identifier })),
@@ -272,6 +331,29 @@ const scoped = { params: A.Scope, error: accountingErrors };
 const identified = { params: A.ChangePath, error: accountingErrors };
 const path = "/v1/entities/:entityId/books/:bookId/tax-account";
 export const TaxAccountApi = HttpApiGroup.make("taxAccount").add(
+  HttpApiEndpoint.get("listUnclassifiedTaxAccountEvents", `${path}/events/unclassified`, {
+    ...scoped,
+    query: TaxAccountUnclassifiedEventQuery.annotate({
+      parseOptions: { onExcessProperty: "error" },
+    }),
+    success: TaxAccountUnclassifiedEventPage,
+  }),
+  HttpApiEndpoint.post(
+    "resolveTaxAccountEventClassification",
+    `${path}/events/:id/classification-resolution`,
+    {
+      ...identified,
+      headers: A.IdempotencyHeaders,
+      payload: ResolveTaxAccountEventClassification.annotate({
+        parseOptions: { onExcessProperty: "error" },
+      }),
+      success: TaxAccountEventResolution,
+    },
+  ),
+  HttpApiEndpoint.get("getTaxAccountEventClassification", `${path}/events/:id/classification`, {
+    ...identified,
+    success: TaxAccountEventClassificationView,
+  }),
   HttpApiEndpoint.post("previewTaxAccountMatch", `${path}/matches/preview`, {
     ...scoped,
     payload: SelectTaxAccountMatch.annotate({ parseOptions: { onExcessProperty: "error" } }),
@@ -328,6 +410,20 @@ export const TaxAccountApi = HttpApiGroup.make("taxAccount").add(
 );
 // Statement capture/classification is an operator review, not an ordinary MCP mutation.
 export const TaxAccountCapabilities = {
+  tax_account_list_unclassified_events: {
+    input: Schema.Struct({ scope: A.Scope, ...TaxAccountUnclassifiedEventQuery.fields }),
+    output: TaxAccountUnclassifiedEventPage,
+    readOnly: true,
+    description:
+      "Page currently unknown tax-account events for one registered account. Each page examines at most50 events before filtering; empty items can still have next. Follow next until null. Membership is live, not complete or frozen; restart for new arrivals. Does not resolve, match or post.",
+  },
+  tax_account_get_event_classification: {
+    input: Schema.Struct({ scope: A.Scope, eventId: A.Identifier }),
+    output: TaxAccountEventClassificationView,
+    readOnly: true,
+    description:
+      "Read the original retained tax-account event, its one-shot classification resolution and effective classification. Does not match, post or establish tax treatment or complete coverage.",
+  },
   tax_account_preview_match: {
     input: Schema.Struct({ scope: A.Scope, input: SelectTaxAccountMatch }),
     output: TaxAccountMatchBasis,

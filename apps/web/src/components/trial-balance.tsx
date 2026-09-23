@@ -1,5 +1,8 @@
 import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
-import { PageCaption } from "@open-erp/ui/components/accounting-page";
+import { PageCaption, RecordOpen } from "@open-erp/ui/components/accounting-page";
+import { RecordSheet } from "@open-erp/ui/components/record-sheet";
+import { Link } from "@open-erp/ui/components/link";
+import { workspacePath } from "@/lib/book-context";
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { formatMinorAmount, workQueryOptions } from "@/lib/workspace-api";
 import { useState } from "react";
@@ -16,21 +19,25 @@ import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
-export function TrialBalance({
-  book,
-  id,
-  locale,
-}: {
+export function TrialBalance(props: {
   book: typeof Accounting.Book.Type;
   id: string;
   locale: Locale;
+  accountId?: string;
+  onSelectAccount?: (id: string) => void;
 }) {
+  const { book, id, locale } = props;
   const copy = accountingCopy(locale);
   const metadata = useQuery(workQueryOptions(book, {}));
   const scale = metadata.data?.currencyScale;
   const amount = (value: string) =>
     scale === undefined ? "—" : formatMinorAmount(value, scale, locale);
-  const [accountId, setAccountId] = useState<string | null>(null);
+  const [localAccount, setLocalAccount] = useState<string | null>(null);
+  const accountId = props.onSelectAccount ? props.accountId : localAccount;
+  const setAccountId = (value: string | null) => {
+    setLocalAccount(value);
+    props.onSelectAccount?.(value ?? "");
+  };
   const base = `${bookPath(book)}/report-snapshots/${encodeURIComponent(id)}`;
   const report = useQuery({
     queryKey: [...bookKey(book), "report-snapshot", id],
@@ -108,21 +115,9 @@ export function TrialBalance({
                   .map((line) => ({
                     id: line.accountId,
                     cells: [
-                      <Button
-                        key={line.accountId}
-                        size="xl"
-                        variant="link"
-                        aria-expanded={accountId === line.accountId}
-                        aria-controls="report-explanation"
-                        onClick={() => {
-                          setAccountId(line.accountId);
-                          requestAnimationFrame(() =>
-                            document.getElementById("report-explanation")?.focus(),
-                          );
-                        }}
-                      >
+                      <RecordOpen key={line.accountId} onClick={() => setAccountId(line.accountId)}>
                         {line.code}
-                      </Button>,
+                      </RecordOpen>,
                       line.name,
                       amount(line.openingMinor),
                       amount(line.debitMinor),
@@ -148,8 +143,13 @@ export function TrialBalance({
               </Button>
             </Box>
           ) : null}
-          <Box id="report-explanation" tabIndex={-1} minWidth="zero">
-            {accountId ? (
+          <ReportBasis report={report.data} locale={locale} />
+          {accountId ? (
+            <RecordSheet
+              title={`${loaded.find((line) => line.accountId === accountId)?.code ?? ""} · ${loaded.find((line) => line.accountId === accountId)?.name ?? ""}`}
+              closeLabel={locale === "sv" ? "Till saldobalansen" : "Back to trial balance"}
+              onClose={() => setAccountId(null)}
+            >
               <AccountExplanation
                 key={accountId}
                 book={book}
@@ -157,8 +157,8 @@ export function TrialBalance({
                 accountId={accountId}
                 locale={locale}
               />
-            ) : null}
-          </Box>
+            </RecordSheet>
+          ) : null}
         </>
       ) : null}
     </Box>
@@ -201,7 +201,14 @@ function SnapshotHeader({
           ? "Välj ett konto för att se verifikat och underlag."
           : "Choose an account to see its entries and source records."}
       </PageCaption>
-      <Disclosure title={sv ? "Rapportunderlag & begränsningar" : "Report basis & limitations"}>
+
+    </Box>
+  );
+}
+
+function ReportBasis({ report, locale }: { report: typeof Reports.ReportSnapshot.Type; locale: Locale }) {
+  const sv = locale === "sv";
+  return (      <Disclosure title={sv ? "Rapportunderlag & begränsningar" : "Report basis & limitations"}>
         <Text>
           {report.id} · {report.sequence}
         </Text>
@@ -213,9 +220,7 @@ function SnapshotHeader({
         {report.warnings.map((warning) => (
           <Text key={warning}>{warning}</Text>
         ))}
-      </Disclosure>
-    </Box>
-  );
+      </Disclosure>);
 }
 
 function AccountExplanation({
@@ -326,7 +331,7 @@ function AccountExplanation({
                 entry.part === "opening" ? copy.report_opening_part : copy.report_movement_part,
                 amount(entry.debitMinor),
                 amount(entry.creditMinor),
-                entry.description,
+                <Link key="voucher" href={`${workspacePath(book)}/books?view=vouchers&record=${encodeURIComponent(entry.voucherId)}`}>{entry.description}</Link>,
                 <details key={`${entry.sequence}:${entry.ordinal}`}>
                   <summary>{copy.report_evidence}</summary>
                   <Box display="grid" gap="lg" paddingBlock="md" minWidth="zero">

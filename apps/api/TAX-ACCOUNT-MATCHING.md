@@ -104,7 +104,7 @@ remain visible. Original and reversing journal contributions remain in the full 
 matching never subtracts or fabricates financial amounts.
 
 `unmatchedLedgerLines` retains exact `{voucherId,lineId}` pairs. Journal line IDs are only
-unique within a voucher; filtering uses both identities, never the legacy convenience ID
+unique within a voucher; filtering uses both identities, never the single-field convenience ID
 array alone. Historical opening lines may have reviewed source events before the requested
 interval; their evidence-backed match basis stays in the control instead of silently removing
 those lines from the audit trace.
@@ -176,3 +176,13 @@ reuse; v2 controls consume only usable pairs and retain residual/unknown rows an
 GL amounts. Matching histories/currentness participate in3950's existing VAT/closing dependency
 owner. Source completeness, full reconciliation, financial close, legal tax treatment,
 settlement and full VAT-03 acceptance remain unavailable; runtime proof remains open.”
+
+## Reviewed unknown classifications
+
+Forward6700 allows a previously unknown event to pass the classification gate only after its
+one-shot evidenced operator resolution. The basis keeps the original event and separately
+pins `classificationResolution`; known events without a resolution keep their old basis shape.
+All date, amount, account, source-capacity and physical admission checks remain in place.
+Resolution cannot later change, so existing usability/reservation/unmatch rules are unchanged.
+Controlv3 captures effective unknown IDs and compact resolution references without changing
+financial amounts or claiming completeness. See [classification resolution](TAX-ACCOUNT-CLASSIFICATION.md).

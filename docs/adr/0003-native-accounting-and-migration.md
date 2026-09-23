@@ -4,13 +4,15 @@ Status: working decision. Actual company source, history scope and cutover evide
 
 ## Context and decision
 
-OpenERP owns its accounting operations and PostgreSQL ledger. No live legacy accounting connection or actual company export has been established for migration. Build the native product around the existing module boundaries and shared contracts.
+OpenERP owns its accounting operations and PostgreSQL ledger. No live previous accounting-system connection or actual company export has been established for migration. Build the native product around the existing module boundaries and shared contracts.
+
+The undeployed schema admits only `native` book authority. Exact bank matches and reviewed partial allocations are both native paths; reversal targets name the former `exact_match`. No deployed database or client requires an older identifier.
 
 Treat company-data migration as a separate, explicit workflow. Select an adapter only after inspecting the actual source system, version, permitted export and retained relationships. A bridge requires a demonstrated coexistence need; it is not a prerequisite for native accounting.
 
 ## Alternatives and consequences
 
-A speculative legacy adapter adds a second authority boundary without a known caller. Permanent dual posting creates competing books and ambiguous recovery. The first company instead uses the rehearsed offline cutover selected in [ADR 0004](0004-complete-accounting-delivery-contract.md).
+A speculative previous-system adapter adds a second authority boundary without a known caller. Permanent dual posting creates competing books and ambiguous recovery. The first company instead uses the rehearsed offline cutover selected in [ADR 0004](0004-complete-accounting-delivery-contract.md).
 
 Prefer complete available history with original identifiers, evidence, matches, corrections, unpaid items, schedules and filing receipts. Declare any reduced-history scope and the information it cannot reconstruct. Historical movements and an opening balance representing those movements must never both contribute to the same balance.
 

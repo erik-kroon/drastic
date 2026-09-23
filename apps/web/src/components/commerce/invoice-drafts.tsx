@@ -16,7 +16,7 @@ import {
   PageEmpty,
   RegisterFilters,
   RegisterSearch,
-  RecordToggle,
+  RecordOpen,
   PageCaption,
 } from "@open-erp/ui/components/accounting-page";
 import {
@@ -145,9 +145,9 @@ export function InvoiceDrafts(
               rows={items.map((record) => ({
                 id: record.id,
                 cells: [
-                  <RecordToggle key="open" expanded={false} onClick={() => select(record.id)}>
+                  <RecordOpen key="open" onClick={() => select(record.id)}>
                     {record.title}
-                  </RecordToggle>,
+                  </RecordOpen>,
                   record.customerName,
                   new Intl.DateTimeFormat(props.locale, { dateStyle: "medium" }).format(
                     new Date(record.createdAt),

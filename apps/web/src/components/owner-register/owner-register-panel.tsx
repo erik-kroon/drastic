@@ -5,6 +5,10 @@ import * as Owners from "@open-erp/contracts/owner-register";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
+import { ChoiceField } from "@open-erp/ui/components/choice-field";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@open-erp/ui/components/tabs";
+import { RecordOpen } from "@open-erp/ui/components/accounting-page";
+import { formatMinorAmount } from "@/lib/workspace-api";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -69,7 +73,7 @@ function useOwnerRead<S extends Schema.Top & { readonly DecodingServices: never 
 }
 function Nature({ locale }: Pick<Props, "locale">) {
   return (
-    <SelectField
+    <ChoiceField
       name="dataNature"
       required
       defaultValue="company_record"
@@ -121,7 +125,7 @@ function RevisionFields({
         )}
         options={labels.map(([key, en, sv]) => ({ value: key, label: words(locale, en, sv) }))}
       />
-      <SelectField
+      <ChoiceField
         name="origin"
         required
         defaultValue={value?.origin ?? "unknown"}
@@ -193,36 +197,30 @@ function OwnerWorkspace(props: Props) {
           "Ingående balanser och underlagens fullständighet är okända. Ett tillskott innebär inte att återbetalningsrätt har fastställts. Inga betalningar startas här.",
         )}
       </Text>
-      <Details title={words(locale, "1. Owner identities", "1. Ägaridentiteter")}>
-        <OwnerIdentities {...props} />
-      </Details>
-      <Details
-        title={words(
-          locale,
-          "2. Sources and classification review",
-          "2. Underlag och klassificering",
-        )}
-      >
-        <OwnerRecords {...props} />
-      </Details>
-      <Details
-        title={words(
-          locale,
-          "3. Reimbursement and loan allocation",
-          "3. Fördelning av ersättning och lån",
-        )}
-      >
-        <OwnerAllocations {...props} />
-      </Details>
-      <Details
-        title={words(
-          locale,
-          "4. Opening and movement controls",
-          "4. Kontroller av ingående belopp och rörelser",
-        )}
-      >
-        <OwnerControls {...props} />
-      </Details>
+      <Tabs defaultValue="sources">
+        <TabsList>
+          <TabsTrigger value="sources">{words(locale, "Sources", "Underlag")}</TabsTrigger>
+          <TabsTrigger value="owners">{words(locale, "Owners", "Ägare")}</TabsTrigger>
+          <TabsTrigger value="allocations">
+            {words(locale, "Reimbursements and loans", "Ersättningar och lån")}
+          </TabsTrigger>
+          <TabsTrigger value="controls">
+            {words(locale, "Balance controls", "Saldokontroller")}
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="sources" keepMounted>
+          <OwnerRecords {...props} />
+        </TabsContent>
+        <TabsContent value="owners" keepMounted>
+          <OwnerIdentities {...props} />
+        </TabsContent>
+        <TabsContent value="allocations" keepMounted>
+          <OwnerAllocations {...props} />
+        </TabsContent>
+        <TabsContent value="controls" keepMounted>
+          <OwnerControls {...props} />
+        </TabsContent>
+      </Tabs>
       <Details title={words(locale, "Recover a saved command", "Återställ ett sparat kommando")}>
         <OwnerRecovery {...props} />
       </Details>
@@ -378,7 +376,7 @@ function OwnerRecords(props: Props) {
                 "Stabil identitet för källhändelsen",
               )}
             />
-            <SelectField
+            <ChoiceField
               name="sourceKind"
               required
               label={words(locale, "Source kind", "Underlagstyp")}
@@ -488,11 +486,7 @@ function OwnerRecords(props: Props) {
             { id: "source", label: words(locale, "Source", "Underlag") },
             {
               id: "amount",
-              label: words(
-                locale,
-                "Original amount / currency / scale",
-                "Ursprungligt belopp / valuta / skala",
-              ),
+              label: words(locale, "Amount", "Belopp"),
               numeric: true,
             },
             { id: "review", label: words(locale, "Review", "Granskning") },
@@ -501,11 +495,13 @@ function OwnerRecords(props: Props) {
           rows={page.data.items.map((record) => ({
             id: record.source.id,
             cells: [
-              `${record.source.ownerName} · ${record.source.sourceKey}`,
-              `${record.source.amountMinor} ${record.source.currency} / ${record.source.currencyScale}`,
+              <RecordOpen key="source" onClick={() => setId(record.source.id)}>
+                {record.currentRevision.description} · {record.source.ownerName}
+              </RecordOpen>,
+              `${formatMinorAmount(record.source.amountMinor, record.source.currencyScale, locale)} ${record.source.currency}`,
               `${record.currentRevision.classification} · ${record.review ? words(locale, "Operator reviewed", "Operatörsgranskad") : words(locale, "Not reviewed", "Inte granskad")}`,
               <Button size="xl" variant="outline" onClick={() => setId(record.source.id)}>
-                {record.source.id}
+                {words(locale, "Review", "Granska")}
               </Button>,
             ],
           }))}
@@ -554,8 +550,13 @@ function OwnerRecordDetail(props: Props & { id: string }) {
       {view.data ? (
         <>
           <Text>
-            {view.data.currentRevision.description} · {view.data.source.amountMinor}{" "}
-            {view.data.source.currency} / {view.data.source.currencyScale}
+            {view.data.currentRevision.description} ·{" "}
+            {formatMinorAmount(
+              view.data.source.amountMinor,
+              view.data.source.currencyScale,
+              locale,
+            )}{" "}
+            {view.data.source.currency}
           </Text>
           <Text>
             {words(locale, "Classification / origin:", "Klassificering / ursprung:")}{" "}
@@ -951,7 +952,8 @@ function OwnerAllocationReview(props: Props & { id: string }) {
   );
   const plan = view.data?.plan;
   const approval = view.data?.approval;
-  const currentnessKnown = view.isSuccess && view.fetchStatus === "idle" && view.isFetchedAfterMount;
+  const currentnessKnown =
+    view.isSuccess && view.fetchStatus === "idle" && view.isFetchedAfterMount;
   const actionable =
     currentnessKnown && view.data?.dependenciesCurrent === true && !view.data.application;
   return (
@@ -1111,7 +1113,8 @@ function OwnerControls(props: Props) {
   const [id, setId] = useState("");
   const view = useOwnerRead(props, `/controls/${encodeURIComponent(id)}`, Owners.ControlView, !!id);
   const snapshot = view.data?.snapshot;
-  const currentnessKnown = view.isSuccess && view.fetchStatus === "idle" && view.isFetchedAfterMount;
+  const currentnessKnown =
+    view.isSuccess && view.fetchStatus === "idle" && view.isFetchedAfterMount;
   return (
     <Box display="grid" gap="lg">
       <Text>

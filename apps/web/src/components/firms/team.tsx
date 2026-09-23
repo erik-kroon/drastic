@@ -4,7 +4,8 @@ import { Button } from "@open-erp/ui/components/button";
 import { Badge } from "@open-erp/ui/components/badge";
 import { Box } from "@open-erp/ui/components/box";
 import { DataTable } from "@open-erp/ui/components/data-table";
-import { InputField, SelectField } from "@open-erp/ui/components/field";
+import { InputField } from "@open-erp/ui/components/field";
+import { ChoiceField } from "@open-erp/ui/components/choice-field";
 import { RecordHeading } from "@open-erp/ui/components/record-layout";
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
 import { formText, FirmForm } from "./form";
@@ -116,7 +117,7 @@ export function FirmTeam({
               autoComplete="off"
             />
           ) : null}
-          <SelectField
+          <ChoiceField
             name="role"
             label={sv ? "Byråroll" : "Firm role"}
             defaultValue={editing.member?.role ?? "accountant"}
@@ -125,15 +126,19 @@ export function FirmTeam({
               { value: "admin", label: sv ? "Administratör" : "Administrator" },
             ]}
           />
-          <SelectField
-            name="active"
-            label={sv ? "Medlemskap" : "Membership"}
-            defaultValue={String(editing.member?.active ?? true)}
-            options={[
-              { value: "true", label: sv ? "Aktiv" : "Active" },
-              { value: "false", label: sv ? "Ta bort från byrån" : "Remove from firm" },
-            ]}
-          />
+          {editing.member ? (
+            <ChoiceField
+              name="active"
+              label={sv ? "Medlemskap" : "Membership"}
+              defaultValue={String(editing.member?.active ?? true)}
+              options={[
+                { value: "true", label: sv ? "Aktiv" : "Active" },
+                { value: "false", label: sv ? "Ta bort från byrån" : "Remove from firm" },
+              ]}
+            />
+          ) : (
+            <input type="hidden" name="active" value="true" />
+          )}
           <PageCaption>
             {sv
               ? "Personen behöver ett befintligt inloggningskonto. Administratörer kan hantera team och klientkopplingar. Företagens bokbehörigheter ändras inte."

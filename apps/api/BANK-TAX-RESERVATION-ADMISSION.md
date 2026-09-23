@@ -47,8 +47,8 @@ with its original amount. Snapshot candidate counts and financial capacity math 
 
 0500 prepare/approve/execute still authorize, lock and replay successful commands before the
 changed admission owners run.1300 historical reads retain execution/unmatch bodies even after
-release or subsequent tax reservation. Legacy exact matching/imports remain atomic and use the
-existing4100 insert fence; this packet adds no duplicate legacy mutation guard.
+release or subsequent tax reservation. Exact matching and imports remain atomic and use the
+existing4100 insert fence; this packet adds no duplicate mutation guard.
 
 ## Source checks
 

@@ -4,8 +4,8 @@ export function bankUnmatchCopy(locale: Locale) {
   return locale === "sv" ? {
     title: "Ångra bankmatchning",
     help: "Återställ matchningsutrymme utan att ändra bokföring eller fakturabetalningar. Ursprungliga matchningar och kvitton sparas. Hela fördelningen ångras tillsammans.",
-    legacyHelp: "En ångrad exakt matchning måste matchas igen via en ny granskad fördelning. Gamla matchningsidentiteter återanvänds inte.",
-    target: "Matchningstyp", allocation: "Granskad fördelning", legacy: "Tidigare exakt matchning",
+    exactMatchHelp: "En ångrad exakt matchning måste matchas igen via en ny granskad fördelning. Gamla matchningsidentiteter återanvänds inte.",
+    target: "Matchningstyp", allocation: "Granskad fördelning", exactMatch: "Exakt matchning",
     allocationId: "Fördelningsplanens ID", statement: "Kontoutdragets ID", ordinal: "Radnummer",
     reason: "Orsak", prepare: "Förbered ångring", invalid: "Ange en giltig matchning och en orsak.",
     saved: "Sparade ångringsplaner", empty: "Inga ångringsplaner finns på den här sidan.",
@@ -26,8 +26,8 @@ export function bankUnmatchCopy(locale: Locale) {
   } : {
     title: "Undo bank matching",
     help: "Release matching capacity without changing journal entries or invoice payments. Original matches and receipts remain saved. Every leg of an allocation is undone together.",
-    legacyHelp: "After undoing an exact match, rematch through a new reviewed allocation. Old exact-match identities cannot be reused.",
-    target: "Match type", allocation: "Reviewed allocation", legacy: "Retained exact match",
+    exactMatchHelp: "After undoing an exact match, rematch through a new reviewed allocation. Old exact-match identities cannot be reused.",
+    target: "Match type", allocation: "Reviewed allocation", exactMatch: "Exact match",
     allocationId: "Allocation plan ID", statement: "Statement ID", ordinal: "Row number",
     reason: "Reason", prepare: "Prepare unmatch", invalid: "Enter a valid match identity and a reason.",
     saved: "Saved unmatch plans", empty: "There are no saved unmatch plans on this page.",

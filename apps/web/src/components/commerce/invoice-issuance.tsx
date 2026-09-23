@@ -8,7 +8,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { RecordHeading, RecordSplit, RecordSection } from "@open-erp/ui/components/record-layout";
-import { PageAction, PageCaption, RecordToggle } from "@open-erp/ui/components/accounting-page";
+import { PageAction, PageCaption, RecordOpen } from "@open-erp/ui/components/accounting-page";
 import { workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { Heading, Text } from "@open-erp/ui/components/typography";
@@ -213,9 +213,9 @@ function IssueDraft(props: CommerceProps & { id: string; onOpen: (id: string) =>
             rows={history.data.items.map((item) => ({
               id: item.id,
               cells: [
-                <RecordToggle key="open" expanded={false} onClick={() => props.onOpen(item.id)}>
+                <RecordOpen key="open" onClick={() => props.onOpen(item.id)}>
                   {copy.review} · {item.draftRevision}
-                </RecordToggle>,
+                </RecordOpen>,
                 item.draftRevision,
                 new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
                   new Date(item.createdAt),

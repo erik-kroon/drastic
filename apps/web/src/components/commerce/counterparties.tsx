@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Commerce from "@open-erp/contracts/commerce";
 import { Plus, ArrowLeft } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
-import { SelectField } from "@open-erp/ui/components/field";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Text } from "@open-erp/ui/components/typography";
 import { Badge } from "@open-erp/ui/components/badge";
@@ -12,8 +11,9 @@ import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import {
   PageEmpty,
   RegisterFilters,
+  RegisterChoices,
   RegisterSearch,
-  RecordToggle,
+  RecordOpen,
   PageCaption,
 } from "@open-erp/ui/components/accounting-page";
 import {
@@ -29,7 +29,6 @@ import {
   Details,
   Evidence,
   Facts,
-  Pager,
   checkScope,
   commerceKey,
   commercePath,
@@ -37,28 +36,33 @@ import {
 } from "./shared";
 
 export function Counterparties(
-  props: CommerceProps & { recordId?: string; onOpen?: (id: string) => void },
+  props: CommerceProps & {
+    recordId?: string;
+    onOpen?: (id: string) => void;
+    defaultRole?: "customer" | "supplier";
+  },
 ) {
   const { book, locale } = props;
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
-  const [after, setAfter] = useState("");
   const [local, setLocal] = useState("");
   const [search, setSearch] = useState("");
-  const [role, setRole] = useState("");
+  const [role, setRole] = useState(props.defaultRole ?? "");
   const selected = props.recordId ?? local;
   const select = props.onOpen ?? setLocal;
-  const page = useQuery({
-    queryKey: [...commerceKey(book), "counterparties", after],
-    queryFn: async ({ signal }) => {
+  const page = useInfiniteQuery({
+    queryKey: [...commerceKey(book), "counterparty-register"],
+    initialPageParam: "",
+    queryFn: async ({ signal, pageParam }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/counterparties${after ? `?after=${encodeURIComponent(after)}` : ""}`,
+        `${commercePath(book)}/counterparties${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
         Commerce.CounterpartyPage,
         { signal },
       );
       result.items.forEach((party) => checkScope(book, party.scope));
       return result;
     },
+    getNextPageParam: (last) => last.next ?? undefined,
     retry: false,
   });
   const roles = {
@@ -67,13 +71,15 @@ export function Counterparties(
     both: labels.customerSupplier,
   };
   const items =
-    page.data?.items.filter(
-      (party) =>
-        (!role || party.role === role || party.role === "both") &&
-        `${party.displayName} ${party.externalKey}`
-          .toLocaleLowerCase(locale)
-          .includes(search.toLocaleLowerCase(locale)),
-    ) ?? [];
+    page.data?.pages
+      .flatMap((batch) => batch.items)
+      .filter(
+        (party) =>
+          (!role || party.role === role || party.role === "both") &&
+          `${party.displayName} ${party.externalKey}`
+            .toLocaleLowerCase(locale)
+            .includes(search.toLocaleLowerCase(locale)),
+      ) ?? [];
   if (selected && selected !== "new")
     return (
       <Box display="grid" gap="xl">
@@ -89,7 +95,17 @@ export function Counterparties(
   return (
     <Box display="grid" gap="xl">
       <RecordHeading
-        title={labels.customersSuppliers}
+        title={
+          role === "customer"
+            ? sv
+              ? "Kunder"
+              : "Customers"
+            : role === "supplier"
+              ? sv
+                ? "Leverantörer"
+                : "Suppliers"
+              : labels.customersSuppliers
+        }
         subtitle={labels.yourContactsAndTheirSource}
         action={
           <Button onClick={() => select("new")}>
@@ -105,7 +121,7 @@ export function Counterparties(
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <SelectField
+        <RegisterChoices
           label={labels.contactType}
           value={role}
           onValueChange={(value) => setRole(value ?? "")}
@@ -131,9 +147,9 @@ export function Counterparties(
               rows={items.map((party) => ({
                 id: party.id,
                 cells: [
-                  <RecordToggle key="name" expanded={false} onClick={() => select(party.id)}>
+                  <RecordOpen key="name" onClick={() => select(party.id)}>
                     {party.displayName}
-                  </RecordToggle>,
+                  </RecordOpen>,
                   <Badge key="role" variant="secondary">
                     {roles[party.role]}
                   </Badge>,
@@ -147,12 +163,38 @@ export function Counterparties(
               detail={labels.addCustomersAndSuppliersTo}
             />
           )}
-          <Pager locale={locale} first={!after} next={page.data.next} onPage={setAfter} />
+          {page.hasNextPage ? (
+            <Box display="grid" gap="sm">
+              <PageCaption>
+                {sv
+                  ? "Sökningen gäller inlästa kontakter. Läs in fler för att utöka sökningen."
+                  : "Search covers loaded contacts. Load more to extend the search."}
+              </PageCaption>
+              <Box>
+                <Button
+                  variant="outline"
+                  disabled={page.isFetchingNextPage}
+                  onClick={() => void page.fetchNextPage()}
+                >
+                  {sv ? "Läs in fler kontakter" : "Load more contacts"}
+                </Button>
+              </Box>
+            </Box>
+          ) : null}
         </>
       ) : null}
       {selected === "new" ? (
-        <FormDialog title={labels.newContact} closeLabel={labels.close} onClose={() => select("")}>
-          <ContactEditor {...props} onSaved={(party) => select(party.id)} />
+        <FormDialog
+          size="compact"
+          title={labels.newContact}
+          closeLabel={labels.close}
+          onClose={() => select("")}
+        >
+          <ContactEditor
+            {...props}
+            defaultRole={role === "supplier" ? "supplier" : "customer"}
+            onSaved={(party) => select(party.id)}
+          />
         </FormDialog>
       ) : null}
     </Box>
@@ -215,6 +257,7 @@ function ContactDetail(props: CommerceProps & { id: string }) {
           {editing ? (
             <FormDialog
               title={labels.editContact}
+              size="compact"
               closeLabel={labels.close}
               onClose={() => setEditing(false)}
             >

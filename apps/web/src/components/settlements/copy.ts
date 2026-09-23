@@ -65,7 +65,7 @@ const en = {
   approvalExpires: "Approval expires",
   operator: "An operator must approve this exact plan before execution.",
   newReport: "Create another report",
-  legacyMatches: "Retained legacy exact matches",
+  exactMatches: "Retained exact matches",
   details: "Saved provenance",
   leg: "Allocation leg",
 };
@@ -134,7 +134,7 @@ const sv: typeof en = {
   approvalExpires: "Godkännandet löper ut",
   operator: "En operatör måste godkänna den exakta planen före verkställande.",
   newReport: "Skapa en ny rapport",
-  legacyMatches: "Bevarade exakta matchningar",
+  exactMatches: "Bevarade exakta matchningar",
   details: "Sparad proveniens",
   leg: "Fördelningsrad",
 };

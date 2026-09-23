@@ -51,7 +51,7 @@ export function amount(value: string | null, scale: number) {
 /** Pure fixed English/UTF-8/LF rendering. No current-state reads, clock, locale or assets. */
 export function renderInvoiceReviewDocument(capture: typeof Documents.InvoiceDocumentCapture.Type) {
   if (
-    (capture.generatorVersion !== Documents.invoiceDocumentLegacyGenerator &&
+    (capture.generatorVersion !== Documents.invoiceDocumentV1Generator &&
       capture.generatorVersion !== Documents.invoiceDocumentGenerator) ||
     capture.language !== "en" ||
     capture.format !== "synthetic-invoice-review-html"

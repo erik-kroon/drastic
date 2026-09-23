@@ -12,18 +12,32 @@ import type { Locale } from "@/paraglide/runtime";
 import { ArrowLeft, Plus } from "lucide-react";
 import { RecordHeading, RecordSection } from "@open-erp/ui/components/record-layout";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
-import { PageEmpty, RecordToggle, PageCaption } from "@open-erp/ui/components/accounting-page";
+import { PageEmpty, PageCaption } from "@open-erp/ui/components/accounting-page";
 import { vatCopy } from "./copy";
 import { VatDraftForm, VatFactForm } from "./forms";
 import { VatDraftView, VatFactSummary } from "./views";
 
-type Props = { open?: boolean; book: typeof Accounting.Book.Type; locale: Locale };
-export function VatReturnsPanel({ book, locale }: Props) {
+type Props = {
+  recordId?: string;
+  onOpen?: (id: string) => void;
+  open?: boolean;
+  book: typeof Accounting.Book.Type;
+  locale: Locale;
+};
+export function VatReturnsPanel(props: Props) {
+  const { book, locale } = props;
   const copy = vatCopy(locale);
   const sv = locale === "sv";
   const client = useQueryClient();
   const [creating, setCreating] = useState<"fact" | "draft" | null>(null);
-  const [selected, setSelected] = useState<{ kind: "fact" | "draft"; id: string } | null>(null);
+  const [localRecord, setLocalRecord] = useState("");
+  const record = props.recordId ?? localRecord;
+  const select = props.onOpen ?? setLocalRecord;
+  const selected = record.startsWith("fact:")
+    ? { kind: "fact", id: record.slice(5) }
+    : record.startsWith("draft:")
+      ? { kind: "draft", id: record.slice(6) }
+      : null;
   const basis = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "basis"],
     queryFn: ({ signal }) =>
@@ -38,14 +52,14 @@ export function VatReturnsPanel({ book, locale }: Props) {
   });
   const saved = (kind: "fact" | "draft", id: string) => {
     setCreating(null);
-    setSelected({ kind, id });
+    select(`${kind}:${id}`);
     void client.invalidateQueries({ queryKey: [...bookKey(book), "vat-returns"] });
   };
   if (selected)
     return (
       <Box display="grid" gap="xl">
         <Box>
-          <Button variant="ghost" onClick={() => setSelected(null)}>
+          <Button variant="ghost" onClick={() => select("")}>
             <ArrowLeft size={14} />
             {sv ? "Alla momsunderlag" : "All VAT work"}
           </Button>
@@ -93,13 +107,9 @@ export function VatReturnsPanel({ book, locale }: Props) {
               rows={drafts.data.items.map((draft) => ({
                 id: draft.id,
                 cells: [
-                  <RecordToggle
-                    key="open"
-                    expanded={false}
-                    onClick={() => setSelected({ kind: "draft", id: draft.id })}
-                  >
+                  <Button key="open" variant="ghost" onClick={() => select(`draft:${draft.id}`)}>
                     {draft.input.startsOn} – {draft.input.endsOn}
-                  </RecordToggle>,
+                  </Button>,
                   draft.input.mode === "actual_review" ? copy.actual : copy.synthetic,
                 ],
               }))}
@@ -140,13 +150,9 @@ export function VatReturnsPanel({ book, locale }: Props) {
               rows={basis.data.facts.map(({ fact }) => ({
                 id: fact.factId,
                 cells: [
-                  <RecordToggle
-                    key="open"
-                    expanded={false}
-                    onClick={() => setSelected({ kind: "fact", id: fact.factId })}
-                  >
+                  <Button key="open" variant="ghost" onClick={() => select(`fact:${fact.factId}`)}>
                     {fact.input.description}
-                  </RecordToggle>,
+                  </Button>,
                   fact.input.recordClass === "synthetic" ? copy.synthetic : copy.actual,
                 ],
               }))}
@@ -159,6 +165,7 @@ export function VatReturnsPanel({ book, locale }: Props) {
       <PageCaption>{copy.boundary}</PageCaption>
       {creating ? (
         <FormDialog
+          size={creating === "draft" ? "compact" : "wide"}
           title={creating === "fact" ? copy.create : copy.prepare}
           closeLabel={copy.cancel}
           onClose={() => setCreating(null)}
@@ -180,6 +187,7 @@ function FactDetail({
   onSaved,
 }: Props & { id: string; onSaved: (id: string) => void }) {
   const copy = vatCopy(locale);
+  const [revision, setRevision] = useState<string | null>(null);
   const [editing, setEditing] = useState<typeof Vat.VatFact.Type | null>(null);
   const result = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "fact", id],
@@ -193,43 +201,55 @@ function FactDetail({
       <AccountingStatus locale={locale} pending={result.isPending} error={result.error} />
       {view ? (
         <>
-          <VatFactSummary book={book} locale={locale} fact={view.current} />
-          {book.role === "operator" ? (
-            <Box>
-              <Button
-                size="xl"
-                variant="outline"
-                onClick={() => setEditing(editing ? null : view.current)}
-              >
-                {editing ? copy.cancel : copy.revise}
-              </Button>
-            </Box>
-          ) : null}
+          <VatFactSummary
+            book={book}
+            locale={locale}
+            fact={view.current}
+            action={
+              book.role === "operator" ? (
+                <Button variant="outline" onClick={() => setEditing(view.current)}>
+                  {copy.revise}
+                </Button>
+              ) : null
+            }
+          />
           {editing ? (
-            <VatFactForm
-              key={editing.digest}
-              book={book}
-              locale={locale}
-              current={editing}
-              onSaved={(fact) => {
-                setEditing(null);
-                onSaved(fact);
-              }}
-            />
+            <FormDialog
+              title={copy.revise}
+              closeLabel={copy.cancel}
+              onClose={() => setEditing(null)}
+            >
+              <VatFactForm
+                key={editing.digest}
+                book={book}
+                locale={locale}
+                current={editing}
+                onSaved={(fact) => {
+                  setEditing(null);
+                  onSaved(fact);
+                }}
+              />
+            </FormDialog>
           ) : null}
-          <details>
-            <summary>{copy.factHistory}</summary>
-            <Box display="grid" gap="lg" paddingBlock="lg" minWidth="zero">
+          <RecordSection title={copy.factHistory}>
+            <Box display="flex" gap="sm" flexWrap="wrap">
               {view.history.map((fact) => (
-                <details key={fact.id}>
-                  <summary>
-                    {fact.revision} · {fact.recordedAt} · {fact.receipt.actorId}
-                  </summary>
-                  <VatFactSummary book={book} locale={locale} fact={fact} />
-                </details>
+                <Button
+                  key={fact.id}
+                  variant={revision === fact.id ? "secondary" : "outline"}
+                  onClick={() => setRevision(revision === fact.id ? null : fact.id)}
+                >
+                  {locale === "sv" ? "Version" : "Revision"} {fact.revision} ·{" "}
+                  {new Date(fact.recordedAt).toLocaleDateString(locale)}
+                </Button>
               ))}
             </Box>
-          </details>
+            {view.history
+              .filter((fact) => fact.id === revision)
+              .map((fact) => (
+                <VatFactSummary key={fact.id} book={book} locale={locale} fact={fact} />
+              ))}
+          </RecordSection>
         </>
       ) : null}
     </Box>

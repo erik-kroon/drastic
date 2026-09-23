@@ -6,7 +6,7 @@ import { amount, text, renderInvoiceReviewDocument } from "./invoice-document-re
 /** Versioned, self-contained historical invoice. The original renderer remains byte-stable. */
 export function renderInvoiceDocument(capture: typeof Documents.InvoiceDocumentCapture.Type) {
   const reviewBytes = renderInvoiceReviewDocument(capture);
-  if (capture.generatorVersion === Documents.invoiceDocumentLegacyGenerator) return reviewBytes;
+  if (capture.generatorVersion === Documents.invoiceDocumentV1Generator) return reviewBytes;
   const { issue, review } = capture.source;
   const draft = review.draftSnapshot;
   const content = draft.content;

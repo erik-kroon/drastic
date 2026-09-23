@@ -191,7 +191,7 @@ private helpers, runtime EXECUTE-only grants and the ordinary shared Effect/Driz
 No test, fixture, format/lint/type/build command, migration, database, server, browser, external
 service or deployment was run. SQL/TypeScript/runtime behavior and rendered usability remain
 unverified.1500 must follow0600 commerce helpers,0700 schedules and the existing admission kernel.
-The referenced methods/exports are composed by the root. Reports → Asset controls and the legacy accounting workspace mount the panel under the existing book boundary.
+The referenced methods/exports are composed by the root. Reports → Asset controls and the accounting tools workspace mount the panel under the existing book boundary.
 
 ##1510 closing/review dependency follow-up — acceptance before implementation
 

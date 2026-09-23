@@ -20,7 +20,7 @@ CREATE TABLE openerp.books (
   profile text NOT NULL,
   profile_version bigint NOT NULL DEFAULT 1,
   writer_epoch bigint NOT NULL DEFAULT 1,
-  authority text NOT NULL DEFAULT 'native' CHECK (authority IN ('native', 'legacy')),
+  authority text NOT NULL DEFAULT 'native' CHECK (authority = 'native'),
   committed_sequence bigint NOT NULL DEFAULT 0 CHECK (committed_sequence >= 0),
   UNIQUE (entity_id, id)
 );

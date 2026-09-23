@@ -1,54 +1,139 @@
-import { useRef } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Reports from "@open-erp/contracts/reports";
-import { ArrowLeft, BookOpen, FileSpreadsheet, FileText, ListChecks } from "lucide-react";
+import {
+  ArrowLeft,
+  BookOpen,
+  FileSpreadsheet,
+  FileText,
+  ListChecks,
+  Calculator,
+  ArrowLeftRight,
+} from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
+import { FormDialog } from "@open-erp/ui/components/form-dialog";
+import { DataTable } from "@open-erp/ui/components/data-table";
+import { RecordOpen } from "@open-erp/ui/components/accounting-page";
 import { InputField } from "@open-erp/ui/components/field";
 import { RecordHeading, RecordSection } from "@open-erp/ui/components/record-layout";
-import { TaskSection, TaskRow, PageCaption } from "@open-erp/ui/components/accounting-page";
+import {
+  TaskSection,
+  TaskRow,
+  PageCaption,
+  PageEmpty,
+  RegisterSearch,
+} from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "@/components/accounting-status";
 import { TrialBalance } from "@/components/trial-balance";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import { bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 
 export function ReportLibrary() {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
   const base = `${workspacePath(book)}/reports`;
+  const [search, setSearch] = useState("");
+  const sections = [
+    {
+      title: labels.accounting,
+      items: [
+        {
+          view: "trial",
+          title: labels.trialBalance,
+          detail: labels.openingBalancesPeriodMovementsAnd,
+          icon: FileSpreadsheet,
+        },
+        {
+          view: "ledger",
+          title: labels.generalLedger,
+          detail: labels.currentDebitsCreditsAndBalances,
+          icon: BookOpen,
+        },
+      ],
+    },
+    {
+      title: labels.reconciliationHandoff,
+      items: [
+        {
+          view: "register",
+          title: labels.invoiceRegisterReport,
+          detail: labels.outstandingInvoicesAndTheirControl,
+          icon: ListChecks,
+        },
+        {
+          view: "export",
+          title: labels.accountantReviewPack,
+          detail: labels.collectReportsSourceRecordsAnd,
+          icon: FileText,
+        },
+      ],
+    },
+    {
+      title: sv ? "Tillgångar och valuta" : "Assets and currencies",
+      items: [
+        {
+          view: "subledgers",
+          title: sv ? "Tillgångar och periodiseringar" : "Assets and deferrals",
+          detail: sv
+            ? "Planer, bokförda värden och avstämning mot huvudboken."
+            : "Schedules, carrying values and comparison with the ledger.",
+          icon: Calculator,
+        },
+        {
+          view: "exchange-rates",
+          title: sv ? "Valutakurser och omräkning" : "Exchange rates and conversions",
+          detail: sv
+            ? "Granskade kurser och sparade omräkningsunderlag."
+            : "Reviewed rates and retained currency conversions.",
+          icon: ArrowLeftRight,
+        },
+      ],
+    },
+  ]
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) =>
+        `${item.title} ${item.detail}`
+          .toLocaleLowerCase(locale)
+          .includes(search.trim().toLocaleLowerCase(locale)),
+      ),
+    }))
+    .filter((section) => section.items.length);
   return (
     <Box display="grid" gap="xl">
       <RecordHeading title={labels.reports} subtitle={labels.fromTheNumbersToThe} />
-      <TaskSection title={labels.accounting}>
-        <TaskRow
-          href={`${base}?view=trial`}
-          icon={<FileSpreadsheet size={16} strokeWidth={1.5} />}
-          title={labels.trialBalance}
-          detail={labels.openingBalancesPeriodMovementsAnd}
+      <RegisterSearch
+        aria-label={sv ? "Sök rapport" : "Search reports"}
+        placeholder={sv ? "Sök rapport…" : "Search reports…"}
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+      />
+      {sections.map((section) => (
+        <TaskSection key={section.title} title={section.title}>
+          {section.items.map((item) => (
+            <TaskRow
+              key={item.view}
+              href={`${base}?view=${item.view}`}
+              icon={<item.icon size={16} strokeWidth={1.5} />}
+              title={item.title}
+              detail={item.detail}
+            />
+          ))}
+        </TaskSection>
+      ))}
+      {!sections.length ? (
+        <PageEmpty
+          title={sv ? "Inga matchande rapporter" : "No matching reports"}
+          detail={
+            sv
+              ? "Prova att söka på konto, faktura eller tillgång."
+              : "Try searching for an account, invoice or asset."
+          }
         />
-        <TaskRow
-          href={`${base}?view=ledger`}
-          icon={<BookOpen size={16} strokeWidth={1.5} />}
-          title={labels.generalLedger}
-          detail={labels.currentDebitsCreditsAndBalances}
-        />
-      </TaskSection>
-      <TaskSection title={labels.reconciliationHandoff}>
-        <TaskRow
-          href={`${base}?view=register`}
-          icon={<ListChecks size={16} strokeWidth={1.5} />}
-          title={labels.invoiceRegisterReport}
-          detail={labels.outstandingInvoicesAndTheirControl}
-        />
-        <TaskRow
-          href={`${base}?view=export`}
-          icon={<FileText size={16} strokeWidth={1.5} />}
-          title={labels.accountantReviewPack}
-          detail={labels.collectReportsSourceRecordsAnd}
-        />
-      </TaskSection>
+      ) : null}
       <PageCaption>{labels.reportsCoverRecordedMaterialThey}</PageCaption>
     </Box>
   );
@@ -56,15 +141,32 @@ export function ReportLibrary() {
 export function TrialBalanceWorkspace({
   recordId,
   onOpen,
+  accountId,
+  onSelectAccount,
 }: {
   recordId?: string;
   onOpen: (id: string) => void;
+  accountId?: string;
+  onSelectAccount?: (id: string) => void;
 }) {
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
   const keys = useRef(new Map<string, string>());
   const period = setup.periods.at(-1);
+  const client = useQueryClient();
+  const saved = useInfiniteQuery({
+    queryKey: [...bookKey(book), "report-snapshots"],
+    initialPageParam: "",
+    queryFn: ({ signal, pageParam }) =>
+      readAccounting(
+        `${bookPath(book)}/report-snapshots${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        Reports.ReportSnapshotPage,
+        { signal },
+      ),
+    getNextPageParam: (page) => page.next ?? undefined,
+    retry: false,
+  });
   const prepare = useMutation({
     mutationFn: (input: typeof Reports.PrepareReport.Type) => {
       const path = `${bookPath(book)}/report-snapshots`;
@@ -74,65 +176,141 @@ export function TrialBalanceWorkspace({
         mutationOptions(path, JSON.stringify(input), keys.current),
       );
     },
-    onSuccess: (report) => onOpen(report.id),
+    onSuccess: (report) => {
+      void client.invalidateQueries({ queryKey: [...bookKey(book), "report-snapshots"] });
+      onOpen(report.id);
+    },
   });
-  if (recordId)
+  if (recordId && recordId !== "new")
     return (
       <Box display="grid" gap="xl">
         <Box>
           <Button variant="ghost" onClick={() => onOpen("")}>
             <ArrowLeft size={14} />
-            {labels.choosePeriod}
+            {sv ? "Alla saldobalanser" : "All trial balances"}
           </Button>
         </Box>
-        <TrialBalance book={book} locale={locale} id={recordId} />
+        <TrialBalance book={book} locale={locale} id={recordId} accountId={accountId} onSelectAccount={onSelectAccount} />
       </Box>
     );
   return (
     <Box display="grid" gap="xl">
-      <RecordHeading title={labels.trialBalance} subtitle={labels.createASavedReportFor} />
-      <RecordSection title={labels.reportPeriod}>
-        <Box
-          as="form"
-          display="grid"
-          gap="lg"
-          maxWidth="content"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const fields = new FormData(event.currentTarget);
-            prepare.mutate(
-              Schema.decodeUnknownSync(Reports.PrepareReport)({
-                kind: "trial_balance_v1",
-                startsOn: fields.get("start"),
-                endsOn: fields.get("end"),
-              }),
-            );
-          }}
-        >
-          <Box display="grid" columns={2} gap="lg">
-            <InputField
-              name="start"
-              label={labels.from}
-              type="date"
-              required
-              defaultValue={period?.startsOn}
-            />
-            <InputField
-              name="end"
-              label={labels.to}
-              type="date"
-              required
-              defaultValue={period?.endsOn}
-            />
-          </Box>
-          <Box>
-            <Button type="submit" disabled={prepare.isPending}>
-              {labels.generateReport}
-            </Button>
-          </Box>
-          <AccountingStatus locale={locale} pending={prepare.isPending} error={prepare.error} />
+      <RecordHeading
+        title={labels.trialBalance}
+        subtitle={labels.createASavedReportFor}
+        action={
+          <Button
+            onClick={() => {
+              prepare.reset();
+              keys.current.clear();
+              onOpen("new");
+            }}
+          >
+            {sv ? "Ny saldobalans" : "New trial balance"}
+          </Button>
+        }
+      />
+      <AccountingStatus locale={locale} pending={saved.isPending} error={saved.error} />
+      {saved.isSuccess ? (
+        <DataTable
+          title={labels.trialBalance}
+          columns={[
+            { id: "period", label: labels.reportPeriod },
+            { id: "created", label: sv ? "Sparad" : "Saved" },
+            { id: "vouchers", label: sv ? "Verifikat" : "Vouchers", numeric: true },
+            { id: "status", label: "Status" },
+          ]}
+          rows={saved.data.pages
+            .flatMap((page) => page.items)
+            .map((report) => ({
+              id: report.id,
+              cells: [
+                <RecordOpen key="period" onClick={() => onOpen(report.id)}>
+                  {report.startsOn} – {report.endsOn}
+                </RecordOpen>,
+                new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
+                  new Date(report.createdAt),
+                ),
+                report.voucherCount,
+                report.balanced
+                  ? sv
+                    ? "Balanserad"
+                    : "Balanced"
+                  : sv
+                    ? "Differens"
+                    : "Difference",
+              ],
+            }))}
+        />
+      ) : null}
+      {saved.isSuccess && !saved.data.pages[0]?.items.length ? (
+        <PageEmpty
+          title={sv ? "Inga sparade saldobalanser" : "No saved trial balances"}
+          detail={labels.createASavedReportFor}
+        />
+      ) : null}
+      {saved.hasNextPage ? (
+        <Box>
+          <Button
+            variant="outline"
+            disabled={saved.isFetchingNextPage}
+            onClick={() => void saved.fetchNextPage()}
+          >
+            {sv ? "Läs in fler" : "Load more"}
+          </Button>
         </Box>
-      </RecordSection>
+      ) : null}
+      {recordId === "new" ? (
+        <FormDialog
+          size="compact"
+          title={labels.reportPeriod}
+          closeLabel={sv ? "Stäng" : "Close"}
+          onClose={() => onOpen("")}
+        >
+          <RecordSection title={labels.trialBalance}>
+            <Box
+              as="form"
+              display="grid"
+              gap="lg"
+              maxWidth="content"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const fields = new FormData(event.currentTarget);
+                prepare.mutate(
+                  Schema.decodeUnknownSync(Reports.PrepareReport)({
+                    kind: "trial_balance_v1",
+                    startsOn: fields.get("start"),
+                    endsOn: fields.get("end"),
+                  }),
+                );
+              }}
+            >
+              <Box display="grid" columns={2} gap="lg">
+                <InputField
+                  name="start"
+                  label={labels.from}
+                  type="date"
+                  required
+                  defaultValue={period?.startsOn}
+                />
+                <InputField
+                  name="end"
+                  label={labels.to}
+                  type="date"
+                  required
+                  defaultValue={period?.endsOn}
+                />
+              </Box>
+              <Box>
+                <Button type="submit" disabled={prepare.isPending}>
+                  {labels.generateReport}
+                </Button>
+              </Box>
+              <AccountingStatus locale={locale} pending={prepare.isPending} error={prepare.error} />
+            </Box>
+          </RecordSection>
+        </FormDialog>
+      ) : null}
     </Box>
   );
 }

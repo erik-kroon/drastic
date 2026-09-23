@@ -5,7 +5,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import { BookOpen, CheckSquare, Building2 } from "lucide-react";
 import { Button } from "@open-erp/ui/components/button";
 import { SelectControl } from "@open-erp/ui/components/select";
-import { SelectField } from "@open-erp/ui/components/field";
+import { ChoiceField } from "@open-erp/ui/components/choice-field";
 import { Link } from "@open-erp/ui/components/link";
 import {
   Workspace,
@@ -158,7 +158,7 @@ export function BookWorkspace({
 export function LanguagePreference({ locale }: { locale: Locale }) {
   const copy = accountingCopy(locale);
   return (
-    <SelectField
+    <ChoiceField
       label={copy.language_label}
       value={locale}
       options={[

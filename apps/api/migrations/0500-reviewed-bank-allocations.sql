@@ -60,8 +60,8 @@ LANGUAGE sql STABLE SET search_path=pg_catalog,openerp AS $$
     + coalesce((SELECT sum(a.amount_minor) FROM openerp.bank_allocation_legs a
       WHERE a.book_id=bank_allocated_line.book AND a.voucher_id=bank_allocated_line.voucher AND a.line_id=bank_allocated_line.line),0)
 $$;
--- Keep immutable v1 imports and exact matches, but close their capacity back door.
-CREATE FUNCTION openerp.bank_legacy_allocation_guard() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+-- Exact matches cannot bypass allocation capacity.
+CREATE FUNCTION openerp.bank_exact_match_capacity_guard() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=pg_catalog,openerp AS $$
 BEGIN
   PERFORM 1 FROM openerp.books WHERE id=NEW.book_id FOR UPDATE;
@@ -72,8 +72,8 @@ BEGIN
   END IF;
   RETURN NEW;
 END $$;
-CREATE TRIGGER bank_legacy_capacity BEFORE INSERT ON openerp.bank_matches
-  FOR EACH ROW EXECUTE FUNCTION openerp.bank_legacy_allocation_guard();
+CREATE TRIGGER bank_exact_match_capacity BEFORE INSERT ON openerp.bank_matches
+  FOR EACH ROW EXECUTE FUNCTION openerp.bank_exact_match_capacity_guard();
 
 CREATE FUNCTION openerp.bank_allocation_versions(book text, account text) RETURNS jsonb LANGUAGE plpgsql
 SET search_path=pg_catalog,openerp AS $$
@@ -414,7 +414,7 @@ END $$;
 REVOKE ALL ON openerp.bank_allocation_plans,openerp.bank_allocation_approvals,openerp.bank_allocation_executions,
   openerp.bank_allocation_legs,openerp.bank_capacity_reconciliations FROM PUBLIC,openerp_runtime;
 REVOKE ALL ON FUNCTION openerp.bank_allocated_source(text,text,integer),openerp.bank_allocated_line(text,text,text),
-  openerp.bank_legacy_allocation_guard(),openerp.bank_allocation_versions(text,text),openerp.bank_allocation_snapshot(text,jsonb),
+  openerp.bank_exact_match_capacity_guard(),openerp.bank_allocation_versions(text,text),openerp.bank_allocation_snapshot(text,jsonb),
   openerp.bank_allocation_checked(text,text,jsonb,boolean),openerp.prepare_bank_allocation(text,jsonb,text,jsonb),
   openerp.approve_bank_allocation(text,jsonb,text,text,jsonb),openerp.execute_bank_allocation(text,jsonb,text,text,jsonb),
   openerp.get_bank_allocation(text,jsonb,text),openerp.reconcile_bank_capacity(text,jsonb,text,jsonb),

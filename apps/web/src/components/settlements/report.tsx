@@ -284,7 +284,7 @@ function CapacityReport({
           <details>
             <summary>{copy.details}</summary>
             <Box display="grid" gap="lg" paddingBlock="lg" minWidth="zero">
-              <Heading>{copy.legacyMatches}</Heading>
+              <Heading>{copy.exactMatches}</Heading>
               <BankMatches matches={view.report.matches} locale={locale} />
               {view.report.statements.map((statement) => (
                 <BankStatementDetails

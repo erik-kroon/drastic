@@ -104,7 +104,7 @@ Root integration:
    composes `TaxAfter.fields`. No new route, registry key, handler or capability is required.
 
 The expense contract adds optional metadata to the existing page and item shapes. Unfiltered
-responses do not gain those optional fields. Legacy and filtered cursor formats remain
+responses do not gain those optional fields. Unfiltered and filtered cursor formats remain
 separate; the appropriate SQL branch refuses mode switches.
 
 ## Source review and checks
@@ -113,7 +113,7 @@ Inspected0710 and4500 captured shapes and actual route forwarding before impleme
 Reviewed source/book isolation, withdrawn readability, old unfiltered delegation, NULL/missing
 inputs, mode/source/cutoff cursor binding, observed anchors, fixed-ceiling later inserts,
 window-before-filter behavior, empty-page progress, duplicate membership, stale captured review,
-legacy absent withdrawal metadata and full-response byte refusal. These are source observations,
+previously absent withdrawal metadata and full-response byte refusal. These are source observations,
 not executed paging or concurrency cases.
 
 Owned expense contract and statement module passed Oxlint with zero warnings/errors.

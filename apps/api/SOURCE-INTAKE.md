@@ -283,3 +283,64 @@ only four predicate uses plus the private helper; original0510/3200/3900 files s
 No TypeScript changed, so no owned TypeScript lint/typecheck was needed. No tests/helpers/fixtures,
 SQL compilation/execution/application, runtime/provider/storage access, common wiring/docs, UI,
 dependency/deployment or VCS action was performed. Root retains integration and independent review.
+
+## Key-only retention recovery: failure contract before implementation
+
+A committed `source_retain` response can be lost before its caller receives the generated
+occurrence ID. The public retry requires original bytes even when2700 can recover a completed
+object upload without touching storage. Existing metadata GET requires the missing occurrence
+ID; posting, correction and owner command readers do not accept retention operations.
+Inventory is not exact request-key recovery: a second successful retention command can return
+an existing occurrence whose frozen receipt belongs to the original actor and key.
+
+- Read an existing committed result only. Current scoped authorization and a book SHARE barrier
+  precede exact original-key validation and lookup. Require command receipt book, key, CURRENT
+  actor and operation `retain_source` or `retain_source_object`.
+- Return the existing frozen `SourceOccurrence` result without changing its provenance. Ownership
+  is the command receipt actor, never `result.retainedBy` or the result's original receipt actor/key.
+- Recover both inline and completed object retention without original bytes, file or object store.
+  Never call upload completion, fetch storage, create a receipt or mutate an occurrence.
+- Unknown, foreign-actor/book, unrelated-operation and pending-upload keys cannot disclose a
+  result. NotFound describes absence at this check, not terminal failure or permission for a new
+  key; a late request can still commit.
+- Validate8–128-character request keys using the existing idempotency-key format. Exclude request
+  payload/digest, private object descriptors, preview/approval/admission data and any current
+  availability claim. The two allowed owners already save only safe occurrence metadata.
+- Preserve historical SQL owners, replay, source limits, approval authority and storage behavior.
+  No new artifact, table, generic receipt export, UI workflow or permission expansion beyond the
+  scoped read. SQL/runtime/concurrency observations remain separately authorized gates.
+
+### Implemented6300 read and integration handoff
+
+`6300-source-retention-recovery.sql` adds `recover_source_retention(text,jsonb,text)`.
+`GET /source-retention-requests/:key` and read-only MCP `source_recover_retention` return the
+existing `SourceOccurrence` schema. The input is only current scope and original request key.
+The recovered ID can then address the existing metadata or original-content getter.
+
+The read selects `command_receipts.result` only for the current actor, exact book/key and the
+`retain_source` / `retain_source_object` operation allowlist. It returns that saved JSON unchanged.
+A successful duplicate-retention command can therefore recover an occurrence whose retainedBy
+and original receipt belong to a different actor/key; those fields remain historical provenance.
+No current approval, admission, preview state or original-availability claim is appended.
+
+Only committed command receipts count. A pending `source_uploads` row is not completion and is
+never completed by this read. Unknown keys, another actor's keys and unrelated receipt families
+produce the same NotFound message: absence is non-final and is not permission to use a new key.
+The scoped book SHARE barrier makes lookup consistent with the existing book-write workflow;
+it does not prevent a later request from committing after this read ends.
+
+The existing `SourceIntakeApi`, `SourceIntakeHandlers`, `SourceIntakeCapabilities` and
+`sourceIntakeStatements` maps contain the additions. No new module export or shared API/query
+composition is required. Root owns the application capability binding:
+
+```ts
+source_recover_retention: bindCapability(Capabilities.source_recover_retention, "recoverSourceRetention", (input) => [
+  scopeParameter(input.scope), input.key,
+]),
+```
+
+No application/storage adapter, historical migration, generic receipt reader or UI changed.
+Owned formatting/lint and source inspection are static checks only. Runtime observations remain
+pending for lost inline/object-retention responses, duplicate existing occurrences with new
+actor/key provenance, pending and late uploads, unrelated/foreign keys and unavailable storage.
+No tests, SQL compilation/application, provider operations or runtime observations were run.

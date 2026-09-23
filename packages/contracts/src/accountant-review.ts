@@ -240,7 +240,11 @@ export const ReviewPack = Schema.Struct({
   }),
   companyCompleteness: Schema.Literal("not_established"),
   statutoryReady: Schema.Literal(false),
-  generatorVersion: Schema.Literals(["accountant-review-v1", "accountant-review-v2", "accountant-review-v3"]),
+  generatorVersion: Schema.Literals([
+    "accountant-review-v1",
+    "accountant-review-v2",
+    "accountant-review-v3",
+  ]),
   createdBy: Accounting.Identifier,
   createdAt: Schema.String,
 });
@@ -258,13 +262,22 @@ export const ReviewPackView = Schema.Struct({
   artifacts: Schema.Array(ReviewArtifactDescriptor),
   dependenciesCurrent: Schema.Boolean,
 });
+const ReviewRowCursor = Schema.String.check(
+  Schema.isPattern(
+    /^[a-z][a-z0-9_-]{2,127}:(balances|journal|evidence|coverage|owner_sources|owner_controls|expense_tax):[1-9][0-9]{0,18}$/,
+    {
+      message:
+        "Use the row cursor returned for this pack and section. Omit after to restart the section.",
+    },
+  ),
+);
 export const ReviewPage = Schema.Struct({
   packId: Accounting.Identifier,
   packDigest: Accounting.Digest,
   section: ReviewSection,
   total: Schema.Int,
   items: Schema.Array(ReviewRow),
-  next: Schema.NullOr(Accounting.MinorUnits),
+  next: Schema.NullOr(ReviewRowCursor),
 });
 export const ReviewArtifact = Schema.Struct({
   packId: Accounting.Identifier,
@@ -295,6 +308,7 @@ export const ReviewArtifactPath = Schema.Struct({
   format: ReviewFormat,
 });
 const cursor = Schema.Struct({ after: Schema.optional(Accounting.MinorUnits) });
+const ReviewRowQuery = Schema.Struct({ after: Schema.optional(ReviewRowCursor) });
 const scoped = { params: Accounting.Scope, error: accountingErrors };
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
 const path = "/v1/entities/:entityId/books/:bookId/accountant-review-packs";
@@ -314,7 +328,7 @@ export const AccountantReviewApi = HttpApiGroup.make("accountantReview").add(
   HttpApiEndpoint.get("reviewPackRows", `${path}/:id/rows/:section`, {
     params: ReviewPagePath,
     error: accountingErrors,
-    query: cursor,
+    query: ReviewRowQuery,
     success: ReviewPage,
   }),
   HttpApiEndpoint.get("reviewPackArtifact", `${path}/:id/artifacts/:format`, {
@@ -356,7 +370,7 @@ export const AccountantReviewCapabilities = {
       ...scope,
       packId: Accounting.Identifier,
       section: ReviewSection,
-      after: Schema.optional(Accounting.MinorUnits),
+      ...ReviewRowQuery.fields,
     }),
     output: ReviewPage,
     readOnly: true,

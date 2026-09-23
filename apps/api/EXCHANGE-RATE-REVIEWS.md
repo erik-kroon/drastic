@@ -184,7 +184,7 @@ and UI types, actual requests, rollback/concurrency and downloaded bytes remain 
 
 ## Root source integration
 
-Domain and contracts package exports, API/capability composition, fixed statements and HTTP handlers are connected. Reports → Exchange rates and the legacy accounting workspace mount the scoped panel. Root source review traced exact integer scale conversion, remainder/half-up rounding,38-digit output refusal, authority/replay/currentness and byte-preserving downloads. Rate-refresh request preservation is receiving an owning UI fix. No source observation establishes runtime acceptance.
+Domain and contracts package exports, API/capability composition, fixed statements and HTTP handlers are connected. Reports → Exchange rates and the accounting tools workspace mount the scoped panel. Root source review traced exact integer scale conversion, remainder/half-up rounding,38-digit output refusal, authority/replay/currentness and byte-preserving downloads. Rate-refresh request preservation is receiving an owning UI fix. No source observation establishes runtime acceptance.
 
 ### Draft/retry lifetime result
 

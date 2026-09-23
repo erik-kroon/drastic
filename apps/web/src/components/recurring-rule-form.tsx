@@ -5,6 +5,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Automation from "@open-erp/contracts/automation";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
+import { ChoiceField } from "@open-erp/ui/components/choice-field";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Label } from "@open-erp/ui/components/label";
 import { Heading, Text } from "@open-erp/ui/components/typography";
@@ -117,7 +118,8 @@ export function RecurringRuleForm({
             spellCheck={false}
           />
         </Box>
-        <SelectField
+        <ChoiceField
+          defaultValue=""
           label={copy.auto_sign}
           name="sign"
           required

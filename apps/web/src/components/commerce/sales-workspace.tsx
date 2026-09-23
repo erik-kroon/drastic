@@ -143,6 +143,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
         </PageTabs>
         {contacts ? (
           <Counterparties
+            defaultRole="customer"
             book={book}
             locale={locale}
             recordId={search.record ?? ""}

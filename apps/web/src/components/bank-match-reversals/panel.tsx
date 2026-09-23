@@ -48,7 +48,7 @@ export function BankMatchReversals({ book, locale }: {
       <Box display="grid" gap="2xl" paddingBlock="xl" minWidth="zero">
         <Heading>{copy.title}</Heading>
         <Text>{copy.help}</Text>
-        <Text>{copy.legacyHelp}</Text>
+        <Text>{copy.exactMatchHelp}</Text>
         <Box as="form" display="grid" gap="md" onSubmit={(event) => {
           event.preventDefault();
           const fields = new FormData(event.currentTarget);
@@ -63,7 +63,7 @@ export function BankMatchReversals({ book, locale }: {
           <Box as="fieldset" display="grid" gap="md" borderWidth="none" padding="none" margin="none"
             minWidth="zero" disabled={prepare.isPending || prepare.isSuccess}>
             <SelectField label={copy.target} value={kind} onValueChange={(value) => setKind(value ?? "allocation")}
-              options={[{ value: "allocation", label: copy.allocation }, { value: "legacy_exact", label: copy.legacy }]} />
+              options={[{ value: "allocation", label: copy.allocation }, { value: "exact_match", label: copy.exactMatch }]} />
             {kind === "allocation" ? (
               <InputField label={copy.allocationId} name="allocationPlanId" required pattern="[a-z][a-z0-9_\-]{2,127}" />
             ) : (

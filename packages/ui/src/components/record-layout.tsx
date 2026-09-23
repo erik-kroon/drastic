@@ -64,6 +64,11 @@ const styles = stylex.create({
     minWidth: 0,
   },
   compactPaper: { padding: 24, gap: 20 },
+  stickySection: {
+    position: "sticky",
+    insetBlockStart: 16,
+    "@container (max-width: 50rem)": { position: "static" },
+  },
   section: { display: "grid", gap: 16, minWidth: 0, alignContent: "start" },
   editor: { minWidth: 0 },
   editorTrigger: {
@@ -163,9 +168,17 @@ export function DocumentPaper({
     <article {...stylex.props(styles.paper, compact && styles.compactPaper)}>{children}</article>
   );
 }
-export function RecordSection({ title, children }: { title: string; children: ReactNode }) {
+export function RecordSection({
+  title,
+  children,
+  sticky = false,
+}: {
+  title: string;
+  children: ReactNode;
+  sticky?: boolean;
+}) {
   return (
-    <section {...stylex.props(styles.section)}>
+    <section {...stylex.props(styles.section, sticky && styles.stickySection)}>
       <h3 {...stylex.props(styles.sectionTitle)}>{title}</h3>
       {children}
     </section>

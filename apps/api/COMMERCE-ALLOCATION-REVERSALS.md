@@ -132,4 +132,4 @@ Only source inspection and edits were performed. No tests/test edits/fixtures, v
 
 ## Root source integration
 
-Shared contracts exports, API/capability catalogs, bindings, SQL dispatch and HTTP handlers are connected. Accounts → Payment allocation and the legacy commerce workspace mount unallocation. Historical applied receipts mount AllocationReleaseStatus, and saved reports mount the separate allocation-only freshness overlay. Independent source review found no concrete blocker; root compared owner/correction replacements and confirmed1300 active-bank branches remain unchanged. No validation or runtime acceptance is claimed.
+Shared contracts exports, API/capability catalogs, bindings, SQL dispatch and HTTP handlers are connected. Accounts → Payment allocation and the commerce tools workspace mount unallocation. Historical applied receipts mount AllocationReleaseStatus, and saved reports mount the separate allocation-only freshness overlay. Independent source review found no concrete blocker; root compared owner/correction replacements and confirmed1300 active-bank branches remain unchanged. No validation or runtime acceptance is claimed.

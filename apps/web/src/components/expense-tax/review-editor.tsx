@@ -1,5 +1,6 @@
 import { useState } from "react";
 import * as Tax from "@open-erp/contracts/expense-tax";
+import { ChoiceField } from "@open-erp/ui/components/choice-field";
 import { Box } from "@open-erp/ui/components/box";
 import { InputField, SelectField, TextareaField } from "@open-erp/ui/components/field";
 import { RecordSection, RecordColumns } from "@open-erp/ui/components/record-layout";
@@ -28,6 +29,7 @@ export function ExpenseReviewForm(
       output={Tax.TaxReview}
       label={sv ? "Spara granskning" : "Save review"}
       canSubmit={scale !== null}
+      stickyFooter
       onSuccess={props.onSaved}
       source={(fields) => ({
         title: source.current.facts.description,
@@ -73,7 +75,7 @@ export function ExpenseReviewForm(
       })}
     >
       <RecordColumns>
-        <RecordSection title={sv ? "Underlag" : "Source document"}>
+        <RecordSection sticky title={sv ? "Underlag" : "Source document"}>
           <EvidenceInspector
             {...props}
             expanded
@@ -172,8 +174,8 @@ function ReviewDecisions(props: {
   const previous = props.previous;
   return (
     <>
-      <Box display="grid" columns={2} gap="md">
-        <SelectField
+      <Box display="grid" gap="lg">
+        <ChoiceField
           name="registration"
           label={sv ? "Momsregistrering" : "VAT registration"}
           defaultValue={previous?.registration ?? "unknown"}
@@ -183,7 +185,7 @@ function ReviewDecisions(props: {
             { value: "not_registered", label: copy.notRegistered },
           ]}
         />
-        <SelectField
+        <ChoiceField
           name="method"
           label={sv ? "Bokföringsmetod" : "Accounting method"}
           defaultValue={previous?.method ?? "unknown"}
@@ -237,9 +239,8 @@ function ReviewDecisions(props: {
         defaultValue={previous?.deductionBasis ?? ""}
         maxLength={2000}
       />
-      <details>
-        <summary>{sv ? "Bokföringsprofil" : "Accounting profile"}</summary>
-        <Box display="grid" gap="lg" paddingBlock="lg">
+      <RecordSection title={sv ? "Beräkningsförutsättningar" : "Calculation basis"}>
+        <Box display="grid" gap="lg">
           <InputField
             name="bookJurisdiction"
             label={copy.bookJurisdiction}
@@ -247,7 +248,7 @@ function ReviewDecisions(props: {
             pattern="[A-Z]{2}"
             maxLength={2}
           />
-          <SelectField
+          <ChoiceField
             name="profile"
             label={sv ? "Profil" : "Profile"}
             defaultValue={previous?.profileId === "synthetic-expense-tax" ? "synthetic" : ""}
@@ -259,7 +260,7 @@ function ReviewDecisions(props: {
               },
             ]}
           />
-          <SelectField
+          <ChoiceField
             name="roundingPolicy"
             label={copy.roundingPolicy}
             defaultValue={previous?.roundingPolicy ?? "unknown"}
@@ -269,7 +270,7 @@ function ReviewDecisions(props: {
             ]}
           />
         </Box>
-      </details>
+      </RecordSection>
     </>
   );
 }

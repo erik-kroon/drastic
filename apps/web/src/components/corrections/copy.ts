@@ -31,7 +31,7 @@ const en = {
   requestRecorded: "A committed command receipt was recovered.",
   requestHint: "Keep this request key if the response is lost. It contains no credential.",
   impactId: "Impact review ID",
-  legacyImpact:
+  missingImpact:
     "This older bundle has no frozen downstream impact review. Live register and no-op guards still apply; prefer a new reviewed bundle before approval.",
 
   title: "Reversal and replacement",
@@ -118,7 +118,7 @@ const sv: typeof en = {
   requestHint:
     "Behåll denna nyckel om svaret försvinner. Den innehåller inga inloggningsuppgifter.",
   impactId: "Granskningens ID",
-  legacyImpact:
+  missingImpact:
     "Det äldre paketet saknar en fryst granskning av följderna. Aktuella registerspärrar och kontroll av ekonomisk ändring gäller ändå; välj helst ett nytt granskat paket före godkännande.",
 
   title: "Motbokning och ersättning",

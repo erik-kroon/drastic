@@ -150,6 +150,34 @@ const styles = stylex.create({
     borderRadius: tokens.radiusSmallControl,
     ":focus-visible": { outline: "none", boxShadow: tokens.focusRing },
   },
+  openRecord: {
+    minHeight: 40,
+    gap: 8,
+    paddingInline: 4,
+    fontWeight: tokens.fontWeightMedium,
+    backgroundColor: { default: "transparent", ":hover": tokens.muted },
+  },
+  choices: { display: "flex", flexWrap: "wrap", gap: 4, minWidth: 0 },
+  choice: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    minHeight: 40,
+    paddingInline: 12,
+    borderWidth: 0,
+    borderRadius: tokens.radiusMd,
+    fontFamily: "inherit",
+    fontSize: tokens.fontSizeControl,
+    cursor: "pointer",
+    color: { default: tokens.mutedForeground, ":hover": tokens.foreground },
+    backgroundColor: { default: "transparent", ":hover": tokens.muted },
+    ":focus-visible": { outline: "none", boxShadow: tokens.focusRing },
+  },
+  selectedChoice: {
+    backgroundColor: tokens.secondary,
+    color: tokens.foreground,
+    fontWeight: tokens.fontWeightMedium,
+  },
   muted: {
     color: tokens.mutedForeground,
     fontSize: tokens.fontSizeXs,
@@ -264,6 +292,41 @@ export function RecordToggle({
       )}
       {children}
     </button>
+  );
+}
+export function RecordOpen({ children, ...props }: ComponentProps<"button">) {
+  return (
+    <button {...props} type="button" {...stylex.props(styles.record, styles.openRecord)}>
+      {children}
+      <ChevronRight size={14} aria-hidden="true" />
+    </button>
+  );
+}
+export function RegisterChoices({
+  label,
+  value,
+  options,
+  onValueChange,
+}: {
+  label: string;
+  value: string;
+  options: readonly { value: string; label: string }[];
+  onValueChange: (value: string) => void;
+}) {
+  return (
+    <div role="group" aria-label={label} {...stylex.props(styles.choices)}>
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          aria-pressed={value === option.value}
+          onClick={() => onValueChange(option.value)}
+          {...stylex.props(styles.choice, value === option.value && styles.selectedChoice)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
   );
 }
 export function PageCaption(props: ComponentProps<"p">) {

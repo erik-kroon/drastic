@@ -5,7 +5,7 @@ import { AttentionQuery } from "@open-erp/contracts/workspace";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
-import { PageAction, PageContent } from "@open-erp/ui/components/accounting-page";
+import { PageAction, PageContent, RegisterChoices } from "@open-erp/ui/components/accounting-page";
 import { frontendCopy } from "@/lib/frontend-copy";
 import { Text } from "@open-erp/ui/components/typography";
 import { WorkspaceHeader, WorkspaceToolbar } from "@open-erp/ui/components/workspace";
@@ -39,10 +39,31 @@ function Work() {
         }
       />
       <PageContent>
-        <SavedWorkViews
-          filters={filters}
-          onSelect={(search) => {
-            void navigate({ search });
+        <RegisterChoices
+          label={copy.workspace_status}
+          value={filters.status ?? "open"}
+          options={[
+            { value: "open", label: locale === "sv" ? "Att göra" : "To do" },
+            { value: "completed", label: locale === "sv" ? "Avslutat" : "Completed" },
+            { value: "all", label: copy.workspace_all },
+          ]}
+          onValueChange={(status) => {
+            if (status === "open" || status === "completed" || status === "all")
+              void navigate({ search: { ...filters, status, after: undefined } });
+          }}
+        />
+        <RegisterChoices
+          label={attentionCopy(locale).type}
+          value={filters.kind ?? "all"}
+          options={[
+            { value: "all", label: attentionCopy(locale).all },
+            { value: "journal", label: attentionCopy(locale).journal },
+            { value: "invoice", label: attentionCopy(locale).invoice },
+            { value: "expense", label: attentionCopy(locale).expense },
+          ]}
+          onValueChange={(kind) => {
+            if (kind === "all" || kind === "journal" || kind === "invoice" || kind === "expense")
+              void navigate({ search: { ...filters, kind, after: undefined } });
           }}
         />
         <WorkspaceToolbar
@@ -52,9 +73,9 @@ function Work() {
             const fields = new FormData(event.currentTarget);
             const parsed = Schema.decodeUnknownOption(AttentionQuery)({
               q: fields.get("q"),
-              kind: fields.get("kind"),
+              kind: filters.kind ?? "all",
               period: fields.get("period") || undefined,
-              status: fields.get("status"),
+              status: filters.status ?? "open",
               sort: fields.get("sort"),
             });
             if (parsed._tag === "None") {
@@ -73,22 +94,6 @@ function Work() {
             type="search"
           />
           <SelectField
-            label={attentionCopy(locale).type}
-            name="kind"
-            defaultValue={filters.kind ?? "all"}
-            options={["all", "journal", "invoice", "expense"].map((kind) => ({
-              value: kind,
-              label:
-                kind === "all"
-                  ? attentionCopy(locale).all
-                  : kind === "journal"
-                    ? attentionCopy(locale).journal
-                    : kind === "invoice"
-                      ? attentionCopy(locale).invoice
-                      : attentionCopy(locale).expense,
-            }))}
-          />
-          <SelectField
             label={copy.workspace_period}
             name="period"
             defaultValue={filters.period ?? ""}
@@ -98,16 +103,6 @@ function Work() {
                 value: period.id,
                 label: `${period.startsOn} – ${period.endsOn}`,
               })),
-            ]}
-          />
-          <SelectField
-            label={copy.workspace_status}
-            name="status"
-            defaultValue={filters.status ?? "open"}
-            options={[
-              { value: "open", label: locale === "sv" ? "Öppet" : "Open" },
-              { value: "completed", label: locale === "sv" ? "Avslutat" : "Completed" },
-              { value: "all", label: copy.workspace_all },
             ]}
           />
           <SelectField
@@ -123,6 +118,7 @@ function Work() {
             {copy.workspace_filter}
           </Button>
         </WorkspaceToolbar>
+        <SavedWorkViews filters={filters} onSelect={(search) => void navigate({ search })} />
         {error ? <Text role="alert">{error}</Text> : null}
         <AttentionList
           filters={filters}

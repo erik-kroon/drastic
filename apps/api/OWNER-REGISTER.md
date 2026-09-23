@@ -207,3 +207,48 @@ No SQL parser/database execution, full typecheck, build or browser check was run
 The bridge supports only single-action ordinary `manual_journal` adjustment plans. Recurring, tax,
 split-control and correction bundles are not attached through this foundation. Future treatment
 activation must explicitly reconcile this boundary; it must not bypass the owner source guard.
+
+## 6600 consumed allocation approval recovery — pre-edit failure contract
+
+The existing owner allocation command can approve unchanged plan P as A1, then A2,
+and apply P with still-valid A1. The old getter returns latest approval A2 beside an
+application naming A1. `OwnerAllocationReview` presents this view as "Exact source,
+all legs and approval" and uses its approval ID in the exact-approval field. It does
+not present that approval as an independent latest-review history entry.
+
+The authorized repair changes only the getter in a forward migration:
+
+- Keep current authorization, the book SHARE barrier, scoped plan lookup and currentness.
+- Load the application row first. For committed history, follow its authoritative
+  `(book_id, approval_id)` foreign key and require the same plan and plan digest.
+- Confirm approval body ID/plan/digest and application body ID/plan/approval/digest
+  match their retained rows and the saved plan. Refuse missing or inconsistent linkage;
+  never substitute another approval or hide a broken committed link as pending state.
+- Recover the consumed approval after expiry. History is not renewed execution authority;
+  live expiry or membership must not filter this historical record.
+- With no application, preserve the existing latest-approval query and ordering exactly.
+- Do not change stored bodies, command replay, writes, approval/application authority,
+  owner effects, account partitioning, capacity guards, grants, schemas, wiring or UI.
+
+Source comparison is the authorized validation. No tests, SQL compilation/application,
+runtime, provider or VCS actions are authorized. Runtime recovery remains unverified.
+
+### Implemented source and validation limit
+
+`migrations/6600-owner-allocation-approval-recovery.sql` replaces only
+`owners_get_allocation`. The committed branch follows the application row's scoped
+approval foreign key, requires the same plan/digest and checks row/body linkage.
+Missing or inconsistent committed linkage raises `UnsupportedProfile`, with no
+alternate approval. The frozen consumed approval remains readable after expiry.
+No application retains the old latest-expiry/ID selection, including its null and
+expired-approval behavior. Returned bodies and currentness remain unchanged.
+
+The existing `AllocationView`, REST handler and read capability already use this owner.
+No schema, shared wiring, UI, grant, write, replay or financial-guard change is needed.
+
+A complete function comparison against0610 found only `CREATE OR REPLACE`, the local
+application-row variable and the two old SELECTs replaced by the committed/pending
+selection above. Authorization/book SHARE/plan lookup and result/currentness/return
+remain byte-identical. Pending selection differs only in indentation. Source whitespace
+inspection found no trailing whitespace in the new SQL or this handoff. No tests or
+SQL/runtime validation ran; the migration remains unapplied and runtime-unverified.

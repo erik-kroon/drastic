@@ -1,7 +1,8 @@
 import { lazy, Suspense } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
-import { PageContent } from "@open-erp/ui/components/accounting-page";
+import { PageAction, PageContent } from "@open-erp/ui/components/accounting-page";
+import { ArrowLeft } from "lucide-react";
 import { PageTabs, PageTab } from "@open-erp/ui/components/workflow";
 import { AccountingStatus } from "@/components/accounting-status";
 import { AccountBalances } from "@/components/account-register";
@@ -101,10 +102,12 @@ export function FinanceArea({
   area,
   view,
   record,
+  account,
 }: {
   area: "accounts" | "sales" | "purchases" | "reports" | "tax" | "closing";
   view?: string;
   record?: string;
+  account?: string;
 }) {
   const { book, setup, locale } = useBookWorkspace();
   const navigate = useNavigate();
@@ -122,17 +125,9 @@ export function FinanceArea({
   };
   return (
     <>
-      <WorkspaceHeader title={copy[area]} />
+      <WorkspaceHeader title={copy[area]} action={area === "reports" && selected !== "library" ? <PageAction quiet href={base}><ArrowLeft size={14} />{locale === "sv" ? "Alla rapporter" : "All reports"}</PageAction> : undefined} />
       <PageContent>
-        {tabs.length > 1 ? (
-          <PageTabs label={copy[area]}>
-            {tabs.map((tab) => (
-              <PageTab key={tab.key} href={`${base}?view=${tab.key}`} active={selected === tab.key}>
-                {tab.label}
-              </PageTab>
-            ))}
-          </PageTabs>
-        ) : null}
+        <FinanceNavigation area={area} selected={selected} base={base} locale={locale} />
         <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
           {selected === "documents" ? <DocumentInbox recordId={record} onOpen={onOpen} /> : null}
           {selected === "ledger" ? <AccountBalances /> : null}
@@ -172,6 +167,7 @@ export function FinanceArea({
             <>
               <SubledgersPanel
                 key={`schedules:${book.entityId}:${book.id}`}
+                open
                 book={book}
                 setup={setup}
                 locale={locale}
@@ -198,7 +194,13 @@ export function FinanceArea({
             />
           ) : null}
           {selected === "parties" ? (
-            <Counterparties book={book} locale={locale} recordId={recordId} onOpen={onOpen} />
+            <Counterparties
+              defaultRole={invoiceDirection}
+              book={book}
+              locale={locale}
+              recordId={recordId}
+              onOpen={onOpen}
+            />
           ) : null}
           {selected === "imports" ? <StatementImports recordId={record} onOpen={onOpen} /> : null}
           {selected === "expenses" ? (
@@ -213,7 +215,7 @@ export function FinanceArea({
           ) : null}
           {selected === "library" ? <ReportLibrary /> : null}
           {selected === "trial" ? (
-            <TrialBalanceWorkspace recordId={record} onOpen={onOpen} />
+            <TrialBalanceWorkspace recordId={record} onOpen={onOpen} accountId={account} onSelectAccount={(id) => void navigate({ to: base, search: { view: selected, record, account: id || undefined }, resetScroll: false })} />
           ) : null}
           {selected === "register" ? (
             <RegisterReports book={book} locale={locale} recordId={recordId} onOpen={onOpen} />
@@ -227,11 +229,38 @@ export function FinanceArea({
               open
             />
           ) : null}
-          {selected === "vat" ? <VatReturnsPanel book={book} locale={locale} open /> : null}
+          {selected === "vat" ? (
+            <VatReturnsPanel book={book} locale={locale} recordId={recordId} onOpen={onOpen} open />
+          ) : null}
           {selected === "closing" ? <ClosingWorkspace recordId={record} onOpen={onOpen} /> : null}
         </Suspense>
       </PageContent>
     </>
+  );
+}
+
+function FinanceNavigation(props: {
+  area: "accounts" | "sales" | "purchases" | "reports" | "tax" | "closing";
+  selected: string | undefined;
+  base: string;
+  locale: "en" | "sv";
+}) {
+  if (props.area === "reports")
+    return null;
+  const tabs = areaTabs(props.area, props.locale);
+  if (tabs.length < 2) return null;
+  return (
+    <PageTabs label={frontendCopy(props.locale)[props.area]}>
+      {tabs.map((tab) => (
+        <PageTab
+          key={tab.key}
+          href={`${props.base}?view=${tab.key}`}
+          active={props.selected === tab.key}
+        >
+          {tab.label}
+        </PageTab>
+      ))}
+    </PageTabs>
   );
 }
 

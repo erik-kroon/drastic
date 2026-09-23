@@ -13,12 +13,14 @@ import type { Locale } from "@/paraglide/runtime";
 export function BookReadiness({
   book,
   locale,
+  expanded = false,
 }: {
   book: typeof Accounting.Book.Type;
   locale: Locale;
+  expanded?: boolean;
 }) {
   const copy = accountingCopy(locale);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(expanded);
   const status = useQuery({
     queryKey: [...bookKey(book), "status"],
     queryFn: async ({ signal }) => {
@@ -35,6 +37,7 @@ export function BookReadiness({
   return (
     <details
       id="book-readiness"
+      open={expanded}
       tabIndex={-1}
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >

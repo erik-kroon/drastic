@@ -4,6 +4,7 @@ import * as Workspace from "@open-erp/contracts/workspace";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
+import { ChoiceField } from "@open-erp/ui/components/choice-field";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "./accounting-status";
@@ -35,27 +36,29 @@ export function SavedWorkViews(props: {
   return (
     <Box display="grid" gap="md">
       <Box display="flex" alignItems="end" flexWrap="wrap" gap="md">
-        <Box width="fit" flexShrink={false}>
-          <SelectField
-            label={sv ? "Sparade vyer" : "Saved views"}
-            value={selected?.id ?? ""}
-            disabled={!query.isSuccess}
-            onValueChange={(value) => {
-              const view = views.find((item) => item.id === value);
-              if (view) props.onSelect(view.filters);
-            }}
-            options={[
-              { value: "", label: sv ? "Aktuella filter" : "Current filters" },
-              ...views.map((view) => ({
-                value: view.id,
-                label: `${view.name}${view.visibility === "team" ? " · Team" : ""}`,
-              })),
-            ]}
-          />
-        </Box>
+        {views.length ? (
+          <Box width="fit" flexShrink={false}>
+            <SelectField
+              label={sv ? "Sparade vyer" : "Saved views"}
+              value={selected?.id ?? ""}
+              disabled={!query.isSuccess}
+              onValueChange={(value) => {
+                const view = views.find((item) => item.id === value);
+                if (view) props.onSelect(view.filters);
+              }}
+              options={[
+                { value: "", label: sv ? "Aktuella filter" : "Current filters" },
+                ...views.map((view) => ({
+                  value: view.id,
+                  label: `${view.name}${view.visibility === "team" ? " · Team" : ""}`,
+                })),
+              ]}
+            />
+          </Box>
+        ) : null}
         <Button
           static
-          variant="outline"
+          variant="ghost"
           disabled={!query.isSuccess}
           onClick={() => setDialog("save")}
         >
@@ -141,7 +144,7 @@ function ViewFields({ sv, operator }: { sv: boolean; operator: boolean }) {
         maxLength={80}
         placeholder={sv ? "Till exempel Utgifter att granska" : "For example, Expenses to review"}
       />
-      <SelectField
+      <ChoiceField
         name="visibility"
         label={sv ? "Synlig för" : "Visible to"}
         defaultValue="personal"

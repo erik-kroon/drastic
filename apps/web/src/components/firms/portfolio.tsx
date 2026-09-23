@@ -6,13 +6,12 @@ import { Button } from "@open-erp/ui/components/button";
 import { Badge } from "@open-erp/ui/components/badge";
 import { Link } from "@open-erp/ui/components/link";
 import { DataTable } from "@open-erp/ui/components/data-table";
-import { SelectControl } from "@open-erp/ui/components/select";
 import { RecordHeading } from "@open-erp/ui/components/record-layout";
 import {
   PageCaption,
   PageEmpty,
   RegisterSearch,
-  RegisterFilter,
+  RegisterChoices,
 } from "@open-erp/ui/components/accounting-page";
 import { ClientPeriod } from "./client-period";
 import { ClientDialog } from "./client-dialog";
@@ -84,22 +83,20 @@ export function FirmPortfolio(props: {
             setPage(0);
           }}
         />
-        <RegisterFilter>
-          <SelectControl
-            aria-label={sv ? "Visa klienter" : "Client view"}
-            value={view}
-            onValueChange={(value) => {
-              setView(value ?? "all");
-              setPage(0);
-            }}
-            options={[
-              { value: "all", label: sv ? "Alla mina klienter" : "All accessible clients" },
-              { value: "mine", label: sv ? "Jag är ansvarig" : "Assigned to me" },
-              { value: "due", label: sv ? "Dags för avstämning" : "Review due" },
-              { value: "unassigned", label: sv ? "Saknar ansvarig" : "Unassigned" },
-            ]}
-          />
-        </RegisterFilter>
+        <RegisterChoices
+          label={sv ? "Visa klienter" : "Client view"}
+          value={view}
+          onValueChange={(value) => {
+            setView(value ?? "all");
+            setPage(0);
+          }}
+          options={[
+            { value: "all", label: sv ? "Alla mina klienter" : "All accessible clients" },
+            { value: "mine", label: sv ? "Jag är ansvarig" : "Assigned to me" },
+            { value: "due", label: sv ? "Dags för avstämning" : "Review due" },
+            { value: "unassigned", label: sv ? "Saknar ansvarig" : "Unassigned" },
+          ]}
+        />
       </Box>
       {visible.length ? (
         <DataTable

@@ -10,21 +10,11 @@ const forbiddenHooks = new Map([
   ["useSyncExternalStore", "Move the external store integration to an approved library adapter."],
 ]);
 
-const legacyHookKinds = new Map<string, number>();
-
 function checksFeatureCode(filename: string): boolean {
   return /(?:^|\/)apps\/web\/src\/(?:components|routes)\//u.test(filename);
 }
 
-function projectFilename(filename: string): string {
-  return filename.replaceAll("\\", "/").match(/(?:^|\/)apps\/web\/src\/(.*)$/u)?.[1] ?? filename;
-}
-
-function checkImport(
-  context: Context,
-  node: ESTree.ImportDeclaration,
-  allowedKinds: ReadonlySet<string>,
-) {
+function checkImport(context: Context, node: ESTree.ImportDeclaration) {
   if (node.source.value !== "react" && node.source.value !== "@tanstack/react-query") return;
   for (const specifier of node.specifiers) {
     if (specifier.type !== "ImportSpecifier") continue;
@@ -32,7 +22,6 @@ function checkImport(
       specifier.imported.type === "Identifier" ? specifier.imported.name : specifier.imported.value;
     const guidance = forbiddenHooks.get(imported);
     if (guidance === undefined) continue;
-    if (allowedKinds.has(imported)) continue;
     context.report({
       node: specifier,
       messageId: "forbiddenHook",
@@ -53,23 +42,9 @@ export const noFeatureReactHooksRule = defineRule({
   },
   create(context) {
     if (!checksFeatureCode(context.filename)) return {};
-    const baseline = legacyHookKinds.get(projectFilename(context.filename)) ?? 0;
-    const importedKinds = new Set<string>();
-    for (const statement of context.sourceCode.ast.body) {
-      if (statement.type !== "ImportDeclaration") continue;
-      for (const specifier of statement.specifiers) {
-        if (specifier.type !== "ImportSpecifier") continue;
-        const imported =
-          specifier.imported.type === "Identifier"
-            ? specifier.imported.name
-            : specifier.imported.value;
-        if (forbiddenHooks.has(imported)) importedKinds.add(imported);
-      }
-    }
-    const allowedKinds = new Set([...importedKinds].slice(0, baseline));
     return {
       ImportDeclaration(node) {
-        checkImport(context, node, allowedKinds);
+        checkImport(context, node);
       },
     };
   },

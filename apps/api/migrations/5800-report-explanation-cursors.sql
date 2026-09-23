@@ -1,5 +1,4 @@
 -- Exact retained report/account continuation. Old report bytes stay unchanged.
--- Legacy unbound cursors require an explicit first-page restart, never an unsafe fallback.
 CREATE OR REPLACE FUNCTION openerp.explain_report_line(token text, scope jsonb, id text, account text, after_cursor text) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, openerp AS $$
 DECLARE report jsonb; line jsonb; snapshot openerp.report_snapshots; items jsonb; total bigint;
@@ -12,8 +11,6 @@ BEGIN
   IF after_cursor IS NOT NULL AND after_cursor<>'' THEN
     IF length(after_cursor)>288 THEN
       PERFORM openerp.fail('InvalidJournal','Use the bounded contribution cursor returned for this report and account.'); END IF;
-    IF after_cursor ~ '^[0-9]+:[0-9]+$' THEN
-      PERFORM openerp.fail('InvalidJournal','Legacy contribution cursors are not report-bound. Restart this explanation from its first page.'); END IF;
     IF after_cursor !~ '^[a-z][a-z0-9_-]{2,127}:[a-z][a-z0-9_-]{2,127}:[1-9][0-9]{0,18}:[1-9][0-9]{0,9}$' THEN
       PERFORM openerp.fail('InvalidJournal','Use the bounded contribution cursor returned for this report and account.'); END IF;
     IF split_part(after_cursor,':',1) IS DISTINCT FROM snapshot.id

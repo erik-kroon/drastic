@@ -2,10 +2,7 @@ import { defineRule } from "@oxlint/plugins";
 
 import type { ESTree } from "@oxlint/plugins";
 
-import { checksProductionSource, projectFilename } from "../shared/source-scope.ts";
-
-// Reduce these counts when a file removes an assertion. New files start at zero.
-const legacyAssertionCounts = new Map<string, number>();
+import { checksProductionSource } from "../shared/source-scope.ts";
 
 type TypeAssertion = ESTree.TSAsExpression | ESTree.TSTypeAssertion;
 
@@ -29,14 +26,8 @@ export const noTypeAssertionsRule = defineRule({
   },
   create(context) {
     if (!checksProductionSource(context.filename)) return {};
-    let remainingLegacyAssertions =
-      legacyAssertionCounts.get(projectFilename(context.filename)) ?? 0;
     const checkAssertion = (node: TypeAssertion) => {
       if (isConstAssertion(node)) return;
-      if (remainingLegacyAssertions > 0) {
-        remainingLegacyAssertions -= 1;
-        return;
-      }
       context.report({ node, messageId: "assertion" });
     };
     return { TSAsExpression: checkAssertion, TSTypeAssertion: checkAssertion };

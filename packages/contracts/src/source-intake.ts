@@ -284,6 +284,14 @@ const identified = { params: A.ChangePath, error: accountingErrors };
 const mutation = { ...scoped, headers: A.IdempotencyHeaders };
 const identifiedMutation = { ...identified, headers: A.IdempotencyHeaders };
 export const SourceIntakeApi = HttpApiGroup.make("sourceIntake").add(
+  HttpApiEndpoint.get("recoverSourceRetention", `${base}/source-retention-requests/:key`, {
+    params: Schema.Struct({
+      ...A.Scope.fields,
+      key: A.IdempotencyHeaders.fields["idempotency-key"],
+    }),
+    error: accountingErrors,
+    success: SourceOccurrence,
+  }),
   HttpApiEndpoint.post("captureSourceReview", `${base}/source-previews/:id/review-artifacts`, {
     ...identifiedMutation,
     payload: CaptureSourceReview.annotate({ parseOptions: { onExcessProperty: "error" } }),
@@ -347,6 +355,13 @@ export const SourceIntakeApi = HttpApiGroup.make("sourceIntake").add(
 
 // Approval and admission are operator-only REST actions, not ordinary MCP tools.
 export const SourceIntakeCapabilities = {
+  source_recover_retention: {
+    description:
+      "Recover this actor's frozen source-retention result by original request key without original bytes or storage access. NotFound is absence at this check, not proof of failure or permission for a new key. Does not complete pending uploads or check original availability.",
+    input: Schema.Struct({ scope: A.Scope, key: A.IdempotencyHeaders.fields["idempotency-key"] }),
+    output: SourceOccurrence,
+    readOnly: true,
+  },
   source_capture_review: {
     description:
       "Capture a complete retained CSV interpretation and historical review/admission summaries as exact immutable JSON. Does not parse, approve, import or post; no approval IDs are exported.",

@@ -16,7 +16,7 @@ import {
   PageAction,
   PageCaption,
   RegisterSearch,
-  RecordToggle,
+  RecordOpen,
 } from "@open-erp/ui/components/accounting-page";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -110,10 +110,10 @@ export function DocumentInbox({
             rows={items.map(({ occurrence, admission }) => ({
               id: occurrence.id,
               cells: [
-                <RecordToggle key="open" expanded={false} onClick={() => onOpen(occurrence.id)}>
+                <RecordOpen key="open" onClick={() => onOpen(occurrence.id)}>
                   <FileText size={14} />
                   {occurrence.filename}
-                </RecordToggle>,
+                </RecordOpen>,
                 new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
                   new Date(occurrence.retainedAt),
                 ),
@@ -148,6 +148,7 @@ export function DocumentInbox({
       {recordId === "new" ? (
         <FormDialog
           title={labels.uploadDocument}
+          size="compact"
           closeLabel={labels.close}
           onClose={() => onOpen("")}
         >

@@ -7,6 +7,39 @@ import { query, scopeParameter } from "../../../db/query";
 
 export const TaxAccountHandlers = HttpApiBuilder.group(Api, "taxAccount", (handlers) =>
   handlers
+    .handle("listUnclassifiedTaxAccountEvents", ({ params, query: search }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "listUnclassifiedTaxAccountEvents",
+          [token, scopeParameter(params), search.accountId, search.after ?? ""],
+          Tax.TaxAccountUnclassifiedEventPage,
+        ),
+      ),
+    )
+    .handle("resolveTaxAccountEventClassification", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "resolveTaxAccountEventClassification",
+          [
+            token,
+            scopeParameter(params),
+            params.id,
+            headers["idempotency-key"],
+            JSON.stringify(payload),
+          ],
+          Tax.TaxAccountEventResolution,
+        ),
+      ),
+    )
+    .handle("getTaxAccountEventClassification", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "getTaxAccountEventClassification",
+          [token, scopeParameter(params), params.id],
+          Tax.TaxAccountEventClassificationView,
+        ),
+      ),
+    )
     .handle("previewTaxAccountMatch", ({ params, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         query(

@@ -1,5 +1,6 @@
 import type * as Accounting from "@open-erp/contracts/accounting";
 import type * as Tax from "@open-erp/contracts/expense-tax";
+import { Disclosure } from "@open-erp/ui/components/disclosure";
 import { Box } from "@open-erp/ui/components/box";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Text } from "@open-erp/ui/components/typography";
@@ -33,6 +34,20 @@ export function TaxFactsTable({
       receivedOn: sv ? "Mottaget" : "Received",
     }),
   );
+  const values = new Map([
+    ["unknown", copy.unknown],
+    ["registered", copy.registered],
+    ["not_registered", copy.notRegistered],
+    ["accrual", copy.accrual],
+    ["cash", copy.cash],
+    ["domestic_purchase", copy.domesticPurchase],
+    ["foreign_purchase", copy.foreignPurchase],
+    ["reverse_charge", copy.reverseCharge],
+    ["import", copy.imports],
+    ["exempt", copy.exempt],
+    ["out_of_scope", copy.outOfScope],
+    ["other", copy.other],
+  ]);
   const visible =
     "recordClass" in facts
       ? ["supplierJurisdiction", "supplyJurisdiction", "receivedOn", "suppliedOn", "taxPointOn"]
@@ -74,18 +89,17 @@ export function TaxFactsTable({
                 value === null
                   ? copy.unknown
                   : typeof value === "string"
-                    ? value.replaceAll("_", " ")
+                    ? (values.get(value) ?? value)
                     : JSON.stringify(value),
               ],
             })),
         ]}
       />
-      <details>
-        <summary>{sv ? "Tekniska uppgifter" : "Technical details"}</summary>
+      <Disclosure label={sv ? "Tekniska uppgifter" : "Technical details"}>
         <Box paddingBlock="md">
           <pre>{JSON.stringify(facts, null, 2)}</pre>
         </Box>
-      </details>
+      </Disclosure>
     </Box>
   );
 }
@@ -111,7 +125,7 @@ export function TaxSnapshotEntry(props: {
   return (
     <details>
       <summary>
-        {entry.source.sourceKey} · {entry.source.facts.description} ·{" "}
+        {entry.source.facts.description} ·{" "}
         {entry.assessment.state === "included_synthetic" ? copy.synthetic : copy.excluded}
       </summary>
       <Box display="grid" gap="lg" paddingBlock="lg" minWidth="zero">

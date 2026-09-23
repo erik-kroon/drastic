@@ -9,7 +9,7 @@ import { ArrowLeft, Plus, RefreshCw } from "lucide-react";
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
-import { RecordToggle, PageCaption } from "@open-erp/ui/components/accounting-page";
+import { RecordOpen, PageCaption } from "@open-erp/ui/components/accounting-page";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
@@ -157,9 +157,9 @@ export function RegisterReports(
           rows={page.data.items.map((report) => ({
             id: report.id,
             cells: [
-              <RecordToggle key="open" expanded={false} onClick={() => setSelected(report.id)}>
+              <RecordOpen key="open" onClick={() => setSelected(report.id)}>
                 {copy.registerReports} · {report.asOfDate}
-              </RecordToggle>,
+              </RecordOpen>,
               report.asOfDate,
               new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
                 new Date(report.createdAt),

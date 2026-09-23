@@ -12,7 +12,7 @@ approve, post, pay an invoice, establish source coverage or activate a company p
 - Hold the book barrier through source, effective capacity, configuration and posted cutoff reads.
   Capture committed sequence, source revision, account/profile/writer versions and period digest.
   A deterministic content digest compares repeated reads; it is not an approval or a future lock.
-- Effective legacy matches and allocation legs from1300 determine signed used/remaining capacity.
+- Effective exact matches and allocation legs from1300 determine signed used/remaining capacity.
   Unmatch releases capacity; immutable historical relationships remain ranking evidence only.
   Exhausted/zero source, inactive account, currency mismatch, wrong sign, exhausted line,
   reversing/reversed voucher and missing/ambiguous/locked source/posting period block selection.
@@ -172,7 +172,7 @@ profile activation, source completeness and reconciliation acceptance remain ind
 
 ## Root source integration
 
-Shared contracts exports, API/capability catalogs, bindings, SQL dispatch and HTTP handlers are connected. Accounts → Matching and the legacy workspace mount candidate discovery beside reviewed allocations. Selection remains an explicit copyable identifier handoff; no automatic plan or amount is supplied. No validation or runtime acceptance is claimed.
+Shared contracts exports, API/capability catalogs, bindings, SQL dispatch and HTTP handlers are connected. Accounts → Matching and the tools workspace mount candidate discovery beside reviewed allocations. Selection remains an explicit copyable identifier handoff; no automatic plan or amount is supplied. No validation or runtime acceptance is claimed.
 
 
 ## Candidate → manual allocation handoff: failure cases before edits
@@ -202,7 +202,7 @@ composes candidate discovery, existing reviewed allocation/capacity reports and 
 `{book, setup, locale}`. Root can replace the three direct Accounts/Matching mounts with this
 component. It provides an entity/book-keyed local boundary; keep the existing identity reset.
 No shared root mount or `bank-statement.tsx` was edited. The per-statement candidate inspector
-and direct legacy `BankAllocations` calls remain usable without the new optional prop.
+and direct `BankAllocations` calls remain usable without the new optional prop.
 
 `BankAllocations` now accepts optional `candidate: BankCandidateSelection | null`, using the
 existing local identifier-handoff type, not a financial API DTO. A candidate arrival changes

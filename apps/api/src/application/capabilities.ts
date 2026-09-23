@@ -120,6 +120,16 @@ export const capabilities = {
     "listTaxAccountMatches",
     (input) => [scopeParameter(input.scope)],
   ),
+  tax_account_list_unclassified_events: bindCapability(
+    Capabilities.tax_account_list_unclassified_events,
+    "listUnclassifiedTaxAccountEvents",
+    (input) => [scopeParameter(input.scope), input.accountId, input.after ?? ""],
+  ),
+  tax_account_get_event_classification: bindCapability(
+    Capabilities.tax_account_get_event_classification,
+    "getTaxAccountEventClassification",
+    (input) => [scopeParameter(input.scope), input.eventId],
+  ),
   tax_account_get_statement: bindCapability(
     Capabilities.tax_account_get_statement,
     "getTaxAccountStatement",
@@ -704,6 +714,11 @@ export const capabilities = {
     (input) => [scopeParameter(input.scope), input.after ?? ""],
   ),
   source_retain: effectCapability(Capabilities.source_retain, retainSource),
+  source_recover_retention: bindCapability(
+    Capabilities.source_recover_retention,
+    "recoverSourceRetention",
+    (input) => [scopeParameter(input.scope), input.key],
+  ),
   source_list_occurrences: bindCapability(
     Capabilities.source_list_occurrences,
     "listSourceOccurrences",

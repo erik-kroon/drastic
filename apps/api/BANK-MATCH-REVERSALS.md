@@ -4,7 +4,7 @@ Status: domain source and shared API/MCP/database/workspace registration integra
 
 ## Scope and failure contract (before implementation)
 
-A reviewer prepares a whole applied allocation or one retained legacy exact match for
+A reviewer prepares a whole applied allocation or one retained exact match for
 unmatch. The saved plan shows original relationships, evidence, exact released amounts,
 periods and dependency revisions. Human approval binds that digest. Execution appends
 one reversal receipt and releases matching capacity only. It never posts a voucher,
@@ -12,7 +12,7 @@ changes an invoice settlement, deletes history or reopens a period.
 
 - Invalid/foreign/unexecuted/already-reversed targets refuse; no capacity changes.
 - Whole allocation reversal includes every immutable leg (maximum 100). Partial leg
-  compensation is outside this slice. Legacy match identities remain unique forever;
+  compensation is outside this slice. Exact-match identities remain unique forever;
   rematching after reversal requires the existing reviewed allocation workflow.
 - Repeated execution and lost replies recover one immutable receipt. A new key does not
   undo the target twice; changed digest/approval cannot replay another result.
@@ -21,7 +21,7 @@ changes an invoice settlement, deletes history or reopens a period.
   period revisions stale the plan. A relevant reversal or revoked/expired approving
   authority prevents execution without partial changes.
 - Effective source and ledger capacity excludes reversed targets together, once. New
-  allocations may consume the restored remainder; legacy exact APIs cannot silently
+  allocations may consume the restored remainder; exact-match APIs cannot silently
   return a reversed historical match as an active result or bypass capacity guards.
 - Source revision advances transactionally, making old reconciliation/close bases stale.
   Old reports/receipts retain their original bytes. Live discovery distinguishes history
@@ -65,7 +65,7 @@ select applied allocation OR retained exact match + reason
 An allocation reversal always releases its whole original plan. No partial-leg reversal,
 replacement matching, journal correction, invoice settlement or period reopen is performed.
 Prepare a new reviewed allocation afterward if a replacement match is wanted. Any source
-or posted line with unmatch history is refused by the legacy exact-match command, including
+or posted line with unmatch history is refused by the exact-match command, including
 released allocation legs. The existing reviewed allocation workflow can use restored capacity.
 
 ### Effective consumers and old callers
@@ -74,7 +74,7 @@ The sole live projections are private `openerp.bank_active_matches` and
 `openerp.bank_active_allocation_legs`. Their originals and new reversal tables are immutable.
 The forward migration replaces these consumers without changing non-bank domain behavior:
 
-- `bank_allocated_source`, `bank_allocated_line`, `bank_legacy_allocation_guard`;
+- `bank_allocated_source`, `bank_allocated_line`, `bank_exact_match_capacity_guard`;
 - `get_bank_statement`, newly requested `import_bank_statement` results,
   `reconcile_bank` (latest bounded0101 definition), `reconcile_bank_capacity`;
 - bank branches of `owner_guard_capacity` and `correction_impact_resources` (latest0890);
@@ -83,7 +83,7 @@ The forward migration replaces these consumers without changing non-bank domain 
   `unmatch:{planId,executedAt,reason}` summary;
 - `bank_allocation_snapshot` / `bank_allocation_checked` lock and require open source/posting
   periods before account locks; reversed/reversing vouchers cannot acquire allocations;
-- insert guards cover both legacy exact and reviewed allocation entry paths.
+- insert guards cover both exact-match and reviewed allocation entry paths.
 
 Current recurring selection/preparation and the recurring posting guard already use
 `bank_allocated_source`; they therefore consume the same effective state without another
@@ -133,7 +133,7 @@ All statements return `as result` and call the corresponding snake-case SQL func
 Route prefix: `/api/v1/entities/:entityId/books/:bookId`.
 
 - POST `/bank-match-reversal-plans`: `{target,reason}`; target is
-  `{kind:"allocation",allocationPlanId}` or `{kind:"legacy_exact",statementId,rowOrdinal}`.
+  `{kind:"allocation",allocationPlanId}` or `{kind:"exact_match",statementId,rowOrdinal}`.
 - GET `/bank-match-reversal-plans?after=...`: live 25-plan identifier page, not a frozen total.
 - GET `/bank-match-reversal-plans/:id`: exact saved plan, usable approval, receipt/currentness.
 - POST `/bank-match-reversal-plans/:id/approve`: `{digest,version:1}`; operator only.
@@ -176,10 +176,14 @@ capacity. The unique target plus immutable reversal records prevents a second su
 No monetary values pass through JavaScript number; only bounded row ordinals do.
 
 The review followed all latest SQL functions reading the raw bank match/leg tables.
-Only original-target capture and legacy identity/reuse refusal intentionally retain raw
-reads. Live reporting/capacity/correction/owner checks use effective views. Previously
-applied migration files were not edited. Shared-function forward definitions preserve other
-domains and existing command replay paths.
+Only original-target capture and exact-match identity/reuse refusal intentionally retain raw
+reads. Live reporting/capacity/correction/owner checks use effective views. At the time of
+that source review, earlier migration files were unchanged. Shared-function forward
+definitions preserve other domains and existing command replay paths.
+
+Before deployment, the exact-match target and capacity guard were renamed consistently in
+the contracts, UI and SQL migration chain. The dated FND-01 inventory still describes its
+earlier source revision.
 
 No tests, fixtures, browser actions, validation/format commands, builds, servers, database
 execution, applied migrations, dependencies, Git operations, deployments or external actions
@@ -188,7 +192,7 @@ Source review is not financial acceptance.
 
 Remaining deliberate limits:
 
-- Synthetic native bank profile only. Whole allocation, or one exact legacy match only.
+- Synthetic native bank profile only. Whole allocation, or one exact match only.
 - Inactive bank accounts, ambiguous/missing periods, locked source/posting periods, and
   reversed/reversing vouchers refuse. Repair needs its separately owned workflow.
 - Unsent drafts and retry keys live in the component, not durable storage. Saved plans and
@@ -197,5 +201,5 @@ Remaining deliberate limits:
 - No company completeness, statutory readiness, bank-feed/provider action, journal posting
   or invoice-payment effect is introduced.
 - Future validation must cover positive/negative amounts, shared source/line legs, partial
-  remaining allocations, legacy imported/explicit matches, old endpoint bypass attempts,
+  remaining allocations, imported or explicit exact matches, old endpoint bypass attempts,
   races with match/close/correction/revocation, lost replies, rollback and scope denial.

@@ -127,7 +127,7 @@ Command bodies:
 
 REST payloads and MCP decoding reject excess properties; SQL independently checks supported top-level/nested fields and bounded representations, including a 1 MiB serialized-command admission limit. Raw duplicate JSON member rejection before JSON parsing remains a **shared body-boundary review/proof requirement**, not something implemented by these already-decoded domain schemas. Do not count PST-01 duplicate-member proof as complete.
 
-Lists return at most 20 summaries plus a scoped timestamp/key continuation. Bodies are fetched individually; pages are live, not frozen snapshots or a complete source inventory. Detail includes immutable request, original command, current-reader `sameActor`, checked time and nullable terminal outcome. Terminal outcomes return HTTP success with `state: refused` or `state: committed`; transport failures remain errors and must not be recast as terminal refusal. Legacy `/posting-requests/:key` keeps its original committed/not_observed meaning; its key is the kernel key, not the saved-request key. Save/run clients use the new paths.
+Lists return at most 20 summaries plus a scoped timestamp/key continuation. Bodies are fetched individually; pages are live, not frozen snapshots or a complete source inventory. Detail includes immutable request, original command, current-reader `sameActor`, checked time and nullable terminal outcome. Terminal outcomes return HTTP success with `state: refused` or `state: committed`; transport failures remain errors and must not be recast as terminal refusal. The existing `/posting-requests/:key` keeps its original committed/not_observed meaning; its key is the kernel key, not the saved-request key. Save/run clients use the new paths.
 
 ### Workspace
 

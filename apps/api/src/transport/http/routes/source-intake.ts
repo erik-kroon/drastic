@@ -8,6 +8,15 @@ import { query, scopeParameter } from "../../../db/query";
 
 export const SourceIntakeHandlers = HttpApiBuilder.group(Api, "sourceIntake", (handlers) =>
   handlers
+    .handle("recoverSourceRetention", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "recoverSourceRetention",
+          [token, scopeParameter(params), params.key],
+          Intake.SourceOccurrence,
+        ),
+      ),
+    )
     .handle("captureSourceReview", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         query(

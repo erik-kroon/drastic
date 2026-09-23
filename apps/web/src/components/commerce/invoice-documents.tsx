@@ -273,7 +273,7 @@ async function verifyDocument(
     artifact.issueId !== capture.source.issue.id ||
     artifact.generatorVersion !== capture.generatorVersion ||
     artifact.filename !==
-      (capture.generatorVersion === Documents.invoiceDocumentLegacyGenerator
+      (capture.generatorVersion === Documents.invoiceDocumentV1Generator
         ? `${capture.id}.html`
         : `invoice-${capture.source.issue.internalDocumentNumber.replace(/[^a-zA-Z0-9_-]/g, "")}.html`) ||
     artifact.byteLength < 1 ||

@@ -38,5 +38,11 @@ Keep locks, voucher allocation, approval consumption and financial writes in Pos
 
 `db/query.ts` exposes only intentional `P0001` errors with an allowlisted accounting failure code. Other database messages and bound parameters are not returned to callers. Known PostgreSQL availability failures and socket errors `ECONNRESET`, `EPIPE` and `ETIMEDOUT` map to `Unavailable` (HTTP 503); unrecognized coded query failures remain `InternalError` (HTTP 500).
 
-The adapter does not retry queries. An unavailable response does not establish that a write rolled back. Recover an uncertain command with its original input and idempotency key, not a new command. The socket-error classification repair has been reviewed in source only, not exercised at runtime.
+The installed Drizzle Effect adapter can retain bound parameters, including credentials,
+in its raw query error. Keep that error inside the query boundary: do not log, serialize or
+export its message, stack, parameters or cause. Current public failures use a newly constructed
+`AccountingError`; the default query logger is disabled. Adding query logging, tracing error
+exporters or raw cause reporting requires a fresh credential-exposure review. Source review
+found no current plaintext exposure; provider logs and runtime behavior were not inspected.
 
+The adapter does not retry queries. An unavailable response does not establish that a write rolled back. Recover an uncertain command with its original input and idempotency key, not a new command. The socket-error classification repair has been reviewed in source only, not exercised at runtime.

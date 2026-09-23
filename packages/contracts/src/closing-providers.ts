@@ -35,6 +35,9 @@ export const VatReturnDependencies = Schema.Struct({
       controlCount: Schema.Int,
       statementInventoryDigest: Accounting.Digest,
       controlInventoryDigest: Accounting.Digest,
+      // Absent on historical dependencies and when no classification resolution exists.
+      classificationResolutionCount: Schema.optional(Schema.Int),
+      classificationResolutionDigest: Schema.optional(Accounting.Digest),
       // Absent on snapshots captured before exact tax-account matching.
       matching: Schema.optional(
         Schema.Struct({

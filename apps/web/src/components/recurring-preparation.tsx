@@ -11,23 +11,20 @@ import { PreparationRunPanel } from "@/components/preparation-run";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
-export function RecurringPreparation({
-  book,
-  setup,
-  locale,
-  onPrepared,
-}: {
+export function RecurringPreparation(props: {
   book: typeof Accounting.Book.Type;
   setup: typeof Accounting.BookSetup.Type | undefined;
   locale: Locale;
   onPrepared: (id: string) => void;
+  open?: boolean;
 }) {
+  const { book, setup, locale, onPrepared } = props;
   const copy = accountingCopy(locale);
   const [ruleId, setRuleId] = useState<string | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [inputError, setInputError] = useState("");
   return (
-    <details id="recurring-preparation" tabIndex={-1}>
+    <details open={props.open} id="recurring-preparation" tabIndex={-1}>
       <summary>{copy.auto_title}</summary>
       <Box display="grid" gap="2xl" paddingBlock="xl" minWidth="zero">
         <Heading>{copy.auto_title}</Heading>

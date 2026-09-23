@@ -2,7 +2,7 @@ import { defineRule } from "@oxlint/plugins";
 
 import type { ESTree } from "@oxlint/plugins";
 
-const LEGACY_FILES = new Set(["routes/__root.tsx"]);
+const ROOT_ROUTE_EXCEPTIONS = new Set(["routes/__root.tsx"]);
 
 function webSourcePath(filename: string): string | null {
   const normalized = filename.replaceAll("\\", "/");
@@ -29,7 +29,7 @@ export const noDesignSystemEscapeHatchesRule = defineRule({
   },
   create(context) {
     const sourcePath = webSourcePath(context.filename);
-    if (sourcePath === null || LEGACY_FILES.has(sourcePath)) return {};
+    if (sourcePath === null || ROOT_ROUTE_EXCEPTIONS.has(sourcePath)) return {};
     return {
       JSXAttribute(node) {
         if (node.name.type !== "JSXIdentifier") return;

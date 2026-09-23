@@ -21,7 +21,7 @@ export function ClosingFacts({
   const copy = closingCopy(locale);
   return (
     <Box display="grid" gap="md" minWidth="zero">
-      <Text>{basis.inventoryScope ? copy.familyScope : copy.legacyFamilyScope}</Text>
+      <Text>{basis.inventoryScope ? copy.familyScope : copy.bankOnlyFamilyScope}</Text>
       <Heading>{copy.checks}</Heading>
       <DataTable
         title={copy.checks}
@@ -97,7 +97,7 @@ export function ClosingFacts({
           </details>
         ))
       ) : (
-        <Text>{copy.legacyFamilyScope}</Text>
+        <Text>{copy.bankOnlyFamilyScope}</Text>
       )}
       {basis.inventory?.revision ? (
         <Text>
@@ -148,11 +148,11 @@ export function ClosingFacts({
               <Text>{copy.vatBoundary}</Text>
             </>
           ) : (
-            <Text>{copy.legacyVatScope}</Text>
+            <Text>{copy.missingVatScope}</Text>
           )}
         </>
       ) : (
-        <Text>{copy.legacyProviderScope}</Text>
+        <Text>{copy.missingProviderScope}</Text>
       )}
       <Heading>{copy.statutory}</Heading>
       <Box as="ul" display="grid" gap="sm">
