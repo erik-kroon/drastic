@@ -6,6 +6,11 @@ import { capabilities } from "../../../application/capabilities";
 
 export const ReportHandlers = HttpApiBuilder.group(Api, "reports", (handlers) =>
   handlers
+    .handle("listReports", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        capabilities.reports_list.execute(token, { scope: params, after: query.after }),
+      ),
+    )
     .handle("prepareReport", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.reports_prepare.execute(token, {

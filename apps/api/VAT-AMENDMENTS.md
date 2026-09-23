@@ -12,7 +12,8 @@ getVatAmendment → same review bytes + both original draft bodies + separate li
 ```
 
 The comparison accepts only later, distinct, same-period saved synthetic demonstrations in
-SEK at scale2, using `synthetic-core-v1` and `vat-return-draft-v1`. It does not prepare a
+SEK at scale2, using `synthetic-core-v1` and the retained draft engine version.
+Forward3700 permits retained `vat-return-draft-v1` and withdrawal-aware `vat-return-draft-v2` results. It does not prepare a
 second tax calculation. `jurisdictions/se/src/vat/calculation.ts` remains the sole tax
 arithmetic owner. The new SQL subtracts its retained outputs using exact PostgreSQL
 `numeric`, not floating point. Unknown engine releases and actual-company draft mode are
@@ -62,10 +63,11 @@ tax authority. Both the impact and review explicitly retain `filingReady: false`
 `externalState: "not_submitted"`. Neither original nor replacement is called filed. The
 workflow writes no vouchers, settlements, submissions, legal profiles or company facts.
 
-Existing append-only fact revisions are sufficient to compare changed classifications,
-amounts and exclusions. Fact withdrawal is not implemented or inferred from an exclusion.
-There is no future-engine migration comparison or automatic search across all historical
-filings. Operators select exact saved drafts from the existing complete draft inventory.
+Existing append-only fact revisions permit comparison of changed classifications, amounts
+and exclusions. [Forward3700](VAT-FACT-WITHDRAWALS.md) adds permanent, evidence-backed fact
+withdrawal and the consuming v2 exclusion behavior. It does not infer withdrawal from an
+ordinary exclusion. There is no arbitrary future-engine comparison or automatic search
+across all historical filings. Operators select exact saved drafts from the existing complete draft inventory.
 
 The existing VAT closing dependency already blocks represented facts/drafts from technical
 close. This slice does not change that helper, closing approvals or accountant-review pack
@@ -82,9 +84,10 @@ Owned files:
 - `src/transport/http/routes/vat-returns.ts`
 - `../../packages/contracts/src/vat-returns.ts`
 
-No change is needed to the existing draft application workflow or jurisdiction calculator.
-The new transitions use the established Effect `query` boundary directly, as existing fact
-recording does. The already-composed `VatReturnsApi` / `VatReturnsHandlers` gain these routes:
+The3300 amendment slice leaves the draft application workflow and jurisdiction calculator
+unchanged; forward3700 separately adds withdrawal consumption to that calculator. The
+amendment transitions use the established Effect `query` boundary directly, as existing
+fact recording does. The already-composed `VatReturnsApi` / `VatReturnsHandlers` gain these routes:
 
 | Method | Relative path under `/v1/entities/:entityId/books/:bookId/vat-returns` | Meaning                                            |
 | ------ | ---------------------------------------------------------------------- | -------------------------------------------------- |
@@ -93,12 +96,12 @@ recording does. The already-composed `VatReturnsApi` / `VatReturnsHandlers` gain
 | GET    | `/amendments/:id`                                                      | Historical review, drafts and live currentness     |
 | GET    | `/amendments`                                                          | Complete bounded review inventory                  |
 
-Root owns these shared integrations:
+Shared integration is complete in source. Root added these bindings:
 
-1. Import `vatAmendmentStatements` from `./statements/vat-amendments` in `src/db/query.ts`
-   and spread it into `statements`.
-2. Existing `VatReturnCapabilities` spread registers the three new read-only capabilities.
-   Bind them in `src/application/capabilities.ts`:
+1. `src/db/query.ts` imports `vatAmendmentStatements` from `./statements/vat-amendments`
+   and spreads it into `statements`.
+2. The existing `VatReturnCapabilities` spread registers the three new read-only
+   capabilities. `src/application/capabilities.ts` binds them as follows:
 
 ```ts
 vat_return_compare_drafts: bindCapability(

@@ -1,11 +1,14 @@
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import * as Schema from "effect/Schema";
 import {
   BackupManifest,
+  BackupWorkInventory,
   OperationDiagnostic,
   RestoreReceipt,
+  RestoreSuspensionReport,
 } from "../../../../packages/contracts/src/operations";
 import {
   artifactPath,
@@ -24,6 +27,7 @@ import { copyArtifacts, filesIn, inspectRelease, readRecoveryPlan } from "./arti
 import { databaseInventory, roleInventory } from "./inventory";
 import { recoveryControls } from "./controls";
 import { captureObjects, objectReferences, verifyObjects } from "./objects";
+import { captureWorkInventory, inspectWorkInventory, workInventoryPath } from "./durable-work";
 
 async function diagnostic(
   directory: string,
@@ -105,11 +109,20 @@ export async function backup(targetPath: string, bundle: string, recoveryPlanPat
     const objects = await objectReferences(client, tables);
     await captureObjects(bundle, objects);
     const controls = await recoveryControls(client, tables, true);
+    stage = "durable-work-snapshot";
+    const work = await captureWorkInventory(client, tables, snapshot);
+    await writePrivate(join(bundle, workInventoryPath), JSON.stringify(work, null, 2) + "\n");
+    const durableWork = Schema.decodeSync(BackupWorkInventory)({
+      version: 1,
+      file: { path: workInventoryPath, ...(await fingerprint(join(bundle, workInventoryPath))) },
+      summary: work.summary,
+      recoveryProcedurePath: plan.workRecoveryProcedurePath ?? null,
+    });
     await diagnostic(
       diagnostics,
       stage,
       "passed",
-      "Snapshot table, migration, role, evidence, receipt and historical report controls passed.",
+      "Snapshot data controls and durable work inventory captured. External worker/provider state is not verified.",
     );
     stage = "pg-dump";
     await runPostgres(
@@ -155,6 +168,7 @@ export async function backup(targetPath: string, bundle: string, recoveryPlanPat
       configuration: plan.configuration,
       artifacts: plan.artifacts,
       files,
+      durableWork,
       evidenceAndReceipts: "all-user-tables-in-snapshot",
       archiveCompliance: "not-established",
       keyRecovery: "custody-declared-not-exercised",
@@ -201,6 +215,7 @@ export async function inspectBundle(bundle: string, expectedDigest: string) {
     paths.some(
       (path) =>
         path !== "database.dump" &&
+        path !== workInventoryPath &&
         !path.startsWith("supplementary/") &&
         !path.startsWith("release/") &&
         !/^objects\/v1\/[a-z][a-z0-9_-]{2,127}\/[a-f0-9]{64}$/.test(path),
@@ -257,6 +272,7 @@ export async function inspectBundle(bundle: string, expectedDigest: string) {
     )
   )
     refuse("Configuration/key custody closure is incomplete.");
+  await inspectWorkInventory(bundle, manifest);
   return manifest;
 }
 export async function restore(
@@ -274,6 +290,7 @@ export async function restore(
     refuse("Restore configuration must name the postgres maintenance database.");
   disjoint(bundle, receiptDirectory);
   const manifest = await inspectBundle(bundle, digest);
+  const sourceWork = await inspectWorkInventory(bundle, manifest);
   if (target.user !== manifest.inventory.owner)
     refuse("Restore maintenance role must match the captured object owner.");
   await newDirectory(receiptDirectory);
@@ -296,8 +313,13 @@ export async function restore(
   });
   const identifier = admin.escapeIdentifier(database);
   let created = false;
+  let reconstructionComplete = false;
   let stage = "destination-preflight";
   let verifiedControls: typeof manifest.controls | undefined;
+  let workVerification: (typeof RestoreSuspensionReport.Type)["inventoryVerification"] = sourceWork
+    ? "not-run"
+    : "not-captured-in-source";
+  let connectionState: (typeof RestoreSuspensionReport.Type)["connections"] = "not-created";
   try {
     const existing = await admin.query("SELECT 1 FROM pg_database WHERE datname=$1", [database]);
     if (existing.rowCount !== 0)
@@ -312,6 +334,8 @@ export async function restore(
     if (roleSettings.rowCount !== 0)
       refuse("Destination cluster role settings need explicit recovery review.");
     stage = "create-quarantine";
+    // A lost CREATE response cannot establish that the destination was not created.
+    connectionState = "not-confirmed";
     // Names/locales are escaped identifiers/literals; no caller SQL is executed.
     await admin.query(`CREATE DATABASE ${identifier} TEMPLATE template0 ALLOW_CONNECTIONS false CONNECTION LIMIT 0
       ENCODING ${admin.escapeLiteral(manifest.inventory.encoding)} LOCALE_PROVIDER libc
@@ -361,6 +385,16 @@ export async function restore(
       );
       if (JSON.stringify(verifiedControls) !== JSON.stringify(manifest.controls))
         refuse("Restored evidence/receipt/report controls differ.");
+      if (sourceWork) {
+        stage = "durable-work-reconstruction";
+        workVerification = "failed";
+        const restoredWork = await captureWorkInventory(restored, actual, manifest.snapshot);
+        if (!isDeepStrictEqual(restoredWork, sourceWork))
+          refuse(
+            "Restored durable jobs, attempt counters or saved outcomes differ from the source snapshot.",
+          );
+        workVerification = "matched";
+      }
       await restored.query("ROLLBACK");
     } finally {
       await restored.end();
@@ -370,6 +404,11 @@ export async function restore(
     await copyArtifacts(join(bundle, "release"), join(receiptDirectory, "release"));
     if (manifest.files.some((file) => file.path.startsWith("objects/")))
       await copyArtifacts(join(bundle, "objects"), join(receiptDirectory, "objects"));
+    if (sourceWork)
+      await writePrivate(
+        join(receiptDirectory, workInventoryPath),
+        await readFile(join(bundle, workInventoryPath), "utf8"),
+      );
     for (const file of manifest.files.filter((file) => file.path !== "database.dump")) {
       const recovered = await fingerprint(artifactPath(receiptDirectory, file.path));
       if (recovered.sha256 !== file.sha256 || recovered.bytes !== file.bytes)
@@ -381,6 +420,7 @@ export async function restore(
       "passed",
       "Database and supplementary/release reconstruction controls passed; restricted application reads remain blocked.",
     );
+    reconstructionComplete = true;
   } catch (cause) {
     await diagnostic(
       diagnostics,
@@ -402,6 +442,7 @@ export async function restore(
           );
           if (quarantine.rows[0]?.closed !== true)
             refuse("Destination quarantine could not be confirmed.");
+          connectionState = "disabled";
           await diagnostic(
             diagnostics,
             "quarantine",
@@ -409,6 +450,7 @@ export async function restore(
             "Database connections are disabled and connection limit remains zero.",
           );
         } catch {
+          connectionState = "not-confirmed";
           await diagnostic(
             diagnostics,
             "quarantine",
@@ -419,9 +461,34 @@ export async function restore(
         }
       }
     } finally {
-      await admin.end();
+      try {
+        await admin.end();
+      } finally {
+        const suspension = Schema.decodeSync(RestoreSuspensionReport)({
+          version: 1,
+          kind: "openerp-restore-suspension",
+          recordedAt: new Date().toISOString(),
+          manifestSha256: digest,
+          destination: database,
+          operatorId: target.user,
+          connections: connectionState,
+          inventoryVerification: workVerification,
+          sourceInventory: manifest.durableWork ?? null,
+          reconstructionChecks: reconstructionComplete ? "completed" : "incomplete",
+          jobRows: "not-modified-by-recovery",
+          externalWorkers: "not-inspected",
+          providerOutcomes: "not-reconciled",
+          resumeAllowed: false,
+        });
+        await writePrivate(
+          join(receiptDirectory, "suspension-report.json"),
+          JSON.stringify(suspension, null, 2) + "\n",
+        );
+      }
     }
   }
+  if (workVerification !== "matched" && workVerification !== "not-captured-in-source")
+    refuse("Durable work reconstruction is incomplete. No success receipt can be issued.");
   if (!verifiedControls) refuse("No recovery controls were completed.");
   const receipt = Schema.decodeSync(RestoreReceipt)({
     version: 2,
@@ -438,6 +505,15 @@ export async function restore(
     roleAttributesAndMemberships: "matched-before-restore",
     supplementaryFiles: "matched",
     configurationRecovery: "custody-declared-not-exercised",
+    durableWork: {
+      version: 1,
+      inventoryVerification: workVerification,
+      suspensionReport: {
+        path: "suspension-report.json",
+        ...(await fingerprint(join(receiptDirectory, "suspension-report.json"))),
+      },
+      resumeAllowed: false,
+    },
     connections: "disabled",
     writerPromotion: "not-performed",
     applicationRecovery: "blocked-restricted-read-admission",

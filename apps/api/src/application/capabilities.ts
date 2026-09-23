@@ -105,6 +105,75 @@ export const capabilities = {
     "workspaceAssignWork",
     (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
   ),
+  tax_account_preview_match: bindCapability(
+    Capabilities.tax_account_preview_match,
+    "previewTaxAccountMatch",
+    (input) => [scopeParameter(input.scope), JSON.stringify(input.input)],
+  ),
+  tax_account_get_match: bindCapability(
+    Capabilities.tax_account_get_match,
+    "getTaxAccountMatch",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  tax_account_list_matches: bindCapability(
+    Capabilities.tax_account_list_matches,
+    "listTaxAccountMatches",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  tax_account_get_statement: bindCapability(
+    Capabilities.tax_account_get_statement,
+    "getTaxAccountStatement",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  tax_account_list_statements: bindCapability(
+    Capabilities.tax_account_list_statements,
+    "listTaxAccountStatements",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  tax_account_create_control: bindCapability(
+    Capabilities.tax_account_create_control,
+    "createTaxAccountControl",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  tax_account_get_control: bindCapability(
+    Capabilities.tax_account_get_control,
+    "getTaxAccountControl",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  tax_account_list_controls: bindCapability(
+    Capabilities.tax_account_list_controls,
+    "listTaxAccountControls",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  bank_prepare_inventory_signoff: bindCapability(
+    Capabilities.bank_prepare_inventory_signoff,
+    "prepareBankInventorySignoff",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  bank_get_inventory_signoff: bindCapability(
+    Capabilities.bank_get_inventory_signoff,
+    "getBankInventorySignoff",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  bank_list_inventory_signoffs: bindCapability(
+    Capabilities.bank_list_inventory_signoffs,
+    "listBankInventorySignoffs",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  bank_prepare_signoff: bindCapability(
+    Capabilities.bank_prepare_signoff,
+    "prepareBankSignoff",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  bank_get_signoff: bindCapability(Capabilities.bank_get_signoff, "getBankSignoff", (input) => [
+    scopeParameter(input.scope),
+    input.id,
+  ]),
+  bank_list_signoffs: bindCapability(
+    Capabilities.bank_list_signoffs,
+    "listBankSignoffs",
+    (input) => [scopeParameter(input.scope)],
+  ),
   bank_create_source_coverage: bindCapability(
     Capabilities.bank_create_source_coverage,
     "createBankSourceCoverage",
@@ -499,6 +568,15 @@ export const capabilities = {
     "commerceGetInvoice",
     (input) => [scopeParameter(input.scope), input.id],
   ),
+  commerce_invoice_payments: bindCapability(
+    Capabilities.commerce_invoice_payments,
+    "commerceInvoicePayments",
+    (input) => [
+      scopeParameter(input.scope),
+      input.id,
+      JSON.stringify({ page: input.page, historyPage: input.historyPage }),
+    ],
+  ),
   commerce_invoice_history: bindCapability(
     Capabilities.commerce_invoice_history,
     "commerceInvoiceHistory",
@@ -617,11 +695,34 @@ export const capabilities = {
     (input) => [scopeParameter(input.scope), input.cursor ?? ""],
   ),
   source_get_occurrence: effectCapability(Capabilities.source_get_occurrence, getSourceOccurrence),
+  source_capture_review: bindCapability(
+    Capabilities.source_capture_review,
+    "captureSourceReview",
+    (input) => [
+      scopeParameter(input.scope),
+      input.idempotencyKey,
+      input.previewId,
+      JSON.stringify(input.input),
+    ],
+  ),
+  source_get_review_artifact: bindCapability(
+    Capabilities.source_get_review_artifact,
+    "getSourceReviewArtifact",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  source_list_review_artifacts: bindCapability(
+    Capabilities.source_list_review_artifacts,
+    "listSourceReviewArtifacts",
+    (input) => [scopeParameter(input.scope)],
+  ),
   source_reparse_csv: bindCapability(
     Capabilities.source_reparse_csv,
     "reparseSourceCsv",
     (input) => [
-      scopeParameter(input.scope), input.idempotencyKey, input.previewId, JSON.stringify(input.input),
+      scopeParameter(input.scope),
+      input.idempotencyKey,
+      input.previewId,
+      JSON.stringify(input.input),
     ],
   ),
   source_get_revision_history: bindCapability(
@@ -928,6 +1029,10 @@ export const capabilities = {
     scopeParameter(input.scope),
     input.idempotencyKey,
     JSON.stringify(input.input),
+  ]),
+  reports_list: bindCapability(Capabilities.reports_list, "listReports", (input) => [
+    scopeParameter(input.scope),
+    input.after ?? "",
   ]),
   reports_get: bindCapability(Capabilities.reports_get, "getReport", (input) => [
     scopeParameter(input.scope),

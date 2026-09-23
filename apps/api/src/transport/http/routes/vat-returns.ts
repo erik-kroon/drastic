@@ -8,6 +8,21 @@ import { query, scopeParameter } from "../../../db/query";
 
 export const VatReturnsHandlers = HttpApiBuilder.group(Api, "vatReturns", (handlers) =>
   handlers
+    .handle("withdrawVatFact", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "withdrawVatFact",
+          [
+            token,
+            scopeParameter(params),
+            params.id,
+            headers["idempotency-key"],
+            JSON.stringify(payload),
+          ],
+          Vat.VatFactWithdrawal,
+        ),
+      ),
+    )
     .handle("compareVatDrafts", ({ params, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         query(

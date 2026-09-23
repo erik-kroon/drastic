@@ -100,3 +100,28 @@ END $$;
 
 REVOKE ALL ON FUNCTION openerp.report_general_ledger(text,jsonb,text,text,text) FROM PUBLIC,openerp_runtime;
 GRANT EXECUTE ON FUNCTION openerp.report_general_ledger(text,jsonb,text,text,text) TO openerp_runtime;
+
+-- Live discovery only; opening an ID always returns its immutable saved header.
+CREATE FUNCTION openerp.list_reports(p_token text,p_scope jsonb,p_after text) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, openerp AS $$
+DECLARE v_result jsonb;
+BEGIN
+  PERFORM openerp.authorize(p_token,p_scope);
+  IF coalesce(p_after,'')<>'' AND p_after !~ '^[a-z][a-z0-9_-]{2,127}$' THEN
+    PERFORM openerp.fail('InvalidJournal','Supply a valid report pagination identifier.');
+  END IF;
+  WITH page AS MATERIALIZED (
+    SELECT r.id,r.body FROM openerp.report_snapshots r
+    WHERE r.book_id=p_scope->>'bookId' AND r.id COLLATE "C">coalesce(p_after,'') COLLATE "C"
+    ORDER BY r.id COLLATE "C" LIMIT 51
+  ), shown AS (
+    SELECT * FROM page ORDER BY id COLLATE "C" LIMIT 50
+  )
+  SELECT jsonb_build_object(
+    'items',coalesce(jsonb_agg(s.body ORDER BY s.id COLLATE "C"),'[]'::jsonb),
+    'next',CASE WHEN (SELECT count(*) FROM page)>50 THEN max(s.id COLLATE "C") ELSE NULL END
+  ) INTO v_result FROM shown s;
+  RETURN v_result;
+END $$;
+REVOKE ALL ON FUNCTION openerp.list_reports(text,jsonb,text) FROM PUBLIC,openerp_runtime;
+GRANT EXECUTE ON FUNCTION openerp.list_reports(text,jsonb,text) TO openerp_runtime;

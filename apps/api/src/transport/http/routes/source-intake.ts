@@ -8,6 +8,39 @@ import { query, scopeParameter } from "../../../db/query";
 
 export const SourceIntakeHandlers = HttpApiBuilder.group(Api, "sourceIntake", (handlers) =>
   handlers
+    .handle("captureSourceReview", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "captureSourceReview",
+          [
+            token,
+            scopeParameter(params),
+            headers["idempotency-key"],
+            params.id,
+            JSON.stringify(payload),
+          ],
+          Intake.SourceReviewCapture,
+        ),
+      ),
+    )
+    .handle("getSourceReviewArtifact", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "getSourceReviewArtifact",
+          [token, scopeParameter(params), params.id],
+          Intake.SourceReviewArtifact,
+        ),
+      ),
+    )
+    .handle("listSourceReviewArtifacts", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "listSourceReviewArtifacts",
+          [token, scopeParameter(params)],
+          Intake.SourceReviewArtifactList,
+        ),
+      ),
+    )
     .handle("retainSource", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.source_retain.execute(token, {

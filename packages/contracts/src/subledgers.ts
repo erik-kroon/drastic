@@ -23,6 +23,13 @@ export const ScheduleTerms = Schema.Struct({
   periods: Schema.Array(SchedulePeriod).check(Schema.isMinLength(1), Schema.isMaxLength(120)),
   taxAssessment: Schema.Literal("not_applicable"),
 });
+export const RetainedScheduleTerms = Schema.Struct({
+  ...ScheduleTerms.fields,
+  allocationPolicy: Schema.Literals([
+    "equal_minor_final_remainder_v1",
+    "explicit_remaining_minor_v1",
+  ]),
+});
 export const CreateSchedule = Schema.Struct({
   sourceKey: Schema.String.check(Schema.isPattern(/^[a-zA-Z0-9_-]{1,128}$/)),
   terms: ScheduleTerms,
@@ -48,6 +55,31 @@ export const ScheduleDateAmendment = Schema.Struct({
   reviewSha256: Schema.String,
   reviewedOn: Accounting.AccountingDate,
 });
+export const AmendScheduleEstimate = Schema.Struct({
+  expectedDigest: Accounting.Digest,
+  expectedBasisDigest: Accounting.Digest,
+  firstOrdinal: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 120 })),
+  remainingMinor: Accounting.MinorUnits,
+  residualMinor: Accounting.MinorUnits,
+  installments: Schema.Array(
+    Schema.Struct({
+      ...SchedulePeriod.fields,
+      amountMinor: Accounting.MinorUnits.check(Schema.isPattern(/^[1-9][0-9]{0,37}$/)),
+    }),
+  ).check(Schema.isMinLength(1), Schema.isMaxLength(120)),
+  reviewEvidenceId: Accounting.Identifier,
+  rationale: Accounting.Description,
+});
+export const ScheduleEstimateAmendment = Schema.Struct({
+  kind: Schema.Literal("remaining_estimate_v1"),
+  input: AmendScheduleEstimate,
+  basisDigest: Accounting.Digest,
+  basisScheduleDigest: Accounting.Digest,
+  recognizedMinor: Accounting.MinorUnits,
+  reversedMinor: Accounting.AggregateMinorUnits,
+  reviewSha256: Schema.String,
+  reviewedOn: Accounting.AccountingDate,
+});
 export const ScheduleOccurrence = Schema.Struct({
   ordinal: Schema.Int,
   ...SchedulePeriod.fields,
@@ -59,7 +91,7 @@ export const ScheduleRevision = Schema.Struct({
   sourceKey: Schema.String,
   revision: Schema.Int,
   scope: Accounting.Scope,
-  terms: ScheduleTerms,
+  terms: RetainedScheduleTerms,
   currency: Schema.String,
   currencyScale: Schema.Int,
   sourceSha256: Schema.String,
@@ -67,7 +99,7 @@ export const ScheduleRevision = Schema.Struct({
   digest: Accounting.Digest,
   occurrences: Schema.Array(ScheduleOccurrence),
   allocatedMinor: Accounting.MinorUnits,
-  amendment: Schema.optional(ScheduleDateAmendment),
+  amendment: Schema.optional(Schema.Union([ScheduleDateAmendment, ScheduleEstimateAmendment])),
   createdAt: Schema.String,
   receipt: CommandReceipt,
 });
@@ -86,7 +118,9 @@ export const SchedulePostingBasis = Schema.Struct({
   basisDigest: Schema.NullOr(Accounting.Digest),
   basisVoucherId: Schema.NullOr(Accounting.Identifier),
   scheduleDigest: Schema.optional(Accounting.Digest),
-  blocker: Schema.NullOr(Schema.Literals(["basis_reversed_or_corrected", "basis_mismatch"])),
+  blocker: Schema.NullOr(
+    Schema.Literals(["basis_reversed_or_corrected", "basis_mismatch", "estimate_history_changed"]),
+  ),
   legalPolicyApproved: Schema.Literal(false),
 });
 export const ScheduleView = Schema.Struct({
@@ -153,6 +187,12 @@ export const SubledgersApi = HttpApiGroup.make("subledgers").add(
     ...identified,
     headers: Accounting.IdempotencyHeaders,
     payload: AmendScheduleFutureDates.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: ScheduleRevision,
+  }),
+  HttpApiEndpoint.post("amendScheduleEstimate", `${path}/:id/estimates`, {
+    ...identified,
+    headers: Accounting.IdempotencyHeaders,
+    payload: AmendScheduleEstimate.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: ScheduleRevision,
   }),
   HttpApiEndpoint.post("prepareScheduleOccurrence", `${path}/:id/prepare`, {

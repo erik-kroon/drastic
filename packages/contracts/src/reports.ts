@@ -23,6 +23,10 @@ export const ReportSnapshot = Schema.Struct({
   coverage: Schema.Literal("not_established"),
   warnings: Schema.Array(Schema.String),
 });
+export const ReportSnapshotPage = Schema.Struct({
+  items: Schema.Array(ReportSnapshot).check(Schema.isMaxLength(50)),
+  next: Schema.NullOr(Accounting.Identifier),
+});
 export const ReportLine = Schema.Struct({
   accountId: Accounting.Identifier,
   code: Schema.String,
@@ -95,6 +99,11 @@ export const ExplanationPath = Schema.Struct({
 const scoped = { params: Accounting.Scope, error: errors };
 const identified = { params: Accounting.ChangePath, error: errors };
 export const ReportApi = HttpApiGroup.make("reports").add(
+  HttpApiEndpoint.get("listReports", "/v1/entities/:entityId/books/:bookId/report-snapshots", {
+    ...scoped,
+    query: LinesQuery,
+    success: ReportSnapshotPage,
+  }),
   HttpApiEndpoint.post("prepareReport", "/v1/entities/:entityId/books/:bookId/report-snapshots", {
     ...scoped,
     headers: Accounting.IdempotencyHeaders,

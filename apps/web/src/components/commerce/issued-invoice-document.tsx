@@ -57,13 +57,23 @@ export function IssuedInvoiceDocument(
               ? "Demofaktura. Dokumentet har inte skickats och är inte en juridisk faktura."
               : "Demo invoice. This document has not been sent and is not a legal invoice."}
           </Text>
+          <InvoiceDocumentPanel book={book} locale={locale} issue={view.data.issue} />
           <InvoiceDraftDocument
             record={view.data.plan.draftSnapshot}
             locale={locale}
             title={`${locale === "sv" ? "Demofaktura" : "Demo invoice"} · ${invoice.documentNumber}`}
           />
-          <InvoiceDocumentPanel book={book} locale={locale} issue={view.data.issue} />
-          <Details title={locale === "sv" ? "Makulera demofaktura" : "Cancel demo invoice"}>
+          <Details
+            title={
+              invoice.status === "cancelled"
+                ? locale === "sv"
+                  ? "Makulering"
+                  : "Cancellation"
+                : locale === "sv"
+                  ? "Makulera demofaktura"
+                  : "Cancel demo invoice"
+            }
+          >
             <InvoiceCancellationPanel book={book} locale={locale} issue={view.data.issue} />
           </Details>
         </>

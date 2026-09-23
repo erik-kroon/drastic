@@ -65,6 +65,7 @@ export const RecoveryPlan = Schema.Struct({
   supplementaryDirectory: Schema.String,
   artifacts: Schema.Array(RecoveryArtifact),
   configuration: Schema.Array(ConfigurationCustody),
+  workRecoveryProcedurePath: Schema.optional(Schema.String.check(Schema.isMinLength(1))),
 }).annotate({ parseOptions: { onExcessProperty: "error" } });
 export const ReleaseManifest = Schema.Struct({
   version: Schema.Literal(1),
@@ -122,6 +123,111 @@ export const RecoveryControls = Schema.Struct({
   historicalReportControls: Schema.Literal("matched"),
   externalObjects: Schema.Literals(["unsupported-pointers-refused", "retained-originals-matched"]),
 });
+export const RecoveryWorkSummary = Schema.Struct({
+  outboxRows: Count,
+  undeliveredOutbox: Count,
+  undeliveredWithAttempts: Count,
+  outboxAttemptCount: Count,
+  preparationRuns: Count,
+  unfinishedRuns: Count,
+  preparationJobs: Count,
+  readyJobs: Count,
+  blockedOrStoppedJobs: Count,
+  savedRequests: Count,
+  requestsWithoutOutcome: Count,
+});
+export const RecoveryWorkInventory = Schema.Struct({
+  version: Schema.Literal(1),
+  kind: Schema.Literal("openerp-durable-work-inventory"),
+  snapshot: Schema.String,
+  books: Schema.Array(BookBoundary),
+  summary: RecoveryWorkSummary,
+  outbox: Schema.Array(
+    Schema.Struct({
+      bookId: Schema.String,
+      id: Schema.String,
+      receiptId: Schema.String,
+      kind: Schema.String,
+      attempts: Count,
+      createdAt: Schema.String,
+      deliveredAt: Schema.NullOr(Schema.String),
+      payloadSha256: Digest,
+    }),
+  ).check(Schema.isMaxLength(10000)),
+  runs: Schema.Array(
+    Schema.Struct({
+      bookId: Schema.String,
+      id: Schema.String,
+      state: Schema.Literals(["ready", "blocked", "cancelled", "completed"]),
+      cursor: Count,
+      selectedRows: Count,
+      auditOrdinal: Count,
+    }),
+  ).check(Schema.isMaxLength(10000)),
+  jobs: Schema.Array(
+    Schema.Struct({
+      bookId: Schema.String,
+      id: Schema.String,
+      runId: Schema.String,
+      requestedBy: Schema.String,
+      executorId: Schema.String,
+      state: Schema.Literals(["ready", "completed", "blocked", "stopped"]),
+      checkpoint: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 50 })),
+      expectedAudit: Count,
+      createdAt: Schema.String,
+      checkedAt: Schema.String,
+    }),
+  ).check(Schema.isMaxLength(10000)),
+  savedRequests: Schema.Array(
+    Schema.Struct({
+      bookId: Schema.String,
+      key: Schema.String,
+      actorId: Schema.String,
+      operation: Schema.Literals([
+        "create_evidence",
+        "prepare_journal",
+        "approve_change",
+        "execute_change",
+        "revoke_approval",
+      ]),
+      requestDigest: Schema.String.check(Schema.isPattern(/^sha256:[a-f0-9]{64}$/)),
+      commandKey: Schema.String,
+      savedAt: Schema.String,
+      outcome: Schema.NullOr(Schema.Literals(["committed", "refused"])),
+      commandReceiptPresent: Schema.Boolean,
+    }),
+  ).check(Schema.isMaxLength(10000)),
+  providerAttemptHistory: Schema.Literal("not-recorded-by-current-schema"),
+  remoteWorkflowState: Schema.Literal("not-inspected"),
+  resumptionAuthority: Schema.Literal("not-granted"),
+}).annotate({ parseOptions: { onExcessProperty: "error" } });
+export const BackupWorkInventory = Schema.Struct({
+  version: Schema.Literal(1),
+  file: BackupFile,
+  summary: RecoveryWorkSummary,
+  recoveryProcedurePath: Schema.NullOr(Schema.String),
+});
+export const RestoreSuspensionReport = Schema.Struct({
+  version: Schema.Literal(1),
+  kind: Schema.Literal("openerp-restore-suspension"),
+  recordedAt: Schema.String,
+  manifestSha256: Digest,
+  destination: Schema.String,
+  operatorId: Schema.String,
+  connections: Schema.Literals(["disabled", "not-created", "not-confirmed"]),
+  inventoryVerification: Schema.Literals([
+    "matched",
+    "not-run",
+    "failed",
+    "not-captured-in-source",
+  ]),
+  sourceInventory: Schema.NullOr(BackupWorkInventory),
+  reconstructionChecks: Schema.Literals(["completed", "incomplete"]),
+  jobRows: Schema.Literal("not-modified-by-recovery"),
+  externalWorkers: Schema.Literal("not-inspected"),
+  providerOutcomes: Schema.Literal("not-reconciled"),
+  resumeAllowed: Schema.Literal(false),
+});
 export const BackupManifest = Schema.Struct({
   version: Schema.Literal(2),
   kind: Schema.Literal("openerp-local-backup"),
@@ -140,6 +246,7 @@ export const BackupManifest = Schema.Struct({
   evidenceAndReceipts: Schema.Literal("all-user-tables-in-snapshot"),
   archiveCompliance: Schema.Literal("not-established"),
   keyRecovery: Schema.Literal("custody-declared-not-exercised"),
+  durableWork: Schema.optional(BackupWorkInventory),
   restoreStatus: Schema.Literal("not-exercised"),
   productionAction: Schema.Literal("disabled"),
 }).annotate({ parseOptions: { onExcessProperty: "error" } });
@@ -158,6 +265,14 @@ export const RestoreReceipt = Schema.Struct({
   roleAttributesAndMemberships: Schema.Literal("matched-before-restore"),
   supplementaryFiles: Schema.Literal("matched"),
   configurationRecovery: Schema.Literal("custody-declared-not-exercised"),
+  durableWork: Schema.optional(
+    Schema.Struct({
+      version: Schema.Literal(1),
+      inventoryVerification: Schema.Literals(["matched", "not-captured-in-source"]),
+      suspensionReport: BackupFile,
+      resumeAllowed: Schema.Literal(false),
+    }),
+  ),
   connections: Schema.Literal("disabled"),
   writerPromotion: Schema.Literal("not-performed"),
   applicationRecovery: Schema.Literal("blocked-restricted-read-admission"),

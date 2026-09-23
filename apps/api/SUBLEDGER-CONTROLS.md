@@ -438,3 +438,16 @@ posting dates require fresh kernel preparation and human approval. Control captu
 recognizes this retained basis lineage. Lifetime/amount changes and disposal remain
 unsupported. Forward3100 is unapplied and runtime-unverified. Root integrated shared
 query dispatch; shared type checks remain root-owned.
+
+
+##4000 explicit remaining-estimate amendments
+
+[Explicit remaining estimates](SUBLEDGER-ESTIMATE-AMENDMENTS.md) extends3100's revision
+owner with reviewed positive future installment amounts and a nonnegative residual.
+Original acquisition/imported basis and all posted/reversed prefix records remain intact.
+The distinct synthetic policy conserves net recognized + future + residual against the
+unchanged carrying cost. Known correction replacements, zero installments and legal-rule
+inference are refused.1800's existing shared/physical guards reject stale authority, and
+an added live conservation check blocks recognition after a later reversal until a new
+eligible estimate is reviewed. Control contributions retain original/reversal rows and
+all review/readiness limits.4000 remains unapplied and runtime-unverified.

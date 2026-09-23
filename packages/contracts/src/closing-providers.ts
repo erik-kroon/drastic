@@ -26,6 +26,25 @@ export const VatReturnDependencies = Schema.Struct({
   basisDigest: Accounting.Digest,
   sourceCount: Schema.Int,
   draftCount: Schema.Int,
+  // Absent only on historical snapshots captured before tax-account integration.
+  taxAccounts: Schema.optional(
+    Schema.Struct({
+      statementCount: Schema.Int,
+      controlCount: Schema.Int,
+      statementInventoryDigest: Accounting.Digest,
+      controlInventoryDigest: Accounting.Digest,
+      // Absent on snapshots captured before exact tax-account matching.
+      matching: Schema.optional(
+        Schema.Struct({
+          matchCount: Schema.Int,
+          unmatchCount: Schema.Int,
+          matchInventoryDigest: Accounting.Digest,
+          unmatchInventoryDigest: Accounting.Digest,
+          activeStateDigest: Accounting.Digest,
+        }),
+      ),
+    }),
+  ),
   coverageEstablished: Schema.Literal(false),
   ledgerReconciled: Schema.Literal(false),
   legalProfileActive: Schema.Literal(false),

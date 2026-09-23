@@ -182,6 +182,7 @@ function CancellationPreparation(
         {...props}
         compact
         path={`${commercePath(book)}/invoice-cancellation-reviews`}
+        recoveryId={issue.id}
         schema={Cancellation.PrepareInvoiceCancellation}
         output={Cancellation.InvoiceCancellationReview}
         label={copy.prepare}
@@ -368,6 +369,7 @@ function CancellationReviewContents(
         {...props}
         compact
         path={`${path}/approve`}
+        recoveryId={review.id}
         schema={Cancellation.ApproveInvoiceCancellation}
         output={Cancellation.InvoiceCancellationApproval}
         label={copy.approve}
@@ -387,6 +389,7 @@ function CancellationReviewContents(
             {...props}
             compact
             path={`${path}/execute`}
+            recoveryId={`${review.id}:${entry.approval.id}`}
             schema={Cancellation.ExecuteInvoiceCancellation}
             output={Cancellation.InvoiceCancellationReceipt}
             label={copy.execute}
@@ -405,11 +408,16 @@ function CancellationReviewContents(
           >
             <CancellationAcknowledgment locale={locale} />
           </CommandForm>
-          <Details title={copy.revoke}>
+        </Box>
+      ))}
+      <Details title={copy.technical}>
+        {view.approvals.map((entry) => (
+          <Details key={entry.approval.id} title={copy.revoke}>
             <CommandForm
               {...props}
               compact
               path={`${commercePath(book)}/invoice-cancellation-approvals/${encodeURIComponent(entry.approval.id)}/revoke`}
+              recoveryId={entry.approval.id}
               schema={Cancellation.RevokeInvoiceCancellationApproval}
               output={Cancellation.InvoiceCancellationRevocation}
               label={copy.revoke}
@@ -419,9 +427,7 @@ function CancellationReviewContents(
               <InputField name="reason" label={copy.revokeReason} required maxLength={2000} />
             </CommandForm>
           </Details>
-        </Box>
-      ))}
-      <Details title={copy.technical}>
+        ))}
         <Text tone="muted">{copy.authority}</Text>
         <Details title={copy.evidence}>
           <Evidence {...props} reference={review.snapshot.invoice.evidence} />

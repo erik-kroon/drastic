@@ -1,6 +1,8 @@
 import { sql, type SQL } from "drizzle-orm";
 
 export const vatAmendmentStatements = {
+  withdrawVatFact: (parameters) =>
+    sql`select openerp.withdraw_vat_fact(${parameters[0]}::text, ${parameters[1]}::jsonb, ${parameters[2]}::text, ${parameters[3]}::text, ${parameters[4]}::jsonb) as result`,
   compareVatDrafts: (parameters) =>
     sql`select openerp.compare_vat_drafts(${parameters[0]}::text, ${parameters[1]}::jsonb, ${parameters[2]}::jsonb) as result`,
   reviewVatAmendment: (parameters) =>

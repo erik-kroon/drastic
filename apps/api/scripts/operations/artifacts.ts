@@ -209,6 +209,17 @@ export async function readRecoveryPlan(path: string) {
     )
       refuse("Configuration custody references a missing recovery procedure.");
   }
+  if (
+    plan.workRecoveryProcedurePath !== undefined &&
+    !plan.artifacts.some(
+      (file) =>
+        file.path === plan.workRecoveryProcedurePath &&
+        ["configuration", "key-recovery"].includes(file.kind),
+    )
+  )
+    refuse(
+      "Durable work recovery procedure must name a retained configuration or key-recovery artifact.",
+    );
   for (const file of plan.artifacts) {
     const actual = await fingerprint(artifactPath(plan.supplementaryDirectory, file.path));
     if (actual.sha256 !== file.sha256 || actual.bytes !== file.bytes)

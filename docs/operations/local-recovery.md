@@ -87,3 +87,28 @@ On success or ordinary failure, the finalizer disables connections and checks `d
 Follow [application recovery](application-recovery.md) for the exact root decision and rehearsal steps. Current accounting admission takes credential/session/member `FOR SHARE` locks. PostgreSQL rejects those in a read-only transaction. Better Auth also owns mutable session/account/rate-limit tables. A superuser SQL comparison or a health endpoint is not restricted-role recovery proof. Do not change those guards, reuse restored browser sessions, enable database connections for ordinary roles, or run the normal application just to obtain a green probe.
 
 Production remains blocked on verified storage/retention/key custody, actual company/profile facts, fenced single-writer/provider recovery, independent application exercise, reconciled acknowledged effects and separate authority. A backup older than an acknowledged posting/submission cannot be promoted as if that effect never existed.
+
+
+## Durable work inventory extension (implemented source; runtime unverified)
+
+[Durable work recovery](durable-work-recovery.md) extends the existing commands with a
+snapshot-bound `durable-work-v1.json`. New backups retain complete bounded outbox counters,
+preparation runs/jobs and saved posting outcome identities. `inspect` validates its full
+file/summary/snapshot closure; `restore` repeats the inventory before success and copies
+the original file into the restored artifact directory. Per-family limits are10000 rows;
+the inventory is at most8MiB. No record is silently truncated.
+
+Recovery plan version1 optionally accepts `workRecoveryProcedurePath`, referencing a
+retained configuration/key-recovery artifact. This procedure declaration does not prove
+worker suspension. Backup/restore version2 gain optional versioned `durableWork` fields;
+old v2 bundles remain supported with explicit `not-captured-in-source`, never zero pending
+work inferred from absence. Older strict decoders need the updated contracts for new bundles.
+
+`suspension-report.json` records the work comparison and observed database quarantine
+separately from uninspected external workers and unreconciled provider outcomes. It is
+attempted on ordinary success/failure after maintenance connection admission. A successful
+restore receipt binds its exact hash/size. Failure or absence of either artifact cannot
+be treated as permission to resume. Ready jobs remain ready in the retained data, but no
+runtime/provider is started and `resumeAllowed` is alwaysfalse. Current outbox counters
+are not per-attempt provider receipts; remote Workflow retry/state history is not captured.
+The restricted-read application boundary and every existing promotion gate remain blocked.

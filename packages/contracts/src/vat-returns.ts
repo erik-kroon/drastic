@@ -56,7 +56,28 @@ export const VatFact = Schema.Struct({
   expenseSourceDigest: Schema.NullOr(A.Digest),
   expenseReviewDigest: Schema.NullOr(A.Digest),
 });
+export const WithdrawVatFact = Schema.Struct({
+  expectedDigest: A.Digest,
+  evidenceId: A.Identifier,
+  rationale: A.Description,
+});
+export const VatFactWithdrawal = Schema.Struct({
+  id: A.Identifier,
+  digest: A.Digest,
+  scope: A.Scope,
+  factId: A.Identifier,
+  revisionId: A.Identifier,
+  revision: Schema.Int,
+  revisionDigest: A.Digest,
+  input: WithdrawVatFact,
+  evidenceSha256: Schema.String,
+  recordedAt: Schema.String,
+  receipt: CommandReceipt,
+  permanent: Schema.Literal(true),
+});
 export const VatFactObservation = Schema.Struct({
+  // Saved v1 bases predate withdrawal metadata. New live bases always include this field.
+  withdrawal: Schema.optional(Schema.NullOr(VatFactWithdrawal)),
   fact: VatFact,
   expenseLinkCurrent: Schema.Boolean,
   voucherReversed: Schema.Boolean,
@@ -79,7 +100,11 @@ export const VatBasis = Schema.Struct({
   currencyScale: Schema.Int,
   facts: Schema.Array(VatFactObservation),
 });
-export const VatFactView = Schema.Struct({ current: VatFact, history: Schema.Array(VatFact) });
+export const VatFactView = Schema.Struct({
+  current: VatFact,
+  history: Schema.Array(VatFact),
+  withdrawal: Schema.NullOr(VatFactWithdrawal),
+});
 export const PrepareVatDraft = Schema.Struct({
   mode: Schema.Literals(["actual_review", "synthetic_demonstration"]),
   startsOn: A.AccountingDate,
@@ -88,6 +113,7 @@ export const PrepareVatDraft = Schema.Struct({
   otherBoxes: Schema.Literals(["unknown", "absent_in_synthetic_example"]),
 });
 export const VatBlocker = Schema.Literals([
+  "withdrawn_fact",
   "actual_profile_unapproved",
   "wrong_record_class",
   "unsupported_book",
@@ -131,7 +157,7 @@ export const VatBox = Schema.Struct({
   residualMinor: Schema.NullOr(A.SignedMinorUnits),
 });
 export const VatCalculation = Schema.Struct({
-  engine: Schema.Literal("vat-return-draft-v1"),
+  engine: Schema.Literals(["vat-return-draft-v1", "vat-return-draft-v2"]),
   assessments: Schema.Array(VatAssessment),
   includedCount: Schema.Int,
   excludedCount: Schema.Int,
@@ -188,7 +214,7 @@ const VatDraftReference = Schema.Struct({
   id: A.Identifier,
   digest: A.Digest,
   basisDigest: A.Digest,
-  engine: Schema.Literal("vat-return-draft-v1"),
+  engine: VatCalculation.fields.engine,
   input: PrepareVatDraft,
   bookSequence: A.MinorUnits,
   bookProfile: Schema.String,
@@ -280,6 +306,12 @@ const path = "/v1/entities/:entityId/books/:bookId/vat-returns";
 const scoped = { params: A.Scope, error: accountingErrors };
 const identified = { params: A.ChangePath, error: accountingErrors };
 export const VatReturnsApi = HttpApiGroup.make("vatReturns").add(
+  HttpApiEndpoint.post("withdrawVatFact", `${path}/facts/:id/withdrawal`, {
+    ...identified,
+    headers: A.IdempotencyHeaders,
+    payload: WithdrawVatFact.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: VatFactWithdrawal,
+  }),
   HttpApiEndpoint.post("compareVatDrafts", `${path}/amendments/compare`, {
     ...scoped,
     payload: CompareVatDrafts.annotate({ parseOptions: { onExcessProperty: "error" } }),

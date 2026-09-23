@@ -9,9 +9,10 @@ import { InputField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting, isUncertainWriteError } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { commerceCopy } from "./copy";
+import { useCommerceCommandRecovery } from "./command-recovery";
 
 export type CommerceProps = { book: typeof Accounting.Book.Type; locale: Locale };
 export const commercePath = (book: CommerceProps["book"]) => `${bookPath(book)}/commerce`;
@@ -151,6 +152,7 @@ export function CommandForm<
     children?: ReactNode;
     label: string;
     compact?: boolean;
+    recoveryId?: string;
     allowed?: boolean;
     canSubmit?: boolean;
     onSuccess?: (result: O["Type"]) => void;
@@ -165,8 +167,11 @@ export function CommandForm<
 
   const [invalid, setInvalid] = useState(false);
   const [formVersion, setFormVersion] = useState(0);
+  const [cleanupFailed, setCleanupFailed] = useState(false);
+  const recovery = useCommerceCommandRecovery({ book, path, id: props.recoveryId, schema });
   const command = useMutation({
     mutationFn: async (request: { key: string; input: S["Type"] }) => {
+      recovery.retain(request);
       const result = await readAccounting(path, props.output, {
         method: "POST",
         body: JSON.stringify(request.input),
@@ -176,13 +181,21 @@ export function CommandForm<
         checkScope(book, Schema.decodeUnknownSync(Accounting.Scope)(result.scope));
       return result;
     },
-    onSuccess: (result) => {
-      void client.invalidateQueries({ queryKey: bookKey(book) });
+    onSuccess: (result, request) => {
       props.onSuccess?.(result);
+      try {
+        recovery.clear(request.key);
+      } catch {
+        setCleanupFailed(true);
+      }
+      void client.invalidateQueries({ queryKey: bookKey(book) });
     },
     retry: false,
   });
-  const captured = command.variables;
+  const captured = command.variables ?? recovery.saved;
+  const restored = command.isIdle && !!recovery.saved;
+  const canReplace =
+    command.isSuccess || (command.isError && !isUncertainWriteError(command.error));
   // Compact task actions disappear only when no request is in flight or its result is known.
   if (props.compact && !allowed && (!captured || command.isSuccess)) return null;
   const artifact = {
@@ -200,7 +213,14 @@ export function CommandForm<
       aria-describedby={errorId}
       onSubmit={(event) => {
         event.preventDefault();
-        if (!allowed || props.canSubmit === false || command.isPending || captured) return;
+        if (
+          !allowed ||
+          !recovery.ready ||
+          props.canSubmit === false ||
+          command.isPending ||
+          captured
+        )
+          return;
         const parsed = Schema.decodeUnknownOption(schema)(
           props.input(new FormData(event.currentTarget)),
         );
@@ -215,7 +235,7 @@ export function CommandForm<
       <Box
         key={formVersion}
         as="fieldset"
-        disabled={!allowed || !!captured}
+        disabled={!allowed || !recovery.ready || !!captured}
         display="grid"
         gap="lg"
         minWidth="zero"
@@ -223,7 +243,7 @@ export function CommandForm<
         padding="none"
         margin="none"
       >
-        {props.children}
+        {!captured ? props.children : null}
         <Box display="flex" flexWrap="wrap" gap="md">
           <Button
             type="submit"
@@ -240,11 +260,22 @@ export function CommandForm<
         </Text>
       ) : null}
       {!allowed ? <Text>{copy.waiting}</Text> : null}
+      <CommandRecoveryNotice
+        locale={locale}
+        restored={restored}
+        failed={Boolean(recovery.error) || cleanupFailed}
+        onRefresh={recovery.refresh}
+      />
       <AccountingStatus locale={locale} write pending={command.isPending} error={command.error} />
       {command.isSuccess ? <Text role="status">{copy.saved}</Text> : null}
-      {command.isError && captured ? (
+      {(command.isError || restored) && captured ? (
         <Box>
-          <Button type="button" variant="outline" onClick={() => command.mutate(captured)}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!recovery.ready || command.isPending}
+            onClick={() => command.mutate(captured)}
+          >
             {copy.retry}
           </Button>
         </Box>
@@ -275,13 +306,22 @@ export function CommandForm<
           </Box>
         </Details>
       ) : null}
-      {command.isSuccess ? (
+      {canReplace ? (
         <Box>
           <Button
             type="button"
             variant="outline"
             disabled={!allowed}
             onClick={() => {
+              if (captured) {
+                try {
+                  recovery.clear(captured.key);
+                } catch {
+                  setCleanupFailed(true);
+                  return;
+                }
+              }
+              setCleanupFailed(false);
               command.reset();
               setInvalid(false);
               props.onNewCommand?.();
@@ -293,5 +333,43 @@ export function CommandForm<
         </Box>
       ) : null}
     </Box>
+  );
+}
+
+function CommandRecoveryNotice({
+  locale,
+  restored,
+  failed,
+  onRefresh,
+}: {
+  locale: Locale;
+  restored: boolean;
+  failed: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <>
+      {restored ? (
+        <Text role="status">
+          {locale === "sv"
+            ? "En tidigare begäran väntar på bekräftelse. Försök samma begäran igen för att hämta resultatet."
+            : "An earlier request is awaiting confirmation. Retry that same request to retrieve its result."}
+        </Text>
+      ) : null}
+      {failed ? (
+        <Box display="grid" gap="sm">
+          <Text role="alert">
+            {locale === "sv"
+              ? "Begärans återställningsuppgifter kunde inte läsas eller uppdateras. Tillåt lagring i den här fliken och försök igen."
+              : "The request’s recovery details could not be read or updated. Allow storage in this tab and try again."}
+          </Text>
+          <Box>
+            <Button variant="outline" onClick={onRefresh}>
+              {locale === "sv" ? "Försök läsa igen" : "Retry recovery read"}
+            </Button>
+          </Box>
+        </Box>
+      ) : null}
+    </>
   );
 }

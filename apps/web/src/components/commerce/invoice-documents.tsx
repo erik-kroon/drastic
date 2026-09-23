@@ -5,6 +5,7 @@ import type * as Issuance from "@open-erp/contracts/invoice-issuance";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { HtmlDocumentPreview } from "@open-erp/ui/components/document-preview";
+import { Disclosure } from "@open-erp/ui/components/disclosure";
 import { FormActions } from "@open-erp/ui/components/form-actions";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -12,7 +13,6 @@ import { readAccounting } from "@/lib/accounting-api";
 import { invoiceDocumentCopy } from "./invoice-document-copy";
 import {
   CommandForm,
-  Details,
   Facts,
   checkScope,
   commerceKey,
@@ -69,6 +69,7 @@ function DocumentPanel(props: IssuedDocumentProps) {
           <CommandForm
             {...props}
             compact
+            recoveryId={issue.id}
             path={`${commercePath(book)}/invoice-documents`}
             schema={Documents.PrepareInvoiceDocument}
             output={Documents.InvoiceDocumentView}
@@ -177,10 +178,6 @@ export function InvoiceDocumentInspector(props: IssuedDocumentProps & { id: stri
                   {copy.save}
                 </Button>
               </FormActions>
-              <Details title={copy.preview}>
-                <Text tone="muted">{copy.historyMeaning}</Text>
-                <HtmlDocumentPreview title={copy.preview} html={view.data.verified.html} />
-              </Details>
             </>
           ) : (
             <>
@@ -196,27 +193,39 @@ export function InvoiceDocumentInspector(props: IssuedDocumentProps & { id: stri
               </Box>
             </>
           )}
-          <Details title={copy.source}>
-            <Text tone="muted">{copy.recovery}</Text>
-            <Box>
-              <Button
-                variant="outline"
-                disabled={view.isFetching || resume.isPending}
-                onClick={() => {
-                  void view.refetch();
-                }}
-              >
-                {copy.refresh}
-              </Button>
-            </Box>
-            <Facts title={copy.title} value={view.data.capture} />
-            {view.data.artifact ? (
-              <Facts
-                title={copy.descriptor}
-                value={{ ...view.data.artifact, contentBase64: undefined }}
-              />
+          <Box display="flex" flexWrap="wrap" gap="lg" minWidth="zero">
+            {view.data.verified ? (
+              <Disclosure label={copy.preview} variant="toolbar">
+                <Box display="grid" gap="md" minWidth="zero">
+                  <Text tone="muted">{copy.historyMeaning}</Text>
+                  <HtmlDocumentPreview title={copy.preview} html={view.data.verified.html} />
+                </Box>
+              </Disclosure>
             ) : null}
-          </Details>
+            <Disclosure label={copy.source} variant="toolbar">
+              <Box display="grid" gap="md" minWidth="zero">
+                <Text tone="muted">{copy.recovery}</Text>
+                <Box>
+                  <Button
+                    variant="outline"
+                    disabled={view.isFetching || resume.isPending}
+                    onClick={() => {
+                      void view.refetch();
+                    }}
+                  >
+                    {copy.refresh}
+                  </Button>
+                </Box>
+                <Facts title={copy.title} value={view.data.capture} />
+                {view.data.artifact ? (
+                  <Facts
+                    title={copy.descriptor}
+                    value={{ ...view.data.artifact, contentBase64: undefined }}
+                  />
+                ) : null}
+              </Box>
+            </Disclosure>
+          </Box>
         </>
       ) : null}
       <AccountingStatus locale={locale} write pending={resume.isPending} error={resume.error} />

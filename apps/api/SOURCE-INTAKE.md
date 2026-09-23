@@ -120,6 +120,16 @@ Owned changes are `packages/contracts/src/source-intake.ts`, `apps/api/src/trans
 
 Owned-file `oxfmt --write` passed on the three changed TypeScript files and two domain documents. Owned-file `oxlint` passed with zero warnings/errors. Source review confirmed historical migration hashes were unchanged. No tests or fixtures were added. No migration was applied and no database, transport or concurrency behavior was exercised. Root owns integrated type validation and runtime evidence. When authorized, observe stale-digest/cross-book/role-loss refusals; blocked-to-ready and ready-to-blocked reparse; expired-review recovery; exact-key response-loss recovery; concurrent reparse/admit; rejection of old-preview approval/admission without committed evidence or bank changes; unchanged old bytes/diagnostics/admitted statements/matches; and the 50-preview limit. These are pending observations, not verified acceptance.
 
+## Durable interpretation review export (3900)
+
+The [review artifact handoff](SOURCE-REVIEW-ARTIFACTS.md) adds exact retained canonical JSON
+captures of one selected preview, its original occurrence/content locator, all normalized rows
+and diagnostics, and non-authorizing review/admission state at capture. Existing ad hoc UI
+preview downloads are not durable captures. New capture/get/list REST/MCP operations recover
+saved bytes/hash/length without reparsing or pretending historical reviews are current authority.
+Approval IDs/commands are excluded from review/admission summaries. The artifact establishes
+neither source completeness nor posting authority. No UI or storage adapter was changed.
+
 ## Verification status and root's next action
 
 Bounded owned-file formatting and Oxlint are the only worker checks. `oxfmt` completed on eight owned TypeScript files and the two domain documents; `oxlint` completed on the eight TypeScript files with zero warnings and zero errors. No native typecheck, SQL execution, migration, browser interaction, concurrency/crash/revocation experiment, test/fixture, dependency installation, Git action, build, server or real-company operation was performed. Source inspection is not runtime proof. Shared exports/group/dispatcher composition must land before native type validation; no integrated-build claim is made.

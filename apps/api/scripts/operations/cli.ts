@@ -40,7 +40,12 @@ const command = Effect.tryPromise({
     ) {
       await backup(first, second, third);
     } else if (action === "inspect" && args.length === 2 && first && second) {
-      await inspectBundle(first, second);
+      const manifest = await inspectBundle(first, second);
+      console.info(
+        manifest.durableWork
+          ? "Durable work inventory matches its snapshot manifest. Worker/provider state remains unverified; no resumption is authorized."
+          : "Historical bundle has no explicit durable work inventory. This does not establish an empty queue or authorize resumption.",
+      );
       console.info(
         "Bundle checksums match. This does not prove successful restore or compliant retention.",
       );

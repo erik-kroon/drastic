@@ -10,6 +10,9 @@ import { SettlementCapabilities } from "./settlements";
 import { BankMatchReversalCapabilities } from "./bank-match-reversals";
 import { BankMatchCandidateCapabilities } from "./bank-match-candidates";
 import { BankSourceCoverageCapabilities } from "./bank-source-coverage";
+import { BankSignoffCapabilities } from "./bank-signoffs";
+import { BankInventorySignoffCapabilities } from "./bank-inventory-signoffs";
+import { TaxAccountCapabilities } from "./tax-account";
 
 import { SubledgerCapabilities } from "./subledgers";
 
@@ -81,6 +84,9 @@ export const Capabilities = {
   ...BankMatchReversalCapabilities,
   ...BankMatchCandidateCapabilities,
   ...BankSourceCoverageCapabilities,
+  ...BankSignoffCapabilities,
+  ...BankInventorySignoffCapabilities,
+  ...TaxAccountCapabilities,
   rules_propose: {
     description:
       "Propose an immutable synthetic exact-match recurring PREPARATION rule. It never grants posting authority.",
@@ -182,6 +188,13 @@ export const Capabilities = {
     input: Schema.Struct({ ...mutation, input: Reports.PrepareReport }),
     output: Reports.ReportSnapshot,
     readOnly: false,
+  },
+  reports_list: {
+    description:
+      "Rediscover retained report snapshots in this book. Follow next until null; this is a live inventory, not a claim of source completeness. Open a report ID to inspect its frozen ledger basis.",
+    input: Schema.Struct({ ...scoped, ...Reports.LinesQuery.fields }),
+    output: Reports.ReportSnapshotPage,
+    readOnly: true,
   },
   reports_get: {
     description: "Read the immutable report header, complete-scope totals and limitations.",

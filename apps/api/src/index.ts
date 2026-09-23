@@ -20,6 +20,9 @@ import { SettlementHandlers } from "./transport/http/routes/settlements";
 import { BankMatchReversalHandlers } from "./transport/http/routes/bank-match-reversals";
 import { BankMatchCandidateHandlers } from "./transport/http/routes/bank-match-candidates";
 import { BankSourceCoverageHandlers } from "./transport/http/routes/bank-source-coverage";
+import { BankSignoffHandlers } from "./transport/http/routes/bank-signoffs";
+import { BankInventorySignoffHandlers } from "./transport/http/routes/bank-inventory-signoffs";
+import { TaxAccountHandlers } from "./transport/http/routes/tax-account";
 import { ReconciliationHandlers } from "./transport/http/routes/reconciliation";
 
 import { SubledgerHandlers } from "./transport/http/routes/subledgers";
@@ -76,6 +79,9 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     BankMatchReversalHandlers,
     BankMatchCandidateHandlers,
     BankSourceCoverageHandlers,
+    BankSignoffHandlers,
+    BankInventorySignoffHandlers,
+    TaxAccountHandlers,
     CommerceHandlers,
     RegisterReportHandlers,
     VatReturnsHandlers,

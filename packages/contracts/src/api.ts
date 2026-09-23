@@ -13,6 +13,9 @@ import { SettlementsApi } from "./settlements";
 import { BankMatchReversalsApi } from "./bank-match-reversals";
 import { BankMatchCandidatesApi } from "./bank-match-candidates";
 import { BankSourceCoverageApi } from "./bank-source-coverage";
+import { BankSignoffApi } from "./bank-signoffs";
+import { BankInventorySignoffApi } from "./bank-inventory-signoffs";
+import { TaxAccountApi } from "./tax-account";
 
 import { SubledgersApi } from "./subledgers";
 
@@ -140,6 +143,9 @@ export class Api extends HttpApi.make("open-erp")
     BankMatchReversalsApi,
     BankMatchCandidatesApi,
     BankSourceCoverageApi,
+    BankSignoffApi,
+    BankInventorySignoffApi,
+    TaxAccountApi,
     CommerceApi,
     RegisterReportsApi,
     VatReturnsApi,

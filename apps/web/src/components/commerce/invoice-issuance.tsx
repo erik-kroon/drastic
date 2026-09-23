@@ -277,7 +277,9 @@ function IssuePreparation(
           {missing.length === 0 ? (
             <CommandForm
               {...props}
+              compact
               path={`${commercePath(props.book)}/invoice-issue-reviews`}
+              recoveryId={draft.id}
               schema={Issuance.PrepareInvoiceIssue}
               output={Issuance.InvoiceIssueReview}
               label={copy.prepare}
@@ -487,12 +489,18 @@ function IssueContents(
           <Text>{copy.approvalNote}</Text>
           <CommandForm
             {...props}
+            compact
             path={`${path}/approvals`}
+            recoveryId={plan.id}
             schema={Issuance.ApproveInvoiceIssue}
             output={Issuance.InvoiceIssueApproval}
             label={copy.approve}
             allowed={
-              props.current && !issue && book.role === "operator" && view.dependenciesCurrent
+              props.current &&
+              !issue &&
+              book.role === "operator" &&
+              view.dependenciesCurrent &&
+              !view.approvalUsable
             }
             input={(fields) => ({
               version: plan.version,
@@ -505,12 +513,17 @@ function IssueContents(
           {approval ? (
             <>
               <Text>
-                {copy.operator}: {approval.actorId} · {copy.expires}: {approval.expiresAt}
+                {copy.expires}:{" "}
+                {new Intl.DateTimeFormat(locale, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                }).format(new Date(approval.expiresAt))}
               </Text>
-              <Facts title={copy.approval} value={approval} />
               <CommandForm
                 {...props}
+                compact
                 path={`${path}/execute`}
+                recoveryId={`${plan.id}:${approval.id}`}
                 schema={Issuance.ExecuteInvoiceIssue}
                 output={Issuance.InvoiceIssueReceipt}
                 onSuccess={(receipt) => props.onIssued?.(receipt.registerInvoiceId)}

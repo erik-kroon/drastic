@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
+import { Input, type InputProps } from "@open-erp/ui/components/input";
 
 const styles = stylex.create({
   row: {
@@ -59,8 +60,10 @@ export function InvoiceLines({
     <div {...stylex.props(styles.scroll)}>
       <div {...stylex.props(styles.content)}>
         <div {...stylex.props(styles.row, styles.header)} aria-hidden="true">
-          {labels.map((label) => (
-            <span key={label}>{label}</span>
+          {labels.map((label, index) => (
+            <span key={label} {...stylex.props(index > 0 && styles.numeric)}>
+              {label}
+            </span>
           ))}
           <span />
         </div>
@@ -68,6 +71,9 @@ export function InvoiceLines({
       </div>
     </div>
   );
+}
+export function InvoiceAmountInput(props: InputProps) {
+  return <Input {...props} styleX={styles.numeric} />;
 }
 export function InvoiceLine({
   cells,

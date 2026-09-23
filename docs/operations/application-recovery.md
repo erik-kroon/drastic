@@ -38,3 +38,9 @@ Until that design is reviewed and integrated, stop after the CLI restore receipt
 9. Leave the reconstructed destination quarantined. A later production promotion requires its own independent fence/epoch/acknowledgment procedure and explicit authorization; neither CLI nor application read success grants it.
 
 No new test or fixture files are needed for this operator procedure. No step has been run by this worker. Static validity and source inspection do not verify recovery behavior.
+
+
+The local [durable work inventory](durable-work-recovery.md) does not resolve this blocker.
+Its suspension report preserves pending outbox counters, jobs and saved outcomes for review,
+but grants no application/Workflow/provider access. Keep restored sessions inactive and
+workers fenced even when its local inventory comparison is `matched`.

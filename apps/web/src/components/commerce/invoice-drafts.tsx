@@ -9,6 +9,7 @@ import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Text } from "@open-erp/ui/components/typography";
 import { Badge } from "@open-erp/ui/components/badge";
+import { InvoiceDraftParty } from "./invoice-draft-party";
 import { InvoiceDraftDocument } from "./invoice-draft-document";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import {
@@ -20,7 +21,9 @@ import {
 } from "@open-erp/ui/components/accounting-page";
 import {
   DocumentPaper,
+  DocumentTitleField,
   RecordHeading,
+  RecordColumns,
   RecordSection,
   RecordSplit,
 } from "@open-erp/ui/components/record-layout";
@@ -290,12 +293,8 @@ function DraftEditor(
       }}
     >
       <DocumentPaper compact>
-        <RecordHeading
-          title={labels.invoiceDraft}
-          subtitle={content?.seller.legalName ?? props.book.name}
-        />
         <DraftDates content={content} locale={props.locale} />
-        <Box display="grid" columns={2} gap="xl">
+        <RecordColumns>
           <DraftCustomerPicker
             book={props.book}
             locale={props.locale}
@@ -303,19 +302,20 @@ function DraftEditor(
             customer={customer}
             onChange={setCustomer}
           />
-          <RecordSection title={labels.from}>
-            <Text>{content?.seller.legalName ?? props.book.name}</Text>
-            <Text tone="muted">
-              {content?.seller.address ??
-                (sv
-                  ? "Komplettera företagets faktureringsuppgifter"
-                  : "Complete your business billing details")}
-            </Text>
-            <Details title={sv ? "Avsändaruppgifter" : "Sender details"}>
-              <SellerFields content={content} bookName={props.book.name} locale={props.locale} />
-            </Details>
-          </RecordSection>
-        </Box>
+          <InvoiceDraftParty
+            title={labels.from}
+            prefix="seller"
+            locale={props.locale}
+            party={
+              content?.seller ?? {
+                legalName: props.book.name,
+                registrationId: null,
+                address: null,
+                countryCode: null,
+              }
+            }
+          />
+        </RecordColumns>
         <RecordSection title={`${labels.lineItems} · ${content?.currency ?? props.book.currency}`}>
           <InvoiceEditorLines
             lines={lines}
@@ -323,27 +323,33 @@ function DraftEditor(
             scale={scale}
             currency={content?.currency ?? props.book.currency}
             locale={props.locale}
+            footer={
+              <Box display="grid" gap="lg">
+                <InputField
+                  name="terms"
+                  label={labels.paymentTerms}
+                  maxLength={1000}
+                  defaultValue={content?.paymentTerms ?? ""}
+                  placeholder={sv ? "Till exempel 30 dagar" : "For example, 30 days"}
+                />
+                <Box display="grid" gap="sm">
+                  <InputField
+                    name="sourceTotal"
+                    label={sv ? "Avtalat totalbelopp (valfritt)" : "Agreed total (optional)"}
+                    inputMode="decimal"
+                    defaultValue={editAmount(content?.sourceTotalMinor, scale)}
+                    placeholder="—"
+                  />
+                  <PageCaption>
+                    {sv
+                      ? "Totalsumman från avtalet eller beställningen."
+                      : "The total from your agreement or order."}
+                  </PageCaption>
+                </Box>
+              </Box>
+            }
           />
         </RecordSection>
-        <InputField
-          name="terms"
-          label={labels.paymentTerms}
-          maxLength={1000}
-          defaultValue={content?.paymentTerms ?? ""}
-        />
-        <Details title={sv ? "Avtalat totalbelopp" : "Agreed total"}>
-          <InputField
-            name="sourceTotal"
-            label={sv ? "Avtalat totalbelopp (valfritt)" : "Agreed total (optional)"}
-            inputMode="decimal"
-            defaultValue={editAmount(content?.sourceTotalMinor, scale)}
-          />
-          <PageCaption>
-            {sv
-              ? "Ange totalsumman från avtalet eller beställningen, om den finns."
-              : "Enter the total stated in the agreement or order, if available."}
-          </PageCaption>
-        </Details>
         {baseline ? <InputField name="reason" label={labels.whatChanged} required /> : null}
       </DocumentPaper>
     </EvidenceCommandForm>
@@ -535,9 +541,9 @@ function DraftDates({
   const labels = locale === "sv" ? swedish : english;
   return (
     <Box display="grid" gap="lg">
-      <InputField
+      <DocumentTitleField
         name="title"
-        label={labels.description}
+        label={labels.invoiceDraft}
         required
         maxLength={200}
         defaultValue={content?.title}
@@ -567,103 +573,6 @@ function DraftDates({
           defaultValue={content?.supplyDate ?? ""}
         />
       </Box>
-    </Box>
-  );
-}
-
-function SellerFields({
-  content,
-  bookName,
-  locale,
-}: {
-  content?: DraftContent;
-  bookName: string;
-  locale: CommerceProps["locale"];
-}) {
-  const labels = locale === "sv" ? swedish : english;
-  return (
-    <Box display="grid" gap="md">
-      <Box display="grid" columns={2} gap="lg">
-        <InputField
-          name="seller"
-          label={labels.businessName}
-          required
-          maxLength={200}
-          defaultValue={content?.seller.legalName ?? bookName}
-        />
-        <InputField
-          name="registration"
-          label={labels.registrationNumber}
-          maxLength={200}
-          defaultValue={content?.seller.registrationId ?? ""}
-        />
-      </Box>
-      <InputField
-        name="sellerCountry"
-        label={labels.countryCode}
-        pattern="[A-Z]{2}"
-        maxLength={2}
-        placeholder="SE"
-        defaultValue={content?.seller.countryCode ?? ""}
-      />
-      <InputField
-        name="sellerAddress"
-        label={labels.address}
-        maxLength={1000}
-        defaultValue={content?.seller.address ?? ""}
-      />
-    </Box>
-  );
-}
-function CustomerFields({
-  customer,
-  content,
-  locale,
-}: {
-  customer: typeof Commerce.CounterpartyRevision.Type;
-  content?: DraftContent;
-  locale: CommerceProps["locale"];
-}) {
-  const labels = locale === "sv" ? swedish : english;
-  return (
-    <Box key={customer.id} display="grid" columns={2} gap="lg">
-      <InputField
-        name="customerName"
-        label={labels.billingName}
-        required
-        maxLength={200}
-        defaultValue={
-          customer.id === content?.counterpartyId
-            ? content.customer.legalName
-            : customer.displayName
-        }
-      />
-      <InputField
-        name="customerRegistration"
-        label={labels.registrationNumber}
-        maxLength={200}
-        defaultValue={
-          customer.id === content?.counterpartyId ? (content.customer.registrationId ?? "") : ""
-        }
-      />
-      <InputField
-        name="customerCountry"
-        label={labels.countryCode}
-        pattern="[A-Z]{2}"
-        maxLength={2}
-        placeholder="SE"
-        defaultValue={
-          customer.id === content?.counterpartyId ? (content.customer.countryCode ?? "") : ""
-        }
-      />
-      <InputField
-        name="customerAddress"
-        label={labels.billingAddress}
-        maxLength={1000}
-        defaultValue={
-          customer.id === content?.counterpartyId ? (content.customer.address ?? "") : ""
-        }
-      />
     </Box>
   );
 }
@@ -845,8 +754,8 @@ function DraftCustomerPicker(
       .filter((party) => party.role !== "supplier") ?? [];
   if (props.customer && !parties.some((party) => party.id === props.customer?.id))
     parties.unshift(props.customer);
-  return (
-    <RecordSection title={labels.customer}>
+  const picker = (
+    <Box display="grid" gap="md">
       <SelectField
         label={labels.chooseCustomer}
         value={props.customer?.id ?? ""}
@@ -858,11 +767,6 @@ function DraftCustomerPicker(
           { value: "", label: labels.selectACustomer },
           ...parties.map((party) => ({ value: party.id, label: party.displayName })),
         ]}
-      />
-      <AccountingStatus
-        locale={props.locale}
-        pending={customers.isPending}
-        error={customers.error}
       />
       <Box display="flex" gap="md">
         <Button type="button" variant="ghost" onClick={() => setAdding(true)}>
@@ -881,16 +785,37 @@ function DraftCustomerPicker(
           </Button>
         ) : null}
       </Box>
+    </Box>
+  );
+  return (
+    <Box display="grid" gap="sm">
+      <AccountingStatus
+        locale={props.locale}
+        pending={customers.isPending}
+        error={customers.error}
+      />
       {props.customer ? (
-        <Details title={sv ? "Faktureringsuppgifter" : "Billing details"}>
-          <CustomerFields
-            key={props.customer.id}
-            customer={props.customer}
-            content={props.content}
-            locale={props.locale}
-          />
-        </Details>
-      ) : null}
+        <InvoiceDraftParty
+          key={props.customer.id}
+          title={labels.billTo}
+          prefix="customer"
+          locale={props.locale}
+          party={
+            props.customer.id === props.content?.counterpartyId
+              ? props.content.customer
+              : {
+                  legalName: props.customer.displayName,
+                  registrationId: null,
+                  address: null,
+                  countryCode: null,
+                }
+          }
+        >
+          {picker}
+        </InvoiceDraftParty>
+      ) : (
+        <RecordSection title={labels.billTo}>{picker}</RecordSection>
+      )}
       {adding ? (
         <FormDialog
           size="compact"
@@ -909,6 +834,6 @@ function DraftCustomerPicker(
           />
         </FormDialog>
       ) : null}
-    </RecordSection>
+    </Box>
   );
 }

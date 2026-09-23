@@ -20,6 +20,7 @@ import {
 export function useSavedPostingRequests(
   book: typeof Accounting.Book.Type,
   after: string | null = null,
+  enabled = true,
 ) {
   return useQuery({
     queryKey: [...bookKey(book), "posting-saved", "list", after],
@@ -34,6 +35,7 @@ export function useSavedPostingRequests(
       return result;
     },
     retry: false,
+    enabled,
   });
 }
 

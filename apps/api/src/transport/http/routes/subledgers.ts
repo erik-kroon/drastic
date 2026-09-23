@@ -58,6 +58,21 @@ export const SubledgerHandlers = HttpApiBuilder.group(Api, "subledgers", (handle
         ),
       ),
     )
+    .handle("amendScheduleEstimate", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "amendScheduleEstimate",
+          [
+            token,
+            scopeParameter(params),
+            params.id,
+            headers["idempotency-key"],
+            JSON.stringify(payload),
+          ],
+          ScheduleRevision,
+        ),
+      ),
+    )
     .handle("prepareScheduleOccurrence", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.schedules_prepare.execute(token, {

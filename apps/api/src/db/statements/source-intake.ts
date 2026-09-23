@@ -1,6 +1,12 @@
 import { sql, type SQL } from "drizzle-orm";
 
 export const sourceIntakeStatements = {
+  captureSourceReview: (parameters) =>
+    sql`select openerp.capture_source_review(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
+  getSourceReviewArtifact: (parameters) =>
+    sql`select openerp.get_source_review_artifact(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  listSourceReviewArtifacts: (parameters) =>
+    sql`select openerp.list_source_review_artifacts(${parameters[0]}::text,${parameters[1]}::jsonb) as result`,
   reparseSourceCsv: (parameters) =>
     sql`select openerp.reparse_source_csv(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
   getSourceRevisionHistory: (parameters) =>

@@ -1,0 +1,43 @@
+import type { Locale } from "@/paraglide/runtime";
+
+const en = {
+  title: "Payments", back: "Back to invoice", refresh: "Refresh", match: "Match a payment",
+  available: "Available payments", availableHelp: "Posted payments with an unused amount on this invoice’s account. Check the source to confirm who paid.",
+  empty: "No available payments", emptyHelp: "Record the payment in your books first. Only current payments in an open period, dated on or after this invoice’s posting, appear here.",
+  date: "Date", payment: "Payment", remaining: "Available", choose: "Choose", selected: "Selected",
+  amount: "Amount to match", outstanding: "Invoice outstanding", matched: "Matched", released: "Released", review: "Awaiting review",
+  history: "Payment history", noHistory: "No payments matched yet", historyHelp: "Saved reviews and completed matches will appear here.",
+  source: "Payment source", reason: "Why does this payment belong to this invoice?",
+  acknowledge: "I checked the source and confirm this payment belongs to this customer or supplier.",
+  prepare: "Review match", approve: "Approve match", apply: "Confirm match",
+  reviewTitle: "Review payment match", after: "Invoice remaining after match", paymentAfter: "Payment remaining after match",
+  effect: "This connects an existing posted payment to the invoice. It does not move money or create another posting.",
+  approveAck: "I have reviewed the source, invoice and amount.",
+  stale: "This review has changed. Return to payments and choose the payment again to review the current balances.",
+  approved: "Approved until", expired: "Approval expired. Review the current balances and approve again.",
+  complete: "Payment matched. The invoice balance has been updated.",
+  operator: "An operator must approve this match before it can be confirmed.",
+  details: "Technical details", invalid: "Enter a positive amount within both the invoice and payment balances.",
+  previous: "Previous", next: "Next", savedReviews: "Back to payments", unmatch: "Review undoing this match",
+};
+const sv: typeof en = {
+  title: "Betalningar", back: "Tillbaka till fakturan", refresh: "Uppdatera", match: "Matcha betalning",
+  available: "Tillgängliga betalningar", availableHelp: "Bokförda betalningar med kvarvarande belopp på fakturans konto. Kontrollera underlaget för att bekräfta vem som betalat.",
+  empty: "Inga tillgängliga betalningar", emptyHelp: "Bokför betalningen först. Här visas aktuella betalningar i en öppen period, daterade tidigast på fakturans bokföringsdag.",
+  date: "Datum", payment: "Betalning", remaining: "Tillgängligt", choose: "Välj", selected: "Vald",
+  amount: "Belopp att matcha", outstanding: "Kvar på fakturan", matched: "Matchad", released: "Återförd", review: "Väntar på granskning",
+  history: "Betalningshistorik", noHistory: "Inga matchade betalningar ännu", historyHelp: "Sparade granskningar och genomförda matchningar visas här.",
+  source: "Betalningsunderlag", reason: "Varför tillhör betalningen den här fakturan?",
+  acknowledge: "Jag har kontrollerat underlaget och bekräftar att betalningen tillhör kunden eller leverantören.",
+  prepare: "Granska matchning", approve: "Godkänn matchning", apply: "Bekräfta matchning",
+  reviewTitle: "Granska betalningsmatchning", after: "Kvar på fakturan efter matchning", paymentAfter: "Kvar av betalningen efter matchning",
+  effect: "Detta kopplar en redan bokförd betalning till fakturan. Inga pengar flyttas och ingen ny bokföring skapas.",
+  approveAck: "Jag har granskat underlaget, fakturan och beloppet.",
+  stale: "Granskningsunderlaget har ändrats. Gå tillbaka till betalningar och välj betalningen igen för att granska aktuella saldon.",
+  approved: "Godkänt till", expired: "Godkännandet har löpt ut. Granska aktuella saldon och godkänn igen.",
+  complete: "Betalningen har matchats. Fakturans saldo har uppdaterats.",
+  operator: "En operatör behöver godkänna matchningen innan den kan bekräftas.",
+  details: "Tekniska detaljer", invalid: "Ange ett positivt belopp inom fakturans och betalningens kvarvarande saldon.",
+  previous: "Föregående", next: "Nästa", savedReviews: "Tillbaka till betalningar", unmatch: "Granska återföring av matchningen",
+};
+export function invoicePaymentCopy(locale: Locale) { return locale === "sv" ? sv : en; }

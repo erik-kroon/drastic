@@ -6,7 +6,8 @@ type Blocker = typeof Vat.VatBlocker.Type;
 
 function repeatedKeys(basis: Basis) {
   const counts = new Map<string, number>();
-  for (const { fact } of basis.facts) {
+  for (const { fact, withdrawal } of basis.facts) {
+    if (withdrawal) continue;
     const source = fact.input;
     const keys = [`source:${source.evidenceId}:${source.sourceLocator}`];
     if (source.expenseLink) keys.push(`expense:${source.expenseLink.sourceId}`);
@@ -85,6 +86,7 @@ function assess(
     ...profileBlockers(input, basis, selection),
     ...treatmentBlockers(input, selection),
   ];
+  if (observation.withdrawal) blockers.push("withdrawn_fact");
   if (sourceDifference !== 0n) blockers.push("source_amount_difference");
   if (rateDifference !== 0n) blockers.push("rate_difference");
   if (!observation.expenseLinkCurrent) blockers.push("stale_expense_review");
@@ -196,7 +198,7 @@ export function calculateVatDraft(
     };
   }
   return {
-    engine: "vat-return-draft-v1",
+    engine: "vat-return-draft-v2",
     assessments,
     includedCount: contributions.length,
     excludedCount: assessments.length - contributions.length,

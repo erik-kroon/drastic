@@ -44,3 +44,15 @@ Existing `openerp.authenticate`/authorization admit credentials/sessions/members
 2. Run `bun x tsc --project apps/api/scripts/operations/tsconfig.json --noEmit` and bounded owned-file lint through the repository environment. Send concrete errors to the retained owner; do not weaken checks.
 3. Review source/destination isolation and all catalog SQL before any separately authorized rehearsal. The v2 source release must exactly match the source's applied migration filenames/checksums, including0900; outstanding domain migrations therefore require a coherent reviewed release, not silent omission.
 4. Only after separate authority, execute the documented synthetic release→backup→inspect→fresh restore procedure. Retain failure/quarantine diagnostics and do not enable an application/provider to obtain a green result. A successful CLI receipt still has application recovery blocked.
+
+
+## Durable work follow-up (current source)
+
+See [durable work recovery](durable-work-recovery.md) for the pre-edit failure contract,
+implemented producer/consumer path and compatibility limits. This follow-up adds
+`apps/api/scripts/operations/durable-work.ts`, extends owned `artifacts.ts`, `workflows.ts`
+and `cli.ts`, and adds optional versioned fields to the existing operations contracts.
+New captures/inspection/restores retain and compare complete bounded outbox/job/run/saved
+request state, then bind a truthful quarantine/suspension report into the restore receipt.
+No remote Workflow/provider observation, resumption, schema migration or restricted-read
+promotion is introduced. Root owns shared static checks; runtime remains unverified.

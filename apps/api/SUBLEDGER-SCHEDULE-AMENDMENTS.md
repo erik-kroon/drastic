@@ -60,8 +60,9 @@ No package export, new API group or capability binding is needed. This command i
 operator-only REST, deliberately absent from ordinary MCP. Existing MCP schedule reads
 and native preparation receive the additive revision/basis metadata through shared schemas.
 
-`POST /v1/entities/:entityId/books/:bookId/schedules/:id/future-dates`
-uses `Idempotency-Key` and `AmendScheduleFutureDates`. SQL dispatch calls
+`POST /api/v1/entities/:entityId/books/:bookId/schedules/:id/future-dates`
+uses `Idempotency-Key` and `AmendScheduleFutureDates`. The group declares `/v1/...`;
+`packages/contracts/src/api.ts` applies `.prefix("/api")` to the composed API. SQL dispatch calls
 `amend_schedule_future_dates(token, scopeJSON, scheduleId, key, inputJSON)` and decodes
 `ScheduleRevision`. Reads and discovery reuse `getSchedule` / `listSchedules`; the full
 revision history contains the retained amendment input, basis lineage, reviewer receipt,
@@ -135,3 +136,14 @@ Static checks performed on the three owned TypeScript files:
 
 These checks do not establish SQL compilation, stale-plan rejection, duplicate refusal,
 concurrency, rollback or runtime compatibility. Those observations remain unverified.
+
+
+##4000 explicit estimate follow-up
+
+[Explicit remaining estimates](SUBLEDGER-ESTIMATE-AMENDMENTS.md) adds a separate reviewed
+amount/residual command under the same immutable revision owner. Date-only amendments
+retain their unchanged-amount contract. The new policy names explicit positive future
+installments, preserves posted/reversed prefix records and enforces net recognized +
+remaining + residual = retained carrying cost. Old plan authority becomes stale through
+existing1800 guards. Zero installments, count changes and legal/depreciation profiles
+remain unsupported.4000 is source-only, unapplied and runtime-unverified.

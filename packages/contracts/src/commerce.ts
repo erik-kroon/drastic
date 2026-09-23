@@ -248,6 +248,37 @@ export const AllocationView = Schema.Struct({
   approval: Schema.NullOr(AllocationApproval),
   application: Schema.NullOr(AllocationReceipt),
 });
+const PaymentPageNumber = Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,5}$/));
+export const InvoicePaymentsQuery = Schema.Struct({
+  page: Schema.optional(PaymentPageNumber),
+  historyPage: Schema.optional(PaymentPageNumber),
+});
+export const InvoicePaymentCandidate = Schema.Struct({
+  payment: PaymentCapacity,
+  voucherLabel: Schema.String,
+  description: Schema.String,
+  evidence: EvidenceReference,
+  sourceTitle: Schema.String,
+});
+export const InvoicePayments = Schema.Struct({
+  scope: Accounting.Scope,
+  invoiceId: Accounting.Identifier,
+  page: Schema.Int,
+  historyPage: Schema.Int,
+  pageSize: Schema.Literal(25),
+  total: Schema.Int,
+  historyTotal: Schema.Int,
+  items: Schema.Array(InvoicePaymentCandidate),
+  history: Schema.Array(Schema.Struct({
+    planId: Accounting.Identifier,
+    createdAt: Schema.String,
+    postingDate: Accounting.AccountingDate,
+    voucherLabel: Schema.String,
+    amountMinor: PositiveMinor,
+    status: Schema.Literals(["review", "matched", "released"]),
+    receiptId: Schema.NullOr(Accounting.Identifier),
+  })),
+});
 export const AfterQuery = Schema.Struct({ after: Schema.optional(Accounting.Identifier) });
 export const RevisionQuery = Schema.Struct({ revision: Schema.optional(Version) });
 export const HistoryQuery = Schema.Struct({ after: Schema.optional(Version) });
@@ -304,6 +335,11 @@ export const CommerceApi = HttpApiGroup.make("commerce").add(
     ...identified,
     query: HistoryQuery,
     success: InvoiceHistory,
+  }),
+  HttpApiEndpoint.get("commerceInvoicePayments", `${path}/invoices/:id/payments`, {
+    ...identified,
+    query: InvoicePaymentsQuery,
+    success: InvoicePayments,
   }),
   HttpApiEndpoint.get("commerceListInvoices", `${path}/invoices`, {
     ...scoped,
@@ -402,6 +438,12 @@ export const CommerceCapabilities = {
     description: "Page through immutable invoice revisions. Follow next until null.",
     input: Schema.Struct({ ...capabilityIdentified, ...HistoryQuery.fields }),
     output: InvoiceHistory,
+    readOnly: true,
+  },
+  commerce_invoice_payments: {
+    description: "Page current posted payment candidates and matching history for one scoped invoice. Candidates do not establish payer identity or authorize allocation.",
+    input: Schema.Struct({ ...capabilityIdentified, ...InvoicePaymentsQuery.fields }),
+    output: InvoicePayments,
     readOnly: true,
   },
   commerce_list_invoices: {

@@ -195,12 +195,101 @@ export const SourceInventory = Schema.Struct({
   items: Schema.Array(OccurrenceSummary),
   nextCursor: Schema.NullOr(A.Identifier),
 });
+export const CaptureSourceReview = Schema.Struct({ digest: A.Digest });
+export const SourceReviewApprovalSummary = Schema.Struct({
+  actorId: A.Identifier,
+  rationale: A.Description,
+  expiresAt: Schema.String,
+  expiredAtCapture: Schema.Boolean,
+});
+export const SourceReviewAdmissionSummary = Schema.Struct({
+  previewId: A.Identifier,
+  digest: A.Digest,
+  admittedAt: Schema.String,
+  admittedBy: A.Identifier,
+  statementId: A.Identifier,
+  evidenceId: A.Identifier,
+  checkpoint: Bank.Checkpoint,
+});
+export const SourceReviewCaptureIdentity = Schema.Struct({
+  id: A.Identifier,
+  kind: Schema.Literal("source_review_artifact_v1"),
+  scope: A.Scope,
+  previewId: A.Identifier,
+  previewDigest: A.Digest,
+  occurrenceId: A.Identifier,
+  sourceSha256: A.Digest,
+  capturedBy: A.Identifier,
+  capturedAt: Schema.String,
+  coverage: Schema.Literal("not_established"),
+  postingAuthority: Schema.Literal(false),
+  approvalAuthority: Schema.Literal(false),
+});
+export const SourceReviewSnapshot = Schema.Struct({
+  ...SourceReviewCaptureIdentity.fields,
+  occurrence: SourceOccurrence,
+  original: Schema.Struct({
+    bookId: A.Identifier,
+    sha256: A.Digest,
+    byteLength: Schema.Int,
+    mediaType: SourceMediaType,
+    availability: Schema.Literal("not_checked"),
+  }),
+  preview: SourcePreview,
+  stateAtCapture: Schema.Struct({
+    dependenciesCurrent: Schema.Boolean,
+    supersededByPreviewId: Schema.NullOr(A.Identifier),
+    reviews: Schema.Array(SourceReviewApprovalSummary).check(Schema.isMaxLength(200)),
+    admission: Schema.NullOr(SourceReviewAdmissionSummary),
+    selectedPreviewAdmitted: Schema.Boolean,
+  }),
+  supersessions: Schema.Array(
+    Schema.Struct({
+      previousPreviewId: A.Identifier,
+      previousDigest: A.Digest,
+      replacementPreviewId: A.Identifier,
+      replacementDigest: A.Digest,
+      rationale: A.Description,
+      actorId: A.Identifier,
+      createdAt: Schema.String,
+    }),
+  ).check(Schema.isMaxLength(49)),
+});
+export const SourceReviewCapture = Schema.Struct({
+  ...SourceReviewCaptureIdentity.fields,
+  sha256: Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/)),
+  byteLength: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 4194304 })),
+  mediaType: Schema.Literal("application/json"),
+  receipt: Bank.CommandReceipt,
+});
+export const SourceReviewArtifact = Schema.Struct({
+  capture: SourceReviewCapture,
+  snapshot: SourceReviewSnapshot,
+  content: Schema.String,
+});
+export const SourceReviewArtifactList = Schema.Struct({
+  scope: A.Scope,
+  items: Schema.Array(SourceReviewCapture).check(Schema.isMaxLength(200)),
+});
 const base = "/v1/entities/:entityId/books/:bookId";
 const scoped = { params: A.Scope, error: accountingErrors };
 const identified = { params: A.ChangePath, error: accountingErrors };
 const mutation = { ...scoped, headers: A.IdempotencyHeaders };
 const identifiedMutation = { ...identified, headers: A.IdempotencyHeaders };
 export const SourceIntakeApi = HttpApiGroup.make("sourceIntake").add(
+  HttpApiEndpoint.post("captureSourceReview", `${base}/source-previews/:id/review-artifacts`, {
+    ...identifiedMutation,
+    payload: CaptureSourceReview.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: SourceReviewCapture,
+  }),
+  HttpApiEndpoint.get("listSourceReviewArtifacts", `${base}/source-review-artifacts`, {
+    ...scoped,
+    success: SourceReviewArtifactList,
+  }),
+  HttpApiEndpoint.get("getSourceReviewArtifact", `${base}/source-review-artifacts/:id`, {
+    ...identified,
+    success: SourceReviewArtifact,
+  }),
   HttpApiEndpoint.post("retainSource", `${base}/source-occurrences`, {
     ...mutation,
     payload: RetainSource.annotate({ parseOptions: { onExcessProperty: "error" } }),
@@ -247,6 +336,32 @@ export const SourceIntakeApi = HttpApiGroup.make("sourceIntake").add(
 
 // Approval and admission are operator-only REST actions, not ordinary MCP tools.
 export const SourceIntakeCapabilities = {
+  source_capture_review: {
+    description:
+      "Capture a complete retained CSV interpretation and historical review/admission summaries as exact immutable JSON. Does not parse, approve, import or post; no approval IDs are exported.",
+    input: Schema.Struct({
+      scope: A.Scope,
+      idempotencyKey: A.IdempotencyHeaders.fields["idempotency-key"],
+      previewId: A.Identifier,
+      input: CaptureSourceReview,
+    }),
+    output: SourceReviewCapture,
+    readOnly: false,
+  },
+  source_get_review_artifact: {
+    description:
+      "Retrieve exact saved interpretation review JSON with SHA-256 and byte length. All review state is historical at capture, not current approval authority or source completeness.",
+    input: Schema.Struct({ scope: A.Scope, id: A.Identifier }),
+    output: SourceReviewArtifact,
+    readOnly: true,
+  },
+  source_list_review_artifacts: {
+    description:
+      "Discover bounded saved source interpretation review captures in this book after reload or an uncertain response. Never reparses originals.",
+    input: Schema.Struct({ scope: A.Scope }),
+    output: SourceReviewArtifactList,
+    readOnly: true,
+  },
   source_retain: {
     description:
       "Retain original file bytes and explicit source occurrence identity. Files above 64 KiB and non-CSV documents require configured object storage. Does not import observations or post.",

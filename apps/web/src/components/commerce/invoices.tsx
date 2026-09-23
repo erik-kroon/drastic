@@ -282,9 +282,9 @@ export function InvoiceDetail(props: CommerceProps & { id: string }) {
                   ? "Den syntetiska fakturan har makulerats. Originalbeloppet och historiken bevaras. Detta är inte en juridisk kreditfaktura."
                   : "This synthetic invoice was cancelled. Its original amount and history are retained. This is not a legal credit note."}
               </Text>
-              <Text>
-                {invoice.data.cancellation.id} · {invoice.data.cancellation.postingDate} ·{" "}
-                {invoice.data.cancellation.reversalVoucherId}
+              <Text tone="muted">
+                {locale === "sv" ? "Makuleringen bokfördes" : "Cancellation posted"}{" "}
+                {invoice.data.cancellation.postingDate}
               </Text>
             </Box>
           ) : null}

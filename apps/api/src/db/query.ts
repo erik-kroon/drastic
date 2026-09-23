@@ -26,6 +26,9 @@ import { commerceAllocationReversalStatements } from "./statements/commerce-allo
 import { bankMatchReversalStatements } from "./statements/bank-match-reversals";
 import { bankMatchCandidateStatements } from "./statements/bank-match-candidates";
 import { bankSourceCoverageStatements } from "./statements/bank-source-coverage";
+import { bankSignoffStatements } from "./statements/bank-signoffs";
+import { bankInventorySignoffStatements } from "./statements/bank-inventory-signoffs";
+import { taxAccountStatements } from "./statements/tax-account";
 
 const PostgresFailure = Schema.Struct({
   code: Schema.String,
@@ -134,6 +137,9 @@ const statements = {
   ...bankMatchReversalStatements,
   ...bankMatchCandidateStatements,
   ...bankSourceCoverageStatements,
+  ...bankSignoffStatements,
+  ...bankInventorySignoffStatements,
+  ...taxAccountStatements,
   savePostingRequest: (parameters) =>
     sql`select openerp.save_posting_request(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   savePostingAuthorityRequest: (parameters) =>
@@ -199,6 +205,8 @@ const statements = {
     sql`select openerp.commerce_revise_invoice(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
   commerceGetInvoice: (parameters) =>
     sql`select openerp.commerce_get_invoice(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  commerceInvoicePayments: (parameters) =>
+    sql`select openerp.commerce_invoice_payments(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   commerceInvoiceHistory: (parameters) =>
     sql`select openerp.commerce_invoice_history(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text) as result`,
   commerceSupplierInvoiceDuplicates: (parameters) =>
@@ -292,6 +300,8 @@ const statements = {
     sql`select openerp.get_bank_reconciliation(${parameters[0]}::text, ${parameters[1]}::jsonb, ${parameters[2]}::text) as result`,
   prepareReport: (parameters) =>
     sql`select openerp.prepare_report(${parameters[0]}::text, ${parameters[1]}::jsonb, ${parameters[2]}::text, ${parameters[3]}::jsonb) as result`,
+  listReports: (parameters) =>
+    sql`select openerp.list_reports(${parameters[0]}::text, ${parameters[1]}::jsonb, ${parameters[2]}::text) as result`,
   getReport: (parameters) =>
     sql`select openerp.get_report(${parameters[0]}::text, ${parameters[1]}::jsonb, ${parameters[2]}::text) as result`,
   reportLines: (parameters) =>

@@ -1,11 +1,17 @@
+import { useState, type ReactNode } from "react";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import { Plus, Trash2 } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
+import { RecordColumns } from "@open-erp/ui/components/record-layout";
 import { Input } from "@open-erp/ui/components/input";
 import { InputField } from "@open-erp/ui/components/field";
-import { Disclosure } from "@open-erp/ui/components/disclosure";
-import { InvoiceLines, InvoiceLine, InvoiceTotals } from "@open-erp/ui/components/invoice-lines";
+import {
+  InvoiceLines,
+  InvoiceLine,
+  InvoiceTotals,
+  InvoiceAmountInput,
+} from "@open-erp/ui/components/invoice-lines";
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
 import { decimalToMinor, minorToDecimal, formatMinorAmount } from "@/lib/workspace-api";
 import type { CommerceProps } from "./shared";
@@ -103,8 +109,10 @@ export function InvoiceEditorLines(props: {
   scale: number;
   currency: string;
   locale: CommerceProps["locale"];
+  footer?: ReactNode;
 }) {
   const { lines, onChange, scale, locale } = props;
+  const [showDetails, setShowDetails] = useState(false);
   const sv = locale === "sv";
   const labels = sv
     ? ["Beskrivning", "Antal", "Enhetspris", "Exkl. moms", "Momsbelopp"]
@@ -125,6 +133,7 @@ export function InvoiceEditorLines(props: {
             scale={scale}
             locale={locale}
             labels={labels}
+            showDetails={showDetails}
             onChange={(next) =>
               onChange(lines.map((current) => (current.id === line.id ? next : current)))
             }
@@ -136,7 +145,7 @@ export function InvoiceEditorLines(props: {
           />
         ))}
       </InvoiceLines>
-      <Box>
+      <Box display="flex" alignItems="center" justifyContent="between" gap="lg">
         <Button
           type="button"
           variant="ghost"
@@ -146,20 +155,38 @@ export function InvoiceEditorLines(props: {
           <Plus size={14} strokeWidth={1.5} />
           {sv ? "Lägg till rad" : "Add line"}
         </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          static
+          aria-expanded={showDetails}
+          onClick={() => setShowDetails(!showDetails)}
+        >
+          {showDetails
+            ? sv
+              ? "Dölj moms och underlag"
+              : "Hide tax and source details"
+            : sv
+              ? "Moms och underlag"
+              : "Tax and source details"}
+        </Button>
       </Box>
-      <InvoiceTotals
-        rows={[
-          { label: sv ? "Exkl. moms" : "Subtotal", value: amount(totals.net) },
-          { label: sv ? "Moms" : "Tax", value: amount(totals.tax) },
-          {
-            label: sv ? "Totalt" : "Total",
-            value: amount(
-              totals.net === null || totals.tax === null ? null : totals.net + totals.tax,
-            ),
-            total: true,
-          },
-        ]}
-      />
+      <RecordColumns>
+        {props.footer ?? <Box />}
+        <InvoiceTotals
+          rows={[
+            { label: sv ? "Exkl. moms" : "Subtotal", value: amount(totals.net) },
+            { label: sv ? "Moms" : "Tax", value: amount(totals.tax) },
+            {
+              label: sv ? "Totalt" : "Total",
+              value: amount(
+                totals.net === null || totals.tax === null ? null : totals.net + totals.tax,
+              ),
+              total: true,
+            },
+          ]}
+        />
+      </RecordColumns>
       {totals.tax === null ? (
         <PageCaption>
           {sv
@@ -176,6 +203,7 @@ function EditorLine(props: {
   scale: number;
   locale: CommerceProps["locale"];
   labels: string[];
+  showDetails: boolean;
   onChange: (line: EditableInvoiceLine) => void;
   onRemove?: () => void;
 }) {
@@ -193,7 +221,7 @@ function EditorLine(props: {
     />
   );
   const controls = (["quantity", "price", "amount", "tax"] as const).map((field, fieldIndex) => (
-    <Input
+    <InvoiceAmountInput
       key={field}
       name={`${line.id}_${field === "price" ? "unitPrice" : field}`}
       aria-label={`${props.labels[fieldIndex + 1]} ${index + 1}`}
@@ -230,10 +258,7 @@ function EditorLine(props: {
                 : "Quantity × unit price does not give an exact amount. Adjust the values or enter the line amount."}
             </PageCaption>
           ) : null}
-          <Disclosure
-            variant="inline"
-            label={sv ? "Radens moms och underlag" : "Line tax and source details"}
-          >
+          <Box display={props.showDetails ? "grid" : "none"}>
             <Box display="grid" gap="md">
               {line.explicitAmount && calculated !== null ? (
                 <Box>
@@ -286,7 +311,7 @@ function EditorLine(props: {
                 </PageCaption>
               ) : null}
             </Box>
-          </Disclosure>
+          </Box>
         </Box>
       }
     />
