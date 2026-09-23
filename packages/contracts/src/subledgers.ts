@@ -153,7 +153,21 @@ export const AssetDisposal = Schema.Struct({
   receipt: CommandReceipt,
   digest: Accounting.Digest,
 });
+// Live references only. Reservation presence does not assess role compatibility or authority.
+export const ScheduleBasisTaxMatches = Schema.Struct({
+  roleCompatibility: Schema.Literal("not_assessed"),
+  matches: Schema.Array(
+    Schema.Struct({
+      voucherId: Accounting.Identifier,
+      lineId: Accounting.Identifier,
+      matchId: Accounting.Identifier,
+      eventId: Accounting.Identifier,
+      matchDigest: Accounting.Digest,
+    }),
+  ).check(Schema.isMaxLength(20)),
+});
 export const ScheduleView = Schema.Struct({
+  basisTaxMatches: Schema.optional(ScheduleBasisTaxMatches),
   disposal: Schema.optional(Schema.NullOr(AssetDisposal)),
   current: ScheduleRevision,
   revisions: Schema.Array(ScheduleRevision),
@@ -255,7 +269,7 @@ export const SubledgerCapabilities = {
   },
   schedules_get: {
     description:
-      "Read immutable schedule revisions and live proposal, posting, reversal and remaining-amount state. Not control-account reconciliation.",
+      "Read immutable schedule revisions and live proposal, posting, reversal and remaining-amount state, including active tax-match references on basis lines. Role compatibility is not assessed. Not control-account reconciliation.",
     input: Schema.Struct({ ...scope, scheduleId: Accounting.Identifier }),
     output: ScheduleView,
     readOnly: true,

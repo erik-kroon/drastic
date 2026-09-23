@@ -28,13 +28,19 @@ import {
   RecordSplit,
 } from "@open-erp/ui/components/record-layout";
 import { AccountingStatus } from "@/components/accounting-status";
-import { EvidenceCommandForm } from "@/components/evidence-command-form";
+import { InvoiceDraftSave } from "./invoice-draft-save";
+import {
+  InvoiceDraftSession,
+  restoredField,
+  selectDraftCustomer,
+  updateDraftLines,
+  type DraftSession,
+} from "./invoice-draft-session";
 import { readAccounting } from "@/lib/accounting-api";
 import { decimalToMinor, formatMinorAmount, workQueryOptions } from "@/lib/workspace-api";
 import {
   InvoiceEditorLines,
   invoiceEditorTotals,
-  editableInvoiceLine,
   invoiceQuantity,
   type EditableInvoiceLine,
 } from "./invoice-editor-lines";
@@ -55,15 +61,10 @@ type DraftActions = { issueAction?: ReactNode; issueStatus?: ReactNode; contextu
 export function NewInvoiceDraft(
   props: CommerceProps & { onSaved: (id: string) => void; onClose: () => void },
 ) {
-  const labels = props.locale === "sv" ? swedish : english;
   return (
-    <FormDialog title={labels.newInvoice} closeLabel={labels.close} onClose={props.onClose}>
-      <DraftEditor
-        book={props.book}
-        locale={props.locale}
-        onSaved={(record) => props.onSaved(record.id)}
-      />
-    </FormDialog>
+    <InvoiceDraftSession {...props} onSaved={(record) => props.onSaved(record.id)}>
+      {(session) => <DraftEditor book={props.book} locale={props.locale} session={session} />}
+    </InvoiceDraftSession>
   );
 }
 export function InvoiceDrafts(
@@ -171,9 +172,7 @@ export function InvoiceDrafts(
         </>
       ) : null}
       {selected === "new" ? (
-        <FormDialog title={labels.newInvoice} closeLabel={labels.close} onClose={() => select("")}>
-          <DraftEditor {...props} onSaved={(record) => select(record.id)} />
-        </FormDialog>
+        <NewInvoiceDraft {...props} onClose={() => select("")} onSaved={select} />
       ) : null}
     </Box>
   );
@@ -192,22 +191,15 @@ function editAmount(value: string | null | undefined, scale: number) {
   const padded = value.padStart(scale + 1, "0");
   return scale ? `${padded.slice(0, -scale)}.${padded.slice(-scale)}` : padded;
 }
-function DraftEditor(
-  props: CommerceProps & { baseline?: Draft; onSaved: (record: Draft) => void },
-) {
+function DraftEditor(props: CommerceProps & { session: DraftSession }) {
   const sv = props.locale === "sv";
   const labels = sv ? swedish : english;
-  const baseline = props.baseline;
+  const session = props.session;
+  const baseline = session.state.baseline;
   const content = baseline?.content;
-  const [customer, setCustomer] = useState<typeof Commerce.CounterpartyRevision.Type | null>(
-    baseline?.counterparty ?? null,
-  );
-  const [draftKey] = useState(() => `draft_${crypto.randomUUID().replaceAll("-", "")}`);
-  const [lines, setLines] = useState<EditableInvoiceLine[]>(() =>
-    content
-      ? content.lines.map((line) => editableInvoiceLine(content.currencyScale, line))
-      : [editableInvoiceLine(0)],
-  );
+  const customer = session.state.customer;
+  const draftKey = session.state.draftKey;
+  const lines = session.state.lines;
   const metadata = useQuery(workQueryOptions(props.book, {}));
   const scale = content?.currencyScale ?? metadata.data?.currencyScale;
   if (scale === undefined)
@@ -215,13 +207,8 @@ function DraftEditor(
       <AccountingStatus locale={props.locale} pending={metadata.isPending} error={metadata.error} />
     );
   return (
-    <EvidenceCommandForm
+    <InvoiceDraftSave
       {...props}
-      path={`${commercePath(props.book)}/invoice-drafts${baseline ? `/${encodeURIComponent(baseline.id)}/revisions` : ""}`}
-      schema={baseline ? Drafts.ReviseInvoiceDraft : Drafts.CreateInvoiceDraft}
-      output={Drafts.InvoiceDraftRevision}
-      label={labels.saveDraft}
-      stickyFooter
       footerSummary={
         <DraftFooter
           lines={lines}
@@ -231,8 +218,6 @@ function DraftEditor(
           locale={props.locale}
         />
       }
-      canSubmit={!!customer}
-      onSuccess={props.onSaved}
       source={(fields) => ({
         title: inputText(fields, "title") ?? labels.invoiceDrafts,
         origin: "Invoice details entered in OpenERP",
@@ -284,8 +269,8 @@ function DraftEditor(
         };
         return baseline
           ? {
-              expectedRevision: baseline.revision,
-              expectedDigest: baseline.digest,
+              expectedRevision: session.state.expected?.revision ?? baseline.revision,
+              expectedDigest: session.state.expected?.digest ?? baseline.digest,
               reason: inputText(fields, "reason"),
               content: next,
             }
@@ -293,33 +278,45 @@ function DraftEditor(
       }}
     >
       <DocumentPaper compact>
-        <DraftDates content={content} locale={props.locale} />
+        <DraftDates content={content} locale={props.locale} session={session} />
         <RecordColumns>
           <DraftCustomerPicker
             book={props.book}
             locale={props.locale}
             content={content}
             customer={customer}
-            onChange={setCustomer}
+            session={session}
+            onChange={(party) => selectDraftCustomer(session, party)}
           />
           <InvoiceDraftParty
             title={labels.from}
             prefix="seller"
             locale={props.locale}
-            party={
-              content?.seller ?? {
-                legalName: props.book.name,
-                registrationId: null,
-                address: null,
-                countryCode: null,
-              }
-            }
+            party={{
+              legalName: restoredField(
+                session,
+                "seller",
+                content?.seller.legalName ?? props.book.name,
+              ),
+              registrationId: restoredField(
+                session,
+                "registration",
+                content?.seller.registrationId ?? "",
+              ),
+              address: restoredField(session, "sellerAddress", content?.seller.address ?? ""),
+              countryCode: restoredField(
+                session,
+                "sellerCountry",
+                content?.seller.countryCode ?? "",
+              ),
+            }}
           />
         </RecordColumns>
         <RecordSection title={`${labels.lineItems} · ${content?.currency ?? props.book.currency}`}>
           <InvoiceEditorLines
             lines={lines}
-            onChange={setLines}
+            fields={session.state.fields}
+            onChange={(next) => updateDraftLines(session, next)}
             scale={scale}
             currency={content?.currency ?? props.book.currency}
             locale={props.locale}
@@ -329,7 +326,7 @@ function DraftEditor(
                   name="terms"
                   label={labels.paymentTerms}
                   maxLength={1000}
-                  defaultValue={content?.paymentTerms ?? ""}
+                  defaultValue={restoredField(session, "terms", content?.paymentTerms ?? "")}
                   placeholder={sv ? "Till exempel 30 dagar" : "For example, 30 days"}
                 />
                 <Box display="grid" gap="sm">
@@ -337,7 +334,11 @@ function DraftEditor(
                     name="sourceTotal"
                     label={sv ? "Avtalat totalbelopp (valfritt)" : "Agreed total (optional)"}
                     inputMode="decimal"
-                    defaultValue={editAmount(content?.sourceTotalMinor, scale)}
+                    defaultValue={restoredField(
+                      session,
+                      "sourceTotal",
+                      editAmount(content?.sourceTotalMinor, scale),
+                    )}
                     placeholder="—"
                   />
                   <PageCaption>
@@ -350,13 +351,20 @@ function DraftEditor(
             }
           />
         </RecordSection>
-        {baseline ? <InputField name="reason" label={labels.whatChanged} required /> : null}
+        {baseline ? (
+          <InputField
+            name="reason"
+            label={labels.whatChanged}
+            required
+            defaultValue={restoredField(session, "reason")}
+          />
+        ) : null}
       </DocumentPaper>
-    </EvidenceCommandForm>
+    </InvoiceDraftSave>
   );
 }
 function DraftFooter(props: {
-  lines: EditableInvoiceLine[];
+  lines: readonly EditableInvoiceLine[];
   scale: number;
   content?: DraftContent;
   bookCurrency: string;
@@ -484,20 +492,19 @@ function DraftDetail(props: CommerceProps & DraftActions & { id: string }) {
             <InvoiceDraftDocument record={record} locale={props.locale} />
           </RecordSplit>
           {editing ? (
-            <FormDialog
-              title={labels.editInvoice}
-              closeLabel={labels.close}
+            <InvoiceDraftSession
+              {...props}
+              baseline={editing}
               onClose={() => setEditing(null)}
+              onSaved={() => {
+                setEditing(null);
+                setRevision("");
+              }}
             >
-              <DraftEditor
-                {...props}
-                baseline={editing}
-                onSaved={() => {
-                  setEditing(null);
-                  setRevision("");
-                }}
-              />
-            </FormDialog>
+              {(session) => (
+                <DraftEditor book={props.book} locale={props.locale} session={session} />
+              )}
+            </InvoiceDraftSession>
           ) : null}
         </>
       ) : null}
@@ -534,9 +541,11 @@ type DraftContent = typeof Drafts.DraftContent.Type;
 function DraftDates({
   content,
   locale,
+  session,
 }: {
   content?: DraftContent;
   locale: CommerceProps["locale"];
+  session: DraftSession;
 }) {
   const labels = locale === "sv" ? swedish : english;
   return (
@@ -546,7 +555,7 @@ function DraftDates({
         label={labels.invoiceDraft}
         required
         maxLength={200}
-        defaultValue={content?.title}
+        defaultValue={restoredField(session, "title", content?.title ?? "")}
         placeholder={
           locale === "sv"
             ? "Till exempel designarbete, september"
@@ -558,19 +567,19 @@ function DraftDates({
           name="issueDate"
           label={labels.invoiceDate}
           type="date"
-          defaultValue={content?.plannedIssueDate ?? ""}
+          defaultValue={restoredField(session, "issueDate", content?.plannedIssueDate ?? "")}
         />
         <InputField
           name="dueDate"
           label={labels.dueDate}
           type="date"
-          defaultValue={content?.dueDate ?? ""}
+          defaultValue={restoredField(session, "dueDate", content?.dueDate ?? "")}
         />
         <InputField
           name="supplyDate"
           label={labels.supplyDate}
           type="date"
-          defaultValue={content?.supplyDate ?? ""}
+          defaultValue={restoredField(session, "supplyDate", content?.supplyDate ?? "")}
         />
       </Box>
     </Box>
@@ -726,6 +735,7 @@ const swedish: typeof english = {
 function DraftCustomerPicker(
   props: CommerceProps & {
     content?: DraftContent;
+    session: DraftSession;
     customer: typeof Commerce.CounterpartyRevision.Type | null;
     onChange: (customer: typeof Commerce.CounterpartyRevision.Type) => void;
   },
@@ -800,16 +810,36 @@ function DraftCustomerPicker(
           title={labels.billTo}
           prefix="customer"
           locale={props.locale}
-          party={
-            props.customer.id === props.content?.counterpartyId
-              ? props.content.customer
-              : {
-                  legalName: props.customer.displayName,
-                  registrationId: null,
-                  address: null,
-                  countryCode: null,
-                }
-          }
+          party={{
+            legalName: restoredField(
+              props.session,
+              "customerName",
+              props.customer.id === props.content?.counterpartyId
+                ? props.content.customer.legalName
+                : props.customer.displayName,
+            ),
+            registrationId: restoredField(
+              props.session,
+              "customerRegistration",
+              props.customer.id === props.content?.counterpartyId
+                ? (props.content.customer.registrationId ?? "")
+                : "",
+            ),
+            address: restoredField(
+              props.session,
+              "customerAddress",
+              props.customer.id === props.content?.counterpartyId
+                ? (props.content.customer.address ?? "")
+                : "",
+            ),
+            countryCode: restoredField(
+              props.session,
+              "customerCountry",
+              props.customer.id === props.content?.counterpartyId
+                ? (props.content.customer.countryCode ?? "")
+                : "",
+            ),
+          }}
         >
           {picker}
         </InvoiceDraftParty>

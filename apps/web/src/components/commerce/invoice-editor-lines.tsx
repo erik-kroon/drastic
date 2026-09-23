@@ -104,12 +104,13 @@ export function invoiceEditorTotals(lines: readonly EditableInvoiceLine[], scale
 }
 
 export function InvoiceEditorLines(props: {
-  lines: EditableInvoiceLine[];
+  lines: readonly EditableInvoiceLine[];
   onChange: (lines: EditableInvoiceLine[]) => void;
   scale: number;
   currency: string;
   locale: CommerceProps["locale"];
   footer?: ReactNode;
+  fields?: Readonly<Record<string, string>>;
 }) {
   const { lines, onChange, scale, locale } = props;
   const [showDetails, setShowDetails] = useState(false);
@@ -134,6 +135,7 @@ export function InvoiceEditorLines(props: {
             locale={locale}
             labels={labels}
             showDetails={showDetails}
+            fields={props.fields}
             onChange={(next) =>
               onChange(lines.map((current) => (current.id === line.id ? next : current)))
             }
@@ -204,6 +206,7 @@ function EditorLine(props: {
   locale: CommerceProps["locale"];
   labels: string[];
   showDetails: boolean;
+  fields?: Readonly<Record<string, string>>;
   onChange: (line: EditableInvoiceLine) => void;
   onRemove?: () => void;
 }) {
@@ -217,7 +220,7 @@ function EditorLine(props: {
       placeholder={sv ? "Produkt eller tjänst" : "Product or service"}
       required
       maxLength={200}
-      defaultValue={line.defaults?.description}
+      defaultValue={props.fields?.[`${line.id}_description`] ?? line.defaults?.description}
     />
   );
   const controls = (["quantity", "price", "amount", "tax"] as const).map((field, fieldIndex) => (
@@ -285,7 +288,11 @@ function EditorLine(props: {
                     sv ? "Enligt avtalet eller underlaget" : "As stated in the agreement or source"
                   }
                   maxLength={200}
-                  defaultValue={line.defaults?.taxDescription ?? ""}
+                  defaultValue={
+                    props.fields?.[`${line.id}_taxDescription`] ??
+                    line.defaults?.taxDescription ??
+                    ""
+                  }
                 />
                 <InputField
                   name={`${line.id}_sourceGross`}
@@ -296,9 +303,10 @@ function EditorLine(props: {
                   }
                   inputMode="decimal"
                   defaultValue={
-                    line.defaults?.sourceGrossMinor == null
+                    props.fields?.[`${line.id}_sourceGross`] ??
+                    (line.defaults?.sourceGrossMinor == null
                       ? ""
-                      : minorToDecimal(line.defaults.sourceGrossMinor, scale)
+                      : minorToDecimal(line.defaults.sourceGrossMinor, scale))
                   }
                 />
               </Box>

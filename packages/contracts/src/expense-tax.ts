@@ -260,20 +260,63 @@ export const TaxInventory = Schema.Struct({
   ),
 });
 const SnapshotCursor = Schema.String.check(
-  Schema.isPattern(/^[a-f0-9]{16}_[0-9]{1,18}_[0-9]{1,18}$/),
+  Schema.isPattern(
+    /^(?:[a-f0-9]{16}_[0-9]{1,18}_[0-9]{1,18}|esm1_[a-f0-9]{64}_[0-9]{1,18}_[0-9]{1,18})$/,
+  ),
 );
+export const TaxSnapshotSourceMembership = Schema.Struct({
+  schemaVersion: TaxSnapshot.fields.schemaVersion,
+  calculationEngine: TaxSnapshot.fields.calculationEngine,
+  revisionId: Accounting.Identifier,
+  revision: Schema.Int,
+  sourceDigest: Accounting.Digest,
+  review: Schema.NullOr(
+    Schema.Struct({
+      id: Accounting.Identifier,
+      revision: Schema.Int,
+      digest: Accounting.Digest,
+      sourceDigest: Accounting.Digest,
+    }),
+  ),
+  withdrawal: Schema.optional(
+    Schema.NullOr(
+      Schema.Struct({
+        id: Accounting.Identifier,
+        digest: Accounting.Digest,
+        revisionId: Accounting.Identifier,
+        revisionDigest: Accounting.Digest,
+      }),
+    ),
+  ),
+  assessment: TaxAssessment,
+});
 export const TaxSnapshotPage = Schema.Struct({
+  membershipScan: Schema.optional(
+    Schema.Struct({
+      sourceId: Accounting.Identifier,
+      cutoffOrdinal: Accounting.MinorUnits,
+      examinedThroughOrdinal: Accounting.MinorUnits,
+      examinedCount: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 25 })),
+      interpretation: Schema.Literal("retained_source_membership"),
+      currentnessChecked: Schema.Literal(false),
+      legalObligationAssessed: Schema.Literal(false),
+    }),
+  ),
   items: Schema.Array(
     Schema.Struct({
       id: Accounting.Identifier,
       digest: Accounting.Digest,
       input: PrepareTaxSnapshot,
       recordedAt: Schema.String,
+      sourceMembership: Schema.optional(TaxSnapshotSourceMembership),
     }),
   ),
   next: Schema.NullOr(SnapshotCursor),
 });
-export const TaxAfter = Schema.Struct({ after: Schema.optional(SnapshotCursor) });
+export const TaxAfter = Schema.Struct({
+  after: Schema.optional(SnapshotCursor),
+  sourceId: Schema.optional(Accounting.Identifier),
+});
 const path = "/v1/entities/:entityId/books/:bookId/expense-tax";
 const scoped = { params: Accounting.Scope, error: accountingErrors };
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
@@ -364,6 +407,7 @@ export const ExpenseTaxCapabilities = {
     input: Schema.Struct({ ...scope, ...TaxAfter.fields }),
     output: TaxSnapshotPage,
     readOnly: true,
-    description: "Page immutable accountant review snapshot references. These are not tax returns.",
+    description:
+      "Page immutable expense snapshot references. Optional exact sourceId returns captured membership from25 examined snapshots per page; empty items can still have next. No currentness check, recalculation or tax-return authority.",
   },
 };

@@ -1,6 +1,7 @@
 import { firmStatements } from "./statements/firms";
 import { vatAmendmentStatements } from "./statements/vat-amendments";
 import { expenseTaxWithdrawalStatements } from "./statements/expense-tax-withdrawals";
+import { expenseTaxSnapshotStatements } from "./statements/expense-tax-snapshots";
 import { subledgerStatements } from "./statements/subledgers";
 import { RequestEnvironment } from "../runtime/environment";
 import { failure } from "../application/failures";
@@ -44,6 +45,7 @@ const statements = {
   ...firmStatements,
   ...vatAmendmentStatements,
   ...expenseTaxWithdrawalStatements,
+  ...expenseTaxSnapshotStatements,
   ...subledgerStatements,
   workspaceCoordination: (parameters) =>
     sql`select openerp.workspace_coordination(${parameters[0]}::text,${parameters[1]}::jsonb) as result`,
@@ -126,8 +128,6 @@ const statements = {
     sql`select openerp.prepare_expense_tax_snapshot(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   getExpenseTaxSnapshot: (parameters) =>
     sql`select openerp.get_expense_tax_snapshot(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
-  listExpenseTaxSnapshots: (parameters) =>
-    sql`select openerp.list_expense_tax_snapshots(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
 
   ...sourceIntakeStatements,
   ...registerReportStatements,

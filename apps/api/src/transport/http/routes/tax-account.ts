@@ -45,7 +45,7 @@ export const TaxAccountHandlers = HttpApiBuilder.group(Api, "taxAccount", (handl
         query(
           "getTaxAccountMatch",
           [token, scopeParameter(params), params.id],
-          Tax.TaxAccountMatchView,
+          Tax.TaxAccountMatchDetail,
         ),
       ),
     )

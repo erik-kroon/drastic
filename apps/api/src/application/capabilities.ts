@@ -408,7 +408,12 @@ export const capabilities = {
   runs_stop_background: bindCapability(
     Capabilities.runs_stop_background,
     "stopPreparationJob",
-    (input) => [scopeParameter(input.scope), input.jobId, input.idempotencyKey, JSON.stringify(input.input)],
+    (input) => [
+      scopeParameter(input.scope),
+      input.jobId,
+      input.idempotencyKey,
+      JSON.stringify(input.input),
+    ],
   ),
   runs_start_background: effectCapability(Capabilities.runs_start_background, startPreparationJob),
   runs_get_background: bindCapability(
@@ -788,7 +793,7 @@ export const capabilities = {
   expense_tax_list_snapshots: bindCapability(
     Capabilities.expense_tax_list_snapshots,
     "listExpenseTaxSnapshots",
-    (input) => [scopeParameter(input.scope), input.after ?? ""],
+    (input) => [scopeParameter(input.scope), input.after ?? "", input.sourceId ?? ""],
   ),
   owners_create_owner: bindCapability(
     Capabilities.owners_create_owner,

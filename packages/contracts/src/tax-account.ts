@@ -141,6 +141,18 @@ export const TaxAccountMatchView = Schema.Struct({
   active: Schema.Boolean,
   usable: Schema.Boolean,
 });
+export const TaxAccountMatchDetail = Schema.Struct({
+  ...TaxAccountMatchView.fields,
+  subledgerBasisReference: Schema.NullOr(
+    Schema.Struct({
+      scheduleId: A.Identifier,
+      basisDigest: A.Digest,
+      voucherId: A.Identifier,
+      lineId: A.Identifier,
+    }),
+  ),
+  roleCompatibilityAssessed: Schema.Literal(false),
+});
 export const TaxAccountMatchList = Schema.Struct({ items: Schema.Array(TaxAccountMatchView) });
 
 export const CreateTaxAccountControl = Schema.Struct({
@@ -279,7 +291,7 @@ export const TaxAccountApi = HttpApiGroup.make("taxAccount").add(
   }),
   HttpApiEndpoint.get("getTaxAccountMatch", `${path}/matches/:id`, {
     ...identified,
-    success: TaxAccountMatchView,
+    success: TaxAccountMatchDetail,
   }),
   HttpApiEndpoint.get("listTaxAccountMatches", `${path}/matches`, {
     ...scoped,
@@ -325,10 +337,10 @@ export const TaxAccountCapabilities = {
   },
   tax_account_get_match: {
     input: Schema.Struct({ scope: A.Scope, id: A.Identifier }),
-    output: TaxAccountMatchView,
+    output: TaxAccountMatchDetail,
     readOnly: true,
     description:
-      "Read immutable tax-account match/unmatch history with separate active and usable status.",
+      "Read immutable match/unmatch history and unchanged active/usable status, with any exact retained subledger-basis reference. Accounting-role compatibility is not assessed.",
   },
   tax_account_list_matches: {
     input: Schema.Struct({ scope: A.Scope }),
