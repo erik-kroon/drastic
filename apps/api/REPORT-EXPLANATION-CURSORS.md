@@ -33,6 +33,9 @@ The local `ExplanationCursor` schema constrains only `ExplanationQuery.after` an
 restart from the first page. SQL independently rejects legacy two-part cursors with the same
 restart instruction. No legacy continuation is silently accepted. Omit `after` to start again;
 every existing saved report remains readable without rewriting its header, rows or digest.
+Clients that validate the old two-part cursor schema must update their shared contracts (or
+reload the updated web client) before continuing. A first-page restart does not make an old
+client-side schema accept the new cursor format.
 
 The original page selection, full contribution count, formula and output data are unchanged.
 Later/backdated postings beyond the saved sequence cannot enter. Reversals remain separate

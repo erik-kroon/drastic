@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import { Voucher, VoucherPage } from "@open-erp/contracts/accounting";
-import { RecordHeading } from "@open-erp/ui/components/record-layout";
+import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
 import { RefreshCw } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataGrid } from "@open-erp/ui/components/data-grid";
+import { DataTable } from "@open-erp/ui/components/data-table";
+import { Text } from "@open-erp/ui/components/typography";
 import { SelectControl } from "@open-erp/ui/components/select";
 import {
   PageEmpty,
@@ -20,7 +22,7 @@ import {
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { AccountingStatus } from "@/components/accounting-status";
 import { JournalCorrection } from "@/components/journal-correction";
-import { ReviewEntry } from "@/components/posting-recovery/review-entry";
+import { EvidenceInspector } from "@/components/evidence-inspector";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
 import { accountingCopy } from "@/lib/accounting-copy";
@@ -234,15 +236,59 @@ export function PostedRecord(props: PostedRecordsProps & { id: string }) {
 }
 
 function VoucherDetails(props: PostedRecordsProps & { voucher: typeof Accounting.Voucher.Type }) {
-  const copy = frontendCopy(props.locale);
+  const { book, locale, voucher } = props;
+  const copy = frontendCopy(locale);
+  const sv = locale === "sv";
+  const metadata = useQuery(workQueryOptions(book, {}));
+  const scale = metadata.isSuccess ? metadata.data.currencyScale : undefined;
+  const total = voucher.action.lines.reduce((sum, line) => sum + BigInt(line.debitMinor), 0n);
+  const amount = (value: string) =>
+    scale === undefined ? "—" : formatMinorAmount(value, scale, locale);
   return (
     <Box display="grid" gap="lg" paddingBlock="lg" minWidth="zero">
-      <ReviewEntry
-        book={props.book}
-        action={props.voucher.action}
-        locale={props.locale}
-        accounts={props.setup?.accounts ?? []}
+      <RecordSummary>
+        <RecordFact label={sv ? "Bokföringsdatum" : "Posting date"}>
+          {voucher.action.postingDate}
+        </RecordFact>
+        <RecordFact label={sv ? "Verifikation" : "Voucher"}>
+          {voucher.action.series}
+          {voucher.number}
+        </RecordFact>
+        <RecordFact label={sv ? "Belopp" : "Amount"}>
+          {amount(total.toString())} {voucher.action.currency}
+        </RecordFact>
+      </RecordSummary>
+      <AccountingStatus locale={locale} pending={metadata.isPending} error={metadata.error} />
+      <DataTable
+        title={sv ? "Bokförda rader" : "Posted entries"}
+        columns={[
+          { id: "account", label: sv ? "Konto" : "Account" },
+          { id: "description", label: sv ? "Beskrivning" : "Description" },
+          { id: "debit", label: sv ? "Debet" : "Debit", numeric: true },
+          { id: "credit", label: sv ? "Kredit" : "Credit", numeric: true },
+        ]}
+        rows={voucher.action.lines.map((line) => {
+          const account = props.setup?.accounts.find((item) => item.id === line.accountId);
+          return {
+            id: line.lineId,
+            cells: [
+              account ? `${account.code} · ${account.name}` : line.accountId,
+              line.description,
+              amount(line.debitMinor),
+              amount(line.creditMinor),
+            ],
+          };
+        })}
       />
+      <Text>{voucher.action.rationale}</Text>
+      {voucher.action.evidenceRefs.map((reference, index) => (
+        <Disclosure
+          key={`${reference.evidenceId}/${reference.locator}`}
+          title={`${sv ? "Underlag" : "Evidence"} ${index + 1}`}
+        >
+          <EvidenceInspector expanded book={book} locale={locale} reference={reference} />
+        </Disclosure>
+      ))}
       <PageCaption>
         {copy.recorded} ·{" "}
         {new Intl.DateTimeFormat(props.locale, { dateStyle: "medium", timeStyle: "short" }).format(

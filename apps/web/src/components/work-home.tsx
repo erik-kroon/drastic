@@ -1,4 +1,4 @@
-import { BookOpen, Upload, ReceiptText, ArrowRight } from "lucide-react";
+import { BookOpen, Upload, ReceiptText } from "lucide-react";
 import {
   PageContent,
   WorkspaceWelcome,
@@ -30,10 +30,6 @@ export function WorkHome() {
           context={work.book.name}
         />
         <Box display="flex" gap="md" flexWrap="wrap">
-          <PageAction quiet href={`${work.base}/work?status=open`}>
-            {sv ? "Hela arbetslistan" : "Full work queue"}
-            <ArrowRight size={14} />
-          </PageAction>
           <PageAction quiet href={`${work.base}/purchases?view=expenses&record=new`}>
             <ReceiptText size={14} strokeWidth={1.5} />
             {sv ? "Lägg till utgift" : "Add expense"}

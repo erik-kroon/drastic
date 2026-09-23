@@ -80,6 +80,10 @@ export const ScheduleEstimateAmendment = Schema.Struct({
   reviewSha256: Schema.String,
   reviewedOn: Accounting.AccountingDate,
 });
+export const ScheduleLifetimeAmendment = Schema.Struct({
+  ...ScheduleEstimateAmendment.fields,
+  kind: Schema.Literal("remaining_lifetime_v1"),
+});
 export const ScheduleOccurrence = Schema.Struct({
   ordinal: Schema.Int,
   ...SchedulePeriod.fields,
@@ -99,7 +103,9 @@ export const ScheduleRevision = Schema.Struct({
   digest: Accounting.Digest,
   occurrences: Schema.Array(ScheduleOccurrence),
   allocatedMinor: Accounting.MinorUnits,
-  amendment: Schema.optional(Schema.Union([ScheduleDateAmendment, ScheduleEstimateAmendment])),
+  amendment: Schema.optional(
+    Schema.Union([ScheduleDateAmendment, ScheduleEstimateAmendment, ScheduleLifetimeAmendment]),
+  ),
   createdAt: Schema.String,
   receipt: CommandReceipt,
 });
