@@ -49,6 +49,30 @@ export const SourceIntakeHandlers = HttpApiBuilder.group(Api, "sourceIntake", (h
         ),
       ),
     )
+    .handle("reparseSourceCsv", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "reparseSourceCsv",
+          [
+            token,
+            scopeParameter(params),
+            headers["idempotency-key"],
+            params.id,
+            JSON.stringify(payload),
+          ],
+          Intake.SourceReparse,
+        ),
+      ),
+    )
+    .handle("getSourceRevisionHistory", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "getSourceRevisionHistory",
+          [token, scopeParameter(params), params.id],
+          Intake.SourceRevisionHistory,
+        ),
+      ),
+    )
     .handle("getSourcePreview", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
         query(

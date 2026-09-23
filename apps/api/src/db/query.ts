@@ -1,4 +1,6 @@
 import { firmStatements } from "./statements/firms";
+import { vatAmendmentStatements } from "./statements/vat-amendments";
+import { subledgerStatements } from "./statements/subledgers";
 import { RequestEnvironment } from "../runtime/environment";
 import { failure } from "../application/failures";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -33,6 +35,8 @@ const PostgresFailure = Schema.Struct({
 
 const statements = {
   ...firmStatements,
+  ...vatAmendmentStatements,
+  ...subledgerStatements,
   workspaceCoordination: (parameters) =>
     sql`select openerp.workspace_coordination(${parameters[0]}::text,${parameters[1]}::jsonb) as result`,
   workspaceSaveView: (parameters) =>
@@ -292,6 +296,8 @@ const statements = {
     sql`select openerp.get_report(${parameters[0]}::text, ${parameters[1]}::jsonb, ${parameters[2]}::text) as result`,
   reportLines: (parameters) =>
     sql`select openerp.get_report_lines(${parameters[0]}::text, ${parameters[1]}::jsonb, ${parameters[2]}::text, ${parameters[3]}::text) as result`,
+  reportGeneralLedger: (parameters) =>
+    sql`select openerp.report_general_ledger(${parameters[0]}::text, ${parameters[1]}::jsonb, ${parameters[2]}::text, ${parameters[3]}::text, ${parameters[4]}::text) as result`,
   reportExplanation: (parameters) =>
     sql`select openerp.explain_report_line(${parameters[0]}::text, ${parameters[1]}::jsonb, ${parameters[2]}::text, ${parameters[3]}::text, ${parameters[4]}::text) as result`,
   listBooks: (parameters) => sql`select openerp.list_books(${parameters[0]}::text) as result`,

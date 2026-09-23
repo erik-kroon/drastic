@@ -58,6 +58,32 @@ export const ReportExplanation = Schema.Struct({
   items: Schema.Array(Contribution),
   next: Schema.NullOr(Schema.String),
 });
+export const GeneralLedgerCursor = Schema.String.check(
+  Schema.isPattern(
+    /^[a-z][a-z0-9_-]{2,127}:[a-z][a-z0-9_-]{2,127}:[1-9][0-9]{0,18}:[1-9][0-9]{0,9}$/,
+  ),
+);
+export const GeneralLedgerQuery = Schema.Struct({ after: Schema.optional(GeneralLedgerCursor) });
+export const GeneralLedgerEntry = Schema.Struct({
+  ...Contribution.fields,
+  part: Schema.Literal("movement"),
+  series: Schema.String,
+  voucherNumber: Accounting.MinorUnits,
+  postingPurpose: Schema.String,
+  correctsVoucherId: Schema.NullOr(Accounting.Identifier),
+  runningBalanceMinor: Accounting.SignedMinorUnits,
+});
+export const GeneralLedgerPage = Schema.Struct({
+  report: ReportSnapshot,
+  line: ReportLine,
+  order: Schema.Literal("committed_sequence_then_line_ordinal"),
+  formula: Schema.Literal("balance = opening + debits - credits"),
+  totalMovements: Schema.Int,
+  pageOpeningMinor: Accounting.SignedMinorUnits,
+  pageClosingMinor: Accounting.SignedMinorUnits,
+  items: Schema.Array(GeneralLedgerEntry).check(Schema.isMaxLength(100)),
+  next: Schema.NullOr(GeneralLedgerCursor),
+});
 export const LinesQuery = Schema.Struct({ after: Schema.optional(Accounting.Identifier) });
 export const ExplanationQuery = Schema.Struct({
   after: Schema.optional(Schema.String.check(Schema.isPattern(/^[0-9]+:[0-9]+$/))),
@@ -86,6 +112,16 @@ export const ReportApi = HttpApiGroup.make("reports").add(
       ...identified,
       query: LinesQuery,
       success: ReportLines,
+    },
+  ),
+  HttpApiEndpoint.get(
+    "reportGeneralLedger",
+    "/v1/entities/:entityId/books/:bookId/report-snapshots/:id/lines/:lineId/general-ledger",
+    {
+      params: ExplanationPath,
+      error: errors,
+      query: GeneralLedgerQuery,
+      success: GeneralLedgerPage,
     },
   ),
   HttpApiEndpoint.get(

@@ -29,6 +29,16 @@ export const ReportHandlers = HttpApiBuilder.group(Api, "reports", (handlers) =>
         }),
       ),
     )
+    .handle("reportGeneralLedger", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        capabilities.reports_general_ledger.execute(token, {
+          scope: params,
+          reportId: params.id,
+          lineId: params.lineId,
+          after: query.after,
+        }),
+      ),
+    )
     .handle("reportExplanation", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.reports_explain.execute(token, {

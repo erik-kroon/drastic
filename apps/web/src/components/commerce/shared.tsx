@@ -150,6 +150,7 @@ export function CommandForm<
     input: (fields: FormData) => unknown;
     children?: ReactNode;
     label: string;
+    compact?: boolean;
     allowed?: boolean;
     canSubmit?: boolean;
     onSuccess?: (result: O["Type"]) => void;
@@ -182,6 +183,8 @@ export function CommandForm<
     retry: false,
   });
   const captured = command.variables;
+  // Compact task actions disappear only when no request is in flight or its result is known.
+  if (props.compact && !allowed && (!captured || command.isSuccess)) return null;
   const artifact = {
     scope: { entityId: book.entityId, bookId: book.id },
     path,
@@ -222,26 +225,34 @@ export function CommandForm<
       >
         {props.children}
         <Box display="flex" flexWrap="wrap" gap="md">
-          <Button type="submit" size="xl" disabled={props.canSubmit === false}>
-            {props.label}
+          <Button
+            type="submit"
+            size={props.compact ? "default" : "xl"}
+            disabled={props.canSubmit === false}
+          >
+            {command.isPending ? (locale === "sv" ? "Sparar…" : "Saving…") : props.label}
           </Button>
         </Box>
       </Box>
-      <Text id={errorId} role="alert">
-        {invalid ? copy.invalid : ""}
-      </Text>
+      {invalid ? (
+        <Text id={errorId} role="alert">
+          {copy.invalid}
+        </Text>
+      ) : null}
       {!allowed ? <Text>{copy.waiting}</Text> : null}
       <AccountingStatus locale={locale} write pending={command.isPending} error={command.error} />
       {command.isSuccess ? <Text role="status">{copy.saved}</Text> : null}
+      {command.isError && captured ? (
+        <Box>
+          <Button type="button" variant="outline" onClick={() => command.mutate(captured)}>
+            {copy.retry}
+          </Button>
+        </Box>
+      ) : null}
       {captured ? (
-        <Box display="grid" gap="md">
+        <Details title={copy.request}>
           <Facts title={copy.request} value={artifact} />
           <Box display="flex" flexWrap="wrap" gap="md">
-            {command.isError ? (
-              <Button type="button" variant="outline" onClick={() => command.mutate(captured)}>
-                {copy.retry}
-              </Button>
-            ) : null}
             <Button
               type="button"
               size="xl"
@@ -262,7 +273,7 @@ export function CommandForm<
               {copy.download}
             </Button>
           </Box>
-        </Box>
+        </Details>
       ) : null}
       {command.isSuccess ? (
         <Box>

@@ -425,3 +425,16 @@ fetch after mount. Failure, fetching, paused or unrefreshed cached data shows un
 or stale. Previously verified bytes stay inspectable/downloadable. A successful match is explicitly
 "at the last successful refresh." Only owned views/copy changed; no SQL/API/arithmetic changes.
 No checks, tests or browser execution occurred.
+
+
+##3100 bounded future-date amendments
+
+[Future schedule dates](SUBLEDGER-SCHEDULE-AMENDMENTS.md) records the new AST-02 subset.
+Operators can append a reviewed date/period revision for the whole remaining future
+unposted suffix of a basis-linked synthetic schedule. Amounts, accounts, original basis,
+posted history, installment counts and occurrence identities stay fixed. Prior pending
+plans become stale through1800's shared validation and physical posting guards; new
+posting dates require fresh kernel preparation and human approval. Control capture
+recognizes this retained basis lineage. Lifetime/amount changes and disposal remain
+unsupported. Forward3100 is unapplied and runtime-unverified. Root integrated shared
+query dispatch; shared type checks remain root-owned.

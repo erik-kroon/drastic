@@ -285,6 +285,21 @@ export const capabilities = {
   sie_get: effectCapability(Capabilities.sie_get, getSie),
   sie_list: effectCapability(Capabilities.sie_list, listSie),
   sie_resume: effectCapability(Capabilities.sie_resume, resumeSie),
+  vat_return_compare_drafts: bindCapability(
+    Capabilities.vat_return_compare_drafts,
+    "compareVatDrafts",
+    (input) => [scopeParameter(input.scope), JSON.stringify(input.input)],
+  ),
+  vat_return_get_amendment: bindCapability(
+    Capabilities.vat_return_get_amendment,
+    "getVatAmendment",
+    (input) => [scopeParameter(input.scope), input.amendmentId],
+  ),
+  vat_return_list_amendments: bindCapability(
+    Capabilities.vat_return_list_amendments,
+    "listVatAmendments",
+    (input) => [scopeParameter(input.scope)],
+  ),
   vat_return_basis: bindCapability(Capabilities.vat_return_basis, "vatReturnBasis", (input) => [
     scopeParameter(input.scope),
   ]),
@@ -602,6 +617,18 @@ export const capabilities = {
     (input) => [scopeParameter(input.scope), input.cursor ?? ""],
   ),
   source_get_occurrence: effectCapability(Capabilities.source_get_occurrence, getSourceOccurrence),
+  source_reparse_csv: bindCapability(
+    Capabilities.source_reparse_csv,
+    "reparseSourceCsv",
+    (input) => [
+      scopeParameter(input.scope), input.idempotencyKey, input.previewId, JSON.stringify(input.input),
+    ],
+  ),
+  source_get_revision_history: bindCapability(
+    Capabilities.source_get_revision_history,
+    "getSourceRevisionHistory",
+    (input) => [scopeParameter(input.scope), input.occurrenceId],
+  ),
   source_preview_csv: bindCapability(
     Capabilities.source_preview_csv,
     "previewSourceCsv",
@@ -911,6 +938,11 @@ export const capabilities = {
     input.reportId,
     input.after ?? "",
   ]),
+  reports_general_ledger: bindCapability(
+    Capabilities.reports_general_ledger,
+    "reportGeneralLedger",
+    (input) => [scopeParameter(input.scope), input.reportId, input.lineId, input.after ?? ""],
+  ),
   reports_explain: bindCapability(Capabilities.reports_explain, "reportExplanation", (input) => [
     scopeParameter(input.scope),
     input.reportId,

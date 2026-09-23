@@ -8,6 +8,34 @@ import { query, scopeParameter } from "../../../db/query";
 
 export const VatReturnsHandlers = HttpApiBuilder.group(Api, "vatReturns", (handlers) =>
   handlers
+    .handle("compareVatDrafts", ({ params, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "compareVatDrafts",
+          [token, scopeParameter(params), JSON.stringify(payload)],
+          Vat.VatDraftImpactView,
+        ),
+      ),
+    )
+    .handle("reviewVatAmendment", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "reviewVatAmendment",
+          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
+          Vat.VatAmendment,
+        ),
+      ),
+    )
+    .handle("getVatAmendment", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query("getVatAmendment", [token, scopeParameter(params), params.id], Vat.VatAmendmentView),
+      ),
+    )
+    .handle("listVatAmendments", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query("listVatAmendments", [token, scopeParameter(params)], Vat.VatAmendmentList),
+      ),
+    )
     .handle("recordVatFact", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         query(

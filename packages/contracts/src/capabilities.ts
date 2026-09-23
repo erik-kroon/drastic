@@ -200,6 +200,18 @@ export const Capabilities = {
     output: Reports.ReportLines,
     readOnly: true,
   },
+  reports_general_ledger: {
+    description:
+      "Read one frozen report account's period movements and exact running balances in committed posting order. The cursor binds report and account; later postings cannot enter this snapshot. Opening uses retained earlier postings, not a reviewed fiscal opening set. Follow next until null.",
+    input: Schema.Struct({
+      ...scoped,
+      reportId: Accounting.Identifier,
+      lineId: Accounting.Identifier,
+      ...Reports.GeneralLedgerQuery.fields,
+    }),
+    output: Reports.GeneralLedgerPage,
+    readOnly: true,
+  },
   reports_explain: {
     description:
       "Explain one report account through exact immutable voucher contributions and evidence references. Follow next until null.",

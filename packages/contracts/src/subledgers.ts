@@ -31,6 +31,23 @@ export const ReviseSchedule = Schema.Struct({
   expectedDigest: Accounting.Digest,
   terms: ScheduleTerms,
 });
+export const AmendScheduleFutureDates = Schema.Struct({
+  expectedDigest: Accounting.Digest,
+  expectedBasisDigest: Accounting.Digest,
+  firstOrdinal: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 120 })),
+  remainingMinor: Accounting.MinorUnits,
+  periods: Schema.Array(SchedulePeriod).check(Schema.isMinLength(1), Schema.isMaxLength(120)),
+  reviewEvidenceId: Accounting.Identifier,
+  rationale: Accounting.Description,
+});
+export const ScheduleDateAmendment = Schema.Struct({
+  kind: Schema.Literal("future_dates_v1"),
+  input: AmendScheduleFutureDates,
+  basisDigest: Accounting.Digest,
+  basisScheduleDigest: Accounting.Digest,
+  reviewSha256: Schema.String,
+  reviewedOn: Accounting.AccountingDate,
+});
 export const ScheduleOccurrence = Schema.Struct({
   ordinal: Schema.Int,
   ...SchedulePeriod.fields,
@@ -50,6 +67,7 @@ export const ScheduleRevision = Schema.Struct({
   digest: Accounting.Digest,
   occurrences: Schema.Array(ScheduleOccurrence),
   allocatedMinor: Accounting.MinorUnits,
+  amendment: Schema.optional(ScheduleDateAmendment),
   createdAt: Schema.String,
   receipt: CommandReceipt,
 });
@@ -67,6 +85,7 @@ export const SchedulePostingBasis = Schema.Struct({
   supported: Schema.Boolean,
   basisDigest: Schema.NullOr(Accounting.Digest),
   basisVoucherId: Schema.NullOr(Accounting.Identifier),
+  scheduleDigest: Schema.optional(Accounting.Digest),
   blocker: Schema.NullOr(Schema.Literals(["basis_reversed_or_corrected", "basis_mismatch"])),
   legalPolicyApproved: Schema.Literal(false),
 });
@@ -128,6 +147,12 @@ export const SubledgersApi = HttpApiGroup.make("subledgers").add(
     ...identified,
     headers: Accounting.IdempotencyHeaders,
     payload: ReviseSchedule.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: ScheduleRevision,
+  }),
+  HttpApiEndpoint.post("amendScheduleFutureDates", `${path}/:id/future-dates`, {
+    ...identified,
+    headers: Accounting.IdempotencyHeaders,
+    payload: AmendScheduleFutureDates.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: ScheduleRevision,
   }),
   HttpApiEndpoint.post("prepareScheduleOccurrence", `${path}/:id/prepare`, {

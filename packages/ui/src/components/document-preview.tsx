@@ -60,3 +60,15 @@ export function DocumentPreview({
   );
   return <pre {...stylex.props(styles.text)}>{text}</pre>;
 }
+
+export function HtmlDocumentPreview({ title, html }: { title: string; html: string }) {
+  return (
+    <iframe
+      {...stylex.props(styles.frame)}
+      title={title}
+      sandbox=""
+      referrerPolicy="no-referrer"
+      srcDoc={html}
+    />
+  );
+}

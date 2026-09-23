@@ -135,7 +135,47 @@ export const SourceAdmission = Schema.Struct({
   imported: Bank.StatementImportReceipt,
   receipt: Bank.CommandReceipt,
 });
+export const ReparseSourceCsv = Schema.Struct({
+  digest: A.Digest,
+  version: Schema.Literal(1),
+  rationale: A.Description,
+  mapping: CsvMapping,
+});
+export const SourceSupersession = Schema.Struct({
+  occurrenceId: A.Identifier,
+  previousPreviewId: A.Identifier,
+  previousDigest: A.Digest,
+  replacementPreviewId: A.Identifier,
+  replacementDigest: A.Digest,
+  rationale: A.Description,
+  actorId: A.Identifier,
+  createdAt: Schema.String,
+  receipt: Bank.CommandReceipt,
+});
+export const SourceReparse = Schema.Struct({
+  preview: SourcePreview,
+  supersession: SourceSupersession,
+});
+export const SourceRevisionHistory = Schema.Struct({
+  occurrenceId: A.Identifier,
+  previews: Schema.Array(
+    Schema.Struct({
+      previewId: A.Identifier,
+      digest: A.Digest,
+      ordinal: Schema.Int,
+      ready: Schema.Boolean,
+      createdAt: Schema.String,
+      createdBy: A.Identifier,
+      diagnosticCount: Schema.Int,
+      supersededByPreviewId: Schema.NullOr(A.Identifier),
+    }),
+  ),
+  supersessions: Schema.Array(SourceSupersession),
+  ownApprovals: Schema.Array(SourceApproval),
+  admission: Schema.NullOr(SourceAdmission),
+});
 export const SourcePreviewView = Schema.Struct({
+  supersededByPreviewId: Schema.optional(Schema.NullOr(A.Identifier)),
   preview: SourcePreview,
   approval: Schema.NullOr(SourceApproval),
   admission: Schema.NullOr(SourceAdmission),
@@ -179,6 +219,15 @@ export const SourceIntakeApi = HttpApiGroup.make("sourceIntake").add(
     ...identifiedMutation,
     payload: CsvMapping.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: SourcePreview,
+  }),
+  HttpApiEndpoint.post("reparseSourceCsv", `${base}/source-previews/:id/reparse`, {
+    ...identifiedMutation,
+    payload: ReparseSourceCsv.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: SourceReparse,
+  }),
+  HttpApiEndpoint.get("getSourceRevisionHistory", `${base}/source-occurrences/:id/revisions`, {
+    ...identified,
+    success: SourceRevisionHistory,
   }),
   HttpApiEndpoint.get("getSourcePreview", `${base}/source-previews/:id`, {
     ...identified,
@@ -234,6 +283,25 @@ export const SourceIntakeCapabilities = {
     }),
     output: SourcePreview,
     readOnly: false,
+  },
+  source_reparse_csv: {
+    description:
+      "Reparse retained CSV bytes and explicitly supersede one unadmitted preview and its reviews. Retains all diagnostics; does not approve, admit or post.",
+    input: Schema.Struct({
+      scope: A.Scope,
+      idempotencyKey: A.IdempotencyHeaders.fields["idempotency-key"],
+      previewId: A.Identifier,
+      input: ReparseSourceCsv,
+    }),
+    output: SourceReparse,
+    readOnly: false,
+  },
+  source_get_revision_history: {
+    description:
+      "Recover an occurrence's immutable preview lineage, diagnostic counts, own review history and admission. Historical approvals are not current authority.",
+    input: Schema.Struct({ scope: A.Scope, occurrenceId: A.Identifier }),
+    output: SourceRevisionHistory,
+    readOnly: true,
   },
   source_get_preview: {
     description:

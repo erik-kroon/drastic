@@ -1,23 +1,39 @@
 import type { Locale } from "@/paraglide/runtime";
 
-export function invoiceDocumentCopy(locale: Locale) {
-  return locale === "sv" ? {
-    title: "Syntetiskt granskningsdokument",
-    boundary: "Inte en juridisk faktura. Inte skickat. Dokumentet återger den sparade syntetiska utgivningen. Ingen ny numrering, bokföring, momsaktivering eller betalningsorder skapas.",
-    historyMeaning: "Historiskt underlag, inte aktuellt saldo eller aktuella företagsuppgifter. Senare ändringar påverkar inte de sparade bytesen. Dokumentet använder fast engelsk text och UTF-8.",
-    prepare: "Skapa och spara granskningsdokument", history: "Sparat dokument", empty: "Inget dokument har sparats för denna utgivning.",
-    recovery: "Om svaret avbryts: uppdatera historiken eller försök samma sparade begäran igen. En avbruten rendering kan återupptas utan ny utgivning.",
-    open: "Inspektera dokument", refresh: "Uppdatera historik", resume: "Återuppta rendering", captured: "Underlaget är sparat. Dokumentets bytes är ännu inte förseglade.", sealed: "Dokumentets bytes är sparade och kan inte ersättas.",
-    verify: "Verifiera bytes och visa dokument", verified: "Byteantal, SHA-256 och dokumentets identitet matchar. Detta är inte en juridisk kontroll eller ett leveransbevis.",
-    save: "Spara exakta HTML-bytes", preview: "Isolerad förhandsvisning av syntetiskt dokument", source: "Sparat underlag och proveniens", descriptor: "Artefaktens metadata", bytes: "bytes", hash: "SHA-256", id: "Dokument-ID", inspectAgain: "Hämta sparat dokument igen",
-  } : {
-    title: "Synthetic review document",
-    boundary: "Not a legal invoice. Not delivered. This document reproduces the retained synthetic issue. It creates no new number, posting, VAT activation or payment instruction.",
-    historyMeaning: "Historical facts, not current balances or current company details. Later changes do not alter the retained bytes. The document uses fixed English text and UTF-8.",
-    prepare: "Create and retain review document", history: "Retained document", empty: "No document has been captured for this issue.",
-    recovery: "If the response is interrupted, refresh history or retry the same retained request. An unfinished render can resume without another issue.",
-    open: "Inspect document", refresh: "Refresh history", resume: "Resume rendering", captured: "The source is captured. Document bytes are not sealed yet.", sealed: "Document bytes are retained and cannot be replaced.",
-    verify: "Verify bytes and preview", verified: "Byte length, SHA-256 and document identity match. This is not a legal check or proof of delivery.",
-    save: "Save exact HTML bytes", preview: "Sandboxed synthetic document preview", source: "Captured source and provenance", descriptor: "Artifact metadata", bytes: "bytes", hash: "SHA-256", id: "Document ID", inspectAgain: "Read retained document again",
-  };
-}
+const en = {
+  title: "Saved document",
+  boundary: "Demo document · HTML · English · Not sent",
+  historyMeaning:
+    "This file preserves the invoice as issued. Later payments, cancellations and company changes do not change its contents.",
+  prepare: "Create downloadable document",
+  empty: "Create a saved copy to preview or download.",
+  refresh: "Refresh document",
+  resume: "Finish creating document",
+  captured: "The invoice is saved. Finish creating its downloadable file.",
+  verified: "Saved file ready",
+  save: "Download HTML",
+  preview: "Preview saved file",
+  source: "Source and verification details",
+  descriptor: "File details",
+  recovery:
+    "If creation was interrupted, refresh to find the saved document or retry the same request.",
+};
+const sv: typeof en = {
+  title: "Sparat dokument",
+  boundary: "Demodokument · HTML · Engelska · Inte skickat",
+  historyMeaning:
+    "Filen bevarar fakturan som den utfärdades. Senare betalningar, makuleringar och företagsändringar ändrar inte innehållet.",
+  prepare: "Skapa nedladdningsbart dokument",
+  empty: "Skapa en sparad kopia att förhandsvisa eller ladda ner.",
+  refresh: "Uppdatera dokument",
+  resume: "Slutför dokumentet",
+  captured: "Fakturan är sparad. Slutför den nedladdningsbara filen.",
+  verified: "Sparad fil klar",
+  save: "Ladda ner HTML",
+  preview: "Visa sparad fil",
+  source: "Underlag och verifieringsuppgifter",
+  descriptor: "Filuppgifter",
+  recovery:
+    "Om skapandet avbröts, uppdatera för att hitta dokumentet eller försök samma begäran igen.",
+};
+export const invoiceDocumentCopy = (locale: Locale) => (locale === "sv" ? sv : en);

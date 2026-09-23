@@ -1,6 +1,10 @@
 import { sql, type SQL } from "drizzle-orm";
 
 export const sourceIntakeStatements = {
+  reparseSourceCsv: (parameters) =>
+    sql`select openerp.reparse_source_csv(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
+  getSourceRevisionHistory: (parameters) =>
+    sql`select openerp.get_source_revision_history(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
   beginSourceUpload: (parameters) =>
     sql`select openerp.begin_source_upload(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   completeSourceUpload: (parameters) =>

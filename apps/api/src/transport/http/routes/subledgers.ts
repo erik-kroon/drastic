@@ -1,8 +1,10 @@
 import { Api } from "@open-erp/contracts/api";
+import { ScheduleRevision } from "@open-erp/contracts/subledgers";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
 import { capabilities } from "../../../application/capabilities";
+import { query, scopeParameter } from "../../../db/query";
 
 export const SubledgerHandlers = HttpApiBuilder.group(Api, "subledgers", (handlers) =>
   handlers
@@ -39,6 +41,21 @@ export const SubledgerHandlers = HttpApiBuilder.group(Api, "subledgers", (handle
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
+      ),
+    )
+    .handle("amendScheduleFutureDates", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "amendScheduleFutureDates",
+          [
+            token,
+            scopeParameter(params),
+            params.id,
+            headers["idempotency-key"],
+            JSON.stringify(payload),
+          ],
+          ScheduleRevision,
+        ),
       ),
     )
     .handle("prepareScheduleOccurrence", ({ params, headers, payload }) =>

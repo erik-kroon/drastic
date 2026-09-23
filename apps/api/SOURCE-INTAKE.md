@@ -79,6 +79,47 @@ Capability bindings use the existing `bindCapability` and these parameter arrays
 | `source_preview_csv`      | `previewSourceCsv`      | `[scopeParameter(input.scope), input.idempotencyKey, input.occurrenceId, JSON.stringify(input.input)]` |
 | `source_get_preview`      | `getSourcePreview`      | `[scopeParameter(input.scope), input.previewId]`                                                       |
 
+## Immutable reparse and review recovery (forward migration3200)
+
+Implemented in source, not runtime-verified. An explicit reparse now links one unadmitted preview to a new immutable preview of the **same retained occurrence and bytes**. It records both digests, the actor, time, rationale and command receipt. It does not replace an admitted source, change bytes, merge equal rows, or approve an interpretation.
+
+```text
+retained bytes → preview A + diagnostics + reviews
+                     │ explicit reparse (digest + mapping + rationale)
+                     ▼
+                preview B + diagnostics → fresh operator approval → admission
+A and its reviews remain readable; A cannot receive a new approval or admission.
+```
+
+`POST /source-previews/:id/reparse` takes `ReparseSourceCsv` and returns `SourceReparse`. The path ID and input digest/version identify the old preview. A blocked parse result is retained and still supersedes the old preview; an invalid command, unsupported original, or exhausted 50-preview bound rolls back the entire reparse. This is an explicit choice to retire the old interpretation, not automatic selection of whichever preview parses successfully. Ordinary preview creation remains a parallel candidate operation and does not silently supersede anything.
+
+`GET /source-occurrences/:id/revisions` returns `SourceRevisionHistory`: all preview IDs/digests/ordinals, readiness and diagnostic counts, supersession edges, the latest own approval per preview (including expired reviews), and the occurrence's admission receipt. The existing 50-preview bound also bounds these collections. Fetch each immutable preview with `GET /source-previews/:id` for its full mapping, records and diagnostics. Recovery does not read object storage. `ownApprovals` is review history, not current approval authority.
+
+`getSourcePreview` adds the optional `supersededByPreviewId` field and hides current approval for a superseded preview. `dependenciesCurrent` is true only when the preview is not superseded and its stored dependencies still match current account/source configuration. The preview body/digest is unchanged. Database insert guards reject fresh approval or admission of a superseded preview. Admission guard failure rolls back the whole transaction, including any inner evidence/import commands. Existing operator-only authority, expiry, dependency checks and same-operator admission still apply. Exact-command retries return historical receipts after current authorization; a saved approval receipt cannot override the supersession guard.
+
+Reparse and admission serialize on the existing book lock. Reparse refuses admitted occurrences, already superseded predecessors and mismatched digests. A replacement is created in the same transaction, so links cannot cycle or cross occurrences through the public command. Same-key replay returns the original pair even after a later revision; a changed request conflicts. Concurrent different-key attempts cannot create two replacements for one predecessor. No historical records are updated or deleted. Supersession may be requested by the same scoped actors who can prepare previews; only an operator can approve/admit the replacement.
+
+### Current integration delta
+
+The existing source-intake group, exports, statement spread and HTTP layer already exist at the current paths. No shared adapter changes are needed. Root only needs these bindings in `apps/api/src/application/capabilities.ts`:
+
+```ts
+source_reparse_csv: bindCapability(Capabilities.source_reparse_csv, "reparseSourceCsv", (input) => [
+  scopeParameter(input.scope), input.idempotencyKey, input.previewId, JSON.stringify(input.input),
+]),
+source_get_revision_history: bindCapability(
+  Capabilities.source_get_revision_history,
+  "getSourceRevisionHistory",
+  (input) => [scopeParameter(input.scope), input.occurrenceId],
+),
+```
+
+Owned changes are `packages/contracts/src/source-intake.ts`, `apps/api/src/transport/http/routes/source-intake.ts`, `apps/api/src/db/statements/source-intake.ts`, and `apps/api/migrations/3200-source-intake-revisions.sql`. Shared contract/capability spreads discover the additions. Both REST routes use the existing Effect query boundary; MCP uses the same SQL operations via the bindings above. Only the two new authenticated SQL commands gain runtime execution. The helper trigger and lineage table have no runtime write/execution grant. Historical migrations are unchanged.
+
+### Remaining observation gate
+
+Owned-file `oxfmt --write` passed on the three changed TypeScript files and two domain documents. Owned-file `oxlint` passed with zero warnings/errors. Source review confirmed historical migration hashes were unchanged. No tests or fixtures were added. No migration was applied and no database, transport or concurrency behavior was exercised. Root owns integrated type validation and runtime evidence. When authorized, observe stale-digest/cross-book/role-loss refusals; blocked-to-ready and ready-to-blocked reparse; expired-review recovery; exact-key response-loss recovery; concurrent reparse/admit; rejection of old-preview approval/admission without committed evidence or bank changes; unchanged old bytes/diagnostics/admitted statements/matches; and the 50-preview limit. These are pending observations, not verified acceptance.
+
 ## Verification status and root's next action
 
 Bounded owned-file formatting and Oxlint are the only worker checks. `oxfmt` completed on eight owned TypeScript files and the two domain documents; `oxlint` completed on the eight TypeScript files with zero warnings and zero errors. No native typecheck, SQL execution, migration, browser interaction, concurrency/crash/revocation experiment, test/fixture, dependency installation, Git action, build, server or real-company operation was performed. Source inspection is not runtime proof. Shared exports/group/dispatcher composition must land before native type validation; no integrated-build claim is made.
@@ -93,7 +134,7 @@ Manual acceptance sequence (not an added automated test or fixture):
 4. Change relevant source/configuration after approval; expire approval; remove operator authority; cross book/entity scope. Observe explicit rejections before effects. Re-parse only unadmitted occurrences; reject reinterpretation after admission. Confirm existing JSON imports remain unchanged and overlapping new occurrences are refused, not deduplicated.
 5. Drive the UI at narrow width/200% zoom with keyboard. Confirm every row/diagnostic is reachable, form mapping survives a retry, failed reads do not switch the selected source, cross-book selection clears drafts, and downloads reproduce the retained artifacts.
 
-Still out of scope: SIE, bank/provider connectors, native provider profile certification, optional-column inference, foreign-currency conversion, inferred balances/VAT/company facts, arbitrary overlap maps, multi-chunk import/leases/cancel/compensation, source replacement, automatic matching/posting, new residual authority, archive certification and actual-company activation/completeness.
+Still out of scope: SIE, bank/provider connectors, native provider profile certification, optional-column inference, foreign-currency conversion, inferred balances/VAT/company facts, arbitrary overlap maps, multi-chunk import/leases/cancel/compensation, admitted-source replacement, automatic matching/posting, new residual authority, archive certification and actual-company activation/completeness.
 
 ## Root review amendment
 
