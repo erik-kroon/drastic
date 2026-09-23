@@ -17,6 +17,8 @@ import { Database, databaseLayer } from "./connection";
 import { sourceIntakeStatements } from "./statements/source-intake";
 import { registerReportStatements } from "./statements/register-report";
 import { reportComparisonStatements } from "./statements/reports";
+import { closingDiscoveryStatements } from "./statements/closing";
+import { preparationJobStopStatements } from "./statements/automation";
 import { sieStatements } from "./statements/sie";
 import { invoiceDraftStatements } from "./statements/invoice-draft";
 import { subledgerControlStatements } from "./statements/subledger-controls";
@@ -130,6 +132,8 @@ const statements = {
   ...sourceIntakeStatements,
   ...registerReportStatements,
   ...reportComparisonStatements,
+  ...closingDiscoveryStatements,
+  ...preparationJobStopStatements,
   ...sieStatements,
   ...invoiceDraftStatements,
   ...subledgerControlStatements,

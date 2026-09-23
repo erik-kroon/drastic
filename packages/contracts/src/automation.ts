@@ -150,11 +150,38 @@ export const PreparationJob = Schema.Struct({
   requiresPostingApproval: Schema.Literal(true),
 });
 
+export const StopPreparationJob = Schema.Struct({ reason: Accounting.Description });
+export const PreparationJobStop = Schema.Struct({
+  job: PreparationJob,
+  outcome: Schema.Literals(["stopped", "already_terminal"]),
+  receipt: CommandReceipt,
+});
+export const PreparationJobStopCapabilities = {
+  runs_stop_background: {
+    description:
+      "Stop one exact admitted preparation job without changing its run or prepared work. Retained terminal jobs are returned unchanged with already_terminal; their existing reason is preserved. Does not terminate a remote Workflow or prevent a future explicit admission.",
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      jobId: Accounting.Identifier,
+      idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
+      input: StopPreparationJob,
+    }),
+    output: PreparationJobStop,
+    readOnly: false,
+  },
+};
+
 const path = "/v1/entities/:entityId/books/:bookId";
 const scoped = { params: Accounting.Scope, error: accountingErrors };
 const mutation = { ...scoped, headers: Accounting.IdempotencyHeaders };
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
 export const AutomationApi = HttpApiGroup.make("automation").add(
+  HttpApiEndpoint.post("stopPreparationJob", `${path}/preparation-jobs/:id/stop`, {
+    ...identified,
+    headers: Accounting.IdempotencyHeaders,
+    payload: StopPreparationJob.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: PreparationJobStop,
+  }),
   HttpApiEndpoint.post("startPreparationJob", `${path}/preparation-runs/:id/background`, {
     ...identified,
     headers: Accounting.IdempotencyHeaders,

@@ -3,13 +3,11 @@ import * as Commerce from "@open-erp/contracts/commerce";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
-import { PageAction } from "@open-erp/ui/components/accounting-page";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
-import { workspacePath } from "@/lib/book-context";
 import {
   CommandForm,
   Details,
@@ -20,7 +18,7 @@ import {
   commercePath,
   type CommerceProps,
 } from "./shared";
-import { AllocationReleaseStatus } from "./allocation-reversals";
+import { InvoicePaymentUndo } from "./invoice-payment-undo";
 import { invoicePaymentCopy } from "./invoice-payment-copy";
 import type { InvoicePaymentNavigation } from "./invoice-payments";
 
@@ -65,6 +63,17 @@ export function InvoicePaymentReview(
   const plan = view.data?.plan;
   const money = (amount: string) =>
     `${formatMinorAmount(amount, invoice.currencyScale, locale)} ${invoice.currency}`;
+  if (props.navigation.releaseId && plan && view.data?.application && !view.isError)
+    return (
+      <InvoicePaymentUndo
+        book={book}
+        locale={locale}
+        invoice={invoice}
+        plan={plan}
+        receipt={view.data.application}
+        navigation={props.navigation}
+      />
+    );
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Box>
@@ -73,7 +82,7 @@ export function InvoicePaymentReview(
         </Button>
       </Box>
       <RecordHeading
-        title={`${copy.reviewTitle} · ${invoice.documentNumber}`}
+        title={`${view.data?.application ? copy.savedTitle : copy.reviewTitle} · ${invoice.documentNumber}`}
         subtitle={`${invoice.counterpartyName}${plan ? ` · ${plan.payment.postingDate}` : ""}`}
         action={
           <Button
@@ -91,15 +100,24 @@ export function InvoicePaymentReview(
       {plan && view.data && !view.isError ? (
         <>
           <RecordSummary>
-            <RecordFact label={copy.amount}>{money(plan.totalMinor)}</RecordFact>
-            <RecordFact label={copy.after}>
-              {money(
-                plan.legs.find((leg) => leg.invoiceId === invoice.id)?.outstandingAfterMinor ?? "0",
-              )}
+            <RecordFact label={view.data.application ? copy.matchedAmount : copy.amount}>
+              {money(plan.totalMinor)}
             </RecordFact>
-            <RecordFact label={copy.paymentAfter}>
-              {money(plan.paymentRemainingAfterMinor)}
+            <RecordFact label={view.data.application ? copy.outstanding : copy.after}>
+              {view.data.application
+                ? invoice.outstandingMinor === null
+                  ? "—"
+                  : money(invoice.outstandingMinor)
+                : money(
+                    plan.legs.find((leg) => leg.invoiceId === invoice.id)?.outstandingAfterMinor ??
+                      "0",
+                  )}
             </RecordFact>
+            {!view.data.application ? (
+              <RecordFact label={copy.paymentAfter}>
+                {money(plan.paymentRemainingAfterMinor)}
+              </RecordFact>
+            ) : null}
           </RecordSummary>
           <Text>{plan.rationale}</Text>
           <Text tone="muted">{copy.effect}</Text>
@@ -121,19 +139,14 @@ export function InvoicePaymentReview(
             />
           ) : null}
           {view.data.application ? (
-            <>
-              <AllocationReleaseStatus
-                book={book}
-                locale={locale}
-                compact
-                id={view.data.application.id}
-              />
-              <PageAction
-                href={`${workspacePath(book)}/accounts?view=payments&record=${encodeURIComponent(view.data.application.id)}`}
-              >
-                {copy.unmatch}
-              </PageAction>
-            </>
+            <InvoicePaymentUndo
+              book={book}
+              locale={locale}
+              invoice={invoice}
+              plan={plan}
+              receipt={view.data.application}
+              navigation={props.navigation}
+            />
           ) : null}
           <InvoicePaymentActions {...props} view={view.data} ready={ready} />
           <Facts title={copy.details} value={view.data} />

@@ -39,6 +39,7 @@ export type SalesSearch = typeof Sales.SalesQuery.Type & {
   stage?: "review" | "payments";
   review?: string;
   allocation?: string;
+  release?: string;
 };
 
 export function SalesWorkspace({ search }: { search: SalesSearch }) {
@@ -81,6 +82,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
       stage: undefined,
       review: undefined,
       allocation: undefined,
+      release: undefined,
     });
   const open = (id: string, kind: "draft" | "invoice") =>
     change({
@@ -91,6 +93,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
       stage: undefined,
       review: undefined,
       allocation: undefined,
+      release: undefined,
     });
   const rowUrl = (row: typeof Sales.SalesRow.Type) => {
     return `${base}${defaultStringifySearch({
@@ -407,13 +410,23 @@ function SalesRecord({
               book={book}
               locale={locale}
               direction="customer"
-              onPayments={() => change({ ...search, stage: "payments", allocation: undefined })}
+              onPayments={() =>
+                change({ ...search, stage: "payments", allocation: undefined, release: undefined })
+              }
               paymentView={
                 search.stage === "payments"
                   ? {
                       planId: search.allocation,
-                      onPlan: (id) => change({ ...search, allocation: id }),
-                      onBack: () => change({ ...search, stage: undefined, allocation: undefined }),
+                      releaseId: search.release,
+                      onPlan: (id) => change({ ...search, allocation: id, release: undefined }),
+                      onRelease: (id) => change({ ...search, release: id }),
+                      onBack: () =>
+                        change({
+                          ...search,
+                          stage: undefined,
+                          allocation: undefined,
+                          release: undefined,
+                        }),
                     }
                   : undefined
               }

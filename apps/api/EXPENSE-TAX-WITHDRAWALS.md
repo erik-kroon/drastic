@@ -145,3 +145,16 @@ Owned five TypeScript files passed Oxlint with zero warnings/errors. Owned Oxfmt
 `git diff --check` passed. Shared API/contracts type checks and exhaustive UI integration remain
 root-owned. No tests, fixtures, browser work, SQL/runtime execution, migration application,
 provider/external actions or VCS history changes occurred. Dynamic behavior remains unverified.
+
+### Independent review fix: SQL sealing authority
+
+Independent source review identified that the initial v3 SQL sealer fenced direct VAT-fact
+withdrawal but did not enforce the derived expense-source withdrawal marker. The runtime role
+can call this sealer, so TypeScript calculation alone was not a sufficient authority boundary.
+
+The4500 sealer now also forbids `included_synthetic` when the retained basis has
+`expenseSourceWithdrawn:true`. Its separate exclusion fence requires `state:"excluded"`,
+JSON-null `contribution` and the explicit `withdrawn_expense_source` blocker. Missing fields
+are refused. This reads the actual live basis boolean after complete supplied/live basis
+equality, not a caller-authored classification. Existing direct-withdrawal checks and original
+successful-key replay remain unchanged. This is a source-reviewed fix, not an executed case.

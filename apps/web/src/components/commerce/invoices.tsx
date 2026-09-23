@@ -276,7 +276,7 @@ export function InvoiceDetail(
               {formatMinorAmount(invoice.data.amountMinor, invoice.data.currencyScale, locale)}{" "}
               {invoice.data.currency}
             </RecordFact>
-            <RecordFact label={locale === "sv" ? "Avstämt" : "Allocated"}>
+            <RecordFact label={locale === "sv" ? "Matchat" : "Matched"}>
               {formatMinorAmount(
                 invoice.data.recordedAllocatedMinor,
                 invoice.data.currencyScale,
@@ -448,8 +448,8 @@ function InvoiceHistory(props: CommerceProps & { id: string }) {
 
 const english = {
   open: "Open",
-  partlyAllocated: "Partly allocated",
-  allocated: "Allocated",
+  partlyAllocated: "Partly settled",
+  allocated: "Settled",
   needsReview: "Needs review",
   cancelled: "Cancelled (synthetic)",
   allInvoices: "All invoices",
@@ -471,8 +471,8 @@ const english = {
 };
 const swedish: typeof english = {
   open: "Utestående",
-  partlyAllocated: "Delvis avstämd",
-  allocated: "Avstämd",
+  partlyAllocated: "Delvis reglerad",
+  allocated: "Reglerad",
   needsReview: "Behöver granskas",
   cancelled: "Makulerad (syntetisk)",
   allInvoices: "Alla fakturor",
@@ -486,7 +486,7 @@ const swedish: typeof english = {
   invoice: "Faktura",
   contact: "Kontakt",
   dueDate: "Förfallodatum",
-  outstanding: "Kvar att stämma av",
+  outstanding: "Kvarstående",
   noMatchingInvoices: "Inga matchande fakturor",
   noRegisteredInvoicesYet: "Inga registrerade fakturor än",
   registerAnInvoiceOnceIts: "Registrera en faktura när dess belopp finns i bokföringen.",

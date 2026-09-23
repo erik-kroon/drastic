@@ -55,3 +55,25 @@ A domain-specific original whose register consequences cannot be expressed safel
 | COR-04 | Closed-period policy, downstream impact cases and all-channel correction workbench.                   | COR-02, END-01         | E-06/E-11/E-16: no silent reopening/backdating; old report preserved and affected readiness stale.   |
 
 The plain-journal P1 correction gate is COR-01/COR-02 with relevant PST proofs. It does not wait for asset/payroll implementation. COR-03 extends the gate whenever those domains become supported. This distinction prevents a circular dependency while keeping register-aware correction mandatory before their release.
+
+### Tax-account correction dependencies
+
+Forward4700 extends the existing correction-impact resource owner with every reserved
+tax-account match on the selected book/voucher, including invalid-but-reserved matches.
+Exact statement/event/voucher-line identities and match/reservation/current-usability
+digests flow into the existing impact basis, bundle preparation/approval/execution checks,
+and standalone reversal admission. Explicit evidenced unmatch remains the only release;
+4100's physical correction fence is unchanged. Existing resources, historical impact
+bytes and successful-key recovery are preserved. No new accounting role or financial
+action is introduced. Root source diff review confirmed the narrow composition change;
+SQL/runtime acceptance remains open. See
+[tax-account correction impact](../../apps/api/TAX-ACCOUNT-CORRECTION-IMPACT.md).
+
+Forward4900 adds the two terminal-disposal relationships missing from generic correction
+impact: the disposal posting voucher and its retained acquisition/imported basis voucher.
+Each is an existing schedule resource with the immutable disposal dependency digest and
+an explicit blocker. Recognition history was already covered by occurrence resources.
+The4700 tax contribution and the1000-resource whole-read refusal remain intact. This
+closes early disclosure/admission gaps without adding disposal-aware correction authority
+or weakening4200's independent financial guards. See
+[disposal correction boundaries](../../apps/api/SUBLEDGER-DISPOSAL-CORRECTIONS.md).

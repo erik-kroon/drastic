@@ -88,6 +88,7 @@ export const CorrectionChain = Schema.Struct({
 export const CorrectionImpactResource = Schema.Struct({
   kind: Schema.Literals([
     "bank_match",
+    "tax_account_match",
     "bank_allocation",
     "invoice",
     "payment_allocation",
@@ -101,6 +102,17 @@ export const CorrectionImpactResource = Schema.Struct({
   path: Schema.String,
   blocks: Schema.Boolean,
   dependencyDigest: Schema.optional(Accounting.Digest),
+  taxAccountMatch: Schema.optional(
+    Schema.Struct({
+      statementId: Accounting.Identifier,
+      statementDigest: Accounting.Digest,
+      eventId: Accounting.Identifier,
+      voucherId: Accounting.Identifier,
+      lineId: Accounting.Identifier,
+      matchDigest: Accounting.Digest,
+      usable: Schema.Boolean,
+    }),
+  ),
 });
 export const CorrectionBlocker = Schema.Struct({
   code: Accounting.FailureCode,

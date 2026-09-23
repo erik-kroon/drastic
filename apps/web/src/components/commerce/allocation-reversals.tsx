@@ -1,17 +1,17 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import * as Reversal from "@open-erp/contracts/commerce-allocation-reversals";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { bookKey, readAccounting } from "@/lib/accounting-api";
+import { readAccounting } from "@/lib/accounting-api";
+import { CommerceAllocationReversalReview } from "./allocation-reversal-review";
 import { allocationReversalCopy } from "./allocation-reversal-copy";
 import {
   CommandForm,
   Details,
-  Evidence,
   Facts,
   Field,
   Lookup,
@@ -116,7 +116,7 @@ function ReversalWorkspace(props: CommerceProps & { receiptId?: string }) {
   );
 }
 export function AllocationReleaseStatus(
-  props: CommerceProps & { id: string; onOpen?: (id: string) => void; compact?: boolean },
+  props: CommerceProps & { id: string; onOpen?: (id: string) => void },
 ) {
   const { book, locale, id } = props;
   const copy = allocationReversalCopy(locale);
@@ -143,24 +143,20 @@ export function AllocationReleaseStatus(
   const ready = status.isSuccess && status.isFetchedAfterMount && status.fetchStatus === "idle";
   return (
     <Box display="grid" gap="lg" minWidth="zero">
-      {!props.compact ? (
-        <Heading>
-          {copy.receipt}: {id}
-        </Heading>
-      ) : null}
-      {!props.compact ? (
-        <Box>
-          <Button
-            variant="outline"
-            disabled={status.isFetching}
-            onClick={() => {
-              void status.refetch();
-            }}
-          >
-            {copy.refresh}
-          </Button>
-        </Box>
-      ) : null}
+      <Heading>
+        {copy.receipt}: {id}
+      </Heading>
+      <Box>
+        <Button
+          variant="outline"
+          disabled={status.isFetching}
+          onClick={() => {
+            void status.refetch();
+          }}
+        >
+          {copy.refresh}
+        </Button>
+      </Box>
       <AccountingStatus locale={locale} pending={status.isPending} error={status.error} />
       {status.data ? (
         <>
@@ -205,215 +201,6 @@ export function AllocationReleaseStatus(
           ) : null}
         </>
       ) : null}
-    </Box>
-  );
-}
-export function CommerceAllocationReversalReview(props: CommerceProps & { id: string }) {
-  const { book, locale, id } = props;
-  const copy = allocationReversalCopy(locale);
-  const review = useQuery({
-    queryKey: [...commerceKey(book), "unallocation-review", id],
-    staleTime: 0,
-    refetchOnMount: "always",
-    queryFn: async ({ signal }) => {
-      const result = await readAccounting(
-        `${commercePath(book)}/allocation-reversal-plans/${encodeURIComponent(id)}`,
-        Reversal.CommerceAllocationReversalView,
-        { signal },
-      );
-      checkScope(book, result.plan.scope);
-      if (result.plan.id !== id) throw new Error("Unallocation review identity mismatch");
-      if (result.execution) {
-        checkScope(book, result.execution.scope);
-        if (
-          result.execution.planId !== id ||
-          result.execution.receiptId !== result.plan.input.receiptId
-        )
-          throw new Error("Unallocation execution identity mismatch");
-      }
-      if (result.approval && result.approval.planId !== id)
-        throw new Error("Unallocation approval identity mismatch");
-      return result;
-    },
-    retry: false,
-  });
-  const ready = review.isSuccess && review.isFetchedAfterMount && review.fetchStatus === "idle";
-  return (
-    <Box display="grid" gap="lg" minWidth="zero">
-      <Heading>{copy.review}</Heading>
-      <Box>
-        <Button
-          variant="outline"
-          disabled={review.isFetching}
-          onClick={() => {
-            void review.refetch();
-          }}
-        >
-          {copy.refresh}
-        </Button>
-      </Box>
-      <AccountingStatus locale={locale} pending={review.isPending} error={review.error} />
-      {review.data ? <ReviewContents {...props} view={review.data} ready={ready} /> : null}
-    </Box>
-  );
-}
-function ReviewContents(
-  props: CommerceProps & {
-    view: typeof Reversal.CommerceAllocationReversalView.Type;
-    ready: boolean;
-  },
-) {
-  const { view, book, locale, ready } = props;
-  const copy = allocationReversalCopy(locale);
-  const client = useQueryClient();
-  const { plan, approval, execution } = view;
-  const { snapshot } = plan;
-  const path = `${commercePath(book)}/allocation-reversal-plans/${encodeURIComponent(plan.id)}`;
-  const current = ready && view.dependenciesCurrent && !execution;
-  const refresh = () => {
-    void client.invalidateQueries({ queryKey: bookKey(book) });
-  };
-  return (
-    <Box display="grid" gap="lg" minWidth="zero">
-      <Text>
-        {plan.id} · {copy.receipt}: {plan.input.receiptId}
-      </Text>
-      <Text>
-        {copy.reason}: {plan.input.reason}
-      </Text>
-      <Text>
-        {copy.digest}: {plan.digest}
-      </Text>
-      <Text role="status">
-        {execution
-          ? copy.reversed
-          : !ready
-            ? copy.unknown
-            : view.dependenciesCurrent
-              ? copy.ready
-              : copy.stale}
-      </Text>
-      <Text>
-        {copy.units}: {plan.currency} / {plan.currencyScale}
-      </Text>
-      <Text>
-        {copy.payment}: {snapshot.payment.voucherId} / {snapshot.payment.lineId} ·{" "}
-        {snapshot.payment.postingDate}
-      </Text>
-      <Text>
-        {copy.remaining}: {snapshot.payment.remainingMinor} · {copy.remainingAfter}:{" "}
-        {snapshot.paymentRemainingAfterMinor}
-      </Text>
-      <Text>
-        {copy.periods}: {snapshot.periods.map((period) => period.id).join(", ")}
-      </Text>
-      <Text>
-        {copy.versions}:{" "}
-        {snapshot.periods.map((period) => `${period.id} / ${period.version}`).join(", ")}
-      </Text>
-      <DataTable
-        title={copy.invoices}
-        narrow="stack"
-        columns={[
-          { id: "invoice", label: copy.invoice },
-          { id: "allocated", label: copy.allocated, numeric: true },
-          { id: "release", label: copy.released, numeric: true },
-          { id: "before", label: copy.outstanding, numeric: true },
-          { id: "after", label: copy.after, numeric: true },
-        ]}
-        rows={snapshot.invoices.map((item) => ({
-          id: item.invoice.id,
-          cells: [
-            `${item.invoice.documentNumber} · ${item.invoice.counterpartyName} · ${item.invoice.id}`,
-            item.invoice.recordedAllocatedMinor,
-            item.releasedMinor,
-            item.invoice.outstandingMinor ?? "—",
-            item.outstandingAfterMinor,
-          ],
-        }))}
-      />
-      <Details title={copy.evidence}>
-        <Evidence {...props} reference={snapshot.originalPlan.evidence} />
-      </Details>
-      {snapshot.invoices.map((item) => (
-        <Details key={item.invoice.id} title={`${copy.invoice}: ${item.invoice.documentNumber}`}>
-          <Text>
-            {item.invoice.recognition.voucherId} / {item.invoice.recognition.lineId} ·{" "}
-            {item.invoice.recognition.postingDate}
-          </Text>
-          <Evidence {...props} reference={item.invoice.evidence} />
-          <Evidence {...props} reference={item.invoice.currentRevision.evidence} />
-        </Details>
-      ))}
-      <Facts title={copy.original} value={snapshot} />
-      <Box>
-        <Button
-          variant="outline"
-          onClick={() => {
-            const url = URL.createObjectURL(
-              new Blob([JSON.stringify(view, null, 2)], { type: "application/json" }),
-            );
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `unallocation-${plan.id}.json`;
-            document.body.append(link);
-            link.click();
-            link.remove();
-            window.setTimeout(() => URL.revokeObjectURL(url), 0);
-          }}
-        >
-          {copy.download}
-        </Button>
-      </Box>
-      <Facts title={copy.approvals} value={view.approvals} />
-      {execution ? <Facts title={copy.execution} value={execution} /> : null}
-      {book.role !== "operator" ? <Text>{copy.operator}</Text> : null}
-      <CommandForm
-        {...props}
-        path={`${path}/approve`}
-        schema={Reversal.ApproveCommerceAllocationReversal}
-        output={Reversal.CommerceAllocationReversalApproval}
-        label={copy.approve}
-        allowed={current && book.role === "operator" && !approval}
-        input={() => ({ version: 1, digest: plan.digest })}
-        onSuccess={refresh}
-      >
-        <Box as="label" display="flex" alignItems="start" gap="md" padding="md">
-          <input type="checkbox" required />
-          <span>{copy.acknowledge}</span>
-        </Box>
-      </CommandForm>
-      {/* Retained approval rows keep uncertain request keys alive across live approval changes. */}
-      {view.approvals.map((entry) => (
-        <Box key={entry.approval.id} display="grid" gap="lg">
-          <Text>
-            {copy.expires}: {entry.approval.expiresAt} · {entry.approval.actorId} ·{" "}
-            {entry.approval.id}
-          </Text>
-          <CommandForm
-            {...props}
-            path={`${path}/execute`}
-            schema={Reversal.ExecuteCommerceAllocationReversal}
-            output={Reversal.CommerceAllocationReversalExecution}
-            label={copy.execute}
-            allowed={current && approval?.id === entry.approval.id && !entry.revocation}
-            input={() => ({ version: 1, digest: plan.digest, approvalId: entry.approval.id })}
-            onSuccess={refresh}
-          />
-          <CommandForm
-            {...props}
-            path={`${commercePath(book)}/allocation-reversal-approvals/${encodeURIComponent(entry.approval.id)}/revoke`}
-            schema={Reversal.RevokeCommerceAllocationReversalApproval}
-            output={Reversal.CommerceAllocationReversalRevocation}
-            label={copy.revoke}
-            allowed={ready && book.role === "operator" && !execution && !entry.revocation}
-            input={(fields) => ({ reason: fields.get("reason") })}
-            onSuccess={refresh}
-          >
-            <Field name="reason" label={copy.revokeReason} />
-          </CommandForm>
-        </Box>
-      ))}
     </Box>
   );
 }

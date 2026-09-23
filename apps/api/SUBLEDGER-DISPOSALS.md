@@ -232,3 +232,14 @@ Root source review follow-up: the live account-eligibility predicate also checks
 3800 `tax_account_sources`. A later tax-control declaration therefore refuses a previously
 prepared disposal at domain approval/execution and shared/physical revalidation. No test or
 runtime proof was added for this source-only correction.
+
+
+##4900 correction-impact consumer closure
+
+[Terminal disposal correction-impact closure](SUBLEDGER-DISPOSAL-CORRECTIONS.md) adds the
+two previously missing impact/admission resources: the posted disposal voucher and its
+retained acquisition/imported basis voucher. It follows4700 and preserves the tax-account,
+owner and prior correction consumers and their1000-resource bound. Existing schedule
+resources already cover recognition history; no additional recognition expansion or
+financial correction authority is added.4200's physical refusal remains unchanged.
+4900 is source-only, unapplied and runtime-unverified.

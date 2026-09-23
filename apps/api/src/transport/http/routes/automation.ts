@@ -8,6 +8,16 @@ import { query, scopeParameter } from "../../../db/query";
 
 export const AutomationHandlers = HttpApiBuilder.group(Api, "automation", (handlers) =>
   handlers
+    .handle("stopPreparationJob", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        capabilities.runs_stop_background.execute(token, {
+          scope: params,
+          jobId: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
     .handle("startPreparationJob", ({ params, headers }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.runs_start_background.execute(token, {

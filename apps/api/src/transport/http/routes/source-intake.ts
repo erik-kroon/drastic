@@ -59,6 +59,14 @@ export const SourceIntakeHandlers = HttpApiBuilder.group(Api, "sourceIntake", (h
         ),
       ),
     )
+    .handle("getSourceOccurrenceMetadata", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        capabilities.source_get_occurrence_metadata.execute(token, {
+          scope: params,
+          occurrenceId: params.id,
+        }),
+      ),
+    )
     .handle("getSourceOccurrence", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.source_get_occurrence.execute(token, {

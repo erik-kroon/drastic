@@ -15,6 +15,24 @@ export const sourceIntakeStatements = {
     sql`select openerp.begin_source_upload(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   completeSourceUpload: (parameters) =>
     sql`select openerp.complete_source_upload(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  getSourceOccurrenceMetadata: (parameters) =>
+    sql`with retained as materialized (
+      select openerp.get_source_storage(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as body
+    ) select jsonb_build_object(
+      'occurrence',body->'occurrence',
+      'latestPreviewId',body->'latestPreviewId',
+      'previewIds',body->'previewIds',
+      'originalAvailability','not_checked',
+      'admission',case when body->'admission'='null'::jsonb then null else jsonb_build_object(
+        'previewId',body->'admission'->'previewId',
+        'digest',body->'admission'->'digest',
+        'admittedAt',body->'admission'->'admittedAt',
+        'admittedBy',body->'admission'->'receipt'->'actorId',
+        'statementId',body->'admission'->'imported'->'statement'->'id',
+        'evidenceId',body->'admission'->'imported'->'statement'->'evidenceId',
+        'checkpoint',body->'admission'->'imported'->'checkpoint'
+      ) end
+    ) as result from retained`,
   getSourceStorage: (parameters) =>
     sql`select openerp.get_source_storage(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
   retainSource: (parameters) =>

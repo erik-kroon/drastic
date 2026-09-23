@@ -146,11 +146,49 @@ export const ClosingHistory = Schema.Struct({
   items: Schema.Array(ClosingReceipt),
   next: Schema.NullOr(Accounting.MinorUnits),
 });
+export const ClosingProposalCursor = Schema.String.check(
+  Schema.isPattern(/^[a-z][a-z0-9_-]{2,127}:[a-z][a-z0-9_-]{2,127}$/),
+);
+export const ClosingProposalQuery = Schema.Struct({
+  after: Schema.optional(ClosingProposalCursor),
+});
+export const ClosingProposalSummary = Schema.Struct({
+  id: Accounting.Identifier,
+  periodId: Accounting.Identifier,
+  digest: Accounting.Digest,
+  action: PrepareClosing.fields.action,
+  reason: Accounting.Description,
+  proposedBy: Accounting.Identifier,
+  createdAt: Schema.String,
+  capturedStartsOn: Accounting.AccountingDate,
+  capturedEndsOn: Accounting.AccountingDate,
+  capturedLedgerSequence: Accounting.MinorUnits,
+  execution: Schema.NullOr(
+    Schema.Struct({
+      transitionId: Accounting.Identifier,
+      certificateId: Schema.NullOr(Accounting.Identifier),
+    }),
+  ),
+});
+export const ClosingProposalList = Schema.Struct({
+  scope: Accounting.Scope,
+  periodId: Accounting.Identifier,
+  items: Schema.Array(ClosingProposalSummary).check(Schema.isMaxLength(50)),
+  next: Schema.NullOr(ClosingProposalCursor),
+  discovery: Schema.Literal("live_saved_proposal_history"),
+  liveReadinessChecked: Schema.Literal(false),
+  approvalAuthority: Schema.Literal(false),
+});
 const period = { params: PeriodPath, error: accountingErrors };
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
 const keyed = { ...identified, headers: Accounting.IdempotencyHeaders };
 const path = "/v1/entities/:entityId/books/:bookId";
 export const ClosingApi = HttpApiGroup.make("closing").add(
+  HttpApiEndpoint.get("listClosingProposals", `${path}/periods/:periodId/closing-proposals`, {
+    ...period,
+    query: ClosingProposalQuery,
+    success: ClosingProposalList,
+  }),
   HttpApiEndpoint.post(
     "declareClosingInventory",
     `${path}/periods/:periodId/closing-source-inventories`,
@@ -202,6 +240,17 @@ const mutation = {
   idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
 };
 export const ClosingCapabilities = {
+  periods_list_closing_proposals: {
+    description:
+      "Rediscover saved close/reopen proposals for one period, including those never executed. Live history paging returns immutable captured summaries and retained execution IDs only, never approval tokens or current eligibility. Restart paging for later arrivals.",
+    input: Schema.Struct({
+      ...scoped,
+      periodId: Accounting.Identifier,
+      ...ClosingProposalQuery.fields,
+    }),
+    output: ClosingProposalList,
+    readOnly: true,
+  },
   periods_closing_readiness: {
     description:
       "Inspect evidenced family decisions, unavailable controls and live synthetic technical-lock prerequisites. This is not statutory readiness.",

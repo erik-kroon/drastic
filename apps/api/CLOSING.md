@@ -121,7 +121,6 @@ A digest-current expense review can still contain unknown facts. Zero missing/st
 
 Before the owner/tax hooks, bounded count queries refuse more than1000 owner sources/effects,5000 allocation legs or200 expense sources. No partial provider digest is returned. This limit applies to every live closing-basis caller (including readiness/reopen); larger books need a supported larger-scope implementation.
 
-
 ## END-01 family inventory: scope and acceptance before0930
 
 Planned slice: an operator declares every close family for a synthetic period as required,
@@ -165,7 +164,6 @@ Failure/acceptance cases (recorded before source changes; not new tests):
 No new tests/fixtures, database execution, browser session, build or repository-wide checks
 are authorized for this domain owner. Root must exercise the accepted cases through the
 real scoped API/browser and retain receipts before marking them verified.
-
 
 ## 0930 implementation and integration (source only)
 
@@ -268,17 +266,17 @@ change its source/ledger basisDigest. Pinning only that digest would miss a draf
 
 ### Currentness and replay consumers inspected in source
 
-| Consumer | Existing boundary | Effect of the extended provider |
-| --- | --- | --- |
-| `get_closing_readiness` | Shared book and period locks | Returns new checks, whole hook and digest. |
-| `prepare_closing` | Exclusive book then period locks | Captures new immutable basis; close requires all gates; reopen still permits repair. |
-| `get_closing_proposal` | Shared book lock | Exact live/stored basis equality now includes VAT. |
-| `approve_closing` | Exclusive book then period locks | A changed hook or old basis shape refuses a fresh approval; a completed key replays first. |
-| `execute_closing` | Exclusive book then period locks | Exact basis comparison fences uncommitted execution; prior committed receipt recovery runs before currentness. |
-| Certificate creation/read | Caller-held book lock | Effective dependencies contain full-hook digest; later hook changes make the certificate noncurrent. |
-| `prepare_accountant_review` | Exclusive book lock | Pins whole hook in ReviewBasis and JSON; every CSV manifest providerBasis retains the whole hook. |
-| `get_accountant_review` | Shared book lock | Whole ReviewBasis digest includes VAT; over-bound provider returns old pack with dependenciesCurrent=false. |
-| Stored pack rows/artifacts and command replays | Existing scoped immutable reads/receipts | Return saved meanings and bytes; no live data backfill or regeneration. |
+| Consumer                                       | Existing boundary                        | Effect of the extended provider                                                                                |
+| ---------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `get_closing_readiness`                        | Shared book and period locks             | Returns new checks, whole hook and digest.                                                                     |
+| `prepare_closing`                              | Exclusive book then period locks         | Captures new immutable basis; close requires all gates; reopen still permits repair.                           |
+| `get_closing_proposal`                         | Shared book lock                         | Exact live/stored basis equality now includes VAT.                                                             |
+| `approve_closing`                              | Exclusive book then period locks         | A changed hook or old basis shape refuses a fresh approval; a completed key replays first.                     |
+| `execute_closing`                              | Exclusive book then period locks         | Exact basis comparison fences uncommitted execution; prior committed receipt recovery runs before currentness. |
+| Certificate creation/read                      | Caller-held book lock                    | Effective dependencies contain full-hook digest; later hook changes make the certificate noncurrent.           |
+| `prepare_accountant_review`                    | Exclusive book lock                      | Pins whole hook in ReviewBasis and JSON; every CSV manifest providerBasis retains the whole hook.              |
+| `get_accountant_review`                        | Shared book lock                         | Whole ReviewBasis digest includes VAT; over-bound provider returns old pack with dependenciesCurrent=false.    |
+| Stored pack rows/artifacts and command replays | Existing scoped immutable reads/receipts | Return saved meanings and bytes; no live data backfill or regeneration.                                        |
 
 The accountant bounded-provider guard now includes200 VAT fact components and500 saved
 drafts before calling the hook. New captures fail on overflow; historical currentness reads
@@ -297,3 +295,91 @@ replacement functions. Root must keep migration ordering1000→1001 and include 
 changes with the application. Migration application and all checks remain unperformed here,
 as requested. This is implementation presence and source review, not verified SQL behavior,
 concurrency/replay proof, rendered UI or financial readiness.
+
+## Closing-proposal discovery (4800): failure contract before implementation
+
+The existing known-ID read cannot rediscover an unexecuted proposal after a lost response or
+session ID. `get_closing_history` lists only committed transitions, not every saved proposal.
+The new read must reuse saved proposals and optional immutable execution references only.
+
+- Authorize the current book before period/proposal lookup. Unknown or foreign-book periods
+  refuse; an existing period with no proposals returns an honest empty page.
+- Return at most50 complete immutable summaries, with a51st-row continuation probe. No global
+  history truncation; every saved proposal is reachable through stable C-ordered IDs.
+- Cursor binds period + actual proposal anchor within the authorized book. Malformed, switched
+  period, cross-book and absent-anchor cursors refuse instead of silently skipping history.
+- Freeze labels/reason/interval/cutoff to each proposal's retained body. Never fetch live provider
+  state or reinterpret old technical scope as current. Oversized/stale providers cannot hide it.
+- Optional execution IDs come only from existing immutable transition rows. No transition means
+  no retained execution, not pending approval, current eligibility or a failed execution.
+- Exclude approval IDs/tokens, expiration/approval payloads and command keys. Discovery confers no
+  approval/posting authority; use the existing known-ID detail owner for basis/currentness.
+- Discovery is live, not a captured inventory: later random IDs may sort before a cursor. Restart
+  from the first page for new arrivals; do not promise a complete concurrent point-in-time list.
+- No writes, preparation, artifact generation, company/legal facts or closing state transitions.
+
+### Implemented discovery consumer and recovery semantics
+
+`GET /api/v1/entities/:entityId/books/:bookId/periods/:periodId/closing-proposals`
+and read-only MCP `periods_list_closing_proposals` rediscover all saved close/reopen proposals
+for one authorized period. This fills the gap between preparation and known-ID recovery:
+existing closing history still lists committed transitions, while this collection also returns
+never-executed proposals. No report, preparation, approval, artifact or transition is created.
+
+Each page returns at most50 full summaries, with ID/digest/action/reason/proposer/time and the
+proposal's captured interval and ledger sequence. Account/source/provider state is never read.
+`execution` contains only retained transition and optional certificate IDs, or null when no
+execution row is retained. It excludes the transition's approval ID and all approval/command
+material. Null is not an assertion of pending approval, failed execution or current eligibility.
+The unique existing transition-per-proposal constraint prevents duplicate result rows.
+
+The response explicitly says `discovery:live_saved_proposal_history`,
+`liveReadinessChecked:false` and `approvalAuthority:false`. Use existing `getClosingProposal`
+for full saved details and its separate currentness result; opening a listed proposal does not
+make it current or approvable. Stale or over-bound live providers do not prevent this collection
+from returning history because it never calls `closing_basis` or any provider helper.
+
+The cursor is `periodId:proposalId`. It binds a real saved proposal within the authorized book
+and period; malformed/switched-period/missing anchors refuse. All paging comparisons, ordering,
+maximum ID and the new `(book_id,period_id,id COLLATE "C")` index use the same stable C order.
+A51st-row probe determines continuation. There is no global history cap or silently truncated
+collection. The final saved ID can be resumed to a valid empty final page; an existing empty
+period returns an empty first page. Current authorization is required for every request.
+
+Saved proposal fields are immutable. Discovery itself is live: a later new random ID may sort
+before the current cursor, and a previously unexecuted proposal can acquire its first immutable
+execution reference. Restart from the first page to discover such later arrivals. This is not a
+new point-in-time inventory or a promise that concurrent listing observed all future records.
+
+Owned implementation:
+
+- `migrations/4800-closing-proposal-discovery.sql`: one read function and matching scope/order index.
+- `packages/contracts/src/closing.ts`: additive schemas, GET endpoint and read-only capability.
+- `src/transport/http/routes/closing.ts`: delegates to the same capability.
+- `src/db/statements/closing.ts`: new `closingDiscoveryStatements` query fragment.
+
+Root integration: spread `closingDiscoveryStatements` in the shared query registry and add:
+
+```ts
+periods_list_closing_proposals: bindCapability(Capabilities.periods_list_closing_proposals, "listClosingProposals", (input) => [
+  scopeParameter(input.scope), input.periodId, input.after ?? "",
+]),
+```
+
+Existing `ClosingApi`, `ClosingCapabilities` and `ClosingHandlers` composition covers the local
+additions; no package export, API group, table mapping or other shared change is needed. Root owns
+shared type checks and migration scheduling. Historical migrations and known-ID handlers are
+unchanged. The new runtime grant is only authenticated function EXECUTE, never table access.
+
+Pending observations if separately authorized: known/foreign/empty periods; lost-response pending
+proposal rediscovery;50/51+ records; malformed/switched/absent-anchor cursors; no duplicates or
+omissions across a quiescent history; restart for new arrivals; retained execution ID only;
+provider overflow independent recovery; stale proposal not presented as current authority; and
+all legacy captured fields unchanged. Source inspection is not database/transport proof.
+
+Owned-file4800 checks: `oxfmt --write` passed for the three TypeScript modules and two domain
+documents; `oxlint` passed for the three TypeScript modules with zero warnings/errors. Source
+inspection confirmed the read function references only authorization, periods, saved proposals,
+immutable transitions and typed refusal—not live providers or writes.0800 stayed unchanged.
+No shared typecheck, tests/helpers/fixtures, SQL execution/migration application, runtime,
+UI/browser, provider/external/dependency/deployment or VCS action was performed.

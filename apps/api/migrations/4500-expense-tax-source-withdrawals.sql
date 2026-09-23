@@ -346,7 +346,8 @@ BEGIN
     JOIN jsonb_array_elements(basis->'facts') WITH ORDINALITY f(body,n) USING(n)
     WHERE a.body->>'factId' IS DISTINCT FROM f.body->'fact'->>'factId' OR a.body->>'sourceDigest' IS DISTINCT FROM f.body->'fact'->>'digest'
       OR (a.body->>'state'='included_synthetic' AND (input->>'mode'<>'synthetic_demonstration' OR basis->>'bookProfile'<>'synthetic-core-v1'
-        OR f.body->'fact'->'input'->>'recordClass'<>'synthetic' OR f.body->'withdrawal' IS DISTINCT FROM 'null'::jsonb))) THEN
+        OR f.body->'fact'->'input'->>'recordClass'<>'synthetic' OR f.body->'withdrawal' IS DISTINCT FROM 'null'::jsonb
+        OR f.body->'expenseSourceWithdrawn'='true'::jsonb))) THEN
     PERFORM openerp.fail('InvalidJournal','Calculation lineage and synthetic class must match the sealed source inventory.'); END IF;
   IF EXISTS(SELECT FROM jsonb_array_elements(calculation->'assessments') WITH ORDINALITY a(body,n)
     JOIN jsonb_array_elements(basis->'facts') WITH ORDINALITY f(body,n) USING(n)
@@ -355,6 +356,14 @@ BEGIN
         OR a.body->'contribution' IS DISTINCT FROM 'null'::jsonb
         OR NOT coalesce(a.body->'blockers' ? 'withdrawn_fact',false))) THEN
     PERFORM openerp.fail('InvalidJournal','Every withdrawn fact must remain explicitly excluded, with withdrawal lineage retained in the basis.');
+  END IF;
+  IF EXISTS(SELECT FROM jsonb_array_elements(calculation->'assessments') WITH ORDINALITY a(body,n)
+    JOIN jsonb_array_elements(basis->'facts') WITH ORDINALITY f(body,n) USING(n)
+    WHERE f.body->'expenseSourceWithdrawn'='true'::jsonb
+      AND (a.body->>'state' IS DISTINCT FROM 'excluded'
+        OR a.body->'contribution' IS DISTINCT FROM 'null'::jsonb
+        OR NOT coalesce(a.body->'blockers' ? 'withdrawn_expense_source',false))) THEN
+    PERFORM openerp.fail('InvalidJournal','Every fact linked to a withdrawn expense source must remain explicitly excluded without a contribution and with its withdrawal blocker.');
   END IF;
   SELECT count(*)+1 INTO vr_ordinal FROM openerp.vat_return_drafts d WHERE d.book_id=scope->>'bookId';
   IF vr_ordinal>500 THEN PERFORM openerp.fail('UnsupportedProfile','This bounded review supports 500 saved drafts; no history was deleted.'); END IF;

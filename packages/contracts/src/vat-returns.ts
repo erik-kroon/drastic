@@ -102,11 +102,6 @@ export const VatBasis = Schema.Struct({
   currencyScale: Schema.Int,
   facts: Schema.Array(VatFactObservation),
 });
-export const VatFactView = Schema.Struct({
-  current: VatFact,
-  history: Schema.Array(VatFact),
-  withdrawal: Schema.NullOr(VatFactWithdrawal),
-});
 export const PrepareVatDraft = Schema.Struct({
   mode: Schema.Literals(["actual_review", "synthetic_demonstration"]),
   startsOn: A.AccountingDate,
@@ -231,26 +226,25 @@ const VatFactImpactSide = Schema.Struct({
   revision: Schema.Int,
   assessment: VatAssessment,
 });
+const VatFactImpact = Schema.Struct({
+  factId: A.Identifier,
+  original: Schema.NullOr(VatFactImpactSide),
+  replacement: Schema.NullOr(VatFactImpactSide),
+  sourceChanged: Schema.Boolean,
+  assessmentChanged: Schema.Boolean,
+  contributionDelta: Schema.Struct({
+    box05Minor: A.SignedMinorUnits,
+    box10Minor: A.SignedMinorUnits,
+    box48Minor: A.SignedMinorUnits,
+  }),
+});
 export const VatDraftImpact = Schema.Struct({
   digest: A.Digest,
   version: Schema.Literal("vat-draft-impact-v1"),
   scope: A.Scope,
   original: VatDraftReference,
   replacement: VatDraftReference,
-  facts: Schema.Array(
-    Schema.Struct({
-      factId: A.Identifier,
-      original: Schema.NullOr(VatFactImpactSide),
-      replacement: Schema.NullOr(VatFactImpactSide),
-      sourceChanged: Schema.Boolean,
-      assessmentChanged: Schema.Boolean,
-      contributionDelta: Schema.Struct({
-        box05Minor: A.SignedMinorUnits,
-        box10Minor: A.SignedMinorUnits,
-        box48Minor: A.SignedMinorUnits,
-      }),
-    }),
-  ),
+  facts: Schema.Array(VatFactImpact),
   boxes: Schema.Array(
     Schema.Struct({
       box: Schema.Literals(["box05", "box10", "box48", "box49"]),
@@ -263,6 +257,44 @@ export const VatDraftImpact = Schema.Struct({
   ),
   filingReady: Schema.Literal(false),
   externalState: Schema.Literal("not_submitted"),
+});
+export const VatFactLineage = Schema.Struct({
+  interpretation: Schema.Literal("retained_fact_membership"),
+  currentnessChecked: Schema.Literal(false),
+  legalObligationAssessed: Schema.Literal(false),
+  drafts: Schema.Array(
+    Schema.Struct({
+      draftId: A.Identifier,
+      draftDigest: A.Digest,
+      engine: VatCalculation.fields.engine,
+      startsOn: A.AccountingDate,
+      endsOn: A.AccountingDate,
+      recordedAt: Schema.String,
+      revisionId: A.Identifier,
+      revision: Schema.Int,
+      sourceDigest: A.Digest,
+      assessment: VatAssessment,
+    }),
+  ).check(Schema.isMaxLength(500)),
+  amendments: Schema.Array(
+    Schema.Struct({
+      amendmentId: A.Identifier,
+      amendmentDigest: A.Digest,
+      recordedAt: Schema.String,
+      originalDraftId: A.Identifier,
+      originalDraftDigest: A.Digest,
+      replacementDraftId: A.Identifier,
+      replacementDraftDigest: A.Digest,
+      impactDigest: A.Digest,
+      factImpact: VatFactImpact,
+    }),
+  ).check(Schema.isMaxLength(500)),
+});
+export const VatFactView = Schema.Struct({
+  current: VatFact,
+  history: Schema.Array(VatFact),
+  withdrawal: Schema.NullOr(VatFactWithdrawal),
+  lineage: VatFactLineage,
 });
 export const VatDraftImpactView = Schema.Struct({
   impact: VatDraftImpact,
@@ -392,7 +424,8 @@ export const VatReturnCapabilities = {
     input: Schema.Struct({ ...scope, factId: A.Identifier }),
     output: VatFactView,
     readOnly: true,
-    description: "Read immutable VAT fact history in the admitted book.",
+    description:
+      "Read immutable VAT fact history and exact saved draft/amendment membership, including captured exclusions. Does not recalculate, check currentness or determine a legal amendment obligation.",
   },
   vat_return_prepare_draft: {
     input: PrepareVatCommand,

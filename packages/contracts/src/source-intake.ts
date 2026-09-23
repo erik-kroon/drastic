@@ -211,6 +211,13 @@ export const SourceReviewAdmissionSummary = Schema.Struct({
   evidenceId: A.Identifier,
   checkpoint: Bank.Checkpoint,
 });
+export const SourceOccurrenceMetadata = Schema.Struct({
+  occurrence: SourceOccurrence,
+  latestPreviewId: OccurrenceSummary.fields.latestPreviewId,
+  previewIds: Schema.Array(A.Identifier).check(Schema.isMaxLength(50)),
+  admission: Schema.NullOr(SourceReviewAdmissionSummary),
+  originalAvailability: Schema.Literal("not_checked"),
+});
 export const SourceReviewCaptureIdentity = Schema.Struct({
   id: A.Identifier,
   kind: Schema.Literal("source_review_artifact_v1"),
@@ -300,6 +307,10 @@ export const SourceIntakeApi = HttpApiGroup.make("sourceIntake").add(
     query: Schema.Struct({ cursor: Schema.optional(A.Identifier) }),
     success: SourceInventory,
   }),
+  HttpApiEndpoint.get("getSourceOccurrenceMetadata", `${base}/source-occurrences/:id/metadata`, {
+    ...identified,
+    success: SourceOccurrenceMetadata,
+  }),
   HttpApiEndpoint.get("getSourceOccurrence", `${base}/source-occurrences/:id`, {
     ...identified,
     success: SourceOccurrenceView,
@@ -378,6 +389,13 @@ export const SourceIntakeCapabilities = {
       "List observed source occurrences and durable admissions. This is not required-source inventory or proof of completeness.",
     input: Schema.Struct({ scope: A.Scope, cursor: Schema.optional(A.Identifier) }),
     output: SourceInventory,
+    readOnly: true,
+  },
+  source_get_occurrence_metadata: {
+    description:
+      "Read retained occurrence metadata, all preview IDs and a safe admission summary without fetching original bytes. Original availability is not checked; no approval authority is returned.",
+    input: Schema.Struct({ scope: A.Scope, occurrenceId: A.Identifier }),
+    output: SourceOccurrenceMetadata,
     readOnly: true,
   },
   source_get_occurrence: {

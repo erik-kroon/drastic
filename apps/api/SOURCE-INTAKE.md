@@ -151,3 +151,65 @@ Still out of scope: SIE, bank/provider connectors, native provider profile certi
 Unapplied0510 now uses explicit `(occurrence).field` composite access in the SQL-language `intake_summary`. Approval expiry is assigned after the book lock and validation, immediately before approval creation. No other behavior changed. Source review only; no SQL/runtime check was run.
 
 0510 file SHA-256: `af448df45946719d89e4e23f7a53d5b4ab0b81de43a50c4d953abb3cb873f43d`.
+
+## Metadata-only occurrence recovery: failure contract before implementation
+
+A known-ID original read currently depends on object storage for object-backed files. A storage
+outage or failed original integrity check must not hide the retained occurrence metadata.
+
+- Reuse the authorized, book-scoped `get_source_storage` owner and its shared book barrier;
+  unknown or foreign occurrences still refuse.
+- Project an explicit public allowlist, never spread the internal storage response. Do not expose
+  original bytes, private object descriptors, approval IDs or approval command/receipt material.
+- Keep complete preview references within the existing50-preview bound; never truncate history.
+- Keep `originalAvailability: not_checked` explicit. Retention metadata and historical admission
+  references do not prove current object availability, current readiness or fresh authority.
+- The existing original-content endpoint retains its storage failures and byte/hash checks.
+  The metadata read never calls storage, parses, admits, matches, posts or creates an artifact.
+- Null admission means no retained admission, not eligibility to admit. Existing selected-preview
+  reads remain the owner of full interpretation details and separate currentness.
+
+### Implemented metadata-only read
+
+`GET /v1/entities/:entityId/books/:bookId/source-occurrences/:id/metadata` and read-only MCP
+`source_get_occurrence_metadata` return the committed public occurrence (including original
+hash/length/media type and retention receipt), latest/all preview IDs and an admission summary.
+Admission reuses the existing safe review-summary contract: preview/digest/time/actor,
+statement/evidence IDs and checkpoint. It excludes the approval ID and all admission command
+receipts. The retention receipt is provenance, not an approval bearer.
+
+The response always includes `originalAvailability: "not_checked"`. There are no content bytes,
+private object keys/descriptors or approval tokens. This is a metadata recovery read, not a
+successful download, an availability probe or a new artifact. It remains usable if object
+storage cannot be reached because the statement only calls the existing authorized
+`get_source_storage` database owner once under its shared book barrier, then explicitly builds
+an allowlisted result. It never invokes the runtime storage adapter. The existing owner's inline
+base64 may be constructed inside PostgreSQL, but is excluded from the returned statement result.
+All preview IDs remain in retained reverse-ordinal order, bounded by the existing50-row invariant.
+
+The original-content endpoint and storage integrity checks are unchanged and retain their errors.
+The current web workspace still uses that original-content endpoint; this packet adds a backend
+recovery consumer, not an unimplemented UI fallback. Selected-preview detail/currentness and
+interpretation/admission authority remain with their existing owners.
+
+Root integration uses the existing `sourceIntakeStatements`, `SourceIntakeCapabilities`,
+`SourceIntakeApi` and `SourceIntakeHandlers` composition. Add only the shared capability binding:
+
+```ts
+source_get_occurrence_metadata: bindCapability(Capabilities.source_get_occurrence_metadata, "getSourceOccurrenceMetadata", (input) => [
+  scopeParameter(input.scope), input.occurrenceId,
+]),
+```
+
+No migration, storage adapter, schema table mapping or new package export is required. The three
+local TypeScript owners are the source-intake contract, statement fragment and HTTP handler.
+Pending runtime observations if separately authorized: foreign/unknown IDs; empty/multiple/50
+preview references; unadmitted/admitted summaries; no secret or byte fields; unavailable/missing/
+corrupt object does not block metadata; and original download still fails rather than pretending
+availability. Source inspection is not runtime verification.
+
+Owned checks: `oxfmt --write` passed for three TypeScript files and two domain documents;
+`oxlint` passed for the three TypeScript files with zero warnings/errors. Source comparison
+confirmed the existing storage query and original-content handler remained unchanged. No shared
+typecheck, tests/helpers/fixtures, SQL/runtime/object-store access, UI, migration, provider,
+external/dependency/deployment or VCS action was performed. Root owns shared binding/type checks.

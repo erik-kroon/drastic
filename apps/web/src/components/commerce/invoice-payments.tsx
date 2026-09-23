@@ -33,7 +33,9 @@ import { invoicePaymentCopy } from "./invoice-payment-copy";
 
 export type InvoicePaymentNavigation = {
   planId?: string;
+  releaseId?: string;
   onPlan: (id: string | undefined) => void;
+  onRelease: (id: string | undefined) => void;
   onBack: () => void;
 };
 type PaymentProps = CommerceProps & {
@@ -46,9 +48,7 @@ export function InvoicePaymentsWorkspace(props: PaymentProps) {
   const copy = invoicePaymentCopy(locale);
   const [page, setPage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
-  const [selected, setSelected] = useState<typeof Commerce.InvoicePaymentCandidate.Type | null>(
-    null,
-  );
+  const [selected, setSelected] = useState<typeof Commerce.PaymentReference.Type | null>(null);
   const query = new URLSearchParams({ page: String(page), historyPage: String(historyPage) });
   const payments = useQuery({
     enabled: !navigation.planId,
@@ -86,8 +86,7 @@ export function InvoicePaymentsWorkspace(props: PaymentProps) {
   const candidate = ready
     ? payments.data.items.find(
         (item) =>
-          item.payment.voucherId === selected?.payment.voucherId &&
-          item.payment.lineId === selected.payment.lineId,
+          item.payment.voucherId === selected?.voucherId && item.payment.lineId === selected.lineId,
       )
     : undefined;
   const money = (amount: string) =>
@@ -152,9 +151,9 @@ export function InvoicePaymentsWorkspace(props: PaymentProps) {
                           key="choose"
                           variant="outline"
                           size="sm"
-                          onClick={() => setSelected(item)}
+                          onClick={() => setSelected(item.payment)}
                         >
-                          {candidate === item ? copy.selected : copy.choose}
+                          {copy.choose}
                         </Button>,
                       ],
                     }))}
@@ -193,7 +192,7 @@ export function InvoicePaymentsWorkspace(props: PaymentProps) {
                   { id: "payment", label: copy.payment },
                   { id: "date", label: copy.date },
                   { id: "status", label: "Status" },
-                  { id: "amount", label: copy.amount, numeric: true },
+                  { id: "amount", label: copy.historyAmount, numeric: true },
                 ]}
                 rows={payments.data.history.map((item) => ({
                   id: item.planId,

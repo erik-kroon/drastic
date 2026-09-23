@@ -79,3 +79,14 @@ The review screen displays currency/scale, date/period, source evidence, exact l
 | PST-05 | Transactional outbox and bounded durable runs; recurring preparation and explicitly scoped mandate consumption where enabled. | PST-03         | E-08/E-17: committed posting survives delivery failure; applied/remaining groups distinct; changed facts/revocation block future consumption and concurrent limits cannot be exceeded. |
 
 Exit: a fixed-revision artifact covers E-01–E-11 and E-20 relevant cases, including negative/cancellation/commit uncertainty paths. Existing happy-path and post-commit replay observations are reused as historical evidence, not counted as competing-first-execution proof.
+
+## Exact durable preparation-job stop
+
+Forward5100 adds an idempotent exact-job stop through REST/MCP using existing scoped preparation
+authority. It fences one admitted job under the book/job barrier without altering its run,
+checkpoint, audit, prepared proposals or ledger. Existing terminal jobs are returned unchanged
+with an explicit `already_terminal` outcome; a new requested reason is not applied to them.
+Successful replay preserves the saved result. A later delivery cannot advance that stopped job,
+but a deliberate new admission remains separate. See [AUTOMATION.md](../../apps/api/AUTOMATION.md#forward5100-stop-one-admitted-preparation-job).
+This is PST-05 containment, not remote Workflow termination or posting authority. Runtime and
+concurrency acceptance remain pending.

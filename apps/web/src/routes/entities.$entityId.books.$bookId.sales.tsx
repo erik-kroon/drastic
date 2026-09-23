@@ -18,6 +18,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/sales")(
       stage: Schema.optional(Schema.Literals(["review", "payments"])),
       review: Schema.optional(Schema.String),
       allocation: Schema.optional(Schema.String),
+      release: Schema.optional(Schema.String),
     }),
   ),
   component: Page,

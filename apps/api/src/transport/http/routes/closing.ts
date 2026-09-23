@@ -8,6 +8,15 @@ import { query, scopeParameter } from "../../../db/query";
 
 export const ClosingHandlers = HttpApiBuilder.group(Api, "closing", (handlers) =>
   handlers
+    .handle("listClosingProposals", ({ params, query: cursor }) =>
+      Effect.flatMap(authenticate, (token) =>
+        capabilities.periods_list_closing_proposals.execute(token, {
+          scope: params,
+          periodId: params.periodId,
+          after: cursor.after,
+        }),
+      ),
+    )
     .handle("declareClosingInventory", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         query(

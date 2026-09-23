@@ -405,6 +405,11 @@ export const capabilities = {
     "listRegisterReports",
     (input) => [scopeParameter(input.scope), input.after ?? ""],
   ),
+  runs_stop_background: bindCapability(
+    Capabilities.runs_stop_background,
+    "stopPreparationJob",
+    (input) => [scopeParameter(input.scope), input.jobId, input.idempotencyKey, JSON.stringify(input.input)],
+  ),
   runs_start_background: effectCapability(Capabilities.runs_start_background, startPreparationJob),
   runs_get_background: bindCapability(
     Capabilities.runs_get_background,
@@ -468,6 +473,11 @@ export const capabilities = {
       input.idempotencyKey,
       JSON.stringify(input.input),
     ],
+  ),
+  periods_list_closing_proposals: bindCapability(
+    Capabilities.periods_list_closing_proposals,
+    "listClosingProposals",
+    (input) => [scopeParameter(input.scope), input.periodId, input.after ?? ""],
   ),
   periods_closing_readiness: bindCapability(
     Capabilities.periods_closing_readiness,
@@ -693,6 +703,11 @@ export const capabilities = {
     Capabilities.source_list_occurrences,
     "listSourceOccurrences",
     (input) => [scopeParameter(input.scope), input.cursor ?? ""],
+  ),
+  source_get_occurrence_metadata: bindCapability(
+    Capabilities.source_get_occurrence_metadata,
+    "getSourceOccurrenceMetadata",
+    (input) => [scopeParameter(input.scope), input.occurrenceId],
   ),
   source_get_occurrence: effectCapability(Capabilities.source_get_occurrence, getSourceOccurrence),
   source_capture_review: bindCapability(

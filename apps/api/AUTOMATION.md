@@ -135,3 +135,91 @@ Replacement admission adds only a plain nonlocking `enabled IS FALSE` check to26
 For an existing identity row, the execution share lock serializes its disable update with a preparation chunk. The provisioning script deletes sessions before updating identity admission and then changes listed memberships; the added lock keeps that authority order. As with2502, a missing admission row is allowed and has no row to lock; this patch does not add an identity registry/advisory-lock protocol.
 
 Source-reviewed cases: valid API credential plus retained membership with disabled requester and separate enabled executor; session-backed requester with a deleted session; explicit enabled or missing admission; terminal and old-step replay; future/out-of-range step refusal; disabled old submitter replacement under a different valid requester; exact original-key replay; active unchanged job refusal; and rollback of obsolete-job stop if replacement fails. No checks, tests, SQL/migration execution or runtime verification were run. Compilation, concurrent provisioning/delivery and actual Workflow recovery remain unverified. Human financial approval, profile constraints and kernel posting authority are unchanged.
+
+## Forward5100: stop one admitted preparation job
+
+### Failure contract recorded before implementation
+
+- Run cancellation already prevents further preparation, but its ready job projection remains
+  schedulable until an executor can authorize and observe the cancellation. A job stop must not
+  require Workflow bindings, an executor credential, delivery or remote termination.
+- Authorize with existing scoped preparation permission before book/job lookup. Stop the exact
+  retained job ID; an old ID must never resolve to or stop its newer replacement.
+- Take the book barrier before the job row lock, matching execution. Never acquire old submitter
+  credentials/identity/membership after the book lock. Preserve any earlier committed chunk.
+- A ready job becomes stopped. A later delivery reloads that terminal state and cannot advance.
+  A scheduler claim already in flight may still dispatch, but cannot bypass the database fence.
+- Completed/blocked/stopped jobs retain their existing state, checkpoint, reason and timestamps.
+  Response must distinguish an applied stop from a retained terminal result; a submitted new
+  reason is not silently accepted as the terminal job's reason.
+- Exact successful-key replay returns its saved response after current authorization. Changed
+  payload/actor/operation conflicts through the existing command owner; foreign/unknown IDs refuse.
+- Stop and command result commit atomically. Failure must not leave a stopped job without its
+  receipt. Do not alter run state/results/cursor/audit, rule activation, proposals or ledger.
+- Stopping one job does not cancel the run or bar a future deliberate new admission. No automatic
+  replacement, provider action, posting authority or new historical artifact is introduced.
+
+### Implemented stop consumer and retained result
+
+`POST /v1/entities/:entityId/books/:bookId/preparation-jobs/:id/stop` and MCP
+`runs_stop_background` take an exact saved **job ID**, `{reason}` and an Idempotency-Key. Current
+scoped preparation authority matches the existing run-cancel command; no operator override,
+executor credential or Workflow configuration is added. Unknown/foreign IDs refuse. Extra payload
+fields and blank/oversized reasons refuse. Existing key validation is owned by `replay`.
+
+The response is `{job,outcome,receipt}`. `outcome: "stopped"` means this command changed a ready
+job to stopped and recorded its reason. `outcome: "already_terminal"` returns the original
+completed/blocked/stopped job unchanged; the new submitted reason was **not** applied to that
+job. Both outcomes retain the current command's ordinary receipt. Exact successful-key replay
+returns the saved response, not a fresh assertion about run or remote execution state.
+
+The function authorizes first, takes the book lock, performs exact-key replay, validates the
+command, then locks the exact book/job row. It updates only a ready job's state/reason/checkedAt.
+Checkpoint, expected audit, captured requester/executor/credentials and creation time are
+preserved. For terminal jobs it changes nothing at all. It saves the command result within the
+same transaction. No exception handler can keep a stop after command-result failure. No current
+or old credential/membership/identity lock is acquired after the book barrier.
+
+Execution2800 takes the same book-before-job lock order and rereads the job before advancing the
+run. A chunk committed first remains retained; a delivery ordered after stop returns the
+terminal job before any advancement. No call to `advance_preparation_run`, including cancel,
+is made: run state/cursor/results/audit and prepared proposals remain unchanged. Stopping an old
+job cannot resolve to or alter a replacement. A future deliberate admission may create a new
+job for an eligible run; stop does not permanently cancel the run or grant posting authority.
+
+The0940 scheduler claims jobs using a job-row lock without the book lock. A claim waiting behind
+stop no longer qualifies as ready, but a body claimed earlier may still create/restart a remote
+Workflow afterward. An old admission receipt replay can also dispatch its historically ready
+old job ID. Neither bypasses2800's terminal gate. **No remote termination or absence of future
+dispatch is promised.** Old IDs/checkpoints are never reset or reused. The stop command makes no
+Workflow/provider call and works without those bindings. Existing known-run background reads,
+run reads and exact command replay remain the recovery paths; no list/history artifact is added.
+
+Owned implementation: `migrations/5100-preparation-job-stop.sql`, automation contract/HTTP route,
+and new `src/db/statements/automation.ts`. Existing0940/2600/2800 functions/runtime are unchanged.
+Root shared composition:
+
+- Spread `Automation.PreparationJobStopCapabilities` into the existing capability catalogue.
+- Import/spread `preparationJobStopStatements` into the query registry.
+- Bind the capability below; existing AutomationApi/Handlers composition covers the route.
+
+```ts
+runs_stop_background: bindCapability(Capabilities.runs_stop_background, "stopPreparationJob", (input) => [
+  scopeParameter(input.scope), input.jobId, input.idempotencyKey, JSON.stringify(input.input),
+]),
+```
+
+Only the new scoped function gains runtime EXECUTE. There is no new table, direct write grant,
+package export, operations CLI/domain change or accounting/provider contract.
+
+Pending authorized observations: ready/terminal/foreign/missing IDs, payload/key validation,
+exact-key and changed-key replay, both stop-vs-chunk orderings, scheduler preclaim and historical
+admission replay, replacement isolation, transaction rollback, missing runtime bindings, and
+unchanged run/audit/proposals/ledger. Source/static checks are not runtime or concurrency proof.
+
+Owned5100 checks: `oxfmt --write` passed for three TypeScript files and three domain/plan docs;
+`oxlint` passed for three TypeScript files with zero warnings/errors. Source comparison confirmed
+0200/0940/2600/2800 and preparation application/Workflow runtime unchanged. The new function only
+references scoped authorization, book/job state, existing job-body/replay/command-result owners
+and typed refusal. No tests/helpers/fixtures, shared typechecks, SQL/migration/runtime/provider
+execution, operations CLI/domain changes, UI, deployment/dependencies or VCS action was performed.

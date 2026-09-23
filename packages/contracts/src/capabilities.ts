@@ -78,6 +78,7 @@ export const Capabilities = {
   ...InvoiceDocumentCapabilities,
   ...CommerceAllocationReversalCapabilities,
   ...ClosingCapabilities,
+  ...Automation.PreparationJobStopCapabilities,
   ...SubledgerCapabilities,
   ...PostingRecoveryCapabilities,
   ...CorrectionCapabilities,
