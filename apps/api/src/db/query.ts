@@ -1,5 +1,6 @@
 import { firmStatements } from "./statements/firms";
 import { vatAmendmentStatements } from "./statements/vat-amendments";
+import { expenseTaxWithdrawalStatements } from "./statements/expense-tax-withdrawals";
 import { subledgerStatements } from "./statements/subledgers";
 import { RequestEnvironment } from "../runtime/environment";
 import { failure } from "../application/failures";
@@ -15,6 +16,7 @@ import * as SqlError from "effect/unstable/sql/SqlError";
 import { Database, databaseLayer } from "./connection";
 import { sourceIntakeStatements } from "./statements/source-intake";
 import { registerReportStatements } from "./statements/register-report";
+import { reportComparisonStatements } from "./statements/reports";
 import { sieStatements } from "./statements/sie";
 import { invoiceDraftStatements } from "./statements/invoice-draft";
 import { subledgerControlStatements } from "./statements/subledger-controls";
@@ -39,6 +41,7 @@ const PostgresFailure = Schema.Struct({
 const statements = {
   ...firmStatements,
   ...vatAmendmentStatements,
+  ...expenseTaxWithdrawalStatements,
   ...subledgerStatements,
   workspaceCoordination: (parameters) =>
     sql`select openerp.workspace_coordination(${parameters[0]}::text,${parameters[1]}::jsonb) as result`,
@@ -126,6 +129,7 @@ const statements = {
 
   ...sourceIntakeStatements,
   ...registerReportStatements,
+  ...reportComparisonStatements,
   ...sieStatements,
   ...invoiceDraftStatements,
   ...subledgerControlStatements,

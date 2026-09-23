@@ -116,7 +116,7 @@ function ReversalWorkspace(props: CommerceProps & { receiptId?: string }) {
   );
 }
 export function AllocationReleaseStatus(
-  props: CommerceProps & { id: string; onOpen?: (id: string) => void },
+  props: CommerceProps & { id: string; onOpen?: (id: string) => void; compact?: boolean },
 ) {
   const { book, locale, id } = props;
   const copy = allocationReversalCopy(locale);
@@ -143,20 +143,24 @@ export function AllocationReleaseStatus(
   const ready = status.isSuccess && status.isFetchedAfterMount && status.fetchStatus === "idle";
   return (
     <Box display="grid" gap="lg" minWidth="zero">
-      <Heading>
-        {copy.receipt}: {id}
-      </Heading>
-      <Box>
-        <Button
-          variant="outline"
-          disabled={status.isFetching}
-          onClick={() => {
-            void status.refetch();
-          }}
-        >
-          {copy.refresh}
-        </Button>
-      </Box>
+      {!props.compact ? (
+        <Heading>
+          {copy.receipt}: {id}
+        </Heading>
+      ) : null}
+      {!props.compact ? (
+        <Box>
+          <Button
+            variant="outline"
+            disabled={status.isFetching}
+            onClick={() => {
+              void status.refetch();
+            }}
+          >
+            {copy.refresh}
+          </Button>
+        </Box>
+      ) : null}
       <AccountingStatus locale={locale} pending={status.isPending} error={status.error} />
       {status.data ? (
         <>

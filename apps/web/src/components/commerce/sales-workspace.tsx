@@ -36,8 +36,9 @@ export type SalesSearch = typeof Sales.SalesQuery.Type & {
   view?: string;
   record?: string;
   kind?: "draft" | "invoice";
-  stage?: "review";
+  stage?: "review" | "payments";
   review?: string;
+  allocation?: string;
 };
 
 export function SalesWorkspace({ search }: { search: SalesSearch }) {
@@ -79,6 +80,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
       kind: undefined,
       stage: undefined,
       review: undefined,
+      allocation: undefined,
     });
   const open = (id: string, kind: "draft" | "invoice") =>
     change({
@@ -88,6 +90,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
       kind,
       stage: undefined,
       review: undefined,
+      allocation: undefined,
     });
   const rowUrl = (row: typeof Sales.SalesRow.Type) => {
     return `${base}${defaultStringifySearch({
@@ -404,6 +407,16 @@ function SalesRecord({
               book={book}
               locale={locale}
               direction="customer"
+              onPayments={() => change({ ...search, stage: "payments", allocation: undefined })}
+              paymentView={
+                search.stage === "payments"
+                  ? {
+                      planId: search.allocation,
+                      onPlan: (id) => change({ ...search, allocation: id }),
+                      onBack: () => change({ ...search, stage: undefined, allocation: undefined }),
+                    }
+                  : undefined
+              }
               recordId={search.record}
               onOpen={(id) => (id ? open(id, "invoice") : close())}
             />

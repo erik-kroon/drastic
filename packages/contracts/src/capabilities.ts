@@ -67,6 +67,7 @@ export const Capabilities = {
   ...OwnerRegisterCapabilities,
   ...CommerceCapabilities,
   ...RegisterReportCapabilities,
+  ...Reports.ReportComparisonCapabilities,
   ...VatReturnCapabilities,
   ...SieCapabilities,
   ...InvoiceDraftCapabilities,

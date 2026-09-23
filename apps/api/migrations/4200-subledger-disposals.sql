@@ -91,8 +91,9 @@ BEGIN
       EXISTS(SELECT FROM openerp.bank_sources b WHERE b.book_id=p_book AND b.account_id=a.id)
       OR EXISTS(SELECT FROM openerp.commerce_control_accounts c WHERE c.book_id=p_book AND c.account_id=a.id)
       OR EXISTS(SELECT FROM openerp.owner_control_accounts o WHERE o.book_id=p_book AND o.account_id=a.id)
+      OR EXISTS(SELECT FROM openerp.tax_account_sources t WHERE t.book_id=p_book AND t.account_id=a.id)
       OR NOT EXISTS(SELECT FROM openerp.accounts x WHERE x.book_id=p_book AND x.id=a.id AND x.active)) THEN
-    PERFORM openerp.fail('InvalidJournal','Disposal accounts must be active and cannot be known bank, commerce or owner controls.'); END IF;
+    PERFORM openerp.fail('InvalidJournal','Disposal accounts must be active and cannot be known bank, commerce, owner or tax-account controls.'); END IF;
   SELECT * INTO d_source FROM openerp.evidence e WHERE e.book_id=p_book AND e.id=p_input->>'evidenceId';
   SELECT * INTO d_review FROM openerp.evidence e WHERE e.book_id=p_book AND e.id=p_input->>'reviewEvidenceId';
   IF d_source.id IS NULL OR d_review.id IS NULL THEN
@@ -156,6 +157,8 @@ BEGIN
     'evidence',d_evidence,'postingPlan',d_plan,'coverage','not_established','legalPolicyApproved',false,'requiresPostingApproval',true)
     ||openerp.commerce_record_metadata(p_key,'prepare_subledger_disposal',d_actor);
   d_body:=d_body||jsonb_build_object('digest',openerp.digest(d_body));
+  IF octet_length(d_body::text)>1048576 THEN
+    PERFORM openerp.fail('UnsupportedProfile','The complete disposal review exceeds1MiB. No partial review or proposal is retained.'); END IF;
   INSERT INTO openerp.subledger_disposal_reviews VALUES(p_scope->>'bookId',d_id,p_input->>'scheduleId',d_ordinal,d_plan->>'id',d_evidence->>'id',d_body);
   RETURN openerp.save_command(p_scope->>'bookId',p_key,d_actor,'prepare_subledger_disposal',p_input,d_body);
 END $$;
@@ -301,6 +304,18 @@ BEGIN
 END $$;
 CREATE TRIGGER subledger_disposal_freezes_revision BEFORE INSERT ON openerp.subledger_schedule_revisions
   FOR EACH ROW EXECUTE FUNCTION openerp.subledger_disposal_revision_guard();
+
+CREATE FUNCTION openerp.subledger_disposal_basis_guard() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,openerp AS $$
+BEGIN
+  PERFORM 1 FROM openerp.books b WHERE b.id=NEW.book_id FOR UPDATE;
+  IF EXISTS(SELECT FROM openerp.vouchers v JOIN openerp.subledger_disposal_reviews r
+    ON r.book_id=v.book_id AND r.change_set_id=v.change_set_id WHERE v.book_id=NEW.book_id AND v.id=NEW.voucher_id) THEN
+    PERFORM openerp.fail('UnsupportedProfile','A disposal release or loss voucher cannot establish another acquisition or imported carrying basis.'); END IF;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER subledger_disposal_not_acquisition BEFORE INSERT ON openerp.subledger_bases
+  FOR EACH ROW EXECUTE FUNCTION openerp.subledger_disposal_basis_guard();
 
 CREATE FUNCTION openerp.get_subledger_disposal_review(p_token text,p_scope jsonb,p_id text) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,openerp AS $$
@@ -619,6 +634,7 @@ REVOKE ALL ON FUNCTION openerp.subledger_disposal_basis(text,jsonb),
   openerp.subledger_check_disposal(text,text,jsonb),
   openerp.subledger_disposal_aggregate_guard(),
   openerp.subledger_disposal_revision_guard(),
+  openerp.subledger_disposal_basis_guard(),
   openerp.subledger_check_posting_basis(text,text,jsonb),
   openerp.subledger_posting_basis(text,text),
   openerp.subledger_control_dependency_digest(text),

@@ -1,5 +1,9 @@
 # Expense tax review — integration handoff
 
+For forward4500 permanent source withdrawal, v2 expense exclusions and the dependent VAT v3
+closure, see [EXPENSE-TAX-WITHDRAWALS.md](EXPENSE-TAX-WITHDRAWALS.md). Historical snapshots
+and the0710 migration remain unchanged.
+
 ## Status and scope
 
 Implementation-ready source, not runtime-verified. Risks and acceptance cases were recorded before the transitions were written in [EXPENSE-TAX-RISKS.md](EXPENSE-TAX-RISKS.md). This package adds no tests, fixtures, dependencies, servers, database mutations or Git operations. Migration0710 has not been applied by this owner. Existing migrations, asset schedules, invoice and ledger authority remain unchanged.

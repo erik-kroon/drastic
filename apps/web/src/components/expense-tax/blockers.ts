@@ -3,6 +3,10 @@ export function expenseTaxBlockers(locale: "en" | "sv") {
   return locale === "sv" ? sv : en;
 }
 const en = {
+  withdrawn_source: "This expense source was permanently withdrawn. Its amounts are excluded.",
+  duplicate_source_component: "Multiple active sources identify the same evidence component.",
+  ambiguous_voucher_sources:
+    "Multiple active expense sources refer to the same voucher. The line links are unclear.",
   missing_review: "No operator review is recorded.",
   stale_review: "The review belongs to an older source revision.",
   wrong_record_class: "The source class does not match this snapshot mode.",
@@ -41,6 +45,10 @@ const en = {
   amount_out_of_range: "The calculated amount exceeds the supported exact amount bound.",
 } satisfies Record<typeof Tax.ExpenseTaxBlocker.Type, string>;
 const sv: typeof en = {
+  withdrawn_source: "Kostnadsunderlaget har återkallats permanent. Beloppen ingår inte.",
+  duplicate_source_component: "Flera aktiva underlag avser samma underlagskomponent.",
+  ambiguous_voucher_sources:
+    "Flera aktiva kostnadsunderlag hänvisar till samma verifikation. Radkopplingarna är oklara.",
   missing_review: "Ingen operatörsgranskning finns registrerad.",
   stale_review: "Granskningen gäller en äldre källversion.",
   wrong_record_class: "Källans klass stämmer inte med underlagets läge.",

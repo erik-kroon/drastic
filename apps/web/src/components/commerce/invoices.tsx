@@ -10,6 +10,8 @@ import {
 import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { IssuedInvoiceDocument } from "./issued-invoice-document";
+import { InvoicePaymentsWorkspace, type InvoicePaymentNavigation } from "./invoice-payments";
+import { invoicePaymentCopy } from "./invoice-payment-copy";
 import { InvoiceRegistration } from "./invoice-registration";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -41,6 +43,8 @@ export function Invoices(
     recordId?: string;
     onOpen?: (id: string) => void;
     contextual?: boolean;
+    onPayments?: () => void;
+    paymentView?: InvoicePaymentNavigation;
   },
 ) {
   const { book, locale } = props;
@@ -190,7 +194,13 @@ export function Invoices(
     </Box>
   );
 }
-export function InvoiceDetail(props: CommerceProps & { id: string }) {
+export function InvoiceDetail(
+  props: CommerceProps & {
+    id: string;
+    onPayments?: () => void;
+    paymentView?: InvoicePaymentNavigation;
+  },
+) {
   const { book, locale, id } = props;
   const copy = commerceCopy(locale);
   const invoice = useQuery({
@@ -208,6 +218,10 @@ export function InvoiceDetail(props: CommerceProps & { id: string }) {
     retry: false,
   });
   const ready = invoice.isSuccess && !invoice.isFetching;
+  if (props.paymentView && invoice.data && !invoice.isError)
+    return (
+      <InvoicePaymentsWorkspace {...props} invoice={invoice.data} navigation={props.paymentView} />
+    );
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <AccountingStatus locale={locale} pending={invoice.isPending} error={invoice.error} />
@@ -218,15 +232,22 @@ export function InvoiceDetail(props: CommerceProps & { id: string }) {
             title={invoice.data.documentNumber}
             subtitle={invoice.data.counterpartyName}
             action={
-              <Button
-                variant="ghost"
-                disabled={invoice.isFetching}
-                onClick={() => {
-                  void invoice.refetch();
-                }}
-              >
-                {copy.refresh}
-              </Button>
+              <Box display="flex" gap="sm">
+                {props.onPayments ? (
+                  <Button variant="outline" onClick={props.onPayments}>
+                    {invoicePaymentCopy(locale).title}
+                  </Button>
+                ) : null}
+                <Button
+                  variant="ghost"
+                  disabled={invoice.isFetching}
+                  onClick={() => {
+                    void invoice.refetch();
+                  }}
+                >
+                  {copy.refresh}
+                </Button>
+              </Box>
             }
           />
           <Box>

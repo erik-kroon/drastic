@@ -1043,6 +1043,12 @@ export const capabilities = {
     input.reportId,
     input.after ?? "",
   ]),
+  reports_compare: bindCapability(Capabilities.reports_compare, "compareReports", (input) => [
+    scopeParameter(input.scope),
+    input.leftReportId,
+    input.rightReportId,
+    input.after ?? "",
+  ]),
   reports_general_ledger: bindCapability(
     Capabilities.reports_general_ledger,
     "reportGeneralLedger",

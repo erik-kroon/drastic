@@ -47,11 +47,13 @@ export function Evidence({
   book,
   locale,
   reference,
-}: CommerceProps & { reference: { evidenceId: string; sha256: string } }) {
+  expanded,
+}: CommerceProps & { reference: { evidenceId: string; sha256: string }; expanded?: boolean }) {
   return (
     <EvidenceInspector
       book={book}
       locale={locale}
+      expanded={expanded}
       reference={{ ...reference, locator: reference.evidenceId }}
     />
   );
@@ -259,7 +261,7 @@ export function CommandForm<
           {copy.invalid}
         </Text>
       ) : null}
-      {!allowed ? <Text>{copy.waiting}</Text> : null}
+      {!allowed && !captured ? <Text>{copy.waiting}</Text> : null}
       <CommandRecoveryNotice
         locale={locale}
         restored={restored}

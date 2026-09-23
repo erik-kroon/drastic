@@ -9,3 +9,12 @@ GET `.../report-snapshots/:id` recovers the immutable header. GET `.../:id/lines
 MCP exposes `reports_prepare`, `reports_get`, `reports_lines`, `reports_explain` through the same named handlers as REST. All values remain exact minor-unit strings. A balanced report explicitly retains `coverage: not_established` and warnings. Later postings do not silently rewrite an old report.
 
 Manual local journal-and-reversal report and drilldown receipts are retained in `.agents/work/openerp-implementation/manual-period-receipts.json`. No automated tests, independent format validators or compliance verification have been performed.
+
+## Saved-snapshot comparisons
+
+[REPORT-COMPARISONS.md](REPORT-COMPARISONS.md) documents the4600 read-only two-snapshot
+comparison. It uses frozen account identities/labels, exact right-minus-left signed differences,
+explicit missing sides and stable bounded pagination with complete source totals. Only newly
+captured reports retain currencyScale; comparisons refuse missing historical scale rather than
+read live book scale. Old report bytes/replay are unchanged. Comparisons are diagnostic arithmetic,
+not reviewed openings, statutory comparatives or financial-close readiness.

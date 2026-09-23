@@ -78,7 +78,11 @@ export const CommerceHandlers = HttpApiBuilder.group(Api, "commerce", (handlers)
     )
     .handle("commerceInvoicePayments", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.commerce_invoice_payments.execute(token, { scope: params, id: params.id, ...query }),
+        capabilities.commerce_invoice_payments.execute(token, {
+          scope: params,
+          id: params.id,
+          ...query,
+        }),
       ),
     )
     .handle("commerceInvoiceHistory", ({ params, query }) =>

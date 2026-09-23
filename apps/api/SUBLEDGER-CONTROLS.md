@@ -451,3 +451,14 @@ inference are refused.1800's existing shared/physical guards reject stale author
 an added live conservation check blocks recognition after a later reversal until a new
 eligible estimate is reviewed. Control contributions retain original/reversal rows and
 all review/readiness limits.4000 remains unapplied and runtime-unverified.
+
+
+##4200 synthetic no-proceeds disposal
+
+[Asset disposal source handoff](SUBLEDGER-DISPOSALS.md) adds operator-reviewed native
+no-proceeds disposal for intact separate gross/accumulated controls. It releases represented
+gross/accumulated balances into an explicit carrying-loss account through the existing
+posting kernel, atomically retains the disposition, and freezes future recognition and
+unsupported corrections. Current controls include retained disposal release contributions;
+closing dependencies consume disposal identity. Source/legal completeness remains unproven.
+Historical migrations and schedules stay immutable.4200 is unapplied and runtime-unverified.

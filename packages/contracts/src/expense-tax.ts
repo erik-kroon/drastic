@@ -101,12 +101,23 @@ export const TaxReview = Schema.Struct({
   authority: Schema.Literal("operator_fact_review_only"),
 });
 export const WithdrawTaxSource = Schema.Struct({
-  expectedSourceDigest: Accounting.Digest, evidenceId: Accounting.Identifier, rationale: Accounting.Description,
+  expectedSourceDigest: Accounting.Digest,
+  evidenceId: Accounting.Identifier,
+  rationale: Accounting.Description,
 });
 export const TaxSourceWithdrawal = Schema.Struct({
-  id:Accounting.Identifier,digest:Accounting.Digest,scope:Accounting.Scope,sourceId:Accounting.Identifier,
-  revisionId:Accounting.Identifier,revision:Schema.Int,revisionDigest:Accounting.Digest,
-  input:WithdrawTaxSource,evidenceSha256:Schema.String,permanent:Schema.Literal(true),recordedAt:Schema.String,receipt:CommandReceipt,
+  id: Accounting.Identifier,
+  digest: Accounting.Digest,
+  scope: Accounting.Scope,
+  sourceId: Accounting.Identifier,
+  revisionId: Accounting.Identifier,
+  revision: Schema.Int,
+  revisionDigest: Accounting.Digest,
+  input: WithdrawTaxSource,
+  evidenceSha256: Schema.String,
+  permanent: Schema.Literal(true),
+  recordedAt: Schema.String,
+  receipt: CommandReceipt,
 });
 
 export const TaxSourceView = Schema.Struct({
@@ -118,7 +129,9 @@ export const TaxSourceView = Schema.Struct({
   reviewHistory: Schema.Array(TaxReview),
 });
 export const ExpenseTaxBlocker = Schema.Literals([
-  "withdrawn_source", "duplicate_source_component", "ambiguous_voucher_sources",
+  "withdrawn_source",
+  "duplicate_source_component",
+  "ambiguous_voucher_sources",
   "missing_review",
   "stale_review",
   "wrong_record_class",
@@ -266,9 +279,11 @@ const scoped = { params: Accounting.Scope, error: accountingErrors };
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
 const mutation = { ...scoped, headers: Accounting.IdempotencyHeaders };
 export const ExpenseTaxApi = HttpApiGroup.make("expenseTax").add(
-  HttpApiEndpoint.post("withdrawExpenseTaxSource",`${path}/sources/:id/withdrawals`,{
-    ...identified,headers:Accounting.IdempotencyHeaders,
-    payload:WithdrawTaxSource.annotate({parseOptions:{onExcessProperty:"error"}}),success:TaxSourceWithdrawal,
+  HttpApiEndpoint.post("withdrawExpenseTaxSource", `${path}/sources/:id/withdrawals`, {
+    ...identified,
+    headers: Accounting.IdempotencyHeaders,
+    payload: WithdrawTaxSource.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: TaxSourceWithdrawal,
   }),
   HttpApiEndpoint.post("recordExpenseTaxSource", `${path}/sources`, {
     ...mutation,

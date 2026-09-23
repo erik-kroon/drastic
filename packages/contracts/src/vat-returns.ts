@@ -76,6 +76,8 @@ export const VatFactWithdrawal = Schema.Struct({
   permanent: Schema.Literal(true),
 });
 export const VatFactObservation = Schema.Struct({
+  // Saved v1/v2 bases predate expense-source withdrawal.
+  expenseSourceWithdrawn: Schema.optional(Schema.Boolean),
   // Saved v1 bases predate withdrawal metadata. New live bases always include this field.
   withdrawal: Schema.optional(Schema.NullOr(VatFactWithdrawal)),
   fact: VatFact,
@@ -113,6 +115,7 @@ export const PrepareVatDraft = Schema.Struct({
   otherBoxes: Schema.Literals(["unknown", "absent_in_synthetic_example"]),
 });
 export const VatBlocker = Schema.Literals([
+  "withdrawn_expense_source",
   "withdrawn_fact",
   "actual_profile_unapproved",
   "wrong_record_class",
@@ -157,7 +160,7 @@ export const VatBox = Schema.Struct({
   residualMinor: Schema.NullOr(A.SignedMinorUnits),
 });
 export const VatCalculation = Schema.Struct({
-  engine: Schema.Literals(["vat-return-draft-v1", "vat-return-draft-v2"]),
+  engine: Schema.Literals(["vat-return-draft-v1", "vat-return-draft-v2", "vat-return-draft-v3"]),
   assessments: Schema.Array(VatAssessment),
   includedCount: Schema.Int,
   excludedCount: Schema.Int,

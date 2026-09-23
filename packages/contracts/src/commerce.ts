@@ -269,15 +269,17 @@ export const InvoicePayments = Schema.Struct({
   total: Schema.Int,
   historyTotal: Schema.Int,
   items: Schema.Array(InvoicePaymentCandidate),
-  history: Schema.Array(Schema.Struct({
-    planId: Accounting.Identifier,
-    createdAt: Schema.String,
-    postingDate: Accounting.AccountingDate,
-    voucherLabel: Schema.String,
-    amountMinor: PositiveMinor,
-    status: Schema.Literals(["review", "matched", "released"]),
-    receiptId: Schema.NullOr(Accounting.Identifier),
-  })),
+  history: Schema.Array(
+    Schema.Struct({
+      planId: Accounting.Identifier,
+      createdAt: Schema.String,
+      postingDate: Accounting.AccountingDate,
+      voucherLabel: Schema.String,
+      amountMinor: PositiveMinor,
+      status: Schema.Literals(["review", "matched", "released"]),
+      receiptId: Schema.NullOr(Accounting.Identifier),
+    }),
+  ),
 });
 export const AfterQuery = Schema.Struct({ after: Schema.optional(Accounting.Identifier) });
 export const RevisionQuery = Schema.Struct({ revision: Schema.optional(Version) });
@@ -441,7 +443,8 @@ export const CommerceCapabilities = {
     readOnly: true,
   },
   commerce_invoice_payments: {
-    description: "Page current posted payment candidates and matching history for one scoped invoice. Candidates do not establish payer identity or authorize allocation.",
+    description:
+      "Page current posted payment candidates and matching history for one scoped invoice. Candidates do not establish payer identity or authorize allocation.",
     input: Schema.Struct({ ...capabilityIdentified, ...InvoicePaymentsQuery.fields }),
     output: InvoicePayments,
     readOnly: true,

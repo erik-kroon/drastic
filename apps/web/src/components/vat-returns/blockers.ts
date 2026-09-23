@@ -71,6 +71,10 @@ const messages = {
     "Selected VAT lines differ from the source VAT or use the opposite side.",
     "Valda momsrader avviker från momsbeloppet eller använder motsatt sida.",
   ],
+  withdrawn_expense_source: [
+    "The linked expense source was permanently withdrawn. Its amounts are excluded.",
+    "Det länkade kostnadsunderlaget har återkallats permanent. Beloppen ingår inte.",
+  ],
   stale_expense_review: [
     "The linked expense source or review changed.",
     "Den länkade kostnadskällan eller granskningen har ändrats.",

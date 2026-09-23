@@ -16,6 +16,8 @@ export const OwnerPeriodStatus = Schema.Struct({
 export const ExpenseTaxDependencies = Schema.Struct({
   basisDigest: Accounting.Digest,
   sourceCount: Schema.Int,
+  // Absent on historical dependencies captured before expense-source withdrawal.
+  withdrawnSourceCount: Schema.optional(Schema.Int),
   missingOrStaleReviewCount: Schema.Int,
   coverageEstablished: Schema.Literal(false),
   productionProfileApproved: Schema.Literal(false),
