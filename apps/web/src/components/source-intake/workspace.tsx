@@ -14,7 +14,7 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import type { IntakeProps } from "./index";
 import { intakeCopy } from "./copy";
-import { PreviewReview } from "./review";
+import { IntakeRequestRecovery, PreviewReview } from "./review";
 import { downloadIntake } from "./download";
 
 function retainedText(content: string, unavailable: string) {
@@ -29,12 +29,15 @@ function retainedText(content: string, unavailable: string) {
 
 export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id: string }) {
   const copy = intakeCopy(locale);
-  const [selectedPreview, setSelectedPreview] = useState<string | null>(null);
+  const [selectedPreview, setSelectedPreview] = useState<string | null | undefined>(undefined);
   const [mappingSeed, setMappingSeed] = useState<typeof Intake.SourcePreview.Type | null>(null);
+  const [mappingOpen, setMappingOpen] = useState(false);
   const source = useQuery({
     queryKey: [...bookKey(book), "source-occurrence", id],
     retry: false,
     gcTime: 0,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const view = await readAccounting(
         `${bookPath(book)}/source-occurrences/${encodeURIComponent(id)}`,
@@ -50,7 +53,18 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
       return view;
     },
   });
-  const previewId = selectedPreview ?? source.data?.latestPreviewId;
+  if (selectedPreview === undefined && source.data) {
+    setSelectedPreview(source.data.latestPreviewId);
+    setMappingOpen(
+      !source.data.admission &&
+        source.data.occurrence.mediaType === "text/csv" &&
+        source.data.occurrence.byteLength <= 65536 &&
+        source.data.latestPreviewId === null,
+    );
+  }
+  const previewId = selectedPreview;
+  const sourceKnown =
+    source.isSuccess && source.fetchStatus === "idle" && source.isFetchedAfterMount;
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <RecordHeading
@@ -128,28 +142,29 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
             previewId ? null : (
               <Text role="status">{copy.admitted}</Text>
             )
-          ) : source.data.occurrence.mediaType === "text/csv" &&
-            source.data.occurrence.byteLength <= 65536 ? (
-            !previewId || mappingSeed ? (
-              <MappingForm
-                key={mappingSeed?.id ?? id}
-                book={book}
-                setup={setup}
-                locale={locale}
-                id={id}
-                initial={mappingSeed?.mapping}
-                contentBase64={source.data.contentBase64}
-                onCreated={(preview) => {
-                  setSelectedPreview(preview.id);
-                  setMappingSeed(null);
-                  void source.refetch();
-                }}
-              />
-            ) : null
-          ) : (
+          ) : source.data.occurrence.mediaType !== "text/csv" ||
+            source.data.occurrence.byteLength > 65536 ? (
             <Text>{copy.retainedOnly}</Text>
-          )}
-          {source.data.previewIds.length > 1 ? (
+          ) : null}
+          {mappingOpen ? (
+            <MappingForm
+              key={mappingSeed?.id ?? id}
+              book={book}
+              setup={setup}
+              locale={locale}
+              id={id}
+              initial={mappingSeed?.mapping}
+              contentBase64={source.data.contentBase64}
+              allowed={sourceKnown && !source.data.admission}
+              onCreated={(preview) => {
+                setSelectedPreview(preview.id);
+                setMappingSeed(null);
+                setMappingOpen(false);
+                void source.refetch();
+              }}
+            />
+          ) : null}
+          {source.data.previewIds.length > 0 ? (
             <Box
               as="form"
               display="grid"
@@ -186,7 +201,12 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
           locale={locale}
           id={previewId}
           occurrenceId={id}
-          onEdit={setMappingSeed}
+          canEdit={!mappingOpen}
+          onEdit={(preview) => {
+            if (mappingOpen) return;
+            setMappingSeed(preview);
+            setMappingOpen(true);
+          }}
         />
       ) : null}
     </Box>
@@ -198,6 +218,7 @@ function MappingForm(
     id: string;
     initial?: typeof Intake.CsvMapping.Type;
     contentBase64: string;
+    allowed: boolean;
     onCreated: (preview: typeof Intake.SourcePreview.Type) => void;
   },
 ) {
@@ -257,6 +278,7 @@ function MappingForm(
       minWidth="zero"
       onSubmit={(event) => {
         event.preventDefault();
+        if (!props.allowed || mutation.isPending || mutation.isError) return;
         const fields = new FormData(event.currentTarget);
         const result = Schema.decodeUnknownOption(Intake.CsvMapping)({
           profile: "bank_csv_utf8_v1",
@@ -291,7 +313,7 @@ function MappingForm(
       <Text>{copy.previewHelp}</Text>
       <Box
         as="fieldset"
-        disabled={mutation.isPending}
+        disabled={!props.allowed || mutation.isPending || mutation.isError}
         display="grid"
         gap="md"
         minWidth="zero"
@@ -396,7 +418,33 @@ function MappingForm(
         </Box>
       </Box>
       <Text role="status">{error}</Text>
+      {!props.allowed ? (
+        <Text role="status">
+          {locale === "sv"
+            ? "Nya förhandsgranskningar kräver en aktuell källa som inte har importerats. Bevarade anrop kan fortfarande återförsökas."
+            : "New previews require a current source that has not been admitted. Retained requests can still be retried."}
+        </Text>
+      ) : null}
       <AccountingStatus locale={locale} pending={mutation.isPending} error={mutation.error} write />
+      <IntakeRequestRecovery
+        locale={locale}
+        label={copy.preview}
+        request={JSON.stringify(mutation.variables)}
+        requestKey={keys.current.get(
+          `${bookPath(book)}/source-occurrences/${encodeURIComponent(id)}/previews:${JSON.stringify(mutation.variables)}`,
+        )}
+        complete={mutation.isSuccess}
+        pending={mutation.isPending}
+        onRetry={() => {
+          if (!mutation.isPending && mutation.variables) mutation.mutate(mutation.variables);
+        }}
+        onDiscard={() => {
+          if (mutation.isPending) return;
+          mutation.reset();
+          keys.current.clear();
+          setError("");
+        }}
+      />
     </Box>
   );
 }

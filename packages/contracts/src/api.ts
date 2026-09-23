@@ -33,6 +33,7 @@ import { AccountantReviewApi } from "./accountant-review";
 import { SourceIntakeApi } from "./source-intake";
 import { ExpenseTaxApi } from "./expense-tax";
 import { OwnerRegisterApi } from "./owner-register";
+import { FirmApi } from "./firms";
 import { WorkspaceApi } from "./workspace";
 
 export { AccountingErrorStatus } from "./accounting-errors";
@@ -127,6 +128,7 @@ export class Api extends HttpApi.make("open-erp")
   .add(
     SystemApi,
     WorkspaceApi,
+    FirmApi,
     AccountingApi,
     ReportApi,
     ReconciliationApi,

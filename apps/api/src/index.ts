@@ -41,6 +41,7 @@ import { AccountantReviewHandlers } from "./transport/http/routes/accountant-rev
 import { SourceIntakeHandlers } from "./transport/http/routes/source-intake";
 import { ExpenseTaxHandlers } from "./transport/http/routes/expense-tax";
 import { OwnerRegisterHandlers } from "./transport/http/routes/owner-register";
+import { FirmHandlers } from "./transport/http/routes/firms";
 import { WorkspaceHandlers } from "./transport/http/routes/workspace";
 
 const SystemHandlers = HttpApiBuilder.group(Api, "system", (handlers) =>
@@ -63,6 +64,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
   Layer.provide([
     SystemHandlers,
     WorkspaceHandlers,
+    FirmHandlers,
     AccountingHandlers,
     ReportHandlers,
     ReconciliationHandlers,

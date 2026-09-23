@@ -1,3 +1,4 @@
+import { firmStatements } from "./statements/firms";
 import { RequestEnvironment } from "../runtime/environment";
 import { failure } from "../application/failures";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -31,6 +32,7 @@ const PostgresFailure = Schema.Struct({
 });
 
 const statements = {
+  ...firmStatements,
   workspaceCoordination: (parameters) =>
     sql`select openerp.workspace_coordination(${parameters[0]}::text,${parameters[1]}::jsonb) as result`,
   workspaceSaveView: (parameters) =>
@@ -334,6 +336,8 @@ function queryFailure(error: EffectDrizzleQueryError) {
       });
     }
     if (
+      // Socket failures retain Node error codes rather than PostgreSQL SQLSTATEs.
+      ["ECONNRESET", "EPIPE", "ETIMEDOUT"].includes(cause.code) ||
       cause.code.startsWith("08") ||
       cause.code.startsWith("53") ||
       ["57014", "57P01", "57P02", "57P03"].includes(cause.code)

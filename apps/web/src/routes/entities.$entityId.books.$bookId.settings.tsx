@@ -3,6 +3,7 @@ import { PageContent } from "@open-erp/ui/components/accounting-page";
 import { RecordSummary, RecordFact, RecordSection } from "@open-erp/ui/components/record-layout";
 import { Box } from "@open-erp/ui/components/box";
 import { DataTable } from "@open-erp/ui/components/data-table";
+import { Disclosure } from "@open-erp/ui/components/workflow";
 import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
 import { Text } from "@open-erp/ui/components/typography";
 import { LanguagePreference } from "@/components/book-workspace";
@@ -34,11 +35,17 @@ function Settings() {
           </RecordFact>
         </RecordSummary>
         <RecordSection title={locale === "sv" ? "Språk" : "Language"}>
-          <LanguagePreference locale={locale} />
+          <Box width="fit">
+            <LanguagePreference locale={locale} />
+          </Box>
         </RecordSection>
-        {setup.warnings.map((warning) => (
-          <Text key={warning}>{warning}</Text>
-        ))}
+        <Disclosure
+          title={locale === "sv" ? "Profilens begränsningar" : "Workspace profile limitations"}
+        >
+          {setup.warnings.map((warning) => (
+            <Text key={warning}>{warning}</Text>
+          ))}
+        </Disclosure>
         <RecordSection title={copy.journal_periods}>
           <DataTable
             title={copy.journal_periods}

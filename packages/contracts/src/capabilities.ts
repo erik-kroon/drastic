@@ -30,6 +30,7 @@ import { AccountantReviewCapabilities } from "./accountant-review";
 import { SourceIntakeCapabilities } from "./source-intake";
 import { ExpenseTaxCapabilities } from "./expense-tax";
 import { OwnerRegisterCapabilities } from "./owner-register";
+import { FirmCapabilities } from "./firms";
 import { WorkspaceCapabilities } from "./workspace";
 
 const scoped = { scope: Accounting.Scope };
@@ -56,6 +57,7 @@ export const Capabilities = {
     readOnly: true,
   },
   ...WorkspaceCapabilities,
+  ...FirmCapabilities,
   ...AccountantReviewCapabilities,
   ...SourceIntakeCapabilities,
   ...ExpenseTaxCapabilities,

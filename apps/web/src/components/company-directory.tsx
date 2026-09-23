@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
-import { Building2, BookOpen } from "lucide-react";
+import { Building2, BookOpen, Users } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { Link } from "@open-erp/ui/components/link";
@@ -53,10 +53,13 @@ export function CompanyDirectory({ books, locale }: { books: typeof Books.Type; 
       mobileNavigation={null}
       brand={<WorkspaceBrand icon={<BookOpen size={20} strokeWidth={1.5} />} name="OpenERP" />}
       navigation={
+        <>
         <WorkspaceNavLink href="/companies" active>
           <Building2 size={16} />
           {copy.companies}
         </WorkspaceNavLink>
+        <WorkspaceNavLink href="/firms"><Users size={16}/>{sv ? "Byrå" : "Firm"}</WorkspaceNavLink>
+        </>
       }
       footer={
         <Box display="grid" gap="lg" padding="md">
@@ -168,7 +171,7 @@ const english = {
   search: "Search companies…",
   company: "Company",
   period: "Latest period",
-  review: "Journals to review",
+  review: "To review",
   checked: "Checked",
   currency: "Currency",
   unavailable: "Unavailable",

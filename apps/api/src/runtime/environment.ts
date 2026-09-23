@@ -8,6 +8,10 @@ export interface Bindings {
   readonly OPENERP_PREPARATION_TOKEN?: string;
   readonly EVIDENCE_BUCKET?: R2Bucket;
   readonly EVIDENCE_STORE?: RetainedObjectStore;
+  readonly OPENERP_AUTH_MODE?: string;
+  readonly OIDC_ISSUER?: string;
+  readonly OIDC_CLIENT_ID?: string;
+  readonly OIDC_CLIENT_SECRET?: string;
   readonly BETTER_AUTH_SECRET?: string;
   readonly BETTER_AUTH_URL?: string;
   readonly DATABASE_URL?: string;

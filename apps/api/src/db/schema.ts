@@ -1,8 +1,10 @@
+import type { IdentityProvisioning } from "@open-erp/contracts/identity";
 import {
   bigint,
   boolean,
   date,
   integer,
+  jsonb,
   pgSchema,
   pgTable,
   text,
@@ -79,4 +81,9 @@ export const accounts = openerp.table("accounts", {
   name: text().notNull(),
   active: boolean().notNull().default(true),
   version: bigint({ mode: "bigint" }).notNull().default(1n),
+});
+
+export const identityProvisioningReceipts = openerp.table("identity_provisioning_receipts", {
+  requestId: text("request_id").primaryKey(),
+  manifest: jsonb("manifest").$type<typeof IdentityProvisioning.Type>().notNull(),
 });

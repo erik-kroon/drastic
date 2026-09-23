@@ -51,8 +51,9 @@ export function RecurringRulePanel({
       return view;
     },
     retry: false,
+    refetchOnMount: "always",
   });
-  const readReady = rule.isSuccess && !rule.isFetching;
+  const readReady = rule.isSuccess && rule.isFetchedAfterMount && rule.fetchStatus === "idle";
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.auto_rule}</Heading>
@@ -87,28 +88,24 @@ export function RecurringRulePanel({
               <Text tone="muted">
                 {rule.data.activeActivation.actorId} · {rule.data.activeActivation.activatedAt}
               </Text>
-              {book.role === "operator" ? (
-                <DeactivateRule
-                  key={rule.data.activeActivation.id}
-                  book={book}
-                  activation={rule.data.activeActivation}
-                  locale={locale}
-                  readReady={readReady}
-                />
-              ) : null}
-              <CreateRun
-                key={rule.data.activeActivation.id}
-                book={book}
-                activation={rule.data.activeActivation}
-                locale={locale}
-                allowed={readReady && rule.data.dependenciesCurrent}
-                onCreated={onRunCreated}
-              />
             </>
           ) : (
             <Text>{copy.auto_inactive}</Text>
           )}
-          <SimulateRule book={book} ruleId={id} locale={locale} onSimulated={setSimulationId} />
+          <DeactivateRule
+            book={book}
+            activation={rule.data.activeActivation}
+            locale={locale}
+            readReady={readReady && book.role === "operator"}
+          />
+          <CreateRun
+            book={book}
+            activation={rule.data.activeActivation}
+            locale={locale}
+            allowed={readReady && rule.data.dependenciesCurrent}
+            onCreated={onRunCreated}
+          />
+          <SimulateRule book={book} ruleId={id} locale={locale} onSimulated={setSimulationId} allowed={readReady} />
           <Box
             as="form"
             display="grid"
@@ -139,7 +136,6 @@ export function RecurringRulePanel({
           </Box>
           {simulationId ? (
             <SimulationReview
-              key={simulationId}
               book={book}
               id={simulationId}
               view={rule.data}
@@ -234,17 +230,14 @@ function RuleFacts({
   );
 }
 
-function SimulateRule({
-  book,
-  ruleId,
-  locale,
-  onSimulated,
-}: {
+function SimulateRule(props: {
   book: typeof Accounting.Book.Type;
   ruleId: string;
   locale: Locale;
   onSimulated: (id: string) => void;
+  allowed: boolean;
 }) {
+  const { book, ruleId, locale, onSimulated } = props;
   const copy = accountingCopy(locale);
   const keys = useRef(new Map<string, string>());
   const client = useQueryClient();
@@ -263,6 +256,7 @@ function SimulateRule({
       onSimulated(result.id);
     },
   });
+  const captured = simulation.variables;
   return (
     <Box
       as="form"
@@ -270,6 +264,7 @@ function SimulateRule({
       gap="lg"
       onSubmit={(event) => {
         event.preventDefault();
+        if (!props.allowed || simulation.isPending || captured) return;
         const fields = new FormData(event.currentTarget);
         const decoded = Schema.decodeUnknownOption(Automation.SimulateRecurringRule)({
           ruleId,
@@ -287,7 +282,7 @@ function SimulateRule({
       <Heading>{copy.auto_simulate}</Heading>
       <Box
         as="fieldset"
-        disabled={simulation.isPending || simulation.isSuccess}
+        disabled={!props.allowed || simulation.isPending || !!captured}
         borderWidth="none"
         padding="none"
         margin="none"
@@ -312,6 +307,20 @@ function SimulateRule({
         pending={simulation.isPending}
         error={simulation.error}
       />
+      {captured && simulation.isError ? (
+        <Box display="flex" flexWrap="wrap" gap="md">
+          <Button type="button" variant="outline" disabled={simulation.isPending}
+            onClick={() => simulation.mutate(captured)}>{copy.journal_retry}</Button>
+          <Button type="button" variant="outline" disabled={simulation.isPending}
+            onClick={() => {
+              if (simulation.isPending) return;
+              simulation.reset();
+              keys.current.clear();
+            }}>
+            {locale === "sv" ? "Kasta sparad begäran (ångrar inte serverns arbete)" : "Discard saved request (does not undo server work)"}
+          </Button>
+        </Box>
+      ) : null}
       {simulation.data ? (
         <Box>
           <Button
@@ -319,6 +328,7 @@ function SimulateRule({
             size="xl"
             variant="outline"
             onClick={() => {
+              if (simulation.isPending) return;
               simulation.reset();
               keys.current.clear();
             }}
@@ -352,7 +362,11 @@ function SimulationReview(props: {
       return result;
     },
     retry: false,
+    refetchOnMount: "always",
+    staleTime: 0,
   });
+  const simulationReady = simulation.isSuccess && simulation.isFetchedAfterMount && simulation.fetchStatus === "idle";
+  const matchesRule = simulation.data?.ruleId === view.rule.id && simulation.data?.ruleDigest === view.rule.digest;
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.auto_simulation}</Heading>
@@ -385,25 +399,15 @@ function SimulationReview(props: {
           <Text tone="muted">
             {copy.bank_receipt}: {simulation.data.receipt.key} · {simulation.data.receipt.actorId}
           </Text>
-          {simulation.data.ruleId === view.rule.id &&
-          simulation.data.ruleDigest === view.rule.digest ? (
-            <ActivateRule
-              book={book}
-              simulation={simulation.data}
-              locale={locale}
-              allowed={
-                props.readReady &&
-                view.dependenciesCurrent &&
-                view.activeActivation === null &&
-                !simulation.isFetching &&
-                !simulation.isError
-              }
-            />
-          ) : (
-            <Text role="alert">{copy.auto_activation_mismatch}</Text>
-          )}
+          {!matchesRule ? <Text role="alert">{copy.auto_activation_mismatch}</Text> : null}
         </>
       ) : null}
+      <ActivateRule
+        book={book}
+        simulation={simulation.data ?? null}
+        locale={locale}
+        allowed={props.readReady && view.dependenciesCurrent && view.activeActivation === null && simulationReady && matchesRule}
+      />
     </Box>
   );
 }
@@ -415,7 +419,7 @@ function ActivateRule({
   allowed,
 }: {
   book: typeof Accounting.Book.Type;
-  simulation: typeof Automation.RuleSimulation.Type;
+  simulation: typeof Automation.RuleSimulation.Type | null;
   locale: Locale;
   allowed: boolean;
 }) {
@@ -423,14 +427,8 @@ function ActivateRule({
   const client = useQueryClient();
   const keys = useRef(new Map<string, string>());
   const activation = useMutation({
-    mutationFn: () => {
+    mutationFn: (payload: typeof Automation.ActivateRecurringRule.Type) => {
       const path = `${bookPath(book)}/recurring-rule-activations`;
-      const payload = Schema.decodeSync(Automation.ActivateRecurringRule)({
-        ruleId: simulation.ruleId,
-        ruleDigest: simulation.ruleDigest,
-        simulationId: simulation.id,
-        simulationDigest: simulation.digest,
-      });
       return readAccounting(
         path,
         Automation.RuleActivation,
@@ -439,8 +437,11 @@ function ActivateRule({
     },
     onSuccess: () => client.invalidateQueries({ queryKey: [...bookKey(book), "recurring-rule"] }),
   });
+  const captured = activation.variables;
   const canActivate =
     allowed &&
+    book.role === "operator" &&
+    simulation !== null &&
     simulation.matchingCount > 0 &&
     simulation.blockers.length === 0 &&
     simulation.overlappingRuleIds.length === 0 &&
@@ -454,8 +455,16 @@ function ActivateRule({
         <Box>
           <Button
             size="xl"
-            disabled={!canActivate || activation.isPending || activation.isSuccess}
-            onClick={() => activation.mutate()}
+            disabled={!canActivate || activation.isPending || !!captured}
+            onClick={() => {
+              if (!canActivate || !simulation || activation.isPending || captured) return;
+              activation.mutate(Schema.decodeSync(Automation.ActivateRecurringRule)({
+                ruleId: simulation.ruleId,
+                ruleDigest: simulation.ruleDigest,
+                simulationId: simulation.id,
+                simulationDigest: simulation.digest,
+              }));
+            }}
           >
             {copy.auto_activate}
           </Button>
@@ -469,6 +478,20 @@ function ActivateRule({
         pending={activation.isPending}
         error={activation.error}
       />
+      {captured ? (
+        <Box display="flex" flexWrap="wrap" gap="md">
+          {activation.isError ? <Button type="button" variant="outline" disabled={activation.isPending}
+            onClick={() => activation.mutate(captured)}>{copy.journal_retry}</Button> : null}
+          <Button type="button" variant="outline" disabled={activation.isPending}
+            onClick={() => {
+              if (activation.isPending) return;
+              activation.reset();
+              keys.current.clear();
+            }}>
+            {locale === "sv" ? "Kasta sparad begäran (ångrar inte serverns arbete)" : "Discard saved request (does not undo server work)"}
+          </Button>
+        </Box>
+      ) : null}
       {activation.data ? (
         <Text role="status">
           {copy.auto_activated} · {activation.data.id}
@@ -485,7 +508,7 @@ function DeactivateRule({
   readReady,
 }: {
   book: typeof Accounting.Book.Type;
-  activation: typeof Automation.RuleActivation.Type;
+  activation: typeof Automation.RuleActivation.Type | null;
   locale: Locale;
   readReady: boolean;
 }) {
@@ -504,6 +527,7 @@ function DeactivateRule({
     },
     onSuccess: () => client.invalidateQueries({ queryKey: [...bookKey(book), "recurring-rule"] }),
   });
+  const captured = deactivation.variables;
   return (
     <Box
       as="form"
@@ -511,8 +535,9 @@ function DeactivateRule({
       gap="md"
       onSubmit={(event) => {
         event.preventDefault();
+        if (!readReady || !activation || deactivation.isPending || captured) return;
         const decoded = Schema.decodeUnknownOption(Automation.DeactivateRecurringRule)({
-          activationId: activation.id,
+          activationId: activation?.id,
           reason: new FormData(event.currentTarget).get("reason"),
         });
         if (decoded._tag === "None") {
@@ -528,14 +553,14 @@ function DeactivateRule({
         name="reason"
         required
         maxLength={2000}
-        disabled={!readReady || deactivation.isPending}
+        disabled={!readReady || !activation || deactivation.isPending || !!captured}
       />
       <Box>
         <Button
           type="submit"
           size="xl"
           variant="outline"
-          disabled={!readReady || deactivation.isPending || deactivation.isSuccess}
+          disabled={!readReady || !activation || deactivation.isPending || !!captured}
         >
           {copy.auto_deactivate}
         </Button>
@@ -547,6 +572,20 @@ function DeactivateRule({
         pending={deactivation.isPending}
         error={deactivation.error}
       />
+      {captured ? (
+        <Box display="flex" flexWrap="wrap" gap="md">
+          {deactivation.isError ? <Button type="button" variant="outline" disabled={deactivation.isPending}
+            onClick={() => deactivation.mutate(captured)}>{copy.journal_retry}</Button> : null}
+          <Button type="button" variant="outline" disabled={deactivation.isPending}
+            onClick={() => {
+              if (deactivation.isPending) return;
+              deactivation.reset();
+              keys.current.clear();
+            }}>
+            {locale === "sv" ? "Kasta sparad begäran (ångrar inte serverns arbete)" : "Discard saved request (does not undo server work)"}
+          </Button>
+        </Box>
+      ) : null}
       {deactivation.data ? <Text role="status">{copy.auto_deactivated}</Text> : null}
     </Box>
   );
@@ -554,7 +593,7 @@ function DeactivateRule({
 
 function CreateRun(props: {
   book: typeof Accounting.Book.Type;
-  activation: typeof Automation.RuleActivation.Type;
+  activation: typeof Automation.RuleActivation.Type | null;
   locale: Locale;
   allowed: boolean;
   onCreated: (id: string) => void;
@@ -578,6 +617,7 @@ function CreateRun(props: {
       props.onCreated(result.id);
     },
   });
+  const captured = run.variables;
   return (
     <Box
       as="form"
@@ -585,9 +625,10 @@ function CreateRun(props: {
       gap="lg"
       onSubmit={(event) => {
         event.preventDefault();
+        if (!allowed || !activation || run.isPending || captured) return;
         const fields = new FormData(event.currentTarget);
         const decoded = Schema.decodeUnknownOption(Automation.CreatePreparationRun)({
-          activationId: activation.id,
+          activationId: activation?.id,
           startsOn: fields.get("startsOn"),
           endsOn: fields.get("endsOn"),
         });
@@ -602,11 +643,11 @@ function CreateRun(props: {
       <Heading>{copy.auto_create_run}</Heading>
       <Text tone="muted">{copy.auto_run_help}</Text>
       <Text>
-        {copy.auto_activation_id}: {activation.id}
+        {copy.auto_activation_id}: {activation?.id ?? "—"}
       </Text>
       <Box
         as="fieldset"
-        disabled={!allowed || run.isPending || run.isSuccess}
+        disabled={!allowed || !activation || run.isPending || !!captured}
         borderWidth="none"
         padding="none"
         margin="none"
@@ -626,6 +667,20 @@ function CreateRun(props: {
       </Box>
       <Text role="status">{inputError}</Text>
       <AccountingStatus write locale={locale} pending={run.isPending} error={run.error} />
+      {captured && run.isError ? (
+        <Box display="flex" flexWrap="wrap" gap="md">
+          <Button type="button" variant="outline" disabled={run.isPending}
+            onClick={() => run.mutate(captured)}>{copy.journal_retry}</Button>
+          <Button type="button" variant="outline" disabled={run.isPending}
+            onClick={() => {
+              if (run.isPending) return;
+              run.reset();
+              keys.current.clear();
+            }}>
+            {locale === "sv" ? "Kasta sparad begäran (ångrar inte serverns arbete)" : "Discard saved request (does not undo server work)"}
+          </Button>
+        </Box>
+      ) : null}
       {run.data ? (
         <Box role="status" display="grid" gap="md">
           <Text>
@@ -637,6 +692,7 @@ function CreateRun(props: {
               size="xl"
               variant="outline"
               onClick={() => {
+                if (run.isPending) return;
                 run.reset();
                 keys.current.clear();
               }}

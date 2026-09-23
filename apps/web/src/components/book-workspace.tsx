@@ -82,6 +82,7 @@ export function BookWorkspace({
       ) : null}
       <Link href={`${base}/settings`}>{labels.settings}</Link>
       <Link href="/companies">{copy.workspace_switch}</Link>
+      <Link href="/firms">{locale === "sv" ? "Byrå och klienter" : "Firm and clients"}</Link>
       <Link href={`${base}/tools`}>{labels.tools}</Link>
       <SignOut locale={locale} />
     </WorkspaceAccount>

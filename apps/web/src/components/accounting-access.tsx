@@ -74,6 +74,7 @@ function Login({ locale }: { locale: Locale }) {
   const client = useQueryClient();
   const login = useMutation({
     mutationFn: async () => {
+      const gate = client.getQueryCache().find({ queryKey: booksKey, exact: true });
       const value = password.current?.value ?? "";
       if (password.current) password.current.value = "";
       const result = await authClient.signIn.email({
@@ -81,9 +82,18 @@ function Login({ locale }: { locale: Locale }) {
         password: value,
       });
       if (result.error) throw new Error(result.error.message ?? "Sign-in failed.");
+      return gate;
     },
-    onSuccess: async () => {
+    onSuccess: async (gate) => {
+      if (
+        !gate || gate.state.data !== null ||
+        !Object.is(client.getQueryCache().find({ queryKey: booksKey, exact: true }), gate)
+      ) return;
       await client.cancelQueries();
+      if (
+        gate.state.data !== null ||
+        !Object.is(client.getQueryCache().find({ queryKey: booksKey, exact: true }), gate)
+      ) return;
       await client.resetQueries();
     },
   });
@@ -135,11 +145,17 @@ export function SignOut({ locale }: { locale: Locale }) {
   const copy = accountingCopy(locale);
   const logout = useMutation({
     mutationFn: async () => {
+      const gate = client.getQueryCache().find({ queryKey: booksKey, exact: true });
       const result = await authClient.signOut();
       if (result.error) throw new Error(result.error.message ?? "Sign-out failed.");
+      return gate;
     },
-    onSuccess: async () => {
+    onSuccess: async (gate) => {
+      if (!gate || !Object.is(client.getQueryCache().find({ queryKey: booksKey, exact: true }), gate)) return;
       await client.cancelQueries();
+      if (!Object.is(client.getQueryCache().find({ queryKey: booksKey, exact: true }), gate)) return;
+      // Notify the mounted gate before retiring it, then seed the replacement.
+      client.setQueryData(booksKey, null);
       client.clear();
       client.setQueryData(booksKey, null);
     },

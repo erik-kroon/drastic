@@ -33,3 +33,10 @@ HTTP and MCP share `application/capabilities.ts`. Operator-only HTTP commands re
 `@open-erp/domain` owns shared accounting models and errors. `@open-erp/contracts` owns wire commands, routes and capability metadata and preserves the existing accounting schema exports. Neither folder movement nor a new package changes the supported accounting profiles.
 
 Keep locks, voucher allocation, approval consumption and financial writes in PostgreSQL. Database connections retain the same scoped lifetime. Maintenance scripts and migrations stay at their existing paths so local setup, recovery and existing E2E callers keep working.
+
+## Query failures
+
+`db/query.ts` exposes only intentional `P0001` errors with an allowlisted accounting failure code. Other database messages and bound parameters are not returned to callers. Known PostgreSQL availability failures and socket errors `ECONNRESET`, `EPIPE` and `ETIMEDOUT` map to `Unavailable` (HTTP 503); unrecognized coded query failures remain `InternalError` (HTTP 500).
+
+The adapter does not retry queries. An unavailable response does not establish that a write rolled back. Recover an uncertain command with its original input and idempotency key, not a new command. The socket-error classification repair has been reviewed in source only, not exercised at runtime.
+

@@ -63,6 +63,8 @@ function useOwnerRead<S extends Schema.Top & { readonly DecodingServices: never 
       readAccounting(`${ownerPath(props.book)}${suffix}`, schema, { signal }),
     enabled,
     retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 function Nature({ locale }: Pick<Props, "locale">) {
@@ -522,7 +524,7 @@ function OwnerRecordDetail(props: Props & { id: string }) {
     `/records/${encodeURIComponent(id)}/revisions${after ? `?after=${encodeURIComponent(after)}` : ""}`,
     Owners.RecordHistory,
   );
-  const ready = view.isSuccess && !view.isFetching;
+  const ready = view.isSuccess && view.fetchStatus === "idle" && view.isFetchedAfterMount;
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{words(locale, "Source review", "Granskning av underlag")}</Heading>
@@ -536,6 +538,19 @@ function OwnerRecordDetail(props: Props & { id: string }) {
         }}
       />
       <AccountingStatus locale={locale} pending={view.isPending} error={view.error} />
+      <Text>
+        {ready
+          ? words(
+              locale,
+              "Source facts were read at the last successful refresh. The server rechecks new commands.",
+              "Underlaget lästes vid den senaste lyckade uppdateringen. Servern kontrollerar nya kommandon igen.",
+            )
+          : words(
+              locale,
+              "Current source status is unknown. Retained facts and exact command retries remain available; new commands need a successful refresh.",
+              "Underlagets aktuella status är okänd. Sparade uppgifter och exakta kommandoförsök finns kvar; nya kommandon kräver en lyckad uppdatering.",
+            )}
+      </Text>
       {view.data ? (
         <>
           <Text>
@@ -936,8 +951,9 @@ function OwnerAllocationReview(props: Props & { id: string }) {
   );
   const plan = view.data?.plan;
   const approval = view.data?.approval;
+  const currentnessKnown = view.isSuccess && view.fetchStatus === "idle" && view.isFetchedAfterMount;
   const actionable =
-    view.isSuccess && !view.isFetching && view.data.dependenciesCurrent && !view.data.application;
+    currentnessKnown && view.data?.dependenciesCurrent === true && !view.data.application;
   return (
     <Box display="grid" gap="lg">
       <Refresh
@@ -964,17 +980,23 @@ function OwnerAllocationReview(props: Props & { id: string }) {
           </Text>
           <Text>{plan.input.rationale}</Text>
           <Text>
-            {actionable
+            {!currentnessKnown
               ? words(
                   locale,
-                  "Current proposal. The server rechecks every capacity before applying.",
-                  "Aktuellt förslag. Servern kontrollerar all kapacitet igen före tillämpning.",
+                  "Current proposal status is unknown. Exact captured requests can still be retried; new approvals and applications need a successful refresh.",
+                  "Förslagets aktuella status är okänd. Exakta sparade begäranden kan fortfarande skickas igen; nya attester och fördelningar kräver en lyckad uppdatering.",
                 )
-              : words(
-                  locale,
-                  "Not actionable: refresh, inspect a receipt, or prepare a new plan after dependencies change.",
-                  "Kan inte tillämpas: uppdatera, kontrollera kvittot eller skapa ett nytt förslag efter ändrade beroenden.",
-                )}
+              : actionable
+                ? words(
+                    locale,
+                    "Proposal dependencies matched at the last successful refresh. The server rechecks every capacity before applying.",
+                    "Förslagets beroenden stämde vid den senaste lyckade uppdateringen. Servern kontrollerar all kapacitet igen före tillämpning.",
+                  )
+                : words(
+                    locale,
+                    "Not actionable at the last successful refresh. Inspect the retained receipt or changed dependencies before starting a new command.",
+                    "Kunde inte tillämpas vid den senaste lyckade uppdateringen. Granska sparat kvitto eller ändrade beroenden innan du startar ett nytt kommando.",
+                  )}
           </Text>
           <Evidence {...props} reference={plan.evidence} />
           <DataTable
@@ -1089,6 +1111,7 @@ function OwnerControls(props: Props) {
   const [id, setId] = useState("");
   const view = useOwnerRead(props, `/controls/${encodeURIComponent(id)}`, Owners.ControlView, !!id);
   const snapshot = view.data?.snapshot;
+  const currentnessKnown = view.isSuccess && view.fetchStatus === "idle" && view.isFetchedAfterMount;
   return (
     <Box display="grid" gap="lg">
       <Text>
@@ -1154,17 +1177,23 @@ function OwnerControls(props: Props) {
             {snapshot.unlinkedRecordCount}
           </Text>
           <Text>
-            {view.data?.current
+            {!currentnessKnown
               ? words(
                   locale,
-                  "Snapshot sources remain current.",
-                  "Ögonblicksbildens underlag är aktuella.",
+                  "Current source status is unknown. The retained snapshot is unchanged and remains available.",
+                  "Underlagens aktuella status är okänd. Den sparade ögonblicksbilden är oförändrad och finns kvar.",
                 )
-              : words(
-                  locale,
-                  "Sources changed. Keep this historical snapshot and prepare a new one.",
-                  "Underlagen har ändrats. Behåll denna historiska bild och skapa en ny.",
-                )}
+              : view.data?.current
+                ? words(
+                    locale,
+                    "Snapshot sources matched at the last successful refresh.",
+                    "Ögonblicksbildens underlag stämde vid den senaste lyckade uppdateringen.",
+                  )
+                : words(
+                    locale,
+                    "Sources had changed at the last successful refresh. Keep this historical snapshot and prepare a new one.",
+                    "Underlagen hade ändrats vid den senaste lyckade uppdateringen. Behåll denna historiska bild och skapa en ny.",
+                  )}
           </Text>
           <DataTable
             title={words(

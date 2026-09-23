@@ -85,3 +85,17 @@ Automatic posting remains unsupported. It requires a separate explicitly approve
 Forward0201 rejects unsupported command keys at the SQL boundary and filters effective activation reads by current operator membership. REST payload schemas also reject excess fields. Forward0210 holds credential/member admission locks until transaction end; see README maintenance revocation ordering. Forward0211 reports installed recurring preparation separately from production readiness.
 
 Manual local evidence: two identical but distinct source rows produced two distinct event/proposal IDs. A one-row chunk was cancelled and resumed at its saved cursor. Ledger sequence remained0 and all balances0 after preparation; neither proposal was approved or posted. Artifact: `.agents/work/openerp-implementation/manual-recurring-preparation-receipts.json`.
+
+## Forward2600: obsolete background-job recovery
+
+### Failure cases recorded before implementation
+
+- Revoking an executor's book membership, or configuring a different executor actor, can strand its0940 job in `ready`. The scheduler cannot deliver it and the executor cannot authorize its stop. The ready-job uniqueness gate then prevents explicit replacement even after manual cancel/resume.
+- A fresh admission must not stop an active same-executor job whose original submitter authority and run audit are unchanged.
+- Missing/revoked/expired original API credentials, missing/expired original browser sessions, missing submitter membership, a non-agent old executor, a different configured executor, or a changed run audit may retire an obsolete ready job. This grants no authority to execute it.
+- Current requester and configured executor must still authorize before the book lock; the configured executor must still be an agent. Old credentials/memberships must not acquire locks after the book lock.
+- An original exact-key admission replay must return its original saved receipt before any live reconciliation. The0940 replay input includes executor identity: changing the configured executor with an old key still conflicts, never silently creates a replacement. A replacement needs a new explicit admission key.
+- A blocked, cancelled or completed run cannot be resumed or advanced by admission. Only an explicitly ready run may receive a replacement job.
+- Stopping the old job and inserting/saving its replacement must be one transaction under the book lock. Any later failure must roll back the stop. Old job IDs, checkpoints, captured authority, run audit, run progress and command receipts must remain retained.
+
+Status: failure cases recorded; forward2600 source repair in progress. No checks, tests, database/migration execution or runtime verification are authorized for this repair.

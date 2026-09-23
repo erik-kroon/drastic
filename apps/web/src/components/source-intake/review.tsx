@@ -22,6 +22,7 @@ export function PreviewReview(
   props: IntakeProps & {
     id: string;
     occurrenceId: string;
+    canEdit: boolean;
     onEdit: (preview: typeof Intake.SourcePreview.Type) => void;
   },
 ) {
@@ -38,6 +39,8 @@ export function PreviewReview(
     queryKey: [...bookKey(book), "source-preview", id],
     retry: false,
     gcTime: 0,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(base, Intake.SourcePreviewView, { signal });
       if (
@@ -78,8 +81,11 @@ export function PreviewReview(
   });
   const view = query.data;
   const preview = view?.preview;
-  const busy = query.isFetching || approval.isPending || admission.isPending;
-  const current = view?.dependenciesCurrent && preview?.ready && !busy && !query.isError;
+  const writesPending = approval.isPending || admission.isPending;
+  const busy = query.isFetching || writesPending;
+  const known = query.isSuccess && query.fetchStatus === "idle" && query.isFetchedAfterMount;
+  const current = known && view?.dependenciesCurrent && preview?.ready && !writesPending;
+  const canApprove = current && !approval.isError;
   const saved = view?.admission ?? admission.data;
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
@@ -101,17 +107,13 @@ export function PreviewReview(
       <AccountingStatus locale={locale} pending={query.isPending} error={query.error} />
       {preview && view ? (
         <>
-          <Text role="status">
-            {saved
-              ? copy.admitted
-              : query.isError || query.isFetching
-                ? copy.unknown
-                : !view.dependenciesCurrent
-                  ? copy.stale
-                  : preview.ready
-                    ? copy.ready
-                    : copy.blocked}
-          </Text>
+          <PreviewStatus
+            known={known}
+            saved={Boolean(saved)}
+            current={view.dependenciesCurrent}
+            ready={preview.ready}
+            locale={locale}
+          />
           <Box display="flex" gap="md" flexWrap="wrap">
             <Button
               type="button"
@@ -129,8 +131,11 @@ export function PreviewReview(
               <Button
                 type="button"
                 variant="outline"
-                disabled={busy}
-                onClick={() => props.onEdit(preview)}
+                disabled={!props.canEdit || busy || approval.isError || admission.isError}
+                onClick={() => {
+                  if (props.canEdit && !busy && !approval.isError && !admission.isError)
+                    props.onEdit(preview);
+                }}
               >
                 {copy.edit}
               </Button>
@@ -193,39 +198,7 @@ export function PreviewReview(
           />
           <PreviewTechnicalDetails preview={preview} page={page} locale={locale} />
           {saved ? (
-            <>
-              {saved.previewId !== id ? (
-                <Text>
-                  {copy.different} {saved.previewId}
-                </Text>
-              ) : null}
-              <PageCaption>
-                {locale === "sv" ? "Importerad" : "Imported"}{" "}
-                {new Intl.DateTimeFormat(locale, {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                }).format(new Date(saved.admittedAt))}
-              </PageCaption>
-              <PageAction
-                href={`${workspacePath(book)}/accounts?view=bank&record=${encodeURIComponent(`statement:${saved.imported.statement.id}`)}`}
-              >
-                {locale === "sv" ? "Öppna kontoutdrag" : "Open statement"}
-              </PageAction>
-              <Box>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() =>
-                    downloadIntake(
-                      new Blob([JSON.stringify(saved, null, 2)], { type: "application/json" }),
-                      `${saved.occurrenceId}-admission.json`,
-                    )
-                  }
-                >
-                  {copy.downloadReceipt}
-                </Button>
-              </Box>
-            </>
+            <PreviewReceipt saved={saved} id={id} book={book} locale={locale} />
           ) : book.role === "operator" ? (
             <>
               <Text>{copy.approvalHelp}</Text>
@@ -235,6 +208,7 @@ export function PreviewReview(
                 gap="md"
                 onSubmit={(event) => {
                   event.preventDefault();
+                  if (!canApprove) return;
                   const data = new FormData(event.currentTarget);
                   const input = Schema.decodeUnknownOption(Intake.ApproveSourcePreview)({
                     digest: preview.digest,
@@ -255,17 +229,17 @@ export function PreviewReview(
                   checked={reviewed}
                   onChange={(event) => setReviewed(event.currentTarget.checked)}
                   required
-                  disabled={!current}
+                  disabled={!canApprove}
                 />
                 <InputField
                   label={copy.rationale}
                   name="rationale"
                   maxLength={2000}
                   required
-                  disabled={!current}
+                  disabled={!canApprove}
                 />
                 <Box>
-                  <Button type="submit" size="xl" disabled={!current || !reviewed}>
+                  <Button type="submit" size="xl" disabled={!canApprove || !reviewed}>
                     {copy.approve}
                   </Button>
                 </Box>
@@ -285,9 +259,9 @@ export function PreviewReview(
                   type="button"
                   size="xl"
                   variant="outline"
-                  disabled={!current || !view.approval}
+                  disabled={!current || !view.approval || admission.isError}
                   onClick={() => {
-                    if (view.approval)
+                    if (current && view.approval && !admission.isError)
                       admission.mutate({
                         digest: preview.digest,
                         version: 1,
@@ -316,6 +290,83 @@ export function PreviewReview(
           />
         </>
       ) : null}
+      <IntakeRequestRecovery
+        locale={locale}
+        label={copy.approve}
+        request={JSON.stringify(approval.variables)}
+        requestKey={approvalKeys.current.get(
+          `${base}/approve:${JSON.stringify(approval.variables)}`,
+        )}
+        complete={approval.isSuccess}
+        pending={writesPending}
+        onRetry={() => {
+          if (!writesPending && approval.variables) approval.mutate(approval.variables);
+        }}
+        onDiscard={() => {
+          if (writesPending) return;
+          approval.reset();
+          approvalKeys.current.clear();
+          setReviewed(false);
+          setInputError("");
+        }}
+      />
+      <IntakeRequestRecovery
+        locale={locale}
+        label={copy.admit}
+        request={JSON.stringify(admission.variables)}
+        requestKey={admissionKeys.current.get(
+          `${base}/admit:${JSON.stringify(admission.variables)}`,
+        )}
+        complete={admission.isSuccess}
+        pending={writesPending}
+        onRetry={() => {
+          if (!writesPending && admission.variables) admission.mutate(admission.variables);
+        }}
+        onDiscard={() => {
+          if (writesPending) return;
+          admission.reset();
+          admissionKeys.current.clear();
+        }}
+      />
+    </Box>
+  );
+}
+
+export function IntakeRequestRecovery(props: {
+  locale: IntakeProps["locale"];
+  label: string;
+  request: string | undefined;
+  requestKey: string | undefined;
+  complete: boolean;
+  pending: boolean;
+  onRetry: () => void;
+  onDiscard: () => void;
+}) {
+  if (!props.request || props.complete) return null;
+  return (
+    <Box display="grid" gap="md" minWidth="zero">
+      <Text>{props.label}</Text>
+      <Text>
+        {props.locale === "sv"
+          ? "Anropet kan ha sparats även om svaret saknas. Återförsök samma anrop eller läs kvittot innan du kastar återförsöksnyckeln."
+          : "The request may have committed even if its response is missing. Retry the same request or recover its receipt before discarding the retry key."}
+      </Text>
+      <Disclosure title={props.locale === "sv" ? "Bevarat anrop" : "Captured request"}>
+        <Text>{props.requestKey}</Text>
+        <Text>{props.request}</Text>
+      </Disclosure>
+      <Box display="flex" flexWrap="wrap" gap="md">
+        <Button type="button" variant="outline" disabled={props.pending} onClick={props.onRetry}>
+          {props.locale === "sv" ? "Återförsök bevarat anrop" : "Retry retained request"} ·{" "}
+          {props.label}
+        </Button>
+        <Button type="button" variant="ghost" disabled={props.pending} onClick={props.onDiscard}>
+          {props.locale === "sv"
+            ? "Kasta anrop och återförsöksnyckel"
+            : "Discard request and retry key"}{" "}
+          · {props.label}
+        </Button>
+      </Box>
     </Box>
   );
 }
@@ -480,6 +531,78 @@ function PreviewDiagnostics({
           />
         </>
       ) : null}
+    </>
+  );
+}
+
+function PreviewStatus(props: {
+  known: boolean;
+  saved: boolean;
+  current: boolean;
+  ready: boolean;
+  locale: IntakeProps["locale"];
+}) {
+  const copy = intakeCopy(props.locale);
+  return (
+    <Text role="status">
+      {!props.known
+        ? copy.unknown
+        : props.saved
+          ? copy.admitted
+          : !props.current
+            ? copy.stale
+            : props.ready
+              ? copy.ready
+              : copy.blocked}
+    </Text>
+  );
+}
+
+function PreviewReceipt({
+  saved,
+  id,
+  book,
+  locale,
+}: {
+  saved: typeof Intake.SourceAdmission.Type;
+  id: string;
+  book: IntakeProps["book"];
+  locale: IntakeProps["locale"];
+}) {
+  const copy = intakeCopy(locale);
+  return (
+    <>
+      {saved.previewId !== id ? (
+        <Text>
+          {copy.different} {saved.previewId}
+        </Text>
+      ) : null}
+      <PageCaption>
+        {locale === "sv" ? "Importerad" : "Imported"}{" "}
+        {new Intl.DateTimeFormat(locale, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(new Date(saved.admittedAt))}
+      </PageCaption>
+      <PageAction
+        href={`${workspacePath(book)}/accounts?view=bank&record=${encodeURIComponent(`statement:${saved.imported.statement.id}`)}`}
+      >
+        {locale === "sv" ? "Öppna kontoutdrag" : "Open statement"}
+      </PageAction>
+      <Box>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() =>
+            downloadIntake(
+              new Blob([JSON.stringify(saved, null, 2)], { type: "application/json" }),
+              `${saved.occurrenceId}-admission.json`,
+            )
+          }
+        >
+          {copy.downloadReceipt}
+        </Button>
+      </Box>
     </>
   );
 }

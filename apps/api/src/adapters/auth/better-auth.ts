@@ -1,3 +1,5 @@
+import { authConfiguration } from "./configuration";
+import { oidcPlugin } from "./oidc";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter/relations-v2";
 import { betterAuth } from "better-auth/minimal";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -16,18 +18,8 @@ export function makeAuth(bindings: Bindings) {
     if (!connectionString || !secret || secret.length < 32 || !baseURL) {
       return yield* failure("Unavailable");
     }
-    const url = yield* Effect.try({
-      try: () => new URL(baseURL),
-      catch: () => failure("Unavailable"),
-    });
-    const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
-    if (
-      (url.protocol !== "https:" && !(local && url.protocol === "http:")) ||
-      url.username ||
-      url.password
-    ) {
-      return yield* failure("Unavailable");
-    }
+    const config = yield* authConfiguration(bindings);
+    const { url, local } = config;
     const client = yield* acquirePostgres({
       connectionString: Redacted.make(connectionString),
       applicationName: "open-erp-auth",
@@ -47,15 +39,30 @@ export function makeAuth(bindings: Bindings) {
         schema,
         transaction: true,
       }),
-      emailAndPassword: { enabled: true, disableSignUp: true, minPasswordLength: 12 },
+      emailAndPassword: {
+        enabled: config.method === "password",
+        disableSignUp: true,
+        minPasswordLength: 12,
+      },
+      plugins: config.provider ? [oidcPlugin(config.provider)] : [],
+      account: {
+        accountLinking: { enabled: false, disableImplicitLinking: true },
+        updateAccountOnSignIn: false,
+      },
       session: {
         expiresIn: 60 * 60 * 8,
         disableSessionRefresh: true,
         cookieCache: { enabled: false },
       },
+      // The OAuth state cookie must accompany the provider's top-level GET callback.
+      // Session cookies remain Strict; the callback is bound by state, PKCE and nonce.
       rateLimit: { enabled: true, storage: "database", window: 60, max: 100 },
       advanced: {
         cookiePrefix: "openerp",
+        cookies: {
+          state: { attributes: { sameSite: "lax" } },
+          oauth_state: { attributes: { sameSite: "lax" } },
+        },
         useSecureCookies: !local,
         defaultCookieAttributes: { httpOnly: true, sameSite: "strict", path: "/" },
         ipAddress: { ipAddressHeaders: ["cf-connecting-ip"] },
@@ -67,6 +74,16 @@ export function makeAuth(bindings: Bindings) {
 }
 
 export function authHandler(request: Request, bindings: Bindings) {
+  if (request.method === "GET" && new URL(request.url).pathname === "/api/auth/configuration") {
+    return authConfiguration(bindings).pipe(
+      Effect.map((config) =>
+        Response.json({ method: config.method, providerId: config.provider?.providerId ?? null }),
+      ),
+      Effect.orElseSucceed(() =>
+        Response.json({ message: "Sign-in is not configured." }, { status: 503 }),
+      ),
+    );
+  }
   return Effect.scoped(
     Effect.gen(function* () {
       const auth = yield* makeAuth(bindings);

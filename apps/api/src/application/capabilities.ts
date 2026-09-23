@@ -53,6 +53,28 @@ function effectCapability<I, O extends Schema.Json>(
 }
 
 export const capabilities = {
+  firm_list: bindCapability(Capabilities.firm_list, "listFirms", () => []),
+  firm_get: bindCapability(Capabilities.firm_get, "getFirm", (input) => [input.firmId]),
+  firm_create: bindCapability(Capabilities.firm_create, "createFirm", (input) => [
+    input.idempotencyKey,
+    JSON.stringify(input.input),
+  ]),
+  firm_save_client: bindCapability(Capabilities.firm_save_client, "saveFirmClient", (input) => [
+    input.firmId,
+    input.idempotencyKey,
+    JSON.stringify(input.input),
+  ]),
+  firm_remove_client: bindCapability(
+    Capabilities.firm_remove_client,
+    "removeFirmClient",
+    (input) => [input.firmId, input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  firm_save_member: bindCapability(Capabilities.firm_save_member, "saveFirmMember", (input) => [
+    input.firmId,
+    input.idempotencyKey,
+    JSON.stringify(input.input),
+  ]),
+
   commerce_get_invoice_cancellation: bindCapability(
     Capabilities.commerce_get_invoice_cancellation,
     "getInvoiceCancellation",
