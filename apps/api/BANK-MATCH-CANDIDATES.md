@@ -169,3 +169,7 @@ application, browser/mobile runs, servers, external actions or commits were perf
 Runtime SQL/type/response/concurrency/accessibility behavior remains unverified. Root still owns
 shared composition and any later authorized validation. D-06 actual-provider facts, legal
 profile activation, source completeness and reconciliation acceptance remain independent gates.
+
+## Root source integration
+
+Shared contracts exports, API/capability catalogs, bindings, SQL dispatch and HTTP handlers are connected. Accounts → Matching and the legacy workspace mount candidate discovery beside reviewed allocations. Selection remains an explicit copyable identifier handoff; no automatic plan or amount is supplied. No validation or runtime acceptance is claimed.

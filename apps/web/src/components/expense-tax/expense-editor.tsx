@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import * as Accounting from "@open-erp/contracts/accounting";
 import * as Sources from "@open-erp/contracts/source-intake";
 import * as Tax from "@open-erp/contracts/expense-tax";
 import { Box } from "@open-erp/ui/components/box";
@@ -8,17 +9,22 @@ import { RecordColumns, RecordSection } from "@open-erp/ui/components/record-lay
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
 import { EvidenceCommandForm } from "@/components/evidence-command-form";
 import { OriginalDocument } from "@/components/original-document";
-import { sourceDocumentOptions } from "@/lib/source-documents";
+import { enteredExpenseSource, sourceDocumentOptions } from "@/lib/source-documents";
 import { Button } from "@open-erp/ui/components/button";
 import { AccountingStatus } from "@/components/accounting-status";
 import { checkScope, type CommerceProps } from "@/components/commerce/shared";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
-import { decimalToMinor, workQueryOptions } from "@/lib/workspace-api";
+import { decimalToMinor, formatMinorAmount, workQueryOptions } from "@/lib/workspace-api";
 
 export function ExpenseEditor(
-  props: CommerceProps & { sourceId?: string; onSaved: (id: string) => void },
+  props: CommerceProps & {
+    sourceId?: string;
+    baseline?: typeof Tax.TaxSourceRevision.Type;
+    onSaved: (id: string) => void;
+  },
 ) {
   const sv = props.locale === "sv";
+  const [baseline] = useState(props.baseline);
   const [documentId, setDocumentId] = useState(props.sourceId ?? "");
   const document = useQuery({
     ...sourceDocumentOptions(props.book, documentId),
@@ -46,7 +52,7 @@ export function ExpenseEditor(
     source && !originals.some((item) => item.id === source.id) ? [source, ...originals] : originals;
   const [sourceKey] = useState(() => `expense_${crypto.randomUUID().replaceAll("-", "")}`);
   const metadata = useQuery(workQueryOptions(props.book, {}));
-  const scale = metadata.data?.currencyScale;
+  const scale = baseline?.facts.currencyScale ?? metadata.data?.currencyScale;
   if (scale === undefined)
     return (
       <AccountingStatus locale={props.locale} pending={metadata.isPending} error={metadata.error} />
@@ -73,14 +79,14 @@ export function ExpenseEditor(
         }),
       })}
       input={(fields, evidence) => ({
-        sourceKey,
-        expectedSourceDigest: null,
+        sourceKey: baseline?.sourceKey ?? sourceKey,
+        expectedSourceDigest: baseline?.digest ?? null,
         facts: {
           evidenceId: evidence.id,
-          sourceLocator: evidence.title,
+          sourceLocator: source?.filename ?? evidence.title,
           description: fields.get("description"),
-          recordClass: fields.get("recordClass"),
-          currency: props.book.currency,
+          recordClass: baseline?.facts.recordClass ?? fields.get("recordClass"),
+          currency: baseline?.facts.currency ?? props.book.currency,
           currencyScale: scale,
           amounts: {
             grossMinor: expenseAmount(fields, "gross", scale),
@@ -91,10 +97,10 @@ export function ExpenseEditor(
           supplyJurisdiction: nullable(fields, "supplyCountry"),
           issuedOn: nullable(fields, "issuedOn"),
           receivedOn: nullable(fields, "receivedOn"),
-          suppliedOn: null,
-          taxPointOn: null,
-          changeSetId: null,
-          voucherId: null,
+          suppliedOn: nullable(fields, "suppliedOn"),
+          taxPointOn: nullable(fields, "taxPointOn"),
+          changeSetId: baseline?.facts.changeSetId ?? null,
+          voucherId: baseline?.facts.voucherId ?? null,
         },
       })}
     >
@@ -142,76 +148,95 @@ export function ExpenseEditor(
               : "Enter the details from your receipt or invoice. An uploaded original appears here."}
           </PageCaption>
         )}
-        <ExpenseFields {...props} description={source?.filename} />
+        <ExpenseFields
+          {...props}
+          baseline={baseline}
+          scale={scale}
+          description={source?.filename}
+        />
       </RecordColumns>
     </EvidenceCommandForm>
   );
 }
-function ExpenseFields(props: CommerceProps & { description?: string }) {
+function ExpenseFields(
+  props: CommerceProps & {
+    description?: string;
+    baseline?: typeof Tax.TaxSourceRevision.Type;
+    scale: number;
+  },
+) {
   const sv = props.locale === "sv";
+  const facts = props.baseline?.facts;
   return (
-        <RecordSection title={sv ? "Utgiftsuppgifter" : "Expense details"}>
+    <RecordSection title={sv ? "Utgiftsuppgifter" : "Expense details"}>
+      <InputField
+        name="description"
+        label={sv ? "Beskrivning" : "Description"}
+        defaultValue={facts?.description ?? props.description}
+        required
+        maxLength={2000}
+      />
+      <ExpenseDates facts={facts} locale={props.locale} />
+      <ExpenseAmounts
+        amounts={facts?.amounts}
+        scale={props.scale}
+        currency={facts?.currency ?? props.book.currency}
+        locale={props.locale}
+      />
+      <PageCaption>
+        {sv
+          ? "Lämna okända belopp tomma. Momsbehandlingen granskas separat."
+          : "Leave unknown amounts blank. Tax treatment is reviewed separately."}
+      </PageCaption>
+      <Box display="grid" columns={2} gap="lg">
+        <InputField
+          name="supplierCountry"
+          defaultValue={facts?.supplierJurisdiction ?? ""}
+          label={sv ? "Leverantörsland (landskod)" : "Supplier country (country code)"}
+          placeholder="SE"
+          pattern="[A-Z]{2}"
+          maxLength={2}
+        />
+        <InputField
+          name="supplyCountry"
+          defaultValue={facts?.supplyJurisdiction ?? ""}
+          label={sv ? "Leveransland (landskod)" : "Supply country (country code)"}
+          placeholder="SE"
+          pattern="[A-Z]{2}"
+          maxLength={2}
+        />
+      </Box>
+      <details>
+        <summary>{sv ? "Leverans- och momsdatum" : "Supply and tax dates"}</summary>
+        <Box display="grid" columns={2} gap="md" paddingBlock="lg">
           <InputField
-            name="description"
-            label={sv ? "Beskrivning" : "Description"}
-            defaultValue={props.description}
-            required
-            maxLength={2000}
+            name="suppliedOn"
+            type="date"
+            label={sv ? "Leveransdatum" : "Supply date"}
+            defaultValue={facts?.suppliedOn ?? ""}
           />
-          <Box display="grid" columns={2} gap="lg">
-            <InputField
-              name="issuedOn"
-              label={sv ? "Dokumentdatum" : "Document date"}
-              type="date"
-            />
-            <InputField
-              name="receivedOn"
-              label={sv ? "Mottaget datum" : "Received date"}
-              type="date"
-            />
-          </Box>
-          <Box display="grid" columns={3} gap="lg">
-            <InputField
-              name="gross"
-              label={`${sv ? "Totalt" : "Total"} · ${props.book.currency}`}
-              inputMode="decimal"
-            />
-            <InputField name="net" label={sv ? "Exkl. moms" : "Before tax"} inputMode="decimal" />
-            <InputField name="vat" label={sv ? "Moms" : "Tax"} inputMode="decimal" />
-          </Box>
-          <PageCaption>
-            {sv
-              ? "Lämna okända belopp tomma. Momsbehandlingen granskas separat."
-              : "Leave unknown amounts blank. Tax treatment is reviewed separately."}
-          </PageCaption>
-          <Box display="grid" columns={2} gap="lg">
-            <InputField
-              name="supplierCountry"
-              label={sv ? "Leverantörsland (landskod)" : "Supplier country (country code)"}
-              placeholder="SE"
-              pattern="[A-Z]{2}"
-              maxLength={2}
-            />
-            <InputField
-              name="supplyCountry"
-              label={sv ? "Leveransland (landskod)" : "Supply country (country code)"}
-              placeholder="SE"
-              pattern="[A-Z]{2}"
-              maxLength={2}
-            />
-          </Box>
-          <SelectField
-            name="recordClass"
-            label={sv ? "Underlagstyp" : "Source type"}
-            defaultValue={
-              props.book.profile === "synthetic-core-v1" ? "synthetic" : "actual_company"
-            }
-            options={[
-              { value: "actual_company", label: sv ? "Företagets underlag" : "Company document" },
-              { value: "synthetic", label: sv ? "Demounderlag" : "Demo source" },
-            ]}
+          <InputField
+            name="taxPointOn"
+            type="date"
+            label={sv ? "Momsdatum" : "Tax point date"}
+            defaultValue={facts?.taxPointOn ?? ""}
           />
-        </RecordSection>
+        </Box>
+      </details>
+      <SelectField
+        name="recordClass"
+        label={sv ? "Underlagstyp" : "Source type"}
+        defaultValue={
+          facts?.recordClass ??
+          (props.book.profile === "synthetic-core-v1" ? "synthetic" : "actual_company")
+        }
+        disabled={!!props.baseline}
+        options={[
+          { value: "actual_company", label: sv ? "Företagets underlag" : "Company document" },
+          { value: "synthetic", label: sv ? "Demounderlag" : "Demo source" },
+        ]}
+      />
+    </RecordSection>
   );
 }
 function fieldText(fields: FormData, name: string) {
@@ -227,4 +252,97 @@ function expenseAmount(fields: FormData, name: string, scale: number) {
   const value = fields.get(name);
   if (value === "" || value === null) return null;
   return typeof value === "string" ? (decimalToMinor(value, scale) ?? "invalid") : "invalid";
+}
+
+function editableAmount(value: string | null | undefined, scale: number) {
+  return value == null ? "" : formatMinorAmount(value, scale, "en").replaceAll(",", "");
+}
+export function ExpenseRevisionEditor(
+  props: CommerceProps & {
+    baseline: typeof Tax.TaxSourceRevision.Type;
+    onSaved: (id: string) => void;
+  },
+) {
+  const evidence = useQuery({
+    queryKey: [...bookKey(props.book), "evidence", props.baseline.facts.evidenceId],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${bookPath(props.book)}/evidence/${encodeURIComponent(props.baseline.facts.evidenceId)}`,
+        Accounting.EvidenceContent,
+        { signal },
+      );
+      if (
+        result.id !== props.baseline.facts.evidenceId ||
+        result.sha256 !== props.baseline.evidenceSha256
+      )
+        throw new Error("Expense source mismatch");
+      return result;
+    },
+    retry: false,
+  });
+  if (!evidence.isSuccess)
+    return (
+      <AccountingStatus locale={props.locale} pending={evidence.isPending} error={evidence.error} />
+    );
+  return (
+    <ExpenseEditor
+      {...props}
+      sourceId={enteredExpenseSource(evidence.data.content)?.occurrenceId}
+    />
+  );
+}
+
+function ExpenseAmounts(props: {
+  amounts?: typeof Tax.TaxAmounts.Type;
+  scale: number;
+  currency: string;
+  locale: CommerceProps["locale"];
+}) {
+  const sv = props.locale === "sv";
+  return (
+    <Box display="grid" columns={3} gap="lg">
+      <InputField
+        name="gross"
+        defaultValue={editableAmount(props.amounts?.grossMinor, props.scale)}
+        label={`${sv ? "Totalt" : "Total"} · ${props.currency}`}
+        inputMode="decimal"
+      />
+      <InputField
+        name="net"
+        defaultValue={editableAmount(props.amounts?.netMinor, props.scale)}
+        label={sv ? "Exkl. moms" : "Before tax"}
+        inputMode="decimal"
+      />
+      <InputField
+        name="vat"
+        defaultValue={editableAmount(props.amounts?.vatMinor, props.scale)}
+        label={sv ? "Moms" : "Tax"}
+        inputMode="decimal"
+      />
+    </Box>
+  );
+}
+
+function ExpenseDates(props: {
+  facts?: typeof Tax.TaxSourceFacts.Type;
+  locale: CommerceProps["locale"];
+}) {
+  const sv = props.locale === "sv";
+  const facts = props.facts;
+  return (
+    <Box display="grid" columns={2} gap="lg">
+      <InputField
+        name="issuedOn"
+        defaultValue={facts?.issuedOn ?? ""}
+        label={sv ? "Dokumentdatum" : "Document date"}
+        type="date"
+      />
+      <InputField
+        name="receivedOn"
+        defaultValue={facts?.receivedOn ?? ""}
+        label={sv ? "Mottaget datum" : "Received date"}
+        type="date"
+      />
+    </Box>
+  );
 }

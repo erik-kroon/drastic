@@ -28,7 +28,7 @@ const en = {
   download: "Download original file",
   downloadReceipt: "Download admission receipt",
   downloadPreview: "Download immutable preview",
-  preview: "Create immutable preview",
+  preview: "Preview transactions",
   previewHelp:
     "Enter exact header names. Every row must be interpreted; unused columns remain retained and need review. Amounts must have no spaces or thousands separators. Header and data order are preserved.",
   choose: "Choose explicitly",
@@ -59,7 +59,7 @@ const en = {
   declaredComplete: "I explicitly declare the supplied interval complete",
   basis: "Coverage basis and known gaps",
   controlsHelp:
-    "Enter independent declared balances, not inferred balances. An unchecked completeness declaration means incomplete, not unknown or zero. Currency scale 2 means 100 minor units per currency unit.",
+    "Enter the opening and closing balances printed on the statement. Confirm completeness only if the file covers the entire interval.",
   previewId: "Retained preview identity",
   openPreview: "Open selected preview",
   ready: "No blocking diagnostics. Operator review is still required.",
@@ -134,7 +134,7 @@ const sv = {
   download: "Hämta originalfil",
   downloadReceipt: "Hämta importkvitto",
   downloadPreview: "Hämta oföränderlig förhandsgranskning",
-  preview: "Skapa oföränderlig förhandsgranskning",
+  preview: "Förhandsgranska transaktioner",
   previewHelp:
     "Ange exakta kolumnrubriker. Varje rad måste tolkas. Oanvända kolumner bevaras och ska granskas. Belopp får inte ha blanksteg eller tusentalsavgränsare. Rubriker och radordning bevaras.",
   choose: "Välj uttryckligen",

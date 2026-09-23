@@ -119,3 +119,7 @@ Prefix: `/api/v1/entities/:entityId/books/:bookId/commerce`. Mutations require `
 ## Verification boundary
 
 Only source inspection and edits were performed. No tests/test edits/fixtures, validation commands, type checks, builds, toolchain changes, migrations applied, database calls, servers, browser checks, external actions, commits or child delegation were performed. This handoff is not evidence that1700 executes successfully or that its UI has passed runtime/accessibility verification. No real-company profile or legal treatment is activated.
+
+## Root source integration
+
+Shared contracts exports, API/capability catalogs, bindings, SQL dispatch and HTTP handlers are connected. Accounts → Payment allocation and the legacy commerce workspace mount unallocation. Historical applied receipts mount AllocationReleaseStatus, and saved reports mount the separate allocation-only freshness overlay. Independent source review found no concrete blocker; root compared owner/correction replacements and confirmed1300 active-bank branches remain unchanged. No validation or runtime acceptance is claimed.

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
-import { WorkQuery } from "@open-erp/contracts/workspace";
+import { AttentionQuery } from "@open-erp/contracts/workspace";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
@@ -12,11 +12,12 @@ import { WorkspaceHeader, WorkspaceToolbar } from "@open-erp/ui/components/works
 import { useBookWorkspace, workspacePath, reviewPath } from "@/lib/book-context";
 import { PostingRecoveryPanel } from "@/components/posting-recovery/panel";
 import { Disclosure } from "@open-erp/ui/components/workflow";
-import { WorkList } from "@/components/work-list";
+import { AttentionList } from "@/components/attention-list";
+import { attentionCopy } from "@/lib/attention";
 import { accountingCopy } from "@/lib/accounting-copy";
 
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/work")({
-  validateSearch: Schema.decodeUnknownSync(WorkQuery),
+  validateSearch: Schema.decodeUnknownSync(AttentionQuery),
   component: Work,
 });
 
@@ -29,7 +30,7 @@ function Work() {
   return (
     <>
       <WorkspaceHeader
-        title={frontendCopy(locale).proposals}
+        title={frontendCopy(locale).todo}
         action={
           <PageAction href={`${workspacePath(book)}/books?view=journal`}>
             {copy.workspace_new_journal}
@@ -42,8 +43,9 @@ function Work() {
           onSubmit={(event) => {
             event.preventDefault();
             const fields = new FormData(event.currentTarget);
-            const parsed = Schema.decodeUnknownOption(WorkQuery)({
+            const parsed = Schema.decodeUnknownOption(AttentionQuery)({
               q: fields.get("q"),
+              kind: fields.get("kind"),
               period: fields.get("period") || undefined,
               status: fields.get("status"),
               sort: fields.get("sort"),
@@ -62,6 +64,22 @@ function Work() {
             defaultValue={filters.q ?? ""}
             maxLength={200}
             type="search"
+          />
+          <SelectField
+            label={attentionCopy(locale).type}
+            name="kind"
+            defaultValue={filters.kind ?? "all"}
+            options={["all", "journal", "invoice", "expense"].map((kind) => ({
+              value: kind,
+              label:
+                kind === "all"
+                  ? attentionCopy(locale).all
+                  : kind === "journal"
+                    ? attentionCopy(locale).journal
+                    : kind === "invoice"
+                      ? attentionCopy(locale).invoice
+                      : attentionCopy(locale).expense,
+            }))}
           />
           <SelectField
             label={copy.workspace_period}
@@ -99,7 +117,7 @@ function Work() {
           </Button>
         </WorkspaceToolbar>
         {error ? <Text role="alert">{error}</Text> : null}
-        <WorkList
+        <AttentionList
           filters={filters}
           onPage={(after) => {
             void navigate({ search: (previous) => ({ ...previous, after }) });
@@ -112,7 +130,15 @@ function Work() {
               book={book}
               locale={locale}
               onPrepared={(id) => {
-                void navigate({ to: reviewPath(book, id), search: filters });
+                void navigate({
+                  to: reviewPath(book, id),
+                  search: {
+                    period: filters.period,
+                    status: filters.status,
+                    sort: filters.sort,
+                    q: filters.q,
+                  },
+                });
               }}
             />
           </Box>

@@ -18,6 +18,7 @@ export function EvidenceInspector(props: {
   reference: (typeof Accounting.PostingAction.Type)["evidenceRefs"][number];
   locale: Locale;
   expanded?: boolean;
+  compact?: boolean;
 }) {
   const { book, reference, locale } = props;
   const copy = accountingCopy(locale);
@@ -90,21 +91,25 @@ export function EvidenceInspector(props: {
         ) : null}
         {evidence.data ? (
           <>
-            <Text>
-              {copy.journal_title_field}: {evidence.data.title}
-            </Text>
-            <Text>
-              {copy.journal_origin}: {evidence.data.origin}
-            </Text>
-            <Disclosure title={copy.workspace_source_details}>
-              <Text tone="muted">
-                {evidence.data.mediaType} · {evidence.data.createdAt}
-              </Text>
-              <Text tone="muted">
-                {reference.evidenceId} · {reference.locator}
-              </Text>
-              <Text tone="muted">SHA-256: {evidence.data.sha256}</Text>
-            </Disclosure>
+            {!props.compact ? (
+              <>
+                <Text>
+                  {copy.journal_title_field}: {evidence.data.title}
+                </Text>
+                <Text>
+                  {copy.journal_origin}: {evidence.data.origin}
+                </Text>
+                <Disclosure title={copy.workspace_source_details}>
+                  <Text tone="muted">
+                    {evidence.data.mediaType} · {evidence.data.createdAt}
+                  </Text>
+                  <Text tone="muted">
+                    {reference.evidenceId} · {reference.locator}
+                  </Text>
+                  <Text tone="muted">SHA-256: {evidence.data.sha256}</Text>
+                </Disclosure>
+              </>
+            ) : null}
             {original ? (
               <OriginalDocument
                 book={book}
@@ -113,18 +118,49 @@ export function EvidenceInspector(props: {
                 sha256={original.sha256}
               />
             ) : null}
-            <Label htmlFor={contentId}>{copy.journal_content}</Label>
-            <Box
-              display="grid"
-              minWidth="zero"
-              borderWidth="thin"
-              borderColor="default"
-              borderRadius="control"
-              backgroundColor="surface"
-              padding="md"
-            >
-              <textarea id={contentId} value={evidence.data.content} readOnly rows={8} cols={16} />
-            </Box>
+            {props.compact ? (
+              <Disclosure title={locale === "sv" ? "Sparade uppgifter" : "Retained details"}>
+                <Label htmlFor={contentId}>{copy.journal_content}</Label>
+                <Box
+                  display="grid"
+                  minWidth="zero"
+                  borderWidth="thin"
+                  borderColor="default"
+                  borderRadius="control"
+                  backgroundColor="surface"
+                  padding="md"
+                >
+                  <textarea
+                    id={contentId}
+                    value={evidence.data.content}
+                    readOnly
+                    rows={8}
+                    cols={16}
+                  />
+                </Box>{" "}
+              </Disclosure>
+            ) : (
+              <>
+                <Label htmlFor={contentId}>{copy.journal_content}</Label>
+                <Box
+                  display="grid"
+                  minWidth="zero"
+                  borderWidth="thin"
+                  borderColor="default"
+                  borderRadius="control"
+                  backgroundColor="surface"
+                  padding="md"
+                >
+                  <textarea
+                    id={contentId}
+                    value={evidence.data.content}
+                    readOnly
+                    rows={8}
+                    cols={16}
+                  />
+                </Box>{" "}
+              </>
+            )}
           </>
         ) : null}
       </Box>

@@ -5,6 +5,8 @@ import * as Intake from "@open-erp/contracts/source-intake";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
+import { RecordHeading, RecordSection } from "@open-erp/ui/components/record-layout";
+import { workQueryOptions, minorToDecimal, signedDecimalToMinor } from "@/lib/workspace-api";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
@@ -49,8 +51,14 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
   const previewId = selectedPreview ?? source.data?.latestPreviewId;
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
-      <Heading>{copy.original}</Heading>
-      <Text>{id}</Text>
+      <RecordHeading
+        title={
+          source.data?.occurrence.filename ?? (locale === "sv" ? "Kontoutdrag" : "Bank statement")
+        }
+        subtitle={
+          locale === "sv" ? "Original → förhandsgranskning → import" : "Original → preview → import"
+        }
+      />
       <Box>
         <Button
           type="button"
@@ -66,10 +74,7 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
       <AccountingStatus locale={locale} pending={source.isPending} error={source.error} />
       {source.data ? (
         <>
-          <Text>
-            {source.data.occurrence.filename} · {source.data.occurrence.byteLength} bytes ·{" "}
-            {source.data.occurrence.sha256}
-          </Text>
+          <Text tone="muted">{source.data.occurrence.byteLength} bytes</Text>
           <Box>
             <Button
               type="button"
@@ -108,27 +113,28 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
             </details>
           ) : null}
           {source.data.admission ? (
-            <Text role="status">
-              {copy.admitted} {source.data.admission.imported.statement.id}
-            </Text>
+            <Text role="status">{copy.admitted}</Text>
           ) : source.data.occurrence.mediaType === "text/csv" &&
             source.data.occurrence.byteLength <= 65536 ? (
-            <MappingForm
-              key={mappingSeed?.id ?? id}
-              book={book}
-              setup={setup}
-              locale={locale}
-              id={id}
-              initial={mappingSeed?.mapping}
-              onCreated={(preview) => {
-                setSelectedPreview(preview.id);
-                void source.refetch();
-              }}
-            />
+            !previewId || mappingSeed ? (
+              <MappingForm
+                key={mappingSeed?.id ?? id}
+                book={book}
+                setup={setup}
+                locale={locale}
+                id={id}
+                initial={mappingSeed?.mapping}
+                onCreated={(preview) => {
+                  setSelectedPreview(preview.id);
+                  setMappingSeed(null);
+                  void source.refetch();
+                }}
+              />
+            ) : null
           ) : (
             <Text>{copy.retainedOnly}</Text>
           )}
-          {source.data.previewIds.length > 0 ? (
+          {source.data.previewIds.length > 1 ? (
             <Box
               as="form"
               display="grid"
@@ -143,7 +149,10 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
                 name="previewId"
                 label={copy.previewId}
                 required
-                options={source.data.previewIds.map((value) => ({ value, label: value }))}
+                options={source.data.previewIds.map((value, index) => ({
+                  value,
+                  label: `${locale === "sv" ? "Granskning" : "Preview"} ${index + 1}`,
+                }))}
               />
               <Box>
                 <Button type="submit" variant="outline">
@@ -178,6 +187,8 @@ function MappingForm(
 ) {
   const { book, setup, locale, id } = props;
   const initial = props.initial;
+  const metadata = useQuery(workQueryOptions(book, {}));
+  const scale = initial?.currencyScale ?? metadata.data?.currencyScale;
   const copy = intakeCopy(locale);
   const keys = useRef(new Map<string, string>());
   const [error, setError] = useState("");
@@ -215,9 +226,11 @@ function MappingForm(
       .filter((account) => account.active)
       .map((account) => ({
         value: account.id,
-        label: `${account.code} · ${account.name} · ${account.id}`,
+        label: `${account.code} · ${account.name}`,
       })),
   };
+  if (scale === undefined)
+    return <AccountingStatus locale={locale} pending={metadata.isPending} error={metadata.error} />;
   return (
     <Box
       as="form"
@@ -230,8 +243,10 @@ function MappingForm(
         const result = Schema.decodeUnknownOption(Intake.CsvMapping)({
           profile: "bank_csv_utf8_v1",
           ...Object.fromEntries(fields),
-          currencyScale:
-            fields.get("currencyScale") === "" ? null : Number(fields.get("currencyScale")),
+          currency: book.currency,
+          currencyScale: scale,
+          openingMinor: signedDecimalToMinor(String(fields.get("openingMinor") ?? ""), scale),
+          closingMinor: signedDecimalToMinor(String(fields.get("closingMinor") ?? ""), scale),
           providerIdColumn: fields.get("providerIdColumn") || null,
           completeness: {
             declaredComplete: fields.get("declaredComplete") === "on",
@@ -246,7 +261,11 @@ function MappingForm(
         mutation.mutate(result.value);
       }}
     >
-      <Heading>{copy.preview}</Heading>
+      <RecordSection
+        title={locale === "sv" ? "Kontrollera filens kolumner" : "Map the statement columns"}
+      >
+        <Text>{book.currency}</Text>
+      </RecordSection>
       <Text>{copy.previewHelp}</Text>
       <Text>{copy.controlsHelp}</Text>
       <Box
@@ -291,24 +310,6 @@ function MappingForm(
               />
             ),
           )}
-          <InputField
-            label={copy.currency}
-            name="currency"
-            defaultValue={initial?.currency ?? ""}
-            pattern="[A-Z]{3}"
-            maxLength={3}
-            required
-          />
-          <InputField
-            label={copy.currencyScale}
-            name="currencyScale"
-            defaultValue={initial?.currencyScale}
-            type="number"
-            min={0}
-            max={6}
-            step={1}
-            required
-          />
           {(["startsOn", "endsOn"] as const).map((name) => (
             <InputField
               key={name}
@@ -322,10 +323,10 @@ function MappingForm(
           {(["openingMinor", "closingMinor"] as const).map((name) => (
             <InputField
               key={name}
-              label={copy[name]}
+              label={`${name === "openingMinor" ? (locale === "sv" ? "Ingående saldo" : "Opening balance") : locale === "sv" ? "Utgående saldo" : "Closing balance"} · ${book.currency}`}
               name={name}
-              defaultValue={initial?.[name]}
-              pattern="(0|-?[1-9][0-9]{0,37})"
+              defaultValue={initial ? minorToDecimal(initial[name], scale) : ""}
+              inputMode="decimal"
               required
             />
           ))}

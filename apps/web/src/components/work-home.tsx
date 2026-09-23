@@ -1,11 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { FileCheck2, BookOpen, CheckSquare, Plus, Upload, FileText } from "lucide-react";
+import { BookOpen, Upload, FileText, ReceiptText, CalendarCheck } from "lucide-react";
 import {
   PageContent,
   WorkspaceWelcome,
   TaskColumns,
   TaskSection,
-  TaskBand,
   TaskRow,
   PageEmpty,
   PageAction,
@@ -13,115 +12,123 @@ import {
 } from "@open-erp/ui/components/accounting-page";
 import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
 import { AccountingStatus } from "@/components/accounting-status";
-import { useBookWorkspace, workspacePath, reviewPath } from "@/lib/book-context";
-import { workQueryOptions, formatMinorAmount } from "@/lib/workspace-api";
+import { useBookWorkspace, workspacePath } from "@/lib/book-context";
+import { formatMinorAmount } from "@/lib/workspace-api";
+import { attentionQueryOptions, attentionPath, attentionCopy } from "@/lib/attention";
 import { frontendCopy } from "@/lib/frontend-copy";
 
 export function WorkHome() {
   const { book, locale } = useBookWorkspace();
+  const sv = locale === "sv";
   const copy = frontendCopy(locale);
+  const tasks = attentionCopy(locale);
   const base = workspacePath(book);
-  const work = useQuery(workQueryOptions(book, { status: "all" }));
+  const work = useQuery(attentionQueryOptions(book, { status: "open" }));
   const page = work.isError ? undefined : work.data;
-  const open = page?.items.filter((item) => item.state === "unposted") ?? [];
-  const recent = page?.items.filter((item) => item.state !== "unposted").slice(0, 3) ?? [];
   return (
     <>
       <WorkspaceHeader
         title={copy.todo}
         action={
-          <PageAction href={`${base}/books?view=journal`}>
-            <Plus size={14} aria-hidden="true" />
-            {copy.newEntry}
+          <PageAction href={`${base}/purchases?view=documents&record=new`}>
+            <Upload size={14} strokeWidth={1.5} />
+            {sv ? "Ladda upp underlag" : "Upload document"}
           </PageAction>
         }
       />
       <PageContent>
         <WorkspaceWelcome
-          title={copy.welcome}
-          context={`${book.name}${page ? ` · ${new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(page.checkedAt))}` : ""}`}
+          title={sv ? "Vad behöver göras?" : "Your work, in one place"}
+          context={book.name}
         />
-        <TaskSection title={locale === "sv" ? "Kom igång" : "Start something"}>
-          <TaskRow
-            href={`${base}/purchases?view=documents&record=new`}
-            icon={<Upload size={15} strokeWidth={1.5} />}
-            title={locale === "sv" ? "Ladda upp ett underlag" : "Upload a source document"}
-            detail={
-              locale === "sv"
-                ? "Spara kvitton, fakturor och kontoutdrag."
-                : "Keep receipts, invoices and statements together."
+        <TaskColumns>
+          <TaskSection
+            title={sv ? "Behöver din uppmärksamhet" : "Needs your attention"}
+            action={
+              <PageAction quiet href={`${base}/work?status=open`}>
+                {copy.viewAll}
+                {page ? ` (${page.counts.open})` : ""}
+              </PageAction>
             }
-          />
-          <TaskRow
-            href={`${base}/sales?view=drafts&record=new`}
-            icon={<FileText size={15} strokeWidth={1.5} />}
-            title={locale === "sv" ? "Förbered en faktura" : "Prepare an invoice"}
-            detail={
-              locale === "sv" ? "Skapa ett utkast för en kund." : "Create a draft for a customer."
-            }
-          />
-        </TaskSection>
-        <AccountingStatus locale={locale} pending={work.isPending} error={work.error} />
-        {page ? (
-          <TaskColumns>
-            <TaskSection
-              title={copy.todo}
-              action={
-                <PageAction quiet href={`${base}/work`}>
-                  {copy.viewAll}
-                </PageAction>
+          >
+            <AccountingStatus locale={locale} pending={work.isPending} error={work.error} />
+            {page?.items.slice(0, 6).map((item) => (
+              <TaskRow
+                key={item.key}
+                href={attentionPath(book, item)}
+                icon={
+                  item.kind === "invoice" ? (
+                    <FileText size={15} strokeWidth={1.5} />
+                  ) : item.kind === "expense" ? (
+                    <ReceiptText size={15} strokeWidth={1.5} />
+                  ) : (
+                    <BookOpen size={15} strokeWidth={1.5} />
+                  )
+                }
+                title={item.title}
+                detail={tasks[item.reason]}
+                value={
+                  item.amountMinor !== null && item.currencyScale !== null
+                    ? `${formatMinorAmount(item.amountMinor, item.currencyScale, locale)} ${item.currency ?? ""}`
+                    : "—"
+                }
+              />
+            ))}
+            {page?.items.length === 0 ? (
+              <PageEmpty title={tasks.empty} detail={tasks.emptyDetail} />
+            ) : null}
+            <PageCaption>{tasks.coverage}</PageCaption>
+            {page ? (
+              <PageCaption>
+                {tasks.updated}{" "}
+                {new Intl.DateTimeFormat(locale, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                }).format(new Date(page.checkedAt))}
+              </PageCaption>
+            ) : null}
+          </TaskSection>
+          <TaskSection title={sv ? "Nästa steg" : "Start something"}>
+            <TaskRow
+              href={`${base}/sales?view=drafts&record=new`}
+              icon={<FileText size={15} strokeWidth={1.5} />}
+              title={sv ? "Skapa en faktura" : "Create an invoice"}
+              detail={
+                sv
+                  ? "Välj kund och lägg till dina fakturarader."
+                  : "Choose a customer and add your line items."
               }
-            >
-              <TaskBand>{copy.review}</TaskBand>
-              {page.counts.open !== "0" ? (
-                <TaskRow
-                  href={`${base}/work?status=open`}
-                  icon={<CheckSquare size={15} strokeWidth={1.5} aria-hidden="true" />}
-                  title={copy.journalTasks}
-                  detail={copy.journalDetail}
-                  value={page.counts.open}
-                />
-              ) : (
-                <PageEmpty title={copy.emptyTitle} detail={copy.emptyDetail} />
-              )}
-              <PageCaption>{copy.coverage}</PageCaption>
-            </TaskSection>
-            <TaskSection title={copy.continueWork}>
-              {open.length ? (
-                <>
-                  {open.slice(0, 3).map((item) => (
-                    <TaskRow
-                      key={item.id}
-                      href={reviewPath(book, item.id, item.revision)}
-                      icon={<BookOpen size={15} strokeWidth={1.5} aria-hidden="true" />}
-                      title={item.description}
-                      detail={item.postingDate}
-                      value={`${formatMinorAmount(item.amountMinor, page.currencyScale, locale)} ${book.currency}`}
-                    />
-                  ))}
-                </>
-              ) : (
-                <TaskRow
-                  href={`${base}/books?view=journal`}
-                  icon={<Plus size={15} strokeWidth={1.5} aria-hidden="true" />}
-                  title={copy.ready}
-                  detail={copy.readyDetail}
-                />
-              )}
-              {recent.length ? <TaskBand>{copy.recent}</TaskBand> : null}
-              {recent.map((item) => (
-                <TaskRow
-                  key={item.id}
-                  href={reviewPath(book, item.id, item.revision)}
-                  icon={<FileCheck2 size={15} strokeWidth={1.5} aria-hidden="true" />}
-                  title={item.description}
-                  detail={item.postingDate}
-                  value={`${formatMinorAmount(item.amountMinor, page.currencyScale, locale)} ${book.currency}`}
-                />
-              ))}
-            </TaskSection>
-          </TaskColumns>
-        ) : null}
+            />
+            <TaskRow
+              href={`${base}/purchases?view=expenses&record=new`}
+              icon={<ReceiptText size={15} strokeWidth={1.5} />}
+              title={sv ? "Lägg till en utgift" : "Add an expense"}
+              detail={
+                sv
+                  ? "Börja med kvittot eller fakturan."
+                  : "Start with a receipt or supplier document."
+              }
+            />
+            <TaskRow
+              href={`${base}/books?view=journal`}
+              icon={<BookOpen size={15} strokeWidth={1.5} />}
+              title={copy.newEntry}
+              detail={
+                sv ? "Förbered bokföring för granskning." : "Prepare accounting entries for review."
+              }
+            />
+            <TaskRow
+              href={`${base}/closing`}
+              icon={<CalendarCheck size={15} strokeWidth={1.5} />}
+              title={sv ? "Granska perioden" : "Review the period"}
+              detail={
+                sv
+                  ? "Se avstämningar och återstående kontroller."
+                  : "See reconciliations and outstanding checks."
+              }
+            />
+          </TaskSection>
+        </TaskColumns>
       </PageContent>
     </>
   );

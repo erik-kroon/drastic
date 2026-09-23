@@ -6,6 +6,7 @@ import { getSourceOccurrence, retainSource } from "./source-retention";
 import { startPreparationJob } from "./preparation-jobs";
 import { prepareVatDraft } from "./vat-returns";
 import { prepareSie, getSie, listSie, resumeSie } from "./sie";
+import { prepareInvoiceDocument, getInvoiceDocument, resumeInvoiceDocument, invoiceDocumentHistory } from "./invoice-documents";
 import type { RequestEnvironment } from "../runtime/environment";
 import { query, scopeParameter, type DatabaseOperation } from "../db/query";
 
@@ -47,6 +48,50 @@ function effectCapability<I, O extends Schema.Json>(
 }
 
 export const capabilities = {
+  bank_create_source_coverage: bindCapability(
+    Capabilities.bank_create_source_coverage,
+    "createBankSourceCoverage",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  bank_get_source_coverage: bindCapability(
+    Capabilities.bank_get_source_coverage,
+    "getBankSourceCoverage",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  bank_list_source_coverage: bindCapability(
+    Capabilities.bank_list_source_coverage,
+    "listBankSourceCoverage",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  commerce_prepare_invoice_document: effectCapability(Capabilities.commerce_prepare_invoice_document, prepareInvoiceDocument),
+  commerce_get_invoice_document: effectCapability(Capabilities.commerce_get_invoice_document, getInvoiceDocument),
+  commerce_resume_invoice_document: effectCapability(Capabilities.commerce_resume_invoice_document, resumeInvoiceDocument),
+  commerce_invoice_document_history: effectCapability(Capabilities.commerce_invoice_document_history, invoiceDocumentHistory),
+  fx_list_rates: bindCapability(
+    Capabilities.fx_list_rates,
+    "listExchangeRates",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  fx_get_rate: bindCapability(
+    Capabilities.fx_get_rate,
+    "getExchangeRate",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  fx_capture_conversion: bindCapability(
+    Capabilities.fx_capture_conversion,
+    "captureConversionReview",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  fx_list_conversions: bindCapability(
+    Capabilities.fx_list_conversions,
+    "listConversionReviews",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  fx_get_conversion: bindCapability(
+    Capabilities.fx_get_conversion,
+    "getConversionReview",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
   commerce_prepare_allocation_reversal: bindCapability(
     Capabilities.commerce_prepare_allocation_reversal,
     "prepareCommerceAllocationReversal",
@@ -75,7 +120,12 @@ export const capabilities = {
   commerce_execute_allocation_reversal: bindCapability(
     Capabilities.commerce_execute_allocation_reversal,
     "executeCommerceAllocationReversal",
-    (input) => [scopeParameter(input.scope), input.idempotencyKey, input.id, JSON.stringify(input.input)],
+    (input) => [
+      scopeParameter(input.scope),
+      input.idempotencyKey,
+      input.id,
+      JSON.stringify(input.input),
+    ],
   ),
   bank_discover_match_candidates: bindCapability(
     Capabilities.bank_discover_match_candidates,
@@ -202,6 +252,21 @@ export const capabilities = {
     Capabilities.runs_get_background,
     "getPreparationJob",
     (input) => [scopeParameter(input.scope), input.runId],
+  ),
+  workspace_attention: bindCapability(
+    Capabilities.workspace_attention,
+    "workspaceAttention",
+    (input) => [
+      scopeParameter(input.scope),
+      JSON.stringify({
+        kind: input.kind,
+        period: input.period,
+        status: input.status,
+        sort: input.sort,
+        q: input.q,
+        after: input.after,
+      }),
+    ],
   ),
   workspace_list_work: bindCapability(
     Capabilities.workspace_list_work,

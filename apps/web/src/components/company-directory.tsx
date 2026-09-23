@@ -24,7 +24,7 @@ import { SignOut } from "@/components/accounting-access";
 import { LanguagePreference } from "@/components/book-workspace";
 import { bookKey, bookPath, readAccounting, type Books } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
-import { workQueryOptions } from "@/lib/workspace-api";
+import { attentionQueryOptions } from "@/lib/attention";
 import type { Locale } from "@/paraglide/runtime";
 
 export function CompanyDirectory({ books, locale }: { books: typeof Books.Type; locale: Locale }) {
@@ -37,7 +37,7 @@ export function CompanyDirectory({ books, locale }: { books: typeof Books.Type; 
   );
   const visible = filtered.slice(page * 10, (page + 1) * 10);
   const work = useQueries({
-    queries: visible.map((book) => workQueryOptions(book, { status: "open" })),
+    queries: visible.map((book) => attentionQueryOptions(book, { status: "open" })),
   });
   const setups = useQueries({
     queries: visible.map((book) => ({

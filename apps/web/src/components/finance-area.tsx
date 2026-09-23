@@ -35,8 +35,8 @@ const Counterparties = lazy(() =>
     default: module.Counterparties,
   })),
 );
-const SourceIntake = lazy(() =>
-  import("@/components/source-intake").then((module) => ({ default: module.SourceIntake })),
+const StatementImports = lazy(() =>
+  import("@/components/statement-imports").then((module) => ({ default: module.StatementImports })),
 );
 const ReportLibrary = lazy(() =>
   import("@/components/report-workspace").then((module) => ({ default: module.ReportLibrary })),
@@ -66,6 +66,11 @@ const VatReturnsPanel = lazy(() =>
   import("@/components/vat-returns/panel").then((module) => ({ default: module.VatReturnsPanel })),
 );
 
+const BankSourceCoveragePanel = lazy(() =>
+  import("@/components/bank-source-coverage/panel").then((module) => ({
+    default: module.BankSourceCoveragePanel,
+  })),
+);
 const BankMatchCandidatesPanel = lazy(() =>
   import("@/components/bank-match-candidates/panel").then((module) => ({
     default: module.BankMatchCandidatesPanel,
@@ -87,6 +92,11 @@ const InvoiceIssuance = lazy(() =>
 const SubledgersPanel = lazy(() =>
   import("@/components/subledgers/schedules").then((module) => ({
     default: module.SubledgersPanel,
+  })),
+);
+const ExchangeRateReviewsPanel = lazy(() =>
+  import("@/components/exchange-rates/panel").then((module) => ({
+    default: module.ExchangeRateReviewsPanel,
   })),
 );
 const SubledgerControlsPanel = lazy(() =>
@@ -134,6 +144,7 @@ export function FinanceArea({
           {selected === "documents" ? <DocumentInbox recordId={record} onOpen={onOpen} /> : null}
           {selected === "ledger" ? <AccountBalances /> : null}
           {selected === "bank" ? <BankingWorkspace recordId={record} onOpen={onOpen} /> : null}
+          {selected === "coverage" ? <BankSourceCoveragePanel key={`${book.entityId}:${book.id}`} book={book} locale={locale} /> : null}
           {selected === "matching" ? (
             <>
               <BankMatchCandidatesPanel
@@ -163,6 +174,7 @@ export function FinanceArea({
           {selected === "issue" ? (
             <InvoiceIssuance book={book} locale={locale} recordId={record} />
           ) : null}
+          {selected === "exchange-rates" ? <ExchangeRateReviewsPanel book={book} locale={locale} /> : null}
           {selected === "subledgers" ? (
             <>
               <SubledgersPanel
@@ -196,7 +208,7 @@ export function FinanceArea({
             <Counterparties book={book} locale={locale} recordId={record ?? ""} onOpen={onOpen} />
           ) : null}
           {selected === "imports" ? (
-            <SourceIntake book={book} setup={setup} locale={locale} open />
+            <StatementImports recordId={record} onOpen={onOpen} />
           ) : null}
           {selected === "expenses" ? (
             <ExpenseTaxPanel
@@ -234,6 +246,7 @@ function areaTabs(
     accounts: [
       { key: "bank", label: copy.bank },
       { key: "matching", label: sv ? "Matchning" : "Matching" },
+      { key: "coverage", label: sv ? "Kontoutdragstäckning" : "Statement coverage" },
       { key: "payments", label: sv ? "Betalningsfördelning" : "Payment allocation" },
       { key: "imports", label: copy.imports },
       { key: "ledger", label: copy.ledger },
@@ -256,6 +269,7 @@ function areaTabs(
       { key: "ledger", label: copy.ledger },
       { key: "register", label: sv ? "Fakturaregister" : "Invoice register" },
       { key: "subledgers", label: sv ? "Tillgångskontroller" : "Asset controls" },
+      { key: "exchange-rates", label: sv ? "Valutakurser" : "Exchange rates" },
       { key: "export", label: sv ? "Granskningspaket" : "Review pack" },
     ],
     tax: [

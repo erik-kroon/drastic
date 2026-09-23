@@ -12,6 +12,7 @@ import { CorrectionApi } from "./corrections";
 import { SettlementsApi } from "./settlements";
 import { BankMatchReversalsApi } from "./bank-match-reversals";
 import { BankMatchCandidatesApi } from "./bank-match-candidates";
+import { BankSourceCoverageApi } from "./bank-source-coverage";
 
 import { SubledgersApi } from "./subledgers";
 
@@ -23,7 +24,9 @@ import { VatReturnsApi } from "./vat-returns";
 import { SieApi } from "./sie";
 import { InvoiceDraftsApi } from "./invoice-drafts";
 import { SubledgerControlsApi } from "./subledger-controls";
+import { ExchangeRatesApi } from "./exchange-rates";
 import { InvoiceIssuanceApi } from "./invoice-issuance";
+import { InvoiceDocumentsApi } from "./invoice-documents";
 import { CommerceAllocationReversalsApi } from "./commerce-allocation-reversals";
 import { AccountantReviewApi } from "./accountant-review";
 import { SourceIntakeApi } from "./source-intake";
@@ -133,13 +136,16 @@ export class Api extends HttpApi.make("open-erp")
     SettlementsApi,
     BankMatchReversalsApi,
     BankMatchCandidatesApi,
+    BankSourceCoverageApi,
     CommerceApi,
     RegisterReportsApi,
     VatReturnsApi,
     SieApi,
     InvoiceDraftsApi,
     SubledgerControlsApi,
+    ExchangeRatesApi,
     InvoiceIssuanceApi,
+    InvoiceDocumentsApi,
     CommerceAllocationReversalsApi,
     AccountantReviewApi,
     SourceIntakeApi,

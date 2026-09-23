@@ -60,7 +60,7 @@ export const ConversionReview = Schema.Struct({
   rate: ExchangeRateRevision,
   bookBasis: ConversionBookBasis,
   calculation: ConversionAmounts,
-  formula: Schema.Literal("N = originalMinor * rateNumerator * 10^bookScale; D = rateDenominator * 10^sourceScale; rounded = div(N,D) + (2*mod(N,D) >= D ? 1 : 0); residual = N - rounded*D"),
+  formula: Schema.Literal("N = originalMinor * rateNumerator * 10^bookScale; D = rateDenominator * 10^sourceScale; rounded = div(N,D) + (2*mod(N,D) >= D ? 1 : 0); residualNumerator = N - rounded*D; residualDenominator = D"),
   legalPolicyApproved: Schema.Literal(false),
   postingSupported: Schema.Literal(false),
   financialCloseReady: Schema.Literal(false),

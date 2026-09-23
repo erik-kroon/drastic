@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import { FileText, Upload, BookOpen, CalendarCheck, ArrowRight } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
@@ -16,30 +15,17 @@ import {
 import { RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
 import { AccountBalances } from "@/components/account-register";
 import { AccountingStatus } from "@/components/accounting-status";
-import { useBookWorkspace, workspacePath, reviewPath } from "@/lib/book-context";
-import { workQueryOptions, formatMinorAmount } from "@/lib/workspace-api";
-import { readAccounting } from "@/lib/accounting-api";
-import { commerceKey, commercePath, checkScope } from "@/components/commerce/shared";
+import { useBookWorkspace, workspacePath } from "@/lib/book-context";
+import { formatMinorAmount } from "@/lib/workspace-api";
+import { attentionQueryOptions, attentionPath, attentionCopy } from "@/lib/attention";
 
 export function CompanyOverview() {
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
   const base = workspacePath(book);
-  const work = useQuery(workQueryOptions(book, { status: "open" }));
-  const drafts = useQuery({
-    queryKey: [...commerceKey(book), "invoice-drafts"],
-    queryFn: async ({ signal }) => {
-      const result = await readAccounting(
-        `${commercePath(book)}/invoice-drafts`,
-        Drafts.InvoiceDraftList,
-        { signal },
-      );
-      checkScope(book, result.scope);
-      return result;
-    },
-    retry: false,
-  });
+  const work = useQuery(attentionQueryOptions(book, { status: "open" }));
+  const drafts = useQuery(attentionQueryOptions(book, { status: "open", kind: "invoice" }));
   return (
     <>
       <WorkspaceHeader
@@ -58,7 +44,7 @@ export function CompanyOverview() {
             {work.isSuccess ? work.data.counts.open : "—"}
           </RecordFact>
           <RecordFact label={labels.invoiceDrafts}>
-            {drafts.isSuccess ? drafts.data.count : "—"}
+            {drafts.isSuccess ? drafts.data.total : "—"}
           </RecordFact>
           <RecordFact label={labels.openPeriods}>
             {setup.periods.filter((period) => !period.locked).length}
@@ -84,11 +70,15 @@ export function CompanyOverview() {
             {work.data?.items.slice(0, 5).map((item) => (
               <TaskRow
                 key={item.id}
-                href={reviewPath(book, item.id, item.revision)}
+                href={attentionPath(book, item)}
                 icon={<BookOpen size={15} strokeWidth={1.5} />}
-                title={item.description}
-                detail={item.postingDate}
-                value={`${formatMinorAmount(item.amountMinor, work.data.currencyScale, locale)} ${book.currency}`}
+                title={item.title}
+                detail={attentionCopy(locale)[item.reason]}
+                value={
+                  item.amountMinor !== null && item.currencyScale !== null
+                    ? `${formatMinorAmount(item.amountMinor, item.currencyScale, locale)} ${item.currency ?? ""}`
+                    : "—"
+                }
               />
             ))}
             <PageCaption>{labels.theWorkQueueCoversJournal}</PageCaption>
@@ -101,7 +91,7 @@ export function CompanyOverview() {
                 href={`${base}/sales?view=drafts&record=${encodeURIComponent(draft.id)}`}
                 icon={<FileText size={15} strokeWidth={1.5} />}
                 title={draft.title}
-                detail={draft.customerName}
+                detail={attentionCopy(locale)[draft.reason]}
                 value={labels.draft}
               />
             ))}
@@ -140,14 +130,15 @@ const english = {
   overview: "Overview",
   uploadDocument: "Upload document",
   decisionsWorkInProgressAnd: "Decisions, work in progress and your books.",
-  awaitingReview: "Awaiting review",
+  awaitingReview: "Open work",
   invoiceDrafts: "Invoice drafts",
   openPeriods: "Open periods",
   needsYourAttention: "Needs your attention",
   viewAll: "View all",
-  noJournalsWaitingForReview: "No journals waiting for review",
-  preparedAccountingProposalsWillAppear: "Prepared accounting proposals will appear here.",
-  theWorkQueueCoversJournal: "The work queue covers journal proposals.",
+  noJournalsWaitingForReview: "No open work in this view",
+  preparedAccountingProposalsWillAppear:
+    "Invoice drafts, expenses and accounting proposals appear here.",
+  theWorkQueueCoversJournal: "Covers journal proposals, invoice drafts and expense reviews.",
   continueWorking: "Continue working",
   draft: "Draft",
   prepareAnInvoice: "Prepare an invoice",
@@ -166,9 +157,9 @@ const swedish: typeof english = {
   openPeriods: "Öppna perioder",
   needsYourAttention: "Behöver din uppmärksamhet",
   viewAll: "Visa alla",
-  noJournalsWaitingForReview: "Inga journaler att granska",
-  preparedAccountingProposalsWillAppear: "Förberedda bokföringsförslag visas här.",
-  theWorkQueueCoversJournal: "Arbetskön omfattar bokföringsförslag.",
+  noJournalsWaitingForReview: "Inget öppet arbete i den här vyn",
+  preparedAccountingProposalsWillAppear: "Fakturautkast, utgifter och bokföringsförslag visas här.",
+  theWorkQueueCoversJournal: "Omfattar bokföringsförslag, fakturautkast och utgiftsgranskningar.",
   continueWorking: "Fortsätt arbeta",
   draft: "Utkast",
   prepareAnInvoice: "Förbered en faktura",

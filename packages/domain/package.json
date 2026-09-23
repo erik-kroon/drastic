@@ -9,7 +9,8 @@
     "./money": "./src/money.ts",
     "./errors": "./src/errors.ts",
     "./ledger": "./src/ledger.ts",
-    "./books": "./src/books.ts"
+    "./books": "./src/books.ts",
+    "./exchange-rates": "./src/exchange-rates.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

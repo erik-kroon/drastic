@@ -9,6 +9,7 @@ import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
 import { invoiceIssueCopy } from "./invoice-issue-copy";
+import { InvoiceDocumentPanel } from "./invoice-documents";
 import {
   CommandForm,
   Details,
@@ -254,6 +255,7 @@ function IssueContents(props: CommerceProps & { view: typeof Issuance.InvoiceIss
           <Text>{copy.internal}: {issue.internalDocumentNumber}</Text>
           <Text>{copy.receipt}: {issue.postingReceipt.id}</Text>
           <Text>{copy.register}: {issue.registerInvoiceId}</Text>
+          <InvoiceDocumentPanel book={book} locale={locale} issue={issue} />
         </Box>
       ) : props.readOnly ? null : (
         <>

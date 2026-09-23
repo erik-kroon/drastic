@@ -32,6 +32,11 @@ import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
+const BankSourceCoveragePanel = lazy(() =>
+  import("@/components/bank-source-coverage/panel").then((module) => ({
+    default: module.BankSourceCoveragePanel,
+  })),
+);
 const BankMatchCandidatesPanel = lazy(() =>
   import("@/components/bank-match-candidates/panel").then((module) => ({
     default: module.BankMatchCandidatesPanel,
@@ -48,6 +53,11 @@ const BankMatchReversals = lazy(() =>
 const SubledgersPanel = lazy(() =>
   import("@/components/subledgers/schedules").then((module) => ({
     default: module.SubledgersPanel,
+  })),
+);
+const ExchangeRateReviewsPanel = lazy(() =>
+  import("@/components/exchange-rates/panel").then((module) => ({
+    default: module.ExchangeRateReviewsPanel,
   })),
 );
 const SubledgerControlsPanel = lazy(() =>
@@ -281,6 +291,7 @@ export function AccountingWorkspace({
       {setup.data ? <BankReconciliation book={book} setup={setup.data} locale={locale} /> : null}
       {setup.data ? (
         <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
+          <BankSourceCoveragePanel key={JSON.stringify(bookKey(book))} book={book} locale={locale} />
           <BankMatchCandidatesPanel key={JSON.stringify(bookKey(book))} book={book} locale={locale} />
           <BankAllocations book={book} setup={setup.data} locale={locale} />
           <BankMatchReversals key={JSON.stringify(bookKey(book))} book={book} locale={locale} />
@@ -308,6 +319,7 @@ export function AccountingWorkspace({
         <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
           <SubledgersPanel book={book} setup={setup.data} locale={locale} onPrepared={setPlanId} />
           <SubledgerControlsPanel key={JSON.stringify(bookKey(book))} book={book} setup={setup.data} locale={locale} />
+          <ExchangeRateReviewsPanel book={book} locale={locale} />
         </Suspense>
       ) : null}
       {setup.data ? (

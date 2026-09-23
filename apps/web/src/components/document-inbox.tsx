@@ -157,7 +157,13 @@ export function DocumentInbox({
     </Box>
   );
 }
-function DocumentUpload({ onSaved }: { onSaved: (id: string) => void }) {
+export function DocumentUpload({
+  onSaved,
+  statement = false,
+}: {
+  onSaved: (id: string) => void;
+  statement?: boolean;
+}) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
@@ -165,10 +171,15 @@ function DocumentUpload({ onSaved }: { onSaved: (id: string) => void }) {
   const keys = useRef(new Map<string, string>());
   const [occurrenceKey] = useState(() => crypto.randomUUID());
   const [fileError, setFileError] = useState<string | null>(null);
+  const sizeLimit = statement ? 65536 : Sources.maxSourceBytes;
+  const fileHelp = statement
+    ? sv
+      ? "CSV i UTF-8, högst 64 kB och 200 rader."
+      : "UTF-8 CSV, up to 64 KB and 200 rows."
+    : labels.pdfImagesCsvTextJson;
   const upload = useMutation({
     mutationFn: async (file: File) => {
-      if (file.size === 0 || file.size > Sources.maxSourceBytes)
-        throw new Error(labels.chooseAFileBetween1);
+      if (file.size === 0 || file.size > sizeLimit) throw new Error(labels.chooseAFileBetween1);
       const bytes = new Uint8Array(await file.arrayBuffer());
       let binary = "";
       for (let offset = 0; offset < bytes.length; offset += 8192)
@@ -179,9 +190,11 @@ function DocumentUpload({ onSaved }: { onSaved: (id: string) => void }) {
         occurrenceKey,
         sourceRevision: "1",
         filename: file.name,
-        mediaType: Schema.is(Sources.SourceMediaType)(file.type)
-          ? file.type
-          : "application/octet-stream",
+        mediaType: file.name.toLowerCase().endsWith(".csv")
+          ? "text/csv"
+          : Schema.is(Sources.SourceMediaType)(file.type)
+            ? file.type
+            : "application/octet-stream",
         contentBase64: btoa(binary),
       });
       const path = `${bookPath(book)}/source-occurrences`;
@@ -192,7 +205,7 @@ function DocumentUpload({ onSaved }: { onSaved: (id: string) => void }) {
       );
     },
     onSuccess: (source) => {
-      void client.invalidateQueries({ queryKey: [...bookKey(book), "document-inbox"] });
+      void client.invalidateQueries({ queryKey: bookKey(book) });
       onSaved(source.id);
     },
   });
@@ -205,8 +218,13 @@ function DocumentUpload({ onSaved }: { onSaved: (id: string) => void }) {
         event.preventDefault();
         const file = new FormData(event.currentTarget).get("file");
         if (!(file instanceof File)) return;
-        if (file.size === 0 || file.size > Sources.maxSourceBytes || file.name.length > 200) {
-          setFileError(labels.chooseAFileBetween1);
+        if (
+          file.size === 0 ||
+          file.size > sizeLimit ||
+          file.name.length > 200 ||
+          (statement && !file.name.toLowerCase().endsWith(".csv"))
+        ) {
+          setFileError(fileHelp);
           return;
         }
         setFileError(null);
@@ -219,9 +237,9 @@ function DocumentUpload({ onSaved }: { onSaved: (id: string) => void }) {
         label={labels.document}
         required
         disabled={upload.isPending || upload.isError}
-        accept=".pdf,.png,.jpg,.jpeg,.csv,.txt,.json,.xml"
+        accept={statement ? ".csv" : ".pdf,.png,.jpg,.jpeg,.csv,.txt,.json,.xml"}
       />
-      <PageCaption>{fileError ?? labels.pdfImagesCsvTextJson}</PageCaption>
+      <PageCaption>{fileError ?? fileHelp}</PageCaption>
       <Box>
         <Button
           type={upload.isError ? "button" : "submit"}

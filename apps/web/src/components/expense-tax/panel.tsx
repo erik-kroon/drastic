@@ -1,14 +1,20 @@
 import { Plus, ArrowLeft } from "lucide-react";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { Badge } from "@open-erp/ui/components/badge";
-import { RecordHeading } from "@open-erp/ui/components/record-layout";
+import {
+  RecordHeading,
+  RecordSummary,
+  RecordFact,
+  RecordColumns,
+  RecordSection,
+} from "@open-erp/ui/components/record-layout";
 import {
   RegisterSearch,
   RecordToggle,
   PageEmpty,
   PageCaption,
 } from "@open-erp/ui/components/accounting-page";
-import { ExpenseEditor } from "./expense-editor";
+import { ExpenseEditor, ExpenseRevisionEditor } from "./expense-editor";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,7 +31,7 @@ import { EvidenceInspector } from "@/components/evidence-inspector";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { expenseTaxCopy } from "./copy";
-import { TaxReviewForm, TaxSourceForm } from "./forms";
+import { ExpenseReviewForm } from "./review-editor";
 import { TaxFactsTable, TaxSnapshotEntry } from "./views";
 
 type Props = {
@@ -204,34 +210,74 @@ function ExpenseTaxSourceDetail(props: Props & { sourceId: string; onChanged: ()
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <AccountingStatus locale={locale} pending={source.isPending} error={source.error} />
-      <Box>
-        <Button
-          size="xl"
-          variant="outline"
-          onClick={() => {
-            void source.refetch();
-          }}
-        >
-          {copy.refresh}
-        </Button>
-      </Box>
-      {view ? (
+      {view && !source.isError ? (
         <>
-          <Heading>{view.current.facts.description}</Heading>
-          <Text>
-            {view.current.sourceKey} · {view.current.digest}
-          </Text>
-          <Text>{view.reviewCurrent ? copy.currentReview : copy.staleReview}</Text>
-          <EvidenceInspector
-            book={book}
-            locale={locale}
-            reference={{
-              evidenceId: view.current.facts.evidenceId,
-              sha256: view.current.evidenceSha256,
-              locator: view.current.facts.sourceLocator,
-            }}
+          <RecordHeading
+            title={view.current.facts.description}
+            subtitle={
+              locale === "sv" ? "Utgift · underlag och granskning" : "Expense · source and review"
+            }
+            action={
+              <Box display="flex" gap="md">
+                <Button
+                  variant="outline"
+                  disabled={book.role !== "operator"}
+                  onClick={() => setEditor("source")}
+                >
+                  {locale === "sv" ? "Redigera uppgifter" : "Edit details"}
+                </Button>
+                <Button disabled={book.role !== "operator"} onClick={() => setEditor("review")}>
+                  {locale === "sv" ? "Granska moms" : "Review tax treatment"}
+                </Button>
+              </Box>
+            }
           />
-          <TaxFactsTable facts={view.current.facts} locale={locale} />
+          <RecordSummary>
+            <RecordFact label={locale === "sv" ? "Totalt" : "Total"}>
+              {expenseDisplayAmount(view.current, "grossMinor", locale)}
+            </RecordFact>
+            <RecordFact label={locale === "sv" ? "Moms" : "Tax"}>
+              {expenseDisplayAmount(view.current, "vatMinor", locale)}
+            </RecordFact>
+            <RecordFact label={locale === "sv" ? "Dokumentdatum" : "Document date"}>
+              {view.current.facts.issuedOn ?? "—"}
+            </RecordFact>
+            <RecordFact label="Status">
+              <Badge variant={view.reviewCurrent ? "secondary" : "warning"}>
+                {view.reviewCurrent
+                  ? locale === "sv"
+                    ? "Granskad"
+                    : "Reviewed"
+                  : locale === "sv"
+                    ? "Att granska"
+                    : "Needs review"}
+              </Badge>
+            </RecordFact>
+          </RecordSummary>
+          <RecordColumns>
+            <RecordSection title={locale === "sv" ? "Underlag" : "Source document"}>
+              <EvidenceInspector
+                book={book}
+                locale={locale}
+                expanded
+                compact
+                reference={{
+                  evidenceId: view.current.facts.evidenceId,
+                  sha256: view.current.evidenceSha256,
+                  locator: view.current.facts.sourceLocator,
+                }}
+              />
+            </RecordSection>
+            <RecordSection title={locale === "sv" ? "Uppgifter" : "Details"}>
+              <TaxFactsTable facts={view.current.facts} locale={locale} />
+              <PageCaption>
+                {locale === "sv"
+                  ? "Sparade uppgifter är inte en bokföring eller betalning."
+                  : "Saved details do not constitute a posting or payment."}
+              </PageCaption>
+              {view.latestReview ? <Text>{view.latestReview.facts.rationale}</Text> : null}
+            </RecordSection>
+          </RecordColumns>
           {view.current.facts.changeSetId ? (
             <Box>
               <Button
@@ -246,31 +292,31 @@ function ExpenseTaxSourceDetail(props: Props & { sourceId: string; onChanged: ()
               </Button>
             </Box>
           ) : null}
-          {!editor ? (
-            <Box display="flex" flexWrap="wrap" gap="md">
-              <Button size="xl" variant="outline" onClick={() => setEditor("source")}>
-                {copy.reviseSource}
-              </Button>
-              {book.role === "operator" ? (
-                <Button size="xl" onClick={() => setEditor("review")}>
-                  {copy.reviewSource}
-                </Button>
+          {editor ? (
+            <FormDialog
+              title={
+                editor === "source"
+                  ? locale === "sv"
+                    ? "Redigera utgift"
+                    : "Edit expense"
+                  : locale === "sv"
+                    ? "Granska moms"
+                    : "Review tax treatment"
+              }
+              closeLabel={copy.cancel}
+              onClose={() => setEditor(null)}
+            >
+              {editor === "source" ? (
+                <ExpenseRevisionEditor
+                  book={book}
+                  locale={locale}
+                  baseline={view.current}
+                  onSaved={saved}
+                />
               ) : (
-                <Text>{copy.operatorOnly}</Text>
+                <ExpenseReviewForm book={book} locale={locale} source={view} onSaved={saved} />
               )}
-            </Box>
-          ) : (
-            <Box>
-              <Button size="xl" variant="ghost" onClick={() => setEditor(null)}>
-                {copy.cancel}
-              </Button>
-            </Box>
-          )}
-          {editor === "source" ? (
-            <TaxSourceForm book={book} locale={locale} current={view.current} onSaved={saved} />
-          ) : null}
-          {editor === "review" ? (
-            <TaxReviewForm book={book} locale={locale} source={view} onSaved={saved} />
+            </FormDialog>
           ) : null}
           <details>
             <summary>{copy.history}</summary>
@@ -325,6 +371,17 @@ function ExpenseTaxSourceDetail(props: Props & { sourceId: string; onChanged: ()
     </Box>
   );
 }
+function expenseDisplayAmount(
+  source: typeof Tax.TaxSourceRevision.Type,
+  name: "grossMinor" | "vatMinor",
+  locale: Locale,
+) {
+  const amount = source.facts.amounts[name];
+  return amount !== null && source.facts.currencyScale !== null
+    ? `${formatMinorAmount(amount, source.facts.currencyScale, locale)} ${source.facts.currency ?? ""}`
+    : "—";
+}
+
 function ExpenseTaxSnapshots({ book, locale }: Pick<Props, "book" | "locale">) {
   const client = useQueryClient();
   const copy = expenseTaxCopy(locale);

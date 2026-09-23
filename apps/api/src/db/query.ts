@@ -15,10 +15,13 @@ import { registerReportStatements } from "./statements/register-report";
 import { sieStatements } from "./statements/sie";
 import { invoiceDraftStatements } from "./statements/invoice-draft";
 import { subledgerControlStatements } from "./statements/subledger-controls";
+import { exchangeRateStatements } from "./statements/exchange-rates";
 import { invoiceIssuanceStatements } from "./statements/invoice-issuance";
+import { invoiceDocumentStatements } from "./statements/invoice-documents";
 import { commerceAllocationReversalStatements } from "./statements/commerce-allocation-reversals";
 import { bankMatchReversalStatements } from "./statements/bank-match-reversals";
 import { bankMatchCandidateStatements } from "./statements/bank-match-candidates";
+import { bankSourceCoverageStatements } from "./statements/bank-source-coverage";
 
 const PostgresFailure = Schema.Struct({
   code: Schema.String,
@@ -47,6 +50,8 @@ const statements = {
     sql`select openerp.pending_preparation_jobs(${parameters[0]}::text) as result`,
   executePreparationJob: (parameters) =>
     sql`select openerp.execute_preparation_job(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::integer) as result`,
+  workspaceAttention: (parameters) =>
+    sql`select openerp.workspace_attention(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::jsonb) as result`,
   workspaceListWork: (parameters) =>
     sql`select openerp.workspace_list_work(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::jsonb) as result`,
   ownersCreateOwner: (parameters) =>
@@ -106,10 +111,13 @@ const statements = {
   ...sieStatements,
   ...invoiceDraftStatements,
   ...subledgerControlStatements,
+  ...exchangeRateStatements,
   ...invoiceIssuanceStatements,
+  ...invoiceDocumentStatements,
   ...commerceAllocationReversalStatements,
   ...bankMatchReversalStatements,
   ...bankMatchCandidateStatements,
+  ...bankSourceCoverageStatements,
   savePostingRequest: (parameters) =>
     sql`select openerp.save_posting_request(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   savePostingAuthorityRequest: (parameters) =>

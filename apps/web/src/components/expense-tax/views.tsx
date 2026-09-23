@@ -5,6 +5,7 @@ import { DataTable } from "@open-erp/ui/components/data-table";
 import { Text } from "@open-erp/ui/components/typography";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import type { Locale } from "@/paraglide/runtime";
+import { formatMinorAmount } from "@/lib/workspace-api";
 import { expenseTaxCopy } from "./copy";
 import { expenseTaxBlockers } from "./blockers";
 
@@ -16,36 +17,79 @@ export function TaxFactsTable({
   locale: Locale;
 }) {
   const copy = expenseTaxCopy(locale);
-  const labels = new Map(Object.entries({ ...copy, recordClass: copy.sourceClass }));
+  const sv = locale === "sv";
+  const scale = "currencyScale" in facts ? facts.currencyScale : null;
+  const currency = "currency" in facts ? facts.currency : "";
+  const amount = (value: string | null) =>
+    value !== null && scale !== null
+      ? `${formatMinorAmount(value, scale, locale)} ${currency ?? ""}`
+      : copy.unknown;
+  const labels = new Map(
+    Object.entries({
+      ...copy,
+      recordClass: copy.sourceClass,
+      supplierJurisdiction: sv ? "Leverantörsland" : "Supplier country",
+      supplyJurisdiction: sv ? "Leveransland" : "Supply country",
+      receivedOn: sv ? "Mottaget" : "Received",
+    }),
+  );
+  const visible =
+    "recordClass" in facts
+      ? ["supplierJurisdiction", "supplyJurisdiction", "receivedOn", "suppliedOn", "taxPointOn"]
+      : [
+          "rationale",
+          "registration",
+          "method",
+          "treatment",
+          "suppliedOn",
+          "taxPointOn",
+          "deductionBasis",
+        ];
   return (
-    <DataTable
-      title={copy.title}
-      narrow="stack"
-      columns={[
-        { id: "name", label: copy.description },
-        { id: "value", label: copy.value },
-      ]}
-      rows={[
-        { id: "gross", cells: [copy.gross, facts.amounts.grossMinor ?? copy.unknown] },
-        { id: "net", cells: [copy.net, facts.amounts.netMinor ?? copy.unknown] },
-        { id: "vat", cells: [copy.vat, facts.amounts.vatMinor ?? copy.unknown] },
-        ...Object.entries(facts)
-          .filter(([name]) => name !== "amounts")
-          .map(([name, value]) => ({
-            id: name,
-            cells: [
-              labels.get(name) ?? name,
-              value === null
-                ? copy.unknown
-                : typeof value === "string" || typeof value === "number"
-                  ? value
-                  : JSON.stringify(value),
-            ],
-          })),
-      ]}
-    />
+    <Box display="grid" gap="lg">
+      <DataTable
+        title={copy.title}
+        narrow="stack"
+        columns={[
+          { id: "name", label: copy.description },
+          { id: "value", label: copy.value },
+        ]}
+        rows={[
+          ...(scale !== null
+            ? [
+                { id: "gross", cells: [sv ? "Totalt" : "Total", amount(facts.amounts.grossMinor)] },
+                {
+                  id: "net",
+                  cells: [sv ? "Exkl. moms" : "Before tax", amount(facts.amounts.netMinor)],
+                },
+                { id: "vat", cells: [sv ? "Moms" : "Tax", amount(facts.amounts.vatMinor)] },
+              ]
+            : []),
+          ...Object.entries(facts)
+            .filter(([name]) => visible.includes(name))
+            .map(([name, value]) => ({
+              id: name,
+              cells: [
+                labels.get(name) ?? name,
+                value === null
+                  ? copy.unknown
+                  : typeof value === "string"
+                    ? value.replaceAll("_", " ")
+                    : JSON.stringify(value),
+              ],
+            })),
+        ]}
+      />
+      <details>
+        <summary>{sv ? "Tekniska uppgifter" : "Technical details"}</summary>
+        <Box paddingBlock="md">
+          <pre>{JSON.stringify(facts, null, 2)}</pre>
+        </Box>
+      </details>
+    </Box>
   );
 }
+
 export function TaxSnapshotEntry(props: {
   entry: (typeof Tax.TaxSnapshot.Type)["entries"][number];
   book: typeof Accounting.Book.Type;

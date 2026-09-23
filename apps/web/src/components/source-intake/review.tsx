@@ -6,6 +6,7 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { InputField } from "@open-erp/ui/components/field";
+import { formatMinorAmount } from "@/lib/workspace-api";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
@@ -78,8 +79,7 @@ export function PreviewReview(
   const saved = view?.admission ?? admission.data;
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
-      <Heading>{copy.previewId}</Heading>
-      <Text>{id}</Text>
+      <Heading>{locale === "sv" ? "Granska transaktionerna" : "Review transactions"}</Heading>
       <Box>
         <Button
           type="button"
@@ -153,7 +153,9 @@ export function PreviewReview(
             }))}
           />
           <Text>
-            {copy.movement}: {preview.movementMinor}
+            {copy.movement}:{" "}
+            {formatMinorAmount(preview.movementMinor, preview.mapping.currencyScale, locale)}{" "}
+            {preview.mapping.currency}
           </Text>
           <Text>
             {copy.fields}: {JSON.stringify(preview.records[0]?.fields ?? [])}
@@ -243,7 +245,7 @@ export function PreviewReview(
                   row.date,
                   row.description,
                   row.providerId ?? "—",
-                  row.amountMinor,
+                  formatMinorAmount(row.amountMinor, preview.mapping.currencyScale, locale),
                 ],
               }))}
           />

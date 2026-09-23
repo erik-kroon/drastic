@@ -56,3 +56,15 @@ export function decimalToMinor(value: string, scale: number): string | null {
   const minor = BigInt(whole) * 10n ** BigInt(scale) + BigInt(fraction.padEnd(scale, "0") || "0");
   return minor.toString().length <= 38 ? minor.toString() : null;
 }
+
+export function minorToDecimal(value: string, scale: number) {
+  const negative = value.startsWith("-");
+  const digits = (negative ? value.slice(1) : value).padStart(scale + 1, "0");
+  return `${negative ? "-" : ""}${scale ? `${digits.slice(0, -scale)}.${digits.slice(-scale)}` : digits}`;
+}
+export function signedDecimalToMinor(value: string, scale: number) {
+  const text = value.trim();
+  const negative = text.startsWith("-");
+  const amount = decimalToMinor(negative ? text.slice(1) : text, scale);
+  return amount === null ? null : negative && amount !== "0" ? `-${amount}` : amount;
+}
