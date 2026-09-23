@@ -4,19 +4,19 @@ Status: working decision, 2026-09-22. Selected frontend direction; implementatio
 
 ## Context
 
-OpenERP's current home selects a book and exposes many accounting sections in one workspace. The user requested a customer frontend plan for founders, in-house finance and accountants, using Accounted's frontend as the base. They selected better-layout in place of taste, alongside make-interfaces-feel-better and better-ui.
+OpenERP needs a customer workspace for founders, in-house finance and accountants. A single page of accounting sections provides weak entry hierarchy and makes repeated review harder. The interface needs task-based company navigation, a to-do home, structured review, account reconciliation and a firm portfolio.
 
-Accounted's inspected frontend contains task-based company navigation, a to-do home, structured review, account reconciliation and a firm cockpit. OpenERP already owns accounting operations and reusable UI primitives. Its immutable approvals, exact values, resource scope and durable receipts must remain the source of truth while customer composition changes.
+OpenERP already owns accounting operations and reusable UI primitives. Its immutable approvals, exact values, resource scope and durable receipts must remain the source of truth while customer composition changes.
 
 ## Decision
 
-Build one customer application with different preferred starting views and density. Founders start at an attention-oriented Overview; in-house finance starts at To do; authorized firm users can start at Clients and enter a specific company/book. All use the same record details, evidence, revisions, approvals and receipts.
+Build one customer application with different preferred starting views and density. The delivered company entry point is the To do home. A founder-oriented business overview and an authorized firm Clients view remain planned; users entering a company share its record interfaces. All use the same record details, evidence, revisions, approvals and receipts.
 
-Organize company navigation around Overview, To do, Banking, Sales, Purchases, Books and Reports. Use explicit entity/book routes and validated URL state for periods and list context. Preserve unsupported capability states and the current operation/recovery contracts. Retain `/intake` as the local preview surface during migration.
+Use grouped company navigation and a compact page frame: To do, Accounts, Invoicing, Purchases, Bookkeeping, Tax, Reports and Year-end. Expose destinations through established OpenERP operations; do not relabel a bank-only source importer as a purchase-document inbox. Use explicit entity/book routes and validated URL state for periods and list context. Preserve unsupported capability states and the current operation/recovery contracts. Retain `/intake` as the local preview surface during migration.
 
 Presentation preferences grant no authority. Real firm membership, assignments and shared views require backend contracts and persisted state. Production identity remains D-01. Queue summaries are read projections with declared coverage; they do not become a second financial state machine.
 
-Use the existing StyleX tokens and owned primitives. Introduce a reusable component only when a delivered journey needs it. Deliver focused review and receipt recovery inside the new frame first, then aggregate work, move domains, and add the firm layer. The [frontend plan](../frontend.md) owns detailed layout, route, state, migration and acceptance requirements.
+Build screens with existing StyleX tokens and owned primitives. Keep OpenERP’s existing palette and fonts. Introduce a reusable component only when a delivered journey needs it. Deliver focused review and receipt recovery inside the new frame first, then aggregate work, move domains, and add the firm layer. The [frontend plan](../frontend.md) owns detailed layout, route, state, migration and acceptance requirements.
 
 ## Alternatives considered
 
@@ -24,7 +24,6 @@ Use the existing StyleX tokens and owned primitives. Introduce a reusable compon
 | --- | --- | --- |
 | Continue with one page of accounting sections | Minimal routing work and all current tools remain visible | Weak entry hierarchy, limited deep linking, and too much context for a founder or repeated finance review |
 | Separate founder, finance and accountant applications | Each can optimize its own initial screen | Duplicates record presentation, recovery and permission-sensitive behavior; users regularly move between these responsibilities |
-| Port Accounted's frontend implementation | Broad existing screen coverage | Introduces another framework/component architecture and implies capabilities that OpenERP has not established |
 | One application with shared records and different entry views | Reuses owners while adapting hierarchy and density | Selected; requires an explicit migration and authoritative aggregate reads |
 
 ## Consequences
@@ -35,6 +34,6 @@ The work-list and firm views may require contracts/API work. The frontend must s
 
 ## Sources and proof
 
-The [frontend plan's design basis](../frontend.md#design-basis) links the inspected Accounted revision and the current OpenERP owners. The [operations contract](../operations.md#human-workbench) owns financial review semantics. [Frontend acceptance](../frontend.md#acceptance-and-verification) extends the presentation proof for those semantics with deep links, scoped caches, audience journeys, narrow widths, zoom, localization, both themes and recovery.
+The [frontend plan's design basis](../frontend.md#design-basis) defines the required surfaces and current OpenERP owners. The [operations contract](../operations.md#human-workbench) owns financial review semantics. [Frontend acceptance](../frontend.md#acceptance-and-verification) extends the presentation proof for those semantics with deep links, scoped caches, audience journeys, narrow widths, zoom, localization, both themes and recovery.
 
 No implementation or new test authorization follows from this decision. The implementing task must establish actual behavior and retain repeatable evidence under D-09 and the repository instructions.

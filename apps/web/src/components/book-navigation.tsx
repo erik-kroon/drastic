@@ -32,13 +32,17 @@ export function BookNavigation({
   return (
     <>
       <WorkspaceNavigation label={copy.todo} showLabel={false}>
-        <WorkspaceNavLink href={`${base}/`} active={home || reviewing}>
+        <WorkspaceNavLink href={`${base}/`} active={home || reviewing} current={home}>
           <CheckSquare size={15} strokeWidth={1.5} aria-hidden="true" />
           {copy.todo}
         </WorkspaceNavLink>
         {home || reviewing ? (
           <WorkspaceSubnavigation>
-            <WorkspaceNavLink href={`${base}/work`} active={reviewing}>
+            <WorkspaceNavLink
+              href={`${base}/work`}
+              active={reviewing}
+              current={pathname.endsWith("/work")}
+            >
               {copy.proposals}
             </WorkspaceNavLink>
           </WorkspaceSubnavigation>

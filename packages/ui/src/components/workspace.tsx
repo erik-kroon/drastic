@@ -61,6 +61,7 @@ const styles = stylex.create({
     textAlign: "start",
     width: "100%",
     "@media (pointer: coarse)": { minHeight: 44 },
+    "@media (max-width: 767px)": { minHeight: 44 },
   },
   navLink: {
     alignItems: "center",
@@ -97,7 +98,7 @@ const styles = stylex.create({
   },
   body: {
     minWidth: 0,
-    backgroundColor: tokens.background,
+    backgroundColor: tokens.card,
     borderRadius: tokens.radiusOverlay,
     borderWidth: 1,
     borderStyle: "solid",
@@ -133,7 +134,7 @@ const styles = stylex.create({
     position: "sticky",
     insetBlockStart: 0,
     zIndex: 10,
-    backgroundColor: tokens.background,
+    backgroundColor: tokens.card,
     borderBlockEndWidth: 1,
     borderBlockEndStyle: "solid",
     borderBlockEndColor: tokens.border,
@@ -497,12 +498,13 @@ export function WorkspaceHeader({ title, action }: { title: string; action?: Rea
 
 export function WorkspaceNavLink({
   active = false,
+  current = active,
   ...props
-}: ComponentProps<typeof Link> & { active?: boolean }) {
+}: ComponentProps<typeof Link> & { active?: boolean; current?: boolean }) {
   return (
     <Link
       {...props}
-      aria-current={active ? "page" : undefined}
+      aria-current={current ? "page" : undefined}
       {...stylex.props(styles.navItem, styles.navLink, active && styles.navActive)}
     />
   );
