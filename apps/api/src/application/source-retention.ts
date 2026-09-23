@@ -11,6 +11,11 @@ import {
 import { failure } from "./failures";
 import { query, scopeParameter } from "../db/query";
 
+const SourceUpload = Schema.Struct({
+  ...RetainedObject.fields,
+  completed: Schema.optional(Intake.SourceOccurrence),
+});
+
 const SourceStorage = Schema.Struct({
   ...Intake.SourceOccurrenceView.fields,
   contentBase64: Schema.NullOr(Schema.String),
@@ -49,7 +54,6 @@ export const retainSource = Effect.fn("Source.retain")(function* (
       Intake.SourceOccurrence,
     );
   }
-  const store = yield* objectStore;
   const metadata = {
     sourceSystem: input.sourceSystem,
     sourceAccountId: input.sourceAccountId,
@@ -63,8 +67,11 @@ export const retainSource = Effect.fn("Source.retain")(function* (
   const reference = yield* query(
     "beginSourceUpload",
     [token, scope, command.idempotencyKey, JSON.stringify(metadata)],
-    RetainedObject,
+    SourceUpload,
   );
+  // Replay returns the historical receipt, not a fresh object-availability claim.
+  if (reference.completed !== undefined) return reference.completed;
+  const store = yield* objectStore;
   yield* Effect.tryPromise({
     try: () => store.put(reference.objectKey, bytes),
     catch: () => failure("Unavailable"),

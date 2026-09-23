@@ -12,14 +12,19 @@ import {
   WorkspaceHeader,
   WorkspaceNavLink,
 } from "@open-erp/ui/components/workspace";
-import { PageContent, PageEmpty, PageCaption } from "@open-erp/ui/components/accounting-page";
+import {
+  PageContent,
+  PageEmpty,
+  PageCaption,
+  RegisterFilter,
+} from "@open-erp/ui/components/accounting-page";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@open-erp/ui/components/tabs";
 import { SignOut } from "@/components/accounting-access";
 import { AccountingStatus } from "@/components/accounting-status";
 import { LanguagePreference } from "@/components/book-workspace";
 import { readAccounting, type Books } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
-import { FirmForm } from "./form";
+import { formText, FirmForm } from "./form";
 import { FirmPortfolio } from "./portfolio";
 import { FirmTeam } from "./team";
 
@@ -66,11 +71,11 @@ export function FirmsWorkspace(props: {
       navigation={
         <>
           <WorkspaceNavLink href="/companies">
-            <Building2 size={16} />
+            <Building2 size={16} strokeWidth={1.5} />
             {sv ? "Företag" : "Companies"}
           </WorkspaceNavLink>
           <WorkspaceNavLink href="/firms" active>
-            <Users size={16} />
+            <Users size={16} strokeWidth={1.5} />
             {sv ? "Byrå" : "Firm"}
           </WorkspaceNavLink>
         </>
@@ -101,21 +106,13 @@ export function FirmsWorkspace(props: {
           </Button>
         ) : null}
         {known ? (
-          <Box display="flex" gap="md" alignItems="center" justifyContent="between">
-            {firms.data.length ? (
-              <SelectControl
-                aria-label={sv ? "Välj byrå" : "Choose firm"}
-                value={current ?? ""}
-                options={firms.data.map((firm) => ({ value: firm.id, label: firm.name }))}
-                onValueChange={(value) => props.onNavigate(value, "clients")}
-              />
-            ) : (
-              <span />
-            )}
-            <Button static variant="ghost" onClick={() => setCreating(true)}>
-              {sv ? "Skapa byrå" : "Create firm"}
-            </Button>
-          </Box>
+          <FirmPicker
+            firms={firms.data}
+            current={current}
+            locale={locale}
+            onSelect={(firmId) => props.onNavigate(firmId, "clients")}
+            onCreate={() => setCreating(true)}
+          />
         ) : null}
         {known && !current ? (
           <PageEmpty
@@ -139,7 +136,7 @@ export function FirmsWorkspace(props: {
           >
             <TabsList>
               <TabsTrigger value="clients">{sv ? "Klienter" : "Clients"}</TabsTrigger>
-              <TabsTrigger value="team">{sv ? "Team" : "Team"}</TabsTrigger>
+              <TabsTrigger value="team">Team</TabsTrigger>
             </TabsList>
             <TabsContent value="clients">
               <FirmPortfolio workspace={workspace.data} books={props.books} locale={locale} />
@@ -151,29 +148,67 @@ export function FirmsWorkspace(props: {
         ) : null}
       </PageContent>
       {creating ? (
-        <FirmForm
-          title={sv ? "Skapa byrå" : "Create firm"}
-          label={sv ? "Skapa byrå" : "Create firm"}
-          path="/api/v1/firms"
-          schema={Firms.CreateFirm}
-          input={(fields) => ({ name: String(fields.get("name")).trim() })}
+        <CreateFirmDialog
           locale={locale}
           onClose={() => setCreating(false)}
-          onSaved={(result) => props.onNavigate(result.firmId, "clients")}
-        >
-          <InputField
-            name="name"
-            label={sv ? "Byråns namn" : "Firm name"}
-            required
-            maxLength={100}
-          />
-          <PageCaption>
-            {sv
-              ? "Du blir administratör och kan lägga till befintliga klienter och kollegor."
-              : "You'll be the administrator and can add existing clients and colleagues."}
-          </PageCaption>
-        </FirmForm>
+          onSaved={(firmId) => props.onNavigate(firmId, "clients")}
+        />
       ) : null}
     </Workspace>
+  );
+}
+
+function FirmPicker(props: {
+  firms: typeof Firms.FirmList.Type;
+  current?: string;
+  locale: Locale;
+  onSelect: (id: string) => void;
+  onCreate: () => void;
+}) {
+  const sv = props.locale === "sv";
+  return (
+    <Box display="flex" gap="md" alignItems="center" justifyContent="between">
+      {props.firms.length ? (
+        <RegisterFilter>
+          <SelectControl
+            aria-label={sv ? "Välj byrå" : "Choose firm"}
+            value={props.current ?? ""}
+            options={props.firms.map((firm) => ({ value: firm.id, label: firm.name }))}
+            onValueChange={(value) => {
+              if (value) props.onSelect(value);
+            }}
+          />
+        </RegisterFilter>
+      ) : null}
+      <Button static variant="ghost" onClick={props.onCreate}>
+        {sv ? "Skapa byrå" : "Create firm"}
+      </Button>
+    </Box>
+  );
+}
+function CreateFirmDialog(props: {
+  locale: Locale;
+  onClose: () => void;
+  onSaved: (firmId: string) => void;
+}) {
+  const sv = props.locale === "sv";
+  return (
+    <FirmForm
+      title={sv ? "Skapa byrå" : "Create firm"}
+      label={sv ? "Skapa byrå" : "Create firm"}
+      path="/api/v1/firms"
+      schema={Firms.CreateFirm}
+      input={(fields) => ({ name: formText(fields, "name").trim() })}
+      locale={props.locale}
+      onClose={props.onClose}
+      onSaved={(result) => props.onSaved(result.firmId)}
+    >
+      <InputField name="name" label={sv ? "Byråns namn" : "Firm name"} required maxLength={100} />
+      <PageCaption>
+        {sv
+          ? "Du blir administratör och kan lägga till befintliga klienter och kollegor."
+          : "You'll be the administrator and can add existing clients and colleagues."}
+      </PageCaption>
+    </FirmForm>
   );
 }

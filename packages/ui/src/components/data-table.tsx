@@ -7,9 +7,11 @@ export function DataTable({
   columns,
   rows,
   narrow,
+  minWidth,
 }: {
   title: string;
   narrow?: "scroll" | "stack";
+  minWidth?: "standard" | "wide";
   columns: { id: string; label: string; numeric?: boolean }[];
   rows: { id: string; cells: ReactNode[] }[];
 }) {
@@ -17,6 +19,7 @@ export function DataTable({
     <DataGrid<{ id: string; cells: ReactNode[] }>
       title={title}
       narrow={narrow}
+      minWidth={minWidth}
       rows={rows}
       getRowId={(row) => row.id}
       columns={columns.map((column, index) => ({ ...column, cell: (row) => row.cells[index] }))}

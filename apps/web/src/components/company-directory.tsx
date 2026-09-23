@@ -54,11 +54,14 @@ export function CompanyDirectory({ books, locale }: { books: typeof Books.Type; 
       brand={<WorkspaceBrand icon={<BookOpen size={20} strokeWidth={1.5} />} name="OpenERP" />}
       navigation={
         <>
-        <WorkspaceNavLink href="/companies" active>
-          <Building2 size={16} />
-          {copy.companies}
-        </WorkspaceNavLink>
-        <WorkspaceNavLink href="/firms"><Users size={16}/>{sv ? "Byrå" : "Firm"}</WorkspaceNavLink>
+          <WorkspaceNavLink href="/companies" active>
+            <Building2 size={16} />
+            {copy.companies}
+          </WorkspaceNavLink>
+          <WorkspaceNavLink href="/firms">
+            <Users size={16} />
+            {sv ? "Byrå" : "Firm"}
+          </WorkspaceNavLink>
         </>
       }
       footer={

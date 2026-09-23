@@ -12,6 +12,8 @@ Content is immutable book-scoped bytes keyed by SHA-256. Occurrence identity is 
 
 The object-store extension, pending upload reconciliation, coordinated recovery and unverified hosted gates are described in [Cloudflare delivery](../../docs/operations/cloudflare.md). Migration `0910-retained-source-objects.sql` extends the content representation and guards the bounded CSV functions. Tests for this extension were skipped at the user's request. Live verification still requires an authenticated staging environment.
 
+Forward migration `2700-source-upload-replay.sql` lets the internal upload admission return an optional completed occurrence alongside its existing object-reference fields. The workflow still validates canonical input bytes and computes their SHA-256 first. After current authorization, the book lock and exact-command replay validation, a completed retry returns the saved occurrence/receipt without acquiring or reading/writing object storage. Pending uploads retain intent/actor validation, conditional upload, byte-length/hash readback and separately authorized completion. This returns a historical receipt; it does not establish current object availability. Public contracts and download verification are unchanged. Migration0910 remains unchanged. This repair has only been source-reviewed; no checks, tests, migration application or runtime verification were performed.
+
 ## Risks and acceptance cases before implementation
 
 - Identical byte content under two distinct declared occurrences remains two provenance records; retrying the same occurrence with changed content or metadata fails, and retrying admission cannot duplicate observations.

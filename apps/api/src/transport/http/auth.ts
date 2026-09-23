@@ -36,7 +36,7 @@ export const authenticate = Effect.gen(function* () {
   const { bindings } = yield* RequestEnvironment;
   return yield* Effect.scoped(
     Effect.gen(function* () {
-      const auth = yield* makeAuth(bindings);
+      const auth = yield* makeAuth(bindings, false);
       const session = yield* Effect.tryPromise({
         try: () =>
           auth.api.getSession({

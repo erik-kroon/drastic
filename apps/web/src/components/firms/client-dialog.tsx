@@ -75,26 +75,7 @@ export function ClientDialog(props: {
           }))}
         />
       ) : null}
-      {client ? (
-        <SelectField
-          name="lead"
-          label={sv ? "Klientansvarig" : "Responsible accountant"}
-          defaultValue={client.leadAvailable ? (client.leadId ?? "") : ""}
-          options={[
-            { value: "", label: sv ? "Ingen ansvarig" : "Unassigned" },
-            ...workspace.members
-              .filter((member) => client.eligibleLeadIds.includes(member.actorId))
-              .map((member) => ({ value: member.actorId, label: member.name })),
-          ]}
-        />
-      ) : null}
-      {client?.leadId && !client.leadAvailable ? (
-        <PageCaption>
-          {sv
-            ? "Tidigare ansvarig saknar nu behörighet. Välj en ny ansvarig."
-            : "The previous accountant no longer has access. Choose a new responsible person."}
-        </PageCaption>
-      ) : null}
+      {client ? <ClientLeadFields client={client} workspace={workspace} locale={locale} /> : null}
       <InputField
         name="review"
         type="date"
@@ -113,7 +94,7 @@ export function ClientDialog(props: {
           ? "Anteckningen delas med byråmedlemmar som har åtkomst till företagets bokföring."
           : "Shared with firm members who have access to this company's books."}
       </PageCaption>
-      {client ? (
+      {client && workspace.firm.role === "admin" ? (
         <Button type="button" static variant="ghost" onClick={() => setRemoving(true)}>
           {sv ? "Ta bort klientkoppling…" : "Unlink client…"}
         </Button>
@@ -125,5 +106,39 @@ export function ClientDialog(props: {
         </PageCaption>
       )}
     </FirmForm>
+  );
+}
+
+function ClientLeadFields({
+  client,
+  workspace,
+  locale,
+}: {
+  client: typeof Firms.Client.Type;
+  workspace: typeof Firms.Workspace.Type;
+  locale: Locale;
+}) {
+  const sv = locale === "sv";
+  return (
+    <>
+      <SelectField
+        name="lead"
+        label={sv ? "Klientansvarig" : "Responsible accountant"}
+        defaultValue={client.leadAvailable ? (client.leadId ?? "") : ""}
+        options={[
+          { value: "", label: sv ? "Ingen ansvarig" : "Unassigned" },
+          ...workspace.members
+            .filter((member) => client.eligibleLeadIds.includes(member.actorId))
+            .map((member) => ({ value: member.actorId, label: member.name })),
+        ]}
+      />
+      {client.leadId && !client.leadAvailable ? (
+        <PageCaption>
+          {sv
+            ? "Tidigare ansvarig saknar nu behörighet. Välj en ny ansvarig."
+            : "The previous accountant no longer has access. Choose a new responsible person."}
+        </PageCaption>
+      ) : null}
+    </>
   );
 }

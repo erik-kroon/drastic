@@ -54,6 +54,14 @@ export function mutationOptions(
   return { method: "POST", body, headers: { "Idempotency-Key": key } };
 }
 
+export function isUncertainWriteError(error: Error | null) {
+  return error !== null && (
+    !(error instanceof Accounting.AccountingError) ||
+    error.code === "Unavailable" ||
+    error.code === "InternalError"
+  );
+}
+
 export function requiresNewProposal(error: Error | null) {
   return (
     error instanceof Accounting.AccountingError &&

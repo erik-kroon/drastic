@@ -11,7 +11,7 @@ import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { PreparationSelection } from "@/components/preparation-selection";
 import { PreparationBackground } from "@/components/preparation-background";
-import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, isUncertainWriteError, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
@@ -44,6 +44,8 @@ export function PreparationRunPanel({
       return result;
     },
     retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
     refetchInterval: (query) => (query.state.data?.state === "ready" ? 3000 : false),
   });
   const state = {
@@ -52,7 +54,7 @@ export function PreparationRunPanel({
     cancelled: copy.auto_cancelled,
     completed: copy.auto_completed,
   };
-  const readReady = run.isSuccess && !run.isFetching;
+  const readReady = run.isSuccess && run.fetchStatus === "idle" && run.isFetchedAfterMount;
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.auto_run}</Heading>
@@ -175,11 +177,12 @@ function RunCommands({
         mutationOptions(path, JSON.stringify(payload), keys.current),
       );
     },
-    onSuccess: (result) => {
-      client.setQueryData([...bookKey(book), "preparation-run", run.id], result);
+    onSuccess: async () => {
       // A confirmed response ends this command; the next bounded step needs a new key.
       keys.current.clear();
-      return client.invalidateQueries({ queryKey: [...bookKey(book), "preparation-run", run.id] });
+      const queryKey = [...bookKey(book), "preparation-run", run.id];
+      await client.cancelQueries({ queryKey, exact: true });
+      return client.invalidateQueries({ queryKey, exact: true });
     },
     onError: (error) => {
       if (error instanceof Accounting.AccountingError)
@@ -198,7 +201,7 @@ function RunCommands({
     setInputError("");
     command.mutate(decoded.value);
   }
-  const uncertain = command.isError && !(command.error instanceof Accounting.AccountingError);
+  const uncertain = command.isError && isUncertainWriteError(command.error);
   const disabled = !readReady || command.isPending || uncertain;
   return (
     <Box display="grid" gap="lg">

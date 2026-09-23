@@ -11,6 +11,7 @@ export function oidcPlugin(config: {
       {
         providerId: config.providerId,
         name: "Organization sign-in",
+        accountSubject: ({ profile }) => profile.sub ?? "",
         discoveryUrl: `${config.issuer.replace(/\/$/, "")}/.well-known/openid-configuration`,
         clientId: config.clientId,
         clientSecret: config.clientSecret,

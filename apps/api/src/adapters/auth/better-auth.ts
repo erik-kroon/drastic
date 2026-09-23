@@ -10,7 +10,7 @@ import { type Bindings } from "../../runtime/environment";
 import { acquirePostgres } from "../../db/connection";
 import * as schema from "../../db/auth-schema";
 
-export function makeAuth(bindings: Bindings) {
+export function makeAuth(bindings: Bindings, includeProviders = true) {
   return Effect.gen(function* () {
     const connectionString = bindings.HYPERDRIVE?.connectionString || bindings.DATABASE_URL;
     const secret = bindings.BETTER_AUTH_SECRET;
@@ -44,7 +44,7 @@ export function makeAuth(bindings: Bindings) {
         disableSignUp: true,
         minPasswordLength: 12,
       },
-      plugins: config.provider ? [oidcPlugin(config.provider)] : [],
+      plugins: config.provider && includeProviders ? [oidcPlugin(config.provider)] : [],
       account: {
         accountLinking: { enabled: false, disableImplicitLinking: true },
         updateAccountOnSignIn: false,

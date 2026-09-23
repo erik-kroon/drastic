@@ -8,7 +8,13 @@ import { Link } from "@open-erp/ui/components/link";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { SelectControl } from "@open-erp/ui/components/select";
 import { RecordHeading } from "@open-erp/ui/components/record-layout";
-import { PageCaption, PageEmpty, RegisterSearch } from "@open-erp/ui/components/accounting-page";
+import {
+  PageCaption,
+  PageEmpty,
+  RegisterSearch,
+  RegisterFilter,
+} from "@open-erp/ui/components/accounting-page";
+import { ClientPeriod } from "./client-period";
 import { ClientDialog } from "./client-dialog";
 import { attentionQueryOptions } from "@/lib/attention";
 import { workspacePath } from "@/lib/book-context";
@@ -27,11 +33,12 @@ export function FirmPortfolio(props: {
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<{ client: typeof Firms.Client.Type | null } | null>(null);
   const today = new Intl.DateTimeFormat("sv-SE").format(new Date());
+
   const filtered = workspace.clients.filter(
     (client) =>
       client.book.name.toLocaleLowerCase(locale).includes(search.toLocaleLowerCase(locale)) &&
       (view !== "mine" || (client.leadAvailable && client.leadId === workspace.actorId)) &&
-      (view !== "due" || (client.nextReviewOn !== null && client.nextReviewOn <= today)) &&
+      (view !== "due" || isReviewDue(client, today)) &&
       (view !== "unassigned" || !client.leadAvailable),
   );
   const sorted = [...filtered].sort(
@@ -77,27 +84,31 @@ export function FirmPortfolio(props: {
             setPage(0);
           }}
         />
-        <SelectControl
-          aria-label={sv ? "Visa klienter" : "Client view"}
-          value={view}
-          onValueChange={(value) => {
-            setView(value);
-            setPage(0);
-          }}
-          options={[
-            { value: "all", label: sv ? "Alla mina klienter" : "All accessible clients" },
-            { value: "mine", label: sv ? "Jag är ansvarig" : "Assigned to me" },
-            { value: "due", label: sv ? "Dags för avstämning" : "Review due" },
-            { value: "unassigned", label: sv ? "Saknar ansvarig" : "Unassigned" },
-          ]}
-        />
+        <RegisterFilter>
+          <SelectControl
+            aria-label={sv ? "Visa klienter" : "Client view"}
+            value={view}
+            onValueChange={(value) => {
+              setView(value ?? "all");
+              setPage(0);
+            }}
+            options={[
+              { value: "all", label: sv ? "Alla mina klienter" : "All accessible clients" },
+              { value: "mine", label: sv ? "Jag är ansvarig" : "Assigned to me" },
+              { value: "due", label: sv ? "Dags för avstämning" : "Review due" },
+              { value: "unassigned", label: sv ? "Saknar ansvarig" : "Unassigned" },
+            ]}
+          />
+        </RegisterFilter>
       </Box>
       {visible.length ? (
         <DataTable
           title={sv ? "Klientlista" : "Client portfolio"}
-          narrow="stack"
+          narrow="scroll"
+          minWidth="wide"
           columns={[
             { id: "company", label: sv ? "Företag" : "Company" },
+            { id: "period", label: sv ? "Senaste period" : "Latest period" },
             { id: "lead", label: sv ? "Klientansvarig" : "Responsible accountant" },
             { id: "review", label: sv ? "Nästa avstämning" : "Next review" },
             { id: "work", label: sv ? "Att granska" : "To review", numeric: true },
@@ -106,7 +117,7 @@ export function FirmPortfolio(props: {
           rows={visible.map((client, index) => {
             const tasks = work[index];
             const lead = workspace.members.find((member) => member.actorId === client.leadId);
-            const manage = workspace.firm.role === "admin" && client.book.role === "operator";
+            const manage = client.book.role === "operator";
             return {
               id: client.book.id,
               cells: [
@@ -114,11 +125,12 @@ export function FirmPortfolio(props: {
                   <Link href={`${workspacePath(client.book)}/overview`}>{client.book.name}</Link>
                   <PageCaption>{client.book.currency}</PageCaption>
                 </Box>,
+                <ClientPeriod key="period" book={client.book} locale={locale} />,
                 client.leadAvailable ? lead?.name : sv ? "Ingen ansvarig" : "Unassigned",
                 client.nextReviewOn ? (
                   <Box key="date" display="grid" gap="sm">
                     <span>{client.nextReviewOn}</span>
-                    {client.nextReviewOn <= today ? (
+                    {isReviewDue(client, today) ? (
                       <Badge variant="secondary">{sv ? "Dags för avstämning" : "Review due"}</Badge>
                     ) : null}
                   </Box>
@@ -126,9 +138,18 @@ export function FirmPortfolio(props: {
                   "—"
                 ),
                 tasks?.isSuccess ? (
-                  <Link key="work" href={`${workspacePath(client.book)}/work?status=open`}>
-                    {tasks.data.counts.open}
-                  </Link>
+                  <Box key="work" display="grid" gap="sm" alignItems="end">
+                    <Link href={`${workspacePath(client.book)}/work?status=open`}>
+                      {tasks.data.counts.open}
+                    </Link>
+                    <PageCaption>
+                      {sv ? "Läst" : "Checked"}{" "}
+                      {new Intl.DateTimeFormat(locale, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }).format(new Date(tasks.data.checkedAt))}
+                    </PageCaption>
+                  </Box>
                 ) : tasks?.isError ? (
                   sv ? (
                     "Ej tillgängligt"
@@ -157,26 +178,7 @@ export function FirmPortfolio(props: {
           })}
         />
       ) : (
-        <PageEmpty
-          title={
-            workspace.clients.length
-              ? sv
-                ? "Inga matchande klienter"
-                : "No matching clients"
-              : sv
-                ? "Din klientlista börjar här"
-                : "Your client list starts here"
-          }
-          detail={
-            workspace.clients.length
-              ? sv
-                ? "Prova ett annat namn eller en annan vy."
-                : "Try another name or client view."
-              : sv
-                ? "Lägg till ett företag som du har tillgång till. Klientansvarig, avstämningsdatum och anteckningar samlas här."
-                : "Link a company you can access. Its responsible accountant, review date and shared notes will live here."
-          }
-        />
+        <EmptyPortfolio sv={sv} hasClients={workspace.clients.length > 0} />
       )}
       {sorted.length > 10 ? (
         <Box display="flex" gap="md" alignItems="center">
@@ -209,5 +211,34 @@ export function FirmPortfolio(props: {
         <ClientDialog {...props} client={editing.client} onClose={() => setEditing(null)} />
       ) : null}
     </Box>
+  );
+}
+
+function isReviewDue(client: typeof Firms.Client.Type, today: string) {
+  return client.nextReviewOn !== null && client.nextReviewOn <= today;
+}
+
+function EmptyPortfolio({ sv, hasClients }: { sv: boolean; hasClients: boolean }) {
+  return (
+    <PageEmpty
+      title={
+        hasClients
+          ? sv
+            ? "Inga matchande klienter"
+            : "No matching clients"
+          : sv
+            ? "Din klientlista börjar här"
+            : "Your client list starts here"
+      }
+      detail={
+        hasClients
+          ? sv
+            ? "Prova ett annat namn eller en annan vy."
+            : "Try another name or client view."
+          : sv
+            ? "Byråns kopplade företag visas här när du har åtkomst till deras bokföring. En administratör kan koppla befintliga företag."
+            : "Your firm's linked companies appear here once you have access to their books. An administrator can link existing companies."
+      }
+    />
   );
 }

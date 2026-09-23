@@ -5,7 +5,13 @@ import * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
 import { IdentityProvisioning } from "@open-erp/contracts/identity";
 import { Database, databaseLayer } from "../src/db/connection";
-import { actors, books, memberships, identityProvisioningReceipts } from "../src/db/schema";
+import {
+  actors,
+  books,
+  memberships,
+  identityAdmissions,
+  identityProvisioningReceipts,
+} from "../src/db/schema";
 import { account, session, user } from "../src/db/auth-schema";
 import { oidcProviderId } from "../src/adapters/auth/configuration";
 
@@ -15,7 +21,7 @@ class IdentitySetupError extends Schema.TaggedError<IdentitySetupError>()("Ident
 const [mode, path] = process.argv.slice(2);
 if ((mode !== "plan" && mode !== "apply") || !path || process.argv.length !== 4)
   throw new Error("Usage: bun scripts/provision-identity.ts plan|apply <reviewed-manifest.json>");
-const manifest = Schema.decodeUnknownSync(Schema.fromJsonString(IdentityProvisioning))(
+const manifest = Schema.decodeSync(Schema.fromJsonString(IdentityProvisioning))(
   await readFile(path, "utf8"),
   { onExcessProperty: "error" },
 );
@@ -76,8 +82,10 @@ if (mode === "plan") {
             .where(eq(identityProvisioningReceipts.requestId, manifest.requestId));
           if (prior) {
             const matches =
-              Schema.encodeSync(Schema.fromJsonString(IdentityProvisioning))(prior.manifest) ===
-              Schema.encodeSync(Schema.fromJsonString(IdentityProvisioning))(manifest);
+              (yield* Schema.encodeEffect(Schema.fromJsonString(IdentityProvisioning))(
+                prior.manifest,
+              )) ===
+              (yield* Schema.encodeEffect(Schema.fromJsonString(IdentityProvisioning))(manifest));
             if (!matches)
               return yield* new IdentitySetupError({
                 message: "Request ID already used with different details.",
@@ -91,14 +99,12 @@ if (mode === "plan") {
                 "Existing actor has a different email. Identity remapping requires a separate reviewed migration.",
             });
           if (!human)
-            yield* tx
-              .insert(user)
-              .values({
-                id: manifest.actorId,
-                name: manifest.name,
-                email: manifest.email,
-                emailVerified: false,
-              });
+            yield* tx.insert(user).values({
+              id: manifest.actorId,
+              name: manifest.name,
+              email: manifest.email,
+              emailVerified: false,
+            });
           const [binding] = yield* tx
             .select()
             .from(account)
@@ -126,18 +132,36 @@ if (mode === "plan") {
             });
           // Revoke sessions first: admission holds session before book membership locks.
           yield* tx.delete(session).where(eq(session.userId, manifest.actorId));
-          if (!manifest.enabled) {
-            yield* tx.delete(account).where(eq(account.userId, manifest.actorId));
-          } else if (!binding) {
+          const [admission] = yield* tx
+            .select()
+            .from(identityAdmissions)
+            .where(eq(identityAdmissions.actorId, manifest.actorId));
+          if (
+            admission &&
+            (admission.providerId !== providerId || admission.subject !== manifest.subject)
+          )
+            return yield* new IdentitySetupError({
+              message: "The actor already has a different immutable identity admission.",
+            });
+          if (admission)
             yield* tx
-              .insert(account)
-              .values({
-                id: crypto.randomUUID(),
-                providerId,
-                accountId: manifest.subject,
-                userId: manifest.actorId,
-              });
-          }
+              .update(identityAdmissions)
+              .set({ enabled: manifest.enabled })
+              .where(eq(identityAdmissions.actorId, manifest.actorId));
+          else
+            yield* tx.insert(identityAdmissions).values({
+              actorId: manifest.actorId,
+              providerId,
+              subject: manifest.subject,
+              enabled: manifest.enabled,
+            });
+          if (!binding)
+            yield* tx.insert(account).values({
+              id: crypto.randomUUID(),
+              providerId,
+              accountId: manifest.subject,
+              userId: manifest.actorId,
+            });
           for (const grant of [...manifest.grants].sort((a, b) =>
             a.scope.bookId.localeCompare(b.scope.bookId),
           )) {
@@ -164,13 +188,11 @@ if (mode === "plan") {
             if (grant.role === null) yield* tx.delete(memberships).where(where);
             else if (current) yield* tx.update(memberships).set({ role: grant.role }).where(where);
             else
-              yield* tx
-                .insert(memberships)
-                .values({
-                  actorId: manifest.actorId,
-                  bookId: grant.scope.bookId,
-                  role: grant.role,
-                });
+              yield* tx.insert(memberships).values({
+                actorId: manifest.actorId,
+                bookId: grant.scope.bookId,
+                role: grant.role,
+              });
           }
           yield* tx
             .insert(identityProvisioningReceipts)

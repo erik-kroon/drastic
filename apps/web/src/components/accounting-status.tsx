@@ -2,6 +2,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
 import { Text } from "@open-erp/ui/components/typography";
 import { accountingCopy } from "@/lib/accounting-copy";
+import { isUncertainWriteError } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 
 export function AccountingStatus({
@@ -28,6 +29,9 @@ export function AccountingStatus({
               ? copy.journal_uncertain
               : copy.journal_read_error}
         </Text>
+      ) : null}
+      {write && error instanceof Accounting.AccountingError && isUncertainWriteError(error) ? (
+        <Text>{copy.journal_uncertain}</Text>
       ) : null}
     </Box>
   );

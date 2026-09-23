@@ -7,7 +7,7 @@ import { DataTable } from "@open-erp/ui/components/data-table";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { RecordHeading } from "@open-erp/ui/components/record-layout";
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
-import { FirmForm } from "./form";
+import { formText, FirmForm } from "./form";
 import type { Locale } from "@/paraglide/runtime";
 
 export function FirmTeam({
@@ -39,7 +39,7 @@ export function FirmTeam({
       />
       <DataTable
         title={sv ? "Byråteam" : "Firm team"}
-        narrow="stack"
+        narrow="scroll"
         columns={[
           { id: "name", label: sv ? "Namn" : "Name" },
           { id: "role", label: sv ? "Byråroll" : "Firm role" },
@@ -64,7 +64,17 @@ export function FirmTeam({
                 ? "Redovisningskonsult"
                 : "Accountant",
             <Badge key="status" variant="secondary">
-              {member.active ? (sv ? "Aktiv" : "Active") : sv ? "Borttagen" : "Removed"}
+              {!member.signInEnabled
+                ? sv
+                  ? "Inloggning spärrad"
+                  : "Sign-in disabled"
+                : member.active
+                  ? sv
+                    ? "Aktiv"
+                    : "Active"
+                  : sv
+                    ? "Borttagen"
+                    : "Removed"}
             </Badge>,
             admin ? (
               <Button key="edit" static variant="ghost" onClick={() => setEditing({ member })}>
@@ -90,7 +100,7 @@ export function FirmTeam({
           locale={locale}
           onClose={() => setEditing(null)}
           input={(fields) => ({
-            email: editing.member?.email ?? String(fields.get("email")).trim().toLowerCase(),
+            email: editing.member?.email ?? formText(fields, "email").trim().toLowerCase(),
             role: fields.get("role"),
             active: fields.get("active") === "true",
             expectedRevision: editing.member?.revision ?? 0,

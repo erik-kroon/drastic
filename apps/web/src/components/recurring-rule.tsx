@@ -612,8 +612,10 @@ function CreateRun(props: {
         mutationOptions(path, JSON.stringify(payload), keys.current),
       );
     },
-    onSuccess: (result) => {
-      client.setQueryData([...bookKey(book), "preparation-run", result.id], result);
+    onSuccess: async (result) => {
+      const queryKey = [...bookKey(book), "preparation-run", result.id];
+      await client.cancelQueries({ queryKey, exact: true });
+      void client.invalidateQueries({ queryKey, exact: true });
       props.onCreated(result.id);
     },
   });

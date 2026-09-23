@@ -83,12 +83,10 @@ export function BankImport({
         mutationOptions(path, JSON.stringify(payload), keys.current),
       );
     },
-    onSuccess: (receipt) => {
-      client.setQueryData([...bookKey(book), "bank-statement", receipt.statement.id], {
-        statement: receipt.statement,
-        matches: receipt.matches,
-        checkpoint: receipt.checkpoint,
-      });
+    onSuccess: async (receipt) => {
+      const statementKey = [...bookKey(book), "bank-statement", receipt.statement.id];
+      await client.cancelQueries({ queryKey: statementKey, exact: true });
+      void client.invalidateQueries({ queryKey: statementKey, exact: true });
       void client.invalidateQueries({ queryKey: [...bookKey(book), "bank-reconciliation"] });
       onImported(receipt.statement.id);
     },

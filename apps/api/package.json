@@ -8,6 +8,7 @@
     "build": "wrangler deploy --dry-run --outdir dist",
     "db:migrate": "bun scripts/migrate.ts",
     "db:create-user": "bun scripts/create-user.ts",
+    "db:provision-identity": "bun scripts/provision-identity.ts",
     "db:provision": "bun scripts/provision.ts",
     "check-types": "tsc --noEmit && tsc --project scripts/tsconfig.json --noEmit",
     "dev": "wrangler dev src/index.ts --port 8788"

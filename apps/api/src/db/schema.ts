@@ -87,3 +87,10 @@ export const identityProvisioningReceipts = openerp.table("identity_provisioning
   requestId: text("request_id").primaryKey(),
   manifest: jsonb("manifest").$type<typeof IdentityProvisioning.Type>().notNull(),
 });
+
+export const identityAdmissions = openerp.table("identity_admissions", {
+  actorId: text("actor_id").primaryKey(),
+  providerId: text("provider_id").notNull(),
+  subject: text().notNull(),
+  enabled: boolean().notNull(),
+});

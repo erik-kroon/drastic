@@ -17,6 +17,7 @@ export const Member = Schema.Struct({
   email: Schema.String,
   role: FirmRole,
   active: Schema.Boolean,
+  signInEnabled: Schema.Boolean,
   revision: Revision,
 });
 export const Client = Schema.Struct({
@@ -80,7 +81,7 @@ export const FirmCapabilities = {
   },
   firm_save_client: {
     description:
-      "Link a client or update its responsible accountant, review date and note. Requires firm admin and book operator authority, and the current revision.",
+      "Link a client or update its responsible accountant, review date and note. Requires book operator authority and the current revision. Linking a new client also requires firm admin authority.",
     input: Schema.Struct({ ...command, input: SaveClient }),
     output: CommandResult,
     readOnly: false,
@@ -136,4 +137,7 @@ export const FirmApi = HttpApiGroup.make("firms").add(
   }),
 );
 
-export const FirmSearch = Schema.Struct({firm: Schema.optional(Accounting.Identifier), tab: Schema.optional(Schema.Literals(["clients", "team"]))});
+export const FirmSearch = Schema.Struct({
+  firm: Schema.optional(Accounting.Identifier),
+  tab: Schema.optional(Schema.Literals(["clients", "team"])),
+});

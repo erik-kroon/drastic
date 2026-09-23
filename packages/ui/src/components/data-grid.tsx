@@ -16,6 +16,7 @@ const styles = stylex.create({
   },
   table: { borderCollapse: "collapse", width: "100%", fontSize: tokens.fontSizeControl },
   wide: { minWidth: "36rem" },
+  expanded: { minWidth: "56rem" },
   stackedTable: { "@container (max-width: 36rem)": { display: "block", minWidth: 0 } },
   stackedBody: { "@container (max-width: 36rem)": { display: "block" } },
   stackedHeader: {
@@ -108,6 +109,7 @@ export function DataGrid<Row extends object>({
   getRowId,
   busy = false,
   narrow = "scroll",
+  minWidth = "standard",
   renderDetail,
 }: {
   title: string;
@@ -116,6 +118,7 @@ export function DataGrid<Row extends object>({
   getRowId: (row: Row) => string;
   busy?: boolean;
   narrow?: "scroll" | "stack";
+  minWidth?: "standard" | "wide";
   renderDetail?: (row: Row) => ReactNode;
 }) {
   const column = createColumnHelper<typeof features, Row>();
@@ -145,6 +148,7 @@ export function DataGrid<Row extends object>({
         {...stylex.props(
           styles.table,
           columns.length > 2 && styles.wide,
+          minWidth === "wide" && styles.expanded,
           narrow === "stack" && styles.stackedTable,
         )}
         aria-label={title}

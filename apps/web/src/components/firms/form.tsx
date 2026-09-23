@@ -1,5 +1,6 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AccountingError } from "@open-erp/contracts/accounting";
 import * as Schema from "effect/Schema";
 import * as Firms from "@open-erp/contracts/firms";
 import { Box } from "@open-erp/ui/components/box";
@@ -62,7 +63,9 @@ export function FirmForm<S extends Schema.Top & { readonly DecodingServices: nev
           if (input._tag === "Some") mutation.mutate(input.value);
         }}
       >
-        {props.children}
+        <Box as="fieldset" disabled={mutation.isPending} display="grid" gap="lg" minWidth="zero">
+          {props.children}
+        </Box>
         {invalid ? (
           <Text role="alert">
             {sv ? "Kontrollera uppgifterna och försök igen." : "Check the details and try again."}
@@ -74,6 +77,19 @@ export function FirmForm<S extends Schema.Top & { readonly DecodingServices: nev
           pending={mutation.isPending}
           write
         />
+        {mutation.error instanceof AccountingError && mutation.error.code === "StaleDependency" ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              void cache
+                .invalidateQueries({ queryKey: ["accounting", "firms"] })
+                .then(props.onClose);
+            }}
+          >
+            {sv ? "Läs in aktuella detaljer" : "Reload current details"}
+          </Button>
+        ) : null}
         <Box display="flex" justifyContent="end" gap="md">
           <Button
             type="button"
@@ -90,4 +106,9 @@ export function FirmForm<S extends Schema.Top & { readonly DecodingServices: nev
       </Box>
     </FormDialog>
   );
+}
+
+export function formText(fields: FormData, name: string) {
+  const value = fields.get(name);
+  return typeof value === "string" ? value : "";
 }
