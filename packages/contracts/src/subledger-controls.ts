@@ -51,7 +51,10 @@ export const SubledgerBasisList = Schema.Struct({
 });
 export const CreateSubledgerControl = Schema.Struct({
   asOfDate: Accounting.AccountingDate,
-  accountIds: Schema.Array(Accounting.Identifier).check(Schema.isMinLength(1), Schema.isMaxLength(20)),
+  accountIds: Schema.Array(Accounting.Identifier).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(20),
+  ),
   inventoryEvidenceId: Accounting.Identifier,
   rationale: Accounting.Description,
 });
@@ -64,7 +67,12 @@ export const ControlSchedule = Schema.Struct({
   recognizedMinor: Accounting.AggregateMinorUnits,
   carryingMinor: Schema.NullOr(Accounting.SignedMinorUnits),
 });
-const EffectKind = Schema.Literals(["basis", "occurrence", "occurrence_reversal", "disposal_release"]);
+const EffectKind = Schema.Literals([
+  "basis",
+  "occurrence",
+  "occurrence_reversal",
+  "disposal_release",
+]);
 export const ExpectedSubledgerEffect = Schema.Struct({
   scheduleId: Accounting.Identifier,
   kind: EffectKind,
@@ -84,11 +92,13 @@ export const SubledgerControlLine = Schema.Struct({
   creditMinor: Accounting.MinorUnits,
   description: Schema.String,
   correctsVoucherId: Schema.NullOr(Accounting.Identifier),
-  evidenceRefs: Schema.Array(Schema.Struct({
-    evidenceId: Accounting.Identifier,
-    sha256: Schema.String,
-    locator: Schema.String,
-  })),
+  evidenceRefs: Schema.Array(
+    Schema.Struct({
+      evidenceId: Accounting.Identifier,
+      sha256: Schema.String,
+      locator: Schema.String,
+    }),
+  ),
   scheduleId: Schema.NullOr(Accounting.Identifier),
   effectKind: Schema.NullOr(EffectKind),
   expectedMinor: Accounting.SignedMinorUnits,
@@ -140,14 +150,16 @@ export const SubledgerControlView = Schema.Struct({
 });
 export const SubledgerControlList = Schema.Struct({
   scope: Accounting.Scope,
-  items: Schema.Array(Schema.Struct({
-    id: Accounting.Identifier,
-    createdAt: Schema.String,
-    asOfDate: Accounting.AccountingDate,
-    digest: Accounting.Digest,
-    sequence: Accounting.MinorUnits,
-    hasReviewGaps: Schema.Boolean,
-  })).check(Schema.isMaxLength(200)),
+  items: Schema.Array(
+    Schema.Struct({
+      id: Accounting.Identifier,
+      createdAt: Schema.String,
+      asOfDate: Accounting.AccountingDate,
+      digest: Accounting.Digest,
+      sequence: Accounting.MinorUnits,
+      hasReviewGaps: Schema.Boolean,
+    }),
+  ).check(Schema.isMaxLength(200)),
   coverage: Schema.Literal("not_established"),
 });
 export const PrepareAssetDisposal = Schema.Struct({
@@ -225,13 +237,15 @@ export const AssetDisposalReviewView = Schema.Struct({
 export const AssetDisposalReviewList = Schema.Struct({
   scope: Accounting.Scope,
   scheduleId: Accounting.Identifier,
-  items: Schema.Array(Schema.Struct({
-    id: Accounting.Identifier,
-    ordinal: Schema.Int,
-    digest: Accounting.Digest,
-    createdAt: Schema.String,
-    postingDate: Accounting.AccountingDate,
-  })).check(Schema.isMaxLength(20)),
+  items: Schema.Array(
+    Schema.Struct({
+      id: Accounting.Identifier,
+      ordinal: Schema.Int,
+      digest: Accounting.Digest,
+      createdAt: Schema.String,
+      postingDate: Accounting.AccountingDate,
+    }),
+  ).check(Schema.isMaxLength(20)),
   disposal: Schema.NullOr(AssetDisposal),
   coverage: Schema.Literal("not_established"),
 });
@@ -240,25 +254,30 @@ const scoped = { params: Accounting.Scope, error: accountingErrors };
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
 export const SubledgerControlsApi = HttpApiGroup.make("subledgerControls").add(
   HttpApiEndpoint.post("prepareAssetDisposal", `${path}/disposals/prepare`, {
-    ...scoped, headers: Accounting.IdempotencyHeaders,
+    ...scoped,
+    headers: Accounting.IdempotencyHeaders,
     payload: PrepareAssetDisposal.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: AssetDisposalReview,
   }),
   HttpApiEndpoint.post("approveAssetDisposal", `${path}/disposals/:id/approve`, {
-    ...identified, headers: Accounting.IdempotencyHeaders,
+    ...identified,
+    headers: Accounting.IdempotencyHeaders,
     payload: ApproveAssetDisposal.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: AssetDisposalApproval,
   }),
   HttpApiEndpoint.post("executeAssetDisposal", `${path}/disposals/:id/execute`, {
-    ...identified, headers: Accounting.IdempotencyHeaders,
+    ...identified,
+    headers: Accounting.IdempotencyHeaders,
     payload: ExecuteAssetDisposal.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: AssetDisposal,
   }),
   HttpApiEndpoint.get("getAssetDisposalReview", `${path}/disposals/:id`, {
-    ...identified, success: AssetDisposalReviewView,
+    ...identified,
+    success: AssetDisposalReviewView,
   }),
   HttpApiEndpoint.get("listAssetDisposalReviews", `${path}/disposals/for-schedule/:id`, {
-    ...identified, success: AssetDisposalReviewList,
+    ...identified,
+    success: AssetDisposalReviewList,
   }),
 
   HttpApiEndpoint.post("recordSubledgerBasis", `${path}/bases`, {
@@ -267,45 +286,66 @@ export const SubledgerControlsApi = HttpApiGroup.make("subledgerControls").add(
     payload: RecordSubledgerBasis.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: SubledgerBasis,
   }),
-  HttpApiEndpoint.get("getSubledgerBasis", `${path}/bases/:id`, { ...identified, success: SubledgerBasis }),
-  HttpApiEndpoint.get("listSubledgerBases", `${path}/bases`, { ...scoped, success: SubledgerBasisList }),
+  HttpApiEndpoint.get("getSubledgerBasis", `${path}/bases/:id`, {
+    ...identified,
+    success: SubledgerBasis,
+  }),
+  HttpApiEndpoint.get("listSubledgerBases", `${path}/bases`, {
+    ...scoped,
+    success: SubledgerBasisList,
+  }),
   HttpApiEndpoint.post("createSubledgerControl", `${path}/snapshots`, {
     ...scoped,
     headers: Accounting.IdempotencyHeaders,
     payload: CreateSubledgerControl.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: SubledgerControl,
   }),
-  HttpApiEndpoint.get("getSubledgerControl", `${path}/snapshots/:id`, { ...identified, success: SubledgerControlView }),
-  HttpApiEndpoint.get("listSubledgerControls", `${path}/snapshots`, { ...scoped, success: SubledgerControlList }),
+  HttpApiEndpoint.get("getSubledgerControl", `${path}/snapshots/:id`, {
+    ...identified,
+    success: SubledgerControlView,
+  }),
+  HttpApiEndpoint.get("listSubledgerControls", `${path}/snapshots`, {
+    ...scoped,
+    success: SubledgerControlList,
+  }),
 );
 // Basis review is operator-only REST, never an ordinary MCP review tool.
 export const SubledgerControlCapabilities = {
   subledger_get_basis: {
-    description: "Read one immutable synthetic carrying basis by schedule ID. Does not establish legal treatment or current voucher validity.",
+    description:
+      "Read one immutable synthetic carrying basis by schedule ID. Does not establish legal treatment or current voucher validity.",
     input: Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier }),
     output: SubledgerBasis,
     readOnly: true,
   },
   subledger_list_bases: {
-    description: "Read all bounded retained synthetic carrying bases. This is not a complete company asset inventory.",
+    description:
+      "Read all bounded retained synthetic carrying bases. This is not a complete company asset inventory.",
     input: Schema.Struct({ scope: Accounting.Scope }),
     output: SubledgerBasisList,
     readOnly: true,
   },
   subledger_create_control: {
-    description: "Freeze known schedules and every GL contribution on declared control accounts at one committed cutoff. Reports differences without posting, legal activation or complete-source certification.",
-    input: Schema.Struct({ scope: Accounting.Scope, idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"], input: CreateSubledgerControl }),
+    description:
+      "Freeze known schedules and every GL contribution on declared control accounts at one committed cutoff. Reports differences without posting, legal activation or complete-source certification.",
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
+      input: CreateSubledgerControl,
+    }),
     output: SubledgerControl,
     readOnly: false,
   },
   subledger_get_control: {
-    description: "Read immutable schedule/control contributions and exact retained JSON bytes, with separate live dependency currentness.",
+    description:
+      "Read immutable schedule/control contributions and exact retained JSON bytes, with separate live dependency currentness.",
     input: Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier }),
     output: SubledgerControlView,
     readOnly: true,
   },
   subledger_list_controls: {
-    description: "Discover all bounded saved schedule control snapshots. Reload recovery does not assert complete source coverage.",
+    description:
+      "Discover all bounded saved schedule control snapshots. Reload recovery does not assert complete source coverage.",
     input: Schema.Struct({ scope: Accounting.Scope }),
     output: SubledgerControlList,
     readOnly: true,

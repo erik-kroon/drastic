@@ -8,6 +8,8 @@ import { query, scopeParameter } from "../../../db/query";
 
 export const ExpenseTaxHandlers = HttpApiBuilder.group(Api, "expenseTax", (handlers) =>
   handlers
+    .handle("withdrawExpenseTaxSource",({params,headers,payload})=>Effect.flatMap(authenticate,(token)=>query(
+      "withdrawExpenseTaxSource",[token,scopeParameter(params),params.id,headers["idempotency-key"],JSON.stringify(payload)],Tax.TaxSourceWithdrawal)))
     .handle("recordExpenseTaxSource", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.expense_tax_record_source.execute(token, {

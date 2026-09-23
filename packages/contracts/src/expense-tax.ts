@@ -100,7 +100,17 @@ export const TaxReview = Schema.Struct({
   ),
   authority: Schema.Literal("operator_fact_review_only"),
 });
+export const WithdrawTaxSource = Schema.Struct({
+  expectedSourceDigest: Accounting.Digest, evidenceId: Accounting.Identifier, rationale: Accounting.Description,
+});
+export const TaxSourceWithdrawal = Schema.Struct({
+  id:Accounting.Identifier,digest:Accounting.Digest,scope:Accounting.Scope,sourceId:Accounting.Identifier,
+  revisionId:Accounting.Identifier,revision:Schema.Int,revisionDigest:Accounting.Digest,
+  input:WithdrawTaxSource,evidenceSha256:Schema.String,permanent:Schema.Literal(true),recordedAt:Schema.String,receipt:CommandReceipt,
+});
+
 export const TaxSourceView = Schema.Struct({
+  withdrawal: Schema.NullOr(TaxSourceWithdrawal),
   current: TaxSourceRevision,
   latestReview: Schema.NullOr(TaxReview),
   reviewCurrent: Schema.Boolean,
@@ -108,6 +118,7 @@ export const TaxSourceView = Schema.Struct({
   reviewHistory: Schema.Array(TaxReview),
 });
 export const ExpenseTaxBlocker = Schema.Literals([
+  "withdrawn_source", "duplicate_source_component", "ambiguous_voucher_sources",
   "missing_review",
   "stale_review",
   "wrong_record_class",
@@ -180,8 +191,8 @@ export const PrepareTaxSnapshot = Schema.Struct({
   endsOn: Accounting.AccountingDate,
 });
 export const TaxSnapshot = Schema.Struct({
-  schemaVersion: Schema.Literal("1"),
-  calculationEngine: Schema.Literal("expense-tax-controls-v1"),
+  schemaVersion: Schema.Literals(["1", "2"]),
+  calculationEngine: Schema.Literals(["expense-tax-controls-v1", "expense-tax-controls-v2"]),
   bookProfile: Schema.String,
   bookProfileVersion: Accounting.MinorUnits,
   id: Accounting.Identifier,
@@ -198,6 +209,7 @@ export const TaxSnapshot = Schema.Struct({
     Schema.Struct({
       source: TaxSourceRevision,
       review: Schema.NullOr(TaxReview),
+      withdrawal: Schema.optional(Schema.NullOr(TaxSourceWithdrawal)),
       assessment: TaxAssessment,
     }),
   ),
@@ -229,6 +241,7 @@ export const TaxInventory = Schema.Struct({
     Schema.Struct({
       current: TaxSourceRevision,
       latestReview: Schema.NullOr(TaxReview),
+      withdrawal: Schema.NullOr(TaxSourceWithdrawal),
       reviewCurrent: Schema.Boolean,
     }),
   ),
@@ -253,6 +266,10 @@ const scoped = { params: Accounting.Scope, error: accountingErrors };
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
 const mutation = { ...scoped, headers: Accounting.IdempotencyHeaders };
 export const ExpenseTaxApi = HttpApiGroup.make("expenseTax").add(
+  HttpApiEndpoint.post("withdrawExpenseTaxSource",`${path}/sources/:id/withdrawals`,{
+    ...identified,headers:Accounting.IdempotencyHeaders,
+    payload:WithdrawTaxSource.annotate({parseOptions:{onExcessProperty:"error"}}),success:TaxSourceWithdrawal,
+  }),
   HttpApiEndpoint.post("recordExpenseTaxSource", `${path}/sources`, {
     ...mutation,
     payload: RecordTaxSource.annotate({ parseOptions: { onExcessProperty: "error" } }),

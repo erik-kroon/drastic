@@ -119,7 +119,12 @@ export const SchedulePostingBasis = Schema.Struct({
   basisVoucherId: Schema.NullOr(Accounting.Identifier),
   scheduleDigest: Schema.optional(Accounting.Digest),
   blocker: Schema.NullOr(
-    Schema.Literals(["basis_reversed_or_corrected", "basis_mismatch", "estimate_history_changed", "disposed"]),
+    Schema.Literals([
+      "basis_reversed_or_corrected",
+      "basis_mismatch",
+      "estimate_history_changed",
+      "disposed",
+    ]),
   ),
   legalPolicyApproved: Schema.Literal(false),
 });
