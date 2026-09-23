@@ -1,6 +1,7 @@
 @import "./preflight.css";
 
 :root {
+  --image-outline: oklch(0 0 0 / 0.1);
   --neutral-950: #0f172a;
   --neutral-900: #1e293b;
   --neutral-800: #334155;
@@ -138,6 +139,7 @@
 }
 
 .dark {
+  --image-outline: oklch(1 0 0 / 0.1);
   color-scheme: dark;
   --background: var(--neutral-950);
   --foreground: var(--neutral-50);

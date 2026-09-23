@@ -1,21 +1,34 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Commerce from "@open-erp/contracts/commerce";
+import { Plus, ArrowLeft } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
-import { SelectField, InputField } from "@open-erp/ui/components/field";
+import { SelectField } from "@open-erp/ui/components/field";
 import { DataTable } from "@open-erp/ui/components/data-table";
-import { Heading, Text } from "@open-erp/ui/components/typography";
-import { AccountingStatus } from "@/components/accounting-status";
-import { readAccounting } from "@/lib/accounting-api";
-import { commerceCopy } from "./copy";
+import { Text } from "@open-erp/ui/components/typography";
+import { Badge } from "@open-erp/ui/components/badge";
+import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import {
-  CommandForm,
+  PageEmpty,
+  RegisterFilters,
+  RegisterSearch,
+  RecordToggle,
+  PageCaption,
+} from "@open-erp/ui/components/accounting-page";
+import {
+  RecordHeading,
+  RecordSection,
+  RecordSummary,
+  RecordFact,
+} from "@open-erp/ui/components/record-layout";
+import { AccountingStatus } from "@/components/accounting-status";
+import { ContactEditor } from "./contact-editor";
+import { readAccounting } from "@/lib/accounting-api";
+import {
   Details,
   Evidence,
   Facts,
-  Field,
-  Lookup,
   Pager,
   checkScope,
   commerceKey,
@@ -23,11 +36,18 @@ import {
   type CommerceProps,
 } from "./shared";
 
-export function Counterparties(props: CommerceProps) {
+export function Counterparties(
+  props: CommerceProps & { recordId?: string; onOpen?: (id: string) => void },
+) {
   const { book, locale } = props;
-  const copy = commerceCopy(locale);
+  const sv = locale === "sv";
+  const labels = sv ? swedish : english;
   const [after, setAfter] = useState("");
-  const [selected, setSelected] = useState("");
+  const [local, setLocal] = useState("");
+  const [search, setSearch] = useState("");
+  const [role, setRole] = useState("");
+  const selected = props.recordId ?? local;
+  const select = props.onOpen ?? setLocal;
   const page = useQuery({
     queryKey: [...commerceKey(book), "counterparties", after],
     queryFn: async ({ signal }) => {
@@ -41,232 +61,237 @@ export function Counterparties(props: CommerceProps) {
     },
     retry: false,
   });
-  return (
-    <Box as="section" display="grid" gap="lg" minWidth="zero">
-      <Heading>{copy.parties}</Heading>
-      <Text tone="muted">{copy.sourceNote}</Text>
-      <Details title={copy.createParty}>
-        <CommandForm
-          {...props}
-          path={`${commercePath(book)}/counterparties`}
-          schema={Commerce.CreateCounterparty}
-          output={Commerce.CounterpartyRevision}
-          label={copy.createParty}
-          input={(fields) => ({
-            kind: "synthetic_counterparty_v1",
-            externalKey: fields.get("externalKey"),
-            role: fields.get("role"),
-            displayName: fields.get("displayName"),
-            evidenceId: fields.get("evidenceId"),
-            reason: fields.get("reason"),
-          })}
-          onSuccess={(party) => setSelected(party.id)}
-        >
-          <Box display="grid" columns={1} columnsAtSm={2} gap="lg">
-            <Field name="externalKey" label={copy.externalKey} maxLength={200} />
-            <Field name="displayName" label={copy.name} maxLength={200} />
-            <SelectField
-              name="role"
-              label={copy.role}
-              required
-              defaultValue="customer"
-              options={[
-                { value: "customer", label: copy.customer },
-                { value: "supplier", label: copy.supplier },
-                { value: "both", label: copy.both },
-              ]}
-            />
-            <Field name="evidenceId" label={copy.evidenceId} maxLength={128} />
-          </Box>
-          <Field name="reason" label={copy.reason} />
-        </CommandForm>
-      </Details>
-      <Lookup label={copy.open} onOpen={setSelected} />
-      <Box>
-        <Button
-          size="xl"
-          variant="outline"
-          disabled={page.isFetching}
-          onClick={() => {
-            void page.refetch();
-          }}
-        >
-          {copy.refresh}
-        </Button>
+  const roles = {
+    customer: labels.customer,
+    supplier: labels.supplier,
+    both: labels.customerSupplier,
+  };
+  const items =
+    page.data?.items.filter(
+      (party) =>
+        (!role || party.role === role || party.role === "both") &&
+        `${party.displayName} ${party.externalKey}`
+          .toLocaleLowerCase(locale)
+          .includes(search.toLocaleLowerCase(locale)),
+    ) ?? [];
+  if (selected && selected !== "new")
+    return (
+      <Box display="grid" gap="xl">
+        <Box>
+          <Button variant="ghost" onClick={() => select("")}>
+            <ArrowLeft size={14} />
+            {labels.allContacts}
+          </Button>
+        </Box>
+        <ContactDetail {...props} id={selected} />
       </Box>
+    );
+  return (
+    <Box display="grid" gap="xl">
+      <RecordHeading
+        title={labels.customersSuppliers}
+        subtitle={labels.yourContactsAndTheirSource}
+        action={
+          <Button onClick={() => select("new")}>
+            <Plus size={14} />
+            {labels.newContact}
+          </Button>
+        }
+      />
+      <RegisterFilters>
+        <RegisterSearch
+          aria-label={labels.searchContacts}
+          placeholder={labels.searchNameOrReference}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <SelectField
+          label={labels.contactType}
+          value={role}
+          onValueChange={(value) => setRole(value ?? "")}
+          options={[
+            { value: "", label: labels.allContacts },
+            { value: "customer", label: roles.customer },
+            { value: "supplier", label: roles.supplier },
+          ]}
+        />
+      </RegisterFilters>
       <AccountingStatus locale={locale} pending={page.isPending} error={page.error} />
-      {page.data ? (
+      {page.isSuccess ? (
         <>
-          <DataTable
-            title={copy.parties}
-            narrow="stack"
-            columns={[
-              { id: "name", label: copy.name },
-              { id: "role", label: copy.role },
-              { id: "revision", label: copy.revision },
-              { id: "open", label: copy.id },
-            ]}
-            rows={page.data.items.map((party) => ({
-              id: party.id,
-              cells: [
-                party.displayName,
-                copy[party.role],
-                party.revision,
-                <Box key="open" display="grid" gap="sm">
-                  <Text>{party.id}</Text>
-                  <Button size="xl" variant="outline" onClick={() => setSelected(party.id)}>
-                    {copy.open}
-                  </Button>
-                </Box>,
-              ],
-            }))}
-          />
-          {page.data.items.length === 0 ? <Text>{copy.empty}</Text> : null}
-          <Pager
-            locale={locale}
-            first={!after}
-            next={page.isSuccess && !page.isFetching ? page.data.next : null}
-            onPage={setAfter}
-          />
+          {items.length ? (
+            <DataTable
+              title={labels.contacts}
+              narrow="stack"
+              columns={[
+                { id: "name", label: labels.name },
+                { id: "type", label: labels.type },
+                { id: "reference", label: labels.reference },
+              ]}
+              rows={items.map((party) => ({
+                id: party.id,
+                cells: [
+                  <RecordToggle key="name" expanded={false} onClick={() => select(party.id)}>
+                    {party.displayName}
+                  </RecordToggle>,
+                  <Badge key="role" variant="secondary">
+                    {roles[party.role]}
+                  </Badge>,
+                  party.externalKey,
+                ],
+              }))}
+            />
+          ) : (
+            <PageEmpty
+              title={search || role ? labels.noMatchingContacts : labels.yourContactsStartHere}
+              detail={labels.addCustomersAndSuppliersTo}
+            />
+          )}
+          <Pager locale={locale} first={!after} next={page.data.next} onPage={setAfter} />
         </>
       ) : null}
-      {selected ? <CounterpartyDetail {...props} key={selected} id={selected} /> : null}
+      {selected === "new" ? (
+        <FormDialog title={labels.newContact} closeLabel={labels.close} onClose={() => select("")}>
+          <ContactEditor {...props} onSaved={(party) => select(party.id)} />
+        </FormDialog>
+      ) : null}
     </Box>
   );
 }
-function CounterpartyDetail(props: CommerceProps & { id: string }) {
-  const { book, locale, id } = props;
-  const copy = commerceCopy(locale);
-  const [revision, setRevision] = useState("");
+function ContactDetail(props: CommerceProps & { id: string }) {
+  const sv = props.locale === "sv";
+  const labels = sv ? swedish : english;
+  const [editing, setEditing] = useState(false);
   const party = useQuery({
-    queryKey: [...commerceKey(book), "counterparty", id, revision],
+    queryKey: [...commerceKey(props.book), "counterparty", props.id, ""],
     queryFn: async ({ signal }) => {
-      const suffix = revision ? `?revision=${encodeURIComponent(revision)}` : "";
       const result = await readAccounting(
-        `${commercePath(book)}/counterparties/${encodeURIComponent(id)}${suffix}`,
+        `${commercePath(props.book)}/counterparties/${encodeURIComponent(props.id)}`,
         Commerce.CounterpartyRevision,
         { signal },
       );
-      checkScope(book, result.scope);
-      if (result.id !== id || (revision && result.revision !== revision))
-        throw new Error("Counterparty revision mismatch");
+      checkScope(props.book, result.scope);
+      if (result.id !== props.id) throw new Error("Contact identity mismatch");
       return result;
     },
     retry: false,
   });
-  const ready = party.isSuccess && !party.isFetching;
   return (
-    <Box display="grid" gap="lg" minWidth="zero">
-      <Heading>{copy.parties}</Heading>
-      <Text>
-        {copy.id}: {id}
-      </Text>
-      <Box
-        as="form"
-        display="flex"
-        flexWrap="wrap"
-        gap="md"
-        alignItems="end"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const value = new FormData(event.currentTarget).get("revision");
-          if (typeof value === "string") setRevision(value);
-        }}
-      >
-        <InputField
-          name="revision"
-          label={copy.revision}
-          required
-          pattern="[1-9][0-9]{0,17}"
-          maxLength={18}
-          inputMode="numeric"
-        />
-        <Button type="submit" size="xl" variant="outline">
-          {copy.readRevision}
-        </Button>
-        <Button
-          type="button"
-          size="xl"
-          variant="outline"
-          onClick={() => {
-            setRevision("");
-            void party.refetch();
-          }}
-        >
-          {copy.current}
-        </Button>
-      </Box>
-      <Box>
-        <Button
-          size="xl"
-          variant="outline"
-          disabled={party.isFetching}
-          onClick={() => {
-            void party.refetch();
-          }}
-        >
-          {copy.refresh}
-        </Button>
-      </Box>
-      <AccountingStatus locale={locale} pending={party.isPending} error={party.error} />
-      {!ready ? <Text>{copy.waiting}</Text> : null}
-      {party.data ? (
+    <Box display="grid" gap="xl">
+      <AccountingStatus locale={props.locale} pending={party.isPending} error={party.error} />
+      {party.isSuccess ? (
         <>
-          <Text>
-            {party.data.displayName} · {copy[party.data.role]} · {copy.revision}:{" "}
-            {party.data.revision}
-          </Text>
-          <Text>{revision ? copy.historical : copy.current}</Text>
-          <Facts title={copy.facts} value={party.data} />
-          <Evidence {...props} reference={party.data.evidence} />
-          {!revision ? (
-            <Details title={copy.reviseParty}>
-              <PartyRevisionForm {...props} party={party.data} allowed={ready} />
-            </Details>
+          <RecordHeading
+            title={party.data.displayName}
+            subtitle={party.data.externalKey}
+            action={
+              <Button variant="outline" onClick={() => setEditing(true)}>
+                {labels.editContact}
+              </Button>
+            }
+          />
+          <RecordSummary>
+            <RecordFact label={labels.type}>
+              {party.data.role === "customer"
+                ? labels.customer
+                : party.data.role === "supplier"
+                  ? labels.supplier
+                  : labels.customerSupplier2}
+            </RecordFact>
+            <RecordFact label={labels.updated}>
+              {new Intl.DateTimeFormat(props.locale, { dateStyle: "medium" }).format(
+                new Date(party.data.createdAt),
+              )}
+            </RecordFact>
+          </RecordSummary>
+          <Text>{party.data.reason}</Text>
+          <RecordSection title={labels.source}>
+            <Evidence {...props} reference={party.data.evidence} />
+          </RecordSection>
+          <Details title={labels.historyReferences}>
+            <Facts title={labels.savedDetails} value={party.data} />
+            <PageCaption>{labels.changesAreRetainedAsNew}</PageCaption>
+          </Details>
+          {editing ? (
+            <FormDialog
+              title={labels.editContact}
+              closeLabel={labels.close}
+              onClose={() => setEditing(false)}
+            >
+              <ContactEditor {...props} baseline={party.data} onSaved={() => setEditing(false)} />
+            </FormDialog>
           ) : null}
         </>
       ) : null}
     </Box>
   );
 }
-function PartyRevisionForm(
-  props: CommerceProps & {
-    id: string;
-    party: typeof Commerce.CounterpartyRevision.Type;
-    allowed: boolean;
-  },
-) {
-  const { party, allowed } = props;
-  const [baseline, setBaseline] = useState(party);
-  const copy = commerceCopy(props.locale);
-  return (
-    <CommandForm
-      {...props}
-      path={`${commercePath(props.book)}/counterparties/${encodeURIComponent(party.id)}/revisions`}
-      schema={Commerce.ReviseCounterparty}
-      output={Commerce.CounterpartyRevision}
-      label={copy.reviseParty}
-      allowed={allowed}
-      onNewCommand={() => setBaseline(party)}
-      input={(fields) => ({
-        expectedRevision: fields.get("expectedRevision"),
-        displayName: fields.get("displayName"),
-        evidenceId: fields.get("evidenceId"),
-        reason: fields.get("reason"),
-      })}
-    >
-      <Text>
-        {copy.revision}: {baseline.revision}
-      </Text>
-      <Field
-        name="expectedRevision"
-        label={copy.revision}
-        value={baseline.revision}
-        maxLength={18}
-      />
-      <Field name="displayName" label={copy.name} value={baseline.displayName} maxLength={200} />
-      <Field name="evidenceId" label={copy.evidenceId} maxLength={128} />
-      <Field name="reason" label={copy.reason} />
-    </CommandForm>
-  );
-}
+
+const english = {
+  customer: "Customer",
+  supplier: "Supplier",
+  customerSupplier: "Customer & supplier",
+  allContacts: "All contacts",
+  customersSuppliers: "Customers & suppliers",
+  yourContactsAndTheirSource: "Your contacts and their source records, in one place.",
+  newContact: "New contact",
+  searchContacts: "Search contacts",
+  searchNameOrReference: "Search name or reference…",
+  contactType: "Contact type",
+  contacts: "Contacts",
+  name: "Name",
+  type: "Type",
+  reference: "Reference",
+  noMatchingContacts: "No matching contacts",
+  yourContactsStartHere: "Your contacts start here",
+  addCustomersAndSuppliersTo: "Add customers and suppliers to use them on invoices.",
+  close: "Close",
+  saveContact: "Save contact",
+  contactDetails: "Contact details",
+  both: "Both",
+  customerNumberReferenceOptional: "Customer number / reference (optional)",
+  note: "Note",
+  sourceSaved: "Source saved:",
+  editContact: "Edit contact",
+  customerSupplier2: "Customer & supplier",
+  updated: "Updated",
+  source: "Source",
+  historyReferences: "History & references",
+  savedDetails: "Saved details",
+  changesAreRetainedAsNew:
+    "Changes are retained as new revisions. Legal identity has not been verified.",
+};
+const swedish: typeof english = {
+  customer: "Kund",
+  supplier: "Leverantör",
+  customerSupplier: "Kund och leverantör",
+  allContacts: "Alla kontakter",
+  customersSuppliers: "Kunder & leverantörer",
+  yourContactsAndTheirSource: "Kontaktuppgifter och källunderlag på ett ställe.",
+  newContact: "Ny kontakt",
+  searchContacts: "Sök kontakter",
+  searchNameOrReference: "Sök namn eller referens…",
+  contactType: "Kontakttyp",
+  contacts: "Kontakter",
+  name: "Namn",
+  type: "Typ",
+  reference: "Referens",
+  noMatchingContacts: "Inga matchande kontakter",
+  yourContactsStartHere: "Dina kontakter börjar här",
+  addCustomersAndSuppliersTo: "Lägg till kunder och leverantörer för att använda dem i fakturor.",
+  close: "Stäng",
+  saveContact: "Spara kontakt",
+  contactDetails: "Kontaktuppgifter",
+  both: "Båda",
+  customerNumberReferenceOptional: "Kundnummer / referens (valfritt)",
+  note: "Anteckning",
+  sourceSaved: "Underlag sparat:",
+  editContact: "Redigera kontakt",
+  customerSupplier2: "Kund & leverantör",
+  updated: "Uppdaterad",
+  source: "Underlag",
+  historyReferences: "Historik & referenser",
+  savedDetails: "Sparade uppgifter",
+  changesAreRetainedAsNew:
+    "Ändringar sparas som nya versioner. Juridisk identitet är inte verifierad.",
+};

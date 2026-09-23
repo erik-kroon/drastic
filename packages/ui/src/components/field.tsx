@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, type ComponentProps } from "react";
 import { Input, type InputProps } from "@open-erp/ui/components/input";
 import { Label } from "@open-erp/ui/components/label";
 import { SelectControl, type SelectControlProps } from "@open-erp/ui/components/select";
@@ -17,6 +17,20 @@ const styles = stylex.create({
     fontSize: tokens.fontSizeSm,
     fontWeight: tokens.fontWeightMedium,
     lineHeight: tokens.lineHeightBodyCompact,
+  },
+  textarea: {
+    padding: tokens.space3,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: tokens.border,
+    borderRadius: tokens.radiusMd,
+    backgroundColor: tokens.background,
+    color: tokens.foreground,
+    resize: "vertical",
+    fontFamily: "inherit",
+    fontSize: tokens.fontSizeSm,
+    lineHeight: tokens.lineHeightNormal,
+    ":focus-visible": { outline: "none", boxShadow: tokens.controlFocusShadow },
   },
   control: {
     minHeight: { default: tokens.space9, "@media (pointer: coarse)": tokens.space11 },
@@ -76,6 +90,23 @@ export function SelectField({
         id={controlId}
         styleX={[styles.control, styleX]}
       />
+    </div>
+  );
+}
+
+export function TextareaField({
+  label,
+  id,
+  ...props
+}: Omit<ComponentProps<"textarea">, "className" | "style"> & { label: string }) {
+  const generatedId = useId();
+  const controlId = id ?? generatedId;
+  return (
+    <div {...stylex.props(styles.field)}>
+      <Label htmlFor={controlId} styleX={styles.label}>
+        {label}
+      </Label>
+      <textarea {...props} id={controlId} {...stylex.props(styles.textarea)} />
     </div>
   );
 }

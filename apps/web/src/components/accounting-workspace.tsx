@@ -35,9 +35,19 @@ import type { Locale } from "@/paraglide/runtime";
 const BankAllocations = lazy(() =>
   import("@/components/settlements").then((module) => ({ default: module.BankAllocations })),
 );
+const BankMatchReversals = lazy(() =>
+  import("@/components/bank-match-reversals/panel").then((module) => ({
+    default: module.BankMatchReversals,
+  })),
+);
 const SubledgersPanel = lazy(() =>
   import("@/components/subledgers/schedules").then((module) => ({
     default: module.SubledgersPanel,
+  })),
+);
+const SubledgerControlsPanel = lazy(() =>
+  import("@/components/subledger-controls/panel").then((module) => ({
+    default: module.SubledgerControlsPanel,
   })),
 );
 const ClosingPanel = lazy(() =>
@@ -267,6 +277,7 @@ export function AccountingWorkspace({
       {setup.data ? (
         <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
           <BankAllocations book={book} setup={setup.data} locale={locale} />
+          <BankMatchReversals key={JSON.stringify(bookKey(book))} book={book} locale={locale} />
         </Suspense>
       ) : null}
       <details id="owner-register" tabIndex={-1}>
@@ -290,6 +301,7 @@ export function AccountingWorkspace({
       {setup.data ? (
         <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
           <SubledgersPanel book={book} setup={setup.data} locale={locale} onPrepared={setPlanId} />
+          <SubledgerControlsPanel key={JSON.stringify(bookKey(book))} book={book} setup={setup.data} locale={locale} />
         </Suspense>
       ) : null}
       {setup.data ? (

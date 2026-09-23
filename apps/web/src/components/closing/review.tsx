@@ -115,7 +115,7 @@ export function ClosingFacts({
           ]}
           rows={Object.entries(basis.dependencies).map(([field, value]) => ({
             id: field,
-            cells: [field, value ?? "—"],
+            cells: [field, typeof value === "object" && value !== null ? JSON.stringify(value) : value ?? "—"],
           }))}
         />
       </details>

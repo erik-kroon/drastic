@@ -108,7 +108,7 @@ export function ClosingPanel({
   );
 }
 
-function PeriodClosing({
+export function PeriodClosing({
   book,
   periodId,
   locale,

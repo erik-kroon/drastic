@@ -9,6 +9,7 @@ import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
+import { BankAllocationUnmatchNotice } from "@/components/bank-match-reversals/notice";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { settlementCopy } from "./copy";
@@ -105,15 +106,19 @@ export function AllocationReview({
             {copy.reason}: {view.plan.input.reason}
           </Text>
           <Text>{copy.candidateHelp}</Text>
-          <Text role="status">
-            {executed
-              ? copy.done
-              : plan.isError || plan.isFetching
-                ? copy.unknown
-                : view.dependenciesCurrent
-                  ? copy.ready
-                  : copy.stale}
-          </Text>
+          {view.unmatch ? (
+            <BankAllocationUnmatchNotice unmatch={view.unmatch} locale={locale} />
+          ) : (
+            <Text role="status">
+              {executed
+                ? copy.done
+                : plan.isError || plan.isFetching
+                  ? copy.unknown
+                  : view.dependenciesCurrent
+                    ? copy.ready
+                    : copy.stale}
+            </Text>
+          )}
           {view.plan.snapshot.capacities.map((capacity, index) => (
             <Box
               key={`${capacity.leg.statementId}/${capacity.leg.rowOrdinal}/${capacity.leg.voucherId}/${capacity.leg.lineId}`}

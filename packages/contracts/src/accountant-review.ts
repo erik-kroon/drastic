@@ -10,6 +10,7 @@ import {
   VatReturnDependencies,
 } from "./closing-providers";
 import { accountingErrors } from "./accounting-errors";
+import { SubledgerControlDependencies } from "./closing";
 
 export const PrepareReviewPack = Schema.Struct({
   reportId: Accounting.Identifier,
@@ -197,6 +198,7 @@ export const ReviewBasis = Schema.Struct({
   owners: OwnerPeriodStatus,
   expenseTax: ExpenseTaxDependencies,
   vatReturns: Schema.optional(VatReturnDependencies),
+  subledgerControls: Schema.optional(SubledgerControlDependencies),
   ownerInventoryDigest: Accounting.Digest,
   bank: BankBasis,
   commerce: CommerceBasis,
@@ -238,7 +240,7 @@ export const ReviewPack = Schema.Struct({
   }),
   companyCompleteness: Schema.Literal("not_established"),
   statutoryReady: Schema.Literal(false),
-  generatorVersion: Schema.Literals(["accountant-review-v1", "accountant-review-v2"]),
+  generatorVersion: Schema.Literals(["accountant-review-v1", "accountant-review-v2", "accountant-review-v3"]),
   createdBy: Accounting.Identifier,
   createdAt: Schema.String,
 });

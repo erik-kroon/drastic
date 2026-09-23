@@ -3,7 +3,9 @@ import { Heading, Text } from "@open-erp/ui/components/typography";
 import { Allocations } from "./allocations";
 import { Counterparties } from "./counterparties";
 import { Invoices } from "./invoices";
-import { InvoiceDrafts } from "./invoice-drafts";
+import { InvoiceDraftIssueOverlay as InvoiceDrafts } from "./invoice-draft-issue-overlay";
+import { InvoiceIssuance } from "./invoice-issuance";
+import { invoiceIssueCopy } from "./invoice-issue-copy";
 import { invoiceDraftCopy } from "./invoice-draft-copy";
 import { RegisterReports } from "./register-reports";
 import { commerceCopy } from "./copy";
@@ -24,6 +26,9 @@ function CommerceWorkspace(props: CommerceProps) {
       </Details>
       <Details title={invoiceDraftCopy(props.locale).title}>
         <InvoiceDrafts {...props} />
+      </Details>
+      <Details title={invoiceIssueCopy(props.locale).title}>
+        <InvoiceIssuance {...props} />
       </Details>
       <Details title={copy.invoices}>
         <Invoices {...props} />

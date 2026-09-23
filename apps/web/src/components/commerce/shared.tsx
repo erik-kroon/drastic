@@ -118,9 +118,9 @@ export function Pager({
   onPage: (after: string) => void;
 }) {
   const copy = commerceCopy(locale);
+  if (first && !next) return null;
   return (
     <Box display="grid" gap="md">
-      <Text tone="muted">{copy.pageNote}</Text>
       <Box display="flex" flexWrap="wrap" gap="md">
         <Button size="xl" variant="outline" disabled={first} onClick={() => onPage("")}>
           {copy.first}
@@ -151,6 +151,7 @@ export function CommandForm<
     children?: ReactNode;
     label: string;
     allowed?: boolean;
+    canSubmit?: boolean;
     onSuccess?: (result: O["Type"]) => void;
     onNewCommand?: () => void;
   },
@@ -160,7 +161,7 @@ export function CommandForm<
   const copy = commerceCopy(locale);
   const client = useQueryClient();
   const errorId = useId();
-  const [key, setKey] = useState("");
+
   const [invalid, setInvalid] = useState(false);
   const [formVersion, setFormVersion] = useState(0);
   const command = useMutation({
@@ -196,19 +197,16 @@ export function CommandForm<
       aria-describedby={errorId}
       onSubmit={(event) => {
         event.preventDefault();
-        if (!allowed || command.isPending || captured) return;
+        if (!allowed || props.canSubmit === false || command.isPending || captured) return;
         const parsed = Schema.decodeUnknownOption(schema)(
           props.input(new FormData(event.currentTarget)),
         );
-        const validKey = Schema.decodeOption(
-          Accounting.IdempotencyHeaders.fields["idempotency-key"],
-        )(key);
-        if (parsed._tag === "None" || validKey._tag === "None") {
+        if (parsed._tag === "None") {
           setInvalid(true);
           return;
         }
         setInvalid(false);
-        command.mutate({ key: validKey.value, input: parsed.value });
+        command.mutate({ key: crypto.randomUUID(), input: parsed.value });
       }}
     >
       <Box
@@ -223,27 +221,8 @@ export function CommandForm<
         margin="none"
       >
         {props.children}
-        <Text tone="muted">{copy.keyHelp}</Text>
-        <InputField
-          label={copy.key}
-          value={key}
-          onChange={(event) => setKey(event.target.value)}
-          required
-          minLength={8}
-          maxLength={128}
-          pattern="[a-zA-Z0-9_-]{8,128}"
-          autoComplete="off"
-        />
         <Box display="flex" flexWrap="wrap" gap="md">
-          <Button
-            type="button"
-            size="xl"
-            variant="outline"
-            onClick={() => setKey(crypto.randomUUID())}
-          >
-            {copy.generateKey}
-          </Button>
-          <Button type="submit" size="xl">
+          <Button type="submit" size="xl" disabled={props.canSubmit === false}>
             {props.label}
           </Button>
         </Box>
@@ -258,15 +237,11 @@ export function CommandForm<
         <Box display="grid" gap="md">
           <Facts title={copy.request} value={artifact} />
           <Box display="flex" flexWrap="wrap" gap="md">
-            <Button
-              type="button"
-              size="xl"
-              variant="outline"
-              disabled={command.isPending}
-              onClick={() => command.mutate(captured)}
-            >
-              {copy.retry}
-            </Button>
+            {command.isError ? (
+              <Button type="button" variant="outline" onClick={() => command.mutate(captured)}>
+                {copy.retry}
+              </Button>
+            ) : null}
             <Button
               type="button"
               size="xl"
@@ -289,23 +264,23 @@ export function CommandForm<
           </Box>
         </Box>
       ) : null}
-      <Box>
-        <Button
-          type="button"
-          size="xl"
-          variant="outline"
-          disabled={command.isPending || !allowed}
-          onClick={() => {
-            command.reset();
-            setKey("");
-            setInvalid(false);
-            props.onNewCommand?.();
-            setFormVersion((version) => version + 1);
-          }}
-        >
-          {copy.newCommand}
-        </Button>
-      </Box>
+      {command.isSuccess ? (
+        <Box>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!allowed}
+            onClick={() => {
+              command.reset();
+              setInvalid(false);
+              props.onNewCommand?.();
+              setFormVersion((version) => version + 1);
+            }}
+          >
+            {copy.newCommand}
+          </Button>
+        </Box>
+      ) : null}
     </Box>
   );
 }

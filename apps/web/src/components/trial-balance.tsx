@@ -1,3 +1,7 @@
+import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
+import { PageCaption } from "@open-erp/ui/components/accounting-page";
+import { Disclosure } from "@open-erp/ui/components/workflow";
+import { formatMinorAmount, workQueryOptions } from "@/lib/workspace-api";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -22,6 +26,10 @@ export function TrialBalance({
   locale: Locale;
 }) {
   const copy = accountingCopy(locale);
+  const metadata = useQuery(workQueryOptions(book, {}));
+  const scale = metadata.data?.currencyScale;
+  const amount = (value: string) =>
+    scale === undefined ? "—" : formatMinorAmount(value, scale, locale);
   const [accountId, setAccountId] = useState<string | null>(null);
   const base = `${bookPath(book)}/report-snapshots/${encodeURIComponent(id)}`;
   const report = useQuery({
@@ -56,7 +64,6 @@ export function TrialBalance({
   const loaded = lines.data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
-      <Heading>{copy.report_snapshot}</Heading>
       <AccountingStatus
         locale={locale}
         pending={report.isPending || lines.isPending}
@@ -79,7 +86,7 @@ export function TrialBalance({
       ) : null}
       {report.data ? (
         <>
-          <SnapshotHeader report={report.data} locale={locale} />
+          <SnapshotHeader report={report.data} locale={locale} scale={scale} />
           <Text tone="muted">{copy.report_account_help}</Text>
           {lines.data ? (
             <>
@@ -115,11 +122,11 @@ export function TrialBalance({
                     >
                       {line.code}
                     </Button>,
-                    `${line.name} · ${line.accountId}`,
-                    line.openingMinor,
-                    line.debitMinor,
-                    line.creditMinor,
-                    line.closingMinor,
+                    line.name,
+                    amount(line.openingMinor),
+                    amount(line.debitMinor),
+                    amount(line.creditMinor),
+                    amount(line.closingMinor),
                   ],
                 }))}
               />
@@ -162,43 +169,52 @@ export function TrialBalance({
 function SnapshotHeader({
   report,
   locale,
+  scale,
 }: {
   report: typeof Reports.ReportSnapshot.Type;
   locale: Locale;
+  scale?: number;
 }) {
-  const copy = accountingCopy(locale);
+  const sv = locale === "sv";
+  const amount = (value: string) =>
+    scale === undefined ? "—" : `${formatMinorAmount(value, scale, locale)} ${report.currency}`;
   return (
-    <Box display="grid" gap="md" minWidth="zero">
-      <Text>
-        {copy.report_id}: {report.id}
-      </Text>
-      <Text>
-        {copy.report_sequence}: {report.sequence} · {report.currency} · {report.startsOn} –{" "}
-        {report.endsOn}
-      </Text>
-      <Text tone="muted">
-        {copy.report_created_at}: {report.createdAt}
-      </Text>
-      <Text>{copy.report_coverage}</Text>
-      <Text>{report.balanced ? copy.report_balanced : copy.report_unbalanced}</Text>
-      <Text tone="muted">{copy.report_warning}</Text>
-      {report.warnings.map((warning) => (
-        <Text key={warning}>{warning}</Text>
-      ))}
-      <Heading>{copy.report_global_totals}</Heading>
-      <Text>
-        {copy.report_account_count}: {report.accountCount} · {copy.report_voucher_count}:{" "}
-        {report.voucherCount}
-      </Text>
-      <DataTable
-        title={copy.report_global_totals}
-        narrow="stack"
-        columns={[
-          { id: "debit", label: copy.journal_debit, numeric: true },
-          { id: "credit", label: copy.journal_credit, numeric: true },
-        ]}
-        rows={[{ id: "snapshot-total", cells: [report.debitMinor, report.creditMinor] }]}
+    <Box display="grid" gap="lg">
+      <RecordHeading
+        title={sv ? "Saldobalans" : "Trial balance"}
+        subtitle={`${report.startsOn} – ${report.endsOn}`}
       />
+      <RecordSummary>
+        <RecordFact label={sv ? "Debet" : "Debit"}>{amount(report.debitMinor)}</RecordFact>
+        <RecordFact label={sv ? "Kredit" : "Credit"}>{amount(report.creditMinor)}</RecordFact>
+        <RecordFact label={sv ? "Verifikat" : "Vouchers"}>{report.voucherCount}</RecordFact>
+        <RecordFact label="Status">
+          {report.balanced ? (sv ? "Balanserad" : "Balanced") : sv ? "Differens" : "Difference"}
+        </RecordFact>
+      </RecordSummary>
+      <PageCaption>
+        {sv ? "Sparad" : "Saved"}{" "}
+        {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
+          new Date(report.createdAt),
+        )}
+        .{" "}
+        {sv
+          ? "Välj ett konto för att se verifikat och underlag."
+          : "Choose an account to see its entries and source records."}
+      </PageCaption>
+      <Disclosure title={sv ? "Rapportunderlag & begränsningar" : "Report basis & limitations"}>
+        <Text>
+          {report.id} · {report.sequence}
+        </Text>
+        <Text>
+          {sv
+            ? "Rapporten fastställer inte att allt underlag är komplett."
+            : "This report does not establish source completeness."}
+        </Text>
+        {report.warnings.map((warning) => (
+          <Text key={warning}>{warning}</Text>
+        ))}
+      </Disclosure>
     </Box>
   );
 }
@@ -215,6 +231,10 @@ function AccountExplanation({
   locale: Locale;
 }) {
   const copy = accountingCopy(locale);
+  const metadata = useQuery(workQueryOptions(book, {}));
+  const scale = metadata.data?.currencyScale;
+  const amount = (value: string) =>
+    scale === undefined ? "—" : formatMinorAmount(value, scale, locale);
   const base = `${bookPath(book)}/report-snapshots/${encodeURIComponent(report.id)}/lines/${encodeURIComponent(accountId)}/explanation`;
   const explanation = useInfiniteQuery({
     queryKey: [...bookKey(book), "report-explanation", report.id, accountId],
@@ -259,7 +279,7 @@ function AccountExplanation({
       {first ? (
         <>
           <Text>
-            {first.line.code} · {first.line.name} · {first.line.accountId}
+            {first.line.code} · {first.line.name}
           </Text>
           <Text tone="muted">
             {copy.report_id}: {first.report.id} · {copy.report_sequence}: {first.report.sequence} ·{" "}
@@ -279,10 +299,10 @@ function AccountExplanation({
               {
                 id: first.line.accountId,
                 cells: [
-                  first.line.openingMinor,
-                  first.line.debitMinor,
-                  first.line.creditMinor,
-                  first.line.closingMinor,
+                  amount(first.line.openingMinor),
+                  amount(first.line.debitMinor),
+                  amount(first.line.creditMinor),
+                  amount(first.line.closingMinor),
                 ],
               },
             ]}
@@ -297,9 +317,6 @@ function AccountExplanation({
             title={copy.report_contributions}
             narrow="stack"
             columns={[
-              { id: "voucher", label: copy.journal_voucher },
-              { id: "line", label: copy.bank_line_id },
-              { id: "sequence", label: copy.journal_sequence },
               { id: "date", label: copy.journal_date },
               { id: "part", label: copy.report_part },
               { id: "debit", label: copy.journal_debit, numeric: true },
@@ -310,13 +327,10 @@ function AccountExplanation({
             rows={contributions.map((entry) => ({
               id: `${entry.sequence}:${entry.ordinal}`,
               cells: [
-                entry.voucherId,
-                entry.lineId,
-                `${entry.sequence}:${entry.ordinal}`,
                 entry.postingDate,
                 entry.part === "opening" ? copy.report_opening_part : copy.report_movement_part,
-                entry.debitMinor,
-                entry.creditMinor,
+                amount(entry.debitMinor),
+                amount(entry.creditMinor),
                 entry.description,
                 <details key={`${entry.sequence}:${entry.ordinal}`}>
                   <summary>{copy.report_evidence}</summary>

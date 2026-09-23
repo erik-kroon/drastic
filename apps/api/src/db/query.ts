@@ -14,6 +14,9 @@ import { sourceIntakeStatements } from "./statements/source-intake";
 import { registerReportStatements } from "./statements/register-report";
 import { sieStatements } from "./statements/sie";
 import { invoiceDraftStatements } from "./statements/invoice-draft";
+import { subledgerControlStatements } from "./statements/subledger-controls";
+import { invoiceIssuanceStatements } from "./statements/invoice-issuance";
+import { bankMatchReversalStatements } from "./statements/bank-match-reversals";
 
 const PostgresFailure = Schema.Struct({
   code: Schema.String,
@@ -100,6 +103,9 @@ const statements = {
   ...registerReportStatements,
   ...sieStatements,
   ...invoiceDraftStatements,
+  ...subledgerControlStatements,
+  ...invoiceIssuanceStatements,
+  ...bankMatchReversalStatements,
   savePostingRequest: (parameters) =>
     sql`select openerp.save_posting_request(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   savePostingAuthorityRequest: (parameters) =>

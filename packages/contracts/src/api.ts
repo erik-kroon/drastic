@@ -10,6 +10,7 @@ import { AutomationApi } from "./automation";
 import { PostingRecoveryApi } from "./posting-recovery";
 import { CorrectionApi } from "./corrections";
 import { SettlementsApi } from "./settlements";
+import { BankMatchReversalsApi } from "./bank-match-reversals";
 
 import { SubledgersApi } from "./subledgers";
 
@@ -20,6 +21,8 @@ import { RegisterReportsApi } from "./register-reports";
 import { VatReturnsApi } from "./vat-returns";
 import { SieApi } from "./sie";
 import { InvoiceDraftsApi } from "./invoice-drafts";
+import { SubledgerControlsApi } from "./subledger-controls";
+import { InvoiceIssuanceApi } from "./invoice-issuance";
 import { AccountantReviewApi } from "./accountant-review";
 import { SourceIntakeApi } from "./source-intake";
 import { ExpenseTaxApi } from "./expense-tax";
@@ -126,11 +129,14 @@ export class Api extends HttpApi.make("open-erp")
     PostingRecoveryApi,
     CorrectionApi,
     SettlementsApi,
+    BankMatchReversalsApi,
     CommerceApi,
     RegisterReportsApi,
     VatReturnsApi,
     SieApi,
     InvoiceDraftsApi,
+    SubledgerControlsApi,
+    InvoiceIssuanceApi,
     AccountantReviewApi,
     SourceIntakeApi,
     ExpenseTaxApi,

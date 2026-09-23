@@ -1,3 +1,15 @@
+import { ArrowLeft, Plus } from "lucide-react";
+import { Badge } from "@open-erp/ui/components/badge";
+import { FormDialog } from "@open-erp/ui/components/form-dialog";
+import {
+  PageEmpty,
+  RegisterFilters,
+  RegisterSearch,
+  RecordToggle,
+} from "@open-erp/ui/components/accounting-page";
+import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
+import { formatMinorAmount } from "@/lib/workspace-api";
+import { InvoiceRegistration } from "./invoice-registration";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Commerce from "@open-erp/contracts/commerce";
@@ -5,7 +17,7 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { SelectField } from "@open-erp/ui/components/field";
 import { DataTable } from "@open-erp/ui/components/data-table";
-import { Heading, Text } from "@open-erp/ui/components/typography";
+import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
 import { commerceCopy } from "./copy";
@@ -15,7 +27,6 @@ import {
   Evidence,
   Facts,
   Field,
-  Lookup,
   Pager,
   checkScope,
   commerceKey,
@@ -23,11 +34,23 @@ import {
   type CommerceProps,
 } from "./shared";
 
-export function Invoices(props: CommerceProps) {
+export function Invoices(
+  props: CommerceProps & {
+    direction?: "customer" | "supplier";
+    recordId?: string;
+    onOpen?: (id: string) => void;
+  },
+) {
   const { book, locale } = props;
+  const sv = locale === "sv";
+  const labels = sv ? swedish : english;
   const copy = commerceCopy(locale);
   const [after, setAfter] = useState("");
-  const [selected, setSelected] = useState("");
+  const [local, setLocal] = useState("");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const selected = props.recordId ?? local;
+  const select = props.onOpen ?? setLocal;
   const page = useQuery({
     queryKey: [...commerceKey(book), "invoices", after],
     queryFn: async ({ signal }) => {
@@ -42,122 +65,123 @@ export function Invoices(props: CommerceProps) {
     retry: false,
   });
   const statuses = {
-    open: copy.openStatus,
-    partially_allocated: copy.partialStatus,
-    allocated: copy.allocatedStatus,
-    blocked: copy.blockedStatus,
+    open: labels.open,
+    partially_allocated: labels.partlyAllocated,
+    allocated: labels.allocated,
+    blocked: labels.needsReview,
   };
-  return (
-    <Box as="section" display="grid" gap="lg" minWidth="zero">
-      <Heading>{copy.invoices}</Heading>
-      <Text tone="muted">{copy.recognitionHelp}</Text>
-      <Text>
-        {copy.units} {book.currency}
-      </Text>
-      <Details title={copy.registerInvoice}>
-        <CommandForm
-          {...props}
-          path={`${commercePath(book)}/invoices`}
-          schema={Commerce.CreateInvoice}
-          output={Commerce.Invoice}
-          label={copy.registerInvoice}
-          input={(fields) => ({
-            kind: "synthetic_invoice_v1",
-            direction: fields.get("direction"),
-            counterpartyId: fields.get("counterpartyId"),
-            counterpartyRevision: fields.get("counterpartyRevision"),
-            documentNumber: fields.get("documentNumber"),
-            issuedOn: fields.get("issuedOn"),
-            dueOn: fields.get("dueOn"),
-            currency: book.currency,
-            amountMinor: fields.get("amountMinor"),
-            controlAccountId: fields.get("controlAccountId"),
-            recognitionVoucherId: fields.get("recognitionVoucherId"),
-            recognitionLineId: fields.get("recognitionLineId"),
-            evidenceId: fields.get("evidenceId"),
-            description: fields.get("description"),
-          })}
-          onSuccess={(invoice) => setSelected(invoice.id)}
-        >
-          <Box display="grid" columns={1} columnsAtSm={2} gap="lg">
-            <SelectField
-              name="direction"
-              label={copy.role}
-              required
-              defaultValue="customer"
-              options={[
-                { value: "customer", label: copy.customer },
-                { value: "supplier", label: copy.supplier },
-              ]}
-            />
-            <Field name="counterpartyId" label={copy.partyId} maxLength={128} />
-            <Field name="counterpartyRevision" label={copy.partyRevision} maxLength={18} />
-            <Field name="documentNumber" label={copy.document} maxLength={200} />
-            <Field name="issuedOn" label={copy.issued} type="date" />
-            <Field name="dueOn" label={copy.due} type="date" />
-            <Field name="amountMinor" label={copy.amount} maxLength={38} />
-            <Field name="controlAccountId" label={copy.account} maxLength={128} />
-            <Field name="recognitionVoucherId" label={copy.voucher} maxLength={128} />
-            <Field name="recognitionLineId" label={copy.line} maxLength={128} />
-            <Field name="evidenceId" label={copy.evidenceId} maxLength={128} />
-          </Box>
-          <Field name="description" label={copy.description} />
-        </CommandForm>
-      </Details>
-      <Lookup label={copy.open} onOpen={setSelected} />
-      <Box>
-        <Button
-          size="xl"
-          variant="outline"
-          disabled={page.isFetching}
-          onClick={() => {
-            void page.refetch();
-          }}
-        >
-          {copy.refresh}
-        </Button>
+  const invoices =
+    page.data?.items.filter(
+      (item) =>
+        (!props.direction || item.direction === props.direction) &&
+        (!status || item.status === status) &&
+        `${item.documentNumber} ${item.counterpartyName}`
+          .toLocaleLowerCase(locale)
+          .includes(search.toLocaleLowerCase(locale)),
+    ) ?? [];
+  if (selected && selected !== "new")
+    return (
+      <Box display="grid" gap="xl">
+        <Box>
+          <Button variant="ghost" onClick={() => select("")}>
+            <ArrowLeft size={14} />
+            {labels.allInvoices}
+          </Button>
+        </Box>
+        <InvoiceDetail {...props} id={selected} />
       </Box>
+    );
+  return (
+    <Box display="grid" gap="xl">
+      <RecordHeading
+        title={props.direction === "supplier" ? labels.supplierInvoices : labels.registeredInvoices}
+        subtitle={labels.invoicesLinkedToYourBooks}
+        action={
+          <Button variant="outline" onClick={() => select("new")}>
+            <Plus size={14} />
+            {labels.registerInvoice}
+          </Button>
+        }
+      />
+      <RegisterFilters>
+        <RegisterSearch
+          aria-label={labels.searchInvoices}
+          placeholder={labels.searchNumberOrName}
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+        <SelectField
+          label="Status"
+          value={status}
+          onValueChange={(value) => setStatus(value ?? "")}
+          options={[
+            { value: "", label: labels.allStatuses },
+            ...Object.entries(statuses).map(([value, label]) => ({ value, label })),
+          ]}
+        />
+      </RegisterFilters>
       <AccountingStatus locale={locale} pending={page.isPending} error={page.error} />
-      {page.data ? (
+      {page.isSuccess ? (
         <>
-          <DataTable
-            title={copy.invoices}
-            narrow="stack"
-            columns={[
-              { id: "document", label: copy.document },
-              { id: "party", label: copy.name },
-              { id: "due", label: copy.due },
-              { id: "amount", label: copy.outstanding, numeric: true },
-              { id: "status", label: copy.status },
-              { id: "open", label: copy.id },
-            ]}
-            rows={page.data.items.map((invoice) => ({
-              id: invoice.id,
-              cells: [
-                invoice.documentNumber,
-                invoice.counterpartyName,
-                invoice.currentRevision.dueOn,
-                invoice.outstandingMinor ?? copy.blockedAmount,
-                statuses[invoice.status],
-                <Box key="open" display="grid" gap="sm">
-                  <Text>{invoice.id}</Text>
-                  <Button size="xl" variant="outline" onClick={() => setSelected(invoice.id)}>
-                    {copy.open}
-                  </Button>
-                </Box>,
-              ],
-            }))}
-          />
-          {page.data.items.length === 0 ? <Text>{copy.empty}</Text> : null}
-          <Pager
-            locale={locale}
-            first={!after}
-            next={page.isSuccess && !page.isFetching ? page.data.next : null}
-            onPage={setAfter}
-          />
+          {invoices.length ? (
+            <DataTable
+              title={copy.invoices}
+              narrow="stack"
+              columns={[
+                { id: "document", label: labels.invoice },
+                { id: "party", label: labels.contact },
+                { id: "due", label: labels.dueDate },
+                { id: "status", label: "Status" },
+                { id: "amount", label: labels.outstanding, numeric: true },
+              ]}
+              rows={invoices.map((invoice) => ({
+                id: invoice.id,
+                cells: [
+                  <RecordToggle key="open" expanded={false} onClick={() => select(invoice.id)}>
+                    {invoice.documentNumber}
+                  </RecordToggle>,
+                  invoice.counterpartyName,
+                  invoice.currentRevision.dueOn,
+                  <Badge
+                    key="status"
+                    variant={
+                      invoice.status === "blocked"
+                        ? "warning"
+                        : invoice.status === "allocated"
+                          ? "success"
+                          : "secondary"
+                    }
+                  >
+                    {statuses[invoice.status]}
+                  </Badge>,
+                  invoice.outstandingMinor === null
+                    ? "—"
+                    : `${formatMinorAmount(invoice.outstandingMinor, invoice.currencyScale, locale)} ${invoice.currency}`,
+                ],
+              }))}
+            />
+          ) : (
+            <PageEmpty
+              title={search || status ? labels.noMatchingInvoices : labels.noRegisteredInvoicesYet}
+              detail={labels.registerAnInvoiceOnceIts}
+            />
+          )}
+          <Pager locale={locale} first={!after} next={page.data.next} onPage={setAfter} />
         </>
       ) : null}
-      {selected ? <InvoiceDetail {...props} key={selected} id={selected} /> : null}
+      {selected === "new" ? (
+        <FormDialog
+          title={labels.registerInvoice}
+          closeLabel={labels.close}
+          onClose={() => select("")}
+        >
+          <InvoiceRegistration
+            {...props}
+            direction={props.direction ?? "customer"}
+            onSaved={(invoice) => select(invoice.id)}
+          />
+        </FormDialog>
+      ) : null}
     </Box>
   );
 }
@@ -181,10 +205,6 @@ export function InvoiceDetail(props: CommerceProps & { id: string }) {
   const ready = invoice.isSuccess && !invoice.isFetching;
   return (
     <Box display="grid" gap="lg" minWidth="zero">
-      <Heading>{copy.invoices}</Heading>
-      <Text>
-        {copy.id}: {id}
-      </Text>
       <Box>
         <Button
           size="xl"
@@ -201,17 +221,36 @@ export function InvoiceDetail(props: CommerceProps & { id: string }) {
       {!ready ? <Text>{copy.waiting}</Text> : null}
       {invoice.data ? (
         <>
-          <Text>
-            {invoice.data.documentNumber} · {invoice.data.counterpartyName}
-          </Text>
-          <Text>
-            {copy.units} {invoice.data.currency} · {copy.scale}: {invoice.data.currencyScale}
-          </Text>
-          <Text>
-            {copy.amount}: {invoice.data.amountMinor} · {copy.recordedAllocated}:{" "}
-            {invoice.data.recordedAllocatedMinor} · {copy.outstanding}:{" "}
-            {invoice.data.outstandingMinor ?? copy.blockedAmount}
-          </Text>
+          <RecordHeading
+            title={invoice.data.documentNumber}
+            subtitle={invoice.data.counterpartyName}
+          />
+          <RecordSummary>
+            <RecordFact label={locale === "sv" ? "Belopp" : "Amount"}>
+              {formatMinorAmount(invoice.data.amountMinor, invoice.data.currencyScale, locale)}{" "}
+              {invoice.data.currency}
+            </RecordFact>
+            <RecordFact label={locale === "sv" ? "Avstämt" : "Allocated"}>
+              {formatMinorAmount(
+                invoice.data.recordedAllocatedMinor,
+                invoice.data.currencyScale,
+                locale,
+              )}{" "}
+              {invoice.data.currency}
+            </RecordFact>
+            <RecordFact label={locale === "sv" ? "Kvarstående" : "Outstanding"}>
+              {invoice.data.outstandingMinor === null
+                ? "—"
+                : formatMinorAmount(
+                    invoice.data.outstandingMinor,
+                    invoice.data.currencyScale,
+                    locale,
+                  )}{" "}
+              {invoice.data.currency}
+            </RecordFact>
+            <RecordFact label={copy.due}>{invoice.data.currentRevision.dueOn}</RecordFact>
+          </RecordSummary>
+          <Text>{invoice.data.currentRevision.description}</Text>
           {invoice.data.blockers.map((blocker) => (
             <Text key={blocker} role="alert">
               {blocker}
@@ -335,3 +374,48 @@ function InvoiceHistory(props: CommerceProps & { id: string }) {
     </Box>
   );
 }
+
+const english = {
+  open: "Open",
+  partlyAllocated: "Partly allocated",
+  allocated: "Allocated",
+  needsReview: "Needs review",
+  allInvoices: "All invoices",
+  supplierInvoices: "Supplier invoices",
+  registeredInvoices: "Registered invoices",
+  invoicesLinkedToYourBooks: "Invoices linked to your books, with their outstanding balances.",
+  registerInvoice: "Register invoice",
+  searchInvoices: "Search invoices",
+  searchNumberOrName: "Search number or name…",
+  allStatuses: "All statuses",
+  invoice: "Invoice",
+  contact: "Contact",
+  dueDate: "Due date",
+  outstanding: "Outstanding",
+  noMatchingInvoices: "No matching invoices",
+  noRegisteredInvoicesYet: "No registered invoices yet",
+  registerAnInvoiceOnceIts: "Register an invoice once its amount is recorded in the books.",
+  close: "Close",
+};
+const swedish: typeof english = {
+  open: "Obetald",
+  partlyAllocated: "Delvis avstämd",
+  allocated: "Avstämd",
+  needsReview: "Behöver granskas",
+  allInvoices: "Alla fakturor",
+  supplierInvoices: "Leverantörsfakturor",
+  registeredInvoices: "Bokförda fakturor",
+  invoicesLinkedToYourBooks: "Fakturor kopplade till bokföringen och deras kvarvarande belopp.",
+  registerInvoice: "Registrera faktura",
+  searchInvoices: "Sök fakturor",
+  searchNumberOrName: "Sök nummer eller namn…",
+  allStatuses: "Alla",
+  invoice: "Faktura",
+  contact: "Kontakt",
+  dueDate: "Förfallodatum",
+  outstanding: "Kvar att stämma av",
+  noMatchingInvoices: "Inga matchande fakturor",
+  noRegisteredInvoicesYet: "Inga registrerade fakturor än",
+  registerAnInvoiceOnceIts: "Registrera en faktura när dess belopp finns i bokföringen.",
+  close: "Stäng",
+};

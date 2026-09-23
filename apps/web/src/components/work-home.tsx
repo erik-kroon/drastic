@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { FileCheck2, BookOpen, CheckSquare, Plus } from "lucide-react";
+import { FileCheck2, BookOpen, CheckSquare, Plus, Upload, FileText } from "lucide-react";
 import {
   PageContent,
   WorkspaceWelcome,
@@ -41,6 +41,26 @@ export function WorkHome() {
           title={copy.welcome}
           context={`${book.name}${page ? ` · ${new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(page.checkedAt))}` : ""}`}
         />
+        <TaskSection title={locale === "sv" ? "Kom igång" : "Start something"}>
+          <TaskRow
+            href={`${base}/purchases?view=documents&record=new`}
+            icon={<Upload size={15} strokeWidth={1.5} />}
+            title={locale === "sv" ? "Ladda upp ett underlag" : "Upload a source document"}
+            detail={
+              locale === "sv"
+                ? "Spara kvitton, fakturor och kontoutdrag."
+                : "Keep receipts, invoices and statements together."
+            }
+          />
+          <TaskRow
+            href={`${base}/sales?view=drafts&record=new`}
+            icon={<FileText size={15} strokeWidth={1.5} />}
+            title={locale === "sv" ? "Förbered en faktura" : "Prepare an invoice"}
+            detail={
+              locale === "sv" ? "Skapa ett utkast för en kund." : "Create a draft for a customer."
+            }
+          />
+        </TaskSection>
         <AccountingStatus locale={locale} pending={work.isPending} error={work.error} />
         {page ? (
           <TaskColumns>

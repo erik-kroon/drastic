@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  LayoutDashboard,
   CheckSquare,
   Landmark,
   ReceiptText,
@@ -32,6 +33,10 @@ export function BookNavigation({
   return (
     <>
       <WorkspaceNavigation label={copy.todo} showLabel={false}>
+        <WorkspaceNavLink href={`${base}/overview`} active={pathname === `${base}/overview`}>
+          <LayoutDashboard size={15} strokeWidth={1.5} aria-hidden="true" />
+          {locale === "sv" ? "Översikt" : "Overview"}
+        </WorkspaceNavLink>
         <WorkspaceNavLink href={`${base}/`} active={home || reviewing} current={home}>
           <CheckSquare size={15} strokeWidth={1.5} aria-hidden="true" />
           {copy.todo}

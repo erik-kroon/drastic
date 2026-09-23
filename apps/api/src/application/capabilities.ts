@@ -47,6 +47,66 @@ function effectCapability<I, O extends Schema.Json>(
 }
 
 export const capabilities = {
+  commerce_get_invoice_issue_review: bindCapability(
+    Capabilities.commerce_get_invoice_issue_review,
+    "getInvoiceIssueReview",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_invoice_issue_history: bindCapability(
+    Capabilities.commerce_invoice_issue_history,
+    "invoiceIssueHistory",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  subledger_get_basis: bindCapability(
+    Capabilities.subledger_get_basis,
+    "getSubledgerBasis",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  subledger_list_bases: bindCapability(
+    Capabilities.subledger_list_bases,
+    "listSubledgerBases",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  subledger_create_control: bindCapability(
+    Capabilities.subledger_create_control,
+    "createSubledgerControl",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  subledger_get_control: bindCapability(
+    Capabilities.subledger_get_control,
+    "getSubledgerControl",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  subledger_list_controls: bindCapability(
+    Capabilities.subledger_list_controls,
+    "listSubledgerControls",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  bank_prepare_match_reversal: bindCapability(
+    Capabilities.bank_prepare_match_reversal,
+    "prepareBankMatchReversal",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  bank_get_match_reversal: bindCapability(
+    Capabilities.bank_get_match_reversal,
+    "getBankMatchReversal",
+    (input) => [scopeParameter(input.scope), input.planId],
+  ),
+  bank_list_match_reversals: bindCapability(
+    Capabilities.bank_list_match_reversals,
+    "listBankMatchReversals",
+    (input) => [scopeParameter(input.scope), input.after ?? ""],
+  ),
+  bank_execute_match_reversal: bindCapability(
+    Capabilities.bank_execute_match_reversal,
+    "executeBankMatchReversal",
+    (input) => [
+      scopeParameter(input.scope),
+      input.idempotencyKey,
+      input.planId,
+      JSON.stringify(input.input),
+    ],
+  ),
   commerce_get_invoice_draft: bindCapability(
     Capabilities.commerce_get_invoice_draft,
     "getInvoiceDraft",

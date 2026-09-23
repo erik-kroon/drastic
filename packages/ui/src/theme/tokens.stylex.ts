@@ -56,6 +56,7 @@ export const tokens = stylex.defineConsts({
   input: "var(--input)",
   muted: "var(--muted)",
   mutedForeground: "var(--muted-foreground)",
+  imageOutline: "var(--image-outline)",
   outlineBackground: "var(--outline-background)",
   outlineContentHoverBackground: "var(--outline-content-hover-background)",
   outlineHoverBackground: "var(--outline-hover-background)",

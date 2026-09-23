@@ -91,6 +91,11 @@ export const BankAllocationView = Schema.Struct({
   approval: Schema.NullOr(BankAllocationApproval),
   execution: Schema.NullOr(BankAllocationExecution),
   dependenciesCurrent: Schema.Boolean,
+  unmatch: Schema.optionalKey(Schema.NullOr(Schema.Struct({
+    planId: Accounting.Identifier,
+    executedAt: Schema.String,
+    reason: Accounting.Description,
+  }))),
 });
 export const SourceCapacity = Schema.Struct({
   ...Bank.SourceObservation.fields,

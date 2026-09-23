@@ -17,6 +17,7 @@ import { AutomationHandlers } from "./transport/http/routes/automation";
 import { PostingRecoveryHandlers } from "./transport/http/routes/posting-recovery";
 import { CorrectionHandlers } from "./transport/http/routes/corrections";
 import { SettlementHandlers } from "./transport/http/routes/settlements";
+import { BankMatchReversalHandlers } from "./transport/http/routes/bank-match-reversals";
 import { ReconciliationHandlers } from "./transport/http/routes/reconciliation";
 
 import { SubledgerHandlers } from "./transport/http/routes/subledgers";
@@ -28,6 +29,8 @@ import { RegisterReportHandlers } from "./transport/http/routes/register-reports
 import { VatReturnsHandlers } from "./transport/http/routes/vat-returns";
 import { SieHandlers } from "./transport/http/routes/sie";
 import { InvoiceDraftHandlers } from "./transport/http/routes/invoice-drafts";
+import { SubledgerControlsHandlers } from "./transport/http/routes/subledger-controls";
+import { InvoiceIssuanceHandlers } from "./transport/http/routes/invoice-issuance";
 import { AccountantReviewHandlers } from "./transport/http/routes/accountant-review";
 import { SourceIntakeHandlers } from "./transport/http/routes/source-intake";
 import { ExpenseTaxHandlers } from "./transport/http/routes/expense-tax";
@@ -62,11 +65,14 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     PostingRecoveryHandlers,
     CorrectionHandlers,
     SettlementHandlers,
+    BankMatchReversalHandlers,
     CommerceHandlers,
     RegisterReportHandlers,
     VatReturnsHandlers,
     SieHandlers,
     InvoiceDraftHandlers,
+    SubledgerControlsHandlers,
+    InvoiceIssuanceHandlers,
     AccountantReviewHandlers,
     SourceIntakeHandlers,
     ExpenseTaxHandlers,

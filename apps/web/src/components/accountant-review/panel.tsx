@@ -26,15 +26,17 @@ const Draft = Schema.Struct({
 export function AccountantReviewPanel({
   book,
   locale,
+  open = false,
 }: {
   book: typeof Accounting.Book.Type;
   locale: Locale;
+  open?: boolean;
 }) {
   const copy = reviewCopy(locale);
   const [id, setId] = useState("");
   const [error, setError] = useState("");
   return (
-    <details id="accountant-review" tabIndex={-1}>
+    <details open={open} id="accountant-review" tabIndex={-1}>
       <summary>{copy.title}</summary>
       <Box display="grid" gap="2xl" paddingBlock="xl" minWidth="zero">
         <Heading>{copy.title}</Heading>

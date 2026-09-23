@@ -24,6 +24,16 @@ export const ClosingCheck = Schema.Struct({
   passed: Schema.Boolean,
   detail: Schema.String,
 });
+export const SubledgerControlDependencies = Schema.Struct({
+  version: Schema.Literal("synthetic_subledger_controls_v1"),
+  basisDigest: Accounting.Digest,
+  basisCount: Schema.Int,
+  snapshotCount: Schema.Int,
+  missingBasisCount: Schema.Int,
+  coverageEstablished: Schema.Literal(false),
+  controlAccountReconciled: Schema.Literal(false),
+  financialCloseReady: Schema.Literal(false),
+});
 export const ClosingDependencies = Schema.Struct({
   periodVersion: Accounting.MinorUnits,
   ledgerSequence: Accounting.MinorUnits,
@@ -37,6 +47,7 @@ export const ClosingDependencies = Schema.Struct({
   ownerSourceDigest: Schema.optional(Accounting.Digest),
   expenseTaxBasisDigest: Schema.optional(Accounting.Digest),
   vatReturnDependencyDigest: Schema.optional(Accounting.Digest),
+  subledgerControls: Schema.optional(SubledgerControlDependencies),
   familyInventoryDigest: Schema.optional(Accounting.Digest),
   reportId: Schema.NullOr(Accounting.Identifier),
 });

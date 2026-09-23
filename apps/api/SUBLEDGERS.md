@@ -78,6 +78,17 @@ Private `openerp.subledger_close_dependencies(book text, ends_on date) RETURNS j
 
 It returns `coverageEstablished:false`, `scheduleRevisionDigest`, `scheduleCount`, `dueUnpreparedCount`, `dueUnpostedCount`, `reversedOccurrenceCount`, `conflictedOccurrenceCount` and `limitation`. `dueUnpostedCount` includes unprepared, prepared and conflicted due occurrences. Posting/reversal dates are cut off by `ends_on`. The digest binds each current revision and all due occurrence/proposal/posting/reversal identities. No wall-clock timestamp is inserted. No schedules still means coverage is unestablished. The year-end owner decides its technical close blockers and must retain the statutory coverage limitation.
 
+## Evidence-backed basis and declared-account controls (1500 source slice)
+
+The separate [schedule-control module](SUBLEDGER-CONTROLS.md) links an operator-reviewed
+acquisition or imported-opening carrying basis to existing posted lines and a frozen schedule
+revision. It captures immutable known-register versus complete declared-account GL controls,
+including individual unexplained rows, missing expected effects and saved JSON bytes. It does
+not create openings, activate depreciation law or establish whole-source/close readiness.
+Existing0700 schedule views still report `controlAccountReconciled:false`;1500 only adds the
+basis freeze to their revision-allowed condition. Root composition and all runtime proof remain
+pending. No existing migration or posted occurrence was changed.
+
 ## Schedule boundaries and remaining domain roadmap
 
 Schedules retain their basis, remaining amounts and immutable posted occurrences. Preparation does not automatically post. Revisions affect eligible future occurrences; they cannot reset or recalculate posted history.

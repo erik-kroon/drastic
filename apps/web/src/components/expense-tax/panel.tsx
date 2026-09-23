@@ -1,3 +1,15 @@
+import { Plus, ArrowLeft } from "lucide-react";
+import { FormDialog } from "@open-erp/ui/components/form-dialog";
+import { Badge } from "@open-erp/ui/components/badge";
+import { RecordHeading } from "@open-erp/ui/components/record-layout";
+import {
+  RegisterSearch,
+  RecordToggle,
+  PageEmpty,
+  PageCaption,
+} from "@open-erp/ui/components/accounting-page";
+import { ExpenseEditor } from "./expense-editor";
+import { formatMinorAmount } from "@/lib/workspace-api";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -13,7 +25,7 @@ import { EvidenceInspector } from "@/components/evidence-inspector";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { expenseTaxCopy } from "./copy";
-import { TaxEvidenceForm, TaxReviewForm, TaxSourceForm } from "./forms";
+import { TaxReviewForm, TaxSourceForm } from "./forms";
 import { TaxFactsTable, TaxSnapshotEntry } from "./views";
 
 type Props = {
@@ -22,10 +34,12 @@ type Props = {
   locale: Locale;
   onPrepared: (id: string) => void;
 };
-export function ExpenseTaxPanel({ book, locale, onPrepared, open = false }: Props) {
+export function ExpenseTaxPanel({ book, locale, onPrepared }: Props) {
   const copy = expenseTaxCopy(locale);
   const client = useQueryClient();
   const [sourceId, setSourceId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const sv = locale === "sv";
   const [creating, setCreating] = useState(false);
   const inventory = useQuery({
     queryKey: [...bookKey(book), "expense-tax", "inventory"],
@@ -38,89 +52,128 @@ export function ExpenseTaxPanel({ book, locale, onPrepared, open = false }: Prop
     setCreating(false);
     void client.invalidateQueries({ queryKey: [...bookKey(book), "expense-tax"] });
   };
-  return (
-    <details open={open} id="expense-tax" tabIndex={-1}>
-      <summary>{copy.title}</summary>
-      <Box display="grid" gap="2xl" paddingBlock="xl" minWidth="zero">
-        <Heading>{copy.title}</Heading>
-        <Box backgroundColor="muted" padding="lg" borderRadius="surface" display="grid" gap="md">
-          <Text>{copy.boundary}</Text>
-          <Text>{copy.actualBlocked}</Text>
-        </Box>
-        <TaxEvidenceForm book={book} locale={locale} />
-        <Box display="flex" flexWrap="wrap" gap="md">
-          <Button size="xl" onClick={() => setCreating(!creating)}>
-            {creating ? copy.cancel : copy.createSource}
-          </Button>
-          <Button
-            size="xl"
-            variant="outline"
-            disabled={inventory.isFetching}
-            onClick={() => {
-              void inventory.refetch();
-            }}
-          >
-            {copy.refresh}
+  const rows =
+    inventory.data?.sources.filter((row) =>
+      row.current.facts.description
+        .toLocaleLowerCase(locale)
+        .includes(search.toLocaleLowerCase(locale)),
+    ) ?? [];
+  if (sourceId)
+    return (
+      <Box display="grid" gap="xl">
+        <Box>
+          <Button variant="ghost" onClick={() => setSourceId(null)}>
+            <ArrowLeft size={14} />
+            {sv ? "Alla utgifter" : "All expenses"}
           </Button>
         </Box>
-        {creating ? <TaxSourceForm book={book} locale={locale} onSaved={sourceSaved} /> : null}
-        <AccountingStatus locale={locale} pending={inventory.isPending} error={inventory.error} />
-        {inventory.data ? (
-          <>
-            <Text>
-              {copy.digest}: {inventory.data.basisDigest}
-            </Text>
-            {inventory.data.sources.length === 0 ? (
-              <Text>{copy.empty}</Text>
-            ) : (
-              <DataTable
-                title={copy.inventory}
-                narrow="stack"
-                columns={[
-                  { id: "source", label: copy.sourceKey },
-                  { id: "description", label: copy.description },
-                  { id: "class", label: copy.sourceClass },
-                  { id: "review", label: copy.reviewTitle },
-                  { id: "action", label: copy.open },
-                ]}
-                rows={inventory.data.sources.map((row) => ({
-                  id: row.current.sourceId,
-                  cells: [
-                    row.current.sourceKey,
-                    row.current.facts.description,
-                    row.current.facts.recordClass === "synthetic" ? copy.synthetic : copy.actual,
-                    row.reviewCurrent ? copy.currentReview : copy.staleReview,
-                    <Button
-                      key="open"
-                      size="xl"
-                      variant="outline"
-                      onClick={() => setSourceId(row.current.sourceId)}
-                    >
-                      {copy.open} · {row.current.sourceKey}
-                    </Button>,
-                  ],
-                }))}
-              />
-            )}
-          </>
-        ) : null}
-        {sourceId ? (
-          <ExpenseTaxSourceDetail
-            key={sourceId}
-            book={book}
-            locale={locale}
-            onPrepared={onPrepared}
-            sourceId={sourceId}
-            onChanged={() => {
-              void client.invalidateQueries({ queryKey: [...bookKey(book), "expense-tax"] });
-            }}
-          />
-        ) : null}
-        <ExpenseTaxSnapshots book={book} locale={locale} />
+        <ExpenseTaxSourceDetail
+          book={book}
+          locale={locale}
+          onPrepared={onPrepared}
+          sourceId={sourceId}
+          onChanged={() => {
+            void client.invalidateQueries({ queryKey: [...bookKey(book), "expense-tax"] });
+          }}
+        />
       </Box>
-    </details>
+    );
+  return (
+    <Box display="grid" gap="xl">
+      <RecordHeading
+        title={sv ? "Utgifter" : "Expenses"}
+        subtitle={
+          sv
+            ? "Granska underlag, belopp och momsbehandling."
+            : "Review source records, amounts and tax treatment."
+        }
+        action={
+          <Button onClick={() => setCreating(true)}>
+            <Plus size={14} />
+            {sv ? "Ny utgift" : "New expense"}
+          </Button>
+        }
+      />
+      <RegisterSearch
+        aria-label={sv ? "Sök utgifter" : "Search expenses"}
+        placeholder={sv ? "Sök beskrivning…" : "Search description…"}
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+      />
+      <AccountingStatus locale={locale} pending={inventory.isPending} error={inventory.error} />
+      {inventory.isSuccess ? (
+        rows.length ? (
+          <DataTable
+            title={sv ? "Utgifter" : "Expenses"}
+            narrow="stack"
+            columns={[
+              { id: "description", label: copy.description },
+              { id: "date", label: sv ? "Datum" : "Date" },
+              { id: "status", label: "Status" },
+              { id: "amount", label: sv ? "Totalt" : "Total", numeric: true },
+            ]}
+            rows={rows.map((row) => ({
+              id: row.current.sourceId,
+              cells: [
+                <RecordToggle
+                  key="open"
+                  expanded={false}
+                  onClick={() => setSourceId(row.current.sourceId)}
+                >
+                  {row.current.facts.description}
+                </RecordToggle>,
+                row.current.facts.issuedOn ?? "—",
+                <Badge key="status" variant={row.reviewCurrent ? "secondary" : "warning"}>
+                  {row.reviewCurrent
+                    ? sv
+                      ? "Granskad"
+                      : "Reviewed"
+                    : sv
+                      ? "Att granska"
+                      : "Needs review"}
+                </Badge>,
+                row.current.facts.amounts.grossMinor !== null &&
+                row.current.facts.currencyScale !== null
+                  ? `${formatMinorAmount(row.current.facts.amounts.grossMinor, row.current.facts.currencyScale, locale)} ${row.current.facts.currency ?? ""}`
+                  : "—",
+              ],
+            }))}
+          />
+        ) : (
+          <PageEmpty
+            title={sv ? "Inga utgifter här än" : "No expenses here yet"}
+            detail={
+              sv
+                ? "Lägg till uppgifterna från ett underlag för att börja granskningen."
+                : "Add the details from a source document to start the review."
+            }
+          />
+        )
+      ) : null}
+      <PageCaption>
+        {sv
+          ? "Att spara en utgift bokför eller betalar den inte. Saknade uppgifter behöver granskas."
+          : "Saving an expense does not post or pay it. Missing details still need review."}
+      </PageCaption>
+      <details>
+        <summary>{copy.snapshots}</summary>
+        <Box paddingBlock="lg">
+          <ExpenseTaxSnapshots book={book} locale={locale} />
+        </Box>
+      </details>
+      {creating ? (
+        <FormDialog
+          title={sv ? "Ny utgift" : "New expense"}
+          closeLabel={sv ? "Stäng" : "Close"}
+          onClose={() => setCreating(false)}
+        >
+          <ExpenseEditor book={book} locale={locale} onSaved={sourceSaved} />
+        </FormDialog>
+      ) : null}
+    </Box>
   );
 }
+
 function ExpenseTaxSourceDetail(props: Props & { sourceId: string; onChanged: () => void }) {
   const { book, locale, sourceId } = props;
   const copy = expenseTaxCopy(locale);

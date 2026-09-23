@@ -7,6 +7,7 @@ import * as Automation from "./automation";
 import { PostingRecoveryCapabilities } from "./posting-recovery";
 import { CorrectionCapabilities } from "./corrections";
 import { SettlementCapabilities } from "./settlements";
+import { BankMatchReversalCapabilities } from "./bank-match-reversals";
 
 import { SubledgerCapabilities } from "./subledgers";
 
@@ -17,6 +18,8 @@ import { RegisterReportCapabilities } from "./register-reports";
 import { VatReturnCapabilities } from "./vat-returns";
 import { SieCapabilities } from "./sie";
 import { InvoiceDraftCapabilities } from "./invoice-drafts";
+import { SubledgerControlCapabilities } from "./subledger-controls";
+import { InvoiceIssuanceCapabilities } from "./invoice-issuance";
 import { AccountantReviewCapabilities } from "./accountant-review";
 import { SourceIntakeCapabilities } from "./source-intake";
 import { ExpenseTaxCapabilities } from "./expense-tax";
@@ -56,11 +59,14 @@ export const Capabilities = {
   ...VatReturnCapabilities,
   ...SieCapabilities,
   ...InvoiceDraftCapabilities,
+  ...SubledgerControlCapabilities,
+  ...InvoiceIssuanceCapabilities,
   ...ClosingCapabilities,
   ...SubledgerCapabilities,
   ...PostingRecoveryCapabilities,
   ...CorrectionCapabilities,
   ...SettlementCapabilities,
+  ...BankMatchReversalCapabilities,
   rules_propose: {
     description:
       "Propose an immutable synthetic exact-match recurring PREPARATION rule. It never grants posting authority.",
