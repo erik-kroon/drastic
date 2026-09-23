@@ -66,8 +66,8 @@ export function TrialBalance({
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <AccountingStatus
         locale={locale}
-        pending={report.isPending || lines.isPending}
-        error={report.error ?? lines.error}
+        pending={report.isPending || lines.isPending || metadata.isPending}
+        error={report.error ?? lines.error ?? metadata.error}
       />
       {report.isError || lines.isError ? (
         <Box>
@@ -87,7 +87,6 @@ export function TrialBalance({
       {report.data ? (
         <>
           <SnapshotHeader report={report.data} locale={locale} scale={scale} />
-          <Text tone="muted">{copy.report_account_help}</Text>
           {lines.data ? (
             <>
               <Text role="status">
@@ -99,36 +98,38 @@ export function TrialBalance({
                 columns={[
                   { id: "code", label: copy.journal_account },
                   { id: "name", label: copy.journal_description },
-                  { id: "opening", label: copy.bank_opening, numeric: true },
-                  { id: "debit", label: copy.journal_debit, numeric: true },
-                  { id: "credit", label: copy.journal_credit, numeric: true },
-                  { id: "closing", label: copy.bank_closing, numeric: true },
+                  { id: "opening", label: locale === "sv" ? "Ingående" : "Opening", numeric: true },
+                  { id: "debit", label: locale === "sv" ? "Debet" : "Debit", numeric: true },
+                  { id: "credit", label: locale === "sv" ? "Kredit" : "Credit", numeric: true },
+                  { id: "closing", label: locale === "sv" ? "Utgående" : "Closing", numeric: true },
                 ]}
-                rows={loaded.map((line) => ({
-                  id: line.accountId,
-                  cells: [
-                    <Button
-                      key={line.accountId}
-                      size="xl"
-                      variant="link"
-                      aria-expanded={accountId === line.accountId}
-                      aria-controls="report-explanation"
-                      onClick={() => {
-                        setAccountId(line.accountId);
-                        requestAnimationFrame(() =>
-                          document.getElementById("report-explanation")?.focus(),
-                        );
-                      }}
-                    >
-                      {line.code}
-                    </Button>,
-                    line.name,
-                    amount(line.openingMinor),
-                    amount(line.debitMinor),
-                    amount(line.creditMinor),
-                    amount(line.closingMinor),
-                  ],
-                }))}
+                rows={loaded
+                  .toSorted((a, b) => a.code.localeCompare(b.code))
+                  .map((line) => ({
+                    id: line.accountId,
+                    cells: [
+                      <Button
+                        key={line.accountId}
+                        size="xl"
+                        variant="link"
+                        aria-expanded={accountId === line.accountId}
+                        aria-controls="report-explanation"
+                        onClick={() => {
+                          setAccountId(line.accountId);
+                          requestAnimationFrame(() =>
+                            document.getElementById("report-explanation")?.focus(),
+                          );
+                        }}
+                      >
+                        {line.code}
+                      </Button>,
+                      line.name,
+                      amount(line.openingMinor),
+                      amount(line.debitMinor),
+                      amount(line.creditMinor),
+                      amount(line.closingMinor),
+                    ],
+                  }))}
               />
               {loaded.length === 0 ? <Text>{copy.report_empty}</Text> : null}
             </>
@@ -156,9 +157,7 @@ export function TrialBalance({
                 accountId={accountId}
                 locale={locale}
               />
-            ) : (
-              <Text tone="muted">{copy.report_account_help}</Text>
-            )}
+            ) : null}
           </Box>
         </>
       ) : null}
@@ -282,7 +281,6 @@ function AccountExplanation({
             {first.line.code} · {first.line.name}
           </Text>
           <Text tone="muted">
-            {copy.report_id}: {first.report.id} · {copy.report_sequence}: {first.report.sequence} ·{" "}
             {first.report.currency} · {first.report.startsOn} – {first.report.endsOn}
           </Text>
           <Text>{copy.report_formula}</Text>
@@ -290,10 +288,10 @@ function AccountExplanation({
             title={copy.report_frozen_totals}
             narrow="stack"
             columns={[
-              { id: "opening", label: copy.bank_opening, numeric: true },
-              { id: "debit", label: copy.journal_debit, numeric: true },
-              { id: "credit", label: copy.journal_credit, numeric: true },
-              { id: "closing", label: copy.bank_closing, numeric: true },
+              { id: "opening", label: locale === "sv" ? "Ingående" : "Opening", numeric: true },
+              { id: "debit", label: locale === "sv" ? "Debet" : "Debit", numeric: true },
+              { id: "credit", label: locale === "sv" ? "Kredit" : "Credit", numeric: true },
+              { id: "closing", label: locale === "sv" ? "Utgående" : "Closing", numeric: true },
             ]}
             rows={[
               {
@@ -310,17 +308,14 @@ function AccountExplanation({
           <Text role="status">
             {copy.report_loaded_contributions}: {contributions.length} / {first.totalContributions}
           </Text>
-          <Text tone="muted">
-            {copy.report_total_contributions}: {first.totalContributions}
-          </Text>
           <DataTable
             title={copy.report_contributions}
             narrow="stack"
             columns={[
               { id: "date", label: copy.journal_date },
               { id: "part", label: copy.report_part },
-              { id: "debit", label: copy.journal_debit, numeric: true },
-              { id: "credit", label: copy.journal_credit, numeric: true },
+              { id: "debit", label: locale === "sv" ? "Debet" : "Debit", numeric: true },
+              { id: "credit", label: locale === "sv" ? "Kredit" : "Credit", numeric: true },
               { id: "description", label: copy.journal_description },
               { id: "evidence", label: copy.journal_evidence_refs },
             ]}

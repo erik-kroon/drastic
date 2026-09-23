@@ -65,7 +65,7 @@ export function BookWorkspace({
         />
       ) : null}
       <Link href={`${base}/settings`}>{labels.settings}</Link>
-      <Link href="/">{copy.workspace_switch}</Link>
+      <Link href="/companies">{copy.workspace_switch}</Link>
       <Link href={`${base}/tools`}>{labels.tools}</Link>
       <SignOut locale={locale} />
     </WorkspaceAccount>

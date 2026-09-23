@@ -13,13 +13,14 @@ import { DocumentPreview } from "@open-erp/ui/components/document-preview";
 import { RecordHeading, RecordSplit, RecordSection } from "@open-erp/ui/components/record-layout";
 import {
   PageEmpty,
+  PageAction,
   PageCaption,
   RegisterSearch,
   RecordToggle,
 } from "@open-erp/ui/components/accounting-page";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
-import { useBookWorkspace } from "@/lib/book-context";
+import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import { downloadIntake } from "@/components/source-intake/download";
 
@@ -308,6 +309,13 @@ function DocumentDetail({ id }: { id: string }) {
                 <Text>{source.mediaType}</Text>
                 <Text>{new Intl.NumberFormat(locale).format(source.byteLength)} bytes</Text>
                 <PageCaption>{labels.theOriginalIsRetainedNo}</PageCaption>
+                {book.role === "operator" && !document.data?.admission ? (
+                  <PageAction
+                    href={`${workspacePath(book)}/purchases?view=expenses&record=${encodeURIComponent(`new:${source.id}`)}`}
+                  >
+                    {sv ? "Förbered utgift" : "Prepare expense"}
+                  </PageAction>
+                ) : null}
               </RecordSection>
             }
           >

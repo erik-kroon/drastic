@@ -11,6 +11,7 @@ import { PostingRecoveryApi } from "./posting-recovery";
 import { CorrectionApi } from "./corrections";
 import { SettlementsApi } from "./settlements";
 import { BankMatchReversalsApi } from "./bank-match-reversals";
+import { BankMatchCandidatesApi } from "./bank-match-candidates";
 
 import { SubledgersApi } from "./subledgers";
 
@@ -23,6 +24,7 @@ import { SieApi } from "./sie";
 import { InvoiceDraftsApi } from "./invoice-drafts";
 import { SubledgerControlsApi } from "./subledger-controls";
 import { InvoiceIssuanceApi } from "./invoice-issuance";
+import { CommerceAllocationReversalsApi } from "./commerce-allocation-reversals";
 import { AccountantReviewApi } from "./accountant-review";
 import { SourceIntakeApi } from "./source-intake";
 import { ExpenseTaxApi } from "./expense-tax";
@@ -130,6 +132,7 @@ export class Api extends HttpApi.make("open-erp")
     CorrectionApi,
     SettlementsApi,
     BankMatchReversalsApi,
+    BankMatchCandidatesApi,
     CommerceApi,
     RegisterReportsApi,
     VatReturnsApi,
@@ -137,6 +140,7 @@ export class Api extends HttpApi.make("open-erp")
     InvoiceDraftsApi,
     SubledgerControlsApi,
     InvoiceIssuanceApi,
+    CommerceAllocationReversalsApi,
     AccountantReviewApi,
     SourceIntakeApi,
     ExpenseTaxApi,

@@ -14,6 +14,7 @@ import {
 } from "@open-erp/ui/components/record-layout";
 import { PageCaption, PageEmpty } from "@open-erp/ui/components/accounting-page";
 import { Disclosure } from "@open-erp/ui/components/workflow";
+import { Disclosure as CheckDisclosure } from "@open-erp/ui/components/disclosure";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
@@ -62,19 +63,21 @@ export function ClosingWorkspace({
         title={labels.getThePeriodReady}
         subtitle={labels.seeWhatIsCompleteAnd}
         action={
-          <SelectField
-            label={labels.period}
-            value={period.id}
-            onValueChange={(value) => {
-              setProposal("");
-              setPreparing(false);
-              if (value) onOpen(value);
-            }}
-            options={setup.periods.map((item) => ({
-              value: item.id,
-              label: `${item.startsOn} – ${item.endsOn}`,
-            }))}
-          />
+          <Box width="fit">
+            <SelectField
+              label={labels.period}
+              value={period.id}
+              onValueChange={(value) => {
+                setProposal("");
+                setPreparing(false);
+                if (value) onOpen(value);
+              }}
+              options={setup.periods.map((item) => ({
+                value: item.id,
+                label: `${item.startsOn} – ${item.endsOn}`,
+              }))}
+            />
+          </Box>
         }
       />
       <AccountingStatus locale={locale} pending={readiness.isPending} error={readiness.error} />
@@ -91,18 +94,7 @@ export function ClosingWorkspace({
             </RecordFact>
             <RecordFact label={labels.periodEnd}>{basis.endsOn}</RecordFact>
           </RecordSummary>
-          <RecordSection title={labels.readinessChecklist}>
-            {basis.checks.map((check) => (
-              <Box key={check.code} display="flex" gap="md" paddingBlock="md" alignItems="start">
-                {check.passed ? (
-                  <CheckCircle2 size={18} strokeWidth={1.5} />
-                ) : (
-                  <Circle size={18} strokeWidth={1.5} />
-                )}
-                <Text>{check.detail}</Text>
-              </Box>
-            ))}
-          </RecordSection>
+          <ReadinessChecklist checks={basis.checks} locale={locale} />
           <Box>
             <Button variant="outline" onClick={() => setPreparing(!preparing)}>
               <LockKeyhole size={14} />
@@ -167,3 +159,90 @@ const swedish: typeof english = {
   aPeriodLockProtectsThe:
     "En periodlåsning skyddar bokföringen. Den innebär inte att årsredovisning eller deklaration har lämnats in.",
 };
+
+function ReadinessChecklist({
+  checks,
+  locale,
+}: {
+  checks: readonly (typeof Closing.ClosingCheck.Type)[];
+  locale: "en" | "sv";
+}) {
+  const labels = locale === "sv" ? swedish : english;
+  const pending = checks.filter((check) => !check.passed);
+  const completed = checks.filter((check) => check.passed);
+  return (
+    <RecordSection title={labels.readinessChecklist}>
+      <Box display="grid" gap="sm">
+        {pending.map((check) => (
+          <ReadinessCheck key={check.code} check={check} locale={locale} />
+        ))}
+      </Box>
+      <Disclosure
+        title={`${completed.length} ${locale === "sv" ? "kontroller klara" : "checks completed"}`}
+      >
+        <Box display="grid" gap="sm">
+          {completed.map((check) => (
+            <ReadinessCheck key={check.code} check={check} locale={locale} />
+          ))}
+        </Box>
+      </Disclosure>
+    </RecordSection>
+  );
+}
+
+function ReadinessCheck({
+  check,
+  locale,
+}: {
+  check: typeof Closing.ClosingCheck.Type;
+  locale: "en" | "sv";
+}) {
+  const name = readinessNames.get(check.code)?.[locale] ?? check.code;
+  return (
+    <Box display="flex" gap="md" alignItems="start">
+      <Box paddingBlock="md">
+        {check.passed ? (
+          <CheckCircle2 size={18} strokeWidth={1.5} />
+        ) : (
+          <Circle size={18} strokeWidth={1.5} />
+        )}
+      </Box>
+      <Box flexGrow minWidth="zero">
+        <CheckDisclosure
+          variant="inline"
+          label={`${name} · ${check.passed ? (locale === "sv" ? "Kontrollerat" : "Checked") : locale === "sv" ? "Återstår" : "Needs attention"}`}
+        >
+          <Text>{check.detail}</Text>
+        </CheckDisclosure>
+      </Box>
+    </Box>
+  );
+}
+const readinessNames = new Map<string, { en: string; sv: string }>([
+  ["DeclaredBankInventory", { en: "Expected bank accounts", sv: "Förväntade bankkonton" }],
+  ["SyntheticNativeProfile", { en: "Book profile", sv: "Bokprofil" }],
+  ["PeriodBoundaries", { en: "Period dates", sv: "Perioddatum" }],
+  ["CurrentTrialBalance", { en: "Current trial balance", sv: "Aktuell saldobalans" }],
+  ["RepresentedBankSources", { en: "Bank reconciliation", sv: "Bankavstämning" }],
+  ["RegisteredCommerce", { en: "Invoices and allocations", sv: "Fakturor och fördelningar" }],
+  ["OwnerSourceReview", { en: "Owner transactions", sv: "Ägartransaktioner" }],
+  ["ExpenseReviewCurrentness", { en: "Expense reviews", sv: "Utgiftsgranskningar" }],
+  [
+    "ExpenseControlCoverage",
+    { en: "Expense accounting coverage", sv: "Utgifternas bokföringstäckning" },
+  ],
+  ["VatReturnControlCoverage", { en: "VAT controls", sv: "Momskontroller" }],
+  [
+    "ScheduleBasisCoverage",
+    { en: "Asset and schedule sources", sv: "Tillgångars och planers underlag" },
+  ],
+  [
+    "SubledgerControlCoverage",
+    { en: "Asset accounting coverage", sv: "Tillgångarnas bokföringstäckning" },
+  ],
+  ["RepresentedSchedules", { en: "Scheduled entries", sv: "Planerade bokningar" }],
+  [
+    "CompleteFamilyInventory",
+    { en: "Required closing areas", sv: "Obligatoriska bokslutsområden" },
+  ],
+]);

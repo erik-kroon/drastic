@@ -1,6 +1,8 @@
 import { Box } from "@open-erp/ui/components/box";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { Allocations } from "./allocations";
+import { CommerceAllocationReversals } from "./allocation-reversals";
+import { allocationReversalCopy } from "./allocation-reversal-copy";
 import { Counterparties } from "./counterparties";
 import { Invoices } from "./invoices";
 import { InvoiceDraftIssueOverlay as InvoiceDrafts } from "./invoice-draft-issue-overlay";
@@ -35,6 +37,9 @@ function CommerceWorkspace(props: CommerceProps) {
       </Details>
       <Details title={copy.allocations}>
         <Allocations {...props} />
+      </Details>
+      <Details title={allocationReversalCopy(props.locale).title}>
+        <CommerceAllocationReversals {...props} />
       </Details>
       <Details title={copy.registerReports}>
         <RegisterReports {...props} />

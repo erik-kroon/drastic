@@ -27,16 +27,25 @@ export function ScheduleForm(props: {
   const [count, setCount] = useState(terms?.usefulPeriods ?? 1);
   const [invalid, setInvalid] = useState(false);
   const save = useMutation({
-    mutationFn: (input: typeof Subledgers.CreateSchedule.Type) => {
+    mutationFn: async (input: typeof Subledgers.CreateSchedule.Type) => {
       const path = current
         ? `${bookPath(book)}/schedules/${current.scheduleId}/revisions`
         : `${bookPath(book)}/schedules`;
       const payload = current ? { expectedDigest: current.digest, terms: input.terms } : input;
-      return readAccounting(
+      const result = await readAccounting(
         path,
         Subledgers.ScheduleRevision,
         mutationOptions(path, JSON.stringify(payload), keys.current),
       );
+      if (
+        result.scope.bookId !== book.id ||
+        result.scope.entityId !== book.entityId ||
+        result.sourceKey !== input.sourceKey ||
+        (current && result.scheduleId !== current.scheduleId)
+      ) {
+        throw new Error("Schedule revision identity or scope mismatch");
+      }
+      return result;
     },
     onSuccess: (revision) => props.onSaved(revision.scheduleId),
   });

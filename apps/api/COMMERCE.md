@@ -63,7 +63,7 @@ after sending. This is not crash-safe automatic recovery.
 - One allocation plan can split one posted settlement line among at most 50 invoices for one counterpart.
   Partial allocations are supported. Payment and recognition must be distinct events. Advances,
   netting, credit notes, exchange differences and cross-currency allocation are unsupported.
-- Residuals derive from immutable applied legs. There are no parallel mutable balance counters.
+- Residuals derive from effective active allocation legs over immutable originals. Migration1700 excludes whole applications with retained unallocation receipts. Capacity versions count insertion and release history, never only active legs. There are no parallel mutable balance counters.
   Book-first locking serializes proposals/application. Exact revision, configuration and capacity
   snapshots must match again at operator approval and application. Deferred constraints bind committed
   legs to the approved plan and enforce both invoice and payment capacity.
@@ -80,9 +80,8 @@ after sending. This is not crash-safe automatic recovery.
 ## Cross-domain guards
 
 `commerce_voucher_reversal_boundary` is a commerce-owned trigger on voucher insertion. It rejects
-reversals/corrections of registered recognition vouchers or applied payment vouchers. Both legacy
-reversal-only and bundled corrections pass through this guard. A linked commerce correction/release
-workflow is **not implemented**; do not bypass the guard or automatically rewrite residuals.
+reversals/corrections of registered recognition vouchers or payment vouchers with active allocations. Both legacy
+reversal-only and bundled corrections pass through this guard. Migration1700 adds [reviewed whole-allocation unallocation](COMMERCE-ALLOCATION-REVERSALS.md), not invoice-recognition correction. Original allocations remain immutable. The1400 issue guard is unchanged; no generic bypass or automatic residual rewrite is permitted.
 
 `commerce_bank_source_boundary` and `commerce_control_account_boundary` keep declared commerce control
 accounts separate from registered bank accounts. Ordinary bank-source revision updates are unaffected.
@@ -106,8 +105,8 @@ sourceDigest: sha256-prefixed digest
 blockers: string[]
 ```
 
-The digest binds immutable recognition sources up to `endsOn` and applied allocation legs with
-payment posting dates up to that date. Carry-forward invoices are included. Later-period payments
+The digest binds immutable recognition sources up to `endsOn`, active allocation legs and retained whole-unallocation history with
+payment posting dates up to that date. Without relevant unallocations the previous digest shape is preserved. Carry-forward invoices are included. Later-period payments
 and nonfinancial display metadata do not rewrite this digest. Nonzero technical error counts block
 closing. Unpaid invoices alone do not. `coverage: not_established` always remains explicit.
 

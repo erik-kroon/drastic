@@ -15,7 +15,12 @@ import { checkScope, commerceKey, commercePath, type CommerceProps } from "./sha
 type Props = CommerceProps & { recordId?: string; onOpen?: (id: string) => void };
 
 export function InvoiceDraftIssueOverlay(props: Props) {
-  return <DraftIssueWorkspace key={`${props.book.entityId}:${props.book.id}:${props.recordId ?? ""}`} {...props} />;
+  return (
+    <DraftIssueWorkspace
+      key={`${props.book.entityId}:${props.book.id}:${props.recordId ?? ""}`}
+      {...props}
+    />
+  );
 }
 function DraftIssueWorkspace(props: Props) {
   const [local, setLocal] = useState("");
@@ -27,7 +32,9 @@ function DraftIssueWorkspace(props: Props) {
   return <InvoiceDrafts {...props} recordId={recordId} onOpen={onOpen} />;
 }
 
-function SelectedDraftIssue(props: CommerceProps & { recordId: string; onOpen: (id: string) => void }) {
+function SelectedDraftIssue(
+  props: CommerceProps & { recordId: string; onOpen: (id: string) => void },
+) {
   const { book, locale, recordId, onOpen } = props;
   const sv = locale === "sv";
   const history = useQuery({
@@ -49,14 +56,78 @@ function SelectedDraftIssue(props: CommerceProps & { recordId: string; onOpen: (
   const issued = history.data?.items.find((item) => item.issueId !== null);
   // Do not expose the legacy editor from an unchecked cache or failed live issue lookup.
   const checked = history.isFetchedAfterMount && history.isSuccess;
-  if (checked && !issued) return <InvoiceDrafts {...props}
-    issueAction={<PageAction href={`${workspacePath(book)}/sales?view=issue&record=${encodeURIComponent(recordId)}`}>{sv ? "Granska utfärdande" : "Review issuance"}</PageAction>}
-    issueStatus={<><Text tone="muted">{sv ? "Inte utfärdad. Endast demoutfärdande är tillgängligt." : "Not issued. Demo issuance is available."}</Text><Box><Button variant="ghost" disabled={history.isFetching} onClick={() => { void history.refetch(); }}>{sv ? "Uppdatera status" : "Refresh status"}</Button></Box></>}
-  />;
-  return <Box display="grid" gap="lg" minWidth="zero">
-    <Box display="flex" gap="md"><Button variant="ghost" onClick={() => onOpen("")}>{sv ? "Alla utkast" : "All drafts"}</Button><Button variant="outline" disabled={history.isFetching} onClick={() => { void history.refetch(); }}>{sv ? "Uppdatera status" : "Refresh status"}</Button></Box>
-    <AccountingStatus locale={locale} pending={!history.isFetchedAfterMount || history.isPending} error={history.error} />
-    {checked && issued ? <><Heading>{sv ? "Utfärdad demofaktura" : "Issued demo invoice"}</Heading><Text>{sv ? "Den sparade versionen kan inte ändras. Detta är ett demoutfärdande utan juridiskt fakturanummer eller leverans." : "The saved revision cannot be changed. This is a demo issue without a legal invoice number or delivery."}</Text><InvoiceIssueReviewPanel {...props} id={issued.id} readOnly /></> : null}
-    {history.isError ? <Text>{sv ? "Utfärdandestatus kunde inte kontrolleras. Uppdatera innan du redigerar utkastet." : "Issue status could not be checked. Refresh before editing this draft."}</Text> : null}
-  </Box>;
+  if (checked && !issued)
+    return (
+      <InvoiceDrafts
+        {...props}
+        issueAction={
+          <PageAction
+            href={`${workspacePath(book)}/sales?view=issue&record=${encodeURIComponent(recordId)}`}
+          >
+            {sv ? "Granska utfärdande" : "Review issuance"}
+          </PageAction>
+        }
+        issueStatus={
+          <>
+            <Text tone="muted">
+              {sv
+                ? "Inte utfärdad. Endast demoutfärdande är tillgängligt."
+                : "Not issued. Demo issuance is available."}
+            </Text>
+            <Box>
+              <Button
+                variant="ghost"
+                disabled={history.isFetching}
+                onClick={() => {
+                  void history.refetch();
+                }}
+              >
+                {sv ? "Uppdatera status" : "Refresh status"}
+              </Button>
+            </Box>
+          </>
+        }
+      />
+    );
+  return (
+    <Box display="grid" gap="lg" minWidth="zero">
+      <Box display="flex" gap="md">
+        <Button variant="ghost" onClick={() => onOpen("")}>
+          {sv ? "Alla utkast" : "All drafts"}
+        </Button>
+        <Button
+          variant="outline"
+          disabled={history.isFetching}
+          onClick={() => {
+            void history.refetch();
+          }}
+        >
+          {sv ? "Uppdatera status" : "Refresh status"}
+        </Button>
+      </Box>
+      <AccountingStatus
+        locale={locale}
+        pending={!history.isFetchedAfterMount || history.isPending}
+        error={history.error}
+      />
+      {checked && issued ? (
+        <>
+          <Heading>{sv ? "Utfärdad demofaktura" : "Issued demo invoice"}</Heading>
+          <Text>
+            {sv
+              ? "Den sparade versionen kan inte ändras. Detta är ett demoutfärdande utan juridiskt fakturanummer eller leverans."
+              : "The saved revision cannot be changed. This is a demo issue without a legal invoice number or delivery."}
+          </Text>
+          <InvoiceIssueReviewPanel {...props} id={issued.id} readOnly />
+        </>
+      ) : null}
+      {history.isError ? (
+        <Text>
+          {sv
+            ? "Utfärdandestatus kunde inte kontrolleras. Uppdatera innan du redigerar utkastet."
+            : "Issue status could not be checked. Refresh before editing this draft."}
+        </Text>
+      ) : null}
+    </Box>
+  );
 }

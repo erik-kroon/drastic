@@ -24,46 +24,228 @@ export function VatReturnsPanel({ book, locale }: Props) {
   const client = useQueryClient();
   const [creating, setCreating] = useState<"fact" | "draft" | null>(null);
   const [selected, setSelected] = useState<{ kind: "fact" | "draft"; id: string } | null>(null);
-  const basis = useQuery({ queryKey: [...bookKey(book), "vat-returns", "basis"], queryFn: ({ signal }) => readAccounting(`${bookPath(book)}/vat-returns/facts`, Vat.VatBasis, { signal }), retry: false });
-  const drafts = useQuery({ queryKey: [...bookKey(book), "vat-returns", "drafts"], queryFn: ({ signal }) => readAccounting(`${bookPath(book)}/vat-returns/drafts`, Vat.VatDraftList, { signal }), retry: false });
-  const saved = (kind: "fact" | "draft", id: string) => { setCreating(null); setSelected({ kind, id }); void client.invalidateQueries({ queryKey: [...bookKey(book), "vat-returns"] }); };
-  if (selected) return <Box display="grid" gap="xl"><Box><Button variant="ghost" onClick={() => setSelected(null)}><ArrowLeft size={14} />{sv ? "Alla momsunderlag" : "All VAT work"}</Button></Box>{selected.kind === "fact" ? <FactDetail key={selected.id} book={book} locale={locale} id={selected.id} onSaved={(id) => saved("fact", id)} /> : <DraftDetail key={selected.id} book={book} locale={locale} id={selected.id} />}</Box>;
-  return <Box display="grid" gap="xl" id="vat-returns">
-    <RecordHeading title={copy.title} subtitle={sv ? "Samla underlag och granska en period innan nästa steg." : "Gather the source records and review a period before the next step."} action={<Button disabled={book.role !== "operator"} onClick={() => setCreating("draft")}><Plus size={14} />{copy.prepare}</Button>} />
-    <RecordSection title={copy.drafts}>
-      <AccountingStatus locale={locale} pending={drafts.isPending} error={drafts.error} />
-      {drafts.data ? drafts.data.items.length ? <DataTable title={copy.drafts} narrow="stack" columns={[{ id: "period", label: "Period" }, { id: "mode", label: copy.mode }]} rows={drafts.data.items.map((draft) => ({ id: draft.id, cells: [<RecordToggle key="open" expanded={false} onClick={() => setSelected({ kind: "draft", id: draft.id })}>{draft.input.startsOn} – {draft.input.endsOn}</RecordToggle>, draft.input.mode === "actual_review" ? copy.actual : copy.synthetic] }))} /> : <PageEmpty title={sv ? "Ingen period förberedd än" : "No period prepared yet"} detail={sv ? "Välj en period för att samla underlag och se vad som återstår." : "Choose a period to collect its source records and see what remains."} /> : null}
-    </RecordSection>
-    <RecordSection title={copy.facts}>
-      <Box><Button variant="outline" disabled={book.role !== "operator"} onClick={() => setCreating("fact")}><Plus size={14} />{copy.create}</Button></Box>
-      <AccountingStatus locale={locale} pending={basis.isPending} error={basis.error} />
-      {basis.data ? basis.data.facts.length ? <DataTable title={copy.facts} narrow="stack" columns={[{ id: "description", label: copy.description }, { id: "class", label: copy.recordClass }]} rows={basis.data.facts.map(({ fact }) => ({ id: fact.factId, cells: [<RecordToggle key="open" expanded={false} onClick={() => setSelected({ kind: "fact", id: fact.factId })}>{fact.input.description}</RecordToggle>, fact.input.recordClass === "synthetic" ? copy.synthetic : copy.actual] }))} /> : <Text tone="muted">{copy.empty}</Text> : null}
-    </RecordSection>
-    <PageCaption>{copy.boundary}</PageCaption>
-    {creating ? <FormDialog title={creating === "fact" ? copy.create : copy.prepare} closeLabel={copy.cancel} onClose={() => setCreating(null)}>{creating === "fact" ? <VatFactForm book={book} locale={locale} onSaved={(id) => saved("fact", id)} /> : <VatDraftForm book={book} locale={locale} onSaved={(id) => saved("draft", id)} />}</FormDialog> : null}
-  </Box>;
+  const basis = useQuery({
+    queryKey: [...bookKey(book), "vat-returns", "basis"],
+    queryFn: ({ signal }) =>
+      readAccounting(`${bookPath(book)}/vat-returns/facts`, Vat.VatBasis, { signal }),
+    retry: false,
+  });
+  const drafts = useQuery({
+    queryKey: [...bookKey(book), "vat-returns", "drafts"],
+    queryFn: ({ signal }) =>
+      readAccounting(`${bookPath(book)}/vat-returns/drafts`, Vat.VatDraftList, { signal }),
+    retry: false,
+  });
+  const saved = (kind: "fact" | "draft", id: string) => {
+    setCreating(null);
+    setSelected({ kind, id });
+    void client.invalidateQueries({ queryKey: [...bookKey(book), "vat-returns"] });
+  };
+  if (selected)
+    return (
+      <Box display="grid" gap="xl">
+        <Box>
+          <Button variant="ghost" onClick={() => setSelected(null)}>
+            <ArrowLeft size={14} />
+            {sv ? "Alla momsunderlag" : "All VAT work"}
+          </Button>
+        </Box>
+        {selected.kind === "fact" ? (
+          <FactDetail
+            key={selected.id}
+            book={book}
+            locale={locale}
+            id={selected.id}
+            onSaved={(id) => saved("fact", id)}
+          />
+        ) : (
+          <DraftDetail key={selected.id} book={book} locale={locale} id={selected.id} />
+        )}
+      </Box>
+    );
+  return (
+    <Box display="grid" gap="xl" id="vat-returns">
+      <RecordHeading
+        title={copy.title}
+        subtitle={
+          sv
+            ? "Samla underlag och granska en period innan nästa steg."
+            : "Gather the source records and review a period before the next step."
+        }
+        action={
+          <Button disabled={book.role !== "operator"} onClick={() => setCreating("draft")}>
+            <Plus size={14} />
+            {copy.prepare}
+          </Button>
+        }
+      />
+      <RecordSection title={copy.drafts}>
+        <AccountingStatus locale={locale} pending={drafts.isPending} error={drafts.error} />
+        {drafts.data ? (
+          drafts.data.items.length ? (
+            <DataTable
+              title={copy.drafts}
+              narrow="stack"
+              columns={[
+                { id: "period", label: "Period" },
+                { id: "mode", label: copy.mode },
+              ]}
+              rows={drafts.data.items.map((draft) => ({
+                id: draft.id,
+                cells: [
+                  <RecordToggle
+                    key="open"
+                    expanded={false}
+                    onClick={() => setSelected({ kind: "draft", id: draft.id })}
+                  >
+                    {draft.input.startsOn} – {draft.input.endsOn}
+                  </RecordToggle>,
+                  draft.input.mode === "actual_review" ? copy.actual : copy.synthetic,
+                ],
+              }))}
+            />
+          ) : (
+            <PageEmpty
+              title={sv ? "Ingen period förberedd än" : "No period prepared yet"}
+              detail={
+                sv
+                  ? "Välj en period för att samla underlag och se vad som återstår."
+                  : "Choose a period to collect its source records and see what remains."
+              }
+            />
+          )
+        ) : null}
+      </RecordSection>
+      <RecordSection title={copy.facts}>
+        <Box>
+          <Button
+            variant="outline"
+            disabled={book.role !== "operator"}
+            onClick={() => setCreating("fact")}
+          >
+            <Plus size={14} />
+            {copy.create}
+          </Button>
+        </Box>
+        <AccountingStatus locale={locale} pending={basis.isPending} error={basis.error} />
+        {basis.data ? (
+          basis.data.facts.length ? (
+            <DataTable
+              title={copy.facts}
+              narrow="stack"
+              columns={[
+                { id: "description", label: copy.description },
+                { id: "class", label: copy.recordClass },
+              ]}
+              rows={basis.data.facts.map(({ fact }) => ({
+                id: fact.factId,
+                cells: [
+                  <RecordToggle
+                    key="open"
+                    expanded={false}
+                    onClick={() => setSelected({ kind: "fact", id: fact.factId })}
+                  >
+                    {fact.input.description}
+                  </RecordToggle>,
+                  fact.input.recordClass === "synthetic" ? copy.synthetic : copy.actual,
+                ],
+              }))}
+            />
+          ) : (
+            <Text tone="muted">{copy.empty}</Text>
+          )
+        ) : null}
+      </RecordSection>
+      <PageCaption>{copy.boundary}</PageCaption>
+      {creating ? (
+        <FormDialog
+          title={creating === "fact" ? copy.create : copy.prepare}
+          closeLabel={copy.cancel}
+          onClose={() => setCreating(null)}
+        >
+          {creating === "fact" ? (
+            <VatFactForm book={book} locale={locale} onSaved={(id) => saved("fact", id)} />
+          ) : (
+            <VatDraftForm book={book} locale={locale} onSaved={(id) => saved("draft", id)} />
+          )}
+        </FormDialog>
+      ) : null}
+    </Box>
+  );
 }
-function FactDetail({ book, locale, id, onSaved }: Props & { id: string; onSaved: (id: string) => void }) {
+function FactDetail({
+  book,
+  locale,
+  id,
+  onSaved,
+}: Props & { id: string; onSaved: (id: string) => void }) {
   const copy = vatCopy(locale);
   const [editing, setEditing] = useState<typeof Vat.VatFact.Type | null>(null);
-  const result = useQuery({ queryKey: [...bookKey(book), "vat-returns", "fact", id], queryFn: ({ signal }) => readAccounting(`${bookPath(book)}/vat-returns/facts/${id}`, Vat.VatFactView, { signal }), retry: false });
+  const result = useQuery({
+    queryKey: [...bookKey(book), "vat-returns", "fact", id],
+    queryFn: ({ signal }) =>
+      readAccounting(`${bookPath(book)}/vat-returns/facts/${id}`, Vat.VatFactView, { signal }),
+    retry: false,
+  });
   const view = result.data;
-  return <Box display="grid" gap="lg" minWidth="zero">
-    <AccountingStatus locale={locale} pending={result.isPending} error={result.error} />
-    {view ? <>
-      <VatFactSummary book={book} locale={locale} fact={view.current} />
-      {book.role === "operator" ? <Box><Button size="xl" variant="outline" onClick={() => setEditing(editing ? null : view.current)}>{editing ? copy.cancel : copy.revise}</Button></Box> : null}
-      {editing ? <VatFactForm key={editing.digest} book={book} locale={locale} current={editing} onSaved={(fact) => { setEditing(null); onSaved(fact); }} /> : null}
-      <details><summary>{copy.factHistory}</summary><Box display="grid" gap="lg" paddingBlock="lg" minWidth="zero">
-        {view.history.map((fact) => <details key={fact.id}><summary>{fact.revision} · {fact.recordedAt} · {fact.receipt.actorId}</summary><VatFactSummary book={book} locale={locale} fact={fact} /></details>)}
-      </Box></details>
-    </> : null}
-  </Box>;
+  return (
+    <Box display="grid" gap="lg" minWidth="zero">
+      <AccountingStatus locale={locale} pending={result.isPending} error={result.error} />
+      {view ? (
+        <>
+          <VatFactSummary book={book} locale={locale} fact={view.current} />
+          {book.role === "operator" ? (
+            <Box>
+              <Button
+                size="xl"
+                variant="outline"
+                onClick={() => setEditing(editing ? null : view.current)}
+              >
+                {editing ? copy.cancel : copy.revise}
+              </Button>
+            </Box>
+          ) : null}
+          {editing ? (
+            <VatFactForm
+              key={editing.digest}
+              book={book}
+              locale={locale}
+              current={editing}
+              onSaved={(fact) => {
+                setEditing(null);
+                onSaved(fact);
+              }}
+            />
+          ) : null}
+          <details>
+            <summary>{copy.factHistory}</summary>
+            <Box display="grid" gap="lg" paddingBlock="lg" minWidth="zero">
+              {view.history.map((fact) => (
+                <details key={fact.id}>
+                  <summary>
+                    {fact.revision} · {fact.recordedAt} · {fact.receipt.actorId}
+                  </summary>
+                  <VatFactSummary book={book} locale={locale} fact={fact} />
+                </details>
+              ))}
+            </Box>
+          </details>
+        </>
+      ) : null}
+    </Box>
+  );
 }
 function DraftDetail({ book, locale, id }: Props & { id: string }) {
-  const result = useQuery({ queryKey: [...bookKey(book), "vat-returns", "draft", id], queryFn: ({ signal }) => readAccounting(`${bookPath(book)}/vat-returns/drafts/${id}`, Vat.VatDraftView, { signal }), retry: false });
-  return <Box display="grid" gap="lg" minWidth="zero">
-    <AccountingStatus locale={locale} pending={result.isPending} error={result.error} />
-    {result.data ? <VatDraftView book={book} locale={locale} {...result.data} /> : null}
-  </Box>;
+  const result = useQuery({
+    queryKey: [...bookKey(book), "vat-returns", "draft", id],
+    queryFn: ({ signal }) =>
+      readAccounting(`${bookPath(book)}/vat-returns/drafts/${id}`, Vat.VatDraftView, { signal }),
+    retry: false,
+  });
+  return (
+    <Box display="grid" gap="lg" minWidth="zero">
+      <AccountingStatus locale={locale} pending={result.isPending} error={result.error} />
+      {result.data ? <VatDraftView book={book} locale={locale} {...result.data} /> : null}
+    </Box>
+  );
 }

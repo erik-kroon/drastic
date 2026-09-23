@@ -96,3 +96,18 @@ Schedules retain their basis, remaining amounts and immutable posted occurrences
 Next supported schedule work needs source purchase/control-account reconciliation, evidence-linked invoice component acceptance with the commerce owner, and future-term revision/correction treatment with the correction/year-end owners. Add each only as a coherent workflow, not a purported compliant flag.
 
 VAT remains blocked by `docs/adr/0002-swedish-vat-profile-boundary.md` and `docs/sources/sweden-vat-sources.json`: no production-approved legal interval or rounding/aggregation algorithm exists. Payroll needs accepted employer/employee facts, current dated rules and authorization. FX needs exact rational rate numerator/denominator, source, effective date, explicit rounding scope/mode and account policy; no rates or floating-point defaults are provided. No production posting, filing, payment, deployment or external acknowledgement is claimed or enabled here.
+
+## Basis-aware posting authority (1800 source slice)
+
+The [1800 handoff](SUBLEDGER-CONTROLS.md#1800-implemented-source--carrying-basis-posting-authority)
+describes new live `postingBasis` notices and immutable preparation authority. A linked basis
+that is later corrected/reversed blocks further recognition, including proposals approved before
+the change. A proposal prepared without a basis must be prepared and approved again after linkage.
+Historical linked proposals without a basis capture also need fresh preparation. Missing bases
+retain the standalone synthetic0700 behavior; they never imply legal or complete source coverage.
+Generic proposals for known basis-linked occurrence identities fail closed without native
+preparation provenance. Genuine reversal remains governed by existing correction guards.
+
+This is implemented, source-reviewed code only. No migration was applied and no runtime proof
+was performed. Historical occurrence IDs, immutable proposal/receipt bytes and saved control
+artifacts are not rewritten. Shared transport composition needs no new entrypoints.

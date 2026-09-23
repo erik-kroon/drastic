@@ -30,17 +30,23 @@ import { TaxFactsTable, TaxSnapshotEntry } from "./views";
 
 type Props = {
   open?: boolean;
+  recordId?: string;
+  onOpen?: (id: string) => void;
   book: typeof Accounting.Book.Type;
   locale: Locale;
   onPrepared: (id: string) => void;
 };
-export function ExpenseTaxPanel({ book, locale, onPrepared }: Props) {
+export function ExpenseTaxPanel(props: Props) {
+  const { book, locale, onPrepared } = props;
   const copy = expenseTaxCopy(locale);
   const client = useQueryClient();
-  const [sourceId, setSourceId] = useState<string | null>(null);
+  const [localRecord, setLocalRecord] = useState("");
+  const selected = props.recordId ?? localRecord;
+  const select = props.onOpen ?? setLocalRecord;
+  const creating = selected === "new" || selected.startsWith("new:");
+  const sourceId = creating ? null : selected;
   const [search, setSearch] = useState("");
   const sv = locale === "sv";
-  const [creating, setCreating] = useState(false);
   const inventory = useQuery({
     queryKey: [...bookKey(book), "expense-tax", "inventory"],
     queryFn: ({ signal }) =>
@@ -48,8 +54,7 @@ export function ExpenseTaxPanel({ book, locale, onPrepared }: Props) {
     retry: false,
   });
   const sourceSaved = (id: string) => {
-    setSourceId(id);
-    setCreating(false);
+    select(id);
     void client.invalidateQueries({ queryKey: [...bookKey(book), "expense-tax"] });
   };
   const rows =
@@ -62,7 +67,7 @@ export function ExpenseTaxPanel({ book, locale, onPrepared }: Props) {
     return (
       <Box display="grid" gap="xl">
         <Box>
-          <Button variant="ghost" onClick={() => setSourceId(null)}>
+          <Button variant="ghost" onClick={() => select("")}>
             <ArrowLeft size={14} />
             {sv ? "Alla utgifter" : "All expenses"}
           </Button>
@@ -88,7 +93,7 @@ export function ExpenseTaxPanel({ book, locale, onPrepared }: Props) {
             : "Review source records, amounts and tax treatment."
         }
         action={
-          <Button onClick={() => setCreating(true)}>
+          <Button onClick={() => select("new")}>
             <Plus size={14} />
             {sv ? "Ny utgift" : "New expense"}
           </Button>
@@ -118,7 +123,7 @@ export function ExpenseTaxPanel({ book, locale, onPrepared }: Props) {
                 <RecordToggle
                   key="open"
                   expanded={false}
-                  onClick={() => setSourceId(row.current.sourceId)}
+                  onClick={() => select(row.current.sourceId)}
                 >
                   {row.current.facts.description}
                 </RecordToggle>,
@@ -165,9 +170,14 @@ export function ExpenseTaxPanel({ book, locale, onPrepared }: Props) {
         <FormDialog
           title={sv ? "Ny utgift" : "New expense"}
           closeLabel={sv ? "Stäng" : "Close"}
-          onClose={() => setCreating(false)}
+          onClose={() => select("")}
         >
-          <ExpenseEditor book={book} locale={locale} onSaved={sourceSaved} />
+          <ExpenseEditor
+            book={book}
+            locale={locale}
+            sourceId={selected.startsWith("new:") ? selected.slice(4) : undefined}
+            onSaved={sourceSaved}
+          />
         </FormDialog>
       ) : null}
     </Box>

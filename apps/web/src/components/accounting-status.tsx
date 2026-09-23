@@ -16,13 +16,14 @@ export function AccountingStatus({
   write?: boolean;
 }) {
   const copy = accountingCopy(locale);
+  if (!pending && !error) return null;
   return (
     <Box role="status" aria-live="polite" display="grid" gap="sm">
       {pending ? <Text>{copy.journal_working}</Text> : null}
       {error ? (
         <Text>
           {error instanceof Accounting.AccountingError
-            ? `${error.code}: ${error.message}`
+            ? error.message
             : write
               ? copy.journal_uncertain
               : copy.journal_read_error}

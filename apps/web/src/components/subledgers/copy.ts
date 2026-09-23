@@ -58,8 +58,18 @@ const en = {
   remaining: "Remaining including residual (minor units)",
   balanceHelp:
     "These totals follow schedule-linked postings and their reversals. The source purchase and control-account balance are not reconciled. A conflicting posting is excluded and needs review.",
+  basisStandalone:
+    "No carrying basis is linked. Only the standalone synthetic preparation rules apply; this does not establish source coverage.",
+  basisLinked:
+    "A carrying basis is linked. Preparation captures it, and posting checks it again. A later reversal or correction blocks further recognition. This is not an approved legal policy.",
+  basisBlocked:
+    "Further recognition is blocked. The linked carrying basis was reversed, corrected or no longer matches. Inspect its voucher and the asset controls. Replacing this basis is not supported.",
+  basisUnknown:
+    "Live carrying-basis status is unavailable. Refresh before preparing. Proposal review performs its own current dependency check.",
+  basisVoucher: "Carrying-basis voucher",
+  basisDigest: "Carrying-basis digest",
   frozen:
-    "Preparation freezes this schedule. Changes after preparation, disposals, impairments and correction replacements are not supported.",
+    "Preparation or a linked carrying basis freezes this schedule. Later amendments, disposals, impairments and correction replacements are not supported.",
   pending: "Saving…",
   evidenceCreate: "Retain supporting evidence",
   evidenceTitle: "Evidence title",
@@ -126,8 +136,18 @@ const sv: typeof en = {
   remaining: "Återstående inklusive restvärde (minsta valutaenhet)",
   balanceHelp:
     "Summorna följer planens kopplade bokföringar och återföringar. Ursprungligt inköp och kontrollkontots saldo är inte avstämda. En motstridig bokföring räknas inte med och måste granskas.",
+  basisStandalone:
+    "Ingen grund för redovisat värde är kopplad. Endast reglerna för fristående syntetisk beredning gäller; detta visar inte att källorna är fullständiga.",
+  basisLinked:
+    "En grund för redovisat värde är kopplad. Den bevaras vid beredning och kontrolleras igen vid bokföring. Senare återföring eller rättelse stoppar fortsatt redovisning. Detta är ingen godkänd regelpolicy.",
+  basisBlocked:
+    "Fortsatt redovisning är blockerad. Den kopplade grunden har återförts, rättats eller stämmer inte längre. Granska dess verifikation och tillgångskontrollerna. Byte av grund stöds inte.",
+  basisUnknown:
+    "Aktuell status för redovisningsgrunden saknas. Uppdatera före beredning. Förslagsgranskningen kontrollerar aktuella beroenden separat.",
+  basisVoucher: "Verifikation för redovisningsgrund",
+  basisDigest: "Kontrollsumma för redovisningsgrund",
   frozen:
-    "Beredning låser planen. Ändringar efter beredning, avyttringar, nedskrivningar och ersättningar efter rättelser stöds inte.",
+    "Beredning eller en kopplad redovisningsgrund låser planen. Senare ändringar, avyttringar, nedskrivningar och ersättningar efter rättelser stöds inte.",
   pending: "Sparar…",
   evidenceCreate: "Bevara underlag",
   evidenceTitle: "Underlagets titel",

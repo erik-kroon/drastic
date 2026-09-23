@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import * as Accounting from "@open-erp/contracts/accounting";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import * as Commerce from "@open-erp/contracts/commerce";
 import { Plus, ArrowLeft, Trash2 } from "lucide-react";
@@ -28,13 +27,12 @@ import {
   RecordSplit,
 } from "@open-erp/ui/components/record-layout";
 import { AccountingStatus } from "@/components/accounting-status";
-import { RetainedNote } from "@/components/retained-note";
+import { EvidenceCommandForm } from "@/components/evidence-command-form";
 import { readAccounting } from "@/lib/accounting-api";
 import { decimalToMinor, formatMinorAmount, workQueryOptions } from "@/lib/workspace-api";
 import { workspacePath } from "@/lib/book-context";
 import { invoiceDraftBlocker } from "./invoice-draft-copy";
 import {
-  CommandForm,
   Details,
   Evidence,
   Facts,
@@ -178,7 +176,6 @@ function DraftEditor(
   const labels = sv ? swedish : english;
   const baseline = props.baseline;
   const content = baseline?.content;
-  const [source, setSource] = useState<typeof Accounting.Evidence.Type | null>(null);
   const [customerId, setCustomerId] = useState(content?.counterpartyId ?? "");
   const [draftKey] = useState(() => `draft_${crypto.randomUUID().replaceAll("-", "")}`);
   const [lines, setLines] = useState<EditableLine[]>(() =>
@@ -208,23 +205,27 @@ function DraftEditor(
   const customer =
     parties.find((party) => party.id === customerId) ??
     (baseline?.counterparty.id === customerId ? baseline.counterparty : undefined);
-  if (!source && !baseline) return <RetainedNote {...props} onSaved={setSource} />;
   if (scale === undefined)
     return (
       <AccountingStatus locale={props.locale} pending={metadata.isPending} error={metadata.error} />
     );
-  const evidenceId = source?.id ?? baseline?.sellerEvidence.evidenceId;
   return (
-    <CommandForm
+    <EvidenceCommandForm
       {...props}
       path={`${commercePath(props.book)}/invoice-drafts${baseline ? `/${encodeURIComponent(baseline.id)}/revisions` : ""}`}
       schema={baseline ? Drafts.ReviseInvoiceDraft : Drafts.CreateInvoiceDraft}
       output={Drafts.InvoiceDraftRevision}
       label={labels.saveDraft}
-      allowed={props.book.role === "operator"}
       canSubmit={!!customer}
       onSuccess={props.onSaved}
-      input={(fields) => {
+      source={(fields) => ({
+        title: inputText(fields, "title") ?? labels.invoiceDrafts,
+        origin: "Invoice details entered in OpenERP",
+        mediaType: "application/json",
+        content: JSON.stringify({ kind: "invoice_entry_v1", fields: Object.fromEntries(fields) }),
+      })}
+      input={(fields, evidence) => {
+        const evidenceId = evidence.id;
         const next = {
           title: inputText(fields, "title"),
           counterpartyId: customer?.id,
@@ -234,15 +235,15 @@ function DraftEditor(
             registrationId: inputText(fields, "registration"),
             taxId: content?.seller.taxId ?? null,
             address: inputText(fields, "sellerAddress"),
-            countryCode: content?.seller.countryCode ?? null,
+            countryCode: inputText(fields, "sellerCountry"),
             evidenceId,
           },
           customer: {
             legalName: inputText(fields, "customerName"),
-            registrationId: content?.customer.registrationId ?? null,
+            registrationId: inputText(fields, "customerRegistration"),
             taxId: content?.customer.taxId ?? null,
             address: inputText(fields, "customerAddress"),
-            countryCode: content?.customer.countryCode ?? null,
+            countryCode: inputText(fields, "customerCountry"),
             evidenceId: customer?.evidence.evidenceId,
           },
           currency: content?.currency ?? props.book.currency,
@@ -256,7 +257,7 @@ function DraftEditor(
             id: line.id,
             description: inputText(fields, `${line.id}_description`),
             quantity: inputText(fields, `${line.id}_quantity`),
-            unitPriceMinor: line.defaults?.unitPriceMinor ?? null,
+            unitPriceMinor: decimalField(fields, `${line.id}_unitPrice`, scale, true),
             baseMinor: decimalField(fields, `${line.id}_amount`, scale),
             discountMinor: line.defaults?.discountMinor ?? "0",
             chargeMinor: line.defaults?.chargeMinor ?? "0",
@@ -340,13 +341,19 @@ function DraftEditor(
                 maxLength={200}
                 defaultValue={line.defaults?.description}
               />
-              <Box display="grid" columns={3} gap="md">
+              <Box display="grid" columns={4} gap="md">
                 <InputField
                   name={`${line.id}_quantity`}
                   label={labels.quantity}
                   required
                   defaultValue={line.defaults?.quantity ?? "1"}
                   inputMode="decimal"
+                />
+                <InputField
+                  name={`${line.id}_unitPrice`}
+                  label={labels.unitPrice}
+                  inputMode="decimal"
+                  defaultValue={editAmount(line.defaults?.unitPriceMinor, scale)}
                 />
                 <InputField
                   name={`${line.id}_amount`}
@@ -411,7 +418,7 @@ function DraftEditor(
         </RecordSection>
         {baseline ? <InputField name="reason" label={labels.whatChanged} required /> : null}
       </RecordSplit>
-    </CommandForm>
+    </EvidenceCommandForm>
   );
 }
 function DraftDetail(props: CommerceProps & DraftActions & { id: string }) {
@@ -461,17 +468,20 @@ function DraftDetail(props: CommerceProps & DraftActions & { id: string }) {
             title={record.content.title}
             subtitle={record.content.customer.legalName}
             action={
-              <Box display="flex" gap="md" alignItems="center">{props.issueAction}<Button
-                variant="outline"
-                disabled={
-                  props.book.role !== "operator" ||
-                  view.isFetching ||
-                  record.revision !== view.data?.currentRevision
-                }
-                onClick={() => setEditing(record)}
-              >
-                {labels.editDraft}
-              </Button></Box>
+              <Box display="flex" gap="md" alignItems="center">
+                {props.issueAction}
+                <Button
+                  variant="outline"
+                  disabled={
+                    props.book.role !== "operator" ||
+                    view.isFetching ||
+                    record.revision !== view.data?.currentRevision
+                  }
+                  onClick={() => setEditing(record)}
+                >
+                  {labels.editDraft}
+                </Button>
+              </Box>
             }
           />
           <RecordSplit
@@ -483,15 +493,7 @@ function DraftDetail(props: CommerceProps & DraftActions & { id: string }) {
                   </Box>
                   {props.issueStatus ?? <Text tone="muted">{labels.notIssuedSentOrPosted}</Text>}
                 </RecordSection>
-                {record.blockers.length ? (
-                  <RecordSection title={labels.needsAttention}>
-                    {record.blockers.map((blocker, index) => (
-                      <Text key={`${blocker.code}:${blocker.lineId}:${index}`}>
-                        {invoiceDraftBlocker(blocker.code, props.locale)}
-                      </Text>
-                    ))}
-                  </RecordSection>
-                ) : null}
+                <DraftReadiness record={record} locale={props.locale} />
                 <Details title={labels.sourceRecords}>
                   <Evidence {...props} reference={record.sellerEvidence} />
                   <Evidence {...props} reference={record.customerEvidence} />
@@ -596,6 +598,31 @@ function DraftDetail(props: CommerceProps & DraftActions & { id: string }) {
   );
 }
 
+function DraftReadiness({ record, locale }: { record: Draft; locale: CommerceProps["locale"] }) {
+  const labels = locale === "sv" ? swedish : english;
+  const setupCodes = new Set([
+    "issuance_not_implemented",
+    "legal_identity_not_verified",
+    "tax_profile_not_activated",
+  ]);
+  const details = record.blockers.filter((item) => !setupCodes.has(item.code));
+  const setup = record.blockers.filter((item) => setupCodes.has(item.code));
+  const rows = (items: Draft["blockers"]) =>
+    items.map((blocker, index) => (
+      <Text key={`${blocker.code}:${blocker.lineId}:${index}`}>
+        {invoiceDraftBlocker(blocker.code, locale)}
+      </Text>
+    ));
+  return (
+    <>
+      {details.length ? (
+        <RecordSection title={labels.needsAttention}>{rows(details)}</RecordSection>
+      ) : null}
+      {setup.length ? <Details title={labels.beforeLiveInvoicing}>{rows(setup)}</Details> : null}
+    </>
+  );
+}
+
 type DraftContent = typeof Drafts.DraftContent.Type;
 function DraftDates({
   content,
@@ -669,6 +696,14 @@ function SellerFields({
         />
       </Box>
       <InputField
+        name="sellerCountry"
+        label={labels.countryCode}
+        pattern="[A-Z]{2}"
+        maxLength={2}
+        placeholder="SE"
+        defaultValue={content?.seller.countryCode ?? ""}
+      />
+      <InputField
         name="sellerAddress"
         label={labels.address}
         maxLength={1000}
@@ -701,6 +736,24 @@ function CustomerFields({
         }
       />
       <InputField
+        name="customerRegistration"
+        label={labels.registrationNumber}
+        maxLength={200}
+        defaultValue={
+          customer.id === content?.counterpartyId ? (content.customer.registrationId ?? "") : ""
+        }
+      />
+      <InputField
+        name="customerCountry"
+        label={labels.countryCode}
+        pattern="[A-Z]{2}"
+        maxLength={2}
+        placeholder="SE"
+        defaultValue={
+          customer.id === content?.counterpartyId ? (content.customer.countryCode ?? "") : ""
+        }
+      />
+      <InputField
         name="customerAddress"
         label={labels.billingAddress}
         maxLength={1000}
@@ -713,6 +766,9 @@ function CustomerFields({
 }
 
 const english = {
+  beforeLiveInvoicing: "Before live invoicing",
+  countryCode: "Country code",
+  unitPrice: "Unit price (optional)",
   allDrafts: "All drafts",
   invoiceDrafts: "Invoice drafts",
   prepareYourInvoiceAndReview: "Prepare your invoice and review the details before the next step.",
@@ -729,7 +785,8 @@ const english = {
   noMatchingInvoices: "No matching invoices",
   yourNextInvoiceStartsHere: "Your next invoice starts here",
   chooseACustomerAddYour: "Choose a customer, add your line items and save a draft.",
-  draftsHaveNotBeenIssued: "Saving a draft does not send or post an invoice. Open the record to see its issue history.",
+  draftsHaveNotBeenIssued:
+    "Saving a draft does not send or post an invoice. Open the record to see its issue history.",
   close: "Close",
   saveDraft: "Save draft",
   invoiceDetails: "Invoice details",
@@ -782,6 +839,9 @@ const english = {
   editInvoice: "Edit invoice",
 };
 const swedish: typeof english = {
+  beforeLiveInvoicing: "Inför riktig fakturering",
+  countryCode: "Landskod",
+  unitPrice: "Enhetspris (valfritt)",
   allDrafts: "Alla utkast",
   invoiceDrafts: "Fakturautkast",
   prepareYourInvoiceAndReview: "Förbered fakturan och granska beloppen innan nästa steg.",

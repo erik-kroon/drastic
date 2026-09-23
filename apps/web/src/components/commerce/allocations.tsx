@@ -9,6 +9,9 @@ import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
 import { commerceCopy } from "./copy";
+import { AllocationReleaseStatus } from "./allocation-reversals";
+import { PageAction } from "@open-erp/ui/components/accounting-page";
+import { workspacePath } from "@/lib/book-context";
 import {
   CommandForm,
   Details,
@@ -305,7 +308,10 @@ function AllocationReview(props: CommerceProps & { id: string }) {
           ))}
           {view.data?.application ? (
             <Box display="grid" gap="md">
-              <Text role="status">{copy.applied}</Text>
+              <AllocationReleaseStatus book={book} locale={locale} id={view.data.application.id} />
+              <PageAction href={`${workspacePath(book)}/accounts?view=payments&record=${encodeURIComponent(view.data.application.id)}`}>
+                {locale === "sv" ? "Granska återföring av fördelningen" : "Review payment unallocation"}
+              </PageAction>
               <Facts title={copy.facts} value={view.data.application} />
             </Box>
           ) : (

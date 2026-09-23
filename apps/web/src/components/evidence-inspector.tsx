@@ -6,6 +6,8 @@ import { Button } from "@open-erp/ui/components/button";
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { Label } from "@open-erp/ui/components/label";
 import { Text } from "@open-erp/ui/components/typography";
+import { OriginalDocument } from "@/components/original-document";
+import { enteredExpenseSource } from "@/lib/source-documents";
 import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
@@ -37,6 +39,10 @@ export function EvidenceInspector(props: {
     enabled: open,
     retry: false,
   });
+  const original =
+    evidence.data?.mediaType === "application/json"
+      ? enteredExpenseSource(evidence.data.content)
+      : null;
   return (
     <Box display="grid" gap="md" minWidth="zero">
       {!props.expanded ? (
@@ -99,6 +105,14 @@ export function EvidenceInspector(props: {
               </Text>
               <Text tone="muted">SHA-256: {evidence.data.sha256}</Text>
             </Disclosure>
+            {original ? (
+              <OriginalDocument
+                book={book}
+                locale={locale}
+                id={original.occurrenceId}
+                sha256={original.sha256}
+              />
+            ) : null}
             <Label htmlFor={contentId}>{copy.journal_content}</Label>
             <Box
               display="grid"

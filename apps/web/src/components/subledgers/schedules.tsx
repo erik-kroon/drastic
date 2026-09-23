@@ -167,18 +167,42 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
   const keys = useRef(new Map<string, string>());
   const schedule = useQuery({
     queryKey: [...bookKey(book), "schedule", id],
-    queryFn: ({ signal }) =>
-      readAccounting(`${bookPath(book)}/schedules/${id}`, Subledgers.ScheduleView, { signal }),
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${bookPath(book)}/schedules/${id}`,
+        Subledgers.ScheduleView,
+        { signal },
+      );
+      if (
+        [result.current, ...result.revisions].some(
+          (revision) =>
+            revision.scheduleId !== id ||
+            revision.scope.bookId !== book.id ||
+            revision.scope.entityId !== book.entityId,
+        )
+      ) {
+        throw new Error("Schedule response identity or scope mismatch");
+      }
+      return result;
+    },
     retry: false,
   });
   const prepare = useMutation({
-    mutationFn: (input: typeof Subledgers.PrepareScheduleOccurrence.Type) => {
+    mutationFn: async (input: typeof Subledgers.PrepareScheduleOccurrence.Type) => {
       const path = `${bookPath(book)}/schedules/${id}/prepare`;
-      return readAccounting(
+      const result = await readAccounting(
         path,
         Subledgers.SchedulePreparation,
         mutationOptions(path, JSON.stringify(input), keys.current),
       );
+      if (
+        result.scheduleId !== id ||
+        result.revisionDigest !== input.expectedDigest ||
+        result.ordinal !== input.ordinal
+      ) {
+        throw new Error("Schedule preparation identity mismatch");
+      }
+      return result;
     },
     onSuccess: (_result, input) => {
       // A confirmed command may be followed by a fresh dependency check. Keep keys after errors.
@@ -226,6 +250,7 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
             {copy.remaining}: {view.remainingMinor}
           </Text>
           <Text>{copy.balanceHelp}</Text>
+          <ScheduleBasisNotice basis={view.postingBasis} locale={locale} />
           <EvidenceInspector
             book={book}
             locale={locale}
@@ -263,7 +288,7 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
                     <Button
                       size="xl"
                       variant="outline"
-                      disabled={prepare.isPending}
+                      disabled={prepare.isPending || view.postingBasis?.supported !== true}
                       onClick={() =>
                         prepare.mutate({
                           expectedDigest: view.current.digest,
@@ -373,6 +398,37 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
             <Text>{copy.frozen}</Text>
           )}
         </>
+      ) : null}
+    </Box>
+  );
+}
+
+function ScheduleBasisNotice({
+  basis,
+  locale,
+}: {
+  basis: typeof Subledgers.SchedulePostingBasis.Type | undefined;
+  locale: Locale;
+}) {
+  const copy = subledgerCopy(locale);
+  let message = copy.basisUnknown;
+  if (basis) {
+    message = copy.basisStandalone;
+    if (!basis.supported) message = copy.basisBlocked;
+    else if (basis.mode === "linked_basis") message = copy.basisLinked;
+  }
+  return (
+    <Box role="status" display="grid" gap="sm">
+      <Text>{message}</Text>
+      {basis?.basisVoucherId ? (
+        <Text>
+          {copy.basisVoucher}: {basis.basisVoucherId}
+        </Text>
+      ) : null}
+      {basis?.basisDigest ? (
+        <Text>
+          {copy.basisDigest}: {basis.basisDigest}
+        </Text>
       ) : null}
     </Box>
   );

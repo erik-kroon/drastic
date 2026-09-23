@@ -61,6 +61,15 @@ export const OccurrenceState = Schema.Struct({
   reversalVoucherId: Schema.NullOr(Accounting.Identifier),
   state: Schema.Literals(["unprepared", "prepared", "posted", "reversed", "conflicted"]),
 });
+// Live prerequisite state, not a legal policy or reconciliation certificate.
+export const SchedulePostingBasis = Schema.Struct({
+  mode: Schema.Literals(["standalone_synthetic", "linked_basis"]),
+  supported: Schema.Boolean,
+  basisDigest: Schema.NullOr(Accounting.Digest),
+  basisVoucherId: Schema.NullOr(Accounting.Identifier),
+  blocker: Schema.NullOr(Schema.Literals(["basis_reversed_or_corrected", "basis_mismatch"])),
+  legalPolicyApproved: Schema.Literal(false),
+});
 export const ScheduleView = Schema.Struct({
   current: ScheduleRevision,
   revisions: Schema.Array(ScheduleRevision),
@@ -68,6 +77,7 @@ export const ScheduleView = Schema.Struct({
   recognizedMinor: Accounting.MinorUnits,
   remainingMinor: Accounting.MinorUnits,
   revisionAllowed: Schema.Boolean,
+  postingBasis: Schema.optional(SchedulePostingBasis),
   controlAccountReconciled: Schema.Literal(false),
   requiresPostingApproval: Schema.Literal(true),
 });
@@ -94,6 +104,7 @@ export const SchedulePreparation = Schema.Struct({
   ordinal: Schema.Int,
   changeSetId: Accounting.Identifier,
   planDigest: Accounting.Digest,
+  postingBasis: Schema.optional(SchedulePostingBasis),
   requiresPostingApproval: Schema.Literal(true),
   receipt: CommandReceipt,
 });

@@ -8,6 +8,7 @@ import { PostingRecoveryCapabilities } from "./posting-recovery";
 import { CorrectionCapabilities } from "./corrections";
 import { SettlementCapabilities } from "./settlements";
 import { BankMatchReversalCapabilities } from "./bank-match-reversals";
+import { BankMatchCandidateCapabilities } from "./bank-match-candidates";
 
 import { SubledgerCapabilities } from "./subledgers";
 
@@ -20,6 +21,7 @@ import { SieCapabilities } from "./sie";
 import { InvoiceDraftCapabilities } from "./invoice-drafts";
 import { SubledgerControlCapabilities } from "./subledger-controls";
 import { InvoiceIssuanceCapabilities } from "./invoice-issuance";
+import { CommerceAllocationReversalCapabilities } from "./commerce-allocation-reversals";
 import { AccountantReviewCapabilities } from "./accountant-review";
 import { SourceIntakeCapabilities } from "./source-intake";
 import { ExpenseTaxCapabilities } from "./expense-tax";
@@ -61,12 +63,14 @@ export const Capabilities = {
   ...InvoiceDraftCapabilities,
   ...SubledgerControlCapabilities,
   ...InvoiceIssuanceCapabilities,
+  ...CommerceAllocationReversalCapabilities,
   ...ClosingCapabilities,
   ...SubledgerCapabilities,
   ...PostingRecoveryCapabilities,
   ...CorrectionCapabilities,
   ...SettlementCapabilities,
   ...BankMatchReversalCapabilities,
+  ...BankMatchCandidateCapabilities,
   rules_propose: {
     description:
       "Propose an immutable synthetic exact-match recurring PREPARATION rule. It never grants posting authority.",

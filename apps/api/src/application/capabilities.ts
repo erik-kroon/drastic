@@ -47,6 +47,41 @@ function effectCapability<I, O extends Schema.Json>(
 }
 
 export const capabilities = {
+  commerce_prepare_allocation_reversal: bindCapability(
+    Capabilities.commerce_prepare_allocation_reversal,
+    "prepareCommerceAllocationReversal",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  commerce_get_allocation_reversal: bindCapability(
+    Capabilities.commerce_get_allocation_reversal,
+    "getCommerceAllocationReversal",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_list_allocation_reversals: bindCapability(
+    Capabilities.commerce_list_allocation_reversals,
+    "listCommerceAllocationReversals",
+    (input) => [scopeParameter(input.scope), input.after ?? ""],
+  ),
+  commerce_get_allocation_status: bindCapability(
+    Capabilities.commerce_get_allocation_status,
+    "getCommerceAllocationStatus",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_get_register_allocation_status: bindCapability(
+    Capabilities.commerce_get_register_allocation_status,
+    "getCommerceRegisterAllocationStatus",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_execute_allocation_reversal: bindCapability(
+    Capabilities.commerce_execute_allocation_reversal,
+    "executeCommerceAllocationReversal",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, input.id, JSON.stringify(input.input)],
+  ),
+  bank_discover_match_candidates: bindCapability(
+    Capabilities.bank_discover_match_candidates,
+    "discoverBankMatchCandidates",
+    (input) => [scopeParameter(input.scope), JSON.stringify(input.input)],
+  ),
   commerce_get_invoice_issue_review: bindCapability(
     Capabilities.commerce_get_invoice_issue_review,
     "getInvoiceIssueReview",

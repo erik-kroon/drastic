@@ -255,3 +255,161 @@ Source review compared each replacement against its latest owning definition and
 approve/execute/currentness and every artifact-context caller. No checks, tests, database,
 browser or toolchain execution occurred. Migration syntax, runtime behavior and compatibility
 remain unverified observations, not claims of acceptance.
+
+## 1800 basis-aware posting safeguards — failure cases before implementation
+
+Scope: block new recognition against a reversed/corrected linked carrying basis. Preserve
+standalone synthetic schedules without bases, immutable historical postings, receipts and reads.
+No migration application or runtime proof is authorized for this wave.
+
+Failure cases to guard:
+- A basis is reversed/corrected before native preparation; no new proposal or receipt may survive.
+- A valid linked basis is reversed/corrected after preparation or approval; execution must fail
+  atomically, including generic kernel and bundle paths that insert vouchers.
+- A standalone proposal predates basis linkage; it must not inherit that basis without a new
+  preparation and human approval. Pre-1800 linked preparations have no retained basis authority
+  and must be prepared again, without rewriting old plans or their digests.
+- A generic/equivalent proposal uses a known linked schedule occurrence without native ownership;
+  reject it rather than claiming source provenance or universal economic duplicate detection.
+- A correction reversal must remain possible/reportable; never reject a genuine reversal merely
+  because its event belongs to a linked schedule. Replacement recognition remains guarded.
+- Unrelated, foreign-book, missing-basis and historical posted records must not become linked
+  implicitly. Preserve authorization, book locks, revocations, committed replay and exact money.
+- New basis capture must be in the same transaction as native proposal/preparation and immutable.
+  Missing authority is not equivalent to valid linked authority. No client-supplied bypass flag.
+- New live basis notices must not reinterpret old retained receipt bytes or claim legal validity,
+  complete source reconciliation, disposal, impairment or a correction/amendment workflow.
+- Do not replace bank1300, invoice1400 or closing1510 guards or weaken the original kernel checks.
+
+Planned boundaries: private live basis state; additive immutable preparation capture; current
+basis checks at native preparation, shared dependency validation and voucher insertion; an
+additive live schedule notice. Known linked events outside the native path fail closed. New event
+keys, cloned source components and unknown economics remain outside this identity-based guard.
+
+## 1800 implemented source — carrying-basis posting authority
+
+Implemented in `migrations/1800-subledger-basis-posting-guards.sql`; it requires1500 and leaves
+all1300–1510 files unchanged. Contracts are additive in `packages/contracts/src/subledgers.ts`.
+The existing owned `components/subledgers/schedules.tsx` and `copy.ts` show English/Swedish live
+notices, basis voucher/digest, and disable preparation when status is blocked or unavailable.
+No new route, capability, query dispatcher or Drizzle maintenance mapping is needed.
+
+```text
+native prepare, under book lock
+  -> live basis supported? -> sealed proposal + immutable basis_dependency capture
+  -> human validation/approval -> current dependency check
+  -> execution -> current dependency check -> physical voucher guard -> posting
+basis correction/reversal
+  -> original basis remains retained -> next recognition fails -> controls stay inspectable
+```
+
+### Capture and compatibility
+
+`subledger_preparations.basis_dependency` is an additive nullable JSON column. New preparation
+rows capture mode, supported state, basis digest, basis voucher ID, blocker and false legal-policy
+flag in the same transaction as the sealed kernel proposal. The existing immutable-row trigger
+and unique `(book_id,change_set_id)` bind this capture to the approved plan identity. This is
+server-owned provenance, not a client-authored plan field, ambient bypass flag or new kernel
+dependency kind. Approval still binds the original sealed plan ID/digest.
+
+Historical rows remain NULL; no UPDATE/backfill rewrites old authority. A historical NULL capture
+is accepted only while the schedule is still standalone with no linked basis. A linked historical
+preparation, or a captured standalone proposal followed by new linkage, fails `StaleDependency`.
+Native re-preparation with a fresh command key appends a new proposal/capture and requires fresh
+human approval. Committed preparation/approval/execution command replay still returns its
+original result before freshness checks; a replay is not current posting authority.
+
+The private `subledger_posting_basis(book,schedule)` returns standalone synthetic support if no
+basis exists. With a basis, any voucher in that book correcting/reversing its original voucher
+blocks recognition immediately, regardless of economic date. Schedule-digest or retained-body
+mismatch also blocks. It does not infer a replacement basis, pause future terms or activate a
+legal profile. `supported:true` is only this prerequisite, not overall posting readiness; existing
+profile/account/period/evidence/approval checks still apply.
+
+### Exact enforcement coverage
+
+- `prepare_schedule_occurrence`: checks current basis before a new preparation/reuse, captures it
+  on the immutable preparation row, and retains it as optional `postingBasis` in new responses.
+  The existing stale-dependency catch appends a new attempt when linkage invalidates an old plan.
+- `check_dependencies`: latest0001 function is forward-replaced with exactly one added private
+  guard call after existing digest/version/action checks. This covers kernel validation, approval,
+  execution, saved-posting recovery diagnostics, recurring reuse and correction-bundle checks.
+  Existing revocation, membership, receipt, book-lock and other-provider logic is untouched.
+- `subledger_basis_proposal_owner`: a deferred constraint trigger on new change sets checks all
+  actions. Native preparation inserts its owner row before transaction end. Generic preparation
+  for a known basis-linked occurrence has no such owner and fails at commit, rolling back its
+  proposal, event creation and receipt. There is no caller-set bypass or authorization marker.
+- `subledger_basis_posting_authority`: immediate BEFORE INSERT voucher trigger reacquires the
+  existing book barrier and checks live validity/capture. Generic proposals retained before basis
+  linkage also fail here, even if a future execution adapter omits shared dependency validation.
+- Known generic identities match book, evidence and retained occurrence event key across schedule
+  revisions. Generic adjustment/replacement paths cannot borrow native provenance. A real full
+  reversal with a source voucher is not recognition and passes through this added guard; existing
+  kernel/bank/commerce/owner correction guards remain authoritative and may still refuse it.
+  Correction bundles keep all-or-nothing execution; a guarded replacement cannot partially commit.
+- Historical GETs, immutable occurrence IDs, recognized amounts, voucher/receipt bodies and
+  snapshots are unchanged. `get_schedule` adds live `postingBasis`; optional contract fields keep
+  old response decoding valid. Generic posting recovery already converts stale dependencies into
+  a visible blocker without discarding retained history. No new transport composition is needed.
+
+### Limits and remaining proof
+
+The guard identifies retained schedule events, not arbitrary economic equivalence. Another event
+key, another evidence object or a cloned source declaration is not universally deduplicated.
+Source split completeness and control-account reconciliation remain unestablished. No disposal,
+impairment, paused schedule, future-term amendment or immutable-basis replacement is added.
+No bank1300, invoice1400 or closing1510 guard/provider definition is replaced. Complete closing
+control dependencies and false readiness flags remain unchanged.
+
+Source review traced latest function owners, all preparation inserts, dependency callers, deferred
+proposal ordering, immediate voucher admission, book barriers, correction exemptions, replay and
+UI/schema compatibility. The forward replacements were compared with their owning definitions.
+No tests, fixtures, checks, builds, SQL application, browser/server, dependency or external actions
+were performed. Trigger ordering, SQL compilation, concurrency/rollback and rendered UI behavior
+remain runtime-unverified. A later authorized proof must exercise reversal-after-approval and
+basis-link-after-preparation through native, direct-kernel and correction-bundle public paths.
+
+### 1800 follow-up source review — before hardening
+
+- Selected schedule reads must match the requested schedule/book/entity, including retained
+  revisions. Preparation responses must match schedule, requested revision digest and ordinal.
+  A schema-valid response for another request must not reach review or clear its retry key.
+- Correction bundles use a derived `correction:<voucherId>` event, not the original schedule
+  event. Exact-event matching alone misses this known provenance. Reject a replacement when
+  its retained correction ancestry leads to a basis-linked schedule occurrence, including
+  correction chains retained before1800. Genuine reversal remains allowed by this added guard.
+- Existing dispatcher calls execute one approved entrypoint per query. Saved requests execute
+  one command; invoice issuance executes one invoice-owned plan; correction bundles execute
+  reversal first and then a fresh bundle-owned replacement, never native recognition followed
+  by basis reversal. No supported current entrypoint exposes that reverse ordering. A future
+  batching path must define commit-time basis validity before it is admitted.
+
+### 1800 follow-up result
+
+No deferred voucher trigger was added. Source review of the public dispatcher and every
+`execute_change` caller found no supported recognition-then-basis-reversal atomic entrypoint.
+`posting_run_request` dispatches one saved command; invoice issuance posts one invoice-owned
+plan; correction execution reverses first and then executes its newly sealed bundle replacement.
+The application does not expose arbitrary SQL or multi-command transaction batching. This is a
+source-based bound, not a guarantee for arbitrary privileged SQL compositions or future adapters.
+If batch composition is introduced, add commit-time recognition checks before supporting that
+path; independent later source correction must remain allowed.
+
+The review did find and close a concrete generic-equivalence gap: bundle replacement identity is
+`correction:<originalVoucherId>`, not the original occurrence event. The private guard now follows
+retained correction-bundle origins recursively and refuses replacement provenance leading to a
+basis-linked schedule event. UNION removes repeated ancestry IDs; book predicates scope every
+step. Deferred proposal ownership sees the bundle association after its insertion, while shared
+validation and immediate voucher admission see retained associations. This includes previously
+retained correction chains. It does not infer ancestry from text, account amounts or unknown keys.
+
+Selected schedule GET responses now check requested ID and book/entity on current and every
+retained revision. Preparation responses check schedule ID, requested revision digest and ordinal
+before clearing retry keys or exposing review navigation. The response has no independent scope
+field; the requested digest already identifies the scoped revision, and the request uses the
+scoped book path. Create/revise responses in owned `schedule-form.tsx` also check book/entity,
+source key and, for revisions, the selected schedule ID. Invalid responses become errors rather
+than successful navigation. No contracts or root composition changed in this follow-up.
+
+This follow-up changed only1800, `schedules.tsx`, `schedule-form.tsx` and this handoff. No commands,
+tests, database/browser execution or migration application occurred.

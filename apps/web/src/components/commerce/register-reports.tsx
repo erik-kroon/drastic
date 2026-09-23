@@ -8,6 +8,7 @@ import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
 import { commerceCopy } from "./copy";
+import { CommerceRegisterAllocationStatus } from "./allocation-reversals";
 import {
   CommandForm,
   Details,
@@ -183,6 +184,7 @@ function SavedRegisterReport(props: CommerceProps & { id: string }) {
 }
 
 function ReportContents({
+  book,
   locale,
   report,
 }: CommerceProps & { report: typeof Reports.RegisterReport.Type }) {
@@ -194,6 +196,7 @@ function ReportContents({
   };
   return (
     <Box display="grid" gap="lg" minWidth="zero">
+      <CommerceRegisterAllocationStatus book={book} locale={locale} id={report.id} />
       <Text role="status">{statuses[report.status]}</Text>
       <Text>
         {copy.asOfDate}: {report.asOfDate} · {copy.capturedAt}: {report.createdAt}

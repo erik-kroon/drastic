@@ -43,6 +43,13 @@ const styles = stylex.create({
     alignItems: "start",
     "@container (max-width: 50rem)": { gridTemplateColumns: "minmax(0, 1fr)" },
   },
+  columns: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 32,
+    alignItems: "start",
+    "@container (max-width: 50rem)": { gridTemplateColumns: "minmax(0, 1fr)" },
+  },
   paper: {
     display: "grid",
     gap: 28,
@@ -112,4 +119,8 @@ export function RecordSection({ title, children }: { title: string; children: Re
       {children}
     </section>
   );
+}
+
+export function RecordColumns({ children }: { children: ReactNode }) {
+  return <div {...stylex.props(styles.columns)}>{children}</div>;
 }

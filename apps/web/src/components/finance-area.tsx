@@ -14,6 +14,14 @@ const DocumentInbox = lazy(() =>
 const BankingWorkspace = lazy(() =>
   import("@/components/banking-workspace").then((module) => ({ default: module.BankingWorkspace })),
 );
+const PaymentAllocations = lazy(() =>
+  import("@/components/commerce/allocations").then((module) => ({ default: module.Allocations })),
+);
+const CommerceAllocationReversals = lazy(() =>
+  import("@/components/commerce/allocation-reversals").then((module) => ({
+    default: module.CommerceAllocationReversals,
+  })),
+);
 const Invoices = lazy(() =>
   import("@/components/commerce/invoices").then((module) => ({ default: module.Invoices })),
 );
@@ -58,6 +66,11 @@ const VatReturnsPanel = lazy(() =>
   import("@/components/vat-returns/panel").then((module) => ({ default: module.VatReturnsPanel })),
 );
 
+const BankMatchCandidatesPanel = lazy(() =>
+  import("@/components/bank-match-candidates/panel").then((module) => ({
+    default: module.BankMatchCandidatesPanel,
+  })),
+);
 const BankAllocations = lazy(() =>
   import("@/components/settlements").then((module) => ({ default: module.BankAllocations })),
 );
@@ -69,6 +82,11 @@ const BankMatchReversals = lazy(() =>
 const InvoiceIssuance = lazy(() =>
   import("@/components/commerce/invoice-issuance").then((module) => ({
     default: module.InvoiceIssuance,
+  })),
+);
+const SubledgersPanel = lazy(() =>
+  import("@/components/subledgers/schedules").then((module) => ({
+    default: module.SubledgersPanel,
   })),
 );
 const SubledgerControlsPanel = lazy(() =>
@@ -89,11 +107,134 @@ export function FinanceArea({
   const { book, setup, locale } = useBookWorkspace();
   const navigate = useNavigate();
   const copy = frontendCopy(locale);
+  const tabs = areaTabs(area, locale);
+  const invoiceDirection = area === "purchases" ? "supplier" : "customer";
+  const selected = tabs.find((tab) => tab.key === view)?.key ?? tabs[0]?.key;
+  const base = `${workspacePath(book)}/${area}`;
+  const onPrepared = (id: string) => {
+    void navigate({ to: reviewPath(book, id) });
+  };
+  const onOpen = (id: string) => {
+    void navigate({ to: base, search: { view: selected, record: id || undefined } });
+  };
+  return (
+    <>
+      <WorkspaceHeader title={copy[area]} />
+      <PageContent>
+        {tabs.length > 1 ? (
+          <PageTabs label={copy[area]}>
+            {tabs.map((tab) => (
+              <PageTab key={tab.key} href={`${base}?view=${tab.key}`} active={selected === tab.key}>
+                {tab.label}
+              </PageTab>
+            ))}
+          </PageTabs>
+        ) : null}
+        <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
+          {selected === "documents" ? <DocumentInbox recordId={record} onOpen={onOpen} /> : null}
+          {selected === "ledger" ? <AccountBalances /> : null}
+          {selected === "bank" ? <BankingWorkspace recordId={record} onOpen={onOpen} /> : null}
+          {selected === "matching" ? (
+            <>
+              <BankMatchCandidatesPanel
+                key={`candidates:${book.entityId}:${book.id}`}
+                book={book}
+                locale={locale}
+              />
+              <BankAllocations
+                key={`allocations:${book.entityId}:${book.id}`}
+                book={book}
+                setup={setup}
+                locale={locale}
+              />
+              <BankMatchReversals
+                key={`reversals:${book.entityId}:${book.id}`}
+                book={book}
+                locale={locale}
+              />
+            </>
+          ) : null}
+          {selected === "payments" ? (
+            <>
+              <PaymentAllocations key={`payments:${book.entityId}:${book.id}`} book={book} locale={locale} />
+              <CommerceAllocationReversals book={book} locale={locale} receiptId={record} />
+            </>
+          ) : null}
+          {selected === "issue" ? (
+            <InvoiceIssuance book={book} locale={locale} recordId={record} />
+          ) : null}
+          {selected === "subledgers" ? (
+            <>
+              <SubledgersPanel
+                key={`schedules:${book.entityId}:${book.id}`}
+                book={book}
+                setup={setup}
+                locale={locale}
+                onPrepared={onPrepared}
+              />
+              <SubledgerControlsPanel
+                key={`controls:${book.entityId}:${book.id}`}
+                book={book}
+                setup={setup}
+                locale={locale}
+              />
+            </>
+          ) : null}
+          {selected === "drafts" ? (
+            <InvoiceDrafts book={book} locale={locale} recordId={record ?? ""} onOpen={onOpen} />
+          ) : null}
+          {selected === "invoices" ? (
+            <Invoices
+              book={book}
+              locale={locale}
+              direction={invoiceDirection}
+              recordId={record ?? ""}
+              onOpen={onOpen}
+            />
+          ) : null}
+          {selected === "parties" ? (
+            <Counterparties book={book} locale={locale} recordId={record ?? ""} onOpen={onOpen} />
+          ) : null}
+          {selected === "imports" ? (
+            <SourceIntake book={book} setup={setup} locale={locale} open />
+          ) : null}
+          {selected === "expenses" ? (
+            <ExpenseTaxPanel
+              book={book}
+              locale={locale}
+              onPrepared={onPrepared}
+              recordId={record ?? ""}
+              onOpen={onOpen}
+              open
+            />
+          ) : null}
+          {selected === "library" ? <ReportLibrary /> : null}
+          {selected === "trial" ? (
+            <TrialBalanceWorkspace recordId={record} onOpen={onOpen} />
+          ) : null}
+          {selected === "register" ? <RegisterReports book={book} locale={locale} /> : null}
+          {selected === "export" ? (
+            <AccountantReviewPanel book={book} locale={locale} open />
+          ) : null}
+          {selected === "vat" ? <VatReturnsPanel book={book} locale={locale} open /> : null}
+          {selected === "closing" ? <ClosingWorkspace recordId={record} onOpen={onOpen} /> : null}
+        </Suspense>
+      </PageContent>
+    </>
+  );
+}
+
+function areaTabs(
+  area: "accounts" | "sales" | "purchases" | "reports" | "tax" | "closing",
+  locale: "en" | "sv",
+) {
+  const copy = frontendCopy(locale);
   const sv = locale === "sv";
-  const tabs = {
+  return {
     accounts: [
       { key: "bank", label: copy.bank },
       { key: "matching", label: sv ? "Matchning" : "Matching" },
+      { key: "payments", label: sv ? "Betalningsfördelning" : "Payment allocation" },
       { key: "imports", label: copy.imports },
       { key: "ledger", label: copy.ledger },
     ],
@@ -123,89 +264,4 @@ export function FinanceArea({
     ],
     closing: [{ key: "closing", label: copy.closing }],
   }[area];
-  const invoiceDirection = area === "purchases" ? "supplier" : "customer";
-  const selected = tabs.find((tab) => tab.key === view)?.key ?? tabs[0]?.key;
-  const base = `${workspacePath(book)}/${area}`;
-  const onPrepared = (id: string) => {
-    void navigate({ to: reviewPath(book, id) });
-  };
-  const onOpen = (id: string) => {
-    void navigate({ to: base, search: { view: selected, record: id || undefined } });
-  };
-  return (
-    <>
-      <WorkspaceHeader title={copy[area]} />
-      <PageContent>
-        <PageTabs label={copy[area]}>
-          {tabs.map((tab) => (
-            <PageTab key={tab.key} href={`${base}?view=${tab.key}`} active={selected === tab.key}>
-              {tab.label}
-            </PageTab>
-          ))}
-        </PageTabs>
-        <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
-          {selected === "documents" ? <DocumentInbox recordId={record} onOpen={onOpen} /> : null}
-          {selected === "ledger" ? <AccountBalances /> : null}
-          {selected === "bank" ? <BankingWorkspace recordId={record} onOpen={onOpen} /> : null}
-          {selected === "matching" ? (
-            <>
-              <BankAllocations
-                key={`allocations:${book.entityId}:${book.id}`}
-                book={book}
-                setup={setup}
-                locale={locale}
-              />
-              <BankMatchReversals
-                key={`reversals:${book.entityId}:${book.id}`}
-                book={book}
-                locale={locale}
-              />
-            </>
-          ) : null}
-          {selected === "issue" ? (
-            <InvoiceIssuance book={book} locale={locale} recordId={record} />
-          ) : null}
-          {selected === "subledgers" ? (
-            <SubledgerControlsPanel
-              key={`${book.entityId}:${book.id}`}
-              book={book}
-              setup={setup}
-              locale={locale}
-            />
-          ) : null}
-          {selected === "drafts" ? (
-            <InvoiceDrafts book={book} locale={locale} recordId={record ?? ""} onOpen={onOpen} />
-          ) : null}
-          {selected === "invoices" ? (
-            <Invoices
-              book={book}
-              locale={locale}
-              direction={invoiceDirection}
-              recordId={record ?? ""}
-              onOpen={onOpen}
-            />
-          ) : null}
-          {selected === "parties" ? (
-            <Counterparties book={book} locale={locale} recordId={record ?? ""} onOpen={onOpen} />
-          ) : null}
-          {selected === "imports" ? (
-            <SourceIntake book={book} setup={setup} locale={locale} open />
-          ) : null}
-          {selected === "expenses" ? (
-            <ExpenseTaxPanel book={book} locale={locale} onPrepared={onPrepared} open />
-          ) : null}
-          {selected === "library" ? <ReportLibrary /> : null}
-          {selected === "trial" ? (
-            <TrialBalanceWorkspace recordId={record} onOpen={onOpen} />
-          ) : null}
-          {selected === "register" ? <RegisterReports book={book} locale={locale} /> : null}
-          {selected === "export" ? (
-            <AccountantReviewPanel book={book} locale={locale} open />
-          ) : null}
-          {selected === "vat" ? <VatReturnsPanel book={book} locale={locale} open /> : null}
-          {selected === "closing" ? <ClosingWorkspace recordId={record} onOpen={onOpen} /> : null}
-        </Suspense>
-      </PageContent>
-    </>
-  );
 }

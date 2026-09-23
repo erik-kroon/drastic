@@ -32,6 +32,11 @@ import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
+const BankMatchCandidatesPanel = lazy(() =>
+  import("@/components/bank-match-candidates/panel").then((module) => ({
+    default: module.BankMatchCandidatesPanel,
+  })),
+);
 const BankAllocations = lazy(() =>
   import("@/components/settlements").then((module) => ({ default: module.BankAllocations })),
 );
@@ -276,6 +281,7 @@ export function AccountingWorkspace({
       {setup.data ? <BankReconciliation book={book} setup={setup.data} locale={locale} /> : null}
       {setup.data ? (
         <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
+          <BankMatchCandidatesPanel key={JSON.stringify(bookKey(book))} book={book} locale={locale} />
           <BankAllocations book={book} setup={setup.data} locale={locale} />
           <BankMatchReversals key={JSON.stringify(bookKey(book))} book={book} locale={locale} />
         </Suspense>
