@@ -26,6 +26,7 @@ import { InvoiceDraftsApi } from "./invoice-drafts";
 import { SubledgerControlsApi } from "./subledger-controls";
 import { ExchangeRatesApi } from "./exchange-rates";
 import { InvoiceIssuanceApi } from "./invoice-issuance";
+import { InvoiceCancellationsApi } from "./invoice-cancellations";
 import { InvoiceDocumentsApi } from "./invoice-documents";
 import { CommerceAllocationReversalsApi } from "./commerce-allocation-reversals";
 import { AccountantReviewApi } from "./accountant-review";
@@ -145,6 +146,7 @@ export class Api extends HttpApi.make("open-erp")
     SubledgerControlsApi,
     ExchangeRatesApi,
     InvoiceIssuanceApi,
+    InvoiceCancellationsApi,
     InvoiceDocumentsApi,
     CommerceAllocationReversalsApi,
     AccountantReviewApi,

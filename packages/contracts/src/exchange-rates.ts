@@ -26,11 +26,41 @@ export const ExchangeRateRevision = Schema.Struct({
   receipt: CommandReceipt,
   digest: Accounting.Digest,
 });
+export const WithdrawExchangeRate = Schema.Struct({
+  expectedDigest: Accounting.Digest,
+  evidenceId: Accounting.Identifier,
+  rationale: Accounting.Description,
+});
+export const ExchangeRateWithdrawal = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  observationId: Accounting.Identifier,
+  revision: ExchangeRateRevision.fields.revision,
+  revisionDigest: Accounting.Digest,
+  input: WithdrawExchangeRate,
+  evidenceSha256: Schema.String,
+  permanent: Schema.Literal(true),
+  createdAt: Schema.String,
+  receipt: CommandReceipt,
+  digest: Accounting.Digest,
+});
+export const ExchangeRateUsability = Schema.Union([
+  Schema.Struct({ state: Schema.Literal("active"), withdrawal: Schema.Null }),
+  Schema.Struct({ state: Schema.Literal("withdrawn"), withdrawal: ExchangeRateWithdrawal }),
+]);
 export const ExchangeRateView = Schema.Struct({
+  usability: Schema.optional(ExchangeRateUsability),
   current: ExchangeRateRevision,
   revisions: Schema.Array(ExchangeRateRevision).check(Schema.isMinLength(1), Schema.isMaxLength(20)),
 });
-export const ExchangeRateList = Schema.Struct({ scope: Accounting.Scope, items: Schema.Array(ExchangeRateRevision).check(Schema.isMaxLength(200)) });
+export const ExchangeRateList = Schema.Struct({
+  scope: Accounting.Scope,
+  items: Schema.Array(ExchangeRateRevision).check(Schema.isMaxLength(200)),
+  statuses: Schema.optional(Schema.Array(Schema.Struct({
+    observationId: Accounting.Identifier,
+    usability: ExchangeRateUsability,
+  })).check(Schema.isMaxLength(200))),
+});
 export const CaptureConversionReview = Schema.Struct({
   observationId: Accounting.Identifier,
   revisionDigest: Accounting.Digest,
@@ -70,6 +100,7 @@ export const ConversionReview = Schema.Struct({
 });
 export const ConversionReviewView = Schema.Struct({
   review: ConversionReview,
+  rateUsability: Schema.optional(ExchangeRateUsability),
   dependenciesCurrent: Schema.Boolean,
   artifact: Schema.Struct({
     content: Schema.String,
@@ -99,6 +130,11 @@ const path = "/v1/entities/:entityId/books/:bookId/exchange-rates";
 const scoped = { params: Accounting.Scope, error: accountingErrors };
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
 export const ExchangeRatesApi = HttpApiGroup.make("exchangeRates").add(
+  HttpApiEndpoint.post("withdrawExchangeRate", `${path}/:id/withdrawals`, {
+    ...identified, headers: Accounting.IdempotencyHeaders,
+    payload: WithdrawExchangeRate.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: ExchangeRateWithdrawal,
+  }),
   HttpApiEndpoint.post("createExchangeRate", path, { ...scoped, headers: Accounting.IdempotencyHeaders, payload: CreateExchangeRate.annotate({ parseOptions: { onExcessProperty: "error" } }), success: ExchangeRateRevision }),
   HttpApiEndpoint.post("reviseExchangeRate", `${path}/:id/revisions`, { ...identified, headers: Accounting.IdempotencyHeaders, payload: ReviseExchangeRate.annotate({ parseOptions: { onExcessProperty: "error" } }), success: ExchangeRateRevision }),
   HttpApiEndpoint.get("getExchangeRate", `${path}/:id`, { ...identified, success: ExchangeRateView }),
@@ -109,9 +145,9 @@ export const ExchangeRatesApi = HttpApiGroup.make("exchangeRates").add(
 );
 // Operator rate decisions stay outside ordinary automation capabilities.
 export const ExchangeRateCapabilities = {
-  fx_list_rates: { description: "Discover bounded operator-reviewed manual rates. Synthetic evidence only; not legal or posting authority.", input: Schema.Struct({ scope: Accounting.Scope }), output: ExchangeRateList, readOnly: true },
-  fx_get_rate: { description: "Read a directional manual exchange rate and immutable revisions. Never invert or substitute a missing rate.", input: Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier }), output: ExchangeRateView, readOnly: true },
+  fx_list_rates: { description: "Discover bounded operator-reviewed manual rates and separate live withdrawal statuses. Historical facts are not legal or posting authority.", input: Schema.Struct({ scope: Accounting.Scope }), output: ExchangeRateList, readOnly: true },
+  fx_get_rate: { description: "Read a directional manual rate, immutable revisions and permanent withdrawal history. Never invert or substitute a missing or withdrawn rate.", input: Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier }), output: ExchangeRateView, readOnly: true },
   fx_capture_conversion: { description: "Retain an exact nonnegative synthetic conversion review using the exact current rate revision and matching effective date. No posting or human approval is minted.", input: Schema.Struct({ scope: Accounting.Scope, idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"], input: CaptureConversionReview }), output: ConversionReview, readOnly: false },
-  fx_get_conversion: { description: "Recover exact immutable conversion JSON bytes and separate live revision/book currentness. No FX posting is supported.", input: Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier }), output: ConversionReviewView, readOnly: true },
+  fx_get_conversion: { description: "Recover exact immutable conversion JSON bytes and separate live revision/book/withdrawal currentness. No FX posting is supported.", input: Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier }), output: ConversionReviewView, readOnly: true },
   fx_list_conversions: { description: "Discover all bounded retained manual conversion reviews for recovery.", input: Schema.Struct({ scope: Accounting.Scope }), output: ConversionReviewList, readOnly: true },
 };

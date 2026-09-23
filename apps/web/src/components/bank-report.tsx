@@ -4,6 +4,8 @@ import * as Bank from "@open-erp/contracts/reconciliation";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
+import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
+import { workQueryOptions, formatMinorAmount } from "@/lib/workspace-api";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { BankMatches, BankStatementDetails } from "@/components/bank-statement";
@@ -84,6 +86,16 @@ function ReportDetails({
   freshnessKnown: boolean;
 }) {
   const copy = accountingCopy(locale);
+  const metadata = useQuery(workQueryOptions(book, {}));
+  const setup = useQuery({
+    queryKey: [...bookKey(book), "setup"],
+    queryFn: ({ signal }) =>
+      readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
+    retry: false,
+  });
+  const scale = metadata.data?.currencyScale;
+  const amount = (value: string | null) =>
+    value === null || scale === undefined ? "—" : formatMinorAmount(value, scale, locale);
   const report = view.report;
   const status = {
     complete: copy.bank_complete,
@@ -92,13 +104,29 @@ function ReportDetails({
   };
   return (
     <Box display="grid" gap="lg" minWidth="zero">
-      <Text>
-        {copy.bank_report_id}: {report.id}
-      </Text>
-      <Text>
-        {copy.journal_account}: {report.accountId} · {report.currency} · {report.startsOn} –{" "}
-        {report.endsOn}
-      </Text>
+      <RecordHeading
+        title={
+          setup.data?.accounts.find((account) => account.id === report.accountId)?.name ??
+          copy.journal_account
+        }
+        subtitle={`${report.startsOn} – ${report.endsOn} · ${report.currency}`}
+      />
+      <AccountingStatus
+        locale={locale}
+        pending={metadata.isPending}
+        error={metadata.error ?? setup.error}
+      />
+      <RecordSummary>
+        <RecordFact label={locale === "sv" ? "Bokfört saldo" : "Ledger balance"}>
+          {amount(report.ledgerClosingMinor)} {report.currency}
+        </RecordFact>
+        <RecordFact label={locale === "sv" ? "Kontoutdragets saldo" : "Statement balance"}>
+          {amount(report.bankClosingMinor)} {report.currency}
+        </RecordFact>
+        <RecordFact label={copy.bank_difference}>
+          {amount(report.closingDifferenceMinor)} {report.currency}
+        </RecordFact>
+      </RecordSummary>
       <Box
         role="status"
         display="grid"
@@ -124,20 +152,25 @@ function ReportDetails({
         </Text>
       </Box>
       <Text tone="muted">{copy.bank_warning}</Text>
-      <Text tone="muted">
-        {copy.bank_checkpoint}: {report.checkpoint.sequence} / {report.checkpoint.sourceRevision} ·{" "}
-        {report.createdAt}
-      </Text>
-      <Text tone="muted">
-        {copy.bank_account_checkpoint}: {report.accountLedgerSequence}
-      </Text>
-      <Text tone="muted">
-        {copy.bank_current}: {view.currentAccountLedgerSequence} / {view.currentSourceRevision}
-      </Text>
-      <Text tone="muted">
-        {copy.bank_receipt}: {report.receipt.key} · {report.receipt.operation} ·{" "}
-        {report.receipt.actorId}
-      </Text>
+      <details>
+        <summary>{locale === "sv" ? "Underlag och historik" : "Snapshot and receipt"}</summary>
+        <Box paddingBlock="lg" display="grid" gap="md">
+          <Text tone="muted">
+            {copy.bank_checkpoint}: {report.checkpoint.sequence} /{" "}
+            {report.checkpoint.sourceRevision} · {report.createdAt}
+          </Text>
+          <Text tone="muted">
+            {copy.bank_account_checkpoint}: {report.accountLedgerSequence}
+          </Text>
+          <Text tone="muted">
+            {copy.bank_current}: {view.currentAccountLedgerSequence} / {view.currentSourceRevision}
+          </Text>
+          <Text tone="muted">
+            {copy.bank_receipt}: {report.receipt.key} · {report.receipt.operation} ·{" "}
+            {report.receipt.actorId}
+          </Text>
+        </Box>
+      </details>
       <DataTable
         title={copy.bank_summary}
         narrow="stack"
@@ -149,22 +182,26 @@ function ReportDetails({
         rows={[
           {
             id: "ledger",
-            cells: [copy.bank_ledger, report.ledgerOpeningMinor, report.ledgerClosingMinor],
+            cells: [
+              copy.bank_ledger,
+              amount(report.ledgerOpeningMinor),
+              amount(report.ledgerClosingMinor),
+            ],
           },
           {
             id: "bank",
             cells: [
               copy.bank_source_label,
-              report.bankOpeningMinor ?? copy.bank_missing,
-              report.bankClosingMinor ?? copy.bank_missing,
+              amount(report.bankOpeningMinor),
+              amount(report.bankClosingMinor),
             ],
           },
           {
             id: "difference",
             cells: [
               copy.bank_difference,
-              report.openingDifferenceMinor ?? copy.bank_missing,
-              report.closingDifferenceMinor ?? copy.bank_missing,
+              amount(report.openingDifferenceMinor),
+              amount(report.closingDifferenceMinor),
             ],
           },
         ]}
@@ -185,11 +222,13 @@ function ReportDetails({
         title={copy.bank_unmatched_source}
         rows={report.unmatchedSource}
         locale={locale}
+        scale={scale}
       />
       <LedgerLines
         title={copy.bank_unmatched_ledger}
         lines={report.unmatchedLedger}
         locale={locale}
+        scale={scale}
       />
       <details>
         <summary>{copy.bank_sources}</summary>
@@ -211,13 +250,23 @@ function ReportDetails({
       <details>
         <summary>{copy.bank_rows}</summary>
         <Box paddingBlock="lg" minWidth="zero">
-          <SourceRows title={copy.bank_rows} rows={report.sourceRows} locale={locale} />
+          <SourceRows
+            title={copy.bank_rows}
+            rows={report.sourceRows}
+            locale={locale}
+            scale={scale}
+          />
         </Box>
       </details>
       <details>
         <summary>{copy.bank_ledger_lines}</summary>
         <Box paddingBlock="lg" minWidth="zero">
-          <LedgerLines title={copy.bank_ledger_lines} lines={report.ledgerLines} locale={locale} />
+          <LedgerLines
+            title={copy.bank_ledger_lines}
+            lines={report.ledgerLines}
+            locale={locale}
+            scale={scale}
+          />
         </Box>
       </details>
       <details>
@@ -234,9 +283,11 @@ function SourceRows({
   title,
   rows,
   locale,
+  scale,
 }: {
   title: string;
   rows: readonly (typeof Bank.SourceObservation.Type)[];
+  scale: number | undefined;
   locale: Locale;
 }) {
   const copy = accountingCopy(locale);
@@ -246,24 +297,20 @@ function SourceRows({
         title={title}
         narrow="stack"
         columns={[
-          { id: "statement", label: copy.bank_statement_id },
           { id: "ordinal", label: copy.bank_ordinal },
           { id: "provider", label: copy.bank_provider_id },
           { id: "date", label: copy.journal_date },
           { id: "amount", label: copy.bank_amount, numeric: true },
           { id: "description", label: copy.journal_description },
-          { id: "evidence", label: copy.journal_evidence_refs },
         ]}
         rows={rows.map((row) => ({
           id: `${row.statementId}/${row.rowOrdinal}`,
           cells: [
-            row.statementId,
             String(row.rowOrdinal),
             row.providerId ?? "—",
             row.date,
-            row.amountMinor,
+            scale === undefined ? "—" : formatMinorAmount(row.amountMinor, scale, locale),
             row.description,
-            `${row.evidenceId} · ${row.evidenceSha256}`,
           ],
         }))}
       />
@@ -276,9 +323,11 @@ function LedgerLines({
   title,
   lines,
   locale,
+  scale,
 }: {
   title: string;
   lines: readonly (typeof Bank.BankLedgerLine.Type)[];
+  scale: number | undefined;
   locale: Locale;
 }) {
   const copy = accountingCopy(locale);
@@ -289,7 +338,6 @@ function LedgerLines({
         narrow="stack"
         columns={[
           { id: "voucher", label: copy.journal_voucher },
-          { id: "line", label: copy.bank_line_id },
           { id: "sequence", label: copy.journal_sequence },
           { id: "date", label: copy.journal_date },
           { id: "amount", label: copy.bank_amount, numeric: true },
@@ -299,10 +347,9 @@ function LedgerLines({
           id: line.lineId,
           cells: [
             line.voucherId,
-            line.lineId,
             line.sequence,
             line.date,
-            line.amountMinor,
+            scale === undefined ? "—" : formatMinorAmount(line.amountMinor, scale, locale),
             line.description,
           ],
         }))}

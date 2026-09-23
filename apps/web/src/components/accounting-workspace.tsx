@@ -37,17 +37,9 @@ const BankSourceCoveragePanel = lazy(() =>
     default: module.BankSourceCoveragePanel,
   })),
 );
-const BankMatchCandidatesPanel = lazy(() =>
-  import("@/components/bank-match-candidates/panel").then((module) => ({
-    default: module.BankMatchCandidatesPanel,
-  })),
-);
-const BankAllocations = lazy(() =>
-  import("@/components/settlements").then((module) => ({ default: module.BankAllocations })),
-);
-const BankMatchReversals = lazy(() =>
-  import("@/components/bank-match-reversals/panel").then((module) => ({
-    default: module.BankMatchReversals,
+const BankMatchingWorkspace = lazy(() =>
+  import("@/components/bank-match-candidates/workspace").then((module) => ({
+    default: module.BankMatchingWorkspace,
   })),
 );
 const SubledgersPanel = lazy(() =>
@@ -291,10 +283,13 @@ export function AccountingWorkspace({
       {setup.data ? <BankReconciliation book={book} setup={setup.data} locale={locale} /> : null}
       {setup.data ? (
         <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
-          <BankSourceCoveragePanel key={JSON.stringify(bookKey(book))} book={book} locale={locale} />
-          <BankMatchCandidatesPanel key={JSON.stringify(bookKey(book))} book={book} locale={locale} />
-          <BankAllocations book={book} setup={setup.data} locale={locale} />
-          <BankMatchReversals key={JSON.stringify(bookKey(book))} book={book} locale={locale} />
+          <BankSourceCoveragePanel key={`coverage:${JSON.stringify(bookKey(book))}`} book={book} locale={locale} />
+          <BankMatchingWorkspace
+            key={`matching:${JSON.stringify(bookKey(book))}`}
+            book={book}
+            setup={setup.data}
+            locale={locale}
+          />
         </Suspense>
       ) : null}
       <details id="owner-register" tabIndex={-1}>

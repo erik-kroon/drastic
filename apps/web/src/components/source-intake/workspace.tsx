@@ -7,7 +7,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { RecordHeading, RecordSection } from "@open-erp/ui/components/record-layout";
 import { workQueryOptions, minorToDecimal, signedDecimalToMinor } from "@/lib/workspace-api";
-import { Heading, Text } from "@open-erp/ui/components/typography";
+import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import type { IntakeProps } from "./index";
@@ -245,8 +245,8 @@ function MappingForm(
           ...Object.fromEntries(fields),
           currency: book.currency,
           currencyScale: scale,
-          openingMinor: signedDecimalToMinor(String(fields.get("openingMinor") ?? ""), scale),
-          closingMinor: signedDecimalToMinor(String(fields.get("closingMinor") ?? ""), scale),
+          openingMinor: mappingAmount(fields, "openingMinor", scale),
+          closingMinor: mappingAmount(fields, "closingMinor", scale),
           providerIdColumn: fields.get("providerIdColumn") || null,
           completeness: {
             declaredComplete: fields.get("declaredComplete") === "on",
@@ -354,4 +354,9 @@ function MappingForm(
       <AccountingStatus locale={locale} pending={mutation.isPending} error={mutation.error} write />
     </Box>
   );
+}
+
+function mappingAmount(fields: FormData, name: string, scale: number) {
+  const value = fields.get(name);
+  return typeof value === "string" ? signedDecimalToMinor(value, scale) : null;
 }

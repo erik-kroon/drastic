@@ -28,6 +28,7 @@ const styles = stylex.create({
     padding: 24,
     "@media (max-width: 767px)": { width: "calc(100vw - 20px)", maxHeight: "95dvh", padding: 16 },
   },
+  compact: { width: "min(560px, calc(100vw - 48px))" },
   header: {
     display: "flex",
     alignItems: "center",
@@ -39,8 +40,8 @@ const styles = stylex.create({
   close: {
     display: "grid",
     placeItems: "center",
-    minWidth: 36,
-    minHeight: 36,
+    minWidth: 40,
+    minHeight: 40,
     borderRadius: tokens.radiusMd,
     borderWidth: 0,
     backgroundColor: { default: "transparent", ":hover": tokens.muted },
@@ -55,7 +56,9 @@ export function FormDialog({
   closeLabel,
   onClose,
   children,
+  size = "wide",
 }: {
+  size?: "compact" | "wide";
   title: string;
   closeLabel: string;
   onClose: () => void;
@@ -75,7 +78,7 @@ export function FormDialog({
     >
       <Dialog.Portal>
         <Dialog.Backdrop {...stylex.props(styles.backdrop)} />
-        <Dialog.Popup {...stylex.props(styles.popup)}>
+        <Dialog.Popup {...stylex.props(styles.popup, size === "compact" && styles.compact)}>
           <div {...stylex.props(styles.header)}>
             <Dialog.Title {...stylex.props(styles.title)}>{title}</Dialog.Title>
             <Dialog.Close aria-label={closeLabel} {...stylex.props(styles.close)}>

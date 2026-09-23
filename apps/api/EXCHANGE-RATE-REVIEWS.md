@@ -207,3 +207,119 @@ Source review traced background refresh, observation selection, pending/failed w
 explicit discard. No commands, checks, tests or browser execution occurred. Navigation away from
 this feature still requires saved-record recovery after reload; in-memory retry keys are not
 claimed as durable storage.
+
+## Live status after refresh failure — before implementation
+
+Cached verified review bytes must remain inspectable/downloadable after a failed or pending live
+refresh. Cached dependenciesCurrent must not claim current or stale when the query has not
+completed successfully after mounting, is fetching/paused, or is in error. Mark that live status
+unknown separately; do not discard or regenerate the historical artifact.
+
+Implemented source: currentness wording requires query success, idle fetch status and a completed
+fetch after mount. Failure, fetching, paused or unrefreshed cached data shows unknown, not current
+or stale. Previously verified bytes stay inspectable/downloadable. A successful match is explicitly
+"at the last successful refresh." Only owned views/copy changed; no SQL/API/arithmetic changes.
+No checks, tests or browser execution occurred.
+
+## 2300 permanent withdrawal — failure cases before implementation
+
+- A currently authorized operator may withdraw one currently selected observation with its exact
+  current digest, retained withdrawal evidence and rationale. No ordinary MCP mutation may do so.
+- Foreign scope/evidence, stale digest and conflicting receipt keys fail atomically. Concurrent
+  withdrawal/revision/capture must serialize on the existing whole-book lock.
+- Withdrawal is permanent and immutable. No delete, reactivation, hidden substitute/inversion,
+  automatic new observation or historical revision/artifact rewrite is allowed.
+- New revision/conversion commands must refuse after withdrawal, but successfully committed
+  commands replay before withdrawal/freshness checks after current authorization. Historical
+  reads and downloads remain available; saved conversion currentness becomes false.
+- Live status must be an additive envelope, not inserted into a retained revision or conversion
+  body. Lists must distinguish current usability from historical rate facts without truncation.
+- Existing pinned edit/conversion forms and uncertain retry keys must survive withdrawal and
+  background refresh. New selection may be blocked, but same-key receipt recovery stays usable.
+- Withdrawal drafts/retry keys also remain pinned across background revision/observation changes;
+  pending work cannot be replaced. Currentness unavailable is not the same as withdrawn/stale.
+
+Plan: one immutable per-observation withdrawal event; an operator-only idempotent endpoint; a
+private live usability helper; narrowly forward-replaced1900 revision/capture/read/list functions;
+additive optional live envelopes and a local explicit withdrawal form/history notice. No posting,
+legal activation, readiness change or new generic workflow framework.
+
+## 2300 implemented source and integration
+
+New `migrations/2300-exchange-rate-withdrawals.sql` adds one immutable withdrawal event per
+observation, linked by scoped FK to the selected revision and retained evidence. It requires1900;
+1900 and every other historical migration are unchanged. No event or artifact is updated/deleted.
+The per-observation primary key and existing200-observation limit bound withdrawal history.
+
+### Command and authority
+
+`WithdrawExchangeRate = {expectedDigest, evidenceId, rationale}`.
+`ExchangeRateWithdrawal` retains event ID, scope, observation ID, selected revision/digest, exact
+input, evidence hash, permanent=true, timestamp, operator receipt and canonical digest.
+
+- HTTP: POST `/api/v1/entities/:entityId/books/:bookId/exchange-rates/:id/withdrawals`, with the
+  existing Idempotency-Key header; response `ExchangeRateWithdrawal`.
+- Dispatcher `withdrawExchangeRate`: `withdraw_exchange_rate(token,scope JSON,id,key,input JSON)`.
+- The existing `exchangeRateStatements` and `ExchangeRatesHandlers` modules include the new
+  operation. Existing root spreads/group composition pick it up; no new package export, handler
+  group, table mapping or route mount is needed. Root must accept the added contract endpoint and
+  migration ordering. There is deliberately NO ordinary withdrawal MCP capability.
+- SQL uses operator-only authorization, then book FOR UPDATE, then exact command replay before
+  any freshness/withdrawal check. A successfully committed same-key withdrawal returns its original
+  result. A fresh command against an already withdrawn observation fails StaleDependency.
+- Operator authority is rechecked even for replay. Withdrawal remains possible after book profile
+  changes because this is a permanent historical rate decision, not a posting/profile activation.
+
+### Necessary forward replacements only
+
+`revise_exchange_rate` and `capture_conversion_review` retain their1900 bodies with one added
+`exchange_rate_require_active` call after selecting the existing observation. Their replay path
+still precedes the guard: successfully committed pre-withdrawal revisions/captures remain
+recoverable with their original key/actor/payload. New work refuses. Existing source keys cannot
+be reused because observation identity and uniqueness remain immutable; a new independently
+reviewed source key is required for a separate observation, never an automatic replacement.
+
+`get_exchange_rate`, `list_exchange_rates`, and `get_conversion_review` are narrowly extended:
+
+- `ExchangeRateView.usability?`: discriminated `{state:"active",withdrawal:null}` or
+  `{state:"withdrawn",withdrawal:ExchangeRateWithdrawal}`.
+- `ExchangeRateList.statuses?`: complete bounded array of `{observationId,usability}` alongside
+  the unchanged immutable `items` revisions. Both arrays use the same locked observation inventory.
+- `ConversionReviewView.rateUsability?`: the current observation withdrawal state, outside the
+  retained `review` body and artifact. `dependenciesCurrent` additionally requires state=active.
+
+These fields are optional only for historical envelope decoding. Live2300 SQL always emits them.
+An active observation means only not withdrawn, not legal acceptance, market freshness, current
+book/profile compatibility or permission to post. Old rate facts remain current *revision* history
+while usability is separately withdrawn. Old conversion bytes/hash/length never change, even if
+withdrawal occurred against a later revision than the review originally selected.
+
+### Local UI and recovery
+
+Owned changes are in `exchange-rates/{panel,views,copy}.tsx/ts`, plus new `withdrawal-form.tsx`.
+Rate reads/lists validate withdrawal scope, identity and selected-current digest. Review reads
+validate withdrawal scope and observation identity without incorrectly requiring a historical
+review's older rate digest to equal the later withdrawal digest.
+
+The operator explicitly opens a withdrawal draft pinned to the displayed current revision. It
+requires evidence, rationale and a visible permanence acknowledgement. The draft/retry map stays
+mounted outside query-result branches; a background revision/withdrawal or another displayed
+observation cannot replace it. Pending work disables explicit discard; occupied slots cannot be
+reselected. Success refreshes rate/review status but keeps the withdrawal receipt/draft visible.
+The retained event and evidence are inspectable in rate history and saved conversion views.
+
+Known active status gates only NEW edit/conversion/withdrawal selection. Existing pinned edit,
+conversion and withdrawal forms remain mounted and retry-capable after withdrawal, so uncertain
+same-key successful commands can recover. Fresh obsolete commands remain the backend's refusal.
+Missing/failed/fetching/paused/unrefreshed usability is unknown, not active or withdrawn. Cached
+verified artifacts remain downloadable. No calculator or financial authority was added to the UI.
+
+### Source review and unchanged limits
+
+Compared each forward replacement with1900: two admission calls, additive read envelopes, one
+currentness conjunction; exact conversion arithmetic and retained bytes are unchanged. Traced
+scoped FKs/authorization, replay-before-guard, concurrent book-lock ordering, one-event permanence,
+old revision/capture recovery, artifact history, list completeness and pinned form lifetime.
+No checks, tests, fixtures, toolchain, database/migration application, server/browser or external
+actions were performed. SQL compilation, typing, actual concurrency/recovery and rendered behavior
+remain unverified. FX02/03 and all legal/posting/readiness flags remain unsupported/false.

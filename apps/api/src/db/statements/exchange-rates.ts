@@ -1,6 +1,8 @@
 import { sql, type SQL } from "drizzle-orm";
 
 export const exchangeRateStatements = {
+  withdrawExchangeRate: (parameters) =>
+    sql`select openerp.withdraw_exchange_rate(${parameters[0]}::text, ${parameters[1]}::jsonb, ${parameters[2]}::text, ${parameters[3]}::text, ${parameters[4]}::jsonb) as result`,
   createExchangeRate: (parameters) =>
     sql`select openerp.create_exchange_rate(${parameters[0]}::text, ${parameters[1]}::jsonb, ${parameters[2]}::text, ${parameters[3]}::jsonb) as result`,
   reviseExchangeRate: (parameters) =>

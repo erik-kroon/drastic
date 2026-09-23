@@ -413,3 +413,15 @@ than successful navigation. No contracts or root composition changed in this fol
 
 This follow-up changed only1800, `schedules.tsx`, `schedule-form.tsx` and this handoff. No commands,
 tests, database/browser execution or migration application occurred.
+
+## Retained-view live status follow-up
+
+Failure case before edits: a cached verified artifact may remain after a failed, pending/paused
+or not-yet-completed mounted refresh. Do not equate its stored dependency boolean with known live
+status or discard those immutable bytes. Show unknown separately and keep download available.
+
+Implemented source: currentness wording requires query success, idle fetch status and a completed
+fetch after mount. Failure, fetching, paused or unrefreshed cached data shows unknown, not current
+or stale. Previously verified bytes stay inspectable/downloadable. A successful match is explicitly
+"at the last successful refresh." Only owned views/copy changed; no SQL/API/arithmetic changes.
+No checks, tests or browser execution occurred.

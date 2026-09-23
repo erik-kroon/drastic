@@ -43,6 +43,9 @@ export function BookWorkspace({
       readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
     retry: false,
   });
+  const scopeUnavailable =
+    setup.error instanceof Accounting.AccountingError &&
+    ["Unauthorized", "Forbidden", "NotFound"].includes(setup.error.code);
   const labels = frontendCopy(locale);
   const navigation = <BookNavigation base={base} pathname={pathname} locale={locale} />;
   const account = (
@@ -127,7 +130,7 @@ export function BookWorkspace({
           {copy.journal_retry}
         </Button>
       ) : null}
-      {setup.data && !setup.isError ? (
+      {setup.data && !scopeUnavailable ? (
         <BookContext value={{ book, setup: setup.data, locale }}>{children}</BookContext>
       ) : null}
     </Workspace>

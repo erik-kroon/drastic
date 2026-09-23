@@ -97,6 +97,7 @@ export function EvidenceCommandForm<
       aria-describedby={errorId}
       onSubmit={(event) => {
         event.preventDefault();
+        event.stopPropagation();
         if (locked || props.canSubmit === false || book.role !== "operator") return;
         const fields = new FormData(event.currentTarget);
         const source = Schema.decodeOption(Accounting.CreateEvidence)(props.source(fields));

@@ -71,17 +71,9 @@ const BankSourceCoveragePanel = lazy(() =>
     default: module.BankSourceCoveragePanel,
   })),
 );
-const BankMatchCandidatesPanel = lazy(() =>
-  import("@/components/bank-match-candidates/panel").then((module) => ({
-    default: module.BankMatchCandidatesPanel,
-  })),
-);
-const BankAllocations = lazy(() =>
-  import("@/components/settlements").then((module) => ({ default: module.BankAllocations })),
-);
-const BankMatchReversals = lazy(() =>
-  import("@/components/bank-match-reversals/panel").then((module) => ({
-    default: module.BankMatchReversals,
+const BankMatchingWorkspace = lazy(() =>
+  import("@/components/bank-match-candidates/workspace").then((module) => ({
+    default: module.BankMatchingWorkspace,
   })),
 );
 const InvoiceIssuance = lazy(() =>
@@ -120,6 +112,7 @@ export function FinanceArea({
   const tabs = areaTabs(area, locale);
   const invoiceDirection = area === "purchases" ? "supplier" : "customer";
   const selected = tabs.find((tab) => tab.key === view)?.key ?? tabs[0]?.key;
+  const recordId = record ?? "";
   const base = `${workspacePath(book)}/${area}`;
   const onPrepared = (id: string) => {
     void navigate({ to: reviewPath(book, id) });
@@ -144,37 +137,37 @@ export function FinanceArea({
           {selected === "documents" ? <DocumentInbox recordId={record} onOpen={onOpen} /> : null}
           {selected === "ledger" ? <AccountBalances /> : null}
           {selected === "bank" ? <BankingWorkspace recordId={record} onOpen={onOpen} /> : null}
-          {selected === "coverage" ? <BankSourceCoveragePanel key={`${book.entityId}:${book.id}`} book={book} locale={locale} /> : null}
+          {selected === "coverage" ? (
+            <BankSourceCoveragePanel
+              key={`${book.entityId}:${book.id}`}
+              book={book}
+              locale={locale}
+            />
+          ) : null}
           {selected === "matching" ? (
-            <>
-              <BankMatchCandidatesPanel
-                key={`candidates:${book.entityId}:${book.id}`}
-                book={book}
-                locale={locale}
-              />
-              <BankAllocations
-                key={`allocations:${book.entityId}:${book.id}`}
-                book={book}
-                setup={setup}
-                locale={locale}
-              />
-              <BankMatchReversals
-                key={`reversals:${book.entityId}:${book.id}`}
-                book={book}
-                locale={locale}
-              />
-            </>
+            <BankMatchingWorkspace
+              key={`${book.entityId}:${book.id}`}
+              book={book}
+              setup={setup}
+              locale={locale}
+            />
           ) : null}
           {selected === "payments" ? (
             <>
-              <PaymentAllocations key={`payments:${book.entityId}:${book.id}`} book={book} locale={locale} />
+              <PaymentAllocations
+                key={`payments:${book.entityId}:${book.id}`}
+                book={book}
+                locale={locale}
+              />
               <CommerceAllocationReversals book={book} locale={locale} receiptId={record} />
             </>
           ) : null}
           {selected === "issue" ? (
             <InvoiceIssuance book={book} locale={locale} recordId={record} />
           ) : null}
-          {selected === "exchange-rates" ? <ExchangeRateReviewsPanel book={book} locale={locale} /> : null}
+          {selected === "exchange-rates" ? (
+            <ExchangeRateReviewsPanel book={book} locale={locale} />
+          ) : null}
           {selected === "subledgers" ? (
             <>
               <SubledgersPanel
@@ -193,29 +186,27 @@ export function FinanceArea({
             </>
           ) : null}
           {selected === "drafts" ? (
-            <InvoiceDrafts book={book} locale={locale} recordId={record ?? ""} onOpen={onOpen} />
+            <InvoiceDrafts book={book} locale={locale} recordId={recordId} onOpen={onOpen} />
           ) : null}
           {selected === "invoices" ? (
             <Invoices
               book={book}
               locale={locale}
               direction={invoiceDirection}
-              recordId={record ?? ""}
+              recordId={recordId}
               onOpen={onOpen}
             />
           ) : null}
           {selected === "parties" ? (
-            <Counterparties book={book} locale={locale} recordId={record ?? ""} onOpen={onOpen} />
+            <Counterparties book={book} locale={locale} recordId={recordId} onOpen={onOpen} />
           ) : null}
-          {selected === "imports" ? (
-            <StatementImports recordId={record} onOpen={onOpen} />
-          ) : null}
+          {selected === "imports" ? <StatementImports recordId={record} onOpen={onOpen} /> : null}
           {selected === "expenses" ? (
             <ExpenseTaxPanel
               book={book}
               locale={locale}
               onPrepared={onPrepared}
-              recordId={record ?? ""}
+              recordId={recordId}
               onOpen={onOpen}
               open
             />
@@ -224,9 +215,17 @@ export function FinanceArea({
           {selected === "trial" ? (
             <TrialBalanceWorkspace recordId={record} onOpen={onOpen} />
           ) : null}
-          {selected === "register" ? <RegisterReports book={book} locale={locale} /> : null}
+          {selected === "register" ? (
+            <RegisterReports book={book} locale={locale} recordId={recordId} onOpen={onOpen} />
+          ) : null}
           {selected === "export" ? (
-            <AccountantReviewPanel book={book} locale={locale} open />
+            <AccountantReviewPanel
+              book={book}
+              locale={locale}
+              recordId={recordId}
+              onOpen={onOpen}
+              open
+            />
           ) : null}
           {selected === "vat" ? <VatReturnsPanel book={book} locale={locale} open /> : null}
           {selected === "closing" ? <ClosingWorkspace recordId={record} onOpen={onOpen} /> : null}

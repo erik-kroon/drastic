@@ -12,6 +12,7 @@ import { WorkspaceHeader, WorkspaceToolbar } from "@open-erp/ui/components/works
 import { useBookWorkspace, workspacePath, reviewPath } from "@/lib/book-context";
 import { PostingRecoveryPanel } from "@/components/posting-recovery/panel";
 import { Disclosure } from "@open-erp/ui/components/workflow";
+import { SavedWorkViews } from "@/components/saved-work-views";
 import { AttentionList } from "@/components/attention-list";
 import { attentionCopy } from "@/lib/attention";
 import { accountingCopy } from "@/lib/accounting-copy";
@@ -38,6 +39,12 @@ function Work() {
         }
       />
       <PageContent>
+        <SavedWorkViews
+          filters={filters}
+          onSelect={(search) => {
+            void navigate({ search });
+          }}
+        />
         <WorkspaceToolbar
           key={JSON.stringify(filters)}
           onSubmit={(event) => {
@@ -59,7 +66,7 @@ function Work() {
           }}
         >
           <InputField
-            label={copy.workspace_search}
+            label={locale === "sv" ? "Sök arbete" : "Search work"}
             name="q"
             defaultValue={filters.q ?? ""}
             maxLength={200}
@@ -98,8 +105,8 @@ function Work() {
             name="status"
             defaultValue={filters.status ?? "open"}
             options={[
-              { value: "open", label: copy.workspace_open },
-              { value: "completed", label: copy.workspace_completed },
+              { value: "open", label: locale === "sv" ? "Öppet" : "Open" },
+              { value: "completed", label: locale === "sv" ? "Avslutat" : "Completed" },
               { value: "all", label: copy.workspace_all },
             ]}
           />

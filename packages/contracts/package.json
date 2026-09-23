@@ -31,6 +31,7 @@
     "./subledger-controls": "./src/subledger-controls.ts",
     "./exchange-rates": "./src/exchange-rates.ts",
     "./invoice-issuance": "./src/invoice-issuance.ts",
+    "./invoice-cancellations": "./src/invoice-cancellations.ts",
     "./invoice-documents": "./src/invoice-documents.ts",
     "./commerce-allocation-reversals": "./src/commerce-allocation-reversals.ts",
     "./accountant-review": "./src/accountant-review.ts",

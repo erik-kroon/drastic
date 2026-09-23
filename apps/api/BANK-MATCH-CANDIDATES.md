@@ -173,3 +173,58 @@ profile activation, source completeness and reconciliation acceptance remain ind
 ## Root source integration
 
 Shared contracts exports, API/capability catalogs, bindings, SQL dispatch and HTTP handlers are connected. Accounts → Matching and the legacy workspace mount candidate discovery beside reviewed allocations. Selection remains an explicit copyable identifier handoff; no automatic plan or amount is supplied. No validation or runtime acceptance is claimed.
+
+
+## Candidate → manual allocation handoff: failure cases before edits
+
+- Candidate arrival must not change an existing allocation form, its unsent amounts/reason,
+  acknowledged state, failed input or exact retry-key map. No key/remount follows candidate props.
+- Starting a candidate-seeded allocation is an explicit discard/new-draft action. It is disabled
+  while preparation is pending. An uncertain request must remain retryable with unchanged input;
+  discarding its key is explicit and explained, never part of a refresh or candidate selection.
+- Only account, statement, row, voucher and line identifiers may be filled. Amount, reason and
+  ambiguity acknowledgement start empty; there is no submit/approve/apply or capacity arithmetic.
+- A selected seed remains immutable until the user explicitly starts another draft. Candidate
+  refresh/selection may replace only the queued candidate, never the active seed or request target.
+- Show the discovery digest as a historical reference, not an approval. Explain that source/line
+  capacity can have changed and the backend prepares a fresh reviewed capacity snapshot.
+- Preserve manual many-leg preparation, remove/add controls, saved-plan lookup/review and unmatch.
+  Book/identity reset remains the existing boundary. No financial contract or new SQL is added.
+- Keep bank-statement.tsx and shared root composition untouched, including concurrent amount
+  formatting. The root chooses where to mount the composed workspace.
+- No tests, checks, browser, toolchain, database or external actions are authorized.
+
+
+### Implemented UI integration and root mount
+
+`BankMatchingWorkspace` in `apps/web/src/components/bank-match-candidates/workspace.tsx`
+composes candidate discovery, existing reviewed allocation/capacity reports and unmatch. Props:
+`{book, setup, locale}`. Root can replace the three direct Accounts/Matching mounts with this
+component. It provides an entity/book-keyed local boundary; keep the existing identity reset.
+No shared root mount or `bank-statement.tsx` was edited. The per-statement candidate inspector
+and direct legacy `BankAllocations` calls remain usable without the new optional prop.
+
+`BankAllocations` now accepts optional `candidate: BankCandidateSelection | null`, using the
+existing local identifier-handoff type, not a financial API DTO. A candidate arrival changes
+only the displayed pending handoff. The allocation form owns one immutable active seed. The
+explicit **Discard draft and use candidate** action adopts it and starts fresh DOM inputs with
+account/statement/row/voucher/line defaults. Amount, reason and acknowledgement are empty.
+There is no automatic submission or amount inference. Added legs are blank; removing the
+original first leg does not transfer the seed to another leg. An unavailable seeded account
+remains visibly identified rather than silently falling back to another account.
+
+The form's reset counter changes only inside the explicit start/discard action, never when a
+candidate prop or query result changes. Pending preparation disables that action and the blank
+reset action. The same mounted failed/unsent draft retains all user input and its request-key
+map after a new candidate arrives. The UI warns that discarding after uncertainty loses the
+retry key and tells the user to retry unchanged input or recover the saved plan first. After a
+confirmed save, the existing **Start a new plan** action now deliberately clears the old fields
+and starts blank. Saved-plan lookup/review, many-leg editing and existing approval/execution are
+unchanged. Starting a new draft does not delete the already saved plan currently under review.
+
+The seed digest is shown only as an old discovery reference. It is not sent to the existing
+allocation contract, nor accepted as authority. Preparation still reads current capacities and
+requires an explicit reason, signed leg amounts and ambiguity acknowledgement. Approval and
+execution remain separate. No SQL, financial contract, capability, state framework or service
+was added. Source review traced queued-versus-active state, key lifetimes, field defaults and
+scope resets; no test/check/browser/runtime verification was performed.

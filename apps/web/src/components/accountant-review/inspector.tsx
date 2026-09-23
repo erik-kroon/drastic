@@ -5,6 +5,10 @@ import * as Review from "@open-erp/contracts/accountant-review";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
+import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
+import { PageCaption } from "@open-erp/ui/components/accounting-page";
+import { PageTabs } from "@open-erp/ui/components/workflow";
+import { formatMinorAmount } from "@/lib/workspace-api";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
@@ -55,7 +59,14 @@ export function ReviewPackInspector({
   const pack = view.data?.pack;
   return (
     <Box as="section" display="grid" gap="xl" minWidth="zero">
-      <Heading>{copy.title}</Heading>
+      <RecordHeading
+        title={copy.title}
+        subtitle={
+          pack
+            ? `${pack.report.startsOn} – ${pack.report.endsOn} · ${pack.report.currency}`
+            : undefined
+        }
+      />
       <AccountingStatus locale={locale} pending={view.isPending} error={view.error} />
       <Box>
         <Button
@@ -74,25 +85,22 @@ export function ReviewPackInspector({
       ) : null}
       {pack ? (
         <>
-          <Text>
-            {copy.packId}: {pack.id}
-          </Text>
-          <Text>
-            {pack.report.startsOn} – {pack.report.endsOn} · {pack.report.currency} · {copy.sequence}
-            : {pack.report.sequence}
-          </Text>
-          <Text>
-            {copy.report}: {pack.report.id}
-          </Text>
-          <Box display="grid" minWidth="zero">
-            <textarea aria-label={copy.digest} value={pack.digest} readOnly rows={2} cols={16} />
-          </Box>
+          <RecordSummary>
+            <RecordFact label={locale === "sv" ? "Period" : "Period"}>
+              {pack.report.startsOn} – {pack.report.endsOn}
+            </RecordFact>
+            <RecordFact label={locale === "sv" ? "Valuta" : "Currency"}>
+              {pack.report.currency}
+            </RecordFact>
+            <RecordFact label={copy.balances}>{pack.counts.balances}</RecordFact>
+            <RecordFact label={locale === "sv" ? "Bokföringsrader" : "Journal lines"}>
+              {pack.counts.journal}
+            </RecordFact>
+          </RecordSummary>
           <Heading>{copy.openingStatus}</Heading>
           <Text>{copy.openingWarning}</Text>
           <Text>{pack.openingBasis.explanation}</Text>
-          <Text>
-            {copy.refs}: {pack.openingBasis.evidenceIds.join(", ") || "—"}
-          </Text>
+
           <Heading>{copy.notesTitle}</Heading>
           <Text>{pack.accountantNotes}</Text>
           <details>
@@ -107,19 +115,19 @@ export function ReviewPackInspector({
               />
             </Box>
           </details>
-          <Box display="flex" flexWrap="wrap" gap="md">
+          <PageTabs label={copy.title}>
             {sections.map((name) => (
               <Button
                 key={name}
                 variant={name === section ? "default" : "outline"}
-                size="xl"
+                static
                 aria-pressed={section === name}
                 onClick={() => setSection(name)}
               >
                 {copy[name]}
               </Button>
             ))}
-          </Box>
+          </PageTabs>
           <ReviewRows
             key={`${pack.id}:${section}`}
             book={book}
@@ -249,6 +257,7 @@ function ReviewRows({
   locale: Locale;
 }) {
   const copy = reviewCopy(locale);
+  const amount = (value: string) => formatMinorAmount(value, pack.basis.currencyScale, locale);
   const pages = useInfiniteQuery({
     queryKey: [...bookKey(book), "accountant-review-rows", pack.id, pack.digest, section],
     initialPageParam: "",
@@ -278,7 +287,7 @@ function ReviewRows({
       <Text>
         {copy.loaded}: {items.length} {copy.of} {pack.counts[section]}
       </Text>
-      <Text>{copy.fullFiles}</Text>
+      <PageCaption>{copy.fullFiles}</PageCaption>
       <AccountingStatus locale={locale} pending={pages.isPending} error={pages.error} />
       {pages.isSuccess && items.length === 0 ? <Text>{copy.emptySection}</Text> : null}
       {section === "balances" ? (
@@ -288,10 +297,10 @@ function ReviewRows({
           columns={[
             { id: "account", label: copy.account },
             { id: "name", label: copy.name },
-            { id: "opening", label: copy.recordedOpening },
-            { id: "debit", label: copy.debit },
-            { id: "credit", label: copy.credit },
-            { id: "closing", label: copy.recordedClosing },
+            { id: "opening", label: copy.recordedOpening, numeric: true },
+            { id: "debit", label: copy.debit, numeric: true },
+            { id: "credit", label: copy.credit, numeric: true },
+            { id: "closing", label: copy.recordedClosing, numeric: true },
           ]}
           rows={items
             .filter((row) => row.section === "balances")
@@ -300,10 +309,10 @@ function ReviewRows({
               cells: [
                 row.code,
                 row.name,
-                row.recordedOpeningMinor,
-                row.movementDebitMinor,
-                row.movementCreditMinor,
-                row.recordedClosingMinor,
+                amount(row.recordedOpeningMinor),
+                amount(row.movementDebitMinor),
+                amount(row.movementCreditMinor),
+                amount(row.recordedClosingMinor),
               ],
             }))}
         />
@@ -332,8 +341,8 @@ function ReviewRows({
             { id: "voucher", label: copy.voucher },
             { id: "account", label: copy.account },
             { id: "description", label: copy.description },
-            { id: "debit", label: copy.debit },
-            { id: "credit", label: copy.credit },
+            { id: "debit", label: copy.debit, numeric: true },
+            { id: "credit", label: copy.credit, numeric: true },
             { id: "lineage", label: copy.receipt },
           ]}
           rows={items
@@ -343,13 +352,13 @@ function ReviewRows({
               cells: [
                 row.part,
                 row.postingDate,
-                `${row.series} ${row.voucherNumber} · ${row.voucherId}`,
+                `${row.series} ${row.voucherNumber}`,
                 row.accountCode,
                 row.description,
-                row.debitMinor,
-                row.creditMinor,
+                amount(row.debitMinor),
+                amount(row.creditMinor),
                 <details key="lineage">
-                  <summary>{row.receiptId}</summary>
+                  <summary>{locale === "sv" ? "Spåra posten" : "Trace entry"}</summary>
                   <Box display="grid" minWidth="zero">
                     <textarea
                       aria-label={`${copy.receipt}: ${row.voucherId}/${row.lineId}`}

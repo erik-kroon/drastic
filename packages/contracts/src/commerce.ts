@@ -85,6 +85,15 @@ export const InvoiceRevision = Schema.Struct({
   createdAt: Schema.String,
   receipt: CommandReceipt,
 });
+export const InvoiceCancellationSummary = Schema.Struct({
+  id: Accounting.Identifier,
+  reviewId: Accounting.Identifier,
+  issueId: Accounting.Identifier,
+  originalVoucherId: Accounting.Identifier,
+  reversalVoucherId: Accounting.Identifier,
+  postingDate: Accounting.AccountingDate,
+  committedAt: Schema.String,
+});
 export const Invoice = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -105,7 +114,10 @@ export const Invoice = Schema.Struct({
   allocationVersion: Accounting.MinorUnits,
   recordedAllocatedMinor: Accounting.MinorUnits,
   outstandingMinor: Schema.NullOr(Accounting.MinorUnits),
-  status: Schema.Literals(["open", "partially_allocated", "allocated", "blocked"]),
+  status: Schema.Literals(["open", "partially_allocated", "allocated", "blocked", "cancelled"]),
+  cancelledMinor: Schema.optional(Accounting.MinorUnits),
+  effectiveAmountMinor: Schema.optional(Accounting.MinorUnits),
+  cancellation: Schema.optional(Schema.NullOr(InvoiceCancellationSummary)),
   blockers: Schema.Array(Schema.String),
 });
 export const InvoicePage = Schema.Struct({

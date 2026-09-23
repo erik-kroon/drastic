@@ -13,12 +13,15 @@ import type { Locale } from "@/paraglide/runtime";
 import { exchangeRateCopy } from "./copy";
 
 type Props = { book: typeof Accounting.Book.Type; locale: Locale };
-export function RateForm({ book, locale, current, onSaved, onNew, onDiscard }: Props & {
+export function RateForm(props: Props & {
   current?: typeof Rates.ExchangeRateRevision.Type;
   onSaved: (id: string) => void;
   onNew?: () => void;
   onDiscard?: () => void;
 }) {
+  const { book, locale, current, onSaved } = props;
+  const onNew = props.onNew;
+  const onDiscard = props.onDiscard;
   const copy = exchangeRateCopy(locale);
   const [invalid, setInvalid] = useState(false);
   const keys = useRef(new Map<string, string>());
@@ -76,11 +79,13 @@ export function RateForm({ book, locale, current, onSaved, onNew, onDiscard }: P
   </Box>;
 }
 
-export function ConversionForm({ book, locale, rate, onSaved, onDiscard }: Props & {
+export function ConversionForm(props: Props & {
   rate: typeof Rates.ExchangeRateRevision.Type;
   onSaved: (id: string) => void;
   onDiscard: () => void;
 }) {
+  const { book, locale, rate, onSaved } = props;
+  const onDiscard = props.onDiscard;
   const copy = exchangeRateCopy(locale);
   const [invalid, setInvalid] = useState(false);
   const keys = useRef(new Map<string, string>());

@@ -187,3 +187,7 @@ No tests/test edits, checks/builds/toolchain, database or migration execution, b
 external actions, dependency changes, commits or nested delegation occurred. Runtime SQL,
 response decoding, concurrency, failure recovery, download and accessibility behavior remain
 unverified. Shared registration/mounting and any later authorized proof remain root-owned.
+
+## Root source integration
+
+Contracts exports, shared API/capability catalog, bindings, statement dispatcher and HTTP handlers are connected. Accounts → Statement coverage and the legacy workspace mount the report UI. Independent source review traced inclusive union/gaps, shared-day overlaps, true adjacent balance comparisons, missing boundaries, declared/mapped union, bounds and currentness; no concrete blocker was found. Existing closing gates remain unchanged. No runtime or schema execution was performed.

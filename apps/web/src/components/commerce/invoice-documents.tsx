@@ -121,12 +121,12 @@ function VerifiedDocument(props: CommerceProps & {
     }, retry: false,
   });
   const verified = verification.data;
-  const { contentBase64: retainedBytes, ...descriptor } = artifact;
+  const descriptor = { ...artifact, contentBase64: undefined };
   return <Box display="grid" gap="md" minWidth="zero">
     <Text>{artifact.filename} · {artifact.byteLength} {copy.bytes}</Text>
     <Facts title={copy.descriptor} value={descriptor} />
     <Box minWidth="zero"><textarea aria-label={copy.hash} readOnly value={artifact.sha256} rows={2} cols={16} /></Box>
-    <Box><Button variant="outline" disabled={verification.isPending || Boolean(verified) || !retainedBytes}
+    <Box><Button variant="outline" disabled={verification.isPending || Boolean(verified) || !artifact.contentBase64}
       onClick={() => verification.mutate()}>{copy.verify}</Button></Box>
     <AccountingStatus locale={locale} pending={verification.isPending} error={verification.error} />
     {verified ? <>

@@ -8,7 +8,7 @@ import { EvidenceCommandForm } from "@/components/evidence-command-form";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import { type CommerceProps } from "@/components/commerce/shared";
 import { bookPath } from "@/lib/accounting-api";
-import { decimalToMinor, formatMinorAmount } from "@/lib/workspace-api";
+import { decimalToMinor, minorToDecimal } from "@/lib/workspace-api";
 import { expenseTaxCopy } from "./copy";
 import { nullableValue } from "./forms";
 
@@ -62,10 +62,10 @@ export function ExpenseReviewForm(
           treatment: fields.get("treatment"),
           profileId: fields.get("profile") === "synthetic" ? "synthetic-expense-tax" : null,
           profileVersion: fields.get("profile") === "synthetic" ? "1" : null,
-          rateNumerator: percentNumerator(fields, "rate"),
-          rateDenominator: nullableValue(fields, "rate") ? "10000" : null,
-          deductionNumerator: percentNumerator(fields, "deduction"),
-          deductionDenominator: nullableValue(fields, "deduction") ? "10000" : null,
+          rateNumerator: percentFraction(fields, "rate").numerator,
+          rateDenominator: percentFraction(fields, "rate").denominator,
+          deductionNumerator: percentFraction(fields, "deduction").numerator,
+          deductionDenominator: percentFraction(fields, "deduction").denominator,
           deductionBasis: nullableValue(fields, "deductionBasis"),
           deductionEvidenceId: nullableValue(fields, "deductionBasis") ? evidence.id : null,
           roundingPolicy: fields.get("roundingPolicy"),
@@ -226,6 +226,11 @@ function ReviewDecisions(props: {
           )}
         />
       </Box>
+      <PageCaption>
+        {sv
+          ? "Ange procent som decimaltal eller exakt bråk, till exempel 100/3."
+          : "Enter a decimal percentage or an exact fraction, such as 100/3."}
+      </PageCaption>
       <InputField
         name="deductionBasis"
         label={copy.deductionBasis}
@@ -276,14 +281,17 @@ function amountField(fields: FormData, name: string, scale: number | null) {
       ? "invalid"
       : (decimalToMinor(value, scale) ?? "invalid");
 }
-function percentNumerator(fields: FormData, name: string) {
+function percentFraction(fields: FormData, name: string) {
   const value = nullableValue(fields, name);
-  return value === null ? null : (decimalToMinor(value, 2) ?? "invalid");
+  if (value === null) return { numerator: null, denominator: null };
+  if (/^[0-9]+\/[1-9][0-9]*$/.test(value)) {
+    const separator = value.indexOf("/");
+    return { numerator: value.slice(0, separator), denominator: (BigInt(value.slice(separator + 1)) * 100n).toString() };
+  }
+  return { numerator: decimalToMinor(value, 6) ?? "invalid", denominator: "100000000" };
 }
 function displayAmount(value: string | null, scale: number | null) {
-  return value === null || scale === null
-    ? ""
-    : formatMinorAmount(value, scale, "en").replaceAll(",", "");
+  return value === null || scale === null ? "" : minorToDecimal(value, scale);
 }
 function displayPercent(
   numerator: string | null | undefined,
@@ -291,6 +299,6 @@ function displayPercent(
 ) {
   if (numerator == null || denominator == null || BigInt(denominator) === 0n) return "";
   const scaled = BigInt(numerator) * 10000n;
-  if (scaled % BigInt(denominator) !== 0n) return "";
+  if (scaled % BigInt(denominator) !== 0n) return `${BigInt(numerator) * 100n}/${denominator}`;
   return displayAmount((scaled / BigInt(denominator)).toString(), 2);
 }

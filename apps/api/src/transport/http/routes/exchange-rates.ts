@@ -7,6 +7,11 @@ import { query, scopeParameter } from "../../../db/query";
 
 export const ExchangeRatesHandlers = HttpApiBuilder.group(Api, "exchangeRates", (handlers) =>
   handlers
+    .handle("withdrawExchangeRate", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) => query("withdrawExchangeRate", [
+        token, scopeParameter(params), params.id, headers["idempotency-key"], JSON.stringify(payload),
+      ], Rates.ExchangeRateWithdrawal)),
+    )
     .handle("createExchangeRate", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) => query("createExchangeRate", [
         token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)

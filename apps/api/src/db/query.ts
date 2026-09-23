@@ -17,6 +17,7 @@ import { invoiceDraftStatements } from "./statements/invoice-draft";
 import { subledgerControlStatements } from "./statements/subledger-controls";
 import { exchangeRateStatements } from "./statements/exchange-rates";
 import { invoiceIssuanceStatements } from "./statements/invoice-issuance";
+import { invoiceCancellationStatements } from "./statements/invoice-cancellations";
 import { invoiceDocumentStatements } from "./statements/invoice-documents";
 import { commerceAllocationReversalStatements } from "./statements/commerce-allocation-reversals";
 import { bankMatchReversalStatements } from "./statements/bank-match-reversals";
@@ -30,6 +31,10 @@ const PostgresFailure = Schema.Struct({
 });
 
 const statements = {
+  workspaceCoordination: (parameters) => sql`select openerp.workspace_coordination(${parameters[0]}::text,${parameters[1]}::jsonb) as result`,
+  workspaceSaveView: (parameters) => sql`select openerp.workspace_save_view(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  workspaceDeleteView: (parameters) => sql`select openerp.workspace_delete_view(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  workspaceAssignWork: (parameters) => sql`select openerp.workspace_assign_work(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   recordVatFact: (parameters) =>
     sql`select openerp.record_vat_fact(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   vatReturnBasis: (parameters) =>
@@ -113,6 +118,7 @@ const statements = {
   ...subledgerControlStatements,
   ...exchangeRateStatements,
   ...invoiceIssuanceStatements,
+  ...invoiceCancellationStatements,
   ...invoiceDocumentStatements,
   ...commerceAllocationReversalStatements,
   ...bankMatchReversalStatements,

@@ -69,6 +69,7 @@ export function Invoices(
     partially_allocated: labels.partlyAllocated,
     allocated: labels.allocated,
     blocked: labels.needsReview,
+    cancelled: labels.cancelled,
   };
   const invoices =
     page.data?.items.filter(
@@ -250,6 +251,19 @@ export function InvoiceDetail(props: CommerceProps & { id: string }) {
             </RecordFact>
             <RecordFact label={copy.due}>{invoice.data.currentRevision.dueOn}</RecordFact>
           </RecordSummary>
+          {invoice.data.cancellation ? (
+            <Box display="grid" gap="sm">
+              <Text role="status">
+                {locale === "sv"
+                  ? "Den syntetiska fakturan har makulerats. Originalbeloppet och historiken bevaras. Detta är inte en juridisk kreditfaktura."
+                  : "This synthetic invoice was cancelled. Its original amount and history are retained. This is not a legal credit note."}
+              </Text>
+              <Text>
+                {invoice.data.cancellation.id} · {invoice.data.cancellation.postingDate} ·{" "}
+                {invoice.data.cancellation.reversalVoucherId}
+              </Text>
+            </Box>
+          ) : null}
           <Text>{invoice.data.currentRevision.description}</Text>
           {invoice.data.blockers.map((blocker) => (
             <Text key={blocker} role="alert">
@@ -259,7 +273,11 @@ export function InvoiceDetail(props: CommerceProps & { id: string }) {
           <Facts title={copy.facts} value={invoice.data} />
           <Evidence {...props} reference={invoice.data.evidence} />
           <Details title={copy.reviseInvoice}>
-            <InvoiceRevisionForm {...props} invoice={invoice.data} allowed={ready} />
+            <InvoiceRevisionForm
+              {...props}
+              invoice={invoice.data}
+              allowed={ready && invoice.data.status !== "cancelled"}
+            />
           </Details>
         </>
       ) : null}
@@ -380,6 +398,7 @@ const english = {
   partlyAllocated: "Partly allocated",
   allocated: "Allocated",
   needsReview: "Needs review",
+  cancelled: "Cancelled (synthetic)",
   allInvoices: "All invoices",
   supplierInvoices: "Supplier invoices",
   registeredInvoices: "Registered invoices",
@@ -402,6 +421,7 @@ const swedish: typeof english = {
   partlyAllocated: "Delvis avstämd",
   allocated: "Avstämd",
   needsReview: "Behöver granskas",
+  cancelled: "Makulerad (syntetisk)",
   allInvoices: "Alla fakturor",
   supplierInvoices: "Leverantörsfakturor",
   registeredInvoices: "Bokförda fakturor",

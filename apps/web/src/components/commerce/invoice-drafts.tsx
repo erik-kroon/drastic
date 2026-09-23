@@ -16,7 +16,6 @@ import {
   RegisterSearch,
   RecordToggle,
   PageCaption,
-  PageAction,
 } from "@open-erp/ui/components/accounting-page";
 import {
   DocumentPaper,
@@ -30,7 +29,7 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceCommandForm } from "@/components/evidence-command-form";
 import { readAccounting } from "@/lib/accounting-api";
 import { decimalToMinor, formatMinorAmount, workQueryOptions } from "@/lib/workspace-api";
-import { workspacePath } from "@/lib/book-context";
+import { ContactEditor } from "./contact-editor";
 import { invoiceDraftBlocker } from "./invoice-draft-copy";
 import {
   Details,
@@ -176,6 +175,10 @@ function DraftEditor(
   const labels = sv ? swedish : english;
   const baseline = props.baseline;
   const content = baseline?.content;
+  const [addingCustomer, setAddingCustomer] = useState(false);
+  const [addedCustomer, setAddedCustomer] = useState<
+    typeof Commerce.CounterpartyRevision.Type | null
+  >(null);
   const [customerId, setCustomerId] = useState(content?.counterpartyId ?? "");
   const [draftKey] = useState(() => `draft_${crypto.randomUUID().replaceAll("-", "")}`);
   const [lines, setLines] = useState<EditableLine[]>(() =>
@@ -202,9 +205,7 @@ function DraftEditor(
     customers.data?.pages
       .flatMap((page) => page.items)
       .filter((party) => party.role !== "supplier") ?? [];
-  const customer =
-    parties.find((party) => party.id === customerId) ??
-    (baseline?.counterparty.id === customerId ? baseline.counterparty : undefined);
+  const customer = selectedCustomer(addedCustomer, parties, baseline, customerId);
   if (scale === undefined)
     return (
       <AccountingStatus locale={props.locale} pending={metadata.isPending} error={metadata.error} />
@@ -244,7 +245,7 @@ function DraftEditor(
             taxId: content?.customer.taxId ?? null,
             address: inputText(fields, "customerAddress"),
             countryCode: inputText(fields, "customerCountry"),
-            evidenceId: customer?.evidence.evidenceId,
+            evidenceId,
           },
           currency: content?.currency ?? props.book.currency,
           currencyScale: scale,
@@ -252,7 +253,7 @@ function DraftEditor(
           supplyDate: inputText(fields, "supplyDate"),
           dueDate: inputText(fields, "dueDate"),
           paymentTerms: inputText(fields, "terms"),
-          sourceTotalMinor: content?.sourceTotalMinor ?? null,
+          sourceTotalMinor: decimalField(fields, "sourceTotal", scale, true),
           lines: lines.map((line) => ({
             id: line.id,
             description: inputText(fields, `${line.id}_description`),
@@ -263,11 +264,8 @@ function DraftEditor(
             chargeMinor: line.defaults?.chargeMinor ?? "0",
             taxMinor: decimalField(fields, `${line.id}_tax`, scale, true),
             taxDescription: inputText(fields, `${line.id}_taxDescription`),
-            taxEvidenceId:
-              inputText(fields, `${line.id}_tax`) === null
-                ? null
-                : (line.defaults?.taxEvidenceId ?? evidenceId),
-            sourceGrossMinor: line.defaults?.sourceGrossMinor ?? null,
+            taxEvidenceId: inputText(fields, `${line.id}_tax`) === null ? null : evidenceId,
+            sourceGrossMinor: decimalField(fields, `${line.id}_sourceGross`, scale, true),
           })),
         };
         return baseline
@@ -284,6 +282,17 @@ function DraftEditor(
         aside={
           <>
             <DraftDates content={content} locale={props.locale} />
+            <InputField
+              name="sourceTotal"
+              label={sv ? "Avtalat totalbelopp (valfritt)" : "Agreed total (optional)"}
+              inputMode="decimal"
+              defaultValue={editAmount(content?.sourceTotalMinor, scale)}
+            />
+            <PageCaption>
+              {sv
+                ? "Ange totalsumman från avtalet eller beställningen, om den finns."
+                : "Enter the total stated in the agreement or order, if available."}
+            </PageCaption>
             <PageCaption>{labels.savedAsADraftNo}</PageCaption>
           </>
         }
@@ -295,6 +304,9 @@ function DraftEditor(
             onValueChange={(value) => setCustomerId(value ?? "")}
             options={[
               { value: "", label: labels.selectACustomer },
+              ...(addedCustomer && !parties.some((party) => party.id === addedCustomer.id)
+                ? [{ value: addedCustomer.id, label: addedCustomer.displayName }]
+                : []),
               ...parties.map((party) => ({ value: party.id, label: party.displayName })),
             ]}
           />
@@ -316,10 +328,30 @@ function DraftEditor(
               </Button>
             </Box>
           ) : null}
-          {customers.isSuccess && !parties.length ? (
-            <PageAction quiet href={`${workspacePath(props.book)}/sales?view=parties&record=new`}>
-              {labels.addACustomerFirst}
-            </PageAction>
+          <Box>
+            <Button type="button" variant="ghost" onClick={() => setAddingCustomer(true)}>
+              <Plus size={14} strokeWidth={1.5} />
+              {sv ? "Lägg till kund" : "Add customer"}
+            </Button>
+          </Box>
+          {addingCustomer ? (
+            <FormDialog
+              size="compact"
+              title={sv ? "Ny kund" : "New customer"}
+              closeLabel={labels.close}
+              onClose={() => setAddingCustomer(false)}
+            >
+              <ContactEditor
+                book={props.book}
+                locale={props.locale}
+                customerOnly
+                onSaved={(party) => {
+                  setAddedCustomer(party);
+                  setCustomerId(party.id);
+                  setAddingCustomer(false);
+                }}
+              />
+            </FormDialog>
           ) : null}
           {customer ? (
             <CustomerFields
@@ -389,6 +421,16 @@ function DraftEditor(
                   {labels.remove}
                 </Button>
               </Box>
+              <InputField
+                name={`${line.id}_sourceGross`}
+                label={
+                  sv
+                    ? "Avtalat radbelopp inkl. moms (valfritt)"
+                    : "Agreed line total including tax (optional)"
+                }
+                inputMode="decimal"
+                defaultValue={editAmount(line.defaults?.sourceGrossMinor, scale)}
+              />
               {line.defaults &&
               (line.defaults.discountMinor !== "0" || line.defaults.chargeMinor !== "0") ? (
                 <PageCaption>
@@ -910,3 +952,16 @@ const swedish: typeof english = {
   total: "Totalt",
   editInvoice: "Redigera faktura",
 };
+
+function selectedCustomer(
+  added: typeof Commerce.CounterpartyRevision.Type | null,
+  parties: ReadonlyArray<typeof Commerce.CounterpartyRevision.Type>,
+  baseline: Draft | undefined,
+  id: string,
+) {
+  if (added?.id === id) return added;
+  return (
+    parties.find((party) => party.id === id) ??
+    (baseline?.counterparty.id === id ? baseline.counterparty : undefined)
+  );
+}

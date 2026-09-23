@@ -23,6 +23,7 @@ import { InvoiceDraftCapabilities } from "./invoice-drafts";
 import { SubledgerControlCapabilities } from "./subledger-controls";
 import { ExchangeRateCapabilities } from "./exchange-rates";
 import { InvoiceIssuanceCapabilities } from "./invoice-issuance";
+import { InvoiceCancellationCapabilities } from "./invoice-cancellations";
 import { InvoiceDocumentCapabilities } from "./invoice-documents";
 import { CommerceAllocationReversalCapabilities } from "./commerce-allocation-reversals";
 import { AccountantReviewCapabilities } from "./accountant-review";
@@ -67,6 +68,7 @@ export const Capabilities = {
   ...SubledgerControlCapabilities,
   ...ExchangeRateCapabilities,
   ...InvoiceIssuanceCapabilities,
+  ...InvoiceCancellationCapabilities,
   ...InvoiceDocumentCapabilities,
   ...CommerceAllocationReversalCapabilities,
   ...ClosingCapabilities,

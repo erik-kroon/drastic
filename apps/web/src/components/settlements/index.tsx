@@ -13,15 +13,19 @@ import type { Locale } from "@/paraglide/runtime";
 import { settlementCopy } from "./copy";
 import { AllocationReview } from "./review";
 import { CapacityReports } from "./report";
+import type { BankCandidateSelection } from "@/components/bank-match-candidates/results";
+import { bankCandidateCopy } from "@/components/bank-match-candidates/copy";
 
 export function BankAllocations({
   book,
   setup,
   locale,
+  candidate,
 }: {
   book: typeof Accounting.Book.Type;
   setup: typeof Accounting.BookSetup.Type;
   locale: Locale;
+  candidate?: BankCandidateSelection | null;
 }) {
   const copy = settlementCopy(locale);
   const [planId, setPlanId] = useState<string | null>(null);
@@ -32,7 +36,7 @@ export function BankAllocations({
         <Heading>{copy.title}</Heading>
         <Text>{copy.warning}</Text>
         <CapacityReports book={book} setup={setup} locale={locale} />
-        <AllocationForm book={book} setup={setup} locale={locale} onCreated={setPlanId} />
+        <AllocationForm book={book} setup={setup} locale={locale} candidate={candidate} onCreated={setPlanId} />
         <Box
           as="form"
           display="grid"
@@ -61,18 +65,18 @@ export function BankAllocations({
   );
 }
 
-function AllocationForm({
-  book,
-  setup,
-  locale,
-  onCreated,
-}: {
+function AllocationForm(props: {
   book: typeof Accounting.Book.Type;
   setup: typeof Accounting.BookSetup.Type;
   locale: Locale;
+  candidate?: BankCandidateSelection | null;
   onCreated: (id: string) => void;
 }) {
+  const { book, setup, locale, candidate } = props;
   const copy = settlementCopy(locale);
+  const candidateCopy = bankCandidateCopy(locale);
+  const [seed, setSeed] = useState<BankCandidateSelection | null>(null);
+  const [draftVersion, setDraftVersion] = useState(0);
   const [legs, setLegs] = useState(["first"]);
   const [error, setError] = useState("");
   const keys = useRef(new Map<string, string>());
@@ -85,8 +89,23 @@ function AllocationForm({
         mutationOptions(path, JSON.stringify(input), keys.current),
       );
     },
-    onSuccess: (plan) => onCreated(plan.id),
+    onSuccess: (plan) => props.onCreated(plan.id),
   });
+  const startDraft = (nextSeed: BankCandidateSelection | null) => {
+    if (mutation.isPending) return;
+    setSeed(nextSeed);
+    setLegs(["first"]);
+    setError("");
+    mutation.reset();
+    keys.current.clear();
+    setDraftVersion((version) => version + 1);
+  };
+  const accounts = setup.accounts
+    .filter((account) => account.active || account.id === seed?.accountId)
+    .map((account) => ({ value: account.id, label: `${account.code} · ${account.name} · ${account.id}` }));
+  if (seed && !accounts.some((account) => account.value === seed.accountId)) {
+    accounts.push({ value: seed.accountId, label: `${seed.accountId} · ${candidateCopy.unavailableAccount}` });
+  }
   return (
     <Box
       as="form"
@@ -117,7 +136,25 @@ function AllocationForm({
       }}
     >
       <Heading>{copy.prepare}</Heading>
+      {candidate || seed ? <Box display="grid" gap="md" minWidth="zero">
+        <Text>{candidateCopy.seedWarning}</Text>
+        <Text>{candidateCopy.discardWarning}</Text>
+        {candidate ? <Box display="grid" gap="sm" minWidth="zero">
+          <Text>{candidateCopy.queuedTitle}: {candidate.accountId} · {candidate.statementId} / {candidate.rowOrdinal} · {candidate.voucherId} / {candidate.lineId}</Text>
+          <Box><Button type="button" variant="outline" disabled={mutation.isPending} onClick={() => startDraft(candidate)}>
+            {candidateCopy.startSeed}
+          </Button></Box>
+        </Box> : null}
+        {seed ? <>
+          <Text>{candidateCopy.seededTitle}: {seed.statementId} / {seed.rowOrdinal} · {seed.voucherId} / {seed.lineId}</Text>
+          <InputField label={candidateCopy.digest} value={seed.discoveryDigest} readOnly />
+        </> : null}
+        <Box><Button type="button" variant="outline" disabled={mutation.isPending} onClick={() => startDraft(null)}>
+          {candidateCopy.startBlank}
+        </Button></Box>
+      </Box> : null}
       <Box
+        key={draftVersion}
         as="fieldset"
         disabled={mutation.isPending || mutation.isSuccess}
         borderWidth="none"
@@ -131,12 +168,8 @@ function AllocationForm({
           label={copy.account}
           name="accountId"
           required
-          options={setup.accounts
-            .filter((account) => account.active)
-            .map((account) => ({
-              value: account.id,
-              label: `${account.code} · ${account.name} · ${account.id}`,
-            }))}
+          defaultValue={seed?.accountId}
+          options={accounts}
         />
         <InputField label={copy.reason} name="reason" maxLength={2000} required />
         {legs.map((id, index) => (
@@ -148,12 +181,14 @@ function AllocationForm({
               <InputField
                 label={copy.statement}
                 name={`${id}-statement`}
+                defaultValue={id === "first" ? seed?.statementId : undefined}
                 required
                 pattern="[a-z][a-z0-9_\-]{2,127}"
               />
               <InputField
                 label={copy.ordinal}
                 name={`${id}-ordinal`}
+                defaultValue={id === "first" ? seed?.rowOrdinal : undefined}
                 type="number"
                 min={1}
                 max={10000}
@@ -163,12 +198,14 @@ function AllocationForm({
               <InputField
                 label={copy.voucher}
                 name={`${id}-voucher`}
+                defaultValue={id === "first" ? seed?.voucherId : undefined}
                 required
                 pattern="[a-z][a-z0-9_\-]{2,127}"
               />
               <InputField
                 label={copy.line}
                 name={`${id}-line`}
+                defaultValue={id === "first" ? seed?.lineId : undefined}
                 required
                 pattern="[a-z][a-z0-9_\-]{2,127}"
               />
@@ -222,10 +259,8 @@ function AllocationForm({
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                mutation.reset();
-                keys.current.clear();
-              }}
+              disabled={mutation.isPending}
+              onClick={() => startDraft(null)}
             >
               {copy.newPlan}
             </Button>

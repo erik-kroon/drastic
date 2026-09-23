@@ -107,7 +107,7 @@ export function BankCandidateResults({ book, locale, source, onSelect }: {
       </Box>
       {selected && selectionAvailable && selected.discoveryDigest === result.digest ? <Box display="grid" gap="md" minWidth="zero">
         <Heading>{copy.selection}</Heading>
-        <Text role="status">{copy.manual}</Text>
+        <Text role="status">{onSelect ? copy.queued : copy.manual}</Text>
         <InputField label={copy.account} value={selected.accountId} readOnly />
         <InputField label={copy.statement} value={selected.statementId} readOnly />
         <InputField label={copy.ordinal} value={String(selected.rowOrdinal)} readOnly />

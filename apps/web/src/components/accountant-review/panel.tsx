@@ -1,13 +1,18 @@
 import { useRef, useState } from "react";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Reports from "@open-erp/contracts/reports";
 import * as Review from "@open-erp/contracts/accountant-review";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
-import { InputField } from "@open-erp/ui/components/field";
-import { Heading, Text } from "@open-erp/ui/components/typography";
+import { InputField, TextareaField } from "@open-erp/ui/components/field";
+import { Text } from "@open-erp/ui/components/typography";
+import { ArrowLeft, Plus } from "lucide-react";
+import { FormDialog } from "@open-erp/ui/components/form-dialog";
+import { DataTable } from "@open-erp/ui/components/data-table";
+import { RecordHeading, RecordSection } from "@open-erp/ui/components/record-layout";
+import { PageCaption, RecordToggle } from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
@@ -23,55 +28,59 @@ const Draft = Schema.Struct({
   excludedSources: Review.PrepareReviewPack.fields.excludedSources,
 });
 
-export function AccountantReviewPanel({
-  book,
-  locale,
-  open = false,
-}: {
+export function AccountantReviewPanel(props: {
   book: typeof Accounting.Book.Type;
   locale: Locale;
   open?: boolean;
+  recordId?: string;
+  onOpen?: (id: string) => void;
 }) {
+  const { book, locale } = props;
   const copy = reviewCopy(locale);
-  const [id, setId] = useState("");
-  const [error, setError] = useState("");
-  return (
-    <details open={open} id="accountant-review" tabIndex={-1}>
-      <summary>{copy.title}</summary>
-      <Box display="grid" gap="2xl" paddingBlock="xl" minWidth="zero">
-        <Heading>{copy.title}</Heading>
-        <Text>{copy.intro}</Text>
-        <Text>{copy.warning}</Text>
-        <PreparePack key={book.id} book={book} locale={locale} onCreated={setId} />
-        <RetainedPacks book={book} locale={locale} onSelected={setId} />
-        <Box
-          as="form"
-          display="grid"
-          gap="md"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const value = new FormData(event.currentTarget).get("packId");
-            if (!Schema.is(Accounting.Identifier)(value)) {
-              setError(copy.invalid);
-              return;
-            }
-            setError("");
-            setId(value);
-          }}
-        >
-          <InputField name="packId" label={copy.packId} required />
-          <Box>
-            <Button type="submit" variant="outline" size="xl">
-              {copy.load}
-            </Button>
-          </Box>
-          <Text role="status">{error}</Text>
+  const [local, setLocal] = useState("");
+  const selected = props.recordId ?? local;
+  const select = props.onOpen ?? setLocal;
+  if (selected && selected !== "new")
+    return (
+      <Box display="grid" gap="xl">
+        <Box>
+          <Button variant="ghost" onClick={() => select("")}>
+            <ArrowLeft size={14} />
+            {locale === "sv" ? "Alla granskningspaket" : "All review packs"}
+          </Button>
         </Box>
-        {id ? (
-          <ReviewPackInspector key={`${book.id}:${id}`} book={book} id={id} locale={locale} />
-        ) : null}
+        <ReviewPackInspector
+          key={`${book.id}:${selected}`}
+          book={book}
+          id={selected}
+          locale={locale}
+        />
       </Box>
-    </details>
+    );
+  return (
+    <Box display="grid" gap="xl">
+      <RecordHeading
+        title={copy.title}
+        subtitle={copy.intro}
+        action={
+          <Button onClick={() => select("new")}>
+            <Plus size={14} />
+            {locale === "sv" ? "Nytt granskningspaket" : "New review pack"}
+          </Button>
+        }
+      />
+      <RetainedPacks book={book} locale={locale} onSelected={select} />
+      <PageCaption>{copy.warning}</PageCaption>
+      {selected === "new" ? (
+        <FormDialog
+          title={locale === "sv" ? "Nytt granskningspaket" : "New review pack"}
+          closeLabel={locale === "sv" ? "Stäng" : "Close"}
+          onClose={() => select("")}
+        >
+          <PreparePack key={book.id} book={book} locale={locale} onCreated={select} />
+        </FormDialog>
+      ) : null}
+    </Box>
   );
 }
 
@@ -85,6 +94,13 @@ function PreparePack({
   onCreated: (id: string) => void;
 }) {
   const copy = reviewCopy(locale);
+  const setup = useQuery({
+    queryKey: [...bookKey(book), "setup"],
+    queryFn: ({ signal }) =>
+      readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
+    retry: false,
+  });
+  const period = setup.data?.periods.at(-1);
   const keys = useRef(new Map<string, string>());
   const queryClient = useQueryClient();
   const [error, setError] = useState("");
@@ -181,15 +197,55 @@ function PreparePack({
         gap="lg"
         minWidth="zero"
       >
-        <Box display="flex" flexWrap="wrap" gap="md">
-          <InputField type="date" name="startsOn" label={copy.startsOn} required />
-          <InputField type="date" name="endsOn" label={copy.endsOn} required />
-        </Box>
-        <InputField name="openingExplanation" label={copy.opening} required maxLength={2000} />
-        <InputField name="openingEvidenceIds" label={copy.openingEvidence} />
-        <InputField name="accountantNotes" label={copy.notes} required maxLength={2000} />
-        <InputField name="excludedName" label={copy.exclusionName} maxLength={2000} />
-        <InputField name="excludedReason" label={copy.exclusionReason} maxLength={2000} />
+        <RecordSection title={locale === "sv" ? "Period" : "Period"}>
+          <Box display="grid" columns={2} gap="lg" key={period?.id}>
+            <InputField
+              type="date"
+              name="startsOn"
+              label={copy.startsOn}
+              required
+              defaultValue={period?.startsOn}
+            />
+            <InputField
+              type="date"
+              name="endsOn"
+              label={copy.endsOn}
+              required
+              defaultValue={period?.endsOn}
+            />
+          </Box>
+        </RecordSection>
+        <TextareaField
+          rows={3}
+          name="openingExplanation"
+          label={copy.opening}
+          required
+          maxLength={2000}
+        />
+        <details>
+          <summary>
+            {locale === "sv" ? "Underlagsreferenser (valfritt)" : "Evidence references (optional)"}
+          </summary>
+          <Box paddingBlock="lg">
+            <InputField name="openingEvidenceIds" label={copy.openingEvidence} />
+          </Box>
+        </details>
+        <TextareaField
+          rows={3}
+          name="accountantNotes"
+          label={copy.notes}
+          required
+          maxLength={2000}
+        />
+        <details>
+          <summary>
+            {locale === "sv" ? "Undantagna underlag (valfritt)" : "Excluded sources (optional)"}
+          </summary>
+          <Box display="grid" columns={2} gap="lg" paddingBlock="lg">
+            <InputField name="excludedName" label={copy.exclusionName} maxLength={2000} />
+            <InputField name="excludedReason" label={copy.exclusionReason} maxLength={2000} />
+          </Box>
+        </details>
         <Text>{copy.retry}</Text>
         <Box display="flex" flexWrap="wrap" gap="md">
           <Button type="submit" size="xl">
@@ -245,39 +301,46 @@ function RetainedPacks({
   });
   const packs = list.data?.pages.flatMap((page) => page.items) ?? [];
   return (
-    <details>
-      <summary>{copy.retained}</summary>
-      <Box display="grid" gap="md" paddingBlock="lg">
-        <AccountingStatus locale={locale} pending={list.isPending} error={list.error} />
-        {list.isSuccess && packs.length === 0 ? <Text>{copy.empty}</Text> : null}
-        {packs.map((pack) => (
-          <Box key={pack.id} display="grid" gap="sm">
-            <Text>
-              {pack.startsOn} – {pack.endsOn} · {copy.sequence}: {pack.sequence} · {pack.createdAt}
-            </Text>
-            <Text>{pack.id}</Text>
-            <Box>
-              <Button variant="outline" size="xl" onClick={() => onSelected(pack.id)}>
-                {copy.load}
-              </Button>
-            </Box>
-          </Box>
-        ))}
-        {list.hasNextPage ? (
-          <Box>
-            <Button
-              variant="outline"
-              size="xl"
-              disabled={list.isFetchingNextPage}
-              onClick={() => {
-                void list.fetchNextPage();
-              }}
-            >
-              {copy.next}
-            </Button>
-          </Box>
-        ) : null}
-      </Box>
-    </details>
+    <Box display="grid" gap="md">
+      <AccountingStatus locale={locale} pending={list.isPending} error={list.error} />
+      {list.isSuccess && packs.length === 0 ? <Text>{copy.empty}</Text> : null}
+      {packs.length ? (
+        <DataTable
+          title={copy.retained}
+          narrow="stack"
+          columns={[
+            { id: "period", label: locale === "sv" ? "Period" : "Period" },
+            { id: "created", label: locale === "sv" ? "Skapat" : "Created" },
+            { id: "sequence", label: copy.sequence },
+          ]}
+          rows={packs.map((pack) => ({
+            id: pack.id,
+            cells: [
+              <RecordToggle key="open" expanded={false} onClick={() => onSelected(pack.id)}>
+                {pack.startsOn} – {pack.endsOn}
+              </RecordToggle>,
+              new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
+                new Date(pack.createdAt),
+              ),
+              pack.sequence,
+            ],
+          }))}
+        />
+      ) : null}
+      {list.hasNextPage ? (
+        <Box>
+          <Button
+            variant="outline"
+            size="xl"
+            disabled={list.isFetchingNextPage}
+            onClick={() => {
+              void list.fetchNextPage();
+            }}
+          >
+            {copy.next}
+          </Button>
+        </Box>
+      ) : null}
+    </Box>
   );
 }

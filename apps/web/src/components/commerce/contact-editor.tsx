@@ -20,12 +20,14 @@ const ContactInput = Schema.Struct({
   role: Commerce.CreateCounterparty.fields.role,
   reason: Commerce.CreateCounterparty.fields.reason,
 });
-export function ContactEditor({
-  book,
-  locale,
-  baseline,
-  onSaved,
-}: CommerceProps & { baseline?: Party; onSaved: (party: Party) => void }) {
+export function ContactEditor(
+  props: CommerceProps & {
+    baseline?: Party;
+    customerOnly?: boolean;
+    onSaved: (party: Party) => void;
+  },
+) {
+  const { book, locale, baseline, onSaved } = props;
   const sv = locale === "sv";
   const client = useQueryClient();
   const requests = useSavedPostingRequests(book);
@@ -95,12 +97,13 @@ export function ContactEditor({
       gap="lg"
       onSubmit={(event) => {
         event.preventDefault();
+        event.stopPropagation();
         if (save.variables || book.role !== "operator") return;
         const fields = new FormData(event.currentTarget);
         const parsed = Schema.decodeUnknownOption(ContactInput)({
           displayName: fields.get("displayName"),
           externalKey: baseline?.externalKey ?? (fields.get("externalKey") || `contact_${key}`),
-          role: baseline?.role ?? fields.get("role"),
+          role: baseline?.role ?? (props.customerOnly ? "customer" : fields.get("role")),
           reason: fields.get("reason") || (sv ? "Kontakt tillagd" : "Contact added"),
         });
         setInvalid(parsed._tag === "None");
@@ -125,16 +128,18 @@ export function ContactEditor({
         />
         {!baseline ? (
           <Box display="grid" columns={2} gap="lg">
-            <SelectField
-              name="role"
-              label={sv ? "Kontakttyp" : "Contact type"}
-              defaultValue="customer"
-              options={[
-                { value: "customer", label: sv ? "Kund" : "Customer" },
-                { value: "supplier", label: sv ? "Leverantör" : "Supplier" },
-                { value: "both", label: sv ? "Kund och leverantör" : "Customer & supplier" },
-              ]}
-            />
+            {!props.customerOnly ? (
+              <SelectField
+                name="role"
+                label={sv ? "Kontakttyp" : "Contact type"}
+                defaultValue="customer"
+                options={[
+                  { value: "customer", label: sv ? "Kund" : "Customer" },
+                  { value: "supplier", label: sv ? "Leverantör" : "Supplier" },
+                  { value: "both", label: sv ? "Kund och leverantör" : "Customer & supplier" },
+                ]}
+              />
+            ) : null}
             <InputField
               name="externalKey"
               label={

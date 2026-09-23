@@ -69,6 +69,12 @@ export function bankCandidateCopy(locale: Locale) {
     select: "Välj identifierare för manuell granskning", selection: "Valda identifierare – ännu inte matchade",
     manual: "Använd dessa identifierare i den granskade bankfördelningen. Ange belopp och skäl där, bekräfta osäkerheten och begär mänskligt godkännande. Detta betalar ingen faktura.",
     evidence: "Källunderlag", sourceAccount: "Källans bankkonto", providerReference: "Sparad leverantörsreferens", unavailable: "Saknas", sameAccount: "Samma konto", sameCurrency: "Samma valuta", sameSign: "Samma tecken", yes: "Ja", no: "Nej",
+    queued: "Öppna Granskade bankfördelningar för att starta ett utkast med identifierarna. Att välja ett förslag ersätter inte ett befintligt utkast.",
+    queuedTitle: "Identifierare för ett nytt utkast", seededTitle: "Utkastets valda förslag",
+    startSeed: "Kassera utkast och använd förslaget", startBlank: "Kassera utkast och börja tomt",
+    discardWarning: "Ett nytt utkast tar bort osparade uppgifter och återförsöksnyckeln. Vid osäkert svar: försök igen oförändrat eller hämta den sparade planen innan du kasserar.",
+    seedWarning: "Förslaget kan vara inaktuellt. Endast identifierare fylls i. Ange belopp och skäl och bekräfta granskningen själv. Servern hämtar aktuellt matchningsutrymme när planen förbereds.",
+    unavailableAccount: "Inte i den aktuella kontolistan – måste granskas",
     responseError: "Svaret hör inte till vald bok och källrad.", blocks: swedishBlocks, reasons: swedishReasons,
   } : {
     title: "Find bank matching candidates", statement: "Statement ID", ordinal: "Source row ordinal",
@@ -92,6 +98,12 @@ export function bankCandidateCopy(locale: Locale) {
     select: "Select identifiers for manual review", selection: "Selected identifiers — not matched yet",
     manual: "Use these identifiers in reviewed bank allocation. Enter the amount and reason there, acknowledge ambiguity and request human approval. This does not pay an invoice.",
     evidence: "Source evidence", sourceAccount: "Source bank account", providerReference: "Retained provider reference", unavailable: "Not retained", sameAccount: "Same account", sameCurrency: "Same currency", sameSign: "Same sign", yes: "Yes", no: "No",
+    queued: "Open Reviewed bank allocations to start a draft with these identifiers. Selecting a candidate does not replace an existing draft.",
+    queuedTitle: "Identifiers for a new draft", seededTitle: "This draft’s selected candidate",
+    startSeed: "Discard draft and use candidate", startBlank: "Discard draft and start blank",
+    discardWarning: "A new draft discards unsaved inputs and the retry key. After an uncertain response, retry unchanged input or recover the saved plan before discarding.",
+    seedWarning: "Discovery may be stale. Only identifiers are filled. Enter the amount and reason and acknowledge review yourself. The server captures current matching capacity when it prepares the plan.",
+    unavailableAccount: "Not in the current account list — review required",
     responseError: "The response does not belong to the selected book and source row.", blocks: englishBlocks, reasons: englishReasons,
   };
 }

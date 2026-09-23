@@ -48,6 +48,20 @@ function effectCapability<I, O extends Schema.Json>(
 }
 
 export const capabilities = {
+  commerce_get_invoice_cancellation: bindCapability(
+    Capabilities.commerce_get_invoice_cancellation,
+    "getInvoiceCancellation",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_get_invoice_cancellation_status: bindCapability(
+    Capabilities.commerce_get_invoice_cancellation_status,
+    "getInvoiceCancellationStatus",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  workspace_coordination: bindCapability(Capabilities.workspace_coordination, "workspaceCoordination", (input) => [scopeParameter(input.scope)]),
+  workspace_save_view: bindCapability(Capabilities.workspace_save_view, "workspaceSaveView", (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)]),
+  workspace_delete_view: bindCapability(Capabilities.workspace_delete_view, "workspaceDeleteView", (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)]),
+  workspace_assign_work: bindCapability(Capabilities.workspace_assign_work, "workspaceAssignWork", (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)]),
   bank_create_source_coverage: bindCapability(
     Capabilities.bank_create_source_coverage,
     "createBankSourceCoverage",

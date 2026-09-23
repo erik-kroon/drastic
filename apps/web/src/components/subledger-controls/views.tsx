@@ -48,14 +48,15 @@ export function ControlInspector({ book, locale, id }: { book: typeof Accounting
     <Text>{id}</Text>
     <Button variant="outline" disabled={saved.isFetching} onClick={() => { void saved.refetch(); }}>{copy.refresh}</Button>
     <AccountingStatus locale={locale} pending={saved.isPending} error={saved.error} />
-    {saved.isSuccess ? <Contents value={saved.data} locale={locale} /> : null}
+    {saved.data ? <Contents value={saved.data} locale={locale}
+      currentnessKnown={saved.isSuccess && saved.fetchStatus === "idle" && saved.isFetchedAfterMount} /> : null}
   </Box>;
 }
-function Contents({ value, locale }: { value: typeof Controls.SubledgerControlView.Type; locale: Locale }) {
+function Contents({ value, locale, currentnessKnown }: { value: typeof Controls.SubledgerControlView.Type; locale: Locale; currentnessKnown: boolean }) {
   const copy = controlCopy(locale);
   const report = value.snapshot;
   return <Box display="grid" gap="lg" minWidth="zero">
-    <Text role="status">{value.dependenciesCurrent ? copy.current : copy.historical}</Text>
+    <Text role="status">{currentnessKnown ? value.dependenciesCurrent ? copy.current : copy.historical : copy.currentnessUnknown}</Text>
     <Text>{report.hasReviewGaps ? copy.gaps : copy.noGaps}</Text>
     <Text>{copy.warning}</Text>
     <Text>{copy.asOf}: {report.input.asOfDate} · {copy.sequence}: {report.sequence} · {report.currency} · {report.currencyScale}</Text>

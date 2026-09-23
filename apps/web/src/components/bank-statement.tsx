@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Bank from "@open-erp/contracts/reconciliation";
+import { workQueryOptions, formatMinorAmount } from "@/lib/workspace-api";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
@@ -13,25 +14,44 @@ import { EvidenceInspector } from "@/components/evidence-inspector";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
+import { PageAction } from "@open-erp/ui/components/accounting-page";
+import { workspacePath } from "@/lib/book-context";
 
-export function BankStatementReview({
-  book,
-  id,
-  locale,
-}: {
+const BankCandidateResults = lazy(() =>
+  import("@/components/bank-match-candidates/results").then((module) => ({
+    default: module.BankCandidateResults,
+  })),
+);
+
+type StatementReviewProps = {
   book: typeof Accounting.Book.Type;
   id: string;
   locale: Locale;
-}) {
+};
+
+export function BankStatementReview(props: StatementReviewProps) {
+  return <StatementReview key={`${props.book.entityId}:${props.book.id}:${props.id}`} {...props} />;
+}
+
+function StatementReview({ book, id, locale }: StatementReviewProps) {
   const copy = accountingCopy(locale);
+  const [candidateRow, setCandidateRow] = useState<number | null>(null);
+  const candidateLabel = locale === "sv" ? "Visa matchningsförslag" : "Show matching candidates";
+  const metadata = useQuery(workQueryOptions(book, {}));
+  const scale = metadata.data?.currencyScale;
   const statement = useQuery({
     queryKey: [...bookKey(book), "bank-statement", id],
-    queryFn: ({ signal }) =>
-      readAccounting(
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
         `${bookPath(book)}/bank-statements/${encodeURIComponent(id)}`,
         Bank.BankStatementView,
         { signal },
-      ),
+      );
+      if (result.statement.id !== id || result.matches.some((match) => match.statementId !== id)) {
+        throw new Error("Bank statement response identity mismatch");
+      }
+      return result;
+    },
     retry: false,
   });
   return (
@@ -66,6 +86,7 @@ export function BankStatementReview({
               { id: "date", label: copy.journal_date },
               { id: "description", label: copy.journal_description },
               { id: "amount", label: copy.bank_amount, numeric: true },
+              { id: "candidates", label: candidateLabel },
             ]}
             rows={statement.data.statement.rows.map((row) => ({
               id: String(row.rowOrdinal),
@@ -74,10 +95,32 @@ export function BankStatementReview({
                 row.providerId ?? "—",
                 row.date,
                 row.description,
-                row.amountMinor,
+                scale === undefined ? "—" : formatMinorAmount(row.amountMinor, scale, locale),
+                <Button
+                  key="candidates"
+                  variant="outline"
+                  onClick={() => setCandidateRow(row.rowOrdinal)}
+                >
+                  {candidateLabel} · {row.rowOrdinal}
+                </Button>,
               ],
             }))}
           />
+          {candidateRow !== null ? (
+            <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
+              <BankCandidateResults
+                key={candidateRow}
+                book={book}
+                locale={locale}
+                source={{ statementId: id, rowOrdinal: candidateRow }}
+              />
+            </Suspense>
+          ) : null}
+          <PageAction href={`${workspacePath(book)}/accounts?view=matching`}>
+            {locale === "sv"
+              ? "Öppna granskad matchning och återföring"
+              : "Open reviewed matching and unmatch"}
+          </PageAction>
           <BankMatches matches={statement.data.matches} locale={locale} />
           <BankMatchForm book={book} statement={statement.data} locale={locale} />
         </>
@@ -96,6 +139,9 @@ export function BankStatementDetails({
   locale: Locale;
 }) {
   const copy = accountingCopy(locale);
+  const metadata = useQuery(workQueryOptions(book, {}));
+  const amount = (value: string) =>
+    metadata.data ? formatMinorAmount(value, metadata.data.currencyScale, locale) : "—";
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <Text>
@@ -109,8 +155,8 @@ export function BankStatementDetails({
         {copy.bank_interval}: {statement.startsOn} – {statement.endsOn}
       </Text>
       <Text>
-        {copy.bank_opening}: {statement.openingMinor} · {copy.bank_closing}:{" "}
-        {statement.closingMinor}
+        {copy.bank_opening}: {amount(statement.openingMinor)} · {copy.bank_closing}:{" "}
+        {amount(statement.closingMinor)}
       </Text>
       <Text>
         {statement.completeness.declaredComplete ? copy.bank_declared : copy.bank_not_declared}

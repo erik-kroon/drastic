@@ -1,3 +1,4 @@
+import { WorkHandoff } from "./work-handoff";
 import { defaultStringifySearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import type * as Workspace from "@open-erp/contracts/workspace";
@@ -48,6 +49,7 @@ export function AttentionList(props: {
                 { id: "date", label: copy.updated },
                 { id: "state", label: copy.action },
                 { id: "amount", label: copy.amount, numeric: true },
+                { id: "assignment", label: locale === "sv" ? "Ansvarig" : "Assigned to" },
               ]}
               rows={page.items.map((item) => ({
                 id: item.key,
@@ -68,6 +70,7 @@ export function AttentionList(props: {
                   item.amountMinor !== null && item.currencyScale !== null
                     ? `${formatMinorAmount(item.amountMinor, item.currencyScale, locale)} ${item.currency ?? ""}`
                     : "—",
+                  <WorkHandoff key="handoff" item={item} />,
                 ],
               }))}
             />

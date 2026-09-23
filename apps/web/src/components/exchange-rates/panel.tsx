@@ -11,7 +11,7 @@ import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { exchangeRateCopy } from "./copy";
 import { RateForm } from "./forms";
-import { ConversionInspector, RateInspector } from "./views";
+import { ConversionInspector, RateInspector, RateUsabilityStatus } from "./views";
 
 type Props = { book: typeof Accounting.Book.Type; locale: Locale };
 export function ExchangeRateReviewsPanel(props: Props) {
@@ -29,6 +29,18 @@ function Panel({ book, locale }: Props) {
       const result = await readAccounting(`${bookPath(book)}/exchange-rates`, Rates.ExchangeRateList, { signal });
       if (result.scope.bookId !== book.id || result.scope.entityId !== book.entityId || result.items.some((rate) => rate.scope.bookId !== book.id || rate.scope.entityId !== book.entityId)) {
         throw new Error("Exchange-rate inventory scope mismatch");
+      }
+      if (result.statuses && (result.statuses.length !== result.items.length
+        || new Set(result.statuses.map((status) => status.observationId)).size !== result.statuses.length)) {
+        throw new Error("Exchange-rate status inventory mismatch");
+      }
+      for (const status of result.statuses ?? []) {
+        const rate = result.items.find((item) => item.observationId === status.observationId);
+        const withdrawal = status.usability.withdrawal;
+        if (!rate || (withdrawal && (withdrawal.observationId !== rate.observationId || withdrawal.revisionDigest !== rate.digest
+          || withdrawal.scope.bookId !== book.id || withdrawal.scope.entityId !== book.entityId))) {
+          throw new Error("Exchange-rate withdrawal inventory mismatch");
+        }
       }
       return result;
     }, retry: false,
@@ -61,6 +73,8 @@ function Panel({ book, locale }: Props) {
     {rates.data?.items.map((rate) => <Box key={rate.observationId} display="grid" gap="sm" minWidth="zero">
       <Text>{rate.sourceKey} · {rate.observationId} · {copy.revision}: {rate.revision}</Text>
       <Text>{rate.terms.fromCurrency} → {rate.terms.toCurrency} · {rate.terms.effectiveOn} · {rate.terms.rateNumerator}/{rate.terms.rateDenominator}</Text>
+      <RateUsabilityStatus locale={locale} usability={rates.data?.statuses?.find((status) => status.observationId === rate.observationId)?.usability}
+        known={rates.isSuccess && rates.fetchStatus === "idle" && rates.isFetchedAfterMount} />
       <Button variant="outline" onClick={() => setSelectedRate(rate.observationId)}>{copy.open} · {rate.sourceKey}</Button>
     </Box>)}
     {selectedRate ? <RateInspector book={book} locale={locale} id={selectedRate} onRateSaved={rateSaved} onConversionSaved={conversionSaved} /> : null}

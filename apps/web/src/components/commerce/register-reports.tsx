@@ -5,6 +5,11 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Heading, Text } from "@open-erp/ui/components/typography";
+import { ArrowLeft, Plus } from "lucide-react";
+import { FormDialog } from "@open-erp/ui/components/form-dialog";
+import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
+import { RecordToggle, PageCaption } from "@open-erp/ui/components/accounting-page";
+import { formatMinorAmount } from "@/lib/workspace-api";
 import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
 import { commerceCopy } from "./copy";
@@ -14,20 +19,23 @@ import {
   Details,
   Facts,
   Field,
-  Lookup,
   checkScope,
   commerceKey,
   commercePath,
   type CommerceProps,
 } from "./shared";
 
-export function RegisterReports(props: CommerceProps) {
+export function RegisterReports(
+  props: CommerceProps & { recordId?: string; onOpen?: (id: string) => void },
+) {
   const { book, locale } = props;
   const copy = commerceCopy(locale);
   const [after, setAfter] = useState("");
   const [inventoryVersion, setInventoryVersion] = useState(0);
   const firstCursor = useRef({ version: 0, value: "" });
-  const [selected, setSelected] = useState("");
+  const [local, setLocal] = useState("");
+  const selected = props.recordId ?? local;
+  const setSelected = props.onOpen ?? setLocal;
   const page = useQuery({
     queryKey: [...commerceKey(book), "register-reports", inventoryVersion, after],
     queryFn: async ({ signal }) => {
@@ -53,24 +61,49 @@ export function RegisterReports(props: CommerceProps) {
     refetchOnReconnect: false,
     refetchOnMount: false,
   });
+  if (selected && selected !== "new")
+    return (
+      <Box display="grid" gap="xl">
+        <Box>
+          <Button variant="ghost" onClick={() => setSelected("")}>
+            <ArrowLeft size={14} />
+            {locale === "sv" ? "Alla reskontrarapporter" : "All register reports"}
+          </Button>
+        </Box>
+        <SavedRegisterReport {...props} key={selected} id={selected} />
+      </Box>
+    );
   return (
     <Box display="grid" gap="lg" minWidth="zero">
-      <Text>{copy.registerBasis}</Text>
-      <Text tone="muted">{copy.registerLimits}</Text>
-      <Details title={copy.captureRegister}>
-        <CommandForm
-          {...props}
-          path={`${commercePath(book)}/register-snapshots`}
-          schema={Reports.CreateRegisterReport}
-          output={Reports.RegisterReport}
-          label={copy.captureRegister}
-          input={(fields) => ({ asOfDate: fields.get("asOfDate") })}
-          onSuccess={(report) => setSelected(report.id)}
+      <RecordHeading
+        title={copy.registerReports}
+        subtitle={copy.registerBasis}
+        action={
+          <Button onClick={() => setSelected("new")}>
+            <Plus size={14} />
+            {copy.captureRegister}
+          </Button>
+        }
+      />
+      {selected === "new" ? (
+        <FormDialog
+          title={copy.captureRegister}
+          closeLabel={locale === "sv" ? "Stäng" : "Close"}
+          onClose={() => setSelected("")}
         >
-          <Field name="asOfDate" label={copy.asOfDate} type="date" />
-        </CommandForm>
-      </Details>
-      <Lookup label={copy.open} onOpen={setSelected} />
+          <CommandForm
+            {...props}
+            path={`${commercePath(book)}/register-snapshots`}
+            schema={Reports.CreateRegisterReport}
+            output={Reports.RegisterReport}
+            label={copy.captureRegister}
+            input={(fields) => ({ asOfDate: fields.get("asOfDate") })}
+            onSuccess={(report) => setSelected(report.id)}
+          >
+            <Field name="asOfDate" label={copy.asOfDate} type="date" />
+          </CommandForm>
+        </FormDialog>
+      ) : null}
       <Box display="flex" flexWrap="wrap" gap="md">
         <Button
           size="xl"
@@ -105,13 +138,7 @@ export function RegisterReports(props: CommerceProps) {
           {copy.next}
         </Button>
       </Box>
-      <Text tone="muted">{copy.registerListNote}</Text>
-      {page.isSuccess ? (
-        <Text>
-          {copy.registerInventoryCount}: {page.data.total} · {copy.registerInventoryCutoff}:{" "}
-          {page.data.cutoff}
-        </Text>
-      ) : null}
+      <PageCaption>{copy.registerLimits}</PageCaption>
       <AccountingStatus locale={locale} pending={page.isPending} error={page.error} />
       {page.isSuccess ? (
         <DataTable
@@ -126,18 +153,19 @@ export function RegisterReports(props: CommerceProps) {
           rows={page.data.items.map((report) => ({
             id: report.id,
             cells: [
-              <Button key="open" size="xl" variant="outline" onClick={() => setSelected(report.id)}>
-                {report.id}
-              </Button>,
+              <RecordToggle key="open" expanded={false} onClick={() => setSelected(report.id)}>
+                {copy.registerReports} · {report.asOfDate}
+              </RecordToggle>,
               report.asOfDate,
-              report.createdAt,
+              new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
+                new Date(report.createdAt),
+              ),
               report.sequence,
             ],
           }))}
         />
       ) : null}
       {page.isSuccess && page.data.items.length === 0 ? <Text>{copy.empty}</Text> : null}
-      {selected ? <SavedRegisterReport {...props} key={selected} id={selected} /> : null}
     </Box>
   );
 }
@@ -162,9 +190,7 @@ function SavedRegisterReport(props: CommerceProps & { id: string }) {
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.registerReports}</Heading>
-      <Text>
-        {copy.id}: {id}
-      </Text>
+
       <Box>
         <Button
           size="xl"
@@ -189,6 +215,7 @@ function ReportContents({
   report,
 }: CommerceProps & { report: typeof Reports.RegisterReport.Type }) {
   const copy = commerceCopy(locale);
+  const amount = (value: string) => formatMinorAmount(value, report.currencyScale, locale);
   const statuses = {
     balanced: copy.registerBalanced,
     differences: copy.registerDifferences,
@@ -201,14 +228,11 @@ function ReportContents({
       <Text>
         {copy.asOfDate}: {report.asOfDate} · {copy.capturedAt}: {report.createdAt}
       </Text>
-      <Text>
-        {copy.ledgerSequence}: {report.sequence} · {copy.units} {report.currency} · {copy.scale}:{" "}
-        {report.currencyScale}
-      </Text>
-      <Text>{copy.registerSign}</Text>
-      <Text>
-        {copy.digest}: {report.digest}
-      </Text>
+      <RecordSummary>
+        <RecordFact label={copy.asOfDate}>{report.asOfDate}</RecordFact>
+        <RecordFact label={locale === "sv" ? "Valuta" : "Currency"}>{report.currency}</RecordFact>
+        <RecordFact label="Status">{statuses[report.status]}</RecordFact>
+      </RecordSummary>
       <Box>
         <Button
           size="xl"
@@ -236,6 +260,7 @@ function ReportContents({
           { id: "account", label: copy.account },
           { id: "direction", label: copy.role },
           { id: "outstanding", label: copy.outstanding, numeric: true },
+          { id: "cancelled", label: locale === "sv" ? "Makulerat" : "Cancelled", numeric: true },
           { id: "ledger", label: copy.ledgerAmount, numeric: true },
           { id: "difference", label: copy.registerDifference, numeric: true },
           { id: "unexplained", label: copy.unexplainedLines, numeric: true },
@@ -243,11 +268,12 @@ function ReportContents({
         rows={report.controls.map((control) => ({
           id: control.accountId,
           cells: [
-            `${control.code} · ${control.name} · ${control.accountId}`,
+            `${control.code} · ${control.name}`,
             copy[control.direction],
-            control.outstandingMinor,
-            control.ledgerMinor,
-            control.differenceMinor,
+            amount(control.outstandingMinor),
+            control.cancelledMinor === undefined ? "—" : amount(control.cancelledMinor),
+            amount(control.ledgerMinor),
+            amount(control.differenceMinor),
             control.unexplainedLineCount,
           ],
         }))}
@@ -267,11 +293,11 @@ function ReportContents({
           id: control.accountId,
           cells: [
             control.code,
-            control.ageing.not_due,
-            control.ageing.days_1_30,
-            control.ageing.days_31_60,
-            control.ageing.days_61_90,
-            control.ageing.over_90,
+            amount(control.ageing.not_due),
+            amount(control.ageing.days_1_30),
+            amount(control.ageing.days_31_60),
+            amount(control.ageing.days_61_90),
+            amount(control.ageing.over_90),
           ],
         }))}
       />
@@ -286,16 +312,22 @@ function ReportContents({
             { id: "revision", label: copy.revision },
             { id: "days", label: copy.daysOverdue, numeric: true },
             { id: "amount", label: copy.outstanding, numeric: true },
+            { id: "cancelled", label: locale === "sv" ? "Makulerat" : "Cancelled", numeric: true },
+            { id: "cancellation", label: locale === "sv" ? "Makulering" : "Cancellation" },
           ]}
           rows={report.invoices.map((invoice) => ({
             id: invoice.id,
             cells: [
-              `${invoice.documentNumber} · ${invoice.id}`,
+              invoice.documentNumber,
               invoice.counterpartyName,
               invoice.revision.dueOn,
               invoice.revision.revision,
               invoice.daysOverdue,
-              invoice.outstandingMinor,
+              amount(invoice.outstandingMinor),
+              invoice.cancelledMinor === undefined ? "—" : amount(invoice.cancelledMinor),
+              invoice.cancellation
+                ? `${invoice.cancellation.id} · ${invoice.cancellation.postingDate} · ${invoice.cancellation.reversalVoucherId}`
+                : "—",
             ],
           }))}
         />
@@ -311,6 +343,7 @@ function ReportContents({
             { id: "date", label: copy.postingDate },
             { id: "account", label: copy.account },
             { id: "effect", label: copy.registerEffect, numeric: true },
+            { id: "cancellation", label: locale === "sv" ? "Makulering" : "Cancellation" },
             { id: "difference", label: copy.unexplainedAmount, numeric: true },
           ]}
           rows={report.ledgerLines.map((line) => ({
@@ -320,8 +353,9 @@ function ReportContents({
               line.lineId,
               line.postingDate,
               line.accountId,
-              line.registerEffectMinor,
-              line.unexplainedMinor,
+              amount(line.registerEffectMinor),
+              line.cancellationId ?? "—",
+              amount(line.unexplainedMinor),
             ],
           }))}
         />
@@ -344,7 +378,7 @@ function ReportContents({
               leg.invoiceId,
               leg.paymentVoucherId,
               leg.postingDate,
-              leg.amountMinor,
+              amount(leg.amountMinor),
             ],
           }))}
         />

@@ -34,6 +34,7 @@ import { InvoiceDraftHandlers } from "./transport/http/routes/invoice-drafts";
 import { SubledgerControlsHandlers } from "./transport/http/routes/subledger-controls";
 import { ExchangeRatesHandlers } from "./transport/http/routes/exchange-rates";
 import { InvoiceIssuanceHandlers } from "./transport/http/routes/invoice-issuance";
+import { InvoiceCancellationHandlers } from "./transport/http/routes/invoice-cancellations";
 import { InvoiceDocumentHandlers } from "./transport/http/routes/invoice-documents";
 import { CommerceAllocationReversalHandlers } from "./transport/http/routes/commerce-allocation-reversals";
 import { AccountantReviewHandlers } from "./transport/http/routes/accountant-review";
@@ -81,6 +82,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     SubledgerControlsHandlers,
     ExchangeRatesHandlers,
     InvoiceIssuanceHandlers,
+    InvoiceCancellationHandlers,
     InvoiceDocumentHandlers,
     CommerceAllocationReversalHandlers,
     AccountantReviewHandlers,

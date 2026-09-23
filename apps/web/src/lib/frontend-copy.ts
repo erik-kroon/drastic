@@ -3,7 +3,7 @@ import type { Locale } from "@/paraglide/runtime";
 const en = {
   company: "Company",
   todo: "To do",
-  proposals: "Proposals",
+  proposals: "Work list",
   accounts: "Accounts",
   sales: "Invoicing",
   purchases: "Purchases",
@@ -64,7 +64,7 @@ const en = {
 const sv: typeof en = {
   company: "Bolaget",
   todo: "Att göra",
-  proposals: "Förslag",
+  proposals: "Arbetslista",
   accounts: "Konton",
   sales: "Fakturering",
   purchases: "Inköp",
