@@ -173,7 +173,7 @@ function EditingSession(
       const existing = localStorage.getItem(props.identity);
       if (canonical(existing) !== canonical(retained.current))
         throw new Error("Invoice edits changed in another tab");
-      const text = JSON.stringify(Schema.decodeUnknownSync(EditingState)(next));
+      const text = JSON.stringify(Schema.decodeSync(EditingState)(next));
       localStorage.setItem(props.identity, text);
       if (localStorage.getItem(props.identity) !== text) throw new Error("Draft not retained");
       retained.current = text;

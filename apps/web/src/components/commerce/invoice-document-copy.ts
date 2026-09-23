@@ -5,7 +5,10 @@ const en = {
   boundary: "Demo document · HTML · English · Not sent",
   historyMeaning:
     "This file preserves the invoice as issued. Later payments, cancellations and company changes do not change its contents.",
-  prepare: "Create downloadable document",
+  prepare: "Create invoice file",
+  earlier: "Earlier saved document",
+  original: "Original review document",
+  current: "Show invoice file",
   empty: "Create a saved copy to preview or download.",
   refresh: "Refresh document",
   resume: "Finish creating document",
@@ -23,7 +26,10 @@ const sv: typeof en = {
   boundary: "Demodokument · HTML · Engelska · Inte skickat",
   historyMeaning:
     "Filen bevarar fakturan som den utfärdades. Senare betalningar, makuleringar och företagsändringar ändrar inte innehållet.",
-  prepare: "Skapa nedladdningsbart dokument",
+  prepare: "Skapa fakturafil",
+  earlier: "Tidigare sparat dokument",
+  original: "Ursprungligt granskningsdokument",
+  current: "Visa fakturafil",
   empty: "Skapa en sparad kopia att förhandsvisa eller ladda ner.",
   refresh: "Uppdatera dokument",
   resume: "Slutför dokumentet",

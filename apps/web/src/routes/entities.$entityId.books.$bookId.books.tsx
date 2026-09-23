@@ -5,16 +5,18 @@ import { Box } from "@open-erp/ui/components/box";
 import { Text } from "@open-erp/ui/components/typography";
 import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
+import { RecordSheet } from "@open-erp/ui/components/record-sheet";
 import { PageAction, PageContent } from "@open-erp/ui/components/accounting-page";
 import { PageTabs, PageTab } from "@open-erp/ui/components/workflow";
 import { useBookWorkspace, workspacePath, reviewPath } from "@/lib/book-context";
 import { PostingDraft } from "@/components/posting-recovery/draft";
-import { PostedRecords } from "@/components/posted-records";
+import { PostedRecords, PostedRecord } from "@/components/posted-records";
 import { ChartOfAccounts } from "@/components/account-register";
 import { frontendCopy } from "@/lib/frontend-copy";
 
 const search = Schema.Struct({
   view: Schema.optional(Schema.Literals(["journal", "vouchers", "accounts"])),
+  record: Schema.optional(Schema.String),
 });
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/books")({
   validateSearch: Schema.decodeUnknownSync(search),
@@ -22,7 +24,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/books")(
 });
 function Books() {
   const { book, setup, locale } = useBookWorkspace();
-  const { view = "vouchers" } = Route.useSearch();
+  const { view = "vouchers", record } = Route.useSearch();
   const navigate = useNavigate();
   const copy = frontendCopy(locale);
   const base = `${workspacePath(book)}/books`;
@@ -53,6 +55,23 @@ function Books() {
           <PostedRecords book={book} locale={locale} setup={setup} onPrepared={onPrepared} />
         ) : null}
         {view === "accounts" ? <ChartOfAccounts /> : null}
+        {record && view === "vouchers" ? (
+          <RecordSheet
+            title={copy.voucher}
+            closeLabel={copy.returnVouchers}
+            onClose={() =>
+              void navigate({ to: base, search: { view: "vouchers" }, resetScroll: false })
+            }
+          >
+            <PostedRecord
+              book={book}
+              locale={locale}
+              setup={setup}
+              id={record}
+              onPrepared={onPrepared}
+            />
+          </RecordSheet>
+        ) : null}
         {view === "journal" ? (
           <FormDialog
             title={copy.newEntry}

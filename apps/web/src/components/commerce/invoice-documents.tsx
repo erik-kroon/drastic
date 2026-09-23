@@ -46,7 +46,14 @@ function DocumentPanel(props: IssuedDocumentProps) {
     },
     retry: false,
   });
-  const selected = id || history.data?.items[0]?.id;
+  const current = history.data?.items.find(
+    (item) => item.generatorVersion === Documents.invoiceDocumentGenerator,
+  );
+  const earlier =
+    history.data?.items.filter(
+      (item) => item.generatorVersion !== Documents.invoiceDocumentGenerator,
+    ) ?? [];
+  const selected = id || current?.id;
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <AccountingStatus locale={locale} pending={history.isPending} error={history.error} />
@@ -63,34 +70,49 @@ function DocumentPanel(props: IssuedDocumentProps) {
           </Button>
         </Box>
       ) : null}
-      {history.isSuccess && !selected ? (
-        <>
-          <Text tone="muted">{copy.empty}</Text>
-          <CommandForm
-            {...props}
-            compact
-            recoveryId={issue.id}
-            path={`${commercePath(book)}/invoice-documents`}
-            schema={Documents.PrepareInvoiceDocument}
-            output={Documents.InvoiceDocumentView}
-            label={copy.prepare}
-            allowed={!history.isFetching}
-            input={() => ({
-              issueId: issue.id,
-              issueDigest: issue.digest,
-              generatorVersion: Documents.invoiceDocumentGenerator,
-            })}
-            onSuccess={(view) => {
-              checkScope(book, view.capture.scope);
-              if (
-                view.capture.input.issueId !== issue.id ||
-                view.capture.input.issueDigest !== issue.digest
-              )
-                throw new Error("Invoice document capture source mismatch");
-              setId(view.capture.id);
-            }}
-          />
-        </>
+      {history.isSuccess && !current ? <Text tone="muted">{copy.empty}</Text> : null}
+      <CommandForm
+        {...props}
+        compact
+        recoveryId={issue.id}
+        path={`${commercePath(book)}/invoice-documents`}
+        schema={Documents.PrepareInvoiceDocument}
+        output={Documents.InvoiceDocumentView}
+        label={copy.prepare}
+        allowed={history.isSuccess && !history.isFetching && !current}
+        input={() => ({
+          issueId: issue.id,
+          issueDigest: issue.digest,
+          generatorVersion: Documents.invoiceDocumentGenerator,
+        })}
+        onSuccess={(view) => {
+          checkScope(book, view.capture.scope);
+          if (
+            view.capture.input.issueId !== issue.id ||
+            view.capture.input.issueDigest !== issue.digest
+          )
+            throw new Error("Invoice document capture source mismatch");
+          setId(view.capture.id);
+        }}
+      />
+      {history.isSuccess && earlier.length ? (
+        <Disclosure label={copy.earlier} variant="toolbar">
+          <Box display="grid" gap="sm">
+            {earlier.map((item) => (
+              <Button key={item.id} variant="ghost" onClick={() => setId(item.id)}>
+                {copy.original} ·{" "}
+                {new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
+                  new Date(item.createdAt),
+                )}
+              </Button>
+            ))}
+            {current && selected !== current.id ? (
+              <Button variant="outline" onClick={() => setId(current.id)}>
+                {copy.current}
+              </Button>
+            ) : null}
+          </Box>
+        </Disclosure>
       ) : null}
       {selected && !history.isError ? (
         <InvoiceDocumentInspector {...props} key={selected} id={selected} />
@@ -250,7 +272,10 @@ async function verifyDocument(
     artifact.issueDigest !== capture.source.issue.digest ||
     artifact.issueId !== capture.source.issue.id ||
     artifact.generatorVersion !== capture.generatorVersion ||
-    artifact.filename !== `${capture.id}.html` ||
+    artifact.filename !==
+      (capture.generatorVersion === Documents.invoiceDocumentLegacyGenerator
+        ? `${capture.id}.html`
+        : `invoice-${capture.source.issue.internalDocumentNumber.replace(/[^a-zA-Z0-9_-]/g, "")}.html`) ||
     artifact.byteLength < 1 ||
     artifact.byteLength > Documents.invoiceDocumentMaxBytes ||
     capture.source.issue.reviewId !== capture.source.review.id ||

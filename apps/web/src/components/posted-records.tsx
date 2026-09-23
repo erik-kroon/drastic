@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
-import { VoucherPage } from "@open-erp/contracts/accounting";
+import { Voucher, VoucherPage } from "@open-erp/contracts/accounting";
+import { RecordHeading } from "@open-erp/ui/components/record-layout";
 import { RefreshCw } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
@@ -192,6 +193,43 @@ export function PostedRecords(props: PostedRecordsProps) {
         </>
       ) : null}
     </Box>
+  );
+}
+
+export function PostedRecord(props: PostedRecordsProps & { id: string }) {
+  const { book, id, locale } = props;
+  const record = useQuery({
+    queryKey: [...bookKey(book), "voucher", id],
+    queryFn: async ({ signal }) => {
+      const value = await readAccounting(
+        `${bookPath(book)}/vouchers/${encodeURIComponent(id)}`,
+        Voucher,
+        { signal },
+      );
+      if (value.id !== id) throw new Error("Voucher identity mismatch");
+      return value;
+    },
+    retry: false,
+  });
+  const voucher = record.isSuccess ? record.data : undefined;
+  return (
+    <>
+      <AccountingStatus locale={locale} pending={record.isPending} error={record.error} />
+      {record.isError ? (
+        <Button variant="outline" onClick={() => void record.refetch()}>
+          {locale === "sv" ? "Försök igen" : "Try again"}
+        </Button>
+      ) : null}
+      {voucher ? (
+        <>
+          <RecordHeading
+            title={`${voucher.action.series}${voucher.number} · ${voucher.action.description}`}
+            subtitle={voucher.action.postingDate}
+          />
+          <VoucherDetails {...props} voucher={voucher} />
+        </>
+      ) : null}
+    </>
   );
 }
 

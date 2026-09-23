@@ -223,3 +223,49 @@ Owned5100 checks: `oxfmt --write` passed for three TypeScript files and three do
 references scoped authorization, book/job state, existing job-body/replay/command-result owners
 and typed refusal. No tests/helpers/fixtures, shared typechecks, SQL/migration/runtime/provider
 execution, operations CLI/domain changes, UI, deployment/dependencies or VCS action was performed.
+
+## Forward6000: preparation stop-reason local binding
+
+### Failure contract before implementation
+
+The latest2800 executor assigns an unlabeled local `reason`, then uses
+`execute_preparation_job.reason` in its stop UPDATE. Function-name qualification addresses
+parameters, not this local (the same binding rule is recorded in0111). A current authorized
+delivery that detects revoked submitter authority, disabled identity, changed audit or a
+non-ready run can therefore fail in SQL instead of committing the intended stopped job.
+
+- Rename only that local to unambiguous `stop_reason`, including assignments, branch condition
+  and the stop UPDATE value. Preserve every existing reason string byte for byte.
+- Preserve executor authorization, retained submitter credential/session/identity/member checks,
+  lock order and book/job barriers.2800 disabled-identity containment remains unchanged.
+- Terminal and older-step deliveries still return before fresh stop classification. Invalid or
+  future checkpoints retain their existing refusal;5100-stopped jobs cannot advance.
+- On a stop, change only the existing state/reason/checkedAt projection. Preserve checkpoint,
+  expected audit, run cursor/results/audit, captured identities and prepared/posted records.
+- Valid current delivery still uses the exact jobId_step_N advancement key and existing atomic
+  run/job transaction. No retry, resume, replacement, provider or financial authority is added.
+- Replace only the latest execute_preparation_job function, preserving its signature and grants.
+  Historical0940/2800 and explicit5100 stop remain untouched. No public schema/wiring change.
+
+### Implemented repair and review handoff
+
+`6000-preparation-stop-reason-binding.sql` forward-replaces only
+`execute_preparation_job(text,jsonb,text,integer)` from2800. Its local declaration, five reason
+assignments and branch condition now use `stop_reason`; the stop UPDATE uses
+`reason=stop_reason` rather than qualifying an unlabeled local by the function name. All five
+reason string literals are identical to2800. The normal advancement branch still writes the
+result blocker's message as before.
+
+The full function otherwise remains unchanged: current authorization, submitter/identity checks,
+locks, terminal/old-step return, future-step refusal, stopped-state projection, exact advancement
+key, job checkpoint increment and expected-audit calculation. This repairs existing containment;
+it does not add another stop condition, permission or workflow policy. Explicit5100 stop and the
+existing scheduler/Workflow remain unchanged. No grant, shared registry, contract or UI change
+is needed; CREATE OR REPLACE preserves the owning signature and privileges.
+
+Source comparison confirms all SQL string literals and every non-binding expression match2800.
+Pending separately authorized observations cover each existing stop reason, terminal and
+old/future-step handling, a valid advancing chunk, duplicate delivery and the5100-stopped path.
+No tests, SQL compilation/application or runtime observations were performed. Source reasoning
+alone does not establish PostgreSQL execution or concurrency correctness. Root owns common
+plan01/07/status notes and independent full-function review.

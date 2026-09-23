@@ -2,6 +2,7 @@ import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import * as Accounting from "./accounting";
 import { accountingErrors as errors } from "./accounting-errors";
+import * as Workspace from "./bank-workspace";
 
 const SourceKey = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200));
 const SignedAmount = Schema.String.check(Schema.isPattern(/^(0|-?[1-9][0-9]{0,37})$/));
@@ -133,6 +134,11 @@ const scoped = { params: Accounting.Scope, error: errors };
 const identified = { params: Accounting.ChangePath, error: errors };
 const mutation = { ...scoped, headers: Accounting.IdempotencyHeaders };
 export const ReconciliationApi = HttpApiGroup.make("reconciliation").add(
+  HttpApiEndpoint.get("bankWorkspace", `${bookPath}/bank-workspace`, {
+    ...scoped,
+    query: Workspace.BankWorkspaceQuery,
+    success: Workspace.BankWorkspace,
+  }),
   HttpApiEndpoint.post("importBankStatement", `${bookPath}/bank-statements`, {
     ...mutation,
     payload: ImportBankStatement.annotate({ parseOptions: { onExcessProperty: "error" } }),

@@ -304,6 +304,8 @@ const statements = {
     sql`select openerp.match_bank_observation(${parameters[0]}::text, ${parameters[1]}::jsonb, ${parameters[2]}::text, ${parameters[3]}::jsonb) as result`,
   reconcileBank: (parameters) =>
     sql`select openerp.reconcile_bank(${parameters[0]}::text, ${parameters[1]}::jsonb, ${parameters[2]}::text, ${parameters[3]}::jsonb) as result`,
+  bankWorkspace: (parameters) =>
+    sql`select openerp.bank_workspace(${parameters[0]}::text, ${parameters[1]}::jsonb, ${parameters[2]}::jsonb) as result`,
   getBankReconciliation: (parameters) =>
     sql`select openerp.get_bank_reconciliation(${parameters[0]}::text, ${parameters[1]}::jsonb, ${parameters[2]}::text) as result`,
   prepareReport: (parameters) =>

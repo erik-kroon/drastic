@@ -5,6 +5,7 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {
+    "./bank-workspace": "./src/bank-workspace.ts",
     "./sales-register": "./src/sales-register.ts",
     "./identity": "./src/identity.ts",
     "./firms": "./src/firms.ts",

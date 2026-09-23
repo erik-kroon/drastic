@@ -381,7 +381,7 @@ function SalesPagination(props: {
         {(data.total === 1 ? labels.invoice : labels.invoices).toLocaleLowerCase(locale)}
         {props.searching ? ` · ${labels.matchingSearch}` : ""}
       </PageCaption>
-      {page > 1 || pages > 1 ? (
+      {page <= pages && (page > 1 || pages > 1) ? (
         <Box display="flex" gap="sm" alignItems="center">
           <Button
             variant="ghost"

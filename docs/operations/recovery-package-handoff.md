@@ -45,7 +45,6 @@ Existing `openerp.authenticate`/authorization admit credentials/sessions/members
 3. Review source/destination isolation and all catalog SQL before any separately authorized rehearsal. The v2 source release must exactly match the source's applied migration filenames/checksums, including0900; outstanding domain migrations therefore require a coherent reviewed release, not silent omission.
 4. Only after separate authority, execute the documented synthetic release→backup→inspect→fresh restore procedure. Retain failure/quarantine diagnostics and do not enable an application/provider to obtain a green result. A successful CLI receipt still has application recovery blocked.
 
-
 ## Durable work follow-up (current source)
 
 See [durable work recovery](durable-work-recovery.md) for the pre-edit failure contract,

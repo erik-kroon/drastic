@@ -225,8 +225,21 @@ export function InvoiceDetail(
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <AccountingStatus locale={locale} pending={invoice.isPending} error={invoice.error} />
-      {!ready ? <Text>{copy.waiting}</Text> : null}
-      {invoice.data ? (
+      {invoice.isError ? (
+        <Box display="grid" gap="sm">
+          <Text>{copy.waiting}</Text>
+          <Box>
+            <Button
+              variant="outline"
+              disabled={invoice.isFetching}
+              onClick={() => void invoice.refetch()}
+            >
+              {copy.refresh}
+            </Button>
+          </Box>
+        </Box>
+      ) : null}
+      {invoice.isSuccess && invoice.data ? (
         <>
           <RecordHeading
             title={invoice.data.documentNumber}

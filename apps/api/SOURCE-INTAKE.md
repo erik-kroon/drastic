@@ -213,3 +213,73 @@ Owned checks: `oxfmt --write` passed for three TypeScript files and two domain d
 confirmed the existing storage query and original-content handler remained unchanged. No shared
 typecheck, tests/helpers/fixtures, SQL/runtime/object-store access, UI, migration, provider,
 external/dependency/deployment or VCS action was performed. Root owns shared binding/type checks.
+
+## Forward5900: exact source-mapping currentness
+
+### Failure contract before implementation
+
+A preview may map retained source S to ledger account A before either has a bank mapping. A later
+statement can map S to B. Existing account-A dependencies remain equal because that import only
+increments B's source revision. The preview GET/capture can then claim current dependencies and
+fresh approval can succeed even though the unchanged bank importer refuses the conflicting map.
+
+- Reuse the existing two-way mapping conflict policy: A mapped to another source or S mapped to
+  another account. Bind the check to this book, exact retained occurrence and mapped account.
+- Unknown/foreign occurrence and null mapped-account inputs fail closed. No cross-book lookup,
+  global source revision, full-inventory dependency or automatic remapping is introduced.
+- Apply the private predicate to fresh approval/admission and separate GET/capture currentness.
+  Check under the existing book barrier that orders source imports. Do not broaden the immutable
+  dependency object/digest; unrelated T-to-B imports must not stale S-to-A through this check.
+- Preserve exact-key replay before fresh checks and already-admitted recovery before admission
+  checks. Old saved approvals/captures remain historical results, not fresh eligibility claims.
+- Preserve3200 supersession and3900 capture allowlists/currentness. Old artifact bytes, previews,
+  retained originals, reviewers, receipts and original bank-import fence remain unchanged.
+- Reparse still uses the existing parser: conflicting mappings produce its source_mapping
+  diagnostic; only an explicit corrected mapping can change a new interpretation.
+- Do not change public contracts, role checks, routes, storage, posting authority or UI.
+
+### Implemented source and review handoff
+
+`5900-source-mapping-currentness.sql` adds private
+`intake_source_mapping_current(book, occurrenceId, accountId)`. It returns a boolean from the
+exact retained book/occurrence plus the existing two-way `bank_sources` conflict predicate. It
+returns false for missing/foreign occurrences or a null account. It adds no account-role policy,
+inventory version or dependency field. The predicate takes no locks itself; all four callers
+already hold the shared/exclusive book barrier used to order native source imports.
+
+Fresh0510 approval and admission extend their existing stale-dependency condition with this
+predicate. A cross-account mapping conflict now refuses before new approval or evidence/import
+work.3200 preview GET and3900 new review capture separately AND the same predicate into their
+existing currentness flag. Capture still succeeds for stale history with the flag false. Its
+saved bytes/digest describe that capture, never a retroactive rewrite of an older capture.
+
+The replacement functions were taken from their latest owners:0510 approve/admit,3200 GET and
+3900 capture. Each function diff adds only its predicate use to the existing currentness check.
+Successful command replay remains before new checks; the admission's existing admitted-result
+recovery branch remains before the fresh guard.3200 supersession check/approval withholding and
+physical supersession guards remain, as do3900 reviewer/admission allowlists, full-history bounds,
+canonical bytes/hash/length and immutable artifact insertion. Original importer conflict checks
+remain the final admission authority. No public function signature or grant changes; the new
+private helper is revoked from PUBLIC and runtime.
+
+The original `intake_dependencies` body, preview dependencies/digests, parser bytes/diagnostics,
+retained mappings and source revisions are unchanged. Only an actually conflicting mapping adds
+staleness: an unrelated T-to-B import cannot change this predicate for S-to-A. Other existing
+staleness reasons still apply independently. An already established matching S-to-A map is not a
+new conflict; imports on A may still change its original sourceRevision dependency as before.
+
+No contract, HTTP/MCP, query registry, storage adapter or UI wiring is required. Existing consumers
+already read `dependenciesCurrent`; existing reparse continues to require an explicit reviewed
+mapping and retains its original source_mapping diagnostics. Root owns common plan/status notes.
+
+Source-reviewed cases: previously unmapped S-to-A followed by S-to-B; A occupied by another
+source; matching mapping; unrelated source/account mapping; missing/foreign occurrence and null
+account; old-key approval/admission/capture replay; fresh stale checks; admitted recovery;
+superseded preview; and old capture/preview identity preservation. No runtime/concurrency or SQL
+compilation/application evidence is claimed. Migration execution requires separate authorization.
+
+Owned validation: formatting passed for the two focused domain documents. Source diffs confirmed
+only four predicate uses plus the private helper; original0510/3200/3900 files stayed unchanged.
+No TypeScript changed, so no owned TypeScript lint/typecheck was needed. No tests/helpers/fixtures,
+SQL compilation/execution/application, runtime/provider/storage access, common wiring/docs, UI,
+dependency/deployment or VCS action was performed. Root retains integration and independent review.

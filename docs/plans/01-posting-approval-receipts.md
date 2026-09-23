@@ -90,3 +90,13 @@ Successful replay preserves the saved result. A later delivery cannot advance th
 but a deliberate new admission remains separate. See [AUTOMATION.md](../../apps/api/AUTOMATION.md#forward5100-stop-one-admitted-preparation-job).
 This is PST-05 containment, not remote Workflow termination or posting authority. Runtime and
 concurrency acceptance remain pending.
+
+### Native background-job stop binding
+
+Forward6000 fixes an invalid function-qualified reference to an unlabeled PL/pgSQL local
+in the automatic stop branch. The distinct `stop_reason` local now supplies the retained
+job reason. Revocation/expiry, disabled identity, executor-role loss, changed audit and
+non-ready run conditions keep their original reasons and precedence. Authorization, lock
+order, terminal/old-step recovery, checkpoint/result/audit handling and advancement keys
+are unchanged. Independent source review found no extra behavioral change.
+See [automation](../../apps/api/AUTOMATION.md). No SQL/runtime execution was performed.

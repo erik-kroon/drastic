@@ -139,3 +139,18 @@ command material; cross-book/role-loss rejection; digest mismatch; concurrent ca
 admission; response-loss same-key recovery; all bounds; and independent UTF-8 length/hash plus
 original-source hash comparison. No tests, fixtures, migrations, database execution, UI/browser,
 external calls, dependency changes or VCS actions were performed.
+
+## Forward5900: mapping-aware captured currentness
+
+New captures now AND the existing dependency/supersession currentness result with the exact
+retained occurrence's live two-way source-account mapping check. A source mapped to another
+ledger account can otherwise leave the originally selected account's sourceRevision unchanged.
+The new flag reports false for that conflict without blocking historical capture or inventing
+admission authority. Fresh source approval/admission and preview GET use the same private check.
+Unrelated source/account mappings do not stale this predicate.
+
+Only new `stateAtCapture.dependenciesCurrent` calculation changes. Exact-key replay and old
+capture retrieval return their saved bytes unchanged; no old digest, preview, review/admission
+allowlist, capture bound or original-byte locator is rewritten. Shared authorization/book-lock
+order and actor constraints are unchanged. See [SOURCE-INTAKE.md](SOURCE-INTAKE.md#forward5900-exact-source-mapping-currentness)
+for the failure contract and source-only review boundary. No public schema or wiring change.

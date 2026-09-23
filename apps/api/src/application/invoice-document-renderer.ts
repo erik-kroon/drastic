@@ -1,136 +1,78 @@
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Documents from "@open-erp/contracts/invoice-documents";
 import type * as Drafts from "@open-erp/contracts/invoice-drafts";
+import { amount, text, renderInvoiceReviewDocument } from "./invoice-document-review-renderer";
 
-const boundary = "SYNTHETIC REVIEW DOCUMENT — NOT A LEGAL INVOICE — NOT DELIVERED";
-
-function unsupported(message: string): never {
-  throw new Accounting.AccountingError({ code: "UnsupportedProfile", message });
-}
-
-// Source values only enter text nodes. Controls are displayed, never interpreted.
-function text(value: string | null) {
-  if (value === null) return "Not supplied";
-  if (!value.isWellFormed()) unsupported("The captured document text contains malformed Unicode.");
-  return value.replaceAll("\r\n", "\n").replaceAll("\r", "\n").replace(/[\p{Cc}\p{Cf}]/gu,
-    (character) => character === "\n" || character === "\t" ? character
-      : `[U+${character.codePointAt(0)?.toString(16).toUpperCase().padStart(4, "0")}]`)
-    .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;").replaceAll("'", "&#39;");
-}
-function fact(label: string, value: string | null) {
-  return `<dt>${label}</dt><dd><pre>${text(value)}</pre></dd>`;
-}
-function identity(label: string, value: typeof Drafts.DraftIdentity.Type) {
-  return `<section><h2>${label} (captured, not independently verified)</h2><dl>${[
-    fact("Name", value.legalName), fact("Registration ID", value.registrationId),
-    fact("Tax ID", value.taxId), fact("Address", value.address), fact("Country code", value.countryCode),
-  ].join("")}</dl></section>`;
-}
-function amount(value: string | null, scale: number) {
-  if (value === null || !/^(?:0|-?[1-9][0-9]{0,40})$/.test(value))
-    return unsupported("The issued source requires exact bounded amounts for every rendered amount.");
-  const negative = value.startsWith("-");
-  const digits = (negative ? value.slice(1) : value).padStart(scale + 1, "0");
-  return `${negative ? "-" : ""}${scale === 0 ? digits : `${digits.slice(0, -scale)}.${digits.slice(-scale)}`}`;
-}
-
-/** Pure fixed English/UTF-8/LF rendering. No current-state reads, clock, locale or assets. */
+/** Versioned, self-contained historical invoice. The original renderer remains byte-stable. */
 export function renderInvoiceDocument(capture: typeof Documents.InvoiceDocumentCapture.Type) {
-  if (capture.generatorVersion !== Documents.invoiceDocumentGenerator || capture.language !== "en"
-    || capture.format !== "synthetic-invoice-review-html") unsupported("Unsupported invoice document rendering profile.");
-  const { review, issue } = capture.source;
+  const reviewBytes = renderInvoiceReviewDocument(capture);
+  if (capture.generatorVersion === Documents.invoiceDocumentLegacyGenerator) return reviewBytes;
+  const { issue, review } = capture.source;
   const draft = review.draftSnapshot;
   const content = draft.content;
-  const scale = content.currencyScale;
-  if (scale < 0 || scale > 6 || !Number.isInteger(scale)
-    || content.lines.length < 1 || content.lines.length > 50 || draft.calculatedLines.length !== content.lines.length
-    || issue.id !== capture.input.issueId || issue.digest !== capture.input.issueDigest
-    || issue.reviewId !== review.id || issue.reviewDigest !== review.digest
-    || issue.draftId !== draft.id || issue.draftRevision !== draft.revision || issue.draftDigest !== draft.digest
-    || issue.postingReceipt.changeSetId !== review.postingPlan.id
-    || issue.postingReceipt.planDigest !== review.postingPlan.planDigest
-    || draft.totals.taxMinor !== "0" || content.plannedIssueDate === null || content.dueDate === null)
-    unsupported("The complete immutable synthetic issued source is required for rendering.");
-  const rows = content.lines.map((line, index) => {
-    const calculated = draft.calculatedLines[index];
-    if (!calculated || calculated.id !== line.id || line.taxMinor !== "0")
-      return unsupported("Every captured line must have its matching synthetic calculation.");
-    return `<tr><th scope="row">${text(line.id)}</th><td>${text(line.description)}</td><td>${text(line.quantity)}</td>${[
-      line.unitPriceMinor, line.baseMinor, line.discountMinor, line.chargeMinor,
-      calculated.netMinor, line.taxMinor, calculated.grossMinor,
-    ].map((value) => `<td>${amount(value, scale)}</td>`).join("")}<td>${text(line.taxDescription)}</td></tr>`;
-  }).join("\n");
-  const totals = [
-    ["Base", draft.totals.baseMinor], ["Discounts", draft.totals.discountMinor],
-    ["Charges", draft.totals.chargeMinor], ["Net", draft.totals.netMinor],
-    ["Asserted tax", draft.totals.taxMinor], ["Total", draft.totals.grossMinor],
-    ["Declared source total", content.sourceTotalMinor],
-  ].map(([label, value]) => `<tr><th scope="row">${text(label ?? null)}</th><td>${amount(value ?? null, scale)}</td></tr>`).join("\n");
-  const evidence = [
-    ["Issue source", review.evidence.id, review.evidence.sha256],
-    ["Seller identity", draft.sellerEvidence.evidenceId, draft.sellerEvidence.sha256],
-    ["Customer identity", draft.customerEvidence.evidenceId, draft.customerEvidence.sha256],
-    ["Counterparty revision", draft.counterparty.evidence.evidenceId, draft.counterparty.evidence.sha256],
-    ...draft.calculatedLines.flatMap((line) => line.taxEvidence ? [[`Asserted tax: ${line.id}`, line.taxEvidence.evidenceId, line.taxEvidence.sha256]] : []),
-  ].map((row) => `<tr>${row.map((value) => `<td>${text(value)}</td>`).join("")}</tr>`).join("\n");
-  const journal = review.postingPlan.groups.flatMap((group) => group.actions.flatMap((action) => action.lines.map((line) =>
-    `<tr><td>${text(line.lineId)}</td><td>${text(line.accountId)}</td><td>${amount(line.debitMinor, scale)}</td><td>${amount(line.creditMinor, scale)}</td><td>${text(line.description)}</td></tr>`,
-  ))).join("\n");
+  const money = (value: string | null) => {
+    const exact = amount(value, content.currencyScale);
+    const [whole = "", fraction] = exact.split(".");
+    return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, " ")}${fraction === undefined ? "" : `.${fraction}`}`;
+  };
+  const lines = content.lines
+    .map((line, index) => {
+      const calculated = draft.calculatedLines[index];
+      if (!calculated)
+        throw new Accounting.AccountingError({
+          code: "UnsupportedProfile",
+          message: "The complete captured invoice calculation is required.",
+        });
+      const adjustments = [
+        line.discountMinor !== "0" ? `Discount ${money(line.discountMinor)}` : "",
+        line.chargeMinor !== "0" ? `Charge ${money(line.chargeMinor)}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      return `<tr><td><strong>${text(line.description)}</strong>${line.taxDescription ? `<small>${text(line.taxDescription)}</small>` : ""}${adjustments ? `<small>${adjustments}</small>` : ""}</td><td class="number">${text(line.quantity)}</td><td class="number">${money(line.unitPriceMinor)}</td><td class="number">${money(calculated.netMinor)}</td></tr>`;
+    })
+    .join("\n");
+  const retained = new TextDecoder().decode(reviewBytes);
+  const audit = retained.slice(retained.indexOf("<main>") + 6, retained.indexOf("</main>"));
   const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
-<title>Synthetic invoice review document</title>
+<title>Invoice ${text(issue.internalDocumentNumber)} · ${text(content.seller.legalName)}</title>
+<style>${invoiceStyles}</style>
 </head>
 <body>
-<header><h1>${boundary}</h1><p>This retained historical review artifact is not a legal invoice, a payment instruction or proof of delivery. No legal format, VAT treatment or external acceptance is established.</p></header>
-<main>
-<h2>Internal synthetic document ${text(issue.internalDocumentNumber)}</h2>
-<p>The SYN number is internal only. It is not a legal invoice number. The source draft's historical draft status does not replace the committed synthetic issue receipt shown here.</p>
-<dl>${[
-    fact("Title", content.title), fact("Captured issue date", content.plannedIssueDate),
-    fact("Captured supply date", content.supplyDate), fact("Captured due date", content.dueDate),
-    fact("Captured payment terms (not an instruction)", content.paymentTerms),
-    fact("Currency", content.currency), fact("Currency scale", String(scale)),
-    fact("Issued at", issue.createdAt), fact("Draft identity / revision", `${draft.id} / ${draft.revision}`),
-  ].join("")}</dl>
-${identity("Seller", content.seller)}
-${identity("Customer", content.customer)}
-<section><h2>Captured commercial lines</h2><p>Amounts use exact decimal notation at the captured currency scale. No exchange conversion or rounding is applied. Asserted zero tax is an evidenced synthetic input, not a VAT exemption or legal tax conclusion.</p>
-<table><caption>All captured invoice lines</caption><thead><tr><th scope="col">Line</th><th scope="col">Description</th><th scope="col">Quantity</th><th scope="col">Unit price</th><th scope="col">Base</th><th scope="col">Discount</th><th scope="col">Charge</th><th scope="col">Net</th><th scope="col">Asserted tax</th><th scope="col">Gross</th><th scope="col">Captured tax description</th></tr></thead><tbody>
-${rows}
-</tbody></table></section>
-<section><h2>Captured totals (${text(content.currency)})</h2><table><caption>Immutable issue totals, not current outstanding balances</caption><thead><tr><th scope="col">Amount</th><th scope="col">Value</th></tr></thead><tbody>
-${totals}
-</tbody></table></section>
-<section><h2>Committed synthetic posting and register identities</h2><p>This document does not post again. It does not describe later allocations, corrections, current balances or current company details.</p><dl>${[
-    fact("Issue ID", issue.id), fact("Review ID", review.id), fact("Register invoice ID", issue.registerInvoiceId),
-    fact("Posting receipt ID", issue.postingReceipt.id), fact("Voucher ID", issue.postingReceipt.voucherId),
-    fact("Series", review.input.series), fact("Voucher number", issue.postingReceipt.voucherNumber),
-    fact("Ledger sequence at posting", issue.postingReceipt.sequence), fact("Posted at", issue.postingReceipt.committedAt),
-  ].join("")}</dl><table><caption>Captured approved journal lines</caption><thead><tr><th scope="col">Line</th><th scope="col">Account ID</th><th scope="col">Debit</th><th scope="col">Credit</th><th scope="col">Description</th></tr></thead><tbody>
-${journal}
-</tbody></table></section>
-<section><h2>Retained evidence references</h2><p>Evidence content is not embedded or fetched. References are plain text, not links.</p><table><caption>Captured evidence identities and SHA-256 hashes</caption><thead><tr><th scope="col">Use</th><th scope="col">Evidence ID</th><th scope="col">SHA-256</th></tr></thead><tbody>
-${evidence}
-</tbody></table></section>
-<section><h2>Unresolved legal boundaries</h2><ul>${issue.legalBlockers.map((blocker) => `<li>${text(blocker)}</li>`).join("")}</ul></section>
-<section><h2>Artifact provenance</h2><dl>${[
-    fact("Entity / book", `${capture.scope.entityId} / ${capture.scope.bookId}`),
-    fact("Capture ID", capture.id), fact("Capture digest", capture.digest), fact("Source digest", capture.sourceDigest),
-    fact("Issue digest", issue.digest), fact("Review digest", review.digest), fact("Draft digest", draft.digest),
-    fact("Generator", capture.generatorVersion), fact("Capture created at", capture.createdAt),
-    fact("Format", "Self-contained HTML; fixed English; UTF-8; LF line endings"),
-  ].join("")}</dl></section>
+<main class="paper">
+<div class="demo"><strong>Demo invoice</strong><span>For review only · Not a legal invoice · Not sent</span></div>
+<header class="heading"><div><p class="eyebrow">${text(content.seller.legalName)}</p><h1>Invoice</h1><p class="description">${text(content.title)}</p></div><div class="invoice-number"><p class="eyebrow">Invoice reference</p><strong>${text(issue.internalDocumentNumber)}</strong><p>Internal demo reference</p></div></header>
+<div class="parties">${party("From", content.seller)}${party("Bill to", content.customer)}<section><h2>Details</h2><dl class="dates"><dt>Invoice date</dt><dd>${text(content.plannedIssueDate)}</dd><dt>Due date</dt><dd>${text(content.dueDate)}</dd>${content.supplyDate ? `<dt>Supply date</dt><dd>${text(content.supplyDate)}</dd>` : ""}<dt>Currency</dt><dd>${text(content.currency)}</dd></dl></section></div>
+<table class="items"><thead><tr><th>Description</th><th class="number">Qty</th><th class="number">Unit price</th><th class="number">Amount (${text(content.currency)})</th></tr></thead><tbody>${lines}</tbody></table>
+<div class="settlement"><section class="terms"><h2>Terms</h2><p>${text(content.paymentTerms)}</p><p class="muted">Demo only. No payment is requested.</p></section><dl class="totals"><dt>Subtotal</dt><dd>${money(draft.totals.netMinor)}</dd><dt>Tax</dt><dd>${money(draft.totals.taxMinor)}</dd><dt class="total">Total</dt><dd class="total">${money(draft.totals.grossMinor)} <span>${text(content.currency)}</span></dd></dl></div>
+<footer><p>This copy preserves the invoice details at issue. Later payments, cancellations and company changes are recorded separately.</p><p class="boundary">SYNTHETIC REVIEW DOCUMENT — NOT A LEGAL INVOICE — NOT DELIVERED</p></footer>
 </main>
-<footer><h2>${boundary}</h2><p>Historical only. Downloading or printing this artifact does not issue another number, post, deliver, activate VAT treatment or establish legal compliance.</p></footer>
+<details class="audit"><summary>Accounting record and source details</summary><div>${audit}</div></details>
 </body>
 </html>
 `;
   const bytes = new TextEncoder().encode(html);
-  if (bytes.length > Documents.invoiceDocumentMaxBytes) unsupported("The complete synthetic document exceeds1 MiB. No truncated artifact is supported.");
+  if (bytes.length > Documents.invoiceDocumentMaxBytes)
+    throw new Accounting.AccountingError({
+      code: "UnsupportedProfile",
+      message: "The complete invoice document exceeds 1 MiB. No truncated artifact is supported.",
+    });
   return bytes;
 }
+
+function party(label: string, identity: typeof Drafts.DraftIdentity.Type) {
+  return `<section><h2>${label}</h2><p><strong>${text(identity.legalName)}</strong></p>${identity.address ? `<p class="address">${text(identity.address)}</p>` : ""}${identity.countryCode ? `<p>${text(identity.countryCode)}</p>` : ""}${identity.registrationId ? `<p class="muted">Registration ${text(identity.registrationId)}</p>` : ""}${identity.taxId ? `<p class="muted">Tax ID ${text(identity.taxId)}</p>` : ""}</section>`;
+}
+
+// Fixed document CSS is embedded in the artifact; no fonts, images or scripts are fetched.
+const invoiceStyles = `
+*{box-sizing:border-box}body{margin:0;padding:32px;background:#f3f3f1;color:#202326;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.paper{max-width:880px;margin:0 auto;padding:42px 48px;background:#fff;border:1px solid #e2e3df;min-height:1000px}.demo{display:flex;justify-content:space-between;gap:16px;font-size:11px;border-bottom:1px solid #dedfdc;padding-bottom:14px;margin-bottom:42px;color:#5c6061}.demo strong{text-transform:uppercase;letter-spacing:.1em;font-size:10px}.heading{display:flex;justify-content:space-between;gap:32px;margin-bottom:52px}.eyebrow{font-size:12px;margin:0 0 12px;color:#626668}h1{font:48px/1.1 Georgia,serif;margin:0 0 16px;letter-spacing:-1px}.description{margin:0;max-width:430px;color:#626668;white-space:pre-wrap}.invoice-number{text-align:right;min-width:140px}.invoice-number>strong{font-size:22px;font-weight:500;letter-spacing:-.5px}.invoice-number>p:last-child{font-size:11px;color:#777b7d;margin-top:8px}.parties{display:grid;grid-template-columns:1fr 1fr 1fr;gap:32px;margin-bottom:44px}h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:500;color:#666b6d;margin:0 0 14px}p{margin:0 0 4px}.address{white-space:pre-wrap}.muted{color:#717678;font-size:12px}.parties strong{font-weight:550}.dates{display:grid;grid-template-columns:auto auto;gap:6px 12px;margin:0;font-size:12px}.dates dt{color:#717678}.dates dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}.items{width:100%;border-collapse:collapse;table-layout:auto}.items th{text-align:left;padding:12px 10px 12px 0;border-block:1px solid #dfe1de;font-size:11px;font-weight:500;color:#666b6d}.items td{padding:20px 10px 20px 0;vertical-align:top;border-bottom:1px solid #eceeeb}.items td:first-child{width:52%;overflow-wrap:anywhere}.items strong{font-weight:500}.items small{display:block;font-size:11px;color:#777b7d;margin-top:5px;white-space:pre-wrap}.number{text-align:right!important;font-variant-numeric:tabular-nums;white-space:nowrap}.items th:last-child,.items td:last-child{padding-right:0}.settlement{display:grid;grid-template-columns:1fr 300px;gap:48px;margin-top:28px}.terms{padding-top:6px;white-space:pre-wrap}.terms>p{font-size:12px;margin-bottom:8px}.totals{margin:0;display:grid;grid-template-columns:1fr auto;gap:13px 24px;font-variant-numeric:tabular-nums}.totals dt{color:#717678}.totals dd{margin:0;text-align:right}.totals .total{border-top:1px solid #dfe1de;padding-top:18px;margin-top:5px;font-size:22px;color:#202326;font-weight:500}.totals .total span{font-size:12px;font-weight:400;color:#717678}footer{margin-top:92px;padding-top:20px;border-top:1px solid #e2e3df;color:#777b7d;font-size:10px;line-height:1.7}.boundary{font-size:9px;margin-top:10px;letter-spacing:.035em}.audit{max-width:880px;margin:16px auto;font-size:12px;color:#626668}.audit summary{cursor:pointer;padding:12px}.audit>div{padding:24px;background:white;border:1px solid #e2e3df;overflow:auto}.audit h2{margin-top:28px}.audit table{border-collapse:collapse;font-size:10px}.audit td,.audit th{border:1px solid #ddd;padding:6px}.audit pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.5 monospace}
+@media print{body{padding:0;background:white}.paper{border:0;max-width:none;min-height:0;padding:8mm}.audit{display:none}.items tr,.parties,.settlement{break-inside:avoid}thead{display:table-header-group}footer{margin-top:30px}@page{size:A4;margin:12mm}}
+`;

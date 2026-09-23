@@ -77,3 +77,18 @@ The4700 tax contribution and the1000-resource whole-read refusal remain intact. 
 closes early disclosure/admission gaps without adding disposal-aware correction authority
 or weakening4200's independent financial guards. See
 [disposal correction boundaries](../../apps/api/SUBLEDGER-DISPOSAL-CORRECTIONS.md).
+
+### Captured case context identifies correction aggregates
+
+Forward5700 freezes the exact owning correction bundle ID/digest and reversal/replacement
+role beside newly captured case and plan references. An owned latest plan directs REST/MCP
+next actions to complete-bundle recovery rather than standalone validation or correction.
+No-owner context, amounts, state, ordering and historical snapshot/replay bytes are unchanged.
+Ambiguous or malformed ownership refuses the new capture. This does not approve or execute
+any constituent and leaves every financial aggregate guard intact.
+See [case context](../../apps/api/CASES.md).
+
+The browser's hardcoded `PostingRecoveryReview` handoff is unchanged and remains an open
+UI integration gap. Backend routing metadata must not be described as a repaired browser
+flow. Independent source review found no actionable blocker within this backend scope;
+runtime behavior remains unverified.

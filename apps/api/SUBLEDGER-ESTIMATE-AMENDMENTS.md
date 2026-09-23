@@ -184,3 +184,116 @@ warnings/errors on the three owned TypeScript files. Source whitespace inspectio
 no trailing whitespace in the new SQL/handoff and changed TypeScript. No VCS command was
 used in this estimate packet. SQL compilation and shared types remain unverified by this
 worker; root owns the shared static checks.
+
+## Proposed6100: explicit remaining installment-count changes
+
+**Design and failure contract only. Not implemented or accepted as runtime evidence.**
+6100 is provisionally reserved pending an independent boundary review. The proposal extends
+this existing estimates command, not its authority or financial policy. No new endpoint,
+review artifact, table or UI flow is proposed.
+
+### Caller and exact-money boundary
+
+The existing operator-only `POST /api/v1/entities/:entityId/books/:bookId/schedules/:id/estimates`
+accepts the same `AmendScheduleEstimate` fields. The proposed new behavior permits a different
+positive installment-array length for the complete existing future suffix. For example,
+retained carrying cost900, recognized prefix300 and remaining600/residual0 can explicitly
+become three future200 installments or one future600 installment. The operator supplies each
+amount/date/period; no lifetime, final amount or rounding policy is inferred.
+
+Same-count requests retain4000 behavior and `remaining_estimate_v1`. Count-changing requests
+would emit `remaining_lifetime_v1` in the existing immutable revision, with the same reviewed
+input/basis/evidence/recognized/reversed fields and `explicit_remaining_minor_v1` allocation.
+`usefulPeriods` would equal retained prefix count plus new future count; it is a slot count,
+not a legal depreciation-life conclusion. The existing contract already accepts1–120 input
+installments; only its output amendment union needs the new kind.
+
+### Identity and retained-history contract
+
+- Require an existing, nonempty, entirely future/open unposted suffix. `firstOrdinal` remains
+  within the old occurrence array. A fully posted schedule cannot be reopened by this command.
+- Keep every posted or genuinely fully reversed prefix occurrence unchanged, including amount,
+  ordinal, date, period and event key. Refuse ambiguous/conflicted history or any retained
+  posted correction-bundle replacement, even if that replacement was later reversed.
+- For a count change, replace the complete future suffix with fresh server-generated event
+  keys, including overlapping ordinal positions. New current ordinals stay contiguous.
+  Reduction followed by extension must never resurrect a retired event key.
+- Reject duplicate new keys, any key retained in schedule revision history, and any existing
+  event with the same source/key. Source evidence and schedule/basis accounts remain frozen.
+- Old revisions, preparations, events, plans, approvals and receipts are never deleted,
+  repointed or marked executed. `previousDigest` plus full retained revisions records which
+  future identities were superseded; no separate retirement registry is needed.
+- Preserve the120-current-occurrence and20-revision bounds. Fresh generations permit at most
+ 2400 distinct retained occurrence keys; do not continue to claim120 identities for all history.
+  Preserve100 preparation attempts per schedule/ordinal across every generation, and existing
+  control/closing inventory limits. A new generation must not reset attempts or reclaim bounds.
+
+### Admission, conservation and stale-authority failures
+
+- Current operator/scope authorization, book-first lock and exact-key replay-before-freshness
+  remain unchanged. Changed input/key ownership conflicts; an old successful request still
+  returns its original immutable result, not a reconstruction of current terms.
+- Match exact current schedule and intact linked acquisition/imported-basis digests. Freeze
+  original gross/imported accumulation, carrying cost, source evidence, currency, accounts,
+  schedule kind and other terms except explicit future periods/count/amounts/residual/policy.
+- Check every old suffix occurrence, including removed ones: no posting/correction, no due
+  date, no locked original period. A count reduction is not a way to hide an unresolved effect.
+- Require at least one strictly positive new installment, nonnegative explicit residual and
+  no more than120 current occurrences including the retained prefix. Dates are future,
+  strictly increasing, after the basis and latest prefix posting/reversal, and within explicit
+  same-book open periods/fiscal years. No caller-supplied identities or accounts are accepted.
+- Require exact canonical bounded minor-unit strings and both equations:
+  `sum(new future amounts) = remainingMinor`;
+  `recognized prefix + remainingMinor + residualMinor = unchanged retained carrying cost`.
+  Reversed face amounts stay history and are not recognized again.
+- A new revision/digest must permanently stale every previous native future preparation,
+  including removed identities. Old approvals never transfer to a new key/amount/count.
+  Fresh native preparation and normal human posting approval are still required.
+- Retired keys remain protected from generic/manual/recurring/correction-replacement posting,
+  not merely absent from the current schedule. Exact old command replay remains historical
+  recovery and grants no renewed financial authority.
+- Normal new installment posting moves value from future to recognized without staling peers.
+  Later eligible reversal still changes conservation and blocks further recognition until
+  another reviewed estimate; disposal still blocks all later revisions and recognition.
+- Later same-count/date amendments preserve the current generated keys/count. Date-only
+  amendments keep3100's stronger financial freeze and its existing reversed-prefix limitation.
+
+### Owners and required independent challenge
+
+The proposed forward migration replaces only4000 `amend_schedule_estimate`,
+`subledger_basis_matches_revision`, `subledger_basis_revision_guard`, and0700
+`subledger_occurrence_states`. Existing route/statement, native preparation, physical posting,
+financial approval, getter, control, disposal and closing owners should remain unchanged.
+
+The state helper currently selects latest preparation by ordinal alone. It must additionally
+match the preparation's pinned revision occurrence event key and source evidence to the
+requested occurrence. Otherwise a fresh generation could display a retired preparation.
+Same-key date/amount amendments must keep current behavior. Do **not** filter1800 native
+preparation's latest-attempt lookup by generation: its stale-plan branch must see the retained
+maximum attempt and increment it, never restart the ordinal counter.
+
+The revision trigger must independently fence the new amendment's prefix bytes, positive
+count/period shape, fresh unique never-reused suffix identities, permitted `usefulPeriods`
+change, receipt operation, exact input/basis lineage and live conservation. Existing4000 and
+3100 branches keep their current checks. Malformed/ambiguous transitions refuse atomically.
+
+Boundary reasoning to challenge before approval:
+
+-4200 `subledger_posting_basis` includes current amended schedule digest.4200
+  `subledger_check_posting_basis` compares the full retained preparation capture.1800 shared
+  dependency validation and its book-locked BEFORE-voucher guard consume that check.
+- The4200 generic/correction-ancestry guard scans **all** retained schedule revisions, so
+  retiring a key from the active suffix must not release its provenance restriction.
+-1800 `prepare_schedule_occurrence` indexes the current contiguous slot, checks expected
+  digest and prior plan dependencies, then uses a fresh plan/approval and next retained attempt.
+-4000 `subledger_estimate_current` consumes the current occurrences and excludes only genuine
+  reversals.4200 disposal/control/closing and3950 closing dependencies consume the same current
+  revision/state; their digests must stale old captures without altering historical bytes.
+-5300 schedule reads already return full immutable revision history and independent live tax
+  references. All other count/ordinal consumers need source review for generation assumptions.
+
+No automatic lifetime/method/rounding, legal depreciation/tax/company treatment, fully posted
+reopening, zero/residual-only cessation, impairment, proceeds or changed carrying basis/accounts
+is proposed. Those remain outside this packet. No tests, helpers, fixtures, runtime/SQL
+compilation/application, provider calls, UI edits or VCS actions are authorized. Source review
+and any later static checks are not proof of concurrency, isolation or rollback behavior.

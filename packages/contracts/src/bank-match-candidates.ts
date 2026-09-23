@@ -15,7 +15,7 @@ export const DiscoverBankMatchCandidates = Schema.Struct({
 export const BankCandidateBlock = Schema.Literals([
   "account_inactive", "currency_mismatch", "source_no_capacity",
   "source_period_missing", "source_period_ambiguous", "source_period_locked",
-  "opposite_sign", "line_no_capacity", "reversing_voucher", "reversed_voucher",
+  "opposite_sign", "line_no_capacity", "tax_account_reserved", "reversing_voucher", "reversed_voucher",
   "posting_period_missing", "posting_period_ambiguous", "posting_period_locked",
 ]);
 export const BankCandidateReason = Schema.Literals([

@@ -134,8 +134,7 @@ const en = {
   request: "Captured request and outcome",
   saved: "Request completed. Retain the record ID and receipt.",
   invalid: "Check the required fields, identifiers, dates and exact minor-unit strings.",
-  waiting:
-    "Refresh this record before another change. Cached or failed reads do not grant authority.",
+  waiting: "Refresh this record to get the latest details before making changes.",
   newProposal:
     "Prepare a new proposal after a stale or rejected review. An unchanged retry only recovers the same command.",
   sourceNote:
@@ -275,8 +274,7 @@ const sv = {
   request: "Sparad begäran och resultat",
   saved: "Begäran slutfördes. Behåll post-ID och kvitto.",
   invalid: "Kontrollera obligatoriska fält, ID, datum och exakta minor-unit-strängar.",
-  waiting:
-    "Uppdatera posten före nästa ändring. Cachade eller misslyckade läsningar ger ingen behörighet.",
+  waiting: "Uppdatera posten för att hämta aktuella uppgifter innan du gör ändringar.",
   newProposal:
     "Förbered ett nytt förslag efter en inaktuell eller nekad granskning. Ett oförändrat återförsök återhämtar endast samma åtgärd.",
   sourceNote:

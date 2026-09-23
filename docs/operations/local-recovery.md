@@ -88,7 +88,6 @@ Follow [application recovery](application-recovery.md) for the exact root decisi
 
 Production remains blocked on verified storage/retention/key custody, actual company/profile facts, fenced single-writer/provider recovery, independent application exercise, reconciled acknowledged effects and separate authority. A backup older than an acknowledged posting/submission cannot be promoted as if that effect never existed.
 
-
 ## Durable work inventory extension (implemented source; runtime unverified)
 
 [Durable work recovery](durable-work-recovery.md) extends the existing commands with a

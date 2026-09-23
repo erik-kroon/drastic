@@ -56,13 +56,22 @@ export const Contribution = Schema.Struct({
   creditMinor: Accounting.MinorUnits,
   evidenceRefs: Accounting.PostingAction.fields.evidenceRefs,
 });
+export const ExplanationCursor = Schema.String.check(
+  Schema.isPattern(
+    /^[a-z][a-z0-9_-]{2,127}:[a-z][a-z0-9_-]{2,127}:[1-9][0-9]{0,18}:[1-9][0-9]{0,9}$/,
+    {
+      message:
+        "Use the report/account-bound cursor returned for this explanation. Legacy sequence:ordinal cursors require restarting from the first page.",
+    },
+  ),
+);
 export const ReportExplanation = Schema.Struct({
   report: ReportSnapshot,
   line: ReportLine,
   formula: Schema.Literal("closing = opening + debits - credits"),
   totalContributions: Schema.Int,
   items: Schema.Array(Contribution),
-  next: Schema.NullOr(Schema.String),
+  next: Schema.NullOr(ExplanationCursor),
 });
 export const GeneralLedgerCursor = Schema.String.check(
   Schema.isPattern(
@@ -92,7 +101,7 @@ export const GeneralLedgerPage = Schema.Struct({
 });
 export const LinesQuery = Schema.Struct({ after: Schema.optional(Accounting.Identifier) });
 export const ExplanationQuery = Schema.Struct({
-  after: Schema.optional(Schema.String.check(Schema.isPattern(/^[0-9]+:[0-9]+$/))),
+  after: Schema.optional(ExplanationCursor),
 });
 export const ExplanationPath = Schema.Struct({
   ...Accounting.ChangePath.fields,

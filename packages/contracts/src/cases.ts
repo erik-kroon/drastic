@@ -70,6 +70,12 @@ export const CaseVoucher = Schema.Struct({
   receipt: Accounting.ExecutionReceipt,
   receiptUri: Schema.String,
 });
+export const CaseCorrectionBundle = Schema.Struct({
+  bundleId: Accounting.Identifier,
+  bundleDigest: Accounting.Digest,
+  role: Schema.Literals(["reversal", "replacement"]),
+  uri: Schema.String,
+});
 export const CaseSummary = Schema.Struct({
   id: Accounting.Identifier,
   eventKey: Schema.String,
@@ -77,6 +83,7 @@ export const CaseSummary = Schema.Struct({
   state: Schema.Literals(["proposed", "posted", "reversed"]),
   evidence: CaseEvidence,
   latestPlanId: Accounting.Identifier,
+  latestPlanCorrectionBundle: Schema.optional(CaseCorrectionBundle),
   planCount: Accounting.AggregateMinorUnits,
   voucherCount: Accounting.AggregateMinorUnits,
   vouchers: Schema.Array(CaseVoucher),
@@ -99,6 +106,7 @@ export const CaseSummary = Schema.Struct({
 });
 export const CasePlan = Schema.Struct({
   changeSetId: Accounting.Identifier,
+  correctionBundle: Schema.optional(CaseCorrectionBundle),
   planDigest: Accounting.Digest,
   createdAt: Schema.String,
   state: Schema.Literals(["proposed", "posted"]),
