@@ -41,6 +41,9 @@ export function EvidenceCommandForm<
   const sv = locale === "sv";
   const errorId = useId();
   const [invalid, setInvalid] = useState(false);
+  const [capturedCommand, setCapturedCommand] = useState<{ key: string; input: unknown } | null>(
+    null,
+  );
   const requests = useSavedPostingRequests(book);
   const client = useQueryClient();
   const save = useMutation({
@@ -71,6 +74,7 @@ export function EvidenceCommandForm<
             ? "Kontrollera datum, belopp och obligatoriska uppgifter."
             : "Check dates, amounts and required details.",
         );
+      setCapturedCommand({ key: request.key, input: parsed.value });
       const result = await readAccounting(props.path, props.output, {
         method: "POST",
         body: JSON.stringify(parsed.value),
@@ -86,7 +90,10 @@ export function EvidenceCommandForm<
       props.onSuccess(result);
     },
   });
-  const correctable = save.error instanceof InvalidRecordInput;
+  const correctable =
+    save.error instanceof InvalidRecordInput ||
+    (save.error instanceof Accounting.AccountingError &&
+      ["InvalidJournal", "MissingEvidence"].includes(save.error.code));
   const locked = !!save.variables && !correctable;
   return (
     <Box
@@ -149,10 +156,10 @@ export function EvidenceCommandForm<
         locale={locale}
         write
         pending={save.isPending}
-        error={correctable ? null : (save.error ?? requests.error)}
+        error={save.error instanceof InvalidRecordInput ? null : (save.error ?? requests.error)}
       />
       {save.isError && !correctable && save.variables ? (
-        <Box>
+        <Box display="flex" gap="md" flexWrap="wrap">
           <Button
             variant="outline"
             onClick={() => {
@@ -161,6 +168,31 @@ export function EvidenceCommandForm<
           >
             {sv ? "Försök spara igen" : "Retry save"}
           </Button>
+          {capturedCommand ? (
+            <Button
+              variant="outline"
+              onClick={() => {
+                const artifact = {
+                  scope: { entityId: book.entityId, bookId: book.id },
+                  path: props.path,
+                  request: capturedCommand,
+                  outcome: null,
+                };
+                const url = URL.createObjectURL(
+                  new Blob([JSON.stringify(artifact, null, 2)], { type: "application/json" }),
+                );
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `request-${capturedCommand.key}.json`;
+                document.body.append(link);
+                link.click();
+                link.remove();
+                window.setTimeout(() => URL.revokeObjectURL(url), 0);
+              }}
+            >
+              {sv ? "Spara begäran för återställning" : "Save request for recovery"}
+            </Button>
+          ) : null}
         </Box>
       ) : null}
     </Box>

@@ -1,9 +1,9 @@
 import type { Locale } from "@/paraglide/runtime";
 
 const en = {
-  registerReports: "Saved register snapshots",
-  captureRegister: "Save register snapshot",
-  asOfDate: "Economic as-of date",
+  registerReports: "Invoice register reports",
+  captureRegister: "New register report",
+  asOfDate: "As of date",
   capturedAt: "Captured at",
   registerBasis:
     "Synthetic report of currently declared control accounts. Uses facts known at capture and posting dates through the as-of date, not what was known on that date. Due dates use the metadata revision saved at capture. Source completeness is not established.",
@@ -144,8 +144,8 @@ const en = {
 
 const sv = {
   registerReports: "Sparade registerrapporter",
-  captureRegister: "Spara registerrapport",
-  asOfDate: "Ekonomiskt avstämningsdatum",
+  captureRegister: "Ny reskontrarapport",
+  asOfDate: "Avstämningsdatum",
   capturedAt: "Sparad tidpunkt",
   registerBasis:
     "Syntetisk rapport över nu deklarerade kontrollkonton. Använder uppgifter kända när rapporten sparas och bokföringsdatum till och med avstämningsdatumet, inte vad som var känt då. Förfallodatum hämtas från den fakturarevision som sparas i rapporten. Underlagens fullständighet är inte fastställd.",

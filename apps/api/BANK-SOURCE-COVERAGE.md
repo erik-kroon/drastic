@@ -191,3 +191,5 @@ unverified. Shared registration/mounting and any later authorized proof remain r
 ## Root source integration
 
 Contracts exports, shared API/capability catalog, bindings, statement dispatcher and HTTP handlers are connected. Accounts → Statement coverage and the legacy workspace mount the report UI. Independent source review traced inclusive union/gaps, shared-day overlaps, true adjacent balance comparisons, missing boundaries, declared/mapped union, bounds and currentness; no concrete blocker was found. Existing closing gates remain unchanged. No runtime or schema execution was performed.
+
+The report inspector retains previously verified cached bytes after a failed refresh. Currentness is unknown during errors, fetching, paused requests or before a successful post-mount read; last successful status is described as such. Download still uses the retained exact artifact. Source-only follow-up; no checks or runtime verification.

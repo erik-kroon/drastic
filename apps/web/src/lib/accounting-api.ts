@@ -26,12 +26,19 @@ export async function readAccounting<S extends Schema.Top & { readonly DecodingS
     signal: options?.signal ? AbortSignal.any([options.signal, timeout]) : timeout,
     headers,
   });
-  const payload: unknown = await response.json();
   if (!response.ok) {
+    const payload: unknown = await response.json().catch(() => null);
     const failure = Schema.decodeUnknownOption(Accounting.AccountingError)(payload);
     if (failure._tag === "Some") throw failure.value;
+    const accessCode = response.status === 401 ? "Unauthorized"
+      : response.status === 403 ? "Forbidden"
+      : response.status === 404 ? "NotFound" : null;
+    if (accessCode !== null) {
+      throw new Accounting.AccountingError({ code: accessCode, message: `HTTP ${response.status}` });
+    }
     throw new Error(`HTTP ${response.status}`);
   }
+  const payload: unknown = await response.json();
   return Schema.decodeUnknownSync(schema)(payload);
 }
 

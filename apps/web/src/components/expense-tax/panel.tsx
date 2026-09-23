@@ -275,7 +275,20 @@ function ExpenseTaxSourceDetail(props: Props & { sourceId: string; onChanged: ()
                   ? "Sparade uppgifter är inte en bokföring eller betalning."
                   : "Saved details do not constitute a posting or payment."}
               </PageCaption>
-              {view.latestReview ? <Text>{view.latestReview.facts.rationale}</Text> : null}
+              {view.latestReview ? (
+                <Box display="grid" gap="sm">
+                  <PageCaption>
+                    {view.reviewCurrent
+                      ? locale === "sv"
+                        ? "Granskningsanteckning"
+                        : "Review note"
+                      : locale === "sv"
+                        ? "Tidigare granskning — underlaget har ändrats"
+                        : "Previous review — the source has changed"}
+                  </PageCaption>
+                  <Text>{view.latestReview.facts.rationale}</Text>
+                </Box>
+              ) : null}
             </RecordSection>
           </RecordColumns>
           {view.current.facts.changeSetId ? (

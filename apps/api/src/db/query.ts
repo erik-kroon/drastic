@@ -31,10 +31,14 @@ const PostgresFailure = Schema.Struct({
 });
 
 const statements = {
-  workspaceCoordination: (parameters) => sql`select openerp.workspace_coordination(${parameters[0]}::text,${parameters[1]}::jsonb) as result`,
-  workspaceSaveView: (parameters) => sql`select openerp.workspace_save_view(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
-  workspaceDeleteView: (parameters) => sql`select openerp.workspace_delete_view(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
-  workspaceAssignWork: (parameters) => sql`select openerp.workspace_assign_work(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  workspaceCoordination: (parameters) =>
+    sql`select openerp.workspace_coordination(${parameters[0]}::text,${parameters[1]}::jsonb) as result`,
+  workspaceSaveView: (parameters) =>
+    sql`select openerp.workspace_save_view(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  workspaceDeleteView: (parameters) =>
+    sql`select openerp.workspace_delete_view(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  workspaceAssignWork: (parameters) =>
+    sql`select openerp.workspace_assign_work(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   recordVatFact: (parameters) =>
     sql`select openerp.record_vat_fact(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   vatReturnBasis: (parameters) =>

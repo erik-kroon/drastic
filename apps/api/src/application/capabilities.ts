@@ -6,7 +6,12 @@ import { getSourceOccurrence, retainSource } from "./source-retention";
 import { startPreparationJob } from "./preparation-jobs";
 import { prepareVatDraft } from "./vat-returns";
 import { prepareSie, getSie, listSie, resumeSie } from "./sie";
-import { prepareInvoiceDocument, getInvoiceDocument, resumeInvoiceDocument, invoiceDocumentHistory } from "./invoice-documents";
+import {
+  prepareInvoiceDocument,
+  getInvoiceDocument,
+  resumeInvoiceDocument,
+  invoiceDocumentHistory,
+} from "./invoice-documents";
 import type { RequestEnvironment } from "../runtime/environment";
 import { query, scopeParameter, type DatabaseOperation } from "../db/query";
 
@@ -58,10 +63,26 @@ export const capabilities = {
     "getInvoiceCancellationStatus",
     (input) => [scopeParameter(input.scope), input.id],
   ),
-  workspace_coordination: bindCapability(Capabilities.workspace_coordination, "workspaceCoordination", (input) => [scopeParameter(input.scope)]),
-  workspace_save_view: bindCapability(Capabilities.workspace_save_view, "workspaceSaveView", (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)]),
-  workspace_delete_view: bindCapability(Capabilities.workspace_delete_view, "workspaceDeleteView", (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)]),
-  workspace_assign_work: bindCapability(Capabilities.workspace_assign_work, "workspaceAssignWork", (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)]),
+  workspace_coordination: bindCapability(
+    Capabilities.workspace_coordination,
+    "workspaceCoordination",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  workspace_save_view: bindCapability(
+    Capabilities.workspace_save_view,
+    "workspaceSaveView",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  workspace_delete_view: bindCapability(
+    Capabilities.workspace_delete_view,
+    "workspaceDeleteView",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  workspace_assign_work: bindCapability(
+    Capabilities.workspace_assign_work,
+    "workspaceAssignWork",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
   bank_create_source_coverage: bindCapability(
     Capabilities.bank_create_source_coverage,
     "createBankSourceCoverage",
@@ -77,20 +98,29 @@ export const capabilities = {
     "listBankSourceCoverage",
     (input) => [scopeParameter(input.scope)],
   ),
-  commerce_prepare_invoice_document: effectCapability(Capabilities.commerce_prepare_invoice_document, prepareInvoiceDocument),
-  commerce_get_invoice_document: effectCapability(Capabilities.commerce_get_invoice_document, getInvoiceDocument),
-  commerce_resume_invoice_document: effectCapability(Capabilities.commerce_resume_invoice_document, resumeInvoiceDocument),
-  commerce_invoice_document_history: effectCapability(Capabilities.commerce_invoice_document_history, invoiceDocumentHistory),
-  fx_list_rates: bindCapability(
-    Capabilities.fx_list_rates,
-    "listExchangeRates",
-    (input) => [scopeParameter(input.scope)],
+  commerce_prepare_invoice_document: effectCapability(
+    Capabilities.commerce_prepare_invoice_document,
+    prepareInvoiceDocument,
   ),
-  fx_get_rate: bindCapability(
-    Capabilities.fx_get_rate,
-    "getExchangeRate",
-    (input) => [scopeParameter(input.scope), input.id],
+  commerce_get_invoice_document: effectCapability(
+    Capabilities.commerce_get_invoice_document,
+    getInvoiceDocument,
   ),
+  commerce_resume_invoice_document: effectCapability(
+    Capabilities.commerce_resume_invoice_document,
+    resumeInvoiceDocument,
+  ),
+  commerce_invoice_document_history: effectCapability(
+    Capabilities.commerce_invoice_document_history,
+    invoiceDocumentHistory,
+  ),
+  fx_list_rates: bindCapability(Capabilities.fx_list_rates, "listExchangeRates", (input) => [
+    scopeParameter(input.scope),
+  ]),
+  fx_get_rate: bindCapability(Capabilities.fx_get_rate, "getExchangeRate", (input) => [
+    scopeParameter(input.scope),
+    input.id,
+  ]),
   fx_capture_conversion: bindCapability(
     Capabilities.fx_capture_conversion,
     "captureConversionReview",

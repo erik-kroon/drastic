@@ -7,6 +7,8 @@ import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { RecordHeading, RecordSection } from "@open-erp/ui/components/record-layout";
 import { workQueryOptions, minorToDecimal, signedDecimalToMinor } from "@/lib/workspace-api";
+import { statementFormat } from "@/lib/statement-format";
+import { Disclosure } from "@open-erp/ui/components/workflow";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
@@ -58,45 +60,55 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
         subtitle={
           locale === "sv" ? "Original → förhandsgranskning → import" : "Original → preview → import"
         }
+        action={
+          <Box display="flex" gap="md" flexWrap="wrap">
+            {" "}
+            <Box>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={source.isFetching}
+                onClick={() => {
+                  void source.refetch();
+                }}
+              >
+                {copy.refresh}
+              </Button>
+            </Box>
+            {source.data ? (
+              <>
+                {" "}
+                <Box>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (source.data)
+                        downloadIntake(
+                          new Blob(
+                            [
+                              Uint8Array.from(atob(source.data.contentBase64), (char) =>
+                                char.charCodeAt(0),
+                              ),
+                            ],
+                            { type: "application/octet-stream" },
+                          ),
+                          source.data.occurrence.filename,
+                        );
+                    }}
+                  >
+                    {copy.download}
+                  </Button>
+                </Box>
+              </>
+            ) : null}
+          </Box>
+        }
       />
-      <Box>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={source.isFetching}
-          onClick={() => {
-            void source.refetch();
-          }}
-        >
-          {copy.refresh}
-        </Button>
-      </Box>
       <AccountingStatus locale={locale} pending={source.isPending} error={source.error} />
       {source.data ? (
         <>
           <Text tone="muted">{source.data.occurrence.byteLength} bytes</Text>
-          <Box>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                if (source.data)
-                  downloadIntake(
-                    new Blob(
-                      [
-                        Uint8Array.from(atob(source.data.contentBase64), (char) =>
-                          char.charCodeAt(0),
-                        ),
-                      ],
-                      { type: "application/octet-stream" },
-                    ),
-                    source.data.occurrence.filename,
-                  );
-              }}
-            >
-              {copy.download}
-            </Button>
-          </Box>
           {source.data.occurrence.mediaType.startsWith("text/") &&
           source.data.occurrence.byteLength <= 65536 ? (
             <details>
@@ -113,7 +125,9 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
             </details>
           ) : null}
           {source.data.admission ? (
-            <Text role="status">{copy.admitted}</Text>
+            previewId ? null : (
+              <Text role="status">{copy.admitted}</Text>
+            )
           ) : source.data.occurrence.mediaType === "text/csv" &&
             source.data.occurrence.byteLength <= 65536 ? (
             !previewId || mappingSeed ? (
@@ -124,6 +138,7 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
                 locale={locale}
                 id={id}
                 initial={mappingSeed?.mapping}
+                contentBase64={source.data.contentBase64}
                 onCreated={(preview) => {
                   setSelectedPreview(preview.id);
                   setMappingSeed(null);
@@ -182,11 +197,14 @@ function MappingForm(
   props: IntakeProps & {
     id: string;
     initial?: typeof Intake.CsvMapping.Type;
+    contentBase64: string;
     onCreated: (preview: typeof Intake.SourcePreview.Type) => void;
   },
 ) {
   const { book, setup, locale, id } = props;
+  const suggestions = statementFormat(props.contentBase64);
   const initial = props.initial;
+  const format = initial ?? suggestions.fields;
   const metadata = useQuery(workQueryOptions(book, {}));
   const scale = initial?.currencyScale ?? metadata.data?.currencyScale;
   const copy = intakeCopy(locale);
@@ -254,7 +272,11 @@ function MappingForm(
           },
         });
         if (result._tag === "None") {
-          setError(copy.invalid);
+          setError(
+            locale === "sv"
+              ? "Kontrollera kolumner, filformat, konto, datum och saldon."
+              : "Check the columns, file format, account, dates and balances.",
+          );
           return;
         }
         setError("");
@@ -267,7 +289,6 @@ function MappingForm(
         <Text>{book.currency}</Text>
       </RecordSection>
       <Text>{copy.previewHelp}</Text>
-      <Text>{copy.controlsHelp}</Text>
       <Box
         as="fieldset"
         disabled={mutation.isPending}
@@ -278,38 +299,62 @@ function MappingForm(
         margin="none"
         borderWidth="none"
       >
+        <Disclosure
+          title={locale === "sv" ? "Filformat" : "File format"}
+          defaultOpen={
+            ![
+              format.delimiter,
+              format.lineEnding,
+              format.dateFormat,
+              format.decimalSeparator,
+            ].every(Boolean)
+          }
+        >
+          <Box display="grid" columns={2} gap="md" paddingBlock="lg">
+            {(["delimiter", "lineEnding", "dateFormat", "decimalSeparator"] as const).map(
+              (name) => (
+                <SelectField
+                  key={name}
+                  label={copy[name]}
+                  name={name}
+                  defaultValue={format[name] ?? ""}
+                  options={[{ value: "", label: copy.choose }, ...choices[name]]}
+                />
+              ),
+            )}
+          </Box>
+        </Disclosure>
         <Box display="grid" columns={1} columnsAtSm={2} gap="md">
-          {(
-            [
-              "delimiter",
-              "lineEnding",
-              "dateFormat",
-              "decimalSeparator",
-              "sign",
-              "accountId",
-            ] as const
-          ).map((name) => (
-            <SelectField
-              key={name}
-              label={copy[name]}
-              name={name}
-              defaultValue={initial?.[name] ?? ""}
-              required
-              options={[{ value: "", label: copy.choose }, ...choices[name]]}
-            />
-          ))}
           {(["dateColumn", "descriptionColumn", "amountColumn", "providerIdColumn"] as const).map(
             (name) => (
               <InputField
                 key={name}
                 label={copy[name]}
                 name={name}
-                defaultValue={initial?.[name] ?? ""}
+                defaultValue={format[name] ?? ""}
+                suggestions={suggestions.headers}
                 maxLength={200}
                 required={name !== "providerIdColumn"}
               />
             ),
           )}
+        </Box>
+        <RecordSection
+          title={locale === "sv" ? "Konto och kontoutdragsperiod" : "Account and statement period"}
+        >
+          <Text tone="muted">{copy.controlsHelp}</Text>
+        </RecordSection>
+        <Box display="grid" columns={1} columnsAtSm={2} gap="md">
+          {(["accountId", "sign"] as const).map((name) => (
+            <SelectField
+              key={name}
+              label={copy[name]}
+              name={name}
+              required
+              defaultValue={initial?.[name] ?? ""}
+              options={[{ value: "", label: copy.choose }, ...choices[name]]}
+            />
+          ))}
           {(["startsOn", "endsOn"] as const).map((name) => (
             <InputField
               key={name}

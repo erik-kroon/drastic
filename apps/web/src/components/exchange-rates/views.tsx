@@ -26,6 +26,8 @@ export function RateInspector(props: Props & {
   const [withdrawingRate, setWithdrawingRate] = useState<typeof Rates.ExchangeRateRevision.Type | null>(null);
   const saved = useQuery({
     queryKey: [...bookKey(book), "exchange-rates", "rate", id],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(`${bookPath(book)}/exchange-rates/${encodeURIComponent(id)}`, Rates.ExchangeRateView, { signal });
       if ([result.current, ...result.revisions].some((rate) => rate.observationId !== id || rate.scope.bookId !== book.id || rate.scope.entityId !== book.entityId)) {

@@ -1,7 +1,7 @@
-import { useRef, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import * as Accounting from "@open-erp/contracts/accounting";
 import { useHydrated } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
@@ -22,27 +22,31 @@ export function AccountingAccess({
   const hydrated = useHydrated();
   const client = useQueryClient();
   const copy = accountingCopy(locale);
-  const books = useQuery({
+  const [accessBlocked, setAccessBlocked] = useState(
+    () => client.getQueryState(booksKey)?.status === "error",
+  );
+  const books = useQuery<typeof Books.Type | null>({
     queryKey: booksKey,
-    enabled: hydrated,
+    enabled: hydrated && client.getQueryData(booksKey) !== null,
     retry: false,
     staleTime: 0,
-    queryFn: async ({ signal }) => {
-      try {
-        return await readAccounting("/api/v1/books", Books, { signal });
-      } catch (error) {
-        if (error instanceof Accounting.AccountingError && error.code === "Unauthorized") {
-          client.removeQueries({
-            predicate: (query) =>
-              query.queryKey[0] === "accounting" && query.queryKey[1] !== "books",
-          });
-          return null;
-        }
-        throw error;
-      }
-    },
+    queryFn: ({ signal }) => readAccounting("/api/v1/books", Books, { signal }),
   });
-  if (books.data && !books.isError) return children(books.data);
+  const accessDenied = books.error instanceof Accounting.AccountingError
+    && ["Unauthorized", "Forbidden", "NotFound"].includes(books.error.code);
+  if ((accessDenied || books.data === null) && !accessBlocked) setAccessBlocked(true);
+  else if (accessBlocked && books.data && books.isSuccess && books.fetchStatus === "idle") {
+    setAccessBlocked(false);
+  }
+  if (books.data && !accessBlocked && !accessDenied) return <>
+    {books.isError ? <Box display="grid" gap="md" padding="lg">
+      <AccountingStatus locale={locale} pending={books.isFetching} error={books.error} />
+      <Box><Button variant="outline" disabled={books.isFetching} onClick={() => { void books.refetch(); }}>
+        {copy.journal_retry}
+      </Button></Box>
+    </Box> : null}
+    {children(books.data)}
+  </>;
   return (
     <Box maxWidth="content" centered padding="lg" paddingBlock="2xl" display="grid" gap="xl">
       <Text>OpenERP</Text>

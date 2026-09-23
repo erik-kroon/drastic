@@ -36,14 +36,17 @@ export function BankSourceCoverageInspector({ book, locale, id }: {
     <Heading>{copy.reportId}: {id}</Heading>
     <Box><Button type="button" variant="outline" disabled={saved.isFetching} onClick={() => { void saved.refetch(); }}>{copy.refresh}</Button></Box>
     <AccountingStatus locale={locale} pending={saved.isFetching} error={saved.error} />
-    {saved.isSuccess ? <Contents value={saved.data} locale={locale} /> : null}
+    {saved.data ? <Contents value={saved.data} locale={locale}
+      currentnessKnown={saved.isSuccess && saved.fetchStatus === "idle" && saved.isFetchedAfterMount} /> : null}
   </Box>;
 }
-function Contents({ value, locale }: { value: typeof Coverage.BankSourceCoverageView.Type; locale: Locale }) {
+function Contents({ value, locale, currentnessKnown }: {
+  value: typeof Coverage.BankSourceCoverageView.Type; locale: Locale; currentnessKnown: boolean;
+}) {
   const copy = sourceCoverageCopy(locale);
   const report = value.report;
   return <Box display="grid" gap="lg" minWidth="zero">
-    <Text role="status">{value.dependenciesCurrent ? copy.current : copy.historical}</Text>
+    <Text role="status">{currentnessKnown ? value.dependenciesCurrent ? copy.current : copy.historical : copy.currentnessUnknown}</Text>
     <Text>{report.hasReviewGaps ? copy.gaps : copy.noGaps}</Text><Text>{copy.warning}</Text>
     <Text>{report.input.startsOn} — {report.input.endsOn} · {copy.sequence}: {report.sequence}</Text>
     <Text>{copy.currency}: {report.currency} / {report.currencyScale} · {copy.units}</Text>

@@ -24,6 +24,8 @@ function CancellationPanel(props: CommerceProps & { issue: Issue }) {
   const [reviewId, setReviewId] = useState("");
   const status = useQuery({
     queryKey: [...commerceKey(book), "invoice-cancellation-status", issue.id],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(`${commercePath(book)}/invoice-issues/${encodeURIComponent(issue.id)}/cancellation-status`, Cancellation.InvoiceCancellationStatus, { signal });
       checkScope(book, result.scope);
@@ -72,6 +74,8 @@ function CancellationPreparation(props: CommerceProps & { issue: Issue; allowed:
   const copy = invoiceCancellationCopy(locale);
   const setup = useQuery({
     queryKey: [...bookKey(book), "setup"],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: ({ signal }) => readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
     retry: false,
   });
@@ -98,6 +102,8 @@ export function InvoiceCancellationReviewPanel(props: CommerceProps & { id: stri
   const copy = invoiceCancellationCopy(locale);
   const review = useQuery({
     queryKey: [...commerceKey(book), "invoice-cancellation-review", id],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(`${commercePath(book)}/invoice-cancellation-reviews/${encodeURIComponent(id)}`, Cancellation.InvoiceCancellationView, { signal });
       checkScope(book, result.review.scope);

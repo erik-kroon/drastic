@@ -239,9 +239,17 @@ export function PageTab({ active, ...props }: ComponentProps<typeof Link> & { ac
   );
 }
 
-export function Disclosure({ title, children }: { title: string; children: ReactNode }) {
+export function Disclosure({
+  title,
+  children,
+  defaultOpen = false,
+}: {
+  title: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
   return (
-    <details {...stylex.props(styles.disclosure)}>
+    <details open={defaultOpen} {...stylex.props(styles.disclosure)}>
       <summary {...stylex.props(styles.summary)}>{title}</summary>
       <div {...stylex.props(styles.details)}>{children}</div>
     </details>

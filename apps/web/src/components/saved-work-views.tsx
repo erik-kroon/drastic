@@ -35,22 +35,24 @@ export function SavedWorkViews(props: {
   return (
     <Box display="grid" gap="md">
       <Box display="flex" alignItems="end" flexWrap="wrap" gap="md">
-        <SelectField
-          label={sv ? "Sparade vyer" : "Saved views"}
-          value={selected?.id ?? ""}
-          disabled={!query.isSuccess}
-          onValueChange={(value) => {
-            const view = views.find((item) => item.id === value);
-            if (view) props.onSelect(view.filters);
-          }}
-          options={[
-            { value: "", label: sv ? "Aktuella filter" : "Current filters" },
-            ...views.map((view) => ({
-              value: view.id,
-              label: `${view.name}${view.visibility === "team" ? " · Team" : ""}`,
-            })),
-          ]}
-        />
+        <Box width="fit" flexShrink={false}>
+          <SelectField
+            label={sv ? "Sparade vyer" : "Saved views"}
+            value={selected?.id ?? ""}
+            disabled={!query.isSuccess}
+            onValueChange={(value) => {
+              const view = views.find((item) => item.id === value);
+              if (view) props.onSelect(view.filters);
+            }}
+            options={[
+              { value: "", label: sv ? "Aktuella filter" : "Current filters" },
+              ...views.map((view) => ({
+                value: view.id,
+                label: `${view.name}${view.visibility === "team" ? " · Team" : ""}`,
+              })),
+            ]}
+          />
+        </Box>
         <Button
           static
           variant="outline"

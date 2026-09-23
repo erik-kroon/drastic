@@ -15,6 +15,16 @@
 - Truncated discovery or oversized reviews must never imply a complete inventory or silently drop legs.
 - Unallocation must not post a ledger reversal, correct recognition, issue a credit, refund money, initiate payment or change bank matching.
 
+## Browser recovery failure cases recorded before repair
+
+- A refresh that finds the receipt already released must not unmount a captured preparation request.
+- A newer usable approval, approval expiry/revocation, or an operator role change must not replace captured approval/execute/revoke requests.
+- A successful execution view must not discard request keys for other retained approval rows; an uncertain response still needs its exact retry/artifact.
+- Query refresh errors must retain the last displayed command instances while blocking new commands. Paused/refetching queries must not admit new commands from cached readiness.
+- New approval/revocation remains operator-only. Approved execution remains available to authorized automation; this UI repair must not change backend authority or API semantics.
+
+The source repair keeps preparation/approval forms mounted and renders execute/revoke forms under stable retained approval IDs. New execution requires the server-selected usable approval and current successful idle-query readiness. Query errors retain cached views but disable new commands; captured retries and downloads remain available through `CommandForm`. Release or role changes disable new writes without discarding captured request state. This is source-reviewed behavior, not browser/runtime proof.
+
 ## Status
 
 Source implementation is complete in the owned files below. Shared registration/mounting remains root-owned. Runtime behavior remains unverified. No tests, validation commands, database execution, migration application, build, server or browser verification is authorized or performed.

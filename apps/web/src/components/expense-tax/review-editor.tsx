@@ -175,7 +175,7 @@ function ReviewDecisions(props: {
       <Box display="grid" columns={2} gap="md">
         <SelectField
           name="registration"
-          label={copy.registration}
+          label={sv ? "Momsregistrering" : "VAT registration"}
           defaultValue={previous?.registration ?? "unknown"}
           options={[
             { value: "unknown", label: copy.unknown },
@@ -185,7 +185,7 @@ function ReviewDecisions(props: {
         />
         <SelectField
           name="method"
-          label={copy.method}
+          label={sv ? "Bokföringsmetod" : "Accounting method"}
           defaultValue={previous?.method ?? "unknown"}
           options={[
             { value: "unknown", label: copy.unknown },
@@ -196,7 +196,7 @@ function ReviewDecisions(props: {
       </Box>
       <SelectField
         name="treatment"
-        label={copy.treatment}
+        label={sv ? "Momsbehandling" : "Tax treatment"}
         defaultValue={previous?.treatment ?? "unknown"}
         options={[
           { value: "unknown", label: copy.unknown },
@@ -286,7 +286,10 @@ function percentFraction(fields: FormData, name: string) {
   if (value === null) return { numerator: null, denominator: null };
   if (/^[0-9]+\/[1-9][0-9]*$/.test(value)) {
     const separator = value.indexOf("/");
-    return { numerator: value.slice(0, separator), denominator: (BigInt(value.slice(separator + 1)) * 100n).toString() };
+    return {
+      numerator: value.slice(0, separator),
+      denominator: (BigInt(value.slice(separator + 1)) * 100n).toString(),
+    };
   }
   return { numerator: decimalToMinor(value, 6) ?? "invalid", denominator: "100000000" };
 }

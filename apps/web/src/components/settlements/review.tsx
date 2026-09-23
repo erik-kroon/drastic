@@ -31,6 +31,8 @@ export function AllocationReview({
   const base = `${bookPath(book)}/bank-allocation-plans/${encodeURIComponent(id)}`;
   const plan = useQuery({
     queryKey: [...bookKey(book), "bank-allocation", id],
+    staleTime: 0,
+    refetchOnMount: "always",
     retry: false,
     queryFn: async ({ signal }) => {
       const view = await readAccounting(base, Settlement.BankAllocationView, { signal });
@@ -70,9 +72,11 @@ export function AllocationReview({
     },
   });
   const view = plan.data;
-  const busy = plan.isFetching || approval.isPending || execution.isPending;
-  const current = view?.dependenciesCurrent && !plan.isError && !busy;
   const executed = view?.execution ?? execution.data;
+  const writesPending = approval.isPending || execution.isPending;
+  const busy = plan.isFetching || writesPending;
+  const known = plan.isSuccess && plan.fetchStatus === "idle" && plan.isFetchedAfterMount;
+  const current = known && view?.dependenciesCurrent && !writesPending && !executed && !view?.unmatch;
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.capacity}</Heading>
@@ -107,13 +111,16 @@ export function AllocationReview({
           </Text>
           <Text>{copy.candidateHelp}</Text>
           {view.unmatch ? (
-            <BankAllocationUnmatchNotice unmatch={view.unmatch} locale={locale} />
+            <>
+              {!known ? <Text role="status">{copy.unknown}</Text> : null}
+              <BankAllocationUnmatchNotice unmatch={view.unmatch} locale={locale} />
+            </>
           ) : (
             <Text role="status">
-              {executed
-                ? copy.done
-                : plan.isError || plan.isFetching
-                  ? copy.unknown
+              {!known
+                ? copy.unknown
+                : executed
+                  ? copy.done
                   : view.dependenciesCurrent
                     ? copy.ready
                     : copy.stale}
@@ -203,10 +210,11 @@ export function AllocationReview({
                     <Button
                       type="button"
                       size="xl"
-                      disabled={!current || !reviewed}
-                      onClick={() =>
-                        approval.mutate({ digest: view.plan.digest, version: view.plan.version })
-                      }
+                      disabled={!current || !reviewed || approval.isError}
+                      onClick={() => {
+                        if (current && reviewed && !approval.isError)
+                          approval.mutate({ digest: view.plan.digest, version: view.plan.version });
+                      }}
                     >
                       {copy.approve}
                     </Button>
@@ -225,9 +233,9 @@ export function AllocationReview({
                   type="button"
                   size="xl"
                   variant="outline"
-                  disabled={!current || !view.approval}
+                  disabled={!current || !view.approval || execution.isError}
                   onClick={() => {
-                    if (view.approval)
+                    if (current && view.approval && !execution.isError)
                       execution.mutate({
                         digest: view.plan.digest,
                         version: view.plan.version,
@@ -254,6 +262,50 @@ export function AllocationReview({
           />
         </>
       ) : null}
+      <RequestRecovery locale={locale} label={copy.approve}
+        request={JSON.stringify(approval.variables)} requestKey={approvalKeys.current.get(`${base}/approve:${JSON.stringify(approval.variables)}`)}
+        complete={approval.isSuccess} pending={writesPending}
+        onRetry={() => { if (!writesPending && approval.variables) approval.mutate(approval.variables); }}
+        onDiscard={() => {
+          if (writesPending) return;
+          approval.reset(); approvalKeys.current.clear(); setReviewed(false);
+        }} />
+      <RequestRecovery locale={locale} label={copy.execute}
+        request={JSON.stringify(execution.variables)} requestKey={executionKeys.current.get(`${base}/execute:${JSON.stringify(execution.variables)}`)}
+        complete={execution.isSuccess} pending={writesPending}
+        onRetry={() => { if (!writesPending && execution.variables) execution.mutate(execution.variables); }}
+        onDiscard={() => {
+          if (writesPending) return;
+          execution.reset(); executionKeys.current.clear();
+        }} />
     </Box>
   );
+}
+
+function RequestRecovery(props: {
+  locale: Locale;
+  label: string;
+  request: string | undefined;
+  requestKey: string | undefined;
+  complete: boolean;
+  pending: boolean;
+  onRetry: () => void;
+  onDiscard: () => void;
+}) {
+  if (!props.request || props.complete) return null;
+  return <Box display="grid" gap="md" minWidth="zero">
+    <Text>{props.label}</Text>
+    <Text>{props.locale === "sv"
+      ? "Anropet kan ha sparats även om svaret saknas. Återförsök samma anrop eller läs kvittot innan du kastar återförsöksnyckeln."
+      : "The request may have committed even if its response is missing. Retry the same request or recover its receipt before discarding the retry key."}</Text>
+    <Text>{props.requestKey}</Text><Text>{props.request}</Text>
+    <Box display="flex" flexWrap="wrap" gap="md">
+      <Button type="button" variant="outline" disabled={props.pending} onClick={props.onRetry}>
+        {props.locale === "sv" ? "Återförsök bevarat anrop" : "Retry retained request"} · {props.label}
+      </Button>
+      <Button type="button" variant="ghost" disabled={props.pending} onClick={props.onDiscard}>
+        {props.locale === "sv" ? "Kasta anrop och återförsöksnyckel" : "Discard request and retry key"} · {props.label}
+      </Button>
+    </Box>
+  </Box>;
 }

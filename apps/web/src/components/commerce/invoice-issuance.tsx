@@ -106,6 +106,8 @@ function IssueDraft(props: CommerceProps & { id: string; onOpen: (id: string) =>
   const copy = invoiceIssueCopy(locale);
   const draft = useQuery({
     queryKey: [...commerceKey(book), "issue-draft", id],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
         `${commercePath(book)}/invoice-drafts/${encodeURIComponent(id)}`,
@@ -120,6 +122,8 @@ function IssueDraft(props: CommerceProps & { id: string; onOpen: (id: string) =>
   });
   const history = useQuery({
     queryKey: [...commerceKey(book), "invoice-issue-history", id],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
         `${commercePath(book)}/invoice-drafts/${encodeURIComponent(id)}/issue-reviews`,
@@ -147,7 +151,7 @@ function IssueDraft(props: CommerceProps & { id: string; onOpen: (id: string) =>
         </Button>
       </Box>
       <AccountingStatus locale={locale} pending={draft.isPending} error={draft.error} />
-      {draft.data && history.data && !history.data.items.some((item) => item.issueId !== null) ? (
+      {draft.data && history.data ? (
         <IssuePreparation
           {...props}
           draft={draft.data.record}
@@ -157,7 +161,9 @@ function IssueDraft(props: CommerceProps & { id: string; onOpen: (id: string) =>
             draft.isFetchedAfterMount &&
             history.isSuccess &&
             history.fetchStatus === "idle" &&
-            history.isFetchedAfterMount
+            history.isFetchedAfterMount &&
+            !history.data.items.some((item) => item.issueId !== null) &&
+            book.role === "operator"
           }
         />
       ) : null}
@@ -312,6 +318,8 @@ export function InvoiceIssueReviewPanel(props: CommerceProps & { id: string; rea
   const copy = invoiceIssueCopy(locale);
   const review = useQuery({
     queryKey: [...commerceKey(book), "invoice-issue-review", id],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
         `${commercePath(book)}/invoice-issue-reviews/${encodeURIComponent(id)}`,
@@ -489,7 +497,8 @@ function IssueContents(
           <InvoiceCancellationPanel book={book} locale={locale} issue={issue} />
           <InvoiceDocumentPanel book={book} locale={locale} issue={issue} />
         </Box>
-      ) : props.readOnly ? null : (
+      ) : null}
+      {props.readOnly ? null : (
         <>
           <Text>{copy.approvalNote}</Text>
           <CommandForm
@@ -498,7 +507,9 @@ function IssueContents(
             schema={Issuance.ApproveInvoiceIssue}
             output={Issuance.InvoiceIssueApproval}
             label={copy.approve}
-            allowed={props.current && view.dependenciesCurrent}
+            allowed={
+              props.current && !issue && book.role === "operator" && view.dependenciesCurrent
+            }
             input={(fields) => ({
               version: plan.version,
               digest: plan.digest,
@@ -519,7 +530,7 @@ function IssueContents(
                 schema={Issuance.ExecuteInvoiceIssue}
                 output={Issuance.InvoiceIssueReceipt}
                 label={copy.execute}
-                allowed={props.current && view.approvalUsable}
+                allowed={props.current && !issue && book.role === "operator" && view.approvalUsable}
                 input={(fields) => ({
                   version: plan.version,
                   digest: plan.digest,

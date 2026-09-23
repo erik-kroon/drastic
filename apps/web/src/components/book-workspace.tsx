@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -37,15 +37,28 @@ export function BookWorkspace({
   const navigate = useNavigate();
   const pathname = useLocation({ select: (location) => location.pathname });
   const base = workspacePath(book);
+  const [scopeBlocked, setScopeBlocked] = useState(true);
   const setup = useQuery({
     queryKey: [...bookKey(book), "setup"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
     retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
   const scopeUnavailable =
     setup.error instanceof Accounting.AccountingError &&
     ["Unauthorized", "Forbidden", "NotFound"].includes(setup.error.code);
+  // A later transient error cannot undo an explicit denial or confirm a new mount.
+  if (scopeUnavailable && !scopeBlocked) setScopeBlocked(true);
+  else if (
+    scopeBlocked &&
+    setup.isSuccess &&
+    setup.isFetchedAfterMount &&
+    setup.fetchStatus === "idle"
+  ) {
+    setScopeBlocked(false);
+  }
   const labels = frontendCopy(locale);
   const navigation = <BookNavigation base={base} pathname={pathname} locale={locale} />;
   const account = (
@@ -118,7 +131,11 @@ export function BookWorkspace({
         </WorkspaceMobileNavigation>
       }
     >
-      <AccountingStatus locale={locale} pending={setup.isPending} error={setup.error} />
+      <AccountingStatus
+        locale={locale}
+        pending={setup.isPending || (scopeBlocked && setup.isFetching)}
+        error={setup.error}
+      />
       {setup.isError ? (
         <Button
           size="xl"
@@ -130,7 +147,7 @@ export function BookWorkspace({
           {copy.journal_retry}
         </Button>
       ) : null}
-      {setup.data && !scopeUnavailable ? (
+      {setup.data && !scopeBlocked && !scopeUnavailable ? (
         <BookContext value={{ book, setup: setup.data, locale }}>{children}</BookContext>
       ) : null}
     </Workspace>

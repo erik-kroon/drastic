@@ -14,7 +14,9 @@ import { EvidenceInspector } from "@/components/evidence-inspector";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
-import { PageAction } from "@open-erp/ui/components/accounting-page";
+import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
+import { Disclosure } from "@open-erp/ui/components/workflow";
+import { PageAction, PageCaption } from "@open-erp/ui/components/accounting-page";
 import { workspacePath } from "@/lib/book-context";
 
 const BankCandidateResults = lazy(() =>
@@ -36,7 +38,7 @@ export function BankStatementReview(props: StatementReviewProps) {
 function StatementReview({ book, id, locale }: StatementReviewProps) {
   const copy = accountingCopy(locale);
   const [candidateRow, setCandidateRow] = useState<number | null>(null);
-  const candidateLabel = locale === "sv" ? "Visa matchningsförslag" : "Show matching candidates";
+  const candidateLabel = locale === "sv" ? "Hitta matchning" : "Find match";
   const metadata = useQuery(workQueryOptions(book, {}));
   const scale = metadata.data?.currencyScale;
   const statement = useQuery({
@@ -56,36 +58,38 @@ function StatementReview({ book, id, locale }: StatementReviewProps) {
   });
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
-      <Heading>{copy.bank_statement}</Heading>
-      <Box>
-        <Button
-          size="xl"
-          variant="outline"
-          disabled={statement.isFetching}
-          onClick={() => {
-            void statement.refetch();
-          }}
-        >
-          {copy.journal_refresh}
-        </Button>
-      </Box>
+      <RecordHeading
+        title={copy.bank_statement}
+        action={
+          <Button
+            static
+            variant="outline"
+            disabled={statement.isFetching}
+            onClick={() => {
+              void statement.refetch();
+            }}
+          >
+            {copy.journal_refresh}
+          </Button>
+        }
+      />
       <AccountingStatus locale={locale} pending={statement.isPending} error={statement.error} />
       {statement.data ? (
         <>
           <BankStatementDetails book={book} statement={statement.data.statement} locale={locale} />
-          <Text tone="muted">
-            {copy.bank_checkpoint}: {statement.data.checkpoint.sequence} /{" "}
-            {statement.data.checkpoint.sourceRevision}
-          </Text>
           <DataTable
             title={copy.bank_rows}
             narrow="stack"
             columns={[
-              { id: "ordinal", label: copy.bank_ordinal },
-              { id: "provider", label: copy.bank_provider_id },
+              { id: "ordinal", label: locale === "sv" ? "Rad" : "Row" },
+              { id: "provider", label: locale === "sv" ? "Referens" : "Reference" },
               { id: "date", label: copy.journal_date },
               { id: "description", label: copy.journal_description },
-              { id: "amount", label: copy.bank_amount, numeric: true },
+              {
+                id: "amount",
+                label: `${locale === "sv" ? "Belopp" : "Amount"} · ${book.currency}`,
+                numeric: true,
+              },
               { id: "candidates", label: candidateLabel },
             ]}
             rows={statement.data.statement.rows.map((row) => ({
@@ -98,10 +102,12 @@ function StatementReview({ book, id, locale }: StatementReviewProps) {
                 scale === undefined ? "—" : formatMinorAmount(row.amountMinor, scale, locale),
                 <Button
                   key="candidates"
+                  static
                   variant="outline"
+                  aria-label={`${candidateLabel} · ${row.description}`}
                   onClick={() => setCandidateRow(row.rowOrdinal)}
                 >
-                  {candidateLabel} · {row.rowOrdinal}
+                  {candidateLabel}
                 </Button>,
               ],
             }))}
@@ -116,13 +122,25 @@ function StatementReview({ book, id, locale }: StatementReviewProps) {
               />
             </Suspense>
           ) : null}
-          <PageAction href={`${workspacePath(book)}/accounts?view=matching`}>
-            {locale === "sv"
-              ? "Öppna granskad matchning och återföring"
-              : "Open reviewed matching and unmatch"}
-          </PageAction>
-          <BankMatches matches={statement.data.matches} locale={locale} />
-          <BankMatchForm book={book} statement={statement.data} locale={locale} />
+          <Box>
+            <PageAction href={`${workspacePath(book)}/accounts?view=matching`}>
+              {locale === "sv" ? "Öppna matchning" : "Matching workspace"}
+            </PageAction>
+          </Box>
+          <Disclosure
+            title={
+              locale === "sv"
+                ? "Direkta matchningar och manuell återställning"
+                : "Direct matches and manual recovery"
+            }
+          >
+            <Text tone="muted">
+              {copy.bank_checkpoint}: {statement.data.checkpoint.sequence} /{" "}
+              {statement.data.checkpoint.sourceRevision}
+            </Text>
+            <BankMatches matches={statement.data.matches} locale={locale} />
+            <BankMatchForm book={book} statement={statement.data} locale={locale} />
+          </Disclosure>
         </>
       ) : null}
     </Box>
@@ -140,39 +158,60 @@ export function BankStatementDetails({
 }) {
   const copy = accountingCopy(locale);
   const metadata = useQuery(workQueryOptions(book, {}));
+  const setup = useQuery({
+    queryKey: [...bookKey(book), "setup"],
+    queryFn: ({ signal }) =>
+      readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
+    retry: false,
+  });
+  const account = setup.data?.accounts.find((item) => item.id === statement.accountId);
   const amount = (value: string) =>
-    metadata.data ? formatMinorAmount(value, metadata.data.currencyScale, locale) : "—";
+    metadata.data
+      ? `${formatMinorAmount(value, metadata.data.currencyScale, locale)} ${statement.currency}`
+      : "—";
+  const sv = locale === "sv";
   return (
     <Box display="grid" gap="md" minWidth="zero">
-      <Text>
-        {copy.bank_statement_id}: {statement.id} · {statement.statementIdentifier}
-      </Text>
-      <Text>
-        {copy.bank_source_account}: {statement.sourceBankAccountId} · {copy.journal_account}:{" "}
-        {statement.accountId} · {statement.currency}
-      </Text>
-      <Text>
-        {copy.bank_interval}: {statement.startsOn} – {statement.endsOn}
-      </Text>
-      <Text>
-        {copy.bank_opening}: {amount(statement.openingMinor)} · {copy.bank_closing}:{" "}
-        {amount(statement.closingMinor)}
-      </Text>
-      <Text>
-        {statement.completeness.declaredComplete ? copy.bank_declared : copy.bank_not_declared}
-      </Text>
-      <Text>
-        {copy.bank_basis}: {statement.completeness.basis}
-      </Text>
-      <EvidenceInspector
-        book={book}
-        locale={locale}
-        reference={{
-          evidenceId: statement.evidenceId,
-          sha256: statement.evidenceSha256,
-          locator: "$",
-        }}
-      />
+      <PageCaption>
+        {account
+          ? `${account.code} · ${account.name}`
+          : sv
+            ? "Konto ej tillgängligt"
+            : "Account unavailable"}{" "}
+        · {statement.startsOn} – {statement.endsOn}
+      </PageCaption>
+      <RecordSummary>
+        <RecordFact label={sv ? "Ingående saldo" : "Opening balance"}>
+          {amount(statement.openingMinor)}
+        </RecordFact>
+        <RecordFact label={sv ? "Utgående saldo" : "Closing balance"}>
+          {amount(statement.closingMinor)}
+        </RecordFact>
+        <RecordFact label={sv ? "Transaktioner" : "Transactions"}>
+          {statement.rows.length}
+        </RecordFact>
+      </RecordSummary>
+      <PageCaption>
+        {statement.completeness.declaredComplete ? copy.bank_declared : copy.bank_not_declared} ·{" "}
+        {statement.completeness.basis}
+      </PageCaption>
+      <Disclosure title={sv ? "Underlag och referenser" : "Source and references"}>
+        <Text>
+          {copy.bank_statement_id}: {statement.id} · {statement.statementIdentifier}
+        </Text>
+        <Text>
+          {copy.bank_source_account}: {statement.sourceBankAccountId}
+        </Text>
+        <EvidenceInspector
+          book={book}
+          locale={locale}
+          reference={{
+            evidenceId: statement.evidenceId,
+            sha256: statement.evidenceSha256,
+            locator: "$",
+          }}
+        />
+      </Disclosure>
     </Box>
   );
 }

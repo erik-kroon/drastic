@@ -28,6 +28,8 @@ export function BankUnmatchReview({ book, id, locale }: {
   const base = `${bookPath(book)}/bank-match-reversal-plans/${encodeURIComponent(id)}`;
   const plan = useQuery({
     queryKey: [...bookKey(book), "bank-match-reversal", id],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(base, Reversal.BankMatchReversalView, { signal });
       if (result.plan.id !== id || result.plan.scope.bookId !== book.id || result.plan.scope.entityId !== book.entityId)
@@ -60,8 +62,13 @@ export function BankUnmatchReview({ book, id, locale }: {
   });
   const view = plan.data;
   const receipt = view?.execution ?? execution.data;
-  const busy = plan.isFetching || approval.isPending || execution.isPending || revocation.isPending;
-  const current = Boolean(view?.dependenciesCurrent && !plan.isError && !busy && !receipt);
+  const writesPending = approval.isPending || execution.isPending || revocation.isPending;
+  const busy = plan.isFetching || writesPending;
+  const known = plan.isSuccess && plan.fetchStatus === "idle" && plan.isFetchedAfterMount;
+  const current = Boolean(known && view?.dependenciesCurrent && !writesPending && !receipt);
+  const revocationRequestKey = revocation.variables
+    ? revocationKeys.current.get(`${bookPath(book)}/bank-match-reversal-approvals/${encodeURIComponent(revocation.variables.approvalId)}/revoke:${JSON.stringify({ reason: revocation.variables.reason })}`)
+    : undefined;
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.review}</Heading>
@@ -71,7 +78,7 @@ export function BankUnmatchReview({ book, id, locale }: {
         <Text>{copy.planId}: {view.plan.id}</Text>
         <Text>{copy.reason}: {view.plan.input.reason}</Text>
         <Text>{copy.currency}: {view.plan.currency} / {view.plan.currencyScale}</Text>
-        <Text role="status">{receipt ? copy.done : plan.isError || plan.isFetching ? copy.unknown : view.dependenciesCurrent ? copy.ready : copy.stale}</Text>
+        <Text role="status">{!known ? copy.unknown : receipt ? copy.done : view.dependenciesCurrent ? copy.ready : copy.stale}</Text>
         <Text>{copy.periods}: {view.plan.snapshot.periods.map((period) => `${period.id} / ${period.version}`).join(", ")}</Text>
         {view.plan.snapshot.capacities.map((capacity, index) => <Box
           key={`${capacity.leg.statementId}/${capacity.leg.rowOrdinal}/${capacity.leg.voucherId}/${capacity.leg.lineId}`}
@@ -102,23 +109,24 @@ export function BankUnmatchReview({ book, id, locale }: {
             {!view.approval ? <>
               <InputField type="checkbox" label={copy.acknowledge} checked={reviewed}
                 disabled={!current} onChange={(event) => setReviewed(event.currentTarget.checked)} />
-              <Box><Button type="button" size="xl" disabled={!current || !reviewed} onClick={() => {
-                approval.mutate({ digest: view.plan.digest, version: 1 });
+              <Box><Button type="button" size="xl" disabled={!current || !reviewed || approval.isError} onClick={() => {
+                if (current && reviewed && !approval.isError) approval.mutate({ digest: view.plan.digest, version: 1 });
               }}>{copy.approve}</Button></Box>
             </> : null}
           </> : <Text>{copy.operator}</Text>}
           {view.approval ? <>
             <Text>{copy.expires}: {view.approval.expiresAt} · {view.approval.actorId}</Text>
-            <Box><Button type="button" size="xl" disabled={!current} onClick={() => {
-              if (view.approval) execution.mutate({ digest: view.plan.digest, version: 1, approvalId: view.approval.id });
+            <Box><Button type="button" size="xl" disabled={!current || execution.isError} onClick={() => {
+              if (current && view.approval && !execution.isError) execution.mutate({ digest: view.plan.digest, version: 1, approvalId: view.approval.id });
             }}>{copy.execute}</Button></Box>
             {book.role === "operator" ? <Box as="form" display="grid" gap="md" onSubmit={(event) => {
               event.preventDefault();
-              if (view.approval) revocation.mutate({ approvalId: view.approval.id, reason });
+              if (known && !writesPending && !receipt && !revocation.isError && view.approval && reason.trim())
+                revocation.mutate({ approvalId: view.approval.id, reason });
             }}>
               <InputField label={copy.revokeReason} value={reason} required maxLength={2000}
-                disabled={busy} onChange={(event) => setReason(event.currentTarget.value)} />
-              <Box><Button type="submit" variant="outline" disabled={busy || !reason.trim()}>{copy.revoke}</Button></Box>
+                disabled={!known || writesPending || revocation.isError} onChange={(event) => setReason(event.currentTarget.value)} />
+              <Box><Button type="submit" variant="outline" disabled={!known || writesPending || revocation.isError || !reason.trim()}>{copy.revoke}</Button></Box>
             </Box> : null}
           </> : null}
         </>}
@@ -126,6 +134,58 @@ export function BankUnmatchReview({ book, id, locale }: {
         <AccountingStatus locale={locale} pending={execution.isPending} error={execution.error} write />
         <AccountingStatus locale={locale} pending={revocation.isPending} error={revocation.error} write />
       </> : null}
+      <RequestRecovery locale={locale} label={copy.approve}
+        request={JSON.stringify(approval.variables)} requestKey={approvalKeys.current.get(`${base}/approve:${JSON.stringify(approval.variables)}`)}
+        complete={approval.isSuccess} pending={writesPending}
+        onRetry={() => { if (!writesPending && approval.variables) approval.mutate(approval.variables); }}
+        onDiscard={() => {
+          if (writesPending) return;
+          approval.reset(); approvalKeys.current.clear(); setReviewed(false);
+        }} />
+      <RequestRecovery locale={locale} label={copy.execute}
+        request={JSON.stringify(execution.variables)} requestKey={executionKeys.current.get(`${base}/execute:${JSON.stringify(execution.variables)}`)}
+        complete={execution.isSuccess} pending={writesPending}
+        onRetry={() => { if (!writesPending && execution.variables) execution.mutate(execution.variables); }}
+        onDiscard={() => {
+          if (writesPending) return;
+          execution.reset(); executionKeys.current.clear();
+        }} />
+      <RequestRecovery locale={locale} label={copy.revoke}
+        request={JSON.stringify(revocation.variables)} requestKey={revocationRequestKey}
+        complete={revocation.isSuccess} pending={writesPending}
+        onRetry={() => { if (!writesPending && revocation.variables) revocation.mutate(revocation.variables); }}
+        onDiscard={() => {
+          if (writesPending) return;
+          revocation.reset(); revocationKeys.current.clear(); setReason("");
+        }} />
     </Box>
   );
+}
+
+function RequestRecovery(props: {
+  locale: Locale;
+  label: string;
+  request: string | undefined;
+  requestKey: string | undefined;
+  complete: boolean;
+  pending: boolean;
+  onRetry: () => void;
+  onDiscard: () => void;
+}) {
+  if (!props.request || props.complete) return null;
+  return <Box display="grid" gap="md" minWidth="zero">
+    <Text>{props.label}</Text>
+    <Text>{props.locale === "sv"
+      ? "Anropet kan ha sparats även om svaret saknas. Återförsök samma anrop eller läs kvittot innan du kastar återförsöksnyckeln."
+      : "The request may have committed even if its response is missing. Retry the same request or recover its receipt before discarding the retry key."}</Text>
+    <Text>{props.requestKey}</Text><Text>{props.request}</Text>
+    <Box display="flex" flexWrap="wrap" gap="md">
+      <Button type="button" variant="outline" disabled={props.pending} onClick={props.onRetry}>
+        {props.locale === "sv" ? "Återförsök bevarat anrop" : "Retry retained request"} · {props.label}
+      </Button>
+      <Button type="button" variant="ghost" disabled={props.pending} onClick={props.onDiscard}>
+        {props.locale === "sv" ? "Kasta anrop och återförsöksnyckel" : "Discard request and retry key"} · {props.label}
+      </Button>
+    </Box>
+  </Box>;
 }

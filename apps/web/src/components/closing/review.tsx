@@ -115,7 +115,10 @@ export function ClosingFacts({
           ]}
           rows={Object.entries(basis.dependencies).map(([field, value]) => ({
             id: field,
-            cells: [field, typeof value === "object" && value !== null ? JSON.stringify(value) : value ?? "—"],
+            cells: [
+              field,
+              typeof value === "object" && value !== null ? JSON.stringify(value) : (value ?? "—"),
+            ],
           }))}
         />
       </details>
@@ -179,6 +182,8 @@ export function ClosingReview({
   const view = useQuery({
     queryKey: [...bookKey(book), "closing-proposal", id],
     retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(path, Closing.ClosingProposalView, { signal });
       if (
@@ -211,9 +216,18 @@ export function ClosingReview({
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: bookKey(book) }),
   });
+  const busy = approve.isPending || execute.isPending;
   const proposal = view.data?.proposal;
   const receipt = view.data?.receipt ?? execute.data;
-  const ready = view.isSuccess && !view.isFetching && view.data.dependenciesCurrent && !receipt;
+  const currentnessKnown =
+    view.isSuccess && view.fetchStatus === "idle" && view.isFetchedAfterMount;
+  const ready = currentnessKnown && view.data?.dependenciesCurrent && !receipt;
+  const approvalRetry = approve.isError ? approve.variables : undefined;
+  const executionRetry = execute.isError ? execute.variables : undefined;
+  const approvalRequired = closingApprovalRequired(execute.error);
+  const canApprove =
+    (ready || approvalRetry !== undefined) && (!execute.isError || approvalRequired);
+  const approvalDisabled = !canApprove || busy;
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.review}</Heading>
@@ -222,7 +236,7 @@ export function ClosingReview({
         <Button
           variant="outline"
           size="xl"
-          disabled={view.isFetching || approve.isPending || execute.isPending}
+          disabled={view.isFetching || busy}
           onClick={() => {
             void view.refetch();
           }}
@@ -232,28 +246,14 @@ export function ClosingReview({
       </Box>
       {proposal ? (
         <>
-          <Text>
-            {proposal.periodId} ·{" "}
-            {proposal.action === "close" ? copy.closeAction : copy.reopenAction}
-          </Text>
-          <Text>
-            {copy.reason}: {proposal.reason}
-          </Text>
-          <Text>
-            {copy.proposalId}: {proposal.id}
-          </Text>
-          <Box display="grid" minWidth="zero">
-            <textarea
-              aria-label={copy.digest}
-              value={proposal.digest}
-              readOnly
-              rows={2}
-              cols={16}
-            />
-          </Box>
-          <ClosingFacts basis={proposal.basis} locale={locale} />
-          {proposal.action === "reopen" ? <Text>{copy.reopenHelp}</Text> : null}
-          {!receipt ? <Text>{ready ? copy.current : copy.stale}</Text> : null}
+          <ClosingProposalDetails proposal={proposal} locale={locale} />
+          <ClosingCurrentness
+            completed={Boolean(receipt)}
+            known={currentnessKnown}
+            current={view.data?.dependenciesCurrent === true}
+            locale={locale}
+          />
+          {approvalRetry !== undefined || executionRetry ? <Text>{copy.retryRequest}</Text> : null}
           {!receipt && book.role === "operator" ? (
             <Box
               as="form"
@@ -261,12 +261,13 @@ export function ClosingReview({
               gap="md"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (ready) {
+                if (canApprove && !approve.isPending && !execute.isPending) {
+                  if (approvalRetry !== undefined) {
+                    approve.mutate(approvalRetry);
+                    return;
+                  }
                   // A definitive rejection permits a new approval; uncertain writes keep their key.
-                  if (
-                    execute.error instanceof Accounting.AccountingError &&
-                    execute.error.code === "ApprovalRequired"
-                  ) {
+                  if (approvalRequired) {
                     keys.current.delete(
                       `${path}/approvals:${JSON.stringify({ digest: proposal.digest })}`,
                     );
@@ -277,20 +278,11 @@ export function ClosingReview({
               }}
             >
               <label>
-                <input
-                  type="checkbox"
-                  required
-                  disabled={!ready || approve.isPending || execute.isPending}
-                />{" "}
-                {copy.confirm}
+                <input type="checkbox" required disabled={approvalDisabled} /> {copy.confirm}
               </label>
               <Box>
-                <Button
-                  type="submit"
-                  size="xl"
-                  disabled={!ready || approve.isPending || execute.isPending}
-                >
-                  {copy.approval}
+                <Button type="submit" size="xl" disabled={approvalDisabled}>
+                  {approvalRetry !== undefined ? copy.retryApproval : copy.approval}
                 </Button>
               </Box>
             </Box>
@@ -309,13 +301,15 @@ export function ClosingReview({
               <Box>
                 <Button
                   size="xl"
-                  disabled={!ready || execute.isPending || approve.isPending}
+                  disabled={(!ready && !executionRetry) || busy}
                   onClick={() => {
-                    if (approve.data)
+                    if (execute.isPending || approve.isPending) return;
+                    if (executionRetry) execute.mutate(executionRetry);
+                    else if (ready && approve.data)
                       execute.mutate({ digest: proposal.digest, approvalId: approve.data.id });
                   }}
                 >
-                  {copy.execute}
+                  {executionRetry ? copy.retryExecution : copy.execute}
                 </Button>
               </Box>
             </>
@@ -389,6 +383,8 @@ function CertificateView({
   const certificate = useQuery({
     queryKey: [...bookKey(book), "closing-certificate", id],
     retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
         `${bookPath(book)}/closing-certificates/${encodeURIComponent(id)}`,
@@ -410,9 +406,24 @@ function CertificateView({
         {copy.certificate}: {id}
       </Text>
       <AccountingStatus locale={locale} pending={certificate.isPending} error={certificate.error} />
-      {certificate.isSuccess && !certificate.isFetching ? (
-        <Text>{certificate.data.current ? copy.currentCertificate : copy.invalidCertificate}</Text>
-      ) : null}
+      <Button
+        variant="outline"
+        disabled={certificate.isFetching}
+        onClick={() => {
+          void certificate.refetch();
+        }}
+      >
+        {copy.refresh}
+      </Button>
+      <Text>
+        {certificate.isSuccess &&
+        certificate.fetchStatus === "idle" &&
+        certificate.isFetchedAfterMount
+          ? certificate.data.current
+            ? copy.currentCertificate
+            : copy.invalidCertificate
+          : copy.currentnessUnknown}
+      </Text>
       <Text>{copy.warning}</Text>
     </Box>
   );
@@ -478,5 +489,53 @@ export function ClosingHistoryPanel({
         </Box>
       </Box>
     </details>
+  );
+}
+
+function ClosingCurrentness({
+  known,
+  current,
+  locale,
+  completed,
+}: {
+  known: boolean;
+  current: boolean;
+  locale: Locale;
+  completed: boolean;
+}) {
+  const copy = closingCopy(locale);
+  if (completed) return null;
+  return <Text>{!known ? copy.currentnessUnknown : current ? copy.current : copy.stale}</Text>;
+}
+
+function closingApprovalRequired(error: unknown) {
+  return error instanceof Accounting.AccountingError && error.code === "ApprovalRequired";
+}
+
+function ClosingProposalDetails({
+  proposal,
+  locale,
+}: {
+  proposal: typeof Closing.ClosingProposal.Type;
+  locale: Locale;
+}) {
+  const copy = closingCopy(locale);
+  return (
+    <>
+      <Text>
+        {proposal.periodId} · {proposal.action === "close" ? copy.closeAction : copy.reopenAction}
+      </Text>
+      <Text>
+        {copy.reason}: {proposal.reason}
+      </Text>
+      <Text>
+        {copy.proposalId}: {proposal.id}
+      </Text>
+      <Box display="grid" minWidth="zero">
+        <textarea aria-label={copy.digest} value={proposal.digest} readOnly rows={2} cols={16} />
+      </Box>
+      <ClosingFacts basis={proposal.basis} locale={locale} />
+      {proposal.action === "reopen" ? <Text>{copy.reopenHelp}</Text> : null}
+    </>
   );
 }

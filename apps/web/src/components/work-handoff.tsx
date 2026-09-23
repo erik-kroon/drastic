@@ -18,7 +18,7 @@ export function WorkHandoff(props: { item: typeof Workspace.AttentionItem.Type }
   const sv = locale === "sv";
   const team = useQuery(coordinationOptions(book));
   const client = useQueryClient();
-  const [opened, setOpened] = useState(false);
+  const [editing, setEditing] = useState<typeof Workspace.AttentionItem.Type | null>(null);
   const current = props.item.assignment;
   const members = team.isError ? [] : (team.data?.members ?? []);
   const member = members.find((item) => item.id === current?.assigneeId);
@@ -34,7 +34,7 @@ export function WorkHandoff(props: { item: typeof Workspace.AttentionItem.Type }
   return (
     <>
       <Box display="grid" gap="sm">
-        <Button static variant="ghost" onClick={() => setOpened(true)}>
+        <Button static variant="ghost" onClick={() => setEditing(props.item)}>
           {label}
         </Button>
         {current?.dueOn ? (
@@ -43,12 +43,12 @@ export function WorkHandoff(props: { item: typeof Workspace.AttentionItem.Type }
           </PageCaption>
         ) : null}
       </Box>
-      {opened ? (
+      {editing ? (
         <FormDialog
           size="compact"
-          title={props.item.title}
+          title={editing.title}
           closeLabel={sv ? "Stäng" : "Close"}
-          onClose={() => setOpened(false)}
+          onClose={() => setEditing(null)}
         >
           <AccountingStatus locale={locale} pending={team.isPending} error={team.error} />
           {team.isError ? (
@@ -70,20 +70,20 @@ export function WorkHandoff(props: { item: typeof Workspace.AttentionItem.Type }
               label={sv ? "Spara överlämning" : "Save handoff"}
               allowed={book.role === "operator"}
               input={(fields) => ({
-                kind: props.item.kind,
-                recordId: props.item.id,
+                kind: editing.kind,
+                recordId: editing.id,
                 assigneeId: fields.get("assignee") || null,
                 dueOn: fields.get("dueOn") || null,
                 note: fields.get("note"),
-                expectedRevision: current?.revision ?? 0,
+                expectedRevision: editing.assignment?.revision ?? 0,
               })}
               onSuccess={() => {
                 void client.invalidateQueries({ queryKey: bookKey(book) });
-                setOpened(false);
+                setEditing(null);
               }}
             >
               <HandoffFields
-                current={current}
+                current={editing.assignment}
                 members={members}
                 actorId={team.data.actorId}
                 locale={locale}

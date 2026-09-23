@@ -53,9 +53,20 @@ export function ExpenseEditor(
     source && !originals.some((item) => item.id === source.id) ? [source, ...originals] : originals;
   const [sourceKey] = useState(() => `expense_${crypto.randomUUID().replaceAll("-", "")}`);
   const metadata = useQuery(workQueryOptions(props.book, {}));
-  const scale = baseline ? baseline.facts.currencyScale ?? units?.scale : metadata.data?.currencyScale;
-  const currency = baseline ? baseline.facts.currency ?? units?.currency : props.book.currency;
-  if (baseline && (scale == null || currency == null)) return <EstablishExpenseCurrency locale={props.locale} currency={baseline.facts.currency} onSave={setUnits} />;
+  const { currency, scale } = expenseCurrency(
+    baseline?.facts,
+    units,
+    props.book.currency,
+    metadata.data?.currencyScale,
+  );
+  if (baseline && (scale == null || currency == null))
+    return (
+      <EstablishExpenseCurrency
+        locale={props.locale}
+        currency={baseline.facts.currency}
+        onSave={setUnits}
+      />
+    );
   if (scale == null || currency == null)
     return (
       <AccountingStatus locale={props.locale} pending={metadata.isPending} error={metadata.error} />
@@ -352,18 +363,73 @@ function ExpenseDates(props: {
   );
 }
 
-function EstablishExpenseCurrency(props: { locale: "en" | "sv"; currency: string | null; onSave: (units: { currency: string; scale: number }) => void }) {
+function EstablishExpenseCurrency(props: {
+  locale: "en" | "sv";
+  currency: string | null;
+  onSave: (units: { currency: string; scale: number }) => void;
+}) {
   const sv = props.locale === "sv";
-  return <Box as="form" display="grid" gap="lg" onSubmit={(event) => {
-    event.preventDefault();
-    const fields = new FormData(event.currentTarget);
-    const currency = fields.get("currency");
-    const scale = fields.get("scale");
-    if (typeof currency === "string" && /^[A-Z]{3}$/.test(currency) && typeof scale === "string" && /^[0-6]$/.test(scale)) props.onSave({ currency, scale: Number(scale) });
-  }}>
-    <PageCaption>{sv ? "Kontrollera valutan och beloppsformatet mot originalet innan du redigerar beloppen." : "Check the currency and amount format against the original before editing amounts."}</PageCaption>
-    <InputField name="currency" label={sv ? "Valuta" : "Currency"} required pattern="[A-Z]{3}" maxLength={3} defaultValue={props.currency ?? ""} />
-    <SelectField name="scale" label={sv ? "Beloppsformat" : "Amount format"} required defaultValue="" options={[{ value: "", label: sv ? "Välj från originalet" : "Choose from the original" }, ...[0,1,2,3,4,5,6].map((scale) => ({ value: String(scale), label: minorToDecimal("1234567", scale) }))]} />
-    <Box><Button type="submit">{sv ? "Fortsätt" : "Continue"}</Button></Box>
-  </Box>;
+  return (
+    <Box
+      as="form"
+      display="grid"
+      gap="lg"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const fields = new FormData(event.currentTarget);
+        const currency = fields.get("currency");
+        const scale = fields.get("scale");
+        if (
+          typeof currency === "string" &&
+          /^[A-Z]{3}$/.test(currency) &&
+          typeof scale === "string" &&
+          /^[0-6]$/.test(scale)
+        )
+          props.onSave({ currency, scale: Number(scale) });
+      }}
+    >
+      <PageCaption>
+        {sv
+          ? "Kontrollera valutan och beloppsformatet mot originalet innan du redigerar beloppen."
+          : "Check the currency and amount format against the original before editing amounts."}
+      </PageCaption>
+      <InputField
+        name="currency"
+        label={sv ? "Valuta" : "Currency"}
+        required
+        pattern="[A-Z]{3}"
+        maxLength={3}
+        defaultValue={props.currency ?? ""}
+      />
+      <SelectField
+        name="scale"
+        label={sv ? "Beloppsformat" : "Amount format"}
+        required
+        defaultValue=""
+        options={[
+          { value: "", label: sv ? "Välj från originalet" : "Choose from the original" },
+          ...[0, 1, 2, 3, 4, 5, 6].map((scale) => ({
+            value: String(scale),
+            label: minorToDecimal("1234567", scale),
+          })),
+        ]}
+      />
+      <Box>
+        <Button type="submit">{sv ? "Fortsätt" : "Continue"}</Button>
+      </Box>
+    </Box>
+  );
+}
+
+function expenseCurrency(
+  facts: typeof Tax.TaxSourceFacts.Type | undefined,
+  units: { currency: string; scale: number } | null,
+  bookCurrency: string,
+  bookScale: number | undefined,
+) {
+  if (!facts) return { currency: bookCurrency, scale: bookScale };
+  return {
+    currency: facts.currency ?? units?.currency,
+    scale: facts.currencyScale ?? units?.scale,
+  };
 }

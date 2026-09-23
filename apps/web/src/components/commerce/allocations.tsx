@@ -84,6 +84,8 @@ function PaymentAllocation(
   const copy = commerceCopy(locale);
   const capacity = useQuery({
     queryKey: [...commerceKey(book), "payment", payment.voucherId, payment.lineId],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
         `${commercePath(book)}/payments/${encodeURIComponent(payment.voucherId)}/lines/${encodeURIComponent(payment.lineId)}/capacity`,
@@ -103,7 +105,7 @@ function PaymentAllocation(
   });
   const [legs, setLegs] = useState([0]);
   const [nextLeg, setNextLeg] = useState(1);
-  const ready = capacity.isSuccess && !capacity.isFetching;
+  const ready = capacity.isSuccess && capacity.isFetchedAfterMount && capacity.fetchStatus === "idle";
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.capacity}</Heading>
@@ -214,6 +216,8 @@ function AllocationReview(props: CommerceProps & { id: string }) {
   const copy = commerceCopy(locale);
   const view = useQuery({
     queryKey: [...commerceKey(book), "allocation", id],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
         `${commercePath(book)}/allocation-plans/${encodeURIComponent(id)}`,
@@ -236,7 +240,7 @@ function AllocationReview(props: CommerceProps & { id: string }) {
     },
     retry: false,
   });
-  const ready = view.isSuccess && !view.isFetching;
+  const ready = view.isSuccess && view.isFetchedAfterMount && view.fetchStatus === "idle";
   const plan = view.data?.plan;
   const approval = view.data?.approval;
   const actionable = ready && view.data?.dependenciesCurrent === true && !view.data.application;
@@ -315,57 +319,52 @@ function AllocationReview(props: CommerceProps & { id: string }) {
               <Facts title={copy.facts} value={view.data.application} />
             </Box>
           ) : (
-            <>
-              <Text>
-                {!ready ? copy.waiting : view.data?.dependenciesCurrent ? copy.fresh : copy.stale}
-              </Text>
-              {book.role === "operator" ? (
-                <Details title={copy.approve}>
-                  <CommandForm
-                    {...props}
-                    path={`${commercePath(book)}/allocation-plans/${encodeURIComponent(id)}/approvals`}
-                    schema={Commerce.ApproveAllocation}
-                    output={Commerce.AllocationApproval}
-                    label={copy.approve}
-                    allowed={actionable}
-                    input={() => ({ version: plan.version, planDigest: plan.digest })}
-                  >
-                    <Text>
-                      {copy.digest}: {plan.digest}
-                    </Text>
-                    <Box as="label" display="flex" gap="md" alignItems="start">
-                      <input type="checkbox" required name="reviewed" />
-                      <span>{copy.ack}</span>
-                    </Box>
-                  </CommandForm>
-                </Details>
-              ) : (
-                <Text>{copy.operatorOnly}</Text>
-              )}
-              {approval ? (
-                <>
-                  <Facts title={copy.approval} value={approval} />
-                  {!approvalCurrent ? <Text>{copy.expired}</Text> : null}
-                  <CommandForm
-                    {...props}
-                    key={approval.id}
-                    path={`${commercePath(book)}/allocation-plans/${encodeURIComponent(id)}/apply`}
-                    schema={Commerce.ApplyAllocation}
-                    output={Commerce.AllocationReceipt}
-                    label={copy.apply}
-                    allowed={actionable && approvalCurrent}
-                    input={() => ({
-                      version: plan.version,
-                      planDigest: plan.digest,
-                      approvalId: approval.id,
-                    })}
-                  >
-                    <Text>{copy.newProposal}</Text>
-                  </CommandForm>
-                </>
-              ) : null}
-            </>
+            <Text>
+              {!ready ? copy.waiting : view.data?.dependenciesCurrent ? copy.fresh : copy.stale}
+            </Text>
           )}
+          {book.role !== "operator" ? <Text>{copy.operatorOnly}</Text> : null}
+          <Details title={copy.approve}>
+            <CommandForm
+              {...props}
+              path={`${commercePath(book)}/allocation-plans/${encodeURIComponent(id)}/approvals`}
+              schema={Commerce.ApproveAllocation}
+              output={Commerce.AllocationApproval}
+              label={copy.approve}
+              allowed={actionable && book.role === "operator"}
+              input={() => ({ version: plan.version, planDigest: plan.digest })}
+            >
+              <Text>
+                {copy.digest}: {plan.digest}
+              </Text>
+              <Box as="label" display="flex" gap="md" alignItems="start">
+                <input type="checkbox" required name="reviewed" />
+                <span>{copy.ack}</span>
+              </Box>
+            </CommandForm>
+          </Details>
+          {approval ? (
+            <>
+              <Facts title={copy.approval} value={approval} />
+              {!approvalCurrent ? <Text>{copy.expired}</Text> : null}
+            </>
+          ) : null}
+          {/* Captured requests retain their approval ID even when the live approval changes. */}
+          <CommandForm
+            {...props}
+            path={`${commercePath(book)}/allocation-plans/${encodeURIComponent(id)}/apply`}
+            schema={Commerce.ApplyAllocation}
+            output={Commerce.AllocationReceipt}
+            label={copy.apply}
+            allowed={actionable && approvalCurrent}
+            input={() => ({
+              version: plan.version,
+              planDigest: plan.digest,
+              approvalId: approval?.id,
+            })}
+          >
+            <Text>{copy.newProposal}</Text>
+          </CommandForm>
         </>
       ) : null}
     </Box>

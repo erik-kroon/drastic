@@ -4,8 +4,9 @@ import * as Reports from "@open-erp/contracts/register-reports";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
-import { Heading, Text } from "@open-erp/ui/components/typography";
-import { ArrowLeft, Plus } from "lucide-react";
+import { Text } from "@open-erp/ui/components/typography";
+import { ArrowLeft, Plus, RefreshCw } from "lucide-react";
+import { Disclosure } from "@open-erp/ui/components/workflow";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
 import { RecordToggle, PageCaption } from "@open-erp/ui/components/accounting-page";
@@ -77,7 +78,11 @@ export function RegisterReports(
     <Box display="grid" gap="lg" minWidth="zero">
       <RecordHeading
         title={copy.registerReports}
-        subtitle={copy.registerBasis}
+        subtitle={
+          locale === "sv"
+            ? "Spara reskontran och jämför obetalda fakturor med bokföringen vid ett valt datum."
+            : "Save a dated view of outstanding invoices and compare it with the ledger."
+        }
         action={
           <Button onClick={() => setSelected("new")}>
             <Plus size={14} />
@@ -87,6 +92,7 @@ export function RegisterReports(
       />
       {selected === "new" ? (
         <FormDialog
+          size="compact"
           title={copy.captureRegister}
           closeLabel={locale === "sv" ? "Stäng" : "Close"}
           onClose={() => setSelected("")}
@@ -138,17 +144,15 @@ export function RegisterReports(
           {copy.next}
         </Button>
       </Box>
-      <PageCaption>{copy.registerLimits}</PageCaption>
       <AccountingStatus locale={locale} pending={page.isPending} error={page.error} />
       {page.isSuccess ? (
         <DataTable
           title={copy.registerReports}
           narrow="stack"
           columns={[
-            { id: "id", label: copy.id },
+            { id: "id", label: locale === "sv" ? "Rapport" : "Report" },
             { id: "date", label: copy.asOfDate },
             { id: "created", label: copy.capturedAt },
-            { id: "sequence", label: copy.ledgerSequence },
           ]}
           rows={page.data.items.map((report) => ({
             id: report.id,
@@ -160,12 +164,23 @@ export function RegisterReports(
               new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
                 new Date(report.createdAt),
               ),
-              report.sequence,
             ],
           }))}
         />
       ) : null}
-      {page.isSuccess && page.data.items.length === 0 ? <Text>{copy.empty}</Text> : null}
+      {page.isSuccess && page.data.items.length === 0 ? (
+        <Text>
+          {locale === "sv"
+            ? "Inga sparade rapporter ännu. Skapa en rapport för att granska reskontran vid ett valt datum."
+            : "No saved reports yet. Create a report to review the invoice register at a chosen date."}
+        </Text>
+      ) : null}
+      <Disclosure
+        title={locale === "sv" ? "Rapportens underlag och omfattning" : "Report basis and scope"}
+      >
+        <Text>{copy.registerBasis}</Text>
+        <PageCaption>{copy.registerLimits}</PageCaption>
+      </Disclosure>
     </Box>
   );
 }
@@ -189,20 +204,21 @@ function SavedRegisterReport(props: CommerceProps & { id: string }) {
   });
   return (
     <Box display="grid" gap="lg" minWidth="zero">
-      <Heading>{copy.registerReports}</Heading>
-
-      <Box>
-        <Button
-          size="xl"
-          variant="outline"
-          disabled={report.isFetching}
-          onClick={() => {
-            void report.refetch();
-          }}
-        >
-          {copy.refresh}
-        </Button>
-      </Box>
+      <RecordHeading
+        title={copy.registerReports}
+        action={
+          <Button
+            variant="outline"
+            disabled={report.isFetching}
+            onClick={() => {
+              void report.refetch();
+            }}
+          >
+            <RefreshCw size={14} />
+            {copy.refresh}
+          </Button>
+        }
+      />
       <AccountingStatus locale={locale} pending={report.isPending} error={report.error} />
       {report.isSuccess ? <ReportContents {...props} report={report.data} /> : null}
     </Box>
@@ -223,16 +239,20 @@ function ReportContents({
   };
   return (
     <Box display="grid" gap="lg" minWidth="zero">
-      <CommerceRegisterAllocationStatus book={book} locale={locale} id={report.id} />
-      <Text role="status">{statuses[report.status]}</Text>
-      <Text>
-        {copy.asOfDate}: {report.asOfDate} · {copy.capturedAt}: {report.createdAt}
-      </Text>
       <RecordSummary>
         <RecordFact label={copy.asOfDate}>{report.asOfDate}</RecordFact>
         <RecordFact label={locale === "sv" ? "Valuta" : "Currency"}>{report.currency}</RecordFact>
-        <RecordFact label="Status">{statuses[report.status]}</RecordFact>
+        <RecordFact label="Status">
+          {
+            {
+              balanced: locale === "sv" ? "Stämmer" : "Agrees",
+              differences: locale === "sv" ? "Differenser" : "Differences",
+              no_declared_accounts: locale === "sv" ? "Konton saknas" : "Accounts not configured",
+            }[report.status]
+          }
+        </RecordFact>
       </RecordSummary>
+      <Text>{statuses[report.status]}</Text>
       <Box>
         <Button
           size="xl"
@@ -257,9 +277,13 @@ function ReportContents({
         locale={locale}
         title={copy.registerControls}
         columns={[
-          { id: "account", label: copy.account },
+          { id: "account", label: locale === "sv" ? "Konto" : "Account" },
           { id: "direction", label: copy.role },
-          { id: "outstanding", label: copy.outstanding, numeric: true },
+          {
+            id: "outstanding",
+            label: locale === "sv" ? "Utestående" : "Outstanding",
+            numeric: true,
+          },
           { id: "cancelled", label: locale === "sv" ? "Makulerat" : "Cancelled", numeric: true },
           { id: "ledger", label: copy.ledgerAmount, numeric: true },
           { id: "difference", label: copy.registerDifference, numeric: true },
@@ -282,7 +306,7 @@ function ReportContents({
         locale={locale}
         title={copy.registerAgeing}
         columns={[
-          { id: "account", label: copy.account },
+          { id: "account", label: locale === "sv" ? "Konto" : "Account" },
           { id: "current", label: copy.notDue, numeric: true },
           { id: "30", label: copy.days1To30, numeric: true },
           { id: "60", label: copy.days31To60, numeric: true },
@@ -311,7 +335,7 @@ function ReportContents({
             { id: "due", label: copy.due },
             { id: "revision", label: copy.revision },
             { id: "days", label: copy.daysOverdue, numeric: true },
-            { id: "amount", label: copy.outstanding, numeric: true },
+            { id: "amount", label: locale === "sv" ? "Utestående" : "Outstanding", numeric: true },
             { id: "cancelled", label: locale === "sv" ? "Makulerat" : "Cancelled", numeric: true },
             { id: "cancellation", label: locale === "sv" ? "Makulering" : "Cancellation" },
           ]}
@@ -341,10 +365,18 @@ function ReportContents({
             { id: "voucher", label: copy.voucher },
             { id: "line", label: copy.line },
             { id: "date", label: copy.postingDate },
-            { id: "account", label: copy.account },
-            { id: "effect", label: copy.registerEffect, numeric: true },
+            { id: "account", label: locale === "sv" ? "Konto" : "Account" },
+            {
+              id: "effect",
+              label: locale === "sv" ? "Reskontraeffekt" : "Register amount",
+              numeric: true,
+            },
             { id: "cancellation", label: locale === "sv" ? "Makulering" : "Cancellation" },
-            { id: "difference", label: copy.unexplainedAmount, numeric: true },
+            {
+              id: "difference",
+              label: locale === "sv" ? "Oförklarat belopp" : "Unexplained amount",
+              numeric: true,
+            },
           ]}
           rows={report.ledgerLines.map((line) => ({
             id: `${line.voucherId}:${line.lineId}`,
@@ -383,6 +415,9 @@ function ReportContents({
           }))}
         />
       </Details>
+      <Disclosure title={locale === "sv" ? "Aktuellt matchningsläge" : "Current allocation status"}>
+        <CommerceRegisterAllocationStatus book={book} locale={locale} id={report.id} />
+      </Disclosure>
       <Facts title={copy.facts} value={report} />
     </Box>
   );

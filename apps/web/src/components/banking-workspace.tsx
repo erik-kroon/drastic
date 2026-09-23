@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Bank from "@open-erp/contracts/reconciliation";
@@ -31,7 +31,7 @@ export function BankingWorkspace({
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
-  const [statement, setStatement] = useState<string | null>(null);
+  const statement = recordId?.startsWith("statement:") ? recordId.slice(10) : null;
   const keys = useRef(new Map<string, string>());
   const period = setup.periods.at(-1);
   const sources = useInfiniteQuery({
@@ -60,7 +60,7 @@ export function BankingWorkspace({
   const imported =
     sources.data?.pages.flatMap((page) => page.items).filter((item) => item.admission !== null) ??
     [];
-  if (recordId)
+  if (recordId && !statement)
     return (
       <Box display="grid" gap="xl">
         <Box>
@@ -76,7 +76,7 @@ export function BankingWorkspace({
     return (
       <Box display="grid" gap="xl">
         <Box>
-          <Button variant="ghost" onClick={() => setStatement(null)}>
+          <Button variant="ghost" onClick={() => onOpen("")}>
             <ArrowLeft size={14} />
             {labels.allStatements}
           </Button>
@@ -163,7 +163,9 @@ export function BankingWorkspace({
             />
             <Button
               variant="ghost"
-              onClick={() => setStatement(item.admission?.imported.statement.id ?? null)}
+              onClick={() => {
+                if (item.admission) onOpen(`statement:${item.admission.imported.statement.id}`);
+              }}
             >
               {labels.viewTransactions}
             </Button>

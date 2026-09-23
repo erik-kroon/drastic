@@ -2,12 +2,19 @@ import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Review from "@open-erp/contracts/accountant-review";
+import { Download, RefreshCw } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
-import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
+import {
+  RecordHeading,
+  RecordSummary,
+  RecordFact,
+  RecordColumns,
+  RecordSection,
+} from "@open-erp/ui/components/record-layout";
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
-import { PageTabs } from "@open-erp/ui/components/workflow";
+import { Disclosure, PageTabs } from "@open-erp/ui/components/workflow";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -16,6 +23,7 @@ import type { Locale } from "@/paraglide/runtime";
 import { reviewCopy } from "./copy";
 import { ReviewProviderRows } from "./provider-rows";
 import { SiePanel } from "./sie-panel";
+import { CoverageRows } from "./coverage-rows";
 
 const sections: ReadonlyArray<typeof Review.ReviewSection.Type> = [
   "coverage",
@@ -41,6 +49,8 @@ export function ReviewPackInspector({
   const view = useQuery({
     queryKey: [...bookKey(book), "accountant-review", id],
     retry: false,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
         `${bookPath(book)}/accountant-review-packs/${encodeURIComponent(id)}`,
@@ -66,23 +76,27 @@ export function ReviewPackInspector({
             ? `${pack.report.startsOn} – ${pack.report.endsOn} · ${pack.report.currency}`
             : undefined
         }
+        action={
+          <Button
+            variant="outline"
+            disabled={view.isFetching}
+            onClick={() => {
+              void view.refetch();
+            }}
+          >
+            <RefreshCw size={14} />
+            {copy.refresh}
+          </Button>
+        }
       />
       <AccountingStatus locale={locale} pending={view.isPending} error={view.error} />
-      <Box>
-        <Button
-          variant="outline"
-          size="xl"
-          disabled={view.isFetching}
-          onClick={() => {
-            void view.refetch();
-          }}
-        >
-          {copy.refresh}
-        </Button>
-      </Box>
-      {view.isSuccess && !view.isFetching ? (
-        <Text>{view.data.dependenciesCurrent ? copy.current : copy.historical}</Text>
-      ) : null}
+      <Text>
+        {view.isSuccess && view.fetchStatus === "idle" && view.isFetchedAfterMount
+          ? view.data.dependenciesCurrent
+            ? copy.current
+            : copy.historical
+          : copy.currentnessUnknown}
+      </Text>
       {pack ? (
         <>
           <RecordSummary>
@@ -97,24 +111,27 @@ export function ReviewPackInspector({
               {pack.counts.journal}
             </RecordFact>
           </RecordSummary>
-          <Heading>{copy.openingStatus}</Heading>
-          <Text>{copy.openingWarning}</Text>
-          <Text>{pack.openingBasis.explanation}</Text>
-
-          <Heading>{copy.notesTitle}</Heading>
-          <Text>{pack.accountantNotes}</Text>
-          <details>
-            <summary>{copy.basis}</summary>
-            <Box display="grid" minWidth="zero">
-              <textarea
-                aria-label={copy.basis}
-                readOnly
-                value={JSON.stringify(pack.basis, null, 2)}
-                rows={14}
-                cols={16}
+          <RecordColumns>
+            <RecordSection title={copy.notesTitle}>
+              <Text>{pack.accountantNotes}</Text>
+            </RecordSection>
+            <RecordSection title={copy.openingStatus}>
+              <Text>{pack.openingBasis.explanation}</Text>
+              <PageCaption>{copy.openingWarning}</PageCaption>
+            </RecordSection>
+          </RecordColumns>
+          <Disclosure title={copy.downloads}>
+            <PageCaption>{copy.downloadWarning}</PageCaption>
+            {view.data?.artifacts.map((descriptor) => (
+              <ArtifactDownload
+                key={descriptor.format}
+                book={book}
+                pack={pack}
+                descriptor={descriptor}
+                locale={locale}
               />
-            </Box>
-          </details>
+            ))}
+          </Disclosure>
           <PageTabs label={copy.title}>
             {sections.map((name) => (
               <Button
@@ -136,17 +153,17 @@ export function ReviewPackInspector({
             locale={locale}
           />
           <SiePanel key={pack.id} book={book} pack={pack} locale={locale} />
-          <Heading>{copy.downloads}</Heading>
-          <Text>{copy.downloadWarning}</Text>
-          {view.data?.artifacts.map((descriptor) => (
-            <ArtifactDownload
-              key={descriptor.format}
-              book={book}
-              pack={pack}
-              descriptor={descriptor}
-              locale={locale}
-            />
-          ))}
+          <Disclosure title={copy.basis}>
+            <Box display="grid" minWidth="zero">
+              <textarea
+                aria-label={copy.basis}
+                readOnly
+                value={JSON.stringify(pack.basis, null, 2)}
+                rows={14}
+                cols={16}
+              />
+            </Box>
+          </Disclosure>
         </>
       ) : null}
     </Box>
@@ -188,59 +205,64 @@ function ArtifactDownload({
         throw new Error("Review artifact bytes differ from the retained hash");
       return bytes;
     },
+    onSuccess: (bytes) => {
+      const url = URL.createObjectURL(
+        new Blob([bytes], { type: `${descriptor.mediaType};charset=utf-8` }),
+      );
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = descriptor.filename;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    },
   });
-  const bytes = download.data;
+  const names = {
+    json: locale === "sv" ? "Hela granskningspaketet" : "Complete review pack",
+    balances_csv: copy.balances,
+    journal_csv: copy.journal,
+    evidence_csv: copy.evidence,
+    coverage_csv: copy.coverage,
+    owner_sources_csv: copy.owner_sources,
+    owner_controls_csv: copy.owner_controls,
+    expense_tax_csv: copy.expense_tax,
+  };
   return (
-    <Box
-      display="grid"
-      gap="sm"
-      padding="lg"
-      backgroundColor="muted"
-      borderRadius="surface"
-      minWidth="zero"
-    >
-      <Text>{descriptor.filename}</Text>
-      <Text>
-        {descriptor.byteLength} {copy.bytes}
-      </Text>
-      <Box display="grid" minWidth="zero">
-        <textarea
-          aria-label={`${copy.hash}: ${descriptor.format}`}
-          value={descriptor.sha256}
-          readOnly
-          rows={2}
-          cols={16}
-        />
-      </Box>
-      <Box>
+    <Box display="grid" gap="sm" paddingBlock="md" minWidth="zero">
+      <Box display="flex" justifyContent="between" alignItems="center" gap="lg">
+        <Box display="grid" gap="xs" minWidth="zero">
+          <Text>{names[descriptor.format]}</Text>
+          <PageCaption>
+            {descriptor.mediaType === "application/json" ? "JSON" : "CSV"} ·{" "}
+            {new Intl.NumberFormat(locale).format(descriptor.byteLength)} {copy.bytes}
+          </PageCaption>
+        </Box>
         <Button
           variant="outline"
-          size="xl"
-          disabled={download.isPending || Boolean(bytes)}
+          disabled={download.isPending}
           onClick={() => download.mutate()}
+          aria-label={`${copy.save}: ${names[descriptor.format]}`}
         >
-          {copy.prepareDownload}
+          <Download size={14} />
+          {copy.save}
         </Button>
       </Box>
       <AccountingStatus locale={locale} pending={download.isPending} error={download.error} />
-      {bytes ? (
-        <>
-          <Text role="status">{copy.checked}</Text>
-          <a
-            download={descriptor.filename}
-            ref={(anchor) => {
-              if (!anchor) return;
-              const url = URL.createObjectURL(
-                new Blob([bytes], { type: `${descriptor.mediaType};charset=utf-8` }),
-              );
-              anchor.href = url;
-              return () => URL.revokeObjectURL(url);
-            }}
-          >
-            {copy.save}: {descriptor.filename}
-          </a>
-        </>
-      ) : null}
+      {download.isSuccess ? <PageCaption>{copy.checked}</PageCaption> : null}
+      <details>
+        <summary>{locale === "sv" ? "Filinformation" : "File details"}</summary>
+        <Box display="grid" gap="sm" minWidth="zero">
+          <Text>{descriptor.filename}</Text>
+          <textarea
+            aria-label={`${copy.hash}: ${descriptor.format}`}
+            value={descriptor.sha256}
+            readOnly
+            rows={2}
+            cols={16}
+          />
+        </Box>
+      </details>
     </Box>
   );
 }
@@ -318,18 +340,7 @@ function ReviewRows({
         />
       ) : null}
       {section === "coverage" ? (
-        <DataTable
-          title={copy.coverage}
-          narrow="stack"
-          columns={[
-            { id: "code", label: copy.code },
-            { id: "status", label: copy.status },
-            { id: "detail", label: copy.detail },
-          ]}
-          rows={items
-            .filter((row) => row.section === "coverage")
-            .map((row) => ({ id: row.code, cells: [row.code, row.status, row.detail] }))}
-        />
+        <CoverageRows items={items.filter((row) => row.section === "coverage")} locale={locale} />
       ) : null}
       {section === "journal" ? (
         <DataTable
