@@ -44,6 +44,14 @@ export const CommerceHandlers = HttpApiBuilder.group(Api, "commerce", (handlers)
         }),
       ),
     )
+    .handle("commerceSupplierInvoiceDuplicates", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        capabilities.commerce_supplier_invoice_duplicates.execute(token, {
+          scope: params,
+          ...query,
+        }),
+      ),
+    )
     .handle("commerceCreateInvoice", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.commerce_create_invoice.execute(token, {

@@ -12,7 +12,11 @@ import { InvoiceDrafts } from "./invoice-drafts";
 import { InvoiceIssueReviewPanel } from "./invoice-issuance";
 import { checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
 
-type Props = CommerceProps & { recordId?: string; onOpen?: (id: string) => void };
+type Props = CommerceProps & {
+  recordId?: string;
+  onOpen?: (id: string) => void;
+  onReview?: () => void;
+};
 
 export function InvoiceDraftIssueOverlay(props: Props) {
   return (
@@ -32,9 +36,7 @@ function DraftIssueWorkspace(props: Props) {
   return <InvoiceDrafts {...props} recordId={recordId} onOpen={onOpen} />;
 }
 
-function SelectedDraftIssue(
-  props: CommerceProps & { recordId: string; onOpen: (id: string) => void },
-) {
+function SelectedDraftIssue(props: Props & { recordId: string; onOpen: (id: string) => void }) {
   const { book, locale, recordId, onOpen } = props;
   const sv = locale === "sv";
   const history = useQuery({
@@ -60,12 +62,17 @@ function SelectedDraftIssue(
     return (
       <InvoiceDrafts
         {...props}
+        contextual={!!props.onReview}
         issueAction={
-          <PageAction
-            href={`${workspacePath(book)}/sales?view=issue&record=${encodeURIComponent(recordId)}`}
-          >
-            {sv ? "Granska utfärdande" : "Review issuance"}
-          </PageAction>
+          props.onReview ? (
+            <Button onClick={props.onReview}>{sv ? "Granska faktura" : "Review invoice"}</Button>
+          ) : (
+            <PageAction
+              href={`${workspacePath(book)}/sales?view=issue&record=${encodeURIComponent(recordId)}`}
+            >
+              {sv ? "Granska utfärdande" : "Review issuance"}
+            </PageAction>
+          )
         }
         issueStatus={
           <>

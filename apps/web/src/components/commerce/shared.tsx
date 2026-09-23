@@ -176,7 +176,7 @@ export function CommandForm<
       return result;
     },
     onSuccess: (result) => {
-      void client.invalidateQueries({ queryKey: commerceKey(book) });
+      void client.invalidateQueries({ queryKey: bookKey(book) });
       props.onSuccess?.(result);
     },
     retry: false,

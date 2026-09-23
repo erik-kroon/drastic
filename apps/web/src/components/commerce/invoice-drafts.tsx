@@ -2,13 +2,14 @@ import { useState, type ReactNode } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import * as Commerce from "@open-erp/contracts/commerce";
-import { Plus, ArrowLeft, Trash2 } from "lucide-react";
+import { Plus, ArrowLeft } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Text } from "@open-erp/ui/components/typography";
 import { Badge } from "@open-erp/ui/components/badge";
+import { InvoiceDraftDocument } from "./invoice-draft-document";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import {
   PageEmpty,
@@ -21,14 +22,19 @@ import {
   DocumentPaper,
   RecordHeading,
   RecordSection,
-  RecordSummary,
-  RecordFact,
   RecordSplit,
 } from "@open-erp/ui/components/record-layout";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceCommandForm } from "@/components/evidence-command-form";
 import { readAccounting } from "@/lib/accounting-api";
 import { decimalToMinor, formatMinorAmount, workQueryOptions } from "@/lib/workspace-api";
+import {
+  InvoiceEditorLines,
+  invoiceEditorTotals,
+  editableInvoiceLine,
+  invoiceQuantity,
+  type EditableInvoiceLine,
+} from "./invoice-editor-lines";
 import { ContactEditor } from "./contact-editor";
 import { invoiceDraftBlocker } from "./invoice-draft-copy";
 import {
@@ -42,8 +48,21 @@ import {
 } from "./shared";
 
 type Draft = typeof Drafts.InvoiceDraftRevision.Type;
-type DraftActions = { issueAction?: ReactNode; issueStatus?: ReactNode };
-type EditableLine = { id: string; defaults?: typeof Drafts.DraftLine.Type };
+type DraftActions = { issueAction?: ReactNode; issueStatus?: ReactNode; contextual?: boolean };
+export function NewInvoiceDraft(
+  props: CommerceProps & { onSaved: (id: string) => void; onClose: () => void },
+) {
+  const labels = props.locale === "sv" ? swedish : english;
+  return (
+    <FormDialog title={labels.newInvoice} closeLabel={labels.close} onClose={props.onClose}>
+      <DraftEditor
+        book={props.book}
+        locale={props.locale}
+        onSaved={(record) => props.onSaved(record.id)}
+      />
+    </FormDialog>
+  );
+}
 export function InvoiceDrafts(
   props: CommerceProps & DraftActions & { recordId?: string; onOpen?: (id: string) => void },
 ) {
@@ -69,12 +88,14 @@ export function InvoiceDrafts(
   if (selected && selected !== "new")
     return (
       <Box display="grid" gap="xl">
-        <Box>
-          <Button variant="ghost" onClick={() => select("")}>
-            <ArrowLeft size={14} />
-            {labels.allDrafts}
-          </Button>
-        </Box>
+        {!props.contextual ? (
+          <Box>
+            <Button variant="ghost" onClick={() => select("")}>
+              <ArrowLeft size={14} />
+              {labels.allDrafts}
+            </Button>
+          </Box>
+        ) : null}
         <DraftDetail {...props} id={selected} />
       </Box>
     );
@@ -175,37 +196,17 @@ function DraftEditor(
   const labels = sv ? swedish : english;
   const baseline = props.baseline;
   const content = baseline?.content;
-  const [addingCustomer, setAddingCustomer] = useState(false);
-  const [addedCustomer, setAddedCustomer] = useState<
-    typeof Commerce.CounterpartyRevision.Type | null
-  >(null);
-  const [customerId, setCustomerId] = useState(content?.counterpartyId ?? "");
+  const [customer, setCustomer] = useState<typeof Commerce.CounterpartyRevision.Type | null>(
+    baseline?.counterparty ?? null,
+  );
   const [draftKey] = useState(() => `draft_${crypto.randomUUID().replaceAll("-", "")}`);
-  const [lines, setLines] = useState<EditableLine[]>(() =>
-    content ? content.lines.map((line) => ({ id: line.id, defaults: line })) : [{ id: "line_1" }],
+  const [lines, setLines] = useState<EditableInvoiceLine[]>(() =>
+    content
+      ? content.lines.map((line) => editableInvoiceLine(content.currencyScale, line))
+      : [editableInvoiceLine(0)],
   );
   const metadata = useQuery(workQueryOptions(props.book, {}));
   const scale = content?.currencyScale ?? metadata.data?.currencyScale;
-  const customers = useInfiniteQuery({
-    queryKey: [...commerceKey(props.book), "contact-options"],
-    initialPageParam: "",
-    queryFn: async ({ pageParam, signal }) => {
-      const page = await readAccounting(
-        `${commercePath(props.book)}/counterparties${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
-        Commerce.CounterpartyPage,
-        { signal },
-      );
-      page.items.forEach((party) => checkScope(props.book, party.scope));
-      return page;
-    },
-    getNextPageParam: (last) => last.next ?? undefined,
-    retry: false,
-  });
-  const parties =
-    customers.data?.pages
-      .flatMap((page) => page.items)
-      .filter((party) => party.role !== "supplier") ?? [];
-  const customer = selectedCustomer(addedCustomer, parties, baseline, customerId);
   if (scale === undefined)
     return (
       <AccountingStatus locale={props.locale} pending={metadata.isPending} error={metadata.error} />
@@ -217,6 +218,16 @@ function DraftEditor(
       schema={baseline ? Drafts.ReviseInvoiceDraft : Drafts.CreateInvoiceDraft}
       output={Drafts.InvoiceDraftRevision}
       label={labels.saveDraft}
+      stickyFooter
+      footerSummary={
+        <DraftFooter
+          lines={lines}
+          scale={scale}
+          content={content}
+          bookCurrency={props.book.currency}
+          locale={props.locale}
+        />
+      }
       canSubmit={!!customer}
       onSuccess={props.onSaved}
       source={(fields) => ({
@@ -257,7 +268,7 @@ function DraftEditor(
           lines: lines.map((line) => ({
             id: line.id,
             description: inputText(fields, `${line.id}_description`),
-            quantity: inputText(fields, `${line.id}_quantity`),
+            quantity: invoiceQuantity(inputText(fields, `${line.id}_quantity`)),
             unitPriceMinor: decimalField(fields, `${line.id}_unitPrice`, scale, true),
             baseMinor: decimalField(fields, `${line.id}_amount`, scale),
             discountMinor: line.defaults?.discountMinor ?? "0",
@@ -278,191 +289,91 @@ function DraftEditor(
           : { draftKey, content: next };
       }}
     >
-      <RecordSplit
-        aside={
-          <>
-            <DraftDates content={content} locale={props.locale} />
-            <InputField
-              name="sourceTotal"
-              label={sv ? "Avtalat totalbelopp (valfritt)" : "Agreed total (optional)"}
-              inputMode="decimal"
-              defaultValue={editAmount(content?.sourceTotalMinor, scale)}
-            />
-            <PageCaption>
-              {sv
-                ? "Ange totalsumman från avtalet eller beställningen, om den finns."
-                : "Enter the total stated in the agreement or order, if available."}
-            </PageCaption>
-            <PageCaption>{labels.savedAsADraftNo}</PageCaption>
-          </>
-        }
-      >
-        <RecordSection title={labels.customer}>
-          <SelectField
-            label={labels.chooseCustomer}
-            value={customerId}
-            onValueChange={(value) => setCustomerId(value ?? "")}
-            options={[
-              { value: "", label: labels.selectACustomer },
-              ...(addedCustomer && !parties.some((party) => party.id === addedCustomer.id)
-                ? [{ value: addedCustomer.id, label: addedCustomer.displayName }]
-                : []),
-              ...parties.map((party) => ({ value: party.id, label: party.displayName })),
-            ]}
-          />
-          <AccountingStatus
+      <DocumentPaper compact>
+        <RecordHeading
+          title={labels.invoiceDraft}
+          subtitle={content?.seller.legalName ?? props.book.name}
+        />
+        <DraftDates content={content} locale={props.locale} />
+        <Box display="grid" columns={2} gap="xl">
+          <DraftCustomerPicker
+            book={props.book}
             locale={props.locale}
-            pending={customers.isPending}
-            error={customers.error}
+            content={content}
+            customer={customer}
+            onChange={setCustomer}
           />
-          {customers.hasNextPage ? (
-            <Box>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  void customers.fetchNextPage();
-                }}
-              >
-                {labels.loadMoreCustomers}
-              </Button>
-            </Box>
-          ) : null}
-          <Box>
-            <Button type="button" variant="ghost" onClick={() => setAddingCustomer(true)}>
-              <Plus size={14} strokeWidth={1.5} />
-              {sv ? "Lägg till kund" : "Add customer"}
-            </Button>
-          </Box>
-          {addingCustomer ? (
-            <FormDialog
-              size="compact"
-              title={sv ? "Ny kund" : "New customer"}
-              closeLabel={labels.close}
-              onClose={() => setAddingCustomer(false)}
-            >
-              <ContactEditor
-                book={props.book}
-                locale={props.locale}
-                customerOnly
-                onSaved={(party) => {
-                  setAddedCustomer(party);
-                  setCustomerId(party.id);
-                  setAddingCustomer(false);
-                }}
-              />
-            </FormDialog>
-          ) : null}
-          {customer ? (
-            <CustomerFields
-              key={customer.id}
-              customer={customer}
-              content={content}
-              locale={props.locale}
-            />
-          ) : null}
-        </RecordSection>
-        <SellerFields content={content} bookName={props.book.name} locale={props.locale} />
+          <RecordSection title={labels.from}>
+            <Text>{content?.seller.legalName ?? props.book.name}</Text>
+            <Text tone="muted">
+              {content?.seller.address ??
+                (sv
+                  ? "Komplettera företagets faktureringsuppgifter"
+                  : "Complete your business billing details")}
+            </Text>
+            <Details title={sv ? "Avsändaruppgifter" : "Sender details"}>
+              <SellerFields content={content} bookName={props.book.name} locale={props.locale} />
+            </Details>
+          </RecordSection>
+        </Box>
         <RecordSection title={`${labels.lineItems} · ${content?.currency ?? props.book.currency}`}>
-          {lines.map((line, index) => (
-            <Box key={line.id} display="grid" gap="md" paddingBlock="md">
-              <InputField
-                name={`${line.id}_description`}
-                label={`${labels.description} ${index + 1}`}
-                required
-                maxLength={200}
-                defaultValue={line.defaults?.description}
-              />
-              <Box display="grid" columns={4} gap="md">
-                <InputField
-                  name={`${line.id}_quantity`}
-                  label={labels.quantity}
-                  required
-                  defaultValue={line.defaults?.quantity ?? "1"}
-                  inputMode="decimal"
-                />
-                <InputField
-                  name={`${line.id}_unitPrice`}
-                  label={labels.unitPrice}
-                  inputMode="decimal"
-                  defaultValue={editAmount(line.defaults?.unitPriceMinor, scale)}
-                />
-                <InputField
-                  name={`${line.id}_amount`}
-                  label={labels.lineAmountBeforeTax}
-                  required
-                  inputMode="decimal"
-                  defaultValue={editAmount(line.defaults?.baseMinor, scale)}
-                />
-                <InputField
-                  name={`${line.id}_tax`}
-                  label={labels.taxAmount}
-                  inputMode="decimal"
-                  defaultValue={editAmount(line.defaults?.taxMinor, scale)}
-                />
-              </Box>
-              <Box display="flex" gap="md" alignItems="end">
-                <InputField
-                  name={`${line.id}_taxDescription`}
-                  label={labels.taxTreatment}
-                  placeholder={labels.asStatedInTheSource}
-                  maxLength={200}
-                  defaultValue={line.defaults?.taxDescription ?? ""}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={lines.length === 1}
-                  onClick={() =>
-                    setLines((current) => current.filter((item) => item.id !== line.id))
-                  }
-                >
-                  <Trash2 size={14} />
-                  {labels.remove}
-                </Button>
-              </Box>
-              <InputField
-                name={`${line.id}_sourceGross`}
-                label={
-                  sv
-                    ? "Avtalat radbelopp inkl. moms (valfritt)"
-                    : "Agreed line total including tax (optional)"
-                }
-                inputMode="decimal"
-                defaultValue={editAmount(line.defaults?.sourceGrossMinor, scale)}
-              />
-              {line.defaults &&
-              (line.defaults.discountMinor !== "0" || line.defaults.chargeMinor !== "0") ? (
-                <PageCaption>
-                  {labels.retainedDiscountCharge} {editAmount(line.defaults.discountMinor, scale)} /{" "}
-                  {editAmount(line.defaults.chargeMinor, scale)}
-                </PageCaption>
-              ) : null}
-            </Box>
-          ))}
-          <Box>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={lines.length >= 50}
-              onClick={() =>
-                setLines((current) => [
-                  ...current,
-                  { id: `line_${crypto.randomUUID().replaceAll("-", "")}` },
-                ])
-              }
-            >
-              <Plus size={14} />
-              {labels.addLine}
-            </Button>
-          </Box>
-          <PageCaption>{labels.enterTheFullLineAmount}</PageCaption>
+          <InvoiceEditorLines
+            lines={lines}
+            onChange={setLines}
+            scale={scale}
+            currency={content?.currency ?? props.book.currency}
+            locale={props.locale}
+          />
         </RecordSection>
+        <InputField
+          name="terms"
+          label={labels.paymentTerms}
+          maxLength={1000}
+          defaultValue={content?.paymentTerms ?? ""}
+        />
+        <Details title={sv ? "Avtalat totalbelopp" : "Agreed total"}>
+          <InputField
+            name="sourceTotal"
+            label={sv ? "Avtalat totalbelopp (valfritt)" : "Agreed total (optional)"}
+            inputMode="decimal"
+            defaultValue={editAmount(content?.sourceTotalMinor, scale)}
+          />
+          <PageCaption>
+            {sv
+              ? "Ange totalsumman från avtalet eller beställningen, om den finns."
+              : "Enter the total stated in the agreement or order, if available."}
+          </PageCaption>
+        </Details>
         {baseline ? <InputField name="reason" label={labels.whatChanged} required /> : null}
-      </RecordSplit>
+      </DocumentPaper>
     </EvidenceCommandForm>
   );
 }
+function DraftFooter(props: {
+  lines: EditableInvoiceLine[];
+  scale: number;
+  content?: DraftContent;
+  bookCurrency: string;
+  locale: CommerceProps["locale"];
+}) {
+  const labels = props.locale === "sv" ? swedish : english;
+  const gross = invoiceEditorTotals(props.lines, props.scale).gross;
+  const currency = props.content?.currency ?? props.bookCurrency;
+  return (
+    <Box display="grid" gap="xs">
+      <Text>
+        <strong>
+          {labels.total}:{" "}
+          {gross === null
+            ? "—"
+            : `${formatMinorAmount(gross.toString(), props.scale, props.locale)} ${currency}`}
+        </strong>
+      </Text>
+      <PageCaption>{labels.savedAsADraftNo}</PageCaption>
+    </Box>
+  );
+}
+
 function DraftDetail(props: CommerceProps & DraftActions & { id: string }) {
   const sv = props.locale === "sv";
   const labels = sv ? swedish : english;
@@ -497,10 +408,6 @@ function DraftDetail(props: CommerceProps & DraftActions & { id: string }) {
     retry: false,
   });
   const record = view.data?.record;
-  const amount = (value: string | null) =>
-    value === null || !record
-      ? "—"
-      : `${formatMinorAmount(value, record.content.currencyScale, props.locale)} ${record.content.currency}`;
   return (
     <Box display="grid" gap="xl">
       <AccountingStatus locale={props.locale} pending={view.isPending} error={view.error} />
@@ -568,55 +475,7 @@ function DraftDetail(props: CommerceProps & DraftActions & { id: string }) {
               </>
             }
           >
-            <DocumentPaper>
-              <RecordHeading
-                title={labels.invoiceDraft}
-                subtitle={record.content.seller.legalName}
-              />
-              <Box display="grid" columns={2} gap="xl">
-                <RecordSection title={labels.billTo}>
-                  <Text>{record.content.customer.legalName}</Text>
-                  <Text tone="muted">{record.content.customer.address ?? "—"}</Text>
-                </RecordSection>
-                <RecordSection title={labels.dates}>
-                  <Text>
-                    {labels.invoiceDate}: {record.content.plannedIssueDate ?? "—"}
-                  </Text>
-                  <Text>
-                    {labels.dueDate}: {record.content.dueDate ?? "—"}
-                  </Text>
-                </RecordSection>
-              </Box>
-              <DataTable
-                title={labels.invoiceLines}
-                narrow="stack"
-                columns={[
-                  { id: "description", label: labels.description },
-                  { id: "quantity", label: labels.qty, numeric: true },
-                  { id: "net", label: labels.net, numeric: true },
-                  { id: "tax", label: labels.tax, numeric: true },
-                ]}
-                rows={record.content.lines.map((line) => ({
-                  id: line.id,
-                  cells: [
-                    line.description,
-                    line.quantity,
-                    amount(
-                      record.calculatedLines.find((item) => item.id === line.id)?.netMinor ?? null,
-                    ),
-                    amount(line.taxMinor),
-                  ],
-                }))}
-              />
-              <RecordSummary>
-                <RecordFact label={labels.subtotal}>{amount(record.totals.netMinor)}</RecordFact>
-                <RecordFact label={labels.tax}>{amount(record.totals.taxMinor)}</RecordFact>
-                <RecordFact label={labels.total}>{amount(record.totals.grossMinor)}</RecordFact>
-              </RecordSummary>
-              {record.content.paymentTerms ? (
-                <Text tone="muted">{record.content.paymentTerms}</Text>
-              ) : null}
-            </DocumentPaper>
+            <InvoiceDraftDocument record={record} locale={props.locale} />
           </RecordSplit>
           {editing ? (
             <FormDialog
@@ -675,41 +534,43 @@ function DraftDates({
 }) {
   const labels = locale === "sv" ? swedish : english;
   return (
-    <RecordSection title={labels.invoiceDetails}>
+    <Box display="grid" gap="lg">
       <InputField
         name="title"
         label={labels.description}
         required
         maxLength={200}
         defaultValue={content?.title}
+        placeholder={
+          locale === "sv"
+            ? "Till exempel designarbete, september"
+            : "For example, September design work"
+        }
       />
-      <InputField
-        name="issueDate"
-        label={labels.invoiceDate}
-        type="date"
-        defaultValue={content?.plannedIssueDate ?? ""}
-      />
-      <InputField
-        name="dueDate"
-        label={labels.dueDate}
-        type="date"
-        defaultValue={content?.dueDate ?? ""}
-      />
-      <InputField
-        name="supplyDate"
-        label={labels.supplyDate}
-        type="date"
-        defaultValue={content?.supplyDate ?? ""}
-      />
-      <InputField
-        name="terms"
-        label={labels.paymentTerms}
-        maxLength={1000}
-        defaultValue={content?.paymentTerms ?? ""}
-      />
-    </RecordSection>
+      <Box display="grid" columns={3} gap="lg">
+        <InputField
+          name="issueDate"
+          label={labels.invoiceDate}
+          type="date"
+          defaultValue={content?.plannedIssueDate ?? ""}
+        />
+        <InputField
+          name="dueDate"
+          label={labels.dueDate}
+          type="date"
+          defaultValue={content?.dueDate ?? ""}
+        />
+        <InputField
+          name="supplyDate"
+          label={labels.supplyDate}
+          type="date"
+          defaultValue={content?.supplyDate ?? ""}
+        />
+      </Box>
+    </Box>
   );
 }
+
 function SellerFields({
   content,
   bookName,
@@ -721,7 +582,7 @@ function SellerFields({
 }) {
   const labels = locale === "sv" ? swedish : english;
   return (
-    <RecordSection title={labels.from}>
+    <Box display="grid" gap="md">
       <Box display="grid" columns={2} gap="lg">
         <InputField
           name="seller"
@@ -751,7 +612,7 @@ function SellerFields({
         maxLength={1000}
         defaultValue={content?.seller.address ?? ""}
       />
-    </RecordSection>
+    </Box>
   );
 }
 function CustomerFields({
@@ -953,15 +814,101 @@ const swedish: typeof english = {
   editInvoice: "Redigera faktura",
 };
 
-function selectedCustomer(
-  added: typeof Commerce.CounterpartyRevision.Type | null,
-  parties: ReadonlyArray<typeof Commerce.CounterpartyRevision.Type>,
-  baseline: Draft | undefined,
-  id: string,
+function DraftCustomerPicker(
+  props: CommerceProps & {
+    content?: DraftContent;
+    customer: typeof Commerce.CounterpartyRevision.Type | null;
+    onChange: (customer: typeof Commerce.CounterpartyRevision.Type) => void;
+  },
 ) {
-  if (added?.id === id) return added;
+  const sv = props.locale === "sv";
+  const labels = sv ? swedish : english;
+  const [adding, setAdding] = useState(false);
+  const customers = useInfiniteQuery({
+    queryKey: [...commerceKey(props.book), "contact-options"],
+    initialPageParam: "",
+    queryFn: async ({ pageParam, signal }) => {
+      const page = await readAccounting(
+        `${commercePath(props.book)}/counterparties${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        Commerce.CounterpartyPage,
+        { signal },
+      );
+      page.items.forEach((party) => checkScope(props.book, party.scope));
+      return page;
+    },
+    getNextPageParam: (last) => last.next ?? undefined,
+    retry: false,
+  });
+  const parties =
+    customers.data?.pages
+      .flatMap((page) => page.items)
+      .filter((party) => party.role !== "supplier") ?? [];
+  if (props.customer && !parties.some((party) => party.id === props.customer?.id))
+    parties.unshift(props.customer);
   return (
-    parties.find((party) => party.id === id) ??
-    (baseline?.counterparty.id === id ? baseline.counterparty : undefined)
+    <RecordSection title={labels.customer}>
+      <SelectField
+        label={labels.chooseCustomer}
+        value={props.customer?.id ?? ""}
+        onValueChange={(id) => {
+          const party = parties.find((item) => item.id === id);
+          if (party) props.onChange(party);
+        }}
+        options={[
+          { value: "", label: labels.selectACustomer },
+          ...parties.map((party) => ({ value: party.id, label: party.displayName })),
+        ]}
+      />
+      <AccountingStatus
+        locale={props.locale}
+        pending={customers.isPending}
+        error={customers.error}
+      />
+      <Box display="flex" gap="md">
+        <Button type="button" variant="ghost" onClick={() => setAdding(true)}>
+          <Plus size={14} strokeWidth={1.5} />
+          {sv ? "Lägg till kund" : "Add customer"}
+        </Button>
+        {customers.hasNextPage ? (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              void customers.fetchNextPage();
+            }}
+          >
+            {labels.loadMoreCustomers}
+          </Button>
+        ) : null}
+      </Box>
+      {props.customer ? (
+        <Details title={sv ? "Faktureringsuppgifter" : "Billing details"}>
+          <CustomerFields
+            key={props.customer.id}
+            customer={props.customer}
+            content={props.content}
+            locale={props.locale}
+          />
+        </Details>
+      ) : null}
+      {adding ? (
+        <FormDialog
+          size="compact"
+          title={sv ? "Ny kund" : "New customer"}
+          closeLabel={labels.close}
+          onClose={() => setAdding(false)}
+        >
+          <ContactEditor
+            book={props.book}
+            locale={props.locale}
+            customerOnly
+            onSaved={(party) => {
+              props.onChange(party);
+              setAdding(false);
+            }}
+          />
+        </FormDialog>
+      ) : null}
+    </RecordSection>
   );
 }

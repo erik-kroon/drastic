@@ -119,9 +119,40 @@ export const Invoice = Schema.Struct({
   effectiveAmountMinor: Schema.optional(Accounting.MinorUnits),
   cancellation: Schema.optional(Schema.NullOr(InvoiceCancellationSummary)),
   blockers: Schema.Array(Schema.String),
+  issueOrigin: Schema.optional(
+    Schema.NullOr(
+      Schema.Struct({
+        issueId: Accounting.Identifier,
+        reviewId: Accounting.Identifier,
+        draftId: Accounting.Identifier,
+      }),
+    ),
+  ),
 });
 export const InvoicePage = Schema.Struct({
   items: Schema.Array(Invoice),
+  next: Schema.NullOr(Accounting.Identifier),
+});
+export const SupplierInvoiceDuplicateQuery = Schema.Struct({
+  counterpartyId: Accounting.Identifier,
+  documentNumber: CreateInvoice.fields.documentNumber,
+  evidenceId: Accounting.Identifier,
+  after: Schema.optional(Accounting.Identifier),
+});
+export const SupplierInvoiceDuplicates = Schema.Struct({
+  scope: Accounting.Scope,
+  counterpartyId: Accounting.Identifier,
+  documentNumber: CreateInvoice.fields.documentNumber,
+  evidence: EvidenceReference,
+  coverage: Schema.Literal("registered_supplier_invoices_only"),
+  items: Schema.Array(
+    Schema.Struct({
+      invoice: Invoice,
+      reasons: Schema.Array(
+        Schema.Literals(["same_document_number", "same_original_evidence_content"]),
+      ).check(Schema.isMinLength(1), Schema.isMaxLength(2)),
+    }),
+  ).check(Schema.isMaxLength(50)),
   next: Schema.NullOr(Accounting.Identifier),
 });
 export const InvoiceHistory = Schema.Struct({
@@ -250,6 +281,11 @@ export const CommerceApi = HttpApiGroup.make("commerce").add(
     query: AfterQuery,
     success: CounterpartyPage,
   }),
+  HttpApiEndpoint.get("commerceSupplierInvoiceDuplicates", `${path}/supplier-invoice-duplicates`, {
+    ...scoped,
+    query: SupplierInvoiceDuplicateQuery.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: SupplierInvoiceDuplicates,
+  }),
   HttpApiEndpoint.post("commerceCreateInvoice", `${path}/invoices`, {
     ...mutation,
     payload: CreateInvoice.annotate({ parseOptions: { onExcessProperty: "error" } }),
@@ -332,6 +368,13 @@ export const CommerceCapabilities = {
     description: "Page through registered synthetic counterparties. Follow next until null.",
     input: Schema.Struct({ ...capabilityScope, ...AfterQuery.fields }),
     output: CounterpartyPage,
+    readOnly: true,
+  },
+  commerce_supplier_invoice_duplicates: {
+    description:
+      "Inspect registered supplier invoices in this book with the same supplier and exact document number or original evidence content. Follow next until null with unchanged criteria. Candidates are diagnostics, not proof of duplication or permission to register; never merges, posts or checks unregistered sources.",
+    input: Schema.Struct({ ...capabilityScope, ...SupplierInvoiceDuplicateQuery.fields }),
+    output: SupplierInvoiceDuplicates,
     readOnly: true,
   },
   commerce_create_invoice: {

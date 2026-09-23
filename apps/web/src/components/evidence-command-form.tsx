@@ -2,6 +2,7 @@ import { useId, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Schema from "effect/Schema";
+import { FormActions } from "@open-erp/ui/components/form-actions";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { Text } from "@open-erp/ui/components/typography";
@@ -33,6 +34,8 @@ export function EvidenceCommandForm<
     input: (fields: FormData, evidence: typeof Accounting.Evidence.Type) => unknown;
     label: string;
     canSubmit?: boolean;
+    stickyFooter?: boolean;
+    footerSummary?: ReactNode;
     children: ReactNode;
     onSuccess: (result: O["Type"]) => void;
   },
@@ -129,12 +132,14 @@ export function EvidenceCommandForm<
         padding="none"
       >
         {props.children}
-        <Box display="grid" gap="md">
-          <PageCaption>
-            {sv
-              ? "Uppgifterna sparas med underlaget och historiken."
-              : "These details are retained with the source and its history."}
-          </PageCaption>
+        <FormActions sticky={props.stickyFooter}>
+          {props.footerSummary ?? (
+            <PageCaption>
+              {sv
+                ? "Uppgifterna sparas med underlaget och historiken."
+                : "These details are retained with the source and its history."}
+            </PageCaption>
+          )}
           <Box>
             <Button
               type="submit"
@@ -143,7 +148,7 @@ export function EvidenceCommandForm<
               {save.isPending ? (sv ? "Sparar…" : "Saving…") : props.label}
             </Button>
           </Box>
-        </Box>
+        </FormActions>
       </Box>
       {invalid || correctable ? (
         <Text id={errorId} role="alert">

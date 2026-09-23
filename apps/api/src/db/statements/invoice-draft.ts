@@ -1,6 +1,8 @@
 import { sql, type SQL } from "drizzle-orm";
 
 export const invoiceDraftStatements = {
+  salesRegister: (parameters) =>
+    sql`select openerp.sales_register(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::jsonb) as result`,
   createInvoiceDraft: (parameters) =>
     sql`select openerp.create_invoice_draft(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   reviseInvoiceDraft: (parameters) =>

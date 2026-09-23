@@ -61,6 +61,7 @@ const styles = stylex.create({
     backgroundColor: tokens.card,
     minWidth: 0,
   },
+  compactPaper: { padding: 24, gap: 20 },
   section: { display: "grid", gap: 16, minWidth: 0 },
   sectionTitle: {
     fontSize: tokens.fontSizeSm,
@@ -109,8 +110,16 @@ export function RecordSplit({ children, aside }: { children: ReactNode; aside: R
     </div>
   );
 }
-export function DocumentPaper({ children }: { children: ReactNode }) {
-  return <article {...stylex.props(styles.paper)}>{children}</article>;
+export function DocumentPaper({
+  children,
+  compact = false,
+}: {
+  children: ReactNode;
+  compact?: boolean;
+}) {
+  return (
+    <article {...stylex.props(styles.paper, compact && styles.compactPaper)}>{children}</article>
+  );
 }
 export function RecordSection({ title, children }: { title: string; children: ReactNode }) {
   return (

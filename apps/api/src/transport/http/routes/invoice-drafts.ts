@@ -8,6 +8,11 @@ import { query, scopeParameter } from "../../../db/query";
 
 export const InvoiceDraftHandlers = HttpApiBuilder.group(Api, "invoiceDrafts", (handlers) =>
   handlers
+    .handle("salesRegister", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        capabilities.commerce_sales_register.execute(token, { scope: params, ...query }),
+      ),
+    )
     .handle("createInvoiceDraft", ({ params, headers, payload }) =>
       Effect.gen(function* () {
         const token = yield* authenticate;

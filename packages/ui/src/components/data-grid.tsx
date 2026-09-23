@@ -118,7 +118,7 @@ export function DataGrid<Row extends object>({
   getRowId: (row: Row) => string;
   busy?: boolean;
   narrow?: "scroll" | "stack";
-  minWidth?: "standard" | "wide";
+  minWidth?: "standard" | "wide" | "fit";
   renderDetail?: (row: Row) => ReactNode;
 }) {
   const column = createColumnHelper<typeof features, Row>();
@@ -147,7 +147,7 @@ export function DataGrid<Row extends object>({
       <table
         {...stylex.props(
           styles.table,
-          columns.length > 2 && styles.wide,
+          columns.length > 2 && minWidth !== "fit" && styles.wide,
           minWidth === "wide" && styles.expanded,
           narrow === "stack" && styles.stackedTable,
         )}

@@ -9,6 +9,7 @@ import {
 } from "@open-erp/ui/components/accounting-page";
 import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
 import { formatMinorAmount } from "@/lib/workspace-api";
+import { IssuedInvoiceDocument } from "./issued-invoice-document";
 import { InvoiceRegistration } from "./invoice-registration";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -39,6 +40,7 @@ export function Invoices(
     direction?: "customer" | "supplier";
     recordId?: string;
     onOpen?: (id: string) => void;
+    contextual?: boolean;
   },
 ) {
   const { book, locale } = props;
@@ -83,12 +85,14 @@ export function Invoices(
   if (selected && selected !== "new")
     return (
       <Box display="grid" gap="xl">
-        <Box>
-          <Button variant="ghost" onClick={() => select("")}>
-            <ArrowLeft size={14} />
-            {labels.allInvoices}
-          </Button>
-        </Box>
+        {!props.contextual ? (
+          <Box>
+            <Button variant="ghost" onClick={() => select("")}>
+              <ArrowLeft size={14} />
+              {labels.allInvoices}
+            </Button>
+          </Box>
+        ) : null}
         <InvoiceDetail {...props} id={selected} />
       </Box>
     );
@@ -206,18 +210,6 @@ export function InvoiceDetail(props: CommerceProps & { id: string }) {
   const ready = invoice.isSuccess && !invoice.isFetching;
   return (
     <Box display="grid" gap="lg" minWidth="zero">
-      <Box>
-        <Button
-          size="xl"
-          variant="outline"
-          disabled={invoice.isFetching}
-          onClick={() => {
-            void invoice.refetch();
-          }}
-        >
-          {copy.refresh}
-        </Button>
-      </Box>
       <AccountingStatus locale={locale} pending={invoice.isPending} error={invoice.error} />
       {!ready ? <Text>{copy.waiting}</Text> : null}
       {invoice.data ? (
@@ -225,7 +217,39 @@ export function InvoiceDetail(props: CommerceProps & { id: string }) {
           <RecordHeading
             title={invoice.data.documentNumber}
             subtitle={invoice.data.counterpartyName}
+            action={
+              <Button
+                variant="ghost"
+                disabled={invoice.isFetching}
+                onClick={() => {
+                  void invoice.refetch();
+                }}
+              >
+                {copy.refresh}
+              </Button>
+            }
           />
+          <Box>
+            <Badge
+              variant={
+                invoice.data.status === "cancelled"
+                  ? "secondary"
+                  : invoice.data.status === "allocated"
+                    ? "success"
+                    : "warning"
+              }
+            >
+              {
+                (locale === "sv" ? swedish : english)[
+                  invoice.data.status === "partially_allocated"
+                    ? "partlyAllocated"
+                    : invoice.data.status === "blocked"
+                      ? "needsReview"
+                      : invoice.data.status
+                ]
+              }
+            </Badge>
+          </Box>
           <RecordSummary>
             <RecordFact label={locale === "sv" ? "Belopp" : "Amount"}>
               {formatMinorAmount(invoice.data.amountMinor, invoice.data.currencyScale, locale)}{" "}
@@ -270,6 +294,14 @@ export function InvoiceDetail(props: CommerceProps & { id: string }) {
               {blocker}
             </Text>
           ))}
+          {invoice.data.issueOrigin ? (
+            <IssuedInvoiceDocument
+              book={book}
+              locale={locale}
+              invoice={invoice.data}
+              reviewId={invoice.data.issueOrigin.reviewId}
+            />
+          ) : null}
           <Facts title={copy.facts} value={invoice.data} />
           <Evidence {...props} reference={invoice.data.evidence} />
           <Details title={copy.reviseInvoice}>
@@ -417,7 +449,7 @@ const english = {
   close: "Close",
 };
 const swedish: typeof english = {
-  open: "Obetald",
+  open: "Utestående",
   partlyAllocated: "Delvis avstämd",
   allocated: "Avstämd",
   needsReview: "Behöver granskas",

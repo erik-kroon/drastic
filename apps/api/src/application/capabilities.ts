@@ -268,6 +268,14 @@ export const capabilities = {
     "listInvoiceDrafts",
     (input) => [scopeParameter(input.scope)],
   ),
+  commerce_sales_register: bindCapability(
+    Capabilities.commerce_sales_register,
+    "salesRegister",
+    (input) => [
+      scopeParameter(input.scope),
+      JSON.stringify({ q: input.q, status: input.status, sort: input.sort, page: input.page }),
+    ],
+  ),
   commerce_invoice_draft_history: bindCapability(
     Capabilities.commerce_invoice_draft_history,
     "invoiceDraftHistory",
@@ -442,6 +450,19 @@ export const capabilities = {
     Capabilities.commerce_list_counterparties,
     "commerceListCounterparties",
     (input) => [scopeParameter(input.scope), input.after ?? ""],
+  ),
+  commerce_supplier_invoice_duplicates: bindCapability(
+    Capabilities.commerce_supplier_invoice_duplicates,
+    "commerceSupplierInvoiceDuplicates",
+    (input) => [
+      scopeParameter(input.scope),
+      JSON.stringify({
+        counterpartyId: input.counterpartyId,
+        documentNumber: input.documentNumber,
+        evidenceId: input.evidenceId,
+        after: input.after,
+      }),
+    ],
   ),
   commerce_create_invoice: bindCapability(
     Capabilities.commerce_create_invoice,

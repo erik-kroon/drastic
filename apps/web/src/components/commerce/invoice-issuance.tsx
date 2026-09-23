@@ -7,18 +7,14 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
-import {
-  RecordHeading,
-  RecordSummary,
-  RecordFact,
-  RecordSection,
-} from "@open-erp/ui/components/record-layout";
+import { RecordHeading, RecordSplit, RecordSection } from "@open-erp/ui/components/record-layout";
 import { PageAction, PageCaption, RecordToggle } from "@open-erp/ui/components/accounting-page";
 import { workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { InvoiceDraftDocument } from "./invoice-draft-document";
 import { invoiceDraftBlocker } from "./invoice-draft-copy";
 import { invoiceIssueCopy } from "./invoice-issue-copy";
 import { InvoiceDocumentPanel } from "./invoice-documents";
@@ -35,7 +31,14 @@ import {
   type CommerceProps,
 } from "./shared";
 
-export function InvoiceIssuance(props: CommerceProps & { recordId?: string }) {
+type IssueWorkspaceProps = CommerceProps & {
+  recordId?: string;
+  reviewId?: string;
+  onBack?: () => void;
+  onReviewOpen?: (id: string) => void;
+  onIssued?: (id: string) => void;
+};
+export function InvoiceIssuance(props: IssueWorkspaceProps) {
   return (
     <IssueWorkspace
       key={`${props.book.entityId}:${props.book.id}:${props.recordId ?? ""}`}
@@ -43,10 +46,12 @@ export function InvoiceIssuance(props: CommerceProps & { recordId?: string }) {
     />
   );
 }
-function IssueWorkspace(props: CommerceProps & { recordId?: string }) {
+function IssueWorkspace(props: IssueWorkspaceProps) {
   const copy = invoiceIssueCopy(props.locale);
   const [draftId, setDraftId] = useState(props.recordId ?? "");
-  const [reviewId, setReviewId] = useState("");
+  const [localReviewId, setLocalReviewId] = useState("");
+  const reviewId = props.reviewId ?? localReviewId;
+  const setReviewId = props.onReviewOpen ?? setLocalReviewId;
   const drafts = useQuery({
     queryKey: [...commerceKey(props.book), "invoice-drafts"],
     queryFn: ({ signal }) =>
@@ -54,50 +59,76 @@ function IssueWorkspace(props: CommerceProps & { recordId?: string }) {
         signal,
       }),
     retry: false,
+    enabled: !props.recordId,
   });
   return (
     <Box display="grid" gap="lg" minWidth="zero">
-      <RecordHeading
-        title={copy.title}
-        subtitle={
-          props.locale === "sv"
-            ? "Granska fakturan och den bokföring som ska skapas."
-            : "Review the invoice and the accounting it will create."
-        }
-      />
-      <PageCaption>{copy.boundary}</PageCaption>
-      <SelectField
-        label={props.locale === "sv" ? "Fakturautkast" : "Invoice draft"}
-        value={draftId}
-        onValueChange={(id) => {
-          setDraftId(id ?? "");
-          setReviewId("");
-        }}
-        options={[
-          { value: "", label: props.locale === "sv" ? "Välj faktura" : "Choose invoice" },
-          ...(drafts.data?.items.map((item) => ({
-            value: item.id,
-            label: `${item.title} · ${item.customerName}`,
-          })) ?? []),
-        ]}
-      />
-      <AccountingStatus locale={props.locale} pending={drafts.isPending} error={drafts.error} />
-      {draftId ? (
-        <PageAction
-          quiet
-          href={`${workspacePath(props.book)}/sales?view=drafts&record=${encodeURIComponent(draftId)}`}
-        >
-          {props.locale === "sv" ? "Till fakturan" : "Back to invoice"}
-        </PageAction>
+      {!reviewId ? (
+        <RecordHeading
+          title={copy.title}
+          subtitle={
+            props.locale === "sv"
+              ? "Granska fakturan och den bokföring som ska skapas."
+              : "Review the invoice and the accounting it will create."
+          }
+        />
       ) : null}
-      {draftId ? <IssueDraft {...props} key={draftId} id={draftId} onOpen={setReviewId} /> : null}
+      <PageCaption>
+        {props.locale === "sv"
+          ? "Endast demoutfärdande är tillgängligt. Ingen juridisk faktura skapas eller skickas."
+          : "Only demo issuance is available. No legal invoice is created or sent."}
+      </PageCaption>
+      <Details title={props.locale === "sv" ? "Vad demoutfärdande innebär" : "About demo issuance"}>
+        <Text>{copy.boundary}</Text>
+      </Details>
+      {!props.recordId ? (
+        <SelectField
+          label={props.locale === "sv" ? "Fakturautkast" : "Invoice draft"}
+          value={draftId}
+          onValueChange={(id) => {
+            setDraftId(id ?? "");
+            setReviewId("");
+          }}
+          options={[
+            { value: "", label: props.locale === "sv" ? "Välj faktura" : "Choose invoice" },
+            ...(drafts.data?.items.map((item) => ({
+              value: item.id,
+              label: `${item.title} · ${item.customerName}`,
+            })) ?? []),
+          ]}
+        />
+      ) : null}
+      {!props.recordId ? (
+        <AccountingStatus locale={props.locale} pending={drafts.isPending} error={drafts.error} />
+      ) : null}
+      {draftId ? (
+        props.onBack ? (
+          <Box>
+            <Button variant="ghost" onClick={props.onBack}>
+              {props.locale === "sv" ? "Till fakturan" : "Back to invoice"}
+            </Button>
+          </Box>
+        ) : (
+          <PageAction
+            quiet
+            href={`${workspacePath(props.book)}/sales?view=drafts&record=${encodeURIComponent(draftId)}`}
+          >
+            {props.locale === "sv" ? "Till fakturan" : "Back to invoice"}
+          </PageAction>
+        )
+      ) : null}
+      {draftId && !reviewId ? (
+        <IssueDraft {...props} key={draftId} id={draftId} onOpen={setReviewId} />
+      ) : null}
+      {reviewId ? (
+        <InvoiceIssueReviewPanel {...props} key={reviewId} id={reviewId} draftId={draftId} />
+      ) : null}
       <Details
         title={props.locale === "sv" ? "Återställ tidigare granskning" : "Recover a saved review"}
       >
         <Text>{copy.recovery}</Text>
         <Lookup label={copy.openReview} onOpen={setReviewId} />
       </Details>
-      {reviewId ? <InvoiceIssueReviewPanel {...props} key={reviewId} id={reviewId} /> : null}
     </Box>
   );
 }
@@ -169,7 +200,7 @@ function IssueDraft(props: CommerceProps & { id: string; onOpen: (id: string) =>
       ) : null}
       <AccountingStatus locale={locale} pending={history.isPending} error={history.error} />
       {history.isSuccess ? (
-        <>
+        <Details title={copy.history}>
           <DataTable
             title={copy.history}
             narrow="stack"
@@ -194,7 +225,7 @@ function IssueDraft(props: CommerceProps & { id: string; onOpen: (id: string) =>
             }))}
           />
           {history.data.count === 0 ? <Text>{copy.empty}</Text> : null}
-        </>
+        </Details>
       ) : null}
     </Box>
   );
@@ -230,94 +261,99 @@ function IssuePreparation(
       .filter((account) => account.active)
       .map((account) => ({ value: account.id, label: `${account.code} · ${account.name}` })) ?? [];
   return (
-    <RecordSection title={draft.content.title}>
-      <RecordSummary>
-        <RecordFact label={copy.customer}>{draft.content.customer.legalName}</RecordFact>
-        <RecordFact label={copy.total}>
-          {draft.totals.grossMinor === null
-            ? "—"
-            : formatMinorAmount(
-                draft.totals.grossMinor,
-                draft.content.currencyScale,
-                props.locale,
-              )}{" "}
-          {draft.content.currency}
-        </RecordFact>
-        <RecordFact label={copy.postingDate}>{draft.content.plannedIssueDate ?? "—"}</RecordFact>
-      </RecordSummary>
-      <PageCaption>{copy.requirements}</PageCaption>
-      {missing.length ? (
-        <Box display="grid" gap="sm">
-          {missing.map((reason) => (
-            <Text key={reason} tone="muted">
-              {reason}
-            </Text>
-          ))}
-        </Box>
-      ) : null}
-      <AccountingStatus locale={props.locale} pending={setup.isPending} error={setup.error} />
-      <CommandForm
-        {...props}
-        path={`${commercePath(props.book)}/invoice-issue-reviews`}
-        schema={Issuance.PrepareInvoiceIssue}
-        output={Issuance.InvoiceIssueReview}
-        label={copy.prepare}
-        allowed={props.allowed}
-        canSubmit={setup.isSuccess && setup.fetchStatus === "idle" && missing.length === 0}
-        input={(fields) => ({
-          profile: "synthetic-manual-invoice-v1",
-          draftId: draft.id,
-          expectedRevision: draft.revision,
-          expectedDigest: draft.digest,
-          controlAccountId: fields.get("controlAccountId"),
-          creditAccountId: fields.get("creditAccountId"),
-          accountingPeriodId: fields.get("accountingPeriodId"),
-          series: fields.get("series"),
-          reason: fields.get("reason"),
-          acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
-        })}
-        onSuccess={(review) => props.onOpen(review.id)}
-      >
-        <Box display="grid" columns={2} gap="lg">
-          <SelectField
-            name="controlAccountId"
-            label={copy.control}
-            options={[{ value: "", label: "—" }, ...accounts]}
-            required
-          />
-          <SelectField
-            name="creditAccountId"
-            label={copy.credit}
-            options={[{ value: "", label: "—" }, ...accounts]}
-            required
-          />
-          <SelectField
-            name="accountingPeriodId"
-            label={copy.period}
-            options={[
-              { value: "", label: "—" },
-              ...(setup.data?.periods
-                .filter((period) => !period.locked)
-                .map((period) => ({
-                  value: period.id,
-                  label: `${period.startsOn} – ${period.endsOn}`,
-                })) ?? []),
-            ]}
-            required
-          />
-          <InputField name="series" label={copy.series} maxLength={16} required />
-        </Box>
-        <InputField name="reason" label={copy.reason} required maxLength={2000} />
-        <SyntheticAcknowledgment locale={props.locale} />
-      </CommandForm>
-    </RecordSection>
+    <RecordSplit
+      aside={
+        <RecordSection title={props.locale === "sv" ? "Inför utfärdande" : "Before issuing"}>
+          {missing.length ? (
+            <Box display="grid" gap="sm">
+              {missing.map((reason) => (
+                <Text key={reason} tone="muted">
+                  {reason}
+                </Text>
+              ))}
+            </Box>
+          ) : null}
+          <AccountingStatus locale={props.locale} pending={setup.isPending} error={setup.error} />
+          {missing.length === 0 ? (
+            <CommandForm
+              {...props}
+              path={`${commercePath(props.book)}/invoice-issue-reviews`}
+              schema={Issuance.PrepareInvoiceIssue}
+              output={Issuance.InvoiceIssueReview}
+              label={copy.prepare}
+              allowed={props.allowed}
+              canSubmit={setup.isSuccess && setup.fetchStatus === "idle" && missing.length === 0}
+              input={(fields) => ({
+                profile: "synthetic-manual-invoice-v1",
+                draftId: draft.id,
+                expectedRevision: draft.revision,
+                expectedDigest: draft.digest,
+                controlAccountId: fields.get("controlAccountId"),
+                creditAccountId: fields.get("creditAccountId"),
+                accountingPeriodId: fields.get("accountingPeriodId"),
+                series: fields.get("series"),
+                reason: fields.get("reason"),
+                acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
+              })}
+              onSuccess={(review) => props.onOpen(review.id)}
+            >
+              <Box display="grid" gap="lg">
+                <SelectField
+                  name="controlAccountId"
+                  label={copy.control}
+                  options={[{ value: "", label: "—" }, ...accounts]}
+                  required
+                />
+                <SelectField
+                  name="creditAccountId"
+                  label={copy.credit}
+                  options={[{ value: "", label: "—" }, ...accounts]}
+                  required
+                />
+                <SelectField
+                  name="accountingPeriodId"
+                  label={copy.period}
+                  options={[
+                    { value: "", label: "—" },
+                    ...(setup.data?.periods
+                      .filter((period) => !period.locked)
+                      .map((period) => ({
+                        value: period.id,
+                        label: `${period.startsOn} – ${period.endsOn}`,
+                      })) ?? []),
+                  ]}
+                  required
+                />
+                <InputField name="series" label={copy.series} maxLength={16} required />
+              </Box>
+              <InputField name="reason" label={copy.reason} required maxLength={2000} />
+              <SyntheticAcknowledgment locale={props.locale} />
+            </CommandForm>
+          ) : null}
+          <Details
+            title={props.locale === "sv" ? "Krav för demoutfärdande" : "Demo issue requirements"}
+          >
+            <Text>{copy.requirements}</Text>
+          </Details>
+        </RecordSection>
+      }
+    >
+      <InvoiceDraftDocument record={draft} locale={props.locale} />
+    </RecordSplit>
   );
 }
-export function InvoiceIssueReviewPanel(props: CommerceProps & { id: string; readOnly?: boolean }) {
+export function InvoiceIssueReviewPanel(
+  props: CommerceProps & {
+    id: string;
+    readOnly?: boolean;
+    onIssued?: (id: string) => void;
+    draftId?: string;
+  },
+) {
   const { book, locale, id } = props;
   const copy = invoiceIssueCopy(locale);
   const review = useQuery({
-    queryKey: [...commerceKey(book), "invoice-issue-review", id],
+    queryKey: [...commerceKey(book), "invoice-issue-review", id, props.draftId ?? ""],
     staleTime: 0,
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
@@ -327,7 +363,8 @@ export function InvoiceIssueReviewPanel(props: CommerceProps & { id: string; rea
         { signal },
       );
       checkScope(book, result.plan.scope);
-      if (result.plan.id !== id) throw new Error("Issue review identity mismatch");
+      if (result.plan.id !== id || (props.draftId && result.plan.input.draftId !== props.draftId))
+        throw new Error("Issue review identity mismatch");
       if (result.issue) {
         checkScope(book, result.issue.scope);
         if (result.issue.reviewId !== id) throw new Error("Issue receipt review mismatch");
@@ -371,6 +408,7 @@ function IssueContents(
     view: typeof Issuance.InvoiceIssueView.Type;
     readOnly?: boolean;
     current: boolean;
+    onIssued?: (id: string) => void;
   },
 ) {
   const { view, locale, book } = props;
@@ -378,32 +416,15 @@ function IssueContents(
   const copy = invoiceIssueCopy(locale);
   const draft = plan.draftSnapshot;
   const path = `${commercePath(book)}/invoice-issue-reviews/${encodeURIComponent(plan.id)}`;
+  const setup = useQuery({
+    queryKey: [...bookKey(book), "setup"],
+    queryFn: ({ signal }) =>
+      readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
+    retry: false,
+  });
   return (
     <Box display="grid" gap="lg" minWidth="zero">
-      <Text>
-        {copy.draft}: {draft.id} · {copy.revision}: {draft.revision}
-      </Text>
-      <Text>
-        {copy.seller}: {draft.content.seller.legalName}
-      </Text>
-      <Text>
-        {copy.customer}: {draft.content.customer.legalName}
-      </Text>
-      <Text>
-        {copy.total}:{" "}
-        {draft.totals.grossMinor === null
-          ? "—"
-          : formatMinorAmount(draft.totals.grossMinor, draft.content.currencyScale, locale)}{" "}
-        {draft.content.currency}
-      </Text>
-      <Text>
-        {copy.postingDate}: {draft.content.plannedIssueDate} · {copy.dueDate}:{" "}
-        {draft.content.dueDate}
-      </Text>
-      <Text>
-        {copy.digest}: {plan.digest}
-      </Text>
-      <Text>{plan.input.reason}</Text>
+      <InvoiceDraftDocument record={draft} locale={locale} />
       {!props.current ? (
         <Text role="status">
           {locale === "sv"
@@ -411,37 +432,6 @@ function IssueContents(
             : "Current status is unknown. The last fetched review is shown. Retained requests can still be retried with the same key."}
         </Text>
       ) : null}
-      <Text tone="muted">{copy.rules}</Text>
-      <DataTable
-        title={copy.commercialLines}
-        narrow="stack"
-        columns={[
-          { id: "description", label: copy.description },
-          { id: "quantity", label: copy.quantity, numeric: true },
-          { id: "base", label: copy.base, numeric: true },
-          { id: "discount", label: copy.discount, numeric: true },
-          { id: "charge", label: copy.charge, numeric: true },
-          { id: "tax", label: copy.tax, numeric: true },
-          { id: "source", label: copy.sourceGross, numeric: true },
-        ]}
-        rows={draft.content.lines.map((line) => ({
-          id: line.id,
-          cells: [
-            line.description,
-            line.quantity,
-            formatMinorAmount(line.baseMinor, draft.content.currencyScale, locale),
-            formatMinorAmount(line.discountMinor, draft.content.currencyScale, locale),
-            formatMinorAmount(line.chargeMinor, draft.content.currencyScale, locale),
-            line.taxMinor === null
-              ? "—"
-              : formatMinorAmount(line.taxMinor, draft.content.currencyScale, locale),
-            line.sourceGrossMinor === null
-              ? "—"
-              : formatMinorAmount(line.sourceGrossMinor, draft.content.currencyScale, locale),
-          ],
-        }))}
-      />
-      <Facts title={copy.draftFacts} value={draft} />
       <DataTable
         title={copy.posting}
         narrow="stack"
@@ -456,7 +446,10 @@ function IssueContents(
             action.lines.map((line) => ({
               id: `${group.id}:${line.lineId}`,
               cells: [
-                line.accountId,
+                (() => {
+                  const account = setup.data?.accounts.find((entry) => entry.id === line.accountId);
+                  return account ? `${account.code} · ${account.name}` : line.accountId;
+                })(),
                 formatMinorAmount(line.debitMinor, draft.content.currencyScale, locale),
                 formatMinorAmount(line.creditMinor, draft.content.currencyScale, locale),
                 line.description,
@@ -465,12 +458,6 @@ function IssueContents(
           ),
         )}
       />
-      <Details title={copy.evidence}>
-        <Evidence
-          {...props}
-          reference={{ evidenceId: plan.evidence.id, sha256: plan.evidence.sha256 }}
-        />
-      </Details>
       {view.blockers.length > 0 && !issue ? (
         <Box display="grid" gap="md">
           <Heading>{copy.blocked}</Heading>
@@ -479,9 +466,6 @@ function IssueContents(
           ))}
         </Box>
       ) : null}
-      <Text>
-        {copy.legal}: {plan.legalBlockers.join(" · ")}
-      </Text>
       {issue ? (
         <Box display="grid" gap="md">
           <Text role="status">{copy.success}</Text>
@@ -498,7 +482,7 @@ function IssueContents(
           <InvoiceDocumentPanel book={book} locale={locale} issue={issue} />
         </Box>
       ) : null}
-      {props.readOnly ? null : (
+      {props.readOnly || issue ? null : (
         <>
           <Text>{copy.approvalNote}</Text>
           <CommandForm
@@ -529,6 +513,7 @@ function IssueContents(
                 path={`${path}/execute`}
                 schema={Issuance.ExecuteInvoiceIssue}
                 output={Issuance.InvoiceIssueReceipt}
+                onSuccess={(receipt) => props.onIssued?.(receipt.registerInvoiceId)}
                 label={copy.execute}
                 allowed={props.current && !issue && book.role === "operator" && view.approvalUsable}
                 input={(fields) => ({
@@ -545,26 +530,70 @@ function IssueContents(
           {!view.approvalUsable ? <Text>{copy.unavailable}</Text> : null}
         </>
       )}
-      <Box>
-        <Button
-          variant="outline"
-          onClick={() => {
-            const url = URL.createObjectURL(
-              new Blob([JSON.stringify(view, null, 2)], { type: "application/json" }),
-            );
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `${plan.id}.json`;
-            document.body.append(link);
-            link.click();
-            link.remove();
-            window.setTimeout(() => URL.revokeObjectURL(url), 0);
-          }}
-        >
-          {copy.download}
-        </Button>
-      </Box>
-      <Facts title={copy.details} value={view} />
+      <Details
+        title={locale === "sv" ? "Underlag och granskningshistorik" : "Sources and review history"}
+      >
+        <Text>
+          {copy.legal}: {plan.legalBlockers.join(" · ")}
+        </Text>
+        <Text tone="muted">{copy.rules}</Text>
+        <DataTable
+          title={copy.commercialLines}
+          narrow="stack"
+          columns={[
+            { id: "description", label: copy.description },
+            { id: "quantity", label: copy.quantity, numeric: true },
+            { id: "base", label: copy.base, numeric: true },
+            { id: "discount", label: copy.discount, numeric: true },
+            { id: "charge", label: copy.charge, numeric: true },
+            { id: "tax", label: copy.tax, numeric: true },
+            { id: "source", label: copy.sourceGross, numeric: true },
+          ]}
+          rows={draft.content.lines.map((line) => ({
+            id: line.id,
+            cells: [
+              line.description,
+              line.quantity,
+              formatMinorAmount(line.baseMinor, draft.content.currencyScale, locale),
+              formatMinorAmount(line.discountMinor, draft.content.currencyScale, locale),
+              formatMinorAmount(line.chargeMinor, draft.content.currencyScale, locale),
+              line.taxMinor === null
+                ? "—"
+                : formatMinorAmount(line.taxMinor, draft.content.currencyScale, locale),
+              line.sourceGrossMinor === null
+                ? "—"
+                : formatMinorAmount(line.sourceGrossMinor, draft.content.currencyScale, locale),
+            ],
+          }))}
+        />
+        <Facts title={copy.draftFacts} value={draft} />
+        <Details title={copy.evidence}>
+          <Evidence
+            {...props}
+            reference={{ evidenceId: plan.evidence.id, sha256: plan.evidence.sha256 }}
+          />
+        </Details>
+        <Box>
+          <Button
+            variant="outline"
+            onClick={() => {
+              const url = URL.createObjectURL(
+                new Blob([JSON.stringify(view, null, 2)], { type: "application/json" }),
+              );
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = `${plan.id}.json`;
+              document.body.append(link);
+              link.click();
+              link.remove();
+              window.setTimeout(() => URL.revokeObjectURL(url), 0);
+            }}
+          >
+            {copy.download}
+          </Button>
+        </Box>
+        <Facts title={copy.details} value={view} />
+      </Details>
     </Box>
   );
 }

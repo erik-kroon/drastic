@@ -197,6 +197,8 @@ const statements = {
     sql`select openerp.commerce_get_invoice(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
   commerceInvoiceHistory: (parameters) =>
     sql`select openerp.commerce_invoice_history(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text) as result`,
+  commerceSupplierInvoiceDuplicates: (parameters) =>
+    sql`select openerp.commerce_supplier_invoice_duplicates(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::jsonb) as result`,
   commerceListInvoices: (parameters) =>
     sql`select openerp.commerce_list_invoices(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
   commerceGetPaymentCapacity: (parameters) =>
