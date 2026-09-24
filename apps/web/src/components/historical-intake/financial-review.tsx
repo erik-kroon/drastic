@@ -44,6 +44,7 @@ export function PrepareSourceVoucher({
         mutationOptions(path, JSON.stringify(input), keys.current),
       ),
     onSuccess: async () => {
+      keys.current.clear();
       await onPrepared();
     },
   });
@@ -314,6 +315,22 @@ export function ReviewSourceVoucher({
               : sv
                 ? "Bokför godkänd verifikation"
                 : "Post approved voucher"}
+          </Button>
+        </Box>
+      ) : null}
+      {post.error instanceof Accounting.AccountingError &&
+      post.error.code === "ApprovalRequired" ? (
+        <Box>
+          <Button
+            variant="outline"
+            disabled={disabled}
+            onClick={() => {
+              keys.current.clear();
+              approval.reset();
+              post.reset();
+            }}
+          >
+            {sv ? "Granska och godkänn på nytt" : "Review and approve again"}
           </Button>
         </Box>
       ) : null}

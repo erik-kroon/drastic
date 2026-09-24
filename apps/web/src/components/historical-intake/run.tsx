@@ -85,8 +85,8 @@ export function SieStagingRun({ id, plan }: { id: string; plan: typeof Sie.SiePl
           {run.data.status === "staged" ? (
             <Text>
               {sv
-                ? "Källmaterialet är förberett. Historikval och bokföringsgodkännande återstår."
-                : "Source staging is complete. Historical basis selection and posting approval are still required."}
+                ? "Källmaterialet är förberett. Granska historikval och bokföring nedan."
+                : "Source staging is complete. Review the historical basis and posting below."}
             </Text>
           ) : (
             <Box display="flex" flexWrap="wrap" gap="md">

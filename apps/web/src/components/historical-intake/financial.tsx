@@ -1,3 +1,4 @@
+import { ClosingComparison } from "./closing-comparison";
 import { useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Historical from "@open-erp/contracts/historical-migration";
@@ -144,6 +145,9 @@ export function FinancialImport({
             ))}
           </details>
         </>
+      ) : null}
+      {run?.status === "posted" ? (
+        <ClosingComparison sourceRunId={sourceRunId} planId={plan.id} />
       ) : null}
       <Box>
         <Button

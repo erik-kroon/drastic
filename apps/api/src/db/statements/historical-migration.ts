@@ -1,6 +1,8 @@
 import { sql, type SQL } from "drizzle-orm";
 
 export const historicalMigrationStatements = {
+  compareSieClosing: (p) =>
+    sql`select openerp.compare_sie_closing(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text) as result`,
   prepareHistoricalOpening: (p) =>
     sql`select openerp.prepare_historical_opening(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text,${p[3]}::jsonb) as result`,
   getSieFinancialWorkspace: (p) =>

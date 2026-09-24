@@ -65,6 +65,25 @@ const Posting = Schema.Struct({
   ledgerReceipt: Receipt,
 });
 export const Run = Schema.Struct({ ...RunStart.fields, items: Schema.Array(Posting) });
+export const ClosingComparison = Schema.Struct({
+  scope: A.Scope,
+  sourceRunId: A.Identifier,
+  sourcePlanId: A.Identifier,
+  fiscalYearId: A.Identifier,
+  asOf: A.AccountingDate,
+  bookSequence: A.MinorUnits,
+  postingComplete: Schema.Boolean,
+  balanced: Schema.Boolean,
+  items: Schema.Array(
+    Schema.Struct({
+      accountId: A.Identifier,
+      code: Schema.String,
+      expectedMinor: A.SignedMinorUnits,
+      actualMinor: A.SignedMinorUnits,
+      differenceMinor: A.SignedMinorUnits,
+    }),
+  ),
+});
 export const FinancialWorkspace = Schema.Struct({
   run: Schema.NullOr(Run),
   nextProposal: Schema.NullOr(A.ChangeSet),
@@ -171,6 +190,12 @@ const base = "/v1/entities/:entityId/books/:bookId";
 const identified = { params: A.ChangePath, error: accountingErrors };
 const mutation = { ...identified, headers: A.IdempotencyHeaders };
 export const HistoricalMigrationApi = HttpApiGroup.make("historicalMigration")
+  .add(
+    HttpApiEndpoint.get("compareSieClosing", `${base}/sie-runs/:id/closing-comparison`, {
+      ...identified,
+      success: ClosingComparison,
+    }),
+  )
   .add(
     HttpApiEndpoint.post("prepareHistoricalOpening", `${base}/historical-openings`, {
       params: A.Scope,
