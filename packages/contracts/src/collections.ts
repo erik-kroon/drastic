@@ -11,8 +11,8 @@ export const CollectionStatementItem = Schema.Struct({
   invoiceId: Accounting.Identifier,
   number: Schema.String,
   issuedOn: Accounting.AccountingDate,
-  currency: Schema.String,
-  currencyScale: Schema.Int,
+  currency: Schema.optional(Schema.String),
+  currencyScale: Schema.optional(Schema.Int),
   amountMinor: Accounting.AggregateMinorUnits,
   allocatedMinor: Accounting.AggregateMinorUnits,
   outstandingMinor: Accounting.AggregateMinorUnits,
@@ -82,7 +82,7 @@ export const CollectionHistory = Schema.Struct({
 });
 const base = "/v1/entities/:entityId/books/:bookId/commerce/collections";
 const mutation = {
-  params: Accounting.ChangePath,
+  params: Accounting.Scope,
   headers: Accounting.IdempotencyHeaders,
   error: accountingErrors,
 };

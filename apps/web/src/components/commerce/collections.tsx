@@ -67,7 +67,7 @@ function CollectionHistory(props: CommerceProps & {
         <Text tone="muted">{sv ? "Bryttid" : "Cutoff"}: {statement.cutoffAt}</Text>
         {statement.items.length === 0 ? <Text>{sv ? "Inga öppna fakturor vid bryttiden." : "No open invoices at this cutoff."}</Text> : null}
         {statement.items.map(item => <Text key={item.invoiceId}>
-          {item.number} · {sv ? "Belopp" : "Amount"} {item.amountMinor} · {sv ? "Betalt" : "Allocated"} {item.allocatedMinor} · {sv ? "Kvar" : "Outstanding"} {item.outstandingMinor} {item.currency} ({sv ? "minsta enhet" : "minor units"}){item.disputed ? " · disputed" : ""}
+          {item.number} · {sv ? "Belopp" : "Amount"} {item.amountMinor} · {sv ? "Betalt" : "Allocated"} {item.allocatedMinor} · {sv ? "Kvar" : "Outstanding"} {item.outstandingMinor} {item.currency ? `${item.currency} (${sv ? "minsta enhet" : "minor units"})` : (sv ? "Valuta saknas i äldre utdrag" : "Currency absent in older statement")}{item.disputed ? " · disputed" : ""}
         </Text>)}
       </Box>)}
       <h3>{sv ? "Tvister och åtgärder" : "Disputes and actions"}</h3>
