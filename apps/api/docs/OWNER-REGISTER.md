@@ -13,7 +13,7 @@ New owned paths:
 - `apps/api/src/owner-register.ts`
 - `apps/api/migrations/0610-owner-register.sql`
 - `apps/web/src/components/owner-register/owner-register-panel.tsx`
-- `apps/api/OWNER-REGISTER.md`
+- `apps/api/docs/OWNER-REGISTER.md`
 
 Existing commerce files and every applied migration remain unchanged by this work.
 The forward migration depends on kernel helpers, bank tables from0100/0500 and commerce private

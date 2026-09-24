@@ -18,7 +18,7 @@ Source → proposed entries → validation → human approval → posting receip
 
 - **A controlled posting lifecycle:** retained evidence, immutable proposals, dependency validation, time-limited approval, atomic posting, receipts and linked corrections.
 - **Accounting workspaces:** bank matching and reconciliation, invoices and payments, period work, internal reports and drilldown into the records behind a total.
-- **Shared interfaces:** a web application, generated OpenAPI schema, and an [MCP endpoint](apps/api/MCP.md) with the same underlying accounting operations.
+- **Shared interfaces:** a web application, generated OpenAPI schema, and an [MCP endpoint](apps/api/docs/MCP.md) with the same underlying accounting operations.
 - **Portable execution:** the API runs at a Bun or Cloudflare Worker boundary against PostgreSQL. The browser holds no database credential.
 
 Availability varies by book and operation. The authenticated book `/status` response reports installed capabilities and blockers; source code alone is not a release claim.

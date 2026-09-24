@@ -87,7 +87,7 @@ authority. It fences one admitted job under the book/job barrier without alterin
 checkpoint, audit, prepared proposals or ledger. Existing terminal jobs are returned unchanged
 with an explicit `already_terminal` outcome; a new requested reason is not applied to them.
 Successful replay preserves the saved result. A later delivery cannot advance that stopped job,
-but a deliberate new admission remains separate. See [AUTOMATION.md](../../apps/api/AUTOMATION.md#forward5100-stop-one-admitted-preparation-job).
+but a deliberate new admission remains separate. See [AUTOMATION.md](../../apps/api/docs/AUTOMATION.md#forward5100-stop-one-admitted-preparation-job).
 This is PST-05 containment, not remote Workflow termination or posting authority. Runtime and
 concurrency acceptance remain pending.
 
@@ -99,4 +99,4 @@ job reason. Revocation/expiry, disabled identity, executor-role loss, changed au
 non-ready run conditions keep their original reasons and precedence. Authorization, lock
 order, terminal/old-step recovery, checkpoint/result/audit handling and advancement keys
 are unchanged. Independent source review found no extra behavioral change.
-See [automation](../../apps/api/AUTOMATION.md). No SQL/runtime execution was performed.
+See [automation](../../apps/api/docs/AUTOMATION.md). No SQL/runtime execution was performed.

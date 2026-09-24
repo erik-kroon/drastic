@@ -37,4 +37,4 @@ Actual-company review remains useful even though all actual-company contribution
 
 ## Intended implementation
 
-New contract `packages/contracts/src/expense-tax.ts`; API `apps/api/src/expense-tax.ts`; migration0710; domain UI `apps/web/src/components/expense-tax/**`; handoff `apps/api/EXPENSE-TAX.md`. Use existing query/Drizzle connection integration through root-owned fixed statements. No dependency, shared schema mapping, authentication, existing migration or ledger transition changes.
+New contract `packages/contracts/src/expense-tax.ts`; API `apps/api/src/expense-tax.ts`; migration0710; domain UI `apps/web/src/components/expense-tax/**`; handoff `apps/api/docs/EXPENSE-TAX.md`. Use existing query/Drizzle connection integration through root-owned fixed statements. No dependency, shared schema mapping, authentication, existing migration or ledger transition changes.

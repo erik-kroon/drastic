@@ -67,7 +67,7 @@ and standalone reversal admission. Explicit evidenced unmatch remains the only r
 bytes and successful-key recovery are preserved. No new accounting role or financial
 action is introduced. Root source diff review confirmed the narrow composition change;
 SQL/runtime acceptance remains open. See
-[tax-account correction impact](../../apps/api/TAX-ACCOUNT-CORRECTION-IMPACT.md).
+[tax-account correction impact](../../apps/api/docs/TAX-ACCOUNT-CORRECTION-IMPACT.md).
 
 Forward4900 adds the two terminal-disposal relationships missing from generic correction
 impact: the disposal posting voucher and its retained acquisition/imported basis voucher.
@@ -76,7 +76,7 @@ an explicit blocker. Recognition history was already covered by occurrence resou
 The4700 tax contribution and the1000-resource whole-read refusal remain intact. This
 closes early disclosure/admission gaps without adding disposal-aware correction authority
 or weakening4200's independent financial guards. See
-[disposal correction boundaries](../../apps/api/SUBLEDGER-DISPOSAL-CORRECTIONS.md).
+[disposal correction boundaries](../../apps/api/docs/SUBLEDGER-DISPOSAL-CORRECTIONS.md).
 
 ### Captured case context identifies correction aggregates
 
@@ -86,7 +86,7 @@ next actions to complete-bundle recovery rather than standalone validation or co
 No-owner context, amounts, state, ordering and historical snapshot/replay bytes are unchanged.
 Ambiguous or malformed ownership refuses the new capture. This does not approve or execute
 any constituent and leaves every financial aggregate guard intact.
-See [case context](../../apps/api/CASES.md).
+See [case context](../../apps/api/docs/CASES.md).
 
 The browser's hardcoded `PostingRecoveryReview` handoff is unchanged and remains an open
 UI integration gap. Backend routing metadata must not be described as a repaired browser

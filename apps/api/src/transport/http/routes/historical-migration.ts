@@ -25,6 +25,15 @@ export const HistoricalMigrationHandlers = HttpApiBuilder.group(
           ),
         ),
       )
+      .handle("getPlanHistoricalItems", ({ params }) =>
+        Effect.flatMap(authenticate, (token) =>
+          query(
+            "getPlanHistoricalItems",
+            [token, scopeParameter(params), params.id],
+            Historical.PlanItemAdmission,
+          ),
+        ),
+      )
       .handle("getHistoricalItems", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
           query(

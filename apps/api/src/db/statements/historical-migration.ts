@@ -3,6 +3,8 @@ import { sql, type SQL } from "drizzle-orm";
 export const historicalMigrationStatements = {
   admitHistoricalItems: (p) =>
     sql`select openerp.admit_historical_items(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text,${p[3]}::text,${p[4]}::jsonb) as result`,
+  getPlanHistoricalItems: (p) =>
+    sql`select openerp.get_plan_historical_items(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text) as result`,
   getHistoricalItems: (p) =>
     sql`select openerp.get_historical_items(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text) as result`,
   selectHistoricalBasis: (p) =>

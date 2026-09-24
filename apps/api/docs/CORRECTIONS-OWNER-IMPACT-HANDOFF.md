@@ -25,7 +25,7 @@ Next root action: inspect0890 and apply it after0610/0410 in the authorized loca
 - `packages/contracts/src/corrections.ts`: `7627d0e6145ed618af91adf46b17a1c955262dc66b3ec49a4d8efd0cd5b73844`
 - `apps/web/src/components/corrections/impact-review.tsx`: `f39a48d50c90d9e0ea8fbda9882c119ef944208a2118ac57599016febba8d72a`
 - `apps/web/src/components/corrections/copy.ts`: `4e159d0aad3ccfc77a0167eccd506f2adffa9a3fd9f74333f7639739fe2f4f77`
-- `apps/api/CORRECTIONS-WORKBENCH.md`: `82c0fdd2c68f6e3c02f92e29eaa90e0cae071a5246f9d9913a35a344ff3b6513`
+- `apps/api/docs/CORRECTIONS-WORKBENCH.md`: `82c0fdd2c68f6e3c02f92e29eaa90e0cae071a5246f9d9913a35a344ff3b6513`
 
 Consumed unchanged prerequisites:
 

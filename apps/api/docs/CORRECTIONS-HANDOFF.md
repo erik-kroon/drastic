@@ -6,7 +6,7 @@
 - `apps/api/src/corrections.ts`: new Effect REST handlers call shared named capabilities. Existing approval remains operator-only REST.
 - `apps/api/migrations/0410-correction-impact-workbench.sql`: immutable review table; connected chain and exact totals; snapshot/guards/discovery/request recovery; forward replacements of correction prepare/check and reversal-only preparation. Earlier migrations untouched.
 - `apps/web/src/components/corrections/{corrections-panel,correction-review,impact-review,discovery}.tsx` and `copy.ts`: exact impact→review→seal flow, affected-resource links, chain drilldown/net sums, bundle pages and request recovery, English/Swedish copy.
-- `apps/api/CORRECTIONS-WORKBENCH.md`: risks/acceptance cases written before transition changes; implementation boundaries and evidence.
+- `apps/api/docs/CORRECTIONS-WORKBENCH.md`: risks/acceptance cases written before transition changes; implementation boundaries and evidence.
 
 ## Prerequisites and shared root changes
 

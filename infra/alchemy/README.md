@@ -31,7 +31,7 @@ the plan for replacement of the former fixed-name `open-erp-api` Worker and the 
 - Set `BETTER_AUTH_URL` to the public web origin and `BETTER_AUTH_SECRET` to a cryptographically
   random secret of at least 32 characters. The API Worker receives the secret; the web Worker does
   not. Provision email/password accounts using `apps/api/scripts/create-user.ts` after creating
-  their accounting actors and memberships. See [authentication setup](../../apps/api/AUTH.md).
+  their accounting actors and memberships. See [authentication setup](../../apps/api/docs/AUTH.md).
 
 ## Commands requiring separate deployment authority
 

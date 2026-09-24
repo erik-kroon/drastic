@@ -47,7 +47,7 @@ export OPENERP_PASSWORD='<local password of 12–128 characters>'
 bun run --cwd apps/api db:create-user actor_operator
 ```
 
-The access token is for API/MCP clients. The email and password sign in the browser; local password authentication is not a production identity path. See [authentication](../apps/api/AUTH.md) for OIDC and explicit book grants.
+The access token is for API/MCP clients. The email and password sign in the browser; local password authentication is not a production identity path. See [authentication](../apps/api/docs/AUTH.md) for OIDC and explicit book grants.
 
 ## 4. Start and inspect
 
@@ -63,4 +63,4 @@ curl --fail-with-body \
   http://localhost:3000/api/v1/entities/entity_synthetic/books/book_synthetic/status
 ```
 
-The generated REST schema is at `/api/openapi.json`. [MCP setup](../apps/api/MCP.md) covers agent authentication and transport. Keep the token, database credentials and local session secret out of commits and captured output.
+The generated REST schema is at `/api/openapi.json`. [MCP setup](../apps/api/docs/MCP.md) covers agent authentication and transport. Keep the token, database credentials and local session secret out of commits and captured output.

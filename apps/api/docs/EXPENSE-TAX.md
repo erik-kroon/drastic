@@ -64,8 +64,8 @@ The same command key and actor/payload recovers the exact original result. Chang
 - `packages/contracts/src/expense-tax.ts`
 - `apps/api/src/expense-tax.ts`
 - `apps/api/migrations/0710-expense-tax-facts.sql`
-- `apps/api/EXPENSE-TAX.md`
-- `apps/api/EXPENSE-TAX-RISKS.md`
+- `apps/api/docs/EXPENSE-TAX.md`
+- `apps/api/docs/EXPENSE-TAX-RISKS.md`
 - `apps/web/src/components/expense-tax/{panel.tsx,forms.tsx,views.tsx,copy.ts,blockers.ts}`
 - Maintained implementation-boundary note in `docs/plans/05-vat-payroll-assets-fx.md`.
 

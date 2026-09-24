@@ -1,5 +1,7 @@
 # Accounting API layout
 
+Feature implementation notes, handoffs and feasibility reviews live in [docs](docs/README.md).
+
 `src/index.ts` composes the shared HTTP API. The Worker and Bun self-host entrypoints use that same application.
 
 ```text

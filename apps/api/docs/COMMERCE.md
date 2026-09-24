@@ -38,12 +38,12 @@ or source-inventory completeness is claimed.
 ## Shared composition
 
 The fourteen scoped REST operations are defined in
-[`packages/contracts/src/commerce.ts`](../../packages/contracts/src/commerce.ts), adapted in
-[`src/commerce.ts`](src/commerce.ts), and dispatched through fixed statements in
-[`src/database.ts`](src/database.ts). The thirteen ordinary capabilities share those operations
-through [`src/capabilities.ts`](src/capabilities.ts). Operator approval remains REST-only.
+[`packages/contracts/src/commerce.ts`](../../../packages/contracts/src/commerce.ts), adapted in
+the [commerce HTTP routes](../src/transport/http/routes/commerce.ts), and dispatched through
+fixed database statements. The ordinary capabilities share those operations through
+[application capabilities](../src/application/capabilities.ts). Operator approval remains REST-only.
 
-The workspace lazy-loads [`CommercePanel`](../web/src/components/commerce/commerce-panel.tsx).
+The workspace lazy-loads [`CommercePanel`](../../web/src/components/commerce/commerce-panel.tsx).
 Queries are scoped through the request-scoped TanStack Query client and validate contract responses.
 Revision-editor requests survive query refreshes; only an explicit new-command action resets their
 captured values and retry key. Browser persistence is not implemented. Save exact values, revision

@@ -1,5 +1,7 @@
+import { AdmitOpenItems } from "./admission";
 import { useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as Historical from "@open-erp/contracts/historical-migration";
 import * as Sie from "@open-erp/contracts/sie-import";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
@@ -29,6 +31,20 @@ export function SieStagingRun({ id, plan }: { id: string; plan: typeof Sie.SiePl
       const result = await readAccounting(path, Sie.SieRun, { signal });
       if (result.id !== id || result.planId !== plan.id || result.planDigest !== plan.digest)
         throw new Error("SIE run identity mismatch");
+      return result;
+    },
+  });
+  const admission = useQuery({
+    queryKey: [...bookKey(book), "historical-items-plan", plan.id],
+    retry: false,
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${bookPath(book)}/sie-plans/${encodeURIComponent(plan.id)}/historical-items`,
+        Historical.PlanItemAdmission,
+        { signal },
+      );
+      if (result && (result.sourcePlanId !== plan.id || result.planDigest !== plan.digest))
+        throw new Error("Historical admission identity mismatch");
       return result;
     },
   });
@@ -115,6 +131,16 @@ export function SieStagingRun({ id, plan }: { id: string; plan: typeof Sie.SiePl
           )}
         </>
       ) : null}
+      <AccountingStatus locale={locale} pending={admission.isPending} error={admission.error} />
+      {admission.isSuccess ? <AdmissionStatus admission={admission.data} sv={sv} /> : null}
+      {admission.isSuccess && admission.data === null && run.data?.status === "staged" ? (
+        <AdmitOpenItems
+          plan={plan}
+          onSaved={(result) => {
+            cache.setQueryData([...bookKey(book), "historical-items-plan", plan.id], result);
+          }}
+        />
+      ) : null}
       <AccountingStatus locale={locale} pending={advance.isPending} error={advance.error} write />
       <AccountingStatus locale={locale} pending={lease.isPending} error={lease.error} write />
       <Box>
@@ -123,11 +149,30 @@ export function SieStagingRun({ id, plan }: { id: string; plan: typeof Sie.SiePl
           disabled={run.isFetching || disabled}
           onClick={() => {
             void run.refetch();
+            void admission.refetch();
           }}
         >
           {sv ? "Läs in aktuell status" : "Refresh current status"}
         </Button>
       </Box>
     </Box>
+  );
+}
+
+function AdmissionStatus({
+  admission,
+  sv,
+}: {
+  admission: typeof Historical.PlanItemAdmission.Type;
+  sv: boolean;
+}) {
+  return (
+    <Text>
+      {admission
+        ? `${sv ? "Historiskt register sparat" : "Historical register saved"}: ${admission.openItems.length}. ${sv ? "Ingen bokföringseffekt." : "No financial posting effect."}`
+        : sv
+          ? "Historiskt register har inte sparats."
+          : "Historical register has not been saved."}
+    </Text>
   );
 }

@@ -129,6 +129,8 @@ export const ItemAdmission = Schema.Struct({
   digest: A.Digest,
 });
 
+export const PlanItemAdmission = Schema.NullOr(ItemAdmission);
+
 const base = "/v1/entities/:entityId/books/:bookId";
 const identified = { params: A.ChangePath, error: accountingErrors };
 const mutation = { ...identified, headers: A.IdempotencyHeaders };
@@ -189,6 +191,12 @@ export const HistoricalMigrationApi = HttpApiGroup.make("historicalMigration")
       ...mutation,
       payload: AdmitItems,
       success: ItemAdmission,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get("getPlanHistoricalItems", `${base}/sie-plans/:id/historical-items`, {
+      ...identified,
+      success: PlanItemAdmission,
     }),
   )
   .add(

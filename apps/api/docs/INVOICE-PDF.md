@@ -192,52 +192,124 @@ import { writeFileSync } from "node:fs";
 import { renderLegalInvoicePdf } from "./src/application/legal-invoice-pdf-renderer";
 import { renderLegalInvoicePdfV2 } from "./src/application/legal-invoice-pdf-renderer-v2";
 const [version = "v1", countText = "50", wordsText = "2"] = process.argv.slice(2);
-const count = Number(countText), words = Number(wordsText);
+const count = Number(countText),
+  words = Number(wordsText);
 const rendererVersion = `openerp-se-invoice-takumi-${version}`;
 const lines = Array.from({ length: count }, (_, i) => ({
   id: `line_${i + 1}`,
   description: `Tjänst ${i + 1} — ${"bokföringsunderlag ".repeat(words)}`,
-  quantity: "1", unitPriceMinor: "10000", baseMinor: "10000",
-  discountMinor: "0", chargeMinor: "0", netMinor: "10000",
-  taxMinor: "2500", grossMinor: "12500",
+  quantity: "1",
+  unitPriceMinor: "10000",
+  baseMinor: "10000",
+  discountMinor: "0",
+  chargeMinor: "0",
+  netMinor: "10000",
+  taxMinor: "2500",
+  grossMinor: "12500",
   vatTreatment: "se-domestic-standard-25-v1",
 }));
-const seller = { legalName: "Exempel AB", postalAddress: "Gatan 1\n123 45 Stockholm",
-  countryCode: "SE", registrationNumber: "556677-8899",
-  vatRegistrationNumber: "SE556677889901" };
-const totals = { netMinor: String(10000 * count), taxMinor: String(2500 * count),
-  grossMinor: String(12500 * count) };
-const content = { seller: { legalName: seller.legalName,
-  address: seller.postalAddress, taxId: seller.vatRegistrationNumber,
-  registrationId: seller.registrationNumber },
-  customer: { legalName: "Kundbolaget AB", address: "Vägen 2\n123 45 Göteborg",
-    countryCode: "SE", registrationId: "556000-1111" },
-  title: "Konsultarbete", currency: "SEK", currencyScale: 2,
-  dueDate: "2026-10-25", supplyDate: "2026-09-25", paymentTerms: "30 dagar netto",
-  lines: lines.map(x => ({ id: x.id, taxMinor: x.taxMinor,
-    sourceGrossMinor: x.grossMinor, unitPriceMinor: x.unitPriceMinor })) };
-const policy = { id: "policy", digest: "policy-digest",
+const seller = {
+  legalName: "Exempel AB",
+  postalAddress: "Gatan 1\n123 45 Stockholm",
+  countryCode: "SE",
+  registrationNumber: "556677-8899",
+  vatRegistrationNumber: "SE556677889901",
+};
+const totals = {
+  netMinor: String(10000 * count),
+  taxMinor: String(2500 * count),
+  grossMinor: String(12500 * count),
+};
+const content = {
+  seller: {
+    legalName: seller.legalName,
+    address: seller.postalAddress,
+    taxId: seller.vatRegistrationNumber,
+    registrationId: seller.registrationNumber,
+  },
+  customer: {
+    legalName: "Kundbolaget AB",
+    address: "Vägen 2\n123 45 Göteborg",
+    countryCode: "SE",
+    registrationId: "556000-1111",
+  },
+  title: "Konsultarbete",
+  currency: "SEK",
+  currencyScale: 2,
+  dueDate: "2026-10-25",
+  supplyDate: "2026-09-25",
+  paymentTerms: "30 dagar netto",
+  lines: lines.map((x) => ({
+    id: x.id,
+    taxMinor: x.taxMinor,
+    sourceGrossMinor: x.grossMinor,
+    unitPriceMinor: x.unitPriceMinor,
+  })),
+};
+const policy = {
+  id: "policy",
+  digest: "policy-digest",
   input: { ruleVersion: "se-domestic-standard-25-2023-200-v1" },
-  candidate: { input: { sellerIdentity: seller } } };
-const issue = { policyId: policy.id, policyDigest: policy.digest,
-  policySnapshot: policy, draftSnapshot: { content, totals: { ...totals,
-    sourceTotalMatches: true } }, lines, totals,
-  legalDocumentNumber: "AR-50", issuedOn: "2026-09-25" };
+  candidate: { input: { sellerIdentity: seller } },
+};
+const issue = {
+  policyId: policy.id,
+  policyDigest: policy.digest,
+  policySnapshot: policy,
+  draftSnapshot: { content, totals: { ...totals, sourceTotalMatches: true } },
+  lines,
+  totals,
+  legalDocumentNumber: "AR-50",
+  issuedOn: "2026-09-25",
+};
 const capture = { input: { rendererVersion }, source: { issue } };
-const bytes = await (version === "v1" ? renderLegalInvoicePdf(capture as never)
+const bytes = await (version === "v1"
+  ? renderLegalInvoicePdf(capture as never)
   : renderLegalInvoicePdfV2(capture as never));
 const name = `/tmp/${version}-${count}-${words}.pdf`;
-writeFileSync(name, bytes); console.log(name, bytes.length);
+writeFileSync(name, bytes);
+console.log(name, bytes.length);
 ```
 
-Render each PDF page to PNG and extract its text with macOS PDFKit using
-`swift` or Preview; compare every page and all 50 row/detail counts before
-accepting a new renderer. No shared contract, migration, call dispatch or
-renderer default has changed in this workstream. Activation needs a forward
-migration that admits v2 *without altering existing v1 captures*, sets the
-sealed descriptor's rendererVersion from the immutable capture, and dispatches
-that version to the correct renderer. Shared API contracts must accept both
-version literals. Existing sealed bytes must never be re-rendered to v2.
+On macOS, save the following as `/tmp/pdf-pages.swift` and run
+`swift /tmp/pdf-pages.swift /tmp/v1-50-2.pdf`, then again for
+`/tmp/v2-50-2.pdf`. It prints every page's text and saves each page as a
+white-background PNG beside its PDF:
+
+```swift
+import Foundation
+import PDFKit
+import AppKit
+let url = URL(fileURLWithPath: CommandLine.arguments[1])
+let pdf = PDFDocument(url: url)!
+print("pages=\(pdf.pageCount)")
+for i in 0..<pdf.pageCount {
+  let page = pdf.page(at: i)!
+  print("---PAGE \(i + 1)---\n\(page.string ?? "")")
+  let box = page.bounds(for: .mediaBox), scale: CGFloat = 1.5
+  let image = NSBitmapImageRep(bitmapDataPlanes: nil,
+    pixelsWide: Int(box.width * scale), pixelsHigh: Int(box.height * scale),
+    bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+    colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+  NSGraphicsContext.saveGraphicsState()
+  NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: image)
+  NSColor.white.setFill()
+  NSRect(x: 0, y: 0, width: box.width * scale, height: box.height * scale).fill()
+  let graphics = NSGraphicsContext.current!.cgContext
+  graphics.scaleBy(x: scale, y: scale)
+  page.draw(with: .mediaBox, to: graphics)
+  NSGraphicsContext.restoreGraphicsState()
+  let png = url.deletingPathExtension().path + "-page-\(i + 1).png"
+  try! image.representation(using: .png, properties: [:])!
+    .write(to: URL(fileURLWithPath: png))
+}
+```
+
+Compare every page and all 50 row/detail counts before accepting a new
+renderer. The shared contract now accepts **explicit** v1/v2 values; application
+dispatch uses the immutable capture version. Forward migration `8600` admits v2
+without changing v1 captures and seals the descriptor with the captured version.
+There is no automatic upgrade and existing sealed bytes are never re-rendered.
 
 ### Live synthetic Worker PDF observation
 
@@ -249,6 +321,19 @@ replaced that function without editing an applied migration. The same request th
 returned a sealed, 9,997-byte PDF whose decoded bytes matched its stored SHA-256.
 Same-key retry, GET, and render-resume returned identical records; the database
 retained one issue, capture and artifact. The real-Worker PDF image was reviewed.
-[Reproduction steps, exact hashes and PDF/PNG evidence](../../docs/plans/evidence/wave2-legal-pdf-worker.md)
+[Reproduction steps, exact hashes and PDF/PNG evidence](../../../docs/plans/evidence/wave2-legal-pdf-worker.md)
 keep this synthetic proof distinct from actual-company acceptance. No provider send,
 recipient delivery, deployed Worker limit or long-document pagination was proven.
+
+### Integrated v1/v2 Worker observation
+
+A fresh disposable database applied the complete migration sequence through `8600`.
+The Worker sealed v2 from a reviewed synthetic legal issue; identical retry, GET and
+resume returned the same 10,047-byte PDF and descriptor. A different-key v1 request
+for that issue failed rather than replacing its immutable capture. A second fresh
+database sealed v1 after `8600`; its 9,997 PDF bytes matched the pre-v2 v1 artifact
+byte for byte. The one-page real-Worker v2 PDF and the separate 50-line page images
+were inspected. [Exact hashes, reproduction and PDF/PNG evidence](../../../docs/plans/evidence/wave2-legal-pdf-worker-v2.md)
+cover this local synthetic claim only. Extra-tall rows, repeated table headings on
+continuation pages, screen-reader tagging and deployed Worker limits remain open;
+no provider call, real tenant or customer receipt was observed.
