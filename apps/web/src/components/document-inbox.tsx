@@ -7,7 +7,6 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
 import { DataTable } from "@open-erp/ui/components/data-table";
-import { Badge } from "@open-erp/ui/components/badge";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { DocumentPreview } from "@open-erp/ui/components/document-preview";
 import { RecordHeading, RecordSplit, RecordSection } from "@open-erp/ui/components/record-layout";
@@ -15,7 +14,6 @@ import {
   PageEmpty,
   PageAction,
   PageCaption,
-  RegisterSearch,
   RecordOpen,
 } from "@open-erp/ui/components/accounting-page";
 import { Text } from "@open-erp/ui/components/typography";
@@ -34,37 +32,51 @@ export function DocumentInbox({
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
-  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<typeof Sources.ArchiveFilters.Type>({});
+  const [filterError, setFilterError] = useState<string | null>(null);
   const sources = useInfiniteQuery({
-    queryKey: [...bookKey(book), "document-inbox"],
+    queryKey: [...bookKey(book), "document-inbox", filters],
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/source-occurrences${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
-        Sources.SourceInventory,
+        archivePath(`${bookPath(book)}/source-archive`, filters, pageParam),
+        Sources.ArchiveSearch,
         { signal },
       );
-      if (
-        result.items.some(
-          (item) =>
-            item.occurrence.scope.bookId !== book.id ||
-            item.occurrence.scope.entityId !== book.entityId,
-        )
-      )
-        throw new Error("Source scope mismatch");
+       result.items.forEach((occurrence) => {
+         if (occurrence.scope.bookId !== book.id || occurrence.scope.entityId !== book.entityId)
+           throw new Error("Archive scope mismatch");
+       });
+
       return result;
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry: false,
   });
-  const items =
-    sources.data?.pages
-      .flatMap((page) => page.items)
-      .filter((item) =>
-        item.occurrence.filename
-          .toLocaleLowerCase(locale)
-          .includes(search.toLocaleLowerCase(locale)),
-      ) ?? [];
+  const archiveExport = useMutation({
+    mutationFn: async (applied: typeof Sources.ArchiveFilters.Type) => {
+      const result = await readAccounting(
+        archivePath(`${bookPath(book)}/source-archive/export`, applied),
+        Sources.ArchiveExport,
+      );
+       if (result.scope.bookId !== book.id || result.scope.entityId !== book.entityId)
+         throw new Error("Archive export scope mismatch");
+       result.items.forEach(({ occurrence }) => {
+         if (occurrence.scope.bookId !== book.id || occurrence.scope.entityId !== book.entityId)
+           throw new Error("Archive export item scope mismatch");
+       });
+
+      return result;
+    },
+    onSuccess: (result) => {
+      downloadIntake(
+        new Blob([JSON.stringify(result, null, 2)], { type: "application/json" }),
+        "source-archive-page.json",
+      );
+    },
+  });
+  const items = sources.data?.pages.flatMap((page) => page.items) ?? [];
+  const hasFilters = Object.keys(filters).length > 0;
   if (recordId && recordId !== "new")
     return (
       <Box display="grid" gap="xl">
@@ -83,19 +95,129 @@ export function DocumentInbox({
         title={labels.documents}
         subtitle={labels.receiptsInvoicesAndStatementsOriginal}
         action={
-          <Button onClick={() => onOpen("new")}>
-            <Upload size={14} />
-            {labels.uploadDocument}
-          </Button>
+          <Box display="flex" flexWrap="wrap" gap="md">
+            <Button
+              type="submit"
+              form="document-archive-filters"
+              value="export"
+              variant="outline"
+              disabled={archiveExport.isPending}
+            >
+              <Download size={14} />
+              {archiveExport.isPending ? labels.exportingArchive : labels.exportArchivePage}
+            </Button>
+            <Button onClick={() => onOpen("new")}>
+              <Upload size={14} />
+              {labels.uploadDocument}
+            </Button>
+          </Box>
         }
       />
-      <RegisterSearch
-        aria-label={labels.searchDocuments}
-        placeholder={labels.searchFilename}
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
+      <Box
+        id="document-archive-filters"
+        as="form"
+        display="grid"
+        gap="md"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const fields = new FormData(event.currentTarget);
+          const submitter =
+            event.nativeEvent instanceof SubmitEvent ? event.nativeEvent.submitter : null;
+          const intent = submitter instanceof HTMLButtonElement ? submitter.value : null;
+          const decoded = Schema.decodeUnknownOption(Sources.ArchiveFilters)({
+            filename: fields.get("filename") || undefined,
+            sourceSystem: fields.get("sourceSystem") || undefined,
+            retainedFrom: fields.get("retainedFrom") || undefined,
+            retainedTo: fields.get("retainedTo") || undefined,
+          });
+          if (
+            decoded._tag === "None" ||
+            (decoded.value.retainedFrom &&
+              decoded.value.retainedTo &&
+              decoded.value.retainedFrom > decoded.value.retainedTo)
+          ) {
+            setFilterError(labels.invalidArchiveFilters);
+            return;
+          }
+          setFilterError(null);
+          setFilters(decoded.value);
+          if (intent === "export") archiveExport.mutate(decoded.value);
+          else archiveExport.reset();
+        }}
+      >
+        <Box key={JSON.stringify(filters)} display="flex" flexWrap="wrap" alignItems="end" gap="md">
+          <InputField
+            name="filename"
+            label={labels.exactFilename}
+            defaultValue={filters.filename}
+            maxLength={200}
+            autoComplete="off"
+            disabled={archiveExport.isPending}
+          />
+          <InputField
+            name="sourceSystem"
+            label={labels.sourceSystem}
+            defaultValue={filters.sourceSystem}
+            maxLength={200}
+            autoComplete="off"
+            disabled={archiveExport.isPending}
+          />
+          <InputField
+            name="retainedFrom"
+            type="date"
+            label={labels.retainedFrom}
+            defaultValue={filters.retainedFrom}
+            disabled={archiveExport.isPending}
+          />
+          <InputField
+            name="retainedTo"
+            type="date"
+            label={labels.retainedTo}
+            defaultValue={filters.retainedTo}
+            disabled={archiveExport.isPending}
+          />
+        </Box>
+        <Box display="flex" flexWrap="wrap" gap="md">
+          <Button type="submit" value="search" variant="outline" disabled={archiveExport.isPending}>
+            {labels.applyArchiveFilters}
+          </Button>
+          {hasFilters ? (
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={archiveExport.isPending}
+              onClick={() => {
+                setFilters({});
+                setFilterError(null);
+                archiveExport.reset();
+              }}
+            >
+              {labels.clearArchiveFilters}
+            </Button>
+          ) : null}
+        </Box>
+        {filterError ? <Text role="alert">{filterError}</Text> : null}
+      </Box>
+      <PageCaption>{labels.archiveExportHelp}</PageCaption>
+      <AccountingStatus
+        locale={locale}
+        pending={archiveExport.isPending}
+        error={archiveExport.error}
       />
       <AccountingStatus locale={locale} pending={sources.isPending} error={sources.error} />
+      {sources.isError ? (
+        <Box>
+          <Button
+            variant="outline"
+            disabled={sources.isFetching}
+            onClick={() => {
+              void sources.refetch();
+            }}
+          >
+            {labels.retryArchiveSearch}
+          </Button>
+        </Box>
+      ) : null}
       {sources.isSuccess ? (
         items.length ? (
           <DataTable
@@ -103,31 +225,29 @@ export function DocumentInbox({
             narrow="stack"
             columns={[
               { id: "name", label: labels.document },
+              { id: "source", label: labels.sourceSystem },
               { id: "date", label: labels.uploaded },
               { id: "type", label: labels.fileType },
-              { id: "status", label: "Status" },
             ]}
-            rows={items.map(({ occurrence, admission }) => ({
+            rows={items.map((occurrence) => ({
               id: occurrence.id,
               cells: [
                 <RecordOpen key="open" onClick={() => onOpen(occurrence.id)}>
                   <FileText size={14} />
                   {occurrence.filename}
                 </RecordOpen>,
+                occurrence.sourceSystem,
                 new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
                   new Date(occurrence.retainedAt),
                 ),
                 occurrence.mediaType.split("/").at(-1)?.toUpperCase(),
-                <Badge key="status" variant={admission ? "success" : "secondary"}>
-                  {admission ? labels.imported : labels.originalSaved}
-                </Badge>,
               ],
             }))}
           />
         ) : (
           <PageEmpty
-            title={search ? labels.noMatchingDocuments : labels.aHomeForYourSource}
-            detail={labels.uploadAPdfImageOr}
+            title={hasFilters ? labels.noMatchingDocuments : labels.aHomeForYourSource}
+            detail={hasFilters ? labels.adjustArchiveFilters : labels.uploadAPdfImageOr}
           />
         )
       ) : null}
@@ -135,12 +255,12 @@ export function DocumentInbox({
         <Box>
           <Button
             variant="outline"
-            disabled={sources.isFetching}
+            disabled={sources.isFetchingNextPage}
             onClick={() => {
               void sources.fetchNextPage();
             }}
           >
-            {labels.loadMoreDocuments}
+            {sources.isFetchingNextPage ? labels.loadingDocuments : labels.loadMoreDocuments}
           </Button>
         </Box>
       ) : null}
@@ -451,23 +571,44 @@ function DocumentDetail({ id }: { id: string }) {
   );
 }
 
+function archivePath(base: string, filters: typeof Sources.ArchiveFilters.Type, cursor = "") {
+  const query = new URLSearchParams();
+  if (filters.filename) query.set("filename", filters.filename);
+  if (filters.sourceSystem) query.set("sourceSystem", filters.sourceSystem);
+  if (filters.retainedFrom) query.set("retainedFrom", filters.retainedFrom);
+  if (filters.retainedTo) query.set("retainedTo", filters.retainedTo);
+  if (cursor) query.set("cursor", cursor);
+  const search = query.toString();
+  return search ? `${base}?${search}` : base;
+}
+
 const english = {
   allDocuments: "All documents",
   documents: "Documents",
   receiptsInvoicesAndStatementsOriginal:
     "Receipts, invoices and statements. Original files are kept unchanged.",
   uploadDocument: "Upload document",
-  searchDocuments: "Search documents",
-  searchFilename: "Search filename…",
+  exportArchivePage: "Export first page and originals",
+  exportingArchive: "Exporting page",
+  archiveExportHelp:
+    "Exports up to 10 matching originals with a JSON manifest. Additional pages stay separate.",
+  exactFilename: "Exact filename",
+  sourceSystem: "Source system",
+  retainedFrom: "Retained from",
+  retainedTo: "Retained to",
+  applyArchiveFilters: "Search archive",
+  clearArchiveFilters: "Clear filters",
+  invalidArchiveFilters: "Enter valid dates and a retained-from date no later than retained-to.",
+  retryArchiveSearch: "Retry archive search",
   document: "Document",
   uploaded: "Uploaded",
   fileType: "File type",
-  imported: "Imported",
-  originalSaved: "Original saved",
   noMatchingDocuments: "No matching documents",
   aHomeForYourSource: "A home for your source documents",
+  adjustArchiveFilters: "Clear or change the archive filters.",
   uploadAPdfImageOr: "Upload a PDF, image or data file to retain the original.",
   loadMoreDocuments: "Load more documents",
+  loadingDocuments: "Loading documents…",
   uploadingRetainsTheOriginalIt:
     "Uploading retains the original. It does not create a posting or automatically extract document details.",
   close: "Close",
@@ -486,17 +627,28 @@ const swedish: typeof english = {
   receiptsInvoicesAndStatementsOriginal:
     "Kvitton, fakturor och kontoutdrag. Originalen sparas oförändrade.",
   uploadDocument: "Ladda upp dokument",
-  searchDocuments: "Sök dokument",
-  searchFilename: "Sök filnamn…",
+  exportArchivePage: "Exportera första sidan och original",
+  exportingArchive: "Exporterar sidan",
+  archiveExportHelp:
+    "Exporterar upp till 10 matchande original med en JSON-manifest. Ytterligare sidor exporteras separat.",
+  exactFilename: "Exakt filnamn",
+  sourceSystem: "Källsystem",
+  retainedFrom: "Sparad från",
+  retainedTo: "Sparad till",
+  applyArchiveFilters: "Sök i arkivet",
+  clearArchiveFilters: "Rensa filter",
+  invalidArchiveFilters:
+    "Ange giltiga datum och ett från-datum som är före eller lika med till-datumet.",
+  retryArchiveSearch: "Försök arkivsökningen igen",
   document: "Dokument",
   uploaded: "Uppladdat",
   fileType: "Filtyp",
-  imported: "Importerat",
-  originalSaved: "Sparat original",
   noMatchingDocuments: "Inga matchande dokument",
   aHomeForYourSource: "En plats för dina underlag",
+  adjustArchiveFilters: "Rensa eller ändra arkivfiltren.",
   uploadAPdfImageOr: "Ladda upp en PDF, bild eller datafil för att behålla originalet.",
   loadMoreDocuments: "Läs in fler dokument",
+  loadingDocuments: "Läser in dokument…",
   uploadingRetainsTheOriginalIt:
     "Uppladdning sparar originalet. Den skapar inte bokföring eller automatisk dokumenttolkning.",
   close: "Stäng",

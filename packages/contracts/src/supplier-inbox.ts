@@ -36,6 +36,7 @@ export const SupplierInboxView = Schema.Struct({
   channel: RegisterSupplierInbox.fields.channel,
   messageIdentity: Schema.NullOr(Label),
   draftId: Schema.NullOr(A.Identifier),
+  reviewReason: Schema.NullOr(A.Description),
   attempts: Schema.Array(ExtractionAttempt).check(Schema.isMaxLength(50)),
 });
 export const SupplierInboxPage = Schema.Struct({

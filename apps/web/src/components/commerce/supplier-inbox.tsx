@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Inbox from "@open-erp/contracts/supplier-inbox";
@@ -26,7 +26,7 @@ function SupplierInboxList(props: {
       <Text>{sv ? "Sparade leverantörsoriginal" : "Saved supplier originals"}</Text>
       {props.items.length === 0 ? <Text>{sv ? "Inga original har registrerats i den här boken." : "No originals are registered in this book."}</Text> : null}
       {props.items.map((item) => <Button key={item.occurrence.occurrence.id} type="button" variant="ghost" onClick={() => props.onOpen(item.occurrence.occurrence.id)}>
-        {item.occurrence.occurrence.filename} · {item.channel} · {item.draftId ? (sv ? "Granskat utkast" : "Reviewed draft") : (sv ? "Väntar på granskning" : "Awaiting review")}
+        {item.occurrence.occurrence.filename} · {item.channel} · {item.draftId ? (sv ? "Granskat utkast" : "Reviewed draft") : (sv ? "Väntar på granskning" : "Awaiting review")}{item.reviewReason ? ` · ${item.reviewReason}` : ""}
       </Button>)}
       {props.hasNextPage ? <Button type="button" variant="outline" disabled={props.isFetching} onClick={props.onLoadMore}>{sv ? "Ladda fler" : "Load more"}</Button> : null}
     </Box>
@@ -44,6 +44,7 @@ function SupplierInboxEntry(props: {
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Text>{props.entry.occurrence.occurrence.filename} · {props.entry.channel} · {props.entry.draftId ? (sv ? "Granskat utkast" : "Reviewed draft") : (sv ? "Väntar på granskning" : "Awaiting review")}</Text>
+      {props.entry.reviewReason ? <Text>{sv ? "Granskning" : "Review"}: {props.entry.reviewReason}</Text> : null}
       <OriginalDocument {...props.commerceProps} id={props.entry.occurrence.occurrence.id} sha256={props.entry.occurrence.occurrence.sha256} />
       <Text>{sv ? "Tolkningsförsök sparas separat från granskade uppgifter. Kontrollera varje uppgift mot originalet." : "Extraction attempts remain separate from reviewed facts. Check every field against the original."}</Text>
       {props.entry.attempts.map((attempt) => <Box key={attempt.id} display="grid" gap="sm">
@@ -71,6 +72,7 @@ export function SupplierInbox(props: CommerceProps & { onDraft: (id: string) => 
   const [id, setId] = useState("");
   const [upload, setUpload] = useState(false);
   const [registered, setRegistered] = useState(false);
+  const keys = useRef(new Map<string, string>());
   const client = useQueryClient();
   const path = `${commercePath(book)}/supplier-inbox`;
   const inbox = useInfiniteQuery({
@@ -99,7 +101,7 @@ export function SupplierInbox(props: CommerceProps & { onDraft: (id: string) => 
   const register = useMutation({
     mutationFn: async (sourceId: string) => {
       const input = Schema.decodeSync(Inbox.RegisterSupplierInbox)({ occurrenceId: sourceId, channel: "upload", messageIdentity: null });
-      const result = await readAccounting(path, Inbox.SupplierInboxView, mutationOptions(path, JSON.stringify(input), new Map()));
+      const result = await readAccounting(path, Inbox.SupplierInboxView, mutationOptions(path, JSON.stringify(input), keys.current));
       checkScope(book, result.occurrence.occurrence.scope);
       if (result.occurrence.occurrence.id !== sourceId) throw new Error("Inbox identity mismatch");
       return result;

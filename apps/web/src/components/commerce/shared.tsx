@@ -9,7 +9,7 @@ import { InputField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
-import { bookKey, bookPath, readAccounting, isUncertainWriteError } from "@/lib/accounting-api";
+import { bookKey, bookPath, mutationOptions, readAccounting, isUncertainWriteError } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { commerceCopy } from "./copy";
 import { useCommerceCommandRecovery } from "./command-recovery";
@@ -159,6 +159,7 @@ export function CommandForm<
     canSubmit?: boolean;
     onSuccess?: (result: O["Type"]) => void;
     onNewCommand?: () => void;
+    keys?: Map<string, string>;
   },
 ) {
   const { book, locale, path, schema } = props;
@@ -231,7 +232,10 @@ export function CommandForm<
           return;
         }
         setInvalid(false);
-        command.mutate({ key: crypto.randomUUID(), input: parsed.value });
+        const requestKey = props.keys
+          ? new Headers(mutationOptions(path, JSON.stringify(parsed.value), props.keys).headers).get("Idempotency-Key")
+          : null;
+        command.mutate({ key: requestKey ?? crypto.randomUUID(), input: parsed.value });
       }}
     >
       <Box

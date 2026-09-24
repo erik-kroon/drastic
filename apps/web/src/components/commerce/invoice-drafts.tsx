@@ -252,19 +252,29 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
           dueDate: inputText(fields, "dueDate"),
           paymentTerms: inputText(fields, "terms"),
           sourceTotalMinor: decimalField(fields, "sourceTotal", scale, true),
-          lines: lines.map((line) => ({
-            id: line.id,
-            description: inputText(fields, `${line.id}_description`),
-            quantity: invoiceQuantity(inputText(fields, `${line.id}_quantity`)),
-            unitPriceMinor: decimalField(fields, `${line.id}_unitPrice`, scale, true),
-            baseMinor: decimalField(fields, `${line.id}_amount`, scale),
-            discountMinor: line.defaults?.discountMinor ?? "0",
-            chargeMinor: line.defaults?.chargeMinor ?? "0",
-            taxMinor: decimalField(fields, `${line.id}_tax`, scale, true),
-            taxDescription: inputText(fields, `${line.id}_taxDescription`),
-            taxEvidenceId: inputText(fields, `${line.id}_tax`) === null ? null : evidenceId,
-            sourceGrossMinor: decimalField(fields, `${line.id}_sourceGross`, scale, true),
-          })),
+          lines: lines.map((line) => {
+            const catalogSelection = line.defaults?.catalogSelection;
+            const nextLine = {
+              id: line.id,
+              description: catalogSelection
+                ? (line.defaults?.description ?? null)
+                : inputText(fields, `${line.id}_description`),
+              quantity: invoiceQuantity(inputText(fields, `${line.id}_quantity`)),
+              unitPriceMinor: catalogSelection
+                ? (line.defaults?.unitPriceMinor ?? null)
+                : decimalField(fields, `${line.id}_unitPrice`, scale, true),
+              baseMinor: decimalField(fields, `${line.id}_amount`, scale),
+              discountMinor: line.defaults?.discountMinor ?? "0",
+              chargeMinor: line.defaults?.chargeMinor ?? "0",
+              taxMinor: decimalField(fields, `${line.id}_tax`, scale, true),
+              taxDescription: catalogSelection
+                ? (line.defaults?.taxDescription ?? null)
+                : inputText(fields, `${line.id}_taxDescription`),
+              taxEvidenceId: inputText(fields, `${line.id}_tax`) === null ? null : evidenceId,
+              sourceGrossMinor: decimalField(fields, `${line.id}_sourceGross`, scale, true),
+            };
+            return catalogSelection ? { ...nextLine, catalogSelection } : nextLine;
+          }),
         };
         return baseline
           ? {
@@ -313,9 +323,18 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
         </RecordColumns>
         <RecordSection title={`${labels.lineItems} · ${content?.currency ?? props.book.currency}`}>
           <InvoiceEditorLines
+            book={props.book}
             lines={lines}
             fields={session.state.fields}
-            onChange={(next) => session.update({ lines: next })}
+            onChange={(next, changedLineId) => {
+              const fields = { ...session.state.fields };
+              if (changedLineId) {
+                for (const key of Object.keys(fields)) {
+                  if (key.startsWith(`${changedLineId}_`)) delete fields[key];
+                }
+              }
+              session.update({ lines: next, fields });
+            }}
             scale={scale}
             currency={content?.currency ?? props.book.currency}
             locale={props.locale}

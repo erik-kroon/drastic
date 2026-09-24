@@ -4,6 +4,7 @@ import * as Sales from "@open-erp/contracts/sales-register";
 import { SalesWorkspace } from "@/components/commerce/sales-workspace";
 import { CollectionsWorkspace } from "@/components/commerce/collections";
 import { SalesOrders } from "@/components/commerce/sales-orders";
+import { CatalogArticles } from "@/components/commerce/catalog-articles";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { Link } from "@open-erp/ui/components/link";
 import { PageContent } from "@open-erp/ui/components/accounting-page";
@@ -43,6 +44,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/sales")(
 function Page() {
   const search = Route.useSearch();
   if (search.view === "orders") return <OrdersPage />;
+  if (search.view === "articles") return <CatalogPage />;
   if (search.view === "collections") return <CollectionsPage />;
   return (
     <SalesWorkspace
@@ -62,6 +64,14 @@ function OrdersPage() {
   return <PageContent>
     <Link href={`${workspacePath(book)}/sales`}>{locale === "sv" ? "Till fakturor" : "Back to invoices"}</Link>
     <SalesOrders book={book} locale={locale} />
+  </PageContent>;
+}
+
+function CatalogPage() {
+  const { book, locale } = useBookWorkspace();
+  return <PageContent>
+    <Link href={`${workspacePath(book)}/sales`}>{locale === "sv" ? "Till fakturor" : "Back to invoices"}</Link>
+    <CatalogArticles book={book} locale={locale} />
   </PageContent>;
 }
 

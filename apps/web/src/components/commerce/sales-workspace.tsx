@@ -176,11 +176,17 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
           >
             {labels.customers}
           </PageTab>
-          <PageTab href={`${base}?view=collections`} active={false}>
+           <PageTab href={`${base}?view=collections`} active={search.view === "collections"}>
+
             {sv ? "Krav" : "Collections"}
           </PageTab>
-          <PageTab href={`${base}?view=orders`} active={false}>
+           <PageTab href={`${base}?view=orders`} active={search.view === "orders"}>
+
             {sv ? "Offerter och order" : "Quotes and orders"}
+          </PageTab>
+           <PageTab href={`${base}?view=articles`} active={search.view === "articles"}>
+
+            {labels.articleCatalog}
           </PageTab>
         </PageTabs>
         {contacts ? (
@@ -558,6 +564,7 @@ function SalesRecord({
 
 const english = {
   invoicing: "Invoicing",
+  articleCatalog: "Article catalog",
   invoices: "Invoices",
   invoice: "Invoice",
   customers: "Customers & contacts",
@@ -606,6 +613,7 @@ const english = {
 };
 const swedish: typeof english = {
   invoicing: "Fakturering",
+  articleCatalog: "Artikelkatalog",
   invoices: "Fakturor",
   invoice: "Faktura",
   customers: "Kunder och kontakter",

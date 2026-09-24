@@ -1,11 +1,13 @@
 import { useState, type ReactNode } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import * as Catalog from "@open-erp/contracts/catalog";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import { Plus, Trash2 } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { RecordColumns } from "@open-erp/ui/components/record-layout";
 import { Input } from "@open-erp/ui/components/input";
-import { InputField } from "@open-erp/ui/components/field";
+import { InputField, SelectField } from "@open-erp/ui/components/field";
 import {
   InvoiceLines,
   InvoiceLine,
@@ -13,8 +15,10 @@ import {
   InvoiceAmountInput,
 } from "@open-erp/ui/components/invoice-lines";
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
+import { AccountingStatus } from "@/components/accounting-status";
+import { readAccounting } from "@/lib/accounting-api";
 import { decimalToMinor, minorToDecimal, formatMinorAmount } from "@/lib/workspace-api";
-import type { CommerceProps } from "./shared";
+import { commerceKey, commercePath, type CommerceProps } from "./shared";
 
 type DraftLine = typeof Drafts.DraftLine.Type;
 export type EditableInvoiceLine = {
@@ -104,8 +108,9 @@ export function invoiceEditorTotals(lines: readonly EditableInvoiceLine[], scale
 }
 
 export function InvoiceEditorLines(props: {
+  book?: CommerceProps["book"];
   lines: readonly EditableInvoiceLine[];
-  onChange: (lines: EditableInvoiceLine[]) => void;
+  onChange: (lines: EditableInvoiceLine[], changedLineId?: string) => void;
   scale: number;
   currency: string;
   locale: CommerceProps["locale"];
@@ -118,26 +123,72 @@ export function InvoiceEditorLines(props: {
   const labels = sv
     ? ["Beskrivning", "Antal", "Enhetspris", "Exkl. moms", "Momsbelopp"]
     : ["Description", "Qty", "Unit price", "Before tax", "Tax amount"];
-  const totals = invoiceEditorTotals(lines, scale);
+  const catalog = useInfiniteQuery({
+    queryKey: props.book
+      ? [...commerceKey(props.book), "catalog-articles"]
+      : ["catalog-articles", "disabled"],
+    enabled: !!props.book,
+    initialPageParam: "",
+    queryFn: async ({ pageParam, signal }) => {
+      if (!props.book) throw new Error("Catalog article query requires a book");
+      return readAccounting(
+        `${commercePath(props.book)}/articles${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        Catalog.ArticlePage,
+        { signal },
+      );
+    },
+    getNextPageParam: (page) => page.next ?? undefined,
+    retry: false,
+  });
+  const articles = catalog.data?.pages.flatMap((page) => page.items) ?? [];
+  const totals = invoiceEditorTotals(lines, props.scale);
   const amount = (value: bigint | null) =>
     value === null
       ? "—"
-      : `${formatMinorAmount(value.toString(), scale, locale)} ${props.currency}`;
+      : `${formatMinorAmount(value.toString(), props.scale, locale)} ${props.currency}`;
   return (
     <Box display="grid" gap="md">
+      {props.book ? (
+        <AccountingStatus locale={locale} pending={catalog.isPending} error={catalog.error} />
+      ) : null}
+      {props.book && catalog.hasNextPage ? (
+        <Box>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={catalog.isFetchingNextPage}
+            onClick={() => void catalog.fetchNextPage()}
+          >
+            {sv ? "Läs in fler artiklar" : "Load more articles"}
+          </Button>
+        </Box>
+      ) : null}
+      {articles.some((article) => article.description.length > 200) ? (
+        <PageCaption>
+          {sv
+            ? "Artiklar med beskrivningar över 200 tecken kan inte användas på fakturarader."
+            : "Articles with descriptions over 200 characters cannot be used on invoice lines."}
+        </PageCaption>
+      ) : null}
       <InvoiceLines labels={labels}>
         {lines.map((line, index) => (
           <EditorLine
             key={line.id}
+            book={props.book}
             line={line}
+            articles={articles}
             index={index}
             scale={scale}
             locale={locale}
             labels={labels}
             showDetails={showDetails}
             fields={props.fields}
-            onChange={(next) =>
-              onChange(lines.map((current) => (current.id === line.id ? next : current)))
+            onChange={(next, changedLineId) =>
+              onChange(
+                lines.map((current) => (current.id === line.id ? next : current)),
+                changedLineId,
+              )
             }
             onRemove={
               lines.length === 1
@@ -200,28 +251,43 @@ export function InvoiceEditorLines(props: {
   );
 }
 function EditorLine(props: {
+  book?: CommerceProps["book"];
   line: EditableInvoiceLine;
+  articles: readonly (typeof Catalog.Article.Type)[];
   index: number;
   scale: number;
   locale: CommerceProps["locale"];
   labels: string[];
   showDetails: boolean;
   fields?: Readonly<Record<string, string>>;
-  onChange: (line: EditableInvoiceLine) => void;
+  onChange: (line: EditableInvoiceLine, changedLineId?: string) => void;
   onRemove?: () => void;
 }) {
   const { line, index, scale, locale } = props;
   const sv = locale === "sv";
   const calculated = exactLineAmount(line.quantity, enteredMinor(line.price, scale));
+  const catalogSelection = line.defaults?.catalogSelection;
   const description = (
-    <Input
-      name={`${line.id}_description`}
-      aria-label={`${props.labels[0]} ${index + 1}`}
-      placeholder={sv ? "Produkt eller tjänst" : "Product or service"}
-      required
-      maxLength={200}
-      defaultValue={props.fields?.[`${line.id}_description`] ?? line.defaults?.description}
-    />
+    <Box display="grid" gap="sm">
+      <Input
+        name={`${line.id}_description`}
+        aria-label={`${props.labels[0]} ${index + 1}`}
+        placeholder={sv ? "Produkt eller tjänst" : "Product or service"}
+        required
+        maxLength={200}
+        disabled={!!catalogSelection}
+        defaultValue={props.fields?.[`${line.id}_description`] ?? line.defaults?.description}
+      />
+      {props.book ? (
+        <CatalogArticleSelect
+          line={line}
+          articles={props.articles}
+          scale={scale}
+          locale={locale}
+          onChange={props.onChange}
+        />
+      ) : null}
+    </Box>
   );
   const controls = (["quantity", "price", "amount", "tax"] as const).map((field, fieldIndex) => (
     <InvoiceAmountInput
@@ -230,6 +296,7 @@ function EditorLine(props: {
       aria-label={`${props.labels[fieldIndex + 1]} ${index + 1}`}
       inputMode="decimal"
       required={field === "quantity" || field === "amount"}
+      disabled={field === "price" && !!catalogSelection}
       value={line[field]}
       placeholder={field === "tax" ? "—" : "0"}
       onChange={(event) => props.onChange(changedLine(line, field, event.target.value, scale))}
@@ -289,6 +356,7 @@ function EditorLine(props: {
                     sv ? "Enligt avtalet eller underlaget" : "As stated in the agreement or source"
                   }
                   maxLength={200}
+                  disabled={!!catalogSelection}
                   defaultValue={
                     props.fields?.[`${line.id}_taxDescription`] ??
                     line.defaults?.taxDescription ??
@@ -324,5 +392,104 @@ function EditorLine(props: {
         </Box>
       }
     />
+  );
+}
+
+function CatalogArticleSelect(props: {
+  line: EditableInvoiceLine;
+  articles: readonly (typeof Catalog.Article.Type)[];
+  scale: number;
+  locale: CommerceProps["locale"];
+  onChange: (line: EditableInvoiceLine, changedLineId?: string) => void;
+}) {
+  const { line, articles, scale, locale } = props;
+  const sv = locale === "sv";
+  const selection = line.defaults?.catalogSelection;
+  const selectedValue = selection ? `${selection.code}:${selection.revision}` : "";
+  const selectedIsListed = articles.some(
+    (article) => `${article.code}:${article.revision}` === selectedValue,
+  );
+  const option = (article: typeof Catalog.Article.Type) => ({
+    value: `${article.code}:${article.revision}`,
+    label: `${article.code} · ${article.revision} — ${article.description}`,
+    disabled: article.description.length > 200,
+  });
+  const clearSelection = () => {
+    if (!line.defaults) return;
+    const defaults = { ...line.defaults };
+    delete defaults.catalogSelection;
+    props.onChange({ ...line, defaults }, line.id);
+  };
+  return (
+    <Box display="grid" gap="xs">
+      <SelectField
+        label={sv ? "Sparad artikel" : "Saved article"}
+        value={selectedValue}
+        options={[
+          { value: "", label: sv ? "Välj artikel…" : "Select article…" },
+          ...(selection && !selectedIsListed
+            ? [
+                {
+                  value: selectedValue,
+                  label: `${selection.code} · ${selection.revision} — ${line.defaults?.description ?? ""}`,
+                },
+              ]
+            : []),
+          ...articles.map(option),
+        ]}
+        onValueChange={(value) => {
+          if (!value) {
+            clearSelection();
+            return;
+          }
+          const article = articles.find((item) => `${item.code}:${item.revision}` === value);
+          if (!article) return;
+          const defaults: DraftLine = {
+            id: line.id,
+            description: article.description,
+            quantity: line.quantity || "1",
+            unitPriceMinor: article.unitPriceMinor,
+            baseMinor: article.unitPriceMinor ?? "0",
+            discountMinor: line.defaults?.discountMinor ?? "0",
+            chargeMinor: line.defaults?.chargeMinor ?? "0",
+            taxMinor: null,
+            taxDescription: article.taxDescription,
+            taxEvidenceId: null,
+            sourceGrossMinor: null,
+            catalogSelection: {
+              code: article.code,
+              revision: article.revision,
+              unit: article.unit,
+            },
+          };
+          props.onChange(
+            {
+              ...line,
+              defaults,
+              price: article.unitPriceMinor ? minorToDecimal(article.unitPriceMinor, scale) : "",
+              amount: article.unitPriceMinor ? minorToDecimal(article.unitPriceMinor, scale) : "0",
+              tax: "",
+              explicitAmount: false,
+            },
+            line.id,
+          );
+        }}
+      />
+      {selection ? (
+        <Box display="flex" flexWrap="wrap" alignItems="center" gap="sm">
+          <PageCaption>
+            {selection.code} · {selection.revision} · {selection.unit}
+          </PageCaption>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={clearSelection}
+          >
+            {sv ? "Ta bort val" : "Clear selection"}
+          </Button>
+        </Box>
+      ) : null}
+    </Box>
   );
 }

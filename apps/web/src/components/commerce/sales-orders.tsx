@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Sales from "@open-erp/contracts/sales-orders";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
@@ -12,6 +12,20 @@ import { readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
 import { CommandForm, checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
 
+const quantityUnit = 1_000_000n;
+
+function quantityUnits(value: string) {
+  const [whole = "0", fraction = ""] = value.split(".");
+  return BigInt(whole) * quantityUnit + BigInt(fraction.padEnd(6, "0"));
+}
+
+function quantityString(value: bigint) {
+  const negative = value < 0n;
+  const absolute = negative ? -value : value;
+  const fraction = (absolute % quantityUnit).toString().padStart(6, "0").replace(/0+$/, "");
+  return `${negative ? "-" : ""}${absolute / quantityUnit}${fraction ? `.${fraction}` : ""}`;
+}
+
 export function SalesOrders({ book, locale }: CommerceProps) {
   const sv = locale === "sv";
   const path = `${commercePath(book)}/sales-documents`;
@@ -19,6 +33,7 @@ export function SalesOrders({ book, locale }: CommerceProps) {
   const [selectedId, setSelectedId] = useState("");
   const [source, setSource] = useState<typeof Drafts.InvoiceDraftRevision.Type | null>(null);
   const [sourceError, setSourceError] = useState<Error | null>(null);
+  const creationKeys = useRef(new Map<string, string>());
   const list = useQuery({
     queryKey: [...commerceKey(book), "sales-documents"],
     queryFn: async ({ signal }) => {
@@ -55,7 +70,8 @@ export function SalesOrders({ book, locale }: CommerceProps) {
       <Text tone="muted">{sv ? "Kopierar innehållet som en ny offert. Källutkastet ändras inte." : "Copies this content into a new quote. The source draft remains unchanged."}</Text>
       <CommandForm book={book} locale={locale} path={path} schema={Sales.CreateSalesDocument} output={Sales.SalesDocument}
         input={() => ({ kind: "quote", content: source.content })} label={sv ? "Skapa offert" : "Create quote"}
-        allowed={book.role === "operator"} onSuccess={result => setSelectedId(result.id)} />
+        allowed={book.role === "operator"} keys={creationKeys.current}
+        onSuccess={result => setSelectedId(result.id)} onNewCommand={() => creationKeys.current.clear()} />
     </Box> : null}
     <AccountingStatus locale={locale} pending={list.isPending} error={list.error} />
     {list.data?.items.map(item => <Button key={item.id} variant={selectedId === item.id ? "secondary" : "ghost"}
@@ -74,11 +90,12 @@ function SalesOrderDetail(props: CommerceProps & {
   const source = props.source;
   const path = props.path;
   const sv = locale === "sv";
+  const conversionKeys = useRef(new Map<string, string>());
   const converted = detail.data?.conversions ?? [];
   const remaining = record.kind === "order" ? record.content.lines.map(line => {
     const used = converted.flatMap(conversion => conversion.portions).reduce((total, portion) =>
-      portion.id === line.id ? total + Number(portion.quantity) : total, 0);
-    return { line, available: Number(line.quantity) - used };
+      portion.id === line.id ? total + quantityUnits(portion.quantity) : total, 0n);
+    return { line, available: quantityString(quantityUnits(line.quantity) - used) };
   }) : [];
   return     <Box display="grid" gap="lg">
       <h3>{record.content.title} · {record.kind} · {record.state}</h3>
@@ -107,7 +124,8 @@ function SalesOrderDetail(props: CommerceProps & {
         <Text tone="muted">{sv ? "Välj återstående antal per rad. Beloppen delas exakt och fakturan sparas bara som utkast." : "Choose remaining quantities per line. Amounts must split exactly; this saves only an invoice draft."}</Text>
         <CommandForm key={`${record.id}-${converted.length}`} book={book} locale={locale} path={`${path}/${record.id}/conversions`}
           recoveryId={record.id} schema={Sales.ConvertSalesOrder}
-          output={Sales.OrderConversion} allowed={book.role === "operator"}
+          output={Sales.OrderConversion} allowed={book.role === "operator"} keys={conversionKeys.current}
+          onNewCommand={() => conversionKeys.current.clear()}
           input={fields => ({ expectedRevision: record.revision, expectedDigest: record.digest,
             draftKey: fields.get("draftKey"), lines: remaining.flatMap(({ line }) => {
               const raw = fields.get(`quantity_${line.id}`);
@@ -117,7 +135,7 @@ function SalesOrderDetail(props: CommerceProps & {
           <InputField name="draftKey" label={sv ? "Unik utkastnyckel" : "Unique draft key"} required />
           {remaining.map(({ line, available }) => <InputField key={line.id} name={`quantity_${line.id}`}
             label={`${line.description} (${sv ? "återstår" : "remaining"} ${available})`}
-            disabled={available <= 0} maxLength={20} />)}
+            disabled={quantityUnits(available) <= 0n} maxLength={20} />)}
         </CommandForm>
         {converted.map(item => <Link key={item.draftId}
             href={`${workspacePath(book)}/sales?record=${encodeURIComponent(item.draftId)}&kind=draft`}>
