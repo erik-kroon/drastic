@@ -1,6 +1,6 @@
 # Local recovery: snapshot closure and fenced restore
 
-Status: recovery package v2 is implemented, **not runtime-verified**. Root must run current static checks and separately authorize a synthetic rehearsal. No worker backup, restore, database query, process, migration, test, fixture or real-data export was run for this package.
+Status: recovery package v2 has a [bounded synthetic database/object rehearsal](ops02-isolated-rehearsal.md). Its read-only application recovery, real posting receipts, historical reports, custody and hosted/production recovery remain unverified. This does not grant writer or provider activation.
 
 This is not an encrypted archive, statutory retention service, company-readiness decision or production cutover tool. Private permissions are not encryption. A checksum is not authenticity or proof of successful recovery. D-07 remains open.
 

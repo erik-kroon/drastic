@@ -1,3 +1,9 @@
+import { collectionStatements } from "./statements/collections";
+import { dimensionStatements } from "./statements/dimensions";
+import { deadlineStatements } from "./statements/deadlines";
+import { supplierInboxStatements } from "./statements/supplier-inbox";
+import { payrollFoundationStatements } from "./statements/payroll-foundation";
+import { crmMasterStatements } from "./statements/crm-master";
 import { companySetupStatements } from "./statements/company-setup";
 import { firmStatements } from "./statements/firms";
 import { vatAmendmentStatements } from "./statements/vat-amendments";
@@ -23,6 +29,7 @@ import { closingDiscoveryStatements } from "./statements/closing";
 import { preparationJobStopStatements } from "./statements/automation";
 import { sieStatements } from "./statements/sie";
 import { invoiceDraftStatements } from "./statements/invoice-draft";
+import { salesOrderStatements } from "./statements/sales-orders";
 import { supplierInvoiceDraftStatements } from "./statements/supplier-invoice-drafts";
 import { supplierAcceptanceStatements } from "./statements/supplier-acceptance";
 import { supplierPaymentBatchStatements } from "./statements/supplier-payment-batches";
@@ -57,6 +64,12 @@ const PostgresFailure = Schema.Struct({
 });
 
 const statements = {
+  ...crmMasterStatements,
+  ...payrollFoundationStatements,
+  ...supplierInboxStatements,
+  ...deadlineStatements,
+  ...collectionStatements,
+  ...dimensionStatements,
   ...firmStatements,
   ...companySetupStatements,
   ...vatAmendmentStatements,
@@ -152,6 +165,7 @@ const statements = {
   ...preparationJobStopStatements,
   ...sieStatements,
   ...invoiceDraftStatements,
+  ...salesOrderStatements,
   ...supplierInvoiceDraftStatements,
   ...supplierAcceptanceStatements,
   ...supplierPaymentBatchStatements,

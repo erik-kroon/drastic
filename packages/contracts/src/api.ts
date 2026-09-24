@@ -1,3 +1,7 @@
+import { CrmMasterApi } from "./crm-master";
+import { CollectionsApi } from "./collections";
+import { DimensionsApi } from "./dimensions";
+import { SupplierInboxApi } from "./supplier-inbox";
 import { CompanySetupApi } from "./company-setup";
 import * as Schema from "effect/Schema";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi";
@@ -27,6 +31,7 @@ import { RegisterReportsApi } from "./register-reports";
 import { VatReturnsApi } from "./vat-returns";
 import { SieApi } from "./sie";
 import { InvoiceDraftsApi } from "./invoice-drafts";
+import { SalesOrdersApi } from "./sales-orders";
 import { SupplierInvoiceDraftsApi } from "./supplier-invoice-drafts";
 import { SupplierAcceptanceApi } from "./supplier-acceptance";
 import { SupplierPaymentBatchesApi } from "./supplier-payment-batches";
@@ -167,6 +172,7 @@ export class Api extends HttpApi.make("open-erp")
     VatReturnsApi,
     SieApi,
     InvoiceDraftsApi,
+    SalesOrdersApi,
     SupplierInvoiceDraftsApi,
     SupplierAcceptanceApi,
     SupplierPaymentBatchesApi,
@@ -189,6 +195,10 @@ export class Api extends HttpApi.make("open-erp")
     CommerceAllocationReversalsApi,
     AccountantReviewApi,
     SourceIntakeApi,
+    SupplierInboxApi,
+    CollectionsApi,
+    CrmMasterApi,
+    DimensionsApi,
     ExpenseTaxApi,
     OwnerRegisterApi,
     ClosingApi,

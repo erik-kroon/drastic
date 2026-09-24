@@ -1,3 +1,7 @@
+import { CrmMasterHandlers } from "./transport/http/routes/crm-master";
+import { CollectionsHandlers } from "./transport/http/routes/collections";
+import { DimensionHandlers } from "./transport/http/routes/dimensions";
+import { SupplierInboxHandlers } from "./transport/http/routes/supplier-inbox";
 import { CompanySetupHandlers } from "./transport/http/routes/company-setup";
 import { Api } from "@open-erp/contracts/api";
 import * as Context from "effect/Context";
@@ -35,6 +39,7 @@ import { RegisterReportHandlers } from "./transport/http/routes/register-reports
 import { VatReturnsHandlers } from "./transport/http/routes/vat-returns";
 import { SieHandlers } from "./transport/http/routes/sie";
 import { InvoiceDraftHandlers } from "./transport/http/routes/invoice-drafts";
+import { SalesOrderHandlers } from "./transport/http/routes/sales-orders";
 import { SupplierInvoiceDraftHandlers } from "./transport/http/routes/supplier-invoice-drafts";
 import { SupplierAcceptanceHandlers } from "./transport/http/routes/supplier-acceptance";
 import { SupplierPaymentBatchHandlers } from "./transport/http/routes/supplier-payment-batches";
@@ -103,6 +108,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     VatReturnsHandlers,
     SieHandlers,
     InvoiceDraftHandlers,
+    SalesOrderHandlers,
     SupplierInvoiceDraftHandlers,
     SupplierAcceptanceHandlers,
     SupplierPaymentBatchHandlers,
@@ -125,6 +131,10 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     CommerceAllocationReversalHandlers,
     AccountantReviewHandlers,
     SourceIntakeHandlers,
+    SupplierInboxHandlers,
+    CollectionsHandlers,
+    CrmMasterHandlers,
+    DimensionHandlers,
     ExpenseTaxHandlers,
     OwnerRegisterHandlers,
     ClosingHandlers,

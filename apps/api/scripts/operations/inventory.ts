@@ -30,7 +30,7 @@ export async function databaseInventory(
       OR EXISTS(SELECT FROM pg_publication) OR EXISTS(SELECT FROM pg_subscription)
       OR EXISTS(SELECT FROM pg_inherits) OR EXISTS(SELECT FROM pg_policy)
       OR EXISTS(SELECT FROM pg_seclabel) OR EXISTS(SELECT FROM pg_shseclabel) OR EXISTS(SELECT FROM pg_foreign_server)
-      OR EXISTS(SELECT FROM pg_rewrite WHERE rulename<>'_RETURN')
+      OR EXISTS(SELECT FROM pg_rewrite r JOIN pg_class c ON c.oid=r.ev_class JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname !~ '^pg_' AND n.nspname <> 'information_schema' AND r.rulename<>'_RETURN')
       OR EXISTS(SELECT FROM pg_index WHERE NOT indisvalid OR NOT indisready)
       OR EXISTS(SELECT FROM pg_db_role_setting WHERE setdatabase IN (0, (SELECT oid FROM pg_database WHERE datname=current_database()))
         AND NOT ($1::boolean AND setrole=0 AND setdatabase<>0 AND setconfig=ARRAY['default_transaction_read_only=on']))
@@ -136,10 +136,10 @@ export async function databaseInventory(
       FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace
       WHERE n.nspname !~ '^pg_' AND n.nspname<>'information_schema' AND NOT t.tgisinternal
       UNION ALL
-      SELECT 'default-acl', pg_get_userbyid(d.defaclrole)||'.'||coalesce(n.nspname,'')||'.'||d.defaclobjtype,
+      SELECT 'default-acl', pg_get_userbyid(d.defaclrole)||'.'||coalesce(n.nspname,'')||'.'||d.defaclobjtype::text,
         (SELECT jsonb_agg(a::text ORDER BY a::text COLLATE "C") FROM unnest(d.defaclacl) a)
       FROM pg_default_acl d LEFT JOIN pg_namespace n ON n.oid=d.defaclnamespace
-    ) SELECT encode(sha256(convert_to(coalesce(jsonb_agg(jsonb_build_array(kind,name,body) ORDER BY kind COLLATE "C",name COLLATE "C"),'[]')::text,'UTF8')),'hex') AS sha256 FROM objects`);
+    ) SELECT encode(sha256(convert_to(coalesce(jsonb_agg(jsonb_build_array(kind,name,body) ORDER BY kind COLLATE "C",name COLLATE "C",body::text COLLATE "C"),'[]')::text,'UTF8')),'hex') AS sha256 FROM objects`);
   return Schema.decodeUnknownSync(DatabaseInventory)({
     ...database,
     schemaSha256: schemaHash.rows[0]?.sha256,

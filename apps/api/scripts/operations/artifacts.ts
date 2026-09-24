@@ -35,7 +35,7 @@ const releaseFiles = [
   "jurisdictions/se/tsconfig.json",
   "packages/ui/package.json",
 ];
-const sourceExtensions = /\.(ts|tsx|js|jsx|json|sql|css|svg|md)$/;
+const sourceExtensions = /\.(ts|tsx|js|jsx|json|sql|css|svg|md|txt)$/;
 const sourceMetadataFiles = [".gitignore", ".prettierignore"];
 const requiredRuntimeFiles = [
   "apps/api/src/db/connection.ts",

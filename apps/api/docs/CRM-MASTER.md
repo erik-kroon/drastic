@@ -1,0 +1,5 @@
+# CRM-MASTER bounded directory
+
+`9020-crm-master.sql` extends the existing synthetic commerce party register. It retains immutable book-scoped contacts, aliases, and manually supplied registry-provenance notes. Each annotation requires evidence already retained in the same book and records its actor and time. The directory filters by role, searches current party names, external keys, and alias labels, and pages by stable party ID. The existing party revision is the editable display name; prior revisions and issued-invoice snapshots stay unchanged.
+
+This is not a registry verification service. `registry_provenance` records an operator assertion linked to evidence; it does not turn `legalIdentityVerified` true. No provider request, merge, redirect, cross-book import/export, or legal-identity reconciliation is authorized by this migration. Provider credentials/configuration, applicable terms, source acceptance and a reviewed merge contract remain gates. Until HTTP/capability wiring and a directory route are integrated, these database functions are not an exposed UI capability. Existing synthetic-profile restrictions on party creation still apply.

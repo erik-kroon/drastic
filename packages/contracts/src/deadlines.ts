@@ -1,0 +1,43 @@
+import * as Schema from "effect/Schema";
+import { Identifier, Scope } from "./accounting";
+
+export const DeadlineInput = Schema.Struct({
+  title: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(240)),
+  periodId: Identifier,
+  responsibleActorId: Identifier,
+  dueAt: Schema.String,
+  timeZone: Schema.String,
+  sourceReference: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(1000)),
+  sourceRevision: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(120)),
+  overrideReason: Schema.optional(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(1000))),
+  outcomeKind: Schema.Literals(["prepared", "submitted", "accepted"]),
+});
+export const SaveDeadline = Schema.Struct({
+  scope: Scope,
+  id: Identifier,
+  expectedRevision: Schema.NullOr(Schema.Int),
+  input: DeadlineInput,
+});
+export const DeadlineActivity = Schema.Struct({
+  scope: Scope,
+  id: Identifier,
+  action: Schema.Literals(["dismiss_reminder", "record_outcome"]),
+  reference: Schema.optional(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(500))),
+});
+export const Deadline = Schema.Struct({
+  book_id: Identifier, id: Identifier, title: Schema.String,
+  period_id: Identifier, responsible_actor_id: Identifier,
+  due_at: Schema.String, time_zone: Schema.String,
+  source_reference: Schema.String, source_revision: Schema.String,
+  override_reason: Schema.NullOr(Schema.String),
+  outcome_kind: Schema.Literals(["prepared", "submitted", "accepted"]),
+  outcome_reference: Schema.NullOr(Schema.String), outcome_at: Schema.NullOr(Schema.String),
+  reminder_dismissed_at: Schema.NullOr(Schema.String),
+  revision: Schema.Int, updated_at: Schema.String,
+  status: Schema.optional(Schema.Literals(["upcoming", "overdue", "prepared", "submitted", "accepted"])),
+});
+export const DeadlineList = Schema.Array(Deadline);
+export const FeedEvents = Schema.Struct({ bookId: Identifier, events: Schema.Array(Schema.Struct({
+  id: Identifier, title: Schema.String, dueAt: Schema.String,
+  updatedAt: Schema.String, timeZone: Schema.String,
+})) });
