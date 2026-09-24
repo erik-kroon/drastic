@@ -3,6 +3,7 @@ import * as Intake from "@open-erp/contracts/source-intake";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
+import { searchSourceArchive, exportSourceArchive } from "../../../application/source-retention";
 import { capabilities } from "../../../application/capabilities";
 import { query, scopeParameter } from "../../../db/query";
 
@@ -67,6 +68,12 @@ export const SourceIntakeHandlers = HttpApiBuilder.group(Api, "sourceIntake", (h
           Intake.SourceInventory,
         ),
       ),
+    )
+    .handle("searchSourceArchive", ({ params, query: filters }) =>
+      Effect.flatMap(authenticate, (token) => searchSourceArchive(token, params, filters)),
+    )
+    .handle("exportSourceArchive", ({ params, query: filters }) =>
+      Effect.flatMap(authenticate, (token) => exportSourceArchive(token, params, filters)),
     )
     .handle("getSourceOccurrenceMetadata", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>

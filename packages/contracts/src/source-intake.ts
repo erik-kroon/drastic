@@ -195,6 +195,20 @@ export const SourceInventory = Schema.Struct({
   items: Schema.Array(OccurrenceSummary),
   nextCursor: Schema.NullOr(A.Identifier),
 });
+export const ArchiveFilters = Schema.Struct({
+  cursor: Schema.optional(A.Identifier),
+  sourceSystem: Schema.optional(Label),
+  filename: Schema.optional(Label),
+  retainedFrom: Schema.optional(A.AccountingDate),
+  retainedTo: Schema.optional(A.AccountingDate),
+});
+export const ArchiveSearch = Schema.Struct({ items: Schema.Array(SourceOccurrence), nextCursor: Schema.NullOr(A.Identifier) });
+export const ArchiveOriginal = Schema.Struct({ occurrence: SourceOccurrence, contentBase64: Schema.String });
+export const ArchiveExport = Schema.Struct({
+  scope: A.Scope,
+  items: Schema.Array(ArchiveOriginal),
+  nextCursor: Schema.NullOr(A.Identifier),
+});
 export const SourcePurchaseLinks = Schema.Struct({
   scope: A.Scope,
   occurrenceId: A.Identifier,
@@ -336,6 +350,16 @@ export const SourceIntakeApi = HttpApiGroup.make("sourceIntake").add(
     query: Schema.Struct({ cursor: Schema.optional(A.Identifier) }),
     success: SourceInventory,
   }),
+  HttpApiEndpoint.get("searchSourceArchive", `${base}/source-archive`, {
+    ...scoped,
+    query: ArchiveFilters,
+    success: ArchiveSearch,
+  }),
+  HttpApiEndpoint.get("exportSourceArchive", `${base}/source-archive/export`, {
+    ...scoped,
+    query: ArchiveFilters,
+    success: ArchiveExport,
+  }),
   HttpApiEndpoint.get("getSourceOccurrenceMetadata", `${base}/source-occurrences/:id/metadata`, {
     ...identified,
     success: SourceOccurrenceMetadata,
@@ -429,6 +453,18 @@ export const SourceIntakeCapabilities = {
       "List observed source occurrences and durable admissions. This is not required-source inventory or proof of completeness.",
     input: Schema.Struct({ scope: A.Scope, cursor: Schema.optional(A.Identifier) }),
     output: SourceInventory,
+    readOnly: true,
+  },
+  source_search_archive: {
+    description: "Search retained originals within one authorized book using immutable occurrence metadata.",
+    input: Schema.Struct({ scope: A.Scope, filters: ArchiveFilters }),
+    output: ArchiveSearch,
+    readOnly: true,
+  },
+  source_export_archive: {
+    description: "Export a bounded manifest and verified original bytes; missing originals fail the entire page.",
+    input: Schema.Struct({ scope: A.Scope, filters: ArchiveFilters }),
+    output: ArchiveExport,
     readOnly: true,
   },
   source_get_occurrence_metadata: {

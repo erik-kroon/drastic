@@ -1,4 +1,8 @@
+import { DeadlineHandlers } from "./transport/http/routes/deadlines";
+import { DeadlineFeedRoutes } from "./transport/http/routes/deadline-feed";
+import { PayrollFoundationHandlers } from "./transport/http/routes/payroll-foundation";
 import { CrmMasterHandlers } from "./transport/http/routes/crm-master";
+import { CatalogHandlers } from "./transport/http/routes/catalog";
 import { CollectionsHandlers } from "./transport/http/routes/collections";
 import { DimensionHandlers } from "./transport/http/routes/dimensions";
 import { SupplierInboxHandlers } from "./transport/http/routes/supplier-inbox";
@@ -134,6 +138,9 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     SupplierInboxHandlers,
     CollectionsHandlers,
     CrmMasterHandlers,
+    CatalogHandlers,
+    PayrollFoundationHandlers,
+    DeadlineHandlers,
     DimensionHandlers,
     ExpenseTaxHandlers,
     OwnerRegisterHandlers,
@@ -143,7 +150,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
   Layer.provide(HttpServer.layerServices),
 );
 
-const { handler } = HttpRouter.toWebHandler(Layer.merge(ApiRoutes, McpRoutes), {
+const { handler } = HttpRouter.toWebHandler(Layer.mergeAll(ApiRoutes, McpRoutes, DeadlineFeedRoutes), {
   disableLogger: true,
 });
 

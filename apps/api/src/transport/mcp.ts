@@ -107,7 +107,16 @@ function dispatch(request: typeof McpRequest.Type, token: string) {
                 content: [
                   {
                     type: "text",
-                    text: JSON.stringify({ code: error.code, message: error.message }),
+                    text: JSON.stringify(
+                      error.code === "Unavailable" || error.code === "InternalError"
+                        ? {
+                            code: error.code,
+                            message: error.message,
+                            recovery:
+                              "The outcome of a mutation may be unknown. Read its durable status or receipt, then retry only with the original input and idempotency key. Do not create a new command.",
+                          }
+                        : { code: error.code, message: error.message },
+                    ),
                   },
                 ],
               });

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Suppliers from "@open-erp/contracts/supplier-invoice-drafts";
+import * as Inbox from "@open-erp/contracts/supplier-inbox";
 import * as Commerce from "@open-erp/contracts/commerce";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
@@ -42,7 +43,7 @@ function draftTotal(
   return `${formatMinorAmount((totals.net + totals.tax).toString(), scale, locale)} ${currency}`;
 }
 export function SupplierInvoiceEditor(
-  props: CommerceProps & { sourceId?: string; baseline?: Draft; onSaved: (id: string) => void },
+  props: CommerceProps & { sourceId?: string; inboxId?: string; baseline?: Draft; onSaved: (id: string) => void },
 ) {
   const [documentId, setDocumentId] = useState(props.sourceId ?? "");
   const metadata = useQuery(workQueryOptions(props.book, {}));
@@ -67,6 +68,7 @@ function SupplierEditorForm(
   props: CommerceProps & {
     baseline?: Draft;
     sourceId?: string;
+    inboxId?: string;
     documentId: string;
     scale: number;
     onChangeDocument: () => void;
@@ -96,11 +98,9 @@ function SupplierEditorForm(
   return (
     <EvidenceCommandForm
       {...props}
-      path={`${commercePath(props.book)}/supplier-invoice-drafts${baseline ? `/${encodeURIComponent(baseline.id)}/revisions` : ""}`}
-      schema={
-        baseline ? Suppliers.ReviseSupplierInvoiceDraft : Suppliers.CreateSupplierInvoiceDraft
-      }
-      output={Suppliers.SupplierInvoiceDraftRevision}
+      path={props.inboxId ? `${commercePath(props.book)}/supplier-inbox/${encodeURIComponent(props.inboxId)}/review` : `${commercePath(props.book)}/supplier-invoice-drafts${baseline ? `/${encodeURIComponent(baseline.id)}/revisions` : ""}`}
+      schema={props.inboxId ? Inbox.ReviewSupplierInbox : baseline ? Suppliers.ReviseSupplierInvoiceDraft : Suppliers.CreateSupplierInvoiceDraft}
+      output={props.inboxId ? Inbox.SupplierInboxReview : Suppliers.SupplierInvoiceDraftRevision}
       label={sv ? "Spara utkast" : "Save draft"}
       canSubmit={!!party && (props.documentId ? !!original : !!baseline)}
       stickyFooter
@@ -116,7 +116,7 @@ function SupplierEditorForm(
           </PageCaption>
         </Box>
       }
-      onSuccess={(record) => props.onSaved(record.id)}
+      onSuccess={(record) => props.onSaved("draft" in record ? record.draft.id : record.id)}
       source={(fields) => ({
         title: original?.filename ?? content?.title ?? "Supplier invoice",
         origin: original
@@ -157,7 +157,7 @@ function SupplierEditorForm(
               reason: textField(fields, "reason"),
               content: next,
             }
-          : { draftKey, content: next };
+          : props.inboxId ? { draft: { draftKey, content: next }, reviewReason: textField(fields, "reviewReason") } : { draftKey, content: next };
       }}
     >
       <RecordColumns>
@@ -229,6 +229,7 @@ function SupplierEditorForm(
           onChange={setLines}
         />
       </RecordSection>
+      {props.inboxId ? <InputField name="reviewReason" label={sv ? "Vad granskades mot originalet?" : "What was reviewed against the original?"} required maxLength={2000} /> : null}
       {baseline ? (
         <InputField
           name="reason"

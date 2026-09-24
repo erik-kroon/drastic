@@ -28,6 +28,7 @@ import { readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { invoiceDraftBlocker } from "./invoice-draft-copy";
 import { SupplierInvoiceEditor } from "./supplier-invoice-editor";
+import { SupplierInbox } from "./supplier-inbox";
 import { SupplierPaymentState } from "./supplier-payment-state";
 import { SupplierAcceptancePanel, useSupplierAcceptanceHistory } from "./supplier-acceptance";
 import {
@@ -98,6 +99,7 @@ export function SupplierInvoiceDrafts(
           </Button>
         }
       />
+      {!props.recordId ? <SupplierInbox book={props.book} locale={props.locale} onDraft={props.onOpen} /> : null}
       <RegisterSearch
         aria-label={sv ? "Sök fakturautkast" : "Search invoice drafts"}
         placeholder={
@@ -139,6 +141,7 @@ export function SupplierInvoiceDrafts(
           <SupplierInvoiceEditor
             {...props}
             sourceId={props.recordId?.startsWith("new:") ? props.recordId.slice(4) : undefined}
+            inboxId={props.recordId?.startsWith("new:") ? props.recordId.slice(4) : undefined}
             onSaved={props.onOpen}
           />
         </FormDialog>

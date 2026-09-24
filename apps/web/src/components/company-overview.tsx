@@ -1,4 +1,5 @@
 import { Upload } from "lucide-react";
+import { DeadlineObligations } from "./deadline-obligations";
 import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
 import {
   PageContent,
@@ -45,6 +46,7 @@ export function CompanyOverview() {
         </TaskColumns>
         <CompanyBankAccounts work={work} />
         <CompanyOpenInvoices work={work} />
+        <DeadlineObligations book={work.book} locale={work.locale} />
       </PageContent>
     </>
   );

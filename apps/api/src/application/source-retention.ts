@@ -117,3 +117,22 @@ export const getSourceOccurrence = Effect.fn("Source.getOccurrence")(function* (
     contentBase64,
   };
 });
+
+export const searchSourceArchive = (token: string, scope: typeof Intake.SourceIntakeCapabilities.source_search_archive.input.Type.scope,
+  filters: typeof Intake.ArchiveFilters.Type) =>
+  query("searchSourceArchive", [token, scopeParameter(scope), JSON.stringify(filters)], Intake.ArchiveSearch);
+
+export const exportSourceArchive = Effect.fn("Source.exportArchive")(function* (
+  token: string, scope: typeof Intake.SourceIntakeCapabilities.source_export_archive.input.Type.scope,
+  filters: typeof Intake.ArchiveFilters.Type,
+) {
+  const page = yield* searchSourceArchive(token, scope, filters);
+  const items = [];
+  for (const occurrence of page.items) {
+    const original = yield* getSourceOccurrence(token, { scope, occurrenceId: occurrence.id });
+    items.push({ occurrence, contentBase64: original.contentBase64 });
+  }
+  // A final admission check closes the window after external storage reads.
+  yield* searchSourceArchive(token, scope, filters);
+  return { scope, items, nextCursor: page.nextCursor };
+});

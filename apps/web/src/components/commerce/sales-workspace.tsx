@@ -176,6 +176,9 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
           >
             {labels.customers}
           </PageTab>
+          <PageTab href={`${base}?view=collections`} active={false}>
+            {sv ? "Krav" : "Collections"}
+          </PageTab>
           <PageTab href={`${base}?view=orders`} active={false}>
             {sv ? "Offerter och order" : "Quotes and orders"}
           </PageTab>

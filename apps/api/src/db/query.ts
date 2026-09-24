@@ -4,6 +4,7 @@ import { deadlineStatements } from "./statements/deadlines";
 import { supplierInboxStatements } from "./statements/supplier-inbox";
 import { payrollFoundationStatements } from "./statements/payroll-foundation";
 import { crmMasterStatements } from "./statements/crm-master";
+import { catalogStatements } from "./statements/catalog";
 import { companySetupStatements } from "./statements/company-setup";
 import { firmStatements } from "./statements/firms";
 import { vatAmendmentStatements } from "./statements/vat-amendments";
@@ -65,6 +66,7 @@ const PostgresFailure = Schema.Struct({
 
 const statements = {
   ...crmMasterStatements,
+  ...catalogStatements,
   ...payrollFoundationStatements,
   ...supplierInboxStatements,
   ...deadlineStatements,

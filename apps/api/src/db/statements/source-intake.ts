@@ -1,6 +1,8 @@
 import { sql, type SQL } from "drizzle-orm";
 
 export const sourceIntakeStatements = {
+  searchSourceArchive: (parameters) =>
+    sql`select openerp.search_source_archive(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::jsonb) as result`,
   recoverSourceRetention: (parameters) =>
     sql`select openerp.recover_source_retention(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
   captureSourceReview: (parameters) =>

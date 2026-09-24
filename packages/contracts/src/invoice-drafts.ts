@@ -29,6 +29,11 @@ export const DraftLine = Schema.Struct({
   taxDescription: Schema.NullOr(Name),
   taxEvidenceId: Schema.NullOr(Accounting.Identifier),
   sourceGrossMinor: Schema.NullOr(Accounting.MinorUnits),
+  catalogSelection: Schema.optional(Schema.Struct({
+    code: Schema.String.check(Schema.isPattern(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/)),
+    revision: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100000 })),
+    unit: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(32)),
+  })),
 });
 export const DraftContent = Schema.Struct({
   title: Name,

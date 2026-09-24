@@ -25,6 +25,9 @@ const PlaidPage = Schema.Struct({
   next_cursor: Schema.String,
 });
 const UpdateIdentity = Schema.Struct({ account_id: Schema.String, transaction_id: Schema.String });
+const PlaidAccounts = Schema.Struct({
+  accounts: Schema.Array(Schema.Struct({ account_id: Schema.String })),
+});
 const hash = (value: string | Uint8Array) => createHash("sha256").update(value).digest("hex");
 const fail = (message: string): never => {
   throw new Error(message);
@@ -169,6 +172,29 @@ for (let page = 0; page < 100; page++) {
     if (`sha256:${hash(bytes)}` !== prior.sha256)
       fail("Recovered provider bytes failed the original hash check.");
   } else {
+    // Discover the account on the current Item before using its account-filtered cursor.
+    // This checks current visibility, not legal consent or completeness of bank history.
+    const accountResponse = await fetch(`https://${config.host}.plaid.com/accounts/get`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "PLAID-CLIENT-ID": config.clientId,
+        "PLAID-SECRET": config.secret,
+      },
+      body: JSON.stringify({ access_token: config.accessToken }),
+      redirect: "error",
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!accountResponse.ok)
+      fail(`Plaid account discovery returned HTTP ${accountResponse.status}; cursor unchanged.`);
+    let accounts: typeof PlaidAccounts.Type;
+    try {
+      accounts = Schema.decodeUnknownSync(PlaidAccounts)(await accountResponse.json());
+    } catch {
+      throw new Error("Plaid account discovery is invalid; cursor unchanged.");
+    }
+    if (!accounts.accounts.some((account) => account.account_id === config.accountId))
+      fail("Configured Plaid account is not visible on this Item; cursor unchanged.");
     const provider = await fetch(`https://${config.host}.plaid.com/transactions/sync`, {
       method: "POST",
       headers: {

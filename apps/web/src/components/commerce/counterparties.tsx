@@ -1,12 +1,19 @@
-import { useState } from "react";
-import { infiniteQueryOptions, useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { infiniteQueryOptions, useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Commerce from "@open-erp/contracts/commerce";
+import * as Crm from "@open-erp/contracts/crm-master";
+import * as Accounting from "@open-erp/contracts/accounting";
+import * as Schema from "effect/Schema";
 import { Plus, ArrowLeft } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Text } from "@open-erp/ui/components/typography";
 import { Badge } from "@open-erp/ui/components/badge";
+import { InputField, TextareaField } from "@open-erp/ui/components/field";
+import { ChoiceField } from "@open-erp/ui/components/choice-field";
+import { useSavedPostingRequests } from "@/components/posting-recovery/saved-requests";
+import { sendSavedPostingCommand } from "@/components/posting-recovery/request";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import {
   PageEmpty,
@@ -35,17 +42,21 @@ import {
   type CommerceProps,
 } from "./shared";
 
-export function counterpartyRegisterOptions(book: CommerceProps["book"]) {
+export function counterpartyRegisterOptions(book: CommerceProps["book"], search = "", role = "") {
   return infiniteQueryOptions({
-    queryKey: [...commerceKey(book), "counterparty-register"],
+    queryKey: [...commerceKey(book), "crm-directory", search, role],
     initialPageParam: "",
     queryFn: async ({ signal, pageParam }) => {
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      if (role) params.set("role", role);
+      if (pageParam) params.set("after", pageParam);
       const result = await readAccounting(
-        `${commercePath(book)}/counterparties${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
-        Commerce.CounterpartyPage,
+        `${commercePath(book)}/directory?${params}`,
+        Crm.DirectoryPage,
         { signal },
       );
-      result.items.forEach((party) => checkScope(book, party.scope));
+      result.items.forEach(({ party }) => checkScope(book, party.scope));
       return result;
     },
     getNextPageParam: (last) => last.next ?? undefined,
@@ -65,11 +76,12 @@ export function Counterparties(
   const labels = sv ? swedish : english;
   const [local, setLocal] = useState("");
   const [search, setSearch] = useState("");
+  const [draft, setDraft] = useState("");
   const [role, setRole] = useState(props.defaultRole ?? "");
   const selected = props.recordId ?? local;
   const select = props.onOpen ?? setLocal;
   const page = useInfiniteQuery({
-    ...counterpartyRegisterOptions(book),
+    ...counterpartyRegisterOptions(book, search, role),
     enabled: !selected || selected === "new",
   });
   const roles = {
@@ -77,17 +89,7 @@ export function Counterparties(
     supplier: labels.supplier,
     both: labels.customerSupplier,
   };
-  const items =
-    page.data?.pages
-      .flatMap((batch) => batch.items)
-      .filter(
-        (party) =>
-          (!role || party.role === role || party.role === "both") &&
-          `${party.displayName} ${party.externalKey}`
-            .toLocaleLowerCase(locale)
-            .includes(search.toLocaleLowerCase(locale)),
-      )
-      .toSorted((a, b) => a.displayName.localeCompare(b.displayName, locale)) ?? [];
+  const items = page.data?.pages.flatMap((batch) => batch.items) ?? [];
   if (selected && selected !== "new")
     return (
       <Box display="grid" gap="xl">
@@ -126,9 +128,11 @@ export function Counterparties(
         <RegisterSearch
           aria-label={labels.searchContacts}
           placeholder={labels.searchNameOrReference}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={draft}
+          maxLength={200}
+          onChange={(e) => setDraft(e.target.value)}
         />
+        <Button size="sm" variant="outline" onClick={() => setSearch(draft.trim())}>{sv ? "Sök" : "Search"}</Button>
         <RegisterChoices
           label={labels.contactType}
           value={role}
@@ -152,7 +156,7 @@ export function Counterparties(
                 { id: "type", label: labels.type },
                 { id: "reference", label: labels.reference },
               ]}
-              rows={items.map((party) => ({
+              rows={items.map(({ party }) => ({
                 id: party.id,
                 cells: [
                   <RecordOpen key="name" onClick={() => select(party.id)}>
@@ -173,11 +177,6 @@ export function Counterparties(
           )}
           {page.hasNextPage ? (
             <Box display="grid" gap="sm">
-              <PageCaption>
-                {sv
-                  ? "Sökningen gäller inlästa kontakter. Läs in fler för att utöka sökningen."
-                  : "Search covers loaded contacts. Load more to extend the search."}
-              </PageCaption>
               <Box>
                 <Button
                   variant="outline"
@@ -255,6 +254,7 @@ function ContactDetail(props: CommerceProps & { id: string }) {
             </RecordFact>
           </RecordSummary>
           <Text>{party.data.reason}</Text>
+          <Annotations {...props} partyId={props.id} partyName={party.data.displayName} />
           <RecordSection title={labels.source}>
             <Evidence {...props} reference={party.data.evidence} />
           </RecordSection>
@@ -276,6 +276,96 @@ function ContactDetail(props: CommerceProps & { id: string }) {
       ) : null}
     </Box>
   );
+}
+
+function Annotations({ book, locale, partyId, partyName }: CommerceProps & { partyId: string; partyName: string }) {
+  const sv = locale === "sv";
+  const client = useQueryClient();
+  const requests = useSavedPostingRequests(book);
+  const [key, setKey] = useState(() => crypto.randomUUID());
+  const evidenceId = useRef<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [invalid, setInvalid] = useState(false);
+  const directory = useQuery({
+    queryKey: [...commerceKey(book), "crm-directory", "detail", partyId, partyName],
+    queryFn: async ({ signal }) => {
+      let after: string | null = null;
+      do {
+        const params = new URLSearchParams({ search: partyName });
+        if (after) params.set("after", after);
+        const result = await readAccounting(`${commercePath(book)}/directory?${params}`, Crm.DirectoryPage, { signal });
+        const entry = result.items.find((item) => item.party.id === partyId);
+        if (entry) return entry.annotations;
+        after = result.next;
+      } while (after);
+      throw new Error(sv ? "Kontakten finns inte i katalogen." : "Contact not found in directory.");
+    },
+    retry: false,
+  });
+  const save = useMutation({
+    mutationFn: async (input: { kind: "contact" | "alias" | "registry_provenance"; label: string; detail: string }) => {
+      if (!requests.data || requests.isError) throw new Error(sv ? "Behörigheten kunde inte läsas." : "Your access could not be loaded.");
+      const source = evidenceId.current ? null : await sendSavedPostingCommand({
+        book, actorId: requests.data.actorId,
+        command: { operation: "create_evidence", input: {
+          title: input.label, origin: "Directory annotation entered in OpenERP",
+          mediaType: "application/json", content: JSON.stringify(input),
+        } },
+        storageMessage: sv ? "Tillåt lokal lagring för att spara uppgiften." : "Allow local storage to save this detail.",
+      });
+      if (source) {
+        if (source.outcome?.state !== "committed" || !Schema.is(Accounting.Evidence)(source.outcome.result))
+          throw new Error(sv ? "Underlaget är inte bekräftat. Försök igen." : "The source is not confirmed. Retry the save.");
+        evidenceId.current = source.outcome.result.id;
+      }
+      if (!evidenceId.current) throw new Error(sv ? "Underlag saknas." : "Evidence is missing.");
+      return readAccounting(`${commercePath(book)}/directory/annotations`, Crm.Annotation, {
+        method: "POST", headers: { "Idempotency-Key": key },
+        body: JSON.stringify(Schema.decodeSync(Crm.AddAnnotation)({ ...input, partyId, evidenceId: evidenceId.current })),
+      });
+    },
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: [...commerceKey(book), "crm-directory"] });
+      setKey(crypto.randomUUID());
+      evidenceId.current = null;
+      setOpen(false);
+    }, retry: false,
+  });
+  return <RecordSection title={sv ? "Kontakter, alias och ursprung" : "Contacts, aliases & provenance"}>
+    <PageCaption>{sv ? "Anteckningar är operatörens uppgifter med sparat underlag. Registeridentitet är inte verifierad." : "These are operator-supplied notes with retained evidence. Registry identity is not verified."}</PageCaption>
+    <AccountingStatus locale={locale} pending={directory.isPending} error={directory.error} />
+    {directory.data?.map((note) => <Box key={note.id} display="grid" gap="xs">
+      <Text>{note.label} — {note.kind === "contact" ? (sv ? "Kontakt" : "Contact") : note.kind === "alias" ? (sv ? "Alias" : "Alias") : (sv ? "Registeruppgift" : "Registry provenance")}</Text>
+      <Text tone="muted">{note.detail}</Text>
+      <PageCaption>{sv ? "Underlag" : "Evidence"}: {note.evidenceId} · {note.recordedAt}</PageCaption>
+    </Box>)}
+    {directory.isSuccess && !directory.data.length ? <PageCaption>{sv ? "Inga uppgifter tillagda." : "No details added."}</PageCaption> : null}
+    {book.role === "operator" ? <Box><Button variant="outline" onClick={() => setOpen(true)}>{sv ? "Lägg till uppgift" : "Add detail"}</Button></Box> : null}
+    {open ? <FormDialog title={sv ? "Lägg till uppgift" : "Add detail"} size="compact" closeLabel={sv ? "Stäng" : "Close"} onClose={() => setOpen(false)}>
+      <Box as="form" display="grid" gap="lg" onSubmit={(event) => {
+        event.preventDefault();
+        if (save.isPending || save.isSuccess) return;
+        const fields = new FormData(event.currentTarget);
+        const parsed = Schema.decodeUnknownOption(Crm.AddAnnotation)({ partyId, kind: fields.get("kind"), label: fields.get("label"), detail: fields.get("detail"), evidenceId: "pending" });
+        setInvalid(parsed._tag === "None");
+        if (parsed._tag === "Some") save.mutate({ kind: parsed.value.kind, label: parsed.value.label, detail: parsed.value.detail });
+      }}>
+        <Box as="fieldset" disabled={save.isPending || save.isError} display="grid" gap="lg" borderWidth="none" margin="none" padding="none">
+        <ChoiceField name="kind" label={sv ? "Typ" : "Type"} defaultValue="contact" options={[
+          { value: "contact", label: sv ? "Kontakt" : "Contact" },
+          { value: "alias", label: "Alias" },
+          { value: "registry_provenance", label: sv ? "Registeruppgift" : "Registry provenance" },
+        ]} />
+        <InputField name="label" label={sv ? "Rubrik" : "Label"} required maxLength={200} />
+        <TextareaField name="detail" label={sv ? "Detaljer" : "Details"} required maxLength={2000} rows={3} />
+        </Box>
+        {invalid ? <PageCaption>{sv ? "Kontrollera uppgifterna." : "Check the details."}</PageCaption> : null}
+        <AccountingStatus locale={locale} write pending={save.isPending} error={save.error ?? requests.error} />
+        {save.isError && save.variables ? <Button type="button" variant="outline" onClick={() => save.mutate(save.variables)}>{sv ? "Försök igen" : "Retry save"}</Button> :
+          <Button type="submit" disabled={requests.isPending || requests.isError || save.isPending}>{sv ? "Spara uppgift" : "Save detail"}</Button>}
+      </Box>
+    </FormDialog> : null}
+  </RecordSection>;
 }
 
 const english = {

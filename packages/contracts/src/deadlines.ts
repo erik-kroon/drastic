@@ -1,5 +1,7 @@
 import * as Schema from "effect/Schema";
-import { Identifier, Scope } from "./accounting";
+import { Identifier, Scope, ChangePath } from "./accounting";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { accountingErrors } from "./accounting-errors";
 
 export const DeadlineInput = Schema.Struct({
   title: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(240)),
@@ -41,3 +43,13 @@ export const FeedEvents = Schema.Struct({ bookId: Identifier, events: Schema.Arr
   id: Identifier, title: Schema.String, dueAt: Schema.String,
   updatedAt: Schema.String, timeZone: Schema.String,
 })) });
+
+export const DeadlineFeed = Schema.Struct({ id: Identifier, secret: Schema.String });
+export const RevokedDeadlineFeed = Schema.Struct({ id: Identifier, revoked: Schema.Literal(true) });
+const base = "/v1/entities/:entityId/books/:bookId/deadlines";
+export const DeadlinesApi = HttpApiGroup.make("deadlines")
+  .add(HttpApiEndpoint.get("listDeadlines", base, { params: Scope, success: DeadlineList, error: accountingErrors }))
+  .add(HttpApiEndpoint.post("saveDeadline", `${base}/:id`, { params: ChangePath, payload: Schema.Struct({ expectedRevision: Schema.NullOr(Schema.Int), input: DeadlineInput }), success: Deadline, error: accountingErrors }))
+  .add(HttpApiEndpoint.post("deadlineActivity", `${base}/:id/activity`, { params: ChangePath, payload: Schema.Struct({ action: DeadlineActivity.fields.action, reference: DeadlineActivity.fields.reference }), success: Deadline, error: accountingErrors }))
+  .add(HttpApiEndpoint.post("createDeadlineFeed", `${base}/feeds/:id`, { params: ChangePath, success: DeadlineFeed, error: accountingErrors }))
+  .add(HttpApiEndpoint.post("revokeDeadlineFeed", `${base}/feeds/:id/revoke`, { params: ChangePath, success: RevokedDeadlineFeed, error: accountingErrors }));

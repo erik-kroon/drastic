@@ -64,6 +64,7 @@
     "./collections": "./src/collections.ts",
     "./dimensions": "./src/dimensions.ts",
     "./crm-master": "./src/crm-master.ts",
+    "./payroll-foundation": "./src/payroll-foundation.ts",
     "./expense-tax": "./src/expense-tax.ts",
     "./owner-register": "./src/owner-register.ts"
   },
