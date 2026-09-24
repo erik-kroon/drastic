@@ -17,3 +17,19 @@ A page is refused on an unknown shape, mismatched account, excess size/count, un
 ## Integration and verification
 
 Root owns shared integration files; this recovery slice edits only `apps/api/scripts/bank-connector-sync.ts` and forward migration `apps/api/migrations/8400-plaid-page-cursor-boundary.sql`. The existing `bankConnector` REST group, statements and contracts serve the job. Run `8400` after `7800-plaid-connector-source-pages.sql`; it replaces the approved SQL function without changing direct table privileges. No new REST or MCP endpoint is needed; the CLI uses the existing scoped API. The API's `providerConfigured: false` remains a conservative DB statement; private OS configuration is deliberately invisible to the API. Type/syntax checks do not verify provider network, consent or runtime effects. No tests or fixtures were added (D-09).
+
+## Synthetic local Worker loopback observation
+
+A disposable PostgreSQL 17 book and local Wrangler Worker with a temporary R2
+binding exercised the real Bun CLI's original-page recovery, source retention,
+per-record removal and cursor commit. The saved raw page hash matched its retained
+revision; the committed batch advanced the synthetic consent from
+`cursor_synthetic_3` to `cursor_synthetic_4` without admitting accounting. The
+same-key batch replay returned its original ID. Wrong occurrence keys, stale
+cursors, inactive ledger accounts and absent object storage failed closed; an
+`uncertain` outcome did not advance the cursor. See the [token-free loopback
+record](../../../docs/plans/evidence/wave2-bank-connector-loopback.md) for
+reproduction and counts. This local binding does not establish hosted storage:
+checked-in Wrangler configuration does not bind `EVIDENCE_BUCKET`. D-07 durable
+private storage and D-10 Plaid consent, credentials, real API behavior and
+provider acceptance remain open. No live Plaid request was made.
