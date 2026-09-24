@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect";
 import { query, scopeParameter } from "../db/query";
 import { failure } from "./failures";
 import { renderLegalInvoicePdf } from "./legal-invoice-pdf-renderer";
+import { renderLegalInvoicePdfV2 } from "./legal-invoice-pdf-renderer-v2";
 
 function base64(bytes: Uint8Array) {
   let binary = "";
@@ -35,7 +36,12 @@ export const resumeLegalInvoicePdf = Effect.fn("legalInvoicePdf.resume")(functio
   const view = yield* getLegalInvoicePdf(token, input);
   if (view.artifact) return view;
   const bytes = yield* Effect.tryPromise({
-    try: () => renderLegalInvoicePdf(view.capture),
+    try: () => {
+      const version = view.capture.input.rendererVersion;
+      if (version === "openerp-se-invoice-takumi-v1") return renderLegalInvoicePdf(view.capture);
+      if (version === "openerp-se-invoice-takumi-v2") return renderLegalInvoicePdfV2(view.capture);
+      throw failure("UnsupportedProfile");
+    },
     catch: (error) =>
       error instanceof Accounting.AccountingError ? error : failure("InternalError"),
   });

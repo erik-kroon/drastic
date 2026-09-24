@@ -8,7 +8,10 @@ import { accountingErrors } from "./accounting-errors";
 export const PrepareLegalInvoicePdf = Schema.Struct({
   issueId: Accounting.Identifier,
   issueDigest: Accounting.Digest,
-  rendererVersion: Schema.Literal("openerp-se-invoice-takumi-v1"),
+  rendererVersion: Schema.Literals([
+    "openerp-se-invoice-takumi-v1",
+    "openerp-se-invoice-takumi-v2",
+  ]),
 });
 export const LegalIssuePdfFacts = Schema.Struct({
   id: Accounting.Identifier,
@@ -22,19 +25,21 @@ export const LegalIssuePdfFacts = Schema.Struct({
     taxMinor: Accounting.AggregateMinorUnits,
     grossMinor: Accounting.AggregateMinorUnits,
   }),
-  lines: Schema.Array(Schema.Struct({
-    id: Accounting.Identifier,
-    description: Schema.String,
-    quantity: Schema.String,
-    unitPriceMinor: Accounting.MinorUnits,
-    baseMinor: Accounting.MinorUnits,
-    discountMinor: Accounting.MinorUnits,
-    chargeMinor: Accounting.MinorUnits,
-    netMinor: Accounting.AggregateMinorUnits,
-    taxMinor: Accounting.MinorUnits,
-    grossMinor: Accounting.AggregateMinorUnits,
-    vatTreatment: Schema.Literal("se-domestic-standard-25-v1"),
-  })).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
+  lines: Schema.Array(
+    Schema.Struct({
+      id: Accounting.Identifier,
+      description: Schema.String,
+      quantity: Schema.String,
+      unitPriceMinor: Accounting.MinorUnits,
+      baseMinor: Accounting.MinorUnits,
+      discountMinor: Accounting.MinorUnits,
+      chargeMinor: Accounting.MinorUnits,
+      netMinor: Accounting.AggregateMinorUnits,
+      taxMinor: Accounting.MinorUnits,
+      grossMinor: Accounting.AggregateMinorUnits,
+      vatTreatment: Schema.Literal("se-domestic-standard-25-v1"),
+    }),
+  ).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
   legalDocumentNumber: Schema.String,
   issuedOn: Accounting.AccountingDate,
   issuedAt: Schema.String,
@@ -66,7 +71,10 @@ export const LegalInvoicePdfArtifact = Schema.Struct({
   sealedAt: Schema.String,
   legalInvoice: Schema.Literal(true),
   delivered: Schema.Literal(false),
-  rendererVersion: Schema.Literal("openerp-se-invoice-takumi-v1"),
+  rendererVersion: Schema.Literals([
+    "openerp-se-invoice-takumi-v1",
+    "openerp-se-invoice-takumi-v2",
+  ]),
 });
 export const LegalInvoicePdfView = Schema.Struct({
   capture: LegalInvoicePdfCapture,
@@ -76,12 +84,14 @@ export const LegalInvoicePdfHistory = Schema.Struct({
   scope: Accounting.Scope,
   issueId: Accounting.Identifier,
   complete: Schema.Literal(true),
-  items: Schema.Array(Schema.Struct({
-    id: Accounting.Identifier,
-    digest: Accounting.Digest,
-    sealed: Schema.Boolean,
-    sha256: Schema.NullOr(Schema.String),
-  })).check(Schema.isMaxLength(1)),
+  items: Schema.Array(
+    Schema.Struct({
+      id: Accounting.Identifier,
+      digest: Accounting.Digest,
+      sealed: Schema.Boolean,
+      sha256: Schema.NullOr(Schema.String),
+    }),
+  ).check(Schema.isMaxLength(1)),
 });
 const base = "/v1/entities/:entityId/books/:bookId/commerce";
 export const LegalInvoicePdfApi = HttpApiGroup.make("legalInvoicePdfs").add(
@@ -110,7 +120,8 @@ export const LegalInvoicePdfApi = HttpApiGroup.make("legalInvoicePdfs").add(
 );
 export const LegalInvoicePdfCapabilities = {
   commerce_get_legal_invoice_pdf: {
-    description: "Read PDF bytes sealed from one immutable legal issue and versioned renderer; download is not delivery.",
+    description:
+      "Read PDF bytes sealed from one immutable legal issue and versioned renderer; download is not delivery.",
     input: Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier }),
     output: LegalInvoicePdfView,
     readOnly: true,

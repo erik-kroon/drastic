@@ -126,13 +126,7 @@ function required(value: string | null, field: string): string {
 }
 
 /** Only immutable issue and policy snapshots enter this versioned visual template. */
-export async function renderLegalInvoicePdfV2(
-  capture: Omit<typeof Pdf.LegalInvoicePdfCapture.Type, "input"> & {
-    input: Omit<typeof Pdf.PrepareLegalInvoicePdf.Type, "rendererVersion"> & {
-      rendererVersion: string;
-    };
-  },
-) {
+export async function renderLegalInvoicePdfV2(capture: typeof Pdf.LegalInvoicePdfCapture.Type) {
   const issue = capture.source.issue;
   const draft = issue.draftSnapshot;
   const policy = issue.policySnapshot;
