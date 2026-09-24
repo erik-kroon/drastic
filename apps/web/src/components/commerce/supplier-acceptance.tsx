@@ -66,13 +66,11 @@ export function SupplierAcceptancePanel(props: CommerceProps & { draft: Draft; c
   const history = useSupplierAcceptanceHistory(props.book, props.draft.id);
   const accepted = history.data?.items.some((item) => item.acceptanceId !== null) ?? false;
   return (
-    <RecordSection
-      title={sv ? "Syntetisk attest och bokföring" : "Synthetic acceptance and posting"}
-    >
+    <RecordSection title={sv ? "Granska och bokför" : "Review and post"}>
       <PageCaption>
         {sv
-          ? "Endast syntetisk bokföring. Ingen juridisk faktura, momsbedömning eller betalning skapas."
-          : "Synthetic accounting only. This creates no legal invoice, VAT assessment or payment."}
+          ? "Granska originalet och bokföringsförslaget."
+          : "Review the original and proposed posting."}
       </PageCaption>
       <AccountingStatus locale={props.locale} pending={history.isPending} error={history.error} />
       {history.isError ? (
@@ -103,14 +101,14 @@ export function SupplierAcceptancePanel(props: CommerceProps & { draft: Draft; c
   );
 }
 
-function SyntheticAcknowledgment({ locale }: { locale: CommerceProps["locale"] }) {
+function PostingAcknowledgment({ locale }: { locale: CommerceProps["locale"] }) {
   return (
     <Box as="label" display="flex" alignItems="start" gap="md" padding="md">
       <input type="checkbox" name="acknowledgeSyntheticOnly" required />
       <span>
         {locale === "sv"
-          ? "Jag förstår att detta är en syntetisk bokföringsoperation utan juridisk faktura eller momsbeslut."
-          : "I understand this is a synthetic accounting operation without a legal invoice or VAT decision."}
+          ? "Jag förstår att detta bokför förslaget utan att fastställa momsbehandling."
+          : "I understand this posts the proposal without establishing VAT treatment."}
       </span>
     </Box>
   );
@@ -285,7 +283,7 @@ function SupplierAcceptancePreparation(
           required
         />
         <InputField name="reason" label={sv ? "Motivering" : "Reason"} maxLength={2000} required />
-        <SyntheticAcknowledgment locale={props.locale} />
+        <PostingAcknowledgment locale={props.locale} />
       </CommandForm>
     </Box>
   );
@@ -371,7 +369,7 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
           ))}
           {view.acceptance ? (
             <Box display="grid" gap="md">
-              <Text role="status">{sv ? "Syntetiskt bokförd" : "Synthetic posting complete"}</Text>
+              <Text role="status">{sv ? "Bokförd" : "Posted"}</Text>
               <Text>
                 {sv ? "Verifikation" : "Voucher"}: {view.acceptance.postingReceipt.voucherId}
               </Text>
@@ -407,7 +405,7 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
                   acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
                 })}
               >
-                <SyntheticAcknowledgment locale={props.locale} />
+                <PostingAcknowledgment locale={props.locale} />
               </CommandForm>
               {view.approval && view.approvalUsable ? (
                 <CommandForm
@@ -432,7 +430,7 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
                     acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
                   })}
                 >
-                  <SyntheticAcknowledgment locale={props.locale} />
+                  <PostingAcknowledgment locale={props.locale} />
                 </CommandForm>
               ) : null}
             </>

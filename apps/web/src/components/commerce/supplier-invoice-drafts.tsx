@@ -21,6 +21,7 @@ import {
   RecordFact,
 } from "@open-erp/ui/components/record-layout";
 import { Text } from "@open-erp/ui/components/typography";
+import { WorkflowSteps } from "@open-erp/ui/components/workflow";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import { readAccounting } from "@/lib/accounting-api";
@@ -39,6 +40,11 @@ import {
 } from "./shared";
 
 type Draft = typeof Suppliers.SupplierInvoiceDraftRevision.Type;
+function draftStage(accepted: boolean, reviewCount: number) {
+  if (accepted) return 2;
+  if (reviewCount > 0) return 1;
+  return 0;
+}
 export function SupplierInvoiceDrafts(
   props: CommerceProps & { recordId?: string; onOpen: (id: string) => void },
 ) {
@@ -120,11 +126,12 @@ export function SupplierInvoiceDrafts(
       ) : null}
       <PageCaption>
         {sv
-          ? "Ett sparat utkast är inte bokfört. Syntetisk attest och bokföring görs efter granskning i utkastets detaljvy."
-          : "Saving a draft does not post it. Synthetic approval and posting follow review in the draft detail."}
+          ? "Ett sparat utkast är inte bokfört. Granska och bokför det i detaljvyn."
+          : "Saving a draft does not post it. Review and post it from the draft detail."}
       </PageCaption>
       {creating ? (
         <FormDialog
+          size="invoice"
           title={sv ? "Ny leverantörsfaktura" : "New supplier invoice"}
           closeLabel={sv ? "Stäng" : "Close"}
           onClose={() => props.onOpen("")}
@@ -188,9 +195,9 @@ function SupplierDraftResults(
           new Intl.DateTimeFormat(props.locale, { dateStyle: "medium" }).format(
             new Date(record.createdAt),
           ),
-          <Badge key="status" variant="secondary">
+          <Text key="status" tone="muted">
             {sv ? "Utkast" : "Draft"}
-          </Badge>,
+          </Text>,
           money(record.grossMinor, record.currencyScale, record.currency, props.locale),
         ],
       }))}
@@ -244,6 +251,7 @@ function SupplierDraftDetail(props: CommerceProps & { id: string }) {
       ) : null}
       {editing ? (
         <FormDialog
+          size="invoice"
           title={sv ? "Redigera leverantörsfaktura" : "Edit supplier invoice"}
           closeLabel={sv ? "Stäng" : "Close"}
           onClose={() => setEditing(null)}
@@ -292,12 +300,17 @@ function SupplierDraftRecord(
           ) : undefined
         }
       />
+      <WorkflowSteps
+        label={sv ? "Fakturans steg" : "Invoice stages"}
+        labels={sv ? ["Utkast", "Granskning", "Bokförd"] : ["Draft", "Review", "Posted"]}
+        current={draftStage(accepted, acceptance.data?.items.length ?? 0)}
+      />
       <Box>
         <Badge variant={accepted ? "success" : current ? "secondary" : "warning"}>
           {accepted
             ? sv
-              ? "Syntetiskt bokförd"
-              : "Synthetic posting complete"
+              ? "Bokförd"
+              : "Posted"
             : current
               ? sv
                 ? "Utkast"
@@ -391,8 +404,8 @@ function SupplierDraftEvidenceAndFacts(props: CommerceProps & { record: Draft })
         </RecordSection>
         <PageCaption>
           {sv
-            ? "Syntetisk attest och bokföring finns nedan för fullständiga utkast. Ingen juridisk faktura, momsbedömning eller betalning skapas."
-            : "Synthetic approval and posting are available below for complete drafts. No legal invoice, VAT decision or payment is created."}
+            ? "Fullständiga utkast kan granskas och bokföras nedan. Detta skapar ingen betalning eller bedömning av momsavdrag."
+            : "Complete drafts can be reviewed and posted below. This does not create a payment or assess VAT deductibility."}
         </PageCaption>
       </Box>
     </RecordColumns>

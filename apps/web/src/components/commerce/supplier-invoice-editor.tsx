@@ -6,17 +6,24 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
 import { PageCaption } from "@open-erp/ui/components/accounting-page";
+import { Text } from "@open-erp/ui/components/typography";
 import { RecordColumns, RecordSection } from "@open-erp/ui/components/record-layout";
 import { EvidenceCommandForm } from "@/components/evidence-command-form";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import { AccountingStatus } from "@/components/accounting-status";
 import { OriginalDocument } from "@/components/original-document";
 import { sourceDocumentOptions } from "@/lib/source-documents";
-import { decimalToMinor, minorToDecimal, workQueryOptions } from "@/lib/workspace-api";
+import {
+  decimalToMinor,
+  formatMinorAmount,
+  minorToDecimal,
+  workQueryOptions,
+} from "@/lib/workspace-api";
 import { InvoiceDraftParty } from "./invoice-draft-party";
 import {
   InvoiceEditorLines,
   editableInvoiceLine,
+  invoiceEditorTotals,
   invoiceQuantity,
   type EditableInvoiceLine,
 } from "./invoice-editor-lines";
@@ -24,6 +31,16 @@ import { SupplierPicker, SupplierDocumentPicker } from "./supplier-invoice-picke
 import { commercePath, type CommerceProps } from "./shared";
 
 type Draft = typeof Suppliers.SupplierInvoiceDraftRevision.Type;
+function draftTotal(
+  lines: readonly EditableInvoiceLine[],
+  scale: number,
+  locale: CommerceProps["locale"],
+  currency: string,
+) {
+  const totals = invoiceEditorTotals(lines, scale);
+  if (totals.net === null || totals.tax === null) return `— ${currency}`;
+  return `${formatMinorAmount((totals.net + totals.tax).toString(), scale, locale)} ${currency}`;
+}
 export function SupplierInvoiceEditor(
   props: CommerceProps & { sourceId?: string; baseline?: Draft; onSaved: (id: string) => void },
 ) {
@@ -88,11 +105,16 @@ function SupplierEditorForm(
       canSubmit={!!party && (props.documentId ? !!original : !!baseline)}
       stickyFooter
       footerSummary={
-        <PageCaption>
-          {sv
-            ? "Sparar ett utkast. Attest, bokföring och betalning är inte tillgängliga här."
-            : "Saves a draft. Approval, posting and payment are not available here."}
-        </PageCaption>
+        <Box display="grid" gap="xs">
+          <Text>
+            {sv ? "Totalt" : "Total"}: {draftTotal(lines, props.scale, props.locale, currency)}
+          </Text>
+          <PageCaption>
+            {sv
+              ? "Sparar ett utkast. Attest och bokföring sker efter granskning; betalningsfiler hanteras separat."
+              : "Saves a draft. Approval and posting follow review; payment files are separate."}
+          </PageCaption>
+        </Box>
       }
       onSuccess={(record) => props.onSaved(record.id)}
       source={(fields) => ({

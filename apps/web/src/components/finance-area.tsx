@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ComponentProps } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
 import { PageAction, PageContent } from "@open-erp/ui/components/accounting-page";
@@ -28,6 +28,11 @@ const Invoices = lazy(() =>
 const SupplierInvoiceDrafts = lazy(() =>
   import("@/components/commerce/supplier-invoice-drafts").then((module) => ({
     default: module.SupplierInvoiceDrafts,
+  })),
+);
+const SupplierPaymentFiles = lazy(() =>
+  import("@/components/commerce/supplier-payment-files").then((module) => ({
+    default: module.SupplierPaymentFiles,
   })),
 );
 const InvoiceDrafts = lazy(() =>
@@ -180,6 +185,12 @@ export function FinanceArea({
               onOpen={onOpen}
             />
           ) : null}
+          <SupplierPaymentFileArea
+            selected={selected}
+            book={book}
+            locale={locale}
+            recordId={recordId}
+          />
           {selected === "drafts" ? (
             <InvoiceDrafts book={book} locale={locale} recordId={recordId} onOpen={onOpen} />
           ) : null}
@@ -250,6 +261,13 @@ export function FinanceArea({
   );
 }
 
+function SupplierPaymentFileArea(
+  props: ComponentProps<typeof SupplierPaymentFiles> & { selected?: string },
+) {
+  if (props.selected !== "supplier-payment-files") return null;
+  return <SupplierPaymentFiles book={props.book} locale={props.locale} recordId={props.recordId} />;
+}
+
 function FinanceNavigation(props: {
   area: "accounts" | "sales" | "purchases" | "reports" | "tax" | "closing";
   selected: string | undefined;
@@ -298,6 +316,7 @@ function areaTabs(
     purchases: [
       { key: "supplier-drafts", label: sv ? "Fakturautkast" : "Invoice drafts" },
       { key: "invoices", label: sv ? "Registrerade" : "Registered" },
+      { key: "supplier-payment-files", label: sv ? "Betalningsfiler" : "Payment files" },
       { key: "documents", label: sv ? "Dokument" : "Documents" },
       { key: "expenses", label: copy.expenses },
       { key: "parties", label: copy.parties },

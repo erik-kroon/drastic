@@ -56,8 +56,8 @@ export function SupplierCreditPanel(props: CommerceProps & { invoice: Invoice })
     <RecordSection title={sv ? "Kreditera leverantörsfaktura" : "Credit supplier invoice"}>
       <PageCaption>
         {sv
-          ? "En full kredit återför originalets utgiftskonton och moms. Granska verifikationen innan du attesterar. Endast syntetisk bokföring."
-          : "A full credit reverses the original expense accounts and VAT. Review the voucher before approval. Synthetic accounting only."}
+          ? "En full kredit återför originalets utgiftskonton och moms. Granska verifikationen innan du attesterar."
+          : "A full credit reverses the original expense accounts and VAT. Review the voucher before approval."}
       </PageCaption>
       <AccountingStatus locale={props.locale} pending={history.isPending} error={history.error} />
       {history.data?.items.map((item) => (
@@ -154,8 +154,8 @@ export function SupplierCreditPanel(props: CommerceProps & { invoice: Invoice })
             <label>
               <input name="acknowledgeSyntheticOnly" type="checkbox" required />{" "}
               {sv
-                ? "Jag förstår att detta är syntetisk bokföring."
-                : "I understand this is synthetic accounting."}
+                ? "Jag förstår att detta bokför krediten utan att skicka en återbetalning."
+                : "I understand this posts the credit without sending a refund."}
             </label>
           </EvidenceCommandForm>
         </>
@@ -254,7 +254,9 @@ function SupplierCreditReview(props: CommerceProps & { id: string; invoice: Invo
               >
                 <label>
                   <input name="acknowledgeSyntheticOnly" type="checkbox" required />{" "}
-                  {sv ? "Syntetisk bokföring" : "Synthetic accounting"}
+                  {sv
+                    ? "Jag förstår att detta bokför krediten."
+                    : "I understand this posts the credit."}
                 </label>
               </CommandForm>
               {view.approval ? (
@@ -281,7 +283,9 @@ function SupplierCreditReview(props: CommerceProps & { id: string; invoice: Invo
                 >
                   <label>
                     <input name="acknowledgeSyntheticOnly" type="checkbox" required />{" "}
-                    {sv ? "Syntetisk bokföring" : "Synthetic accounting"}
+                    {sv
+                      ? "Jag förstår att detta bokför krediten."
+                      : "I understand this posts the credit."}
                   </label>
                 </CommandForm>
               ) : null}

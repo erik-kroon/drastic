@@ -29,6 +29,10 @@ const styles = stylex.create({
     "@media (max-width: 767px)": { width: "calc(100vw - 20px)", maxHeight: "95dvh", padding: 16 },
   },
   compact: { width: "min(560px, calc(100vw - 48px))" },
+  invoice: {
+    width: "min(42rem, calc(100vw - 48px))",
+    "@media (max-width: 767px)": { width: "calc(100vw - 20px)" },
+  },
   header: {
     display: "flex",
     alignItems: "center",
@@ -58,7 +62,7 @@ export function FormDialog({
   children,
   size = "wide",
 }: {
-  size?: "compact" | "wide";
+  size?: "compact" | "invoice" | "wide";
   title: string;
   closeLabel: string;
   onClose: () => void;
@@ -78,7 +82,13 @@ export function FormDialog({
     >
       <Dialog.Portal>
         <Dialog.Backdrop {...stylex.props(styles.backdrop)} />
-        <Dialog.Popup {...stylex.props(styles.popup, size === "compact" && styles.compact)}>
+        <Dialog.Popup
+          {...stylex.props(
+            styles.popup,
+            size === "compact" && styles.compact,
+            size === "invoice" && styles.invoice,
+          )}
+        >
           <div {...stylex.props(styles.header)}>
             <Dialog.Title {...stylex.props(styles.title)}>{title}</Dialog.Title>
             <Dialog.Close aria-label={closeLabel} {...stylex.props(styles.close)}>

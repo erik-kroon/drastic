@@ -39,6 +39,20 @@ import {
   type CommerceProps,
 } from "./shared";
 
+function InvoiceStatus({
+  status,
+  label,
+}: {
+  status: (typeof Commerce.Invoice.Type)["status"];
+  label: string;
+}) {
+  return status === "blocked" || status === "cancelled" ? (
+    <Badge variant="warning">{label}</Badge>
+  ) : (
+    <Text tone="muted">{label}</Text>
+  );
+}
+
 export function Invoices(
   props: CommerceProps & {
     direction?: "customer" | "supplier";
@@ -158,15 +172,11 @@ export function Invoices(
                   </RecordOpen>,
                   invoice.counterpartyName,
                   invoice.currentRevision.dueOn,
-                  invoice.status === "blocked" || invoice.status === "cancelled" ? (
-                    <Badge key="status" variant="warning">
-                      {statuses[invoice.status]}
-                    </Badge>
-                  ) : (
-                    <Text key="status" tone="muted">
-                      {statuses[invoice.status]}
-                    </Text>
-                  ),
+                  <InvoiceStatus
+                    key="status"
+                    status={invoice.status}
+                    label={statuses[invoice.status]}
+                  />,
                   invoice.outstandingMinor === null
                     ? "—"
                     : `${formatMinorAmount(invoice.outstandingMinor, invoice.currencyScale, locale)} ${invoice.currency}`,
@@ -285,16 +295,9 @@ export function InvoiceDetail(
             }
           />
           <Box>
-            <Badge
-              variant={
-                invoice.data.status === "cancelled"
-                  ? "secondary"
-                  : invoice.data.status === "allocated"
-                    ? "success"
-                    : "warning"
-              }
-            >
-              {
+            <InvoiceStatus
+              status={invoice.data.status}
+              label={
                 (locale === "sv" ? swedish : english)[
                   invoice.data.status === "partially_allocated"
                     ? "partlyAllocated"
@@ -303,7 +306,7 @@ export function InvoiceDetail(
                       : invoice.data.status
                 ]
               }
-            </Badge>
+            />
           </Box>
           <RecordSummary>
             <RecordFact label={locale === "sv" ? "Belopp" : "Amount"}>
@@ -334,8 +337,8 @@ export function InvoiceDetail(
             <Box display="grid" gap="sm">
               <Text role="status">
                 {locale === "sv"
-                  ? "Den syntetiska fakturan har makulerats. Originalbeloppet och historiken bevaras. Detta är inte en juridisk kreditfaktura."
-                  : "This synthetic invoice was cancelled. Its original amount and history are retained. This is not a legal credit note."}
+                  ? "Fakturan har makulerats. Originalbeloppet och historiken bevaras. Ingen återbetalning eller kreditfaktura har skapats."
+                  : "The invoice was cancelled. Its original amount and history are retained. No refund or credit note was created."}
               </Text>
               <Text tone="muted">
                 {locale === "sv" ? "Makuleringen bokfördes" : "Cancellation posted"}{" "}
@@ -495,7 +498,7 @@ const english = {
   partially_credited: "Partly credited",
   credited: "Credited",
   needsReview: "Needs review",
-  cancelled: "Cancelled (synthetic)",
+  cancelled: "Cancelled",
   allInvoices: "All invoices",
   supplierInvoices: "Supplier invoices",
   registeredInvoices: "Registered invoices",
@@ -520,7 +523,7 @@ const swedish: typeof english = {
   partially_credited: "Delvis krediterad",
   credited: "Krediterad",
   needsReview: "Behöver granskas",
-  cancelled: "Makulerad (syntetisk)",
+  cancelled: "Makulerad",
   allInvoices: "Alla fakturor",
   supplierInvoices: "Leverantörsfakturor",
   registeredInvoices: "Bokförda fakturor",
