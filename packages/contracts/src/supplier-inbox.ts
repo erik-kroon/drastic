@@ -32,11 +32,15 @@ export const ExtractionAttempt = Schema.Struct({
   createdAt: Schema.String,
 });
 export const SupplierInboxView = Schema.Struct({
-  occurrence: Source.SourceOccurrenceView,
+  occurrence: Source.OccurrenceSummary,
   channel: RegisterSupplierInbox.fields.channel,
   messageIdentity: Schema.NullOr(Label),
   draftId: Schema.NullOr(A.Identifier),
   attempts: Schema.Array(ExtractionAttempt).check(Schema.isMaxLength(50)),
+});
+export const SupplierInboxPage = Schema.Struct({
+  items: Schema.Array(SupplierInboxView).check(Schema.isMaxLength(20)),
+  nextCursor: Schema.NullOr(A.Identifier),
 });
 export const ReviewSupplierInbox = Schema.Struct({
   draft: Draft.CreateSupplierInvoiceDraft,
@@ -48,6 +52,10 @@ export const SupplierInboxReview = Schema.Struct({
 });
 const path = "/v1/entities/:entityId/books/:bookId/commerce/supplier-inbox";
 export const SupplierInboxApi = HttpApiGroup.make("supplierInbox")
+  .add(HttpApiEndpoint.get("listSupplierInboxes", path, {
+    params: A.Scope, query: Schema.Struct({ cursor: Schema.optional(A.Identifier) }),
+    success: SupplierInboxPage, error: accountingErrors,
+  }))
   .add(HttpApiEndpoint.post("registerSupplierInbox", path, {
     params: A.Scope, headers: A.IdempotencyHeaders,
     payload: RegisterSupplierInbox, success: SupplierInboxView, error: accountingErrors,

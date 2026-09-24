@@ -1,6 +1,8 @@
 import { sql, type SQL } from "drizzle-orm";
 
 export const supplierInboxStatements = {
+  listSupplierInboxes: (p) =>
+    sql`select openerp.list_supplier_inboxes(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text) as result`,
   registerSupplierInbox: (p) =>
     sql`select openerp.register_supplier_inbox(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text,${p[3]}::jsonb) as result`,
   getSupplierInbox: (p) =>

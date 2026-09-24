@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Inbox from "@open-erp/contracts/supplier-inbox";
 import { Box } from "@open-erp/ui/components/box";
@@ -12,6 +12,59 @@ import { OriginalDocument } from "@/components/original-document";
 import { bookKey, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import { CommandForm, commercePath, checkScope, type CommerceProps } from "./shared";
 
+function SupplierInboxList(props: {
+  items: ReadonlyArray<typeof Inbox.SupplierInboxView.Type>;
+  locale: CommerceProps["locale"];
+  hasNextPage: boolean;
+  isFetching: boolean;
+  onOpen: (id: string) => void;
+  onLoadMore: () => void;
+}) {
+  const sv = props.locale === "sv";
+  return (
+    <Box display="grid" gap="sm">
+      <Text>{sv ? "Sparade leverantörsoriginal" : "Saved supplier originals"}</Text>
+      {props.items.length === 0 ? <Text>{sv ? "Inga original har registrerats i den här boken." : "No originals are registered in this book."}</Text> : null}
+      {props.items.map((item) => <Button key={item.occurrence.occurrence.id} type="button" variant="ghost" onClick={() => props.onOpen(item.occurrence.occurrence.id)}>
+        {item.occurrence.occurrence.filename} · {item.channel} · {item.draftId ? (sv ? "Granskat utkast" : "Reviewed draft") : (sv ? "Väntar på granskning" : "Awaiting review")}
+      </Button>)}
+      {props.hasNextPage ? <Button type="button" variant="outline" disabled={props.isFetching} onClick={props.onLoadMore}>{sv ? "Ladda fler" : "Load more"}</Button> : null}
+    </Box>
+  );
+}
+
+function SupplierInboxEntry(props: {
+  entry: typeof Inbox.SupplierInboxView.Type;
+  commerceProps: CommerceProps & { onDraft: (id: string) => void };
+  id: string;
+  path: string;
+  onRefresh: () => void;
+}) {
+  const sv = props.commerceProps.locale === "sv";
+  return (
+    <Box display="grid" gap="lg" minWidth="zero">
+      <Text>{props.entry.occurrence.occurrence.filename} · {props.entry.channel} · {props.entry.draftId ? (sv ? "Granskat utkast" : "Reviewed draft") : (sv ? "Väntar på granskning" : "Awaiting review")}</Text>
+      <OriginalDocument {...props.commerceProps} id={props.entry.occurrence.occurrence.id} sha256={props.entry.occurrence.occurrence.sha256} />
+      <Text>{sv ? "Tolkningsförsök sparas separat från granskade uppgifter. Kontrollera varje uppgift mot originalet." : "Extraction attempts remain separate from reviewed facts. Check every field against the original."}</Text>
+      {props.entry.attempts.map((attempt) => <Box key={attempt.id} display="grid" gap="sm">
+        <Text>{attempt.ordinal}. {attempt.parserVersion} · {attempt.status} · {attempt.createdAt}</Text>
+        {attempt.diagnostics.map((message, index) => <Text key={index}>{message}</Text>)}
+        {attempt.suggestions.map((suggestion, index) => <Text key={index}>{suggestion.field}: {suggestion.value} · {suggestion.sourceLocation} · {suggestion.confidence}</Text>)}
+      </Box>)}
+      {!props.entry.draftId && props.commerceProps.book.role === "operator" ? <>
+        <CommandForm {...props.commerceProps} path={`${props.path}/${encodeURIComponent(props.id)}/extractions`} schema={Inbox.RecordSupplierExtraction} output={Inbox.SupplierInboxView}
+          label={sv ? "Spara manuellt tolkningsförsök" : "Save manual extraction attempt"}
+          input={(fields) => ({ parserVersion: "manual-v1", status: "failed", suggestions: [], diagnostics: [fields.get("diagnostic")] })}
+          onSuccess={props.onRefresh}>
+          <InputField name="diagnostic" label={sv ? "Vad kunde inte tolkas?" : "What could not be extracted?"} required maxLength={200} />
+        </CommandForm>
+        <Button type="button" onClick={() => props.commerceProps.onDraft(`new:${props.id}`)}>{sv ? "Granska och fyll i faktura" : "Review and complete invoice"}</Button>
+      </> : null}
+      {props.entry.draftId ? <Button type="button" variant="outline" onClick={() => props.commerceProps.onDraft(props.entry.draftId!)}>{sv ? "Öppna granskat utkast" : "Open reviewed draft"}</Button> : null}
+    </Box>
+  );
+}
+
 export function SupplierInbox(props: CommerceProps & { onDraft: (id: string) => void }) {
   const { book, locale } = props;
   const sv = locale === "sv";
@@ -20,6 +73,18 @@ export function SupplierInbox(props: CommerceProps & { onDraft: (id: string) => 
   const [registered, setRegistered] = useState(false);
   const client = useQueryClient();
   const path = `${commercePath(book)}/supplier-inbox`;
+  const inbox = useInfiniteQuery({
+    queryKey: [...bookKey(book), "supplier-inbox", "list"],
+    initialPageParam: "",
+    queryFn: async ({ pageParam, signal }) => readAccounting(
+      `${path}${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+      Inbox.SupplierInboxPage,
+      { signal },
+    ),
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    retry: false,
+  });
+  const inboxItems = inbox.data?.pages.flatMap((page) => page.items) ?? [];
   const view = useQuery({
     queryKey: [...bookKey(book), "supplier-inbox", id],
     enabled: !!id && registered,
@@ -64,28 +129,20 @@ export function SupplierInbox(props: CommerceProps & { onDraft: (id: string) => 
         <InputField name="occurrenceId" label={sv ? "ID för sparat original" : "Retained original ID"} pattern="[a-z][a-z0-9_-]{2,127}" required />
         <Button type="submit" variant="outline" disabled={register.isPending}>{sv ? "Öppna i inkorgen" : "Open in inbox"}</Button>
       </Box>
-      <AccountingStatus locale={locale} pending={register.isPending || (registered && view.isPending)} error={register.error ?? view.error} write={register.isPending} />
+      <SupplierInboxList
+        items={inboxItems}
+        locale={locale}
+        hasNextPage={inbox.hasNextPage}
+        isFetching={inbox.isFetching}
+        onOpen={(occurrenceId) => {
+          setId(occurrenceId);
+          setRegistered(true);
+        }}
+        onLoadMore={() => void inbox.fetchNextPage()}
+      />
+      <AccountingStatus locale={locale} pending={inbox.isPending || register.isPending || (registered && view.isPending)} error={inbox.error ?? register.error ?? view.error} write={register.isPending} />
       {register.isError && register.variables ? <Button type="button" variant="outline" onClick={() => register.mutate(register.variables)}>{sv ? "Försök igen med samma original" : "Retry same original"}</Button> : null}
-      {entry ? <Box display="grid" gap="lg" minWidth="zero">
-        <Text>{entry.occurrence.occurrence.filename} · {entry.channel} · {entry.draftId ? (sv ? "Granskat utkast" : "Reviewed draft") : (sv ? "Väntar på granskning" : "Awaiting review")}</Text>
-        <OriginalDocument {...props} id={entry.occurrence.occurrence.id} sha256={entry.occurrence.occurrence.sha256} />
-        <Text>{sv ? "Tolkningsförsök sparas separat från granskade uppgifter. Kontrollera varje uppgift mot originalet." : "Extraction attempts remain separate from reviewed facts. Check every field against the original."}</Text>
-        {entry.attempts.map((attempt) => <Box key={attempt.id} display="grid" gap="sm">
-          <Text>{attempt.ordinal}. {attempt.parserVersion} · {attempt.status} · {attempt.createdAt}</Text>
-          {attempt.diagnostics.map((message, index) => <Text key={index}>{message}</Text>)}
-          {attempt.suggestions.map((suggestion, index) => <Text key={index}>{suggestion.field}: {suggestion.value} · {suggestion.sourceLocation} · {suggestion.confidence}</Text>)}
-        </Box>)}
-        {!entry.draftId && book.role === "operator" ? <>
-          <CommandForm {...props} path={`${path}/${encodeURIComponent(id)}/extractions`} schema={Inbox.RecordSupplierExtraction} output={Inbox.SupplierInboxView}
-            label={sv ? "Spara manuellt tolkningsförsök" : "Save manual extraction attempt"}
-            input={(fields) => ({ parserVersion: "manual-v1", status: "failed", suggestions: [], diagnostics: [fields.get("diagnostic")] })}
-            onSuccess={() => void view.refetch()}>
-            <InputField name="diagnostic" label={sv ? "Vad kunde inte tolkas?" : "What could not be extracted?"} required maxLength={200} />
-          </CommandForm>
-          <Button type="button" onClick={() => props.onDraft(`new:${id}`)}>{sv ? "Granska och fyll i faktura" : "Review and complete invoice"}</Button>
-        </> : null}
-        {entry.draftId ? <Button type="button" variant="outline" onClick={() => props.onDraft(entry.draftId!)}>{sv ? "Öppna granskat utkast" : "Open reviewed draft"}</Button> : null}
-      </Box> : null}
+      {entry ? <SupplierInboxEntry entry={entry} commerceProps={props} id={id} path={path} onRefresh={() => void view.refetch()} /> : null}
     </Box>
   );
 }

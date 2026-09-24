@@ -7,6 +7,9 @@ import { query, scopeParameter } from "../../../db/query";
 
 export const SupplierInboxHandlers = HttpApiBuilder.group(Api, "supplierInbox", (handlers) =>
   handlers
+    .handle("listSupplierInboxes", ({ params, query: search }) =>
+      Effect.flatMap(authenticate, (token) => query("listSupplierInboxes",
+        [token, scopeParameter(params), search.cursor ?? ""], Inbox.SupplierInboxPage)))
     .handle("registerSupplierInbox", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) => query("registerSupplierInbox",
         [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)], Inbox.SupplierInboxView)))
