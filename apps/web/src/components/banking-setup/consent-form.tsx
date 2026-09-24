@@ -57,8 +57,16 @@ export function ConsentForm({ onSaved }: { onSaved: (id: string) => void }) {
           : "Complete the mapping and confirm the retained consent.",
     },
     onSubmit: async ({ value }) => {
-      const { confirmed: _, ...input } = value;
-      await save.mutateAsync(input).catch(() => undefined);
+      await save
+        .mutateAsync({
+          providerId: value.providerId,
+          externalAccountId: value.externalAccountId,
+          sourceAccountId: value.sourceAccountId,
+          accountId: value.accountId,
+          consentReference: value.consentReference,
+          rationale: value.rationale,
+        })
+        .catch(() => undefined);
     },
   });
   const fields = [

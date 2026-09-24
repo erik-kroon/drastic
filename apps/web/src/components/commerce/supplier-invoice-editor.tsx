@@ -41,16 +41,19 @@ export function SupplierInvoiceEditor(
       {...props}
       scale={scale}
       documentId={documentId}
-      onChangeDocument={() => setDocumentId("")}
+      onChangeDocument={() => setDocumentId("select")}
+      onSelectDocument={setDocumentId}
     />
   );
 }
 function SupplierEditorForm(
   props: CommerceProps & {
     baseline?: Draft;
+    sourceId?: string;
     documentId: string;
     scale: number;
     onChangeDocument: () => void;
+    onSelectDocument: (id: string) => void;
     onSaved: (id: string) => void;
   },
 ) {
@@ -69,7 +72,7 @@ function SupplierEditorForm(
   const [draftKey] = useState(() => `supplier_${crypto.randomUUID().replaceAll("-", "")}`);
   const source = useQuery({
     ...sourceDocumentOptions(props.book, props.documentId),
-    enabled: !baseline && !!props.documentId,
+    enabled: !!props.documentId && props.documentId !== "select",
   });
   const original = source.isError ? undefined : source.data?.occurrence;
   const currency = content?.currency ?? props.book.currency;
@@ -82,7 +85,7 @@ function SupplierEditorForm(
       }
       output={Suppliers.SupplierInvoiceDraftRevision}
       label={sv ? "Spara utkast" : "Save draft"}
-      canSubmit={!!party && (!!baseline || !!original)}
+      canSubmit={!!party && (props.documentId ? !!original : !!baseline)}
       stickyFooter
       footerSummary={
         <PageCaption>
@@ -123,6 +126,7 @@ function SupplierEditorForm(
           lines,
           scale: props.scale,
           currency,
+          sourceEvidenceId: original ? evidence.id : baseline?.sourceEvidence.evidenceId,
         });
         return baseline
           ? {
@@ -136,13 +140,33 @@ function SupplierEditorForm(
     >
       <RecordColumns>
         <RecordSection title={sv ? "Originalfaktura" : "Original invoice"} sticky>
-          {baseline ? (
-            <EvidenceInspector
-              {...props}
-              expanded
-              compact
-              reference={{ ...baseline.sourceEvidence, locator: baseline.content.title }}
-            />
+          {baseline && !props.documentId ? (
+            <>
+              <EvidenceInspector
+                {...props}
+                expanded
+                compact
+                reference={{ ...baseline.sourceEvidence, locator: baseline.content.title }}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => props.onSelectDocument("select")}
+              >
+                {sv ? "Byt original" : "Replace original"}
+              </Button>
+            </>
+          ) : props.documentId === "select" ? (
+            <Box display="grid" gap="md">
+              <SupplierDocumentPicker {...props} onSelect={props.onSelectDocument} />
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => props.onSelectDocument(baseline ? "" : (props.sourceId ?? ""))}
+              >
+                {sv ? "Avbryt byte" : "Cancel replacement"}
+              </Button>
+            </Box>
           ) : (
             <>
               <AccountingStatus
@@ -152,6 +176,11 @@ function SupplierEditorForm(
               />
               {original ? (
                 <OriginalDocument {...props} id={original.id} sha256={original.sha256} />
+              ) : null}
+              {source.isError ? (
+                <Button type="button" variant="outline" onClick={() => void source.refetch()}>
+                  {sv ? "Försök läsa originalet igen" : "Retry original"}
+                </Button>
               ) : null}
               <Box>
                 <Button type="button" variant="ghost" onClick={props.onChangeDocument}>
@@ -343,6 +372,7 @@ function supplierContent(
     lines: readonly EditableInvoiceLine[];
     scale: number;
     currency: string;
+    sourceEvidenceId?: string;
   },
 ) {
   const content = state.baseline?.content;
@@ -357,7 +387,7 @@ function supplierContent(
       content?.counterpartyId === state.party?.id ? content?.supplier : undefined,
     ),
     buyer: identity(fields, "customer", state.evidenceId, content?.buyer),
-    sourceEvidenceId: state.baseline?.sourceEvidence.evidenceId ?? state.evidenceId,
+    sourceEvidenceId: state.sourceEvidenceId ?? state.evidenceId,
     supplierDocumentNumber: textField(fields, "number"),
     currency: state.currency,
     currencyScale: state.scale,

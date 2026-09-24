@@ -203,6 +203,7 @@ export const SourcePurchaseLinks = Schema.Struct({
       id: A.Identifier,
       title: Schema.String,
       revision: Schema.String,
+      currentSource: Schema.Boolean,
     }),
   ).check(Schema.isMaxLength(200)),
   expenses: Schema.Array(

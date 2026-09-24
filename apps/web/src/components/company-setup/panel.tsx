@@ -430,7 +430,7 @@ function SetupJourney({ saved }: { saved: typeof Setup.CompanySetup.Type }) {
                   <Text>{copy.profilePending}</Text>
                 ) : null}
                 {saved.details.historyChoice === "sie" ||
-                saved.details.historyChoice === "opening" ? (
+                saved.details.historyChoice === "opening_balances" ? (
                   <Link href={`${workspacePath(book)}/history`}>{copy.history}</Link>
                 ) : null}
                 {saved.details.bankChoice === "file" ? (

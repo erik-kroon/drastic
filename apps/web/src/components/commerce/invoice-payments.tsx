@@ -161,6 +161,8 @@ export function InvoicePaymentsWorkspace(props: PaymentProps) {
                       ],
                     }))}
                   />
+                ) : page > Math.max(1, Math.ceil(payments.data.total / 25)) ? (
+                  <PageEmpty title={copy.pageUnavailable} detail={copy.returnFirstPage} />
                 ) : (
                   <PageEmpty title={copy.empty} detail={copy.emptyHelp} />
                 )}
@@ -218,6 +220,8 @@ export function InvoicePaymentsWorkspace(props: PaymentProps) {
                   ],
                 }))}
               />
+            ) : historyPage > Math.max(1, Math.ceil(payments.data.historyTotal / 25)) ? (
+              <PageEmpty title={copy.pageUnavailable} detail={copy.returnFirstPage} />
             ) : (
               <PageEmpty title={copy.noHistory} detail={copy.historyHelp} />
             )}
@@ -315,8 +319,14 @@ function PaymentPager(
 ) {
   const copy = invoicePaymentCopy(props.locale);
   if (props.page === 1 && props.total <= 25) return null;
+  const lastPage = Math.max(1, Math.ceil(props.total / 25));
   return (
     <Box display="flex" gap="md" justifyContent="end" alignItems="center">
+      {props.page > lastPage ? (
+        <Button variant="outline" size="sm" onClick={() => props.onPage(1)}>
+          {copy.firstPage}
+        </Button>
+      ) : null}
       <Button
         variant="ghost"
         size="sm"
@@ -326,7 +336,7 @@ function PaymentPager(
         {copy.previous}
       </Button>
       <Text tone="muted">
-        {props.page} / {Math.max(1, Math.ceil(props.total / 25))}
+        {props.page > lastPage ? copy.pageUnavailable : `${props.page} / ${lastPage}`}
       </Text>
       <Button
         variant="ghost"

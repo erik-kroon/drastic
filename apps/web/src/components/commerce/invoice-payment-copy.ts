@@ -49,6 +49,9 @@ const en = {
   invalid: "Enter a positive amount within both the invoice and payment balances.",
   previous: "Previous",
   next: "Next",
+  firstPage: "Go to first page",
+  pageUnavailable: "This page is no longer available",
+  returnFirstPage: "The list changed. Return to the first page to see current payments.",
   savedReviews: "Back to payments",
 };
 const sv: typeof en = {
@@ -100,6 +103,9 @@ const sv: typeof en = {
   invalid: "Ange ett positivt belopp inom fakturans och betalningens kvarvarande saldon.",
   previous: "Föregående",
   next: "Nästa",
+  firstPage: "Gå till första sidan",
+  pageUnavailable: "Den här sidan finns inte längre",
+  returnFirstPage: "Listan har ändrats. Gå till första sidan för att se aktuella betalningar.",
   savedReviews: "Tillbaka till betalningar",
 };
 export function invoicePaymentCopy(locale: Locale) {

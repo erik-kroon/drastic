@@ -65,8 +65,8 @@ export function BankingSetup({ consent }: { consent?: string }) {
         />
         <Text>
           {sv
-            ? "Ingen direkt bankanslutning är konfigurerad här. Sparade samtycken är uppgifter från en operatör; leverantören har inte verifierat åtkomst. Levererade underlag behöver granskas före avstämning."
-            : "No live bank connection is configured here. Saved consents are operator records; provider access has not been verified. Delivered records need review before reconciliation."}
+            ? "Här visas registrerade samtycken och underlag från anslutningsjobb. Bankåtkomst verifieras inte på den här sidan. Levererade underlag behöver granskas före avstämning."
+            : "This page shows recorded consents and records delivered by connector jobs. It does not verify bank access. Delivered records need review before reconciliation."}
         </Text>
         {consent ? (
           <>

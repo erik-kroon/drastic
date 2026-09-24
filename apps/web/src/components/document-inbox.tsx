@@ -390,7 +390,14 @@ function DocumentDetail({ id }: { id: string }) {
                       key={draft.id}
                       href={`${workspacePath(book)}/purchases?view=supplier-drafts&record=${encodeURIComponent(draft.id)}`}
                     >
-                      {sv ? "Fakturautkast" : "Invoice draft"}: {draft.title}
+                      {sv ? "Fakturautkast" : "Invoice draft"}: {draft.title} ·{" "}
+                      {draft.currentSource
+                        ? sv
+                          ? "Aktuellt underlag"
+                          : "Current source"
+                        : sv
+                          ? "Tidigare underlag"
+                          : "Earlier source"}
                     </PageAction>
                   ))}
                   {purchases.data?.expenses.map((expense) => (

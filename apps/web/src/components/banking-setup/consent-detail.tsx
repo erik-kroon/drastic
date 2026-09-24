@@ -100,7 +100,12 @@ export function ConsentDetail({ id }: { id: string }) {
           )}
         </RecordSection>
       ) : null}
-      <RecordSection title={sv ? "Levererade underlag" : "Delivered records"}>
+      <RecordSection title={sv ? "Leveranshistorik" : "Delivery history"}>
+        <Text tone="muted">
+          {sv
+            ? "Sparade leveranser verifierar inte leverantörens åtkomst och för inte in poster i avstämningen."
+            : "Retained deliveries do not verify provider access or admit records for reconciliation."}
+        </Text>
         <AccountingStatus locale={locale} pending={batches.isPending} error={batches.error} />
         {batches.isSuccess && batches.data.pages.every((page) => page.items.length === 0) ? (
           <Text>
@@ -114,7 +119,12 @@ export function ConsentDetail({ id }: { id: string }) {
           .map((batch) => (
             <Box key={batch.id} display="grid" gap="sm">
               <Text>
-                {batch.receivedAt} ·{" "}
+                {new Intl.DateTimeFormat(locale, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                  timeZone: "UTC",
+                }).format(new Date(batch.receivedAt))}{" "}
+                UTC ·{" "}
                 {batch.providerOutcome === "delivered"
                   ? sv
                     ? "Levererat"
@@ -128,19 +138,15 @@ export function ConsentDetail({ id }: { id: string }) {
                       : "Failed"}
               </Text>
               <Text>
-                {batch.recordCount} {sv ? "nya poster" : "new records"} · {batch.overlapCount}{" "}
+                {sv ? "Nya poster" : "New records"}: {batch.recordCount} · {batch.overlapCount}{" "}
                 {sv ? "redan sparade" : "already retained"}
-              </Text>
-              <Text tone="muted">
-                {sv
-                  ? "Leverantören är inte verifierad. Posterna är inte införda i avstämningen."
-                  : "Provider verification is not established. Records have not been admitted for reconciliation."}
               </Text>
               <details>
                 <summary>{sv ? "Leveranskvitto" : "Delivery receipt"}</summary>
                 <Text>
                   {batch.id} · {batch.sourceRevision}
                 </Text>
+                <Text>{batch.receivedAt}</Text>
                 {batch.items.map((item) => (
                   <Text key={`${item.externalId}:${item.revision}`}>
                     {item.externalId} · {item.status} · {item.occurrenceId}
