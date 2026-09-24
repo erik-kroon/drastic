@@ -61,7 +61,7 @@ BEGIN
   s_estimate:=s_kind IN('remaining_estimate_v1','remaining_lifetime_v1');
   IF s_kind IS NULL OR s_kind NOT IN('future_dates_v1','remaining_estimate_v1','remaining_lifetime_v1')
     OR NEW.body->'receipt'->>'operation' IS DISTINCT FROM
-      CASE WHEN s_estimate THEN 'amend_schedule_estimate' ELSE 'amend_schedule_future_dates' END
+      (CASE WHEN s_estimate THEN 'amend_schedule_estimate' ELSE 'amend_schedule_future_dates' END)
     OR NEW.body->>'previousDigest' IS DISTINCT FROM s_current->>'digest'
     OR NEW.body->'amendment'->'input'->>'expectedDigest' IS DISTINCT FROM s_current->>'digest'
     OR NEW.revision<>(s_current->>'revision')::integer+1

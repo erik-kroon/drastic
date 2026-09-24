@@ -8,9 +8,15 @@
 
 The approved posting boundary already owns supplier acceptance recognition. Creating or revising a supplier draft alone still never books an amount. Payment file preparation/export also never books a payment. A bank observation or exported file cannot be interpreted as invoice settlement.
 
+## Synthetic supplier credits and correction boundary
+
+`7120-supplier-credits.sql` adds a same-operator review, approval and execution for a supplier credit against an accepted synthetic zero-tax payable. The supplier's distinct credit-note number and retained evidence remain original assertions. A credit may only reduce the currently unpaid residual; existing allocations and their payment vouchers stay immutable. A reviewed credit posts a debit to the original payable control account and a credit to the exact original expense account, both with zero asserted tax. Its separate register row links the original invoice, note, evidence, payable line and posting receipt atomically. The canonical invoice body deducts all credit effects from its effective amount and residual, and increases its capacity version. Register snapshots and period inventory account for credit rows and ledger effects at the selected cutoff. Generic correction of either original supplier recognition or the credit voucher stays blocked; corrections to an accepted synthetic obligation require a reviewed credit, not voucher deletion.
+
+This is **not** a general statutory credit-note or VAT deduction profile. A paid amount cannot be credited by this path; refund and overpayment treatment remain unsupported. Partial credits against the remaining unpaid amount can coexist with retained paid allocations. No credit may reduce a payable linked to an outstanding exported payment file. D-08 rule activation and D-10 external outcomes remain explicit gates.
+
 ## Still unsupported
 
-AP-2 supplier credit notes, partial credit capacity, correction of accepted supplier recognition, refund and paid residual reconciliation are **not implemented**. The existing generic commerce correction guard deliberately refuses recognition reversal. Do not claim supplier-credit or correction readiness from acceptance and offline export. Before AP-2, choose the credit identity and cancellation/partial-effect semantics against the existing allocation conservation, register controls and period rules. Exported supplier invoices cannot be exported again even if the file is lost or rejected; recover exact saved bytes or resolve the external outcome before a future explicit replacement workflow.
+VAT-bearing credits, edits to legally issued supplier records, generic recognition reversal, credit against already paid principal, refund, cash-method recognition, disputed source chronology and payment-file replacement remain unsupported. The original and every applied payment retain their own immutable identities. No part of this source change labels an exported file as accepted or paid.
 
 ## Verification limits
 

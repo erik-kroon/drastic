@@ -161,99 +161,13 @@ function SupplierEditorForm(
             </>
           )}
         </RecordSection>
-        <Box display="grid" gap="xl">
-          <RecordSection title={sv ? "Leverantör" : "Supplier"}>
-            <SupplierPicker {...props} selected={party} onSelect={setParty} />
-            {party ? (
-              <InvoiceDraftParty
-                key={`${party.id}:${party.revision}`}
-                locale={props.locale}
-                title={sv ? "Leverantörens fakturauppgifter" : "Supplier billing details"}
-                prefix="seller"
-                party={
-                  content && content.counterpartyId === party.id
-                    ? content.supplier
-                    : {
-                        legalName: party.displayName,
-                        address: null,
-                        registrationId: null,
-                        countryCode: null,
-                      }
-                }
-              />
-            ) : null}
-          </RecordSection>
-          <RecordSection title={sv ? "Fakturauppgifter" : "Invoice details"}>
-            <InputField
-              name="title"
-              label={sv ? "Beskrivning" : "Description"}
-              required
-              maxLength={200}
-              defaultValue={content?.title}
-              placeholder={sv ? "Vad gäller fakturan?" : "What is this invoice for?"}
-            />
-            <Box display="grid" columns={2} gap="md">
-              <InputField
-                name="number"
-                label={sv ? "Leverantörens fakturanummer" : "Supplier invoice number"}
-                maxLength={128}
-                defaultValue={content?.supplierDocumentNumber ?? ""}
-              />
-              <InputField
-                name="sourceTotal"
-                label={`${sv ? "Total enligt fakturan" : "Total on invoice"} · ${currency}`}
-                inputMode="decimal"
-                defaultValue={
-                  content?.sourceTotalMinor == null
-                    ? ""
-                    : minorToDecimal(content.sourceTotalMinor, props.scale)
-                }
-              />
-              <InputField
-                name="documentDate"
-                label={sv ? "Fakturadatum" : "Invoice date"}
-                type="date"
-                defaultValue={content?.documentDate ?? ""}
-              />
-              <InputField
-                name="dueDate"
-                label={sv ? "Förfallodatum" : "Due date"}
-                type="date"
-                defaultValue={content?.dueDate ?? ""}
-              />
-              <InputField
-                name="supplyDate"
-                label={sv ? "Leveransdatum" : "Supply date"}
-                type="date"
-                defaultValue={content?.supplyDate ?? ""}
-              />
-              <InputField
-                name="terms"
-                label={sv ? "Betalningsvillkor" : "Payment terms"}
-                maxLength={1000}
-                defaultValue={content?.paymentTerms ?? ""}
-              />
-            </Box>
-            <PageCaption>
-              {sv
-                ? "Lämna okända uppgifter tomma. Belopp anges i bokföringens valuta; valutaväxling stöds inte här."
-                : "Leave unknown details blank. Amounts use the book currency; currency conversion is not supported here."}
-            </PageCaption>
-          </RecordSection>
-          <InvoiceDraftParty
-            locale={props.locale}
-            title={sv ? "Fakturamottagare" : "Billed to"}
-            prefix="customer"
-            party={
-              content?.buyer ?? {
-                legalName: props.book.name,
-                address: null,
-                registrationId: null,
-                countryCode: null,
-              }
-            }
-          />
-        </Box>
+        <SupplierInvoiceFields
+          {...props}
+          content={content}
+          party={party}
+          onPartySelect={setParty}
+          currency={currency}
+        />
       </RecordColumns>
       <RecordSection title={`${sv ? "Fakturarader" : "Invoice lines"} · ${currency}`}>
         <InvoiceEditorLines
@@ -273,6 +187,125 @@ function SupplierEditorForm(
         />
       ) : null}
     </EvidenceCommandForm>
+  );
+}
+function SupplierInvoiceFields(
+  props: CommerceProps & {
+    content?: Draft["content"];
+    party?: typeof Commerce.CounterpartyRevision.Type;
+    onPartySelect: (party: typeof Commerce.CounterpartyRevision.Type) => void;
+    currency: string;
+    scale: number;
+  },
+) {
+  const sv = props.locale === "sv";
+  const currency = props.currency;
+  return (
+    <Box display="grid" gap="xl">
+      <SupplierPartyFields {...props} />
+      <RecordSection title={sv ? "Fakturauppgifter" : "Invoice details"}>
+        <InputField
+          name="title"
+          label={sv ? "Beskrivning" : "Description"}
+          required
+          maxLength={200}
+          defaultValue={props.content?.title}
+          placeholder={sv ? "Vad gäller fakturan?" : "What is this invoice for?"}
+        />
+        <Box display="grid" columns={2} gap="md">
+          <InputField
+            name="number"
+            label={sv ? "Leverantörens fakturanummer" : "Supplier invoice number"}
+            maxLength={128}
+            defaultValue={props.content?.supplierDocumentNumber ?? ""}
+          />
+          <InputField
+            name="sourceTotal"
+            label={`${sv ? "Total enligt fakturan" : "Total on invoice"} · ${currency}`}
+            inputMode="decimal"
+            defaultValue={
+              props.content?.sourceTotalMinor == null
+                ? ""
+                : minorToDecimal(props.content.sourceTotalMinor, props.scale)
+            }
+          />
+          <InputField
+            name="documentDate"
+            label={sv ? "Fakturadatum" : "Invoice date"}
+            type="date"
+            defaultValue={props.content?.documentDate ?? ""}
+          />
+          <InputField
+            name="dueDate"
+            label={sv ? "Förfallodatum" : "Due date"}
+            type="date"
+            defaultValue={props.content?.dueDate ?? ""}
+          />
+          <InputField
+            name="supplyDate"
+            label={sv ? "Leveransdatum" : "Supply date"}
+            type="date"
+            defaultValue={props.content?.supplyDate ?? ""}
+          />
+          <InputField
+            name="terms"
+            label={sv ? "Betalningsvillkor" : "Payment terms"}
+            maxLength={1000}
+            defaultValue={props.content?.paymentTerms ?? ""}
+          />
+        </Box>
+        <PageCaption>
+          {sv
+            ? "Lämna okända uppgifter tomma. Belopp anges i bokföringens valuta; valutaväxling stöds inte här."
+            : "Leave unknown details blank. Amounts use the book currency; currency conversion is not supported here."}
+        </PageCaption>
+      </RecordSection>
+      <InvoiceDraftParty
+        locale={props.locale}
+        title={sv ? "Fakturamottagare" : "Billed to"}
+        prefix="customer"
+        party={
+          props.content?.buyer ?? {
+            legalName: props.book.name,
+            address: null,
+            registrationId: null,
+            countryCode: null,
+          }
+        }
+      />
+    </Box>
+  );
+}
+function SupplierPartyFields(
+  props: CommerceProps & {
+    content?: Draft["content"];
+    party?: typeof Commerce.CounterpartyRevision.Type;
+    onPartySelect: (party: typeof Commerce.CounterpartyRevision.Type) => void;
+  },
+) {
+  const sv = props.locale === "sv";
+  return (
+    <RecordSection title={sv ? "Leverantör" : "Supplier"}>
+      <SupplierPicker {...props} selected={props.party} onSelect={props.onPartySelect} />
+      {props.party ? (
+        <InvoiceDraftParty
+          key={`${props.party.id}:${props.party.revision}`}
+          locale={props.locale}
+          title={sv ? "Leverantörens fakturauppgifter" : "Supplier billing details"}
+          prefix="seller"
+          party={
+            props.content && props.content.counterpartyId === props.party.id
+              ? props.content.supplier
+              : {
+                  legalName: props.party.displayName,
+                  address: null,
+                  registrationId: null,
+                  countryCode: null,
+                }
+          }
+        />
+      ) : null}
+    </RecordSection>
   );
 }
 function textField(fields: FormData, name: string) {

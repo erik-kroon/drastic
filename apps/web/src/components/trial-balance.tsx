@@ -394,7 +394,7 @@ function AccountExplanation({
                 amount(entry.creditMinor),
                 <Link
                   key="voucher"
-                  href={`${workspacePath(book)}/books?view=vouchers&record=${encodeURIComponent(entry.voucherId)}&returnReport=${encodeURIComponent(report.id)}&returnAccount=${encodeURIComponent(accountId)}`}
+                  href={`${workspacePath(book)}/books?view=vouchers&record=${encodeURIComponent(entry.voucherId)}&returnReport=${encodeURIComponent(report.id)}&returnAccount=${encodeURIComponent(accountId)}&returnView=ledger`}
                 >
                   {entry.description}
                 </Link>,

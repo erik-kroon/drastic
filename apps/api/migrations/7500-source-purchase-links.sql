@@ -45,11 +45,14 @@ BEGIN
   )
   SELECT coalesce(jsonb_agg(jsonb_build_object('id',s.id,
     'description',r.body->'facts'->>'description',
+    'currentSource',coalesce(openerp.purchase_source_reference(current_e.content)->>'occurrenceId'=p_id
+      AND openerp.purchase_source_reference(current_e.content)->>'sha256'=v_source.body->>'sha256',false),
     'reviewCurrent',w.source_id IS NULL AND coalesce(v.body->>'sourceDigest'=r.body->>'digest',false),
     'withdrawn',w.source_id IS NOT NULL) ORDER BY s.id COLLATE "C"),'[]') INTO v_expenses
   FROM linked l JOIN openerp.expense_tax_sources s ON s.book_id=v_source.book_id AND s.id=l.source_id
   JOIN LATERAL (SELECT x.body FROM openerp.expense_tax_source_revisions x
     WHERE x.book_id=s.book_id AND x.source_id=s.id ORDER BY x.revision DESC LIMIT 1) r ON true
+  JOIN openerp.evidence current_e ON current_e.book_id=s.book_id AND current_e.id=r.body->'facts'->>'evidenceId'
   LEFT JOIN LATERAL (SELECT x.body FROM openerp.expense_tax_reviews x
     WHERE x.book_id=s.book_id AND x.source_id=s.id ORDER BY x.revision DESC LIMIT 1) v ON true
   LEFT JOIN openerp.expense_tax_source_withdrawals w ON w.book_id=s.book_id AND w.source_id=s.id;

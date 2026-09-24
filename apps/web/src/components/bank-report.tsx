@@ -50,6 +50,8 @@ export function BankReport({
     },
     retry: false,
   });
+  const scopeMismatch = report.error instanceof Error &&
+    report.error.message === "Report account or period mismatch";
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.bank_report}</Heading>
@@ -65,7 +67,12 @@ export function BankReport({
           {copy.journal_refresh}
         </Button>
       </Box>
-      <AccountingStatus locale={locale} pending={report.isPending} error={report.error} />
+      <AccountingStatus locale={locale} pending={report.isPending} error={scopeMismatch ? null : report.error} />
+      {scopeMismatch ? <Text role="alert">
+        {locale === "sv"
+          ? "Rapporten hör till ett annat konto eller en annan period. Välj den ursprungliga perioden eller spara en ny rapport här."
+          : "This report belongs to another account or period. Select its original period or save a new report here."}
+      </Text> : null}
       {report.isSuccess ? (
         <>
           <Text tone="muted">

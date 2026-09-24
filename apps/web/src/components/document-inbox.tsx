@@ -387,17 +387,21 @@ function DocumentDetail({ id }: { id: string }) {
                       href={`${workspacePath(book)}/purchases?view=expenses&record=${encodeURIComponent(expense.id)}`}
                     >
                       {sv ? "Utgift" : "Expense"}: {expense.description} ·{" "}
-                      {expense.withdrawn
+                      {!expense.currentSource
                         ? sv
-                          ? "Återtagen"
-                          : "Withdrawn"
-                        : expense.reviewCurrent
+                          ? "Tidigare underlag"
+                          : "Earlier source"
+                        : expense.withdrawn
                           ? sv
-                            ? "Granskad"
-                            : "Reviewed"
-                          : sv
-                            ? "Att granska"
-                            : "Needs review"}
+                            ? "Återtagen"
+                            : "Withdrawn"
+                          : expense.reviewCurrent
+                            ? sv
+                              ? "Granskad"
+                              : "Reviewed"
+                            : sv
+                              ? "Att granska"
+                              : "Needs review"}
                     </PageAction>
                   ))}
                   {purchases.isSuccess &&

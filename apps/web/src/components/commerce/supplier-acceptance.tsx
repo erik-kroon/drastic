@@ -270,6 +270,7 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
                   review.isFetchedAfterMount &&
                   review.fetchStatus === "idle" &&
                   view.dependenciesCurrent &&
+                  view.blockers.length === 0 &&
                   !view.approvalUsable &&
                   props.book.role === "operator"
                 }
@@ -293,6 +294,7 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
                   allowed={
                     review.isFetchedAfterMount &&
                     review.fetchStatus === "idle" &&
+                    view.blockers.length === 0 &&
                     props.book.role === "operator"
                   }
                   input={(fields) => ({

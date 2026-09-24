@@ -209,6 +209,7 @@ export const SourcePurchaseLinks = Schema.Struct({
     Schema.Struct({
       id: A.Identifier,
       description: Schema.String,
+      currentSource: Schema.Boolean,
       reviewCurrent: Schema.Boolean,
       withdrawn: Schema.Boolean,
     }),

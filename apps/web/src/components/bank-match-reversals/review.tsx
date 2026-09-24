@@ -10,6 +10,7 @@ import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { formatMinorAmount } from "@/lib/workspace-api";
 import type { Locale } from "@/paraglide/runtime";
 import { bankUnmatchCopy } from "./copy";
 
@@ -61,6 +62,9 @@ export function BankUnmatchReview({ book, id, locale, expected }: {
     onSettled: () => { void plan.refetch(); },
   });
   const view = plan.data;
+  const amount = (minor: string) => view
+    ? `${formatMinorAmount(minor, view.plan.currencyScale, locale)} ${view.plan.currency}`
+    : "—";
   const receipt = view?.execution ?? execution.data;
   const writesPending = approval.isPending || execution.isPending || revocation.isPending;
   const busy = plan.isFetching || writesPending;
@@ -88,9 +92,9 @@ export function BankUnmatchReview({ book, id, locale, expected }: {
             rows={[
               { id: "source", cells: [copy.source, `${capacity.leg.statementId} / ${capacity.leg.rowOrdinal} · ${capacity.observedOn}`] },
               { id: "line", cells: [copy.line, `${capacity.leg.voucherId} / ${capacity.leg.lineId} · ${capacity.postedOn}`] },
-              { id: "amount", cells: [copy.amount, capacity.leg.amountMinor] },
-              { id: "source-used", cells: [copy.sourceUsed, capacity.sourceAllocatedMinor] },
-              { id: "line-used", cells: [copy.lineUsed, capacity.lineAllocatedMinor] },
+              { id: "amount", cells: [copy.amount, amount(capacity.leg.amountMinor)] },
+              { id: "source-used", cells: [copy.sourceUsed, amount(capacity.sourceAllocatedMinor)] },
+              { id: "line-used", cells: [copy.lineUsed, amount(capacity.lineAllocatedMinor)] },
             ]} />
           <EvidenceInspector book={book} locale={locale} reference={{
             evidenceId: capacity.evidenceId, sha256: capacity.evidenceSha256,
