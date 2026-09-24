@@ -119,3 +119,28 @@ old proposal after posting, and cross-book denial. A separate source run rejecte
 execution while paused, posted through its owning run after resume, rejected a duplicate,
 and reconciled at ledger sequence 1. These are scoped local observations, not production
 or real-company acceptance.
+
+## Public SIE4 source compatibility, not migration acceptance
+
+Migration `8900` keeps the one-megabyte normalized-preview bound but raises the
+retained preview inventory to 4,000 records/500 vouchers. The parser accepts
+ASCII space/tab indentation before a `#` record tag while preserving the exact
+original bytes, line text and byte locations. [Local-only public corpus and
+Worker before/after receipts](../../../docs/plans/evidence/wave2-sie-public-compatibility.md)
+show an official SIE Group exercise export captured as 3,490 records, 295 vouchers,
+1,330 final transactions and 223 control records with no parser diagnostics. The
+original was read back unchanged and same-key source/preview replay was stable.
+Other public transfer and malformed samples retain their separate outcomes.
+The third-party raw files are not committed because redistribution rights and demo
+contact fields have not been cleared.
+
+`ready` means a bounded source interpretation was retained without parser
+diagnostics. It does **not** certify full SIE 4E completeness or grant staging or
+financial authority. The published exercise export contains two source years, unpaired `#IB`/`#UB`
+account sets and nonempty transaction dimensions. SIE 4C permits omission of
+zero balances, but this source alone cannot prove an absent value is zero. Existing
+seal and financial-run guards still require independent paired controls, one
+reviewed source-year basis and supported dimensions; they were not bypassed to
+make a public sample appear migrated. An actual previous-system export and its
+independent controls, lawful use, fiscal profile and cutover decision remain D-06
+and D-04 gates.
