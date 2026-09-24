@@ -35,6 +35,7 @@
     "./vat-returns": "./src/vat-returns.ts",
     "./sie": "./src/sie.ts",
     "./invoice-drafts": "./src/invoice-drafts.ts",
+    "./supplier-invoice-drafts": "./src/supplier-invoice-drafts.ts",
     "./subledger-controls": "./src/subledger-controls.ts",
     "./exchange-rates": "./src/exchange-rates.ts",
     "./invoice-issuance": "./src/invoice-issuance.ts",

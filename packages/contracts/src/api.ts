@@ -26,6 +26,7 @@ import { RegisterReportsApi } from "./register-reports";
 import { VatReturnsApi } from "./vat-returns";
 import { SieApi } from "./sie";
 import { InvoiceDraftsApi } from "./invoice-drafts";
+import { SupplierInvoiceDraftsApi } from "./supplier-invoice-drafts";
 import { SubledgerControlsApi } from "./subledger-controls";
 import { ExchangeRatesApi } from "./exchange-rates";
 import { InvoiceIssuanceApi } from "./invoice-issuance";
@@ -151,6 +152,7 @@ export class Api extends HttpApi.make("open-erp")
     VatReturnsApi,
     SieApi,
     InvoiceDraftsApi,
+    SupplierInvoiceDraftsApi,
     SubledgerControlsApi,
     ExchangeRatesApi,
     InvoiceIssuanceApi,

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
+import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Sources from "@open-erp/contracts/source-intake";
 import { ArrowLeft, Upload } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
@@ -21,11 +22,8 @@ import { checkScope } from "./commerce/shared";
 import { useBookWorkspace } from "@/lib/book-context";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 
-export function StatementImports(props: { recordId?: string; onOpen: (id: string) => void }) {
-  const { book, setup, locale } = useBookWorkspace();
-  const sv = locale === "sv";
-  const [search, setSearch] = useState("");
-  const query = useInfiniteQuery({
+export function statementImportsOptions(book: typeof Accounting.Book.Type) {
+  return infiniteQueryOptions({
     queryKey: [...bookKey(book), "document-inbox"],
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) => {
@@ -39,6 +37,16 @@ export function StatementImports(props: { recordId?: string; onOpen: (id: string
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry: false,
+  });
+}
+
+export function StatementImports(props: { recordId?: string; onOpen: (id: string) => void }) {
+  const { book, setup, locale } = useBookWorkspace();
+  const sv = locale === "sv";
+  const [search, setSearch] = useState("");
+  const query = useInfiniteQuery({
+    ...statementImportsOptions(book),
+    enabled: !props.recordId || props.recordId === "new",
   });
   const rows =
     query.data?.pages

@@ -5,7 +5,7 @@ import * as Sources from "@open-erp/contracts/source-intake";
 import { bookKey, bookPath, readAccounting } from "./accounting-api";
 
 export const EnteredExpenseEvidence = Schema.Struct({
-  kind: Schema.Literal("expense_entry_v1"),
+  kind: Schema.Literals(["expense_entry_v1", "supplier_invoice_source_v1"]),
   source: Schema.NullOr(
     Schema.Struct({
       occurrenceId: Accounting.Identifier,
@@ -13,7 +13,7 @@ export const EnteredExpenseEvidence = Schema.Struct({
       filename: Schema.String,
     }),
   ),
-  fields: Schema.Record(Schema.String, Schema.String),
+  fields: Schema.optional(Schema.Record(Schema.String, Schema.String)),
 });
 
 export function enteredExpenseSource(content: string) {

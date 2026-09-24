@@ -328,6 +328,13 @@ function DocumentDetail({ id }: { id: string }) {
                 <Text>{source.mediaType}</Text>
                 <Text>{new Intl.NumberFormat(locale).format(source.byteLength)} bytes</Text>
                 <PageCaption>{labels.theOriginalIsRetainedNo}</PageCaption>
+                {book.role === "operator" ? (
+                  <PageAction
+                    href={`${workspacePath(book)}/purchases?view=supplier-drafts&record=${encodeURIComponent(`new:${source.id}`)}`}
+                  >
+                    {sv ? "Förbered leverantörsfaktura" : "Prepare supplier invoice"}
+                  </PageAction>
+                ) : null}
                 {book.role === "operator" && !document.data?.admission ? (
                   <PageAction
                     href={`${workspacePath(book)}/purchases?view=expenses&record=${encodeURIComponent(`new:${source.id}`)}`}

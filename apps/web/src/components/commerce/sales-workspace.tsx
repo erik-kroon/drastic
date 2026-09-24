@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, defaultStringifySearch } from "@tanstack/react-router";
+import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Sales from "@open-erp/contracts/sales-register";
 import { Plus, ArrowLeft, ArrowRight, Search } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
@@ -30,7 +31,7 @@ import { InvoiceDraftIssueOverlay } from "./invoice-draft-issue-overlay";
 import { NewInvoiceDraft } from "./invoice-drafts";
 import { InvoiceIssuance } from "./invoice-issuance";
 import { Invoices } from "./invoices";
-import { Counterparties } from "./counterparties";
+import { Counterparties, counterpartyRegisterOptions } from "./counterparties";
 
 export type SalesSearch = typeof Sales.SalesQuery.Type & {
   view?: string;
@@ -42,8 +43,25 @@ export type SalesSearch = typeof Sales.SalesQuery.Type & {
   release?: string;
 };
 
+export function salesRegisterOptions(book: typeof Accounting.Book.Type, query: URLSearchParams) {
+  return queryOptions({
+    queryKey: [...commerceKey(book), "sales-register", query.toString()],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${commercePath(book)}/sales-register?${query}`,
+        Sales.SalesPage,
+        { signal },
+      );
+      checkScope(book, result.scope);
+      return result;
+    },
+    retry: false,
+  });
+}
+
 export function SalesWorkspace({ search }: { search: SalesSearch }) {
   const { book, locale } = useBookWorkspace();
+  const client = useQueryClient();
   const navigate = useNavigate();
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
@@ -57,19 +75,21 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
     setSearchText({ applied: search.q ?? "", text: search.q ?? "" });
   const query = new URLSearchParams({ status, sort, page: String(pageNumber), q: search.q ?? "" });
   const register = useQuery({
-    queryKey: [...commerceKey(book), "sales-register", query.toString()],
-    queryFn: async ({ signal }) => {
-      const result = await readAccounting(
-        `${commercePath(book)}/sales-register?${query}`,
-        Sales.SalesPage,
-        { signal },
-      );
-      checkScope(book, result.scope);
-      return result;
-    },
+    ...salesRegisterOptions(book, query),
     enabled: !contacts,
-    retry: false,
   });
+  const preloadInvoices = () => {
+    if (contacts)
+      void client.prefetchQuery(
+        salesRegisterOptions(
+          book,
+          new URLSearchParams({ status: "all", sort: "newest", page: "1", q: "" }),
+        ),
+      );
+  };
+  const preloadCustomers = () => {
+    if (!contacts) void client.prefetchInfiniteQuery(counterpartyRegisterOptions(book));
+  };
   const change = (next: SalesSearch, replace = false) => {
     void navigate({ to: base, search: next, replace, resetScroll: false });
   };
@@ -134,10 +154,20 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
       />
       <PageContent>
         <PageTabs label={labels.invoicing}>
-          <PageTab href={base} active={!contacts}>
+          <PageTab
+            href={base}
+            active={!contacts}
+            onPointerEnter={preloadInvoices}
+            onFocus={preloadInvoices}
+          >
             {labels.invoices}
           </PageTab>
-          <PageTab href={`${base}?view=parties`} active={contacts}>
+          <PageTab
+            href={`${base}?view=parties`}
+            active={contacts}
+            onPointerEnter={preloadCustomers}
+            onFocus={preloadCustomers}
+          >
             {labels.customers}
           </PageTab>
         </PageTabs>

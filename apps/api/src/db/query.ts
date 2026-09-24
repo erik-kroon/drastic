@@ -22,6 +22,7 @@ import { closingDiscoveryStatements } from "./statements/closing";
 import { preparationJobStopStatements } from "./statements/automation";
 import { sieStatements } from "./statements/sie";
 import { invoiceDraftStatements } from "./statements/invoice-draft";
+import { supplierInvoiceDraftStatements } from "./statements/supplier-invoice-drafts";
 import { subledgerControlStatements } from "./statements/subledger-controls";
 import { exchangeRateStatements } from "./statements/exchange-rates";
 import { invoiceIssuanceStatements } from "./statements/invoice-issuance";
@@ -136,6 +137,7 @@ const statements = {
   ...preparationJobStopStatements,
   ...sieStatements,
   ...invoiceDraftStatements,
+  ...supplierInvoiceDraftStatements,
   ...subledgerControlStatements,
   ...exchangeRateStatements,
   ...invoiceIssuanceStatements,

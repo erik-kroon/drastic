@@ -9,6 +9,8 @@ import {
   CalendarCheck,
   Percent,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import type * as Accounting from "@open-erp/contracts/accounting";
 import {
   WorkspaceNavigation,
   WorkspaceNavLink,
@@ -17,19 +19,43 @@ import {
 import { frontendCopy } from "@/lib/frontend-copy";
 import type { Locale } from "@/paraglide/runtime";
 
-export function BookNavigation({
-  base,
-  pathname,
-  locale,
-}: {
+export function BookNavigation(props: {
   base: string;
   pathname: string;
   locale: Locale;
+  book: typeof Accounting.Book.Type;
+  setup: typeof Accounting.BookSetup.Type | undefined;
 }) {
+  const { base, pathname, locale } = props;
+  const client = useQueryClient();
   const copy = frontendCopy(locale);
   const home = pathname === base || pathname === `${base}/`;
   const reviewing = pathname.includes("/reviews/") || pathname.endsWith("/work");
   const bookkeeping = pathname === `${base}/books`;
+  const preloadAccounts = () => {
+    const setup = props.setup;
+    if (pathname === `${base}/accounts` || !setup) return;
+    void import("@/components/bank-account-workspace")
+      .then((module) =>
+        client.prefetchQuery(
+          module.bankWorkspaceOptions(props.book, module.bankWorkspaceParams(setup, {})),
+        ),
+      )
+      .catch(() => undefined);
+  };
+  const preloadSales = () => {
+    if (pathname === `${base}/sales` || !props.setup) return;
+    void import("@/components/commerce/sales-workspace")
+      .then((module) =>
+        client.prefetchQuery(
+          module.salesRegisterOptions(
+            props.book,
+            new URLSearchParams({ status: "all", sort: "newest", page: "1", q: "" }),
+          ),
+        ),
+      )
+      .catch(() => undefined);
+  };
   return (
     <>
       <WorkspaceNavigation label={copy.todo} showLabel={false}>
@@ -54,11 +80,21 @@ export function BookNavigation({
         ) : null}
       </WorkspaceNavigation>
       <WorkspaceNavigation label={copy.company}>
-        <WorkspaceNavLink href={`${base}/accounts`} active={pathname === `${base}/accounts`}>
+        <WorkspaceNavLink
+          href={`${base}/accounts`}
+          active={pathname === `${base}/accounts`}
+          onPointerEnter={preloadAccounts}
+          onFocus={preloadAccounts}
+        >
           <Landmark size={15} strokeWidth={1.5} aria-hidden="true" />
           {copy.accounts}
         </WorkspaceNavLink>
-        <WorkspaceNavLink href={`${base}/sales`} active={pathname === `${base}/sales`}>
+        <WorkspaceNavLink
+          href={`${base}/sales`}
+          active={pathname === `${base}/sales`}
+          onPointerEnter={preloadSales}
+          onFocus={preloadSales}
+        >
           <ReceiptText size={15} strokeWidth={1.5} aria-hidden="true" />
           {copy.sales}
         </WorkspaceNavLink>
@@ -70,14 +106,7 @@ export function BookNavigation({
           <BookOpen size={15} strokeWidth={1.5} aria-hidden="true" />
           {copy.bookkeeping}
         </WorkspaceNavLink>
-        {bookkeeping ? (
-          <WorkspaceSubnavigation>
-            <WorkspaceNavLink href={`${base}/books?view=vouchers`}>
-              {copy.vouchers}
-            </WorkspaceNavLink>
-            <WorkspaceNavLink href={`${base}/books?view=accounts`}>{copy.chart}</WorkspaceNavLink>
-          </WorkspaceSubnavigation>
-        ) : null}
+
         <WorkspaceNavLink href={`${base}/tax`} active={pathname === `${base}/tax`}>
           <Percent size={15} strokeWidth={1.5} aria-hidden="true" />
           {copy.tax}

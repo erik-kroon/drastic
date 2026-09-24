@@ -1,7 +1,9 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, defaultStringifySearch } from "@tanstack/react-router";
+import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Bank from "@open-erp/contracts/bank-workspace";
+import * as Reconciliation from "@open-erp/contracts/reconciliation";
 import { ArrowLeft, ArrowRight, Upload, Landmark } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
@@ -24,10 +26,11 @@ import {
 } from "@open-erp/ui/components/accounting-page";
 import { PageTabs, PageTab } from "@open-erp/ui/components/workflow";
 import { AccountingStatus } from "@/components/accounting-status";
-import { StatementImports } from "@/components/statement-imports";
+import { StatementImports, statementImportsOptions } from "@/components/statement-imports";
 import { BankTransactionMatch } from "@/components/bank-transaction-match";
+import { BankReport } from "@/components/bank-report";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { checkScope } from "@/components/commerce/shared";
 
@@ -43,28 +46,11 @@ export type BankSearch = {
   statement?: string;
   row?: string;
   plan?: string;
+  report?: string;
 };
-export function BankAccountWorkspace({ search }: { search: BankSearch }) {
-  const { book, setup, locale } = useBookWorkspace();
-  const navigate = useNavigate();
-  const sv = locale === "sv";
-  const period = setup.periods.at(-1);
-  const from = search.from ?? period?.startsOn ?? new Date().toISOString().slice(0, 10);
-  const to = search.to ?? period?.endsOn ?? from;
-  const base = `${workspacePath(book)}/accounts`;
-  const change = (next: BankSearch) =>
-    void navigate({ to: base, search: next, resetScroll: false });
-  const href = (next: BankSearch) => `${base}${defaultStringifySearch(next)}`;
-  const tab = search.tab ?? "unmatched";
-  const query = new URLSearchParams({
-    startsOn: from,
-    endsOn: to,
-    view: tab,
-    page: search.page ?? "1",
-    q: search.q ?? "",
-  });
-  if (search.account) query.set("accountId", search.account);
-  const workspace = useQuery({
+
+export function bankWorkspaceOptions(book: typeof Accounting.Book.Type, query: URLSearchParams) {
+  return queryOptions({
     queryKey: [...bookKey(book), "bank-workspace", query.toString()],
     queryFn: async ({ signal }) => {
       const data = await readAccounting(
@@ -77,6 +63,46 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
     },
     retry: false,
   });
+}
+
+export function bankWorkspaceParams(setup: typeof Accounting.BookSetup.Type, search: BankSearch) {
+  const period = setup.periods.at(-1);
+  const from = search.from ?? period?.startsOn ?? new Date().toISOString().slice(0, 10);
+  const to = search.to ?? period?.endsOn ?? from;
+  const query = new URLSearchParams({
+    startsOn: from,
+    endsOn: to,
+    view: search.tab ?? "unmatched",
+    page: search.page ?? "1",
+    q: search.q ?? "",
+  });
+  if (search.account) query.set("accountId", search.account);
+  return query;
+}
+
+export function BankAccountWorkspace({ search }: { search: BankSearch }) {
+  const { book, setup, locale } = useBookWorkspace();
+  const client = useQueryClient();
+  const navigate = useNavigate();
+  const sv = locale === "sv";
+  const period = setup.periods.at(-1);
+  const from = search.from ?? period?.startsOn ?? new Date().toISOString().slice(0, 10);
+  const to = search.to ?? period?.endsOn ?? from;
+  const base = `${workspacePath(book)}/accounts`;
+  const change = (next: BankSearch) =>
+    void navigate({ to: base, search: next, resetScroll: false });
+  const href = (next: BankSearch) => `${base}${defaultStringifySearch(next)}`;
+  const query = bankWorkspaceParams(setup, search);
+  const workspace = useQuery({
+    ...bankWorkspaceOptions(book, query),
+    enabled: search.view !== "imports",
+  });
+  const preloadBank = () => {
+    if (search.view === "imports") void client.prefetchQuery(bankWorkspaceOptions(book, query));
+  };
+  const preloadStatements = () => {
+    if (search.view !== "imports") void client.prefetchInfiniteQuery(statementImportsOptions(book));
+  };
   const data = workspace.isSuccess ? workspace.data : undefined;
   const account = data?.accounts.find((item) => item.id === search.account);
   const money = (value: string | null) =>
@@ -87,7 +113,7 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
     new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(
       new Date(value),
     );
-  const clearRecord = { ...search, statement: undefined, row: undefined, plan: undefined };
+  const clearRecord = { ...search, statement: undefined, row: undefined, plan: undefined, report: undefined };
   return (
     <>
       <WorkspaceHeader
@@ -104,12 +130,16 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
           <PageTab
             active={search.view !== "imports"}
             href={href({ ...clearRecord, view: undefined, record: undefined })}
+            onPointerEnter={preloadBank}
+            onFocus={preloadBank}
           >
             {sv ? "Bankkonton" : "Bank accounts"}
           </PageTab>
           <PageTab
             active={search.view === "imports"}
             href={href({ ...clearRecord, view: "imports", record: undefined })}
+            onPointerEnter={preloadStatements}
+            onFocus={preloadStatements}
           >
             {sv ? "Kontoutdrag" : "Statements"}
           </PageTab>
@@ -174,6 +204,17 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
                 money={money}
                 date={date}
                 bookBase={workspacePath(book)}
+              />
+            ) : null}
+            {account ? (
+              <AccountReport
+                book={book}
+                locale={locale}
+                account={account}
+                from={from}
+                to={to}
+                reportId={search.report}
+                onReport={(report) => change({ ...clearRecord, report })}
               />
             ) : null}
             <BankAdditionalTools sv={sv} base={base} />
@@ -590,15 +631,67 @@ function BankScopeToolbar(props: {
     </>
   );
 }
+function AccountReport(props: {
+  book: typeof Accounting.Book.Type;
+  locale: "sv" | "en";
+  account: typeof Bank.BankWorkspaceAccount.Type;
+  from: string;
+  to: string;
+  reportId?: string;
+  onReport: (id: string | undefined) => void;
+}) {
+  const { book, locale, account, from, to } = props;
+  const sv = locale === "sv";
+  const keys = useRef(new Map<string, string>());
+  const create = useMutation({
+    mutationFn: () => {
+      const path = `${bookPath(book)}/bank-reconciliations`;
+      const input = { accountId: account.id, startsOn: from, endsOn: to };
+      return readAccounting(
+        path,
+        Reconciliation.BankReconciliation,
+        mutationOptions(path, JSON.stringify(input), keys.current),
+      );
+    },
+    onSuccess: (report) => props.onReport(report.id),
+  });
+  return (
+    <Disclosure label={sv ? "Avstämningsrapport" : "Reconciliation report"}>
+      <Box display="grid" gap="lg">
+        <PageCaption>
+          {account.name} · {from}–{to}
+        </PageCaption>
+        <Box>
+          <Button
+            variant="outline"
+            disabled={create.isPending || create.isError}
+            onClick={() => create.mutate()}
+          >
+            {sv ? "Spara rapport för perioden" : "Save report for this period"}
+          </Button>
+        </Box>
+        <AccountingStatus locale={locale} pending={create.isPending} error={create.error} write />
+        {create.isError ? (
+          <Box>
+            <Button variant="outline" onClick={() => create.mutate()}>
+              {sv ? "Försök igen med samma begäran" : "Retry the same request"}
+            </Button>
+          </Box>
+        ) : null}
+        {props.reportId ? (
+          <BankReport book={book} locale={locale} id={props.reportId} />
+        ) : null}
+      </Box>
+    </Disclosure>
+  );
+}
+
 function BankAdditionalTools({ sv, base }: { sv: boolean; base: string }) {
   return (
     <Disclosure
       label={sv ? "Avstämningsrapporter och fler verktyg" : "Reconciliation reports and more tools"}
     >
       <Box display="flex" gap="lg" flexWrap="wrap">
-        <PageAction quiet href={`${base}?view=bank`}>
-          {sv ? "Spara avstämningsrapport" : "Save reconciliation report"}
-        </PageAction>
         <PageAction quiet href={`${base}?view=coverage`}>
           {sv ? "Granska underlagstäckning" : "Review statement coverage"}
         </PageAction>

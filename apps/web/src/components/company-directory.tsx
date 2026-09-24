@@ -174,7 +174,7 @@ const english = {
   search: "Search companies…",
   company: "Company",
   period: "Latest period",
-  review: "To review",
+  review: "Open work",
   checked: "Checked",
   currency: "Currency",
   unavailable: "Unavailable",
@@ -187,7 +187,7 @@ const english = {
   previous: "Previous",
   next: "Next",
   coverage:
-    "Only companies you can access are shown. Review counts cover journal proposals; they do not measure every outstanding task.",
+    "Only companies you can access are shown. Work counts cover journal proposals, invoice drafts and expense reviews; they do not measure every outstanding task.",
 };
 const swedish: typeof english = {
   companies: "Företag",
@@ -196,7 +196,7 @@ const swedish: typeof english = {
   search: "Sök företag…",
   company: "Företag",
   period: "Senaste period",
-  review: "Verifikationer att granska",
+  review: "Väntande arbete",
   checked: "Kontrollerat",
   currency: "Valuta",
   unavailable: "Ej tillgängligt",
@@ -209,5 +209,5 @@ const swedish: typeof english = {
   previous: "Föregående",
   next: "Nästa",
   coverage:
-    "Endast företag du har åtkomst till visas. Antalet att granska omfattar verifikationsförslag, inte allt väntande arbete.",
+    "Endast företag du har åtkomst till visas. Antalet omfattar verifikationsförslag, fakturautkast och utläggsgranskningar, inte allt väntande arbete.",
 };

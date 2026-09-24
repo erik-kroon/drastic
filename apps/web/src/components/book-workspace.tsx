@@ -60,7 +60,15 @@ export function BookWorkspace({
     setScopeBlocked(false);
   }
   const labels = frontendCopy(locale);
-  const navigation = <BookNavigation base={base} pathname={pathname} locale={locale} />;
+  const navigation = (
+    <BookNavigation
+      base={base}
+      pathname={pathname}
+      locale={locale}
+      book={book}
+      setup={setup.data && !scopeBlocked && !scopeUnavailable ? setup.data : undefined}
+    />
+  );
   const account = (
     <WorkspaceAccount
       name={book.name}

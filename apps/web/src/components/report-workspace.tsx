@@ -138,20 +138,18 @@ export function ReportLibrary() {
     </Box>
   );
 }
-export function TrialBalanceWorkspace({
-  recordId,
-  onOpen,
-  accountId,
-  onSelectAccount,
-}: {
+export function TrialBalanceWorkspace(props: {
   recordId?: string;
   onOpen: (id: string) => void;
   accountId?: string;
   onSelectAccount?: (id: string) => void;
+  mode?: "trial" | "ledger";
 }) {
+  const { recordId, onOpen, accountId, onSelectAccount } = props;
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
+  const title = props.mode === "ledger" ? labels.generalLedger : labels.trialBalance;
   const keys = useRef(new Map<string, string>());
   const period = setup.periods.at(-1);
   const client = useQueryClient();
@@ -187,16 +185,23 @@ export function TrialBalanceWorkspace({
         <Box>
           <Button variant="ghost" onClick={() => onOpen("")}>
             <ArrowLeft size={14} />
-            {sv ? "Alla saldobalanser" : "All trial balances"}
+            {sv ? "Sparade rapporter" : "Saved reports"}
           </Button>
         </Box>
-        <TrialBalance book={book} locale={locale} id={recordId} accountId={accountId} onSelectAccount={onSelectAccount} />
+        <TrialBalance
+          book={book}
+          locale={locale}
+          id={recordId}
+          mode={props.mode}
+          accountId={accountId}
+          onSelectAccount={onSelectAccount}
+        />
       </Box>
     );
   return (
     <Box display="grid" gap="xl">
       <RecordHeading
-        title={labels.trialBalance}
+        title={title}
         subtitle={labels.createASavedReportFor}
         action={
           <Button
@@ -206,14 +211,14 @@ export function TrialBalanceWorkspace({
               onOpen("new");
             }}
           >
-            {sv ? "Ny saldobalans" : "New trial balance"}
+            {sv ? "Ny rapport" : "New report"}
           </Button>
         }
       />
       <AccountingStatus locale={locale} pending={saved.isPending} error={saved.error} />
       {saved.isSuccess ? (
         <DataTable
-          title={labels.trialBalance}
+          title={title}
           columns={[
             { id: "period", label: labels.reportPeriod },
             { id: "created", label: sv ? "Sparad" : "Saved" },
@@ -245,7 +250,7 @@ export function TrialBalanceWorkspace({
       ) : null}
       {saved.isSuccess && !saved.data.pages[0]?.items.length ? (
         <PageEmpty
-          title={sv ? "Inga sparade saldobalanser" : "No saved trial balances"}
+          title={sv ? "Inga sparade rapporter" : "No saved reports"}
           detail={labels.createASavedReportFor}
         />
       ) : null}
@@ -267,7 +272,7 @@ export function TrialBalanceWorkspace({
           closeLabel={sv ? "Stäng" : "Close"}
           onClose={() => onOpen("")}
         >
-          <RecordSection title={labels.trialBalance}>
+          <RecordSection title={title}>
             <Box
               as="form"
               display="grid"
@@ -323,7 +328,8 @@ const english = {
   openingBalancesPeriodMovementsAnd:
     "Opening balances, period movements and closing balances by account.",
   generalLedger: "General ledger",
-  currentDebitsCreditsAndBalances: "Current debits, credits and balances in your books.",
+  currentDebitsCreditsAndBalances:
+    "Dated transactions and running balances for each account in a saved period.",
   reconciliationHandoff: "Reconciliation & handoff",
   invoiceRegisterReport: "Invoice register report",
   outstandingInvoicesAndTheirControl: "Outstanding invoices and their control-account comparison.",
@@ -346,7 +352,8 @@ const swedish: typeof english = {
   openingBalancesPeriodMovementsAnd:
     "Ingående saldo, periodens rörelser och utgående saldo per konto.",
   generalLedger: "Huvudbok",
-  currentDebitsCreditsAndBalances: "Aktuella debet-, kredit- och saldobelopp i bokföringen.",
+  currentDebitsCreditsAndBalances:
+    "Daterade transaktioner och löpande saldo per konto i en sparad period.",
   reconciliationHandoff: "Avstämning & överlämning",
   invoiceRegisterReport: "Fakturaregister",
   outstandingInvoicesAndTheirControl: "Utestående fakturor och jämförelse med bokföringen.",

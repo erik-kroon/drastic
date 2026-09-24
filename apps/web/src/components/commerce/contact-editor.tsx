@@ -145,7 +145,7 @@ export function ContactEditor(
             <InputField
               name="externalKey"
               label={
-                sv ? "Kundnummer / referens (valfritt)" : "Customer number / reference (optional)"
+                sv ? "Kontaktnummer / referens (valfritt)" : "Contact number / reference (optional)"
               }
               maxLength={200}
             />

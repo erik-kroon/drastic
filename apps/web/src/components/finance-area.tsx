@@ -5,7 +5,6 @@ import { PageAction, PageContent } from "@open-erp/ui/components/accounting-page
 import { ArrowLeft } from "lucide-react";
 import { PageTabs, PageTab } from "@open-erp/ui/components/workflow";
 import { AccountingStatus } from "@/components/accounting-status";
-import { AccountBalances } from "@/components/account-register";
 import { useBookWorkspace, workspacePath, reviewPath } from "@/lib/book-context";
 import { frontendCopy } from "@/lib/frontend-copy";
 
@@ -25,6 +24,11 @@ const CommerceAllocationReversals = lazy(() =>
 );
 const Invoices = lazy(() =>
   import("@/components/commerce/invoices").then((module) => ({ default: module.Invoices })),
+);
+const SupplierInvoiceDrafts = lazy(() =>
+  import("@/components/commerce/supplier-invoice-drafts").then((module) => ({
+    default: module.SupplierInvoiceDrafts,
+  })),
 );
 const InvoiceDrafts = lazy(() =>
   import("@/components/commerce/invoice-draft-issue-overlay").then((module) => ({
@@ -82,19 +86,14 @@ const InvoiceIssuance = lazy(() =>
     default: module.InvoiceIssuance,
   })),
 );
-const SubledgersPanel = lazy(() =>
-  import("@/components/subledgers/schedules").then((module) => ({
-    default: module.SubledgersPanel,
+const AssetWorkspace = lazy(() =>
+  import("@/components/subledgers/workspace").then((module) => ({
+    default: module.AssetWorkspace,
   })),
 );
 const ExchangeRateReviewsPanel = lazy(() =>
   import("@/components/exchange-rates/panel").then((module) => ({
     default: module.ExchangeRateReviewsPanel,
-  })),
-);
-const SubledgerControlsPanel = lazy(() =>
-  import("@/components/subledger-controls/panel").then((module) => ({
-    default: module.SubledgerControlsPanel,
   })),
 );
 
@@ -125,12 +124,21 @@ export function FinanceArea({
   };
   return (
     <>
-      <WorkspaceHeader title={copy[area]} action={area === "reports" && selected !== "library" ? <PageAction quiet href={base}><ArrowLeft size={14} />{locale === "sv" ? "Alla rapporter" : "All reports"}</PageAction> : undefined} />
+      <WorkspaceHeader
+        title={copy[area]}
+        action={
+          area === "reports" && selected !== "library" ? (
+            <PageAction quiet href={base}>
+              <ArrowLeft size={14} />
+              {locale === "sv" ? "Alla rapporter" : "All reports"}
+            </PageAction>
+          ) : undefined
+        }
+      />
       <PageContent>
         <FinanceNavigation area={area} selected={selected} base={base} locale={locale} />
         <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
           {selected === "documents" ? <DocumentInbox recordId={record} onOpen={onOpen} /> : null}
-          {selected === "ledger" ? <AccountBalances /> : null}
           {selected === "bank" ? <BankingWorkspace recordId={record} onOpen={onOpen} /> : null}
           {selected === "coverage" ? (
             <BankSourceCoveragePanel
@@ -163,23 +171,14 @@ export function FinanceArea({
           {selected === "exchange-rates" ? (
             <ExchangeRateReviewsPanel book={book} locale={locale} />
           ) : null}
-          {selected === "subledgers" ? (
-            <>
-              <SubledgersPanel
-                key={`schedules:${book.entityId}:${book.id}`}
-                open
-                book={book}
-                setup={setup}
-                locale={locale}
-                onPrepared={onPrepared}
-              />
-              <SubledgerControlsPanel
-                key={`controls:${book.entityId}:${book.id}`}
-                book={book}
-                setup={setup}
-                locale={locale}
-              />
-            </>
+          {selected === "subledgers" ? <AssetWorkspace recordId={record} onOpen={onOpen} /> : null}
+          {selected === "supplier-drafts" ? (
+            <SupplierInvoiceDrafts
+              book={book}
+              locale={locale}
+              recordId={recordId}
+              onOpen={onOpen}
+            />
           ) : null}
           {selected === "drafts" ? (
             <InvoiceDrafts book={book} locale={locale} recordId={recordId} onOpen={onOpen} />
@@ -214,8 +213,20 @@ export function FinanceArea({
             />
           ) : null}
           {selected === "library" ? <ReportLibrary /> : null}
-          {selected === "trial" ? (
-            <TrialBalanceWorkspace recordId={record} onOpen={onOpen} accountId={account} onSelectAccount={(id) => void navigate({ to: base, search: { view: selected, record, account: id || undefined }, resetScroll: false })} />
+          {selected === "trial" || selected === "ledger" ? (
+            <TrialBalanceWorkspace
+              mode={selected}
+              recordId={record}
+              onOpen={onOpen}
+              accountId={account}
+              onSelectAccount={(id) =>
+                void navigate({
+                  to: base,
+                  search: { view: selected, record, account: id || undefined },
+                  resetScroll: false,
+                })
+              }
+            />
           ) : null}
           {selected === "register" ? (
             <RegisterReports book={book} locale={locale} recordId={recordId} onOpen={onOpen} />
@@ -245,8 +256,7 @@ function FinanceNavigation(props: {
   base: string;
   locale: "en" | "sv";
 }) {
-  if (props.area === "reports")
-    return null;
+  if (props.area === "reports") return null;
   const tabs = areaTabs(props.area, props.locale);
   if (tabs.length < 2) return null;
   return (
@@ -286,8 +296,9 @@ function areaTabs(
       { key: "parties", label: copy.parties },
     ],
     purchases: [
+      { key: "supplier-drafts", label: sv ? "Fakturautkast" : "Invoice drafts" },
+      { key: "invoices", label: sv ? "Registrerade" : "Registered" },
       { key: "documents", label: sv ? "Dokument" : "Documents" },
-      { key: "invoices", label: sv ? "Leverantörsfakturor" : "Supplier invoices" },
       { key: "expenses", label: copy.expenses },
       { key: "parties", label: copy.parties },
     ],

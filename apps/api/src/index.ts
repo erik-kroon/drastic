@@ -34,6 +34,7 @@ import { RegisterReportHandlers } from "./transport/http/routes/register-reports
 import { VatReturnsHandlers } from "./transport/http/routes/vat-returns";
 import { SieHandlers } from "./transport/http/routes/sie";
 import { InvoiceDraftHandlers } from "./transport/http/routes/invoice-drafts";
+import { SupplierInvoiceDraftHandlers } from "./transport/http/routes/supplier-invoice-drafts";
 import { SubledgerControlsHandlers } from "./transport/http/routes/subledger-controls";
 import { ExchangeRatesHandlers } from "./transport/http/routes/exchange-rates";
 import { InvoiceIssuanceHandlers } from "./transport/http/routes/invoice-issuance";
@@ -87,6 +88,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     VatReturnsHandlers,
     SieHandlers,
     InvoiceDraftHandlers,
+    SupplierInvoiceDraftHandlers,
     SubledgerControlsHandlers,
     ExchangeRatesHandlers,
     InvoiceIssuanceHandlers,

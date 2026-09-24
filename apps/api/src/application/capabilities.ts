@@ -337,6 +337,26 @@ export const capabilities = {
       JSON.stringify(input.input),
     ],
   ),
+  commerce_supplier_invoice_draft_duplicates: bindCapability(
+    Capabilities.commerce_supplier_invoice_draft_duplicates,
+    "supplierInvoiceDraftDuplicates",
+    (input) => [scopeParameter(input.scope), input.id, input.after ?? ""],
+  ),
+  commerce_get_supplier_invoice_draft: bindCapability(
+    Capabilities.commerce_get_supplier_invoice_draft,
+    "getSupplierInvoiceDraft",
+    (input) => [scopeParameter(input.scope), input.id, input.revision ?? ""],
+  ),
+  commerce_list_supplier_invoice_drafts: bindCapability(
+    Capabilities.commerce_list_supplier_invoice_drafts,
+    "listSupplierInvoiceDrafts",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  commerce_supplier_invoice_draft_history: bindCapability(
+    Capabilities.commerce_supplier_invoice_draft_history,
+    "supplierInvoiceDraftHistory",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
   commerce_get_invoice_draft: bindCapability(
     Capabilities.commerce_get_invoice_draft,
     "getInvoiceDraft",

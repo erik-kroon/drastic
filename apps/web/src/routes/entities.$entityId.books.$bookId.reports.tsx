@@ -3,12 +3,21 @@ import * as Schema from "effect/Schema";
 import { FinanceArea } from "@/components/finance-area";
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/reports")({
   validateSearch: Schema.decodeUnknownSync(
-    Schema.Struct({ view: Schema.optional(Schema.String), record: Schema.optional(Schema.String), account: Schema.optional(Schema.String) }),
+    Schema.Struct({
+      view: Schema.optional(Schema.String),
+      record: Schema.optional(Schema.String),
+      account: Schema.optional(Schema.String),
+    }),
   ),
   component: Page,
 });
 function Page() {
   return (
-    <FinanceArea area="reports" view={Route.useSearch().view} record={Route.useSearch().record} account={Route.useSearch().account} />
+    <FinanceArea
+      area="reports"
+      view={Route.useSearch().view}
+      record={Route.useSearch().record}
+      account={Route.useSearch().account}
+    />
   );
 }

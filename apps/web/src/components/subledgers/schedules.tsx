@@ -6,19 +6,20 @@ import * as Subledgers from "@open-erp/contracts/subledgers";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
-import { Heading, Text } from "@open-erp/ui/components/typography";
+import { Text } from "@open-erp/ui/components/typography";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
-import { RecordHeading } from "@open-erp/ui/components/record-layout";
-import { PageEmpty, RecordOpen } from "@open-erp/ui/components/accounting-page";
+import { ArrowLeft } from "lucide-react";
+import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
+import { PageCaption, PageEmpty, RecordOpen } from "@open-erp/ui/components/accounting-page";
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { InputField } from "@open-erp/ui/components/field";
+import { formatMinorAmount } from "@/lib/workspace-api";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { subledgerCopy } from "./copy";
 import { ScheduleForm } from "./schedule-form";
-import { ScheduleEvidence } from "./schedule-evidence";
 
 type Props = {
   book: typeof Accounting.Book.Type;
@@ -26,12 +27,28 @@ type Props = {
   locale: Locale;
   onPrepared: (id: string) => void;
   open?: boolean;
+  recordId?: string;
+  onOpen?: (id: string) => void;
 };
 export function SubledgersPanel(props: Props) {
-  const { book, setup, locale, onPrepared } = props;
+  if (props.open) return <ScheduleWorkspace {...props} />;
+  return (
+    <details id="subledgers" tabIndex={-1}>
+      <summary>{subledgerCopy(props.locale).title}</summary>
+      <ScheduleWorkspace {...props} />
+    </details>
+  );
+}
+function ScheduleWorkspace(props: Props) {
+  const { book, setup, locale } = props;
   const copy = subledgerCopy(locale);
   const client = useQueryClient();
-  const [selected, setSelected] = useState<string | null>(null);
+  const [localRecord, setLocalRecord] = useState<string | null>(null);
+  const selected = props.recordId ?? localRecord;
+  const setSelected = (id: string | null) => {
+    setLocalRecord(id);
+    props.onOpen?.(id ?? "");
+  };
   const [after, setAfter] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -51,91 +68,100 @@ export function SubledgersPanel(props: Props) {
     void client.invalidateQueries({ queryKey: [...bookKey(book), "schedules"] });
     void client.invalidateQueries({ queryKey: [...bookKey(book), "schedule", id] });
   };
-  return (
-    <details open={props.open} id="subledgers" tabIndex={-1}>
-      <summary>{copy.title}</summary>
-      <Box display="grid" gap="2xl" paddingBlock="xl" minWidth="zero">
-        <RecordHeading
-          title={copy.title}
-          action={
-            setup?.blockers.length === 0 ? (
-              <Button onClick={() => setCreating(true)}>{copy.create}</Button>
-            ) : undefined
-          }
-        />
-        {creating && setup ? (
-          <FormDialog
-            title={copy.create}
-            closeLabel={locale === "sv" ? "Stäng" : "Close"}
-            onClose={() => setCreating(false)}
-          >
-            <Box display="grid" gap="lg">
-              <ScheduleForm book={book} setup={setup} locale={locale} onSaved={saved} />
-              <ScheduleEvidence book={book} locale={locale} />
-            </Box>
-          </FormDialog>
-        ) : null}
-        <Box display="flex" flexWrap="wrap" gap="md">
-          <Button
-            size="xl"
-            variant="outline"
-            disabled={schedules.isFetching}
-            onClick={() => {
-              void schedules.refetch();
-            }}
-          >
-            {copy.refresh}
+  if (selected)
+    return (
+      <Box display="grid" gap="xl">
+        <Box>
+          <Button variant="ghost" onClick={() => setSelected(null)}>
+            <ArrowLeft size={14} />
+            {locale === "sv" ? "Alla planer" : "All schedules"}
           </Button>
-          {after ? (
-            <Button size="xl" variant="ghost" onClick={() => setAfter(null)}>
-              {copy.first}
-            </Button>
-          ) : null}
         </Box>
-        <AccountingStatus locale={locale} pending={schedules.isPending} error={schedules.error} />
-        {schedules.data ? (
-          <>
-            {schedules.data.items.length === 0 ? (
-              <PageEmpty title={copy.empty} />
-            ) : (
-              <DataTable
-                title={copy.title}
-                narrow="stack"
-                columns={[
-                  { id: "name", label: copy.name },
-                  { id: "source", label: copy.sourceKey },
-                  { id: "revision", label: copy.revision },
-                  { id: "action", label: copy.load },
-                ]}
-                rows={schedules.data.items.map((schedule) => ({
-                  id: schedule.id,
-                  cells: [
-                    <RecordOpen key="name" onClick={() => setSelected(schedule.id)}>
-                      {schedule.name}
-                    </RecordOpen>,
-                    schedule.sourceKey,
-                    schedule.revision,
-                    <Button
-                      key={schedule.id}
-                      size="xl"
-                      variant="outline"
-                      onClick={() => setSelected(schedule.id)}
-                    >
-                      {copy.load} · {schedule.name}
-                    </Button>,
-                  ],
-                }))}
-              />
-            )}
-            {schedules.data.next ? (
-              <Box>
-                <Button size="xl" variant="outline" onClick={() => setAfter(schedules.data.next)}>
-                  {copy.next}
-                </Button>
-              </Box>
+        <ScheduleDetail key={selected} {...props} id={selected} onSaved={saved} />
+      </Box>
+    );
+  return (
+    <Box display="grid" gap="lg" minWidth="zero">
+      <RecordHeading
+        title={copy.title}
+        action={
+          <Box display="flex" gap="md" alignItems="center">
+            <Button
+              variant="ghost"
+              disabled={schedules.isFetching}
+              onClick={() => void schedules.refetch()}
+            >
+              {copy.refresh}
+            </Button>
+            {setup?.blockers.length === 0 ? (
+              <Button onClick={() => setCreating(true)}>
+                {locale === "sv" ? "Ny plan" : "New schedule"}
+              </Button>
             ) : null}
-          </>
-        ) : null}
+          </Box>
+        }
+      />
+      {creating && setup ? (
+        <FormDialog
+          title={locale === "sv" ? "Ny plan" : "New schedule"}
+          closeLabel={locale === "sv" ? "Stäng" : "Close"}
+          onClose={() => setCreating(false)}
+        >
+          <Box display="grid" gap="lg">
+            <ScheduleForm book={book} setup={setup} locale={locale} onSaved={saved} />
+          </Box>
+        </FormDialog>
+      ) : null}
+      {after ? (
+        <Box>
+          <Button variant="ghost" onClick={() => setAfter(null)}>
+            {copy.first}
+          </Button>
+        </Box>
+      ) : null}
+      <AccountingStatus locale={locale} pending={schedules.isPending} error={schedules.error} />
+      {schedules.data ? (
+        <>
+          {schedules.data.items.length === 0 ? (
+            <PageEmpty
+              title={locale === "sv" ? "Inga sparade planer" : "No saved schedules"}
+              detail={
+                locale === "sv"
+                  ? "Lägg till en tillgång eller periodisering med belopp, konton och bokföringsdatum."
+                  : "Add an asset or deferral with amounts, accounts and posting dates."
+              }
+            />
+          ) : (
+            <DataTable
+              title={copy.title}
+              narrow="stack"
+              columns={[
+                { id: "name", label: copy.name },
+                { id: "kind", label: copy.kind },
+                { id: "revision", label: copy.revision },
+              ]}
+              rows={schedules.data.items.map((schedule) => ({
+                id: schedule.id,
+                cells: [
+                  <RecordOpen key="name" onClick={() => setSelected(schedule.id)}>
+                    {schedule.name}
+                  </RecordOpen>,
+                  schedule.kind === "asset" ? copy.asset : copy.deferral,
+                  schedule.revision,
+                ],
+              }))}
+            />
+          )}
+          {schedules.data.next ? (
+            <Box>
+              <Button size="xl" variant="outline" onClick={() => setAfter(schedules.data.next)}>
+                {copy.next}
+              </Button>
+            </Box>
+          ) : null}
+        </>
+      ) : null}
+      {!props.open ? (
         <Disclosure title={locale === "sv" ? "Öppna med referens" : "Open by reference"}>
           <Box
             as="form"
@@ -161,31 +187,21 @@ export function SubledgersPanel(props: Props) {
             <Text role="status">{invalid ? copy.invalid : ""}</Text>
           </Box>
         </Disclosure>
-        <Disclosure
-          title={locale === "sv" ? "Omfattning och begränsningar" : "Scope and limitations"}
-        >
-          <Text>{copy.warning}</Text>
-          <Text>{copy.unsupported}</Text>
-        </Disclosure>
-        {selected ? (
-          <ScheduleDetail
-            key={selected}
-            book={book}
-            setup={setup}
-            locale={locale}
-            onPrepared={onPrepared}
-            id={selected}
-            onSaved={saved}
-          />
-        ) : null}
-      </Box>
-    </details>
+      ) : null}
+      <Disclosure
+        title={locale === "sv" ? "Omfattning och begränsningar" : "Scope and limitations"}
+      >
+        <Text>{copy.warning}</Text>
+        <Text>{copy.unsupported}</Text>
+      </Disclosure>
+    </Box>
   );
 }
 
 function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => void }) {
   const { book, setup, locale, id } = props;
   const copy = subledgerCopy(locale);
+  const [editing, setEditing] = useState(false);
   const keys = useRef(new Map<string, string>());
   const schedule = useQuery({
     queryKey: [...bookKey(book), "schedule", id],
@@ -243,45 +259,49 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <AccountingStatus locale={locale} pending={schedule.isPending} error={schedule.error} />
-      <Box>
-        <Button
-          size="xl"
-          variant="outline"
-          disabled={schedule.isFetching}
-          onClick={() => {
-            void schedule.refetch();
-          }}
-        >
-          {copy.refresh}
-        </Button>
-      </Box>
+      {schedule.isError ? (
+        <Box>
+          <Button
+            size="xl"
+            variant="outline"
+            disabled={schedule.isFetching}
+            onClick={() => {
+              void schedule.refetch();
+            }}
+          >
+            {copy.refresh}
+          </Button>
+        </Box>
+      ) : null}
       {view ? (
         <>
-          <Heading>{view.current.terms.name}</Heading>
-          <Text>
-            {view.current.scheduleId} · {copy.revision} {view.current.revision} ·{" "}
-            {view.current.currency}
-          </Text>
-          <Text>
-            {copy.digest}: {view.current.digest}
-          </Text>
-          <Text>
-            {copy.recognized}: {view.recognizedMinor}
-          </Text>
-          <Text>
-            {copy.remaining}: {view.remainingMinor}
-          </Text>
-          <Text>{copy.balanceHelp}</Text>
-          <ScheduleBasisNotice basis={view.postingBasis} locale={locale} />
-          <EvidenceInspector
-            book={book}
-            locale={locale}
-            reference={{
-              evidenceId: view.current.terms.evidenceId,
-              sha256: view.current.sourceSha256,
-              locator: view.current.sourceKey,
-            }}
+          <RecordHeading
+            title={view.current.terms.name}
+            subtitle={`${view.current.terms.kind === "asset" ? copy.asset : copy.deferral} · ${copy.revision} ${view.current.revision}`}
+            action={
+              view.revisionAllowed && setup?.blockers.length === 0 ? (
+                <Button onClick={() => setEditing(true)}>
+                  {locale === "sv" ? "Redigera plan" : "Edit schedule"}
+                </Button>
+              ) : undefined
+            }
           />
+          <RecordSummary>
+            <RecordFact label={locale === "sv" ? "Anskaffningsvärde" : "Source cost"}>
+              {formatMinorAmount(view.current.terms.costMinor, view.current.currencyScale, locale)}{" "}
+              {view.current.currency}
+            </RecordFact>
+            <RecordFact label={locale === "sv" ? "Bokfört" : "Recognized"}>
+              {formatMinorAmount(view.recognizedMinor, view.current.currencyScale, locale)}{" "}
+              {view.current.currency}
+            </RecordFact>
+            <RecordFact label={locale === "sv" ? "Återstående" : "Remaining"}>
+              {formatMinorAmount(view.remainingMinor, view.current.currencyScale, locale)}{" "}
+              {view.current.currency}
+            </RecordFact>
+          </RecordSummary>
+          <PageCaption>{view.current.terms.rationale}</PageCaption>
+          <ScheduleBasisNotice basis={view.postingBasis} locale={locale} />
           <DataTable
             title={copy.occurrence}
             narrow="stack"
@@ -289,7 +309,7 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
               { id: "ordinal", label: copy.occurrence },
               { id: "date", label: copy.date },
               { id: "period", label: copy.period },
-              { id: "amount", label: copy.amount, numeric: true },
+              { id: "amount", label: locale === "sv" ? "Belopp" : "Amount", numeric: true },
               { id: "state", label: copy.state },
               { id: "actions", label: copy.review },
             ]}
@@ -298,14 +318,14 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
               cells: [
                 occurrence.ordinal,
                 occurrence.postingDate,
-                occurrence.accountingPeriodId,
-                occurrence.amountMinor,
+                periodName(occurrence.accountingPeriodId, setup, locale),
+                formatMinorAmount(occurrence.amountMinor, view.current.currencyScale, locale),
                 <Box key="state" display="grid" gap="sm">
                   <Text>{stateLabels[occurrence.state]}</Text>
                   <Text>{occurrence.voucherId}</Text>
                   <Text>{occurrence.reversalVoucherId}</Text>
                 </Box>,
-                <Box key="actions" display="grid" gap="sm">
+                <Box key="actions" display="grid" gap="sm" width="fit">
                   {occurrence.state === "unprepared" || occurrence.state === "prepared" ? (
                     <Button
                       size="xl"
@@ -318,7 +338,7 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
                         })
                       }
                     >
-                      {copy.prepare} · {occurrence.ordinal}
+                      {locale === "sv" ? "Förbered förslag" : "Prepare proposal"}
                     </Button>
                   ) : null}
                   {occurrence.changeSetId ? (
@@ -358,6 +378,21 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
               </Box>
             </Box>
           ) : null}
+          <Disclosure title={locale === "sv" ? "Underlag och referenser" : "Source and references"}>
+            <EvidenceInspector
+              book={book}
+              locale={locale}
+              reference={{
+                evidenceId: view.current.terms.evidenceId,
+                sha256: view.current.sourceSha256,
+                locator: view.current.sourceKey,
+              }}
+            />
+            <Text>
+              {view.current.scheduleId} · {view.current.digest}
+            </Text>
+            <Text>{copy.balanceHelp}</Text>
+          </Disclosure>
           <details>
             <summary>{copy.history}</summary>
             <Box display="grid" gap="lg" paddingBlock="lg" minWidth="zero">
@@ -387,7 +422,7 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
                     columns={[
                       { id: "date", label: copy.date },
                       { id: "period", label: copy.period },
-                      { id: "amount", label: copy.amount, numeric: true },
+                      { id: "amount", label: locale === "sv" ? "Belopp" : "Amount", numeric: true },
                     ]}
                     rows={revision.occurrences.map((occurrence) => ({
                       id: String(occurrence.ordinal),
@@ -402,23 +437,26 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
               ))}
             </Box>
           </details>
-          {view.revisionAllowed && setup?.blockers.length === 0 ? (
-            <details>
-              <summary>{copy.revise}</summary>
-              <Box paddingBlock="lg">
-                <ScheduleForm
-                  key={view.current.digest}
-                  book={book}
-                  setup={setup}
-                  locale={locale}
-                  current={view.current}
-                  onSaved={props.onSaved}
-                />
-              </Box>
-            </details>
-          ) : (
-            <Text>{copy.frozen}</Text>
-          )}
+          {editing && view.revisionAllowed && setup ? (
+            <FormDialog
+              title={locale === "sv" ? "Redigera plan" : "Edit schedule"}
+              closeLabel={locale === "sv" ? "Stäng" : "Close"}
+              onClose={() => setEditing(false)}
+            >
+              <ScheduleForm
+                key={view.current.digest}
+                book={book}
+                setup={setup}
+                locale={locale}
+                current={view.current}
+                onSaved={(id) => {
+                  setEditing(false);
+                  props.onSaved(id);
+                }}
+              />
+            </FormDialog>
+          ) : null}
+          {!view.revisionAllowed ? <PageCaption>{copy.frozen}</PageCaption> : null}
         </>
       ) : null}
     </Box>
@@ -454,4 +492,17 @@ function ScheduleBasisNotice({
       ) : null}
     </Box>
   );
+}
+
+function periodName(
+  id: string,
+  setup: typeof Accounting.BookSetup.Type | undefined,
+  locale: Locale,
+) {
+  const period = setup?.periods.find((item) => item.id === id);
+  return period
+    ? `${period.startsOn} – ${period.endsOn}`
+    : locale === "sv"
+      ? "Period ej tillgänglig"
+      : "Period unavailable";
 }

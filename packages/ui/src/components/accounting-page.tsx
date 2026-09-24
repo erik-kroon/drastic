@@ -164,7 +164,9 @@ const styles = stylex.create({
     gap: 6,
     minHeight: 40,
     paddingInline: 12,
-    borderWidth: 0,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: "transparent",
     borderRadius: tokens.radiusMd,
     fontFamily: "inherit",
     fontSize: tokens.fontSizeControl,
@@ -174,6 +176,7 @@ const styles = stylex.create({
     ":focus-visible": { outline: "none", boxShadow: tokens.focusRing },
   },
   selectedChoice: {
+    borderColor: tokens.borderActive,
     backgroundColor: tokens.secondary,
     color: tokens.foreground,
     fontWeight: tokens.fontWeightMedium,

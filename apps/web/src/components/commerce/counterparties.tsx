@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { infiniteQueryOptions, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Commerce from "@open-erp/contracts/commerce";
 import { Plus, ArrowLeft } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
@@ -35,6 +35,24 @@ import {
   type CommerceProps,
 } from "./shared";
 
+export function counterpartyRegisterOptions(book: CommerceProps["book"]) {
+  return infiniteQueryOptions({
+    queryKey: [...commerceKey(book), "counterparty-register"],
+    initialPageParam: "",
+    queryFn: async ({ signal, pageParam }) => {
+      const result = await readAccounting(
+        `${commercePath(book)}/counterparties${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        Commerce.CounterpartyPage,
+        { signal },
+      );
+      result.items.forEach((party) => checkScope(book, party.scope));
+      return result;
+    },
+    getNextPageParam: (last) => last.next ?? undefined,
+    retry: false,
+  });
+}
+
 export function Counterparties(
   props: CommerceProps & {
     recordId?: string;
@@ -51,19 +69,8 @@ export function Counterparties(
   const selected = props.recordId ?? local;
   const select = props.onOpen ?? setLocal;
   const page = useInfiniteQuery({
-    queryKey: [...commerceKey(book), "counterparty-register"],
-    initialPageParam: "",
-    queryFn: async ({ signal, pageParam }) => {
-      const result = await readAccounting(
-        `${commercePath(book)}/counterparties${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
-        Commerce.CounterpartyPage,
-        { signal },
-      );
-      result.items.forEach((party) => checkScope(book, party.scope));
-      return result;
-    },
-    getNextPageParam: (last) => last.next ?? undefined,
-    retry: false,
+    ...counterpartyRegisterOptions(book),
+    enabled: !selected || selected === "new",
   });
   const roles = {
     customer: labels.customer,
@@ -79,7 +86,8 @@ export function Counterparties(
           `${party.displayName} ${party.externalKey}`
             .toLocaleLowerCase(locale)
             .includes(search.toLocaleLowerCase(locale)),
-      ) ?? [];
+      )
+      .toSorted((a, b) => a.displayName.localeCompare(b.displayName, locale)) ?? [];
   if (selected && selected !== "new")
     return (
       <Box display="grid" gap="xl">

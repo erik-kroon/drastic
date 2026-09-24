@@ -17,6 +17,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/accounts
       statement: Schema.optional(Identifier),
       row: Schema.optional(Schema.Union([Schema.String, Schema.Int])),
       plan: Schema.optional(Identifier),
+      report: Schema.optional(Identifier),
     }),
   ),
   component: Page,

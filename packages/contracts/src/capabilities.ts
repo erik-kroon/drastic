@@ -23,6 +23,7 @@ import { RegisterReportCapabilities } from "./register-reports";
 import { VatReturnCapabilities } from "./vat-returns";
 import { SieCapabilities } from "./sie";
 import { InvoiceDraftCapabilities } from "./invoice-drafts";
+import { SupplierInvoiceDraftCapabilities } from "./supplier-invoice-drafts";
 import { SubledgerControlCapabilities } from "./subledger-controls";
 import { ExchangeRateCapabilities } from "./exchange-rates";
 import { InvoiceIssuanceCapabilities } from "./invoice-issuance";
@@ -71,6 +72,7 @@ export const Capabilities = {
   ...VatReturnCapabilities,
   ...SieCapabilities,
   ...InvoiceDraftCapabilities,
+  ...SupplierInvoiceDraftCapabilities,
   ...SubledgerControlCapabilities,
   ...ExchangeRateCapabilities,
   ...InvoiceIssuanceCapabilities,

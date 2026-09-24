@@ -25,7 +25,7 @@ import { LanguagePreference } from "@/components/book-workspace";
 import { readAccounting, type Books } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { formText, FirmForm } from "./form";
-import { FirmPortfolio } from "./portfolio";
+import { FirmPortfolio, type PortfolioFilters } from "./portfolio";
 import { FirmTeam } from "./team";
 
 export function FirmsWorkspace(props: {
@@ -33,6 +33,8 @@ export function FirmsWorkspace(props: {
   locale: Locale;
   firmId?: string;
   tab: "clients" | "team";
+  filters: PortfolioFilters;
+  onFilters: (filters: PortfolioFilters) => void;
   onNavigate: (firmId: string, tab: "clients" | "team") => void;
 }) {
   const { locale } = props;
@@ -87,7 +89,20 @@ export function FirmsWorkspace(props: {
         </Box>
       }
     >
-      <WorkspaceHeader title={ready ? workspace.data.firm.name : sv ? "Byrå" : "Firm"} />
+      <WorkspaceHeader
+        title={ready ? workspace.data.firm.name : sv ? "Byrå" : "Firm"}
+        action={
+          known ? (
+            <FirmPicker
+              firms={firms.data}
+              current={current}
+              locale={locale}
+              onSelect={(firmId) => props.onNavigate(firmId, "clients")}
+              onCreate={() => setCreating(true)}
+            />
+          ) : undefined
+        }
+      />
       <PageContent>
         <AccountingStatus
           locale={locale}
@@ -105,15 +120,7 @@ export function FirmsWorkspace(props: {
             {sv ? "Försök igen" : "Try again"}
           </Button>
         ) : null}
-        {known ? (
-          <FirmPicker
-            firms={firms.data}
-            current={current}
-            locale={locale}
-            onSelect={(firmId) => props.onNavigate(firmId, "clients")}
-            onCreate={() => setCreating(true)}
-          />
-        ) : null}
+
         {known && !current ? (
           <PageEmpty
             title={
@@ -139,7 +146,13 @@ export function FirmsWorkspace(props: {
               <TabsTrigger value="team">Team</TabsTrigger>
             </TabsList>
             <TabsContent value="clients">
-              <FirmPortfolio workspace={workspace.data} books={props.books} locale={locale} />
+              <FirmPortfolio
+                workspace={workspace.data}
+                books={props.books}
+                locale={locale}
+                filters={props.filters}
+                onFilters={props.onFilters}
+              />
             </TabsContent>
             <TabsContent value="team">
               <FirmTeam workspace={workspace.data} locale={locale} />

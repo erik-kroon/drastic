@@ -20,16 +20,24 @@ import { workspacePath } from "@/lib/book-context";
 import type { Books } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 
+export type PortfolioFilters = {
+  q?: string;
+  view?: "all" | "mine" | "due" | "unassigned";
+  page?: number;
+};
+
 export function FirmPortfolio(props: {
   workspace: typeof Firms.Workspace.Type;
   books: typeof Books.Type;
   locale: Locale;
+  filters: PortfolioFilters;
+  onFilters: (filters: PortfolioFilters) => void;
 }) {
   const { workspace, locale } = props;
   const sv = locale === "sv";
-  const [search, setSearch] = useState("");
-  const [view, setView] = useState("all");
-  const [page, setPage] = useState(0);
+  const search = props.filters.q ?? "";
+  const view = props.filters.view ?? "all";
+  const page = props.filters.page ?? 0;
   const [editing, setEditing] = useState<{ client: typeof Firms.Client.Type | null } | null>(null);
   const today = new Intl.DateTimeFormat("sv-SE").format(new Date());
 
@@ -79,16 +87,19 @@ export function FirmPortfolio(props: {
           placeholder={sv ? "Sök klienter…" : "Search clients…"}
           value={search}
           onChange={(event) => {
-            setSearch(event.target.value);
-            setPage(0);
+            props.onFilters({
+              ...props.filters,
+              q: event.target.value || undefined,
+              page: undefined,
+            });
           }}
         />
         <RegisterChoices
           label={sv ? "Visa klienter" : "Client view"}
           value={view}
           onValueChange={(value) => {
-            setView(value ?? "all");
-            setPage(0);
+            if (value === "all" || value === "mine" || value === "due" || value === "unassigned")
+              props.onFilters({ ...props.filters, view: value, page: undefined });
           }}
           options={[
             { value: "all", label: sv ? "Alla mina klienter" : "All accessible clients" },
@@ -182,7 +193,7 @@ export function FirmPortfolio(props: {
           <Button
             variant="outline"
             disabled={currentPage === 0}
-            onClick={() => setPage(currentPage - 1)}
+            onClick={() => props.onFilters({ ...props.filters, page: currentPage - 1 })}
           >
             {sv ? "Föregående" : "Previous"}
           </Button>
@@ -193,7 +204,7 @@ export function FirmPortfolio(props: {
           <Button
             variant="outline"
             disabled={(currentPage + 1) * 10 >= sorted.length}
-            onClick={() => setPage(currentPage + 1)}
+            onClick={() => props.onFilters({ ...props.filters, page: currentPage + 1 })}
           >
             {sv ? "Nästa" : "Next"}
           </Button>

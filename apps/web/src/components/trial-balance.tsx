@@ -14,6 +14,7 @@ import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
+import { GeneralLedger } from "@/components/general-ledger";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
@@ -24,14 +25,12 @@ export function TrialBalance(props: {
   id: string;
   locale: Locale;
   accountId?: string;
+  mode?: "trial" | "ledger";
   onSelectAccount?: (id: string) => void;
 }) {
   const { book, id, locale } = props;
   const copy = accountingCopy(locale);
   const metadata = useQuery(workQueryOptions(book, {}));
-  const scale = metadata.data?.currencyScale;
-  const amount = (value: string) =>
-    scale === undefined ? "—" : formatMinorAmount(value, scale, locale);
   const [localAccount, setLocalAccount] = useState<string | null>(null);
   const accountId = props.onSelectAccount ? props.accountId : localAccount;
   const setAccountId = (value: string | null) => {
@@ -53,6 +52,9 @@ export function TrialBalance(props: {
     },
     retry: false,
   });
+  const scale = report.data?.currencyScale ?? metadata.data?.currencyScale;
+  const amount = (value: string) =>
+    scale === undefined ? "—" : formatMinorAmount(value, scale, locale);
   const lines = useInfiniteQuery({
     queryKey: [...bookKey(book), "report-lines", id],
     initialPageParam: "",
@@ -91,9 +93,9 @@ export function TrialBalance(props: {
           </Button>
         </Box>
       ) : null}
-      {report.data ? (
+      {report.data && !report.isError && !lines.isError ? (
         <>
-          <SnapshotHeader report={report.data} locale={locale} scale={scale} />
+          <SnapshotHeader report={report.data} locale={locale} scale={scale} mode={props.mode} />
           {lines.data ? (
             <>
               <Text role="status">
@@ -145,19 +147,16 @@ export function TrialBalance(props: {
           ) : null}
           <ReportBasis report={report.data} locale={locale} />
           {accountId ? (
-            <RecordSheet
-              title={`${loaded.find((line) => line.accountId === accountId)?.code ?? ""} · ${loaded.find((line) => line.accountId === accountId)?.name ?? ""}`}
-              closeLabel={locale === "sv" ? "Till saldobalansen" : "Back to trial balance"}
+            <AccountReportSheet
+              book={book}
+              report={report.data}
+              line={loaded.find((line) => line.accountId === accountId)}
+              accountId={accountId}
+              locale={locale}
+              mode={props.mode}
+              scale={scale}
               onClose={() => setAccountId(null)}
-            >
-              <AccountExplanation
-                key={accountId}
-                book={book}
-                report={report.data}
-                accountId={accountId}
-                locale={locale}
-              />
-            </RecordSheet>
+            />
           ) : null}
         </>
       ) : null}
@@ -165,14 +164,61 @@ export function TrialBalance(props: {
   );
 }
 
+function AccountReportSheet(props: {
+  book: typeof Accounting.Book.Type;
+  report: typeof Reports.ReportSnapshot.Type;
+  line?: typeof Reports.ReportLine.Type;
+  accountId: string;
+  locale: Locale;
+  mode?: "trial" | "ledger";
+  scale?: number;
+  onClose: () => void;
+}) {
+  const { book, report, accountId, locale } = props;
+  return (
+    <RecordSheet
+      title={
+        props.line
+          ? `${props.line.code} · ${props.line.name}`
+          : locale === "sv"
+            ? "Kontodetaljer"
+            : "Account details"
+      }
+      closeLabel={locale === "sv" ? "Till rapporten" : "Back to report"}
+      onClose={props.onClose}
+    >
+      {props.mode === "ledger" ? (
+        <GeneralLedger
+          key={accountId}
+          book={book}
+          report={report}
+          accountId={accountId}
+          locale={locale}
+          scale={props.scale}
+        />
+      ) : (
+        <AccountExplanation
+          key={accountId}
+          book={book}
+          report={report}
+          accountId={accountId}
+          locale={locale}
+        />
+      )}
+    </RecordSheet>
+  );
+}
+
 function SnapshotHeader({
   report,
   locale,
   scale,
+  mode,
 }: {
   report: typeof Reports.ReportSnapshot.Type;
   locale: Locale;
   scale?: number;
+  mode?: "trial" | "ledger";
 }) {
   const sv = locale === "sv";
   const amount = (value: string) =>
@@ -180,7 +226,15 @@ function SnapshotHeader({
   return (
     <Box display="grid" gap="lg">
       <RecordHeading
-        title={sv ? "Saldobalans" : "Trial balance"}
+        title={
+          mode === "ledger"
+            ? sv
+              ? "Huvudbok"
+              : "General ledger"
+            : sv
+              ? "Saldobalans"
+              : "Trial balance"
+        }
         subtitle={`${report.startsOn} – ${report.endsOn}`}
       />
       <RecordSummary>
@@ -201,26 +255,33 @@ function SnapshotHeader({
           ? "Välj ett konto för att se verifikat och underlag."
           : "Choose an account to see its entries and source records."}
       </PageCaption>
-
     </Box>
   );
 }
 
-function ReportBasis({ report, locale }: { report: typeof Reports.ReportSnapshot.Type; locale: Locale }) {
+function ReportBasis({
+  report,
+  locale,
+}: {
+  report: typeof Reports.ReportSnapshot.Type;
+  locale: Locale;
+}) {
   const sv = locale === "sv";
-  return (      <Disclosure title={sv ? "Rapportunderlag & begränsningar" : "Report basis & limitations"}>
-        <Text>
-          {report.id} · {report.sequence}
-        </Text>
-        <Text>
-          {sv
-            ? "Rapporten fastställer inte att allt underlag är komplett."
-            : "This report does not establish source completeness."}
-        </Text>
-        {report.warnings.map((warning) => (
-          <Text key={warning}>{warning}</Text>
-        ))}
-      </Disclosure>);
+  return (
+    <Disclosure title={sv ? "Rapportunderlag & begränsningar" : "Report basis & limitations"}>
+      <Text>
+        {report.id} · {report.sequence}
+      </Text>
+      <Text>
+        {sv
+          ? "Rapporten fastställer inte att allt underlag är komplett."
+          : "This report does not establish source completeness."}
+      </Text>
+      {report.warnings.map((warning) => (
+        <Text key={warning}>{warning}</Text>
+      ))}
+    </Disclosure>
+  );
 }
 
 function AccountExplanation({
@@ -236,7 +297,7 @@ function AccountExplanation({
 }) {
   const copy = accountingCopy(locale);
   const metadata = useQuery(workQueryOptions(book, {}));
-  const scale = metadata.data?.currencyScale;
+  const scale = report.currencyScale ?? metadata.data?.currencyScale;
   const amount = (value: string) =>
     scale === undefined ? "—" : formatMinorAmount(value, scale, locale);
   const base = `${bookPath(book)}/report-snapshots/${encodeURIComponent(report.id)}/lines/${encodeURIComponent(accountId)}/explanation`;
@@ -331,7 +392,12 @@ function AccountExplanation({
                 entry.part === "opening" ? copy.report_opening_part : copy.report_movement_part,
                 amount(entry.debitMinor),
                 amount(entry.creditMinor),
-                <Link key="voucher" href={`${workspacePath(book)}/books?view=vouchers&record=${encodeURIComponent(entry.voucherId)}`}>{entry.description}</Link>,
+                <Link
+                  key="voucher"
+                  href={`${workspacePath(book)}/books?view=vouchers&record=${encodeURIComponent(entry.voucherId)}&returnReport=${encodeURIComponent(report.id)}&returnAccount=${encodeURIComponent(accountId)}`}
+                >
+                  {entry.description}
+                </Link>,
                 <details key={`${entry.sequence}:${entry.ordinal}`}>
                   <summary>{copy.report_evidence}</summary>
                   <Box display="grid" gap="lg" paddingBlock="md" minWidth="zero">

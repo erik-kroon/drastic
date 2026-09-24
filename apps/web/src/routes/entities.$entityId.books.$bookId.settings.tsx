@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PageContent } from "@open-erp/ui/components/accounting-page";
+import { PageCaption, PageContent } from "@open-erp/ui/components/accounting-page";
 import { RecordSummary, RecordFact, RecordSection } from "@open-erp/ui/components/record-layout";
 import { Box } from "@open-erp/ui/components/box";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
+import { Link } from "@open-erp/ui/components/link";
 import { Text } from "@open-erp/ui/components/typography";
 import { LanguagePreference } from "@/components/book-workspace";
-import { useBookWorkspace } from "@/lib/book-context";
+import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { accountingCopy } from "@/lib/accounting-copy";
 
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/settings")({
@@ -34,10 +35,41 @@ function Settings() {
                 : "Automation"}
           </RecordFact>
         </RecordSummary>
-        <RecordSection title={locale === "sv" ? "Språk" : "Language"}>
-          <Box width="fit">
-            <LanguagePreference locale={locale} />
-          </Box>
+        <Box width="fit">
+          <LanguagePreference locale={locale} />
+        </Box>
+
+        <RecordSection title={copy.journal_periods}>
+          <DataTable
+            title={copy.journal_periods}
+            narrow="stack"
+            columns={[
+              { id: "dates", label: copy.workspace_period },
+              { id: "status", label: "Status" },
+            ]}
+            rows={setup.periods.map((period) => ({
+              id: period.id,
+              cells: [
+                <Link
+                  key="period"
+                  href={`${workspacePath(book)}/closing?record=${encodeURIComponent(period.id)}`}
+                >
+                  {period.startsOn} – {period.endsOn}
+                </Link>,
+                period.locked ? copy.journal_locked : copy.journal_open,
+              ],
+            }))}
+          />
+        </RecordSection>
+        <RecordSection title={copy.journal_accounts}>
+          <PageCaption>
+            {locale === "sv"
+              ? "Sök efter konton och se vilka som är aktiva i kontoplanen."
+              : "Find accounts and check their status in the chart of accounts."}
+          </PageCaption>
+          <Link href={`${workspacePath(book)}/books?view=accounts`}>
+            {locale === "sv" ? "Öppna kontoplanen" : "Open chart of accounts"}
+          </Link>
         </RecordSection>
         <Disclosure
           title={locale === "sv" ? "Profilens begränsningar" : "Workspace profile limitations"}
@@ -46,42 +78,6 @@ function Settings() {
             <Text key={warning}>{warning}</Text>
           ))}
         </Disclosure>
-        <RecordSection title={copy.journal_periods}>
-          <DataTable
-            title={copy.journal_periods}
-            narrow="stack"
-            columns={[
-              { id: "dates", label: copy.workspace_period },
-              { id: "status", label: copy.journal_open },
-            ]}
-            rows={setup.periods.map((period) => ({
-              id: period.id,
-              cells: [
-                `${period.startsOn} – ${period.endsOn}`,
-                period.locked ? copy.journal_locked : copy.journal_open,
-              ],
-            }))}
-          />
-        </RecordSection>
-        <RecordSection title={copy.journal_accounts}>
-          <DataTable
-            title={copy.journal_accounts}
-            narrow="stack"
-            columns={[
-              { id: "code", label: copy.journal_account },
-              { id: "name", label: copy.journal_description },
-              { id: "status", label: copy.journal_active },
-            ]}
-            rows={setup.accounts.map((account) => ({
-              id: account.id,
-              cells: [
-                account.code,
-                account.name,
-                account.active ? copy.journal_active : copy.journal_inactive,
-              ],
-            }))}
-          />
-        </RecordSection>
       </PageContent>
     </Box>
   );

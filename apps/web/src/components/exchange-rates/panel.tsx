@@ -18,7 +18,7 @@ import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { exchangeRateCopy } from "./copy";
 import { RateForm } from "./forms";
-import { ConversionInspector, RateInspector } from "./views";
+import { ConversionInspector, RateInspector, RateUsabilityStatus } from "./views";
 
 type Props = { book: typeof Accounting.Book.Type; locale: Locale };
 export function ExchangeRateReviewsPanel(props: Props) {
@@ -136,9 +136,7 @@ function Panel({ book, locale }: Props) {
     <Box display="grid" gap="xl" minWidth="zero">
       <RecordHeading
         title={labels.title}
-        subtitle={
-          labels.intro
-        }
+        subtitle={labels.intro}
         action={
           book.role === "operator" ? (
             <Button onClick={() => setCreating(true)}>
@@ -151,12 +149,7 @@ function Panel({ book, locale }: Props) {
       <RecordSection title={copy.rates}>
         <AccountingStatus locale={locale} pending={rates.isPending} error={rates.error} />
         {rates.isSuccess && !rates.data.items.length ? (
-          <PageEmpty
-            title={labels.empty}
-            detail={
-              labels.emptyDetail
-            }
-          />
+          <PageEmpty title={labels.empty} detail={labels.emptyDetail} />
         ) : null}
         {rates.isSuccess && rates.data.items.length ? (
           <DataTable
@@ -166,6 +159,7 @@ function Panel({ book, locale }: Props) {
               { id: "date", label: copy.effectiveOn },
               { id: "rate", label: labels.rate, numeric: true },
               { id: "revision", label: copy.revision, numeric: true },
+              { id: "status", label: "Status" },
             ]}
             rows={rates.data.items.map((rate) => ({
               id: rate.observationId,
@@ -176,6 +170,16 @@ function Panel({ book, locale }: Props) {
                 rate.terms.effectiveOn,
                 `${rate.terms.rateNumerator} / ${rate.terms.rateDenominator}`,
                 rate.revision,
+                <RateUsabilityStatus
+                  key="status"
+                  usability={
+                    rates.data.statuses?.find(
+                      (status) => status.observationId === rate.observationId,
+                    )?.usability
+                  }
+                  known={rates.data.statuses !== undefined}
+                  locale={locale}
+                />,
               ],
             }))}
           />
@@ -184,9 +188,7 @@ function Panel({ book, locale }: Props) {
       <RecordSection title={copy.reviews}>
         <AccountingStatus locale={locale} pending={reviews.isPending} error={reviews.error} />
         {reviews.isSuccess && !reviews.data.items.length ? (
-          <PageCaption>
-            {labels.conversionsHelp}
-          </PageCaption>
+          <PageCaption>{labels.conversionsHelp}</PageCaption>
         ) : null}
         {reviews.isSuccess && reviews.data.items.length ? (
           <DataTable
@@ -229,9 +231,7 @@ function Panel({ book, locale }: Props) {
           {copy.refresh}
         </Button>
       </Box>
-      <Disclosure
-        title={labels.scope}
-      >
+      <Disclosure title={labels.scope}>
         <Box display="grid" gap="md">
           <Text>{copy.warning}</Text>
           <Text>{copy.policyHelp}</Text>

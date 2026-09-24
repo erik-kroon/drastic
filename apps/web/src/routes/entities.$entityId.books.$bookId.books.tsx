@@ -17,6 +17,9 @@ import { frontendCopy } from "@/lib/frontend-copy";
 const search = Schema.Struct({
   view: Schema.optional(Schema.Literals(["journal", "vouchers", "accounts"])),
   record: Schema.optional(Schema.String),
+  returnReport: Schema.optional(Schema.String),
+  returnAccount: Schema.optional(Schema.String),
+  returnView: Schema.optional(Schema.Literals(["trial", "ledger"])),
 });
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/books")({
   validateSearch: Schema.decodeUnknownSync(search),
@@ -24,7 +27,8 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/books")(
 });
 function Books() {
   const { book, setup, locale } = useBookWorkspace();
-  const { view = "vouchers", record } = Route.useSearch();
+  const query = Route.useSearch();
+  const { view = "vouchers", record, returnReport, returnAccount } = query;
   const navigate = useNavigate();
   const copy = frontendCopy(locale);
   const base = `${workspacePath(book)}/books`;
@@ -58,9 +62,27 @@ function Books() {
         {record && view === "vouchers" ? (
           <RecordSheet
             title={copy.voucher}
-            closeLabel={copy.returnVouchers}
+            closeLabel={
+              returnReport
+                ? locale === "sv"
+                  ? "Tillbaka till rapporten"
+                  : "Back to report"
+                : copy.returnVouchers
+            }
             onClose={() =>
-              void navigate({ to: base, search: { view: "vouchers" }, resetScroll: false })
+              void navigate(
+                returnReport
+                  ? {
+                      to: `${workspacePath(book)}/reports`,
+                      search: {
+                        view: query.returnView ?? "trial",
+                        record: returnReport,
+                        account: returnAccount,
+                      },
+                      resetScroll: false,
+                    }
+                  : { to: base, search: { view: "vouchers" }, resetScroll: false },
+              )
             }
           >
             <PostedRecord
