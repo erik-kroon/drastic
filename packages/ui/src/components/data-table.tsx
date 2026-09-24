@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { DataGrid } from "@open-erp/ui/components/data-grid";
 
-/** Reporting adapter for preformatted cells; shares the record grid's accessible shell. */
 export function DataTable({
   title,
   columns,

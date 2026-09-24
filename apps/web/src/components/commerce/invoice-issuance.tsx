@@ -1,13 +1,23 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
+import * as ArLegal from "@open-erp/contracts/ar-legal-issue";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import * as Issuance from "@open-erp/contracts/invoice-issuance";
+import * as LegalDelivery from "@open-erp/contracts/legal-delivery";
+import * as LegalInvoicePdf from "@open-erp/contracts/legal-invoice-pdf";
+import * as LegalSalesPolicy from "@open-erp/contracts/legal-sales-policy";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
-import { RecordHeading, RecordSplit, RecordSection } from "@open-erp/ui/components/record-layout";
+import {
+  RecordFact,
+  RecordHeading,
+  RecordSplit,
+  RecordSection,
+  RecordSummary,
+} from "@open-erp/ui/components/record-layout";
 import { PageAction, PageCaption, RecordOpen } from "@open-erp/ui/components/accounting-page";
 import { workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
@@ -75,8 +85,8 @@ function IssueWorkspace(props: IssueWorkspaceProps) {
       ) : null}
       <PageCaption>
         {props.locale === "sv"
-          ? "Endast demoutfärdande är tillgängligt. Ingen juridisk faktura skapas eller skickas."
-          : "Only demo issuance is available. No legal invoice is created or sent."}
+          ? "Demoutfärdande är den enda åtgärden här. Inspektören läser sparad juridisk utfärdande-, PDF- och leveranshistorik men utfärdar, aktiverar, renderar eller skickar inget."
+          : "Demo issuance is the only action here. The inspector reads retained legal issue, PDF and delivery history but does not issue, activate, render or send anything."}
       </PageCaption>
       <Details title={props.locale === "sv" ? "Vad demoutfärdande innebär" : "About demo issuance"}>
         <Text>{copy.boundary}</Text>
@@ -227,9 +237,609 @@ function IssueDraft(props: CommerceProps & { id: string; onOpen: (id: string) =>
           {history.data.count === 0 ? <Text>{copy.empty}</Text> : null}
         </Details>
       ) : null}
+      <LegalInvoiceInspector {...props} draftId={id} draft={draft.data?.record} />
     </Box>
   );
 }
+export function LegalInvoiceInspector(
+  props: CommerceProps & {
+    draftId?: string;
+    draft?: typeof Drafts.InvoiceDraftRevision.Type;
+    issueId?: string;
+  },
+) {
+  const { book, locale } = props;
+  const copy = invoiceIssueCopy(locale);
+  const client = useQueryClient();
+  const [selectedReview, setSelectedReview] = useState("");
+  const policyHistory = useQuery({
+    queryKey: [...commerceKey(book), "ar-legal", "sales-policy-history"],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${commercePath(book)}/legal-sales-policies`,
+        LegalSalesPolicy.LegalSalesPolicyHistory,
+        { signal },
+      );
+      checkScope(book, result.scope);
+      result.items.forEach((policy) => checkScope(book, policy.scope));
+      return result;
+    },
+    staleTime: 0,
+    refetchOnMount: "always",
+    retry: false,
+  });
+  const issueRead = useQuery({
+    queryKey: [...commerceKey(book), "ar-legal", "issue", props.issueId ?? ""],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${commercePath(book)}/ar-legal-issues/${encodeURIComponent(props.issueId ?? "")}`,
+        ArLegal.ArLegalIssueReceipt,
+        { signal },
+      );
+      checkScope(book, result.scope);
+      if (result.id !== props.issueId) throw new Error("Legal issue identity mismatch");
+      return result;
+    },
+    enabled: Boolean(props.issueId),
+    staleTime: 0,
+    refetchOnMount: "always",
+    retry: false,
+  });
+  const draftId = props.draftId ?? issueRead.data?.draftId ?? "";
+  const history = useQuery({
+    queryKey: [...commerceKey(book), "ar-legal", "issue-history", draftId],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${commercePath(book)}/invoice-drafts/${encodeURIComponent(draftId)}/ar-legal-issue-reviews`,
+        ArLegal.ArLegalIssueHistory,
+        { signal },
+      );
+      checkScope(book, result.scope);
+      if (result.draftId !== draftId) throw new Error("Legal issue history draft mismatch");
+      return result;
+    },
+    enabled: Boolean(draftId),
+    staleTime: 0,
+    refetchOnMount: "always",
+    retry: false,
+  });
+  const selectedReviewId = props.issueId
+    ? (issueRead.data?.reviewId ?? "")
+    : selectedReview || history.data?.items.at(-1)?.id || "";
+  const selectedHistory = history.data?.items.find((item) => item.id === selectedReviewId);
+  const selectedIssueId = props.issueId ?? selectedHistory?.issueId ?? "";
+  const review = useQuery({
+    queryKey: [...commerceKey(book), "ar-legal", "issue-review", selectedReviewId],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${commercePath(book)}/ar-legal-issue-reviews/${encodeURIComponent(selectedReviewId)}`,
+        ArLegal.ArLegalIssueView,
+        { signal },
+      );
+      checkScope(book, result.review.scope);
+      if (
+        result.review.id !== selectedReviewId ||
+        result.review.input.draftId !== result.review.draftSnapshot.id ||
+        (draftId && result.review.draftSnapshot.id !== draftId)
+      )
+        throw new Error("Legal issue review identity mismatch");
+      if (result.issue) {
+        checkScope(book, result.issue.scope);
+        if (
+          result.issue.reviewId !== result.review.id ||
+          result.issue.reviewDigest !== result.review.digest
+        )
+          throw new Error("Legal issue review receipt mismatch");
+      }
+      if (result.approval) {
+        checkScope(book, result.approval.scope);
+        if (result.approval.reviewId !== result.review.id)
+          throw new Error("Legal issue approval identity mismatch");
+      }
+      return result;
+    },
+    enabled: Boolean(selectedReviewId),
+    staleTime: 0,
+    refetchOnMount: "always",
+    retry: false,
+  });
+  const issue = issueRead.data ?? review.data?.issue ?? undefined;
+  const draft = props.draft ?? review.data?.review.draftSnapshot ?? issue?.draftSnapshot;
+  const policyId = review.data?.review.policyId ?? issue?.policyId ?? "";
+  const policy = useQuery({
+    queryKey: [...commerceKey(book), "ar-legal", "sales-policy", policyId],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${commercePath(book)}/legal-sales-policies/${encodeURIComponent(policyId)}`,
+        LegalSalesPolicy.LegalSalesPolicy,
+        { signal },
+      );
+      checkScope(book, result.scope);
+      if (result.id !== policyId) throw new Error("Legal sales policy identity mismatch");
+      if (
+        review.data &&
+        (result.digest !== review.data.review.policyDigest ||
+          result.digest !== review.data.review.policySnapshot.digest)
+      )
+        throw new Error("Legal sales policy snapshot mismatch");
+      return result;
+    },
+    enabled: Boolean(policyId),
+    staleTime: 0,
+    refetchOnMount: "always",
+    retry: false,
+  });
+  const accountingProfileId = review.data?.review.input.accountingProfileId ?? "";
+  const accountingProfile = useQuery({
+    queryKey: [...commerceKey(book), "ar-legal", "accounting-profile", accountingProfileId],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${commercePath(book)}/ar-legal-accounting-profiles/${encodeURIComponent(accountingProfileId)}`,
+        ArLegal.ArLegalAccountingProfile,
+        { signal },
+      );
+      checkScope(book, result.scope);
+      if (
+        result.id !== accountingProfileId ||
+        (review.data &&
+          (result.policyId !== review.data.review.policyId ||
+            result.digest !== review.data.review.input.accountingProfileDigest ||
+            result.digest !== review.data.review.accountingProfileSnapshot.digest))
+      )
+        throw new Error("Legal accounting profile identity mismatch");
+      return result;
+    },
+    enabled: Boolean(accountingProfileId),
+    staleTime: 0,
+    refetchOnMount: "always",
+    retry: false,
+  });
+  const pdfHistory = useQuery({
+    queryKey: [...commerceKey(book), "ar-legal", "pdf-history", issue?.id ?? ""],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${commercePath(book)}/ar-legal-issues/${encodeURIComponent(issue?.id ?? "")}/pdfs`,
+        LegalInvoicePdf.LegalInvoicePdfHistory,
+        { signal },
+      );
+      checkScope(book, result.scope);
+      if (result.issueId !== issue?.id) throw new Error("Legal PDF history issue mismatch");
+      return result;
+    },
+    enabled: Boolean(issue?.id),
+    staleTime: 0,
+    refetchOnMount: "always",
+    retry: false,
+  });
+  const captureId = pdfHistory.data?.items[0]?.id ?? "";
+  const pdf = useQuery({
+    queryKey: [...commerceKey(book), "ar-legal", "pdf", captureId],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${commercePath(book)}/legal-invoice-pdfs/${encodeURIComponent(captureId)}`,
+        LegalInvoicePdf.LegalInvoicePdfView,
+        { signal },
+      );
+      checkScope(book, result.capture.scope);
+      if (
+        result.capture.id !== captureId ||
+        result.capture.issueId !== issue?.id ||
+        result.capture.source.issue.id !== issue?.id ||
+        result.capture.source.issue.digest !== issue?.digest
+      )
+        throw new Error("Legal PDF capture identity mismatch");
+      return {
+        ...result,
+        verified: result.artifact
+          ? await verifyLegalPdf(book, result.capture, result.artifact)
+          : null,
+      };
+    },
+    enabled: Boolean(captureId),
+    staleTime: 0,
+    refetchOnMount: "always",
+    retry: false,
+  });
+  const deliveries = useQuery({
+    queryKey: [...commerceKey(book), "ar-legal", "delivery-history", captureId],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${commercePath(book)}/legal-invoice-pdfs/${encodeURIComponent(captureId)}/deliveries`,
+        LegalDelivery.LegalDeliveryHistory,
+        { signal },
+      );
+      checkScope(book, result.scope);
+      if (result.pdfCaptureId !== captureId) throw new Error("Legal delivery history PDF mismatch");
+      result.items.forEach((item) => {
+        checkScope(book, item.request.scope);
+        if (
+          item.request.input.pdfCaptureId !== captureId ||
+          item.request.issueId !== issue?.id ||
+          item.delivered
+        )
+          throw new Error("Legal delivery request identity mismatch");
+        item.approval && checkScope(book, item.approval.scope);
+        item.attempts.forEach(({ attempt, reconciliation }) => {
+          checkScope(book, attempt.scope);
+          if (attempt.requestId !== item.request.id || attempt.delivered)
+            throw new Error("Legal delivery attempt identity mismatch");
+          reconciliation && checkScope(book, reconciliation.scope);
+        });
+      });
+      return result;
+    },
+    enabled: Boolean(captureId),
+    staleTime: 0,
+    refetchOnMount: "always",
+    retry: false,
+  });
+  const queries = [
+    policyHistory,
+    issueRead,
+    history,
+    review,
+    policy,
+    accountingProfile,
+    pdfHistory,
+    pdf,
+    deliveries,
+  ];
+  const error = queries.map((query) => query.error).find(Boolean) ?? null;
+  const totals = review.data?.review.totals ?? issue?.totals;
+  const scale = draft?.content.currencyScale ?? 2;
+  const draftInputBlockers = draft?.blockers.filter(
+    (blocker) =>
+      ![
+        "issuance_not_implemented",
+        "legal_identity_not_verified",
+        "tax_profile_not_activated",
+      ].includes(blocker.code),
+  );
+  const draftBoundaryBlockers = draft?.blockers.filter((blocker) =>
+    [
+      "issuance_not_implemented",
+      "legal_identity_not_verified",
+      "tax_profile_not_activated",
+    ].includes(blocker.code),
+  );
+  const selectedPolicy = policy.data ?? review.data?.review.policySnapshot;
+  const selectedAccountingProfile =
+    accountingProfile.data ?? review.data?.review.accountingProfileSnapshot;
+  return (
+    <Details title={copy.legalHistory}>
+      <Box display="grid" gap="lg" minWidth="zero">
+        <Text>{copy.legalReadOnly}</Text>
+        <Text>{copy.combinedActivation}</Text>
+        <Text>{copy.limitedProfile}</Text>
+        <Box>
+          <Button
+            variant="outline"
+            disabled={queries.some((query) => query.isFetching)}
+            onClick={() => {
+              void client.invalidateQueries({
+                queryKey: [...commerceKey(book), "ar-legal"],
+              });
+            }}
+          >
+            {copy.refresh}
+          </Button>
+        </Box>
+        <AccountingStatus
+          locale={locale}
+          pending={queries.some((query) => query.isFetching)}
+          error={error}
+        />
+        <RecordSection title={copy.policyActivations}>
+          {policyHistory.data?.items.length ? (
+            <DataTable
+              title={copy.policyActivations}
+              narrow="stack"
+              columns={[
+                { id: "policy", label: copy.policyIdentity },
+                { id: "series", label: copy.series },
+                { id: "review", label: copy.policyReview },
+                { id: "limits", label: copy.activationLimits },
+              ]}
+              rows={policyHistory.data.items.map((item) => ({
+                id: item.id,
+                cells: [
+                  `${item.id} · ${item.digest}`,
+                  item.input.series,
+                  `${item.candidate.id} → ${item.review.id}`,
+                  `${copy.issue}: ${String(item.legalInvoiceEnabled)} · ${copy.credit}: ${String(item.creditEnabled)} · ${copy.delivery}: ${String(item.deliveryEnabled)}`,
+                ],
+              }))}
+            />
+          ) : (
+            <Text>{policyHistory.isSuccess ? copy.noPolicy : copy.notAvailable}</Text>
+          )}
+        </RecordSection>
+        {history.isSuccess ? (
+          <RecordSection title={copy.legalReviews}>
+            {history.data.items.length ? (
+              <DataTable
+                title={copy.legalReviews}
+                narrow="stack"
+                columns={[
+                  { id: "review", label: copy.legalReview },
+                  { id: "revision", label: copy.revision },
+                  { id: "created", label: copy.created },
+                  { id: "number", label: copy.legalNumber },
+                  { id: "issue", label: copy.issue },
+                ]}
+                rows={history.data.items.map((item) => ({
+                  id: item.id,
+                  cells: [
+                    <RecordOpen key="open" onClick={() => setSelectedReview(item.id)}>
+                      {item.ordinal} · {item.id}
+                    </RecordOpen>,
+                    item.draftRevision,
+                    new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
+                      new Date(item.createdAt),
+                    ),
+                    item.legalDocumentNumber ?? copy.notIssued,
+                    item.issueId ?? copy.notIssued,
+                  ],
+                }))}
+              />
+            ) : (
+              <Text>{copy.noLegalReview}</Text>
+            )}
+          </RecordSection>
+        ) : null}
+        <RecordSection title={copy.immutableIdentities}>
+          <RecordSummary>
+            <RecordFact label={copy.draftIdentity}>
+              {draft ? `${draft.id} · ${draft.revision} · ${draft.digest}` : copy.notAvailable}
+            </RecordFact>
+            <RecordFact label={copy.legalReview}>
+              {review.data
+                ? `${review.data.review.id} · ${review.data.review.digest}`
+                : copy.notAvailable}
+            </RecordFact>
+            <RecordFact label={copy.issueIdentity}>
+              {issue ? `${issue.id} · ${issue.digest}` : copy.notIssued}
+            </RecordFact>
+            <RecordFact label={copy.approvalIdentity}>
+              {review.data?.approval?.id ?? copy.notAvailable}
+            </RecordFact>
+          </RecordSummary>
+        </RecordSection>
+        <RecordSection title={copy.legalStatesAndTotals}>
+          <RecordSummary>
+            <RecordFact label={copy.issued}>{issue ? copy.yes : copy.no}</RecordFact>
+            <RecordFact label={copy.recognized}>{issue ? copy.yes : copy.no}</RecordFact>
+            <RecordFact label={copy.delivered}>{copy.no}</RecordFact>
+            <RecordFact label={copy.legalNumber}>
+              {issue?.legalDocumentNumber ?? copy.notIssued}
+            </RecordFact>
+            <RecordFact label={copy.net}>
+              {totals
+                ? formatMinorAmount(totals.netMinor, scale, locale)
+                : draft?.totals.netMinor
+                  ? formatMinorAmount(draft.totals.netMinor, scale, locale)
+                  : copy.notAvailable}
+            </RecordFact>
+            <RecordFact label={copy.tax}>
+              {totals
+                ? formatMinorAmount(totals.taxMinor, scale, locale)
+                : draft?.totals.taxMinor
+                  ? formatMinorAmount(draft.totals.taxMinor, scale, locale)
+                  : copy.notAvailable}
+            </RecordFact>
+            <RecordFact label={copy.gross}>
+              {totals
+                ? formatMinorAmount(totals.grossMinor, scale, locale)
+                : draft?.totals.grossMinor
+                  ? formatMinorAmount(draft.totals.grossMinor, scale, locale)
+                  : copy.notAvailable}
+            </RecordFact>
+          </RecordSummary>
+        </RecordSection>
+        <RecordSection title={copy.activationPair}>
+          {selectedPolicy && selectedAccountingProfile ? (
+            <>
+              <RecordSummary>
+                <RecordFact label={copy.legalPolicy}>
+                  {selectedPolicy.id} · {selectedPolicy.digest} · {selectedPolicy.activatedBy}
+                </RecordFact>
+                <RecordFact label={copy.accountingProfile}>
+                  {selectedAccountingProfile.id} · {selectedAccountingProfile.digest} ·{" "}
+                  {selectedAccountingProfile.activatedBy}
+                </RecordFact>
+              </RecordSummary>
+              {selectedPolicy.activatedBy === selectedAccountingProfile.activatedBy ? (
+                <Text role="alert">{copy.sameActivationOperator}</Text>
+              ) : null}
+            </>
+          ) : (
+            <Text>{copy.noActivationPair}</Text>
+          )}
+        </RecordSection>
+        <RecordSection title={copy.legalInputBlockers}>
+          {draftInputBlockers?.map((blocker) => (
+            <Text key={`${blocker.code}:${blocker.lineId ?? ""}`} role="alert">
+              {invoiceDraftBlocker(blocker.code, locale)}
+            </Text>
+          ))}
+          {review.data?.blockers.map((blocker) => (
+            <Text key={blocker} role="alert">
+              {blocker}
+            </Text>
+          ))}
+          {draftBoundaryBlockers?.map((blocker) => (
+            <Text key={blocker.code} tone="muted">
+              {invoiceDraftBlocker(blocker.code, locale)}
+            </Text>
+          ))}
+          {!draftInputBlockers?.length && !review.data?.blockers.length ? (
+            <Text tone="muted">{copy.noReadBlockers}</Text>
+          ) : null}
+        </RecordSection>
+        <RecordSection title={copy.legalArtifacts}>
+          {!issue ? (
+            <Text>{copy.noIssueForArtifacts}</Text>
+          ) : pdfHistory.data?.items.length ? (
+            <>
+              <DataTable
+                title={copy.legalPdfHistory}
+                narrow="stack"
+                columns={[
+                  { id: "capture", label: copy.pdfCapture },
+                  { id: "digest", label: copy.captureDigest },
+                  { id: "artifact", label: copy.sealedArtifact },
+                  { id: "sha", label: copy.sha256 },
+                ]}
+                rows={pdfHistory.data.items.map((item) => ({
+                  id: item.id,
+                  cells: [
+                    item.id,
+                    item.digest,
+                    item.sealed ? copy.yes : copy.no,
+                    item.sha256 ?? "—",
+                  ],
+                }))}
+              />
+              {pdf.data ? (
+                <RecordSummary>
+                  <RecordFact label={copy.pdfCapture}>
+                    {pdf.data.capture.id} · {pdf.data.capture.digest}
+                  </RecordFact>
+                  <RecordFact label={copy.artifactHash}>
+                    {pdf.data.artifact?.sha256 ?? copy.notSealed}
+                  </RecordFact>
+                  <RecordFact label={copy.artifactBytes}>
+                    {pdf.data.artifact?.byteLength ?? copy.notSealed}
+                  </RecordFact>
+                  <RecordFact label={copy.renderer}>
+                    {pdf.data.artifact?.rendererVersion ?? copy.notSealed}
+                  </RecordFact>
+                  <RecordFact label={copy.delivered}>{copy.no}</RecordFact>
+                </RecordSummary>
+              ) : null}
+              {pdf.data?.verified ? (
+                <Box>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const verified = pdf.data?.verified;
+                      if (!verified) return;
+                      const url = URL.createObjectURL(
+                        new Blob([verified.bytes], { type: "application/pdf" }),
+                      );
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.download = verified.filename;
+                      document.body.append(link);
+                      link.click();
+                      link.remove();
+                      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+                    }}
+                  >
+                    {copy.downloadPdf}
+                  </Button>
+                </Box>
+              ) : null}
+              <Text>{pdf.data?.artifact ? copy.pdfVerified : copy.pdfCaptured}</Text>
+            </>
+          ) : (
+            <Text>{pdfHistory.isSuccess ? copy.noPdf : copy.notAvailable}</Text>
+          )}
+        </RecordSection>
+        <RecordSection title={copy.deliveryHistory}>
+          {!captureId ? (
+            <Text>{copy.noPdfForDelivery}</Text>
+          ) : deliveries.data?.items.length ? (
+            deliveries.data.items.map((item) => (
+              <Details key={item.request.id} title={`${copy.deliveryRequest} · ${item.request.id}`}>
+                <RecordSummary>
+                  <RecordFact label={copy.deliveryStatus}>{item.status}</RecordFact>
+                  <RecordFact label={copy.sendAuthorized}>
+                    {item.approval?.sendAuthorized ? copy.yes : copy.no}
+                  </RecordFact>
+                  <RecordFact label={copy.providerPayload}>
+                    {item.approval?.providerPayloadReady ? copy.yes : copy.no}
+                  </RecordFact>
+                  <RecordFact label={copy.delivered}>{copy.no}</RecordFact>
+                </RecordSummary>
+                <Text>
+                  {item.request.input.channel} · {item.request.input.destination}
+                </Text>
+                {item.attempts.length ? (
+                  <DataTable
+                    title={copy.providerAttempts}
+                    narrow="stack"
+                    columns={[
+                      { id: "attempt", label: copy.attempt },
+                      { id: "provider", label: copy.providerRequest },
+                      { id: "status", label: copy.deliveryStatus },
+                      { id: "traffic", label: copy.externalTraffic },
+                      { id: "outcome", label: copy.providerOutcome },
+                      { id: "delivered", label: copy.delivered },
+                    ]}
+                    rows={item.attempts.map(({ attempt, reconciliation }) => ({
+                      id: attempt.id,
+                      cells: [
+                        `${attempt.ordinal} · ${attempt.id}`,
+                        attempt.providerRequestId,
+                        attempt.status,
+                        String(attempt.externalTrafficProven),
+                        reconciliation?.outcome ?? copy.notReconciled,
+                        copy.no,
+                      ],
+                    }))}
+                  />
+                ) : (
+                  <Text>{copy.noProviderAttempts}</Text>
+                )}
+                <Text>{copy.providerNotDelivery}</Text>
+              </Details>
+            ))
+          ) : (
+            <Text>{deliveries.isSuccess ? copy.noDelivery : copy.notAvailable}</Text>
+          )}
+        </RecordSection>
+        {!draftId && !props.issueId ? <Text role="alert">{copy.missingIssueIdentity}</Text> : null}
+        {draft ? <Facts title={copy.draftSnapshot} value={draft} /> : null}
+        {review.data ? <Facts title={copy.reviewSnapshot} value={review.data} /> : null}
+        {issue ? <Facts title={copy.issueSnapshot} value={issue} /> : null}
+      </Box>
+    </Details>
+  );
+}
+
+async function verifyLegalPdf(
+  book: CommerceProps["book"],
+  capture: typeof LegalInvoicePdf.LegalInvoicePdfCapture.Type,
+  artifact: typeof LegalInvoicePdf.LegalInvoicePdfArtifact.Type,
+) {
+  if (
+    artifact.captureId !== capture.id ||
+    artifact.captureDigest !== capture.digest ||
+    artifact.legalInvoice !== true ||
+    artifact.delivered !== false ||
+    artifact.filename !== `${capture.source.issue.legalDocumentNumber}.pdf` ||
+    artifact.byteLength < 1 ||
+    artifact.byteLength > 2_097_152
+  )
+    throw new Error("Legal PDF artifact identity mismatch");
+  const binary = atob(artifact.contentBase64);
+  if (btoa(binary) !== artifact.contentBase64) throw new Error("Noncanonical legal PDF bytes");
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const sha256 = [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+  if (
+    bytes.length !== artifact.byteLength ||
+    sha256 !== artifact.sha256 ||
+    new TextDecoder().decode(bytes.slice(0, 5)) !== "%PDF-"
+  )
+    throw new Error("Legal PDF hash, length or signature mismatch");
+  checkScope(book, capture.source.issue.scope);
+  return { bytes, filename: artifact.filename };
+}
+
 function SyntheticAcknowledgment({ locale }: { locale: CommerceProps["locale"] }) {
   const copy = invoiceIssueCopy(locale);
   return (
@@ -535,7 +1145,9 @@ function IssueContents(
                 id: `${group.id}:${line.lineId}`,
                 cells: [
                   (() => {
-                    const account = setup.data?.accounts.find((entry) => entry.id === line.accountId);
+                    const account = setup.data?.accounts.find(
+                      (entry) => entry.id === line.accountId,
+                    );
                     return account ? `${account.code} · ${account.name}` : line.accountId;
                   })(),
                   formatMinorAmount(line.debitMinor, draft.content.currencyScale, locale),

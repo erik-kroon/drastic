@@ -569,7 +569,6 @@ export function Metric({
   );
 }
 
-/** A consistently aligned drill-down control for report rows. */
 export function ReportLink(props: Omit<ComponentProps<typeof Button>, "styleX" | "variant">) {
   return <Button {...props} variant="ghost" styleX={styles.reportLink} />;
 }

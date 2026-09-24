@@ -40,7 +40,6 @@ const styles = stylex.create({
   },
 });
 
-/** Labeled controls with shared sizing and stable label associations. */
 export function InputField({
   label,
   id,

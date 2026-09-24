@@ -27,7 +27,11 @@ function amount(minor: bigint) {
   return `${minor < 0n ? "-" : ""}${magnitude / 100n}.${String(magnitude % 100n).padStart(2, "0")}`;
 }
 function numericCompare(left: string, right: string) {
-  return BigInt(left) < BigInt(right) ? -1 : BigInt(left) > BigInt(right) ? 1 : 0;
+  const leftNumber = BigInt(left);
+  const rightNumber = BigInt(right);
+  if (leftNumber < rightNumber) return -1;
+  if (leftNumber > rightNumber) return 1;
+  return 0;
 }
 type Capture = typeof Sie.SieCapture.Type;
 type Line = Capture["source"]["lines"][number];

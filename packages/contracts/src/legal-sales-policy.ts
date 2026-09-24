@@ -62,13 +62,15 @@ export const LegalSalesPolicyApi = HttpApiGroup.make("legalSalesPolicies").add(
 );
 export const LegalSalesPolicyCapabilities = {
   commerce_legal_sales_policy_history: {
-    description: "Read complete bounded legal seller policy activation history, with issuance and delivery blocked.",
+    description:
+      "Read complete bounded legal seller policy activation history. Each policy alone remains blocked; legal issue review must also bind a separately activated accounting profile and pass reviewed legal inputs.",
     input: Schema.Struct({ scope: Accounting.Scope }),
     output: LegalSalesPolicyHistory,
     readOnly: true,
   },
   commerce_get_legal_sales_policy: {
-    description: "Read a reviewed seller, numbering and domestic standard-rate policy. Issuance, credit and external delivery remain blocked.",
+    description:
+      "Read a reviewed seller, numbering and domestic standard-rate policy. Policy activation alone does not authorize issue, credit or delivery; issue review also requires a separate accounting profile and passing legal-input checks.",
     input: Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier }),
     output: LegalSalesPolicy,
     readOnly: true,

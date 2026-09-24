@@ -1,10 +1,16 @@
 import { useRef, useState } from "react";
-import { infiniteQueryOptions, useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  infiniteQueryOptions,
+  useInfiniteQuery,
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Crm from "@open-erp/contracts/crm-master";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Schema from "effect/Schema";
-import { Plus, ArrowLeft } from "lucide-react";
+import { Plus, ArrowLeft, Download } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
@@ -30,6 +36,7 @@ import {
   RecordFact,
 } from "@open-erp/ui/components/record-layout";
 import { AccountingStatus } from "@/components/accounting-status";
+import { downloadIntake } from "@/components/source-intake/download";
 import { ContactEditor } from "./contact-editor";
 import { readAccounting } from "@/lib/accounting-api";
 import {
@@ -84,6 +91,24 @@ export function Counterparties(
     ...counterpartyRegisterOptions(book, search, role),
     enabled: !selected || selected === "new",
   });
+  const exportDirectory = useQuery({
+    queryKey: [...commerceKey(book), "crm-directory-export", search, role],
+    queryFn: async ({ signal }) => {
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      if (role) params.set("role", role);
+      const result = await readAccounting(
+        `${commercePath(book)}/directory/export?${params}`,
+        Crm.DirectoryExport,
+        { signal },
+      );
+      checkScope(book, result.scope);
+      result.items.forEach(({ party }) => checkScope(book, party.scope));
+      return result;
+    },
+    enabled: false,
+    retry: false,
+  });
   const roles = {
     customer: labels.customer,
     supplier: labels.supplier,
@@ -118,10 +143,31 @@ export function Counterparties(
         }
         subtitle={labels.yourContactsAndTheirSource}
         action={
-          <Button onClick={() => select("new")}>
-            <Plus size={14} />
-            {labels.newContact}
-          </Button>
+          <Box display="flex" flexWrap="wrap" gap="md">
+            <Button
+              variant="outline"
+              disabled={exportDirectory.isFetching}
+              onClick={() => {
+                void exportDirectory.refetch().then((result) => {
+                  if (result.isSuccess && result.data) {
+                    downloadIntake(
+                      new Blob([JSON.stringify(result.data, null, 2)], {
+                        type: "application/json",
+                      }),
+                      `crm-directory-${book.id}.json`,
+                    );
+                  }
+                });
+              }}
+            >
+              <Download size={14} />
+              {labels.exportDirectory}
+            </Button>
+            <Button onClick={() => select("new")}>
+              <Plus size={14} />
+              {labels.newContact}
+            </Button>
+          </Box>
         }
       />
       <RegisterFilters>
@@ -132,7 +178,9 @@ export function Counterparties(
           maxLength={200}
           onChange={(e) => setDraft(e.target.value)}
         />
-        <Button size="sm" variant="outline" onClick={() => setSearch(draft.trim())}>{sv ? "Sök" : "Search"}</Button>
+        <Button size="sm" variant="outline" onClick={() => setSearch(draft.trim())}>
+          {sv ? "Sök" : "Search"}
+        </Button>
         <RegisterChoices
           label={labels.contactType}
           value={role}
@@ -144,6 +192,11 @@ export function Counterparties(
           ]}
         />
       </RegisterFilters>
+      <AccountingStatus
+        locale={locale}
+        pending={exportDirectory.isFetching}
+        error={exportDirectory.error}
+      />
       <AccountingStatus locale={locale} pending={page.isPending} error={page.error} />
       {page.isSuccess ? (
         <>
@@ -278,11 +331,16 @@ function ContactDetail(props: CommerceProps & { id: string }) {
   );
 }
 
-function Annotations({ book, locale, partyId, partyName }: CommerceProps & { partyId: string; partyName: string }) {
+function Annotations({
+  book,
+  locale,
+  partyId,
+  partyName,
+}: CommerceProps & { partyId: string; partyName: string }) {
   const sv = locale === "sv";
   const client = useQueryClient();
   const requests = useSavedPostingRequests(book);
-  const [key, setKey] = useState(() => crypto.randomUUID());
+  const key = useRef(crypto.randomUUID());
   const evidenceId = useRef<string | null>(null);
   const [open, setOpen] = useState(false);
   const [invalid, setInvalid] = useState(false);
@@ -293,7 +351,11 @@ function Annotations({ book, locale, partyId, partyName }: CommerceProps & { par
       do {
         const params = new URLSearchParams({ search: partyName });
         if (after) params.set("after", after);
-        const result = await readAccounting(`${commercePath(book)}/directory?${params}`, Crm.DirectoryPage, { signal });
+        const result = await readAccounting(
+          `${commercePath(book)}/directory?${params}`,
+          Crm.DirectoryPage,
+          { signal },
+        );
         const entry = result.items.find((item) => item.party.id === partyId);
         if (entry) return entry.annotations;
         after = result.next;
@@ -303,69 +365,192 @@ function Annotations({ book, locale, partyId, partyName }: CommerceProps & { par
     retry: false,
   });
   const save = useMutation({
-    mutationFn: async (input: { kind: "contact" | "alias" | "registry_provenance"; label: string; detail: string }) => {
-      if (!requests.data || requests.isError) throw new Error(sv ? "Behörigheten kunde inte läsas." : "Your access could not be loaded.");
-      const source = evidenceId.current ? null : await sendSavedPostingCommand({
-        book, actorId: requests.data.actorId,
-        command: { operation: "create_evidence", input: {
-          title: input.label, origin: "Directory annotation entered in OpenERP",
-          mediaType: "application/json", content: JSON.stringify(input),
-        } },
-        storageMessage: sv ? "Tillåt lokal lagring för att spara uppgiften." : "Allow local storage to save this detail.",
-      });
+    mutationFn: async (input: {
+      kind: "contact" | "alias" | "registry_provenance";
+      label: string;
+      detail: string;
+    }) => {
+      if (!requests.data || requests.isError)
+        throw new Error(sv ? "Behörigheten kunde inte läsas." : "Your access could not be loaded.");
+      const source = evidenceId.current
+        ? null
+        : await sendSavedPostingCommand({
+            book,
+            actorId: requests.data.actorId,
+            command: {
+              operation: "create_evidence",
+              input: {
+                title: input.label,
+                origin: "Directory annotation entered in OpenERP",
+                mediaType: "application/json",
+                content: JSON.stringify(input),
+              },
+            },
+            storageMessage: sv
+              ? "Tillåt lokal lagring för att spara uppgiften."
+              : "Allow local storage to save this detail.",
+          });
       if (source) {
-        if (source.outcome?.state !== "committed" || !Schema.is(Accounting.Evidence)(source.outcome.result))
-          throw new Error(sv ? "Underlaget är inte bekräftat. Försök igen." : "The source is not confirmed. Retry the save.");
+        if (
+          source.outcome?.state !== "committed" ||
+          !Schema.is(Accounting.Evidence)(source.outcome.result)
+        )
+          throw new Error(
+            sv
+              ? "Underlaget är inte bekräftat. Försök igen."
+              : "The source is not confirmed. Retry the save.",
+          );
         evidenceId.current = source.outcome.result.id;
       }
       if (!evidenceId.current) throw new Error(sv ? "Underlag saknas." : "Evidence is missing.");
       return readAccounting(`${commercePath(book)}/directory/annotations`, Crm.Annotation, {
-        method: "POST", headers: { "Idempotency-Key": key },
-        body: JSON.stringify(Schema.decodeSync(Crm.AddAnnotation)({ ...input, partyId, evidenceId: evidenceId.current })),
+        method: "POST",
+        headers: { "Idempotency-Key": key.current },
+        body: JSON.stringify(
+          Schema.decodeSync(Crm.AddAnnotation)({
+            ...input,
+            partyId,
+            evidenceId: evidenceId.current,
+          }),
+        ),
       });
     },
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: [...commerceKey(book), "crm-directory"] });
-      setKey(crypto.randomUUID());
+      key.current = crypto.randomUUID();
       evidenceId.current = null;
       setOpen(false);
-    }, retry: false,
+    },
+    retry: false,
   });
-  return <RecordSection title={sv ? "Kontakter, alias och ursprung" : "Contacts, aliases & provenance"}>
-    <PageCaption>{sv ? "Anteckningar är operatörens uppgifter med sparat underlag. Registeridentitet är inte verifierad." : "These are operator-supplied notes with retained evidence. Registry identity is not verified."}</PageCaption>
-    <AccountingStatus locale={locale} pending={directory.isPending} error={directory.error} />
-    {directory.data?.map((note) => <Box key={note.id} display="grid" gap="xs">
-      <Text>{note.label} — {note.kind === "contact" ? (sv ? "Kontakt" : "Contact") : note.kind === "alias" ? (sv ? "Alias" : "Alias") : (sv ? "Registeruppgift" : "Registry provenance")}</Text>
-      <Text tone="muted">{note.detail}</Text>
-      <PageCaption>{sv ? "Underlag" : "Evidence"}: {note.evidenceId} · {note.recordedAt}</PageCaption>
-    </Box>)}
-    {directory.isSuccess && !directory.data.length ? <PageCaption>{sv ? "Inga uppgifter tillagda." : "No details added."}</PageCaption> : null}
-    {book.role === "operator" ? <Box><Button variant="outline" onClick={() => setOpen(true)}>{sv ? "Lägg till uppgift" : "Add detail"}</Button></Box> : null}
-    {open ? <FormDialog title={sv ? "Lägg till uppgift" : "Add detail"} size="compact" closeLabel={sv ? "Stäng" : "Close"} onClose={() => setOpen(false)}>
-      <Box as="form" display="grid" gap="lg" onSubmit={(event) => {
-        event.preventDefault();
-        if (save.isPending || save.isSuccess) return;
-        const fields = new FormData(event.currentTarget);
-        const parsed = Schema.decodeUnknownOption(Crm.AddAnnotation)({ partyId, kind: fields.get("kind"), label: fields.get("label"), detail: fields.get("detail"), evidenceId: "pending" });
-        setInvalid(parsed._tag === "None");
-        if (parsed._tag === "Some") save.mutate({ kind: parsed.value.kind, label: parsed.value.label, detail: parsed.value.detail });
-      }}>
-        <Box as="fieldset" disabled={save.isPending || save.isError} display="grid" gap="lg" borderWidth="none" margin="none" padding="none">
-        <ChoiceField name="kind" label={sv ? "Typ" : "Type"} defaultValue="contact" options={[
-          { value: "contact", label: sv ? "Kontakt" : "Contact" },
-          { value: "alias", label: "Alias" },
-          { value: "registry_provenance", label: sv ? "Registeruppgift" : "Registry provenance" },
-        ]} />
-        <InputField name="label" label={sv ? "Rubrik" : "Label"} required maxLength={200} />
-        <TextareaField name="detail" label={sv ? "Detaljer" : "Details"} required maxLength={2000} rows={3} />
+  return (
+    <RecordSection title={sv ? "Kontakter, alias och ursprung" : "Contacts, aliases & provenance"}>
+      <PageCaption>
+        {sv
+          ? "Anteckningar är operatörens uppgifter med sparat underlag. Registeridentitet är inte verifierad."
+          : "These are operator-supplied notes with retained evidence. Registry identity is not verified."}
+      </PageCaption>
+      <AccountingStatus locale={locale} pending={directory.isPending} error={directory.error} />
+      {directory.data?.map((note) => (
+        <Box key={note.id} display="grid" gap="xs">
+          <Text>
+            {note.label} —{" "}
+            {note.kind === "contact"
+              ? sv
+                ? "Kontakt"
+                : "Contact"
+              : note.kind === "alias"
+                ? sv
+                  ? "Alias"
+                  : "Alias"
+                : sv
+                  ? "Registeruppgift"
+                  : "Registry provenance"}
+          </Text>
+          <Text tone="muted">{note.detail}</Text>
+          <PageCaption>
+            {sv ? "Underlag" : "Evidence"}: {note.evidenceId} · {note.recordedAt}
+          </PageCaption>
         </Box>
-        {invalid ? <PageCaption>{sv ? "Kontrollera uppgifterna." : "Check the details."}</PageCaption> : null}
-        <AccountingStatus locale={locale} write pending={save.isPending} error={save.error ?? requests.error} />
-        {save.isError && save.variables ? <Button type="button" variant="outline" onClick={() => save.mutate(save.variables)}>{sv ? "Försök igen" : "Retry save"}</Button> :
-          <Button type="submit" disabled={requests.isPending || requests.isError || save.isPending}>{sv ? "Spara uppgift" : "Save detail"}</Button>}
-      </Box>
-    </FormDialog> : null}
-  </RecordSection>;
+      ))}
+      {directory.isSuccess && !directory.data.length ? (
+        <PageCaption>{sv ? "Inga uppgifter tillagda." : "No details added."}</PageCaption>
+      ) : null}
+      {book.role === "operator" ? (
+        <Box>
+          <Button variant="outline" onClick={() => setOpen(true)}>
+            {sv ? "Lägg till uppgift" : "Add detail"}
+          </Button>
+        </Box>
+      ) : null}
+      {open ? (
+        <FormDialog
+          title={sv ? "Lägg till uppgift" : "Add detail"}
+          size="compact"
+          closeLabel={sv ? "Stäng" : "Close"}
+          onClose={() => setOpen(false)}
+        >
+          <Box
+            as="form"
+            display="grid"
+            gap="lg"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (save.isPending || save.isSuccess) return;
+              const fields = new FormData(event.currentTarget);
+              const parsed = Schema.decodeUnknownOption(Crm.AddAnnotation)({
+                partyId,
+                kind: fields.get("kind"),
+                label: fields.get("label"),
+                detail: fields.get("detail"),
+                evidenceId: "pending",
+              });
+              setInvalid(parsed._tag === "None");
+              if (parsed._tag === "Some")
+                save.mutate({
+                  kind: parsed.value.kind,
+                  label: parsed.value.label,
+                  detail: parsed.value.detail,
+                });
+            }}
+          >
+            <Box
+              as="fieldset"
+              disabled={save.isPending || save.isError}
+              display="grid"
+              gap="lg"
+              borderWidth="none"
+              margin="none"
+              padding="none"
+            >
+              <ChoiceField
+                name="kind"
+                label={sv ? "Typ" : "Type"}
+                defaultValue="contact"
+                options={[
+                  { value: "contact", label: sv ? "Kontakt" : "Contact" },
+                  { value: "alias", label: "Alias" },
+                  {
+                    value: "registry_provenance",
+                    label: sv ? "Registeruppgift" : "Registry provenance",
+                  },
+                ]}
+              />
+              <InputField name="label" label={sv ? "Rubrik" : "Label"} required maxLength={200} />
+              <TextareaField
+                name="detail"
+                label={sv ? "Detaljer" : "Details"}
+                required
+                maxLength={2000}
+                rows={3}
+              />
+            </Box>
+            {invalid ? (
+              <PageCaption>{sv ? "Kontrollera uppgifterna." : "Check the details."}</PageCaption>
+            ) : null}
+            <AccountingStatus
+              locale={locale}
+              write
+              pending={save.isPending}
+              error={save.error ?? requests.error}
+            />
+            {save.isError && save.variables ? (
+              <Button type="button" variant="outline" onClick={() => save.mutate(save.variables)}>
+                {sv ? "Försök igen" : "Retry save"}
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={requests.isPending || requests.isError || save.isPending}
+              >
+                {sv ? "Spara uppgift" : "Save detail"}
+              </Button>
+            )}
+          </Box>
+        </FormDialog>
+      ) : null}
+    </RecordSection>
+  );
 }
 
 const english = {
@@ -376,6 +561,7 @@ const english = {
   customersSuppliers: "Customers & suppliers",
   yourContactsAndTheirSource: "Your contacts and their source records, in one place.",
   newContact: "New contact",
+  exportDirectory: "Export directory",
   searchContacts: "Search contacts",
   searchNameOrReference: "Search name or reference…",
   contactType: "Contact type",
@@ -410,6 +596,7 @@ const swedish: typeof english = {
   customersSuppliers: "Kunder & leverantörer",
   yourContactsAndTheirSource: "Kontaktuppgifter och källunderlag på ett ställe.",
   newContact: "Ny kontakt",
+  exportDirectory: "Exportera katalog",
   searchContacts: "Sök kontakter",
   searchNameOrReference: "Sök namn eller referens…",
   contactType: "Kontakttyp",

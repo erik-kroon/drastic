@@ -28,11 +28,8 @@ export function statementFormat(contentBase64: string) {
   } catch {
     return { fields, headers: [] };
   }
-  if (
-    text.includes("\r\n") &&
-    !text.replaceAll("\r\n", "").includes("\n") &&
-    !text.replaceAll("\r\n", "").includes("\r")
-  )
+  const withoutCrlf = text.replaceAll("\r\n", "");
+  if (text.includes("\r\n") && !withoutCrlf.includes("\n") && !withoutCrlf.includes("\r"))
     fields.lineEnding = "crlf";
   else if (text.includes("\n") && !text.includes("\r")) fields.lineEnding = "lf";
   const lines = text

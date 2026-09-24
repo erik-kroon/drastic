@@ -11,6 +11,7 @@ The status describes a decision's authority, not implementation progress. “Est
 | [0005](0005-open-accounting-and-managed-services.md)     | Accepted product direction      | Open accounting and agent/jurisdiction layers, AGPL-3.0-only, optional managed operations and deferred Rust. |
 | [0006](0006-customer-workspaces.md)                      | Working decision                | One customer application with shared records, task-based navigation and audience-specific starting views.    |
 | [0007](0007-domain-and-jurisdiction-layout.md)           | Accepted repository structure   | Separate accounting models, Swedish calculations, application workflows and runtime/transport adapters.      |
+| [0008](0008-financial-fx-vat-impairment.md) | Adopted working design | Commerce-owned paired FX balances, distinct VAT operations and atomic impairment/schedule effects. |
 
 The separately authored [Swedish VAT profile boundary](0002-swedish-vat-profile-boundary.md) also uses the number 0002 in its filename. Refer to it by title and full filename to distinguish it from the posting ADR. It records a bounded research profile and source limitations; it does not activate statutory support.
 

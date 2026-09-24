@@ -38,12 +38,28 @@ export const DirectoryPage = Schema.Struct({
   items: Schema.Array(DirectoryEntry),
   next: Schema.NullOr(Accounting.Identifier),
 });
+export const DirectoryExport = Schema.Struct({
+  scope: Accounting.Scope,
+  items: Schema.Array(DirectoryEntry),
+  next: Schema.NullOr(Accounting.Identifier),
+});
+
+const DirectoryQuery = Schema.Struct({
+  search: Schema.optional(Schema.String),
+  role: Schema.optional(Schema.Literals(["customer", "supplier", "both"])),
+  after: Schema.optional(Accounting.Identifier),
+});
 
 export const CrmMasterApi = HttpApiGroup.make("crmMaster")
   .add(HttpApiEndpoint.get("crmDirectory", "/v1/entities/:entityId/books/:bookId/commerce/directory", {
     params: Accounting.Scope,
-    query: Schema.Struct({ search: Schema.optional(Schema.String), role: Schema.optional(Schema.Literals(["customer", "supplier", "both"])), after: Schema.optional(Accounting.Identifier) }),
+    query: DirectoryQuery,
     success: DirectoryPage, error: accountingErrors,
+  }))
+  .add(HttpApiEndpoint.get("crmDirectoryExport", "/v1/entities/:entityId/books/:bookId/commerce/directory/export", {
+    params: Accounting.Scope,
+    query: DirectoryQuery,
+    success: DirectoryExport, error: accountingErrors,
   }))
   .add(HttpApiEndpoint.post("crmAddAnnotation", "/v1/entities/:entityId/books/:bookId/commerce/directory/annotations", {
     params: Accounting.Scope, headers: Accounting.IdempotencyHeaders,

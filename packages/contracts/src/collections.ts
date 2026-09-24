@@ -80,6 +80,17 @@ export const CollectionHistory = Schema.Struct({
   disputes: Schema.Array(CollectionDispute),
   events: Schema.Array(CollectionAction),
 });
+export const CollectionHistoryPage = Schema.Struct({
+  scope: Accounting.Scope,
+  customerId: Accounting.Identifier,
+  statements: Schema.Array(CollectionStatement),
+  disputes: Schema.Array(CollectionDispute),
+  events: Schema.Array(CollectionAction),
+  nextCursor: Schema.NullOr(Schema.String.check(Schema.isMaxLength(256))),
+});
+const historyQuery = Schema.Struct({
+  after: Schema.optional(Schema.String.check(Schema.isMaxLength(256))),
+});
 const base = "/v1/entities/:entityId/books/:bookId/commerce/collections";
 const mutation = {
   params: Accounting.Scope,
@@ -112,6 +123,14 @@ export const CollectionsApi = HttpApiGroup.make("collections")
     HttpApiEndpoint.get("collectionHistory", `${base}/customers/:id`, {
       params: Accounting.ChangePath,
       success: CollectionHistory,
+      error: accountingErrors,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get("collectionHistoryPage", `${base}/customers/:id/history`, {
+      params: Accounting.ChangePath,
+      query: historyQuery,
+      success: CollectionHistoryPage,
       error: accountingErrors,
     }),
   );

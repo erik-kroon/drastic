@@ -42,5 +42,14 @@ export const CollectionsHandlers = HttpApiBuilder.group(Api, "collections", (han
           Collections.CollectionHistory,
         ),
       ),
+    )
+    .handle("collectionHistoryPage", ({ params, query: search }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "collectionHistoryPage",
+          [token, scopeParameter(params), params.id, search.after ?? ""],
+          Collections.CollectionHistoryPage,
+        ),
+      ),
     ),
 );

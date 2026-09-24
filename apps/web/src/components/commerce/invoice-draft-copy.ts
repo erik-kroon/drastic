@@ -143,16 +143,16 @@ const sv = {
 } satisfies Record<keyof typeof en, string>;
 const blockers = {
   issuance_not_implemented: {
-    en: "Live invoice issuance is unavailable.",
-    sv: "Riktig fakturering är inte tillgänglig.",
+    en: "This draft does not itself activate legal invoice issuance.",
+    sv: "Utkastet aktiverar inte juridisk fakturering på egen hand.",
   },
   legal_identity_not_verified: {
-    en: "Seller and customer legal identities are not verified.",
-    sv: "Säljarens och kundens juridiska identiteter är inte verifierade.",
+    en: "This draft does not verify seller and customer identities against a legal policy.",
+    sv: "Utkastet verifierar inte säljarens och kundens identiteter mot en juridisk policy.",
   },
   tax_profile_not_activated: {
-    en: "No legally reviewed tax or recognition profile is activated by this draft.",
-    sv: "Utkastet aktiverar ingen rättsligt granskad skatte- eller bokföringsprofil.",
+    en: "This draft does not bind a legal policy to a separately activated accounting profile.",
+    sv: "Utkastet binder inte en juridisk policy till en separat aktiverad bokföringsprofil.",
   },
   seller_identity_fields_missing: {
     en: "Add the seller’s registration number, address and country.",

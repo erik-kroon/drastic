@@ -11,6 +11,7 @@ import {
 import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { IssuedInvoiceDocument } from "./issued-invoice-document";
+import { LegalInvoiceInspector } from "./invoice-issuance";
 import { InvoicePaymentsWorkspace, type InvoicePaymentNavigation } from "./invoice-payments";
 import { invoicePaymentCopy } from "./invoice-payment-copy";
 import { InvoiceRegistration } from "./invoice-registration";
@@ -366,6 +367,13 @@ export function InvoiceDetail(
               locale={locale}
               invoice={invoice.data}
               reviewId={invoice.data.issueOrigin.reviewId}
+            />
+          ) : null}
+          {invoice.data.kind === "legal_customer_invoice_v1" ? (
+            <LegalInvoiceInspector
+              book={book}
+              locale={locale}
+              issueId={invoice.data.legalIssueId}
             />
           ) : null}
           <Facts title={copy.facts} value={invoice.data} />
