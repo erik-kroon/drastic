@@ -8,6 +8,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/history"
     Schema.Struct({
       source: Schema.optional(Identifier),
       preview: Schema.optional(Identifier),
+      plan: Schema.optional(Identifier),
     }),
   ),
   component: Page,

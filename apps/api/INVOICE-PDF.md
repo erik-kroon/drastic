@@ -145,6 +145,100 @@ row detail across a page boundary. Screen-reader validation, provider handoff,
 Worker limits and long-document visual acceptance remain open; the clean sample
 is not release proof.
 
+### Isolated v2 pagination probe (not activated)
+
+The unchanged pinned `openerp-se-invoice-takumi-v1` still splits a line's
+printed description/detail from its amount cells and can add a footer-only
+page. On Takumi 0.11.3, 50 synthetic rows whose descriptions are
+`Tjänst N — bokföringsunderlag bokföringsunderlag ` reproduce **five pages**:
+page 2 has 21 descriptions but only 20 net/VAT notes, page 3 has 17
+descriptions but 18 notes, page 4 contains only payable/terms, and page 5
+only the repeated footer. The illustrative PDF and all five white-background
+images are in `/tmp/open-erp-pdf-pagination/v1-50-two-words.pdf` and
+`v1-50-two-words-page-{1..5}.png` (PDF SHA-256
+`5b80a04614799f2df7b0111f69c015a01ce53039435aba42278e2baad980dfe1`).
+These are local synthetic renderer artifacts, not a captured issue or an
+authenticated Worker run. The existing immutable real-Worker v1 artifact
+remains unchanged.
+
+The isolated `src/application/legal-invoice-pdf-renderer-v2.ts` requires a
+**different** renderer ID, `openerp-se-invoice-takumi-v2`. It replaces the
+fragmented multi-page `<table>` rows with flex-aligned, `break-inside:avoid`
+row blocks and keeps the total and terms in a single break-inside group. The
+same 50-row fixture renders five pages: line/detail/amount counts per page
+are 8/8, 14/14, 14/14, 14/14 and 0/0; page 5 has the complete total and
+terms. A heavier 50-row fixture with 20 repeated description words per line
+rendered 26 pages with all 50 rows and notes, one payable amount and **no
+footer-only page**. A one-line sample rendered on one page. Its illustrative
+PDFs/PNGs and PDFKit-extracted text are in the same temporary directory
+(`v2-50-two-words.pdf`, `v2-50-two-words-page-{1..5}.png`,
+`v2-50-twenty-words.pdf`, `v2-50-twenty-words-page-{1..26}.png`,
+`v2-1.pdf`, `v2-1-page-1.png`). Visual inspection confirms the rows remain
+whole and the total stays with terms. Column captions appear only on the
+first page; continued pages keep the same column positions. Very tall single
+rows, unusual characters, constrained Worker memory and actual issue capture
+still need acceptance evidence.
+
+Repeat the visual probe in a checkout with Bun, Takumi 0.11.3 and macOS
+PDFKit: save this self-contained **synthetic**, renderer-only probe as
+`apps/api/.pdf-pagination-probe.ts`, run `bun apps/api/.pdf-pagination-probe.ts v1 50 2`
+then `bun apps/api/.pdf-pagination-probe.ts v2 50 2`, and delete the temporary
+source afterward. Change the final `2` to `20` for the long stress sample or
+`50` to `1` for the simple sample. The probe itself is **not** a test file or
+an issued invoice:
+
+```ts
+import { writeFileSync } from "node:fs";
+import { renderLegalInvoicePdf } from "./src/application/legal-invoice-pdf-renderer";
+import { renderLegalInvoicePdfV2 } from "./src/application/legal-invoice-pdf-renderer-v2";
+const [version = "v1", countText = "50", wordsText = "2"] = process.argv.slice(2);
+const count = Number(countText), words = Number(wordsText);
+const rendererVersion = `openerp-se-invoice-takumi-${version}`;
+const lines = Array.from({ length: count }, (_, i) => ({
+  id: `line_${i + 1}`,
+  description: `Tjänst ${i + 1} — ${"bokföringsunderlag ".repeat(words)}`,
+  quantity: "1", unitPriceMinor: "10000", baseMinor: "10000",
+  discountMinor: "0", chargeMinor: "0", netMinor: "10000",
+  taxMinor: "2500", grossMinor: "12500",
+  vatTreatment: "se-domestic-standard-25-v1",
+}));
+const seller = { legalName: "Exempel AB", postalAddress: "Gatan 1\n123 45 Stockholm",
+  countryCode: "SE", registrationNumber: "556677-8899",
+  vatRegistrationNumber: "SE556677889901" };
+const totals = { netMinor: String(10000 * count), taxMinor: String(2500 * count),
+  grossMinor: String(12500 * count) };
+const content = { seller: { legalName: seller.legalName,
+  address: seller.postalAddress, taxId: seller.vatRegistrationNumber,
+  registrationId: seller.registrationNumber },
+  customer: { legalName: "Kundbolaget AB", address: "Vägen 2\n123 45 Göteborg",
+    countryCode: "SE", registrationId: "556000-1111" },
+  title: "Konsultarbete", currency: "SEK", currencyScale: 2,
+  dueDate: "2026-10-25", supplyDate: "2026-09-25", paymentTerms: "30 dagar netto",
+  lines: lines.map(x => ({ id: x.id, taxMinor: x.taxMinor,
+    sourceGrossMinor: x.grossMinor, unitPriceMinor: x.unitPriceMinor })) };
+const policy = { id: "policy", digest: "policy-digest",
+  input: { ruleVersion: "se-domestic-standard-25-2023-200-v1" },
+  candidate: { input: { sellerIdentity: seller } } };
+const issue = { policyId: policy.id, policyDigest: policy.digest,
+  policySnapshot: policy, draftSnapshot: { content, totals: { ...totals,
+    sourceTotalMatches: true } }, lines, totals,
+  legalDocumentNumber: "AR-50", issuedOn: "2026-09-25" };
+const capture = { input: { rendererVersion }, source: { issue } };
+const bytes = await (version === "v1" ? renderLegalInvoicePdf(capture as never)
+  : renderLegalInvoicePdfV2(capture as never));
+const name = `/tmp/${version}-${count}-${words}.pdf`;
+writeFileSync(name, bytes); console.log(name, bytes.length);
+```
+
+Render each PDF page to PNG and extract its text with macOS PDFKit using
+`swift` or Preview; compare every page and all 50 row/detail counts before
+accepting a new renderer. No shared contract, migration, call dispatch or
+renderer default has changed in this workstream. Activation needs a forward
+migration that admits v2 *without altering existing v1 captures*, sets the
+sealed descriptor's rendererVersion from the immutable capture, and dispatches
+that version to the correct renderer. Shared API contracts must accept both
+version literals. Existing sealed bytes must never be re-rendered to v2.
+
 ### Live synthetic Worker PDF observation
 
 A fresh disposable PostgreSQL 17 database with the source migrations and a reviewed

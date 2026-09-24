@@ -153,7 +153,8 @@ for (let page = 0; page < 100; page++) {
     if (
       prior.scope?.bookId !== config.bookId ||
       prior.sourceAccountId !== consent.sourceAccountId ||
-      prior.sourceSystem !== "connector-raw:plaid"
+      prior.sourceSystem !== "connector-raw:plaid" ||
+      prior.occurrenceKey !== sourceKey
     )
       fail("Recovered source does not match the configured consent.");
     let original: typeof Intake.SourceOccurrenceView.Type;
@@ -261,8 +262,15 @@ for (let page = 0; page < 100; page++) {
       sourceKey,
     ),
   );
-  if (source.sha256 !== `sha256:${responseHash}` || source.scope?.bookId !== config.bookId)
-    fail("Retained provider page hash or scope does not match; cursor unchanged.");
+  if (
+    source.sha256 !== `sha256:${responseHash}` ||
+    source.scope?.bookId !== config.bookId ||
+    source.sourceAccountId !== consent.sourceAccountId ||
+    source.sourceSystem !== "connector-raw:plaid" ||
+    source.occurrenceKey !== sourceKey ||
+    source.sourceRevision !== responseHash
+  )
+    fail("Retained provider page identity or hash does not match; cursor unchanged.");
   // One batch commits records, source provenance and cursor atomically in PostgreSQL.
   const batch = Schema.decodeUnknownSync(Connector.ConnectorBatch)(
     await accounting(

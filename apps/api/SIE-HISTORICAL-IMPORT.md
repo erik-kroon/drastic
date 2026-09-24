@@ -45,3 +45,24 @@ immutable previews, newest first. Each summary contains its ID, ordinal, encodin
 readiness and creation time. It exposes neither original bytes nor approval authority.
 The company history screen uses these summaries to reopen saved inspections after a reload.
 Parser readiness alone does not establish mapping, reconciliation or posting readiness.
+
+## Customer review and staging
+
+The `/history` company route now offers explicit account mapping, independent signed
+opening/closing controls with source descriptions, and a review rationale through
+TanStack Form. The form accepts source-identified open items and independent account/currency totals;
+unknown payment state and missing detail remain explicit. Adding or clearing an item
+or control draft is required before sealing. It does not claim that missing historical
+detail was reconstructed. Sealing records a reviewed plan,
+and separate controls start, pause, resume and advance its source-staging run. The UI
+continues to distinguish staging from historical-basis selection and approved posting.
+Migration 8300 adds saved plan/run identities to the scoped preview inventory for reload
+recovery. Migration 8310 fixes JSON extraction precedence in compound control identities;
+without it, plan sealing fails before comparing independent balances.
+
+On 2026-09-24 an isolated workerd/PostgreSQL/R2 manual scenario retained and parsed one
+synthetic PC8 source voucher. It rejected a mismatched closing control with InvalidJournal,
+sealed corrected controls, replayed the same plan result, paused/resumed, staged one
+voucher, and replayed its chunk without adding another. Browser inspection recovered the
+plan/run from source inventory and retained the staged status after reload. These checks
+do not prove financial cutover, actual-company migration or complete open-item handling.

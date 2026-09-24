@@ -78,6 +78,8 @@ export const SiePreviewInventory = Schema.Struct({
       encoding: SiePreview.fields.encoding,
       ready: Schema.Boolean,
       createdAt: Schema.String,
+      planId: Schema.NullOr(A.Identifier),
+      runId: Schema.NullOr(A.Identifier),
     }),
   ).check(Schema.isMaxLength(50)),
 });

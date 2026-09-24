@@ -17,6 +17,7 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { DocumentUpload } from "@/components/document-inbox";
 import { statementImportsOptions } from "@/components/statement-imports";
 import { checkScope } from "@/components/commerce/shared";
+import { SiePlanReview, SavedSiePlan } from "./plan";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import {
   bookKey,
@@ -28,7 +29,15 @@ import {
 
 const Encoding = Sie.SiePreview.fields.encoding;
 
-export function HistoricalIntake({ source, preview }: { source?: string; preview?: string }) {
+export function HistoricalIntake({
+  source,
+  preview,
+  plan,
+}: {
+  source?: string;
+  preview?: string;
+  plan?: string;
+}) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const navigate = useNavigate();
@@ -43,7 +52,7 @@ export function HistoricalIntake({ source, preview }: { source?: string; preview
           {sv ? "Till företagsinställningar" : "Back to company setup"}
         </Link>
         {source ? (
-          <SieSource key={source} source={source} preview={preview} />
+          <SieSource key={source} source={source} preview={preview} plan={plan} />
         ) : (
           <>
             <RecordHeading
@@ -100,7 +109,7 @@ export function HistoricalIntake({ source, preview }: { source?: string; preview
   );
 }
 
-function SieSource({ source, preview }: { source: string; preview?: string }) {
+function SieSource({ source, preview, plan }: { source: string; preview?: string; plan?: string }) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const navigate = useNavigate();
@@ -187,7 +196,10 @@ function SieSource({ source, preview }: { source: string; preview?: string }) {
             <Button
               variant={item.id === preview ? "secondary" : "ghost"}
               onClick={() => {
-                void navigate({ to: base, search: { source, preview: item.id } });
+                void navigate({
+                  to: base,
+                  search: { source, preview: item.id, plan: item.planId ?? undefined },
+                });
               }}
             >
               {item.ordinal}. {item.encoding} · {item.createdAt.slice(0, 10)}
@@ -241,42 +253,50 @@ function SieSource({ source, preview }: { source: string; preview?: string }) {
                 : "The original is retained. Inspecting its contents does not post any amounts."
             }
           />
-          <Box
-            as="form"
-            display="grid"
-            gap="lg"
-            onSubmit={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              void form.handleSubmit().catch(() => undefined);
-            }}
-          >
-            <form.Field name="encoding">
-              {(field) => (
-                <SelectField
-                  label={sv ? "Teckenkodning" : "Text encoding"}
-                  name={field.name}
-                  value={field.state.value}
-                  disabled={capture.isPending || isUncertainWriteError(capture.error)}
-                  options={[
-                    { value: "ibm437", label: "PC8 / IBM 437" },
-                    { value: "utf-8", label: "UTF-8" },
-                    { value: "windows-1252", label: "Windows-1252" },
-                  ]}
-                  onValueChange={(value) => {
-                    field.handleChange(Schema.decodeUnknownSync(Encoding)(value));
-                    field.handleBlur();
-                  }}
-                />
-              )}
-            </form.Field>
-            <Box>
-              <Button type="submit" disabled={capture.isPending}>
-                {sv ? "Kontrollera filen" : "Inspect file"}
-              </Button>
+          {previews.data?.items.some((item) => item.runId !== null) ? (
+            <Text>
+              {sv
+                ? "Filkontrollen är låst till den påbörjade körningen."
+                : "The source inspection is frozen for the existing run."}
+            </Text>
+          ) : (
+            <Box
+              as="form"
+              display="grid"
+              gap="lg"
+              onSubmit={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                void form.handleSubmit().catch(() => undefined);
+              }}
+            >
+              <form.Field name="encoding">
+                {(field) => (
+                  <SelectField
+                    label={sv ? "Teckenkodning" : "Text encoding"}
+                    name={field.name}
+                    value={field.state.value}
+                    disabled={capture.isPending || isUncertainWriteError(capture.error)}
+                    options={[
+                      { value: "ibm437", label: "PC8 / IBM 437" },
+                      { value: "utf-8", label: "UTF-8" },
+                      { value: "windows-1252", label: "Windows-1252" },
+                    ]}
+                    onValueChange={(value) => {
+                      field.handleChange(Schema.decodeUnknownSync(Encoding)(value));
+                      field.handleBlur();
+                    }}
+                  />
+                )}
+              </form.Field>
+              <Box>
+                <Button type="submit" disabled={capture.isPending}>
+                  {sv ? "Kontrollera filen" : "Inspect file"}
+                </Button>
+              </Box>
+              <AccountingStatus locale={locale} pending={capture.isPending} error={capture.error} />
             </Box>
-            <AccountingStatus locale={locale} pending={capture.isPending} error={capture.error} />
-          </Box>
+          )}
         </>
       ) : null}
       {preview ? (
@@ -296,38 +316,61 @@ function SieSource({ source, preview }: { source: string; preview?: string }) {
               {sv ? "Läs in kontrollen igen" : "Reload inspection"}
             </Button>
           ) : null}
-          {inspection.data ? (
-            <RecordSection title={sv ? "Filkontroll" : "File inspection"}>
-              <Text>
-                {inspection.data.ready
-                  ? sv
-                    ? "Inga blockerande filfel hittades."
-                    : "No blocking file errors found."
-                  : sv
-                    ? "Åtgärda filfelen innan du fortsätter."
-                    : "Resolve the file errors before continuing."}
-              </Text>
-              <Text>
-                {inspection.data.vouchers.length} {sv ? "verifikationer" : "vouchers"} ·{" "}
-                {inspection.data.controls.length} {sv ? "kontrollsaldon" : "control balances"}
-              </Text>
-              {inspection.data.diagnostics.map((item, index) => (
-                <Text
-                  key={`${item.code}:${index}`}
-                  role={item.severity === "error" ? "alert" : undefined}
-                >
-                  {sv ? "Rad" : "Line"} {item.line}: {item.message}
-                </Text>
-              ))}
-              <Text tone="muted">
-                {sv
-                  ? "Kontomappning, oberoende saldokontroller och val av historik krävs före bokföring."
-                  : "Account mapping, independent balance checks and a historical basis are required before posting."}
-              </Text>
-            </RecordSection>
-          ) : null}
+          {inspection.data ? <InspectionSummary preview={inspection.data} sv={sv} /> : null}
         </>
       ) : null}
+      {plan ? (
+        <SavedSiePlan
+          key={plan}
+          plan={plan}
+          preview={preview}
+          runId={previews.data?.items.find((item) => item.planId === plan)?.runId ?? undefined}
+          onStarted={() => {
+            void previews.refetch();
+          }}
+        />
+      ) : inspection.data && original.data ? (
+        <SiePlanReview
+          key={inspection.data.digest}
+          preview={inspection.data}
+          sourceSystem={original.data.occurrence.sourceSystem}
+          onSealed={(result) => {
+            cache.setQueryData([...bookKey(book), "sie-plan", result.id], result);
+            void previews.refetch();
+            void navigate({ to: base, search: { source, preview, plan: result.id } });
+          }}
+        />
+      ) : null}
     </Box>
+  );
+}
+
+function InspectionSummary({ preview, sv }: { preview: typeof Sie.SiePreview.Type; sv: boolean }) {
+  return (
+    <RecordSection title={sv ? "Filkontroll" : "File inspection"}>
+      <Text>
+        {preview.ready
+          ? sv
+            ? "Inga blockerande filfel hittades."
+            : "No blocking file errors found."
+          : sv
+            ? "Åtgärda filfelen innan du fortsätter."
+            : "Resolve the file errors before continuing."}
+      </Text>
+      <Text>
+        {preview.vouchers.length} {sv ? "verifikationer" : "vouchers"} · {preview.controls.length}{" "}
+        {sv ? "kontrollsaldon" : "control balances"}
+      </Text>
+      {preview.diagnostics.map((item, index) => (
+        <Text key={`${item.code}:${index}`} role={item.severity === "error" ? "alert" : undefined}>
+          {sv ? "Rad" : "Line"} {item.line}: {item.message}
+        </Text>
+      ))}
+      <Text tone="muted">
+        {sv
+          ? "Kontomappning, oberoende saldokontroller och val av historik krävs före bokföring."
+          : "Account mapping, independent balance checks and a historical basis are required before posting."}
+      </Text>
+    </RecordSection>
   );
 }
