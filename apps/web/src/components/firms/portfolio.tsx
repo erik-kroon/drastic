@@ -13,8 +13,9 @@ import {
   RegisterSearch,
   RegisterChoices,
 } from "@open-erp/ui/components/accounting-page";
-import { ClientPeriod } from "./client-period";
+import { ClientPeriod, clientPeriodQueryOptions, latestClientPeriod } from "./client-period";
 import { ClientDialog } from "./client-dialog";
+import { rememberPortfolio } from "./portfolio-return";
 import { attentionQueryOptions } from "@/lib/attention";
 import { workspacePath } from "@/lib/book-context";
 import type { Books } from "@/lib/accounting-api";
@@ -41,12 +42,8 @@ export function FirmPortfolio(props: {
   const [editing, setEditing] = useState<{ client: typeof Firms.Client.Type | null } | null>(null);
   const today = new Intl.DateTimeFormat("sv-SE").format(new Date());
 
-  const filtered = workspace.clients.filter(
-    (client) =>
-      client.book.name.toLocaleLowerCase(locale).includes(search.toLocaleLowerCase(locale)) &&
-      (view !== "mine" || (client.leadAvailable && client.leadId === workspace.actorId)) &&
-      (view !== "due" || isReviewDue(client, today)) &&
-      (view !== "unassigned" || !client.leadAvailable),
+  const filtered = workspace.clients.filter((client) =>
+    matchesPortfolio(client, workspace.actorId, search, view, today, locale),
   );
   const sorted = [...filtered].sort(
     (a, b) =>
@@ -55,9 +52,19 @@ export function FirmPortfolio(props: {
   );
   const currentPage = Math.min(page, Math.max(0, Math.ceil(sorted.length / 10) - 1));
   const visible = sorted.slice(currentPage * 10, (currentPage + 1) * 10);
-  const work = useQueries({
-    queries: visible.map((client) => attentionQueryOptions(client.book, { status: "open" })),
+  const periods = useQueries({
+    queries: visible.map((client) => clientPeriodQueryOptions(client.book)),
   });
+  const work = useQueries({
+    queries: visible.map((client, index) => {
+      const period = periods[index]?.data ? latestClientPeriod(periods[index].data) : undefined;
+      return {
+        ...attentionQueryOptions(client.book, { status: "open", period: period?.id }),
+        enabled: Boolean(period),
+      };
+    }),
+  });
+  const portfolioHref = portfolioPath(workspace.firm.id, search, view, currentPage);
   const canLink =
     workspace.firm.role === "admin" &&
     props.books.some(
@@ -124,16 +131,29 @@ export function FirmPortfolio(props: {
           ]}
           rows={visible.map((client, index) => {
             const tasks = work[index];
+            const period = periods[index]?.data
+              ? latestClientPeriod(periods[index].data)
+              : undefined;
             const lead = workspace.members.find((member) => member.actorId === client.leadId);
             const manage = client.book.role === "operator";
             return {
               id: client.book.id,
               cells: [
                 <Box key="company" display="grid" gap="sm">
-                  <Link href={`${workspacePath(client.book)}/overview`}>{client.book.name}</Link>
+                  <Link
+                    href={`${workspacePath(client.book)}/overview`}
+                    onClick={() => rememberPortfolio(client.book, portfolioHref)}
+                  >
+                    {client.book.name}
+                  </Link>
                   <PageCaption>{client.book.currency}</PageCaption>
                 </Box>,
-                <ClientPeriod key="period" book={client.book} locale={locale} />,
+                <ClientPeriod
+                  key="period"
+                  book={client.book}
+                  locale={locale}
+                  onOpen={() => rememberPortfolio(client.book, portfolioHref)}
+                />,
                 client.leadAvailable ? lead?.name : sv ? "Ingen ansvarig" : "Unassigned",
                 client.nextReviewOn ? (
                   <Box key="date" display="grid" gap="sm">
@@ -145,9 +165,12 @@ export function FirmPortfolio(props: {
                 ) : (
                   "—"
                 ),
-                tasks?.isSuccess ? (
+                period && tasks?.isSuccess ? (
                   <Box key="work" display="grid" gap="sm" alignItems="end">
-                    <Link href={`${workspacePath(client.book)}/work?status=open`}>
+                    <Link
+                      href={`${workspacePath(client.book)}/work?status=open&period=${encodeURIComponent(period.id)}`}
+                      onClick={() => rememberPortfolio(client.book, portfolioHref)}
+                    >
                       {tasks.data.counts.open}
                     </Link>
                     <PageCaption>
@@ -158,11 +181,17 @@ export function FirmPortfolio(props: {
                       }).format(new Date(tasks.data.checkedAt))}
                     </PageCaption>
                   </Box>
-                ) : tasks?.isError ? (
+                ) : periods[index]?.isError || tasks?.isError ? (
                   sv ? (
                     "Ej tillgängligt"
                   ) : (
                     "Unavailable"
+                  )
+                ) : !period && periods[index]?.isSuccess ? (
+                  sv ? (
+                    "Ingen period"
+                  ) : (
+                    "No period"
                   )
                 ) : (
                   "…"
@@ -174,7 +203,13 @@ export function FirmPortfolio(props: {
                     variant="ghost"
                     onClick={() => setEditing({ client })}
                   >
-                    {sv ? "Detaljer" : "Details"}
+                    {client.leadAvailable
+                      ? sv
+                        ? "Lämna över"
+                        : "Hand off"
+                      : sv
+                        ? "Tilldela"
+                        : "Assign"}
                   </Button>
                 ) : client.note ? (
                   <PageCaption key="note">{client.note}</PageCaption>
@@ -224,6 +259,30 @@ export function FirmPortfolio(props: {
 
 function isReviewDue(client: typeof Firms.Client.Type, today: string) {
   return client.nextReviewOn !== null && client.nextReviewOn <= today;
+}
+
+function matchesPortfolio(
+  client: typeof Firms.Client.Type,
+  actorId: string,
+  search: string,
+  view: PortfolioFilters["view"],
+  today: string,
+  locale: Locale,
+) {
+  return (
+    client.book.name.toLocaleLowerCase(locale).includes(search.toLocaleLowerCase(locale)) &&
+    (view !== "mine" || (client.leadAvailable && client.leadId === actorId)) &&
+    (view !== "due" || isReviewDue(client, today)) &&
+    (view !== "unassigned" || !client.leadAvailable)
+  );
+}
+
+function portfolioPath(firmId: string, search: string, view: string, page: number) {
+  const params = new URLSearchParams({ firm: firmId, tab: "clients" });
+  if (search) params.set("q", search);
+  if (view !== "all") params.set("view", view);
+  if (page) params.set("page", String(page));
+  return `/firms?${params}`;
 }
 
 function EmptyPortfolio({ sv, hasClients }: { sv: boolean; hasClients: boolean }) {

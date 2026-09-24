@@ -34,6 +34,10 @@ import { invoicePaymentCopy } from "./invoice-payment-copy";
 export type InvoicePaymentNavigation = {
   planId?: string;
   releaseId?: string;
+  page: number;
+  historyPage: number;
+  onPage: (page: number) => void;
+  onHistoryPage: (page: number) => void;
   onPlan: (id: string | undefined) => void;
   onRelease: (id: string | undefined) => void;
   onBack: () => void;
@@ -46,8 +50,7 @@ type PaymentProps = CommerceProps & {
 export function InvoicePaymentsWorkspace(props: PaymentProps) {
   const { book, locale, invoice, navigation } = props;
   const copy = invoicePaymentCopy(locale);
-  const [page, setPage] = useState(1);
-  const [historyPage, setHistoryPage] = useState(1);
+  const { page, historyPage } = navigation;
   const [selected, setSelected] = useState<typeof Commerce.PaymentReference.Type | null>(null);
   const query = new URLSearchParams({ page: String(page), historyPage: String(historyPage) });
   const payments = useQuery({
@@ -167,7 +170,7 @@ export function InvoicePaymentsWorkspace(props: PaymentProps) {
                   total={payments.data.total}
                   onPage={(next) => {
                     setSelected(null);
-                    setPage(next);
+                    navigation.onPage(next);
                   }}
                 />
               </RecordSection>
@@ -222,7 +225,7 @@ export function InvoicePaymentsWorkspace(props: PaymentProps) {
               {...props}
               page={historyPage}
               total={payments.data.historyTotal}
-              onPage={setHistoryPage}
+              onPage={navigation.onHistoryPage}
             />
           </RecordSection>
         ) : null}

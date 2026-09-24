@@ -27,11 +27,18 @@ import { VatReturnsApi } from "./vat-returns";
 import { SieApi } from "./sie";
 import { InvoiceDraftsApi } from "./invoice-drafts";
 import { SupplierInvoiceDraftsApi } from "./supplier-invoice-drafts";
+import { SupplierAcceptanceApi } from "./supplier-acceptance";
+import { SupplierPaymentBatchesApi } from "./supplier-payment-batches";
 import { SubledgerControlsApi } from "./subledger-controls";
 import { ExchangeRatesApi } from "./exchange-rates";
 import { InvoiceIssuanceApi } from "./invoice-issuance";
 import { InvoiceCancellationsApi } from "./invoice-cancellations";
 import { InvoiceDocumentsApi } from "./invoice-documents";
+import { InvoicePdfApi } from "./invoice-pdf";
+import { InvoicePolicyApi } from "./invoice-policy";
+import { InvoiceDeliveryApi } from "./invoice-delivery";
+import { BankConnectorApi } from "./bank-connector";
+import { SieImportApi } from "./sie-import";
 import { CommerceAllocationReversalsApi } from "./commerce-allocation-reversals";
 import { AccountantReviewApi } from "./accountant-review";
 import { SourceIntakeApi } from "./source-intake";
@@ -153,11 +160,18 @@ export class Api extends HttpApi.make("open-erp")
     SieApi,
     InvoiceDraftsApi,
     SupplierInvoiceDraftsApi,
+    SupplierAcceptanceApi,
+    SupplierPaymentBatchesApi,
     SubledgerControlsApi,
     ExchangeRatesApi,
     InvoiceIssuanceApi,
     InvoiceCancellationsApi,
     InvoiceDocumentsApi,
+    InvoicePdfApi,
+    InvoicePolicyApi,
+    InvoiceDeliveryApi,
+    BankConnectorApi,
+    SieImportApi,
     CommerceAllocationReversalsApi,
     AccountantReviewApi,
     SourceIntakeApi,

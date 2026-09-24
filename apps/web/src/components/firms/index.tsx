@@ -46,24 +46,30 @@ export function FirmsWorkspace(props: {
     retry: false,
     staleTime: 0,
     refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
     gcTime: 0,
   });
   const current = props.firmId ?? firms.data?.[0]?.id;
+  const listed = firms.data?.some((firm) => firm.id === current) ?? false;
   const workspace = useQuery({
     queryKey: ["accounting", "firms", current],
-    enabled: Boolean(current) && firms.isSuccess,
+    enabled: Boolean(current) && listed && firms.isSuccess,
     queryFn: ({ signal }) =>
       readAccounting(`/api/v1/firms/${current}`, Firms.Workspace, { signal }),
     retry: false,
     staleTime: 0,
     refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
     gcTime: 0,
   });
   const known = firms.isSuccess && firms.isFetchedAfterMount;
   const ready =
     known &&
+    listed &&
+    !firms.isFetching &&
     workspace.isSuccess &&
     workspace.isFetchedAfterMount &&
+    !workspace.isFetching &&
     workspace.data.firm.id === current;
   return (
     <Workspace
@@ -103,63 +109,21 @@ export function FirmsWorkspace(props: {
           ) : undefined
         }
       />
-      <PageContent>
-        <AccountingStatus
-          locale={locale}
-          pending={firms.isPending || (known && Boolean(current) && workspace.isPending)}
-          error={firms.error ?? (current ? workspace.error : null)}
-        />
-        {firms.isError || (current && workspace.isError) ? (
-          <Button
-            variant="outline"
-            onClick={() => {
-              void firms.refetch();
-              if (current) void workspace.refetch();
-            }}
-          >
-            {sv ? "Försök igen" : "Try again"}
-          </Button>
-        ) : null}
-
-        {known && !current ? (
-          <PageEmpty
-            title={
-              sv ? "En arbetsplats för byråns klienter" : "A workspace for your firm's clients"
-            }
-            detail={
-              sv
-                ? "Samla klienter, fördela ansvar och planera avstämningar. Skapa en byrå för att börja."
-                : "Bring clients together, assign responsibility and plan reviews. Create a firm to get started."
-            }
-          />
-        ) : null}
-        {ready ? (
-          <Tabs
-            key={current}
-            value={props.tab}
-            onValueChange={(value) =>
-              props.onNavigate(workspace.data.firm.id, value === "team" ? "team" : "clients")
-            }
-          >
-            <TabsList>
-              <TabsTrigger value="clients">{sv ? "Klienter" : "Clients"}</TabsTrigger>
-              <TabsTrigger value="team">Team</TabsTrigger>
-            </TabsList>
-            <TabsContent value="clients">
-              <FirmPortfolio
-                workspace={workspace.data}
-                books={props.books}
-                locale={locale}
-                filters={props.filters}
-                onFilters={props.onFilters}
-              />
-            </TabsContent>
-            <TabsContent value="team">
-              <FirmTeam workspace={workspace.data} locale={locale} />
-            </TabsContent>
-          </Tabs>
-        ) : null}
-      </PageContent>
+      <FirmMain
+        {...props}
+        current={current}
+        known={known}
+        listed={listed}
+        ready={ready}
+        workspace={ready ? workspace.data : undefined}
+        pending={firms.isPending || firms.isFetching || (known && listed && workspace.isFetching)}
+        error={firms.error ?? (current ? workspace.error : null)}
+        canRetry={firms.isError || Boolean(current && workspace.isError)}
+        onRetry={() => {
+          void firms.refetch();
+          if (current) void workspace.refetch();
+        }}
+      />
       {creating ? (
         <CreateFirmDialog
           locale={locale}
@@ -168,6 +132,79 @@ export function FirmsWorkspace(props: {
         />
       ) : null}
     </Workspace>
+  );
+}
+
+function FirmMain(
+  props: Parameters<typeof FirmsWorkspace>[0] & {
+    current?: string;
+    known: boolean;
+    listed: boolean;
+    ready: boolean;
+    workspace?: typeof Firms.Workspace.Type;
+    pending: boolean;
+    error: Error | null;
+    canRetry: boolean;
+    onRetry: () => void;
+  },
+) {
+  const sv = props.locale === "sv";
+  const workspace = props.workspace;
+  return (
+    <PageContent>
+      <AccountingStatus locale={props.locale} pending={props.pending} error={props.error} />
+      {props.canRetry ? (
+        <Button variant="outline" onClick={props.onRetry}>
+          {sv ? "Försök igen" : "Try again"}
+        </Button>
+      ) : null}
+      {props.known && !props.current ? (
+        <PageEmpty
+          title={sv ? "En arbetsplats för byråns klienter" : "A workspace for your firm's clients"}
+          detail={
+            sv
+              ? "Samla klienter, fördela ansvar och planera avstämningar. Skapa en byrå för att börja."
+              : "Bring clients together, assign responsibility and plan reviews. Create a firm to get started."
+          }
+        />
+      ) : null}
+      {props.known && props.current && !props.listed ? (
+        <PageEmpty
+          title={sv ? "Byrån är inte längre tillgänglig" : "Firm no longer available"}
+          detail={
+            sv
+              ? "Du har inte längre åtkomst till den här klientlistan. Välj en annan byrå om du har en."
+              : "You no longer have access to this client portfolio. Choose another firm if one is available."
+          }
+        />
+      ) : null}
+      {props.ready && workspace ? (
+        <Tabs
+          key={props.current}
+          value={props.tab}
+          onValueChange={(value) =>
+            props.onNavigate(workspace.firm.id, value === "team" ? "team" : "clients")
+          }
+        >
+          <TabsList>
+            <TabsTrigger value="clients">{sv ? "Klienter" : "Clients"}</TabsTrigger>
+            <TabsTrigger value="team">Team</TabsTrigger>
+          </TabsList>
+          <TabsContent value="clients">
+            <FirmPortfolio
+              workspace={workspace}
+              books={props.books}
+              locale={props.locale}
+              filters={props.filters}
+              onFilters={props.onFilters}
+            />
+          </TabsContent>
+          <TabsContent value="team">
+            <FirmTeam workspace={workspace} locale={props.locale} />
+          </TabsContent>
+        </Tabs>
+      ) : null}
+    </PageContent>
   );
 }
 

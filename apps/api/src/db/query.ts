@@ -23,11 +23,18 @@ import { preparationJobStopStatements } from "./statements/automation";
 import { sieStatements } from "./statements/sie";
 import { invoiceDraftStatements } from "./statements/invoice-draft";
 import { supplierInvoiceDraftStatements } from "./statements/supplier-invoice-drafts";
+import { supplierAcceptanceStatements } from "./statements/supplier-acceptance";
+import { supplierPaymentBatchStatements } from "./statements/supplier-payment-batches";
 import { subledgerControlStatements } from "./statements/subledger-controls";
 import { exchangeRateStatements } from "./statements/exchange-rates";
 import { invoiceIssuanceStatements } from "./statements/invoice-issuance";
 import { invoiceCancellationStatements } from "./statements/invoice-cancellations";
 import { invoiceDocumentStatements } from "./statements/invoice-documents";
+import { invoicePdfStatements } from "./statements/invoice-pdf";
+import { invoicePolicyStatements } from "./statements/invoice-policy";
+import { invoiceDeliveryStatements } from "./statements/invoice-delivery";
+import { bankConnectorStatements } from "./statements/bank-connector";
+import { sieImportStatements } from "./statements/sie-import";
 import { commerceAllocationReversalStatements } from "./statements/commerce-allocation-reversals";
 import { bankMatchReversalStatements } from "./statements/bank-match-reversals";
 import { bankMatchCandidateStatements } from "./statements/bank-match-candidates";
@@ -138,11 +145,18 @@ const statements = {
   ...sieStatements,
   ...invoiceDraftStatements,
   ...supplierInvoiceDraftStatements,
+  ...supplierAcceptanceStatements,
+  ...supplierPaymentBatchStatements,
   ...subledgerControlStatements,
   ...exchangeRateStatements,
   ...invoiceIssuanceStatements,
   ...invoiceCancellationStatements,
   ...invoiceDocumentStatements,
+  ...invoicePdfStatements,
+  ...invoicePolicyStatements,
+  ...invoiceDeliveryStatements,
+  ...bankConnectorStatements,
+  ...sieImportStatements,
   ...commerceAllocationReversalStatements,
   ...bankMatchReversalStatements,
   ...bankMatchCandidateStatements,

@@ -43,6 +43,8 @@ export const sourceIntakeStatements = {
     sql`select openerp.list_source_occurrences(${parameters[0]}::text,${parameters[1]}::jsonb,NULLIF(${parameters[2]}::text,'')) as result`,
   getSourceOccurrence: (parameters) =>
     sql`select openerp.get_source_occurrence(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+  getSourcePurchaseLinks: (parameters) =>
+    sql`select openerp.get_source_purchase_links(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
   previewSourceCsv: (parameters) =>
     sql`select openerp.preview_source_csv(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
   getSourcePreview: (parameters) =>

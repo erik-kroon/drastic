@@ -131,6 +131,7 @@ function canonical(text: string | null) {
     ? null
     : JSON.stringify(Schema.decodeUnknownSync(EditingState)(JSON.parse(text)));
 }
+class ConcurrentInvoiceEdit extends Error {}
 
 function initialState(baseline?: Draft): DraftEditingState {
   return {
@@ -158,6 +159,9 @@ function EditingSession(
   const [restored] = useState(props.restored !== null);
   const [dirty, setDirty] = useState(props.restored !== null);
   const [storageError, setStorageError] = useState(false);
+  const [storageIssue, setStorageIssue] = useState<"conflict" | "pending_elsewhere" | "unavailable" | null>(null);
+  const [takeoverOpen, setTakeoverOpen] = useState(false);
+  const [editorVersion, setEditorVersion] = useState(0);
   const [closing, setClosing] = useState(false);
   const blocker = useBlocker({
     shouldBlockFn: () => dirty && !leaving.current,
@@ -172,22 +176,24 @@ function EditingSession(
     try {
       const existing = localStorage.getItem(props.identity);
       if (canonical(existing) !== canonical(retained.current))
-        throw new Error("Invoice edits changed in another tab");
+        throw new ConcurrentInvoiceEdit("Invoice edits changed in another tab");
       const text = JSON.stringify(Schema.decodeSync(EditingState)(next));
       localStorage.setItem(props.identity, text);
       if (localStorage.getItem(props.identity) !== text) throw new Error("Draft not retained");
       retained.current = text;
       setStorageError(false);
+      setStorageIssue(null);
       return true;
-    } catch {
+    } catch (error) {
       setStorageError(true);
+      setStorageIssue(error instanceof ConcurrentInvoiceEdit ? "conflict" : "unavailable");
       return false;
     }
   }
   function clear() {
     const existing = localStorage.getItem(props.identity);
     if (canonical(existing) !== canonical(retained.current))
-      throw new Error("Invoice edits changed in another tab");
+      throw new ConcurrentInvoiceEdit("Invoice edits changed in another tab");
     localStorage.removeItem(props.identity);
     if (localStorage.getItem(props.identity) !== null)
       throw new Error("Invoice edits could not be cleared");
@@ -196,8 +202,9 @@ function EditingSession(
     if (discard) {
       try {
         clear();
-      } catch {
+      } catch (error) {
         setStorageError(true);
+        setStorageIssue(error instanceof ConcurrentInvoiceEdit ? "conflict" : "unavailable");
         return;
       }
     }
@@ -206,9 +213,55 @@ function EditingSession(
     else props.onClose();
   }
   function saved(record: Draft) {
-    clear();
+    try {
+      clear();
+    } catch {
+      // The server result is authoritative. Never remove another tab's edits.
+    }
     leaving.current = true;
     props.onSaved(record);
+  }
+  function loadOtherTab() {
+    try {
+      const text = localStorage.getItem(props.identity);
+      if (text === null) throw new Error("No retained invoice edits");
+      const next = Schema.decodeUnknownSync(EditingState)(JSON.parse(text));
+      if (next.baseline) checkScope(props.book, next.baseline.scope);
+      if (next.customer) checkScope(props.book, next.customer.scope);
+      if ((next.baseline?.id ?? undefined) !== props.baseline?.id)
+        throw new Error("Invoice editor identity mismatch");
+      if (next.pending?.input != null)
+        Schema.decodeUnknownSync(
+          next.baseline ? Drafts.ReviseInvoiceDraft : Drafts.CreateInvoiceDraft,
+        )(next.pending.input);
+      current.current = next;
+      setState(next);
+      setEditorVersion((version) => version + 1);
+      retained.current = text;
+      setDirty(true);
+      setStorageError(false);
+      setStorageIssue(null);
+    } catch {
+      setStorageIssue("unavailable");
+    }
+  }
+  function takeOver() {
+    setTakeoverOpen(false);
+    try {
+      const existing = localStorage.getItem(props.identity);
+      if (existing && Schema.decodeUnknownSync(EditingState)(JSON.parse(existing)).pending) {
+        setStorageIssue("pending_elsewhere");
+        return;
+      }
+      const text = JSON.stringify(Schema.decodeSync(EditingState)(current.current));
+      localStorage.setItem(props.identity, text);
+      if (localStorage.getItem(props.identity) !== text) throw new Error("Draft not retained");
+      retained.current = text;
+      setStorageError(false);
+      setStorageIssue(null);
+    } catch {
+      setStorageIssue("unavailable");
+    }
   }
   const cancelClose = () => {
     setClosing(false);
@@ -238,26 +291,29 @@ function EditingSession(
             </Text>
           ) : null}
           {storageError ? (
-            <Box display="grid" gap="sm">
-              <Text role="alert">
-                {sv
-                  ? "Ändringarna kunde inte behållas i webbläsaren. Stanna kvar och försök igen innan du laddar om."
-                  : "Your changes could not be kept in this browser. Stay here and retry before reloading."}
-              </Text>
-              <Button variant="outline" onClick={() => update({})}>
-                {sv ? "Försök behålla ändringarna igen" : "Retry keeping changes"}
-              </Button>
-            </Box>
+            <StorageRecovery
+              sv={sv}
+              issue={storageIssue}
+              pending={!!state.pending}
+              retry={() => update({})}
+              loadOtherTab={loadOtherTab}
+              requestTakeover={() => setTakeoverOpen(true)}
+            />
           ) : null}
-          {props.children({
-            state,
-            actorId: props.actorId,
-            storageError,
-            update,
-            saved,
-          })}
+          <Box key={editorVersion}>
+            {props.children({
+              state,
+              actorId: props.actorId,
+              storageError,
+              update,
+              saved,
+            })}
+          </Box>
         </Box>
       </FormDialog>
+      {takeoverOpen ? (
+        <TakeoverDialog sv={sv} onClose={() => setTakeoverOpen(false)} onTakeOver={takeOver} />
+      ) : null}
       {closing || blocker.status === "blocked" ? (
         <FormDialog
           size="compact"
@@ -290,6 +346,77 @@ function EditingSession(
         </FormDialog>
       ) : null}
     </>
+  );
+}
+
+function StorageRecovery(props: {
+  sv: boolean;
+  issue: "conflict" | "pending_elsewhere" | "unavailable" | null;
+  pending: boolean;
+  retry: () => void;
+  loadOtherTab: () => void;
+  requestTakeover: () => void;
+}) {
+  const { sv, issue } = props;
+  const message = issue === "pending_elsewhere"
+    ? sv
+      ? "Den andra fliken har en obekräftad begäran. Återuppta den innan ändringarna ersätts."
+      : "The other tab has an unconfirmed request. Recover it before replacing its edits."
+    : issue === "conflict"
+    ? props.pending
+      ? sv
+        ? "En annan flik har sparat ändringar medan en begäran väntar. Återuppta begäran i den ursprungliga fliken innan du fortsätter här."
+        : "Another tab saved edits while a request is pending. Recover the request in the original tab before continuing here."
+      : sv
+        ? "En annan flik har sparat ändringar i det här utkastet. Välj vilken fliks osparade ändringar du vill fortsätta med."
+        : "Another tab saved edits for this draft. Choose which tab’s unsaved edits to continue with."
+    : sv
+      ? "Ändringarna kunde inte behållas i webbläsaren. Stanna kvar och försök igen innan du laddar om."
+      : "Your changes could not be kept in this browser. Stay here and retry before reloading.";
+  return (
+    <Box display="grid" gap="sm">
+      <Text role="alert">{message}</Text>
+      {issue === "pending_elsewhere" ? (
+        <Button variant="outline" onClick={props.loadOtherTab}>
+          {sv ? "Öppna andra flikens begäran" : "Open the other tab’s request"}
+        </Button>
+      ) : issue === "conflict" && !props.pending ? (
+        <Box display="flex" flexWrap="wrap" gap="md">
+          <Button variant="outline" onClick={props.loadOtherTab}>
+            {sv ? "Använd andra flikens ändringar" : "Use the other tab’s edits"}
+          </Button>
+          <Button variant="outline" onClick={props.requestTakeover}>
+            {sv ? "Behåll den här flikens ändringar" : "Keep this tab’s edits"}
+          </Button>
+        </Box>
+      ) : issue === "unavailable" ? (
+        <Button variant="outline" onClick={props.retry}>
+          {sv ? "Försök behålla ändringarna igen" : "Retry keeping changes"}
+        </Button>
+      ) : null}
+    </Box>
+  );
+}
+
+function TakeoverDialog(props: { sv: boolean; onClose: () => void; onTakeOver: () => void }) {
+  return (
+    <FormDialog
+      size="compact"
+      title={props.sv ? "Behåll den här flikens ändringar?" : "Keep this tab’s edits?"}
+      closeLabel={props.sv ? "Avbryt" : "Cancel"}
+      onClose={props.onClose}
+    >
+      <Box display="grid" gap="lg">
+        <Text>
+          {props.sv
+            ? "De osparade ändringarna från den andra fliken ersätts i den här webbläsaren."
+            : "The other tab’s unsaved edits will be replaced in this browser."}
+        </Text>
+        <Button onClick={props.onTakeOver}>
+          {props.sv ? "Behåll mina ändringar" : "Keep my edits"}
+        </Button>
+      </Box>
+    </FormDialog>
   );
 }
 

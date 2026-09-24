@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
+import * as Corrections from "@open-erp/contracts/corrections";
 import { Voucher, VoucherPage } from "@open-erp/contracts/accounting";
 import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
 import { RefreshCw } from "lucide-react";
@@ -22,6 +23,8 @@ import {
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { AccountingStatus } from "@/components/accounting-status";
 import { JournalCorrection } from "@/components/journal-correction";
+import { CorrectionChainView } from "@/components/corrections/impact-review";
+import { CorrectionReview } from "@/components/corrections/correction-review";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
@@ -35,14 +38,20 @@ type PostedRecordsProps = {
   locale: Locale;
   setup: typeof Accounting.BookSetup.Type | undefined;
   onPrepared: (id: string) => void;
+  query?: string;
+  period?: string;
+  onQuery?: (query: string) => void;
+  onPeriod?: (period: string) => void;
 };
 
 export function PostedRecords(props: PostedRecordsProps) {
   const { book, locale } = props;
   const copy = frontendCopy(locale);
   const accounting = accountingCopy(locale);
-  const [query, setQuery] = useState("");
-  const [period, setPeriod] = useState("");
+  const [localQuery, setLocalQuery] = useState("");
+  const [localPeriod, setLocalPeriod] = useState("");
+  const query = props.query ?? localQuery;
+  const period = props.period ?? localPeriod;
   const [expanded, setExpanded] = useState<string | null>(null);
   const metadata = useQuery(workQueryOptions(book, {}));
   const scale = metadata.data?.currencyScale;
@@ -73,7 +82,7 @@ export function PostedRecords(props: PostedRecordsProps) {
           aria-label={copy.search}
           placeholder={copy.search}
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => (props.onQuery ?? setLocalQuery)(event.target.value)}
         />
         <RegisterFilter>
           <SelectControl
@@ -86,7 +95,7 @@ export function PostedRecords(props: PostedRecordsProps) {
                 label: `${item.startsOn} – ${item.endsOn}`,
               })) ?? []),
             ]}
-            onValueChange={(value) => setPeriod(value ?? "")}
+            onValueChange={(value) => (props.onPeriod ?? setLocalPeriod)(value ?? "")}
           />
         </RegisterFilter>
         <Button
@@ -153,6 +162,24 @@ export function PostedRecords(props: PostedRecordsProps) {
                 return scale === undefined
                   ? "—"
                   : formatMinorAmount(total.toString(), scale, locale);
+              },
+            },
+            {
+              id: "action",
+              width: "content",
+              label: "",
+              cell: (voucher) => {
+                const search = new URLSearchParams({ view: "vouchers", record: voucher.id });
+                if (query) search.set("q", query);
+                if (period) search.set("period", period);
+                return (
+                  <PageAction
+                    quiet
+                    href={`${workspacePath(book)}/books?${search}`}
+                  >
+                    {locale === "sv" ? "Öppna" : "Open"}
+                  </PageAction>
+                );
               },
             },
           ]}
@@ -237,6 +264,7 @@ export function PostedRecord(props: PostedRecordsProps & { id: string }) {
 
 function VoucherDetails(props: PostedRecordsProps & { voucher: typeof Accounting.Voucher.Type }) {
   const { book, locale, voucher } = props;
+  const [historyOpen, setHistoryOpen] = useState(false);
   const copy = frontendCopy(locale);
   const sv = locale === "sv";
   const metadata = useQuery(workQueryOptions(book, {}));
@@ -300,6 +328,19 @@ function VoucherDetails(props: PostedRecordsProps & { voucher: typeof Accounting
           {props.voucher.id} · {props.voucher.sequence}
         </PageCaption>
       </Disclosure>
+      {props.setup ? (
+        <details onToggle={(event) => setHistoryOpen(event.currentTarget.open)}>
+          <summary>{sv ? "Rättelser och historik" : "Corrections and history"}</summary>
+          {historyOpen ? (
+            <CorrectionChainView
+              book={book}
+              setup={props.setup}
+              locale={locale}
+              id={voucher.id}
+            />
+          ) : null}
+        </details>
+      ) : null}
       {props.setup && props.setup.blockers.length === 0 ? (
         <Disclosure title={accountingCopy(props.locale).journal_correction}>
           <JournalCorrection
@@ -309,7 +350,40 @@ function VoucherDetails(props: PostedRecordsProps & { voucher: typeof Accounting
             locale={props.locale}
             onPrepared={props.onPrepared}
           />
+          <VoucherCorrectionRecovery {...props} />
         </Disclosure>
+      ) : null}
+    </Box>
+  );
+}
+
+function VoucherCorrectionRecovery(props: PostedRecordsProps & { voucher: typeof Accounting.Voucher.Type }) {
+  const [bundleId, setBundleId] = useState<string | null>(null);
+  const recovery = useMutation({
+    mutationFn: () =>
+      readAccounting(
+        `${bookPath(props.book)}/vouchers/${encodeURIComponent(props.voucher.id)}/correction-bundle`,
+        Corrections.CorrectionBundleView,
+      ),
+    onSuccess: (view) => setBundleId(view.bundle.id),
+  });
+  if (!props.setup) return null;
+  return (
+    <Box display="grid" gap="md">
+      <Box>
+        <Button variant="outline" disabled={recovery.isPending} onClick={() => recovery.mutate()}>
+          {props.locale === "sv" ? "Återuppta sparad rättelse" : "Resume saved correction"}
+        </Button>
+      </Box>
+      <AccountingStatus locale={props.locale} pending={recovery.isPending} error={recovery.error} />
+      {bundleId ? (
+        <CorrectionReview
+          key={bundleId}
+          book={props.book}
+          setup={props.setup}
+          locale={props.locale}
+          id={bundleId}
+        />
       ) : null}
     </Box>
   );

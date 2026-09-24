@@ -13,10 +13,11 @@ import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accoun
 import type { Locale } from "@/paraglide/runtime";
 import { bankUnmatchCopy } from "./copy";
 
-export function BankUnmatchReview({ book, id, locale }: {
+export function BankUnmatchReview({ book, id, locale, expected }: {
   book: typeof Accounting.Book.Type;
   id: string;
   locale: Locale;
+  expected?: { allocationId: string; accountId?: string };
 }) {
   const copy = bankUnmatchCopy(locale);
   const client = useQueryClient();
@@ -27,13 +28,12 @@ export function BankUnmatchReview({ book, id, locale }: {
   const revocationKeys = useRef(new Map<string, string>());
   const base = `${bookPath(book)}/bank-match-reversal-plans/${encodeURIComponent(id)}`;
   const plan = useQuery({
-    queryKey: [...bookKey(book), "bank-match-reversal", id],
+    queryKey: [...bookKey(book), "bank-match-reversal", id, expected],
     staleTime: 0,
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(base, Reversal.BankMatchReversalView, { signal });
-      if (result.plan.id !== id || result.plan.scope.bookId !== book.id || result.plan.scope.entityId !== book.entityId)
-        throw new Error("Unmatch scope mismatch");
+      assertUnmatchView(result, book, id, expected);
       return result;
     },
     retry: false,
@@ -160,6 +160,25 @@ export function BankUnmatchReview({ book, id, locale }: {
         }} />
     </Box>
   );
+}
+
+function matchesTarget(view: typeof Reversal.BankMatchReversalView.Type,
+  expected: { allocationId: string; accountId?: string }) {
+  const target = view.plan.input.target;
+  return target.kind === "allocation" &&
+    target.allocationPlanId === expected.allocationId &&
+    (!expected.accountId || view.plan.snapshot.accountId === expected.accountId);
+}
+
+function assertUnmatchView(
+  view: typeof Reversal.BankMatchReversalView.Type,
+  book: typeof Accounting.Book.Type,
+  id: string,
+  expected?: { allocationId: string; accountId?: string },
+) {
+  if (view.plan.id !== id || view.plan.scope.bookId !== book.id || view.plan.scope.entityId !== book.entityId)
+    throw new Error("Unmatch scope mismatch");
+  if (expected && !matchesTarget(view, expected)) throw new Error("Unmatch target mismatch");
 }
 
 function RequestRecovery(props: {

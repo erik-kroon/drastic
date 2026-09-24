@@ -46,6 +46,7 @@ export type BankSearch = {
   statement?: string;
   row?: string;
   plan?: string;
+  undo?: string;
   report?: string;
 };
 
@@ -113,7 +114,7 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
     new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(
       new Date(value),
     );
-  const clearRecord = { ...search, statement: undefined, row: undefined, plan: undefined, report: undefined };
+  const clearRecord = { ...search, statement: undefined, row: undefined, plan: undefined, undo: undefined, report: undefined };
   return (
     <>
       <WorkspaceHeader
@@ -208,6 +209,7 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
             ) : null}
             {account ? (
               <AccountReport
+                key={`${account.id}:${from}:${to}`}
                 book={book}
                 locale={locale}
                 account={account}
@@ -232,7 +234,10 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
               statementId={search.statement}
               rowOrdinal={Number(search.row)}
               planId={search.plan}
+              reversalId={search.undo}
+              accountId={search.account}
               onPlan={(plan) => change({ ...search, plan })}
+              onReversal={(undo) => change({ ...search, undo })}
             />
           </RecordSheet>
         ) : null}
@@ -321,7 +326,7 @@ type ActivityProps = BankPresentation & {
 function AccountActivity(props: ActivityProps) {
   const { data, account, sv, money } = props;
   const { date, to, href } = props;
-  const clearRecord = { ...props.search, statement: undefined, row: undefined, plan: undefined };
+  const clearRecord = { ...props.search, statement: undefined, row: undefined, plan: undefined, undo: undefined };
   return (
     <>
       <RecordSummary>
@@ -391,7 +396,7 @@ function AccountTransactions(props: ActivityProps) {
   const { data, search, sv, change } = props;
   const { money, date, href } = props;
   const tab = search.tab ?? "unmatched";
-  const clearRecord = { ...search, statement: undefined, row: undefined, plan: undefined };
+  const clearRecord = { ...search, statement: undefined, row: undefined, plan: undefined, undo: undefined };
   const [queryText, setQueryText] = useState({ applied: search.q ?? "", value: search.q ?? "" });
   if (queryText.applied !== (search.q ?? ""))
     setQueryText({ applied: search.q ?? "", value: search.q ?? "" });
@@ -492,6 +497,7 @@ function AccountTransactions(props: ActivityProps) {
                     statement: row.statementId,
                     row: String(row.rowOrdinal),
                     plan: undefined,
+                    undo: undefined,
                   })}
                 >
                   {sv ? "Granska" : "Review"}
@@ -640,26 +646,33 @@ function AccountReport(props: {
   reportId?: string;
   onReport: (id: string | undefined) => void;
 }) {
-  const { book, locale, account, from, to } = props;
+  const { book, locale } = props;
   const sv = locale === "sv";
   const keys = useRef(new Map<string, string>());
   const create = useMutation({
     mutationFn: () => {
       const path = `${bookPath(book)}/bank-reconciliations`;
-      const input = { accountId: account.id, startsOn: from, endsOn: to };
+      const input = { accountId: props.account.id, startsOn: props.from, endsOn: props.to };
       return readAccounting(
         path,
         Reconciliation.BankReconciliation,
         mutationOptions(path, JSON.stringify(input), keys.current),
       );
     },
-    onSuccess: (report) => props.onReport(report.id),
+    onSuccess: (report) => {
+      keys.current.clear();
+      props.onReport(report.id);
+    },
   });
   return (
-    <Disclosure label={sv ? "Avstämningsrapport" : "Reconciliation report"}>
+    <Disclosure
+      key={props.reportId ?? "new"}
+      label={sv ? "Avstämningsrapport" : "Reconciliation report"}
+      open={!!props.reportId}
+    >
       <Box display="grid" gap="lg">
         <PageCaption>
-          {account.name} · {from}–{to}
+          {props.account.name} · {props.from}–{props.to}
         </PageCaption>
         <Box>
           <Button
@@ -667,7 +680,9 @@ function AccountReport(props: {
             disabled={create.isPending || create.isError}
             onClick={() => create.mutate()}
           >
-            {sv ? "Spara rapport för perioden" : "Save report for this period"}
+            {props.reportId
+              ? sv ? "Spara ny rapport" : "Save new report"
+              : sv ? "Spara rapport för perioden" : "Save report for this period"}
           </Button>
         </Box>
         <AccountingStatus locale={locale} pending={create.isPending} error={create.error} write />
@@ -679,7 +694,12 @@ function AccountReport(props: {
           </Box>
         ) : null}
         {props.reportId ? (
-          <BankReport book={book} locale={locale} id={props.reportId} />
+          <BankReport
+            book={book}
+            locale={locale}
+            id={props.reportId}
+            expected={{ accountId: props.account.id, startsOn: props.from, endsOn: props.to }}
+          />
         ) : null}
       </Box>
     </Disclosure>

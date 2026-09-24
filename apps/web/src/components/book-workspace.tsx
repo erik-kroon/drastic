@@ -18,6 +18,7 @@ import { frontendCopy } from "@/lib/frontend-copy";
 import { BookContext, workspacePath } from "@/lib/book-context";
 import { AccountingStatus } from "@/components/accounting-status";
 import { SignOut } from "@/components/accounting-access";
+import { portfolioReturn } from "@/components/firms/portfolio-return";
 import { bookKey, bookPath, readAccounting, type Books } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import { setLocale, type Locale } from "@/paraglide/runtime";
@@ -90,7 +91,18 @@ export function BookWorkspace({
       ) : null}
       <Link href={`${base}/settings`}>{labels.settings}</Link>
       <Link href="/companies">{copy.workspace_switch}</Link>
-      <Link href="/firms">{locale === "sv" ? "Byrå och klienter" : "Firm and clients"}</Link>
+      <Link
+        href="/firms"
+        onClick={(event) => {
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+          const destination = portfolioReturn(book);
+          if (!destination) return;
+          event.preventDefault();
+          void navigate({ to: destination });
+        }}
+      >
+        {locale === "sv" ? "Klientlista" : "Client portfolio"}
+      </Link>
       <Link href={`${base}/tools`}>{labels.tools}</Link>
       <SignOut locale={locale} />
     </WorkspaceAccount>

@@ -84,6 +84,15 @@ export const SourceIntakeHandlers = HttpApiBuilder.group(Api, "sourceIntake", (h
         }),
       ),
     )
+    .handle("getSourcePurchaseLinks", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "getSourcePurchaseLinks",
+          [token, scopeParameter(params), params.id],
+          Intake.SourcePurchaseLinks,
+        ),
+      ),
+    )
     .handle("previewSourceCsv", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         query(

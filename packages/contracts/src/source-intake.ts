@@ -195,6 +195,25 @@ export const SourceInventory = Schema.Struct({
   items: Schema.Array(OccurrenceSummary),
   nextCursor: Schema.NullOr(A.Identifier),
 });
+export const SourcePurchaseLinks = Schema.Struct({
+  scope: A.Scope,
+  occurrenceId: A.Identifier,
+  supplierDrafts: Schema.Array(
+    Schema.Struct({
+      id: A.Identifier,
+      title: Schema.String,
+      revision: Schema.String,
+    }),
+  ).check(Schema.isMaxLength(200)),
+  expenses: Schema.Array(
+    Schema.Struct({
+      id: A.Identifier,
+      description: Schema.String,
+      reviewCurrent: Schema.Boolean,
+      withdrawn: Schema.Boolean,
+    }),
+  ).check(Schema.isMaxLength(200)),
+});
 export const CaptureSourceReview = Schema.Struct({ digest: A.Digest });
 export const SourceReviewApprovalSummary = Schema.Struct({
   actorId: A.Identifier,
@@ -323,6 +342,10 @@ export const SourceIntakeApi = HttpApiGroup.make("sourceIntake").add(
     ...identified,
     success: SourceOccurrenceView,
   }),
+  HttpApiEndpoint.get("getSourcePurchaseLinks", `${base}/source-occurrences/:id/purchase-links`, {
+    ...identified,
+    success: SourcePurchaseLinks,
+  }),
   HttpApiEndpoint.post("previewSourceCsv", `${base}/source-occurrences/:id/previews`, {
     ...identifiedMutation,
     payload: CsvMapping.annotate({ parseOptions: { onExcessProperty: "error" } }),
@@ -418,6 +441,13 @@ export const SourceIntakeCapabilities = {
       "Retrieve retained original bytes, immutable preview IDs and admission receipt within a book.",
     input: Schema.Struct({ scope: A.Scope, occurrenceId: A.Identifier }),
     output: SourceOccurrenceView,
+    readOnly: true,
+  },
+  source_get_purchase_links: {
+    description:
+      "Find saved supplier drafts and expense records whose retained entry evidence names this original occurrence. Returns current record IDs and review status, not posting or tax authority.",
+    input: Schema.Struct({ scope: A.Scope, occurrenceId: A.Identifier }),
+    output: SourcePurchaseLinks,
     readOnly: true,
   },
   source_preview_csv: {

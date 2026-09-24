@@ -41,6 +41,8 @@ export type SalesSearch = typeof Sales.SalesQuery.Type & {
   review?: string;
   allocation?: string;
   release?: string;
+  paymentPage?: string;
+  paymentHistoryPage?: string;
 };
 
 export function salesRegisterOptions(book: typeof Accounting.Book.Type, query: URLSearchParams) {
@@ -103,6 +105,8 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
       review: undefined,
       allocation: undefined,
       release: undefined,
+      paymentPage: undefined,
+      paymentHistoryPage: undefined,
     });
   const open = (id: string, kind: "draft" | "invoice") =>
     change({
@@ -114,6 +118,8 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
       review: undefined,
       allocation: undefined,
       release: undefined,
+      paymentPage: undefined,
+      paymentHistoryPage: undefined,
     });
   const rowUrl = (row: typeof Sales.SalesRow.Type) => {
     return `${base}${defaultStringifySearch({
@@ -500,13 +506,18 @@ function SalesRecord({
               locale={locale}
               direction="customer"
               onPayments={() =>
-                change({ ...search, stage: "payments", allocation: undefined, release: undefined })
+                change({ ...search, stage: "payments", allocation: undefined, release: undefined, paymentPage: undefined, paymentHistoryPage: undefined })
               }
               paymentView={
                 search.stage === "payments"
                   ? {
                       planId: search.allocation,
                       releaseId: search.release,
+                      page: Number(search.paymentPage ?? "1"),
+                      historyPage: Number(search.paymentHistoryPage ?? "1"),
+                      onPage: (page) => change({ ...search, paymentPage: String(page) }),
+                      onHistoryPage: (page) =>
+                        change({ ...search, paymentHistoryPage: String(page) }),
                       onPlan: (id) => change({ ...search, allocation: id, release: undefined }),
                       onRelease: (id) => change({ ...search, release: id }),
                       onBack: () =>
@@ -515,6 +526,8 @@ function SalesRecord({
                           stage: undefined,
                           allocation: undefined,
                           release: undefined,
+                          paymentPage: undefined,
+                          paymentHistoryPage: undefined,
                         }),
                     }
                   : undefined

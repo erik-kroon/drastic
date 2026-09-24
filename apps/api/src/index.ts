@@ -35,11 +35,18 @@ import { VatReturnsHandlers } from "./transport/http/routes/vat-returns";
 import { SieHandlers } from "./transport/http/routes/sie";
 import { InvoiceDraftHandlers } from "./transport/http/routes/invoice-drafts";
 import { SupplierInvoiceDraftHandlers } from "./transport/http/routes/supplier-invoice-drafts";
+import { SupplierAcceptanceHandlers } from "./transport/http/routes/supplier-acceptance";
+import { SupplierPaymentBatchHandlers } from "./transport/http/routes/supplier-payment-batches";
 import { SubledgerControlsHandlers } from "./transport/http/routes/subledger-controls";
 import { ExchangeRatesHandlers } from "./transport/http/routes/exchange-rates";
 import { InvoiceIssuanceHandlers } from "./transport/http/routes/invoice-issuance";
 import { InvoiceCancellationHandlers } from "./transport/http/routes/invoice-cancellations";
 import { InvoiceDocumentHandlers } from "./transport/http/routes/invoice-documents";
+import { InvoicePdfHandlers } from "./transport/http/routes/invoice-pdf";
+import { InvoicePolicyHandlers } from "./transport/http/routes/invoice-policy";
+import { InvoiceDeliveryHandlers } from "./transport/http/routes/invoice-delivery";
+import { BankConnectorHandlers } from "./transport/http/routes/bank-connector";
+import { SieImportHandlers } from "./transport/http/routes/sie-import";
 import { CommerceAllocationReversalHandlers } from "./transport/http/routes/commerce-allocation-reversals";
 import { AccountantReviewHandlers } from "./transport/http/routes/accountant-review";
 import { SourceIntakeHandlers } from "./transport/http/routes/source-intake";
@@ -89,11 +96,18 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     SieHandlers,
     InvoiceDraftHandlers,
     SupplierInvoiceDraftHandlers,
+    SupplierAcceptanceHandlers,
+    SupplierPaymentBatchHandlers,
     SubledgerControlsHandlers,
     ExchangeRatesHandlers,
     InvoiceIssuanceHandlers,
     InvoiceCancellationHandlers,
     InvoiceDocumentHandlers,
+    InvoicePdfHandlers,
+    InvoicePolicyHandlers,
+    InvoiceDeliveryHandlers,
+    BankConnectorHandlers,
+    SieImportHandlers,
     CommerceAllocationReversalHandlers,
     AccountantReviewHandlers,
     SourceIntakeHandlers,

@@ -3,11 +3,12 @@ import { Download } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DocumentPreview } from "@open-erp/ui/components/document-preview";
-import { PageCaption } from "@open-erp/ui/components/accounting-page";
+import { PageAction, PageCaption } from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "@/components/accounting-status";
 import { downloadIntake } from "@/components/source-intake/download";
 import { sourceDocumentOptions } from "@/lib/source-documents";
 import type { CommerceProps } from "@/components/commerce/shared";
+import { workspacePath } from "@/lib/book-context";
 
 export function OriginalDocument(props: CommerceProps & { id: string; sha256?: string }) {
   const query = useQuery(sourceDocumentOptions(props.book, props.id));
@@ -54,6 +55,12 @@ export function OriginalDocument(props: CommerceProps & { id: string; sha256?: s
             </Button>
           </Box>
           <PageCaption>{source.occurrence.filename}</PageCaption>
+          <PageAction
+            quiet
+            href={`${workspacePath(props.book)}/purchases?view=documents&record=${encodeURIComponent(source.occurrence.id)}`}
+          >
+            {sv ? "Öppna originalets ärenden" : "Open work linked to original"}
+          </PageAction>
         </>
       ) : null}
     </Box>

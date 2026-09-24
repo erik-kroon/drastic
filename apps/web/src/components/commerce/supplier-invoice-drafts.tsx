@@ -27,6 +27,7 @@ import { readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { invoiceDraftBlocker } from "./invoice-draft-copy";
 import { SupplierInvoiceEditor } from "./supplier-invoice-editor";
+import { SupplierAcceptancePanel, useSupplierAcceptanceHistory } from "./supplier-acceptance";
 import {
   Details,
   Facts,
@@ -114,58 +115,12 @@ export function SupplierInvoiceDrafts(
         </Box>
       ) : null}
       {list.isSuccess ? (
-        matches.length ? (
-          <DataTable
-            title={sv ? "Leverantörsfakturautkast" : "Supplier invoice drafts"}
-            narrow="stack"
-            columns={[
-              { id: "supplier", label: sv ? "Leverantör / faktura" : "Supplier / invoice" },
-              { id: "description", label: sv ? "Beskrivning" : "Description" },
-              { id: "saved", label: sv ? "Senast sparad" : "Last saved" },
-              { id: "status", label: "Status" },
-              { id: "amount", label: sv ? "Belopp" : "Amount", numeric: true },
-            ]}
-            rows={matches.map((record) => ({
-              id: record.id,
-              cells: [
-                <RecordOpen key="open" onClick={() => props.onOpen(record.id)}>
-                  {record.supplierName}
-                  {record.supplierDocumentNumber ? ` · ${record.supplierDocumentNumber}` : ""}
-                </RecordOpen>,
-                record.title,
-                new Intl.DateTimeFormat(props.locale, { dateStyle: "medium" }).format(
-                  new Date(record.createdAt),
-                ),
-                <Badge key="status" variant="secondary">
-                  {sv ? "Utkast" : "Draft"}
-                </Badge>,
-                money(record.grossMinor, record.currencyScale, record.currency, props.locale),
-              ],
-            }))}
-          />
-        ) : (
-          <PageEmpty
-            title={
-              sv
-                ? search
-                  ? "Inga matchande fakturor"
-                  : "Börja med originalfakturan"
-                : search
-                  ? "No matching invoices"
-                  : "Start with the original invoice"
-            }
-            detail={
-              sv
-                ? "Ladda upp eller välj ett sparat dokument, välj leverantör och granska beloppen."
-                : "Upload or choose a saved document, select the supplier and review the amounts."
-            }
-          />
-        )
+        <SupplierDraftResults {...props} matches={matches} search={search} />
       ) : null}
       <PageCaption>
         {sv
-          ? "Sparade utkast har inte attesterats eller bokförts genom detta flöde. Redan registrerade fakturor finns under Registrerade."
-          : "Saving drafts here does not approve or post them. Previously registered invoices are under Registered."}
+          ? "Ett sparat utkast är inte bokfört. Syntetisk attest och bokföring görs efter granskning i utkastets detaljvy."
+          : "Saving a draft does not post it. Synthetic approval and posting follow review in the draft detail."}
       </PageCaption>
       {creating ? (
         <FormDialog
@@ -181,6 +136,64 @@ export function SupplierInvoiceDrafts(
         </FormDialog>
       ) : null}
     </Box>
+  );
+}
+function SupplierDraftResults(
+  props: CommerceProps & {
+    matches: readonly (typeof Suppliers.SupplierInvoiceDraftSummary.Type)[];
+    search: string;
+    onOpen: (id: string) => void;
+  },
+) {
+  const sv = props.locale === "sv";
+  if (!props.matches.length)
+    return (
+      <PageEmpty
+        title={
+          props.search
+            ? sv
+              ? "Inga matchande fakturor"
+              : "No matching invoices"
+            : sv
+              ? "Börja med originalfakturan"
+              : "Start with the original invoice"
+        }
+        detail={
+          sv
+            ? "Ladda upp eller välj ett sparat dokument, välj leverantör och granska beloppen."
+            : "Upload or choose a saved document, select the supplier and review the amounts."
+        }
+      />
+    );
+  return (
+    <DataTable
+      title={sv ? "Leverantörsfakturautkast" : "Supplier invoice drafts"}
+      narrow="stack"
+      columns={[
+        { id: "supplier", label: sv ? "Leverantör / faktura" : "Supplier / invoice" },
+        { id: "description", label: sv ? "Beskrivning" : "Description" },
+        { id: "saved", label: sv ? "Senast sparad" : "Last saved" },
+        { id: "status", label: "Status" },
+        { id: "amount", label: sv ? "Belopp" : "Amount", numeric: true },
+      ]}
+      rows={props.matches.map((record) => ({
+        id: record.id,
+        cells: [
+          <RecordOpen key="open" onClick={() => props.onOpen(record.id)}>
+            {record.supplierName}
+            {record.supplierDocumentNumber ? ` · ${record.supplierDocumentNumber}` : ""}
+          </RecordOpen>,
+          record.title,
+          new Intl.DateTimeFormat(props.locale, { dateStyle: "medium" }).format(
+            new Date(record.createdAt),
+          ),
+          <Badge key="status" variant="secondary">
+            {sv ? "Utkast" : "Draft"}
+          </Badge>,
+          money(record.grossMinor, record.currencyScale, record.currency, props.locale),
+        ],
+      }))}
+    />
   );
 }
 function SupplierDraftDetail(props: CommerceProps & { id: string }) {
@@ -220,114 +233,13 @@ function SupplierDraftDetail(props: CommerceProps & { id: string }) {
         </Box>
       ) : null}
       {record ? (
-        <>
-          <RecordHeading
-            title={record.content.title}
-            subtitle={`${record.content.supplier.legalName} · ${record.content.supplierDocumentNumber ?? (sv ? "Fakturanummer saknas" : "Invoice number missing")}`}
-            action={
-              current ? (
-                <Button
-                  disabled={props.book.role !== "operator"}
-                  onClick={() => setEditing(record)}
-                >
-                  <Pencil size={14} />
-                  {sv ? "Redigera utkast" : "Edit draft"}
-                </Button>
-              ) : (
-                <Button variant="outline" onClick={() => setRevision("")}>
-                  {sv ? "Visa senaste versionen" : "Show latest version"}
-                </Button>
-              )
-            }
-          />
-          <Box>
-            <Badge variant={current ? "secondary" : "warning"}>
-              {current
-                ? sv
-                  ? "Utkast"
-                  : "Draft"
-                : sv
-                  ? `Tidigare version ${record.revision}`
-                  : `Earlier version ${record.revision}`}
-            </Badge>
-          </Box>
-          <RecordSummary>
-            <RecordFact label={sv ? "Fakturadatum" : "Invoice date"}>
-              {record.content.documentDate ?? "—"}
-            </RecordFact>
-            <RecordFact label={sv ? "Förfallodatum" : "Due date"}>
-              {record.content.dueDate ?? "—"}
-            </RecordFact>
-            <RecordFact label={sv ? "Totalt enligt rader" : "Calculated total"}>
-              {money(
-                record.totals.grossMinor,
-                record.content.currencyScale,
-                record.content.currency,
-                props.locale,
-              )}
-            </RecordFact>
-            <RecordFact label={sv ? "Originalets total" : "Original total"}>
-              {money(
-                record.content.sourceTotalMinor,
-                record.content.currencyScale,
-                record.content.currency,
-                props.locale,
-              )}
-            </RecordFact>
-          </RecordSummary>
-          <RecordColumns>
-            <RecordSection title={sv ? "Originalfaktura" : "Original invoice"} sticky>
-              <EvidenceInspector
-                {...props}
-                expanded
-                compact
-                reference={{ ...record.sourceEvidence, locator: record.content.title }}
-              />
-            </RecordSection>
-            <Box display="grid" gap="xl">
-              <SupplierDraftChecks {...props} record={record} />
-              <RecordSection title={sv ? "Fakturauppgifter" : "Invoice details"}>
-                <Text>
-                  <strong>{sv ? "Leverantör" : "Supplier"}</strong>
-                  <br />
-                  {record.content.supplier.legalName}
-                  <br />
-                  {record.content.supplier.address ?? "—"}
-                </Text>
-                <Text>
-                  <strong>{sv ? "Fakturamottagare" : "Billed to"}</strong>
-                  <br />
-                  {record.content.buyer.legalName}
-                  <br />
-                  {record.content.buyer.address ?? "—"}
-                </Text>
-                <Text>
-                  {sv ? "Leveransdatum" : "Supply date"}: {record.content.supplyDate ?? "—"}
-                </Text>
-                <Text>
-                  {sv ? "Betalningsvillkor" : "Payment terms"}: {record.content.paymentTerms ?? "—"}
-                </Text>
-              </RecordSection>
-              <PageCaption>
-                {sv
-                  ? "Attest, bokföring och betalning stöds inte från utkastet. Om originalet har bokförts någon annanstans måste det kontrolleras separat."
-                  : "Approval, posting and payment are not supported from this draft. Recognition of the original elsewhere must be checked separately."}
-              </PageCaption>
-            </Box>
-          </RecordColumns>
-          <SupplierDraftLines {...props} record={record} />
-          <Details title={sv ? "Versionshistorik" : "Version history"}>
-            <SupplierDraftHistory {...props} selected={record.revision} onSelect={setRevision} />
-          </Details>
-          <Facts
-            title={
-              sv
-                ? "Sparade uppgifter och beräkningsunderlag"
-                : "Retained facts and calculation basis"
-            }
-            value={record}
-          />
-        </>
+        <SupplierDraftRecord
+          {...props}
+          record={record}
+          current={current}
+          onEdit={setEditing}
+          onRevision={setRevision}
+        />
       ) : null}
       {editing ? (
         <FormDialog
@@ -346,6 +258,142 @@ function SupplierDraftDetail(props: CommerceProps & { id: string }) {
         </FormDialog>
       ) : null}
     </Box>
+  );
+}
+function SupplierDraftRecord(
+  props: CommerceProps & {
+    record: Draft;
+    current: boolean;
+    onEdit: (record: Draft) => void;
+    onRevision: (revision: string) => void;
+  },
+) {
+  const sv = props.locale === "sv";
+  const record = props.record;
+  const current = props.current;
+  const acceptance = useSupplierAcceptanceHistory(props.book, record.id);
+  const accepted = acceptance.data?.items.some((item) => item.acceptanceId !== null) ?? false;
+  return (
+    <>
+      <RecordHeading
+        title={record.content.title}
+        subtitle={`${record.content.supplier.legalName} · ${record.content.supplierDocumentNumber ?? (sv ? "Fakturanummer saknas" : "Invoice number missing")}`}
+        action={
+          current && !accepted ? (
+            <Button disabled={props.book.role !== "operator"} onClick={() => props.onEdit(record)}>
+              <Pencil size={14} />
+              {sv ? "Redigera utkast" : "Edit draft"}
+            </Button>
+          ) : !current ? (
+            <Button variant="outline" onClick={() => props.onRevision("")}>
+              {sv ? "Visa senaste versionen" : "Show latest version"}
+            </Button>
+          ) : undefined
+        }
+      />
+      <Box>
+        <Badge variant={accepted ? "success" : current ? "secondary" : "warning"}>
+          {accepted
+            ? sv
+              ? "Syntetiskt bokförd"
+              : "Synthetic posting complete"
+            : current
+              ? sv
+                ? "Utkast"
+                : "Draft"
+              : sv
+                ? `Tidigare version ${record.revision}`
+                : `Earlier version ${record.revision}`}
+        </Badge>
+      </Box>
+      <RecordSummary>
+        <RecordFact label={sv ? "Fakturadatum" : "Invoice date"}>
+          {record.content.documentDate ?? "—"}
+        </RecordFact>
+        <RecordFact label={sv ? "Förfallodatum" : "Due date"}>
+          {record.content.dueDate ?? "—"}
+        </RecordFact>
+        <RecordFact label={sv ? "Totalt enligt rader" : "Calculated total"}>
+          {money(
+            record.totals.grossMinor,
+            record.content.currencyScale,
+            record.content.currency,
+            props.locale,
+          )}
+        </RecordFact>
+        <RecordFact label={sv ? "Originalets total" : "Original total"}>
+          {money(
+            record.content.sourceTotalMinor,
+            record.content.currencyScale,
+            record.content.currency,
+            props.locale,
+          )}
+        </RecordFact>
+      </RecordSummary>
+      <SupplierDraftEvidenceAndFacts {...props} />
+      <SupplierDraftLines {...props} record={record} />
+      <SupplierAcceptancePanel {...props} draft={record} current={current} />
+      <Details title={sv ? "Versionshistorik" : "Version history"}>
+        <SupplierDraftHistory
+          {...props}
+          id={record.id}
+          selected={record.revision}
+          onSelect={props.onRevision}
+        />
+      </Details>
+      <Facts
+        title={
+          sv ? "Sparade uppgifter och beräkningsunderlag" : "Retained facts and calculation basis"
+        }
+        value={record}
+      />
+    </>
+  );
+}
+function SupplierDraftEvidenceAndFacts(props: CommerceProps & { record: Draft }) {
+  const sv = props.locale === "sv";
+  const record = props.record;
+  return (
+    <RecordColumns>
+      <RecordSection title={sv ? "Originalfaktura" : "Original invoice"} sticky>
+        <EvidenceInspector
+          {...props}
+          expanded
+          compact
+          reference={{ ...record.sourceEvidence, locator: record.content.title }}
+        />
+      </RecordSection>
+      <Box display="grid" gap="xl">
+        <SupplierDraftChecks {...props} record={record} />
+        <RecordSection title={sv ? "Fakturauppgifter" : "Invoice details"}>
+          <Text>
+            <strong>{sv ? "Leverantör" : "Supplier"}</strong>
+            <br />
+            {record.content.supplier.legalName}
+            <br />
+            {record.content.supplier.address ?? "—"}
+          </Text>
+          <Text>
+            <strong>{sv ? "Fakturamottagare" : "Billed to"}</strong>
+            <br />
+            {record.content.buyer.legalName}
+            <br />
+            {record.content.buyer.address ?? "—"}
+          </Text>
+          <Text>
+            {sv ? "Leveransdatum" : "Supply date"}: {record.content.supplyDate ?? "—"}
+          </Text>
+          <Text>
+            {sv ? "Betalningsvillkor" : "Payment terms"}: {record.content.paymentTerms ?? "—"}
+          </Text>
+        </RecordSection>
+        <PageCaption>
+          {sv
+            ? "Syntetisk attest och bokföring finns nedan för fullständiga utkast. Ingen juridisk faktura, momsbedömning eller betalning skapas."
+            : "Synthetic approval and posting are available below for complete drafts. No legal invoice, VAT decision or payment is created."}
+        </PageCaption>
+      </Box>
+    </RecordColumns>
   );
 }
 function money(

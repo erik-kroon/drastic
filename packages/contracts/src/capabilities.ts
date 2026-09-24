@@ -24,11 +24,16 @@ import { VatReturnCapabilities } from "./vat-returns";
 import { SieCapabilities } from "./sie";
 import { InvoiceDraftCapabilities } from "./invoice-drafts";
 import { SupplierInvoiceDraftCapabilities } from "./supplier-invoice-drafts";
+import { SupplierAcceptanceCapabilities } from "./supplier-acceptance";
+import { SupplierPaymentBatchCapabilities } from "./supplier-payment-batches";
 import { SubledgerControlCapabilities } from "./subledger-controls";
 import { ExchangeRateCapabilities } from "./exchange-rates";
 import { InvoiceIssuanceCapabilities } from "./invoice-issuance";
 import { InvoiceCancellationCapabilities } from "./invoice-cancellations";
 import { InvoiceDocumentCapabilities } from "./invoice-documents";
+import { InvoicePdfCapabilities } from "./invoice-pdf";
+import { InvoicePolicyCapabilities } from "./invoice-policy";
+import { InvoiceDeliveryCapabilities } from "./invoice-delivery";
 import { CommerceAllocationReversalCapabilities } from "./commerce-allocation-reversals";
 import { AccountantReviewCapabilities } from "./accountant-review";
 import { SourceIntakeCapabilities } from "./source-intake";
@@ -73,11 +78,16 @@ export const Capabilities = {
   ...SieCapabilities,
   ...InvoiceDraftCapabilities,
   ...SupplierInvoiceDraftCapabilities,
+  ...SupplierAcceptanceCapabilities,
+  ...SupplierPaymentBatchCapabilities,
   ...SubledgerControlCapabilities,
   ...ExchangeRateCapabilities,
   ...InvoiceIssuanceCapabilities,
   ...InvoiceCancellationCapabilities,
   ...InvoiceDocumentCapabilities,
+  ...InvoicePdfCapabilities,
+  ...InvoicePolicyCapabilities,
+  ...InvoiceDeliveryCapabilities,
   ...CommerceAllocationReversalCapabilities,
   ...ClosingCapabilities,
   ...Automation.PreparationJobStopCapabilities,

@@ -20,6 +20,8 @@ const search = Schema.Struct({
   returnReport: Schema.optional(Schema.String),
   returnAccount: Schema.optional(Schema.String),
   returnView: Schema.optional(Schema.Literals(["trial", "ledger"])),
+  q: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
+  period: Schema.optional(Schema.String),
 });
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/books")({
   validateSearch: Schema.decodeUnknownSync(search),
@@ -56,7 +58,20 @@ function Books() {
           </PageTab>
         </PageTabs>
         {view !== "accounts" ? (
-          <PostedRecords book={book} locale={locale} setup={setup} onPrepared={onPrepared} />
+          <PostedRecords
+            book={book}
+            locale={locale}
+            setup={setup}
+            onPrepared={onPrepared}
+            query={query.q ?? ""}
+            period={query.period ?? ""}
+            onQuery={(q) =>
+              void navigate({ to: base, search: { ...query, q: q || undefined }, replace: true, resetScroll: false })
+            }
+            onPeriod={(period) =>
+              void navigate({ to: base, search: { ...query, period: period || undefined }, replace: true, resetScroll: false })
+            }
+          />
         ) : null}
         {view === "accounts" ? <ChartOfAccounts /> : null}
         {record && view === "vouchers" ? (
@@ -81,7 +96,11 @@ function Books() {
                       },
                       resetScroll: false,
                     }
-                  : { to: base, search: { view: "vouchers" }, resetScroll: false },
+                  : {
+                      to: base,
+                      search: { view: "vouchers", q: query.q, period: query.period },
+                      resetScroll: false,
+                    },
               )
             }
           >

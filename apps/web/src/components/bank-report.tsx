@@ -17,14 +17,16 @@ export function BankReport({
   book,
   id,
   locale,
+  expected,
 }: {
   book: typeof Accounting.Book.Type;
   id: string;
   locale: Locale;
+  expected?: { accountId: string; startsOn: string; endsOn: string };
 }) {
   const copy = accountingCopy(locale);
   const report = useQuery({
-    queryKey: [...bookKey(book), "bank-reconciliation", id],
+    queryKey: [...bookKey(book), "bank-reconciliation", id, expected],
     queryFn: async ({ signal }) => {
       const view = await readAccounting(
         `${bookPath(book)}/bank-reconciliations/${encodeURIComponent(id)}`,
@@ -37,6 +39,13 @@ export function BankReport({
         view.report.scope.bookId !== book.id
       )
         throw new Error("Report scope mismatch");
+      if (
+        expected &&
+        (view.report.accountId !== expected.accountId ||
+          view.report.startsOn !== expected.startsOn ||
+          view.report.endsOn !== expected.endsOn)
+      )
+        throw new Error("Report account or period mismatch");
       return view;
     },
     retry: false,
@@ -57,7 +66,7 @@ export function BankReport({
         </Button>
       </Box>
       <AccountingStatus locale={locale} pending={report.isPending} error={report.error} />
-      {report.data ? (
+      {report.isSuccess ? (
         <>
           <Text tone="muted">
             {copy.bank_last_checked}: {new Date(report.dataUpdatedAt).toISOString()}

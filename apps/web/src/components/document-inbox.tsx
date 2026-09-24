@@ -284,6 +284,24 @@ function DocumentDetail({ id }: { id: string }) {
     },
     retry: false,
   });
+  const purchases = useQuery({
+    queryKey: [...bookKey(book), "source-purchase-links", id],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${bookPath(book)}/source-occurrences/${encodeURIComponent(id)}/purchase-links`,
+        Sources.SourcePurchaseLinks,
+        { signal },
+      );
+      if (
+        result.occurrenceId !== id ||
+        result.scope.bookId !== book.id ||
+        result.scope.entityId !== book.entityId
+      )
+        throw new Error("Purchase source scope mismatch");
+      return result;
+    },
+    retry: false,
+  });
   const source = document.isError ? undefined : document.data?.occurrence;
   return (
     <Box display="grid" gap="xl">
@@ -318,31 +336,81 @@ function DocumentDetail({ id }: { id: string }) {
           />
           <RecordSplit
             aside={
-              <RecordSection title={labels.documentDetails}>
-                <Text>
-                  {labels.uploaded}:{" "}
-                  {new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
-                    new Date(source.retainedAt),
-                  )}
-                </Text>
-                <Text>{source.mediaType}</Text>
-                <Text>{new Intl.NumberFormat(locale).format(source.byteLength)} bytes</Text>
-                <PageCaption>{labels.theOriginalIsRetainedNo}</PageCaption>
-                {book.role === "operator" ? (
-                  <PageAction
-                    href={`${workspacePath(book)}/purchases?view=supplier-drafts&record=${encodeURIComponent(`new:${source.id}`)}`}
-                  >
-                    {sv ? "Förbered leverantörsfaktura" : "Prepare supplier invoice"}
-                  </PageAction>
-                ) : null}
-                {book.role === "operator" && !document.data?.admission ? (
-                  <PageAction
-                    href={`${workspacePath(book)}/purchases?view=expenses&record=${encodeURIComponent(`new:${source.id}`)}`}
-                  >
-                    {sv ? "Förbered utgift" : "Prepare expense"}
-                  </PageAction>
-                ) : null}
-              </RecordSection>
+              <Box display="grid" gap="xl">
+                <RecordSection title={labels.documentDetails}>
+                  <Text>
+                    {labels.uploaded}:{" "}
+                    {new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
+                      new Date(source.retainedAt),
+                    )}
+                  </Text>
+                  <Text>{source.mediaType}</Text>
+                  <Text>{new Intl.NumberFormat(locale).format(source.byteLength)} bytes</Text>
+                  <PageCaption>{labels.theOriginalIsRetainedNo}</PageCaption>
+                  {book.role === "operator" ? (
+                    <PageAction
+                      href={`${workspacePath(book)}/purchases?view=supplier-drafts&record=${encodeURIComponent(`new:${source.id}`)}`}
+                    >
+                      {sv ? "Förbered leverantörsfaktura" : "Prepare supplier invoice"}
+                    </PageAction>
+                  ) : null}
+                  {book.role === "operator" && !document.data?.admission ? (
+                    <PageAction
+                      href={`${workspacePath(book)}/purchases?view=expenses&record=${encodeURIComponent(`new:${source.id}`)}`}
+                    >
+                      {sv ? "Förbered utgift" : "Prepare expense"}
+                    </PageAction>
+                  ) : null}
+                </RecordSection>
+                <RecordSection title={sv ? "Arbete från originalet" : "Work from this original"}>
+                  <AccountingStatus
+                    locale={locale}
+                    pending={purchases.isPending}
+                    error={purchases.error}
+                  />
+                  {purchases.isError ? (
+                    <Button variant="outline" onClick={() => void purchases.refetch()}>
+                      {sv ? "Försök igen" : "Retry"}
+                    </Button>
+                  ) : null}
+                  {purchases.data?.supplierDrafts.map((draft) => (
+                    <PageAction
+                      key={draft.id}
+                      href={`${workspacePath(book)}/purchases?view=supplier-drafts&record=${encodeURIComponent(draft.id)}`}
+                    >
+                      {sv ? "Fakturautkast" : "Invoice draft"}: {draft.title}
+                    </PageAction>
+                  ))}
+                  {purchases.data?.expenses.map((expense) => (
+                    <PageAction
+                      key={expense.id}
+                      href={`${workspacePath(book)}/purchases?view=expenses&record=${encodeURIComponent(expense.id)}`}
+                    >
+                      {sv ? "Utgift" : "Expense"}: {expense.description} ·{" "}
+                      {expense.withdrawn
+                        ? sv
+                          ? "Återtagen"
+                          : "Withdrawn"
+                        : expense.reviewCurrent
+                          ? sv
+                            ? "Granskad"
+                            : "Reviewed"
+                          : sv
+                            ? "Att granska"
+                            : "Needs review"}
+                    </PageAction>
+                  ))}
+                  {purchases.isSuccess &&
+                  !purchases.data.supplierDrafts.length &&
+                  !purchases.data.expenses.length ? (
+                    <PageCaption>
+                      {sv
+                        ? "Inga sparade inköpsuppgifter är kopplade till originalet."
+                        : "No saved purchase work is linked to this original."}
+                    </PageCaption>
+                  ) : null}
+                </RecordSection>
+              </Box>
             }
           >
             {document.data ? (

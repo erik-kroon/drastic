@@ -1,0 +1,17 @@
+# Supplier acceptance and offline payment export: source handoff
+
+## Implemented source (migrations not applied)
+
+`7100-supplier-acceptance.sql` extends retained supplier drafts through a **synthetic-only** review → same-operator approval → atomic posting/register/receipt. The operator pins a current supplier draft revision and digest, chooses payable and expense accounts and a period, and acknowledges synthetic scope. A source number, same-book original evidence, exact matched positive gross and evidenced zero asserted tax are required. The original supplier document number becomes the supplier register number; no number is issued on the supplier’s behalf. Original evidence is referenced by the kernel posting and supplier register. A prepared review fences separate posting of that original evidence. The execution rechecks draft and source history, then approves and executes the kernel posting and registers its payable control line in one SQL transaction. Revisions remain immutable and accepted draft heads cannot be edited. Legal identity, real VAT and company accounting profile are not activated. Existing generic correction guards still refuse a reversal of a commerce-bound recognition.
+
+`7110-supplier-payment-batches.sql` provides a separate **offline synthetic** batch preview and immutable `pain.001.001.03` XML-byte export. An operator supplies debtor/payee account assertions with evidence references, selects 1–20 accepted supplier invoices, pins allocation versions and exact outstanding/partial amounts, then exports the reviewed digest. The export checks the live register again under the book lock and retains base64 UTF-8 bytes and their SHA-256. An invoice is reserved against another export after the first file; retrying the original idempotency key returns the same bytes. Its `exported` state is explicitly not bank-compatible, bank-accepted, paid, allocated or posted. No provider submission or settlement occurs. Unknown payee verification and bank scheme/profile contracts remain D-10 blockers.
+
+The approved posting boundary already owns supplier acceptance recognition. Creating or revising a supplier draft alone still never books an amount. Payment file preparation/export also never books a payment. A bank observation or exported file cannot be interpreted as invoice settlement.
+
+## Still unsupported
+
+AP-2 supplier credit notes, partial credit capacity, correction of accepted supplier recognition, refund and paid residual reconciliation are **not implemented**. The existing generic commerce correction guard deliberately refuses recognition reversal. Do not claim supplier-credit or correction readiness from acceptance and offline export. Before AP-2, choose the credit identity and cancellation/partial-effect semantics against the existing allocation conservation, register controls and period rules. Exported supplier invoices cannot be exported again even if the file is lost or rejected; recover exact saved bytes or resolve the external outcome before a future explicit replacement workflow.
+
+## Verification limits
+
+Only contract TypeScript compilation, targeted formatter/lint and source review were performed. No tests were added or changed (D-09). SQL was not compiled/applied in PostgreSQL; no runtime, independent arithmetic, XML-schema, provider or bank behavior was verified. Existing invoice/payment control behavior and company activation remain separate gates.
