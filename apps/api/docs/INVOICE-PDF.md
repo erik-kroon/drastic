@@ -337,3 +337,18 @@ were inspected. [Exact hashes, reproduction and PDF/PNG evidence](../../../docs/
 cover this local synthetic claim only. Extra-tall rows, repeated table headings on
 continuation pages, screen-reader tagging and deployed Worker limits remain open;
 no provider call, real tenant or customer receipt was observed.
+
+### Local synthetic delivery-outbox observation
+
+A disposable PostgreSQL 17 and actual Worker HTTP run exercised the PDF-linked
+email/Peppol outbox after a synthetic sealed v2 invoice. All 35 bounded HTTP
+checks matched their expected statuses. Independent send approval, durable
+unknown request identity before any traffic, same-key replay, block while unknown,
+mock confirmed-not-sent retry with a distinct request ID, terminal accepted/rejected
+classification, Peppol payload refusal and cross-book access denial held. One PDF
+capture/artifact and four intents/approvals/attempts plus three reconciliations
+were retained. [Token-free reproduction, statuses and sealed bytes](../../../docs/plans/evidence/wave2-legal-delivery-e2e/README.md)
+record this local synthetic observation. All `delivered` values remained false
+and all `externalTrafficProven` values false. The accepted/rejected/not-sent
+labels were explicitly mock operator classifications, **not** provider evidence;
+no external request, customer receipt or actual-company authority was verified.
