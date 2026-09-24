@@ -8,7 +8,7 @@ export const supplierPaymentBatchStatements = {
   getSupplierPaymentBatch: (parameters) =>
     sql`select openerp.get_supplier_payment_batch(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
   listSupplierPaymentEligibility: (parameters) =>
-    sql`select openerp.list_supplier_payment_eligibility(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
+    sql`select openerp.list_supplier_payment_eligibility(${parameters[0]}::text,${parameters[1]}::jsonb,NULLIF(${parameters[2]}::text,'')) as result`,
   proposeSupplierPayee: (parameters) =>
     sql`select openerp.propose_supplier_payee(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   getSupplierPayee: (parameters) =>
