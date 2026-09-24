@@ -44,6 +44,8 @@ Hosted multi-entity operation and self-hosting are target design directions. Pre
 
 Local development uses explicitly synthetic records until actual data and its permitted use are supplied. No company import, production posting, deployment, cutover, payment, filing or provider purchase is implied by this documentation task.
 
+The [supplemental capability backlog](plans/capability-backlog.md) adds collections, quotes/orders, catalog and webshop intake, dimensions, mileage claims and a bounded extension lifecycle to the planned product scope. These reuse the accounting core; general CRM, inventory/warehouse management and a plugin marketplace remain excluded.
+
 ## Three separate completion claims
 
 **Software:** a named capability works in a named environment under specified scenarios. **Company books:** the actual profile and sources are covered and the selected period is reconciled. **External obligations:** the required artifact, signature and acceptance evidence exist. None implies the other two.

@@ -20,6 +20,8 @@ The failure cases below precede the test implementation. Tests drive HTTP into t
 | Reapplying migrations corrupts state          | Second run preserves populated ledger; changed recorded checksum fails loudly.                      |
 | MCP bypasses HTTP admission                   | Real JSON-RPC requests enforce authentication and expose no approval tool.                          |
 
+The retired token-session and browser sign-in tests were removed because they targeted routes and UI that no longer exist. The expiry case was removed because it tried to update an immutable approval. The suite currently has no automated browser, supplier AP, current-session security, or approval-expiry journey. Existing local HTTP/browser proof artifacts are not recurring regression coverage. A green kernel suite is not browser or AP acceptance.
+
 Run `bun run test:e2e` from the repository root. PostgreSQL 17 binaries (`initdb`, `pg_ctl`, `pg_config`) and Bun must be available. Set `PG_BINDIR` when the binaries are outside PATH. Each invocation owns a fresh temporary PostgreSQL cluster; it never uses ambient database credentials. Missing prerequisites fail the run.
 
 Artifacts are written under `test-results/e2e`: JSON and JUnit results, a source/migration manifest, Worker and PostgreSQL logs, and independently observed ledger evidence. Fixture access tokens are disposable and are excluded from saved artifacts. These synthetic tests are not Swedish accounting compliance certification.

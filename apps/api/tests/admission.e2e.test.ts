@@ -3,9 +3,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import {
   approve,
   database,
-  decoded,
   emptyPosting,
-  environment,
   evidence,
   execution,
   failure,
@@ -52,11 +50,6 @@ test.each([
     "UPDATE openerp.accounts SET version = version + 1 WHERE book_id = $1 AND id = 'account_bank'",
     "StaleDependency",
   ],
-  [
-    "expired approval",
-    "UPDATE openerp.approvals SET expires_at = now() - interval '1 second' WHERE book_id = $1",
-    "ApprovalRequired",
-  ],
 ] satisfies [string, string, typeof Accounting.FailureCode.Type][])(
   "%s rejects execution without consuming approval or counters",
   async (_name, sql, code) => {
@@ -74,7 +67,7 @@ test.each([
         method: "POST",
         body: JSON.stringify(execution(plan, approval)),
       }),
-      code === "ApprovalRequired" ? 403 : 409,
+      409,
       code,
     );
     expect(await persisted(book)).toEqual(emptyPosting);
@@ -144,57 +137,5 @@ test("unbalanced lines and missing evidence reject without journaling", async ()
     422,
     "MissingEvidence",
   );
-  expect(await persisted(book)).toEqual(emptyPosting);
-});
-
-test("cookie mutations require same origin and revoked credentials stop working", async () => {
-  const book = await fixture();
-  const login = await fetch(`${environment().baseUrl}/api/v1/session`, {
-    method: "POST",
-    headers: { "content-type": "application/json", origin: environment().baseUrl },
-    body: JSON.stringify({ token: book.token }),
-  });
-  expect(login.status).toBe(200);
-  expect(await login.json()).toEqual({ authenticated: true });
-  const setCookie = login.headers.get("set-cookie");
-  expect(setCookie).toContain("HttpOnly");
-  expect(setCookie).toContain("SameSite=Strict");
-  const cookie = setCookie?.split(";")[0];
-  if (!cookie) throw new Error("Session did not issue a cookie");
-  const plan = await prepare(book);
-  const headers = {
-    cookie,
-    "content-type": "application/json",
-    "idempotency-key": crypto.randomUUID(),
-  };
-  const endpoint = `${environment().baseUrl}${book.path}/change-sets/${plan.id}/approvals`;
-  const body = JSON.stringify({ planDigest: plan.planDigest, version: 1 });
-  await failure(await fetch(endpoint, { method: "POST", headers, body }), 403, "Forbidden");
-  await failure(
-    await fetch(endpoint, {
-      method: "POST",
-      headers: { ...headers, origin: "https://foreign.example" },
-      body,
-    }),
-    403,
-    "Forbidden",
-  );
-  await decoded(
-    await fetch(endpoint, {
-      method: "POST",
-      headers: { ...headers, origin: environment().baseUrl },
-      body,
-    }),
-    Accounting.Approval,
-  );
-  const admin = await database();
-  try {
-    await admin.query("UPDATE openerp.credentials SET revoked_at = now() WHERE actor_id = $1", [
-      book.actorId,
-    ]);
-  } finally {
-    await admin.end();
-  }
-  await failure(await request(book, "/ledger"), 401, "Unauthorized");
   expect(await persisted(book)).toEqual(emptyPosting);
 });
