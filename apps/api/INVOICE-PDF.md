@@ -119,23 +119,28 @@ contains no copied brand graphic, fictitious payment details or reused Midday co
 Scope: A4 renderer sample in `/tmp/open-erp-ar-visual/`; plain PDF CSS, no browser
 widgets. The attached reference is `/tmp/midday-invoice-pdf-reference.jpg`.
 
-| Area | Inspected evidence | Result |
-| --- | --- | --- |
-| Typography | Sample PNG at 595×842, IBM Plex Mono, tabular amount columns, Swedish labels | Readable; exact money strings remain right-aligned. |
-| Surfaces | Page margins, sparse rule under table header, total separator | Kept monochrome without cards or shadows. |
-| Animations | Static PDF | Not applicable; no motion. |
-| Icons | No logo or payment QR in tenant input | Omitted rather than inventing assets. |
-| Performance | Local subset fonts and sample PDF bytes | 10 KiB sample; actual 50-line pagination and Worker limits unverified. |
+| Area        | Inspected evidence                                                           | Result                                                                                                                                           |
+| ----------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Typography  | Sample PNG at 595×842, IBM Plex Mono, tabular amount columns, Swedish labels | Readable; exact money strings remain right-aligned.                                                                                              |
+| Surfaces    | Page margins, sparse rule under table header, total separator                | Kept monochrome without cards or shadows.                                                                                                        |
+| Animations  | Static PDF                                                                   | Not applicable; no motion.                                                                                                                       |
+| Icons       | No logo or payment QR in tenant input                                        | Omitted rather than inventing assets.                                                                                                            |
+| Performance | Local subset fonts and sample PDF bytes                                      | 10 KiB single-page sample; 50-line visual stress rendered in five pages, including a trailing footer-only page. Worker limits remain unverified. |
 
-| Severity | Location | Before | After | Why |
-| --- | --- | --- | --- | --- |
-| HIGH | `src/application/legal-invoice-pdf-renderer.ts` table | Six numeric columns collided in the 595px PDF. | Four aligned columns; explicit net/tax/discount facts stay beneath each line. | Prevents overlapping legal amounts. |
-| MEDIUM | Same renderer, layout | Blue header and shaded terms diverged from reference. | Sparse monochrome mono typography, restrained invoice/date row, seller/customer columns, right total and bottom terms. | Preserves clear reading order without copying branding. |
-| LOW | Same renderer, number cells | Uneven numeric alignment. | Tabular numerals and right alignment. | Makes amount columns scannable. |
+| Severity    | Location                                              | Before                                                                                        | After                                                                                                                  | Why                                                                                            |
+| ----------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| HIGH        | `src/application/legal-invoice-pdf-renderer.ts` table | Six numeric columns collided in the 595px PDF.                                                | Four aligned columns; explicit net/tax/discount facts stay beneath each line.                                          | Prevents overlapping legal amounts.                                                            |
+| MEDIUM      | Same renderer, layout                                 | Blue header and shaded terms diverged from reference.                                         | Sparse monochrome mono typography, restrained invoice/date row, seller/customer columns, right total and bottom terms. | Preserves clear reading order without copying branding.                                        |
+| MEDIUM      | Same renderer, grand total                            | The sample clipped the trailing `kr` from the amount.                                         | Wider total block and a 21px amount; the 595×842 re-render shows the full currency.                                    | Keeps the legally relevant total legible.                                                      |
+| LOW         | Same renderer, number cells                           | Uneven numeric alignment.                                                                     | Tabular numerals and right alignment.                                                                                  | Makes amount columns scannable.                                                                |
+| HIGH — OPEN | Takumi 0.11.3 multi-page table                        | A 50-line stress sample splits a row's detail across pages and adds a footer-only final page. | Not resolved by `break-inside: avoid`, grouped `<tbody>`, removing the footer, or reducing section spacing.            | Long-document visual acceptance is blocked; do not infer it from the clean single-page sample. |
 
 Rejected: fake tenant logo, bank account and QR code; these have no reviewed tenant
 input. Rejected: float money formatting from the supplied sales-order template; the
-issued source already owns exact minor-unit values. Visual inspection covers one
-synthetic preview only; no 50-line pagination, screen-reader validation or provider
-hand-off rendering was observed. The invoice sample is visually acceptable for this
-layout review but release proof remains open.
+issued source already owns exact minor-unit values. Visual inspection covers an
+illustrative single page and a 50-line stress preview. The re-rendered single-page
+sample is `/tmp/open-erp-ar-visual/invoice-review-white.png`; `render.ts` is the
+repeatable local source. The 50-line output still has a footer-only page and splits
+row detail across a page boundary. Screen-reader validation, provider handoff,
+Worker limits and long-document visual acceptance remain open; the clean sample
+is not release proof.

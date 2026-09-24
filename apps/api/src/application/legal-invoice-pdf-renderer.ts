@@ -45,7 +45,8 @@ const fonts = [
 ];
 const css = `
 * { box-sizing:border-box; }
-body { color:#151515; font-family:'OpenERP Plex',monospace; font-size:10px; line-height:1.66; }
+html,body { margin:0; padding:0; }
+body { color:#151515; font-family:'OpenERP Plex',monospace; font-size:10px; line-height:1.5; }
 .meta { display:flex; justify-content:space-between; padding-top:102px; font-size:10px; }
 .meta span { white-space:nowrap; }
 .parties { display:flex; justify-content:space-between; gap:56px; margin-top:54px; }
@@ -57,7 +58,8 @@ body { color:#151515; font-family:'OpenERP Plex',monospace; font-size:10px; line
 table { border-collapse:collapse; table-layout:fixed; width:100%; }
 thead { border-bottom:1px solid #333; }
 th { font-weight:400; font-size:10px; padding:6px 0 9px; text-align:left; }
-td { padding:13px 0 0; vertical-align:top; overflow-wrap:anywhere; }
+th.qty { text-align:center; }
+td { padding:7px 0 0; vertical-align:top; overflow-wrap:anywhere; }
 .num { font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; }
 .desc { width:45%; }
 .qty { width:10%; }
@@ -66,10 +68,10 @@ td { padding:13px 0 0; vertical-align:top; overflow-wrap:anywhere; }
 .vat { width:23%; }
 .line-note { color:#666; font-size:8px; }
 .totals { display:flex; justify-content:flex-end; margin-top:58px; }
-.totals table { width:38%; }
+.totals table { width:53%; }
 .totals td { padding:7px 0; }
 .totals .grand td { border-top:1px solid #333; padding-top:14px; }
-.totals .grand .num { font-size:25px; font-weight:600; }
+.totals .grand .num { font-size:21px; font-weight:600; }
 .payment { display:flex; justify-content:space-between; gap:56px; margin-top:75px; }
 .payment section { width:48%; overflow-wrap:anywhere; }
 .payment h2 { font-size:10px; font-weight:400; margin:0 0 13px; }

@@ -54,14 +54,17 @@ function effectCapability<I, O extends Schema.Json>(
 
 export const capabilities = {
   company_create: bindCapability(Capabilities.company_create, "createCompany", (input) => [
-    input.idempotencyKey, JSON.stringify(input.input),
+    input.idempotencyKey,
+    JSON.stringify(input.input),
   ]),
   company_get_setup: bindCapability(Capabilities.company_get_setup, "getCompanySetup", (input) => [
     scopeParameter(input.scope),
   ]),
-  company_save_setup: bindCapability(Capabilities.company_save_setup, "saveCompanySetup", (input) => [
-    scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input),
-  ]),
+  company_save_setup: bindCapability(
+    Capabilities.company_save_setup,
+    "saveCompanySetup",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
   firm_list: bindCapability(Capabilities.firm_list, "listFirms", () => []),
   firm_get: bindCapability(Capabilities.firm_get, "getFirm", (input) => [input.firmId]),
   firm_create: bindCapability(Capabilities.firm_create, "createFirm", (input) => [
@@ -225,43 +228,53 @@ export const capabilities = {
     invoiceDocumentHistory,
   ),
   commerce_legal_sales_policy_history: bindCapability(
-    Capabilities.commerce_legal_sales_policy_history, "legalSalesPolicyHistory",
+    Capabilities.commerce_legal_sales_policy_history,
+    "legalSalesPolicyHistory",
     (input) => [scopeParameter(input.scope)],
   ),
   commerce_get_legal_sales_policy: bindCapability(
-    Capabilities.commerce_get_legal_sales_policy, "getLegalSalesPolicy",
+    Capabilities.commerce_get_legal_sales_policy,
+    "getLegalSalesPolicy",
     (input) => [scopeParameter(input.scope), input.id],
   ),
   commerce_get_legal_invoice_pdf: bindCapability(
-    Capabilities.commerce_get_legal_invoice_pdf, "getLegalInvoicePdf",
+    Capabilities.commerce_get_legal_invoice_pdf,
+    "getLegalInvoicePdf",
     (input) => [scopeParameter(input.scope), input.id],
   ),
   commerce_legal_invoice_pdf_history: bindCapability(
-    Capabilities.commerce_legal_invoice_pdf_history, "legalInvoicePdfHistory",
+    Capabilities.commerce_legal_invoice_pdf_history,
+    "legalInvoicePdfHistory",
     (input) => [scopeParameter(input.scope), input.id],
   ),
   commerce_get_legal_delivery: bindCapability(
-    Capabilities.commerce_get_legal_delivery, "getLegalDelivery",
+    Capabilities.commerce_get_legal_delivery,
+    "getLegalDelivery",
     (input) => [scopeParameter(input.scope), input.id],
   ),
   commerce_legal_delivery_history: bindCapability(
-    Capabilities.commerce_legal_delivery_history, "legalDeliveryHistory",
+    Capabilities.commerce_legal_delivery_history,
+    "legalDeliveryHistory",
     (input) => [scopeParameter(input.scope), input.id],
   ),
   commerce_get_ar_legal_accounting_profile: bindCapability(
-    Capabilities.commerce_get_ar_legal_accounting_profile, "getArLegalAccountingProfile",
+    Capabilities.commerce_get_ar_legal_accounting_profile,
+    "getArLegalAccountingProfile",
     (input) => [scopeParameter(input.scope), input.id],
   ),
   commerce_get_ar_legal_issue_review: bindCapability(
-    Capabilities.commerce_get_ar_legal_issue_review, "getArLegalIssueReview",
+    Capabilities.commerce_get_ar_legal_issue_review,
+    "getArLegalIssueReview",
     (input) => [scopeParameter(input.scope), input.id],
   ),
   commerce_get_ar_legal_issue: bindCapability(
-    Capabilities.commerce_get_ar_legal_issue, "getArLegalIssue",
+    Capabilities.commerce_get_ar_legal_issue,
+    "getArLegalIssue",
     (input) => [scopeParameter(input.scope), input.id],
   ),
   commerce_ar_legal_issue_history: bindCapability(
-    Capabilities.commerce_ar_legal_issue_history, "arLegalIssueHistory",
+    Capabilities.commerce_ar_legal_issue_history,
+    "arLegalIssueHistory",
     (input) => [scopeParameter(input.scope), input.id],
   ),
   commerce_get_invoice_policy_candidate: bindCapability(
