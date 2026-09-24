@@ -555,7 +555,7 @@ function DraftDates({
             : "For example, September design work"
         }
       />
-      <Box display="grid" columns={3} gap="lg">
+      <Box display="grid" columnsAtSm={3} gap="lg">
         <InputField
           name="issueDate"
           label={labels.invoiceDate}
