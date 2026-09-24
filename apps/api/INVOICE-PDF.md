@@ -107,10 +107,10 @@ manifests and shared wiring. Apply 7610/7620 before 8100; 8100 adds the issue FK
 Static migration application was observed in an isolated PostgreSQL cluster through
 8100 on 2026-09-24. A separate illustrative PDF sample was rendered with Takumi,
 converted by `sips` and visually inspected against the supplied Midday image:
-`/tmp/open-erp-ar-visual/render.ts`, `invoice.pdf`, `invoice-white.png`. This synthetic
-visual preview is **not** an authenticated issue-to-delivery exercise or legal content
-acceptance. No provider call, real tenant setup, browser route or recipient delivery
-has been verified. Original PDF layout uses the visual reference's monospace
+`/tmp/open-erp-ar-visual/render.ts`, `invoice.pdf`, `invoice-white.png`. This illustrative
+visual preview alone is **not** an authenticated issue-to-delivery exercise or legal
+content acceptance. A separate synthetic Worker PDF observation is recorded below;
+no provider call, real tenant setup, browser route or recipient delivery has been verified. Original PDF layout uses the visual reference's monospace
 invoice/date row, From/To columns, sparse table, right total and bottom terms, but
 contains no copied brand graphic, fictitious payment details or reused Midday code.
 
@@ -144,3 +144,17 @@ repeatable local source. The 50-line output still has a footer-only page and spl
 row detail across a page boundary. Screen-reader validation, provider handoff,
 Worker limits and long-document visual acceptance remain open; the clean sample
 is not release proof.
+
+### Live synthetic Worker PDF observation
+
+A fresh disposable PostgreSQL 17 database with the source migrations and a reviewed
+**synthetic** legal issue exercised the actual Worker `POST /legal-invoice-pdfs` route.
+It first returned HTTP 500 before writing a capture: PostgreSQL could not parse the
+unparenthesized JSONB subtraction in versioned `7610`. Forward migration `8210`
+replaced that function without editing an applied migration. The same request then
+returned a sealed, 9,997-byte PDF whose decoded bytes matched its stored SHA-256.
+Same-key retry, GET, and render-resume returned identical records; the database
+retained one issue, capture and artifact. The real-Worker PDF image was reviewed.
+[Reproduction steps, exact hashes and PDF/PNG evidence](../../docs/plans/evidence/wave2-legal-pdf-worker.md)
+keep this synthetic proof distinct from actual-company acceptance. No provider send,
+recipient delivery, deployed Worker limit or long-document pagination was proven.
