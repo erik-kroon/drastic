@@ -1,4 +1,5 @@
 import { useState } from "react";
+import * as Schema from "effect/Schema";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Deadlines from "@open-erp/contracts/deadlines";
@@ -23,7 +24,8 @@ export function DeadlineObligations({ book, locale }: { book: typeof Accounting.
   const [reference, setReference] = useState("");
   const [error, setError] = useState<Error | null>(null);
   const save = useMutation({ mutationFn: () => readAccounting(`${path}/${encodeURIComponent(id)}`, Deadlines.Deadline, { method: "POST", body: JSON.stringify({ expectedRevision: list.data?.find(item => item.id === id)?.revision ?? null, input }) }), onSuccess: async () => { setError(null); await client.invalidateQueries({ queryKey: key }); }, onError: setError });
-  const activity = useMutation({ mutationFn: ({ item, action }: { item: typeof Deadlines.Deadline.Type; action: "dismiss_reminder" | "record_outcome" }) => readAccounting(`${path}/${encodeURIComponent(item.id)}/activity`, Deadlines.Deadline, { method: "POST", body: JSON.stringify({ action, ...(action === "record_outcome" ? { reference } : {}) }) }), onSuccess: async () => { setError(null); await client.invalidateQueries({ queryKey: key }); }, onError: setError });
+  const activity = useMutation({ mutationFn: ({ item, action }: { item: typeof Deadlines.Deadline.Type; action: "dismiss_reminder" | "record_outcome" }) => readAccounting(`${path}/${encodeURIComponent(item.id)}/activity`, Deadlines.Deadline, { method: "POST", body: JSON.stringify(action === "record_outcome" ? { action, reference } : { action }) }), onSuccess: async () => { setError(null); await client.invalidateQueries({ queryKey: key }); }, onError: setError });
+  const createFeed = useMutation({ mutationFn: async () => { const next = crypto.randomUUID(); const data = await readAccounting(`${path}/feeds/${next}`, Deadlines.DeadlineFeed, { method: "POST" }); return { id: next, secret: data.secret }; }, onSuccess: data => { setFeedId(data.id); setFeed(`${location.origin}/api/v1/deadline-feeds/${data.secret}.ics`); setError(null); }, onError: setError });
   const revokeFeed = useMutation({ mutationFn: () => readAccounting(`${path}/feeds/${encodeURIComponent(feedId)}/revoke`, Deadlines.RevokedDeadlineFeed, { method: "POST" }), onSuccess: () => { setFeed(null); setFeedId(""); setError(null); }, onError: setError });
   const [feedId, setFeedId] = useState("");
   return <RecordSection title={sv ? "Tidsfrister" : "Deadlines"}><Box display="grid" gap="md" minWidth="zero">
@@ -43,11 +45,11 @@ export function DeadlineObligations({ book, locale }: { book: typeof Accounting.
       <InputField label={sv ? "Tidszon" : "Time zone"} required value={input.timeZone} onChange={event => setInput({ ...input, timeZone: event.target.value })} />
       <InputField label={sv ? "Källreferens" : "Source reference"} required value={input.sourceReference} onChange={event => setInput({ ...input, sourceReference: event.target.value })} />
       <InputField label={sv ? "Källrevision" : "Source revision"} required value={input.sourceRevision} onChange={event => setInput({ ...input, sourceRevision: event.target.value })} />
-      <label>{sv ? "Utfall" : "Outcome"} <select value={input.outcomeKind} onChange={event => setInput({ ...input, outcomeKind: event.target.value as typeof input.outcomeKind })}><option value="prepared">{sv ? "Förberedd" : "Prepared"}</option><option value="submitted">{sv ? "Inlämnad" : "Submitted"}</option><option value="accepted">{sv ? "Godkänd" : "Accepted"}</option></select></label>
+      <label>{sv ? "Utfall" : "Outcome"} <select value={input.outcomeKind} onChange={event => setInput({ ...input, outcomeKind: Schema.decodeUnknownSync(Deadlines.DeadlineInput.fields.outcomeKind)(event.target.value) })}><option value="prepared">{sv ? "Förberedd" : "Prepared"}</option><option value="submitted">{sv ? "Inlämnad" : "Submitted"}</option><option value="accepted">{sv ? "Godkänd" : "Accepted"}</option></select></label>
       <InputField label={sv ? "Skäl för ändring av datum eller källa" : "Reason for changed date or source"} value={input.overrideReason ?? ""} onChange={event => setInput({ ...input, overrideReason: event.target.value || undefined })} />
       <Button type="submit" disabled={save.isPending}>{sv ? "Spara tidsfrist" : "Save deadline"}</Button>
     </Box></form>
-    <Button type="button" disabled={createFeed.isPending} onClick={() => { const next = crypto.randomUUID(); setFeedId(next); readAccounting(`${path}/feeds/${next}`, Deadlines.DeadlineFeed, { method: "POST" }).then(data => { setError(null); setFeed(`${location.origin}/api/v1/deadline-feeds/${data.secret}.ics`); }).catch(setError); }}>{sv ? "Skapa privat kalenderlänk" : "Create private calendar link"}</Button>
+    <Button type="button" disabled={createFeed.isPending} onClick={() => createFeed.mutate()}>{sv ? "Skapa privat kalenderlänk" : "Create private calendar link"}</Button>
     {feed && <Box display="grid" gap="sm"><Text>{sv ? "Kopiera länken nu. Den visas inte igen. Dela den inte offentligt." : "Copy this link now. It will not be shown again. Do not share it publicly."}</Text><Text>{feed}</Text><Button type="button" disabled={revokeFeed.isPending} onClick={() => revokeFeed.mutate()}>{sv ? "Spärra kalenderlänk" : "Revoke calendar link"}</Button></Box>}
   </Box></RecordSection>;
 }

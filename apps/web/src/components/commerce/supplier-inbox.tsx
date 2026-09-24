@@ -33,7 +33,7 @@ export function SupplierInbox(props: CommerceProps & { onDraft: (id: string) => 
   });
   const register = useMutation({
     mutationFn: async (sourceId: string) => {
-      const input = Schema.decodeUnknownSync(Inbox.RegisterSupplierInbox)({ occurrenceId: sourceId, channel: "upload", messageIdentity: null });
+      const input = Schema.decodeSync(Inbox.RegisterSupplierInbox)({ occurrenceId: sourceId, channel: "upload", messageIdentity: null });
       const result = await readAccounting(path, Inbox.SupplierInboxView, mutationOptions(path, JSON.stringify(input), new Map()));
       checkScope(book, result.occurrence.occurrence.scope);
       if (result.occurrence.occurrence.id !== sourceId) throw new Error("Inbox identity mismatch");

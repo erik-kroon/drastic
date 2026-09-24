@@ -5,7 +5,7 @@ import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Payroll from "@open-erp/contracts/payroll-foundation";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
-import { InputField } from "@open-erp/ui/components/field";
+import { InputField, TextareaField } from "@open-erp/ui/components/field";
 import { RecordSection } from "@open-erp/ui/components/record-layout";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -13,11 +13,11 @@ import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accoun
 import type { Locale } from "@/paraglide/runtime";
 
 type Kind = "employment" | "work" | "opening";
-const examples: Record<Kind, string> = {
+const examples = {
   employment: JSON.stringify({ personRef: "", jurisdiction: "", residency: "", payTerms: "", workSchedule: "", taxFacts: "" }, null, 2),
   work: JSON.stringify({ periodStart: "", periodEnd: "", inputs: [] }, null, 2),
   opening: JSON.stringify({ asOf: "", balanceMinor: "", obligation: "" }, null, 2),
-};
+} satisfies Record<Kind, string>;
 export function PayrollFoundation({ book, locale }: { book: typeof Accounting.Book.Type; locale: Locale }) {
   const sv = locale === "sv";
   const client = useQueryClient();
@@ -69,7 +69,7 @@ export function PayrollFoundation({ book, locale }: { book: typeof Accounting.Bo
           <Text>{item.kind} · {item.effectiveOn} · {item.id} · {item.createdAt}</Text>
           <Text>{sv ? "Underlag" : "Evidence"}: {item.evidenceId} · {sv ? "Skapad av" : "Created by"}: {item.createdBy}</Text>
           {item.supersedes ? <Text>{sv ? "Ersätter" : "Supersedes"}: {item.supersedes}</Text> : null}
-          <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify(item.body, null, 2)}</pre>
+          <Text>{JSON.stringify(item.body, null, 2)}</Text>
           <Button type="button" variant="outline" onClick={() => { setEmployee(item.employeeId); setKind(item.kind); setEffectiveOn(item.effectiveOn); setSupersedes(item.id); setEvidenceId(item.evidenceId); setBody(JSON.stringify(item.body, null, 2)); }}>{sv ? "Rätta med ny revision" : "Correct with new revision"}</Button>
         </Box>)}
       </Box> : null}
@@ -79,13 +79,13 @@ export function PayrollFoundation({ book, locale }: { book: typeof Accounting.Bo
       }}><Box display="grid" gap="sm">
         <Text>{sv ? "Spara ny faktarevision" : "Save a new fact revision"}</Text>
         <InputField label={sv ? "Anställd-ID" : "Employee ID"} required pattern="[a-z][a-z0-9_-]{2,127}" value={employee} onChange={event => setEmployee(event.target.value)} />
-        <label>{sv ? "Typ av uppgift" : "Fact type"}<select value={kind} onChange={event => { const next = event.target.value as Kind; setKind(next); setBody(examples[next]); setSupersedes(""); }}>
+        <label>{sv ? "Typ av uppgift" : "Fact type"}<select value={kind} onChange={event => { const next = Schema.decodeUnknownSync(Schema.Literals(["employment", "work", "opening"]))(event.target.value); setKind(next); setBody(examples[next]); setSupersedes(""); }}>
           <option value="employment">{sv ? "Anställning" : "Employment"}</option><option value="work">{sv ? "Arbetsunderlag" : "Work inputs"}</option><option value="opening">{sv ? "Ingående skuld" : "Opening obligation"}</option>
         </select></label>
         <InputField label={sv ? "Gäller från" : "Effective date"} type="date" required value={effectiveOn} onChange={event => setEffectiveOn(event.target.value)} />
         <InputField label={sv ? "Underlagsreferens" : "Evidence reference"} required value={evidenceId} onChange={event => setEvidenceId(event.target.value)} />
         <InputField label={sv ? "Ersätter revisions-ID (valfritt)" : "Superseded revision ID (optional)"} value={supersedes} onChange={event => setSupersedes(event.target.value)} />
-        <label>{sv ? "Fakta (JSON)" : "Facts (JSON)"}<textarea required rows={9} value={body} onChange={event => setBody(event.target.value)} style={{ display: "block", width: "100%", boxSizing: "border-box" }} /></label>
+        <TextareaField label={sv ? "Fakta (JSON)" : "Facts (JSON)"} required rows={9} value={body} onChange={event => setBody(event.target.value)} />
         <Text>{sv ? "Fyll i fälten utan att anta skattesats eller belopp. Korrigeringar sparar tidigare revision." : "Fill in fields without assuming a tax rate or amount. Corrections keep the earlier revision."}</Text>
         {inputError ? <Text role="alert">{inputError}</Text> : null}
         <Button type="submit" disabled={capture.isPending}>{sv ? "Spara revision" : "Save revision"}</Button>

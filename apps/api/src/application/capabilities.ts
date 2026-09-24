@@ -2,7 +2,7 @@ import { Capabilities } from "@open-erp/contracts/capabilities";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import type * as Accounting from "@open-erp/contracts/accounting";
-import { getSourceOccurrence, retainSource } from "./source-retention";
+import { exportSourceArchive, getSourceOccurrence, retainSource, searchSourceArchive } from "./source-retention";
 import { startPreparationJob } from "./preparation-jobs";
 import { prepareVatDraft } from "./vat-returns";
 import { prepareSie, getSie, listSie, resumeSie } from "./sie";
@@ -876,6 +876,10 @@ export const capabilities = {
     "getSourceOccurrenceMetadata",
     (input) => [scopeParameter(input.scope), input.occurrenceId],
   ),
+  source_search_archive: effectCapability(Capabilities.source_search_archive, (token, input) =>
+    searchSourceArchive(token, input.scope, input.filters)),
+  source_export_archive: effectCapability(Capabilities.source_export_archive, (token, input) =>
+    exportSourceArchive(token, input.scope, input.filters)),
   source_get_occurrence: effectCapability(Capabilities.source_get_occurrence, getSourceOccurrence),
   source_get_purchase_links: bindCapability(
     Capabilities.source_get_purchase_links,

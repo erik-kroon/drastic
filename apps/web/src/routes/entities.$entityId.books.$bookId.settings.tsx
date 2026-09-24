@@ -11,6 +11,7 @@ import { LanguagePreference } from "@/components/book-workspace";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { accountingCopy } from "@/lib/accounting-copy";
 import { DimensionSettings } from "@/components/dimension-settings";
+import { PayrollFoundation } from "@/components/payroll-foundation";
 
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/settings")({
   component: Settings,
@@ -44,6 +45,7 @@ function Settings() {
         </Box>
 
         <DimensionSettings book={book} locale={locale} />
+        <PayrollFoundation book={book} locale={locale} />
         <RecordSection title={copy.journal_periods}>
           <DataTable
             title={copy.journal_periods}

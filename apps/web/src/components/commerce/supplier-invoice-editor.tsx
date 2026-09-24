@@ -89,11 +89,7 @@ function SupplierEditorForm(
       ],
   );
   const [draftKey] = useState(() => `supplier_${crypto.randomUUID().replaceAll("-", "")}`);
-  const source = useQuery({
-    ...sourceDocumentOptions(props.book, props.documentId),
-    enabled: !!props.documentId && props.documentId !== "select",
-  });
-  const original = source.isError ? undefined : source.data?.occurrence;
+  const { source, original } = useSupplierSource(props.book, props.documentId);
   const currency = content?.currency ?? props.book.currency;
   return (
     <EvidenceCommandForm
@@ -161,6 +157,57 @@ function SupplierEditorForm(
       }}
     >
       <RecordColumns>
+        <SupplierOriginalDocument {...props} baseline={baseline} source={source} original={original} />
+        <SupplierInvoiceFields
+          {...props}
+          content={content}
+          party={party}
+          onPartySelect={setParty}
+          currency={currency}
+        />
+      </RecordColumns>
+      <RecordSection title={`${sv ? "Fakturarader" : "Invoice lines"} · ${currency}`}>
+        <InvoiceEditorLines
+          locale={props.locale}
+          currency={currency}
+          scale={props.scale}
+          lines={lines}
+          onChange={setLines}
+        />
+      </RecordSection>
+      {props.inboxId ? <InputField name="reviewReason" label={sv ? "Vad granskades mot originalet?" : "What was reviewed against the original?"} required maxLength={2000} /> : null}
+      {baseline ? (
+        <InputField
+          name="reason"
+          label={sv ? "Vad ändrades?" : "What changed?"}
+          required
+          maxLength={2000}
+        />
+      ) : null}
+    </EvidenceCommandForm>
+  );
+}
+function useSupplierSource(book: CommerceProps["book"], documentId: string) {
+  const source = useQuery({
+    ...sourceDocumentOptions(book, documentId),
+    enabled: !!documentId && documentId !== "select",
+  });
+  const original = source.isError ? undefined : source.data?.occurrence;
+  return { source, original };
+}
+function SupplierOriginalDocument(props: CommerceProps & {
+  baseline?: Draft;
+  source: ReturnType<typeof useSupplierSource>["source"];
+  original: ReturnType<typeof useSupplierSource>["original"];
+  sourceId?: string;
+  documentId: string;
+  onChangeDocument: () => void;
+  onSelectDocument: (id: string) => void;
+}) {
+  const sv = props.locale === "sv";
+  const { baseline } = props;
+  const { source, original } = props;
+  return (
         <RecordSection title={sv ? "Originalfaktura" : "Original invoice"} sticky>
           {baseline && !props.documentId ? (
             <>
@@ -212,33 +259,6 @@ function SupplierEditorForm(
             </>
           )}
         </RecordSection>
-        <SupplierInvoiceFields
-          {...props}
-          content={content}
-          party={party}
-          onPartySelect={setParty}
-          currency={currency}
-        />
-      </RecordColumns>
-      <RecordSection title={`${sv ? "Fakturarader" : "Invoice lines"} · ${currency}`}>
-        <InvoiceEditorLines
-          locale={props.locale}
-          currency={currency}
-          scale={props.scale}
-          lines={lines}
-          onChange={setLines}
-        />
-      </RecordSection>
-      {props.inboxId ? <InputField name="reviewReason" label={sv ? "Vad granskades mot originalet?" : "What was reviewed against the original?"} required maxLength={2000} /> : null}
-      {baseline ? (
-        <InputField
-          name="reason"
-          label={sv ? "Vad ändrades?" : "What changed?"}
-          required
-          maxLength={2000}
-        />
-      ) : null}
-    </EvidenceCommandForm>
   );
 }
 function SupplierInvoiceFields(

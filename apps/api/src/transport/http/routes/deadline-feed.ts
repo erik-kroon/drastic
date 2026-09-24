@@ -1,6 +1,5 @@
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
-import * as Schema from "effect/Schema";
 import { HttpRouter, HttpServerResponse } from "effect/unstable/http";
 import * as Deadlines from "@open-erp/contracts/deadlines";
 import { query } from "../../../db/query";
