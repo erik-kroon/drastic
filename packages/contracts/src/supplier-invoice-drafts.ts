@@ -87,6 +87,18 @@ export const SupplierInvoiceDraftHistory = Schema.Struct({
   items: Schema.Array(SupplierInvoiceDraftSummary).check(Schema.isMaxLength(50)),
 });
 
+export const SupplierAccountSuggestions = Schema.Struct({
+  scope: Accounting.Scope,
+  counterpartyId: Accounting.Identifier,
+  items: Schema.Array(
+    Schema.Struct({
+      expenseAccountId: Accounting.Identifier,
+      vatRatePercent: Schema.Literals([0, 6, 12, 25]),
+      sourceInvoiceId: Accounting.Identifier,
+    }),
+  ).check(Schema.isMaxLength(5)),
+});
+
 export const SupplierInvoiceDraftDuplicateCursor = Schema.String.check(
   Schema.isMaxLength(203),
   Schema.isPattern(
@@ -122,6 +134,15 @@ export const SupplierInvoiceDraftDuplicates = Schema.Struct({
 
 const path = "/v1/entities/:entityId/books/:bookId/commerce/supplier-invoice-drafts";
 export const SupplierInvoiceDraftsApi = HttpApiGroup.make("supplierInvoiceDrafts").add(
+  HttpApiEndpoint.get(
+    "supplierAccountSuggestions",
+    "/v1/entities/:entityId/books/:bookId/commerce/supplier-account-suggestions/:counterpartyId",
+    {
+      params: Schema.Struct({ ...Accounting.Scope.fields, counterpartyId: Accounting.Identifier }),
+      success: SupplierAccountSuggestions,
+      error: accountingErrors,
+    },
+  ),
   HttpApiEndpoint.get("supplierInvoiceDraftDuplicates", `${path}/:id/duplicates`, {
     params: Accounting.ChangePath,
     query: SupplierInvoiceDraftDuplicateQuery.annotate({

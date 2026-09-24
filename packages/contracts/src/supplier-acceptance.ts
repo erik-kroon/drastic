@@ -5,18 +5,38 @@ import * as Commerce from "./commerce";
 import * as Drafts from "./supplier-invoice-drafts";
 import { accountingErrors } from "./accounting-errors";
 
-export const PrepareSupplierAcceptance = Schema.Struct({
-  profile: Schema.Literal("synthetic-manual-supplier-v1"),
+const SharedSupplierAcceptanceFields = {
   draftId: Accounting.Identifier,
   expectedRevision: Commerce.Version,
   expectedDigest: Accounting.Digest,
   controlAccountId: Accounting.Identifier,
-  debitAccountId: Accounting.Identifier,
   accountingPeriodId: Accounting.Identifier,
   series: Schema.String.check(Schema.isPattern(/^[A-Z0-9]{1,16}$/)),
   reason: Accounting.Description,
   acknowledgeSyntheticOnly: Schema.Literal(true),
+};
+export const SupplierLineAssignment = Schema.Struct({
+  lineId: Accounting.Identifier,
+  expenseAccountId: Accounting.Identifier,
+  vatRatePercent: Schema.Literals([0, 6, 12, 25]),
 });
+export const PrepareSyntheticSupplierAcceptance = Schema.Struct({
+  profile: Schema.Literals(["synthetic-manual-supplier-v1", "synthetic-gross-cost-supplier-v1"]),
+  ...SharedSupplierAcceptanceFields,
+  debitAccountId: Accounting.Identifier,
+});
+export const PrepareSwedishSupplierAcceptance = Schema.Struct({
+  profile: Schema.Literal("swedish-purchase-v1"),
+  ...SharedSupplierAcceptanceFields,
+  lineAssignments: Schema.Array(SupplierLineAssignment).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(50),
+  ),
+});
+export const PrepareSupplierAcceptance = Schema.Union([
+  PrepareSyntheticSupplierAcceptance,
+  PrepareSwedishSupplierAcceptance,
+]);
 export const ApproveSupplierAcceptance = Schema.Struct({
   version: Schema.Literal(1),
   digest: Accounting.Digest,
@@ -30,7 +50,11 @@ export const SupplierAcceptanceReview = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
   version: Schema.Literal(1),
-  profile: Schema.Literal("synthetic-manual-supplier-v1"),
+  profile: Schema.Literals([
+    "synthetic-manual-supplier-v1",
+    "synthetic-gross-cost-supplier-v1",
+    "swedish-purchase-v1",
+  ]),
   ordinal: Schema.Int,
   input: PrepareSupplierAcceptance,
   draftSnapshot: Drafts.SupplierInvoiceDraftRevision,
@@ -59,7 +83,11 @@ export const SupplierAcceptanceReceipt = Schema.Struct({
   reviewId: Accounting.Identifier,
   reviewDigest: Accounting.Digest,
   approvalId: Accounting.Identifier,
-  profile: Schema.Literal("synthetic-manual-supplier-v1"),
+  profile: Schema.Literals([
+    "synthetic-manual-supplier-v1",
+    "synthetic-gross-cost-supplier-v1",
+    "swedish-purchase-v1",
+  ]),
   draftId: Accounting.Identifier,
   draftRevision: Commerce.Version,
   draftDigest: Accounting.Digest,

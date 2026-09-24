@@ -5,7 +5,12 @@ import * as Commerce from "./commerce";
 import { accountingErrors } from "./accounting-errors";
 
 export const PrepareSupplierCredit = Schema.Struct({
-  profile: Schema.Literal("synthetic-zero-tax-supplier-credit-v1"),
+  profile: Schema.Literals([
+    "synthetic-zero-tax-supplier-credit-v1",
+    "synthetic-gross-cost-supplier-credit-v1",
+    "swedish-purchase-full-credit-v1",
+    "swedish-purchase-partial-credit-v1",
+  ]),
   invoiceId: Accounting.Identifier,
   acceptanceDigest: Accounting.Digest,
   expectedInvoiceRevision: Commerce.Version,
@@ -14,30 +19,73 @@ export const PrepareSupplierCredit = Schema.Struct({
   creditEvidenceId: Accounting.Identifier,
   supplierCreditNumber: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(128)),
   amountMinor: Commerce.CreateInvoice.fields.amountMinor,
+  taxMinor: Schema.optional(Accounting.MinorUnits),
+  creditLines: Schema.optional(
+    Schema.Array(Schema.Struct({
+      lineId: Accounting.Identifier,
+      netMinor: Accounting.MinorUnits,
+      taxMinor: Accounting.MinorUnits,
+    })).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
+  ),
   creditDate: Accounting.AccountingDate,
   accountingPeriodId: Accounting.Identifier,
   series: Schema.String.check(Schema.isPattern(/^[A-Z0-9]{1,16}$/)),
   reason: Accounting.Description,
   acknowledgeSyntheticOnly: Schema.Literal(true),
 });
+export const ApproveSupplierCredit = Schema.Struct({
+  digest: Accounting.Digest,
+  acknowledgeSyntheticOnly: Schema.Literal(true),
+});
+export const ExecuteSupplierCredit = Schema.Struct({
+  ...ApproveSupplierCredit.fields,
+  approvalId: Accounting.Identifier,
+});
 export const SupplierCreditSnapshot = Schema.Struct({
   invoice: Commerce.Invoice,
   acceptanceDigest: Accounting.Digest,
   originalVoucherId: Accounting.Identifier,
-  expenseAccountId: Accounting.Identifier,
+  expenseAccountId: Schema.optional(Accounting.Identifier),
+  inputVatAccountId: Schema.optional(Accounting.Identifier),
+  originalLines: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        lineId: Accounting.Identifier,
+        expenseAccountId: Accounting.Identifier,
+        netMinor: Accounting.MinorUnits,
+        taxMinor: Accounting.MinorUnits,
+        vatRatePercent: Schema.Literals([0, 6, 12, 25]),
+      }),
+    ),
+  ),
+  creditLines: Schema.optional(
+    Schema.Array(Schema.Struct({
+      lineId: Accounting.Identifier,
+      expenseAccountId: Accounting.Identifier,
+      netMinor: Accounting.MinorUnits,
+      taxMinor: Accounting.MinorUnits,
+      vatRatePercent: Schema.Literals([0, 6, 12, 25]),
+    })),
+  ),
   creditEvidence: Commerce.EvidenceReference,
   amountMinor: Commerce.CreateInvoice.fields.amountMinor,
+  taxMinor: Accounting.MinorUnits,
   creditDate: Accounting.AccountingDate,
   supplierCreditNumber: PrepareSupplierCredit.fields.supplierCreditNumber,
 });
 export const SupplierCreditReview = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
-  profile: Schema.Literal("synthetic-zero-tax-supplier-credit-v1"),
+  profile: Schema.Literals([
+    "synthetic-zero-tax-supplier-credit-v1",
+    "synthetic-gross-cost-supplier-credit-v1",
+    "swedish-purchase-full-credit-v1",
+    "swedish-purchase-partial-credit-v1",
+  ]),
   input: PrepareSupplierCredit,
   snapshot: SupplierCreditSnapshot,
   postingPlan: Accounting.ChangeSet,
-  taxMinor: Schema.Literal("0"),
+  taxMinor: Accounting.MinorUnits,
   vatFactsCreated: Schema.Literal(false),
   createdAt: Schema.String,
   receipt: Commerce.CommandReceipt,
@@ -63,7 +111,7 @@ export const SupplierCreditReceipt = Schema.Struct({
   supplierCreditNumber: PrepareSupplierCredit.fields.supplierCreditNumber,
   creditDate: Accounting.AccountingDate,
   amountMinor: Commerce.CreateInvoice.fields.amountMinor,
-  taxMinor: Schema.Literal("0"),
+  taxMinor: Accounting.MinorUnits,
   vatFactsCreated: Schema.Literal(false),
   originalAllocatedMinor: Accounting.MinorUnits,
   outstandingAfterMinor: Accounting.MinorUnits,
@@ -99,21 +147,14 @@ export const SupplierCreditsApi = HttpApiGroup.make("supplierCredits").add(
   HttpApiEndpoint.post("approveSupplierCredit", `${path}/supplier-credit-reviews/:id/approvals`, {
     params: Accounting.ChangePath,
     headers: Accounting.IdempotencyHeaders,
-    payload: Schema.Struct({
-      digest: Accounting.Digest,
-      acknowledgeSyntheticOnly: Schema.Literal(true),
-    }).annotate({ parseOptions: { onExcessProperty: "error" } }),
+    payload: ApproveSupplierCredit.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: SupplierCreditApproval,
     error: accountingErrors,
   }),
   HttpApiEndpoint.post("executeSupplierCredit", `${path}/supplier-credit-reviews/:id/execute`, {
     params: Accounting.ChangePath,
     headers: Accounting.IdempotencyHeaders,
-    payload: Schema.Struct({
-      digest: Accounting.Digest,
-      approvalId: Accounting.Identifier,
-      acknowledgeSyntheticOnly: Schema.Literal(true),
-    }).annotate({ parseOptions: { onExcessProperty: "error" } }),
+    payload: ExecuteSupplierCredit.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: SupplierCreditReceipt,
     error: accountingErrors,
   }),

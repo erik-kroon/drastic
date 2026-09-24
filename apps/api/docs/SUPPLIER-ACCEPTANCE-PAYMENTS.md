@@ -14,10 +14,30 @@ The approved posting boundary already owns supplier acceptance recognition. Crea
 
 This is **not** a general statutory credit-note or VAT deduction profile. A paid amount cannot be credited by this path; refund and overpayment treatment remain unsupported. Partial credits against the remaining unpaid amount can coexist with retained paid allocations. No credit may reduce a payable linked to an outstanding exported payment file. D-08 rule activation and D-10 external outcomes remain explicit gates.
 
-## Still unsupported
+## Original zero-tax boundary
 
-VAT-bearing credits, edits to legally issued supplier records, generic recognition reversal, credit against already paid principal, refund, cash-method recognition, disputed source chronology and payment-file replacement remain unsupported. The original and every applied payment retain their own immutable identities. No part of this source change labels an exported file as accepted or paid.
+The original zero-tax credit profile does not support VAT-bearing credits. Edits to legally issued supplier records, generic recognition reversal, credit against already paid principal, refund, cash-method recognition, disputed source chronology and payment-file replacement remain unsupported. The original and every applied payment retain their own immutable identities. No part of this source change labels an exported file as accepted or paid.
 
 ## Verification limits
 
 Contract TypeScript compilation, targeted formatter/lint and source review passed. An isolated temporary PostgreSQL 17 database accepted the three supplier migrations after the earlier supplier draft migrations were applied directly. The normal full migration runner stopped on the unrelated historical `4000-subledger-estimate-amendments.sql` syntax error, so this is SQL-definition compilation only, not an end-to-end upgrade. No tests were added or changed (D-09). No application execution, independent arithmetic, XML-schema, provider or bank behavior was verified. Existing invoice/payment controls and company activation remain separate gates.
+
+## Synthetic gross-cost source-tax path (forward 8750–8751)
+
+`synthetic-gross-cost-supplier-v1` accepts a draft whose exact positive asserted tax and gross are supported by source line evidence. The full gross debits one explicitly selected expense account and credits supplier payable; no input-VAT account or deduction fact is created. Its acceptance review retains the source tax and a legal blocker (`asserted_tax_not_deducted`). It is **not** a Swedish deductible-VAT purchase profile. The existing zero-tax profile still requires zero asserted tax.
+
+`synthetic-gross-cost-supplier-credit-v1` takes an explicitly asserted `taxMinor` and a source credit note. A partial credit reverses gross cost/payable only. The source tax on all posted credits cannot exceed the accepted invoice's sealed asserted tax; each credit amount cannot exceed its current unpaid residual. Its tax field is an assertion for review, **not** a VAT recovery or report fact. Exported payment files still block credit. Payment allocation still requires a separate posted payment source, approval and capacity; neither export nor a reported provider status settles an invoice.
+
+[Local HTTP proof](../../../docs/plans/evidence/ap-gross-cost-http.md) covers a positive source-tax invoice, partial credit, posted synthetic payment and rejected excess-tax credit. Actual VAT deductibility, Swedish treatment review, statutory credit notes, refunds and provider-confirmed settlement remain separate gates.
+
+## Reviewed Swedish purchase posting (forward 8760)
+
+The `swedish-purchase-v1` review takes one editable expense account and VAT rate per retained invoice line. A recent accepted invoice for the same supplier can suggest an account and rate; the operator can change both before preparing the exact voucher. The review checks each selected rate against the line's asserted tax within one minor unit, requires SEK with two decimal places, and uses the retained net and tax amounts. The journal debits the selected expense accounts and BAS 2641, then credits BAS 2440 for the evidenced gross. The 2440 and 2641 accounts must be active in the book. The accepted review keeps the line assignments for later correction.
+
+The `swedish-purchase-full-credit-v1` path requires the complete original payable still unpaid, a distinct supplier credit number and retained credit evidence. Its reviewed voucher debits 2440 and credits the original expense lines and 2641 for their exact accepted amounts. The credit and payable register effect are committed together through the existing approval boundary. Partial, paid and foreign-currency credits remain outside this path.
+
+This is still a synthetic-book journal profile. `taxAssessment=not_applicable`, `vatFactsCreated=false`, and `tax_profile_not_activated` remain explicit: the 2641 journal line is not a statutory VAT return fact or a verified deduction decision. The full migrations through 8760 applied to a disposable PostgreSQL database; contract/API type checks and targeted lint passed. No end-to-end posting or rendered browser proof is claimed for this new path.
+
+## Reviewed line purchase source path (forward 8760)
+
+`swedish-purchase-v1` currently runs only on a synthetic SEK book. It reviews explicit line expense accounts and 0/6/12/25 rates against evidenced source amounts, then posts net expense, input VAT (2641) and the supplier payable (2440) atomically. `swedish-purchase-full-credit-v1` reverses the exact original net/tax/payable **only while the whole original remains unpaid**. The [local HTTP observation](../../../docs/plans/evidence/ap-swedish-purchase-http.md) covers invoice recognition, full credit, a separate partial payment allocation and paid-principal credit rejection. The review still discloses `tax_profile_not_activated`; this is not authority to use actual company VAT facts or claim statutory completeness.

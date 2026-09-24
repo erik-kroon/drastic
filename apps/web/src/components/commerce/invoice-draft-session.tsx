@@ -15,6 +15,7 @@ import { checkScope, type CommerceProps } from "./shared";
 import { editableInvoiceLine } from "./invoice-editor-lines";
 
 type Draft = typeof Drafts.InvoiceDraftRevision.Type;
+class UnreadableInvoiceEdits extends Error {}
 const PendingSave = Schema.Struct({
   key: Accounting.IdempotencyHeaders.fields["idempotency-key"],
   source: Accounting.CreateEvidence,
@@ -58,6 +59,7 @@ type SessionProps = CommerceProps & {
 };
 
 export function InvoiceDraftSession(props: SessionProps) {
+  const [downloadError, setDownloadError] = useState(false);
   const actor = useSavedPostingRequests(props.book);
   const actorId = actor.data?.actorId;
   const identity = JSON.stringify([
@@ -78,7 +80,12 @@ export function InvoiceDraftSession(props: SessionProps) {
     queryFn: () => {
       const text = localStorage.getItem(identity);
       if (text === null) return null;
-      const saved = Schema.decodeUnknownSync(EditingState)(JSON.parse(text));
+      let saved: DraftEditingState;
+      try {
+        saved = Schema.decodeUnknownSync(EditingState)(JSON.parse(text));
+      } catch {
+        throw new UnreadableInvoiceEdits("Saved invoice edits cannot be read");
+      }
       if (saved.baseline) checkScope(props.book, saved.baseline.scope);
       if (saved.customer) checkScope(props.book, saved.customer.scope);
       if ((saved.baseline?.id ?? undefined) !== props.baseline?.id)
@@ -90,6 +97,7 @@ export function InvoiceDraftSession(props: SessionProps) {
       return saved;
     },
   });
+  const unreadable = local.error instanceof UnreadableInvoiceEdits;
   if (!actorId || !local.isSuccess || !local.isFetchedAfterMount)
     return (
       <FormDialog
@@ -100,8 +108,50 @@ export function InvoiceDraftSession(props: SessionProps) {
         <AccountingStatus
           locale={props.locale}
           pending={!actor.isError && !local.isError}
-          error={actor.error ?? local.error}
+          error={actor.error ?? (unreadable ? null : local.error)}
         />
+        {unreadable ? (
+          <Box display="grid" gap="md">
+            <Text role="alert">
+              {props.locale === "sv"
+                ? "Sparade webbläsarändringar kan inte läsas. De kan innehålla ett oavslutat sparande. Inget har raderats. Ladda ned originalet för återställning innan du ändrar webbläsarens lagring."
+                : "Saved browser edits cannot be read. They may contain an unfinished save. Nothing has been deleted. Download the original copy for recovery before changing browser storage."}
+            </Text>
+            <Box>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  try {
+                    const text = localStorage.getItem(identity);
+                    if (text === null) throw new Error("Saved invoice edits are missing");
+                    const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = `${props.baseline?.id ?? "new"}-unsaved-invoice.txt`;
+                    document.body.append(link);
+                    link.click();
+                    link.remove();
+                    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+                    setDownloadError(false);
+                  } catch {
+                    setDownloadError(true);
+                  }
+                }}
+              >
+                {props.locale === "sv"
+                  ? "Ladda ned oläsbar webbläsarkopia"
+                  : "Download unreadable browser copy"}
+              </Button>
+            </Box>
+            {downloadError ? (
+              <Text role="alert">
+                {props.locale === "sv"
+                  ? "Kopian kunde inte laddas ned. Låt webbläsardatan vara oförändrad."
+                  : "The copy could not be downloaded. Keep the browser data unchanged."}
+              </Text>
+            ) : null}
+          </Box>
+        ) : null}
         {actor.isError || local.isError ? (
           <Button
             variant="outline"

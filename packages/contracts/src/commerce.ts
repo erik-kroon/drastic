@@ -112,6 +112,14 @@ export const Invoice = Schema.Struct({
   controlAccountId: Accounting.Identifier,
   evidence: EvidenceReference,
   recognition: Recognition,
+  supplierAcceptanceDigest: Schema.optional(Accounting.Digest),
+  supplierAcceptanceProfile: Schema.optional(
+    Schema.Literals([
+      "synthetic-manual-supplier-v1",
+      "synthetic-gross-cost-supplier-v1",
+      "swedish-purchase-v1",
+    ]),
+  ),
   currentRevision: InvoiceRevision,
   allocationVersion: Accounting.MinorUnits,
   recordedAllocatedMinor: Accounting.MinorUnits,

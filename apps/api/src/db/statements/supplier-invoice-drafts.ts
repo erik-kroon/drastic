@@ -1,6 +1,8 @@
 import { sql, type SQL } from "drizzle-orm";
 
 export const supplierInvoiceDraftStatements = {
+  supplierAccountSuggestions: (parameters) =>
+    sql`select openerp.supplier_account_suggestions(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
   supplierInvoiceDraftDuplicates: (parameters) =>
     sql`select openerp.supplier_invoice_draft_duplicates(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text) as result`,
   createSupplierInvoiceDraft: (parameters) =>

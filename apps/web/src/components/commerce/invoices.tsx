@@ -15,6 +15,7 @@ import { InvoicePaymentsWorkspace, type InvoicePaymentNavigation } from "./invoi
 import { invoicePaymentCopy } from "./invoice-payment-copy";
 import { InvoiceRegistration } from "./invoice-registration";
 import { SupplierPaymentState } from "./supplier-payment-state";
+import { SupplierCreditPanel } from "./supplier-credit-panel";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Commerce from "@open-erp/contracts/commerce";
@@ -346,7 +347,12 @@ export function InvoiceDetail(
             </Box>
           ) : null}
           {invoice.data.direction === "supplier" ? (
-            <SupplierPaymentState locale={locale} invoice={invoice.data} />
+            <>
+              <SupplierPaymentState locale={locale} invoice={invoice.data} />
+              {invoice.data.supplierAcceptanceProfile === "swedish-purchase-v1" ? (
+                <SupplierCreditPanel {...props} invoice={invoice.data} />
+              ) : null}
+            </>
           ) : null}
           <Text>{invoice.data.currentRevision.description}</Text>
           {invoice.data.blockers.map((blocker) => (

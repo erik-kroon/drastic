@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
-import type * as Drafts from "@open-erp/contracts/supplier-invoice-drafts";
+import * as Drafts from "@open-erp/contracts/supplier-invoice-drafts";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
@@ -17,6 +17,29 @@ import { formatMinorAmount } from "@/lib/workspace-api";
 import { CommandForm, checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
 
 type Draft = typeof Drafts.SupplierInvoiceDraftRevision.Type;
+
+function inferredVatRate(netMinor: string | undefined, taxMinor: string | null) {
+  if (!netMinor || taxMinor === null) return null;
+  const net = BigInt(netMinor);
+  const tax = BigInt(taxMinor);
+  if (net <= 0n || tax < 0n) return null;
+  return (
+    ([0, 6, 12, 25] as const).find((rate) => (net * BigInt(rate) + 50n) / 100n === tax) ?? null
+  );
+}
+
+function selectedVatRate(value: string): 0 | 6 | 12 | 25 {
+  if (value === "0") return 0;
+  if (value === "6") return 6;
+  if (value === "12") return 12;
+  if (value === "25") return 25;
+  throw new Error("Select a VAT rate for each invoice line");
+}
+
+function textField(fields: FormData, name: string) {
+  const value = fields.get(name);
+  return typeof value === "string" ? value : "";
+}
 
 export function useSupplierAcceptanceHistory(book: CommerceProps["book"], draftId: string) {
   return useQuery({
@@ -103,6 +126,25 @@ function SupplierAcceptancePreparation(
       readAccounting(`${bookPath(props.book)}/setup`, Accounting.BookSetup, { signal }),
     retry: false,
   });
+  const suggestions = useQuery({
+    queryKey: [
+      ...commerceKey(props.book),
+      "supplier-account-suggestions",
+      props.draft.content.counterpartyId,
+    ],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${commercePath(props.book)}/supplier-account-suggestions/${encodeURIComponent(props.draft.content.counterpartyId)}`,
+        Drafts.SupplierAccountSuggestions,
+        { signal },
+      );
+      checkScope(props.book, result.scope);
+      if (result.counterpartyId !== props.draft.content.counterpartyId)
+        throw new Error("Supplier account suggestions mismatch");
+      return result;
+    },
+    retry: false,
+  });
   const accounts =
     setup.data?.accounts
       .filter((account) => account.active)
@@ -110,6 +152,13 @@ function SupplierAcceptancePreparation(
         value: account.id,
         label: `${account.code} · ${account.name}`,
       })) ?? [];
+  const payable = setup.data?.accounts.find((account) => account.active && account.code === "2440");
+  const expenseAccounts =
+    setup.data?.accounts.filter((account) => account.active && /^[4-8]/.test(account.code)) ?? [];
+  const suggestion = suggestions.data?.items[0];
+  const suggestedAccount = expenseAccounts.find(
+    (account) => account.id === suggestion?.expenseAccountId,
+  );
   return (
     <Box display="grid" gap="lg">
       <Text>
@@ -128,12 +177,16 @@ function SupplierAcceptancePreparation(
         label={sv ? "Förbered bokföring" : "Prepare posting"}
         allowed={props.current && setup.isSuccess && props.book.role === "operator"}
         input={(fields) => ({
-          profile: "synthetic-manual-supplier-v1",
+          profile: "swedish-purchase-v1",
           draftId: props.draft.id,
           expectedRevision: props.draft.revision,
           expectedDigest: props.draft.digest,
           controlAccountId: fields.get("controlAccountId"),
-          debitAccountId: fields.get("debitAccountId"),
+          lineAssignments: props.draft.content.lines.map((line, index) => ({
+            lineId: line.id,
+            expenseAccountId: fields.get(`expenseAccountId-${index}`),
+            vatRatePercent: selectedVatRate(textField(fields, `vatRatePercent-${index}`)),
+          })),
           accountingPeriodId: fields.get("accountingPeriodId"),
           series: fields.get("series"),
           reason: fields.get("reason"),
@@ -145,14 +198,72 @@ function SupplierAcceptancePreparation(
           name="controlAccountId"
           label={sv ? "Leverantörsskuld" : "Supplier payable account"}
           options={[{ value: "", label: "—" }, ...accounts]}
+          defaultValue={payable?.id ?? ""}
           required
         />
-        <SelectField
-          name="debitAccountId"
-          label={sv ? "Utgiftskonto" : "Expense account"}
-          options={[{ value: "", label: "—" }, ...accounts]}
-          required
-        />
+        <RecordSection title={sv ? "Konton och moms per rad" : "Accounts and VAT by line"}>
+          {suggestedAccount ? (
+            <PageCaption>
+              {sv
+                ? `Förslag från tidigare bokförd faktura: ${suggestedAccount.code} · ${suggestedAccount.name}, ${suggestion?.vatRatePercent} % moms. Välj konto och kontrollera varje rad.`
+                : `Previous posting suggests ${suggestedAccount.code} · ${suggestedAccount.name} and ${suggestion?.vatRatePercent}% VAT. Select an account and check each line.`}
+            </PageCaption>
+          ) : null}
+          {props.draft.content.lines.map((line, index) => {
+            const net = props.draft.calculatedLines.find((item) => item.id === line.id)?.netMinor;
+            const rate = inferredVatRate(net, line.taxMinor);
+            return (
+              <Box key={line.id} display="grid" gap="sm">
+                <Text>
+                  {index + 1}. {line.description} · {sv ? "exkl. moms" : "before VAT"}{" "}
+                  {net
+                    ? formatMinorAmount(net, props.draft.content.currencyScale, props.locale)
+                    : "—"}{" "}
+                  · {sv ? "moms" : "VAT"}{" "}
+                  {line.taxMinor
+                    ? formatMinorAmount(
+                        line.taxMinor,
+                        props.draft.content.currencyScale,
+                        props.locale,
+                      )
+                    : "—"}
+                </Text>
+                <SelectField
+                  name={`expenseAccountId-${index}`}
+                  label={
+                    sv ? `Utgiftskonto, rad ${index + 1}` : `Expense account, line ${index + 1}`
+                  }
+                  options={[
+                    { value: "", label: "—" },
+                    ...expenseAccounts.map((account) => ({
+                      value: account.id,
+                      label: `${account.code} · ${account.name}`,
+                    })),
+                  ]}
+                  required
+                />
+                <SelectField
+                  name={`vatRatePercent-${index}`}
+                  label={sv ? `Momssats, rad ${index + 1}` : `VAT rate, line ${index + 1}`}
+                  options={[
+                    { value: "", label: "—" },
+                    ...[0, 6, 12, 25].map((value) => ({
+                      value: String(value),
+                      label: `${value} %`,
+                    })),
+                  ]}
+                  defaultValue={rate === null ? "" : String(rate)}
+                  required
+                />
+              </Box>
+            );
+          })}
+          <PageCaption>
+            {sv
+              ? "Kontrollera momssatsen mot fakturans momsbelopp. Ändra fakturautkastet om beloppet är fel."
+              : "Check each VAT rate against the invoice tax amount. Edit the invoice draft if the amount is wrong."}
+          </PageCaption>
+        </RecordSection>
         <SelectField
           name="accountingPeriodId"
           label={sv ? "Bokföringsperiod" : "Accounting period"}
@@ -217,6 +328,11 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
       <AccountingStatus locale={props.locale} pending={setup.isPending} error={setup.error} />
       {view ? (
         <>
+          <SupplierReviewedLines
+            locale={props.locale}
+            plan={view.plan}
+            accounts={setup.data?.accounts ?? []}
+          />
           <Text>{sv ? "Bokföringseffekt" : "Accounting effect"}</Text>
           <DataTable
             title={sv ? "Föreslagen verifikation" : "Proposed voucher"}
@@ -276,6 +392,7 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
                 schema={Acceptance.ApproveSupplierAcceptance}
                 output={Acceptance.SupplierAcceptanceApproval}
                 label={sv ? "Attestera bokföring" : "Approve posting"}
+                onSuccess={() => void review.refetch()}
                 allowed={
                   review.isFetchedAfterMount &&
                   review.fetchStatus === "idle" &&
@@ -301,6 +418,7 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
                   schema={Acceptance.ExecuteSupplierAcceptance}
                   output={Acceptance.SupplierAcceptanceReceipt}
                   label={sv ? "Bokför och registrera" : "Post and register"}
+                  onSuccess={() => void review.refetch()}
                   allowed={
                     review.isFetchedAfterMount &&
                     review.fetchStatus === "idle" &&
@@ -322,5 +440,47 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
         </>
       ) : null}
     </Box>
+  );
+}
+
+function SupplierReviewedLines(props: {
+  locale: CommerceProps["locale"];
+  plan: typeof Acceptance.SupplierAcceptanceReview.Type;
+  accounts: ReadonlyArray<(typeof Accounting.BookSetup.Type)["accounts"][number]>;
+}) {
+  if (!("lineAssignments" in props.plan.input)) return null;
+  const sv = props.locale === "sv";
+  return (
+    <DataTable
+      title={sv ? "Granskade fakturarader" : "Reviewed invoice lines"}
+      narrow="stack"
+      columns={[
+        { id: "line", label: sv ? "Rad" : "Line" },
+        { id: "account", label: sv ? "Utgiftskonto" : "Expense account" },
+        { id: "rate", label: sv ? "Momssats" : "VAT rate" },
+        { id: "vat", label: sv ? "Momsbelopp" : "VAT amount", numeric: true },
+      ]}
+      rows={props.plan.input.lineAssignments.map((assignment) => {
+        const line = props.plan.draftSnapshot.content.lines.find(
+          (item) => item.id === assignment.lineId,
+        );
+        const account = props.accounts.find((item) => item.id === assignment.expenseAccountId);
+        return {
+          id: assignment.lineId,
+          cells: [
+            line?.description ?? assignment.lineId,
+            account ? `${account.code} · ${account.name}` : assignment.expenseAccountId,
+            `${assignment.vatRatePercent} %`,
+            line?.taxMinor === null || line?.taxMinor === undefined
+              ? "—"
+              : formatMinorAmount(
+                  line.taxMinor,
+                  props.plan.draftSnapshot.content.currencyScale,
+                  props.locale,
+                ),
+          ],
+        };
+      })}
+    />
   );
 }

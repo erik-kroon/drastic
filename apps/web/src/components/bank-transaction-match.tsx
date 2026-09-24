@@ -302,35 +302,30 @@ function MatchLineChoices({ data, locale, amounts, onAmounts }: {
   const eligible = data.candidates.filter((item) => item.eligible);
   const shown = eligible.filter((item, index) => index < visible || `${item.voucherId}:${item.lineId}` in amounts);
   return <Box display="grid" gap="md">
-    <DataTable title={sv ? "Välj bokförda rader" : "Choose posted lines"}
-      columns={[
-        { id: "choice", label: sv ? "Välj" : "Choose" },
-        { id: "description", label: sv ? "Transaktion" : "Transaction" },
-        { id: "remaining", label: sv ? "Kvar" : "Remaining", numeric: true },
-        { id: "amount", label: sv ? "Belopp att matcha" : "Amount to match" },
-      ]}
-      rows={shown.map((item) => {
-        const key = `${item.voucherId}:${item.lineId}`;
-        const selected = key in amounts;
-        return { id: key, cells: [
-          <InputField key="selected" type="checkbox" label={sv ? `Välj ${item.description}` : `Choose ${item.description}`}
-            checked={selected} disabled={!selected && Object.keys(amounts).length >= 100}
-            onChange={(event) => {
-              if (event.target.checked) onAmounts({ ...amounts, [key]: "" });
-              else {
-                const next = { ...amounts };
-                delete next[key];
-                onAmounts(next);
-              }
-            }} />,
-          <Box key="description"><Text>{item.description}</Text><PageCaption>{item.postedOn}</PageCaption></Box>,
-          `${formatMinorAmount(item.remainingMinor, data.currencyScale, locale)} ${data.currency}`,
-          selected ? <InputField key="amount" label={`${sv ? "Belopp" : "Amount"} · ${item.description}`}
-            value={amounts[key] ?? ""} inputMode="decimal" required
-            onChange={(event) => onAmounts({ ...amounts, [key]: event.target.value })} /> : "—",
-        ] };
-      })}
-    />
+    {shown.map((item) => {
+      const key = `${item.voucherId}:${item.lineId}`;
+      const selected = key in amounts;
+      return <Box key={key} display="flex" flexWrap="wrap" alignItems="center" gap="md"
+        padding="md" borderWidth="thin" borderColor={selected ? "active" : "default"} borderRadius="surface">
+        <InputField type="checkbox" label={sv ? `Välj ${item.description}` : `Choose ${item.description}`}
+          checked={selected} disabled={!selected && Object.keys(amounts).length >= 100}
+          onChange={(event) => {
+            if (event.target.checked) onAmounts({ ...amounts, [key]: "" });
+            else {
+              const next = { ...amounts };
+              delete next[key];
+              onAmounts(next);
+            }
+          }} />
+        <Box minWidth="zero" flexGrow>
+          <Text>{item.description}</Text>
+          <PageCaption>{item.postedOn} · {formatMinorAmount(item.remainingMinor, data.currencyScale, locale)} {data.currency} {sv ? "kvar" : "remaining"}</PageCaption>
+        </Box>
+        {selected ? <InputField label={`${sv ? "Belopp" : "Amount"} · ${item.description}`}
+          value={amounts[key] ?? ""} inputMode="decimal" required
+          onChange={(event) => onAmounts({ ...amounts, [key]: event.target.value })} /> : null}
+      </Box>;
+    })}
     {eligible.length > visible ? <Box><Button variant="ghost" type="button" onClick={() => setVisible(visible + 25)}>
       {sv ? "Visa fler bokförda rader" : "Show more posted lines"}
     </Button></Box> : null}
@@ -384,50 +379,60 @@ function MatchingReview(props: Props & { id: string }) {
       {data ? (
         <>
           <MatchBadge view={data} approved={approvalValid} locale={locale} />
-          {data.plan.snapshot.capacities.map((item, index) => (
-            <RecordSection
-              key={`${item.leg.statementId}:${item.leg.rowOrdinal}:${index}`}
-              title={`${sv ? "Matchning" : "Match"} ${index + 1}`}
-            >
-              <MatchingTransactions book={book} locale={locale} capacity={item} />
-              <RecordSummary>
-                <RecordFact label={sv ? "Belopp som matchas" : "Amount to match"}>
-                  {money(item.leg.amountMinor)}
-                </RecordFact>
-                <RecordFact label={sv ? "Kvar på banktransaktionen" : "Bank transaction remaining"}>
-                  {money(
-                    (
-                      BigInt(item.sourceAmountMinor) -
-                      BigInt(item.sourceAllocatedMinor) -
-                      BigInt(item.leg.amountMinor)
-                    ).toString(),
-                  )}
-                </RecordFact>
-                <RecordFact
-                  label={sv ? "Kvar på bokförd transaktion" : "Posted transaction remaining"}
-                >
-                  {money(
-                    (
-                      BigInt(item.lineAmountMinor) -
-                      BigInt(item.lineAllocatedMinor) -
-                      BigInt(item.leg.amountMinor)
-                    ).toString(),
-                  )}
-                </RecordFact>
-              </RecordSummary>
-              <Disclosure label={sv ? "Kontoutdragets underlag" : "Statement evidence"}>
-                <EvidenceInspector
-                  book={book}
-                  locale={locale}
-                  reference={{
-                    evidenceId: item.evidenceId,
-                    sha256: item.evidenceSha256,
-                    locator: `${item.leg.statementId}/${item.leg.rowOrdinal}`,
-                  }}
-                />
-              </Disclosure>
-            </RecordSection>
-          ))}
+          {data.plan.snapshot.capacities.map((item, index, capacities) => {
+            const sourceRemaining = capacities
+              .filter(
+                ({ leg }) =>
+                  leg.statementId === item.leg.statementId &&
+                  leg.rowOrdinal === item.leg.rowOrdinal,
+              )
+              .reduce(
+                (remaining, { leg }) => remaining - BigInt(leg.amountMinor),
+                BigInt(item.sourceAmountMinor) - BigInt(item.sourceAllocatedMinor),
+              );
+            const lineRemaining = capacities
+              .filter(
+                ({ leg }) => leg.voucherId === item.leg.voucherId && leg.lineId === item.leg.lineId,
+              )
+              .reduce(
+                (remaining, { leg }) => remaining - BigInt(leg.amountMinor),
+                BigInt(item.lineAmountMinor) - BigInt(item.lineAllocatedMinor),
+              );
+            return (
+              <RecordSection
+                key={`${item.leg.statementId}:${item.leg.rowOrdinal}:${index}`}
+                title={`${sv ? "Matchning" : "Match"} ${index + 1}`}
+              >
+                <MatchingTransactions book={book} locale={locale} capacity={item} />
+                <RecordSummary>
+                  <RecordFact label={sv ? "Belopp som matchas" : "Amount to match"}>
+                    {money(item.leg.amountMinor)}
+                  </RecordFact>
+                  <RecordFact
+                    label={sv ? "Kvar på banktransaktionen efter matchning" : "Bank transaction after match"}
+                  >
+                    {money(sourceRemaining.toString())}
+                  </RecordFact>
+                  <RecordFact
+                    label={sv ? "Kvar på bokförd transaktion efter matchning" : "Posted transaction after match"}
+                  >
+                    {money(lineRemaining.toString())}
+                  </RecordFact>
+                </RecordSummary>
+                <Disclosure label={sv ? "Kontoutdragets underlag" : "Statement evidence"}>
+                  <EvidenceInspector
+                    book={book}
+                    locale={locale}
+                    reference={{
+                      evidenceId: item.evidenceId,
+                      sha256: item.evidenceSha256,
+                      locator: `${item.leg.statementId}/${item.leg.rowOrdinal}`,
+                    }}
+                  />
+                </Disclosure>
+              </RecordSection>
+            );
+          })}
           <MatchCompletion {...props} view={data} allocationId={id} />
           {ready && !approvalValid ? (
             <InputField
