@@ -29,6 +29,7 @@ import { InvoiceDraftsApi } from "./invoice-drafts";
 import { SupplierInvoiceDraftsApi } from "./supplier-invoice-drafts";
 import { SupplierAcceptanceApi } from "./supplier-acceptance";
 import { SupplierPaymentBatchesApi } from "./supplier-payment-batches";
+import { SupplierCreditsApi } from "./supplier-credits";
 import { SubledgerControlsApi } from "./subledger-controls";
 import { ExchangeRatesApi } from "./exchange-rates";
 import { InvoiceIssuanceApi } from "./invoice-issuance";
@@ -162,6 +163,7 @@ export class Api extends HttpApi.make("open-erp")
     SupplierInvoiceDraftsApi,
     SupplierAcceptanceApi,
     SupplierPaymentBatchesApi,
+    SupplierCreditsApi,
     SubledgerControlsApi,
     ExchangeRatesApi,
     InvoiceIssuanceApi,

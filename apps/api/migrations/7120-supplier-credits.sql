@@ -13,7 +13,7 @@ CREATE TABLE openerp.supplier_credit_reviews (
 CREATE TABLE openerp.supplier_credit_approvals (
   book_id text NOT NULL, id text NOT NULL, review_id text NOT NULL, actor_id text NOT NULL REFERENCES openerp.actors,
   digest text NOT NULL, expires_at timestamptz NOT NULL, body jsonb NOT NULL,
-  PRIMARY KEY(book_id,id), FOREIGN KEY(book_id,review_id) REFERENCES openerp.supplier_credit_reviews
+  PRIMARY KEY(book_id,id), UNIQUE(book_id,id,review_id), FOREIGN KEY(book_id,review_id) REFERENCES openerp.supplier_credit_reviews
 );
 CREATE TABLE openerp.supplier_credits (
   book_id text NOT NULL, id text NOT NULL, review_id text NOT NULL, approval_id text NOT NULL,
@@ -23,13 +23,33 @@ CREATE TABLE openerp.supplier_credits (
   body jsonb NOT NULL, PRIMARY KEY(book_id,id), UNIQUE(book_id,review_id), UNIQUE(book_id,approval_id),
   UNIQUE(book_id,counterparty_id,document_number), UNIQUE(book_id,voucher_id),
   FOREIGN KEY(book_id,review_id) REFERENCES openerp.supplier_credit_reviews,
-  FOREIGN KEY(book_id,approval_id) REFERENCES openerp.supplier_credit_approvals,
+  FOREIGN KEY(book_id,approval_id,review_id) REFERENCES openerp.supplier_credit_approvals(book_id,id,review_id),
   FOREIGN KEY(book_id,invoice_id) REFERENCES openerp.commerce_invoices,
   FOREIGN KEY(book_id,voucher_id,control_line_id) REFERENCES openerp.journal_lines,
   FOREIGN KEY(book_id,evidence_id) REFERENCES openerp.evidence,
   CHECK (body->>'id'=id AND body->>'digest'=openerp.digest(body-'digest'))
 );
 CREATE INDEX supplier_credits_invoice ON openerp.supplier_credits(book_id,invoice_id);
+CREATE FUNCTION openerp.supplier_credit_conserve() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=pg_catalog,openerp AS $$
+DECLARE v_amount numeric; v_credited numeric; v_allocated numeric; v_account text; v_line openerp.journal_lines;
+BEGIN
+  SELECT i.amount_minor,i.control_account_id INTO v_amount,v_account FROM openerp.commerce_invoices i
+    WHERE i.book_id=NEW.book_id AND i.id=NEW.invoice_id AND i.direction='supplier';
+  SELECT coalesce(sum(c.amount_minor),0) INTO v_credited FROM openerp.supplier_credits c
+    WHERE c.book_id=NEW.book_id AND c.invoice_id=NEW.invoice_id;
+  SELECT coalesce(sum(l.amount_minor),0) INTO v_allocated FROM openerp.commerce_active_allocation_legs l
+    WHERE l.book_id=NEW.book_id AND l.invoice_id=NEW.invoice_id;
+  SELECT * INTO v_line FROM openerp.journal_lines l
+    WHERE l.book_id=NEW.book_id AND l.voucher_id=NEW.voucher_id AND l.id=NEW.control_line_id;
+  IF v_amount IS NULL OR v_credited+v_allocated>v_amount OR v_line.account_id IS DISTINCT FROM v_account
+    OR v_line.debit_minor IS DISTINCT FROM NEW.amount_minor OR v_line.credit_minor IS DISTINCT FROM 0 THEN
+    PERFORM openerp.fail('InvalidJournal','The supplier credit and retained payment allocations must conserve the exact original payable and control line.'); END IF;
+  RETURN NULL;
+END $$;
+CREATE CONSTRAINT TRIGGER supplier_credit_conservation AFTER INSERT ON openerp.supplier_credits
+  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION openerp.supplier_credit_conserve();
+
 CREATE TRIGGER supplier_credit_review_immutable BEFORE UPDATE OR DELETE ON openerp.supplier_credit_reviews
   FOR EACH ROW EXECUTE FUNCTION openerp.immutable_row();
 CREATE TRIGGER supplier_credit_approval_immutable BEFORE UPDATE OR DELETE ON openerp.supplier_credit_approvals
@@ -611,7 +631,7 @@ BEGIN
 END $$;
 
 REVOKE ALL ON openerp.supplier_credit_reviews,openerp.supplier_credit_approvals,openerp.supplier_credits FROM PUBLIC,openerp_runtime;
-REVOKE ALL ON FUNCTION openerp.supplier_credit_require_aggregate(),openerp.supplier_credit_source_boundary(),
+REVOKE ALL ON FUNCTION openerp.supplier_credit_base_invoice_body(text,text),openerp.supplier_credit_conserve(),openerp.supplier_credit_require_aggregate(),openerp.supplier_credit_source_boundary(),
   openerp.supplier_credit_snapshot(text,jsonb),openerp.supplier_credit_current(text,jsonb),
   openerp.prepare_supplier_credit(text,jsonb,text,jsonb),openerp.approve_supplier_credit(text,jsonb,text,text,jsonb),
   openerp.execute_supplier_credit(text,jsonb,text,text,jsonb),openerp.get_supplier_credit_review(text,jsonb,text),

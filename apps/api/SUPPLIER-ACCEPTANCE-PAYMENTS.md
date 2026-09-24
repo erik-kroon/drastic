@@ -20,4 +20,4 @@ VAT-bearing credits, edits to legally issued supplier records, generic recogniti
 
 ## Verification limits
 
-Only contract TypeScript compilation, targeted formatter/lint and source review were performed. No tests were added or changed (D-09). SQL was not compiled/applied in PostgreSQL; no runtime, independent arithmetic, XML-schema, provider or bank behavior was verified. Existing invoice/payment control behavior and company activation remain separate gates.
+Contract TypeScript compilation, targeted formatter/lint and source review passed. An isolated temporary PostgreSQL 17 database accepted the three supplier migrations after the earlier supplier draft migrations were applied directly. The normal full migration runner stopped on the unrelated historical `4000-subledger-estimate-amendments.sql` syntax error, so this is SQL-definition compilation only, not an end-to-end upgrade. No tests were added or changed (D-09). No application execution, independent arithmetic, XML-schema, provider or bank behavior was verified. Existing invoice/payment controls and company activation remain separate gates.

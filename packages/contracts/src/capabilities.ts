@@ -26,6 +26,7 @@ import { InvoiceDraftCapabilities } from "./invoice-drafts";
 import { SupplierInvoiceDraftCapabilities } from "./supplier-invoice-drafts";
 import { SupplierAcceptanceCapabilities } from "./supplier-acceptance";
 import { SupplierPaymentBatchCapabilities } from "./supplier-payment-batches";
+import { SupplierCreditCapabilities } from "./supplier-credits";
 import { SubledgerControlCapabilities } from "./subledger-controls";
 import { ExchangeRateCapabilities } from "./exchange-rates";
 import { InvoiceIssuanceCapabilities } from "./invoice-issuance";
@@ -80,6 +81,7 @@ export const Capabilities = {
   ...SupplierInvoiceDraftCapabilities,
   ...SupplierAcceptanceCapabilities,
   ...SupplierPaymentBatchCapabilities,
+  ...SupplierCreditCapabilities,
   ...SubledgerControlCapabilities,
   ...ExchangeRateCapabilities,
   ...InvoiceIssuanceCapabilities,

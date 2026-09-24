@@ -182,6 +182,12 @@ function SupplierAcceptancePreparation(
 
 function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Draft }) {
   const sv = props.locale === "sv";
+  const setup = useQuery({
+    queryKey: [...bookKey(props.book), "setup"],
+    queryFn: ({ signal }) =>
+      readAccounting(`${bookPath(props.book)}/setup`, Accounting.BookSetup, { signal }),
+    retry: false,
+  });
   const review = useQuery({
     queryKey: [...commerceKey(props.book), "supplier-acceptance-review", props.id],
     staleTime: 0,
@@ -208,6 +214,7 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
         {sv ? "Uppdatera granskning" : "Refresh review"}
       </Button>
       <AccountingStatus locale={props.locale} pending={review.isPending} error={review.error} />
+      <AccountingStatus locale={props.locale} pending={setup.isPending} error={setup.error} />
       {view ? (
         <>
           <Text>{sv ? "Bokföringseffekt" : "Accounting effect"}</Text>
@@ -221,22 +228,25 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
             ]}
             rows={view.plan.postingPlan.groups.flatMap((group) =>
               group.actions.flatMap((action) =>
-                action.lines.map((line) => ({
-                  id: `${group.id}:${line.lineId}`,
-                  cells: [
-                    line.accountId,
-                    formatMinorAmount(
-                      line.debitMinor,
-                      view.plan.draftSnapshot.content.currencyScale,
-                      props.locale,
-                    ),
-                    formatMinorAmount(
-                      line.creditMinor,
-                      view.plan.draftSnapshot.content.currencyScale,
-                      props.locale,
-                    ),
-                  ],
-                })),
+                action.lines.map((line) => {
+                  const account = setup.data?.accounts.find((item) => item.id === line.accountId);
+                  return {
+                    id: `${group.id}:${line.lineId}`,
+                    cells: [
+                      account ? `${account.code} · ${account.name}` : line.accountId,
+                      formatMinorAmount(
+                        line.debitMinor,
+                        view.plan.draftSnapshot.content.currencyScale,
+                        props.locale,
+                      ),
+                      formatMinorAmount(
+                        line.creditMinor,
+                        view.plan.draftSnapshot.content.currencyScale,
+                        props.locale,
+                      ),
+                    ],
+                  };
+                }),
               ),
             )}
           />

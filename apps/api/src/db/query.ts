@@ -25,6 +25,7 @@ import { invoiceDraftStatements } from "./statements/invoice-draft";
 import { supplierInvoiceDraftStatements } from "./statements/supplier-invoice-drafts";
 import { supplierAcceptanceStatements } from "./statements/supplier-acceptance";
 import { supplierPaymentBatchStatements } from "./statements/supplier-payment-batches";
+import { supplierCreditStatements } from "./statements/supplier-credits";
 import { subledgerControlStatements } from "./statements/subledger-controls";
 import { exchangeRateStatements } from "./statements/exchange-rates";
 import { invoiceIssuanceStatements } from "./statements/invoice-issuance";
@@ -147,6 +148,7 @@ const statements = {
   ...supplierInvoiceDraftStatements,
   ...supplierAcceptanceStatements,
   ...supplierPaymentBatchStatements,
+  ...supplierCreditStatements,
   ...subledgerControlStatements,
   ...exchangeRateStatements,
   ...invoiceIssuanceStatements,

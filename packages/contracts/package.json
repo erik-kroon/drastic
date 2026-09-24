@@ -38,6 +38,7 @@
     "./supplier-invoice-drafts": "./src/supplier-invoice-drafts.ts",
     "./supplier-acceptance": "./src/supplier-acceptance.ts",
     "./supplier-payment-batches": "./src/supplier-payment-batches.ts",
+    "./supplier-credits": "./src/supplier-credits.ts",
     "./subledger-controls": "./src/subledger-controls.ts",
     "./exchange-rates": "./src/exchange-rates.ts",
     "./invoice-issuance": "./src/invoice-issuance.ts",

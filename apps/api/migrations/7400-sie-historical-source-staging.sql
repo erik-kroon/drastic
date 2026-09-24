@@ -343,11 +343,11 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION openerp.capture_sie_source(text,jsonb,text,text,jsonb),
   openerp.get_sie_source(text,jsonb,text),openerp.seal_sie_source_plan(text,jsonb,text,text,jsonb),
-  openerp.get_sie_source_plan(text,jsonb,text),openerp.start_sie_source_run(text,jsonb,text,text),
+  openerp.get_sie_source_plan(text,jsonb,text),openerp.start_sie_source_run(text,jsonb,text,text,text),
   openerp.sie_source_run_view(text,jsonb,text),openerp.advance_sie_source_run(text,jsonb,text,text,jsonb),
   openerp.reclaim_sie_source_run(text,jsonb,text,text,text) FROM PUBLIC,openerp_runtime;
 GRANT EXECUTE ON FUNCTION openerp.capture_sie_source(text,jsonb,text,text,jsonb),
   openerp.get_sie_source(text,jsonb,text),openerp.seal_sie_source_plan(text,jsonb,text,text,jsonb),
-  openerp.get_sie_source_plan(text,jsonb,text),openerp.start_sie_source_run(text,jsonb,text,text),
+  openerp.get_sie_source_plan(text,jsonb,text),openerp.start_sie_source_run(text,jsonb,text,text,text),
   openerp.sie_source_run_view(text,jsonb,text),openerp.advance_sie_source_run(text,jsonb,text,text,jsonb),
   openerp.reclaim_sie_source_run(text,jsonb,text,text,text) TO openerp_runtime;

@@ -215,24 +215,36 @@ export const capabilities = {
     Capabilities.commerce_invoice_document_history,
     invoiceDocumentHistory,
   ),
-  commerce_get_invoice_policy_candidate: bindCapability(Capabilities.commerce_get_invoice_policy_candidate, "getInvoicePolicyCandidate", (input) => [
-    scopeParameter(input.scope), input.id,
-  ]),
-  commerce_invoice_policy_history: bindCapability(Capabilities.commerce_invoice_policy_history, "invoicePolicyHistory", (input) => [
-    scopeParameter(input.scope),
-  ]),
-  commerce_get_invoice_delivery: bindCapability(Capabilities.commerce_get_invoice_delivery, "getInvoiceDelivery", (input) => [
-    scopeParameter(input.scope), input.id,
-  ]),
-  commerce_invoice_delivery_history: bindCapability(Capabilities.commerce_invoice_delivery_history, "invoiceDeliveryHistory", (input) => [
-    scopeParameter(input.scope), input.id,
-  ]),
-  commerce_get_invoice_pdf: bindCapability(Capabilities.commerce_get_invoice_pdf, "getInvoicePdf", (input) => [
-    scopeParameter(input.scope), input.id,
-  ]),
-  commerce_invoice_pdf_history: bindCapability(Capabilities.commerce_invoice_pdf_history, "invoicePdfHistory", (input) => [
-    scopeParameter(input.scope), input.id,
-  ]),
+  commerce_get_invoice_policy_candidate: bindCapability(
+    Capabilities.commerce_get_invoice_policy_candidate,
+    "getInvoicePolicyCandidate",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_invoice_policy_history: bindCapability(
+    Capabilities.commerce_invoice_policy_history,
+    "invoicePolicyHistory",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  commerce_get_invoice_delivery: bindCapability(
+    Capabilities.commerce_get_invoice_delivery,
+    "getInvoiceDelivery",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_invoice_delivery_history: bindCapability(
+    Capabilities.commerce_invoice_delivery_history,
+    "invoiceDeliveryHistory",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_get_invoice_pdf: bindCapability(
+    Capabilities.commerce_get_invoice_pdf,
+    "getInvoicePdf",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_invoice_pdf_history: bindCapability(
+    Capabilities.commerce_invoice_pdf_history,
+    "invoicePdfHistory",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
   fx_list_rates: bindCapability(Capabilities.fx_list_rates, "listExchangeRates", (input) => [
     scopeParameter(input.scope),
   ]),
@@ -305,6 +317,16 @@ export const capabilities = {
     "invoiceIssueHistory",
     (input) => [scopeParameter(input.scope), input.id],
   ),
+  commerce_get_supplier_credit_review: bindCapability(
+    Capabilities.commerce_get_supplier_credit_review,
+    "getSupplierCreditReview",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_supplier_credit_history: bindCapability(
+    Capabilities.commerce_supplier_credit_history,
+    "supplierCreditHistory",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
   commerce_get_supplier_acceptance_review: bindCapability(
     Capabilities.commerce_get_supplier_acceptance_review,
     "getSupplierAcceptanceReview",
@@ -366,7 +388,8 @@ export const capabilities = {
     ],
   ),
   commerce_get_supplier_payment_batch: bindCapability(
-    Capabilities.commerce_get_supplier_payment_batch, "getSupplierPaymentBatch",
+    Capabilities.commerce_get_supplier_payment_batch,
+    "getSupplierPaymentBatch",
     (input) => [scopeParameter(input.scope), input.id],
   ),
   commerce_supplier_invoice_draft_duplicates: bindCapability(
