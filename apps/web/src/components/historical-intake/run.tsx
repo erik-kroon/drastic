@@ -1,3 +1,4 @@
+import { HistoricalBases } from "./basis";
 import { AdmitOpenItems } from "./admission";
 import { useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -141,6 +142,7 @@ export function SieStagingRun({ id, plan }: { id: string; plan: typeof Sie.SiePl
           }}
         />
       ) : null}
+      <HistoricalBases sourceRunId={id} plan={plan} staged={run.data?.status === "staged"} />
       <AccountingStatus locale={locale} pending={advance.isPending} error={advance.error} write />
       <AccountingStatus locale={locale} pending={lease.isPending} error={lease.error} write />
       <Box>
@@ -166,13 +168,58 @@ function AdmissionStatus({
   admission: typeof Historical.PlanItemAdmission.Type;
   sv: boolean;
 }) {
+  if (!admission)
+    return (
+      <Text>
+        {sv ? "Historiskt register har inte sparats." : "Historical register has not been saved."}
+      </Text>
+    );
   return (
-    <Text>
-      {admission
-        ? `${sv ? "Historiskt register sparat" : "Historical register saved"}: ${admission.openItems.length}. ${sv ? "Ingen bokföringseffekt." : "No financial posting effect."}`
-        : sv
-          ? "Historiskt register har inte sparats."
-          : "Historical register has not been saved."}
-    </Text>
+    <Box display="grid" gap="sm">
+      <Text>{`${sv ? "Historiskt register sparat" : "Historical register saved"}: ${admission.openItems.length}. ${sv ? "Ingen bokföringseffekt." : "No financial posting effect."}`}</Text>
+      <Text>
+        {admission.chronology === "unknown"
+          ? sv
+            ? "Betalningskronologin är okänd. Saknade betalningar har inte återskapats."
+            : "Payment chronology is unknown. Missing payments have not been reconstructed."
+          : sv
+            ? "Betalningskronologin bygger på källans datum."
+            : "Payment chronology uses the supplied source dates."}
+      </Text>
+      <Text>
+        {sv ? "Sparad grund" : "Saved rationale"}: {admission.rationale}
+      </Text>
+      <details>
+        <summary>
+          {sv ? "Registerkvitto och betalningshistorik" : "Register receipt and payment history"}
+        </summary>
+        <Box display="grid" gap="sm">
+          <Text>
+            {sv ? "Kvitto" : "Receipt"}: {admission.id}
+          </Text>
+          <Text>
+            {sv ? "Sparat" : "Saved"}: {admission.admittedAt}
+          </Text>
+          <Text>
+            {sv ? "Betalningar" : "Payments"}: {admission.payments.length}.{" "}
+            {sv ? "Matchningar" : "Matches"}: {admission.matches.length}.
+          </Text>
+          {admission.payments.map((payment) => (
+            <Text key={payment.sourceIdentity}>
+              {payment.sourceIdentity} · {payment.sourceAccount} · {payment.amountMinor}{" "}
+              {payment.currency} {sv ? "i minsta valutaenhet" : "minor units"} ·{" "}
+              {payment.sourceDate ?? (sv ? "Okänt datum" : "Unknown date")} · {payment.basis}
+            </Text>
+          ))}
+          {admission.matches.map((match) => (
+            <Text key={match.sourceIdentity}>
+              {match.sourceIdentity} · {match.paymentIdentity} → {match.itemIdentity} ·{" "}
+              {match.amountMinor} {sv ? "i minsta valutaenhet" : "minor units"} ·{" "}
+              {match.sourceDate ?? (sv ? "Okänt datum" : "Unknown date")} · {match.basis}
+            </Text>
+          ))}
+        </Box>
+      </details>
+    </Box>
   );
 }

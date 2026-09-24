@@ -1,4 +1,5 @@
 import { Api } from "@open-erp/contracts/api";
+import * as Accounting from "@open-erp/contracts/accounting";
 import * as Historical from "@open-erp/contracts/historical-migration";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
@@ -10,6 +11,39 @@ export const HistoricalMigrationHandlers = HttpApiBuilder.group(
   "historicalMigration",
   (handlers) =>
     handlers
+      .handle("prepareHistoricalOpening", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          query(
+            "prepareHistoricalOpening",
+            [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
+            Historical.OpeningPreparation,
+          ),
+        ),
+      )
+      .handle("getSieFinancialWorkspace", ({ params }) =>
+        Effect.flatMap(authenticate, (token) =>
+          query(
+            "getSieFinancialWorkspace",
+            [token, scopeParameter(params), params.id],
+            Historical.FinancialWorkspace,
+          ),
+        ),
+      )
+      .handle("prepareSieFinancialVoucher", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          query(
+            "prepareSieFinancialVoucher",
+            [
+              token,
+              scopeParameter(params),
+              headers["idempotency-key"],
+              params.id,
+              JSON.stringify(payload),
+            ],
+            Accounting.ChangeSet,
+          ),
+        ),
+      )
       .handle("admitHistoricalItems", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
           query(
@@ -41,6 +75,11 @@ export const HistoricalMigrationHandlers = HttpApiBuilder.group(
             [token, scopeParameter(params), params.id],
             Historical.ItemAdmission,
           ),
+        ),
+      )
+      .handle("listHistoricalBases", ({ params }) =>
+        Effect.flatMap(authenticate, (token) =>
+          query("listHistoricalBases", [token, scopeParameter(params)], Historical.BasisInventory),
         ),
       )
       .handle("selectHistoricalBasis", ({ params, headers, payload }) =>

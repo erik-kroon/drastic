@@ -36,6 +36,18 @@ export const Basis = Schema.Struct({
   voucherId: Schema.optional(Schema.NullOr(A.Identifier)),
   ledgerReceipt: Schema.optional(Receipt),
 });
+export const PrepareOpening = Schema.Struct({
+  fiscalYearId: Year,
+  cutoverOn: A.AccountingDate,
+  sourcePlanId: A.Identifier,
+  sourceDigest: A.Digest,
+  controls: SelectBasis.fields.controls,
+  rationale: Label,
+  accountingPeriodId: A.Identifier,
+  series: Schema.String.check(Schema.isPattern(/^[A-Z0-9]{1,16}$/)),
+});
+export const OpeningPreparation = Schema.Struct({ basis: Basis, proposal: A.ChangeSet });
+
 export const RunStart = Schema.Struct({
   id: A.Identifier,
   sourceRunId: A.Identifier,
@@ -53,6 +65,18 @@ const Posting = Schema.Struct({
   ledgerReceipt: Receipt,
 });
 export const Run = Schema.Struct({ ...RunStart.fields, items: Schema.Array(Posting) });
+export const FinancialWorkspace = Schema.Struct({
+  run: Schema.NullOr(Run),
+  nextProposal: Schema.NullOr(A.ChangeSet),
+});
+export const PrepareSourceVoucher = Schema.Struct({
+  fence: Schema.String,
+  planDigest: A.Digest,
+  ordinal: Schema.Int,
+  accountingPeriodId: A.Identifier,
+  series: Schema.String.check(Schema.isPattern(/^[A-Z0-9]{1,16}$/)),
+  rationale: Label,
+});
 export const Chunk = Schema.Struct({
   id: A.Identifier,
   nextOrdinal: Schema.Int,
@@ -129,6 +153,18 @@ export const ItemAdmission = Schema.Struct({
   digest: A.Digest,
 });
 
+export const BasisInventory = Schema.Struct({
+  scope: A.Scope,
+  years: Schema.Array(
+    Schema.Struct({
+      id: A.Identifier,
+      startsOn: A.AccountingDate,
+      endsOn: A.AccountingDate,
+      basis: Schema.NullOr(Basis),
+    }),
+  ),
+});
+
 export const PlanItemAdmission = Schema.NullOr(ItemAdmission);
 
 const base = "/v1/entities/:entityId/books/:bookId";
@@ -136,8 +172,38 @@ const identified = { params: A.ChangePath, error: accountingErrors };
 const mutation = { ...identified, headers: A.IdempotencyHeaders };
 export const HistoricalMigrationApi = HttpApiGroup.make("historicalMigration")
   .add(
+    HttpApiEndpoint.post("prepareHistoricalOpening", `${base}/historical-openings`, {
+      params: A.Scope,
+      headers: A.IdempotencyHeaders,
+      error: accountingErrors,
+      payload: PrepareOpening,
+      success: OpeningPreparation,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get("getSieFinancialWorkspace", `${base}/sie-runs/:id/financial-workspace`, {
+      ...identified,
+      success: FinancialWorkspace,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post("prepareSieFinancialVoucher", `${base}/sie-financial-runs/:id/proposals`, {
+      ...mutation,
+      payload: PrepareSourceVoucher,
+      success: A.ChangeSet,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get("listHistoricalBases", `${base}/historical-bases`, {
+      params: A.Scope,
+      error: accountingErrors,
+      success: BasisInventory,
+    }),
+  )
+  .add(
     HttpApiEndpoint.post("selectHistoricalBasis", `${base}/historical-bases`, {
       ...mutation,
+      params: A.Scope,
       payload: SelectBasis,
       success: Basis,
     }),

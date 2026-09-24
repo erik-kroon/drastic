@@ -1,12 +1,20 @@
 import { sql, type SQL } from "drizzle-orm";
 
 export const historicalMigrationStatements = {
+  prepareHistoricalOpening: (p) =>
+    sql`select openerp.prepare_historical_opening(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text,${p[3]}::jsonb) as result`,
+  getSieFinancialWorkspace: (p) =>
+    sql`select openerp.get_sie_financial_workspace(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text) as result`,
+  prepareSieFinancialVoucher: (p) =>
+    sql`select openerp.prepare_sie_financial_voucher(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text,${p[3]}::text,${p[4]}::jsonb) as result`,
   admitHistoricalItems: (p) =>
     sql`select openerp.admit_historical_items(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text,${p[3]}::text,${p[4]}::jsonb) as result`,
   getPlanHistoricalItems: (p) =>
     sql`select openerp.get_plan_historical_items(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text) as result`,
   getHistoricalItems: (p) =>
     sql`select openerp.get_historical_items(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text) as result`,
+  listHistoricalBases: (p) =>
+    sql`select openerp.list_historical_bases(${p[0]}::text,${p[1]}::jsonb) as result`,
   selectHistoricalBasis: (p) =>
     sql`select openerp.select_historical_basis(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text,${p[3]}::jsonb) as result`,
   getHistoricalBasis: (p) =>
