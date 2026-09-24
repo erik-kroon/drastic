@@ -1,19 +1,18 @@
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
-import { Box } from "@open-erp/ui/components/box";
-import { Text } from "@open-erp/ui/components/typography";
-import { DataTable } from "@open-erp/ui/components/data-table";
-import { InvoiceTotals } from "@open-erp/ui/components/invoice-lines";
-import { DocumentPaper, RecordHeading, RecordSection } from "@open-erp/ui/components/record-layout";
+import { InvoicePreview } from "@open-erp/ui/components/invoice-preview";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import type { CommerceProps } from "./shared";
+
 export function InvoiceDraftDocument({
   record,
   locale,
   title,
+  issued = false,
 }: {
   record: typeof Drafts.InvoiceDraftRevision.Type;
   locale: CommerceProps["locale"];
   title?: string;
+  issued?: boolean;
 }) {
   const labels = locale === "sv" ? swedish : english;
   const amount = (value: string | null) =>
@@ -21,74 +20,70 @@ export function InvoiceDraftDocument({
       ? "—"
       : `${formatMinorAmount(value, record.content.currencyScale, locale)} ${record.content.currency}`;
   return (
-    <DocumentPaper>
-      <RecordHeading
-        title={title ?? labels.invoiceDraft}
-        subtitle={record.content.seller.legalName}
-      />
-      <Box display="grid" columns={2} gap="xl">
-        <RecordSection title={labels.billTo}>
-          <Text>{record.content.customer.legalName}</Text>
-          <Text tone="muted">{record.content.customer.address ?? "—"}</Text>
-        </RecordSection>
-        <RecordSection title={labels.dates}>
-          <Text>
-            {labels.invoiceDate}: {record.content.plannedIssueDate ?? "—"}
-          </Text>
-          <Text>
-            {labels.dueDate}: {record.content.dueDate ?? "—"}
-          </Text>
-        </RecordSection>
-      </Box>
-      <DataTable
-        title={labels.invoiceLines}
-        minWidth="fit"
-        columns={[
-          { id: "description", label: labels.description },
-          { id: "quantity", label: labels.qty, numeric: true },
-          { id: "net", label: labels.net, numeric: true },
-          { id: "tax", label: labels.tax, numeric: true },
-        ]}
-        rows={record.content.lines.map((line) => ({
-          id: line.id,
-          cells: [
-            line.description,
-            line.quantity,
-            amount(record.calculatedLines.find((item) => item.id === line.id)?.netMinor ?? null),
-            amount(line.taxMinor),
-          ],
-        }))}
-      />
-      <InvoiceTotals
-        rows={[
-          { label: labels.subtotal, value: amount(record.totals.netMinor) },
-          { label: labels.tax, value: amount(record.totals.taxMinor) },
-          { label: labels.total, value: amount(record.totals.grossMinor), total: true },
-        ]}
-      />
-      {record.content.paymentTerms ? <Text tone="muted">{record.content.paymentTerms}</Text> : null}
-    </DocumentPaper>
+    <InvoicePreview
+      title={title ?? record.content.title}
+      seller={record.content.seller.legalName}
+      sellerAddress={record.content.seller.address}
+      customer={record.content.customer.legalName}
+      address={record.content.customer.address}
+      dates={[
+        {
+          label: issued ? labels.issueDate : labels.plannedIssueDate,
+          value: record.content.plannedIssueDate ?? "—",
+        },
+        { label: labels.dueDate, value: record.content.dueDate ?? "—" },
+      ]}
+      lines={record.content.lines.map((line) => ({
+        id: line.id,
+        description: line.description,
+        quantity: line.quantity,
+        net: amount(record.calculatedLines.find((item) => item.id === line.id)?.netMinor ?? null),
+        tax: amount(line.taxMinor),
+      }))}
+      totals={[
+        { label: labels.subtotal, value: amount(record.totals.netMinor) },
+        { label: labels.tax, value: amount(record.totals.taxMinor) },
+        { label: labels.total, value: amount(record.totals.grossMinor), total: true },
+      ]}
+      terms={record.content.paymentTerms}
+      labels={{
+        state: issued ? labels.issuedPreview : labels.draftPreview,
+        from: labels.from,
+        billTo: labels.billTo,
+        invoiceLines: labels.invoiceLines,
+        description: labels.description,
+        qty: labels.qty,
+        net: labels.net,
+        tax: labels.tax,
+        paymentTerms: labels.paymentTerms,
+      }}
+    />
   );
 }
 const english = {
-  invoiceDraft: "Invoice · Draft",
+  draftPreview: "Draft · Not issued",
+  issuedPreview: "Issued demo · Not sent",
+  from: "From",
   billTo: "Bill to",
-  dates: "Dates",
-  invoiceDate: "Invoice date",
+  plannedIssueDate: "Planned issue date",
+  issueDate: "Planned date on saved draft",
   dueDate: "Due date",
   invoiceLines: "Invoice lines",
   description: "Description",
   qty: "Qty",
-  net: "Net",
+  net: "Before tax",
   tax: "Tax",
   subtotal: "Subtotal",
   total: "Total",
+  paymentTerms: "Payment terms",
 };
 const swedish: typeof english = {
-  invoiceDraft: "Faktura · Utkast",
+  draftPreview: "Utkast · Inte utfärdad",
+  issuedPreview: "Utfärdad demo · Inte skickad",
+  from: "Från",
   billTo: "Faktureras till",
-  dates: "Datum",
-  invoiceDate: "Fakturadatum",
+  plannedIssueDate: "Planerat fakturadatum",
+  issueDate: "Planerat datum i sparat utkast",
   dueDate: "Förfallodatum",
   invoiceLines: "Fakturarader",
   description: "Beskrivning",
@@ -97,4 +92,5 @@ const swedish: typeof english = {
   tax: "Moms",
   subtotal: "Exkl. moms",
   total: "Totalt",
+  paymentTerms: "Betalningsvillkor",
 };

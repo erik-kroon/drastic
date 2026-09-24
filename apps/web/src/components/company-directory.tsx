@@ -1,3 +1,4 @@
+import { CreateCompany } from "@/components/company-setup/create-company";
 import { useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -30,6 +31,7 @@ import type { Locale } from "@/paraglide/runtime";
 export function CompanyDirectory({ books, locale }: { books: typeof Books.Type; locale: Locale }) {
   const sv = locale === "sv";
   const copy = sv ? swedish : english;
+  const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const filtered = books.filter((book) =>
@@ -71,7 +73,15 @@ export function CompanyDirectory({ books, locale }: { books: typeof Books.Type; 
         </Box>
       }
     >
-      <WorkspaceHeader title={copy.companies} />
+      <WorkspaceHeader
+        title={copy.companies}
+        action={
+          <Button onClick={() => setCreating(true)}>
+            {sv ? "Skapa företag" : "Create company"}
+          </Button>
+        }
+      />
+      {creating ? <CreateCompany locale={locale} onClose={() => setCreating(false)} /> : null}
       <PageContent>
         <RecordHeading title={copy.yourCompanies} subtitle={copy.subtitle} />
         <RegisterSearch
@@ -101,7 +111,10 @@ export function CompanyDirectory({ books, locale }: { books: typeof Books.Type; 
               return {
                 id: `${book.entityId}/${book.id}`,
                 cells: [
-                  <Link key="company" href={`${workspacePath(book)}/overview`}>
+                  <Link
+                    key="company"
+                    href={`${workspacePath(book)}/${book.profile === "company-setup-v1" ? "setup" : "overview"}`}
+                  >
                     {book.name}
                   </Link>,
                   setup?.isError ? (
@@ -183,7 +196,8 @@ const english = {
   noMatches: "No matching companies",
   noAccess: "No companies available",
   trySearch: "Try another company name.",
-  askAccess: "Ask your administrator to give you access to a company.",
+  askAccess:
+    "Create a company to get started, or ask your administrator for access to an existing one.",
   previous: "Previous",
   next: "Next",
   coverage:
@@ -205,7 +219,7 @@ const swedish: typeof english = {
   noMatches: "Inga matchande företag",
   noAccess: "Inga företag tillgängliga",
   trySearch: "Prova ett annat företagsnamn.",
-  askAccess: "Be administratören ge dig åtkomst till ett företag.",
+  askAccess: "Skapa ett företag eller be administratören om åtkomst till ett befintligt företag.",
   previous: "Föregående",
   next: "Nästa",
   coverage:

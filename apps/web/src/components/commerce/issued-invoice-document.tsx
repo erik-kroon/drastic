@@ -62,6 +62,7 @@ export function IssuedInvoiceDocument(
             record={view.data.plan.draftSnapshot}
             locale={locale}
             title={`${locale === "sv" ? "Demofaktura" : "Demo invoice"} · ${invoice.documentNumber}`}
+            issued
           />
           <Details
             title={

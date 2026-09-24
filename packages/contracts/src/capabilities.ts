@@ -1,3 +1,4 @@
+import { CompanySetupCapabilities } from "./company-setup";
 import * as Schema from "effect/Schema";
 import * as Accounting from "./accounting";
 import * as Reports from "./reports";
@@ -35,6 +36,7 @@ import { InvoiceDocumentCapabilities } from "./invoice-documents";
 import { InvoicePdfCapabilities } from "./invoice-pdf";
 import { InvoicePolicyCapabilities } from "./invoice-policy";
 import { InvoiceDeliveryCapabilities } from "./invoice-delivery";
+import { ArLegalIssueCapabilities } from "./ar-legal-issue";
 import { CommerceAllocationReversalCapabilities } from "./commerce-allocation-reversals";
 import { AccountantReviewCapabilities } from "./accountant-review";
 import { SourceIntakeCapabilities } from "./source-intake";
@@ -68,6 +70,7 @@ export const Capabilities = {
   },
   ...WorkspaceCapabilities,
   ...FirmCapabilities,
+  ...CompanySetupCapabilities,
   ...AccountantReviewCapabilities,
   ...SourceIntakeCapabilities,
   ...ExpenseTaxCapabilities,
@@ -90,6 +93,7 @@ export const Capabilities = {
   ...InvoicePdfCapabilities,
   ...InvoicePolicyCapabilities,
   ...InvoiceDeliveryCapabilities,
+  ...ArLegalIssueCapabilities,
   ...CommerceAllocationReversalCapabilities,
   ...ClosingCapabilities,
   ...Automation.PreparationJobStopCapabilities,

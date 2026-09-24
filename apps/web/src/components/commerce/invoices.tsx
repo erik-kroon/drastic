@@ -14,6 +14,7 @@ import { IssuedInvoiceDocument } from "./issued-invoice-document";
 import { InvoicePaymentsWorkspace, type InvoicePaymentNavigation } from "./invoice-payments";
 import { invoicePaymentCopy } from "./invoice-payment-copy";
 import { InvoiceRegistration } from "./invoice-registration";
+import { SupplierPaymentState } from "./supplier-payment-state";
 import { useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Commerce from "@open-erp/contracts/commerce";
@@ -343,6 +344,9 @@ export function InvoiceDetail(
                 {invoice.data.cancellation.postingDate}
               </Text>
             </Box>
+          ) : null}
+          {invoice.data.direction === "supplier" ? (
+            <SupplierPaymentState locale={locale} invoice={invoice.data} />
           ) : null}
           <Text>{invoice.data.currentRevision.description}</Text>
           {invoice.data.blockers.map((blocker) => (

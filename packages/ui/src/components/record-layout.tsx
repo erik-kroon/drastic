@@ -5,12 +5,20 @@ import { InputField } from "@open-erp/ui/components/field";
 import type { InputProps } from "@open-erp/ui/components/input";
 
 const styles = stylex.create({
-  heading: { display: "flex", alignItems: "start", justifyContent: "space-between", gap: 24 },
+  heading: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "start",
+    justifyContent: "space-between",
+    gap: 24,
+    minWidth: 0,
+  },
   title: {
     fontFamily: tokens.fontSerif,
     fontSize: tokens.fontSize2xl,
     fontWeight: tokens.fontWeightNormal,
     lineHeight: tokens.lineHeight32Px,
+    overflowWrap: "anywhere",
   },
   subtitle: {
     color: tokens.mutedForeground,

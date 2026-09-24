@@ -70,6 +70,11 @@ function DocumentPanel(props: IssuedDocumentProps) {
           </Button>
         </Box>
       ) : null}
+      {history.isSuccess ? (
+        <Text tone="muted">
+          {current ? copy.fileAvailable : copy.fileNotAvailable} {copy.pdfNotAvailable}
+        </Text>
+      ) : null}
       {history.isSuccess && !current ? <Text tone="muted">{copy.empty}</Text> : null}
       <CommandForm
         {...props}

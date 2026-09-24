@@ -47,6 +47,35 @@ export const PostingAction = Schema.Struct({
   ),
 });
 
+// Read-only legal AR variant. Generic manual journal admission remains PostingAction and
+// the SQL inspect_action restriction remains synthetic-only.
+export const LegalArPostingAction = Schema.Struct({
+  ...PostingAction.fields,
+  correctsVoucherId: Schema.Null,
+  postingPurpose: Schema.Literal("legal_ar_recognition"),
+  occurrenceKey: Schema.String.check(Schema.isPattern(/^legal_ar_invoice_draft_[a-f0-9]{32}$/)),
+  currency: Schema.Literal("SEK"),
+  taxAssessment: Schema.Literal("se-domestic-standard-25-v1"),
+  lines: Schema.Array(Schema.Struct({ ...JournalLine.fields, lineId: Identifier })).check(
+    Schema.isMinLength(3),
+    Schema.isMaxLength(3),
+  ),
+  legalIssue: Schema.Struct({
+    profile: Schema.Literal("se-domestic-b2b-sek-25-accrual-v1"),
+    number: Schema.String.check(Schema.isPattern(/^[A-Z][A-Z0-9-]{0,11}-[1-9][0-9]{0,17}$/)),
+    policyId: Identifier,
+    reviewId: Identifier,
+    reviewDigest: Digest,
+    netMinor: MinorUnits,
+    taxMinor: MinorUnits,
+  }),
+});
+const SyntheticVoucherAction = Schema.Struct({
+  ...PostingAction.fields,
+  legalIssue: Schema.optional(Schema.Null),
+});
+export const VoucherPostingAction = Schema.Union([SyntheticVoucherAction, LegalArPostingAction]);
+
 export const ChangeSet = Schema.Struct({
   schemaVersion: Schema.Literal("1"),
   canonicalization: Schema.Literal("openerp-c14n-v1"),
@@ -59,7 +88,7 @@ export const ChangeSet = Schema.Struct({
     Schema.Struct({
       id: Identifier,
       dependsOnGroupIds: Schema.Array(Identifier),
-      actions: Schema.Array(PostingAction),
+      actions: Schema.Array(VoucherPostingAction),
     }),
   ),
   planDigest: Digest,
@@ -88,7 +117,7 @@ export const Voucher = Schema.Struct({
   number: MinorUnits,
   sequence: MinorUnits,
   recordedAt: Schema.String,
-  action: PostingAction,
+  action: VoucherPostingAction,
 });
 
 export const LedgerSnapshot = Schema.Struct({

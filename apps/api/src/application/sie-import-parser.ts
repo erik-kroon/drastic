@@ -42,6 +42,23 @@ type SieControl = {
   recordOrdinal: number;
 };
 
+const pc8High =
+  "\u00c7\u00fc\u00e9\u00e2\u00e4\u00e0\u00e5\u00e7\u00ea\u00eb\u00e8\u00ef\u00ee\u00ec\u00c4\u00c5\u00c9\u00e6\u00c6\u00f4\u00f6\u00f2\u00fb\u00f9\u00ff\u00d6\u00dc\u00a2\u00a3\u00a5\u20a7\u0192" +
+  "\u00e1\u00ed\u00f3\u00fa\u00f1\u00d1\u00aa\u00ba\u00bf\u2310\u00ac\u00bd\u00bc\u00a1\u00ab\u00bb\u2591\u2592\u2593\u2502\u2524\u2561\u2562\u2556\u2555\u2563\u2551\u2557\u255d\u255c\u255b\u2510" +
+  "\u2514\u2534\u252c\u251c\u2500\u253c\u255e\u255f\u255a\u2554\u2569\u2566\u2560\u2550\u256c\u2567\u2568\u2564\u2565\u2559\u2558\u2552\u2553\u256b\u256a\u2518\u250c\u2588\u2584\u258c\u2590\u2580" +
+  "\u03b1\u00df\u0393\u03c0\u03a3\u03c3\u00b5\u03c4\u03a6\u0398\u03a9\u03b4\u221e\u03c6\u03b5\u2229\u2261\u00b1\u2265\u2264\u2320\u2321\u00f7\u2248\u00b0\u2219\u00b7\u221a\u207f\u00b2\u25a0\u00a0";
+
+type SieEncoding = "utf-8" | "windows-1252" | "ibm437";
+
+function decodePc8(bytes: Uint8Array) {
+  const characters: string[] = [];
+  for (let i = 0; i < bytes.length; i++) {
+    const byte = bytes[i] ?? 0;
+    characters.push(byte < 128 ? String.fromCharCode(byte) : (pc8High[byte - 128] ?? ""));
+  }
+  return characters.join("");
+}
+
 function scanSieFields(body: string) {
   const fields: string[] = [];
   let token = "";
@@ -50,7 +67,11 @@ function scanSieFields(body: string) {
   let active = false;
   for (let pos = 0; pos < body.length; pos++) {
     const ch = body[pos] ?? "";
-    if (ch === '"') {
+    if (quoted && ch === "\\" && body[pos + 1] === '"') {
+      token += '"';
+      pos++;
+      active = true;
+    } else if (ch === '"') {
       if (quoted && body[pos + 1] === '"') {
         token += '"';
         pos++;
@@ -158,7 +179,7 @@ function recordSieFact(
 }
 
 // Explicit encoding is part of the interpretation. Original bytes remain in source intake.
-export function parseSie(bytes: Uint8Array, encoding: "utf-8" | "windows-1252") {
+export function parseSie(bytes: Uint8Array, encoding: SieEncoding) {
   const diagnostics: SieDiagnostic[] = [];
   const records: SieRecord[] = [];
   const vouchers: SieVoucher[] = [];
@@ -167,7 +188,10 @@ export function parseSie(bytes: Uint8Array, encoding: "utf-8" | "windows-1252") 
     diagnostics.push({ code, severity: "error", line, byteOffset, message });
   let text: string;
   try {
-    text = new TextDecoder(encoding, { fatal: true, ignoreBOM: true }).decode(bytes);
+    text =
+      encoding === "ibm437"
+        ? decodePc8(bytes)
+        : new TextDecoder(encoding, { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
     append("encoding", 1, 0, `Bytes cannot be decoded as ${encoding}.`);
     return { records, vouchers, controls, diagnostics, ready: false };
@@ -187,7 +211,7 @@ export function parseSie(bytes: Uint8Array, encoding: "utf-8" | "windows-1252") 
 
 function scanSieLines(
   text: string,
-  encoding: "utf-8" | "windows-1252",
+  encoding: SieEncoding,
   startOffset: number,
   records: SieRecord[],
   vouchers: SieVoucher[],
@@ -231,7 +255,7 @@ function scanSieLines(
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i] ?? "";
     const byteStart = offset;
-    offset += encoding === "windows-1252" ? raw.length : Buffer.byteLength(raw, "utf8");
+    offset += encoding !== "utf-8" ? raw.length : Buffer.byteLength(raw, "utf8");
     const line = raw.replace(/\r?\n$/, "");
     if (line.trim() === "") continue;
     if (line === "{") {
@@ -280,7 +304,7 @@ function validateSieProfile(
   byteLength: number,
   records: SieRecord[],
   vouchers: SieVoucher[],
-  encoding: "utf-8" | "windows-1252",
+  encoding: SieEncoding,
   append: AppendDiagnostic,
 ) {
   if (depth !== 0)
@@ -289,12 +313,15 @@ function validateSieProfile(
   const types = records.filter((record) => record.tag === "SIETYP");
   if (formats.length !== 1 || types.length !== 1 || types[0]?.fields[0] !== "4")
     append("profile", 1, 0, "Only an explicitly declared SIE type 4 profile is supported.");
-  if (formats[0]?.fields[0] !== (encoding === "utf-8" ? "UTF8" : "WIN1252"))
+  if (
+    formats[0]?.fields[0] !==
+    (encoding === "utf-8" ? "UTF8" : encoding === "ibm437" ? "PC8" : "WIN1252")
+  )
     append(
       "format",
       formats[0]?.line ?? 1,
       formats[0]?.byteStart ?? 0,
-      "Declared #FORMAT does not match selected encoding; PC8 and other formats are unsupported.",
+      "Declared #FORMAT does not match the selected byte encoding.",
     );
   for (const voucher of vouchers) {
     const year = Number(voucher.date.slice(0, 4));

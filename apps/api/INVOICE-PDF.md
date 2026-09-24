@@ -23,3 +23,43 @@ REST under `/v1/entities/:entityId/books/:bookId/commerce`:
 - Delivery: POST `/invoice-deliveries`, POST `/invoice-deliveries/:id/approve`, POST `/invoice-deliveries/:id/simulate`, POST `/invoice-delivery-attempts/:id/resolve`, GET `/invoice-deliveries/:id`, GET `/invoice-pdfs/:id/deliveries`.
 
 All mutations require an `Idempotency-Key`. The old HTML review document routes remain available.
+
+## Forward7600 legal sales policy activation (generic tenant input)
+
+A **new** activation record references the exact immutable candidate and independent review,
+asserted legal seller, distinct uppercase legal series (never `SYN`), explicit tenant evidence,
+and a third current operator's acceptance. It only admits a native SEK/two-decimal book,
+Swedish seller identity and VAT registration assertion, sequential-per-series proposal,
+domestic standard-rate 25% version, and half-up minor-unit line rounding proposal.
+The candidate effective date cannot precede activation or exceed 2027-12-31 in this pinned
+rule version. Changed terms require a new candidate/review and distinct legal series.
+`legalInvoiceEnabled`, `creditEnabled` and `deliveryEnabled` stay **false**. Activation
+is not statutory proof or issuance. No issue number is allocated and SYN history is not
+reclassified. Activation is reachable through POST `/legal-sales-policies`; GET by ID and
+GET collection return complete bounded snapshots. All operations use an authorized book.
+
+Primary-source review: [Mervärdesskattelag (2023:200)](https://www.riksdagen.se/sv/dokument-och-lagar/dokument/svensk-forfattningssamling/mervardesskattelag-2023200_sfs-2023-200/)
+was retrieved from the Riksdag on 2026-09-24 (HTTP 200, response SHA256
+`2253cdec0ac7b73af3213e72e7b804fa256131bb82a2b5d24154ec462c0f88e4`).
+9 kap. 2 § states the standard 25% rate subject to exceptions. 17 kap. 24 § requires
+an issue date, unique sequential number from one or more series, VAT seller identity,
+customer identity, supply facts, tax base/rate/amount and other applicable statements.
+17 kap. 22–23 §§ cover linked corrections and customer credits. This page is a dated
+research entry: full official response bytes are not archived in the repository, and
+neither tax classification, rounding method, seller registration nor a specific
+transaction is proven by this lookup. The review record and retained tenant evidence
+are required, and any exceptions remain unsupported. The current posting kernel only
+admits `taxAssessment=not_applicable` in `synthetic-core-v1`, and the commerce register
+admits `synthetic_invoice_v1`; legal issue, legal PDF, credits and external delivery
+cannot safely reuse those paths. D-04/D-08/D-10 and runtime verification remain open.
+
+Root-owned integration for this addition: export `./legal-sales-policy` from
+`packages/contracts/package.json`; compose `LegalSalesPolicyApi` in shared API and
+read-only `LegalSalesPolicyCapabilities` in the capability catalog; register
+`LegalSalesPolicyHandlers` in `apps/api/src/index.ts` and `legalSalesPolicyStatements`
+in `apps/api/src/db/query.ts`; bind `commerce_get_legal_sales_policy` to
+`getLegalSalesPolicy` with `[scopeParameter(input.scope),input.id]`, and
+`commerce_legal_sales_policy_history` to `legalSalesPolicyHistory` with
+`[scopeParameter(input.scope)]` in `apps/api/src/application/capabilities.ts`.
+Run 7600 only after 7201. Source review and static checks are not authenticated
+runtime or legal-acceptance proof.

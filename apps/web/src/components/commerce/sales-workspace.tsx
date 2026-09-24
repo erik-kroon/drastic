@@ -477,6 +477,7 @@ function SalesRecord({
           title={reviewing ? labels.reviewInvoice : labels.invoice}
           closeLabel={labels.close}
           dismissible={!reviewing && selectedKind === "draft"}
+          invoice={!reviewing}
           onClose={close}
         >
           {reviewing ? (
@@ -506,7 +507,14 @@ function SalesRecord({
               locale={locale}
               direction="customer"
               onPayments={() =>
-                change({ ...search, stage: "payments", allocation: undefined, release: undefined, paymentPage: undefined, paymentHistoryPage: undefined })
+                change({
+                  ...search,
+                  stage: "payments",
+                  allocation: undefined,
+                  release: undefined,
+                  paymentPage: undefined,
+                  paymentHistoryPage: undefined,
+                })
               }
               paymentView={
                 search.stage === "payments"

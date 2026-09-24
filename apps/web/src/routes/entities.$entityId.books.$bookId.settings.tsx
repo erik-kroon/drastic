@@ -35,6 +35,9 @@ function Settings() {
                 : "Automation"}
           </RecordFact>
         </RecordSummary>
+        <Link href={`${workspacePath(book)}/setup`}>
+          {locale === "sv" ? "Företagsuppgifter och inställning" : "Company details and setup"}
+        </Link>
         <Box width="fit">
           <LanguagePreference locale={locale} />
         </Box>

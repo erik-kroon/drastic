@@ -52,7 +52,7 @@ export const SiePreview = Schema.Struct({
   occurrenceId: A.Identifier,
   ordinal: Schema.Int,
   profile: Schema.Literal("sie4_source_v1"),
-  encoding: Schema.Literals(["utf-8", "windows-1252"]),
+  encoding: Schema.Literals(["utf-8", "windows-1252", "ibm437"]),
   sourceSha256: A.Digest,
   records: Schema.Array(Record),
   vouchers: Schema.Array(Voucher),
@@ -103,7 +103,7 @@ export const SealSiePlan = Schema.Struct({
   openItemControls: Schema.Array(OpenItemControl).check(Schema.isMaxLength(500)),
   rationale: A.Description,
   openingPolicy: Schema.Literal("unreconstructable_detail"),
-  sourceKind: Schema.Literal("synthetic"),
+  sourceKind: Schema.Literals(["synthetic", "reviewed_sie4"]),
 });
 export const SiePlan = Schema.Struct({
   id: A.Identifier,
@@ -159,7 +159,7 @@ export const SieImportApi = HttpApiGroup.make("sieImport")
   .add(
     HttpApiEndpoint.post("captureSieSource", `${base}/source-occurrences/:id/sie-previews`, {
       ...mutation,
-      payload: Schema.Struct({ encoding: Schema.Literals(["utf-8", "windows-1252"]) }),
+      payload: Schema.Struct({ encoding: Schema.Literals(["utf-8", "windows-1252", "ibm437"]) }),
       success: SiePreview,
     }),
   )

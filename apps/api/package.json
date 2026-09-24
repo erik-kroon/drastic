@@ -22,7 +22,8 @@
     "better-auth": "1.7.5",
     "drizzle-orm": "1.0.0-rc.5-169397b",
     "effect": "4.0.0-rc.112",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "takumi-pdf": "0.11.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260916.1",

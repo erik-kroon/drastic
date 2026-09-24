@@ -53,6 +53,15 @@ function effectCapability<I, O extends Schema.Json>(
 }
 
 export const capabilities = {
+  company_create: bindCapability(Capabilities.company_create, "createCompany", (input) => [
+    input.idempotencyKey, JSON.stringify(input.input),
+  ]),
+  company_get_setup: bindCapability(Capabilities.company_get_setup, "getCompanySetup", (input) => [
+    scopeParameter(input.scope),
+  ]),
+  company_save_setup: bindCapability(Capabilities.company_save_setup, "saveCompanySetup", (input) => [
+    scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input),
+  ]),
   firm_list: bindCapability(Capabilities.firm_list, "listFirms", () => []),
   firm_get: bindCapability(Capabilities.firm_get, "getFirm", (input) => [input.firmId]),
   firm_create: bindCapability(Capabilities.firm_create, "createFirm", (input) => [
@@ -214,6 +223,22 @@ export const capabilities = {
   commerce_invoice_document_history: effectCapability(
     Capabilities.commerce_invoice_document_history,
     invoiceDocumentHistory,
+  ),
+  commerce_get_ar_legal_accounting_profile: bindCapability(
+    Capabilities.commerce_get_ar_legal_accounting_profile, "getArLegalAccountingProfile",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_get_ar_legal_issue_review: bindCapability(
+    Capabilities.commerce_get_ar_legal_issue_review, "getArLegalIssueReview",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_get_ar_legal_issue: bindCapability(
+    Capabilities.commerce_get_ar_legal_issue, "getArLegalIssue",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_ar_legal_issue_history: bindCapability(
+    Capabilities.commerce_ar_legal_issue_history, "arLegalIssueHistory",
+    (input) => [scopeParameter(input.scope), input.id],
   ),
   commerce_get_invoice_policy_candidate: bindCapability(
     Capabilities.commerce_get_invoice_policy_candidate,
@@ -386,6 +411,16 @@ export const capabilities = {
       input.planId,
       JSON.stringify(input.input),
     ],
+  ),
+  commerce_list_supplier_payment_eligibility: bindCapability(
+    Capabilities.commerce_list_supplier_payment_eligibility,
+    "listSupplierPaymentEligibility",
+    (input) => [scopeParameter(input.scope), input.after ?? ""],
+  ),
+  commerce_get_supplier_payee: bindCapability(
+    Capabilities.commerce_get_supplier_payee,
+    "getSupplierPayee",
+    (input) => [scopeParameter(input.scope), input.id],
   ),
   commerce_get_supplier_payment_batch: bindCapability(
     Capabilities.commerce_get_supplier_payment_batch,

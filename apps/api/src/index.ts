@@ -1,3 +1,4 @@
+import { CompanySetupHandlers } from "./transport/http/routes/company-setup";
 import { Api } from "@open-erp/contracts/api";
 import * as Context from "effect/Context";
 import * as Clock from "effect/Clock";
@@ -48,6 +49,11 @@ import { InvoicePolicyHandlers } from "./transport/http/routes/invoice-policy";
 import { InvoiceDeliveryHandlers } from "./transport/http/routes/invoice-delivery";
 import { BankConnectorHandlers } from "./transport/http/routes/bank-connector";
 import { SieImportHandlers } from "./transport/http/routes/sie-import";
+import { HistoricalMigrationHandlers } from "./transport/http/routes/historical-migration";
+import { ArLegalIssueHandlers } from "./transport/http/routes/ar-legal-issue";
+import { LegalSalesPolicyHandlers } from "./transport/http/routes/legal-sales-policy";
+import { LegalInvoicePdfHandlers } from "./transport/http/routes/legal-invoice-pdf";
+import { LegalDeliveryHandlers } from "./transport/http/routes/legal-delivery";
 import { CommerceAllocationReversalHandlers } from "./transport/http/routes/commerce-allocation-reversals";
 import { AccountantReviewHandlers } from "./transport/http/routes/accountant-review";
 import { SourceIntakeHandlers } from "./transport/http/routes/source-intake";
@@ -77,6 +83,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     SystemHandlers,
     WorkspaceHandlers,
     FirmHandlers,
+    CompanySetupHandlers,
     AccountingHandlers,
     ReportHandlers,
     ReconciliationHandlers,
@@ -110,6 +117,11 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     InvoiceDeliveryHandlers,
     BankConnectorHandlers,
     SieImportHandlers,
+    HistoricalMigrationHandlers,
+    ArLegalIssueHandlers,
+    LegalSalesPolicyHandlers,
+    LegalInvoicePdfHandlers,
+    LegalDeliveryHandlers,
     CommerceAllocationReversalHandlers,
     AccountantReviewHandlers,
     SourceIntakeHandlers,

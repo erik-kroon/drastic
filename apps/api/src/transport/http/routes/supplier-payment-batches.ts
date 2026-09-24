@@ -34,6 +34,63 @@ export const SupplierPaymentBatchHandlers = HttpApiBuilder.group(
           ),
         ),
       )
+      .handle("listSupplierPaymentEligibility", ({ params, query: search }) =>
+        Effect.flatMap(authenticate, (token) =>
+          query(
+            "listSupplierPaymentEligibility",
+            [token, scopeParameter(params), search.after ?? ""],
+            Payments.PaymentEligibility,
+          ),
+        ),
+      )
+      .handle("proposeSupplierPayee", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          query(
+            "proposeSupplierPayee",
+            [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
+            Payments.PayeeProposal,
+          ),
+        ),
+      )
+      .handle("getSupplierPayee", ({ params }) =>
+        Effect.flatMap(authenticate, (token) =>
+          query(
+            "getSupplierPayee",
+            [token, scopeParameter(params), params.id],
+            Payments.PayeeReview,
+          ),
+        ),
+      )
+      .handle("verifySupplierPayee", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          query(
+            "verifySupplierPayee",
+            [
+              token,
+              scopeParameter(params),
+              params.id,
+              headers["idempotency-key"],
+              JSON.stringify(payload),
+            ],
+            Payments.PayeeVerification,
+          ),
+        ),
+      )
+      .handle("reportSupplierPaymentOutcome", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          query(
+            "reportSupplierPaymentOutcome",
+            [
+              token,
+              scopeParameter(params),
+              params.id,
+              headers["idempotency-key"],
+              JSON.stringify(payload),
+            ],
+            Payments.PaymentOutcome,
+          ),
+        ),
+      )
       .handle("getSupplierPaymentBatch", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
           query(

@@ -5,7 +5,7 @@ import * as Bank from "./reconciliation";
 import { accountingErrors } from "./accounting-errors";
 
 const Label = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200));
-const Cursor = Schema.String.check(Schema.isMaxLength(200));
+const Cursor = Schema.String.check(Schema.isMaxLength(256));
 export const SaveConnectorConsent = Schema.Struct({
   providerId: Schema.String.check(Schema.isPattern(/^[a-z][a-z0-9_-]{1,63}$/)),
   externalAccountId: Label,
@@ -31,6 +31,7 @@ export const ConnectorConsentState = Schema.Struct({
 });
 export const ConnectorRecordInput = Schema.Struct({
   externalId: Label,
+  revision: Schema.optional(Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/))),
   raw: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(65536)),
 });
 export const IngestConnectorBatch = Schema.Struct({
@@ -38,6 +39,7 @@ export const IngestConnectorBatch = Schema.Struct({
   previousCursor: Cursor,
   nextCursor: Cursor,
   sourceRevision: Label,
+  sourceOccurrenceId: Schema.optional(A.Identifier),
   records: Schema.Array(ConnectorRecordInput).check(Schema.isMaxLength(20)),
 });
 export const ConnectorBatch = Schema.Struct({
@@ -48,6 +50,7 @@ export const ConnectorBatch = Schema.Struct({
   previousCursor: Cursor,
   nextCursor: Cursor,
   sourceRevision: Label,
+  sourceOccurrenceId: Schema.optional(A.Identifier),
   recordCount: Schema.Int,
   overlapCount: Schema.Int,
   items: Schema.Array(

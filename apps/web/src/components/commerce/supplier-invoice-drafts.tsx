@@ -27,6 +27,7 @@ import { readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { invoiceDraftBlocker } from "./invoice-draft-copy";
 import { SupplierInvoiceEditor } from "./supplier-invoice-editor";
+import { SupplierPaymentState } from "./supplier-payment-state";
 import { SupplierAcceptancePanel, useSupplierAcceptanceHistory } from "./supplier-acceptance";
 import {
   Details,
@@ -330,6 +331,7 @@ function SupplierDraftRecord(
           )}
         </RecordFact>
       </RecordSummary>
+      <SupplierPaymentState locale={props.locale} />
       <SupplierDraftEvidenceAndFacts {...props} />
       <SupplierDraftLines {...props} record={record} />
       <SupplierAcceptancePanel {...props} draft={record} current={current} />

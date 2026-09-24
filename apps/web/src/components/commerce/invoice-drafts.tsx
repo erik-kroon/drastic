@@ -426,26 +426,20 @@ function DraftDetail(props: CommerceProps & DraftActions & { id: string }) {
       <AccountingStatus locale={props.locale} pending={view.isPending} error={view.error} />
       {record && !view.isError ? (
         <>
-          <RecordHeading
-            title={record.content.title}
-            subtitle={record.content.customer.legalName}
-            action={
-              <Box display="flex" gap="md" alignItems="center">
-                {props.issueAction}
-                <Button
-                  variant="outline"
-                  disabled={
-                    props.book.role !== "operator" ||
-                    view.isFetching ||
-                    record.revision !== view.data?.currentRevision
-                  }
-                  onClick={() => setEditing(record)}
-                >
-                  {labels.editDraft}
-                </Button>
-              </Box>
-            }
-          />
+          <Box display="flex" gap="sm" justifyContent="end" flexWrap="wrap" alignItems="center">
+            {props.issueAction}
+            <Button
+              variant="outline"
+              disabled={
+                props.book.role !== "operator" ||
+                view.isFetching ||
+                record.revision !== view.data?.currentRevision
+              }
+              onClick={() => setEditing(record)}
+            >
+              {labels.editDraft}
+            </Button>
+          </Box>
           <RecordSplit
             aside={
               <>

@@ -161,9 +161,11 @@ export function DocumentInbox({
 export function DocumentUpload({
   onSaved,
   statement = false,
+  sie = false,
 }: {
   onSaved: (id: string) => void;
   statement?: boolean;
+  sie?: boolean;
 }) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
@@ -172,12 +174,16 @@ export function DocumentUpload({
   const keys = useRef(new Map<string, string>());
   const [occurrenceKey] = useState(() => crypto.randomUUID());
   const [fileError, setFileError] = useState<string | null>(null);
-  const sizeLimit = statement ? 65536 : Sources.maxSourceBytes;
-  const fileHelp = statement
+  const sizeLimit = sie ? 524288 : statement ? 65536 : Sources.maxSourceBytes;
+  const fileHelp = sie
     ? sv
-      ? "CSV i UTF-8, högst 64 kB och 200 rader."
-      : "UTF-8 CSV, up to 64 KB and 200 rows."
-    : labels.pdfImagesCsvTextJson;
+      ? "SIE 4, högst 512 KiB, 2 000 poster och 200 verifikationer."
+      : "SIE 4, up to 512 KiB, 2,000 records and 200 vouchers."
+    : statement
+      ? sv
+        ? "CSV i UTF-8, högst 64 kB och 200 rader."
+        : "UTF-8 CSV, up to 64 KB and 200 rows."
+      : labels.pdfImagesCsvTextJson;
   const upload = useMutation({
     mutationFn: async (file: File) => {
       if (file.size === 0 || file.size > sizeLimit) throw new Error(labels.chooseAFileBetween1);
@@ -238,7 +244,13 @@ export function DocumentUpload({
         label={labels.document}
         required
         disabled={upload.isPending || upload.isError}
-        accept={statement ? ".csv" : ".pdf,.png,.jpg,.jpeg,.csv,.txt,.json,.xml"}
+        accept={
+          sie
+            ? ".se,.si,.sie,.txt"
+            : statement
+              ? ".csv"
+              : ".pdf,.png,.jpg,.jpeg,.csv,.txt,.json,.xml"
+        }
       />
       <PageCaption>{fileError ?? fileHelp}</PageCaption>
       <Box>

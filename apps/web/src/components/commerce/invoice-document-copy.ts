@@ -10,6 +10,9 @@ const en = {
   original: "Original review document",
   current: "Show invoice file",
   empty: "Create a saved copy to preview or download.",
+  fileAvailable: "A saved HTML invoice file exists. Its bytes are checked below before download.",
+  fileNotAvailable: "No saved invoice file yet.",
+  pdfNotAvailable: "PDF is not available here. A saved HTML file does not mean a PDF is ready.",
   refresh: "Refresh document",
   resume: "Finish creating document",
   captured: "The invoice is saved. Finish creating its downloadable file.",
@@ -31,6 +34,11 @@ const sv: typeof en = {
   original: "Ursprungligt granskningsdokument",
   current: "Visa fakturafil",
   empty: "Skapa en sparad kopia att förhandsvisa eller ladda ner.",
+  fileAvailable:
+    "En sparad HTML-fakturafil finns. Dess innehåll kontrolleras nedan före nedladdning.",
+  fileNotAvailable: "Ingen sparad fakturafil ännu.",
+  pdfNotAvailable:
+    "PDF är inte tillgänglig här. En sparad HTML-fil betyder inte att en PDF är klar.",
   refresh: "Uppdatera dokument",
   resume: "Slutför dokumentet",
   captured: "Fakturan är sparad. Slutför den nedladdningsbara filen.",

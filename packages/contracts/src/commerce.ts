@@ -97,7 +97,9 @@ export const InvoiceCancellationSummary = Schema.Struct({
 export const Invoice = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
-  kind: Schema.Literal("synthetic_invoice_v1"),
+  kind: Schema.Literals(["synthetic_invoice_v1", "legal_customer_invoice_v1"]),
+  legalIssueId: Schema.optional(Accounting.Identifier),
+  policyId: Schema.optional(Accounting.Identifier),
   direction: Direction,
   counterpartyId: Accounting.Identifier,
   counterpartyRevision: Version,

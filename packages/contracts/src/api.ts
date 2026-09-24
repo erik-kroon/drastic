@@ -1,3 +1,4 @@
+import { CompanySetupApi } from "./company-setup";
 import * as Schema from "effect/Schema";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi";
 import * as Accounting from "./accounting";
@@ -40,6 +41,11 @@ import { InvoicePolicyApi } from "./invoice-policy";
 import { InvoiceDeliveryApi } from "./invoice-delivery";
 import { BankConnectorApi } from "./bank-connector";
 import { SieImportApi } from "./sie-import";
+import { HistoricalMigrationApi } from "./historical-migration";
+import { ArLegalIssueApi } from "./ar-legal-issue";
+import { LegalSalesPolicyApi } from "./legal-sales-policy";
+import { LegalInvoicePdfApi } from "./legal-invoice-pdf";
+import { LegalDeliveryApi } from "./legal-delivery";
 import { CommerceAllocationReversalsApi } from "./commerce-allocation-reversals";
 import { AccountantReviewApi } from "./accountant-review";
 import { SourceIntakeApi } from "./source-intake";
@@ -141,6 +147,7 @@ export class Api extends HttpApi.make("open-erp")
     SystemApi,
     WorkspaceApi,
     FirmApi,
+    CompanySetupApi,
     AccountingApi,
     ReportApi,
     ReconciliationApi,
@@ -174,6 +181,11 @@ export class Api extends HttpApi.make("open-erp")
     InvoiceDeliveryApi,
     BankConnectorApi,
     SieImportApi,
+    HistoricalMigrationApi,
+    ArLegalIssueApi,
+    LegalSalesPolicyApi,
+    LegalInvoicePdfApi,
+    LegalDeliveryApi,
     CommerceAllocationReversalsApi,
     AccountantReviewApi,
     SourceIntakeApi,

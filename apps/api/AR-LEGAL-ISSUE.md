@@ -1,0 +1,27 @@
+# Domestic B2B legal customer issue: bounded source handoff
+
+Status: source implementation in forward `8100-ar-legal-issue.sql`. An isolated local PostgreSQL migration and direct SQL operation exercise succeeded on 2026-09-24; HTTP/browser, restricted-runtime and independent accounting verification remain open. This is not a general Swedish VAT engine or a company activation.
+
+## Boundary
+
+A book retains its existing `synthetic-core-v1` manual-journal boundary. Legal AR does **not** make that generic profile legally valid. It needs two independently activated immutable book-specific facts:
+
+1. `ar_legal_policies`, with reviewed seller identity, sequential legal series, domestic standard 25% treatment and half-up tax rounding (`7600`).
+2. `ar_legal_accounting_profiles`, activated by a _different_ operator from the legal policy activator. It binds this legal policy, accrual accounting method, exact rule version, effective date and three account IDs (customer AR control, revenue, output VAT) to retained account-role evidence.
+
+The legal prepare/approval/execute path is distinct from `1400` synthetic issue. No `0004.inspect_action` or `0600.commerce_create_invoice` relaxation is made. Generic `prepare_journal`/`seal`/`execute_change` still reject legal posting actions. The transport-independent voucher/change-set read schema has a separate discriminated legal action variant; generic manual input and `0004.inspect_action` remain unchanged. A dedicated operator-only `execute_ar_legal_issue` stores an explicitly typed action, voucher, journal lines, execution receipt, issued numbered commercial record and register open item in one PostgreSQL transaction. The issue number is `policy.series` + `-` + a per-policy consecutive number. A rollback consumes no number. A same-key retry returns the saved immutable receipt. Other keys for an already issued draft fail.
+
+The sale profile accepts a current evidence-backed customer draft only when seller identity equals the reviewed seller, Swedish B2B customer legal name/registration/address and source evidence match the current counterpart, book currency is SEK scale 2, issue and supply dates fall within the policy (the supply cannot follow issue), and the issue date falls in an open fiscal period. Every line needs exact quantity × unit minor price = base, positive net = base − discount + charge, explicit policy 25% tax evidence, `floor(net × 25 / 100 + 0.5)` tax minor, and exact source gross. Document totals must equal sum of exact lines and remain below `10^38` minor units. The voucher debits AR gross and credits revenue net and output VAT tax. Unsupported mixed/exempt/reverse-charge, other VAT rates, B2C, cash method, foreign currency, unknown identity, legal credit/correction and payment initiation do not enter this operation.
+
+The issued receipt (`ar_legal_issues.body`) is immutable and records complete draft/policy/accounting-profile snapshots, each calculated line, exact totals, a distinct legal number, posted receipt, and registered open-item ID. The registered invoice uses `kind=legal_customer_invoice_v1`; payment allocation and ageing can read its AR control line under existing capacity rules. `delivered=false` is an issue-time fact; legal PDF and delivery own their own immutable subsequent outcomes. A legal issue does not alter or promote historical `SYN-*` receipts. The legal draft and registered original terms cannot be revised through existing synthetic metadata operations. A deferred source trigger refuses generic second postings and generic corrections using the retained legal source. Credit, cancellation, refund and legally supported correction need separate reviewed operations.
+
+## Integration and release gates
+
+- Add `ArLegalIssueApi` to shared API, handlers to application composition, `arLegalIssueStatements` to DB query registry, and its three read capabilities to MCP registry. Keep mutations operator-only.
+- Shared `Commerce.Invoice` read contract must accept `legal_customer_invoice_v1` plus `legalIssueId` and `policyId`; live draft/status read consumers must recognize this distinct legal issue.
+- The `7610` PDF capture table receives an FK to `ar_legal_issues` in `8100`; PDF capture reads issue and policy snapshots, never synthetic issue bytes.
+- An actual company needs D-04/D-08 reviewed seller/registration/accounting method/rule applicability, activated book facts, independent official-source review and an E2E financial/browser/runtime artifact before claiming legal issuance ready. Customer identity evidence remains an operator-review fact, not an external registry verification. No tests were added.
+
+## Bounded local observation
+
+On a fresh isolated PostgreSQL database, the repository migration runner applied through `8100`, provisioned the synthetic example book, and the documented SQL operations created a separate policy candidate, independent review, active seller policy, separately activated accrual/account roles, draft, issue review, independent issue approval and issue receipt. The direct database observation was `AR-1`, net 10000, per-line output VAT 2500, AR gross 12500, journal debit AR 12500 / credits revenue 10000 and output VAT 2500, registered outstanding 12500, book sequence 1, and zero synthetic issues. A same-key execute replay returned the same issue without advancing the number; a different-key second issue failed `AlreadyPosted`. This is a **synthetic exercise**, not source-rule validation, runtime/HTTP acceptance or legal production activation.

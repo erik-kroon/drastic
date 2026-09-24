@@ -83,7 +83,7 @@ function SelectedDraftIssue(props: Props & { recordId: string; onOpen: (id: stri
             </Text>
             <Box>
               <Button
-                variant="ghost"
+                variant="outline"
                 disabled={history.isFetching}
                 onClick={() => {
                   void history.refetch();

@@ -1,3 +1,4 @@
+import { companySetupStatements } from "./statements/company-setup";
 import { firmStatements } from "./statements/firms";
 import { vatAmendmentStatements } from "./statements/vat-amendments";
 import { expenseTaxWithdrawalStatements } from "./statements/expense-tax-withdrawals";
@@ -36,6 +37,11 @@ import { invoicePolicyStatements } from "./statements/invoice-policy";
 import { invoiceDeliveryStatements } from "./statements/invoice-delivery";
 import { bankConnectorStatements } from "./statements/bank-connector";
 import { sieImportStatements } from "./statements/sie-import";
+import { historicalMigrationStatements } from "./statements/historical-migration";
+import { arLegalIssueStatements } from "./statements/ar-legal-issue";
+import { legalSalesPolicyStatements } from "./statements/legal-sales-policy";
+import { legalInvoicePdfStatements } from "./statements/legal-invoice-pdf";
+import { legalDeliveryStatements } from "./statements/legal-delivery";
 import { commerceAllocationReversalStatements } from "./statements/commerce-allocation-reversals";
 import { bankMatchReversalStatements } from "./statements/bank-match-reversals";
 import { bankMatchCandidateStatements } from "./statements/bank-match-candidates";
@@ -52,6 +58,7 @@ const PostgresFailure = Schema.Struct({
 
 const statements = {
   ...firmStatements,
+  ...companySetupStatements,
   ...vatAmendmentStatements,
   ...expenseTaxWithdrawalStatements,
   ...expenseTaxSnapshotStatements,
@@ -159,6 +166,11 @@ const statements = {
   ...invoiceDeliveryStatements,
   ...bankConnectorStatements,
   ...sieImportStatements,
+  ...historicalMigrationStatements,
+  ...arLegalIssueStatements,
+  ...legalSalesPolicyStatements,
+  ...legalInvoicePdfStatements,
+  ...legalDeliveryStatements,
   ...commerceAllocationReversalStatements,
   ...bankMatchReversalStatements,
   ...bankMatchCandidateStatements,
