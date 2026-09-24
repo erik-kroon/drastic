@@ -8,7 +8,7 @@ Runs stage the frozen historical source vouchers in ordinal chunks, with the exa
 
 ## Bounded behavior and root integration
 
-- A selected retained original is at most 512 KiB for this parser. Preview is at most 2,000 records, 200 vouchers and 1 MiB normalized JSON; no truncation. Chunk limit is 200 vouchers, 2,000 total transaction records and 1 MiB normalized membership payload. Object-store originals still use the existing source retrieval and integrity checks.
+- A selected retained original is at most 512 KiB for this parser. Preview is at most 4,000 records, 500 vouchers and 1 MiB normalized JSON after migration 8900; no truncation. The separate staging chunk bound remains 200 vouchers, 2,000 transaction lines and 1 MiB payload. Chunk limit is 200 vouchers, 2,000 total transaction records and 1 MiB normalized membership payload. Object-store originals still use the existing source retrieval and integrity checks.
 - Migration `7400-sie-historical-source-staging.sql` is forward-only after existing source-intake migrations. It owns five tables and eight scoped SQL operations. Review its approval and numeric-control comparisons before applying. SQL execution and runtime failure/retry proof remain open.
 - Add `"./sie-import": "./src/sie-import.ts"` to `packages/contracts/package.json` exports.
 - Import `SieImportApi` from `./sie-import` and append it to shared `packages/contracts/src/api.ts` group composition. There are **no ordinary MCP capabilities**: plan sealing, runs and staging remain operator-only HTTP commands.
