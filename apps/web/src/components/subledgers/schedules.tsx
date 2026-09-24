@@ -12,10 +12,11 @@ import { ArrowLeft } from "lucide-react";
 import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
 import { PageCaption, PageEmpty, RecordOpen } from "@open-erp/ui/components/accounting-page";
 import { Disclosure } from "@open-erp/ui/components/workflow";
-import { InputField } from "@open-erp/ui/components/field";
-import { formatMinorAmount } from "@/lib/workspace-api";
+import { InputField, SelectField, TextareaField } from "@open-erp/ui/components/field";
+import { decimalToMinor, formatMinorAmount, minorToDecimal } from "@/lib/workspace-api";
 import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
+import { CommandForm } from "@/components/commerce/shared";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { subledgerCopy } from "./copy";
@@ -302,6 +303,14 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
           </RecordSummary>
           <PageCaption>{view.current.terms.rationale}</PageCaption>
           <ScheduleBasisNotice basis={view.postingBasis} locale={locale} />
+          <ScheduleAmendmentPanel
+            key={view.current.digest}
+            book={book}
+            setup={setup}
+            locale={locale}
+            view={view}
+            onChanged={() => void schedule.refetch()}
+          />
           <DataTable
             title={copy.occurrence}
             narrow="stack"
@@ -463,6 +472,452 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
   );
 }
 
+function ScheduleAmendmentPanel(props: {
+  book: typeof Accounting.Book.Type;
+  setup: typeof Accounting.BookSetup.Type | undefined;
+  locale: Locale;
+  view: typeof Subledgers.ScheduleView.Type;
+  onChanged: () => void;
+}) {
+  const { book, locale } = props;
+  const copy = subledgerCopy(locale);
+  const current = props.view.current;
+  const occurrences = props.view.occurrences;
+  const suffixStart = occurrences.findIndex(
+    (occurrence) => occurrence.state === "unprepared" || occurrence.state === "prepared",
+  );
+  const suffix = suffixStart < 0 ? [] : occurrences.slice(suffixStart);
+  const prefix = suffixStart < 0 ? [] : occurrences.slice(0, suffixStart);
+  const hasCompleteSuffix =
+    suffixStart >= 0 &&
+    suffix.length > 0 &&
+    suffix.every(
+      (occurrence) => occurrence.state === "unprepared" || occurrence.state === "prepared",
+    );
+  const hasPrefixConflict = prefix.some((occurrence) => occurrence.state === "conflicted");
+  const hasReversedPrefix = prefix.some((occurrence) => occurrence.state === "reversed");
+  const linkedBasis = props.view.postingBasis?.mode === "linked_basis";
+  const commonAvailable =
+    linkedBasis &&
+    props.view.postingBasis?.supported === true &&
+    hasCompleteSuffix &&
+    !hasPrefixConflict &&
+    props.setup !== undefined;
+  const dateAvailable = commonAvailable && !hasReversedPrefix;
+  const [estimateCount, setEstimateCount] = useState(Math.max(1, suffix.length));
+  const periodOptions = (props.setup?.periods ?? []).map((period) => ({
+    value: period.id,
+    label: `${period.startsOn} – ${period.endsOn}`,
+    disabled: period.locked,
+  }));
+  const path = `${bookPath(book)}/schedules/${encodeURIComponent(current.scheduleId)}`;
+
+  if (book.role !== "operator") return <PageCaption>{copy.amendmentOnlyOperator}</PageCaption>;
+
+  return (
+    <Disclosure title={copy.amendment}>
+      <Box display="grid" gap="lg" minWidth="zero">
+        <ScheduleAmendmentReadout
+          view={props.view}
+          locale={locale}
+          linkedBasis={linkedBasis}
+          hasCompleteSuffix={hasCompleteSuffix}
+          hasReversedPrefix={hasReversedPrefix}
+        />
+        {dateAvailable ? (
+          <ScheduleDateAmendmentForm
+            book={book}
+            locale={locale}
+            path={path}
+            schedule={props.view}
+            suffix={suffix}
+            suffixStart={suffixStart}
+            periodOptions={periodOptions}
+            onChanged={props.onChanged}
+          />
+        ) : null}
+        {commonAvailable ? (
+          <ScheduleEstimateAmendmentForm
+            book={book}
+            locale={locale}
+            path={path}
+            schedule={props.view}
+            suffix={suffix}
+            suffixStart={suffixStart}
+            periodOptions={periodOptions}
+            estimateCount={estimateCount}
+            setEstimateCount={setEstimateCount}
+            onChanged={props.onChanged}
+          />
+        ) : null}
+      </Box>
+    </Disclosure>
+  );
+}
+
+function amendmentKindLabel(
+  kind: "future_dates_v1" | "remaining_estimate_v1" | "remaining_lifetime_v1" | undefined,
+  locale: Locale,
+  none: string,
+) {
+  if (kind === "future_dates_v1") return locale === "sv" ? "Framtida datum" : "Future dates";
+  if (kind === "remaining_estimate_v1")
+    return locale === "sv" ? "Återstående uppskattning" : "Remaining estimate";
+  if (kind === "remaining_lifetime_v1")
+    return locale === "sv" ? "Återstående livslängd" : "Remaining lifetime";
+  return none;
+}
+
+function amendmentBlockerMessage(
+  basis: typeof Subledgers.SchedulePostingBasis.Type | undefined,
+  locale: Locale,
+) {
+  if (!basis || basis.supported) return undefined;
+  const copy = subledgerCopy(locale);
+  if (basis.blocker === "basis_reversed_or_corrected" || basis.blocker === "basis_mismatch")
+    return copy.amendmentBlockerBasis;
+  if (basis.blocker === "estimate_history_changed") return copy.amendmentBlockerEstimate;
+  if (basis.blocker === "disposed") return copy.amendmentBlockerDisposed;
+  return copy.amendmentBlockerUnknown;
+}
+
+function ScheduleAmendmentReadout(props: {
+  view: typeof Subledgers.ScheduleView.Type;
+  locale: Locale;
+  linkedBasis: boolean;
+  hasCompleteSuffix: boolean;
+  hasReversedPrefix: boolean;
+}) {
+  const { view, locale } = props;
+  const copy = subledgerCopy(locale);
+  const current = view.current;
+  const amendment = current.amendment;
+  const kind = amendment?.kind;
+  const kindLabel = amendmentKindLabel(kind, locale, copy.amendmentNone);
+  const basisDigest = view.postingBasis?.basisDigest ?? amendment?.basisDigest;
+  const futureMinor = amendment?.input.remainingMinor;
+  const reversedMinor =
+    amendment && "reversedMinor" in amendment ? amendment.reversedMinor : undefined;
+  const blockerMessage = amendmentBlockerMessage(view.postingBasis, locale);
+  const conflictLabel = view.occurrences
+    .filter((occurrence) => occurrence.state === "conflicted")
+    .map((occurrence) => occurrence.ordinal)
+    .join(", ");
+  return (
+    <Box display="grid" gap="lg" minWidth="zero">
+      <Text>{copy.amendmentNotice}</Text>
+      <RecordSummary>
+        <RecordFact label={copy.amendmentKind}>{kindLabel}</RecordFact>
+        <RecordFact label={copy.basisDigest}>{basisDigest ?? "—"}</RecordFact>
+        <RecordFact label={copy.recognized}>
+          {formatMinorAmount(view.recognizedMinor, current.currencyScale, locale)}{" "}
+          {current.currency}
+        </RecordFact>
+        <RecordFact label={copy.future}>
+          {futureMinor
+            ? `${formatMinorAmount(futureMinor, current.currencyScale, locale)} ${current.currency}`
+            : locale === "sv"
+              ? "Ej separat bevarad"
+              : "Not separately retained"}
+        </RecordFact>
+        <RecordFact label={copy.remaining}>
+          {formatMinorAmount(view.remainingMinor, current.currencyScale, locale)} {current.currency}
+        </RecordFact>
+        {reversedMinor ? (
+          <RecordFact label={copy.reversedFace}>
+            {formatMinorAmount(reversedMinor, current.currencyScale, locale)} {current.currency}
+          </RecordFact>
+        ) : null}
+      </RecordSummary>
+      {amendment?.basisScheduleDigest ? (
+        <Text>
+          {copy.amendmentScheduleDigest}: {amendment.basisScheduleDigest}
+        </Text>
+      ) : null}
+      {blockerMessage ? <Text role="alert">{blockerMessage}</Text> : null}
+      {conflictLabel ? (
+        <Text role="alert">
+          {copy.amendmentStalePrefix} ({conflictLabel})
+        </Text>
+      ) : null}
+      {props.hasReversedPrefix ? <Text role="alert">{copy.amendmentDatePrefix}</Text> : null}
+      {!props.linkedBasis ? <Text role="alert">{copy.amendmentNoBasis}</Text> : null}
+      {props.linkedBasis && !props.hasCompleteSuffix ? (
+        <Text role="alert">{copy.amendmentNoSuffix}</Text>
+      ) : null}
+    </Box>
+  );
+}
+
+function ScheduleDateAmendmentForm(props: {
+  book: typeof Accounting.Book.Type;
+  locale: Locale;
+  path: string;
+  schedule: typeof Subledgers.ScheduleView.Type;
+  suffix: (typeof Subledgers.OccurrenceState.Type)[];
+  suffixStart: number;
+  periodOptions: { value: string; label: string; disabled: boolean }[];
+  onChanged: () => void;
+}) {
+  const { book, locale } = props;
+  const copy = subledgerCopy(locale);
+  const current = props.schedule.current;
+  const futureMinor = current.amendment?.input.remainingMinor;
+  return (
+    <CommandForm
+      book={book}
+      locale={locale}
+      path={`${props.path}/future-dates`}
+      schema={Subledgers.AmendScheduleFutureDates}
+      output={Subledgers.ScheduleRevision}
+      label={copy.amendmentDate}
+      recoveryId={`${current.scheduleId}:future-dates`}
+      input={(fields) => ({
+        expectedDigest: current.digest,
+        expectedBasisDigest: props.schedule.postingBasis?.basisDigest ?? "",
+        firstOrdinal: props.suffixStart + 1,
+        remainingMinor:
+          decimalToMinor(fieldText(fields, "remainingMinor"), current.currencyScale) ??
+          fieldText(fields, "remainingMinor"),
+        periods: props.suffix.map((_, index) => ({
+          postingDate: fields.get(`date_${index}`),
+          accountingPeriodId: fields.get(`period_${index}`),
+        })),
+        reviewEvidenceId: fields.get("reviewEvidenceId"),
+        rationale: fields.get("rationale"),
+      })}
+      onSuccess={props.onChanged}
+      validate={(result, input) => {
+        if (
+          result.scheduleId !== current.scheduleId ||
+          result.previousDigest !== input.expectedDigest ||
+          result.amendment?.basisDigest !== input.expectedBasisDigest
+        ) {
+          throw new Error("Schedule amendment response identity mismatch");
+        }
+      }}
+    >
+      <Box display="grid" gap="lg" minWidth="0">
+        <Text>{copy.amendmentDateHelp}</Text>
+
+        <Text>
+          {copy.amendmentFirst}: {props.suffixStart + 1}
+        </Text>
+        <InputField
+          label={copy.future}
+          name="remainingMinor"
+          inputMode="decimal"
+          required
+          defaultValue={futureMinor ? minorToDecimal(futureMinor, current.currencyScale) : ""}
+        />
+        <Box display="grid" gap="md" minWidth="zero">
+          <Text>{copy.amendmentPeriods}</Text>
+          {props.suffix.map((occurrence, index) => (
+            <Box
+              key={occurrence.ordinal}
+              display="grid"
+              columns={2}
+              gap="md"
+              padding="md"
+              borderWidth="thin"
+              borderColor="default"
+              borderRadius="control"
+            >
+              <InputField
+                label={`${copy.date} ${occurrence.ordinal}`}
+                name={`date_${index}`}
+                type="date"
+                required
+                defaultValue={occurrence.postingDate}
+              />
+              <SelectField
+                label={`${copy.period} ${occurrence.ordinal}`}
+                name={`period_${index}`}
+                options={props.periodOptions}
+                defaultValue={occurrence.accountingPeriodId}
+                required
+              />
+            </Box>
+          ))}
+        </Box>
+        <InputField
+          label={copy.amendmentReviewEvidence}
+          name="reviewEvidenceId"
+          required
+          pattern="[a-z][a-z0-9_-]{2,127}"
+        />
+        <TextareaField
+          label={copy.amendmentRationale}
+          name="rationale"
+          required
+          rows={3}
+          maxLength={2000}
+        />
+      </Box>
+    </CommandForm>
+  );
+}
+
+function ScheduleEstimateAmendmentForm(props: {
+  book: typeof Accounting.Book.Type;
+  locale: Locale;
+  path: string;
+  schedule: typeof Subledgers.ScheduleView.Type;
+  suffix: (typeof Subledgers.OccurrenceState.Type)[];
+  suffixStart: number;
+  periodOptions: { value: string; label: string; disabled: boolean }[];
+  estimateCount: number;
+  setEstimateCount: (count: number) => void;
+  onChanged: () => void;
+}) {
+  const { book, locale } = props;
+  const copy = subledgerCopy(locale);
+  const current = props.schedule.current;
+  const futureMinor = current.amendment?.input.remainingMinor;
+  const residualMinor =
+    current.amendment && current.amendment.kind !== "future_dates_v1"
+      ? current.amendment.input.residualMinor
+      : current.terms.residualMinor;
+  return (
+    <CommandForm
+      book={book}
+      locale={locale}
+      path={`${props.path}/estimates`}
+      schema={Subledgers.AmendScheduleEstimate}
+      output={Subledgers.ScheduleRevision}
+      label={copy.amendmentEstimate}
+      recoveryId={`${current.scheduleId}:estimates`}
+      input={(fields) => ({
+        expectedDigest: current.digest,
+        expectedBasisDigest: props.schedule.postingBasis?.basisDigest ?? "",
+        firstOrdinal: props.suffixStart + 1,
+        remainingMinor:
+          decimalToMinor(fieldText(fields, "remainingMinor"), current.currencyScale) ??
+          fieldText(fields, "remainingMinor"),
+        residualMinor:
+          decimalToMinor(fieldText(fields, "residualMinor"), current.currencyScale) ??
+          fieldText(fields, "residualMinor"),
+        installments: Array.from({ length: props.estimateCount }, (_, index) => ({
+          postingDate: fields.get(`estimate_date_${index}`),
+          accountingPeriodId: fields.get(`estimate_period_${index}`),
+          amountMinor:
+            decimalToMinor(fieldText(fields, `estimate_amount_${index}`), current.currencyScale) ??
+            fieldText(fields, `estimate_amount_${index}`),
+        })),
+        reviewEvidenceId: fields.get("reviewEvidenceId"),
+        rationale: fields.get("rationale"),
+      })}
+      onNewCommand={() => props.setEstimateCount(Math.max(1, props.suffix.length))}
+      onSuccess={props.onChanged}
+      validate={(result, input) => {
+        if (
+          result.scheduleId !== current.scheduleId ||
+          result.previousDigest !== input.expectedDigest ||
+          result.amendment?.basisDigest !== input.expectedBasisDigest
+        ) {
+          throw new Error("Schedule amendment response identity mismatch");
+        }
+      }}
+    >
+      <Box display="grid" gap="lg" minWidth="zero">
+        <Text>{copy.amendmentEstimateHelp}</Text>
+        <Text>
+          {copy.amendmentFirst}: {props.suffixStart + 1}
+        </Text>
+        <Box display="grid" columns={2} gap="lg">
+          <InputField
+            label={copy.future}
+            name="remainingMinor"
+            inputMode="decimal"
+            required
+            defaultValue={futureMinor ? minorToDecimal(futureMinor, current.currencyScale) : ""}
+          />
+          <InputField
+            label={copy.amendmentResidual}
+            name="residualMinor"
+            inputMode="decimal"
+            required
+            defaultValue={minorToDecimal(residualMinor, current.currencyScale)}
+          />
+        </Box>
+        <Box display="grid" gap="md" minWidth="zero">
+          <Text>{copy.amendmentInstallments}</Text>
+          {Array.from({ length: props.estimateCount }, (_, index) => {
+            const occurrence = props.suffix[index];
+            return (
+              <Box
+                key={index}
+                display="grid"
+                columns={2}
+                gap="md"
+                padding="md"
+                borderWidth="thin"
+                borderColor="default"
+                borderRadius="control"
+              >
+                <InputField
+                  label={`${copy.date} ${props.suffixStart + index + 1}`}
+                  name={`estimate_date_${index}`}
+                  type="date"
+                  required
+                  defaultValue={occurrence?.postingDate}
+                />
+                <SelectField
+                  label={`${copy.period} ${props.suffixStart + index + 1}`}
+                  name={`estimate_period_${index}`}
+                  options={props.periodOptions}
+                  defaultValue={occurrence?.accountingPeriodId}
+                  required
+                />
+                <InputField
+                  label={`${copy.amount} ${props.suffixStart + index + 1}`}
+                  name={`estimate_amount_${index}`}
+                  inputMode="decimal"
+                  required
+                  defaultValue={
+                    occurrence ? minorToDecimal(occurrence.amountMinor, current.currencyScale) : ""
+                  }
+                />
+              </Box>
+            );
+          })}
+          <Box display="flex" gap="md" flexWrap="wrap">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={props.estimateCount >= 120 - props.suffixStart}
+              onClick={() => props.setEstimateCount(props.estimateCount + 1)}
+            >
+              {copy.amendmentAdd}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={props.estimateCount <= 1}
+              onClick={() => props.setEstimateCount(props.estimateCount - 1)}
+            >
+              {copy.amendmentRemove}
+            </Button>
+          </Box>
+        </Box>
+        <InputField
+          label={copy.amendmentReviewEvidence}
+          name="reviewEvidenceId"
+          required
+          pattern="[a-z][a-z0-9_-]{2,127}"
+        />
+        <TextareaField
+          label={copy.amendmentRationale}
+          name="rationale"
+          required
+          rows={3}
+          maxLength={2000}
+        />
+      </Box>
+    </CommandForm>
+  );
+}
+
 function ScheduleBasisNotice({
   basis,
   locale,
@@ -492,6 +947,11 @@ function ScheduleBasisNotice({
       ) : null}
     </Box>
   );
+}
+
+function fieldText(fields: FormData, name: string) {
+  const value = fields.get(name);
+  return typeof value === "string" ? value : "";
 }
 
 function periodName(

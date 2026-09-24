@@ -9,9 +9,9 @@ This is not an encrypted archive, statutory retention service, company-readiness
 ```text
 private target + explicit recovery plan + captured source release
   → one exported PostgreSQL snapshot
-  → table/schema/role/migration inventory + inline evidence/receipt/report controls
+  → table/schema/role/migration inventory + closure inventories
   → private dump + declared supplementary bytes + source release + manifest v2
-  → exact file/checksum inspection
+  → exact file/checksum inspection and machine-readable result
   → NEW database (runtime admission fenced throughout)
   → repeated table/schema/evidence/receipt/report controls
   → connections disabled + retained stage diagnostics + restore receipt v2
@@ -40,7 +40,7 @@ Use an independently provisioned isolated PostgreSQL 17 cluster, installed match
 
 The plan stores key/custody identifiers and recovery instructions, **not secret values**. Procedure files must not contain passwords, tokens or private keys. Actual custody access, decryption and configuration recovery remain unexercised. Supplementary references are operator declarations; they do not establish unknown company-source completeness or prove which rules legally apply.
 
-Source release capture includes API source/scripts/migrations, web source, contracts/UI/config source, workspace manifests and `bun.lock`. Files and inventories are checked again after copying. This is an exact **source** receipt, not a build artifact, vendored dependency archive or passing validation result. Its `runtimeVerification` is `not-run`. Non-code assets/host configuration needed for a deployment must be declared separately. Unsupported hidden/special files are refused instead of silently skipped.
+Source release capture includes API source/scripts/migrations, web source, contracts/UI/config source, workspace manifests and `bun.lock`. Files and inventories are checked again after copying. This is an exact **source** receipt, not a build artifact, vendored dependency archive or passing validation result. Its `runtimeVerification` is `not-run`. Non-code assets/host configuration needed for a deployment must be declared separately. Unsupported hidden/special files are refused instead of silently skipped. New captures also record the database/object/evidence/receipt/durable-work closure in the manifest; older v2 bundles without that extension remain explicitly `legacy`, not complete for the new closure contract.
 
 ## Commands — operator/root only
 
@@ -54,7 +54,7 @@ bun apps/api/scripts/operations/cli.ts inspect /absolute/private/new-bundle <ind
 bun apps/api/scripts/operations/cli.ts restore /absolute/private/admin.json /absolute/private/new-bundle <independently-recorded-manifest-sha256> openerp_restore_review_01 /absolute/private/new-restore-output --confirm-fresh-local-restore
 ```
 
-Record `manifest.sha256` independently when capture finishes. A digest next to a file is not an independent authenticity registry. A PostgreSQL dump contains executable SQL; do not restore an untrusted bundle.
+Record `manifest.sha256` independently when capture finishes. A digest next to a file is not an independent authenticity registry. A PostgreSQL dump contains executable SQL; do not restore an untrusted bundle. `inspect` writes one machine-readable JSON result to standard output. `status: "complete"` means the closure extension is present and file-bound; database, evidence and receipt reconstruction remain restore checks. `status: "legacy"` means the older bundle passed its old checks but did not capture the new closure.
 
 `preflight` remains read-only and reports authority/epochs, sessions, pending outbox and approvals. Quiet sessions are not a durable source freeze. All production gates stay blocked.
 
@@ -64,6 +64,8 @@ Record `manifest.sha256` independently when capture finishes. A digest next to a
 - Table hashes preserve duplicate multiplicity: row JSON → SHA-256 per row → sorted hashes → SHA-256. UTC/ISO dates, PostgreSQL 17 and deterministic floats bound encoding. More than 100000 rows per table is refused.
 - Schema SHA-256 covers schemas, table/view/column definitions and ACLs, function definitions/ACLs, types, constraints, indexes, triggers and default ACLs. It binds observed schema bytes; it is not independent proof that no unauthorized source DDL occurred.
 - Applied migration filenames/hashes must exactly match captured release migrations, including 0900 Better Auth. A partial upgrade or changed/missing applied file refuses completion. No migrations are applied by recovery commands.
+- New captures bind one closure record to the same snapshot: the complete table fingerprint list, the `openerp.intake_contents.object_key` owner, every retained object reference, evidence bytes and relational/JSON reference counts, every receipt table fingerprint, and the bounded durable-work inventory. The restore path repeats these comparisons. A missing inventory, object byte, evidence target or receipt table stops completion.
+- Only inline evidence and the existing retained-original object shape are supported. Other pointer columns, pointer fields in JSON, object keys outside the owned `v1/<bookId>/<sha256>` format, duplicate object keys, invalid size/hash metadata, and unsupported object types are refused. Local directories and bucket-scoped R2 credentials remain the only object read owners; the manifest does not claim archive compliance or perform promotion.
 - Role names, privilege flags, expiry, connection limits and explicit membership/grantor options are retained and compared before restore. Passwords are not captured in role metadata. Restore uses the same owner role name and reproduces encoding/libc locale; source-owned objects must have uniform reviewed ownership. Source/destination role passwords may differ; credentials are separately held.
 - Inline evidence content hashes, relational `evidence_id` links and committed nested JSON `evidenceId` links must resolve within the row's book. Supplied evidence digests must match. Only `openerp.posting_saved_requests.command` input with no outcome or a refused outcome and no scoped reserved-key command receipt is treated as uncommitted intent. Its unresolved input references remain retained; a missing outcome alone never proves nonexecution. All JSON objects still count toward `jsonEvidenceReferences` and undergo external-pointer checks. All other columns/owners remain strict. Raw document text is not interpreted as application reference metadata.
 - Voucher watermarks/balance, execution-receipt/voucher/approval links and historical trial-balance amounts are reconstructed without posting or rewriting reports. These are data controls, not application/authorization proof or independent accounting review.
@@ -80,7 +82,7 @@ On success or ordinary failure, the finalizer disables connections and checks `d
 
 `diagnostics/` retains immutable private stage/outcome messages, timestamps and PostgreSQL tool exit status without forwarding raw stdout/stderr, SQL, credentials or documents. Diagnostics are not part of the authoritative backup file inventory and cannot turn a partial bundle into a complete one. A failure leaves its partial bundle/database for inspection; no automatic delete conceals evidence.
 
-`restore-receipt.json` binds the manifest digest, destination identity, maintenance-role identity, elapsed milliseconds, repeated controls, compared roles, recovered files, confirmed quarantine and explicit checks not run. `applicationRecovery` stays `blocked-restricted-read-admission`; key/config recovery and archive compliance stay unestablished. A receipt never grants release authority.
+`restore-receipt.json` binds the manifest digest, destination identity, maintenance-role identity, elapsed milliseconds, repeated controls, compared roles, recovered files, confirmed quarantine and explicit checks not run. `applicationRecovery` stays `blocked-restricted-read-admission`; key/config recovery and archive compliance stay unestablished. A receipt never grants release authority. The CLI inspection result likewise records writer and provider promotion as `not-performed`; it is not an application admission grant.
 
 ## Application-level procedure and blocker
 

@@ -251,7 +251,6 @@ export function LegalInvoiceInspector(
   const { book, locale } = props;
   const copy = invoiceIssueCopy(locale);
   const client = useQueryClient();
-  const [selectedReview, setSelectedReview] = useState("");
   const policyHistory = useQuery({
     queryKey: [...commerceKey(book), "ar-legal", "sales-policy-history"],
     queryFn: async ({ signal }) => {
@@ -268,15 +267,135 @@ export function LegalInvoiceInspector(
     refetchOnMount: "always",
     retry: false,
   });
+  const issueReads = useLegalIssueRead(props);
+  const { policy, accountingProfile } = useLegalActivationRead(
+    book,
+    issueReads.review.data,
+    issueReads.issue,
+  );
+  const { pdfHistory, captureId, pdf, deliveries } = useLegalArtifactRead(book, issueReads.issue);
+  const queries = [
+    policyHistory,
+    issueReads.issueRead,
+    issueReads.history,
+    issueReads.review,
+    policy,
+    accountingProfile,
+    pdfHistory,
+    pdf,
+    deliveries,
+  ];
+  const error = queries.map((query) => query.error).find(Boolean) ?? null;
+  const draftInputBlockers = issueReads.draft?.blockers.filter(
+    (blocker) =>
+      ![
+        "issuance_not_implemented",
+        "legal_identity_not_verified",
+        "tax_profile_not_activated",
+      ].includes(blocker.code),
+  );
+  const draftBoundaryBlockers = issueReads.draft?.blockers.filter((blocker) =>
+    [
+      "issuance_not_implemented",
+      "legal_identity_not_verified",
+      "tax_profile_not_activated",
+    ].includes(blocker.code),
+  );
+  const selectedPolicy = policy.data ?? issueReads.review.data?.review.policySnapshot;
+  const selectedAccountingProfile =
+    accountingProfile.data ?? issueReads.review.data?.review.accountingProfileSnapshot;
+  return (
+    <Details title={copy.legalHistory}>
+      <Box display="grid" gap="lg" minWidth="zero">
+        <LegalInspectorHeader
+          locale={locale}
+          copy={copy}
+          pending={queries.some((query) => query.isFetching)}
+          error={error}
+          onRefresh={() => {
+            void client.invalidateQueries({ queryKey: [...commerceKey(book), "ar-legal"] });
+          }}
+        />
+        <LegalPolicySection
+          copy={copy}
+          history={policyHistory.data}
+          loaded={policyHistory.isSuccess}
+        />
+        {issueReads.history.isSuccess ? (
+          <LegalReviewsSection
+            locale={locale}
+            copy={copy}
+            history={issueReads.history.data}
+            onOpen={issueReads.setSelectedReview}
+          />
+        ) : null}
+        <LegalIdentitySection
+          copy={copy}
+          draft={issueReads.draft}
+          review={issueReads.review.data}
+          issue={issueReads.issue}
+        />
+        <LegalStateSection
+          locale={locale}
+          copy={copy}
+          draft={issueReads.draft}
+          review={issueReads.review.data}
+          issue={issueReads.issue}
+        />
+        <LegalActivationSection
+          copy={copy}
+          policy={selectedPolicy}
+          accountingProfile={selectedAccountingProfile}
+        />
+        <LegalBlockersSection
+          locale={locale}
+          copy={copy}
+          inputBlockers={draftInputBlockers}
+          boundaryBlockers={draftBoundaryBlockers}
+          currentBlockers={issueReads.review.data?.blockers}
+        />
+        <LegalArtifactSection
+          copy={copy}
+          issue={issueReads.issue}
+          history={pdfHistory.data}
+          historyLoaded={pdfHistory.isSuccess}
+          pdf={pdf.data}
+        />
+        <LegalDeliverySection
+          copy={copy}
+          captureId={captureId}
+          history={deliveries.data}
+          loaded={deliveries.isSuccess}
+        />
+        <LegalSnapshotSection
+          copy={copy}
+          missingIdentity={!issueReads.draftId && !props.issueId}
+          draft={issueReads.draft}
+          review={issueReads.review.data}
+          issue={issueReads.issue}
+        />
+      </Box>
+    </Details>
+  );
+}
+
+function useLegalIssueRead(
+  props: CommerceProps & {
+    draftId?: string;
+    draft?: typeof Drafts.InvoiceDraftRevision.Type;
+    issueId?: string;
+  },
+) {
+  const [selectedReview, setSelectedReview] = useState("");
   const issueRead = useQuery({
-    queryKey: [...commerceKey(book), "ar-legal", "issue", props.issueId ?? ""],
+    queryKey: [...commerceKey(props.book), "ar-legal", "issue", props.issueId ?? ""],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/ar-legal-issues/${encodeURIComponent(props.issueId ?? "")}`,
+        `${commercePath(props.book)}/ar-legal-issues/${encodeURIComponent(props.issueId ?? "")}`,
         ArLegal.ArLegalIssueReceipt,
         { signal },
       );
-      checkScope(book, result.scope);
+      checkScope(props.book, result.scope);
       if (result.id !== props.issueId) throw new Error("Legal issue identity mismatch");
       return result;
     },
@@ -287,14 +406,14 @@ export function LegalInvoiceInspector(
   });
   const draftId = props.draftId ?? issueRead.data?.draftId ?? "";
   const history = useQuery({
-    queryKey: [...commerceKey(book), "ar-legal", "issue-history", draftId],
+    queryKey: [...commerceKey(props.book), "ar-legal", "issue-history", draftId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/invoice-drafts/${encodeURIComponent(draftId)}/ar-legal-issue-reviews`,
+        `${commercePath(props.book)}/invoice-drafts/${encodeURIComponent(draftId)}/ar-legal-issue-reviews`,
         ArLegal.ArLegalIssueHistory,
         { signal },
       );
-      checkScope(book, result.scope);
+      checkScope(props.book, result.scope);
       if (result.draftId !== draftId) throw new Error("Legal issue history draft mismatch");
       return result;
     },
@@ -306,17 +425,15 @@ export function LegalInvoiceInspector(
   const selectedReviewId = props.issueId
     ? (issueRead.data?.reviewId ?? "")
     : selectedReview || history.data?.items.at(-1)?.id || "";
-  const selectedHistory = history.data?.items.find((item) => item.id === selectedReviewId);
-  const selectedIssueId = props.issueId ?? selectedHistory?.issueId ?? "";
   const review = useQuery({
-    queryKey: [...commerceKey(book), "ar-legal", "issue-review", selectedReviewId],
+    queryKey: [...commerceKey(props.book), "ar-legal", "issue-review", selectedReviewId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(book)}/ar-legal-issue-reviews/${encodeURIComponent(selectedReviewId)}`,
+        `${commercePath(props.book)}/ar-legal-issue-reviews/${encodeURIComponent(selectedReviewId)}`,
         ArLegal.ArLegalIssueView,
         { signal },
       );
-      checkScope(book, result.review.scope);
+      checkScope(props.book, result.review.scope);
       if (
         result.review.id !== selectedReviewId ||
         result.review.input.draftId !== result.review.draftSnapshot.id ||
@@ -324,7 +441,7 @@ export function LegalInvoiceInspector(
       )
         throw new Error("Legal issue review identity mismatch");
       if (result.issue) {
-        checkScope(book, result.issue.scope);
+        checkScope(props.book, result.issue.scope);
         if (
           result.issue.reviewId !== result.review.id ||
           result.issue.reviewDigest !== result.review.digest
@@ -332,7 +449,7 @@ export function LegalInvoiceInspector(
           throw new Error("Legal issue review receipt mismatch");
       }
       if (result.approval) {
-        checkScope(book, result.approval.scope);
+        checkScope(props.book, result.approval.scope);
         if (result.approval.reviewId !== result.review.id)
           throw new Error("Legal issue approval identity mismatch");
       }
@@ -344,8 +461,23 @@ export function LegalInvoiceInspector(
     retry: false,
   });
   const issue = issueRead.data ?? review.data?.issue ?? undefined;
-  const draft = props.draft ?? review.data?.review.draftSnapshot ?? issue?.draftSnapshot;
-  const policyId = review.data?.review.policyId ?? issue?.policyId ?? "";
+  return {
+    issueRead,
+    draftId,
+    history,
+    review,
+    issue,
+    draft: props.draft ?? review.data?.review.draftSnapshot ?? issue?.draftSnapshot,
+    setSelectedReview,
+  };
+}
+
+function useLegalActivationRead(
+  book: CommerceProps["book"],
+  review: typeof ArLegal.ArLegalIssueView.Type | undefined,
+  issue: typeof ArLegal.ArLegalIssueReceipt.Type | undefined,
+) {
+  const policyId = review?.review.input.policyId ?? issue?.policyId ?? "";
   const policy = useQuery({
     queryKey: [...commerceKey(book), "ar-legal", "sales-policy", policyId],
     queryFn: async ({ signal }) => {
@@ -357,9 +489,9 @@ export function LegalInvoiceInspector(
       checkScope(book, result.scope);
       if (result.id !== policyId) throw new Error("Legal sales policy identity mismatch");
       if (
-        review.data &&
-        (result.digest !== review.data.review.policyDigest ||
-          result.digest !== review.data.review.policySnapshot.digest)
+        review &&
+        (result.digest !== review.review.input.policyDigest ||
+          result.digest !== review.review.policySnapshot.digest)
       )
         throw new Error("Legal sales policy snapshot mismatch");
       return result;
@@ -369,7 +501,7 @@ export function LegalInvoiceInspector(
     refetchOnMount: "always",
     retry: false,
   });
-  const accountingProfileId = review.data?.review.input.accountingProfileId ?? "";
+  const accountingProfileId = review?.review.input.accountingProfileId ?? "";
   const accountingProfile = useQuery({
     queryKey: [...commerceKey(book), "ar-legal", "accounting-profile", accountingProfileId],
     queryFn: async ({ signal }) => {
@@ -381,10 +513,10 @@ export function LegalInvoiceInspector(
       checkScope(book, result.scope);
       if (
         result.id !== accountingProfileId ||
-        (review.data &&
-          (result.policyId !== review.data.review.policyId ||
-            result.digest !== review.data.review.input.accountingProfileDigest ||
-            result.digest !== review.data.review.accountingProfileSnapshot.digest))
+        (review &&
+          (result.policyId !== review.review.input.policyId ||
+            result.digest !== review.review.input.accountingProfileDigest ||
+            result.digest !== review.review.accountingProfileSnapshot.digest))
       )
         throw new Error("Legal accounting profile identity mismatch");
       return result;
@@ -394,6 +526,13 @@ export function LegalInvoiceInspector(
     refetchOnMount: "always",
     retry: false,
   });
+  return { policy, accountingProfile };
+}
+
+function useLegalArtifactRead(
+  book: CommerceProps["book"],
+  issue: typeof ArLegal.ArLegalIssueReceipt.Type | undefined,
+) {
   const pdfHistory = useQuery({
     queryKey: [...commerceKey(book), "ar-legal", "pdf-history", issue?.id ?? ""],
     queryFn: async ({ signal }) => {
@@ -458,12 +597,12 @@ export function LegalInvoiceInspector(
           item.delivered
         )
           throw new Error("Legal delivery request identity mismatch");
-        item.approval && checkScope(book, item.approval.scope);
+        if (item.approval) checkScope(book, item.approval.scope);
         item.attempts.forEach(({ attempt, reconciliation }) => {
           checkScope(book, attempt.scope);
           if (attempt.requestId !== item.request.id || attempt.delivered)
             throw new Error("Legal delivery attempt identity mismatch");
-          reconciliation && checkScope(book, reconciliation.scope);
+          if (reconciliation) checkScope(book, reconciliation.scope);
         });
       });
       return result;
@@ -473,338 +612,445 @@ export function LegalInvoiceInspector(
     refetchOnMount: "always",
     retry: false,
   });
-  const queries = [
-    policyHistory,
-    issueRead,
-    history,
-    review,
-    policy,
-    accountingProfile,
-    pdfHistory,
-    pdf,
-    deliveries,
-  ];
-  const error = queries.map((query) => query.error).find(Boolean) ?? null;
-  const totals = review.data?.review.totals ?? issue?.totals;
-  const scale = draft?.content.currencyScale ?? 2;
-  const draftInputBlockers = draft?.blockers.filter(
-    (blocker) =>
-      ![
-        "issuance_not_implemented",
-        "legal_identity_not_verified",
-        "tax_profile_not_activated",
-      ].includes(blocker.code),
-  );
-  const draftBoundaryBlockers = draft?.blockers.filter((blocker) =>
-    [
-      "issuance_not_implemented",
-      "legal_identity_not_verified",
-      "tax_profile_not_activated",
-    ].includes(blocker.code),
-  );
-  const selectedPolicy = policy.data ?? review.data?.review.policySnapshot;
-  const selectedAccountingProfile =
-    accountingProfile.data ?? review.data?.review.accountingProfileSnapshot;
+  return { pdfHistory, captureId, pdf, deliveries };
+}
+
+type LegalCopy = ReturnType<typeof invoiceIssueCopy>;
+type LegalPdfInspection = typeof LegalInvoicePdf.LegalInvoicePdfView.Type & {
+  verified: Awaited<ReturnType<typeof verifyLegalPdf>> | null;
+};
+
+function LegalInspectorHeader(props: {
+  locale: CommerceProps["locale"];
+  copy: LegalCopy;
+  pending: boolean;
+  error: Error | null;
+  onRefresh: () => void;
+}) {
   return (
-    <Details title={copy.legalHistory}>
-      <Box display="grid" gap="lg" minWidth="zero">
-        <Text>{copy.legalReadOnly}</Text>
-        <Text>{copy.combinedActivation}</Text>
-        <Text>{copy.limitedProfile}</Text>
-        <Box>
-          <Button
-            variant="outline"
-            disabled={queries.some((query) => query.isFetching)}
-            onClick={() => {
-              void client.invalidateQueries({
-                queryKey: [...commerceKey(book), "ar-legal"],
-              });
-            }}
-          >
-            {copy.refresh}
-          </Button>
-        </Box>
-        <AccountingStatus
-          locale={locale}
-          pending={queries.some((query) => query.isFetching)}
-          error={error}
-        />
-        <RecordSection title={copy.policyActivations}>
-          {policyHistory.data?.items.length ? (
-            <DataTable
-              title={copy.policyActivations}
-              narrow="stack"
-              columns={[
-                { id: "policy", label: copy.policyIdentity },
-                { id: "series", label: copy.series },
-                { id: "review", label: copy.policyReview },
-                { id: "limits", label: copy.activationLimits },
-              ]}
-              rows={policyHistory.data.items.map((item) => ({
-                id: item.id,
-                cells: [
-                  `${item.id} · ${item.digest}`,
-                  item.input.series,
-                  `${item.candidate.id} → ${item.review.id}`,
-                  `${copy.issue}: ${String(item.legalInvoiceEnabled)} · ${copy.credit}: ${String(item.creditEnabled)} · ${copy.delivery}: ${String(item.deliveryEnabled)}`,
-                ],
-              }))}
-            />
-          ) : (
-            <Text>{policyHistory.isSuccess ? copy.noPolicy : copy.notAvailable}</Text>
-          )}
-        </RecordSection>
-        {history.isSuccess ? (
-          <RecordSection title={copy.legalReviews}>
-            {history.data.items.length ? (
-              <DataTable
-                title={copy.legalReviews}
-                narrow="stack"
-                columns={[
-                  { id: "review", label: copy.legalReview },
-                  { id: "revision", label: copy.revision },
-                  { id: "created", label: copy.created },
-                  { id: "number", label: copy.legalNumber },
-                  { id: "issue", label: copy.issue },
-                ]}
-                rows={history.data.items.map((item) => ({
-                  id: item.id,
-                  cells: [
-                    <RecordOpen key="open" onClick={() => setSelectedReview(item.id)}>
-                      {item.ordinal} · {item.id}
-                    </RecordOpen>,
-                    item.draftRevision,
-                    new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
-                      new Date(item.createdAt),
-                    ),
-                    item.legalDocumentNumber ?? copy.notIssued,
-                    item.issueId ?? copy.notIssued,
-                  ],
-                }))}
-              />
-            ) : (
-              <Text>{copy.noLegalReview}</Text>
-            )}
-          </RecordSection>
-        ) : null}
-        <RecordSection title={copy.immutableIdentities}>
-          <RecordSummary>
-            <RecordFact label={copy.draftIdentity}>
-              {draft ? `${draft.id} · ${draft.revision} · ${draft.digest}` : copy.notAvailable}
-            </RecordFact>
-            <RecordFact label={copy.legalReview}>
-              {review.data
-                ? `${review.data.review.id} · ${review.data.review.digest}`
-                : copy.notAvailable}
-            </RecordFact>
-            <RecordFact label={copy.issueIdentity}>
-              {issue ? `${issue.id} · ${issue.digest}` : copy.notIssued}
-            </RecordFact>
-            <RecordFact label={copy.approvalIdentity}>
-              {review.data?.approval?.id ?? copy.notAvailable}
-            </RecordFact>
-          </RecordSummary>
-        </RecordSection>
-        <RecordSection title={copy.legalStatesAndTotals}>
-          <RecordSummary>
-            <RecordFact label={copy.issued}>{issue ? copy.yes : copy.no}</RecordFact>
-            <RecordFact label={copy.recognized}>{issue ? copy.yes : copy.no}</RecordFact>
-            <RecordFact label={copy.delivered}>{copy.no}</RecordFact>
-            <RecordFact label={copy.legalNumber}>
-              {issue?.legalDocumentNumber ?? copy.notIssued}
-            </RecordFact>
-            <RecordFact label={copy.net}>
-              {totals
-                ? formatMinorAmount(totals.netMinor, scale, locale)
-                : draft?.totals.netMinor
-                  ? formatMinorAmount(draft.totals.netMinor, scale, locale)
-                  : copy.notAvailable}
-            </RecordFact>
-            <RecordFact label={copy.tax}>
-              {totals
-                ? formatMinorAmount(totals.taxMinor, scale, locale)
-                : draft?.totals.taxMinor
-                  ? formatMinorAmount(draft.totals.taxMinor, scale, locale)
-                  : copy.notAvailable}
-            </RecordFact>
-            <RecordFact label={copy.gross}>
-              {totals
-                ? formatMinorAmount(totals.grossMinor, scale, locale)
-                : draft?.totals.grossMinor
-                  ? formatMinorAmount(draft.totals.grossMinor, scale, locale)
-                  : copy.notAvailable}
-            </RecordFact>
-          </RecordSummary>
-        </RecordSection>
-        <RecordSection title={copy.activationPair}>
-          {selectedPolicy && selectedAccountingProfile ? (
-            <>
-              <RecordSummary>
-                <RecordFact label={copy.legalPolicy}>
-                  {selectedPolicy.id} · {selectedPolicy.digest} · {selectedPolicy.activatedBy}
-                </RecordFact>
-                <RecordFact label={copy.accountingProfile}>
-                  {selectedAccountingProfile.id} · {selectedAccountingProfile.digest} ·{" "}
-                  {selectedAccountingProfile.activatedBy}
-                </RecordFact>
-              </RecordSummary>
-              {selectedPolicy.activatedBy === selectedAccountingProfile.activatedBy ? (
-                <Text role="alert">{copy.sameActivationOperator}</Text>
-              ) : null}
-            </>
-          ) : (
-            <Text>{copy.noActivationPair}</Text>
-          )}
-        </RecordSection>
-        <RecordSection title={copy.legalInputBlockers}>
-          {draftInputBlockers?.map((blocker) => (
-            <Text key={`${blocker.code}:${blocker.lineId ?? ""}`} role="alert">
-              {invoiceDraftBlocker(blocker.code, locale)}
-            </Text>
-          ))}
-          {review.data?.blockers.map((blocker) => (
-            <Text key={blocker} role="alert">
-              {blocker}
-            </Text>
-          ))}
-          {draftBoundaryBlockers?.map((blocker) => (
-            <Text key={blocker.code} tone="muted">
-              {invoiceDraftBlocker(blocker.code, locale)}
-            </Text>
-          ))}
-          {!draftInputBlockers?.length && !review.data?.blockers.length ? (
-            <Text tone="muted">{copy.noReadBlockers}</Text>
-          ) : null}
-        </RecordSection>
-        <RecordSection title={copy.legalArtifacts}>
-          {!issue ? (
-            <Text>{copy.noIssueForArtifacts}</Text>
-          ) : pdfHistory.data?.items.length ? (
-            <>
-              <DataTable
-                title={copy.legalPdfHistory}
-                narrow="stack"
-                columns={[
-                  { id: "capture", label: copy.pdfCapture },
-                  { id: "digest", label: copy.captureDigest },
-                  { id: "artifact", label: copy.sealedArtifact },
-                  { id: "sha", label: copy.sha256 },
-                ]}
-                rows={pdfHistory.data.items.map((item) => ({
-                  id: item.id,
-                  cells: [
-                    item.id,
-                    item.digest,
-                    item.sealed ? copy.yes : copy.no,
-                    item.sha256 ?? "—",
-                  ],
-                }))}
-              />
-              {pdf.data ? (
-                <RecordSummary>
-                  <RecordFact label={copy.pdfCapture}>
-                    {pdf.data.capture.id} · {pdf.data.capture.digest}
-                  </RecordFact>
-                  <RecordFact label={copy.artifactHash}>
-                    {pdf.data.artifact?.sha256 ?? copy.notSealed}
-                  </RecordFact>
-                  <RecordFact label={copy.artifactBytes}>
-                    {pdf.data.artifact?.byteLength ?? copy.notSealed}
-                  </RecordFact>
-                  <RecordFact label={copy.renderer}>
-                    {pdf.data.artifact?.rendererVersion ?? copy.notSealed}
-                  </RecordFact>
-                  <RecordFact label={copy.delivered}>{copy.no}</RecordFact>
-                </RecordSummary>
-              ) : null}
-              {pdf.data?.verified ? (
-                <Box>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      const verified = pdf.data?.verified;
-                      if (!verified) return;
-                      const url = URL.createObjectURL(
-                        new Blob([verified.bytes], { type: "application/pdf" }),
-                      );
-                      const link = document.createElement("a");
-                      link.href = url;
-                      link.download = verified.filename;
-                      document.body.append(link);
-                      link.click();
-                      link.remove();
-                      window.setTimeout(() => URL.revokeObjectURL(url), 0);
-                    }}
-                  >
-                    {copy.downloadPdf}
-                  </Button>
-                </Box>
-              ) : null}
-              <Text>{pdf.data?.artifact ? copy.pdfVerified : copy.pdfCaptured}</Text>
-            </>
-          ) : (
-            <Text>{pdfHistory.isSuccess ? copy.noPdf : copy.notAvailable}</Text>
-          )}
-        </RecordSection>
-        <RecordSection title={copy.deliveryHistory}>
-          {!captureId ? (
-            <Text>{copy.noPdfForDelivery}</Text>
-          ) : deliveries.data?.items.length ? (
-            deliveries.data.items.map((item) => (
-              <Details key={item.request.id} title={`${copy.deliveryRequest} · ${item.request.id}`}>
-                <RecordSummary>
-                  <RecordFact label={copy.deliveryStatus}>{item.status}</RecordFact>
-                  <RecordFact label={copy.sendAuthorized}>
-                    {item.approval?.sendAuthorized ? copy.yes : copy.no}
-                  </RecordFact>
-                  <RecordFact label={copy.providerPayload}>
-                    {item.approval?.providerPayloadReady ? copy.yes : copy.no}
-                  </RecordFact>
-                  <RecordFact label={copy.delivered}>{copy.no}</RecordFact>
-                </RecordSummary>
-                <Text>
-                  {item.request.input.channel} · {item.request.input.destination}
-                </Text>
-                {item.attempts.length ? (
-                  <DataTable
-                    title={copy.providerAttempts}
-                    narrow="stack"
-                    columns={[
-                      { id: "attempt", label: copy.attempt },
-                      { id: "provider", label: copy.providerRequest },
-                      { id: "status", label: copy.deliveryStatus },
-                      { id: "traffic", label: copy.externalTraffic },
-                      { id: "outcome", label: copy.providerOutcome },
-                      { id: "delivered", label: copy.delivered },
-                    ]}
-                    rows={item.attempts.map(({ attempt, reconciliation }) => ({
-                      id: attempt.id,
-                      cells: [
-                        `${attempt.ordinal} · ${attempt.id}`,
-                        attempt.providerRequestId,
-                        attempt.status,
-                        String(attempt.externalTrafficProven),
-                        reconciliation?.outcome ?? copy.notReconciled,
-                        copy.no,
-                      ],
-                    }))}
-                  />
-                ) : (
-                  <Text>{copy.noProviderAttempts}</Text>
-                )}
-                <Text>{copy.providerNotDelivery}</Text>
-              </Details>
-            ))
-          ) : (
-            <Text>{deliveries.isSuccess ? copy.noDelivery : copy.notAvailable}</Text>
-          )}
-        </RecordSection>
-        {!draftId && !props.issueId ? <Text role="alert">{copy.missingIssueIdentity}</Text> : null}
-        {draft ? <Facts title={copy.draftSnapshot} value={draft} /> : null}
-        {review.data ? <Facts title={copy.reviewSnapshot} value={review.data} /> : null}
-        {issue ? <Facts title={copy.issueSnapshot} value={issue} /> : null}
+    <>
+      <Text>{props.copy.legalReadOnly}</Text>
+      <Text>{props.copy.combinedActivation}</Text>
+      <Text>{props.copy.limitedProfile}</Text>
+      <Box>
+        <Button variant="outline" disabled={props.pending} onClick={props.onRefresh}>
+          {props.copy.refresh}
+        </Button>
       </Box>
+      <AccountingStatus locale={props.locale} pending={props.pending} error={props.error} />
+    </>
+  );
+}
+
+function LegalPolicySection({
+  copy,
+  history,
+  loaded,
+}: {
+  copy: LegalCopy;
+  history?: typeof LegalSalesPolicy.LegalSalesPolicyHistory.Type;
+  loaded: boolean;
+}) {
+  return (
+    <RecordSection title={copy.policyActivations}>
+      {history?.items.length ? (
+        <DataTable
+          title={copy.policyActivations}
+          narrow="stack"
+          columns={[
+            { id: "policy", label: copy.policyIdentity },
+            { id: "series", label: copy.series },
+            { id: "review", label: copy.policyReview },
+            { id: "limits", label: copy.activationLimits },
+          ]}
+          rows={history.items.map((item) => ({
+            id: item.id,
+            cells: [
+              `${item.id} · ${item.digest}`,
+              item.input.series,
+              `${item.candidate.id} → ${item.review.id}`,
+              `${copy.issue}: ${String(item.legalInvoiceEnabled)} · ${copy.legalCredit}: ${String(item.creditEnabled)} · ${copy.delivery}: ${String(item.deliveryEnabled)}`,
+            ],
+          }))}
+        />
+      ) : (
+        <Text>{loaded ? copy.noPolicy : copy.notAvailable}</Text>
+      )}
+    </RecordSection>
+  );
+}
+
+function LegalReviewsSection({
+  locale,
+  copy,
+  history,
+  onOpen,
+}: {
+  locale: CommerceProps["locale"];
+  copy: LegalCopy;
+  history: typeof ArLegal.ArLegalIssueHistory.Type;
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <RecordSection title={copy.legalReviews}>
+      {history.items.length ? (
+        <DataTable
+          title={copy.legalReviews}
+          narrow="stack"
+          columns={[
+            { id: "review", label: copy.legalReview },
+            { id: "revision", label: copy.revision },
+            { id: "created", label: copy.created },
+            { id: "number", label: copy.legalNumber },
+            { id: "issue", label: copy.issue },
+          ]}
+          rows={history.items.map((item) => ({
+            id: item.id,
+            cells: [
+              <RecordOpen key="open" onClick={() => onOpen(item.id)}>
+                {item.ordinal} · {item.id}
+              </RecordOpen>,
+              item.draftRevision,
+              new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
+                new Date(item.createdAt),
+              ),
+              item.legalDocumentNumber ?? copy.notIssued,
+              item.issueId ?? copy.notIssued,
+            ],
+          }))}
+        />
+      ) : (
+        <Text>{copy.noLegalReview}</Text>
+      )}
+    </RecordSection>
+  );
+}
+
+function LegalIdentitySection({
+  copy,
+  draft,
+  review,
+  issue,
+}: {
+  copy: LegalCopy;
+  draft?: typeof Drafts.InvoiceDraftRevision.Type;
+  review?: typeof ArLegal.ArLegalIssueView.Type;
+  issue?: typeof ArLegal.ArLegalIssueReceipt.Type;
+}) {
+  return (
+    <RecordSection title={copy.immutableIdentities}>
+      <RecordSummary>
+        <RecordFact label={copy.draftIdentity}>
+          {draft ? `${draft.id} · ${draft.revision} · ${draft.digest}` : copy.notAvailable}
+        </RecordFact>
+        <RecordFact label={copy.legalReview}>
+          {review ? `${review.review.id} · ${review.review.digest}` : copy.notAvailable}
+        </RecordFact>
+        <RecordFact label={copy.issueIdentity}>
+          {issue ? `${issue.id} · ${issue.digest}` : copy.notIssued}
+        </RecordFact>
+        <RecordFact label={copy.approvalIdentity}>
+          {review?.approval?.id ?? copy.notAvailable}
+        </RecordFact>
+      </RecordSummary>
+    </RecordSection>
+  );
+}
+
+function LegalStateSection(props: {
+  locale: CommerceProps["locale"];
+  copy: LegalCopy;
+  draft?: typeof Drafts.InvoiceDraftRevision.Type;
+  review?: typeof ArLegal.ArLegalIssueView.Type;
+  issue?: typeof ArLegal.ArLegalIssueReceipt.Type;
+}) {
+  const totals = props.review?.review.totals ?? props.issue?.totals;
+  const scale = props.draft?.content.currencyScale ?? 2;
+  const amount = (value: string | null | undefined) =>
+    value == null ? props.copy.notAvailable : formatMinorAmount(value, scale, props.locale);
+  return (
+    <RecordSection title={props.copy.legalStatesAndTotals}>
+      <RecordSummary>
+        <RecordFact label={props.copy.issued}>
+          {props.issue
+            ? props.issue.issued
+              ? props.copy.yes
+              : props.copy.no
+            : props.copy.notIssued}
+        </RecordFact>
+        <RecordFact label={props.copy.recognized}>
+          {props.issue
+            ? props.issue.recognized
+              ? props.copy.yes
+              : props.copy.no
+            : props.copy.notIssued}
+        </RecordFact>
+        <RecordFact label={props.copy.deliveredState}>
+          {props.issue?.delivered ? props.copy.yes : props.copy.no}
+        </RecordFact>
+        <RecordFact label={props.copy.legalNumber}>
+          {props.issue?.legalDocumentNumber ?? props.copy.notIssued}
+        </RecordFact>
+        <RecordFact label={props.copy.net}>
+          {amount(totals?.netMinor ?? props.draft?.totals.netMinor)}
+        </RecordFact>
+        <RecordFact label={props.copy.legalTax}>
+          {amount(totals?.taxMinor ?? props.draft?.totals.taxMinor)}
+        </RecordFact>
+        <RecordFact label={props.copy.gross}>
+          {amount(totals?.grossMinor ?? props.draft?.totals.grossMinor)}
+        </RecordFact>
+      </RecordSummary>
+    </RecordSection>
+  );
+}
+
+function LegalActivationSection({
+  copy,
+  policy,
+  accountingProfile,
+}: {
+  copy: LegalCopy;
+  policy?: typeof LegalSalesPolicy.LegalSalesPolicy.Type;
+  accountingProfile?: typeof ArLegal.ArLegalAccountingProfile.Type;
+}) {
+  return (
+    <RecordSection title={copy.activationPair}>
+      {policy && accountingProfile ? (
+        <>
+          <RecordSummary>
+            <RecordFact label={copy.legalPolicy}>
+              {policy.id} · {policy.digest} · {policy.activatedBy}
+            </RecordFact>
+            <RecordFact label={copy.accountingProfile}>
+              {accountingProfile.id} · {accountingProfile.digest} · {accountingProfile.activatedBy}
+            </RecordFact>
+          </RecordSummary>
+          {policy.activatedBy === accountingProfile.activatedBy ? (
+            <Text role="alert">{copy.sameActivationOperator}</Text>
+          ) : null}
+        </>
+      ) : (
+        <Text>{copy.noActivationPair}</Text>
+      )}
+    </RecordSection>
+  );
+}
+
+function LegalBlockersSection(props: {
+  locale: CommerceProps["locale"];
+  copy: LegalCopy;
+  inputBlockers?: (typeof Drafts.InvoiceDraftRevision.Type)["blockers"];
+  boundaryBlockers?: (typeof Drafts.InvoiceDraftRevision.Type)["blockers"];
+  currentBlockers?: readonly string[];
+}) {
+  return (
+    <RecordSection title={props.copy.legalInputBlockers}>
+      {props.inputBlockers?.map((blocker) => (
+        <Text key={`${blocker.code}:${blocker.lineId ?? ""}`} role="alert">
+          {invoiceDraftBlocker(blocker.code, props.locale)}
+        </Text>
+      ))}
+      {props.currentBlockers?.map((blocker) => (
+        <Text key={blocker} role="alert">
+          {blocker}
+        </Text>
+      ))}
+      {props.boundaryBlockers?.map((blocker) => (
+        <Text key={blocker.code} tone="muted">
+          {invoiceDraftBlocker(blocker.code, props.locale)}
+        </Text>
+      ))}
+      {!props.inputBlockers?.length && !props.currentBlockers?.length ? (
+        <Text tone="muted">{props.copy.noReadBlockers}</Text>
+      ) : null}
+    </RecordSection>
+  );
+}
+
+function LegalArtifactSection(props: {
+  copy: LegalCopy;
+  issue?: typeof ArLegal.ArLegalIssueReceipt.Type;
+  history?: typeof LegalInvoicePdf.LegalInvoicePdfHistory.Type;
+  historyLoaded: boolean;
+  pdf?: LegalPdfInspection;
+}) {
+  if (!props.issue)
+    return (
+      <RecordSection title={props.copy.legalArtifacts}>
+        <Text>{props.copy.noIssueForArtifacts}</Text>
+      </RecordSection>
+    );
+  if (!props.history?.items.length)
+    return (
+      <RecordSection title={props.copy.legalArtifacts}>
+        <Text>{props.historyLoaded ? props.copy.noPdf : props.copy.notAvailable}</Text>
+      </RecordSection>
+    );
+  const verified = props.pdf?.verified;
+  return (
+    <RecordSection title={props.copy.legalArtifacts}>
+      <DataTable
+        title={props.copy.legalPdfHistory}
+        narrow="stack"
+        columns={[
+          { id: "capture", label: props.copy.pdfCapture },
+          { id: "digest", label: props.copy.captureDigest },
+          { id: "artifact", label: props.copy.sealedArtifact },
+          { id: "sha", label: props.copy.sha256 },
+        ]}
+        rows={props.history.items.map((item) => ({
+          id: item.id,
+          cells: [
+            item.id,
+            item.digest,
+            item.sealed ? props.copy.yes : props.copy.no,
+            item.sha256 ?? "—",
+          ],
+        }))}
+      />
+      {props.pdf ? (
+        <>
+          <RecordSummary>
+            <RecordFact label={props.copy.pdfCapture}>
+              {props.pdf.capture.id} · {props.pdf.capture.digest}
+            </RecordFact>
+            <RecordFact label={props.copy.artifactHash}>
+              {props.pdf.artifact?.sha256 ?? props.copy.notSealed}
+            </RecordFact>
+            <RecordFact label={props.copy.artifactBytes}>
+              {props.pdf.artifact?.byteLength ?? props.copy.notSealed}
+            </RecordFact>
+            <RecordFact label={props.copy.renderer}>
+              {props.pdf.artifact?.rendererVersion ?? props.copy.notSealed}
+            </RecordFact>
+            <RecordFact label={props.copy.deliveredState}>{props.copy.no}</RecordFact>
+          </RecordSummary>
+          {verified ? (
+            <Box>
+              <Button variant="outline" onClick={() => downloadLegalPdf(verified)}>
+                {props.copy.downloadPdf}
+              </Button>
+            </Box>
+          ) : null}
+          <Text>{props.pdf.artifact ? props.copy.pdfVerified : props.copy.pdfCaptured}</Text>
+        </>
+      ) : null}
+    </RecordSection>
+  );
+}
+
+function downloadLegalPdf(verified: NonNullable<Awaited<ReturnType<typeof verifyLegalPdf>>>) {
+  const url = URL.createObjectURL(new Blob([verified.bytes], { type: "application/pdf" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = verified.filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function LegalDeliverySection({
+  copy,
+  captureId,
+  history,
+  loaded,
+}: {
+  copy: LegalCopy;
+  captureId: string;
+  history?: typeof LegalDelivery.LegalDeliveryHistory.Type;
+  loaded: boolean;
+}) {
+  if (!captureId)
+    return (
+      <RecordSection title={copy.deliveryHistory}>
+        <Text>{copy.noPdfForDelivery}</Text>
+      </RecordSection>
+    );
+  if (!history?.items.length)
+    return (
+      <RecordSection title={copy.deliveryHistory}>
+        <Text>{loaded ? copy.noDelivery : copy.notAvailable}</Text>
+      </RecordSection>
+    );
+  return (
+    <RecordSection title={copy.deliveryHistory}>
+      {history.items.map((item) => (
+        <LegalDeliveryItem key={item.request.id} copy={copy} value={item} />
+      ))}
+    </RecordSection>
+  );
+}
+
+function LegalDeliveryItem({
+  copy,
+  value,
+}: {
+  copy: LegalCopy;
+  value: typeof LegalDelivery.LegalDeliveryView.Type;
+}) {
+  return (
+    <Details title={`${copy.deliveryRequest} · ${value.request.id}`}>
+      <RecordSummary>
+        <RecordFact label={copy.deliveryStatus}>{value.status}</RecordFact>
+        <RecordFact label={copy.sendAuthorized}>
+          {value.approval?.sendAuthorized ? copy.yes : copy.no}
+        </RecordFact>
+        <RecordFact label={copy.providerPayload}>
+          {value.approval?.providerPayloadReady ? copy.yes : copy.no}
+        </RecordFact>
+        <RecordFact label={copy.deliveredState}>{copy.no}</RecordFact>
+      </RecordSummary>
+      <Text>
+        {value.request.input.channel} · {value.request.input.destination}
+      </Text>
+      {value.attempts.length ? (
+        <DataTable
+          title={copy.providerAttempts}
+          narrow="stack"
+          columns={[
+            { id: "attempt", label: copy.attempt },
+            { id: "provider", label: copy.providerRequest },
+            { id: "status", label: copy.deliveryStatus },
+            { id: "traffic", label: copy.externalTraffic },
+            { id: "outcome", label: copy.providerOutcome },
+            { id: "delivered", label: copy.deliveredState },
+          ]}
+          rows={value.attempts.map(({ attempt, reconciliation }) => ({
+            id: attempt.id,
+            cells: [
+              `${attempt.ordinal} · ${attempt.id}`,
+              attempt.providerRequestId,
+              attempt.status,
+              String(attempt.externalTrafficProven),
+              reconciliation?.outcome ?? copy.notReconciled,
+              copy.no,
+            ],
+          }))}
+        />
+      ) : (
+        <Text>{copy.noProviderAttempts}</Text>
+      )}
+      <Text>{copy.providerNotDelivery}</Text>
     </Details>
+  );
+}
+
+function LegalSnapshotSection(props: {
+  copy: LegalCopy;
+  missingIdentity: boolean;
+  draft?: typeof Drafts.InvoiceDraftRevision.Type;
+  review?: typeof ArLegal.ArLegalIssueView.Type;
+  issue?: typeof ArLegal.ArLegalIssueReceipt.Type;
+}) {
+  return (
+    <>
+      {props.missingIdentity ? <Text role="alert">{props.copy.missingIssueIdentity}</Text> : null}
+      {props.draft ? <Facts title={props.copy.draftSnapshot} value={props.draft} /> : null}
+      {props.review ? <Facts title={props.copy.reviewSnapshot} value={props.review} /> : null}
+      {props.issue ? <Facts title={props.copy.issueSnapshot} value={props.issue} /> : null}
+    </>
   );
 }
 

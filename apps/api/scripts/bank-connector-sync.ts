@@ -6,12 +6,16 @@ import * as Schema from "effect/Schema";
 import * as Connector from "@open-erp/contracts/bank-connector";
 import * as Intake from "@open-erp/contracts/source-intake";
 
-const Config = Schema.Struct({
+const ConnectionConfig = Schema.Struct({
   apiOrigin: Schema.String,
   entityId: Schema.String,
   bookId: Schema.String,
   consentId: Schema.String,
   accountId: Schema.String,
+});
+const InspectionConfig = ConnectionConfig;
+const Config = Schema.Struct({
+  ...ConnectionConfig.fields,
   host: Schema.Literals(["sandbox", "development", "production"]),
   clientId: Schema.String,
   secret: Schema.String,
@@ -24,6 +28,7 @@ const PlaidPage = Schema.Struct({
   has_more: Schema.Boolean,
   next_cursor: Schema.String,
 });
+const PlaidError = Schema.Struct({ error_code: Schema.String });
 const UpdateIdentity = Schema.Struct({ account_id: Schema.String, transaction_id: Schema.String });
 const PlaidAccounts = Schema.Struct({
   accounts: Schema.Array(Schema.Struct({ account_id: Schema.String })),
@@ -32,33 +37,32 @@ const hash = (value: string | Uint8Array) => createHash("sha256").update(value).
 const fail = (message: string): never => {
   throw new Error(message);
 };
-const file = resolve(
-  process.argv[2] ?? fail("Pass an absolute path to a private Plaid connector configuration file."),
-);
+const inspection = process.argv[2] === "inspect";
+if (process.argv.length !== (inspection ? 4 : 3))
+  fail("Usage: bank-connector-sync.ts [inspect] /absolute/private/config.json");
+const file = resolve(process.argv[inspection ? 3 : 2]!);
 const info = await lstat(file);
 if (!info.isFile() || (info.mode & 0o177) !== 0)
   fail("Connector config must be a regular file with mode 0600.");
-let config: typeof Config.Type;
+let parsed: unknown;
 try {
-  config = Schema.decodeUnknownSync(Config)(JSON.parse(await readFile(file, "utf8")));
+  parsed = JSON.parse(await readFile(file, "utf8"));
+} catch {
+  throw new Error("Cannot read or parse private connector config.");
+}
+let config: typeof InspectionConfig.Type | typeof Config.Type;
+try {
+  config = inspection
+    ? Schema.decodeUnknownSync(InspectionConfig)(parsed)
+    : Schema.decodeUnknownSync(Config)(parsed);
 } catch {
   throw new Error("Cannot read or parse private connector config.");
 }
 const apiToken = process.env.OPENERP_CONNECTOR_TOKEN;
-if (
-  !apiToken ||
-  !config.clientId ||
-  !config.secret ||
-  !config.accessToken ||
-  !config.entityId ||
-  !config.bookId ||
-  !config.consentId ||
-  !config.accountId ||
-  !["sandbox", "development", "production"].includes(config.host)
-)
-  fail(
-    "Provide complete Plaid credentials, account, book, consent, and a scoped operator API token.",
-  );
+if (!apiToken || !config.entityId || !config.bookId || !config.consentId || !config.accountId)
+  fail("Provide a complete account, book, consent, and scoped operator API token.");
+if (Schema.is(Config)(config) && (!config.clientId || !config.secret || !config.accessToken))
+  fail("Provide complete Plaid credentials for a synchronization run.");
 const origin = new URL(config.apiOrigin);
 if (
   origin.username ||
@@ -99,6 +103,54 @@ async function accounting(
       `Accounting API refused ${method} ${path}: HTTP ${response.status}. Inspect the scoped receipt before retrying.`,
     );
   return response.json();
+}
+async function inspectFeed(value: typeof InspectionConfig.Type) {
+  const inventory = Schema.decodeUnknownSync(Connector.ConnectorFeedInventory)(
+    await accounting(`/bank-connector-feeds?consentId=${encodeURIComponent(value.consentId)}`),
+  );
+  const feed = inventory.items[0];
+  if (inventory.items.length !== 1 || inventory.nextCursor !== null)
+    fail("Connector feed inspection is missing or ambiguous.");
+  if (!feed) return fail("Connector feed inspection is missing or ambiguous.");
+  if (
+    feed.scope.bookId !== value.bookId ||
+    feed.scope.entityId !== value.entityId ||
+    feed.consent.id !== value.consentId ||
+    feed.consent.providerId !== "plaid" ||
+    feed.consent.externalAccountId !== value.accountId ||
+    feed.account.externalAccountId !== value.accountId ||
+    feed.account.accountId !== value.accountId
+  )
+    fail("Connector feed inspection does not match the private configuration.");
+  console.info(
+    JSON.stringify(
+      {
+        scope: feed.scope,
+        consent: {
+          id: feed.consent.id,
+          providerId: feed.consent.providerId,
+          consentAuthority: feed.consent.consentAuthority,
+          createdAt: feed.consent.createdAt,
+          revoked: feed.consent.revoked,
+        },
+        account: feed.account,
+        checkedAt: feed.checkedAt,
+        cursorSnapshot: feed.cursorSnapshot,
+        pages: feed.pages,
+        pageEvidenceTruncated: feed.pageEvidenceTruncated,
+        providerAcceptance: feed.providerAcceptance,
+        accountCoverage: feed.accountCoverage,
+        automaticRecovery: feed.automaticRecovery,
+        recoveryBlockers: feed.recoveryBlockers,
+      },
+      null,
+      2,
+    ),
+  );
+}
+if (!Schema.is(Config)(config)) {
+  await inspectFeed(config);
+  process.exit(0);
 }
 const consent = Schema.decodeUnknownSync(Connector.ConnectorConsentState)(
   await accounting(consentPath),
@@ -211,10 +263,23 @@ for (let page = 0; page < 100; page++) {
       redirect: "error",
       signal: AbortSignal.timeout(30000),
     });
-    if (!provider.ok)
+    if (!provider.ok) {
+      let mutationDuringPagination = false;
+      try {
+        mutationDuringPagination =
+          Schema.decodeUnknownSync(PlaidError)(await provider.json()).error_code ===
+          "TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION";
+      } catch {
+        mutationDuringPagination = false;
+      }
+      if (mutationDuringPagination)
+        fail(
+          "Plaid reported TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION; cursor unchanged. Inspect retained pages and reconcile a fresh provider snapshot before any later run.",
+        );
       fail(
         `Plaid sync returned HTTP ${provider.status}; cursor unchanged. Do not log provider response or credentials.`,
       );
+    }
     bytes = new Uint8Array(await provider.arrayBuffer());
   }
   if (bytes.length < 1 || bytes.length > 5 * 1024 * 1024)

@@ -12,8 +12,8 @@ Implementation-ready for root review and serialized static validation. This pack
 - `apps/api/scripts/operations/snapshot.ts`: whole-table fingerprinting plus required current kernel/report/Better Auth tables.
 - `apps/api/scripts/operations/artifacts.ts` (new): exact source-release capture/inspection, declared supplementary file/custody closure, exclusive copies and before/after hashes.
 - `apps/api/scripts/operations/inventory.ts` (new): source/destination role flags/expiry/membership/grantors; locale/extension/migration/schema+ACL fingerprints; fail-closed unsupported schema/ownership/settings checks.
-- `apps/api/scripts/operations/controls.ts` (new): inline evidence bytes, relational/JSON evidence closure, unsupported object-pointer refusal, voucher/receipt links, historical trial-balance reconstruction. Synthetic-profile and external-auth-token guard.
-- `apps/api/scripts/operations/workflows.ts`: v2 snapshot capture/inspection/fresh restore; immutable private stage diagnostics, final quarantine verification and elapsed restore receipt.
+- `apps/api/scripts/operations/controls.ts` (new): inline evidence bytes, relational/JSON evidence closure, evidence/receipt inventories, unsupported object-pointer refusal, voucher/receipt links, historical trial-balance reconstruction. Synthetic-profile and external-auth-token guard.
+- `apps/api/scripts/operations/workflows.ts`: v2 snapshot capture/inspection/fresh restore; closure inventories, machine-readable inspection output, immutable private stage diagnostics, final quarantine verification and elapsed restore receipt.
 - `docs/operations/{local-recovery,application-recovery,recovery-acceptance,recovery-package-handoff}.md`: operator commands, scope/unsupported cases, pre-implementation acceptance risks, exact blocked application admission boundary and handoff.
 
 The existing owned `apps/api/scripts/operations/tsconfig.json` is unchanged and covers all local TypeScript files.
@@ -44,6 +44,7 @@ Existing `openerp.authenticate`/authorization admit credentials/sessions/members
 2. Run `bun x tsc --project apps/api/scripts/operations/tsconfig.json --noEmit` and bounded owned-file lint through the repository environment. Send concrete errors to the retained owner; do not weaken checks.
 3. Review source/destination isolation and all catalog SQL before any separately authorized rehearsal. The v2 source release must exactly match the source's applied migration filenames/checksums, including0900; outstanding domain migrations therefore require a coherent reviewed release, not silent omission.
 4. Only after separate authority, execute the documented synthetic release→backup→inspect→fresh restore procedure. Retain failure/quarantine diagnostics and do not enable an application/provider to obtain a green result. A successful CLI receipt still has application recovery blocked.
+5. Treat `inspect` JSON as a closure diagnostic, not an application-read result. The root-reviewed identity, Drizzle Effect handler, Better Auth mutation fence, provider egress fence and quarantine-preserving inspection boundary remain a separate decision.
 
 ## Durable work follow-up (current source)
 

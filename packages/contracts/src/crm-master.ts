@@ -49,6 +49,20 @@ const DirectoryQuery = Schema.Struct({
   role: Schema.optional(Schema.Literals(["customer", "supplier", "both"])),
   after: Schema.optional(Accounting.Identifier),
 });
+export const CrmMasterCapabilities = {
+  crm_directory: {
+    description: "Read a bounded book-scoped party directory with retained contact, alias and registry-provenance annotations.",
+    input: Schema.Struct({ scope: Accounting.Scope, filters: DirectoryQuery }),
+    output: DirectoryPage,
+    readOnly: true,
+  },
+  crm_directory_export: {
+    description: "Read a bounded metadata-only party directory export; it does not merge parties or export unrelated books.",
+    input: Schema.Struct({ scope: Accounting.Scope, filters: DirectoryQuery }),
+    output: DirectoryExport,
+    readOnly: true,
+  },
+};
 
 export const CrmMasterApi = HttpApiGroup.make("crmMaster")
   .add(HttpApiEndpoint.get("crmDirectory", "/v1/entities/:entityId/books/:bookId/commerce/directory", {

@@ -20,6 +20,24 @@ export const SaveArticle = Schema.Struct({
   taxDescription: Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200))),
 });
 export const ArticlePage = Schema.Struct({ items: Schema.Array(Article), next: Schema.NullOr(Schema.String) });
+export const CatalogCapabilities = {
+  catalog_list_articles: {
+    description: "Read current book-scoped catalog article revisions with a stable page cursor.",
+    input: Schema.Struct({ scope: Accounting.Scope, after: Schema.optional(Schema.String) }),
+    output: ArticlePage,
+    readOnly: true,
+  },
+  catalog_get_article: {
+    description: "Read one immutable catalog article revision selected by code and revision.",
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      code: Schema.String.check(Schema.isPattern(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/)),
+      revision: Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,5}$/)),
+    }),
+    output: Article,
+    readOnly: true,
+  },
+};
 const path = "/v1/entities/:entityId/books/:bookId/commerce/articles";
 export const CatalogApi = HttpApiGroup.make("catalog")
   .add(HttpApiEndpoint.get("catalogArticles", path, {

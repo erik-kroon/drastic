@@ -1,6 +1,8 @@
 import { sql, type SQL } from "drizzle-orm";
 
 export const payrollFoundationStatements = {
+  listPayrollEmployees: (p) =>
+    sql`select openerp.list_payroll_employees(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text) as result`,
   setPayrollAccess: (p) =>
     sql`select openerp.set_payroll_access(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text,${p[3]}::boolean) as result`,
   capturePayrollRevision: (p) =>

@@ -41,6 +41,7 @@ function SupplierInboxEntry(props: {
   onRefresh: () => void;
 }) {
   const sv = props.commerceProps.locale === "sv";
+  const extractionKeys = useRef(new Map<string, string>());
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Text>{props.entry.occurrence.occurrence.filename} · {props.entry.channel} · {props.entry.draftId ? (sv ? "Granskat utkast" : "Reviewed draft") : (sv ? "Väntar på granskning" : "Awaiting review")}</Text>
@@ -55,6 +56,7 @@ function SupplierInboxEntry(props: {
       {!props.entry.draftId && props.commerceProps.book.role === "operator" ? <>
         <CommandForm {...props.commerceProps} path={`${props.path}/${encodeURIComponent(props.id)}/extractions`} schema={Inbox.RecordSupplierExtraction} output={Inbox.SupplierInboxView}
           label={sv ? "Spara manuellt tolkningsförsök" : "Save manual extraction attempt"}
+          keys={extractionKeys.current} onNewCommand={() => extractionKeys.current.clear()}
           input={(fields) => ({ parserVersion: "manual-v1", status: "failed", suggestions: [], diagnostics: [fields.get("diagnostic")] })}
           onSuccess={props.onRefresh}>
           <InputField name="diagnostic" label={sv ? "Vad kunde inte tolkas?" : "What could not be extracted?"} required maxLength={200} />

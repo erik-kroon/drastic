@@ -59,7 +59,7 @@ export async function readPreflight(client: Client, target: typeof LocalTarget.T
   });
 }
 
-export async function tableFingerprints(client: Client) {
+export async function tableFingerprints(client: Client, requireObjectTables = false) {
   const unsupported = await client.query<{ found: boolean }>(`
     SELECT EXISTS(SELECT FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
       WHERE n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'
@@ -86,6 +86,14 @@ export async function tableFingerprints(client: Client) {
     "report_snapshots",
     "report_lines",
   ];
+  if (requireObjectTables)
+    required.push(
+      "intake_contents",
+      "intake_occurrences",
+      "intake_previews",
+      "intake_approvals",
+      "intake_admissions",
+    );
   if (
     required.some(
       (name) => !tables.rows.some((table) => table.schema === "openerp" && table.table === name),

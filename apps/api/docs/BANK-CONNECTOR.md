@@ -17,11 +17,11 @@ Root owns and must wire:
 3. Add `BankConnectorHandlers` from `apps/api/src/transport/http/routes/bank-connector.ts` to `apps/api/src/index.ts` HTTP layer.
 4. Apply forward migration `7300-bank-connector-intake.sql` after the existing source-intake/authorization migrations; do not edit applied migrations. No direct runtime table writes are granted.
 
-All routes use `/api/v1/entities/:entityId/books/:bookId` (the contract path omits `/api`). `POST /bank-connector-consents`, `POST /bank-connector-consents/:id/revoke` and `POST /bank-connector-consents/:id/batches` require an operator and `Idempotency-Key`. Reads are `GET /bank-connector-consents/:id`, `GET /bank-connector-batches/:id`, and `GET /bank-connector-batch-requests/:key`. REST auth derives scope and actor server-side; never supply a client-specified actor. Drizzle binds token, scope, then key/ID/input as the typed statement files show.
+All routes use `/api/v1/entities/:entityId/books/:bookId` (the contract path omits `/api`). `POST /bank-connector-consents`, `POST /bank-connector-consents/:id/revoke` and `POST /bank-connector-consents/:id/batches` require an operator and `Idempotency-Key`. Reads include `GET /bank-connector-feeds`, `GET /bank-connector-consents/:id`, `GET /bank-connector-batches/:id`, and `GET /bank-connector-batch-requests/:key`; the feed snapshot additionally requires operator authority. REST auth derives scope and actor server-side; never supply a client-specified actor. Drizzle binds token, scope, then key/ID/input as the typed statement files show.
 
 ## Verification boundary
 
-Contract typecheck, targeted lint/format and standalone SQL application passed on an isolated PostgreSQL 18 cluster after the existing migrations through3950. Full migration replay stopped in an unrelated `6100-subledger-lifetime-amendments.sql` failure, so this is not a clean full-chain migration or SQL behavior proof. No running authenticated API call was exercised. Required later observation: isolated PostgreSQL migration/application, authenticated operator vs non-operator access, duplicate/revision/overlap and changed-byte conflict, concurrent stale cursor, uncertain-result recovery and revocation. D-09 prevents adding tests without explicit approval. D-10 prevents real-provider acceptance.
+Contract typecheck, targeted lint/format and standalone SQL application passed on an isolated PostgreSQL 18 cluster after the existing migrations through3950. Full migration replay stopped in an unrelated `6100-subledger-lifetime-amendments.sql` failure, so this is not a clean full-chain migration or SQL behavior proof. Migration 9110 was not applied or executed in this slice. No running authenticated API call was exercised. Required later observation: isolated PostgreSQL migration/application, authenticated operator vs non-operator access, duplicate/revision/overlap and changed-byte conflict, concurrent stale cursor, uncertain-result recovery and revocation. D-09 prevents adding tests without explicit approval. D-10 prevents real-provider acceptance.
 
 ## Browser setup and recovery
 
@@ -38,6 +38,17 @@ continuation. Migration 8720 orders deliveries newest first with a stable timest
 cursor and rejects cursors outside the selected consent. Private connector configuration
 is not visible to these reads; `providerConfigured:false` is not evidence that an operator
 job has no credentials. The UI does not present a recorded consent as a live connection.
+
+Forward migration 9110 adds an operator-only `GET /bank-connector-feeds` inventory. It returns
+at most 20 feeds and 20 page summaries per feed, including the consent, source-account to
+ledger-account mapping, current cursor, retained page identity, request key, and source
+occurrence metadata without original bytes. It explicitly reports provider acceptance and
+complete account coverage as not established and automatic recovery as disabled. Plaid
+snapshots expose the retained-pagination limitation and the mutation-during-pagination
+operator blocker; they do not claim that the error occurred in the retained evidence.
+`bun scripts/bank-connector-sync.ts inspect /absolute/private/config.json` reads only this
+scoped snapshot and requires no Plaid credentials, provider request, raw-page retrieval, or
+database write.
 
 Local browser/HTTP observations on 2026-09-24: missing review confirmation blocked saving;
 a synthetic mapping saved and recovered; uncertain and failed deliveries left the cursor

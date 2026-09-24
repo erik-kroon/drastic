@@ -277,6 +277,51 @@ export const capabilities = {
     "arLegalIssueHistory",
     (input) => [scopeParameter(input.scope), input.id],
   ),
+  catalog_list_articles: bindCapability(
+    Capabilities.catalog_list_articles,
+    "catalogArticles",
+    (input) => [scopeParameter(input.scope), input.after ?? ""],
+  ),
+  catalog_get_article: bindCapability(
+    Capabilities.catalog_get_article,
+    "catalogArticleRevision",
+    (input) => [scopeParameter(input.scope), input.code, input.revision],
+  ),
+  dimensions_list: bindCapability(
+    Capabilities.dimensions_list,
+    "listDimensions",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  crm_directory: bindCapability(
+    Capabilities.crm_directory,
+    "crmDirectory",
+    (input) => [scopeParameter(input.scope), input.filters.search ?? "", input.filters.role ?? "", input.filters.after ?? ""],
+  ),
+  crm_directory_export: bindCapability(
+    Capabilities.crm_directory_export,
+    "crmDirectoryExport",
+    (input) => [scopeParameter(input.scope), input.filters.search ?? "", input.filters.role ?? "", input.filters.after ?? ""],
+  ),
+  collections_history: bindCapability(
+    Capabilities.collections_history,
+    "collectionHistoryPage",
+    (input) => [scopeParameter(input.scope), input.customerId, input.after ?? ""],
+  ),
+  deadlines_list: bindCapability(
+    Capabilities.deadlines_list,
+    "listDeadlines",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  supplier_inbox_list: bindCapability(
+    Capabilities.supplier_inbox_list,
+    "listSupplierInboxes",
+    (input) => [scopeParameter(input.scope), input.cursor ?? ""],
+  ),
+  supplier_inbox_get: bindCapability(
+    Capabilities.supplier_inbox_get,
+    "getSupplierInbox",
+    (input) => [scopeParameter(input.scope), input.occurrenceId],
+  ),
   commerce_get_invoice_policy_candidate: bindCapability(
     Capabilities.commerce_get_invoice_policy_candidate,
     "getInvoicePolicyCandidate",
@@ -1220,6 +1265,15 @@ export const capabilities = {
     scopeParameter(input.scope),
     input.idempotencyKey,
     JSON.stringify(input.input),
+  ]),
+  reports_prepare_family: bindCapability(
+    Capabilities.reports_prepare_family,
+    "prepareReportFamily",
+    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
+  ),
+  reports_get_family: bindCapability(Capabilities.reports_get_family, "getReportFamily", (input) => [
+    scopeParameter(input.scope),
+    input.reportId,
   ]),
   reports_list: bindCapability(Capabilities.reports_list, "listReports", (input) => [
     scopeParameter(input.scope),

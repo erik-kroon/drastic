@@ -7,6 +7,15 @@ import { query, scopeParameter } from "../../../db/query";
 
 export const BankConnectorHandlers = HttpApiBuilder.group(Api, "bankConnector", (handlers) =>
   handlers
+    .handle("listConnectorFeeds", ({ params, query: search }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "listConnectorFeeds",
+          [token, scopeParameter(params), search.cursor ?? "", search.consentId ?? ""],
+          Connector.ConnectorFeedInventory,
+        ),
+      ),
+    )
     .handle("listConnectorConsents", ({ params, query: search }) =>
       Effect.flatMap(authenticate, (token) =>
         query(

@@ -1,6 +1,11 @@
 import { Client } from "pg";
 import * as Schema from "effect/Schema";
-import { RecoveryControls, TableFingerprint } from "../../../../packages/contracts/src/operations";
+import {
+  EvidenceInventory,
+  ReceiptInventory,
+  RecoveryControls,
+  TableFingerprint,
+} from "../../../../packages/contracts/src/operations";
 import { refuse } from "./safety";
 
 export async function recoveryControls(
@@ -29,6 +34,7 @@ export async function recoveryControls(
       "Inline evidence, voucher balance/watermark or execution-receipt links failed recovery controls.",
     );
   let jsonReferences = 0n;
+  let relationalReferences = 0n;
   for (const table of tables) {
     const columns = await client.query<{ name: string; json: boolean }>(
       `
@@ -58,11 +64,15 @@ export async function recoveryControls(
       if (!columns.rows.some((column) => column.name === "book_id"))
         refuse("Unscoped evidence link is unsupported.");
       const links = await client.query<{
+        count: string;
         invalid: boolean;
-      }>(`SELECT EXISTS(SELECT FROM ONLY ${identifier} r
-        LEFT JOIN openerp.evidence e ON e.book_id=r.book_id AND e.id=r.evidence_id WHERE r.evidence_id IS NOT NULL AND e.id IS NULL) AS invalid`);
+      }>(`SELECT count(*) FILTER (WHERE r.evidence_id IS NOT NULL)::text AS count,
+        EXISTS(SELECT FROM ONLY ${identifier} r
+          LEFT JOIN openerp.evidence e ON e.book_id=r.book_id AND e.id=r.evidence_id
+          WHERE r.evidence_id IS NOT NULL AND e.id IS NULL) AS invalid FROM ONLY ${identifier} r`);
       if (links.rows[0]?.invalid !== false)
         refuse("A retained relational evidence reference has no original content.");
+      relationalReferences += BigInt(links.rows[0]?.count ?? "0");
     }
     for (const column of columns.rows.filter((column) => column.json)) {
       const field = client.escapeIdentifier(column.name);
@@ -85,7 +95,7 @@ export async function recoveryControls(
           EXISTS(SELECT FROM refs r LEFT JOIN openerp.evidence e ON e.book_id=r.book AND e.id=r.value->>'evidenceId'
             WHERE r.requires_evidence AND (e.id IS NULL OR (r.value ? 'sha256' AND r.value->>'sha256' IS DISTINCT FROM e.sha256)
               OR (r.value ? 'evidenceSha256' AND r.value->>'evidenceSha256' IS DISTINCT FROM e.sha256))) AS invalid,
-          EXISTS(SELECT FROM objects WHERE value ?| ARRAY['objectKey','storageKey','blobKey','objectVersion','storageVersion','object_key','storage_key','blob_key']) AS external`);
+          EXISTS(SELECT FROM objects WHERE value ?| ARRAY['objectKey','storageKey','blobKey','objectVersion','storageVersion','blobVersion','object_key','storage_key','blob_key','object_version','storage_version','blob_version']) AS external`);
       const result = refs.rows[0];
       if (!result || result.invalid || result.external)
         refuse(
@@ -96,7 +106,7 @@ export async function recoveryControls(
   }
   const reportControl = await client.query<{ invalid: boolean }>(`
     SELECT EXISTS(SELECT FROM openerp.report_snapshots r JOIN openerp.books b ON b.id=r.book_id
-      WHERE r.sequence>b.committed_sequence OR r.body->>'kind' IS DISTINCT FROM 'trial_balance_v1'
+      WHERE r.body->>'kind'='trial_balance_v1' AND (r.sequence>b.committed_sequence
         OR (r.body->>'accountCount')::bigint IS DISTINCT FROM (SELECT count(*) FROM openerp.report_lines x WHERE x.book_id=r.book_id AND x.report_id=r.id)
         OR (r.body->>'voucherCount')::bigint IS DISTINCT FROM (SELECT count(*) FROM openerp.vouchers v WHERE v.book_id=r.book_id AND v.sequence<=r.sequence AND v.posting_date BETWEEN r.starts_on AND r.ends_on)
         OR (r.body->>'debitMinor')::numeric IS DISTINCT FROM (SELECT coalesce(sum(l.debit_minor),0) FROM openerp.journal_lines l JOIN openerp.vouchers v ON v.book_id=l.book_id AND v.id=l.voucher_id WHERE v.book_id=r.book_id AND v.sequence<=r.sequence AND v.posting_date BETWEEN r.starts_on AND r.ends_on)
@@ -110,7 +120,8 @@ export async function recoveryControls(
         WHERE (x.body->>'openingMinor')::numeric IS DISTINCT FROM amounts.opening
           OR (x.body->>'debitMinor')::numeric IS DISTINCT FROM amounts.debit
           OR (x.body->>'creditMinor')::numeric IS DISTINCT FROM amounts.credit
-          OR (x.body->>'closingMinor')::numeric IS DISTINCT FROM amounts.opening+amounts.debit-amounts.credit) AS invalid`);
+           OR (x.body->>'closingMinor')::numeric IS DISTINCT FROM amounts.opening+amounts.debit-amounts.credit)) AS invalid`);
+
   if (reportControl.rows[0]?.invalid !== false)
     refuse(
       "Historical trial-balance controls do not reconstruct from their pinned ledger boundary.",
@@ -132,5 +143,35 @@ export async function recoveryControls(
       originalsVerified ? "retained-originals-matched" : "unsupported-pointers-refused",
     ],
   );
-  return Schema.decodeUnknownSync(RecoveryControls)(counts.rows[0]?.body);
+  const controls = Schema.decodeUnknownSync(RecoveryControls)(counts.rows[0]?.body);
+  const evidenceTable = tables.find(
+    (table) => table.schema === "openerp" && table.table === "evidence",
+  );
+  if (!evidenceTable) refuse("The database is missing the owned evidence table.");
+  const evidence = Schema.decodeSync(EvidenceInventory)({
+    version: 1,
+    table: evidenceTable,
+    contentBytes: controls.evidenceBytes,
+    relationalReferences: relationalReferences.toString(),
+    jsonReferences: jsonReferences.toString(),
+    integrity: "matched",
+    references: "matched",
+  });
+  const receiptTables = tables.filter((table) => table.table.endsWith("receipts"));
+  if (
+    !receiptTables.some(
+      (table) => table.schema === "openerp" && table.table === "execution_receipts",
+    ) ||
+    !receiptTables.some((table) => table.schema === "openerp" && table.table === "command_receipts")
+  )
+    refuse("The database is missing required accounting receipt tables.");
+  return {
+    controls,
+    evidence,
+    receipts: Schema.decodeSync(ReceiptInventory)({
+      version: 1,
+      tables: receiptTables,
+      content: "matched",
+    }),
+  };
 }

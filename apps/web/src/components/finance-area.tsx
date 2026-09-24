@@ -56,6 +56,11 @@ const TrialBalanceWorkspace = lazy(() =>
     default: module.TrialBalanceWorkspace,
   })),
 );
+const ReportFamilyWorkspace = lazy(() =>
+  import("@/components/report-workspace").then((module) => ({
+    default: module.ReportFamilyWorkspace,
+  })),
+);
 const RegisterReports = lazy(() =>
   import("@/components/commerce/register-reports").then((module) => ({
     default: module.RegisterReports,
@@ -239,6 +244,13 @@ export function FinanceArea({
               }
             />
           ) : null}
+          <ReportFamilyArea
+            selected={selected}
+            book={book}
+            locale={locale}
+            recordId={recordId}
+            onOpen={onOpen}
+          />
           {selected === "register" ? (
             <RegisterReports book={book} locale={locale} recordId={recordId} onOpen={onOpen} />
           ) : null}
@@ -258,6 +270,29 @@ export function FinanceArea({
         </Suspense>
       </PageContent>
     </>
+  );
+}
+
+function ReportFamilyArea(props: {
+  selected: string | undefined;
+  book: ReturnType<typeof useBookWorkspace>["book"];
+  locale: ReturnType<typeof useBookWorkspace>["locale"];
+  recordId: string;
+  onOpen: (id: string) => void;
+}) {
+  if (
+    props.selected !== "profit_and_loss" &&
+    props.selected !== "balance_sheet" &&
+    props.selected !== "cash_flow"
+  ) {
+    return null;
+  }
+  return (
+    <ReportFamilyWorkspace
+      family={props.selected}
+      recordId={props.recordId}
+      onOpen={props.onOpen}
+    />
   );
 }
 
@@ -325,6 +360,9 @@ function areaTabs(
       { key: "library", label: sv ? "Alla rapporter" : "All reports" },
       { key: "trial", label: sv ? "Saldobalans" : "Trial balance" },
       { key: "ledger", label: copy.ledger },
+      { key: "profit_and_loss", label: sv ? "Resultaträkning" : "Profit and loss" },
+      { key: "balance_sheet", label: sv ? "Balansräkning" : "Balance sheet" },
+      { key: "cash_flow", label: sv ? "Kassaflöde" : "Cash flow" },
       { key: "register", label: sv ? "Fakturaregister" : "Invoice register" },
       { key: "subledgers", label: sv ? "Tillgångskontroller" : "Asset controls" },
       { key: "exchange-rates", label: sv ? "Valutakurser" : "Exchange rates" },

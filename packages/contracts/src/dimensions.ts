@@ -51,6 +51,14 @@ export const DimensionValueSaved = Schema.Struct({
   dimensionCode: Code,
   ...Item.fields,
 });
+export const DimensionsCapabilities = {
+  dimensions_list: {
+    description: "Read the book-scoped dimension and value catalogue, including immutable revision history and archive state.",
+    input: Schema.Struct({ scope: Accounting.Scope }),
+    output: DimensionList,
+    readOnly: true,
+  },
+};
 const base = "/v1/entities/:entityId/books/:bookId/dimensions";
 export const DimensionsApi = HttpApiGroup.make("dimensions")
   .add(

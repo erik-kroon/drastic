@@ -6,7 +6,9 @@ import * as Schema from "effect/Schema";
 import {
   BackupManifest,
   BackupWorkInventory,
+  BundleInspection,
   OperationDiagnostic,
+  RecoveryClosure,
   RestoreReceipt,
   RestoreSuspensionReport,
 } from "../../../../packages/contracts/src/operations";
@@ -26,7 +28,7 @@ import { readPreflight, tableFingerprints } from "./snapshot";
 import { copyArtifacts, filesIn, inspectRelease, readRecoveryPlan } from "./artifacts";
 import { databaseInventory, roleInventory } from "./inventory";
 import { recoveryControls } from "./controls";
-import { captureObjects, objectReferences, verifyObjects } from "./objects";
+import { captureObjects, objectReferences, verifyObjectInventory } from "./objects";
 import { captureWorkInventory, inspectWorkInventory, workInventoryPath } from "./durable-work";
 
 async function diagnostic(
@@ -102,13 +104,15 @@ export async function backup(targetPath: string, bundle: string, recoveryPlanPat
     );
     const snapshot = snapshotResult.rows[0]?.snapshot;
     if (!snapshot) refuse("No PostgreSQL snapshot was exported.");
-    const tables = await tableFingerprints(client);
+    const tables = await tableFingerprints(client, true);
     const release = await inspectRelease(plan.releaseDirectory);
     stage = "inventory-and-closure";
     const inventory = await databaseInventory(client, release);
     const objects = await objectReferences(client, tables);
-    await captureObjects(bundle, objects);
-    const controls = await recoveryControls(client, tables, true);
+    await captureObjects(bundle, objects.references);
+    await verifyObjectInventory(bundle, objects);
+    const recovery = await recoveryControls(client, tables, true);
+    const controls = recovery.controls;
     stage = "durable-work-snapshot";
     const work = await captureWorkInventory(client, tables, snapshot);
     await writePrivate(join(bundle, workInventoryPath), JSON.stringify(work, null, 2) + "\n");
@@ -117,6 +121,14 @@ export async function backup(targetPath: string, bundle: string, recoveryPlanPat
       file: { path: workInventoryPath, ...(await fingerprint(join(bundle, workInventoryPath))) },
       summary: work.summary,
       recoveryProcedurePath: plan.workRecoveryProcedurePath ?? null,
+    });
+    const closure = Schema.decodeSync(RecoveryClosure)({
+      version: 1,
+      database: "matched",
+      objects,
+      evidence: recovery.evidence,
+      receipts: recovery.receipts,
+      durableWork: "matched",
     });
     await diagnostic(
       diagnostics,
@@ -168,6 +180,7 @@ export async function backup(targetPath: string, bundle: string, recoveryPlanPat
       configuration: plan.configuration,
       artifacts: plan.artifacts,
       files,
+      closure,
       durableWork,
       evidenceAndReceipts: "all-user-tables-in-snapshot",
       archiveCompliance: "not-established",
@@ -272,8 +285,42 @@ export async function inspectBundle(bundle: string, expectedDigest: string) {
     )
   )
     refuse("Configuration/key custody closure is incomplete.");
+  if (manifest.closure) {
+    await verifyObjectInventory(bundle, manifest.closure.objects);
+    const evidenceTable = manifest.tables.find(
+      (table) => table.schema === "openerp" && table.table === "evidence",
+    );
+    if (
+      !evidenceTable ||
+      JSON.stringify(evidenceTable) !== JSON.stringify(manifest.closure.evidence.table)
+    )
+      refuse("Evidence inventory is not bound to the complete database table inventory.");
+    const receiptTables = manifest.tables.filter((table) => table.table.endsWith("receipts"));
+    if (JSON.stringify(receiptTables) !== JSON.stringify(manifest.closure.receipts.tables))
+      refuse("Receipt inventory is not bound to the complete database table inventory.");
+    if (!manifest.durableWork) refuse("Durable-work closure is missing its inventory.");
+  }
   await inspectWorkInventory(bundle, manifest);
   return manifest;
+}
+export async function inspectBundleResult(bundle: string, expectedDigest: string) {
+  const manifest = await inspectBundle(bundle, expectedDigest);
+  return Schema.decodeSync(BundleInspection)({
+    version: 1,
+    kind: "openerp-local-bundle-inspection",
+    inspectedAt: new Date().toISOString(),
+    status: manifest.closure ? "complete" : "legacy",
+    manifestSha256: expectedDigest,
+    database: "manifest-bound",
+    objects: manifest.closure ? "matched" : "not-captured-in-source",
+    evidence: manifest.closure ? "manifest-bound" : "not-captured-in-source",
+    receipts: manifest.closure ? "manifest-bound" : "not-captured-in-source",
+    durableWork: manifest.durableWork ? "matched" : "not-captured-in-source",
+    applicationRecovery: "blocked-restricted-read-admission",
+    writerPromotion: "not-performed",
+    providerPromotion: "not-performed",
+    productionAction: "disabled",
+  });
 }
 export async function restore(
   targetPath: string,
@@ -368,7 +415,7 @@ export async function restore(
     const restored = await connect(target, database);
     try {
       await restored.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
-      const actual = await tableFingerprints(restored);
+      const actual = await tableFingerprints(restored, Boolean(manifest.closure));
       if (JSON.stringify(actual) !== JSON.stringify(manifest.tables))
         refuse("Restored table fingerprints differ.");
       if (
@@ -376,15 +423,24 @@ export async function restore(
         JSON.stringify(manifest.inventory)
       )
         refuse("Restored schema/migration/environment inventory differs.");
-      const objects = await objectReferences(restored, actual);
-      await verifyObjects(bundle, objects);
-      verifiedControls = await recoveryControls(
+      const objects = await objectReferences(restored, actual, Boolean(manifest.closure));
+      await verifyObjectInventory(bundle, objects);
+      if (manifest.closure && JSON.stringify(objects) !== JSON.stringify(manifest.closure.objects))
+        refuse("Restored object inventory differs from the backup manifest.");
+      const recovery = await recoveryControls(
         restored,
         actual,
         manifest.controls.externalObjects === "retained-originals-matched",
       );
+      verifiedControls = recovery.controls;
       if (JSON.stringify(verifiedControls) !== JSON.stringify(manifest.controls))
         refuse("Restored evidence/receipt/report controls differ.");
+      if (
+        manifest.closure &&
+        (JSON.stringify(recovery.evidence) !== JSON.stringify(manifest.closure.evidence) ||
+          JSON.stringify(recovery.receipts) !== JSON.stringify(manifest.closure.receipts))
+      )
+        refuse("Restored evidence or receipt inventory differs from the backup manifest.");
       if (sourceWork) {
         stage = "durable-work-reconstruction";
         workVerification = "failed";

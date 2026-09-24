@@ -159,6 +159,7 @@ export function CommandForm<
     canSubmit?: boolean;
     onSuccess?: (result: O["Type"]) => void;
     onNewCommand?: () => void;
+    validate?: (result: O["Type"], input: S["Type"]) => void;
     keys?: Map<string, string>;
   },
 ) {
@@ -182,6 +183,7 @@ export function CommandForm<
       });
       if (typeof result === "object" && result !== null && "scope" in result)
         checkScope(book, Schema.decodeUnknownSync(Accounting.Scope)(result.scope));
+      props.validate?.(result, request.input);
       return result;
     },
     onSuccess: (result, request) => {

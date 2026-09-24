@@ -16,7 +16,16 @@ A page is refused on an unknown shape, mismatched account, excess size/count, un
 
 ## Integration and verification
 
-Root owns shared integration files; this recovery slice edits only `apps/api/scripts/bank-connector-sync.ts` and forward migration `apps/api/migrations/8400-plaid-page-cursor-boundary.sql`. The existing `bankConnector` REST group, statements and contracts serve the job. Run `8400` after `7800-plaid-connector-source-pages.sql`; it replaces the approved SQL function without changing direct table privileges. No new REST or MCP endpoint is needed; the CLI uses the existing scoped API. The API's `providerConfigured: false` remains a conservative DB statement; private OS configuration is deliberately invisible to the API. Type/syntax checks do not verify provider network, consent or runtime effects. No tests or fixtures were added (D-09).
+Root owns shared integration files; this recovery slice uses the existing `bankConnector`
+REST group, statements and contracts plus forward migration
+`apps/api/migrations/9110-bank-connector-feed-recovery.sql`. Run `9110` after the existing
+Plaid cursor-boundary migration; it adds only an operator-authorized read function and does
+not change direct table privileges. No new MCP endpoint is needed; the CLI uses the scoped
+API. `bank-connector-sync.ts inspect /absolute/private/config.json` uses a Plaid-credential-free
+snapshot config, reads only `GET /bank-connector-feeds`, and sends no Plaid or database
+write request. The API's `providerConfigured: false` remains a conservative DB statement;
+private OS configuration is deliberately invisible to the API. Type/syntax checks do not
+verify provider network, consent or runtime effects. No tests or fixtures were added (D-09).
 
 ## Synthetic local Worker loopback observation
 

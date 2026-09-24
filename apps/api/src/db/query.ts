@@ -25,7 +25,7 @@ import * as SqlError from "effect/unstable/sql/SqlError";
 import { Database, databaseLayer } from "./connection";
 import { sourceIntakeStatements } from "./statements/source-intake";
 import { registerReportStatements } from "./statements/register-report";
-import { reportComparisonStatements } from "./statements/reports";
+import { reportComparisonStatements, reportFamilyStatements } from "./statements/reports";
 import { closingDiscoveryStatements } from "./statements/closing";
 import { preparationJobStopStatements } from "./statements/automation";
 import { sieStatements } from "./statements/sie";
@@ -163,6 +163,7 @@ const statements = {
   ...sourceIntakeStatements,
   ...registerReportStatements,
   ...reportComparisonStatements,
+  ...reportFamilyStatements,
   ...closingDiscoveryStatements,
   ...preparationJobStopStatements,
   ...sieStatements,

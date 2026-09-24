@@ -4,14 +4,14 @@ Written before the recovery package changes. These are operator acceptance cases
 
 ## Accepted result
 
-A new versioned backup must bind one PostgreSQL snapshot to an explicit inline-evidence, supplementary-file, configuration-custody, release-file, migration and role inventory. Missing declared files, mismatched hashes, broken retained evidence links, unapplied/changed release migrations or unsupported database objects must stop completion. Restore must produce useful private stage diagnostics and a receipt only after reconstruction and quarantine checks. No code path enables an application or provider writer.
+A new versioned backup must bind one PostgreSQL snapshot to explicit database, object, evidence, receipt, supplementary-file, configuration-custody, release-file, migration, role and durable-work inventories. Missing declared files, mismatched hashes, broken retained evidence/object references, unapplied/changed release migrations or unsupported database/object types must stop completion. Restore must produce useful private stage diagnostics and a receipt only after reconstruction and quarantine checks. `inspect` must emit a machine-readable result that distinguishes complete closure from a legacy bundle. No code path enables an application or provider writer.
 
 ## Cases that must fail closed
 
 1. A source targets the wrong host/cluster/database or an existing protected port; refuse before accounting content reads.
 2. An expected configuration/key recovery procedure or release file is absent or altered; no complete backup manifest.
 3. Inline evidence bytes do not match their digest, a relational evidence link is missing, or a committed JSON evidence reference resolves to a different/missing digest; no complete bundle. The exact saved-intent exception is specified below.
-4. A database object pointer is introduced without a reviewed local closure adapter; refuse, even if all ordinary table hashes match.
+4. A database object pointer is introduced without a reviewed local closure adapter, an unsupported object type is present, or a referenced object/evidence/receipt is missing; refuse, even if all ordinary table hashes match.
 5. A sequence, unsupported extension, foreign/materialized/unlogged relation, subscription/publication, disabled constraint or unreviewed relation kind exists; refuse instead of claiming complete reconstruction.
 6. A source release file changes during capture, or an applied migration is absent/different in the pinned release; refuse completion.
 7. Destination roles differ in privilege flags/membership, or required schema/database characteristics differ; refuse before new database creation where possible.

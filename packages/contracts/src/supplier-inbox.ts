@@ -51,6 +51,20 @@ export const SupplierInboxReview = Schema.Struct({
   inbox: SupplierInboxView,
   draft: Draft.SupplierInvoiceDraftRevision,
 });
+export const SupplierInboxCapabilities = {
+  supplier_inbox_list: {
+    description: "Read a bounded book-scoped supplier inbox page without fetching original bytes.",
+    input: Schema.Struct({ scope: A.Scope, cursor: Schema.optional(A.Identifier) }),
+    output: SupplierInboxPage,
+    readOnly: true,
+  },
+  supplier_inbox_get: {
+    description: "Read one supplier inbox occurrence, extraction attempts and retained review reason without fetching original bytes.",
+    input: Schema.Struct({ scope: A.Scope, occurrenceId: A.Identifier }),
+    output: SupplierInboxView,
+    readOnly: true,
+  },
+};
 const path = "/v1/entities/:entityId/books/:bookId/commerce/supplier-inbox";
 export const SupplierInboxApi = HttpApiGroup.make("supplierInbox")
   .add(HttpApiEndpoint.get("listSupplierInboxes", path, {

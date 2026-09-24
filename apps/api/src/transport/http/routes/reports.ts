@@ -6,6 +6,20 @@ import { capabilities } from "../../../application/capabilities";
 
 export const ReportHandlers = HttpApiBuilder.group(Api, "reports", (handlers) =>
   handlers
+    .handle("prepareReportFamily", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        capabilities.reports_prepare_family.execute(token, {
+          scope: params,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("getReportFamily", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        capabilities.reports_get_family.execute(token, { scope: params, reportId: params.id }),
+      ),
+    )
     .handle("compareReports", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.reports_compare.execute(token, {

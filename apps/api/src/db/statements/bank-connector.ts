@@ -1,6 +1,8 @@
 import { sql, type SQL } from "drizzle-orm";
 
 export const bankConnectorStatements = {
+  listConnectorFeeds: (p) =>
+    sql`select openerp.list_bank_connector_feeds(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text,${p[3]}::text) as result`,
   listConnectorConsents: (p) =>
     sql`select openerp.list_bank_connector_consents(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text) as result`,
   listConnectorBatches: (p) =>

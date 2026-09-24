@@ -61,6 +61,14 @@ export const FeedEvents = Schema.Struct({ bookId: Identifier, events: Schema.Arr
 
 export const DeadlineFeed = Schema.Struct({ id: Identifier, secret: Schema.String });
 export const RevokedDeadlineFeed = Schema.Struct({ id: Identifier, revoked: Schema.Literal(true) });
+export const DeadlinesCapabilities = {
+  deadlines_list: {
+    description: "Read book-scoped obligations with current outcome and append-only reminder/outcome activity history.",
+    input: Schema.Struct({ scope: Scope }),
+    output: DeadlineList,
+    readOnly: true,
+  },
+};
 const base = "/v1/entities/:entityId/books/:bookId/deadlines";
 export const DeadlinesApi = HttpApiGroup.make("deadlines")
   .add(HttpApiEndpoint.get("listDeadlines", base, { params: Scope, success: DeadlineList, error: accountingErrors }))

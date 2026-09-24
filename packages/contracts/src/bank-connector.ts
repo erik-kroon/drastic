@@ -86,13 +86,86 @@ export const ConnectorBatchInventory = Schema.Struct({
   items: Schema.Array(ConnectorBatch),
   nextCursor: Schema.NullOr(A.Identifier),
 });
+export const ConnectorPageSource = Schema.Struct({
+  occurrenceId: A.Identifier,
+  occurrenceKey: Label,
+  sha256: A.Digest,
+  byteLength: Schema.Int,
+  mediaType: Label,
+  originalAvailability: Schema.Literal("not_checked"),
+});
+export const ConnectorPageEvidence = Schema.Struct({
+  id: A.Identifier,
+  requestKey: A.IdempotencyHeaders.fields["idempotency-key"],
+  providerOutcome: IngestConnectorBatch.fields.providerOutcome,
+  previousCursor: Cursor,
+  nextCursor: Cursor,
+  sourceRevision: Label,
+  recordCount: Schema.Int,
+  overlapCount: Schema.Int,
+  source: Schema.NullOr(ConnectorPageSource),
+  recognition: Schema.Literal("not_admitted"),
+  providerVerification: Schema.Literal("not_established"),
+  receivedAt: Schema.String,
+  receivedBy: A.Identifier,
+});
+export const ConnectorCursorSnapshot = Schema.Struct({
+  cursor: Cursor,
+  retainedPageCount: Schema.Int,
+  retainedPageStartCursor: Schema.NullOr(Cursor),
+  lastPageId: Schema.NullOr(A.Identifier),
+  lastPageAt: Schema.NullOr(Schema.String),
+});
+export const ConnectorRecoveryBlocker = Schema.Struct({
+  code: Schema.Literals([
+    "PAGINATION_START_NOT_RETAINED",
+    "TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION",
+  ]),
+  state: Schema.Literals(["structural_limit", "not_observed_in_retained_evidence"]),
+  message: Schema.String,
+  operatorAction: Schema.Literal("inspect_retained_pages_and_reconcile_a_fresh_provider_snapshot"),
+});
+export const ConnectorFeed = Schema.Struct({
+  scope: A.Scope,
+  consent: ConnectorConsentState,
+  account: Schema.Struct({
+    externalAccountId: Label,
+    sourceAccountId: A.Identifier,
+    accountId: A.Identifier,
+    active: Schema.Boolean,
+  }),
+  readAt: Schema.String,
+  cursorSnapshot: ConnectorCursorSnapshot,
+  pages: Schema.Array(ConnectorPageEvidence).check(Schema.isMaxLength(20)),
+  pageEvidenceTruncated: Schema.Boolean,
+  providerAcceptance: Schema.Literal("not_established"),
+  accountCoverage: Schema.Literal("not_established"),
+  automaticRecovery: Schema.Literal(false),
+  recoveryBlockers: Schema.Array(ConnectorRecoveryBlocker).check(Schema.isMaxLength(2)),
+});
+export const ConnectorFeedInventory = Schema.Struct({
+  scope: A.Scope,
+  items: Schema.Array(ConnectorFeed).check(Schema.isMaxLength(20)),
+  nextCursor: Schema.NullOr(A.Identifier),
+});
 const inventoryQuery = Schema.Struct({ cursor: Schema.optional(A.Identifier) });
+const feedInventoryQuery = Schema.Struct({
+  cursor: Schema.optional(A.Identifier),
+  consentId: Schema.optional(A.Identifier),
+});
 const base = "/v1/entities/:entityId/books/:bookId";
 const scoped = { params: A.Scope, error: accountingErrors };
 const identified = { params: A.ChangePath, error: accountingErrors };
 const mutation = { ...scoped, headers: A.IdempotencyHeaders };
 const identifiedMutation = { ...identified, headers: A.IdempotencyHeaders };
 export const BankConnectorApi = HttpApiGroup.make("bankConnector")
+  .add(
+    HttpApiEndpoint.get("listConnectorFeeds", `${base}/bank-connector-feeds`, {
+      ...scoped,
+      query: feedInventoryQuery,
+      success: ConnectorFeedInventory,
+    }),
+  )
   .add(
     HttpApiEndpoint.get("listConnectorConsents", `${base}/bank-connector-consents`, {
       ...scoped,

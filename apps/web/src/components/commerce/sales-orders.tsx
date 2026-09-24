@@ -5,7 +5,7 @@ import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { Link } from "@open-erp/ui/components/link";
-import { InputField } from "@open-erp/ui/components/field";
+import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
@@ -33,6 +33,7 @@ export function SalesOrders({ book, locale }: CommerceProps) {
   const [selectedId, setSelectedId] = useState("");
   const [source, setSource] = useState<typeof Drafts.InvoiceDraftRevision.Type | null>(null);
   const [sourceError, setSourceError] = useState<Error | null>(null);
+  const [documentKind, setDocumentKind] = useState<"quote" | "order">("quote");
   const creationKeys = useRef(new Map<string, string>());
   const list = useQuery({
     queryKey: [...commerceKey(book), "sales-documents"],
@@ -65,11 +66,25 @@ export function SalesOrders({ book, locale }: CommerceProps) {
       <Button type="submit" variant="outline">{sv ? "Hämta underlag" : "Review source draft"}</Button>
       <AccountingStatus locale={locale} error={sourceError} />
     </Box>
-    {source ? <Box display="grid" gap="md">
-      <Text>{source.content.title} · {source.content.customer.legalName}</Text>
-      <Text tone="muted">{sv ? "Kopierar innehållet som en ny offert. Källutkastet ändras inte." : "Copies this content into a new quote. The source draft remains unchanged."}</Text>
-      <CommandForm book={book} locale={locale} path={path} schema={Sales.CreateSalesDocument} output={Sales.SalesDocument}
-        input={() => ({ kind: "quote", content: source.content })} label={sv ? "Skapa offert" : "Create quote"}
+     {source ? <Box display="grid" gap="md">
+       <Text>{source.content.title} · {source.content.customer.legalName}</Text>
+       <SelectField
+         label={sv ? "Dokumenttyp" : "Document type"}
+         value={documentKind}
+         options={[
+           { value: "quote", label: sv ? "Offert" : "Quote" },
+           { value: "order", label: sv ? "Order" : "Order" },
+         ]}
+         onValueChange={(value) => {
+           if (value === "quote" || value === "order") setDocumentKind(value);
+         }}
+       />
+       <Text tone="muted">{documentKind === "quote"
+         ? (sv ? "Kopierar innehållet som en ny offert. Källutkastet ändras inte." : "Copies this content into a new quote. The source draft remains unchanged.")
+         : (sv ? "Kopierar innehållet som en ny order. Källutkastet ändras inte." : "Copies this content into a new order. The source draft remains unchanged.")}</Text>
+       <CommandForm book={book} locale={locale} path={path} schema={Sales.CreateSalesDocument} output={Sales.SalesDocument}
+         input={() => ({ kind: documentKind, content: source.content })} label={documentKind === "quote" ? (sv ? "Skapa offert" : "Create quote") : (sv ? "Skapa order" : "Create order")}
+
         allowed={book.role === "operator"} keys={creationKeys.current}
         onSuccess={result => setSelectedId(result.id)} onNewCommand={() => creationKeys.current.clear()} />
     </Box> : null}

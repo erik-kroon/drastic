@@ -91,6 +91,14 @@ export const CollectionHistoryPage = Schema.Struct({
 const historyQuery = Schema.Struct({
   after: Schema.optional(Schema.String.check(Schema.isMaxLength(256))),
 });
+export const CollectionsCapabilities = {
+  collections_history: {
+    description: "Read bounded immutable collection statements, disputes and append-only actions. Reminder preparation is not delivery.",
+    input: Schema.Struct({ scope: Accounting.Scope, customerId: Accounting.Identifier, after: Schema.optional(Schema.String.check(Schema.isMaxLength(256))) }),
+    output: CollectionHistoryPage,
+    readOnly: true,
+  },
+};
 const base = "/v1/entities/:entityId/books/:bookId/commerce/collections";
 const mutation = {
   params: Accounting.Scope,

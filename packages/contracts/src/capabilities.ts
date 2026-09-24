@@ -47,6 +47,12 @@ import { ExpenseTaxCapabilities } from "./expense-tax";
 import { OwnerRegisterCapabilities } from "./owner-register";
 import { FirmCapabilities } from "./firms";
 import { WorkspaceCapabilities } from "./workspace";
+import { CatalogCapabilities } from "./catalog";
+import { DimensionsCapabilities } from "./dimensions";
+import { CrmMasterCapabilities } from "./crm-master";
+import { CollectionsCapabilities } from "./collections";
+import { DeadlinesCapabilities } from "./deadlines";
+import { SupplierInboxCapabilities } from "./supplier-inbox";
 
 const scoped = { scope: Accounting.Scope };
 const mutation = {
@@ -83,6 +89,7 @@ export const Capabilities = {
   ...OwnerRegisterCapabilities,
   ...CommerceCapabilities,
   ...RegisterReportCapabilities,
+  ...Reports.ReportFamilyCapabilities,
   ...Reports.ReportComparisonCapabilities,
   ...VatReturnCapabilities,
   ...SieCapabilities,
@@ -101,6 +108,12 @@ export const Capabilities = {
   ...InvoiceDeliveryCapabilities,
   ...ArLegalIssueCapabilities,
   ...CommerceAllocationReversalCapabilities,
+  ...CatalogCapabilities,
+  ...DimensionsCapabilities,
+  ...CrmMasterCapabilities,
+  ...CollectionsCapabilities,
+  ...DeadlinesCapabilities,
+  ...SupplierInboxCapabilities,
   ...ClosingCapabilities,
   ...Automation.PreparationJobStopCapabilities,
   ...SubledgerCapabilities,

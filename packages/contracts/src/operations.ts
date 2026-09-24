@@ -108,6 +108,42 @@ export const DatabaseInventory = Schema.Struct({
   migrations: Schema.Array(Schema.Struct({ name: Schema.String, sha256: Digest })),
   roles: Schema.Array(RoleInventory),
 });
+export const RetainedObjectReference = Schema.Struct({
+  objectKey: Schema.String.check(Schema.isPattern(/^v1\/[a-z][a-z0-9_-]{2,127}\/[a-f0-9]{64}$/)),
+  sha256: Schema.String.check(Schema.isPattern(/^sha256:[a-f0-9]{64}$/)),
+  byteLength: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 5242880 })),
+});
+export const ObjectInventory = Schema.Struct({
+  version: Schema.Literal(1),
+  owner: Schema.Literal("openerp.intake_contents.object_key"),
+  inlineOriginals: Count,
+  retainedOriginals: Count,
+  references: Schema.Array(RetainedObjectReference),
+  unsupportedObjectTypes: Schema.Literal("none"),
+  content: Schema.Literal("matched"),
+});
+export const EvidenceInventory = Schema.Struct({
+  version: Schema.Literal(1),
+  table: TableFingerprint,
+  contentBytes: Count,
+  relationalReferences: Count,
+  jsonReferences: Count,
+  integrity: Schema.Literal("matched"),
+  references: Schema.Literal("matched"),
+});
+export const ReceiptInventory = Schema.Struct({
+  version: Schema.Literal(1),
+  tables: Schema.Array(TableFingerprint),
+  content: Schema.Literal("matched"),
+});
+export const RecoveryClosure = Schema.Struct({
+  version: Schema.Literal(1),
+  database: Schema.Literal("matched"),
+  objects: ObjectInventory,
+  evidence: EvidenceInventory,
+  receipts: ReceiptInventory,
+  durableWork: Schema.Literal("matched"),
+});
 export const RecoveryControls = Schema.Struct({
   evidenceCount: Count,
   evidenceBytes: Count,
@@ -243,6 +279,7 @@ export const BackupManifest = Schema.Struct({
   configuration: Schema.Array(ConfigurationCustody),
   artifacts: Schema.Array(RecoveryArtifact),
   files: Schema.Array(BackupFile),
+  closure: Schema.optional(RecoveryClosure),
   evidenceAndReceipts: Schema.Literal("all-user-tables-in-snapshot"),
   archiveCompliance: Schema.Literal("not-established"),
   keyRecovery: Schema.Literal("custody-declared-not-exercised"),
@@ -285,4 +322,20 @@ export const OperationDiagnostic = Schema.Struct({
   recordedAt: Schema.String,
   status: Schema.Literals(["started", "passed", "failed", "not-confirmed"]),
   message: Schema.String,
+});
+export const BundleInspection = Schema.Struct({
+  version: Schema.Literal(1),
+  kind: Schema.Literal("openerp-local-bundle-inspection"),
+  inspectedAt: Schema.String,
+  status: Schema.Literals(["complete", "legacy"]),
+  manifestSha256: Digest,
+  database: Schema.Literal("manifest-bound"),
+  objects: Schema.Literals(["matched", "not-captured-in-source"]),
+  evidence: Schema.Literals(["manifest-bound", "not-captured-in-source"]),
+  receipts: Schema.Literals(["manifest-bound", "not-captured-in-source"]),
+  durableWork: Schema.Literals(["matched", "not-captured-in-source"]),
+  applicationRecovery: Schema.Literal("blocked-restricted-read-admission"),
+  writerPromotion: Schema.Literal("not-performed"),
+  providerPromotion: Schema.Literal("not-performed"),
+  productionAction: Schema.Literal("disabled"),
 });

@@ -284,7 +284,7 @@ function ReportBasis({
   );
 }
 
-function AccountExplanation({
+export function AccountExplanation({
   book,
   report,
   accountId,

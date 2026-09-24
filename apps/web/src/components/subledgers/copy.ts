@@ -68,8 +68,46 @@ const en = {
     "Live carrying-basis status is unavailable. Refresh before preparing. Proposal review performs its own current dependency check.",
   basisVoucher: "Carrying-basis voucher",
   basisDigest: "Carrying-basis digest",
+  amendmentScheduleDigest: "Amendment schedule digest",
+  amendment: "Operator amendments",
+  amendmentKind: "Current amendment",
+  amendmentNone: "No amendment retained",
+  future: "Future excluding residual",
+  reversedFace: "Reversed face amount",
+  amendmentNotice:
+    "These are retained synthetic operator records. They do not approve legal treatment or establish runtime or database behavior.",
+  amendmentNoBasis:
+    "A reviewed linked carrying basis is required before an amendment can be submitted.",
+  amendmentNoSuffix: "There is no complete future unposted suffix to amend.",
+  amendmentStalePrefix:
+    "A conflicted occurrence blocks the amendment. Inspect its voucher before retrying.",
+  amendmentDatePrefix:
+    "Date amendments require every occurrence before the suffix to be posted and unreversed.",
+  amendmentBlockerBasis:
+    "Stale blocker: the linked basis was reversed, corrected or no longer matches.",
+  amendmentBlockerEstimate:
+    "Stale blocker: the reviewed remaining estimate no longer conserves the live history.",
+  amendmentBlockerDisposed:
+    "Stale blocker: this schedule is disposed; later amendments and recognition are blocked.",
+  amendmentBlockerUnknown:
+    "Stale blocker: the live carrying-basis status is not available. Refresh before preparing an amendment.",
+  amendmentFirst: "First remaining occurrence",
+  amendmentReviewEvidence: "Review evidence ID",
+  amendmentRationale: "Amendment rationale",
+  amendmentPeriods: "Future dates and periods",
+  amendmentInstallments: "Future installments",
+  amendmentResidual: "Residual",
+  amendmentDate: "Amend future dates",
+  amendmentEstimate: "Amend remaining estimate",
+  amendmentDateHelp:
+    "Replace the complete future suffix. Amounts, accounts, source, residual and occurrence identities remain unchanged.",
+  amendmentEstimateHelp:
+    "Supply every remaining installment explicitly. The retained server checks conservation, periods, currentness and any count change.",
+  amendmentAdd: "Add future installment",
+  amendmentRemove: "Remove last future installment",
+  amendmentOnlyOperator: "Amendment review is available to operators only.",
   frozen:
-    "Preparation or a linked carrying basis freezes this schedule. Later amendments, disposals, impairments and correction replacements are not supported.",
+    "This schedule is not editable through the ordinary revision form. Use the operator amendment commands above, then prepare a fresh proposal for human approval.",
   pending: "Saving…",
   evidenceCreate: "Retain supporting evidence",
   evidenceTitle: "Evidence title",
@@ -146,8 +184,46 @@ const sv: typeof en = {
     "Aktuell status för redovisningsgrunden saknas. Uppdatera före beredning. Förslagsgranskningen kontrollerar aktuella beroenden separat.",
   basisVoucher: "Verifikation för redovisningsgrund",
   basisDigest: "Kontrollsumma för redovisningsgrund",
+  amendmentScheduleDigest: "Kontrollsumma för ändrad plan",
+  amendment: "Operatörens ändringar",
+
+  amendmentKind: "Aktuell ändring",
+  amendmentNone: "Ingen ändring bevarad",
+  future: "Framtida exklusive restvärde",
+  reversedFace: "Återfört ansiktbelopp",
+  amendmentNotice:
+    "Detta är bevarade syntetiska operatörsuppgifter. De godkänner inte juridisk behandling och bevisar inte runtime- eller databasbeteende.",
+  amendmentNoBasis: "En granskad kopplad redovisningsgrund krävs innan en ändring kan skickas.",
+  amendmentNoSuffix: "Det finns ingen komplett framtida obokförd suffix att ändra.",
+  amendmentStalePrefix:
+    "Ett konfliktstillestånd blockerar ändringen. Granska verifikationen innan du försöker igen.",
+  amendmentDatePrefix:
+    "Datumändringar kräver att alla tillfällen före suffixet är bokförda och inte återförda.",
+  amendmentBlockerBasis:
+    "Stale blocker: den kopplade grunden har återförts, rättats eller stämmer inte längre.",
+  amendmentBlockerEstimate:
+    "Stale blocker: den granskade återstående uppskattningen bevarar inte längre den levande historiken.",
+  amendmentBlockerDisposed:
+    "Stale blocker: planen är avyttrad; senare ändringar och redovisning är blockerade.",
+  amendmentBlockerUnknown:
+    "Stale blocker: aktuell status för redovisningsgrunden saknas. Uppdatera innan du förbereder en ändring.",
+  amendmentFirst: "Första återstående tillfälle",
+  amendmentReviewEvidence: "ID för granskningsunderlag",
+  amendmentRationale: "Motivering till ändringen",
+  amendmentPeriods: "Framtida datum och perioder",
+  amendmentInstallments: "Framtida installeringar",
+  amendmentResidual: "Restvärde",
+  amendmentDate: "Ändra framtida datum",
+  amendmentEstimate: "Ändra återstående uppskattning",
+  amendmentDateHelp:
+    "Ersätt hela framtida suffixet. Belopp, konton, källa, restvärde och tillfallsidentiteter ändras inte.",
+  amendmentEstimateHelp:
+    "Ange varje framtida installering explicit. Servern kontrollerar bevarande, perioder, aktualitet och eventuell antalsändring.",
+  amendmentAdd: "Lägg till framtida installering",
+  amendmentRemove: "Ta bort sista framtida installering",
+  amendmentOnlyOperator: "Ändringsgranskning är endast tillgänglig för operatörer.",
   frozen:
-    "Beredning eller en kopplad redovisningsgrund låser planen. Senare ändringar, avyttringar, nedskrivningar och ersättningar efter rättelser stöds inte.",
+    "Planen kan inte redigeras via den vanliga versionsformuläret. Använd operatörens ändringskommandon ovan och förbered sedan ett nytt förslag för mänskligt godkännande.",
   pending: "Sparar…",
   evidenceCreate: "Bevara underlag",
   evidenceTitle: "Underlagets titel",

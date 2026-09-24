@@ -1,7 +1,7 @@
 import { Client } from "pg";
 import * as Schema from "effect/Schema";
 import { maxSourceBytes } from "@open-erp/contracts/source-intake";
-import { TableFingerprint } from "@open-erp/contracts/operations";
+import { ObjectInventory, TableFingerprint } from "@open-erp/contracts/operations";
 import { RetainedObject } from "../../src/adapters/storage/retained-objects";
 import { fileObjectStore } from "../file-object-store";
 import { filesIn } from "./artifacts";
@@ -9,29 +9,79 @@ import { artifactPath, fingerprint, privatePath, refuse } from "./safety";
 
 type Reference = typeof RetainedObject.Type;
 
+async function assertOnlyOwnedObjectColumn(client: Client) {
+  const unsupported = await client.query<{ found: boolean }>(`
+    SELECT EXISTS(
+      SELECT FROM pg_attribute a
+      JOIN pg_class c ON c.oid=a.attrelid
+      JOIN pg_namespace n ON n.oid=c.relnamespace
+      WHERE n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'
+        AND a.attnum > 0 AND NOT a.attisdropped
+        AND a.attname IN ('object_key','storage_key','blob_key','object_version','storage_version')
+        AND NOT (n.nspname='openerp' AND c.relname='intake_contents' AND a.attname='object_key')
+    ) AS found`);
+  if (unsupported.rows[0]?.found !== false)
+    refuse("Unsupported database object reference type or owner is not recoverable.");
+}
+
 export async function objectReferences(
   client: Client,
   tables: ReadonlyArray<typeof TableFingerprint.Type>,
+  required = true,
 ) {
-  if (!tables.some((table) => table.schema === "openerp" && table.table === "intake_contents"))
-    return [];
+  if (!tables.some((table) => table.schema === "openerp" && table.table === "intake_contents")) {
+    if (required) refuse("The database is missing the owned retained-source object table.");
+    return Schema.decodeSync(ObjectInventory)({
+      version: 1,
+      owner: "openerp.intake_contents.object_key",
+      inlineOriginals: "0",
+      retainedOriginals: "0",
+      references: [],
+      unsupportedObjectTypes: "none",
+      content: "matched",
+    });
+  }
+  await assertOnlyOwnedObjectColumn(client);
   const columns = await client.query(
     "SELECT 1 FROM information_schema.columns WHERE table_schema='openerp' AND table_name='intake_contents' AND column_name='object_key'",
   );
-  if (columns.rowCount === 0) return [];
+  if (columns.rowCount === 0)
+    return refuse("The owned retained-source object table has no supported object owner.");
   const integrity = await client.query<{ invalid: boolean }>(`SELECT
     EXISTS(SELECT FROM openerp.intake_contents c WHERE c.bytes IS NOT NULL
       AND c.sha256 IS DISTINCT FROM 'sha256:'||encode(sha256(c.bytes),'hex'))
+    OR EXISTS(SELECT FROM openerp.intake_contents c
+      WHERE (c.object_key IS NULL AND c.byte_length IS NOT NULL)
+        OR (c.object_key IS NOT NULL AND (c.bytes IS NOT NULL OR c.byte_length IS NULL))
+        OR (c.object_key IS NOT NULL AND (
+          c.object_key !~ '^v1/[a-z][a-z0-9_-]{2,127}/[a-f0-9]{64}$'
+          OR c.sha256 !~ '^sha256:[a-f0-9]{64}$'
+          OR c.object_key <> 'v1/' || c.book_id || '/' || substring(c.sha256 FROM 8))))
     OR EXISTS(SELECT FROM openerp.intake_occurrences o LEFT JOIN openerp.intake_contents c
       ON c.book_id=o.book_id AND c.sha256=o.sha256
       WHERE c.sha256 IS NULL OR o.body->>'sha256' IS DISTINCT FROM c.sha256
         OR (o.body->>'byteLength')::integer IS DISTINCT FROM coalesce(octet_length(c.bytes),c.byte_length)) AS invalid`);
   if (integrity.rows[0]?.invalid !== false)
     refuse("Retained originals disagree with their content manifests.");
+  const counts = await client.query<{ inlineOriginals: string; retainedOriginals: string }>(`
+    SELECT (count(*) FILTER (WHERE object_key IS NULL))::text AS "inlineOriginals",
+      (count(*) FILTER (WHERE object_key IS NOT NULL))::text AS "retainedOriginals"
+    FROM openerp.intake_contents`);
   const result = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
     'objectKey',object_key,'sha256',sha256,'byteLength',byte_length) AS body
     FROM openerp.intake_contents WHERE object_key IS NOT NULL ORDER BY object_key`);
-  return result.rows.map((row) => Schema.decodeUnknownSync(RetainedObject)(row.body));
+  const countRow = counts.rows[0];
+  if (!countRow) return refuse("Retained object inventory returned no count.");
+  const references = result.rows.map((row) => Schema.decodeUnknownSync(RetainedObject)(row.body));
+  return Schema.decodeSync(ObjectInventory)({
+    version: 1,
+    owner: "openerp.intake_contents.object_key",
+    inlineOriginals: countRow.inlineOriginals,
+    retainedOriginals: countRow.retainedOriginals,
+    references,
+    unsupportedObjectTypes: "none",
+    content: "matched",
+  });
 }
 
 async function archiveReader() {
@@ -119,4 +169,15 @@ export async function verifyObjects(root: string, references: ReadonlyArray<Refe
     if (file.sha256 !== reference.sha256.slice(7) || file.bytes !== String(reference.byteLength))
       refuse("A referenced original failed reconstruction validation.");
   }
+}
+
+export async function verifyObjectInventory(root: string, inventory: typeof ObjectInventory.Type) {
+  if (BigInt(inventory.retainedOriginals) !== BigInt(inventory.references.length))
+    refuse("Retained object inventory count differs from its references.");
+  if (
+    new Set(inventory.references.map((reference) => reference.objectKey)).size !==
+    inventory.references.length
+  )
+    refuse("Retained object inventory contains duplicate object keys.");
+  await verifyObjects(root, inventory.references);
 }
