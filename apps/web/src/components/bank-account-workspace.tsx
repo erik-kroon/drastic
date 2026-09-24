@@ -712,6 +712,9 @@ function BankAdditionalTools({ sv, base }: { sv: boolean; base: string }) {
       label={sv ? "Avstämningsrapporter och fler verktyg" : "Reconciliation reports and more tools"}
     >
       <Box display="flex" gap="lg" flexWrap="wrap">
+        <PageAction quiet href={`${base.replace(/\/accounts$/, "")}/banking-setup`}>
+          {sv ? "Samtycken och kontokopplingar" : "Consents and account mappings"}
+        </PageAction>
         <PageAction quiet href={`${base}?view=coverage`}>
           {sv ? "Granska underlagstäckning" : "Review statement coverage"}
         </PageAction>

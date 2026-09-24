@@ -1,3 +1,4 @@
+import { PaymentHistoryEntry, type EntryKind } from "./payment-entry";
 import { useRef } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
@@ -20,6 +21,17 @@ import {
 const review = Schema.Struct({
   rationale: Historical.AdmitItems.fields.rationale,
   confirmed: Schema.Literal(true),
+  chronology: Historical.AdmitItems.fields.chronology,
+  payments: Historical.AdmitItems.fields.payments,
+  matches: Historical.AdmitItems.fields.matches,
+  paymentControls: Historical.AdmitItems.fields.paymentControls,
+  matchControls: Historical.AdmitItems.fields.matchControls,
+  drafts: Schema.Struct({
+    payments: Schema.Literal(false),
+    matches: Schema.Literal(false),
+    paymentControls: Schema.Literal(false),
+    matchControls: Schema.Literal(false),
+  }),
 });
 
 export function AdmitOpenItems({
@@ -49,17 +61,33 @@ export function AdmitOpenItems({
   const uncertain = isUncertainWriteError(save.error);
   const disabled = book.role !== "operator" || save.isPending || uncertain;
   const form = useForm({
-    defaultValues: { rationale: "", confirmed: false },
-    validators: { onSubmit: Schema.toStandardSchemaV1(review) },
+    defaultValues: {
+      rationale: "",
+      confirmed: false,
+      chronology: "unknown",
+      payments: [...Schema.decodeSync(Historical.AdmitItems.fields.payments)([])],
+      matches: [...Schema.decodeSync(Historical.AdmitItems.fields.matches)([])],
+      paymentControls: [...Schema.decodeSync(Historical.AdmitItems.fields.paymentControls)([])],
+      matchControls: [...Schema.decodeSync(Historical.AdmitItems.fields.matchControls)([])],
+      drafts: { payments: false, matches: false, paymentControls: false, matchControls: false },
+    },
+    validators: {
+      onSubmit: ({ value }) =>
+        Schema.is(review)(value)
+          ? undefined
+          : "Complete the register, add or clear drafts, and confirm the scope.",
+    },
     onSubmit: async ({ value }) => {
       await save
         .mutateAsync({
           planDigest: plan.digest,
-          payments: [],
-          matches: [],
-          paymentControls: [],
-          matchControls: [],
-          chronology: "unknown",
+          payments: value.payments,
+          matches: value.matches,
+          paymentControls: value.paymentControls,
+          matchControls: value.matchControls,
+          chronology: Schema.decodeUnknownSync(Historical.AdmitItems.fields.chronology)(
+            value.chronology,
+          ),
           rationale: value.rationale,
         })
         .catch(() => undefined);
@@ -77,9 +105,84 @@ export function AdmitOpenItems({
     >
       <Text>
         {sv
-          ? "Spara planens öppna poster utan betalnings- eller matchningshistorik. Betalningskronologin förblir okänd. Registret kan inte ändras efteråt och skapar inga bokföringsposter."
-          : "Save the plan’s open items without payment or matching history. Payment chronology remains unknown. The register cannot be amended afterward and creates no ledger postings."}
+          ? "Spara planens öppna poster och eventuell tillgänglig betalningshistorik. Lägg bara till belagda betalningar och matchningar, med oberoende kontrollsummor per konto och valuta. Registret kan inte ändras efteråt och skapar inga bokföringsposter."
+          : "Save the plan’s open items and any supplied payment history. Add only evidenced payments and matches, with independent control totals per account and currency. The register cannot be amended afterward and creates no ledger postings."}
       </Text>
+      {(["payments", "matches", "paymentControls", "matchControls"] satisfies EntryKind[]).map(
+        (kind) => (
+          <Box key={kind} display="grid" gap="sm">
+            <PaymentHistoryEntry
+              kind={kind}
+              disabled={disabled}
+              onDraftChange={(dirty) => form.setFieldValue(`drafts.${kind}`, dirty)}
+              onAdd={(entry) => {
+                if (entry.kind === "payments") form.pushFieldValue("payments", entry.value);
+                else if (entry.kind === "matches") form.pushFieldValue("matches", entry.value);
+                else if (entry.kind === "paymentControls")
+                  form.pushFieldValue("paymentControls", entry.value);
+                else form.pushFieldValue("matchControls", entry.value);
+              }}
+            />
+            <form.Field name={kind} mode="array">
+              {(field) => (
+                <Box display="grid" gap="sm">
+                  {field.state.value.map((entry, index) => (
+                    <Box key={index} display="grid" gap="sm">
+                      <Text>
+                        {"sourceIdentity" in entry
+                          ? entry.sourceIdentity
+                          : `${entry.sourceAccount} · ${entry.currency}`}{" "}
+                        · {"amountMinor" in entry ? entry.amountMinor : entry.independentTotalMinor}{" "}
+                        · {entry.basis}
+                      </Text>
+                      {"sourceIdentity" in entry ? (
+                        <Text>
+                          {"paymentIdentity" in entry
+                            ? `${entry.paymentIdentity} → ${entry.itemIdentity}`
+                            : `${entry.sourceAccount} · ${entry.currency}`}{" "}
+                          · {entry.sourceDate ?? (sv ? "Okänt datum" : "Unknown date")}
+                        </Text>
+                      ) : null}
+                      <Box>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          disabled={disabled}
+                          onClick={() => field.removeValue(index)}
+                        >
+                          {sv ? "Ta bort från utkastet" : "Remove from draft"}
+                        </Button>
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </form.Field>
+          </Box>
+        ),
+      )}
+      <form.Field name="chronology">
+        {(field) => (
+          <SelectField
+            label={sv ? "Betalningskronologi" : "Payment chronology"}
+            value={field.state.value}
+            disabled={disabled}
+            options={[
+              {
+                value: "unknown",
+                label: sv ? "Okänd eller ofullständig" : "Unknown or incomplete",
+              },
+              {
+                value: "dated_source",
+                label: sv
+                  ? "Källdatum för alla betalningar och matchningar"
+                  : "Source dates for every payment and match",
+              },
+            ]}
+            onValueChange={(value) => field.handleChange(value ?? "unknown")}
+          />
+        )}
+      </form.Field>
       <form.Field name="rationale">
         {(field) => (
           <TextareaField
@@ -106,8 +209,8 @@ export function AdmitOpenItems({
               {
                 value: "confirmed",
                 label: sv
-                  ? "Endast öppna poster; ingen betalningshistorik"
-                  : "Open items only; no payment history",
+                  ? "Tillagda poster och saknad historik granskade"
+                  : "Added records and missing history reviewed",
               },
             ]}
             onValueChange={(value) => {
@@ -122,8 +225,8 @@ export function AdmitOpenItems({
           invalid ? (
             <Text role="alert">
               {sv
-                ? "Ange grund och bekräfta omfattningen."
-                : "Enter a rationale and confirm the scope."}
+                ? "Ange grund, lägg till eller rensa utkast och bekräfta omfattningen."
+                : "Enter a rationale, add or clear drafts, and confirm the scope."}
             </Text>
           ) : null
         }

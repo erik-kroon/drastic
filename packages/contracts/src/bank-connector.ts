@@ -75,12 +75,38 @@ export const ConnectorRevocation = Schema.Struct({
   reason: A.Description,
   receipt: Bank.CommandReceipt,
 });
+export const ConnectorInventory = Schema.Struct({
+  scope: A.Scope,
+  items: Schema.Array(ConnectorConsentState),
+  nextCursor: Schema.NullOr(A.Identifier),
+});
+export const ConnectorBatchInventory = Schema.Struct({
+  scope: A.Scope,
+  consentId: A.Identifier,
+  items: Schema.Array(ConnectorBatch),
+  nextCursor: Schema.NullOr(A.Identifier),
+});
+const inventoryQuery = Schema.Struct({ cursor: Schema.optional(A.Identifier) });
 const base = "/v1/entities/:entityId/books/:bookId";
 const scoped = { params: A.Scope, error: accountingErrors };
 const identified = { params: A.ChangePath, error: accountingErrors };
 const mutation = { ...scoped, headers: A.IdempotencyHeaders };
 const identifiedMutation = { ...identified, headers: A.IdempotencyHeaders };
 export const BankConnectorApi = HttpApiGroup.make("bankConnector")
+  .add(
+    HttpApiEndpoint.get("listConnectorConsents", `${base}/bank-connector-consents`, {
+      ...scoped,
+      query: inventoryQuery,
+      success: ConnectorInventory,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get("listConnectorBatches", `${base}/bank-connector-consents/:id/batches`, {
+      ...identified,
+      query: inventoryQuery,
+      success: ConnectorBatchInventory,
+    }),
+  )
   .add(
     HttpApiEndpoint.get("recoverConnectorBatch", `${base}/bank-connector-batch-requests/:key`, {
       params: Schema.Struct({

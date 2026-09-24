@@ -429,11 +429,15 @@ function SetupJourney({ saved }: { saved: typeof Setup.CompanySetup.Type }) {
                 {saved.accountingProfile === "company-setup-v1" ? (
                   <Text>{copy.profilePending}</Text>
                 ) : null}
-                {saved.details.historyChoice === "sie" ? (
-                  <Link href={`${workspacePath(book)}/history`}>{copy.sie}</Link>
+                {saved.details.historyChoice === "sie" ||
+                saved.details.historyChoice === "opening" ? (
+                  <Link href={`${workspacePath(book)}/history`}>{copy.history}</Link>
                 ) : null}
                 {saved.details.bankChoice === "file" ? (
                   <Link href={`${workspacePath(book)}/accounts?view=imports`}>{copy.file}</Link>
+                ) : null}
+                {saved.details.bankChoice === "connect" ? (
+                  <Link href={`${workspacePath(book)}/banking-setup`}>{copy.banking}</Link>
                 ) : null}
                 <Link href={`${workspacePath(book)}/overview`}>{copy.finish}</Link>
               </RecordSection>

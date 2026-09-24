@@ -11,6 +11,21 @@ export const HistoricalMigrationHandlers = HttpApiBuilder.group(
   "historicalMigration",
   (handlers) =>
     handlers
+      .handle("refreshHistoricalOpening", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          query(
+            "refreshHistoricalOpening",
+            [
+              token,
+              scopeParameter(params),
+              headers["idempotency-key"],
+              params.id,
+              JSON.stringify(payload),
+            ],
+            Historical.OpeningPreparation,
+          ),
+        ),
+      )
       .handle("compareSieClosing", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
           query(

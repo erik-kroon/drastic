@@ -47,6 +47,12 @@ export const PrepareOpening = Schema.Struct({
   series: Schema.String.check(Schema.isPattern(/^[A-Z0-9]{1,16}$/)),
 });
 export const OpeningPreparation = Schema.Struct({ basis: Basis, proposal: A.ChangeSet });
+export const RefreshOpening = Schema.Struct({
+  expectedChangeSetId: A.Identifier,
+  accountingPeriodId: PrepareOpening.fields.accountingPeriodId,
+  series: PrepareOpening.fields.series,
+  rationale: Label,
+});
 
 export const RunStart = Schema.Struct({
   id: A.Identifier,
@@ -110,7 +116,7 @@ export const Fence = Schema.Struct({
   status: Schema.Literals(["running", "paused", "posted"]),
 });
 
-const Payment = Schema.Struct({
+export const Payment = Schema.Struct({
   sourceIdentity: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
   sourceAccount: Schema.String.check(Schema.isPattern(/^[0-9]{4}$/)),
   currency: Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/)),
@@ -118,7 +124,7 @@ const Payment = Schema.Struct({
   sourceDate: Schema.NullOr(A.AccountingDate),
   basis: Label,
 });
-const HistoricalMatch = Schema.Struct({
+export const HistoricalMatch = Schema.Struct({
   sourceIdentity: Payment.fields.sourceIdentity,
   itemIdentity: Payment.fields.sourceIdentity,
   paymentIdentity: Payment.fields.sourceIdentity,
@@ -126,7 +132,7 @@ const HistoricalMatch = Schema.Struct({
   sourceDate: Schema.NullOr(A.AccountingDate),
   basis: Label,
 });
-const AmountControl = Schema.Struct({
+export const AmountControl = Schema.Struct({
   sourceAccount: Payment.fields.sourceAccount,
   currency: Payment.fields.currency,
   independentTotalMinor: A.MinorUnits,
@@ -190,6 +196,13 @@ const base = "/v1/entities/:entityId/books/:bookId";
 const identified = { params: A.ChangePath, error: accountingErrors };
 const mutation = { ...identified, headers: A.IdempotencyHeaders };
 export const HistoricalMigrationApi = HttpApiGroup.make("historicalMigration")
+  .add(
+    HttpApiEndpoint.post("refreshHistoricalOpening", `${base}/historical-bases/:id/proposals`, {
+      ...mutation,
+      payload: RefreshOpening,
+      success: OpeningPreparation,
+    }),
+  )
   .add(
     HttpApiEndpoint.get("compareSieClosing", `${base}/sie-runs/:id/closing-comparison`, {
       ...identified,

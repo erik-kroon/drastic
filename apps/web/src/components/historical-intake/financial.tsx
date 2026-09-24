@@ -103,8 +103,8 @@ export function FinancialImport({
           {run.status === "posted" ? (
             <Text>
               {sv
-                ? "Importens verifikationer är bokförda. Slutlig avstämning återstår."
-                : "Imported vouchers are posted. Final reconciliation is still required."}
+                ? "Importens verifikationer är bokförda. Granska jämförelsen av utgående saldon nedan."
+                : "Imported vouchers are posted. Review the closing balance comparison below."}
             </Text>
           ) : (
             <>

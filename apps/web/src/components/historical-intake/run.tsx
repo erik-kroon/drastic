@@ -218,6 +218,28 @@ function AdmissionStatus({
               {match.sourceDate ?? (sv ? "Okänt datum" : "Unknown date")} · {match.basis}
             </Text>
           ))}
+          {[
+            {
+              label: sv ? "Betalningskontroller" : "Payment controls",
+              items: admission.paymentControls,
+            },
+            {
+              label: sv ? "Matchningskontroller" : "Match controls",
+              items: admission.matchControls,
+            },
+          ].map(({ label, items }) => (
+            <Box key={label} display="grid" gap="sm">
+              <Text>
+                {label}: {items.length}
+              </Text>
+              {items.map((control) => (
+                <Text key={`${control.sourceAccount}-${control.currency}`}>
+                  {control.sourceAccount} · {control.currency} · {control.independentTotalMinor}{" "}
+                  {sv ? "i minsta valutaenhet" : "minor units"} · {control.basis}
+                </Text>
+              ))}
+            </Box>
+          ))}
         </Box>
       </details>
     </Box>

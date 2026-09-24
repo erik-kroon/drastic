@@ -1,4 +1,5 @@
 import { FinancialImport } from "./financial";
+import { RefreshOpening } from "./refresh-opening";
 import { SelectHistoricalBasis } from "./select-basis";
 import * as Sie from "@open-erp/contracts/sie-import";
 import { useQuery } from "@tanstack/react-query";
@@ -73,9 +74,18 @@ export function HistoricalBases({
               {year.basis.mode === "opening_set" &&
               year.basis.changeSetId &&
               !year.basis.voucherId ? (
-                <a href={reviewPath(book, year.basis.changeSetId)}>
-                  {sv ? "Granska och bokför ingående saldon" : "Review and post opening balances"}
-                </a>
+                <>
+                  <a href={reviewPath(book, year.basis.changeSetId)}>
+                    {sv ? "Granska och bokför ingående saldon" : "Review and post opening balances"}
+                  </a>
+                  <RefreshOpening
+                    key={year.basis.changeSetId}
+                    basis={year.basis}
+                    onSaved={() => {
+                      void query.refetch();
+                    }}
+                  />
+                </>
               ) : null}
               {year.basis.mode === "opening_set" ? (
                 <Text>

@@ -72,3 +72,50 @@ The authorized read returns the immutable admission, or `null` when that book's 
 exists without an admission. A missing plan returns `NotFound`. This supports reload
 recovery without persisting an admission response ID in the browser. Register
 admission remains separate from financial posting.
+
+## Browser financial migration
+
+The history workspace exposes fiscal-year basis choices from `GET /historical-bases`.
+Full history requires independently entered opening controls and an exact staged
+source plan. Opening balances use `POST /historical-openings` to retain the controls,
+prepare a ledger proposal and select the basis in one transaction. Approval and
+posting remain separate through the existing journal review flow.
+
+`GET /sie-runs/:id/financial-workspace` recovers the financial run and the latest
+proposal for its current ordinal. `POST /sie-financial-runs/:id/proposals` builds
+that proposal from retained final source transactions, preserving line order,
+amounts and account mappings. It requires the current fence and ordinal. The
+browser reviews and approves the resulting plan before passing it to the existing
+financial chunk posting function. Pause/resume and receipts survive reloads.
+
+`GET /sie-runs/:id/closing-comparison` compares the reviewed source closing controls
+with native ledger balances through the selected fiscal year end, including
+native accounts absent from the source controls. The book lock keeps the reported
+ledger sequence and balances consistent. Matching balances are not a claim of
+complete source records, tax correctness or company readiness. Existing profile
+admission restrictions remain in force.
+
+The staged-plan register form accepts supplied payments, source matches, and independent
+payment/match totals through TanStack Form. Unknown dates and chronology remain explicit;
+unadded drafts block admission. Saved receipts expose both the retained records and their
+independent controls. Admission remains immutable and does not create ledger postings.
+
+`POST /historical-bases/:id/proposals` prepares an unposted opening again after configuration
+changes. It requires the expected current change-set ID, preserves the selected basis,
+cutover and controls, and requires a new approval. Migration 8370 retains the old-to-new
+proposal link and rejects replaced proposals at the ledger insertion boundary, including
+after the replacement posts. Posted openings cannot be replaced. The original basis
+decision remains intact; replacement rationale is retained with the new proposal evidence.
+
+Migration 8380 requires source-derived proposals to post through their owning financial
+run. Pausing a run does not permit direct execution of its prepared proposals. Existing
+successful execution retries still recover their original receipts.
+
+On 2026-09-24 local browser checks saved one synthetic payment and match with matching
+independent controls, rejected an unfinished draft and missing controls, and recovered
+all records after reload. Opening replacement checks exercised stale expected IDs,
+same-request replay, browser replacement, successful approved posting, rejection of the
+old proposal after posting, and cross-book denial. A separate source run rejected direct
+execution while paused, posted through its owning run after resume, rejected a duplicate,
+and reconciled at ledger sequence 1. These are scoped local observations, not production
+or real-company acceptance.

@@ -1,0 +1,158 @@
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import * as Connector from "@open-erp/contracts/bank-connector";
+import { Box } from "@open-erp/ui/components/box";
+import { Button } from "@open-erp/ui/components/button";
+import { Link } from "@open-erp/ui/components/link";
+import { Text } from "@open-erp/ui/components/typography";
+import { RecordHeading, RecordSection } from "@open-erp/ui/components/record-layout";
+import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
+import { PageContent } from "@open-erp/ui/components/accounting-page";
+import { AccountingStatus } from "@/components/accounting-status";
+import { checkScope } from "@/components/commerce/shared";
+import { useBookWorkspace, workspacePath } from "@/lib/book-context";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { ConsentForm } from "./consent-form";
+import { ConsentDetail } from "./consent-detail";
+
+export function BankingSetup({ consent }: { consent?: string }) {
+  const { book, setup, locale } = useBookWorkspace();
+  const sv = locale === "sv";
+  const navigate = useNavigate();
+  const cache = useQueryClient();
+  const queryKey = [...bookKey(book), "connector-consents"];
+  const inventory = useInfiniteQuery({
+    queryKey,
+    initialPageParam: "",
+    enabled: !consent,
+    retry: false,
+    queryFn: async ({ signal, pageParam }) => {
+      const result = await readAccounting(
+        `${bookPath(book)}/bank-connector-consents${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
+        Connector.ConnectorInventory,
+        { signal },
+      );
+      checkScope(book, result.scope);
+      for (const item of result.items) checkScope(book, item.scope);
+      return result;
+    },
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+  });
+  const base = `${workspacePath(book)}/banking-setup`;
+  const open = (id: string) => void navigate({ to: base, search: { consent: id } });
+  return (
+    <>
+      <WorkspaceHeader title={sv ? "Bankinställningar" : "Banking setup"} />
+      <PageContent>
+        <Box display="flex" gap="lg" flexWrap="wrap">
+          <Link href={`${workspacePath(book)}/setup`}>
+            {sv ? "Till företagsinställningar" : "Back to company setup"}
+          </Link>
+          <Link href={`${workspacePath(book)}/accounts?view=imports`}>
+            {sv ? "Importera ett kontoutdrag" : "Import a statement"}
+          </Link>
+          <Link href={`${workspacePath(book)}/overview`}>
+            {sv ? "Fortsätt utan bankanslutning" : "Continue without a bank connection"}
+          </Link>
+        </Box>
+        <RecordHeading
+          title={sv ? "Bankunderlag på dina villkor" : "Choose how to bring in bank records"}
+          subtitle={
+            sv
+              ? "Bankanslutning är valfri. Du kan importera kontoutdrag och fortsätta med resten av företaget."
+              : "A bank connection is optional. You can import statements and continue setting up your company."
+          }
+        />
+        <Text>
+          {sv
+            ? "Ingen direkt bankanslutning är konfigurerad här. Sparade samtycken är uppgifter från en operatör; leverantören har inte verifierat åtkomst. Levererade underlag behöver granskas före avstämning."
+            : "No live bank connection is configured here. Saved consents are operator records; provider access has not been verified. Delivered records need review before reconciliation."}
+        </Text>
+        {consent ? (
+          <>
+            <Link href={base}>
+              {sv ? "Alla sparade kontokopplingar" : "All saved account mappings"}
+            </Link>
+            <ConsentDetail key={consent} id={consent} />
+          </>
+        ) : (
+          <>
+            <RecordSection title={sv ? "Sparade kontokopplingar" : "Saved account mappings"}>
+              <AccountingStatus
+                locale={locale}
+                pending={inventory.isPending}
+                error={inventory.error}
+              />
+              {inventory.isSuccess &&
+              inventory.data.pages.every((page) => page.items.length === 0) ? (
+                <Text>
+                  {sv
+                    ? "Inga samtycken eller kontokopplingar har sparats."
+                    : "No consents or account mappings have been saved."}
+                </Text>
+              ) : null}
+              {inventory.data?.pages
+                .flatMap((page) => page.items)
+                .map((item) => (
+                  <Box key={item.id} display="grid" gap="sm">
+                    <Text>
+                      {item.providerId} · {item.externalAccountId}
+                    </Text>
+                    <Text>
+                      {setup.accounts.find((account) => account.id === item.accountId)?.code ??
+                        item.accountId}{" "}
+                      ·{" "}
+                      {item.revoked
+                        ? sv
+                          ? "Stoppad"
+                          : "Stopped"
+                        : sv
+                          ? "Samtycke registrerat"
+                          : "Consent recorded"}
+                    </Text>
+                    <Box>
+                      <Button variant="outline" onClick={() => open(item.id)}>
+                        {sv ? "Granska konto och leveranser" : "Review account and deliveries"}
+                      </Button>
+                    </Box>
+                  </Box>
+                ))}
+              <Box display="flex" gap="sm" flexWrap="wrap">
+                <Button
+                  variant="ghost"
+                  disabled={inventory.isFetching}
+                  onClick={() => {
+                    void inventory.refetch();
+                  }}
+                >
+                  {sv ? "Uppdatera kontokopplingar" : "Refresh mappings"}
+                </Button>
+                {inventory.hasNextPage ? (
+                  <Button
+                    variant="outline"
+                    disabled={inventory.isFetchingNextPage}
+                    onClick={() => {
+                      void inventory.fetchNextPage();
+                    }}
+                  >
+                    {sv ? "Visa fler" : "Load more"}
+                  </Button>
+                ) : null}
+              </Box>
+            </RecordSection>
+            <RecordSection
+              title={sv ? "Registrera ett befintligt samtycke" : "Record existing consent"}
+            >
+              <ConsentForm
+                onSaved={(id) => {
+                  void cache.invalidateQueries({ queryKey });
+                  open(id);
+                }}
+              />
+            </RecordSection>
+          </>
+        )}
+      </PageContent>
+    </>
+  );
+}
