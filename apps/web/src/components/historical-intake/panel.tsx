@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useForm } from "@tanstack/react-form";
-import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
 import * as Sie from "@open-erp/contracts/sie-import";
@@ -104,9 +104,22 @@ function SieSource({ source, preview }: { source: string; preview?: string }) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const navigate = useNavigate();
+  const cache = useQueryClient();
   const keys = useRef(new Map<string, string>());
   const base = `${workspacePath(book)}/history`;
   const sourcePath = `${bookPath(book)}/source-occurrences/${encodeURIComponent(source)}`;
+  const previews = useQuery({
+    queryKey: [...bookKey(book), "sie-preview-inventory", source],
+    retry: false,
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(`${sourcePath}/sie-previews`, Sie.SiePreviewInventory, {
+        signal,
+      });
+      checkScope(book, result.scope);
+      if (result.occurrenceId !== source) throw new Error("SIE inventory identity mismatch");
+      return result;
+    },
+  });
   const original = useQuery({
     queryKey: [...bookKey(book), "source-metadata", source],
     retry: false,
@@ -131,6 +144,10 @@ function SieSource({ source, preview }: { source: string; preview?: string }) {
     onSuccess: (result) => {
       checkScope(book, result.scope);
       if (result.occurrenceId !== source) throw new Error("SIE source identity mismatch");
+      cache.setQueryData([...bookKey(book), "sie-preview", result.id], result);
+      void cache.invalidateQueries({
+        queryKey: [...bookKey(book), "sie-preview-inventory", source],
+      });
       void navigate({ to: base, search: { source, preview: result.id } });
     },
   });
@@ -163,6 +180,46 @@ function SieSource({ source, preview }: { source: string; preview?: string }) {
   return (
     <Box display="grid" gap="xl" minWidth="zero">
       <Link href={base}>{sv ? "Alla historiska filer" : "All historical files"}</Link>
+      <RecordSection title={sv ? "Sparade filkontroller" : "Saved file inspections"}>
+        <AccountingStatus locale={locale} pending={previews.isPending} error={previews.error} />
+        {previews.data?.items.map((item) => (
+          <Box key={item.id}>
+            <Button
+              variant={item.id === preview ? "secondary" : "ghost"}
+              onClick={() => {
+                void navigate({ to: base, search: { source, preview: item.id } });
+              }}
+            >
+              {item.ordinal}. {item.encoding} · {item.createdAt.slice(0, 10)}
+            </Button>
+            <Text tone="muted">
+              {item.ready
+                ? sv
+                  ? "Inga blockerande filfel"
+                  : "No blocking file errors"
+                : sv
+                  ? "Filfel att granska"
+                  : "File errors to review"}
+            </Text>
+          </Box>
+        ))}
+        {previews.isSuccess && previews.data.items.length === 0 ? (
+          <Text>
+            {sv ? "Filen har inte kontrollerats ännu." : "This file has not been inspected yet."}
+          </Text>
+        ) : null}
+        <Box>
+          <Button
+            variant="outline"
+            disabled={previews.isFetching}
+            onClick={() => {
+              void previews.refetch();
+            }}
+          >
+            {sv ? "Uppdatera sparade kontroller" : "Refresh saved inspections"}
+          </Button>
+        </Box>
+      </RecordSection>
       <AccountingStatus locale={locale} pending={original.isPending} error={original.error} />
       {original.isError ? (
         <Button

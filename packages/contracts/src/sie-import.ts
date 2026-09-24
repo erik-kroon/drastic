@@ -68,6 +68,19 @@ export const Mapping = Schema.Struct({
   sourceAccount: Schema.String.check(Schema.isPattern(/^[0-9]{4}$/)),
   accountId: A.Identifier,
 });
+export const SiePreviewInventory = Schema.Struct({
+  scope: A.Scope,
+  occurrenceId: A.Identifier,
+  items: Schema.Array(
+    Schema.Struct({
+      id: A.Identifier,
+      ordinal: Schema.Int,
+      encoding: SiePreview.fields.encoding,
+      ready: Schema.Boolean,
+      createdAt: Schema.String,
+    }),
+  ).check(Schema.isMaxLength(50)),
+});
 export const OpeningControl = Schema.Struct({
   sourceAccount: Mapping.fields.sourceAccount,
   year: Schema.String.check(Schema.isPattern(/^-?[0-9]{1,4}$/)),
@@ -156,6 +169,12 @@ const base = "/v1/entities/:entityId/books/:bookId";
 const identified = { params: A.ChangePath, error: accountingErrors };
 const mutation = { ...identified, headers: A.IdempotencyHeaders };
 export const SieImportApi = HttpApiGroup.make("sieImport")
+  .add(
+    HttpApiEndpoint.get("listSieSourcePreviews", `${base}/source-occurrences/:id/sie-previews`, {
+      ...identified,
+      success: SiePreviewInventory,
+    }),
+  )
   .add(
     HttpApiEndpoint.post("captureSieSource", `${base}/source-occurrences/:id/sie-previews`, {
       ...mutation,

@@ -1,6 +1,8 @@
 import { sql, type SQL } from "drizzle-orm";
 
 export const sieImportStatements = {
+  listSieSourcePreviews: (p) =>
+    sql`select openerp.list_sie_source_previews(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text) as result`,
   captureSieSource: (p) =>
     sql`select openerp.capture_sie_source(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text,${p[3]}::text,${p[4]}::jsonb) as result`,
   getSieSource: (p) =>

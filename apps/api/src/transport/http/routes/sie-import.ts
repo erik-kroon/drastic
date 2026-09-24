@@ -11,6 +11,15 @@ import { failure } from "../../../application/failures";
 
 export const SieImportHandlers = HttpApiBuilder.group(Api, "sieImport", (handlers) =>
   handlers
+    .handle("listSieSourcePreviews", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "listSieSourcePreviews",
+          [token, scopeParameter(params), params.id],
+          Sie.SiePreviewInventory,
+        ),
+      ),
+    )
     .handle("captureSieSource", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         Effect.gen(function* () {

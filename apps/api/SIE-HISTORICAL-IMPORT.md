@@ -36,3 +36,12 @@ The earlier staging migration is not rewritten. `7730-reviewed-sie-source.sql` p
 - Import/add `HistoricalMigrationHandlers` from `./transport/http/routes/historical-migration` in `apps/api/src/index.ts`.
 
 The isolated local PostgreSQL smoke applied the full dirty-tree migration chain through 7730. Migration 7740 adds primary-source PC8 admission; a local PC8 byte sample decoded `Café` and retained two exact final source lines. The disposable cluster applied 7700–7740 and retained receipts; the subsequent full-chain run failed on a concurrently added unrelated legal AR migration after 8000. This does not prove its own migration chain complete. A disposable synthetic book then selected full history, started a run, prepared and approved a manual journal through the existing SQL operations, admitted one final source voucher as a posted ledger voucher with its retained receipt, and admitted an explicitly unknown/empty historical-register inventory. This is a local synthetic path, **not** a concurrent/retry, browser, actual source, legal, statutory or provider proof. `bun run --cwd packages/contracts check-types` passed on the owned contract files. Root wiring and full API type/build checks are pending integration. D-06/D-09 remain open.
+
+## Saved preview inventory
+
+Migration 8200 exposes `GET /v1/entities/:entityId/books/:bookId/source-occurrences/:id/sie-previews`.
+It authorizes the book scope and returns the occurrence's complete inventory of at most 50
+immutable previews, newest first. Each summary contains its ID, ordinal, encoding, parser
+readiness and creation time. It exposes neither original bytes nor approval authority.
+The company history screen uses these summaries to reopen saved inspections after a reload.
+Parser readiness alone does not establish mapping, reconciliation or posting readiness.
