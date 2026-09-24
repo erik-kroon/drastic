@@ -1,5 +1,5 @@
 // Accounted NewJournalEntryDialog layout, adapted to the owned Base UI primitives.
-// Copyright (C) 2025-2026 Jakob Wennberg. See THIRD_PARTY_NOTICES.md.
+// Copyright (C) 2025-2026 Jakob Wennberg. See licenses/accounted-LICENSE.
 import { Dialog } from "@base-ui/react/dialog";
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";

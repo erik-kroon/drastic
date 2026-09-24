@@ -1,5 +1,5 @@
 // Adapted from Accounted UI v2: DashboardContent, AttGoraSection and journal table primitives.
-// Copyright (C) 2025-2026 Jakob Wennberg. See THIRD_PARTY_NOTICES.md and licenses/accounted-LICENSE.
+// Copyright (C) 2025-2026 Jakob Wennberg. See licenses/accounted-LICENSE.
 import type { ComponentProps, ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { ChevronDown, ChevronRight } from "lucide-react";

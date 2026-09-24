@@ -323,7 +323,7 @@ const styles = stylex.create({
   },
 });
 
-/** Frame and navigation adapted from Accounted UI v2. See licenses/accounted-LICENSE and THIRD_PARTY_NOTICES.md. */
+/** Frame and navigation adapted from Accounted UI v2. See licenses/accounted-LICENSE. */
 export function Workspace(props: {
   brand: ReactNode;
   navigation: ReactNode;
