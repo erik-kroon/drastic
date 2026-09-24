@@ -17,7 +17,7 @@ export function ReviewEntry({
   accounts,
 }: {
   book: typeof Accounting.Book.Type;
-  action: typeof Accounting.PostingAction.Type;
+  action: typeof Accounting.VoucherPostingAction.Type;
   locale: Locale;
   accounts: typeof Accounting.BookSetup.Type.accounts;
 }) {

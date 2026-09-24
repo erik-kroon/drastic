@@ -12,6 +12,7 @@ export {
   EvidenceContent,
   Dependency,
   PostingAction,
+  VoucherPostingAction,
   ChangeSet,
   Approval,
   ExecutionReceipt,

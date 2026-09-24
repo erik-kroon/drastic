@@ -65,12 +65,12 @@ td { padding:13px 0 0; vertical-align:top; overflow-wrap:anywhere; }
 .net { width:13%; }
 .vat { width:23%; }
 .line-note { color:#666; font-size:8px; }
-.totals { display:flex; justify-content:flex-end; margin-top:75px; }
+.totals { display:flex; justify-content:flex-end; margin-top:58px; }
 .totals table { width:38%; }
 .totals td { padding:7px 0; }
 .totals .grand td { border-top:1px solid #333; padding-top:14px; }
 .totals .grand .num { font-size:25px; font-weight:600; }
-.payment { display:flex; justify-content:space-between; gap:56px; margin-top:122px; break-inside:avoid; }
+.payment { display:flex; justify-content:space-between; gap:56px; margin-top:75px; }
 .payment section { width:48%; overflow-wrap:anywhere; }
 .payment h2 { font-size:10px; font-weight:400; margin:0 0 13px; }
 .footer { display:flex; justify-content:space-between; font-size:8px; color:#555; }
@@ -171,16 +171,16 @@ export async function renderLegalInvoicePdf(capture: typeof Pdf.LegalInvoicePdfC
   const number = text(issue.legalDocumentNumber);
   const html =
     `<main lang="sv-SE"><section class="meta"><span>Fakturanr: ${number}</span>` +
-    `<span>Fakturadatum: ${text(required(content.plannedIssueDate, "issue date"))}</span>` +
+    `<span>Fakturadatum: ${text(issue.issuedOn)}</span>` +
     `<span>Förfallodatum: ${text(required(content.dueDate, "due date"))}</span></section>` +
     `<section class="parties"><div class="party"><h2>Från</h2><strong>${text(seller.legalName)}</strong>` +
-    `<div>${text(seller.postalAddress)}</div><div>Org.nr: ${text(seller.registrationNumber)}</div>` +
+    `<div>${text(seller.postalAddress)}</div><div>${text(seller.countryCode)}</div><div>Org.nr: ${text(seller.registrationNumber)}</div>` +
     `<div>Momsnr: ${text(required(seller.vatRegistrationNumber, "seller VAT registration"))}</div></div>` +
     `<div class="party"><h2>Till</h2><strong>${text(content.customer.legalName)}</strong>` +
-    `<div>${text(required(content.customer.address, "customer address"))}</div>` +
+    `<div>${text(required(content.customer.address, "customer address"))}</div><div>${text(required(content.customer.countryCode, "customer country"))}</div>` +
     `<div>Org.nr: ${text(required(content.customer.registrationId, "customer registration"))}</div></div></section>` +
     `<div class="table-title">${text(content.title)} · Leveransdatum: ${text(required(content.supplyDate, "supply date"))}</div>` +
-    `<table><thead><tr><th class="desc">Beskrivning</th><th class="qty">Antal</th>` +
+    `<table><thead><tr><th class="desc">Beskrivning</th><th class="qty">Ant.</th>` +
     `<th class="price num">À-pris exkl.</th><th class="vat num">Totalt inkl.</th></tr></thead>` +
     `<tbody>${rows}</tbody></table><section class="totals"><table><tbody>` +
     `<tr><td>Netto</td><td class="num">${money(issue.totals.netMinor)}</td></tr>` +
@@ -203,7 +203,7 @@ export async function renderLegalInvoicePdf(capture: typeof Pdf.LegalInvoicePdfC
     metadata: {
       title: `Faktura ${issue.legalDocumentNumber}`,
       creator: "OpenERP",
-      creationDate: `${required(content.plannedIssueDate, "issue date")}T00:00:00`,
+      creationDate: `${issue.issuedOn}T00:00:00`,
     },
   });
   if (

@@ -63,3 +63,79 @@ in `apps/api/src/db/query.ts`; bind `commerce_get_legal_sales_policy` to
 `[scopeParameter(input.scope)]` in `apps/api/src/application/capabilities.ts`.
 Run 7600 only after 7201. Source review and static checks are not authenticated
 runtime or legal-acceptance proof.
+
+## Forward7610/7620 legal PDF and outbound evidence
+
+Forward7610 captures only an **immutable 8100 legal issue** with its reviewed seller policy,
+complete approved draft, exact output-VAT lines, posted execution receipt and customer
+register identity. A capture binds one issue and one renderer version. Unlike historical
+SYN PDF bytes, `openerp-se-invoice-takumi-v1` uses Takumi 0.11.3 with locally bundled
+IBM Plex Mono fonts (OFL license in `src/application/fonts/IBM-Plex-LICENSE.txt`).
+It prints A4 Swedish invoice facts and exact approved minor-unit strings, never a
+floating-point recalculation. Seller/customer addresses, date and number, item quantity,
+unit price, net, discount/charge, rate, VAT amount, gross, terms and payment deadline
+come from the issued snapshots. No tenant logo or bank account is invented. Font coverage,
+missing facts or a >2 MiB artifact fail rather than silently omit data. A success stores
+immutable PDF bytes, SHA256 and exact byte length. GET/history recover after interruption;
+sealed SYN bytes remain unchanged. PDF retrieval does not imply transmission.
+
+Forward7620 separates an immutable email/Peppol delivery request from a **different
+current operator's send-handoff approval**. It binds sealed bytes, hash, channel,
+recipient and explicit provider-profile key. An approved email operator may reserve
+an attempt with a saved unique provider request ID. The state becomes
+`provider_unknown` **before any possible external call**; this database function
+neither sends email nor claims that network traffic occurred. The original request ID
+must be reconciled before another attempt. Another current operator may retain
+provider evidence and classify `provider_accepted`, `provider_rejected`, or
+`confirmed_not_sent`; only `confirmed_not_sent` permits a fresh attempt. Provider
+acceptance is not customer receipt. `delivered` remains false. Peppol request/review
+is visible but attempt admission remains blocked until an exact Peppol BIS Billing XML
+payload, participant scheme, access point and provider contract are supported. A PDF
+is not Peppol BIS XML. An email provider adapter also requires D-10 credentials,
+actual API semantics, idempotency and reconciliation proof before it may use this
+handoff. No credentials or fabricated delivery outcome are stored or invoked here.
+
+Root-owned integration: add `LegalInvoicePdfApi` and `LegalDeliveryApi` to shared API,
+read-only capabilities to catalog, handlers to `apps/api/src/index.ts`, and statement
+maps to `apps/api/src/db/query.ts`. Bind `commerce_get_legal_invoice_pdf` and
+`commerce_get_legal_delivery` to `getLegalInvoicePdf`/`getLegalDelivery` with
+`[scopeParameter(input.scope),input.id]`; bind PDF/delivery history similarly to
+`legalInvoicePdfHistory`/`legalDeliveryHistory` in application capabilities. Mutations
+stay human operator REST-only. Install `takumi-pdf@0.11.3` in `apps/api`; root owns
+manifests and shared wiring. Apply 7610/7620 before 8100; 8100 adds the issue FK.
+
+Static migration application was observed in an isolated PostgreSQL cluster through
+8100 on 2026-09-24. A separate illustrative PDF sample was rendered with Takumi,
+converted by `sips` and visually inspected against the supplied Midday image:
+`/tmp/open-erp-ar-visual/render.ts`, `invoice.pdf`, `invoice-white.png`. This synthetic
+visual preview is **not** an authenticated issue-to-delivery exercise or legal content
+acceptance. No provider call, real tenant setup, browser route or recipient delivery
+has been verified. Original PDF layout uses the visual reference's monospace
+invoice/date row, From/To columns, sparse table, right total and bottom terms, but
+contains no copied brand graphic, fictitious payment details or reused Midday code.
+
+### Full visual review of the illustrative Takumi document
+
+Scope: A4 renderer sample in `/tmp/open-erp-ar-visual/`; plain PDF CSS, no browser
+widgets. The attached reference is `/tmp/midday-invoice-pdf-reference.jpg`.
+
+| Area | Inspected evidence | Result |
+| --- | --- | --- |
+| Typography | Sample PNG at 595×842, IBM Plex Mono, tabular amount columns, Swedish labels | Readable; exact money strings remain right-aligned. |
+| Surfaces | Page margins, sparse rule under table header, total separator | Kept monochrome without cards or shadows. |
+| Animations | Static PDF | Not applicable; no motion. |
+| Icons | No logo or payment QR in tenant input | Omitted rather than inventing assets. |
+| Performance | Local subset fonts and sample PDF bytes | 10 KiB sample; actual 50-line pagination and Worker limits unverified. |
+
+| Severity | Location | Before | After | Why |
+| --- | --- | --- | --- | --- |
+| HIGH | `src/application/legal-invoice-pdf-renderer.ts` table | Six numeric columns collided in the 595px PDF. | Four aligned columns; explicit net/tax/discount facts stay beneath each line. | Prevents overlapping legal amounts. |
+| MEDIUM | Same renderer, layout | Blue header and shaded terms diverged from reference. | Sparse monochrome mono typography, restrained invoice/date row, seller/customer columns, right total and bottom terms. | Preserves clear reading order without copying branding. |
+| LOW | Same renderer, number cells | Uneven numeric alignment. | Tabular numerals and right alignment. | Makes amount columns scannable. |
+
+Rejected: fake tenant logo, bank account and QR code; these have no reviewed tenant
+input. Rejected: float money formatting from the supplied sales-order template; the
+issued source already owns exact minor-unit values. Visual inspection covers one
+synthetic preview only; no 50-line pagination, screen-reader validation or provider
+hand-off rendering was observed. The invoice sample is visually acceptable for this
+layout review but release proof remains open.

@@ -36,6 +36,8 @@ export const LegalIssuePdfFacts = Schema.Struct({
     vatTreatment: Schema.Literal("se-domestic-standard-25-v1"),
   })).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
   legalDocumentNumber: Schema.String,
+  issuedOn: Accounting.AccountingDate,
+  issuedAt: Schema.String,
   issued: Schema.Literal(true),
   legalInvoice: Schema.Literal(true),
   recognized: Schema.Literal(true),

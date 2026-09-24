@@ -127,6 +127,8 @@ export const ArLegalIssueReceipt = Schema.Struct({
   legalDocumentNumber: Schema.String.check(
     Schema.isPattern(/^[A-Z][A-Z0-9-]{0,11}-[1-9][0-9]{0,17}$/),
   ),
+  issuedOn: Accounting.AccountingDate,
+  issuedAt: Schema.String,
   issued: Schema.Literal(true),
   legalInvoice: Schema.Literal(true),
   recognized: Schema.Literal(true),

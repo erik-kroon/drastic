@@ -206,8 +206,9 @@ BEGIN
   PERFORM openerp.fail('UnsupportedProfile','Only SEK supplies within the reviewed policy effective interval are supported.'); END IF;
  v_date:=openerp.bank_date(v_draft->'content'->>'plannedIssueDate');
  IF v_date < (v_policy.body->'candidate'->'input'->>'effectiveFrom')::date
-   OR v_date > current_date OR (v_draft->'content'->>'supplyDate')::date > v_date THEN
-  PERFORM openerp.fail('UnsupportedProfile','Issue cannot precede the policy date, occur in the future or precede the supply (advance invoices are unsupported).'); END IF;
+   OR v_date IS DISTINCT FROM (clock_timestamp() AT TIME ZONE 'UTC')::date
+   OR (v_draft->'content'->>'supplyDate')::date > v_date THEN
+  PERFORM openerp.fail('UnsupportedProfile','Issue must use today in UTC, not a backdated/future date or an advance supply date.'); END IF;
  SELECT * INTO v_period FROM openerp.periods p WHERE p.book_id=p_book AND p.id=p_input->>'accountingPeriodId';
  IF NOT FOUND OR v_period.locked OR v_date NOT BETWEEN v_period.starts_on AND v_period.ends_on
    OR NOT EXISTS(SELECT FROM openerp.fiscal_years y WHERE y.book_id=p_book AND y.id=v_period.fiscal_year_id
@@ -348,7 +349,7 @@ DECLARE v_actor text; v_book openerp.books; v_prior jsonb; v_review jsonb; v_app
  v_voucher_id text:=openerp.new_id('voucher'); v_posting_id text:=openerp.new_id('receipt');
  v_invoice_id text:=openerp.new_id('invoice'); v_issue_id text:=openerp.new_id('ar_issue');
  v_lines jsonb; v_number bigint; v_voucher_number bigint; v_sequence bigint; v_document text; v_posting jsonb; v_body jsonb;
- v_recorded timestamptz; v_payload jsonb:=jsonb_build_object('id',p_id,'input',p_input);
+ v_recorded timestamptz; v_issued_at timestamptz; v_issued_on date; v_payload jsonb:=jsonb_build_object('id',p_id,'input',p_input);
 BEGIN
  v_actor:=openerp.authorize(p_token,p_scope,true);
  SELECT * INTO STRICT v_book FROM openerp.books WHERE id=p_scope->>'bookId' FOR UPDATE;
@@ -362,6 +363,9 @@ BEGIN
    OR EXISTS(SELECT FROM openerp.ar_legal_issues i WHERE i.book_id=v_book.id AND i.approval_id=v_approval.id) THEN
   PERFORM openerp.fail('ApprovalRequired','A current unexpired unused independent operator approval is required.'); END IF;
  v_input:=v_review->'input';v_draft:=v_review->'draftSnapshot';v_source:=v_review->'sourceEvidence';
+ v_issued_at:=clock_timestamp();v_issued_on:=(v_issued_at AT TIME ZONE 'UTC')::date;
+ IF v_issued_on IS DISTINCT FROM (v_draft->'content'->>'plannedIssueDate')::date THEN
+  PERFORM openerp.fail('StaleDependency','The reviewed UTC issue day changed. Prepare a draft dated for today and a new issue review.'); END IF;
  IF EXISTS(SELECT FROM openerp.ar_legal_issue_counters c WHERE c.book_id=v_book.id AND c.policy_id=v_input->>'policyId'
   AND c.last_number>=999999999999999999)
   OR EXISTS(SELECT FROM openerp.series_counters c WHERE c.book_id=v_book.id
@@ -392,7 +396,7 @@ BEGIN
  v_action:=jsonb_build_object('kind','post_voucher','correctsVoucherId',NULL,'eventId',v_event,
   'postingPurpose','legal_ar_recognition','occurrenceKey','legal_ar_'||(v_draft->>'id'),
   'fiscalYearId',v_review->>'fiscalYearId','accountingPeriodId',v_input->>'accountingPeriodId',
-  'postingDate',v_draft->'content'->>'plannedIssueDate','series',v_input->>'voucherSeries',
+  'postingDate',v_issued_on::text,'series',v_input->>'voucherSeries',
   'currency','SEK','description','Legal customer invoice '||v_document,
   'rationale',v_input->>'reason','taxAssessment','se-domestic-standard-25-v1','lines',v_lines,
   'evidenceRefs',jsonb_build_array(v_source||jsonb_build_object('locator','legal_ar_'||(v_draft->>'id'))),
@@ -416,7 +420,7 @@ BEGIN
  INSERT INTO openerp.vouchers(book_id,id,fiscal_year_id,period_id,series,number,sequence,posting_date,event_id,
    posting_purpose,occurrence_key,corrects_voucher_id,change_set_id,action)
  VALUES(v_book.id,v_voucher_id,v_review->>'fiscalYearId',v_input->>'accountingPeriodId',v_input->>'voucherSeries',
-  v_voucher_number,v_sequence,(v_draft->'content'->>'plannedIssueDate')::date,v_event,'legal_ar_recognition',
+  v_voucher_number,v_sequence,v_issued_on,v_event,'legal_ar_recognition',
   'legal_ar_'||(v_draft->>'id'),NULL,v_plan_id,v_action) RETURNING recorded_at INTO v_recorded;
  INSERT INTO openerp.journal_lines(book_id,voucher_id,id,ordinal,account_id,debit_minor,credit_minor,description)
   SELECT v_book.id,v_voucher_id,value->>'lineId',ordinal,value->>'accountId',(value->>'debitMinor')::numeric,
@@ -436,17 +440,17 @@ BEGIN
   evidence_id,current_revision,body)
  VALUES(v_book.id,v_invoice_id,'customer',v_draft->'content'->>'counterpartyId',
   (v_draft->'content'->>'counterpartyRevision')::bigint,v_document,
-  (v_draft->'content'->>'plannedIssueDate')::date,(v_review->'totals'->>'grossMinor')::numeric,
+  v_issued_on,(v_review->'totals'->>'grossMinor')::numeric,
   v_input->>'controlAccountId',v_voucher_id,v_lines->0->>'lineId',v_source->>'evidenceId',1,
   jsonb_build_object('id',v_invoice_id,'scope',p_scope,'kind','legal_customer_invoice_v1',
    'direction','customer','counterpartyId',v_draft->'content'->>'counterpartyId',
    'counterpartyRevision',v_draft->'content'->>'counterpartyRevision',
    'counterpartyName',v_draft->'content'->'customer'->>'legalName','documentNumber',v_document,
-   'issuedOn',v_draft->'content'->>'plannedIssueDate','currency','SEK','currencyScale',2,
+   'issuedOn',v_issued_on::text,'currency','SEK','currencyScale',2,
    'amountMinor',v_review->'totals'->>'grossMinor','controlAccountId',v_input->>'controlAccountId',
    'evidence',v_source,'legalIssueId',v_issue_id,'policyId',v_input->>'policyId',
    'recognition',jsonb_build_object('voucherId',v_voucher_id,'lineId',v_lines->0->>'lineId',
-    'eventId',v_event,'postingDate',v_draft->'content'->>'plannedIssueDate')));
+    'eventId',v_event,'postingDate',v_issued_on::text)));
  INSERT INTO openerp.commerce_invoice_revisions VALUES(v_book.id,v_invoice_id,1,v_source->>'evidenceId',
   jsonb_build_object('id',v_invoice_id,'scope',p_scope,'revision','1',
    'dueOn',v_draft->'content'->>'dueDate','description',v_draft->'content'->>'title',
@@ -460,7 +464,9 @@ BEGIN
   'accountingProfileId',v_input->>'accountingProfileId',
   'accountingProfileDigest',v_review->'accountingProfileSnapshot'->>'digest',
   'accountingProfileSnapshot',v_review->'accountingProfileSnapshot',
-  'legalDocumentNumber',v_document,'issued',true,'legalInvoice',true,'recognized',true,'delivered',false,
+  'legalDocumentNumber',v_document,'issuedOn',v_issued_on::text,
+  'issuedAt',to_char(v_issued_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+  'issued',true,'legalInvoice',true,'recognized',true,'delivered',false,
   'totals',v_review->'totals','lines',v_review->'lines','postingReceipt',v_posting,
   'registerInvoiceId',v_invoice_id,'sourceEvidence',v_source)
   ||openerp.commerce_record_metadata(p_key,'execute_ar_legal_issue',v_actor);

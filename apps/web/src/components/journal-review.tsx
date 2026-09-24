@@ -312,7 +312,7 @@ export function SealedAction({
   setupAccounts,
 }: {
   book: typeof Accounting.Book.Type;
-  action: typeof Accounting.PostingAction.Type;
+  action: typeof Accounting.VoucherPostingAction.Type;
   locale: Locale;
   setupAccounts: typeof Accounting.BookSetup.Type.accounts;
 }) {

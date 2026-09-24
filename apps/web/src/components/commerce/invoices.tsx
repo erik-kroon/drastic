@@ -275,7 +275,7 @@ export function InvoiceDetail(
                   </Button>
                 ) : null}
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   disabled={invoice.isFetching}
                   onClick={() => {
                     void invoice.refetch();

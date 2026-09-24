@@ -224,6 +224,30 @@ export const capabilities = {
     Capabilities.commerce_invoice_document_history,
     invoiceDocumentHistory,
   ),
+  commerce_legal_sales_policy_history: bindCapability(
+    Capabilities.commerce_legal_sales_policy_history, "legalSalesPolicyHistory",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  commerce_get_legal_sales_policy: bindCapability(
+    Capabilities.commerce_get_legal_sales_policy, "getLegalSalesPolicy",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_get_legal_invoice_pdf: bindCapability(
+    Capabilities.commerce_get_legal_invoice_pdf, "getLegalInvoicePdf",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_legal_invoice_pdf_history: bindCapability(
+    Capabilities.commerce_legal_invoice_pdf_history, "legalInvoicePdfHistory",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_get_legal_delivery: bindCapability(
+    Capabilities.commerce_get_legal_delivery, "getLegalDelivery",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
+  commerce_legal_delivery_history: bindCapability(
+    Capabilities.commerce_legal_delivery_history, "legalDeliveryHistory",
+    (input) => [scopeParameter(input.scope), input.id],
+  ),
   commerce_get_ar_legal_accounting_profile: bindCapability(
     Capabilities.commerce_get_ar_legal_accounting_profile, "getArLegalAccountingProfile",
     (input) => [scopeParameter(input.scope), input.id],

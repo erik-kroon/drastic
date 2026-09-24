@@ -39,6 +39,8 @@ BEGIN
   OR v_issue->'legalInvoice' IS DISTINCT FROM 'true'::jsonb
   OR v_issue->'recognized' IS DISTINCT FROM 'true'::jsonb
   OR v_issue->'delivered' IS DISTINCT FROM 'false'::jsonb
+  OR v_issue->>'issuedOn' IS DISTINCT FROM v_issue->'draftSnapshot'->'content'->>'plannedIssueDate'
+  OR left(v_issue->>'issuedAt',10) IS DISTINCT FROM v_issue->>'issuedOn'
   OR v_issue->'policySnapshot'->>'digest' IS DISTINCT FROM v_issue->>'policyDigest'
   OR v_issue->'draftSnapshot'->>'digest' IS DISTINCT FROM openerp.digest(v_issue->'draftSnapshot'-'digest')
   OR v_issue->>'legalDocumentNumber' LIKE 'SYN-%'

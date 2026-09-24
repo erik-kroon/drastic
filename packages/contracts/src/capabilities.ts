@@ -1,4 +1,7 @@
 import { CompanySetupCapabilities } from "./company-setup";
+import { LegalDeliveryCapabilities } from "./legal-delivery";
+import { LegalInvoicePdfCapabilities } from "./legal-invoice-pdf";
+import { LegalSalesPolicyCapabilities } from "./legal-sales-policy";
 import * as Schema from "effect/Schema";
 import * as Accounting from "./accounting";
 import * as Reports from "./reports";
@@ -71,6 +74,9 @@ export const Capabilities = {
   ...WorkspaceCapabilities,
   ...FirmCapabilities,
   ...CompanySetupCapabilities,
+  ...LegalDeliveryCapabilities,
+  ...LegalInvoicePdfCapabilities,
+  ...LegalSalesPolicyCapabilities,
   ...AccountantReviewCapabilities,
   ...SourceIntakeCapabilities,
   ...ExpenseTaxCapabilities,
