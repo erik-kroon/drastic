@@ -22,6 +22,57 @@ export interface BankCandidateSelection {
   readonly voucherId: string;
   readonly lineId: string;
   readonly discoveryDigest: string;
+  readonly aggregateLegs?: readonly {
+    voucherId: string;
+    lineId: string;
+    amountMinor: string;
+  }[];
+}
+
+function aggregateMatch(
+  candidates: readonly (typeof Candidates.BankMatchCandidates.Type)["candidates"][number][],
+  remainingMinor: string,
+) {
+  const available = candidates.filter((candidate) => candidate.eligible);
+  if (available.some((candidate) => candidate.remainingMinor === remainingMinor)) return null;
+  const eligible = available.slice(0, 20);
+  const midpoint = Math.ceil(eligible.length / 2);
+  const combinations = (items: typeof eligible) => {
+    const found = new Map<string, number[]>();
+    for (let mask = 0; mask < 2 ** items.length; mask++) {
+      let sum = 0n;
+      const indices: number[] = [];
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index];
+        if (item && mask & (1 << index)) {
+          sum += BigInt(item.remainingMinor);
+          indices.push(index);
+        }
+      }
+      const key = sum.toString();
+      if (!found.has(key) || indices.length < (found.get(key)?.length ?? Infinity))
+        found.set(key, indices);
+    }
+    return found;
+  };
+  const left = combinations(eligible.slice(0, midpoint));
+  const right = combinations(eligible.slice(midpoint));
+  const target = BigInt(remainingMinor);
+  for (const [sum, leftIndices] of left) {
+    const rightIndices = right.get((target - BigInt(sum)).toString());
+    if (!rightIndices || leftIndices.length + rightIndices.length < 2) continue;
+    const selected: typeof eligible = [];
+    for (const index of leftIndices) {
+      const candidate = eligible[index];
+      if (candidate) selected.push(candidate);
+    }
+    for (const index of rightIndices) {
+      const candidate = eligible[midpoint + index];
+      if (candidate) selected.push(candidate);
+    }
+    return selected.length >= 2 ? selected : null;
+  }
+  return null;
 }
 
 export function BankCandidateResults({
@@ -85,6 +136,8 @@ export function BankCandidateResults({
   const money = (value: string) =>
     result ? `${formatMinorAmount(value, result.currencyScale, locale)} ${result.currency}` : "—";
   const selectionAvailable = !comparison.isFetching && !comparison.isPaused && !comparison.isError;
+  const aggregate = result ? aggregateMatch(result.candidates, result.source.remainingMinor) : null;
+  const aggregateFirst = aggregate?.[0];
   return (
     <Box display="grid" gap="xl" minWidth="zero">
       <RecordHeading
@@ -135,6 +188,36 @@ export function BankCandidateResults({
               {result.equalAmountEligibleCount}
             </Text>
             {result.multipleEligibleCandidates ? <Text>{copy.ambiguous}</Text> : null}
+            {aggregate && aggregateFirst ? (
+              <Box display="grid" gap="sm">
+                <Text>
+                  {locale === "sv"
+                    ? `${aggregate.length} bokförda bankrader summerar exakt till ${money(result.source.remainingMinor)}. Granska alla rader i fördelningsplanen.`
+                    : `${aggregate.length} posted bank lines sum exactly to ${money(result.source.remainingMinor)}. Review every line in the allocation plan.`}
+                </Text>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!selectionAvailable}
+                  onClick={() =>
+                    onSelect?.({
+                      ...source,
+                      accountId: result.window.accountId,
+                      voucherId: aggregateFirst.voucherId,
+                      lineId: aggregateFirst.lineId,
+                      discoveryDigest: result.digest,
+                      aggregateLegs: aggregate.map((candidate) => ({
+                        voucherId: candidate.voucherId,
+                        lineId: candidate.lineId,
+                        amountMinor: candidate.remainingMinor,
+                      })),
+                    })
+                  }
+                >
+                  {locale === "sv" ? "Granska samlad matchning" : "Review aggregate match"}
+                </Button>
+              </Box>
+            ) : null}
             {result.candidates.length === 0 ? (
               <PageEmpty
                 title={

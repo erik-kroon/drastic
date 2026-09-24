@@ -52,8 +52,8 @@ const styles = stylex.create({
   close: {
     display: "grid",
     placeItems: "center",
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
     flexShrink: 0,
     borderRadius: tokens.radiusMd,
     borderWidth: 0,
@@ -61,6 +61,7 @@ const styles = stylex.create({
     color: tokens.mutedForeground,
     backgroundColor: { default: "transparent", ":hover": tokens.muted },
     ":focus-visible": { outline: "none", boxShadow: tokens.focusRing },
+    "@media (pointer: coarse)": { width: 44, height: 44 },
   },
   content: { padding: 28, overflowY: "auto", minHeight: 0, flex: "1" },
   invoiceContent: { padding: 20, "@container (max-width: 28rem)": { padding: 16 } },

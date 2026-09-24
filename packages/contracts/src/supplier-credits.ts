@@ -21,11 +21,13 @@ export const PrepareSupplierCredit = Schema.Struct({
   amountMinor: Commerce.CreateInvoice.fields.amountMinor,
   taxMinor: Schema.optional(Accounting.MinorUnits),
   creditLines: Schema.optional(
-    Schema.Array(Schema.Struct({
-      lineId: Accounting.Identifier,
-      netMinor: Accounting.MinorUnits,
-      taxMinor: Accounting.MinorUnits,
-    })).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
+    Schema.Array(
+      Schema.Struct({
+        lineId: Accounting.Identifier,
+        netMinor: Accounting.MinorUnits,
+        taxMinor: Accounting.MinorUnits,
+      }),
+    ).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
   ),
   creditDate: Accounting.AccountingDate,
   accountingPeriodId: Accounting.Identifier,
@@ -59,13 +61,15 @@ export const SupplierCreditSnapshot = Schema.Struct({
     ),
   ),
   creditLines: Schema.optional(
-    Schema.Array(Schema.Struct({
-      lineId: Accounting.Identifier,
-      expenseAccountId: Accounting.Identifier,
-      netMinor: Accounting.MinorUnits,
-      taxMinor: Accounting.MinorUnits,
-      vatRatePercent: Schema.Literals([0, 6, 12, 25]),
-    })),
+    Schema.Array(
+      Schema.Struct({
+        lineId: Accounting.Identifier,
+        expenseAccountId: Accounting.Identifier,
+        netMinor: Accounting.MinorUnits,
+        taxMinor: Accounting.MinorUnits,
+        vatRatePercent: Schema.Literals([0, 6, 12, 25]),
+      }),
+    ),
   ),
   creditEvidence: Commerce.EvidenceReference,
   amountMinor: Commerce.CreateInvoice.fields.amountMinor,

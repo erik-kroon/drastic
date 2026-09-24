@@ -271,7 +271,7 @@ function scanSieLines(
       current = null;
       continue;
     }
-    const match = /^#([A-Z][A-Z0-9]*)\s*(.*)$/.exec(line);
+    const match = /^[ \t]*#([A-Z][A-Z0-9]*)\s*(.*)$/.exec(line);
     if (!match) {
       append("syntax", i + 1, byteStart, "Unsupported record syntax.");
       continue;

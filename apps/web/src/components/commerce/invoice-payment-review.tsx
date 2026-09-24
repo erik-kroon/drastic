@@ -191,7 +191,7 @@ function InvoicePaymentActions(
           <span>{copy.approveAck}</span>
         </Box>
       </CommandForm>
-      {approval && !view.application ? (
+      {approval && !view.application && view.dependenciesCurrent ? (
         <Text tone="muted">
           {approvalCurrent
             ? `${copy.approved} ${new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(approval.expiresAt))}`

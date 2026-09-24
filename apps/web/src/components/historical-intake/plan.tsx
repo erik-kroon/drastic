@@ -62,6 +62,9 @@ export function SiePlanReview({
           (other) => other.account === control.account && other.year === control.year,
         ) === index,
     );
+  const activeAccounts = setup.accounts.filter((account) => account.active);
+  const exactAccounts = new Map(activeAccounts.map((account) => [account.code, account.id]));
+  const unresolvedAccounts = sourceAccounts.filter((code) => !exactAccounts.has(code));
   const path = `${bookPath(book)}/sie-previews/${encodeURIComponent(preview.id)}/plans`;
   const seal = useMutation({
     mutationFn: (input: typeof Sie.SealSiePlan.Type) =>
@@ -75,7 +78,10 @@ export function SiePlanReview({
   });
   const form = useForm({
     defaultValues: {
-      mappings: sourceAccounts.map((sourceAccount) => ({ sourceAccount, accountId: "" })),
+      mappings: sourceAccounts.map((sourceAccount) => ({
+        sourceAccount,
+        accountId: exactAccounts.get(sourceAccount) ?? "",
+      })),
       openingControls: controls.map((control) => ({
         sourceAccount: control.account,
         year: control.year,
@@ -136,6 +142,11 @@ export function SiePlanReview({
       }}
     >
       <RecordSection title={sv ? "Koppla konton" : "Map accounts"}>
+        <Text>
+          {sv
+            ? `${sourceAccounts.length} källkonton · ${sourceAccounts.length - unresolvedAccounts.length} exakta förslag · ${unresolvedAccounts.length} kräver val. Kontrollera även föreslagna konton före låsning.`
+            : `${sourceAccounts.length} source accounts · ${sourceAccounts.length - unresolvedAccounts.length} exact suggestions · ${unresolvedAccounts.length} need selection. Check suggested accounts before sealing.`}
+        </Text>
         {sourceAccounts.map((code, index) => (
           <form.Field key={code} name={`mappings[${index}].accountId`}>
             {(field) => (
@@ -146,7 +157,7 @@ export function SiePlanReview({
                 name={field.name}
                 options={[
                   { value: "", label: sv ? "Välj konto" : "Select account" },
-                  ...setup.accounts.map((account) => ({
+                  ...activeAccounts.map((account) => ({
                     value: account.id,
                     label: `${account.code} · ${account.name}`,
                   })),

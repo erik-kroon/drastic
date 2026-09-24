@@ -158,18 +158,15 @@ export function Invoices(
                   </RecordOpen>,
                   invoice.counterpartyName,
                   invoice.currentRevision.dueOn,
-                  <Badge
-                    key="status"
-                    variant={
-                      invoice.status === "blocked"
-                        ? "warning"
-                        : invoice.status === "allocated"
-                          ? "success"
-                          : "secondary"
-                    }
-                  >
-                    {statuses[invoice.status]}
-                  </Badge>,
+                  invoice.status === "blocked" || invoice.status === "cancelled" ? (
+                    <Badge key="status" variant="warning">
+                      {statuses[invoice.status]}
+                    </Badge>
+                  ) : (
+                    <Text key="status" tone="muted">
+                      {statuses[invoice.status]}
+                    </Text>
+                  ),
                   invoice.outstandingMinor === null
                     ? "—"
                     : `${formatMinorAmount(invoice.outstandingMinor, invoice.currencyScale, locale)} ${invoice.currency}`,

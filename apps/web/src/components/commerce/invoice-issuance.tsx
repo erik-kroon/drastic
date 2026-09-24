@@ -434,32 +434,6 @@ function IssueContents(
             : "Current status is unknown. The last fetched review is shown. Retained requests can still be retried with the same key."}
         </Text>
       ) : null}
-      <DataTable
-        title={copy.posting}
-        narrow="stack"
-        columns={[
-          { id: "account", label: copy.account },
-          { id: "debit", label: copy.debit, numeric: true },
-          { id: "credit", label: copy.creditAmount, numeric: true },
-          { id: "description", label: copy.description },
-        ]}
-        rows={plan.postingPlan.groups.flatMap((group) =>
-          group.actions.flatMap((action) =>
-            action.lines.map((line) => ({
-              id: `${group.id}:${line.lineId}`,
-              cells: [
-                (() => {
-                  const account = setup.data?.accounts.find((entry) => entry.id === line.accountId);
-                  return account ? `${account.code} · ${account.name}` : line.accountId;
-                })(),
-                formatMinorAmount(line.debitMinor, draft.content.currencyScale, locale),
-                formatMinorAmount(line.creditMinor, draft.content.currencyScale, locale),
-                line.description,
-              ],
-            })),
-          ),
-        )}
-      />
       {view.blockers.length > 0 && !issue ? (
         <Box display="grid" gap="md">
           <Heading>{copy.blocked}</Heading>
@@ -546,6 +520,32 @@ function IssueContents(
       <Details
         title={locale === "sv" ? "Underlag och granskningshistorik" : "Sources and review history"}
       >
+        <DataTable
+          title={copy.posting}
+          narrow="stack"
+          columns={[
+            { id: "account", label: copy.account },
+            { id: "debit", label: copy.debit, numeric: true },
+            { id: "credit", label: copy.creditAmount, numeric: true },
+            { id: "description", label: copy.description },
+          ]}
+          rows={plan.postingPlan.groups.flatMap((group) =>
+            group.actions.flatMap((action) =>
+              action.lines.map((line) => ({
+                id: `${group.id}:${line.lineId}`,
+                cells: [
+                  (() => {
+                    const account = setup.data?.accounts.find((entry) => entry.id === line.accountId);
+                    return account ? `${account.code} · ${account.name}` : line.accountId;
+                  })(),
+                  formatMinorAmount(line.debitMinor, draft.content.currencyScale, locale),
+                  formatMinorAmount(line.creditMinor, draft.content.currencyScale, locale),
+                  line.description,
+                ],
+              })),
+            ),
+          )}
+        />
         <Text>
           {copy.legal}: {plan.legalBlockers.join(" · ")}
         </Text>

@@ -522,6 +522,11 @@ function DraftReadiness({ record, locale }: { record: Draft; locale: CommercePro
     ));
   return (
     <>
+      {details[0] ? (
+        <RecordSection title={locale === "sv" ? "Nästa steg" : "Next step"}>
+          <Text>{invoiceDraftBlocker(details[0].code, locale)}</Text>
+        </RecordSection>
+      ) : null}
       {details.length ? (
         <RecordSection title={labels.needsAttention}>{rows(details)}</RecordSection>
       ) : null}

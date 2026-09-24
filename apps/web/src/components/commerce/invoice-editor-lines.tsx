@@ -237,6 +237,7 @@ function EditorLine(props: {
   ));
   return (
     <InvoiceLine
+      labels={props.labels}
       cells={[
         description,
         ...controls,

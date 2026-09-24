@@ -226,6 +226,39 @@ export function VatDraftView({
           </Box>
         </RecordSection>
       </RecordColumns>
+      <RecordSection title={sv ? "Avvikelser att granska" : "Findings to review"}>
+        <Box as="ul" display="grid" gap="sm">
+          {draft.calculation.assessments.flatMap((assessment) =>
+            assessment.blockers.map((code) => {
+              const source = draft.basis.facts.find(
+                ({ fact }) => fact.factId === assessment.factId,
+              );
+              if (!source) return null;
+              const boxes = assessment.contribution
+                ? (["box05", "box10", "box48"] as const)
+                    .filter((box) => BigInt(assessment.contribution?.[`${box}Minor`] ?? "0") !== 0n)
+                    .map((box) => box.slice(3))
+                : [];
+              return (
+                <Box as="li" key={`${assessment.factId}:${code}`}>
+                  <Button variant="ghost" onClick={() => setSelectedFact(assessment.factId)}>
+                    {source.fact.input.description}: {vatBlocker(code, locale)}
+                  </Button>
+                  <PageCaption>
+                    {boxes.length
+                      ? `${sv ? "Rutor" : "Boxes"} ${boxes.join(", ")}`
+                      : sv
+                        ? "Ingen ruta kan fastställas för denna avvikelse"
+                        : "No box can be established for this finding"}
+                    {" · "}
+                    {sv ? "Visa källposten nedan" : "View the source record below"}
+                  </PageCaption>
+                </Box>
+              );
+            }),
+          )}
+        </Box>
+      </RecordSection>
       <Heading>{copy.contributions}</Heading>
       <DataTable
         title={copy.contributions}

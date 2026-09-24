@@ -32,8 +32,8 @@ export const SieImportHandlers = HttpApiBuilder.group(Api, "sieImport", (handler
             return yield* failure("UnsupportedProfile");
           const parsed = parseSie(bytes, payload.encoding);
           if (
-            parsed.records.length > 2000 ||
-            parsed.vouchers.length > 200 ||
+            parsed.records.length > 4000 ||
+            parsed.vouchers.length > 500 ||
             Buffer.byteLength(JSON.stringify(parsed)) > 1048576
           )
             return yield* failure("UnsupportedProfile");

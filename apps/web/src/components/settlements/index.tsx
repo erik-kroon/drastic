@@ -36,7 +36,13 @@ export function BankAllocations({
         <Heading>{copy.title}</Heading>
         <Text>{copy.warning}</Text>
         <CapacityReports book={book} setup={setup} locale={locale} />
-        <AllocationForm book={book} setup={setup} locale={locale} candidate={candidate} onCreated={setPlanId} />
+        <AllocationForm
+          book={book}
+          setup={setup}
+          locale={locale}
+          candidate={candidate}
+          onCreated={setPlanId}
+        />
         <Box
           as="form"
           display="grid"
@@ -94,7 +100,7 @@ function AllocationForm(props: {
   const startDraft = (nextSeed: BankCandidateSelection | null) => {
     if (mutation.isPending) return;
     setSeed(nextSeed);
-    setLegs(["first"]);
+    setLegs(nextSeed?.aggregateLegs?.map((_, index) => `seed-${index}`) ?? ["first"]);
     setError("");
     mutation.reset();
     keys.current.clear();
@@ -102,9 +108,15 @@ function AllocationForm(props: {
   };
   const accounts = setup.accounts
     .filter((account) => account.active || account.id === seed?.accountId)
-    .map((account) => ({ value: account.id, label: `${account.code} · ${account.name} · ${account.id}` }));
+    .map((account) => ({
+      value: account.id,
+      label: `${account.code} · ${account.name} · ${account.id}`,
+    }));
   if (seed && !accounts.some((account) => account.value === seed.accountId)) {
-    accounts.push({ value: seed.accountId, label: `${seed.accountId} · ${candidateCopy.unavailableAccount}` });
+    accounts.push({
+      value: seed.accountId,
+      label: `${seed.accountId} · ${candidateCopy.unavailableAccount}`,
+    });
   }
   return (
     <Box
@@ -136,23 +148,54 @@ function AllocationForm(props: {
       }}
     >
       <Heading>{copy.prepare}</Heading>
-      {candidate || seed ? <Box display="grid" gap="md" minWidth="zero">
-        <Text>{candidateCopy.seedWarning}</Text>
-        <Text>{candidateCopy.discardWarning}</Text>
-        {candidate ? <Box display="grid" gap="sm" minWidth="zero">
-          <Text>{candidateCopy.queuedTitle}: {candidate.accountId} · {candidate.statementId} / {candidate.rowOrdinal} · {candidate.voucherId} / {candidate.lineId}</Text>
-          <Box><Button type="button" variant="outline" disabled={mutation.isPending} onClick={() => startDraft(candidate)}>
-            {candidateCopy.startSeed}
-          </Button></Box>
-        </Box> : null}
-        {seed ? <>
-          <Text>{candidateCopy.seededTitle}: {seed.statementId} / {seed.rowOrdinal} · {seed.voucherId} / {seed.lineId}</Text>
-          <InputField label={candidateCopy.digest} value={seed.discoveryDigest} readOnly />
-        </> : null}
-        <Box><Button type="button" variant="outline" disabled={mutation.isPending} onClick={() => startDraft(null)}>
-          {candidateCopy.startBlank}
-        </Button></Box>
-      </Box> : null}
+      {candidate || seed ? (
+        <Box display="grid" gap="md" minWidth="zero">
+          <Text>{candidateCopy.seedWarning}</Text>
+          <Text>{candidateCopy.discardWarning}</Text>
+          {candidate ? (
+            <Box display="grid" gap="sm" minWidth="zero">
+              <Text>
+                {candidateCopy.queuedTitle}: {candidate.accountId} · {candidate.statementId} /{" "}
+                {candidate.rowOrdinal} ·{" "}
+                {candidate.aggregateLegs
+                  ? `${candidate.aggregateLegs.length} ${locale === "sv" ? "bokförda rader" : "posted lines"}`
+                  : `${candidate.voucherId} / ${candidate.lineId}`}
+              </Text>
+              <Box>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={mutation.isPending}
+                  onClick={() => startDraft(candidate)}
+                >
+                  {candidateCopy.startSeed}
+                </Button>
+              </Box>
+            </Box>
+          ) : null}
+          {seed ? (
+            <>
+              <Text>
+                {candidateCopy.seededTitle}: {seed.statementId} / {seed.rowOrdinal} ·{" "}
+                {seed.aggregateLegs
+                  ? `${seed.aggregateLegs.length} ${locale === "sv" ? "bokförda rader" : "posted lines"}`
+                  : `${seed.voucherId} / ${seed.lineId}`}
+              </Text>
+              <InputField label={candidateCopy.digest} value={seed.discoveryDigest} readOnly />
+            </>
+          ) : null}
+          <Box>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={mutation.isPending}
+              onClick={() => startDraft(null)}
+            >
+              {candidateCopy.startBlank}
+            </Button>
+          </Box>
+        </Box>
+      ) : null}
       <Box
         key={draftVersion}
         as="fieldset"
@@ -181,14 +224,18 @@ function AllocationForm(props: {
               <InputField
                 label={copy.statement}
                 name={`${id}-statement`}
-                defaultValue={id === "first" ? seed?.statementId : undefined}
+                defaultValue={
+                  seed && (id === "first" || id.startsWith("seed-")) ? seed.statementId : undefined
+                }
                 required
                 pattern="[a-z][a-z0-9_\-]{2,127}"
               />
               <InputField
                 label={copy.ordinal}
                 name={`${id}-ordinal`}
-                defaultValue={id === "first" ? seed?.rowOrdinal : undefined}
+                defaultValue={
+                  seed && (id === "first" || id.startsWith("seed-")) ? seed.rowOrdinal : undefined
+                }
                 type="number"
                 min={1}
                 max={10000}
@@ -198,20 +245,37 @@ function AllocationForm(props: {
               <InputField
                 label={copy.voucher}
                 name={`${id}-voucher`}
-                defaultValue={id === "first" ? seed?.voucherId : undefined}
+                defaultValue={
+                  id.startsWith("seed-")
+                    ? seed?.aggregateLegs?.[Number(id.slice(5))]?.voucherId
+                    : id === "first"
+                      ? seed?.voucherId
+                      : undefined
+                }
                 required
                 pattern="[a-z][a-z0-9_\-]{2,127}"
               />
               <InputField
                 label={copy.line}
                 name={`${id}-line`}
-                defaultValue={id === "first" ? seed?.lineId : undefined}
+                defaultValue={
+                  id.startsWith("seed-")
+                    ? seed?.aggregateLegs?.[Number(id.slice(5))]?.lineId
+                    : id === "first"
+                      ? seed?.lineId
+                      : undefined
+                }
                 required
                 pattern="[a-z][a-z0-9_\-]{2,127}"
               />
               <InputField
                 label={copy.amount}
                 name={`${id}-amount`}
+                defaultValue={
+                  id.startsWith("seed-")
+                    ? seed?.aggregateLegs?.[Number(id.slice(5))]?.amountMinor
+                    : undefined
+                }
                 required
                 pattern="-?[1-9][0-9]{0,37}"
               />

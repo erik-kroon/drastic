@@ -10,6 +10,7 @@ const styles = stylex.create({
     gap: 12,
     alignItems: "start",
     minWidth: 0,
+    "@container (max-width: 42rem)": { gridTemplateColumns: "repeat(2, minmax(0, 1fr))" },
   },
   item: {
     paddingBlock: 16,
@@ -17,12 +18,25 @@ const styles = stylex.create({
     borderBlockEndStyle: "solid",
     borderBlockEndColor: tokens.border,
   },
-  header: { paddingBlockEnd: 12, color: tokens.mutedForeground, fontSize: tokens.fontSizeXs },
+  header: {
+    paddingBlockEnd: 12,
+    color: tokens.mutedForeground,
+    fontSize: tokens.fontSizeXs,
+    "@container (max-width: 42rem)": { display: "none" },
+  },
   cell: { minWidth: 0 },
+  firstCell: { "@container (max-width: 42rem)": { gridColumn: "1 / -1" } },
+  lastCell: { "@container (max-width: 42rem)": { gridColumn: "1 / -1" } },
+  mobileLabel: {
+    display: { default: "none", "@container (max-width: 42rem)": "block" },
+    color: tokens.mutedForeground,
+    fontSize: tokens.fontSizeXs,
+    marginBlockEnd: 4,
+  },
   numeric: { fontVariantNumeric: "tabular-nums", textAlign: "end" },
   details: { paddingBlockStart: 8 },
-  scroll: { overflowX: "auto" },
-  content: { minWidth: 680 },
+  scroll: { containerType: "inline-size", minWidth: 0 },
+  content: { minWidth: 0 },
   totals: {
     marginInlineStart: "auto",
     width: "min(100%, 320px)",
@@ -78,15 +92,30 @@ export function InvoiceAmountInput(props: InputProps) {
 export function InvoiceLine({
   cells,
   details,
+  labels,
 }: {
   cells: readonly ReactNode[];
   details: ReactNode;
+  labels: readonly string[];
 }) {
   return (
     <div {...stylex.props(styles.item)}>
       <div {...stylex.props(styles.row)}>
         {cells.map((cell, index) => (
-          <div key={index} {...stylex.props(styles.cell, index > 0 && styles.numeric)}>
+          <div
+            key={index}
+            {...stylex.props(
+              styles.cell,
+              index > 0 && styles.numeric,
+              index === 0 && styles.firstCell,
+              index === cells.length - 1 && styles.lastCell,
+            )}
+          >
+            {labels[index] ? (
+              <span aria-hidden="true" {...stylex.props(styles.mobileLabel)}>
+                {labels[index]}
+              </span>
+            ) : null}
             {cell}
           </div>
         ))}

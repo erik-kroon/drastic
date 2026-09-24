@@ -135,6 +135,7 @@ export function InvoicePaymentsWorkspace(props: PaymentProps) {
                   <DataTable
                     title={copy.available}
                     minWidth="fit"
+                    narrow="stack"
                     columns={[
                       { id: "date", label: copy.date },
                       { id: "payment", label: copy.payment },
@@ -193,6 +194,7 @@ export function InvoicePaymentsWorkspace(props: PaymentProps) {
               <DataTable
                 title={copy.history}
                 minWidth="fit"
+                narrow="stack"
                 columns={[
                   { id: "payment", label: copy.payment },
                   { id: "date", label: copy.date },
