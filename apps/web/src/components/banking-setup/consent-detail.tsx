@@ -53,6 +53,26 @@ export function ConsentDetail({ id }: { id: string }) {
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
+  const feed = useQuery({
+    queryKey: [...bookKey(book), "connector-feed", id],
+    retry: false,
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${bookPath(book)}/bank-connector-feeds?consentId=${encodeURIComponent(id)}`,
+        Connector.ConnectorFeedInventory,
+        { signal },
+      );
+      checkScope(book, result.scope);
+      const item = result.items[0];
+      if (result.items.length !== 1 || !item || item.consent.id !== id) {
+        throw new Error("Connector feed identity mismatch");
+      }
+      checkScope(book, item.consent.scope);
+      checkScope(book, item.scope);
+      return item;
+    },
+  });
+
   return (
     <Box display="grid" gap="lg">
       <AccountingStatus locale={locale} pending={consent.isPending} error={consent.error} />
@@ -100,6 +120,12 @@ export function ConsentDetail({ id }: { id: string }) {
           )}
         </RecordSection>
       ) : null}
+      <RetainedFeedEvidence
+        locale={locale}
+        data={feed.data}
+        pending={feed.isPending}
+        error={feed.error}
+      />
       <RecordSection title={sv ? "Leveranshistorik" : "Delivery history"}>
         <Text tone="muted">
           {sv
@@ -180,6 +206,53 @@ export function ConsentDetail({ id }: { id: string }) {
         </Box>
       </RecordSection>
     </Box>
+  );
+}
+
+function RetainedFeedEvidence({
+  locale,
+  data,
+  pending,
+  error,
+}: {
+  locale: "en" | "sv";
+  data: typeof Connector.ConnectorFeed.Type | undefined;
+  pending: boolean;
+  error: Error | null;
+}) {
+  const sv = locale === "sv";
+  return (
+    <RecordSection title={sv ? "Bevarad anslutningsstatus" : "Retained feed evidence"}>
+      <AccountingStatus locale={locale} pending={pending} error={error} />
+      {data ? (
+        <Box display="grid" gap="sm">
+          <Text>
+            {sv ? "Läst" : "Read at"}: {data.readAt} · {sv ? "Bevarade sidor" : "Retained pages"}:{" "}
+            {data.cursorSnapshot.retainedPageCount}
+            {data.pageEvidenceTruncated ? (sv ? " · förkortad vy" : " · truncated view") : ""}
+          </Text>
+          <Text>
+            {sv ? "Konto" : "Account"}: {data.account.accountId} · {sv ? "aktiv" : "active"}:{" "}
+            {data.account.active ? (sv ? "Ja" : "Yes") : sv ? "Nej" : "No"}
+          </Text>
+          <Text>
+            {sv ? "Leverantörsgodkännande" : "Provider acceptance"}:{" "}
+            {sv ? "Ej fastställt" : "Not established"} · {sv ? "Kontotäckning" : "Account coverage"}
+            : {sv ? "Ej fastställt" : "Not established"}
+          </Text>
+          {data.recoveryBlockers.map((blocker) => (
+            <Text key={blocker.code} role="alert">
+              {blocker.message}
+            </Text>
+          ))}
+          <Text>
+            {sv
+              ? "Bevarade sidor är operatörsleveranser eller connector-resultat. De verifierar inte bankens samtycke och för inte in poster i avstämningen."
+              : "Retained pages are operator deliveries or connector results. They do not verify bank consent or admit records for reconciliation."}
+          </Text>
+        </Box>
+      ) : null}
+    </RecordSection>
   );
 }
 

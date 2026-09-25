@@ -697,7 +697,7 @@ function ScheduleDateAmendmentForm(props: {
         }
       }}
     >
-      <Box display="grid" gap="lg" minWidth="0">
+      <Box display="grid" gap="lg" minWidth="zero">
         <Text>{copy.amendmentDateHelp}</Text>
 
         <Text>

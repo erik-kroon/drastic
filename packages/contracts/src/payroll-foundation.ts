@@ -6,11 +6,17 @@ import { accountingErrors } from "./accounting-errors";
 const Identity = Accounting.Identifier;
 const Text = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256));
 const Facts = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(2000));
-const PayrollDate = Accounting.AccountingDate.check(Schema.makeFilter((value) => {
-  const time = Date.parse(value);
-  return (value >= "0001-01-01" && Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value)
-    || "Enter a valid calendar date.";
-}));
+const PayrollDate = Accounting.AccountingDate.check(
+  Schema.makeFilter((value) => {
+    const time = Date.parse(value);
+    return (
+      (value >= "0001-01-01" &&
+        Number.isFinite(time) &&
+        new Date(time).toISOString().slice(0, 10) === value) ||
+      "Enter a valid calendar date."
+    );
+  }),
+);
 const Employment = Schema.Struct({
   personRef: Text,
   jurisdiction: Text,
@@ -23,13 +29,18 @@ const Work = Schema.Struct({
   periodStart: PayrollDate,
   periodEnd: PayrollDate,
   inputs: Schema.Array(Schema.Unknown).check(Schema.isMinLength(1), Schema.isMaxLength(200)),
-}).check(Schema.makeFilter((value) => {
-  const issues: Array<Schema.FilterIssue> = [];
-  if (value.periodStart > value.periodEnd) {
-    issues.push({ path: ["periodEnd"], issue: "The work-input period must end on or after its start date." });
-  }
-  return issues;
-}));
+}).check(
+  Schema.makeFilter((value) => {
+    const issues: Array<Schema.FilterIssue> = [];
+    if (value.periodStart > value.periodEnd) {
+      issues.push({
+        path: ["periodEnd"],
+        issue: "The work-input period must end on or after its start date.",
+      });
+    }
+    return issues;
+  }),
+);
 const Opening = Schema.Struct({
   asOf: PayrollDate,
   balanceMinor: Accounting.SignedMinorUnits,

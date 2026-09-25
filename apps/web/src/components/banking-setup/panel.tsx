@@ -159,78 +159,76 @@ export function BankingSetup({ consent }: { consent?: string }) {
                   </Button>
                 ) : null}
               </Box>
-             </RecordSection>
-             <RecordSection title={sv ? "Anslutningsflöde och återhämtning" : "Feed evidence and recovery"}>
-               <AccountingStatus
-                 locale={locale}
-                 pending={feedInventory.isPending}
-                 error={feedInventory.error}
-               />
-               {feedInventory.isSuccess &&
-               feedInventory.data.pages.every((page) => page.items.length === 0) ? (
-                 <Text>
-                   {sv
-                     ? "Ingen bevarad leveransstatus finns."
-                     : "No retained feed evidence is available."}
-                 </Text>
-               ) : null}
-               {feedInventory.data?.pages
-                 .flatMap((page) => page.items)
-                 .map((feed) => (
-                   <Box key={feed.consent.id} display="grid" gap="sm">
-                     <Text>
-                       {feed.consent.providerId} · {feed.consent.externalAccountId} ·{" "}
-                       {feed.account.accountId}
-                     </Text>
-                     <Text>
-                       {sv ? "Läst" : "Read at"}: {feed.readAt} · {sv ? "Sidor" : "Pages"}:{" "}
-                       {feed.cursorSnapshot.retainedPageCount}
-                       {feed.pageEvidenceTruncated
-                         ? sv
-                           ? " · listan är förkortad"
-                           : " · list truncated"
-                         : ""}
-                     </Text>
-                     <Text>
-                       {sv ? "Leverantörsgodkännande" : "Provider acceptance"}:{" "}
-                       {sv ? "Ej fastställt" : "Not established"}
-                     </Text>
-                     {feed.recoveryBlockers.map((blocker) => (
-                       <Text key={blocker.code} role="alert">
-                         {blocker.message}
-                       </Text>
-                     ))}
-                     <Button
-                       variant="outline"
-                       onClick={() => open(feed.consent.id)}
-                     >
-                       {sv ? "Granska bevarad leverans" : "Review retained feed"}
-                     </Button>
-                   </Box>
-                 ))}
-               <Box display="flex" gap="sm" flexWrap="wrap">
-                 <Button
-                   variant="ghost"
-                   disabled={feedInventory.isFetching}
-                   onClick={() => void feedInventory.refetch()}
-                 >
-                   {sv ? "Uppdatera leveransstatus" : "Refresh feed evidence"}
-                 </Button>
-                 {feedInventory.hasNextPage ? (
-                   <Button
-                     variant="outline"
-                     disabled={feedInventory.isFetchingNextPage}
-                     onClick={() => void feedInventory.fetchNextPage()}
-                   >
-                     {sv ? "Visa fler" : "Load more"}
-                   </Button>
-                 ) : null}
-               </Box>
-             </RecordSection>
-             <RecordSection
-               title={sv ? "Registrera ett befintligt samtycke" : "Record existing consent"}
-             >
-
+            </RecordSection>
+            <RecordSection
+              title={sv ? "Anslutningsflöde och återhämtning" : "Feed evidence and recovery"}
+            >
+              <AccountingStatus
+                locale={locale}
+                pending={feedInventory.isPending}
+                error={feedInventory.error}
+              />
+              {feedInventory.isSuccess &&
+              feedInventory.data.pages.every((page) => page.items.length === 0) ? (
+                <Text>
+                  {sv
+                    ? "Ingen bevarad leveransstatus finns."
+                    : "No retained feed evidence is available."}
+                </Text>
+              ) : null}
+              {feedInventory.data?.pages
+                .flatMap((page) => page.items)
+                .map((feed) => (
+                  <Box key={feed.consent.id} display="grid" gap="sm">
+                    <Text>
+                      {feed.consent.providerId} · {feed.consent.externalAccountId} ·{" "}
+                      {feed.account.accountId}
+                    </Text>
+                    <Text>
+                      {sv ? "Läst" : "Read at"}: {feed.readAt} · {sv ? "Sidor" : "Pages"}:{" "}
+                      {feed.cursorSnapshot.retainedPageCount}
+                      {feed.pageEvidenceTruncated
+                        ? sv
+                          ? " · listan är förkortad"
+                          : " · list truncated"
+                        : ""}
+                    </Text>
+                    <Text>
+                      {sv ? "Leverantörsgodkännande" : "Provider acceptance"}:{" "}
+                      {sv ? "Ej fastställt" : "Not established"}
+                    </Text>
+                    {feed.recoveryBlockers.map((blocker) => (
+                      <Text key={blocker.code} role="alert">
+                        {blocker.message}
+                      </Text>
+                    ))}
+                    <Button variant="outline" onClick={() => open(feed.consent.id)}>
+                      {sv ? "Granska bevarad leverans" : "Review retained feed"}
+                    </Button>
+                  </Box>
+                ))}
+              <Box display="flex" gap="sm" flexWrap="wrap">
+                <Button
+                  variant="ghost"
+                  disabled={feedInventory.isFetching}
+                  onClick={() => void feedInventory.refetch()}
+                >
+                  {sv ? "Uppdatera leveransstatus" : "Refresh feed evidence"}
+                </Button>
+                {feedInventory.hasNextPage ? (
+                  <Button
+                    variant="outline"
+                    disabled={feedInventory.isFetchingNextPage}
+                    onClick={() => void feedInventory.fetchNextPage()}
+                  >
+                    {sv ? "Visa fler" : "Load more"}
+                  </Button>
+                ) : null}
+              </Box>
+            </RecordSection>
+            <RecordSection
+              title={sv ? "Registrera ett befintligt samtycke" : "Record existing consent"}
+            >
               <ConsentForm
                 onSaved={(id) => {
                   void cache.invalidateQueries({ queryKey });

@@ -134,7 +134,7 @@ async function inspectFeed(value: typeof InspectionConfig.Type) {
           revoked: feed.consent.revoked,
         },
         account: feed.account,
-        checkedAt: feed.checkedAt,
+        readAt: feed.readAt,
         cursorSnapshot: feed.cursorSnapshot,
         pages: feed.pages,
         pageEvidenceTruncated: feed.pageEvidenceTruncated,

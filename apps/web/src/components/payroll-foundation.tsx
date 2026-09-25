@@ -244,7 +244,7 @@ export function PayrollFoundation({
           }}
           onNewFact={() => {
             keys.clear();
-             setDraft((current) => ({ ...current, effectiveOn: "", supersedes: "" }));
+            setDraft((current) => ({ ...current, effectiveOn: "", supersedes: "" }));
             setInputError("");
             setNotice("");
           }}
