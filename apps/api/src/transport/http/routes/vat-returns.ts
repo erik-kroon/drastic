@@ -8,6 +8,52 @@ import { query, scopeParameter } from "../../../db/query";
 
 export const VatReturnsHandlers = HttpApiBuilder.group(Api, "vatReturns", (handlers) =>
   handlers
+    .handle("prepareVatControlReclassification", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "prepareVatControlReclassification",
+          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
+          Vat.VatControlReclassificationReview,
+        ),
+      ),
+    )
+    .handle("approveVatControlReclassification", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "approveVatControlReclassification",
+          [token, scopeParameter(params), params.id, headers["idempotency-key"], JSON.stringify(payload)],
+          Vat.VatControlReclassificationApproval,
+        ),
+      ),
+    )
+    .handle("executeVatControlReclassification", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "executeVatControlReclassification",
+          [token, scopeParameter(params), params.id, headers["idempotency-key"], JSON.stringify(payload)],
+          Vat.VatControlReclassificationEffect,
+        ),
+      ),
+    )
+    .handle("getVatControlReclassification", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query("getVatControlReclassification", [token, scopeParameter(params), params.id], Vat.VatControlReclassificationView),
+      ),
+    )
+    .handle("listVatControlReclassifications", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query("listVatControlReclassifications", [token, scopeParameter(params)], Vat.VatControlReclassificationList),
+      ),
+    )
+    .handle("recoverVatControlReclassification", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "recoverVatControlReclassification",
+          [token, scopeParameter(params), params.key],
+          Vat.VatControlReclassificationRecovery,
+        ),
+      ),
+    )
     .handle("withdrawVatFact", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         query(

@@ -8,6 +8,7 @@ import { catalogStatements } from "./statements/catalog";
 import { companySetupStatements } from "./statements/company-setup";
 import { firmStatements } from "./statements/firms";
 import { vatAmendmentStatements } from "./statements/vat-amendments";
+import { vatReclassificationStatements } from "./statements/vat-reclassifications";
 import { expenseTaxWithdrawalStatements } from "./statements/expense-tax-withdrawals";
 import { expenseTaxSnapshotStatements } from "./statements/expense-tax-snapshots";
 import { subledgerStatements } from "./statements/subledgers";
@@ -76,6 +77,7 @@ const statements = {
   ...firmStatements,
   ...companySetupStatements,
   ...vatAmendmentStatements,
+  ...vatReclassificationStatements,
   ...expenseTaxWithdrawalStatements,
   ...expenseTaxSnapshotStatements,
   ...subledgerStatements,

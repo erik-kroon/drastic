@@ -566,6 +566,21 @@ export const capabilities = {
   sie_get: effectCapability(Capabilities.sie_get, getSie),
   sie_list: effectCapability(Capabilities.sie_list, listSie),
   sie_resume: effectCapability(Capabilities.sie_resume, resumeSie),
+  vat_return_get_reclassification: bindCapability(
+    Capabilities.vat_return_get_reclassification,
+    "getVatControlReclassification",
+    (input) => [scopeParameter(input.scope), input.reviewId],
+  ),
+  vat_return_list_reclassifications: bindCapability(
+    Capabilities.vat_return_list_reclassifications,
+    "listVatControlReclassifications",
+    (input) => [scopeParameter(input.scope)],
+  ),
+  vat_return_recover_reclassification: bindCapability(
+    Capabilities.vat_return_recover_reclassification,
+    "recoverVatControlReclassification",
+    (input) => [scopeParameter(input.scope), input.key],
+  ),
   vat_return_compare_drafts: bindCapability(
     Capabilities.vat_return_compare_drafts,
     "compareVatDrafts",

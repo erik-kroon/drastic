@@ -80,6 +80,11 @@ const ExpenseTaxPanel = lazy(() =>
 const VatReturnsPanel = lazy(() =>
   import("@/components/vat-returns/panel").then((module) => ({ default: module.VatReturnsPanel })),
 );
+const VatControlReclassificationPanel = lazy(() =>
+  import("@/components/vat-returns/reclassification-panel").then((module) => ({
+    default: module.VatControlReclassificationPanel,
+  })),
+);
 
 const BankSourceCoveragePanel = lazy(() =>
   import("@/components/bank-source-coverage/panel").then((module) => ({
@@ -106,6 +111,11 @@ const ExchangeRateReviewsPanel = lazy(() =>
     default: module.ExchangeRateReviewsPanel,
   })),
 );
+const trialBalanceModes = new Set(["trial", "ledger"]);
+
+function isTrialBalanceMode(value: string | undefined): value is "trial" | "ledger" {
+  return value !== undefined && trialBalanceModes.has(value);
+}
 
 export function FinanceArea({
   area,
@@ -229,7 +239,7 @@ export function FinanceArea({
             />
           ) : null}
           {selected === "library" ? <ReportLibrary /> : null}
-          {selected === "trial" || selected === "ledger" ? (
+          {isTrialBalanceMode(selected) ? (
             <TrialBalanceWorkspace
               mode={selected}
               recordId={record}
@@ -265,6 +275,14 @@ export function FinanceArea({
           ) : null}
           {selected === "vat" ? (
             <VatReturnsPanel book={book} locale={locale} recordId={recordId} onOpen={onOpen} open />
+          ) : null}
+          {selected === "reclassify" ? (
+            <VatControlReclassificationPanel
+              book={book}
+              locale={locale}
+              recordId={recordId}
+              onOpen={onOpen}
+            />
           ) : null}
           {selected === "closing" ? <ClosingWorkspace recordId={record} onOpen={onOpen} /> : null}
         </Suspense>
@@ -370,6 +388,7 @@ function areaTabs(
     ],
     tax: [
       { key: "vat", label: sv ? "Momsdeklarationer" : "VAT returns" },
+      { key: "reclassify", label: sv ? "Momsomklassning" : "VAT reclassification" },
       { key: "expenses", label: sv ? "Momsgranskning" : "Expense tax review" },
     ],
     closing: [{ key: "closing", label: copy.closing }],

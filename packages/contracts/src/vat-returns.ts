@@ -337,10 +337,237 @@ export const VatAmendmentList = Schema.Struct({
   ),
 });
 
+export const VatControlAccountRole = Schema.Literals([
+  "output_vat_control",
+  "input_vat_control",
+  "vat_settlement_control",
+]);
+export const PrepareVatControlReclassification = Schema.Struct({
+  profile: Schema.Literal("vat_control_reclassification_v1"),
+  draftId: A.Identifier,
+  expectedDraftDigest: A.Digest,
+  outputAccountId: A.Identifier,
+  inputAccountId: A.Identifier,
+  settlementAccountId: A.Identifier,
+  roleEvidenceId: A.Identifier,
+  reviewEvidenceId: A.Identifier,
+  accountingPeriodId: A.Identifier,
+  postingDate: A.AccountingDate,
+  series: Schema.String.check(Schema.isPattern(/^[A-Z0-9]{1,16}$/)),
+  rationale: A.Description,
+  acknowledgeSyntheticOnly: Schema.Literal(true),
+});
+export const ApproveVatControlReclassification = Schema.Struct({
+  expectedReviewDigest: A.Digest,
+  acknowledgeSyntheticOnly: Schema.Literal(true),
+});
+export const ExecuteVatControlReclassification = Schema.Struct({
+  ...ApproveVatControlReclassification.fields,
+  approvalId: A.Identifier,
+});
+export const VatControlProfile = Schema.Struct({
+  id: A.Identifier,
+  profile: Schema.Literal("vat_control_reclassification_v1"),
+  profileVersion: A.MinorUnits,
+  jurisdiction: Schema.Literal("SE"),
+  scheme: Schema.Literal("synthetic_output_input_v1"),
+  evidenceSha256: Schema.String,
+  digest: A.Digest,
+});
+export const VatReportingObligation = Schema.Struct({
+  id: A.Identifier,
+  registrationNamespace: Schema.Literal("synthetic"),
+  registrationId: A.Identifier,
+  jurisdiction: Schema.Literal("SE"),
+  scheme: Schema.Literal("synthetic_output_input_v1"),
+  startsOn: A.AccountingDate,
+  endsOn: A.AccountingDate,
+  periodEvidenceId: Schema.NullOr(A.Identifier),
+  digest: A.Digest,
+});
+export const VatControlAccountRoleBinding = Schema.Struct({
+  role: VatControlAccountRole,
+  accountId: A.Identifier,
+  accountVersion: A.MinorUnits,
+  code: Schema.String,
+  name: Schema.String,
+  active: Schema.Boolean,
+});
+export const VatControlContribution = Schema.Struct({
+  factId: A.Identifier,
+  factRevisionId: A.Identifier,
+  factRevision: Schema.Int,
+  factDigest: A.Digest,
+  voucherId: A.Identifier,
+  lineId: A.Identifier,
+  role: Schema.Literals(["output_vat_control", "input_vat_control"]),
+  accountId: A.Identifier,
+  accountVersion: A.MinorUnits,
+  debitMinor: A.MinorUnits,
+  creditMinor: A.MinorUnits,
+  balanceMinor: A.SignedMinorUnits,
+});
+export const VatControlPostingLine = Schema.Struct({
+  lineId: A.Identifier,
+  ...A.JournalLine.fields,
+});
+export const VatControlReclassificationAmounts = Schema.Struct({
+  outputTaxMinor: A.MinorUnits,
+  deductibleInputTaxMinor: A.MinorUnits,
+  accountingNetMinor: A.SignedMinorUnits,
+  reportedNetKrona: A.SignedMinorUnits,
+  reportedResidualMinor: A.SignedMinorUnits,
+  assessedMinor: Schema.Null,
+});
+export const VatControlReclassificationBasis = Schema.Struct({
+  profile: VatControlProfile,
+  obligation: VatReportingObligation,
+  draft: Schema.Struct({
+    id: A.Identifier,
+    digest: A.Digest,
+    basisDigest: A.Digest,
+    engine: Schema.Literal("vat-return-draft-v3"),
+    startsOn: A.AccountingDate,
+    endsOn: A.AccountingDate,
+  }),
+  amounts: VatControlReclassificationAmounts,
+  accountRoles: Schema.Array(VatControlAccountRoleBinding).check(
+    Schema.isMinLength(3),
+    Schema.isMaxLength(3),
+  ),
+  contributions: Schema.Array(VatControlContribution).check(Schema.isMaxLength(500)),
+  period: Schema.Struct({ id: A.Identifier, version: A.MinorUnits }),
+  roleEvidenceSha256: Schema.String,
+  reviewEvidenceSha256: Schema.String,
+  postingLines: Schema.Array(VatControlPostingLine).check(Schema.isMaxLength(500)),
+  currentFactDigest: A.Digest,
+  dependencyDigest: A.Digest,
+  coverage: Schema.Literal("not_established"),
+  legalProfileActive: Schema.Literal(false),
+  taxAccountMatched: Schema.Literal(false),
+});
+export const VatControlReclassificationReview = Schema.Struct({
+  id: A.Identifier,
+  scope: A.Scope,
+  version: Schema.Literal(1),
+  ordinal: Schema.Int,
+  state: Schema.Literal("prepared"),
+  input: PrepareVatControlReclassification,
+  basis: VatControlReclassificationBasis,
+  postingPlan: Schema.NullOr(A.ChangeSet),
+  requiresOperatorApproval: Schema.Literal(true),
+  assessmentEffect: Schema.Literal("none"),
+  cashTransferEffect: Schema.Literal("none"),
+  filingReady: Schema.Literal(false),
+  externalState: Schema.Literal("not_submitted"),
+  createdAt: Schema.String,
+  receipt: CommandReceipt,
+  digest: A.Digest,
+});
+export const VatControlReclassificationApproval = Schema.Struct({
+  id: A.Identifier,
+  scope: A.Scope,
+  version: Schema.Literal(1),
+  reviewId: A.Identifier,
+  reviewDigest: A.Digest,
+  actorId: A.Identifier,
+  expiresAt: Schema.String,
+  kernelApproval: Schema.NullOr(A.Approval),
+  createdAt: Schema.String,
+  receipt: CommandReceipt,
+  digest: A.Digest,
+});
+export const VatControlReclassificationEffect = Schema.Struct({
+  id: A.Identifier,
+  scope: A.Scope,
+  version: Schema.Literal(1),
+  obligationId: A.Identifier,
+  draftId: A.Identifier,
+  reviewId: A.Identifier,
+  reviewDigest: A.Digest,
+  approvalId: A.Identifier,
+  outcome: Schema.Literals(["posted", "no_effect"]),
+  amounts: VatControlReclassificationAmounts,
+  changeSetId: Schema.NullOr(A.Identifier),
+  voucherId: Schema.NullOr(A.Identifier),
+  postingReceipt: Schema.NullOr(A.ExecutionReceipt),
+  postingDate: A.AccountingDate,
+  assessmentEffect: Schema.Literal("none"),
+  cashTransferEffect: Schema.Literal("none"),
+  filingReady: Schema.Literal(false),
+  externalState: Schema.Literal("not_submitted"),
+  createdAt: Schema.String,
+  receipt: CommandReceipt,
+  digest: A.Digest,
+});
+export const VatControlReclassificationView = Schema.Struct({
+  review: VatControlReclassificationReview,
+  approvals: Schema.Array(VatControlReclassificationApproval).check(Schema.isMaxLength(20)),
+  reclassification: Schema.NullOr(VatControlReclassificationEffect),
+  liveBasisCheckedAt: Schema.NullOr(Schema.String),
+});
+export const VatControlReclassificationList = Schema.Struct({
+  scope: A.Scope,
+  items: Schema.Array(
+    Schema.Struct({
+      reviewId: A.Identifier,
+      reviewDigest: A.Digest,
+      obligationId: A.Identifier,
+      draftId: A.Identifier,
+      startsOn: A.AccountingDate,
+      endsOn: A.AccountingDate,
+      accountingNetMinor: A.SignedMinorUnits,
+      state: Schema.Literals(["prepared", "approved", "posted", "no_effect"]),
+      reclassificationId: Schema.NullOr(A.Identifier),
+      recordedAt: Schema.String,
+    }),
+  ),
+});
+export const VatControlReclassificationCommandResult = Schema.Union([
+  VatControlReclassificationReview,
+  VatControlReclassificationApproval,
+  VatControlReclassificationEffect,
+]);
+export const VatControlReclassificationRecovery = Schema.Struct({
+  state: Schema.Literal("committed"),
+  result: VatControlReclassificationCommandResult,
+});
+
 const path = "/v1/entities/:entityId/books/:bookId/vat-returns";
 const scoped = { params: A.Scope, error: accountingErrors };
 const identified = { params: A.ChangePath, error: accountingErrors };
 export const VatReturnsApi = HttpApiGroup.make("vatReturns").add(
+  HttpApiEndpoint.post("prepareVatControlReclassification", `${path}/reclassifications`, {
+    ...scoped,
+    headers: A.IdempotencyHeaders,
+    payload: PrepareVatControlReclassification.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: VatControlReclassificationReview,
+  }),
+  HttpApiEndpoint.post("approveVatControlReclassification", `${path}/reclassifications/:id/approval`, {
+    ...identified,
+    headers: A.IdempotencyHeaders,
+    payload: ApproveVatControlReclassification.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: VatControlReclassificationApproval,
+  }),
+  HttpApiEndpoint.post("executeVatControlReclassification", `${path}/reclassifications/:id/execution`, {
+    ...identified,
+    headers: A.IdempotencyHeaders,
+    payload: ExecuteVatControlReclassification.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: VatControlReclassificationEffect,
+  }),
+  HttpApiEndpoint.get("recoverVatControlReclassification", `${path}/reclassifications/requests/:key`, {
+    params: Schema.Struct({ ...A.Scope.fields, key: A.IdempotencyHeaders.fields["idempotency-key"] }),
+    error: accountingErrors,
+    success: VatControlReclassificationRecovery,
+  }),
+  HttpApiEndpoint.get("getVatControlReclassification", `${path}/reclassifications/:id`, {
+    ...identified,
+    success: VatControlReclassificationView,
+  }),
+  HttpApiEndpoint.get("listVatControlReclassifications", `${path}/reclassifications`, {
+    ...scoped,
+    success: VatControlReclassificationList,
+  }),
   HttpApiEndpoint.post("withdrawVatFact", `${path}/facts/:id/withdrawal`, {
     ...identified,
     headers: A.IdempotencyHeaders,
@@ -393,6 +620,27 @@ export const PrepareVatCommand = Schema.Struct({
   input: PrepareVatDraft,
 });
 export const VatReturnCapabilities = {
+  vat_return_get_reclassification: {
+    input: Schema.Struct({ ...scope, reviewId: A.Identifier }),
+    output: VatControlReclassificationView,
+    readOnly: true,
+    description:
+      "Read one retained synthetic VAT control reclassification, its exact plan, approvals and any committed effect. It records no assessment, payment or filing.",
+  },
+  vat_return_list_reclassifications: {
+    input: Schema.Struct(scope),
+    output: VatControlReclassificationList,
+    readOnly: true,
+    description:
+      "Rediscover the complete bounded synthetic VAT control-reclassification history. One obligation accepts only its first reclassification effect.",
+  },
+  vat_return_recover_reclassification: {
+    input: Schema.Struct({ ...scope, key: A.IdempotencyHeaders.fields["idempotency-key"] }),
+    output: VatControlReclassificationRecovery,
+    readOnly: true,
+    description:
+      "Recover a committed VAT reclassification command by its original idempotency key without creating a new financial effect.",
+  },
   vat_return_compare_drafts: {
     input: Schema.Struct({ ...scope, input: CompareVatDrafts }),
     output: VatDraftImpactView,

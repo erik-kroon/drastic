@@ -31,7 +31,7 @@ export const PostingAction = Schema.Struct({
   kind: Schema.Literal("post_voucher"),
   correctsVoucherId: Schema.NullOr(Identifier),
   eventId: Identifier,
-  postingPurpose: Schema.Literals(["adjustment", "reversal"]),
+  postingPurpose: Schema.Literals(["adjustment", "reversal", "vat_control_reclassification_v1"]),
   occurrenceKey: Schema.String,
   fiscalYearId: Identifier,
   accountingPeriodId: Identifier,
@@ -41,6 +41,15 @@ export const PostingAction = Schema.Struct({
   description: Description,
   rationale: Description,
   taxAssessment: Schema.Literal("not_applicable"),
+  vatReclassification: Schema.optional(
+    Schema.NullOr(
+      Schema.Struct({
+        reviewId: Identifier,
+        obligationId: Identifier,
+        draftId: Identifier,
+      }),
+    ),
+  ),
   lines: Schema.Array(Schema.Struct({ ...JournalLine.fields, lineId: Identifier })),
   evidenceRefs: Schema.Array(
     Schema.Struct({ evidenceId: Identifier, sha256: Schema.String, locator: Schema.String }),
