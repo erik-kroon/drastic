@@ -157,18 +157,13 @@ function runWithSavepoint<A>(
     const mappedOperation = operation.pipe(Effect.mapError(databaseFailure));
     const result = yield* mappedOperation.pipe(
       Effect.map((value) => ({ state: "committed", result: value }) as const),
-      Effect.catch((error) => {
-        if (!isPersistableRefusal(error)) return Effect.fail(error);
-        return Effect.gen(function* () {
-          yield* transaction
-            .execute(sql`ROLLBACK TO SAVEPOINT posting_saved_request`)
-            .pipe(Effect.mapError(databaseFailure));
-          yield* transaction
-            .execute(sql`RELEASE SAVEPOINT posting_saved_request`)
-            .pipe(Effect.mapError(databaseFailure));
+      Effect.catchIf(isPersistableRefusal, (error) =>
+        Effect.gen(function* () {
+          yield* transaction.execute(sql`ROLLBACK TO SAVEPOINT posting_saved_request`);
+          yield* transaction.execute(sql`RELEASE SAVEPOINT posting_saved_request`);
           return { state: "refused", error } as const;
-        });
-      }),
+        }).pipe(Effect.mapError(databaseFailure)),
+      ),
     );
     yield* transaction
       .execute(sql`RELEASE SAVEPOINT posting_saved_request`)
@@ -204,6 +199,13 @@ function savePostingRequestWithAuthority(
     Effect.gen(function* () {
       yield* Db.lockBookForUpdate(transaction, command.scope);
       const decodedCommand = yield* decode(Recovery.SavedPostingCommand, command.command);
+      if (
+        operatorOnly &&
+        decodedCommand.operation !== "approve_change" &&
+        decodedCommand.operation !== "revoke_approval"
+      ) {
+        return yield* failure("Forbidden");
+      }
       const expected = yield* digest({
         scope: command.scope,
         actorId: principal.actorId,
@@ -274,6 +276,13 @@ function runPostingRequestWithAuthority(
       if (!row) return yield* failure("NotFound");
       if (row.actorId !== principal.actorId) return yield* failure("Forbidden");
       const savedCommand = yield* decode(Recovery.SavedPostingCommand, row.command);
+      if (
+        operatorOnly &&
+        savedCommand.operation !== "approve_change" &&
+        savedCommand.operation !== "revoke_approval"
+      ) {
+        return yield* failure("Forbidden");
+      }
       const prior = (yield* RecoveryDb.readSavedOutcome(transaction, command.scope, row.key))[0];
       if (prior) return yield* savedView(transaction, command.scope, row, principal.actorId);
       const operation = yield* runWithSavepoint(

@@ -292,7 +292,7 @@ BEGIN
     ELSE i_first:=coalesce(i_first,i_index); END IF;
   END LOOP;
   PERFORM 1 FROM openerp.periods p WHERE p.book_id=p_scope->>'bookId'
-    AND p.id IN(p_input->>'accountingPeriodId',SELECT x->>'accountingPeriodId' FROM jsonb_array_elements(p_input->'installments') x)
+    AND p.id IN(p_input->>'accountingPeriodId',(SELECT x->>'accountingPeriodId' FROM jsonb_array_elements(p_input->'installments') x))
     ORDER BY p.id FOR SHARE;
   PERFORM 1 FROM openerp.accounts a WHERE a.book_id=p_scope->>'bookId' AND a.id IN(
     p_input->>'lossAccountId',p_input->>'accumulatedImpairmentAccountId',
@@ -301,9 +301,9 @@ BEGIN
       AND a.id IN(p_input->>'lossAccountId',p_input->>'accumulatedImpairmentAccountId',
         i_schedule->'terms'->>'debitAccountId',i_schedule->'terms'->>'creditAccountId'))<>4
     OR (SELECT count(*) FROM openerp.periods p WHERE p.book_id=p_scope->>'bookId'
-      AND p.id IN(p_input->>'accountingPeriodId',SELECT x->>'accountingPeriodId' FROM jsonb_array_elements(p_input->'installments') x))
-      <> (SELECT count(DISTINCT requested.id) FROM(VALUES(p_input->>'accountingPeriodId'),
-        (SELECT x->>'accountingPeriodId' FROM jsonb_array_elements(p_input->'installments') x))) requested(id)) THEN
+      AND p.id IN(p_input->>'accountingPeriodId',(SELECT x->>'accountingPeriodId' FROM jsonb_array_elements(p_input->'installments') x)))
+      <> (SELECT count(DISTINCT requested.id) FROM (VALUES (p_input->>'accountingPeriodId'),
+        ((SELECT x->>'accountingPeriodId' FROM jsonb_array_elements(p_input->'installments') x))) AS requested(id)) THEN
     PERFORM openerp.fail('InvalidJournal','Impairment posting and future periods must use four distinct active accounts and retained periods from this book.'); END IF;
   i_index:=i_first-1;
   FOR i_period IN SELECT value FROM jsonb_array_elements(p_input->'installments') LOOP
@@ -497,7 +497,7 @@ END $$;
 
 CREATE FUNCTION openerp.subledger_impairment_schedule_for_voucher(p_book text,p_voucher text)
 RETURNS TABLE(schedule_id text) LANGUAGE sql STABLE SET search_path=pg_catalog,openerp AS $$
-  SELECT DISTINCT x.schedule_id FROM (
+  SELECT DISTINCT x.schedule_id COLLATE "C" FROM (
     SELECT e.schedule_id FROM openerp.subledger_impairments e WHERE e.book_id=p_book AND e.voucher_id=p_voucher
     UNION ALL
     SELECT b.schedule_id FROM openerp.subledger_bases b WHERE b.book_id=p_book AND b.voucher_id=p_voucher
@@ -969,7 +969,7 @@ BEGIN
       OR ((l->>'creditMinor')::numeric>0 AND l->>'accountId'<>'creditAccountId')
       OR NOT EXISTS(SELECT FROM openerp.journal_lines j WHERE j.book_id=p_book AND j.voucher_id=d_basis->'input'->>'voucherId'
         AND j.id=l->>'lineId' AND j.ordinal=(l->>'ordinal')::integer AND j.account_id=l->>'accountId'
-        AND j.debit_minor=(l->>'debitMinor')::numeric AND j.credit_minor=(l->>'creditMinor')::numeric))) THEN
+        AND j.debit_minor=(l->>'debitMinor')::numeric AND j.credit_minor=(l->>'creditMinor')::numeric)) THEN
     PERFORM openerp.fail('UnsupportedProfile','Disposal requires intact gross, ordinary accumulated and post-impairment carrying controls.'); END IF;
   IF p_input->>'lossAccountId'=d_schedule->'terms'->>'creditAccountId'
     OR (d_impairment>0 AND p_input->>'lossAccountId'=d_impairment_accounts->>0)
@@ -1299,7 +1299,7 @@ SET search_path=pg_catalog,openerp AS $$
         'impairmentDigests',coalesce((SELECT jsonb_agg(i.body->>'digest' ORDER BY i.ordinal)
           FROM openerp.subledger_impairments i WHERE i.book_id=book AND i.schedule_id=s.id AND i.posting_date<=ends_on),'[]'))
       ||CASE WHEN s.disposal IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('disposalDigest',s.disposal->>'digest') END
-      ORDER BY s.id COLLATE "C") FROM schedules s),'[]'))),
+      ORDER BY s.id COLLATE "C") FROM schedules s),'[]')),
     'scheduleCount',(SELECT count(*) FROM schedules),
     'dueUnpreparedCount',(SELECT count(*) FROM occurrences WHERE value->>'state'='unprepared'),
     'dueUnpostedCount',(SELECT count(*) FROM occurrences WHERE value->>'state' IN('unprepared','prepared','conflicted')),

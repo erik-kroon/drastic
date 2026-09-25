@@ -797,12 +797,24 @@ function bundleView(
   });
 }
 
+function validateBundleRow(
+  row: CorrectionDb.BundleRow,
+  bundle: typeof Corrections.CorrectionBundle.Type,
+) {
+  return row.originalVoucherId === bundle.originalVoucher.id &&
+    row.reversalChangeSetId === bundle.reversal.id &&
+    row.replacementChangeSetId === bundle.replacement.id
+    ? Effect.succeed(bundle)
+    : failure("StaleDependency");
+}
+
 function readBundleView(transaction: Transaction, scope: Scope, bundleId: string) {
   return Effect.gen(function* () {
     const row = (yield* CorrectionDb.readBundle(transaction, scope, bundleId))[0];
     if (!row) return yield* failure("NotFound");
     const bundle = yield* bundleFromRow(row);
     yield* validateBundle(bundle);
+    yield* validateBundleRow(row, bundle);
     return yield* bundleView(transaction, scope, bundle);
   });
 }
@@ -833,6 +845,7 @@ export const getCorrectionBundleForVoucher = Effect.fn("posting.getCorrectionBun
         if (!row) return yield* failure("NotFound");
         const bundle = yield* bundleFromRow(row);
         yield* validateBundle(bundle);
+        yield* validateBundleRow(row, bundle);
         return yield* bundleView(transaction, command.scope, bundle);
       }),
     );
@@ -870,6 +883,7 @@ export const approveCorrectionBundle = Effect.fn("posting.approveCorrectionBundl
       if (!row) return yield* failure("NotFound");
       const bundle = yield* bundleFromRow(row);
       yield* validateBundle(bundle);
+      yield* validateBundleRow(row, bundle);
       if (
         command.input.bundleDigest !== bundle.bundleDigest ||
         command.input.version !== bundle.version
@@ -965,6 +979,7 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
       if (!bundleRow) return yield* failure("NotFound");
       const bundle = yield* bundleFromRow(bundleRow);
       yield* validateBundle(bundle);
+      yield* validateBundleRow(bundleRow, bundle);
       if (
         command.input.bundleDigest !== bundle.bundleDigest ||
         command.input.version !== bundle.version
@@ -1007,7 +1022,7 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
         approval.bundleDigest !== bundle.bundleDigest ||
         (yield* Db.readOperatorMembership(transaction, command.scope.bookId, approval.actorId))
           .length === 0 ||
-        (yield* Db.readActorAdmission(transaction, approval.actorId))[0]?.enabled !== true
+        (yield* Db.readActorAdmission(transaction, approval.actorId))[0]?.enabled !== false
       ) {
         return yield* failure("ApprovalRequired");
       }

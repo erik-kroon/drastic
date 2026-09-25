@@ -34,7 +34,7 @@ ALTER TABLE openerp.commerce_fx_settlements
       AND body->'calculation'->>'considerationMinor'=consideration_minor::text
       AND body->'calculation'->>'realizedGainMinor'=realized_gain_minor::text
       AND body->'calculation'->>'finalLeg'=final_leg::text)) IS TRUE)
-  ),
+  ,
   ADD CONSTRAINT commerce_fx_settlements_line_check CHECK (
     (carrying_released_minor=0 AND control_line_id IS NULL)
     OR (carrying_released_minor>0 AND control_line_id IS NOT NULL)
@@ -53,7 +53,7 @@ ALTER TABLE openerp.commerce_fx_settlements
     AND original_released_minor>0 AND consideration_minor>0
     AND realized_gain_minor=consideration_minor-carrying_released_minor
     AND body->>'digest'=openerp.digest(body-'digest')) IS TRUE)
-  ),
+  ,
   ADD CONSTRAINT commerce_fx_settlements_profile_item_unique UNIQUE(book_id,item_id,leg_ordinal);
 CREATE INDEX commerce_fx_settlement_profile_item ON openerp.commerce_fx_settlements(book_id,item_id,profile,leg_ordinal);
 

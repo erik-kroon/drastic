@@ -1,3 +1,6 @@
+ALTER TABLE openerp.vouchers DROP CONSTRAINT IF EXISTS vouchers_book_id_change_set_id_key;
+ALTER TABLE openerp.execution_receipts DROP CONSTRAINT IF EXISTS execution_receipts_book_id_change_set_id_key;
+
 ALTER TABLE openerp.vouchers ADD COLUMN expected_line_count integer;
 
 UPDATE openerp.vouchers
@@ -41,6 +44,8 @@ BEGIN
   END IF;
   RETURN NULL;
 END $$;
+
+REVOKE ALL ON FUNCTION openerp.voucher_expected_line_count() FROM PUBLIC, openerp_runtime;
 
 CREATE CONSTRAINT TRIGGER voucher_expected_line_count_voucher
 AFTER INSERT ON openerp.vouchers

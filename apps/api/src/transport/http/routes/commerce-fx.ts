@@ -1,184 +1,135 @@
 import { Api } from "@open-erp/contracts/api";
-import * as CommerceFx from "@open-erp/contracts/commerce-fx";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { query, scopeParameter } from "../../../db/query";
+import * as CommerceFx from "../../../application/commerce-fx";
 
 export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handlers) =>
   handlers
     .handle("prepareCommerceFxRecognition", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "prepareCommerceFxRecognition",
-          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-          CommerceFx.RecognitionReview,
-        ),
+        CommerceFx.prepareRecognition(token, {
+          scope: params,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("approveCommerceFxRecognition", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "approveCommerceFxRecognition",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          CommerceFx.FxApproval,
-        ),
+        CommerceFx.approveRecognition(token, {
+          scope: params,
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("executeCommerceFxRecognition", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "executeCommerceFxRecognition",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          CommerceFx.MonetaryItem,
-        ),
+        CommerceFx.executeRecognition(token, {
+          scope: params,
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("prepareCommerceFxSettlement", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "prepareCommerceFxSettlement",
-          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-          CommerceFx.SettlementReview,
-        ),
+        CommerceFx.prepareSettlement(token, {
+          scope: params,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("approveCommerceFxSettlement", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "approveCommerceFxSettlement",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          CommerceFx.FxApproval,
-        ),
+        CommerceFx.approveSettlement(token, {
+          scope: params,
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("executeCommerceFxSettlement", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "executeCommerceFxSettlement",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          CommerceFx.SettlementReceipt,
-        ),
+        CommerceFx.executeSettlement(token, {
+          scope: params,
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("prepareCommerceFxPartialSettlement", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "prepareCommerceFxPartialSettlement",
-          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-          CommerceFx.PartialSettlementReview,
-        ),
+        CommerceFx.preparePartialSettlement(token, {
+          scope: params,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("approveCommerceFxPartialSettlement", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "approveCommerceFxPartialSettlement",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          CommerceFx.FxApproval,
-        ),
+        CommerceFx.approvePartialSettlement(token, {
+          scope: params,
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("executeCommerceFxPartialSettlement", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "executeCommerceFxPartialSettlement",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          CommerceFx.PartialSettlementReceipt,
-        ),
+        CommerceFx.executePartialSettlement(token, {
+          scope: params,
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("prepareCommerceFxSettlementCorrection", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "prepareCommerceFxSettlementCorrection",
-          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-          CommerceFx.SettlementCorrectionReview,
-        ),
+        CommerceFx.prepareSettlementCorrection(token, {
+          scope: params,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("approveCommerceFxSettlementCorrection", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "approveCommerceFxSettlementCorrection",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          CommerceFx.FxApproval,
-        ),
+        CommerceFx.approveSettlementCorrection(token, {
+          scope: params,
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("executeCommerceFxSettlementCorrection", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "executeCommerceFxSettlementCorrection",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          CommerceFx.CorrectionReceipt,
-        ),
+        CommerceFx.executeSettlementCorrection(token, {
+          scope: params,
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("getCommerceFxItem", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "getCommerceFxItem",
-          [token, scopeParameter(params), params.id],
-          CommerceFx.MonetaryItem,
-        ),
+        CommerceFx.getItem(token, { scope: params, id: params.id }),
       ),
     )
     .handle("recoverCommerceFxCommand", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "recoverCommerceFxCommand",
-          [token, scopeParameter(params), params.key],
-          CommerceFx.CommandRecovery,
-        ),
+        CommerceFx.recoverCommand(token, { scope: params, key: params.key }),
       ),
     ),
 );
