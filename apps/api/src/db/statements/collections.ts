@@ -1,6 +1,10 @@
 import { sql, type SQL } from "drizzle-orm";
 
 export const collectionStatements = {
+  collectionWorklist: (p) =>
+    sql`select openerp.collection_worklist(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text) as result`,
+  collectionStatementExport: (p) =>
+    sql`select openerp.collection_statement_export(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text) as result`,
   captureCollectionStatement: (p) =>
     sql`select openerp.capture_collection_statement(${p[0]}::text,${p[1]}::jsonb,${p[2]}::text,${p[3]}::jsonb) as result`,
   openCollectionDispute: (p) =>

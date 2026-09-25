@@ -467,7 +467,7 @@ function CatalogArticleSelect(props: {
               ...line,
               defaults,
               price: article.unitPriceMinor ? minorToDecimal(article.unitPriceMinor, scale) : "",
-              amount: article.unitPriceMinor ? minorToDecimal(article.unitPriceMinor, scale) : "0",
+              amount: article.unitPriceMinor ? minorToDecimal(article.unitPriceMinor, scale) : "",
               tax: "",
               explicitAmount: false,
             },
@@ -489,6 +489,11 @@ function CatalogArticleSelect(props: {
             {sv ? "Ta bort val" : "Clear selection"}
           </Button>
         </Box>
+      ) : null}
+      {selection && line.defaults?.unitPriceMinor == null ? (
+        <PageCaption>
+          {sv ? "Artikeln saknar pris. Ange ett explicit radbelopp." : "This article has no price. Enter an explicit line amount."}
+        </PageCaption>
       ) : null}
     </Box>
   );

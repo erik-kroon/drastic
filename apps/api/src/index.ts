@@ -39,6 +39,7 @@ import { SubledgerHandlers } from "./transport/http/routes/subledgers";
 import { ClosingHandlers } from "./transport/http/routes/closing";
 
 import { CommerceHandlers } from "./transport/http/routes/commerce";
+import { CommerceFxHandlers } from "./transport/http/routes/commerce-fx";
 import { RegisterReportHandlers } from "./transport/http/routes/register-reports";
 import { VatReturnsHandlers } from "./transport/http/routes/vat-returns";
 import { SieHandlers } from "./transport/http/routes/sie";
@@ -108,6 +109,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     BankInventorySignoffHandlers,
     TaxAccountHandlers,
     CommerceHandlers,
+    CommerceFxHandlers,
     RegisterReportHandlers,
     VatReturnsHandlers,
     SieHandlers,

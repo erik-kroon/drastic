@@ -3,8 +3,14 @@ import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 import { CommandReceipt } from "./reconciliation";
-import { AssetDisposal, OccurrenceState, ScheduleRevision } from "./subledgers";
-export { AssetDisposal } from "./subledgers";
+import {
+  AssetDisposal,
+  AssetImpairment,
+  OccurrenceState,
+  PrepareAssetImpairment,
+  ScheduleRevision,
+} from "./subledgers";
+export { AssetDisposal, AssetImpairment, PrepareAssetImpairment } from "./subledgers";
 
 export const RecordSubledgerBasis = Schema.Struct({
   scheduleId: Accounting.Identifier,
@@ -65,12 +71,14 @@ export const ControlSchedule = Schema.Struct({
   disposal: Schema.optional(Schema.NullOr(AssetDisposal)),
   basisReversed: Schema.Boolean,
   recognizedMinor: Accounting.AggregateMinorUnits,
+  impairmentMinor: Schema.optional(Accounting.AggregateMinorUnits),
   carryingMinor: Schema.NullOr(Accounting.SignedMinorUnits),
 });
 const EffectKind = Schema.Literals([
   "basis",
   "occurrence",
   "occurrence_reversal",
+  "impairment",
   "disposal_release",
 ]);
 export const ExpectedSubledgerEffect = Schema.Struct({
@@ -186,6 +194,8 @@ export const AssetDisposalBasis = Schema.Struct({
   openingAccumulatedMinor: Accounting.MinorUnits,
   recognizedMinor: Accounting.MinorUnits,
   reversedMinor: Accounting.AggregateMinorUnits,
+  impairmentMinor: Schema.optional(Accounting.MinorUnits),
+  impairmentAccountId: Schema.optional(Schema.NullOr(Accounting.Identifier)),
   totalAccumulatedMinor: Accounting.MinorUnits,
   carryingMinor: Accounting.MinorUnits,
   sourceSha256: Schema.String,
@@ -249,10 +259,112 @@ export const AssetDisposalReviewList = Schema.Struct({
   disposal: Schema.NullOr(AssetDisposal),
   coverage: Schema.Literal("not_established"),
 });
+export const AssetImpairmentBasis = Schema.Struct({
+  schedule: ScheduleRevision,
+  carryingBasis: SubledgerBasis,
+  occurrences: Schema.Array(OccurrenceState),
+  originalCostMinor: Accounting.MinorUnits,
+  openingAccumulatedMinor: Accounting.MinorUnits,
+  recognizedMinor: Accounting.MinorUnits,
+  reversedMinor: Accounting.AggregateMinorUnits,
+  priorImpairmentMinor: Accounting.MinorUnits,
+  currentCarryingMinor: Accounting.MinorUnits,
+  postImpairmentCarryingMinor: Accounting.MinorUnits,
+  futureMinor: Accounting.MinorUnits,
+  residualMinor: Accounting.MinorUnits,
+  sourceSha256: Schema.String,
+  reviewSha256: Schema.String,
+});
+export const AssetImpairmentReview = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  ordinal: Schema.Int,
+  version: Schema.Literal(1),
+  input: PrepareAssetImpairment,
+  basis: AssetImpairmentBasis,
+  proposedRevision: ScheduleRevision,
+  evidence: Accounting.Evidence,
+  postingPlan: Accounting.ChangeSet,
+  coverage: Schema.Literal("not_established"),
+  legalPolicyApproved: Schema.Literal(false),
+  requiresPostingApproval: Schema.Literal(true),
+  createdAt: Schema.String,
+  receipt: CommandReceipt,
+  digest: Accounting.Digest,
+});
+export const ApproveAssetImpairment = Schema.Struct({
+  version: Schema.Literal(1),
+  digest: Accounting.Digest,
+  acknowledgeSyntheticOnly: Schema.Literal(true),
+});
+export const ExecuteAssetImpairment = Schema.Struct({
+  ...ApproveAssetImpairment.fields,
+  approvalId: Accounting.Identifier,
+});
+export const AssetImpairmentApproval = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  reviewId: Accounting.Identifier,
+  reviewDigest: Accounting.Digest,
+  actorId: Accounting.Identifier,
+  expiresAt: Schema.String,
+  legalPolicyApproved: Schema.Literal(false),
+  createdAt: Schema.String,
+  receipt: CommandReceipt,
+  digest: Accounting.Digest,
+});
+export const AssetImpairmentReviewView = Schema.Struct({
+  review: AssetImpairmentReview,
+  approvals: Schema.Array(AssetImpairmentApproval).check(Schema.isMaxLength(20)),
+  impairment: Schema.NullOr(AssetImpairment),
+  liveAuthorizationChecked: Schema.Literal(false),
+});
+export const AssetImpairmentReviewList = Schema.Struct({
+  scope: Accounting.Scope,
+  scheduleId: Accounting.Identifier,
+  items: Schema.Array(
+    Schema.Struct({
+      id: Accounting.Identifier,
+      ordinal: Schema.Int,
+      decisionKey: Schema.String,
+      digest: Accounting.Digest,
+      createdAt: Schema.String,
+      postingDate: Accounting.AccountingDate,
+    }),
+  ).check(Schema.isMaxLength(20)),
+  impairments: Schema.Array(AssetImpairment),
+  coverage: Schema.Literal("not_established"),
+});
 const path = "/v1/entities/:entityId/books/:bookId/subledger-controls";
 const scoped = { params: Accounting.Scope, error: accountingErrors };
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
 export const SubledgerControlsApi = HttpApiGroup.make("subledgerControls").add(
+  HttpApiEndpoint.post("prepareAssetImpairment", `${path}/impairments/prepare`, {
+    ...scoped,
+    headers: Accounting.IdempotencyHeaders,
+    payload: PrepareAssetImpairment.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: AssetImpairmentReview,
+  }),
+  HttpApiEndpoint.post("approveAssetImpairment", `${path}/impairments/:id/approve`, {
+    ...identified,
+    headers: Accounting.IdempotencyHeaders,
+    payload: ApproveAssetImpairment.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: AssetImpairmentApproval,
+  }),
+  HttpApiEndpoint.post("executeAssetImpairment", `${path}/impairments/:id/execute`, {
+    ...identified,
+    headers: Accounting.IdempotencyHeaders,
+    payload: ExecuteAssetImpairment.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: AssetImpairment,
+  }),
+  HttpApiEndpoint.get("getAssetImpairmentReview", `${path}/impairments/:id`, {
+    ...identified,
+    success: AssetImpairmentReviewView,
+  }),
+  HttpApiEndpoint.get("listAssetImpairmentReviews", `${path}/impairments/for-schedule/:id`, {
+    ...identified,
+    success: AssetImpairmentReviewList,
+  }),
   HttpApiEndpoint.post("prepareAssetDisposal", `${path}/disposals/prepare`, {
     ...scoped,
     headers: Accounting.IdempotencyHeaders,

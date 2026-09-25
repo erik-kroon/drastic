@@ -7,6 +7,16 @@ import { query, scopeParameter } from "../../../db/query";
 
 export const CollectionsHandlers = HttpApiBuilder.group(Api, "collections", (handlers) =>
   handlers
+    .handle("collectionWorklist", ({ params, query: search }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query("collectionWorklist", [token, scopeParameter(params), search.page ?? "1"], Collections.CollectionWorklist),
+      ),
+    )
+    .handle("collectionStatementExport", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query("collectionStatementExport", [token, scopeParameter(params), params.id], Collections.CollectionStatementExport),
+      ),
+    )
     .handle("captureCollectionStatement", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         query(

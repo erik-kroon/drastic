@@ -96,6 +96,7 @@ export const CorrectionImpactResource = Schema.Struct({
     "report",
     "closing",
     "owner_record",
+    "vat_control_reclassification",
   ]),
   id: Accounting.Identifier,
   detail: Schema.String,

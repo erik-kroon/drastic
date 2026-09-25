@@ -55,7 +55,11 @@ const en = {
   reversed: "Reversed; replacement unsupported",
   conflicted: "Identity conflict; inspect voucher",
   recognized: "Net recognized (minor units)",
-  remaining: "Remaining including residual (minor units)",
+  remaining: "Ordinary unrecognized including residual (minor units)",
+  carrying: "Post-impairment carrying value",
+  impairment: "Accumulated impairment",
+  impairmentHistory: "Impairment history",
+  voucher: "Voucher ID",
   balanceHelp:
     "These totals follow schedule-linked postings and their reversals. The source purchase and control-account balance are not reconciled. A conflicting posting is excluded and needs review.",
   basisStandalone:
@@ -106,6 +110,8 @@ const en = {
   amendmentAdd: "Add future installment",
   amendmentRemove: "Remove last future installment",
   amendmentOnlyOperator: "Amendment review is available to operators only.",
+  amendmentAfterImpairment:
+    "A later estimate amendment is unavailable in this source slice. The impairment already replaced the complete future suffix; review the current carrying value before disposal or another impairment.",
   frozen:
     "This schedule is not editable through the ordinary revision form. Use the operator amendment commands above, then prepare a fresh proposal for human approval.",
   pending: "Saving…",
@@ -171,7 +177,11 @@ const sv: typeof en = {
   reversed: "Återfört; ersättning stöds inte",
   conflicted: "Identitetskonflikt; granska verifikationen",
   recognized: "Nettoredovisat (minsta valutaenhet)",
-  remaining: "Återstående inklusive restvärde (minsta valutaenhet)",
+  remaining: "Ej redovisat vanligt ordning inklusive restvärde (minsta valutaenhet)",
+  carrying: "Bokfört värde efter nedskrivning",
+  impairment: "Ackumulerad nedskrivning",
+  impairmentHistory: "Nedskrivningshistorik",
+  voucher: "Verifikations-ID",
   balanceHelp:
     "Summorna följer planens kopplade bokföringar och återföringar. Ursprungligt inköp och kontrollkontots saldo är inte avstämda. En motstridig bokföring räknas inte med och måste granskas.",
   basisStandalone:
@@ -222,6 +232,8 @@ const sv: typeof en = {
   amendmentAdd: "Lägg till framtida installering",
   amendmentRemove: "Ta bort sista framtida installering",
   amendmentOnlyOperator: "Ändringsgranskning är endast tillgänglig för operatörer.",
+  amendmentAfterImpairment:
+    "En senare uppskattningsändring finns inte i denna källversion. Nedskrivningen ersatte hela framtida suffixet. Granska bokfört värde före avyttring eller en ny nedskrivning.",
   frozen:
     "Planen kan inte redigeras via den vanliga versionsformuläret. Använd operatörens ändringskommandon ovan och förbered sedan ett nytt förslag för mänskligt godkännande.",
   pending: "Sparar…",

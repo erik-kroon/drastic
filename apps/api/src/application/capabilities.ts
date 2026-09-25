@@ -302,6 +302,16 @@ export const capabilities = {
     "crmDirectoryExport",
     (input) => [scopeParameter(input.scope), input.filters.search ?? "", input.filters.role ?? "", input.filters.after ?? ""],
   ),
+  collections_worklist: bindCapability(
+    Capabilities.collections_worklist,
+    "collectionWorklist",
+    (input) => [scopeParameter(input.scope), input.page ?? "1"],
+  ),
+  collections_statement_export: bindCapability(
+    Capabilities.collections_statement_export,
+    "collectionStatementExport",
+    (input) => [scopeParameter(input.scope), input.statementId],
+  ),
   collections_history: bindCapability(
     Capabilities.collections_history,
     "collectionHistoryPage",

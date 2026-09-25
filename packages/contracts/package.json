@@ -32,6 +32,7 @@
     "./bank-inventory-signoffs": "./src/bank-inventory-signoffs.ts",
     "./tax-account": "./src/tax-account.ts",
     "./commerce": "./src/commerce.ts",
+    "./commerce-fx": "./src/commerce-fx.ts",
     "./register-reports": "./src/register-reports.ts",
     "./vat-returns": "./src/vat-returns.ts",
     "./sie": "./src/sie.ts",

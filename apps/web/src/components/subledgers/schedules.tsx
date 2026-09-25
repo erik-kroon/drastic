@@ -296,13 +296,53 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
               {formatMinorAmount(view.recognizedMinor, view.current.currencyScale, locale)}{" "}
               {view.current.currency}
             </RecordFact>
-            <RecordFact label={locale === "sv" ? "Återstående" : "Remaining"}>
+            <RecordFact label={copy.remaining}>
               {formatMinorAmount(view.remainingMinor, view.current.currencyScale, locale)}{" "}
+              {view.current.currency}
+            </RecordFact>
+            <RecordFact label={copy.carrying}>
+              {view.carryingMinor
+                ? `${formatMinorAmount(view.carryingMinor, view.current.currencyScale, locale)} ${view.current.currency}`
+                : locale === "sv"
+                  ? "Ej fastställt"
+                  : "Not established"}
+            </RecordFact>
+            <RecordFact label={copy.impairment}>
+              {formatMinorAmount(view.netImpairmentMinor, view.current.currencyScale, locale)}{" "}
               {view.current.currency}
             </RecordFact>
           </RecordSummary>
           <PageCaption>{view.current.terms.rationale}</PageCaption>
           <ScheduleBasisNotice basis={view.postingBasis} locale={locale} />
+          {view.impairments.length ? (
+            <DataTable
+              title={copy.impairmentHistory}
+              narrow="stack"
+              columns={[
+                { id: "date", label: copy.date },
+                { id: "amount", label: copy.impairment, numeric: true },
+                { id: "carrying", label: copy.carrying, numeric: true },
+                { id: "voucher", label: copy.voucher },
+              ]}
+              rows={view.impairments.map((impairment) => ({
+                id: impairment.id,
+                cells: [
+                  impairment.postingDate,
+                  formatMinorAmount(
+                    impairment.impairmentMinor,
+                    view.current.currencyScale,
+                    locale,
+                  ),
+                  formatMinorAmount(
+                    impairment.postImpairmentCarryingMinor,
+                    view.current.currencyScale,
+                    locale,
+                  ),
+                  impairment.postingReceipt.voucherId,
+                ],
+              }))}
+            />
+          ) : null}
           <ScheduleAmendmentPanel
             key={view.current.digest}
             book={book}
@@ -500,6 +540,7 @@ function ScheduleAmendmentPanel(props: {
   const commonAvailable =
     linkedBasis &&
     props.view.postingBasis?.supported === true &&
+    props.view.impairments.length === 0 &&
     hasCompleteSuffix &&
     !hasPrefixConflict &&
     props.setup !== undefined;
@@ -524,6 +565,9 @@ function ScheduleAmendmentPanel(props: {
           hasCompleteSuffix={hasCompleteSuffix}
           hasReversedPrefix={hasReversedPrefix}
         />
+        {props.view.impairments.length ? (
+          <Text role="alert">{copy.amendmentAfterImpairment}</Text>
+        ) : null}
         {dateAvailable ? (
           <ScheduleDateAmendmentForm
             book={book}
@@ -556,7 +600,12 @@ function ScheduleAmendmentPanel(props: {
 }
 
 function amendmentKindLabel(
-  kind: "future_dates_v1" | "remaining_estimate_v1" | "remaining_lifetime_v1" | undefined,
+  kind:
+    | "future_dates_v1"
+    | "remaining_estimate_v1"
+    | "remaining_lifetime_v1"
+    | "impairment_v1"
+    | undefined,
   locale: Locale,
   none: string,
 ) {
@@ -565,6 +614,7 @@ function amendmentKindLabel(
     return locale === "sv" ? "Återstående uppskattning" : "Remaining estimate";
   if (kind === "remaining_lifetime_v1")
     return locale === "sv" ? "Återstående livslängd" : "Remaining lifetime";
+  if (kind === "impairment_v1") return locale === "sv" ? "Nedskrivning" : "Impairment";
   return none;
 }
 
@@ -595,7 +645,12 @@ function ScheduleAmendmentReadout(props: {
   const kind = amendment?.kind;
   const kindLabel = amendmentKindLabel(kind, locale, copy.amendmentNone);
   const basisDigest = view.postingBasis?.basisDigest ?? amendment?.basisDigest;
-  const futureMinor = amendment?.input.remainingMinor;
+  const futureMinor =
+    amendment && "remainingMinor" in amendment.input
+      ? amendment.input.remainingMinor
+      : amendment?.kind === "impairment_v1"
+        ? amendment.input.futureMinor
+        : undefined;
   const reversedMinor =
     amendment && "reversedMinor" in amendment ? amendment.reversedMinor : undefined;
   const blockerMessage = amendmentBlockerMessage(view.postingBasis, locale);
@@ -662,7 +717,10 @@ function ScheduleDateAmendmentForm(props: {
   const { book, locale } = props;
   const copy = subledgerCopy(locale);
   const current = props.schedule.current;
-  const futureMinor = current.amendment?.input.remainingMinor;
+  const futureMinor =
+    current.amendment && "remainingMinor" in current.amendment.input
+      ? current.amendment.input.remainingMinor
+      : undefined;
   return (
     <CommandForm
       book={book}
@@ -773,7 +831,10 @@ function ScheduleEstimateAmendmentForm(props: {
   const { book, locale } = props;
   const copy = subledgerCopy(locale);
   const current = props.schedule.current;
-  const futureMinor = current.amendment?.input.remainingMinor;
+  const futureMinor =
+    current.amendment && "remainingMinor" in current.amendment.input
+      ? current.amendment.input.remainingMinor
+      : undefined;
   const residualMinor =
     current.amendment && current.amendment.kind !== "future_dates_v1"
       ? current.amendment.input.residualMinor

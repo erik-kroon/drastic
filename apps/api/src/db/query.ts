@@ -51,6 +51,7 @@ import { legalSalesPolicyStatements } from "./statements/legal-sales-policy";
 import { legalInvoicePdfStatements } from "./statements/legal-invoice-pdf";
 import { legalDeliveryStatements } from "./statements/legal-delivery";
 import { commerceAllocationReversalStatements } from "./statements/commerce-allocation-reversals";
+import { commerceFxStatements } from "./statements/commerce-fx";
 import { bankMatchReversalStatements } from "./statements/bank-match-reversals";
 import { bankMatchCandidateStatements } from "./statements/bank-match-candidates";
 import { bankSourceCoverageStatements } from "./statements/bank-source-coverage";
@@ -189,6 +190,7 @@ const statements = {
   ...legalInvoicePdfStatements,
   ...legalDeliveryStatements,
   ...commerceAllocationReversalStatements,
+  ...commerceFxStatements,
   ...bankMatchReversalStatements,
   ...bankMatchCandidateStatements,
   ...bankSourceCoverageStatements,

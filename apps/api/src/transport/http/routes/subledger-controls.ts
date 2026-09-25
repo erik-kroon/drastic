@@ -10,6 +10,63 @@ export const SubledgerControlsHandlers = HttpApiBuilder.group(
   "subledgerControls",
   (handlers) =>
     handlers
+      .handle("prepareAssetImpairment", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          query(
+            "prepareAssetImpairment",
+            [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
+            Controls.AssetImpairmentReview,
+          ),
+        ),
+      )
+      .handle("approveAssetImpairment", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          query(
+            "approveAssetImpairment",
+            [
+              token,
+              scopeParameter(params),
+              params.id,
+              headers["idempotency-key"],
+              JSON.stringify(payload),
+            ],
+            Controls.AssetImpairmentApproval,
+          ),
+        ),
+      )
+      .handle("executeAssetImpairment", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          query(
+            "executeAssetImpairment",
+            [
+              token,
+              scopeParameter(params),
+              params.id,
+              headers["idempotency-key"],
+              JSON.stringify(payload),
+            ],
+            Controls.AssetImpairment,
+          ),
+        ),
+      )
+      .handle("getAssetImpairmentReview", ({ params }) =>
+        Effect.flatMap(authenticate, (token) =>
+          query(
+            "getAssetImpairmentReview",
+            [token, scopeParameter(params), params.id],
+            Controls.AssetImpairmentReviewView,
+          ),
+        ),
+      )
+      .handle("listAssetImpairmentReviews", ({ params }) =>
+        Effect.flatMap(authenticate, (token) =>
+          query(
+            "listAssetImpairmentReviews",
+            [token, scopeParameter(params), params.id],
+            Controls.AssetImpairmentReviewList,
+          ),
+        ),
+      )
       .handle("prepareAssetDisposal", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
           query(

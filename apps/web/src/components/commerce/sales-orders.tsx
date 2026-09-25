@@ -9,7 +9,13 @@ import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
-import { formatMinorAmount } from "@/lib/workspace-api";
+import { decimalToMinor, formatMinorAmount } from "@/lib/workspace-api";
+import {
+  InvoiceEditorLines,
+  editableInvoiceLine,
+  invoiceQuantity,
+  type EditableInvoiceLine,
+} from "./invoice-editor-lines";
 import { workspacePath } from "@/lib/book-context";
 import { CommandForm, checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
 
@@ -27,12 +33,49 @@ function quantityString(value: bigint) {
   return `${negative ? "-" : ""}${absolute / quantityUnit}${fraction ? `.${fraction}` : ""}`;
 }
 
+function formText(fields: FormData, name: string) {
+  const value = fields.get(name);
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function formMinor(fields: FormData, name: string, scale: number, optional = false) {
+  const value = formText(fields, name);
+  if (optional && value === null) return null;
+  return decimalToMinor(value ?? "", scale) ?? "invalid";
+}
+
+function salesLineInput(
+  fields: FormData,
+  line: EditableInvoiceLine,
+  scale: number,
+) {
+  const catalogSelection = line.defaults?.catalogSelection;
+  const taxMinor = formMinor(fields, `${line.id}_tax`, scale, true);
+  return {
+    id: line.id,
+    description: catalogSelection ? line.defaults?.description ?? null : formText(fields, `${line.id}_description`),
+    quantity: invoiceQuantity(formText(fields, `${line.id}_quantity`)),
+    unitPriceMinor: catalogSelection ? line.defaults?.unitPriceMinor ?? null : formMinor(fields, `${line.id}_unitPrice`, scale, true),
+    baseMinor: formMinor(fields, `${line.id}_amount`, scale),
+    discountMinor: line.defaults?.discountMinor ?? "0",
+    chargeMinor: line.defaults?.chargeMinor ?? "0",
+    taxMinor,
+    taxDescription: catalogSelection ? line.defaults?.taxDescription ?? null : formText(fields, `${line.id}_taxDescription`),
+    taxEvidenceId: taxMinor !== null && taxMinor === line.defaults?.taxMinor
+      ? line.defaults?.taxEvidenceId ?? null
+      : null,
+    sourceGrossMinor: formMinor(fields, `${line.id}_sourceGross`, scale, true),
+    catalogSelection,
+  };
+}
+
 export function SalesOrders({ book, locale }: CommerceProps) {
   const sv = locale === "sv";
   const path = `${commercePath(book)}/sales-documents`;
   const [sourceId, setSourceId] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [source, setSource] = useState<typeof Drafts.InvoiceDraftRevision.Type | null>(null);
+  const [sourceLines, setSourceLines] = useState<EditableInvoiceLine[]>([]);
   const [sourceError, setSourceError] = useState<Error | null>(null);
   const [documentKind, setDocumentKind] = useState<"quote" | "order">("quote");
   const creationKeys = useRef(new Map<string, string>());
@@ -55,11 +98,13 @@ export function SalesOrders({ book, locale }: CommerceProps) {
     <h2>{sv ? "Offerter och order" : "Quotes and orders"}</h2>
     <Text tone="muted">{sv ? "En accepterad order kan delas upp i granskade fakturautkast. Ingen faktura skapas vid accept." : "Split an accepted order into reviewed invoice drafts. Acceptance does not issue an invoice."}</Text>
     <Box as="form" display="grid" gap="md" onSubmit={event => {
-      event.preventDefault(); setSourceError(null); setSource(null);
-      void readAccounting(`${commercePath(book)}/invoice-drafts/${encodeURIComponent(sourceId)}`,
-        Drafts.InvoiceDraftView).then(result => {
-        checkScope(book, result.record.scope);
-        setSource(result.record);
+       event.preventDefault(); setSourceError(null); setSource(null); setSourceLines([]);
+       void readAccounting(`${commercePath(book)}/invoice-drafts/${encodeURIComponent(sourceId)}`,
+         Drafts.InvoiceDraftView).then(result => {
+         checkScope(book, result.record.scope);
+         setSource(result.record);
+         setSourceLines(result.record.content.lines.map(line =>
+           editableInvoiceLine(result.record.content.currencyScale, line)));
       }).catch((error: unknown) => setSourceError(error instanceof Error ? error : new Error("Unable to load source draft")));
     }}>
       <InputField label={sv ? "Befintligt fakturautkast-ID" : "Existing invoice draft ID"}
@@ -81,14 +126,29 @@ export function SalesOrders({ book, locale }: CommerceProps) {
          }}
        />
        <Text tone="muted">{documentKind === "quote"
-         ? (sv ? "Kopierar innehållet som en ny offert. Källutkastet ändras inte." : "Copies this content into a new quote. The source draft remains unchanged.")
-         : (sv ? "Kopierar innehållet som en ny order. Källutkastet ändras inte." : "Copies this content into a new order. The source draft remains unchanged.")}</Text>
+         ? (sv ? "Kopierar underlaget och de valda artikelraderna som en ny offert. Källutkastet ändras inte." : "Copies the source envelope and selected article lines into a new quote. The source draft remains unchanged.")
+         : (sv ? "Kopierar underlaget och de valda artikelraderna som en ny order. Källutkastet ändras inte." : "Copies the source envelope and selected article lines into a new order. The source draft remains unchanged.")}</Text>
+       <InvoiceEditorLines
+         book={book}
+         lines={sourceLines}
+         onChange={setSourceLines}
+         scale={source.content.currencyScale}
+         currency={source.content.currency}
+         locale={locale}
+       />
        <CommandForm book={book} locale={locale} path={path} schema={Sales.CreateSalesDocument} output={Sales.SalesDocument}
-         input={() => ({ kind: documentKind, content: source.content })} label={documentKind === "quote" ? (sv ? "Skapa offert" : "Create quote") : (sv ? "Skapa order" : "Create order")}
-
-        allowed={book.role === "operator"} keys={creationKeys.current}
-        onSuccess={result => setSelectedId(result.id)} onNewCommand={() => creationKeys.current.clear()} />
-    </Box> : null}
+         input={fields => ({
+           kind: documentKind,
+           content: {
+             ...source.content,
+             sourceTotalMinor: null,
+             lines: sourceLines.map(line => salesLineInput(fields, line, source.content.currencyScale)),
+           },
+         })}
+         label={documentKind === "quote" ? (sv ? "Skapa offert" : "Create quote") : (sv ? "Skapa order" : "Create order")}
+         allowed={book.role === "operator"} keys={creationKeys.current}
+         onSuccess={result => setSelectedId(result.id)} onNewCommand={() => creationKeys.current.clear()} />
+     </Box> : null}
     <AccountingStatus locale={locale} pending={list.isPending} error={list.error} />
     {list.data?.items.map(item => <Button key={item.id} variant={selectedId === item.id ? "secondary" : "ghost"}
       onClick={() => setSelectedId(item.id)}>{item.kind === "quote" ? (sv ? "Offert" : "Quote") : (sv ? "Order" : "Order")}: {item.content.title} · {item.state}</Button>)}

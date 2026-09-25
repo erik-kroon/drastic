@@ -78,7 +78,7 @@ function Contents({ value, locale, currentnessKnown }: { value: typeof Controls.
     <details><summary>{copy.schedules}</summary><Box display="grid" gap="lg" paddingBlock="lg" minWidth="zero">
       {report.schedules.map((schedule) => <Box key={schedule.revision.scheduleId} display="grid" gap="md" minWidth="zero">
         <Heading>{schedule.revision.terms.name}</Heading><Text>{schedule.revision.scheduleId} · {schedule.revision.digest}</Text>
-        <Text>{copy.recognized}: {schedule.recognizedMinor} · {copy.carrying}: {schedule.carryingMinor ?? copy.unavailable}</Text>
+        <Text>{copy.recognized}: {schedule.recognizedMinor} · {copy.impairment}: {schedule.impairmentMinor ?? "0"} · {copy.carrying}: {schedule.carryingMinor ?? copy.unavailable}</Text>
         {schedule.basisReversed ? <Text>{copy.reversed}</Text> : null}
         {schedule.basis ? <BasisDetails basis={schedule.basis} locale={locale} /> : <Text>{copy.missingBasis}</Text>}
         <DataTable title={copy.occurrences} narrow="stack" columns={[
