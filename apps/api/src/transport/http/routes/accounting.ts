@@ -1,10 +1,9 @@
-import * as Accounting from "@open-erp/contracts/accounting";
 import { Api } from "@open-erp/contracts/api";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
 import { capabilities } from "../../../application/capabilities";
-import { query, scopeParameter } from "../../../db/query";
+import { approveChange } from "../../../application/posting";
 
 export const AccountingHandlers = HttpApiBuilder.group(Api, "accounting", (handlers) =>
   handlers
@@ -60,17 +59,12 @@ export const AccountingHandlers = HttpApiBuilder.group(Api, "accounting", (handl
     )
     .handle("approveChange", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "approveChange",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          Accounting.Approval,
-        ),
+        approveChange(token, {
+          scope: params,
+          changeSetId: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("executeChange", ({ params, headers, payload }) =>

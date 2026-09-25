@@ -209,23 +209,30 @@ export function admitPrincipal(
     const credentialRows = yield* lockCredential(transaction, credentialHash);
     if (credentialRows[0]) {
       const credential = yield* decodeOne(CredentialRow, credentialRows[0]);
-      return yield* verifyAuthority(
-        {
-          actorId: credential.actorId,
-          kind: "apiCredential",
-          credentialHash,
-          expiresAt: credential.expiresAt,
-          revokedAt: credential.revokedAt,
-        },
-        scope,
-        requirement,
-        transaction,
-      );
+      const credentialTime = yield* readDatabaseTime(transaction);
+      if (expiryIsCurrent(credential.expiresAt, credentialTime.now)) {
+        return yield* verifyAuthority(
+          {
+            actorId: credential.actorId,
+            kind: "apiCredential",
+            credentialHash,
+            expiresAt: credential.expiresAt,
+            revokedAt: credential.revokedAt,
+          },
+          scope,
+          requirement,
+          transaction,
+        );
+      }
     }
 
     const sessionRows = yield* lockSession(transaction, access.token);
     if (!sessionRows[0]) return yield* failure("Unauthorized");
     const browserSession = yield* decodeOne(SessionRow, sessionRows[0]);
+    const sessionTime = yield* readDatabaseTime(transaction);
+    if (!expiryIsCurrent(browserSession.expiresAt, sessionTime.now)) {
+      return yield* failure("Unauthorized");
+    }
     return yield* verifyAuthority(
       {
         actorId: browserSession.userId,

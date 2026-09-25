@@ -20,7 +20,7 @@ export type Transaction = Parameters<DatabaseClient["transaction"]>[0] extends (
   ? T
   : never;
 
-export function databaseFailure(error: unknown) {
+export function databaseFailure(error: unknown): Accounting.AccountingError {
   if (error instanceof Accounting.AccountingError) return error;
   if (SqlError.isSqlError(error)) return failure("Unavailable");
   if (!(error instanceof EffectDrizzleQueryError)) return failure("InternalError");
@@ -65,7 +65,9 @@ export function withTransaction<A, R>(
         Effect.mapError(databaseFailure),
         Effect.catchCause((cause) => {
           if (Cause.hasInterrupts(cause)) {
-            return Effect.failCause(Cause.fromReasons(cause.reasons.filter(Cause.isInterruptReason)));
+            return Effect.failCause(
+              Cause.fromReasons<never>(cause.reasons.filter(Cause.isInterruptReason)),
+            );
           }
           return Effect.fail(databaseFailure(Cause.squash(cause)));
         }),

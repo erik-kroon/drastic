@@ -1,10 +1,12 @@
-import * as Recovery from "@open-erp/contracts/posting-recovery";
-import { query, scopeParameter } from "../../../db/query";
 import { Api } from "@open-erp/contracts/api";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
 import { capabilities } from "../../../application/capabilities";
+import {
+  runPostingAuthorityRequest,
+  savePostingAuthorityRequest,
+} from "../../../application/posting-recovery";
 
 export const PostingRecoveryHandlers = HttpApiBuilder.group(Api, "postingRecovery", (handlers) =>
   handlers
@@ -38,20 +40,16 @@ export const PostingRecoveryHandlers = HttpApiBuilder.group(Api, "postingRecover
     // Human-only operations intentionally have no ordinary MCP capability.
     .handle("savePostingAuthorityRequest", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "savePostingAuthorityRequest",
-          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-          Recovery.SavedPostingRequest,
-        ),
+        savePostingAuthorityRequest(token, {
+          scope: params,
+          idempotencyKey: headers["idempotency-key"],
+          command: payload,
+        }),
       ),
     )
     .handle("runPostingAuthorityRequest", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "runPostingAuthorityRequest",
-          [token, scopeParameter(params), params.key],
-          Recovery.SavedPostingRequest,
-        ),
+        runPostingAuthorityRequest(token, { scope: params, key: params.key }),
       ),
     )
     .handle("listPostingRecovery", ({ params, query: page }) =>

@@ -1,10 +1,9 @@
 import { Api } from "@open-erp/contracts/api";
-import * as Corrections from "@open-erp/contracts/corrections";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
 import { capabilities } from "../../../application/capabilities";
-import { query, scopeParameter } from "../../../db/query";
+import { approveCorrectionBundle } from "../../../application/posting-corrections";
 
 export const CorrectionHandlers = HttpApiBuilder.group(Api, "corrections", (handlers) =>
   handlers
@@ -63,17 +62,12 @@ export const CorrectionHandlers = HttpApiBuilder.group(Api, "corrections", (hand
     )
     .handle("approveCorrectionBundle", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "approveCorrectionBundle",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          Corrections.CorrectionBundleApproval,
-        ),
+        approveCorrectionBundle(token, {
+          scope: params,
+          bundleId: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("executeCorrectionBundle", ({ params, headers, payload }) =>

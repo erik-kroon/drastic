@@ -1,5 +1,5 @@
 import * as Accounting from "@open-erp/contracts/accounting";
-import { and, asc, eq, gt, inArray, innerJoin, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lte, sql } from "drizzle-orm";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import {
@@ -13,10 +13,12 @@ import {
   events,
   executionReceipts,
   fiscalYears,
+  identityAdmissions,
   journalLines,
   memberships,
   outbox,
   periods,
+  postingApprovalRevocations,
   postingGroupReceipts,
   seriesCounters,
   vouchers,
@@ -25,11 +27,12 @@ import { failure } from "../application/failures";
 import type { Transaction } from "./transaction";
 
 const DatabaseTime = Schema.Struct({ now: Schema.String });
+type JsonObject = Schema.JsonObject;
 
 export type PlanRow = {
   readonly bookId: string;
   readonly id: string;
-  readonly plan: unknown;
+  readonly plan: JsonObject;
   readonly digest: string;
   readonly createdBy: string;
   readonly createdAt: string;
@@ -46,7 +49,7 @@ export type VoucherRow = {
   readonly occurrenceKey: string;
   readonly correctsVoucherId: string | null;
   readonly changeSetId: string;
-  readonly action: unknown;
+  readonly action: JsonObject;
   readonly expectedLineCount: number;
   readonly recordedAt: string;
 };
@@ -67,9 +70,44 @@ export type CommandReceiptRow = {
   readonly requestDigest: string;
   readonly operation: string;
   readonly actorId: string;
-  readonly result: unknown;
+  readonly result: JsonObject;
   readonly recordedAt: string;
 };
+
+export function readBook(transaction: Transaction, scope: typeof Accounting.Scope.Type) {
+  return transaction
+    .select({
+      id: books.id,
+      entityId: books.entityId,
+      name: books.name,
+      currency: books.currency,
+      currencyScale: books.currencyScale,
+      profile: books.profile,
+      profileVersion: books.profileVersion,
+      writerEpoch: books.writerEpoch,
+      authority: books.authority,
+      committedSequence: books.committedSequence,
+    })
+    .from(books)
+    .where(and(eq(books.id, scope.bookId), eq(books.entityId, scope.entityId)))
+    .for("share");
+}
+
+export function readBooksForActor(transaction: Transaction, actorId: string) {
+  return transaction
+    .select({
+      entityId: books.entityId,
+      id: books.id,
+      name: books.name,
+      currency: books.currency,
+      profile: books.profile,
+      role: memberships.role,
+      sequence: books.committedSequence,
+    })
+    .from(books)
+    .innerJoin(memberships, and(eq(memberships.bookId, books.id), eq(memberships.actorId, actorId)))
+    .orderBy(asc(books.id));
+}
 
 export function lockBookForShare(transaction: Transaction, scope: typeof Accounting.Scope.Type) {
   return transaction
@@ -115,6 +153,47 @@ export function readEvidence(transaction: Transaction, bookId: string, evidenceI
     .for("share");
 }
 
+export function readEvidenceBySha(transaction: Transaction, bookId: string, sha256: string) {
+  return transaction
+    .select({
+      id: evidence.id,
+      title: evidence.title,
+      content: evidence.content,
+      mediaType: evidence.mediaType,
+      origin: evidence.origin,
+      sha256: evidence.sha256,
+      createdAt: evidence.createdAt,
+    })
+    .from(evidence)
+    .where(and(eq(evidence.bookId, bookId), eq(evidence.sha256, sha256)))
+    .for("share");
+}
+
+export function insertEvidence(
+  transaction: Transaction,
+  row: {
+    bookId: string;
+    id: string;
+    title: string;
+    content: string;
+    mediaType: string;
+    origin: string;
+    sha256: string;
+    createdBy: string;
+    createdAt: string;
+  },
+) {
+  return transaction.insert(evidence).values([row]).returning({
+    id: evidence.id,
+    title: evidence.title,
+    content: evidence.content,
+    mediaType: evidence.mediaType,
+    origin: evidence.origin,
+    sha256: evidence.sha256,
+    createdAt: evidence.createdAt,
+  });
+}
+
 export function readEvent(
   transaction: Transaction,
   bookId: string,
@@ -131,6 +210,14 @@ export function readEvent(
         eq(events.eventKey, eventKey),
       ),
     )
+    .for("share");
+}
+
+export function readEventById(transaction: Transaction, bookId: string, eventId: string) {
+  return transaction
+    .select({ id: events.id, evidenceId: events.evidenceId })
+    .from(events)
+    .where(and(eq(events.bookId, bookId), eq(events.id, eventId)))
     .for("share");
 }
 
@@ -175,7 +262,12 @@ export function readFiscalYear(
   lock: "share" | "update" = "share",
 ) {
   const query = transaction
-    .select({ bookId: fiscalYears.bookId, id: fiscalYears.id })
+    .select({
+      bookId: fiscalYears.bookId,
+      id: fiscalYears.id,
+      startsOn: fiscalYears.startsOn,
+      endsOn: fiscalYears.endsOn,
+    })
     .from(fiscalYears)
     .where(and(eq(fiscalYears.bookId, bookId), eq(fiscalYears.id, fiscalYearId)));
   return lock === "update" ? query.for("update") : query.for("share");
@@ -195,6 +287,46 @@ export function readAccounts(transaction: Transaction, bookId: string, accountId
     .from(accounts)
     .where(and(eq(accounts.bookId, bookId), inArray(accounts.id, accountIds)))
     .orderBy(asc(accounts.id))
+    .for("share");
+}
+
+export function readAllAccounts(transaction: Transaction, bookId: string) {
+  return transaction
+    .select({
+      id: accounts.id,
+      code: accounts.code,
+      name: accounts.name,
+      active: accounts.active,
+      version: accounts.version,
+    })
+    .from(accounts)
+    .where(eq(accounts.bookId, bookId))
+    .orderBy(asc(accounts.id))
+    .for("share");
+}
+
+export function readAllPeriods(transaction: Transaction, bookId: string) {
+  return transaction
+    .select({
+      id: periods.id,
+      fiscalYearId: periods.fiscalYearId,
+      startsOn: periods.startsOn,
+      endsOn: periods.endsOn,
+      locked: periods.locked,
+      version: periods.version,
+    })
+    .from(periods)
+    .where(eq(periods.bookId, bookId))
+    .orderBy(asc(periods.id))
+    .for("share");
+}
+
+export function readAllFiscalYears(transaction: Transaction, bookId: string) {
+  return transaction
+    .select({ id: fiscalYears.id, startsOn: fiscalYears.startsOn, endsOn: fiscalYears.endsOn })
+    .from(fiscalYears)
+    .where(eq(fiscalYears.bookId, bookId))
+    .orderBy(asc(fiscalYears.id))
     .for("share");
 }
 
@@ -225,16 +357,16 @@ export function lockPlan(transaction: Transaction, bookId: string, changeSetId: 
     })
     .from(changeSets)
     .where(and(eq(changeSets.bookId, bookId), eq(changeSets.id, changeSetId)))
-    .for("update");
+    .for("share");
 }
 
 export function insertPlan(
   transaction: Transaction,
-  row: { bookId: string; id: string; plan: unknown; digest: string; createdBy: string },
+  row: { bookId: string; id: string; plan: JsonObject; digest: string; createdBy: string },
 ) {
   return transaction
     .insert(changeSets)
-    .values(row)
+    .values([row])
     .returning({ id: changeSets.id, createdAt: changeSets.createdAt });
 }
 
@@ -283,7 +415,11 @@ export function readVoucherByEconomicIdentity(
     .for("share");
 }
 
-export function readVoucherByChangeSet(transaction: Transaction, bookId: string, changeSetId: string) {
+export function readVoucherByChangeSet(
+  transaction: Transaction,
+  bookId: string,
+  changeSetId: string,
+) {
   return transaction
     .select({ id: vouchers.id })
     .from(vouchers)
@@ -358,6 +494,22 @@ export function readApproval(
   return lock === "update" ? query.for("update") : query.for("share");
 }
 
+export function readApprovals(transaction: Transaction, bookId: string, changeSetId: string) {
+  return transaction
+    .select({
+      id: approvals.id,
+      changeSetId: approvals.changeSetId,
+      digest: approvals.digest,
+      actorId: approvals.actorId,
+      expiresAt: approvals.expiresAt,
+      consumedAt: approvals.consumedAt,
+    })
+    .from(approvals)
+    .where(and(eq(approvals.bookId, bookId), eq(approvals.changeSetId, changeSetId)))
+    .orderBy(sql`${approvals.expiresAt} desc, ${approvals.id} desc`)
+    .for("share");
+}
+
 export function insertApproval(
   transaction: Transaction,
   row: {
@@ -369,7 +521,7 @@ export function insertApproval(
     expiresAt: string;
   },
 ) {
-  return transaction.insert(approvals).values(row).returning({
+  return transaction.insert(approvals).values([row]).returning({
     id: approvals.id,
     changeSetId: approvals.changeSetId,
     digest: approvals.digest,
@@ -378,11 +530,7 @@ export function insertApproval(
   });
 }
 
-export function readOperatorMembership(
-  transaction: Transaction,
-  bookId: string,
-  actorId: string,
-) {
+export function readOperatorMembership(transaction: Transaction, bookId: string, actorId: string) {
   return transaction
     .select({ role: memberships.role })
     .from(memberships)
@@ -391,6 +539,31 @@ export function readOperatorMembership(
         eq(memberships.bookId, bookId),
         eq(memberships.actorId, actorId),
         eq(memberships.role, "operator"),
+      ),
+    )
+    .for("share");
+}
+
+export function readActorAdmission(transaction: Transaction, actorId: string) {
+  return transaction
+    .select({ enabled: identityAdmissions.enabled })
+    .from(identityAdmissions)
+    .where(eq(identityAdmissions.actorId, actorId))
+    .for("share");
+}
+
+export function readApprovalRevocation(
+  transaction: Transaction,
+  bookId: string,
+  approvalId: string,
+) {
+  return transaction
+    .select({ approvalId: postingApprovalRevocations.approvalId })
+    .from(postingApprovalRevocations)
+    .where(
+      and(
+        eq(postingApprovalRevocations.bookId, bookId),
+        eq(postingApprovalRevocations.approvalId, approvalId),
       ),
     )
     .for("share");
@@ -425,10 +598,10 @@ export function insertCommandReceipt(
     requestDigest: string;
     operation: string;
     actorId: string;
-    result: unknown;
+    result: JsonObject;
   },
 ) {
-  return transaction.insert(commandReceipts).values(row);
+  return transaction.insert(commandReceipts).values([row]);
 }
 
 export function allocateSeriesCounter(
@@ -471,19 +644,19 @@ export function insertVoucher(
     occurrenceKey: string;
     correctsVoucherId: string | null;
     changeSetId: string;
-    action: unknown;
+    action: JsonObject;
     expectedLineCount: number;
   },
 ) {
   return transaction
     .insert(vouchers)
-    .values(row)
+    .values([row])
     .returning({ id: vouchers.id, recordedAt: vouchers.recordedAt });
 }
 
 export function insertJournalLines(
   transaction: Transaction,
-  rows: ReadonlyArray<{
+  rows: Array<{
     bookId: string;
     voucherId: string;
     id: string;
@@ -505,10 +678,34 @@ export function insertExecutionReceipt(
     changeSetId: string;
     voucherId: string;
     approvalId: string;
-    body: unknown;
+    body: JsonObject;
   },
 ) {
-  return transaction.insert(executionReceipts).values(row);
+  return transaction.insert(executionReceipts).values([row]);
+}
+
+export function readExecutionReceiptById(transaction: Transaction, bookId: string, id: string) {
+  return transaction
+    .select({ id: executionReceipts.id, body: executionReceipts.body })
+    .from(executionReceipts)
+    .where(and(eq(executionReceipts.bookId, bookId), eq(executionReceipts.id, id)))
+    .for("share");
+}
+
+export function readExecutionReceiptByVoucher(
+  transaction: Transaction,
+  bookId: string,
+  voucherId: string,
+) {
+  return transaction
+    .select({
+      id: executionReceipts.id,
+      changeSetId: executionReceipts.changeSetId,
+      body: executionReceipts.body,
+    })
+    .from(executionReceipts)
+    .where(and(eq(executionReceipts.bookId, bookId), eq(executionReceipts.voucherId, voucherId)))
+    .for("share");
 }
 
 export function insertGroupReceipt(
@@ -519,11 +716,11 @@ export function insertGroupReceipt(
     changeSetId: string;
     groupId: string;
     planDigest: string;
-    body: unknown;
+    body: JsonObject;
     committedAt: string;
   },
 ) {
-  return transaction.insert(postingGroupReceipts).values(row);
+  return transaction.insert(postingGroupReceipts).values([row]);
 }
 
 export function insertApprovalConsumption(
@@ -540,10 +737,15 @@ export function insertApprovalConsumption(
     consumedAt: string;
   },
 ) {
-  return transaction.insert(approvalConsumptions).values(row);
+  return transaction.insert(approvalConsumptions).values([row]);
 }
 
-export function consumeApproval(transaction: Transaction, bookId: string, approvalId: string, consumedAt: string) {
+export function consumeApproval(
+  transaction: Transaction,
+  bookId: string,
+  approvalId: string,
+  consumedAt: string,
+) {
   return transaction
     .update(approvals)
     .set({ consumedAt })
@@ -553,9 +755,9 @@ export function consumeApproval(transaction: Transaction, bookId: string, approv
 
 export function insertOutbox(
   transaction: Transaction,
-  row: { bookId: string; id: string; receiptId: string; kind: string; payload: unknown },
+  row: { bookId: string; id: string; receiptId: string; kind: string; payload: JsonObject },
 ) {
-  return transaction.insert(outbox).values(row);
+  return transaction.insert(outbox).values([row]);
 }
 
 export function readLedgerAccounts(transaction: Transaction, bookId: string) {
@@ -566,11 +768,7 @@ export function readLedgerAccounts(transaction: Transaction, bookId: string) {
     .orderBy(asc(accounts.code));
 }
 
-export function readLedgerLines(
-  transaction: Transaction,
-  bookId: string,
-  sequence: bigint,
-) {
+export function readLedgerLines(transaction: Transaction, bookId: string, sequence: bigint) {
   return transaction
     .select({
       accountId: journalLines.accountId,
@@ -578,6 +776,9 @@ export function readLedgerLines(
       creditMinor: journalLines.creditMinor,
     })
     .from(journalLines)
-    .innerJoin(vouchers, and(eq(journalLines.voucherId, vouchers.id), eq(journalLines.bookId, vouchers.bookId)))
+    .innerJoin(
+      vouchers,
+      and(eq(journalLines.voucherId, vouchers.id), eq(journalLines.bookId, vouchers.bookId)),
+    )
     .where(and(eq(journalLines.bookId, bookId), lte(vouchers.sequence, sequence)));
 }

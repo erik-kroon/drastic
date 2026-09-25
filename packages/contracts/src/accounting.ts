@@ -3,7 +3,6 @@ import { Identifier, AccountingDate, Description, Digest } from "@open-erp/domai
 import { MinorUnits } from "@open-erp/domain/money";
 import {
   ExecutionReceipt as DomainExecutionReceipt,
-  GroupReceipt,
   JournalLine,
   Voucher,
 } from "@open-erp/domain/ledger";
@@ -27,15 +26,7 @@ export {
 } from "@open-erp/domain/ledger";
 export { Book, BookSetup, BookStatus } from "@open-erp/domain/books";
 
-export const PlanExecutionReceipt = Schema.Struct({
-  id: Identifier,
-  changeSetId: Identifier,
-  planDigest: Digest,
-  groups: Schema.Array(GroupReceipt).check(Schema.isMinLength(1)),
-  committedAt: Schema.String,
-});
-
-export const ExecutionReceipt = Schema.Union([DomainExecutionReceipt, PlanExecutionReceipt]);
+export const ExecutionReceipt = DomainExecutionReceipt;
 
 export const ChangePath = Schema.Struct({
   entityId: Identifier,

@@ -10,6 +10,7 @@ import { authenticate, sameOrigin } from "./http/auth";
 import { capabilities } from "../application/capabilities";
 import { failure } from "../application/failures";
 import { RequestEnvironment } from "../runtime/environment";
+import type { Database } from "../db/connection";
 
 const protocolVersions = ["2025-11-25", "2025-06-18"];
 const latestProtocolVersion = "2025-11-25";
@@ -95,7 +96,7 @@ function dispatch(request: typeof McpRequest.Type, token: string) {
         const call: Effect.Effect<
           Schema.Json,
           AccountingError | Schema.SchemaError,
-          RequestEnvironment
+          RequestEnvironment | Database
         > = tool.capability.invoke(token, input.success.arguments ?? {});
         return yield* call.pipe(
           Effect.match({

@@ -1,4 +1,6 @@
 import type { IdentityProvisioning } from "@open-erp/contracts/identity";
+import type * as Recovery from "@open-erp/contracts/posting-recovery";
+import type * as Schema from "effect/Schema";
 import {
   bigint,
   boolean,
@@ -118,10 +120,10 @@ export const events = openerp.table("events", {
 export const changeSets = openerp.table("change_sets", {
   bookId: text("book_id").notNull(),
   id: text().notNull(),
-  plan: jsonb("plan").notNull(),
+  plan: jsonb("plan").$type<Schema.JsonObject>().notNull(),
   digest: text().notNull(),
   createdBy: text("created_by").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
 });
 
 export const approvals = openerp.table("approvals", {
@@ -155,9 +157,11 @@ export const vouchers = openerp.table("vouchers", {
   occurrenceKey: text("occurrence_key").notNull(),
   correctsVoucherId: text("corrects_voucher_id"),
   changeSetId: text("change_set_id").notNull(),
-  action: jsonb("action").notNull(),
+  action: jsonb("action").$type<Schema.JsonObject>().notNull(),
   expectedLineCount: integer("expected_line_count").notNull(),
-  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
 });
 
 export const journalLines = openerp.table("journal_lines", {
@@ -177,7 +181,7 @@ export const executionReceipts = openerp.table("execution_receipts", {
   changeSetId: text("change_set_id").notNull(),
   voucherId: text("voucher_id").notNull(),
   approvalId: text("approval_id").notNull(),
-  body: jsonb("body").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });
 
 export const commandReceipts = openerp.table("command_receipts", {
@@ -186,8 +190,10 @@ export const commandReceipts = openerp.table("command_receipts", {
   requestDigest: text("request_digest").notNull(),
   operation: text().notNull(),
   actorId: text("actor_id").notNull(),
-  result: jsonb("result").notNull(),
-  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+  result: jsonb("result").$type<Schema.JsonObject>().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
 });
 
 export const outbox = openerp.table("outbox", {
@@ -195,10 +201,46 @@ export const outbox = openerp.table("outbox", {
   id: text().notNull(),
   receiptId: text("receipt_id").notNull(),
   kind: text().notNull(),
-  payload: jsonb("payload").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+  payload: jsonb("payload").$type<object>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
   deliveredAt: timestamp("delivered_at", { withTimezone: true, mode: "string" }),
-  attempts: integer().notNull(),
+  attempts: integer().notNull().default(0),
+});
+
+export const postingSavedRequests = openerp.table("posting_saved_requests", {
+  bookId: text("book_id").notNull(),
+  key: text().notNull(),
+  actorId: text("actor_id").notNull(),
+  command: jsonb("command").$type<typeof Recovery.SavedPostingCommand.Type>().notNull(),
+  digest: text().notNull(),
+  commandKey: text("command_key").notNull(),
+  savedAt: timestamp("saved_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
+export const postingRequestOutcomes = openerp.table("posting_request_outcomes", {
+  bookId: text("book_id").notNull(),
+  key: text().notNull(),
+  state: text().notNull(),
+  result: jsonb("result").$type<Schema.JsonObject | null>(),
+  refusal: jsonb("refusal").$type<{ readonly code: string; readonly message: string } | null>(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+});
+
+export const postingApprovalRevocations = openerp.table("posting_approval_revocations", {
+  bookId: text("book_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  actorId: text("actor_id").notNull(),
+  reason: text().notNull(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
+export const correctionImpactReviews = openerp.table("correction_impact_reviews", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  voucherId: text("voucher_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });
 
 export const postingGroupReceipts = openerp.table("posting_group_receipts", {
@@ -207,7 +249,7 @@ export const postingGroupReceipts = openerp.table("posting_group_receipts", {
   changeSetId: text("change_set_id").notNull(),
   groupId: text("group_id").notNull(),
   planDigest: text("plan_digest").notNull(),
-  body: jsonb("body").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
   committedAt: timestamp("committed_at", { withTimezone: true, mode: "string" }).notNull(),
 });
 
@@ -221,4 +263,35 @@ export const approvalConsumptions = openerp.table("approval_consumptions", {
   approverId: text("approver_id").notNull(),
   consumedById: text("consumed_by_id").notNull(),
   consumedAt: timestamp("consumed_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const correctionBundles = openerp.table("correction_bundles", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  originalVoucherId: text("original_voucher_id").notNull(),
+  reversalChangeSetId: text("reversal_change_set_id").notNull(),
+  replacementChangeSetId: text("replacement_change_set_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
+export const correctionBundleApprovals = openerp.table("correction_bundle_approvals", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  bundleId: text("bundle_id").notNull(),
+  reversalApprovalId: text("reversal_approval_id").notNull(),
+  replacementApprovalId: text("replacement_approval_id").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const correctionBundleReceipts = openerp.table("correction_bundle_receipts", {
+  bookId: text("book_id").notNull(),
+  bundleId: text("bundle_id").notNull(),
+  originalVoucherId: text("original_voucher_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  reversalReceiptId: text("reversal_receipt_id").notNull(),
+  replacementReceiptId: text("replacement_receipt_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });

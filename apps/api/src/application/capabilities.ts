@@ -2,9 +2,49 @@ import { Capabilities } from "@open-erp/contracts/capabilities";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import type * as Accounting from "@open-erp/contracts/accounting";
-import { exportSourceArchive, getSourceOccurrence, retainSource, searchSourceArchive } from "./source-retention";
+import {
+  exportSourceArchive,
+  getSourceOccurrence,
+  retainSource,
+  searchSourceArchive,
+} from "./source-retention";
 import { startPreparationJob } from "./preparation-jobs";
 import { prepareVatDraft } from "./vat-returns";
+import {
+  executeCorrectionBundle,
+  getCorrectionBundle,
+  getCorrectionBundleForVoucher,
+  getCorrectionChain,
+  getCorrectionImpact,
+  listCorrectionBundles,
+  prepareCorrectionBundle,
+  prepareCorrectionImpact,
+  recoverCorrectionRequest,
+} from "./posting-corrections";
+import {
+  bookSetup,
+  bookStatus,
+  createEvidence,
+  executeChange,
+  getChange,
+  getEvidence,
+  getReceipt,
+  getVoucher,
+  ledgerSnapshot,
+  listVouchers,
+  prepareCorrection,
+  prepareJournal,
+  validateChange,
+} from "./posting";
+import {
+  getPostingRecovery,
+  getSavedPostingRequest,
+  listPostingRecovery,
+  listSavedPostingRequests,
+  recoverPostingRequest,
+  runPostingRequest,
+  savePostingRequest,
+} from "./posting-recovery";
 import { prepareSie, getSie, listSie, resumeSie } from "./sie";
 import {
   prepareInvoiceDocument,
@@ -14,6 +54,7 @@ import {
 } from "./invoice-documents";
 import type { RequestEnvironment } from "../runtime/environment";
 import { query, scopeParameter, type DatabaseOperation } from "../db/query";
+import type { Database } from "../db/connection";
 
 function bindCapability<I, O extends Schema.Json>(
   definition: {
@@ -40,7 +81,7 @@ function effectCapability<I, O extends Schema.Json>(
   execute: (
     token: string,
     input: I,
-  ) => Effect.Effect<O, Accounting.AccountingError, RequestEnvironment>,
+  ) => Effect.Effect<O, Accounting.AccountingError, RequestEnvironment | Database>,
 ) {
   return {
     ...definition,
@@ -287,20 +328,24 @@ export const capabilities = {
     "catalogArticleRevision",
     (input) => [scopeParameter(input.scope), input.code, input.revision],
   ),
-  dimensions_list: bindCapability(
-    Capabilities.dimensions_list,
-    "listDimensions",
-    (input) => [scopeParameter(input.scope)],
-  ),
-  crm_directory: bindCapability(
-    Capabilities.crm_directory,
-    "crmDirectory",
-    (input) => [scopeParameter(input.scope), input.filters.search ?? "", input.filters.role ?? "", input.filters.after ?? ""],
-  ),
+  dimensions_list: bindCapability(Capabilities.dimensions_list, "listDimensions", (input) => [
+    scopeParameter(input.scope),
+  ]),
+  crm_directory: bindCapability(Capabilities.crm_directory, "crmDirectory", (input) => [
+    scopeParameter(input.scope),
+    input.filters.search ?? "",
+    input.filters.role ?? "",
+    input.filters.after ?? "",
+  ]),
   crm_directory_export: bindCapability(
     Capabilities.crm_directory_export,
     "crmDirectoryExport",
-    (input) => [scopeParameter(input.scope), input.filters.search ?? "", input.filters.role ?? "", input.filters.after ?? ""],
+    (input) => [
+      scopeParameter(input.scope),
+      input.filters.search ?? "",
+      input.filters.role ?? "",
+      input.filters.after ?? "",
+    ],
   ),
   collections_worklist: bindCapability(
     Capabilities.collections_worklist,
@@ -317,11 +362,9 @@ export const capabilities = {
     "collectionHistoryPage",
     (input) => [scopeParameter(input.scope), input.customerId, input.after ?? ""],
   ),
-  deadlines_list: bindCapability(
-    Capabilities.deadlines_list,
-    "listDeadlines",
-    (input) => [scopeParameter(input.scope)],
-  ),
+  deadlines_list: bindCapability(Capabilities.deadlines_list, "listDeadlines", (input) => [
+    scopeParameter(input.scope),
+  ]),
   supplier_inbox_list: bindCapability(
     Capabilities.supplier_inbox_list,
     "listSupplierInboxes",
@@ -910,25 +953,15 @@ export const capabilities = {
     "getAccountantReviewArtifact",
     (input) => [scopeParameter(input.scope), input.packId, input.format],
   ),
-  posting_save_request: bindCapability(
-    Capabilities.posting_save_request,
-    "savePostingRequest",
-    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.command)],
-  ),
-  posting_run_request: bindCapability(
-    Capabilities.posting_run_request,
-    "runPostingRequest",
-    (input) => [scopeParameter(input.scope), input.key],
-  ),
-  posting_get_saved_request: bindCapability(
+  posting_save_request: effectCapability(Capabilities.posting_save_request, savePostingRequest),
+  posting_run_request: effectCapability(Capabilities.posting_run_request, runPostingRequest),
+  posting_get_saved_request: effectCapability(
     Capabilities.posting_get_saved_request,
-    "getSavedPostingRequest",
-    (input) => [scopeParameter(input.scope), input.key],
+    getSavedPostingRequest,
   ),
-  posting_list_saved_requests: bindCapability(
+  posting_list_saved_requests: effectCapability(
     Capabilities.posting_list_saved_requests,
-    "listSavedPostingRequests",
-    (input) => [scopeParameter(input.scope), input.after ?? ""],
+    listSavedPostingRequests,
   ),
   source_retain: effectCapability(Capabilities.source_retain, retainSource),
   source_recover_retention: bindCapability(
@@ -947,9 +980,11 @@ export const capabilities = {
     (input) => [scopeParameter(input.scope), input.occurrenceId],
   ),
   source_search_archive: effectCapability(Capabilities.source_search_archive, (token, input) =>
-    searchSourceArchive(token, input.scope, input.filters)),
+    searchSourceArchive(token, input.scope, input.filters),
+  ),
   source_export_archive: effectCapability(Capabilities.source_export_archive, (token, input) =>
-    exportSourceArchive(token, input.scope, input.filters)),
+    exportSourceArchive(token, input.scope, input.filters),
+  ),
   source_get_occurrence: effectCapability(Capabilities.source_get_occurrence, getSourceOccurrence),
   source_get_purchase_links: bindCapability(
     Capabilities.source_get_purchase_links,
@@ -1134,79 +1169,32 @@ export const capabilities = {
     "ownersRecoverCommand",
     (input) => [scopeParameter(input.scope), input.key],
   ),
-  corrections_review_impact: bindCapability(
+  corrections_review_impact: effectCapability(
     Capabilities.corrections_review_impact,
-    "prepareCorrectionImpact",
-    (input) => [
-      scopeParameter(input.scope),
-      input.voucherId,
-      input.idempotencyKey,
-      JSON.stringify(input.input),
-    ],
+    prepareCorrectionImpact,
   ),
-  corrections_get_impact: bindCapability(
+  corrections_get_impact: effectCapability(
     Capabilities.corrections_get_impact,
-    "getCorrectionImpact",
-    (input) => [scopeParameter(input.scope), input.impactId],
+    getCorrectionImpact,
   ),
-  corrections_chain: bindCapability(
-    Capabilities.corrections_chain,
-    "getCorrectionChain",
-    (input) => [scopeParameter(input.scope), input.voucherId],
-  ),
-  corrections_list: bindCapability(
-    Capabilities.corrections_list,
-    "listCorrectionBundles",
-    (input) => [scopeParameter(input.scope), input.after ?? ""],
-  ),
-  corrections_recover_request: bindCapability(
+  corrections_chain: effectCapability(Capabilities.corrections_chain, getCorrectionChain),
+  corrections_list: effectCapability(Capabilities.corrections_list, listCorrectionBundles),
+  corrections_recover_request: effectCapability(
     Capabilities.corrections_recover_request,
-    "recoverCorrectionRequest",
-    (input) => [scopeParameter(input.scope), input.key],
+    recoverCorrectionRequest,
   ),
-  corrections_prepare: bindCapability(
-    Capabilities.corrections_prepare,
-    "prepareCorrectionBundle",
-    (input) => [
-      scopeParameter(input.scope),
-      input.voucherId,
-      input.idempotencyKey,
-      JSON.stringify(input.input),
-    ],
-  ),
-  corrections_get: bindCapability(Capabilities.corrections_get, "getCorrectionBundle", (input) => [
-    scopeParameter(input.scope),
-    input.bundleId,
-  ]),
-  corrections_for_voucher: bindCapability(
+  corrections_prepare: effectCapability(Capabilities.corrections_prepare, prepareCorrectionBundle),
+  corrections_get: effectCapability(Capabilities.corrections_get, getCorrectionBundle),
+  corrections_for_voucher: effectCapability(
     Capabilities.corrections_for_voucher,
-    "getCorrectionBundleForVoucher",
-    (input) => [scopeParameter(input.scope), input.voucherId],
+    getCorrectionBundleForVoucher,
   ),
-  corrections_execute: bindCapability(
-    Capabilities.corrections_execute,
-    "executeCorrectionBundle",
-    (input) => [
-      scopeParameter(input.scope),
-      input.bundleId,
-      input.idempotencyKey,
-      JSON.stringify(input.input),
-    ],
-  ),
-  posting_list_recovery: bindCapability(
-    Capabilities.posting_list_recovery,
-    "listPostingRecovery",
-    (input) => [scopeParameter(input.scope), input.after ?? ""],
-  ),
-  posting_get_recovery: bindCapability(
-    Capabilities.posting_get_recovery,
-    "getPostingRecovery",
-    (input) => [scopeParameter(input.scope), input.changeSetId, input.after ?? ""],
-  ),
-  posting_recover_request: bindCapability(
+  corrections_execute: effectCapability(Capabilities.corrections_execute, executeCorrectionBundle),
+  posting_list_recovery: effectCapability(Capabilities.posting_list_recovery, listPostingRecovery),
+  posting_get_recovery: effectCapability(Capabilities.posting_get_recovery, getPostingRecovery),
+  posting_recover_request: effectCapability(
     Capabilities.posting_recover_request,
-    "recoverPostingRequest",
-    (input) => [scopeParameter(input.scope), input.key],
+    recoverPostingRequest,
   ),
   rules_propose: bindCapability(Capabilities.rules_propose, "proposeRecurringRule", (input) => [
     scopeParameter(input.scope),
@@ -1258,9 +1246,7 @@ export const capabilities = {
     input.caseId,
     JSON.stringify({ detail: input.detail, maxItems: input.maxItems, cursor: input.cursor }),
   ]),
-  book_get_status: bindCapability(Capabilities.book_get_status, "bookStatus", (input) => [
-    scopeParameter(input.scope),
-  ]),
+  book_get_status: effectCapability(Capabilities.book_get_status, bookStatus),
   bank_import_statement: bindCapability(
     Capabilities.bank_import_statement,
     "importBankStatement",
@@ -1296,10 +1282,11 @@ export const capabilities = {
     "prepareReportFamily",
     (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
   ),
-  reports_get_family: bindCapability(Capabilities.reports_get_family, "getReportFamily", (input) => [
-    scopeParameter(input.scope),
-    input.reportId,
-  ]),
+  reports_get_family: bindCapability(
+    Capabilities.reports_get_family,
+    "getReportFamily",
+    (input) => [scopeParameter(input.scope), input.reportId],
+  ),
   reports_list: bindCapability(Capabilities.reports_list, "listReports", (input) => [
     scopeParameter(input.scope),
     input.after ?? "",
@@ -1331,61 +1318,19 @@ export const capabilities = {
     input.after ?? "",
   ]),
   book_list: bindCapability(Capabilities.book_list, "listBooks", () => []),
-  book_get_setup: bindCapability(Capabilities.book_get_setup, "bookSetup", (input) => [
-    scopeParameter(input.scope),
-  ]),
-  evidence_create: bindCapability(Capabilities.evidence_create, "createEvidence", (input) => [
-    scopeParameter(input.scope),
-    input.idempotencyKey,
-    JSON.stringify(input.input),
-  ]),
-  evidence_get: bindCapability(Capabilities.evidence_get, "getEvidence", (input) => [
-    scopeParameter(input.scope),
-    input.evidenceId,
-  ]),
-  ledger_prepare_journal: bindCapability(
-    Capabilities.ledger_prepare_journal,
-    "prepareJournal",
-    (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)],
-  ),
-  changes_get: bindCapability(Capabilities.changes_get, "getChange", (input) => [
-    scopeParameter(input.scope),
-    input.changeSetId,
-  ]),
-  changes_validate: bindCapability(Capabilities.changes_validate, "validateChange", (input) => [
-    scopeParameter(input.scope),
-    input.changeSetId,
-    input.idempotencyKey,
-  ]),
-  changes_execute: bindCapability(Capabilities.changes_execute, "executeChange", (input) => [
-    scopeParameter(input.scope),
-    input.changeSetId,
-    input.idempotencyKey,
-    JSON.stringify(input.input),
-  ]),
-  ledger_prepare_correction: bindCapability(
+  book_get_setup: effectCapability(Capabilities.book_get_setup, bookSetup),
+  evidence_create: effectCapability(Capabilities.evidence_create, createEvidence),
+  evidence_get: effectCapability(Capabilities.evidence_get, getEvidence),
+  ledger_prepare_journal: effectCapability(Capabilities.ledger_prepare_journal, prepareJournal),
+  changes_get: effectCapability(Capabilities.changes_get, getChange),
+  changes_validate: effectCapability(Capabilities.changes_validate, validateChange),
+  changes_execute: effectCapability(Capabilities.changes_execute, executeChange),
+  ledger_prepare_correction: effectCapability(
     Capabilities.ledger_prepare_correction,
-    "prepareCorrection",
-    (input) => [
-      scopeParameter(input.scope),
-      input.voucherId,
-      input.idempotencyKey,
-      JSON.stringify(input.input),
-    ],
+    prepareCorrection,
   ),
-  ledger_get_voucher: bindCapability(Capabilities.ledger_get_voucher, "getVoucher", (input) => [
-    scopeParameter(input.scope),
-    input.voucherId,
-  ]),
-  ledger_list: bindCapability(Capabilities.ledger_list, "listVouchers", (input) => [
-    scopeParameter(input.scope),
-    input.after ?? "0",
-  ]),
-  ledger_snapshot: bindCapability(Capabilities.ledger_snapshot, "ledgerSnapshot", (input) => [
-    scopeParameter(input.scope),
-  ]),
-  receipts_get: bindCapability(Capabilities.receipts_get, "getReceipt", (input) => [
-    scopeParameter(input.scope),
-    input.key,
-  ]),
+  ledger_get_voucher: effectCapability(Capabilities.ledger_get_voucher, getVoucher),
+  ledger_list: effectCapability(Capabilities.ledger_list, listVouchers),
+  ledger_snapshot: effectCapability(Capabilities.ledger_snapshot, ledgerSnapshot),
+  receipts_get: effectCapability(Capabilities.receipts_get, getReceipt),
 } satisfies Record<keyof typeof Capabilities, { readonly readOnly: boolean }>;
