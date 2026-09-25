@@ -85,6 +85,45 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
         ),
       ),
     )
+    .handle("prepareCommerceFxPartialSettlement", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "prepareCommerceFxPartialSettlement",
+          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
+          CommerceFx.PartialSettlementReview,
+        ),
+      ),
+    )
+    .handle("approveCommerceFxPartialSettlement", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "approveCommerceFxPartialSettlement",
+          [
+            token,
+            scopeParameter(params),
+            params.id,
+            headers["idempotency-key"],
+            JSON.stringify(payload),
+          ],
+          CommerceFx.FxApproval,
+        ),
+      ),
+    )
+    .handle("executeCommerceFxPartialSettlement", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        query(
+          "executeCommerceFxPartialSettlement",
+          [
+            token,
+            scopeParameter(params),
+            params.id,
+            headers["idempotency-key"],
+            JSON.stringify(payload),
+          ],
+          CommerceFx.PartialSettlementReceipt,
+        ),
+      ),
+    )
     .handle("prepareCommerceFxSettlementCorrection", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         query(

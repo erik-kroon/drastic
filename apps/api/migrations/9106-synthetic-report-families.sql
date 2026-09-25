@@ -69,7 +69,7 @@ BEGIN
       'id',c.role_name,'label',c.label,'accountIds',c.account_ids,
       'openingMinor',c.opening_minor::text,'movementMinor',c.movement_minor::text,
       'closingMinor',c.closing_minor::text,'amountMinor',c.amount_minor::text
-    ) ORDER BY c.ord),'[]'::jsonb) FROM calculated c),
+    ) ORDER BY c.ord) FROM calculated c),'[]'::jsonb),
     'totals',jsonb_build_object(
       'openingMinor',t.opening_minor::text,'movementMinor',t.movement_minor::text,
       'closingMinor',t.closing_minor::text,'amountMinor',t.amount_minor::text

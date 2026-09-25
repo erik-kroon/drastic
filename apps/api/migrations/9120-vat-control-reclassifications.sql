@@ -548,8 +548,8 @@ BEGIN
   IF v_box10<0 OR v_box48<0 OR v_net<>v_box10-v_box48 THEN
      PERFORM openerp.fail('UnsupportedProfile','The selected synthetic net must equal output tax less deductible input tax; reported kronor and residuals remain separate and unposted.');
    END IF;
-  SELECT coalesce(sum((x.value->'fact'->'input'->>'vatMinor')::numeric),0) FILTER (WHERE x.value->'fact'->'input'->>'treatment'='domestic_sale'),
-    coalesce(sum((x.value->'fact'->'input'->>'vatMinor')::numeric),0) FILTER (WHERE x.value->'fact'->'input'->>'treatment'='domestic_purchase')
+   SELECT coalesce(sum((x.value->'fact'->'input'->>'vatMinor')::numeric) FILTER (WHERE x.value->'fact'->'input'->>'treatment'='domestic_sale'),0),
+     coalesce(sum((x.value->'fact'->'input'->>'vatMinor')::numeric) FILTER (WHERE x.value->'fact'->'input'->>'treatment'='domestic_purchase'),0)
     INTO v_output,v_input_tax FROM jsonb_array_elements(v_current_relevant_facts) x;
   IF v_output<>v_box10 OR v_input_tax<>v_box48 THEN
     PERFORM openerp.fail('StaleDependency','The exact current contribution VAT amounts differ from saved boxes 10 and 48.');

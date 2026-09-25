@@ -13,6 +13,12 @@ export const commerceFxStatements = {
     sql`select openerp.approve_commerce_fx_settlement(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
   executeCommerceFxSettlement: (parameters) =>
     sql`select openerp.execute_commerce_fx_settlement(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
+  prepareCommerceFxPartialSettlement: (parameters) =>
+    sql`select openerp.prepare_commerce_fx_partial_settlement(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
+  approveCommerceFxPartialSettlement: (parameters) =>
+    sql`select openerp.approve_commerce_fx_partial_settlement(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
+  executeCommerceFxPartialSettlement: (parameters) =>
+    sql`select openerp.execute_commerce_fx_partial_settlement(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::text,${parameters[4]}::jsonb) as result`,
   prepareCommerceFxSettlementCorrection: (parameters) =>
     sql`select openerp.prepare_commerce_fx_settlement_correction(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
   approveCommerceFxSettlementCorrection: (parameters) =>

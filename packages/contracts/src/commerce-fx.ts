@@ -10,6 +10,7 @@ const CurrencyScale = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 6
 const PositiveMinor = Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,37}$/));
 const Profile = Schema.Literal("synthetic_customer_foreign_receivable_v1");
 const SettlementProfile = Schema.Literal("synthetic_full_book_currency_settlement_v1");
+const PartialSettlementProfile = Schema.Literal("synthetic_partial_book_currency_settlement_v1");
 const CorrectionProfile = Schema.Literal("synthetic_latest_settlement_correction_v1");
 const RoundingPolicy = Schema.Literal("synthetic_half_up_nonnegative_v1");
 const AccountRole = Schema.Literals([
@@ -63,6 +64,20 @@ export const PrepareSettlement = Schema.Struct({
   fullSettlementOnly: Schema.Literal(true),
   acknowledgeLimitedProfile: Schema.Literal(true),
 });
+export const PreparePartialSettlement = Schema.Struct({
+  profile: PartialSettlementProfile,
+  itemId: Accounting.Identifier,
+  originalReleasedMinor: PositiveMinor,
+  settlementDate: Accounting.AccountingDate,
+  accountingPeriodId: Accounting.Identifier,
+  considerationMinor: PositiveMinor,
+  evidenceId: Accounting.Identifier,
+  eventKey: Schema.String.check(Schema.isPattern(/^[a-zA-Z0-9_-]{1,128}$/)),
+  series: Schema.String.check(Schema.isPattern(/^[A-Z0-9]{1,16}$/)),
+  reason: Accounting.Description,
+  feesExcluded: Schema.Literal(true),
+  acknowledgeLimitedProfile: Schema.Literal(true),
+});
 export const PrepareSettlementCorrection = Schema.Struct({
   profile: CorrectionProfile,
   settlementId: Accounting.Identifier,
@@ -84,7 +99,7 @@ export const ExecuteFx = Schema.Struct({
 export const FxApproval = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
-  kind: Schema.Literals(["recognition", "settlement", "correction"]),
+  kind: Schema.Literals(["recognition", "settlement", "partial_settlement", "correction"]),
   reviewId: Accounting.Identifier,
   reviewDigest: Accounting.Digest,
   actorId: Accounting.Identifier,
@@ -182,6 +197,41 @@ export const SettlementReceipt = Schema.Struct({
   digest: Accounting.Digest,
   receipt: CommandReceipt,
 });
+const PartialSettlementCalculation = Schema.Struct({
+  legOrdinal: Schema.Int.check(Schema.isGreaterThan(0)),
+  originalRemainingBeforeMinor: PositiveMinor,
+  originalReleasedMinor: PositiveMinor,
+  originalRemainingAfterMinor: Accounting.MinorUnits,
+  carryingRemainingBeforeMinor: Accounting.MinorUnits,
+  carryingReleasedMinor: Accounting.MinorUnits,
+  carryingRemainingAfterMinor: Accounting.MinorUnits,
+  exactNumerator: Schema.String,
+  exactDenominator: PositiveMinor,
+  quotientMinor: Accounting.MinorUnits,
+  remainderNumerator: Schema.String,
+  residualNumerator: Schema.String,
+  residualDenominator: PositiveMinor,
+  roundingPolicy: RoundingPolicy,
+  finalLeg: Schema.Boolean,
+  considerationMinor: PositiveMinor,
+  realizedGainMinor: Accounting.SignedMinorUnits,
+  formula: Schema.String,
+});
+export const PartialSettlementReceipt = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  itemId: Accounting.Identifier,
+  profile: PartialSettlementProfile,
+  legOrdinal: Schema.Int.check(Schema.isGreaterThan(0)),
+  reviewId: Accounting.Identifier,
+  reviewDigest: Accounting.Digest,
+  approvalId: Accounting.Identifier,
+  calculation: PartialSettlementCalculation,
+  postingReceipt: Accounting.ExecutionReceipt,
+  committedAt: Schema.String,
+  digest: Accounting.Digest,
+  receipt: CommandReceipt,
+});
 export const CorrectionReceipt = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -194,7 +244,9 @@ export const CorrectionReceipt = Schema.Struct({
   originalVoucherId: Accounting.Identifier,
   postingReceipt: Accounting.ExecutionReceipt,
   restoredOriginalMinor: PositiveMinor,
-  restoredCarryingMinor: PositiveMinor,
+  restoredCarryingMinor: Accounting.MinorUnits,
+  settlementProfile: Schema.optional(PartialSettlementProfile),
+  legOrdinal: Schema.optional(Schema.Int.check(Schema.isGreaterThan(0))),
   reason: Accounting.Description,
   committedAt: Schema.String,
   digest: Accounting.Digest,
@@ -205,7 +257,7 @@ export const MonetaryItem = Schema.Struct({
   scope: Accounting.Scope,
   kind: Profile,
   direction: Schema.Literal("customer"),
-  status: Schema.Literals(["open", "settled", "corrected"]),
+  status: Schema.Literals(["open", "partially_settled", "settled", "corrected"]),
   source: SourceObligation,
   rate: RateBinding,
   original: Schema.Struct({ currency: Currency, scale: CurrencyScale, minor: PositiveMinor }),
@@ -223,8 +275,19 @@ export const MonetaryItem = Schema.Struct({
   }),
   settlement: Schema.NullOr(SettlementReceipt),
   correction: Schema.NullOr(CorrectionReceipt),
+  partialSettlements: Schema.optional(Schema.Array(PartialSettlementReceipt)),
+  partialCorrections: Schema.optional(Schema.Array(CorrectionReceipt)),
   receipt: CommandReceipt,
   digest: Accounting.Digest,
+});
+const SettlementItemSnapshot = Schema.Struct({
+  id: Accounting.Identifier,
+  digest: Accounting.Digest,
+  source: SourceObligation,
+  rate: RateBinding,
+  accountBindings: AccountBindings,
+  remainingOriginalMinor: PositiveMinor,
+  remainingCarryingMinor: Accounting.MinorUnits,
 });
 export const SettlementReview = Schema.Struct({
   id: Accounting.Identifier,
@@ -233,15 +296,7 @@ export const SettlementReview = Schema.Struct({
   itemId: Accounting.Identifier,
   input: PrepareSettlement,
   snapshot: Schema.Struct({
-    item: Schema.Struct({
-      id: Accounting.Identifier,
-      digest: Accounting.Digest,
-      source: SourceObligation,
-      rate: RateBinding,
-      accountBindings: AccountBindings,
-      remainingOriginalMinor: PositiveMinor,
-      remainingCarryingMinor: PositiveMinor,
-    }),
+    item: SettlementItemSnapshot,
     sourceEvidence: EvidenceReference,
     calculation: Schema.Struct({
       originalReleasedMinor: PositiveMinor,
@@ -250,6 +305,27 @@ export const SettlementReview = Schema.Struct({
       realizedGainMinor: Accounting.SignedMinorUnits,
       formula: Schema.String,
     }),
+    fiscalYearId: Accounting.Identifier,
+    profileVersion: Accounting.MinorUnits,
+    writerEpoch: Accounting.MinorUnits,
+    periodVersion: Accounting.MinorUnits,
+    accountBindings: AccountBindings,
+  }),
+  createdBy: Accounting.Identifier,
+  createdAt: Schema.String,
+  digest: Accounting.Digest,
+  receipt: CommandReceipt,
+});
+export const PartialSettlementReview = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  version: Schema.Literal(1),
+  itemId: Accounting.Identifier,
+  input: PreparePartialSettlement,
+  snapshot: Schema.Struct({
+    item: SettlementItemSnapshot,
+    sourceEvidence: EvidenceReference,
+    calculation: PartialSettlementCalculation,
     fiscalYearId: Accounting.Identifier,
     profileVersion: Accounting.MinorUnits,
     writerEpoch: Accounting.MinorUnits,
@@ -273,7 +349,7 @@ export const SettlementCorrectionReview = Schema.Struct({
   input: PrepareSettlementCorrection,
   snapshot: Schema.Struct({
     item: MonetaryItem,
-    settlement: SettlementReceipt,
+    settlement: Schema.Union([SettlementReceipt, PartialSettlementReceipt]),
     voucher: Accounting.Voucher,
     sourceEvidence: EvidenceReference,
     reversalLines: Schema.Array(FxJournalLine).check(Schema.isMinLength(2), Schema.isMaxLength(3)),
@@ -297,10 +373,12 @@ export const CommandRecovery = Schema.Struct({
     Schema.Union([
       RecognitionReview,
       SettlementReview,
+      PartialSettlementReview,
       SettlementCorrectionReview,
       FxApproval,
       MonetaryItem,
       SettlementReceipt,
+      PartialSettlementReceipt,
       CorrectionReceipt,
     ]),
   ),
@@ -350,6 +428,29 @@ export const CommerceFxApi = HttpApiGroup.make("commerceFx").add(
     payload: ExecuteFx.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: SettlementReceipt,
   }),
+  HttpApiEndpoint.post("prepareCommerceFxPartialSettlement", `${path}/partial-settlement-reviews`, {
+    ...mutation,
+    payload: PreparePartialSettlement.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: PartialSettlementReview,
+  }),
+  HttpApiEndpoint.post(
+    "approveCommerceFxPartialSettlement",
+    `${path}/partial-settlement-reviews/:id/approvals`,
+    {
+      ...identifiedMutation,
+      payload: ApproveFx.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: FxApproval,
+    },
+  ),
+  HttpApiEndpoint.post(
+    "executeCommerceFxPartialSettlement",
+    `${path}/partial-settlement-reviews/:id/execute`,
+    {
+      ...identifiedMutation,
+      payload: ExecuteFx.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: PartialSettlementReceipt,
+    },
+  ),
   HttpApiEndpoint.post("prepareCommerceFxSettlementCorrection", `${path}/settlement-corrections`, {
     ...mutation,
     payload: PrepareSettlementCorrection.annotate({ parseOptions: { onExcessProperty: "error" } }),

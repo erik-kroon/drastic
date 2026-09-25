@@ -3,15 +3,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Subledgers from "@open-erp/contracts/subledgers";
+import * as Controls from "@open-erp/contracts/subledger-controls";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Text } from "@open-erp/ui/components/typography";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { ArrowLeft } from "lucide-react";
-import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
+import { RecordHeading, RecordSummary, RecordFact, RecordSection } from "@open-erp/ui/components/record-layout";
 import { PageCaption, PageEmpty, RecordOpen } from "@open-erp/ui/components/accounting-page";
-import { Disclosure } from "@open-erp/ui/components/workflow";
+import { Disclosure, WorkflowSteps } from "@open-erp/ui/components/workflow";
 import { InputField, SelectField, TextareaField } from "@open-erp/ui/components/field";
 import { decimalToMinor, formatMinorAmount, minorToDecimal } from "@/lib/workspace-api";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -314,6 +315,12 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
           </RecordSummary>
           <PageCaption>{view.current.terms.rationale}</PageCaption>
           <ScheduleBasisNotice basis={view.postingBasis} locale={locale} />
+          <AssetImpairmentPanel
+            book={book}
+            setup={setup}
+            locale={locale}
+            schedule={view}
+          />
           {view.impairments.length ? (
             <DataTable
               title={copy.impairmentHistory}
@@ -510,6 +517,1082 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
       ) : null}
     </Box>
   );
+}
+
+function AssetImpairmentPanel(props: {
+  book: typeof Accounting.Book.Type;
+  setup: typeof Accounting.BookSetup.Type | undefined;
+  locale: Locale;
+  schedule: typeof Subledgers.ScheduleView.Type;
+}) {
+  const copy = subledgerCopy(props.locale);
+  if (props.book.role !== "operator")
+    return <PageCaption>{copy.impairmentOperatorOnly}</PageCaption>;
+  return <OperatorAssetImpairmentPanel {...props} />;
+}
+
+function OperatorAssetImpairmentPanel(props: {
+  book: typeof Accounting.Book.Type;
+  setup: typeof Accounting.BookSetup.Type | undefined;
+  locale: Locale;
+  schedule: typeof Subledgers.ScheduleView.Type;
+}) {
+  const { book, locale, schedule } = props;
+  const copy = subledgerCopy(locale);
+  const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
+  const basisEnabled = schedule.postingBasis?.mode === "linked_basis";
+  const basisPath = `${bookPath(book)}/subledger-controls/bases/${encodeURIComponent(schedule.current.scheduleId)}`;
+  const basis = useQuery({
+    queryKey: [...bookKey(book), "subledger-controls", "basis", schedule.current.scheduleId],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(basisPath, Controls.SubledgerBasis, { signal });
+      if (
+        result.scope.bookId !== book.id ||
+        result.scope.entityId !== book.entityId ||
+        result.input.scheduleId !== schedule.current.scheduleId ||
+        result.digest !== schedule.postingBasis?.basisDigest
+      ) {
+        throw new Error("Impairment carrying basis identity mismatch");
+      }
+      return result;
+    },
+    enabled: basisEnabled,
+    retry: false,
+  });
+  const reviews = useQuery({
+    queryKey: [...bookKey(book), "subledger-controls", "impairment-reviews", schedule.current.scheduleId],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${bookPath(book)}/subledger-controls/impairments/for-schedule/${encodeURIComponent(schedule.current.scheduleId)}`,
+        Controls.AssetImpairmentReviewList,
+        { signal },
+      );
+      if (
+        result.scope.bookId !== book.id ||
+        result.scope.entityId !== book.entityId ||
+        result.scheduleId !== schedule.current.scheduleId ||
+        result.impairments.some((effect) => effect.scheduleId !== schedule.current.scheduleId)
+      ) {
+        throw new Error("Impairment review list identity mismatch");
+      }
+      return result;
+    },
+    retry: false,
+  });
+  const suffix = completeImpairmentSuffix(schedule);
+  const expectedBasisDigest = schedule.postingBasis?.basisDigest ?? null;
+  const basisReady =
+    basis.data !== undefined &&
+    expectedBasisDigest !== null &&
+    basis.data.digest === expectedBasisDigest &&
+    schedule.postingBasis?.supported === true;
+  let blocker: string | undefined;
+  if (schedule.current.terms.kind !== "asset") blocker = copy.impairmentAssetOnly;
+  else if (schedule.disposal) blocker = copy.impairmentDisposed;
+  else if (schedule.postingBasis?.mode !== "linked_basis") blocker = copy.impairmentBasisRequired;
+  else if (schedule.postingBasis.supported !== true) blocker = copy.amendmentBlockerBasis;
+  else if (!basisReady) blocker = copy.impairmentBasisUnavailable;
+  else if (!suffix.complete) blocker = copy.impairmentSuffixRequired;
+  else if (props.setup === undefined) blocker = copy.impairmentSetupUnavailable;
+  else if (
+    schedule.carryingMinor === null ||
+    BigInt(schedule.carryingMinor) <= 0n
+  ) {
+    blocker = copy.impairmentCarryingUnavailable;
+  }
+  return (
+    <Disclosure title={copy.impairmentWorkflow}>
+      <Box display="grid" gap="lg" minWidth="zero">
+        <PageCaption>{copy.impairmentWorkflowHelp}</PageCaption>
+        <AssetImpairmentReviewLookup
+          locale={locale}
+          onOpen={(id) => setSelectedReviewId(id)}
+        />
+        {selectedReviewId ? (
+          <AssetImpairmentReviewDetail
+            key={selectedReviewId}
+            book={book}
+            locale={locale}
+            schedule={schedule}
+            id={selectedReviewId}
+            onBack={() => setSelectedReviewId(null)}
+            onOpen={(id) => setSelectedReviewId(id)}
+          />
+        ) : (
+          <>
+            <AccountingStatus
+              locale={locale}
+              pending={reviews.isPending || (basisEnabled && basis.isPending)}
+              error={basis.error ?? reviews.error}
+            />
+            {blocker ? <Text role="alert">{blocker}</Text> : null}
+            {!blocker && props.setup && basis.data ? (
+              <AssetImpairmentPrepareForm
+                key={`${schedule.current.digest}:${basis.data.digest}`}
+                book={book}
+                setup={props.setup}
+                locale={locale}
+                schedule={schedule}
+                basis={basis.data}
+                suffix={suffix.occurrences}
+                suffixStart={suffix.start}
+                onPrepared={setSelectedReviewId}
+              />
+            ) : null}
+            <Box>
+              <Button
+                variant="outline"
+                disabled={reviews.isFetching}
+                onClick={() => void reviews.refetch()}
+              >
+                {copy.impairmentRefresh}
+              </Button>
+            </Box>
+            {reviews.data ? (
+              <AssetImpairmentReviewList
+                locale={locale}
+                reviews={reviews.data}
+                onOpen={setSelectedReviewId}
+              />
+            ) : null}
+          </>
+        )}
+      </Box>
+    </Disclosure>
+  );
+}
+
+function AssetImpairmentReviewLookup(props: { locale: Locale; onOpen: (id: string) => void }) {
+  const copy = subledgerCopy(props.locale);
+  const [invalid, setInvalid] = useState(false);
+  return (
+    <Box
+      as="form"
+      display="grid"
+      gap="md"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const id = new FormData(event.currentTarget).get("impairmentReviewId");
+        if (!Schema.is(Accounting.Identifier)(id)) {
+          setInvalid(true);
+          return;
+        }
+        setInvalid(false);
+        props.onOpen(id);
+      }}
+    >
+      <InputField
+        label={copy.impairmentReviewId}
+        name="impairmentReviewId"
+        required
+        pattern="[a-z][a-z0-9_\-]{2,127}"
+      />
+      <Box>
+        <Button type="submit" variant="outline">
+          {copy.impairmentLoad}
+        </Button>
+      </Box>
+      <Text role="status">{invalid ? copy.impairmentLoadInvalid : ""}</Text>
+    </Box>
+  );
+}
+
+function AssetImpairmentReviewList(props: {
+  locale: Locale;
+  reviews: typeof Controls.AssetImpairmentReviewList.Type;
+  onOpen: (id: string) => void;
+}) {
+  const copy = subledgerCopy(props.locale);
+  const executed = new Set(props.reviews.impairments.map((effect) => effect.reviewId));
+  return (
+    <Box display="grid" gap="lg" minWidth="zero">
+      {props.reviews.items.length ? (
+        <DataTable
+          title={copy.impairmentReviews}
+          narrow="stack"
+          columns={[
+            { id: "created", label: copy.created },
+            { id: "postingDate", label: copy.date },
+            { id: "decision", label: copy.impairmentDecisionKey },
+            { id: "state", label: copy.state },
+            { id: "action", label: copy.impairmentOpen },
+          ]}
+          rows={props.reviews.items.map((review) => ({
+            id: review.id,
+            cells: [
+              review.createdAt,
+              review.postingDate,
+              review.decisionKey,
+              executed.has(review.id) ? copy.impairmentExecuted : copy.impairmentReviewRetained,
+              <Button
+                key="action"
+                type="button"
+                variant="outline"
+                onClick={() => props.onOpen(review.id)}
+              >
+                {copy.impairmentOpen}
+              </Button>,
+            ],
+          }))}
+        />
+      ) : (
+        <Text>{copy.impairmentNoReviews}</Text>
+      )}
+      <PageCaption>{copy.impairmentCoverage}</PageCaption>
+    </Box>
+  );
+}
+
+function completeImpairmentSuffix(schedule: typeof Subledgers.ScheduleView.Type) {
+  const start = schedule.occurrences.findIndex(
+    (occurrence) => occurrence.state === "unprepared" || occurrence.state === "prepared",
+  );
+  const occurrences = start < 0 ? [] : schedule.occurrences.slice(start);
+  return {
+    start,
+    occurrences,
+    complete:
+      start >= 0 &&
+      occurrences.length > 0 &&
+      occurrences.every(
+        (occurrence) => occurrence.state === "unprepared" || occurrence.state === "prepared",
+      ),
+  };
+}
+
+function AssetImpairmentPrepareForm(props: {
+  book: typeof Accounting.Book.Type;
+  setup: typeof Accounting.BookSetup.Type;
+  locale: Locale;
+  schedule: typeof Subledgers.ScheduleView.Type;
+  basis: typeof Controls.SubledgerBasis.Type;
+  suffix: (typeof Subledgers.OccurrenceState.Type)[];
+  suffixStart: number;
+  onPrepared: (id: string) => void;
+}) {
+  const { book, locale, schedule } = props;
+  const copy = subledgerCopy(locale);
+  const current = schedule.current;
+  const initialCount = Math.max(1, props.suffix.length);
+  const [decisionKey, setDecisionKey] = useState(`impair_${crypto.randomUUID()}`);
+  const [count, setCount] = useState(initialCount);
+  const [impairmentText, setImpairmentText] = useState("");
+  const [residualText, setResidualText] = useState(
+    minorToDecimal(current.terms.residualMinor, current.currencyScale),
+  );
+  const [installmentAmounts, setInstallmentAmounts] = useState(() =>
+    Array.from({ length: initialCount }, (_, index) =>
+      props.suffix[index] ? minorToDecimal(props.suffix[index].amountMinor, current.currencyScale) : "",
+    ),
+  );
+  const futureMinor = impairmentFutureMinor(
+    schedule.carryingMinor,
+    impairmentText,
+    residualText,
+    current.currencyScale,
+  );
+  const installmentTotal = sumPositiveMinor(installmentAmounts, current.currencyScale);
+  const ordinaryAccountIds = new Set([
+    current.terms.debitAccountId,
+    current.terms.creditAccountId,
+    ...props.basis.lines.map((line) => line.accountId),
+  ]);
+  const priorContraAccounts = new Set(
+    schedule.impairments.map((effect) => effect.accumulatedImpairmentAccountId),
+  );
+  const retainedContraAccount = schedule.impairments.at(-1)?.accumulatedImpairmentAccountId;
+  const accountOptions = (include: (accountId: string) => boolean) => [
+    { value: "", label: copy.impairmentChooseAccount },
+    ...props.setup.accounts
+      .filter(
+        (account) =>
+          account.active &&
+          !ordinaryAccountIds.has(account.id) &&
+          include(account.id),
+      )
+      .map((account) => ({
+        value: account.id,
+        label: `${account.code} · ${account.name}`,
+      })),
+  ];
+  const periodOptions = [
+    { value: "", label: copy.impairmentChoosePeriod },
+    ...props.setup.periods.map((period) => ({
+      value: period.id,
+      label: `${period.startsOn} – ${period.endsOn}`,
+      disabled: period.locked,
+    })),
+  ];
+  const money = (amount: string) =>
+    `${formatMinorAmount(amount, current.currencyScale, locale)} ${current.currency}`;
+  return (
+    <CommandForm
+      book={book}
+      locale={locale}
+      path={`${bookPath(book)}/subledger-controls/impairments/prepare`}
+      schema={Subledgers.PrepareAssetImpairment}
+      output={Controls.AssetImpairmentReview
+      }
+      label={copy.impairmentPrepare}
+      recoveryId={`${current.scheduleId}:impairment:prepare`}
+      input={(fields) => ({
+        profile: "synthetic_asset_impairment_v1",
+        scheduleId: current.scheduleId,
+        decisionKey: fieldText(fields, "decisionKey"),
+        expectedDigest: current.digest,
+        expectedBasisDigest: props.basis.digest,
+        postingDate: fieldText(fields, "postingDate"),
+        accountingPeriodId: fieldText(fields, "accountingPeriodId"),
+        series: fieldText(fields, "series"),
+        lossAccountId: fieldText(fields, "lossAccountId"),
+        accumulatedImpairmentAccountId: fieldText(fields, "accumulatedImpairmentAccountId"),
+        impairmentMinor: decimalInputMinor(impairmentText, current.currencyScale) ?? "",
+        futureMinor: futureMinor ?? "",
+        residualMinor: decimalInputMinor(residualText, current.currencyScale) ?? "",
+        installments: Array.from({ length: count }, (_, index) => ({
+          postingDate: fieldText(fields, `impairmentDate_${index}`),
+          accountingPeriodId: fieldText(fields, `impairmentPeriod_${index}`),
+          amountMinor:
+            decimalInputMinor(installmentAmounts[index] ?? "", current.currencyScale) ?? "",
+        })),
+        evidenceId: fieldText(fields, "evidenceId"),
+        reviewEvidenceId: fieldText(fields, "reviewEvidenceId"),
+        rationale: fieldText(fields, "rationale"),
+        taxAssessment: "not_applicable",
+        acknowledgeSyntheticOnly: true,
+      })}
+      onSuccess={(review) => props.onPrepared(review.id)}
+      onNewCommand={() => {
+        setDecisionKey(`impair_${crypto.randomUUID()}`);
+        setCount(initialCount);
+        setImpairmentText("");
+        setResidualText(minorToDecimal(current.terms.residualMinor, current.currencyScale));
+        setInstallmentAmounts(
+          Array.from({ length: initialCount }, (_, index) =>
+            props.suffix[index]
+              ? minorToDecimal(props.suffix[index].amountMinor, current.currencyScale)
+              : "",
+          ),
+        );
+      }}
+      validate={(review) => {
+        if (
+          review.input.scheduleId !== current.scheduleId ||
+          review.input.expectedDigest !== current.digest ||
+          review.input.expectedBasisDigest !== props.basis.digest ||
+          review.basis.schedule.digest !== current.digest ||
+          review.basis.carryingBasis.digest !== props.basis.digest ||
+          review.proposedRevision.previousDigest !== current.digest
+        ) {
+          throw new Error("Impairment preparation binding mismatch");
+        }
+      }}
+    >
+      <Box display="grid" gap="lg" minWidth="zero">
+        <Text>{copy.impairmentPrepareHelp}</Text>
+        <RecordSummary>
+          <RecordFact label={copy.basisDigest}>{props.basis.digest}</RecordFact>
+          <RecordFact label={copy.impairmentCurrentCarrying}>
+            {schedule.carryingMinor ? money(schedule.carryingMinor) : "—"}
+          </RecordFact>
+          <RecordFact label={copy.impairmentFutureRequired}>
+            {futureMinor ? money(futureMinor) : "—"}
+          </RecordFact>
+        </RecordSummary>
+        <Box display="grid" columns={1} columnsAtLg={2} gap="lg">
+          <InputField
+            label={copy.impairmentDecisionKey}
+            name="decisionKey"
+            value={decisionKey}
+            onChange={(event) => setDecisionKey(event.currentTarget.value)}
+            required
+            minLength={8}
+            maxLength={128}
+            pattern="[a-zA-Z0-9_\-]{8,128}"
+          />
+          <InputField
+            label={copy.impairmentAmount}
+            name="impairmentMinor"
+            value={impairmentText}
+            onChange={(event) => setImpairmentText(event.currentTarget.value)}
+            inputMode="decimal"
+            required
+          />
+        </Box>
+        <Box display="grid" columns={1} columnsAtLg={2} gap="lg">
+          <SelectField
+            label={copy.impairmentLossAccount}
+            name="lossAccountId"
+            options={accountOptions((accountId) => !priorContraAccounts.has(accountId))}
+            required
+          />
+          <SelectField
+            label={copy.impairmentContraAccount}
+            name="accumulatedImpairmentAccountId"
+            defaultValue={retainedContraAccount ?? ""}
+            options={accountOptions(
+              (accountId) => !priorContraAccounts.has(accountId) || accountId === retainedContraAccount,
+            )}
+            required
+          />
+        </Box>
+        <Box display="grid" columns={1} columnsAtLg={3} gap="lg">
+          <InputField
+            label={copy.impairmentPostingDate}
+            name="postingDate"
+            type="date"
+            required
+          />
+          <SelectField
+            label={copy.impairmentPostingPeriod}
+            name="accountingPeriodId"
+            options={periodOptions}
+            required
+          />
+          <InputField
+            label={copy.series}
+            name="series"
+            defaultValue={current.terms.series}
+            required
+            pattern="[A-Z0-9]{1,16}"
+          />
+        </Box>
+        <Box display="grid" gap="md" minWidth="zero">
+          <Text>{copy.impairmentFutureSuffix}</Text>
+          {Array.from({ length: count }, (_, index) => {
+            const occurrence = props.suffix[index];
+            return (
+              <Box
+                key={index}
+                as="fieldset"
+                display="grid"
+                columns={1}
+                columnsAtLg={3}
+                gap="md"
+                minWidth="zero"
+                padding="md"
+                borderWidth="thin"
+                borderColor="default"
+                borderRadius="control"
+              >
+                <legend>{copy.impairmentInstallment} {props.suffixStart + index + 1}</legend>
+                <InputField
+                  label={copy.date}
+                  name={`impairmentDate_${index}`}
+                  type="date"
+                  defaultValue={occurrence?.postingDate}
+                  required
+                />
+                <SelectField
+                  label={copy.period}
+                  name={`impairmentPeriod_${index}`}
+                  defaultValue={occurrence?.accountingPeriodId}
+                  options={periodOptions}
+                  required
+                />
+                <InputField
+                  label={copy.amount}
+                  name={`impairmentAmount_${index}`}
+                  value={installmentAmounts[index] ?? ""}
+                  onChange={(event) =>
+                    setInstallmentAmounts((amounts) =>
+                      amounts.map((amount, amountIndex) =>
+                        amountIndex === index ? event.currentTarget.value : amount,
+                      ),
+                    )
+                  }
+                  inputMode="decimal"
+                  required
+                />
+              </Box>
+            );
+          })}
+          <Box display="flex" gap="md" flexWrap="wrap">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={count >= 120 - props.suffixStart}
+              onClick={() => {
+                setCount((value) => value + 1);
+                setInstallmentAmounts((amounts) => [...amounts, ""]);
+              }}
+            >
+              {copy.amendmentAdd}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={count <= 1}
+              onClick={() => {
+                setCount((value) => value - 1);
+                setInstallmentAmounts((amounts) => amounts.slice(0, -1));
+              }}
+            >
+              {copy.amendmentRemove}
+            </Button>
+          </Box>
+          <InputField
+            label={copy.impairmentResidual}
+            name="residualMinor"
+            value={residualText}
+            onChange={(event) => setResidualText(event.currentTarget.value)}
+            inputMode="decimal"
+            required
+          />
+          <Text role="status">
+            {installmentTotal && futureMinor
+              ? installmentTotal === futureMinor
+                ? copy.impairmentInstallmentTotalMatches
+                : `${copy.impairmentInstallmentTotalMismatch} ${money(installmentTotal)} / ${money(futureMinor)}`
+              : copy.impairmentInstallmentTotalPending}
+          </Text>
+        </Box>
+        <Box display="grid" columns={1} columnsAtLg={2} gap="lg">
+          <InputField
+            label={copy.impairmentSourceEvidence}
+            name="evidenceId"
+            required
+            pattern="[a-z][a-z0-9_\-]{2,127}"
+          />
+          <InputField
+            label={copy.impairmentReviewEvidence}
+            name="reviewEvidenceId"
+            required
+            pattern="[a-z][a-z0-9_\-]{2,127}"
+          />
+        </Box>
+        <TextareaField
+          label={copy.impairmentRationale}
+          name="rationale"
+          required
+          rows={3}
+          maxLength={2000}
+        />
+        <Box as="label" display="flex" alignItems="start" gap="md">
+          <input type="checkbox" required />
+          <Text>{copy.impairmentAcknowledge}</Text>
+        </Box>
+      </Box>
+    </CommandForm>
+  );
+}
+
+function decimalInputMinor(value: string, scale: number) {
+  return value.trim() ? decimalToMinor(value, scale) : null;
+}
+
+function impairmentFutureMinor(
+  carryingMinor: string | null,
+  impairmentText: string,
+  residualText: string,
+  scale: number,
+) {
+  if (carryingMinor === null) return null;
+  const impairmentMinor = decimalInputMinor(impairmentText, scale);
+  const residualMinor = decimalInputMinor(residualText, scale);
+  if (
+    impairmentMinor === null ||
+    residualMinor === null ||
+    BigInt(impairmentMinor) <= 0n
+  ) {
+    return null;
+  }
+  const future = BigInt(carryingMinor) - BigInt(impairmentMinor) - BigInt(residualMinor);
+  return future > 0n ? future.toString() : null;
+}
+
+function sumPositiveMinor(values: readonly string[], scale: number) {
+  let total = 0n;
+  for (const value of values) {
+    const minor = decimalInputMinor(value, scale);
+    if (minor === null || BigInt(minor) <= 0n) return null;
+    total += BigInt(minor);
+  }
+  return total.toString();
+}
+
+function AssetImpairmentReviewDetail(props: {
+  book: typeof Accounting.Book.Type;
+  locale: Locale;
+  schedule: typeof Subledgers.ScheduleView.Type;
+  id: string;
+  onBack: () => void;
+  onOpen: (id: string) => void;
+}) {
+  const { book, locale, id, schedule } = props;
+  const copy = subledgerCopy(locale);
+  const path = `${bookPath(book)}/subledger-controls/impairments/${encodeURIComponent(id)}`;
+  const review = useQuery({
+    queryKey: [...bookKey(book), "subledger-controls", "impairment-review", id],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(path, Controls.AssetImpairmentReviewView, { signal });
+      const retained = result.impairment;
+      if (
+        result.review.id !== id ||
+        result.review.scope.bookId !== book.id ||
+        result.review.scope.entityId !== book.entityId ||
+        result.review.input.scheduleId !== schedule.current.scheduleId ||
+        result.review.basis.schedule.scheduleId !== schedule.current.scheduleId ||
+        result.review.postingPlan.scope.bookId !== book.id ||
+        result.review.postingPlan.scope.entityId !== book.entityId ||
+        result.approvals.some(
+          (approval) =>
+            approval.reviewId !== id ||
+            approval.reviewDigest !== result.review.digest ||
+            approval.scope.bookId !== book.id ||
+            approval.scope.entityId !== book.entityId,
+        ) ||
+        (retained !== null &&
+          (retained.reviewId !== id ||
+            retained.reviewDigest !== result.review.digest ||
+            retained.scheduleId !== schedule.current.scheduleId))
+      ) {
+        throw new Error("Impairment review identity mismatch");
+      }
+      return result;
+    },
+    staleTime: 0,
+    refetchOnMount: "always",
+    retry: false,
+  });
+  const data = review.data;
+  const approval = data?.approvals.at(-1);
+  const approvalCurrent = approval !== undefined && Date.parse(approval.expiresAt) > Date.now();
+  return (
+    <Box display="grid" gap="lg" minWidth="zero">
+      <Box display="flex" gap="md" flexWrap="wrap">
+        <Button type="button" variant="ghost" onClick={props.onBack}>
+          {copy.impairmentBack}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={review.isFetching}
+          onClick={() => void review.refetch()}
+        >
+          {copy.impairmentRefresh}
+        </Button>
+      </Box>
+      <AssetImpairmentReviewLookup locale={locale} onOpen={props.onOpen} />
+      <AccountingStatus locale={locale} pending={review.isPending} error={review.error} />
+      {data ? (
+        <>
+          <WorkflowSteps
+            label={copy.impairmentWorkflow}
+            current={data.impairment ? 2 : approvalCurrent ? 1 : 0}
+            labels={[copy.impairmentPrepared, copy.impairmentApproved, copy.impairmentExecuted]}
+          />
+          <RecordHeading
+            title={`${copy.impairmentReview} ${data.review.id}`}
+            subtitle={`${copy.impairmentReviewDigest} ${data.review.digest}`}
+          />
+          <RecordSummary>
+            <RecordFact label={copy.state}>
+              {data.impairment
+                ? copy.impairmentExecuted
+                : approvalCurrent
+                  ? copy.impairmentApproved
+                  : copy.impairmentPrepared}
+            </RecordFact>
+            <RecordFact label={copy.basisDigest}>{data.review.basis.carryingBasis.digest}</RecordFact>
+            <RecordFact label={copy.impairmentCurrentCarrying}>
+              {formatMinorAmount(
+                data.review.basis.currentCarryingMinor,
+                data.review.proposedRevision.currencyScale,
+                locale,
+              )}{" "}
+              {data.review.proposedRevision.currency}
+            </RecordFact>
+            <RecordFact label={copy.impairmentPostCarrying}>
+              {formatMinorAmount(
+                data.review.basis.postImpairmentCarryingMinor,
+                data.review.proposedRevision.currencyScale,
+                locale,
+              )}{" "}
+              {data.review.proposedRevision.currency}
+            </RecordFact>
+          </RecordSummary>
+          <PageCaption>{copy.impairmentAuthorizationRead}</PageCaption>
+          <AssetImpairmentReviewFacts book={book} review={data.review} locale={locale} />
+          <AssetImpairmentApprovalHistory
+            locale={locale}
+            approvals={data.approvals}
+            effect={data.impairment}
+          />
+          {!data.impairment ? (
+            <AssetImpairmentReviewActions
+              book={book}
+              locale={locale}
+              id={id}
+              review={data.review}
+              approval={approval}
+              approvalCurrent={approvalCurrent}
+              approvalCount={data.approvals.length}
+              busy={review.isFetching}
+            />
+          ) : null}
+          <AssetImpairmentConsequences
+            locale={locale}
+            review={data.review}
+            effect={data.impairment}
+            disposal={schedule.disposal}
+          />
+        </>
+      ) : null}
+    </Box>
+  );
+}
+
+function AssetImpairmentReviewFacts(props: {
+  book: typeof Accounting.Book.Type;
+  locale: Locale;
+  review: typeof Controls.AssetImpairmentReview.Type;
+}) {
+  const { book, locale, review } = props;
+  const copy = subledgerCopy(locale);
+  const scale = review.proposedRevision.currencyScale;
+  const money = (amount: string) =>
+    `${formatMinorAmount(amount, scale, locale)} ${review.proposedRevision.currency}`;
+  const lines = review.postingPlan.groups.flatMap((group) =>
+    group.actions.flatMap((action) =>
+      action.lines.map((line) => ({
+        action,
+        line,
+      })),
+    ),
+  );
+  return (
+    <Box display="grid" gap="lg" minWidth="zero">
+      <RecordSection title={copy.impairmentBasis}>
+        <Text>
+          {copy.basisDigest}: {review.basis.carryingBasis.digest}
+        </Text>
+        <Text>
+          {copy.amendmentScheduleDigest}: {review.basis.schedule.digest}
+        </Text>
+        <Text>
+          {copy.impairmentDecisionKey}: {review.input.decisionKey}
+        </Text>
+        <Text>
+          {copy.impairmentPostingDate}: {review.input.postingDate} · {copy.period}:{" "}
+          {review.input.accountingPeriodId} · {copy.series}: {review.input.series}
+        </Text>
+        <Text>
+          {copy.impairmentLossAccount}: {review.input.lossAccountId} ·{" "}
+          {copy.impairmentContraAccount}: {review.input.accumulatedImpairmentAccountId}
+        </Text>
+        <Text>
+          {copy.impairment}: {money(review.input.impairmentMinor)} · {copy.future}:{" "}
+          {money(review.basis.futureMinor)} · {copy.impairmentResidual}:{" "}
+          {money(review.input.residualMinor)}
+        </Text>
+        <Text>{review.input.rationale}</Text>
+        <EvidenceInspector
+          book={book}
+          locale={locale}
+          reference={{
+            evidenceId: review.input.evidenceId,
+            sha256: review.basis.sourceSha256,
+            locator: review.input.evidenceId,
+          }}
+        />
+        <EvidenceInspector
+          book={book}
+          locale={locale}
+          reference={{
+            evidenceId: review.input.reviewEvidenceId,
+            sha256: review.basis.reviewSha256,
+            locator: review.input.reviewEvidenceId,
+          }}
+        />
+      </RecordSection>
+      <RecordSection title={copy.impairmentProposedLines}>
+        <Text>
+          {copy.impairmentChangeSet}: {review.postingPlan.id} · {copy.digest}:{" "}
+          {review.postingPlan.planDigest}
+        </Text>
+        <DataTable
+          title={copy.impairmentProposedLines}
+          narrow="stack"
+          columns={[
+            { id: "account", label: copy.debit },
+            { id: "debit", label: copy.impairmentCurrentCarrying, numeric: true },
+            { id: "credit", label: copy.impairmentPostCarrying, numeric: true },
+            { id: "description", label: copy.impairmentReview },
+          ]}
+          rows={lines.map(({ action, line }) => ({
+            id: `${action.eventId}:${line.lineId}`,
+            cells: [line.accountId, money(line.debitMinor), money(line.creditMinor), line.description],
+          }))}
+        />
+      </RecordSection>
+      <RecordSection title={copy.impairmentFutureSuffix}>
+        <DataTable
+          title={copy.impairmentFutureSuffix}
+          narrow="stack"
+          columns={[
+            { id: "date", label: copy.date },
+            { id: "period", label: copy.period },
+            { id: "amount", label: copy.amount, numeric: true },
+          ]}
+          rows={review.input.installments.map((installment, index) => ({
+            id: String(index + 1),
+            cells: [installment.postingDate, installment.accountingPeriodId, money(installment.amountMinor)],
+          }))}
+        />
+        <Text>
+          {copy.digest}: {review.proposedRevision.digest}
+        </Text>
+      </RecordSection>
+    </Box>
+  );
+}
+
+function AssetImpairmentApprovalHistory(props: {
+  locale: Locale;
+  approvals: readonly (typeof Controls.AssetImpairmentApproval.Type)[];
+  effect: typeof Controls.AssetImpairment.Type | null;
+}) {
+  const copy = subledgerCopy(props.locale);
+  return (
+    <RecordSection title={copy.impairmentApprovals}>
+      {props.approvals.length ? (
+        <DataTable
+          title={copy.impairmentApprovals}
+          narrow="stack"
+          columns={[
+            { id: "approval", label: copy.impairmentApproval },
+            { id: "actor", label: copy.impairmentApprovalActor },
+            { id: "expires", label: copy.impairmentApprovalExpiry },
+            { id: "digest", label: copy.digest },
+            { id: "state", label: copy.state },
+          ]}
+          rows={props.approvals.map((approval) => ({
+            id: approval.id,
+            cells: [
+              approval.id,
+              approval.actorId,
+              approval.expiresAt,
+              approval.digest,
+              props.effect?.approvalId === approval.id
+                ? copy.impairmentApprovalUsed
+                : Date.parse(approval.expiresAt) <= Date.now()
+                  ? copy.impairmentExpired
+                  : copy.impairmentCurrent,
+            ],
+          }))}
+        />
+      ) : (
+        <Text>{copy.impairmentNoApprovals}</Text>
+      )}
+    </RecordSection>
+  );
+}
+
+function AssetImpairmentReviewActions(props: {
+  book: typeof Accounting.Book.Type;
+  locale: Locale;
+  id: string;
+  review: typeof Controls.AssetImpairmentReview.Type;
+  approval: typeof Controls.AssetImpairmentApproval.Type | undefined;
+  approvalCurrent: boolean;
+  approvalCount: number;
+  busy: boolean;
+}) {
+  const { book, locale, review } = props;
+  const copy = subledgerCopy(locale);
+  const path = `${bookPath(book)}/subledger-controls/impairments/${encodeURIComponent(props.id)}`;
+  return (
+    <RecordSection title={copy.impairmentActions}>
+      <Text>{copy.impairmentApprovalHelp}</Text>
+      {!props.approvalCurrent ? (
+        <CommandForm
+          key={`approve:${review.digest}:${props.approvalCount}`}
+          book={book}
+          locale={locale}
+          path={`${path}/approve`}
+          schema={Controls.ApproveAssetImpairment
+          }
+          output={Controls.AssetImpairmentApproval
+          }
+          label={copy.impairmentApprove}
+          recoveryId={`${props.id}:impairment:approve`}
+          allowed={book.role === "operator" && !props.busy}
+          input={() => ({ version: 1, digest: review.digest, acknowledgeSyntheticOnly: true })}
+          onSuccess={(approval) => {
+            if (approval.reviewId !== props.id || approval.reviewDigest !== review.digest)
+              throw new Error("Impairment approval binding mismatch");
+          }}
+        >
+          <Box as="label" display="flex" alignItems="start" gap="md">
+            <input type="checkbox" required />
+            <Text>{copy.impairmentApproveAcknowledge}</Text>
+          </Box>
+        </CommandForm>
+      ) : null}
+      {props.approval ? (
+        <Text>
+          {copy.impairmentApproval}: {props.approval.id} · {copy.impairmentApprovalActor}:{" "}
+          {props.approval.actorId} · {copy.impairmentApprovalExpiry}: {props.approval.expiresAt}
+        </Text>
+      ) : null}
+      {props.approvalCurrent ? (
+        <CommandForm
+          key={`execute:${review.digest}:${props.approvalCount}`}
+          book={book}
+          locale={locale}
+          path={`${path}/execute`}
+          schema={Controls.ExecuteAssetImpairment
+          }
+          output={Controls.AssetImpairment
+          }
+          label={copy.impairmentExecute}
+          recoveryId={`${props.id}:impairment:execute`}
+          allowed={book.role === "operator" && !props.busy}
+          input={() => ({
+            version: 1,
+            digest: review.digest,
+            approvalId: props.approval?.id ?? "",
+            acknowledgeSyntheticOnly: true,
+          })}
+          onSuccess={(effect) => {
+            if (
+              effect.reviewId !== props.id ||
+              effect.reviewDigest !== review.digest ||
+              effect.approvalId !== props.approval?.id
+            ) {
+              throw new Error("Impairment execution binding mismatch");
+            }
+          }}
+        >
+          <Box as="label" display="flex" alignItems="start" gap="md">
+            <input type="checkbox" required />
+            <Text>{copy.impairmentExecuteAcknowledge}</Text>
+          </Box>
+        </CommandForm>
+      ) : null}
+    </RecordSection>
+  );
+}
+
+function AssetImpairmentConsequences(props: {
+  locale: Locale;
+  review: typeof Controls.AssetImpairmentReview.Type;
+  effect: typeof Controls.AssetImpairment.Type | null;
+  disposal: typeof Subledgers.AssetDisposal.Type | null | undefined;
+}) {
+  const { locale, review, effect, disposal } = props;
+  const copy = subledgerCopy(locale);
+  const scale = review.proposedRevision.currencyScale;
+  const currency = review.proposedRevision.currency;
+  const money = (amount: string) => `${formatMinorAmount(amount, scale, locale)} ${currency}`;
+  const ordinaryAccumulated = addMinorStrings(
+    effect?.openingAccumulatedMinor ?? "0",
+    effect?.recognizedMinor ?? "0",
+  );
+  const grossRows = effect
+    ? review.basis.carryingBasis.lines
+        .filter((line) => BigInt(line.debitMinor) > 0n)
+        .map((line) => ({
+          id: `gross:${line.lineId}`,
+          cells: [copy.impairmentGrossCredit, line.accountId, money(line.debitMinor)],
+        }))
+    : [];
+  const disposalRows = effect
+    ? [
+        ...grossRows,
+        {
+          id: "ordinary",
+          cells: [
+            copy.impairmentOrdinaryDebit,
+            review.basis.schedule.terms.creditAccountId,
+            money(ordinaryAccumulated),
+          ],
+        },
+        {
+          id: "impairment",
+          cells: [
+            copy.impairmentContraDebit,
+            effect.accumulatedImpairmentAccountId,
+            money(effect.netImpairmentMinor),
+          ],
+        },
+        {
+          id: "carrying",
+          cells: [
+            copy.impairmentCarryingLoss,
+            copy.impairmentDisposalLossAccount,
+            money(effect.postImpairmentCarryingMinor),
+          ],
+        },
+      ]
+    : [];
+  return (
+    <>
+      <RecordSection title={copy.impairmentControl}>
+        {effect ? (
+          <>
+            <Text role="status">{copy.impairmentControlEffect}</Text>
+            <RecordSummary>
+              <RecordFact label={copy.impairmentContraAccount}>
+                {effect.accumulatedImpairmentAccountId}
+              </RecordFact>
+              <RecordFact label={copy.impairment}>
+                {money(effect.netImpairmentMinor)}
+              </RecordFact>
+              <RecordFact label={copy.carrying}>
+                {money(effect.postImpairmentCarryingMinor)}
+              </RecordFact>
+            </RecordSummary>
+            <Text>
+              {copy.impairmentReceipt}: {effect.postingReceipt.id} · {copy.voucher}:{" "}
+              {effect.postingReceipt.voucherId} · {effect.postingReceipt.committedAt}
+            </Text>
+            <Text>{copy.impairmentControlCoverage}</Text>
+          </>
+        ) : (
+          <Text>{copy.impairmentNoControlEffect}</Text>
+        )}
+      </RecordSection>
+      <RecordSection title={copy.impairmentDisposal}>
+        {effect ? (
+          <>
+            <Text>{copy.impairmentDisposalAtExecution}</Text>
+            <DataTable
+              title={copy.impairmentDisposalAtExecution}
+              narrow="stack"
+              columns={[
+                { id: "consequence", label: copy.impairmentConsequence },
+                { id: "account", label: copy.debit },
+                { id: "amount", label: copy.amount, numeric: true },
+              ]}
+              rows={disposalRows}
+            />
+            <Text>{copy.impairmentFreshDisposal}</Text>
+          </>
+        ) : (
+          <Text>{copy.impairmentNoDisposalEffect}</Text>
+        )}
+        {disposal ? (
+          <Box role="status" display="grid" gap="sm">
+            <Text>{copy.impairmentDisposalCommitted}</Text>
+            <Text>
+              {copy.voucher}: {disposal.postingReceipt.voucherId} · {copy.impairmentReceipt}:{" "}
+              {disposal.postingReceipt.id}
+            </Text>
+            <Text>
+              {copy.impairmentContraDebit}: {money(disposal.impairmentMinorReleased ?? "0")} ·{" "}
+              {copy.impairmentCarryingLoss}: {money(disposal.carryingMinorReleased)}
+            </Text>
+          </Box>
+        ) : null}
+      </RecordSection>
+    </>
+  );
+}
+
+function addMinorStrings(...values: string[]) {
+  return values.reduce((total, value) => total + BigInt(value), 0n).toString();
 }
 
 function ScheduleAmendmentPanel(props: {
