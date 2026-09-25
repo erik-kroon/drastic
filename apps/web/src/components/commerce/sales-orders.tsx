@@ -9,6 +9,7 @@ import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
+import { formatMinorAmount } from "@/lib/workspace-api";
 import { workspacePath } from "@/lib/book-context";
 import { CommandForm, checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
 
@@ -105,18 +106,17 @@ function SalesOrderDetail(props: CommerceProps & {
   const source = props.source;
   const path = props.path;
   const sv = locale === "sv";
-  const conversionKeys = useRef(new Map<string, string>());
   const converted = detail.data?.conversions ?? [];
-  const remaining = record.kind === "order" ? record.content.lines.map(line => {
-    const used = converted.flatMap(conversion => conversion.portions).reduce((total, portion) =>
-      portion.id === line.id ? total + quantityUnits(portion.quantity) : total, 0n);
-    return { line, available: quantityString(quantityUnits(line.quantity) - used) };
-  }) : [];
+
   return     <Box display="grid" gap="lg">
       <h3>{record.content.title} · {record.kind} · {record.state}</h3>
       <Text tone="muted">{sv ? "Källa och revision" : "Source and revision"}: {record.sourceQuoteId ?? "—"} · {record.revision}</Text>
       <AccountingStatus locale={locale} pending={detail.isPending} error={detail.error} />
+      {detail.isError ? <Button variant="outline" onClick={() => void detail.refetch()}>
+         {sv ? "Försök läsa orderdetaljer igen" : "Retry order details"}
+      </Button> : null}
       {record.state === "draft" && record.kind === "quote" && source ?
+
         <ReviseQuote book={book} locale={locale} record={record} source={source} path={path} /> : null}
 
       {record.state === "draft" || (record.state === "accepted" && record.kind === "quote") ||
@@ -134,30 +134,72 @@ function SalesOrderDetail(props: CommerceProps & {
             </select>
           </Box>
         </CommandForm> : null}
-      {record.kind === "order" && record.state === "accepted" && detail.isSuccess ? <>
-        <h3>{sv ? "Konvertera del av order" : "Convert part of order"}</h3>
-        <Text tone="muted">{sv ? "Välj återstående antal per rad. Beloppen delas exakt och fakturan sparas bara som utkast." : "Choose remaining quantities per line. Amounts must split exactly; this saves only an invoice draft."}</Text>
-        <CommandForm key={`${record.id}-${converted.length}`} book={book} locale={locale} path={`${path}/${record.id}/conversions`}
-          recoveryId={record.id} schema={Sales.ConvertSalesOrder}
-          output={Sales.OrderConversion} allowed={book.role === "operator"} keys={conversionKeys.current}
-          onNewCommand={() => conversionKeys.current.clear()}
-          input={fields => ({ expectedRevision: record.revision, expectedDigest: record.digest,
-            draftKey: fields.get("draftKey"), lines: remaining.flatMap(({ line }) => {
-              const raw = fields.get(`quantity_${line.id}`);
-              const quantity = typeof raw === "string" ? raw.trim() : "";
-              return quantity ? [{ id: line.id, quantity }] : [];
-            }) })} label={sv ? "Skapa fakturautkast" : "Create invoice draft"}>
-          <InputField name="draftKey" label={sv ? "Unik utkastnyckel" : "Unique draft key"} required />
-          {remaining.map(({ line, available }) => <InputField key={line.id} name={`quantity_${line.id}`}
-            label={`${line.description} (${sv ? "återstår" : "remaining"} ${available})`}
-            disabled={quantityUnits(available) <= 0n} maxLength={20} />)}
-        </CommandForm>
-        {converted.map(item => <Link key={item.draftId}
-            href={`${workspacePath(book)}/sales?record=${encodeURIComponent(item.draftId)}&kind=draft`}>
-            {sv ? "Granska fakturautkast" : "Review invoice draft"}: {item.draftId}
-          </Link>)}
-      </> : null}
+      {record.kind === "order" && record.state === "accepted" && detail.isSuccess ? <OrderConversionForm
+        book={book} locale={locale} record={record} converted={converted}
+        onConverted={() => void detail.refetch()} /> : null}
+
     </Box>;
+}
+
+function OrderConversionForm(props: CommerceProps & {
+  record: typeof Sales.SalesDocument.Type;
+  converted: (typeof Sales.SalesDocumentView.Type)["conversions"];
+  onConverted: () => void;
+}) {
+  const { book, locale, record, converted } = props;
+  const sv = locale === "sv";
+  const conversionKeys = useRef(new Map<string, string>());
+  const remaining = record.content.lines.map(line => {
+    const used = converted.flatMap(conversion => conversion.portions).reduce((total, portion) =>
+      portion.id === line.id ? total + quantityUnits(portion.quantity) : total, 0n);
+    return { line, available: quantityString(quantityUnits(line.quantity) - used) };
+  });
+  return <>
+    <h3>{sv ? "Konvertera del av order" : "Convert part of order"}</h3>
+    <Text tone="muted">{sv ? "Välj återstående antal per rad. Beloppen delas exakt och fakturan sparas bara som utkast." : "Choose remaining quantities per line. Amounts must split exactly; this saves only an invoice draft."}</Text>
+    <CommandForm key={`${record.id}-${converted.length}`} book={book} locale={locale}
+      path={`${commercePath(book)}/sales-documents/${record.id}/conversions`} recoveryId={record.id}
+      schema={Sales.ConvertSalesOrder} output={Sales.OrderConversion} allowed={book.role === "operator"}
+      keys={conversionKeys.current} onNewCommand={() => conversionKeys.current.clear()}
+      onSuccess={props.onConverted}
+      input={fields => ({ expectedRevision: record.revision, expectedDigest: record.digest,
+        draftKey: fields.get("draftKey"), lines: remaining.flatMap(({ line }) => {
+        const raw = fields.get(`quantity_${line.id}`);
+        const quantity = typeof raw === "string" ? raw.trim() : "";
+        return quantity ? [{ id: line.id, quantity }] : [];
+      }) })} label={sv ? "Skapa fakturautkast" : "Create invoice draft"}>
+      <InputField name="draftKey" label={sv ? "Unik utkastnyckel" : "Unique draft key"} required />
+      {remaining.map(({ line, available }) => <InputField key={line.id} name={`quantity_${line.id}`}
+        label={`${line.description} (${sv ? "återstår" : "remaining"} ${available})`}
+        disabled={quantityUnits(available) <= 0n} maxLength={20} />)}
+    </CommandForm>
+    <OrderConversionHistory book={book} locale={locale} record={record} converted={converted} />
+  </>;
+}
+
+function OrderConversionHistory(props: CommerceProps & {
+  record: typeof Sales.SalesDocument.Type;
+  converted: (typeof Sales.SalesDocumentView.Type)["conversions"];
+}) {
+  const { book, locale, record, converted } = props;
+  const sv = locale === "sv";
+  const amount = (value: string | null | undefined) => value == null ? "—" :
+    `${formatMinorAmount(value, record.content.currencyScale, locale)} ${record.content.currency}`;
+  if (converted.length === 0) return null;
+  return <Box display="grid" gap="sm">
+    {converted.map(item => <Box key={item.draftId} display="grid" gap="sm">
+      <Link href={`${workspacePath(book)}/sales?record=${encodeURIComponent(item.draftId)}&kind=draft`}>
+        {sv ? "Granska fakturautkast" : "Review invoice draft"}: {item.draftId}
+      </Link>
+      <Text tone="muted">{sv ? "Orderrevision" : "Order revision"}: {item.orderRevision}</Text>
+      {item.portions.map(portion => {
+        const line = record.content.lines.find(candidate => candidate.id === portion.id);
+        return <Text key={portion.id}>
+          {line?.description ?? portion.id} · {sv ? "antal" : "quantity"}: {portion.quantity} · {sv ? "bas" : "base"}: {amount(portion.baseMinor)} · {sv ? "rabatt" : "discount"}: {amount(portion.discountMinor)} · {sv ? "avgift" : "charge"}: {amount(portion.chargeMinor)} · {sv ? "moms" : "tax"}: {amount(portion.taxMinor)} · {sv ? "källbrutto" : "source gross"}: {amount(portion.sourceGrossMinor)}
+        </Text>;
+      })}
+    </Box>)}
+  </Box>;
 }
 
 function ReviseQuote(props: CommerceProps & {

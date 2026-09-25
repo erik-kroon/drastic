@@ -14,6 +14,7 @@ import { EvidenceInspector } from "@/components/evidence-inspector";
 import { AccountingStatus } from "@/components/accounting-status";
 import { OriginalDocument } from "@/components/original-document";
 import { sourceDocumentOptions } from "@/lib/source-documents";
+import { readAccounting } from "@/lib/accounting-api";
 import {
   decimalToMinor,
   formatMinorAmount,
@@ -29,7 +30,7 @@ import {
   type EditableInvoiceLine,
 } from "./invoice-editor-lines";
 import { SupplierPicker, SupplierDocumentPicker } from "./supplier-invoice-pickers";
-import { commercePath, type CommerceProps } from "./shared";
+import { checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
 
 type Draft = typeof Suppliers.SupplierInvoiceDraftRevision.Type;
 function draftTotal(
@@ -90,15 +91,21 @@ function SupplierEditorForm(
   );
   const [draftKey] = useState(() => `supplier_${crypto.randomUUID().replaceAll("-", "")}`);
   const { source, original } = useSupplierSource(props.book, props.documentId);
+  const inbox = useSupplierInboxReview(props.book, props.inboxId);
+  const reviewAttemptId = props.inboxId ? inbox.data?.attempts.at(-1)?.id ?? null : null;
   const currency = content?.currency ?? props.book.currency;
   return (
-    <EvidenceCommandForm
+    <>
+      {props.inboxId ? <AccountingStatus locale={props.locale} pending={inbox.isPending} error={inbox.error} /> : null}
+      {props.inboxId && reviewAttemptId ? <PageCaption>{sv ? "Granskningsunderlag" : "Review extraction"}: {reviewAttemptId}</PageCaption> : null}
+      <EvidenceCommandForm
       {...props}
       path={props.inboxId ? `${commercePath(props.book)}/supplier-inbox/${encodeURIComponent(props.inboxId)}/review` : `${commercePath(props.book)}/supplier-invoice-drafts${baseline ? `/${encodeURIComponent(baseline.id)}/revisions` : ""}`}
       schema={props.inboxId ? Inbox.ReviewSupplierInbox : baseline ? Suppliers.ReviseSupplierInvoiceDraft : Suppliers.CreateSupplierInvoiceDraft}
       output={props.inboxId ? Inbox.SupplierInboxReview : Suppliers.SupplierInvoiceDraftRevision}
       label={sv ? "Spara utkast" : "Save draft"}
-      canSubmit={!!party && (props.documentId ? !!original : !!baseline)}
+       canSubmit={!!party && (props.documentId ? !!original : !!baseline) && (!props.inboxId || inbox.isSuccess)}
+
       stickyFooter
       footerSummary={
         <Box display="grid" gap="xs">
@@ -153,7 +160,8 @@ function SupplierEditorForm(
               reason: textField(fields, "reason"),
               content: next,
             }
-          : props.inboxId ? { draft: { draftKey, content: next }, reviewReason: textField(fields, "reviewReason") } : { draftKey, content: next };
+           : props.inboxId ? { draft: { draftKey, content: next }, reviewReason: textField(fields, "reviewReason"), reviewAttemptId } : { draftKey, content: next };
+
       }}
     >
       <RecordColumns>
@@ -184,9 +192,28 @@ function SupplierEditorForm(
           maxLength={2000}
         />
       ) : null}
-    </EvidenceCommandForm>
+      </EvidenceCommandForm>
+    </>
   );
 }
+function useSupplierInboxReview(book: CommerceProps["book"], inboxId?: string) {
+  return useQuery({
+    queryKey: [...commerceKey(book), "supplier-inbox", "review", inboxId ?? ""],
+    enabled: !!inboxId,
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${commercePath(book)}/supplier-inbox/${encodeURIComponent(inboxId ?? "")}`,
+        Inbox.SupplierInboxView,
+        { signal },
+      );
+      checkScope(book, result.occurrence.occurrence.scope);
+      if (result.occurrence.occurrence.id !== inboxId) throw new Error("Inbox identity mismatch");
+      return result;
+    },
+    retry: false,
+  });
+}
+
 function useSupplierSource(book: CommerceProps["book"], documentId: string) {
   const source = useQuery({
     ...sourceDocumentOptions(book, documentId),

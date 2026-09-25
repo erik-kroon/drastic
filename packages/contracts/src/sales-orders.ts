@@ -16,7 +16,13 @@ export const SalesDocument = Schema.Struct({
   sourceQuoteId: Schema.NullOr(Accounting.Identifier), sourceQuoteRevision: Schema.NullOr(Commerce.Version),
   createdAt: Schema.String, receipt: Commerce.CommandReceipt, digest: Accounting.Digest,
 });
-export const ConvertedPortion = Schema.Struct({ id: Accounting.Identifier, quantity: Drafts.DraftLine.fields.quantity });
+export const ConvertedPortion = Schema.Struct({
+  id: Accounting.Identifier, quantity: Drafts.DraftLine.fields.quantity,
+  baseMinor: Drafts.DraftLine.fields.baseMinor, discountMinor: Drafts.DraftLine.fields.discountMinor,
+  chargeMinor: Drafts.DraftLine.fields.chargeMinor,
+  taxMinor: Schema.optional(Schema.NullOr(Drafts.DraftLine.fields.taxMinor)),
+  sourceGrossMinor: Schema.optional(Schema.NullOr(Drafts.DraftLine.fields.sourceGrossMinor)),
+});
 export const SalesDocumentList = Schema.Struct({ scope: Accounting.Scope, items: Schema.Array(SalesDocument) });
 export const SalesDocumentView = Schema.Struct({ record: SalesDocument, conversions: Schema.Array(Schema.Struct({
   draftId: Accounting.Identifier, orderRevision: Commerce.Version, portions: Schema.Array(ConvertedPortion),

@@ -37,6 +37,7 @@ export const SupplierInboxView = Schema.Struct({
   messageIdentity: Schema.NullOr(Label),
   draftId: Schema.NullOr(A.Identifier),
   reviewReason: Schema.NullOr(A.Description),
+  reviewAttemptId: Schema.NullOr(A.Identifier),
   attempts: Schema.Array(ExtractionAttempt).check(Schema.isMaxLength(50)),
 });
 export const SupplierInboxPage = Schema.Struct({
@@ -46,6 +47,7 @@ export const SupplierInboxPage = Schema.Struct({
 export const ReviewSupplierInbox = Schema.Struct({
   draft: Draft.CreateSupplierInvoiceDraft,
   reviewReason: A.Description,
+  reviewAttemptId: Schema.NullOr(A.Identifier),
 });
 export const SupplierInboxReview = Schema.Struct({
   inbox: SupplierInboxView,

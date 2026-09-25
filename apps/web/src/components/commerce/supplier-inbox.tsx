@@ -46,6 +46,7 @@ function SupplierInboxEntry(props: {
     <Box display="grid" gap="lg" minWidth="zero">
       <Text>{props.entry.occurrence.occurrence.filename} · {props.entry.channel} · {props.entry.draftId ? (sv ? "Granskat utkast" : "Reviewed draft") : (sv ? "Väntar på granskning" : "Awaiting review")}</Text>
       {props.entry.reviewReason ? <Text>{sv ? "Granskning" : "Review"}: {props.entry.reviewReason}</Text> : null}
+      {props.entry.reviewAttemptId ? <Text>{sv ? "Valt tolkningsförsök" : "Selected extraction attempt"}: {props.entry.reviewAttemptId}</Text> : null}
       <OriginalDocument {...props.commerceProps} id={props.entry.occurrence.occurrence.id} sha256={props.entry.occurrence.occurrence.sha256} />
       <Text>{sv ? "Tolkningsförsök sparas separat från granskade uppgifter. Kontrollera varje uppgift mot originalet." : "Extraction attempts remain separate from reviewed facts. Check every field against the original."}</Text>
       {props.entry.attempts.map((attempt) => <Box key={attempt.id} display="grid" gap="sm">
