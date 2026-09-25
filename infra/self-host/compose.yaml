@@ -37,6 +37,7 @@ services:
     image: openerp-local
     environment:
       DATABASE_URL: postgresql://openerp_app:${OPENERP_RUNTIME_PASSWORD:?Missing runtime password}@postgres:5432/openerp
+      OPENERP_PREPARATION_TOKEN: ${OPENERP_PREPARATION_TOKEN:-}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Missing session secret}
       OPENERP_PUBLIC_URL: ${OPENERP_PUBLIC_URL:-http://localhost:3000}
       OPENERP_BIND_ADDRESS: 0.0.0.0
@@ -46,6 +47,23 @@ services:
       - evidence-data:/data/evidence
     ports:
       - "127.0.0.1:${OPENERP_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    init: true
+    stop_grace_period: 40s
+    restart: unless-stopped
+
+  preparation:
+    profiles: ["preparation"]
+    build:
+      context: ../..
+      dockerfile: infra/self-host/Dockerfile
+    image: openerp-local
+    command: ["bun", "apps/api/scripts/preparation-runner.ts"]
+    environment:
+      DATABASE_URL: postgresql://openerp_app:${OPENERP_RUNTIME_PASSWORD:?Missing runtime password}@postgres:5432/openerp
+      OPENERP_PREPARATION_TOKEN: ${OPENERP_PREPARATION_TOKEN:-}
     depends_on:
       migrate:
         condition: service_completed_successfully

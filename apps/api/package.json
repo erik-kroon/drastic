@@ -10,6 +10,7 @@
     "db:create-user": "bun scripts/create-user.ts",
     "db:provision-identity": "bun scripts/provision-identity.ts",
     "db:provision": "bun scripts/provision.ts",
+    "jobs:preparation": "bun scripts/preparation-runner.ts",
     "check-types": "tsc --noEmit && tsc --project scripts/tsconfig.json --noEmit",
     "dev": "wrangler dev src/index.ts --port 8788"
   },
@@ -22,6 +23,7 @@
     "better-auth": "1.7.5",
     "drizzle-orm": "1.0.0-rc.5-169397b",
     "effect": "4.0.0-rc.112",
+    "effect-mq": "0.7.0",
     "pg": "^8.23.0",
     "takumi-pdf": "0.11.3"
   },

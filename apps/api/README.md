@@ -25,10 +25,17 @@ src/
     storage/               Retained-object access and R2 adapter
   runtime/
     environment.ts         Request-scoped bindings
-    cloudflare.ts          Worker, scheduled dispatch and Workflow entrypoint
+    cloudflare.ts          Request-scoped API Worker entrypoint
+    preparation-queue.ts   effect-mq job definition, dispatcher and handler
 migrations/                Versioned PostgreSQL transitions and constraints
 scripts/                   Stable Bun maintenance, self-host and recovery entrypoints
 ```
+
+`bun run --cwd apps/api jobs:preparation` starts the persistent preparation runner with
+`DATABASE_URL` and a dedicated `OPENERP_PREPARATION_TOKEN`. The runner owns the queue listener
+and a pool capped at eight connections. The API admits work in PostgreSQL; the runner rediscovers
+ready preparation records and enqueues deterministic jobs. Hosted deployment of this Bun process
+is separate from the Alchemy Worker stack.
 
 HTTP and MCP share `application/capabilities.ts`. Operator-only HTTP commands remain absent from the ordinary MCP catalog. In the current pre-cutover source, VAT and SIE workflows capture/read through the database owner, call pure functions from `@open-erp/jurisdiction-se`, and seal through existing SQL transitions. In the application-owned replacement, capture, policy, sealing and recovery move to named application operations while the pure jurisdiction functions remain. Application workflows do not import transport handlers.
 

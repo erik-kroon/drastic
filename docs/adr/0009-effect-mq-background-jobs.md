@@ -1,12 +1,12 @@
 # 0009 — effect-mq background jobs on Bun and PostgreSQL
 
-Status: accepted design, 2026-09-25, selected by the user. Implementation and runtime verification remain open.
+Status: accepted design, 2026-09-25, selected by the user. The first queue adapter and Bun runner are implemented; synthetic end-to-end proof passed, while failure-matrix and deployment proof remain open.
 
 ## Context
 
-The [application-owned accounting plan](../plans/application-owned-accounting.md) moves workflows into Effect application operations. The current preparation adapter uses Cloudflare Workflows and a Cron dispatcher; self-hosted background execution is not connected. Implementing generic queue claims, retries, scheduling and attempt history ourselves would duplicate an existing Effect-native library.
+The [application-owned accounting plan](../plans/application-owned-accounting.md) moves workflows into Effect application operations. Preparation previously used Cloudflare Workflows and a Cron dispatcher. Implementing generic queue claims, retries, scheduling and attempt history ourselves would duplicate an existing Effect-native library.
 
-Source inspection found that effect-mq uses our Drizzle Effect driver family and compatible declared Effect 4 peer ranges. Its persistent worker and PostgreSQL listener fit a Bun process. A regular API Worker invocation does not own that process lifetime. The inspected package is `0.7.0` at source revision `b5898fbae56fe926c28768a5a8ff9ad74f1e57a0`; compatibility with our exact installed dependencies has not been executed.
+Source inspection found that effect-mq uses our Drizzle Effect driver family and compatible declared Effect 4 peer ranges. Its persistent worker and PostgreSQL listener fit a Bun process. A regular API Worker invocation does not own that process lifetime. The installed package is `0.7.0` at source revision `b5898fbae56fe926c28768a5a8ff9ad74f1e57a0`; its store started against our pinned dependencies on disposable PostgreSQL 17.
 
 ## Decision
 
@@ -45,13 +45,13 @@ Use concrete job definitions calling application functions. Do not build a gener
 
 ## Implementation and proof
 
-First deliver one existing preparation job end to end: authenticated API admission, committed outbox, Bun dispatch, effect-mq handler, persisted business progress, and API recovery read. Verify the actual published package against the pinned Effect/Drizzle versions before expanding to other handlers.
+The first adapter uses the existing committed `preparation_jobs` row as durable dispatch intent. The queue identity includes job ID and checkpoint; dispatch rediscovers ready records after an enqueue/ack crash. The handler still invokes the pre-cutover SQL preparation operation until that application slice moves. A dedicated application outbox row and hosted process deployment remain open. The new queue DDL applied on disposable PostgreSQL 17 and the runner started a bounded listener pool under a non-owner login. With the concurrently staged FX syntax fix, the full legacy chain through `9300-effect-mq.sql` applied on a fresh disposable database; that fix must land before a clean install is available from this branch alone. Synthetic API admission, queue dispatch, one checkpoint, persisted completion, API recovery read and runner restart after admission all passed. That run selected zero observations and did not exercise financial posting. The local proof artifact is `test-results/e2e/preparation-queue-smoke.json`.
 
 Required observations include rollback before admission; crashes before/after enqueue acknowledgment; duplicate delivery; kill/restart and lost claims; current-authority and cancellation changes; stale handlers; history pruning followed by replay; disconnected notification recovery; bounded connections; graceful shutdown; and backup/restore followed by pending-work rediscovery. Financial effects must remain unique and atomic throughout. Sanitize library errors, persisted exits and logs before allowing raw database causes or credentials to cross their boundary.
 
 Use the existing failure-first E2E policy and retain repeatable artifacts. Test additions/edits require the repository's explicit authorization. A selected library or successful compile does not establish these runtime results.
 
-This decision supersedes Cloudflare-specific background-runner choices for the planned replacement. It also supersedes the older plan sentence forbidding any `LISTEN/NOTIFY` dependency for the background runner: effect-mq's PostgreSQL store requires a session-preserving listener with polling recovery on its separate Bun process. It does not change the financial rule in [ADR 0010](0010-application-owned-accounting-replacement.md): financial transactions use no session-level tenant context and no advisory locks, and the API Worker does not load the listener. This decision does not claim the existing adapter has already changed or independently approve the broader accounting ownership redesign. No library has been installed, infrastructure deployed, or tests changed by this decision update.
+This decision supersedes Cloudflare-specific background-runner choices for the planned replacement. It also supersedes the older plan sentence forbidding any `LISTEN/NOTIFY` dependency for the background runner: effect-mq's PostgreSQL store requires a session-preserving listener with polling recovery on its separate Bun process. It does not change the financial rule in [ADR 0010](0010-application-owned-accounting-replacement.md): financial transactions use no session-level tenant context and no advisory locks, and the API Worker does not load the listener. No hosted infrastructure was deployed or tests changed by the first adapter.
 
 ## Sources
 

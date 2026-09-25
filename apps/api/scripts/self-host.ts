@@ -29,6 +29,7 @@ if (!(await Bun.file(resolve(assets, "index.html")).exists())) {
 }
 const bindings: Bindings = {
   DATABASE_URL: databaseUrl,
+  OPENERP_PREPARATION_TOKEN: process.env.OPENERP_PREPARATION_TOKEN,
   BETTER_AUTH_SECRET: authSecret,
   BETTER_AUTH_URL: origin.origin,
   EVIDENCE_STORE: process.env.OPENERP_OBJECT_DIRECTORY

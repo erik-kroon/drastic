@@ -1,10 +1,8 @@
-import type * as Accounting from "@open-erp/domain/values";
-import type { R2Bucket, Workflow } from "@cloudflare/workers-types";
+import type { R2Bucket } from "@cloudflare/workers-types";
 import * as Context from "effect/Context";
 import type { RetainedObjectStore } from "../adapters/storage/retained-objects";
 
 export interface Bindings {
-  readonly PREPARATION_WORKFLOW?: Workflow<{ jobId: string; scope: typeof Accounting.Scope.Type }>;
   readonly OPENERP_PREPARATION_TOKEN?: string;
   readonly EVIDENCE_BUCKET?: R2Bucket;
   readonly EVIDENCE_STORE?: RetainedObjectStore;

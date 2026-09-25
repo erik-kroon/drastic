@@ -1,8 +1,8 @@
 # Self-hosting OpenERP
 
-Run the current application and accounting API using Bun and PostgreSQL without a Cloudflare account. The same API implementation, contracts and readiness checks serve both runtimes. The current Bun entrypoint serves the existing prerendered web build and does not run background jobs. [ADR 0010](../../docs/adr/0010-application-owned-accounting-replacement.md) selects application-owned accounting, a clean three-file baseline and a no-compatibility cutover; those changes are not implemented in this distribution.
+Run the current application and accounting API using Bun and PostgreSQL without a Cloudflare account. The same API implementation, contracts and readiness checks serve both runtimes. The Bun HTTP entrypoint serves the existing prerendered web build; background preparation runs in a separate process. [ADR 0010](../../docs/adr/0010-application-owned-accounting-replacement.md) selects application-owned accounting and a clean three-file baseline; the wider replacement remains in progress.
 
-[ADR 0009](../../docs/adr/0009-effect-mq-background-jobs.md) selects a separate persistent Bun process using effect-mq and PostgreSQL for background jobs in both hosted and self-host installations. The listener belongs to that process only; it is not a financial transaction session. The runner and its startup/health/shutdown integration remain implementation work, so the commands below describe the current distribution.
+[ADR 0009](../../docs/adr/0009-effect-mq-background-jobs.md) selects a separate persistent Bun process using effect-mq and PostgreSQL for background jobs in both hosted and self-host installations. The listener belongs to that process only; it is not a financial transaction session. The preparation runner is available; full job-path and deployment recovery proof remain open.
 
 This is a development distribution of the current capabilities, not a production-ready accounting release. Object retention, durable outbox delivery, full statutory behavior and production recovery remain governed by the [delivery plan](../../docs/plans/README.md). Container execution must be qualified on the release platform; see [verification](../../docs/verification.md).
 
@@ -18,6 +18,17 @@ docker compose --env-file infra/self-host/.env -f infra/self-host/compose.yaml u
 The setup command creates an ignored `.env` with independent random maintenance, runtime and session secrets, mode `0600`. It refuses to overwrite an existing file. Keep those values stable across restarts. Generated database passwords are hexadecimal and safe in the connection strings; if replacing them manually, URL-encode reserved characters in connection URLs.
 
 Compose waits for PostgreSQL readiness, runs the checked-in migrations and restricted-login setup, and starts the app only after successful completion. The app receives only the runtime database credential. PostgreSQL has a named data volume and no published host port. The application port is bound to loopback at `http://localhost:3000`.
+
+After provisioning a dedicated API credential whose actor has the `agent` role in each allowed
+book, set `OPENERP_PREPARATION_TOKEN` in the ignored `.env` and enable the separate runner:
+
+```bash
+docker compose --env-file infra/self-host/.env -f infra/self-host/compose.yaml \
+  --profile preparation up --build -d
+```
+
+The runner uses the restricted runtime login, does not expose a port, and keeps its PostgreSQL
+listener outside the HTTP process. Admission remains durable while the runner is stopped.
 
 An empty installation has no books or operator account. Review the current [provisioning instructions](../../README.md#local-development) and the synthetic example before adding development records. For an isolated synthetic book, supply a new operator token in your shell environment, then:
 
@@ -45,7 +56,12 @@ bun apps/api/scripts/self-host-role.ts
 
 # DATABASE_URL now uses openerp_app and its runtime password, never the owner.
 # BETTER_AUTH_SECRET is a separate stable secret of at least 32 characters.
+# After provisioning a dedicated agent credential, export OPENERP_PREPARATION_TOKEN
+# for both the HTTP process and the background runner.
 OPENERP_PUBLIC_URL=http://localhost:3000 bun apps/api/scripts/self-host.ts
+
+# In a separate process, after provisioning the dedicated agent credential:
+bun run --cwd apps/api jobs:preparation
 ```
 
 The role setup is intended for this dedicated installation. It refuses an existing login with elevated role flags. It sets the runtime password to the supplied value and grants only the accounting runtime group. Do not use it against an unrelated shared `openerp_app` identity or rotate it while requests are active.

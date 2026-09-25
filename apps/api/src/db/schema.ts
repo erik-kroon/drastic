@@ -2,6 +2,15 @@ import type { IdentityProvisioning } from "@open-erp/contracts/identity";
 import type * as Recovery from "@open-erp/contracts/posting-recovery";
 import type * as Schema from "effect/Schema";
 import {
+  mqDedupe,
+  mqFlowChildren,
+  mqFlowOutbox,
+  mqJobAttempts,
+  mqJobs,
+  mqQueueControl,
+  mqSchedules,
+} from "effect-mq/drizzle-postgres";
+import {
   bigint,
   boolean,
   date,
@@ -17,6 +26,15 @@ import {
 // Query mappings for tables accessed by maintenance code. Versioned SQL migrations own
 // DDL, grants, constraints, triggers and accounting functions; this is not a push schema.
 const openerp = pgSchema("openerp");
+
+// effect-mq owns queue writes; reviewed SQL migrations own the matching DDL.
+export const jobs = mqJobs<"preparation">();
+export const jobAttempts = mqJobAttempts(jobs);
+export const jobSchedules = mqSchedules<"preparation">();
+export const jobQueues = mqQueueControl();
+export const jobDedupe = mqDedupe<"preparation">();
+export const jobFlowChildren = mqFlowChildren();
+export const jobFlowOutbox = mqFlowOutbox();
 
 export const migrations = pgTable("openerp_migrations", {
   name: text().primaryKey(),

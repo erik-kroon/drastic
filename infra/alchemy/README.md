@@ -1,7 +1,7 @@
 # Alchemy deployment
 
 The stack defines the TanStack Start web Worker, the Effect API Worker, a private R2 evidence bucket,
-a preparation Workflow with a recovery Cron Trigger, and a Hyperdrive connection
+a Hyperdrive connection
 to an existing PostgreSQL database. Hyperdrive query caching is disabled for all accounting reads.
 Only the API Worker receives the database binding. The web Worker forwards `/api/*` to Core with
 the original request URL and Origin.
@@ -28,6 +28,9 @@ the plan for replacement of the former fixed-name `open-erp-api` Worker and the 
   decision, not a settled company-retention policy. The bucket is private and retained on removal.
 - Supply `OPENERP_PREPARATION_TOKEN` for a dedicated API actor with the `agent` role in each
   allowed book. A user's browser session or an operator credential must not be used as the runner.
+- Run `bun run --cwd apps/api jobs:preparation` as a separate persistent process against the same
+  PostgreSQL database, with a session-preserving direct connection and the same dedicated token.
+  Alchemy does not provision that process; background preparation will wait until it is running.
 - Set `BETTER_AUTH_URL` to the public web origin and `BETTER_AUTH_SECRET` to a cryptographically
   random secret of at least 32 characters. The API Worker receives the secret; the web Worker does
   not. Provision email/password accounts using `apps/api/scripts/create-user.ts` after creating
