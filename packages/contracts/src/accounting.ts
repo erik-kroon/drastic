@@ -1,7 +1,12 @@
 import * as Schema from "effect/Schema";
 import { Identifier, AccountingDate, Description, Digest } from "@open-erp/domain/values";
 import { MinorUnits } from "@open-erp/domain/money";
-import { JournalLine, Voucher } from "@open-erp/domain/ledger";
+import {
+  ExecutionReceipt as DomainExecutionReceipt,
+  GroupReceipt,
+  JournalLine,
+  Voucher,
+} from "@open-erp/domain/ledger";
 
 export { Identifier, AccountingDate, Description, Digest, Scope } from "@open-erp/domain/values";
 export { MinorUnits, SignedMinorUnits, AggregateMinorUnits } from "@open-erp/domain/money";
@@ -15,12 +20,22 @@ export {
   VoucherPostingAction,
   ChangeSet,
   Approval,
-  ExecutionReceipt,
+  GroupReceipt,
   Voucher,
   LedgerSnapshot,
   ValidationReport,
 } from "@open-erp/domain/ledger";
 export { Book, BookSetup, BookStatus } from "@open-erp/domain/books";
+
+export const PlanExecutionReceipt = Schema.Struct({
+  id: Identifier,
+  changeSetId: Identifier,
+  planDigest: Digest,
+  groups: Schema.Array(GroupReceipt).check(Schema.isMinLength(1)),
+  committedAt: Schema.String,
+});
+
+export const ExecutionReceipt = Schema.Union([DomainExecutionReceipt, PlanExecutionReceipt]);
 
 export const ChangePath = Schema.Struct({
   entityId: Identifier,

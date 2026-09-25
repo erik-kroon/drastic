@@ -1,6 +1,6 @@
 # Architecture and ownership
 
-Status: existing ownership is established by [AGENTS.md](../AGENTS.md); accounting implementation is partial and the complete extension remains a working design. [ADR 0001](adr/0001-checkout-runtime-and-accounting-boundary.md) records the runtime decision; [ADR 0004](adr/0004-complete-accounting-delivery-contract.md) records the detailed delivery boundary.
+Status: existing ownership is established by [AGENTS.md](../AGENTS.md); accounting implementation is partial and the application-owned replacement is a working design. [ADR 0001](adr/0001-checkout-runtime-and-accounting-boundary.md) records the runtime baseline; [ADR 0004](adr/0004-complete-accounting-delivery-contract.md) records the financial delivery boundary; [ADR 0010](adr/0010-application-owned-accounting-replacement.md) records the selected ownership, clean baseline, caller cutover and no-compatibility decision.
 
 ## Repository ownership
 
@@ -9,7 +9,7 @@ This map defines ownership. The [planning baseline](plans/evidence/planning-base
 | Owner                | Observed responsibility                                                                                             |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `apps/web`           | TanStack Start/Router, request-scoped TanStack Query, Paraglide and product composition.                            |
-| `apps/api`           | Effect 4 Worker, shared accounting operations, PostgreSQL transitions and runtime/maintenance adapters.             |
+| `apps/api`           | Effect 4 Worker/Bun runtime, shared accounting operations, transaction-passing persistence, PostgreSQL integrity and runtime/maintenance adapters. |
 | `packages/domain`    | Accounting values, exact-money schemas, ledger/book models and domain errors, without transport or runtime imports. |
 | `packages/contracts` | Effect Schema API contracts composed from domain models; generated OpenAPI at `/api/openapi.json`.                  |
 | `jurisdictions/se`   | Pure VAT draft calculation and SIE 4I rendering, using retained contract inputs.                                    |
@@ -34,7 +34,7 @@ flowchart TD
     Operations --> PG[(PostgreSQL authority)]
     Operations --> Objects[Evidence and artifact storage]
     PG --> Outbox[Transactional outbox and run checkpoints]
-    Outbox --> Jobs[Runtime delivery adapters]
+    Outbox --> Jobs[Planned effect-mq Bun runner]
     Jobs --> Operations
     Jobs --> Providers[Providers and isolated validators]
 ```
@@ -45,7 +45,7 @@ Keep an Effect modular monolith. The [API layout](../apps/api/README.md) separat
 
 [ADR 0005](adr/0005-open-accounting-and-managed-services.md) keeps the accounting, jurisdiction and agent layers open under AGPL-3.0-only, with optional managed operations outside the core. The [self-host package](../infra/self-host/README.md) composes the current API and prerendered UI using Bun and PostgreSQL. Rust/Wasm extraction remains deferred until a stable pure contract and a measured consumer justify it.
 
-Effect owns scoped orchestration and domain preparation; named PostgreSQL transitions own atomic integrity, locks, authority/dependency checks, financial/register effects and receipts. Drizzle's native Effect PostgreSQL adapter owns application queries, using request-local connections through `@effect/sql-pg` and `pg`. Typed Drizzle mappings serve maintenance inserts and migration receipts; versioned SQL owns the complete DDL and restricted accounting functions. Retain existing small SQL preparation where appropriate, with one calculation owner per policy. The [shared contracts](plans/00-shared-contracts.md) define the consistent lock order, identity, exact values and compatibility rules. A generic effect interpreter is not a prerequisite.
+Effect owns scoped orchestration, domain preparation, authorization and application policy. Application operations own direct scoped writes and pass one transaction through all nested persistence. PostgreSQL owns relational records, DDL, constraints, grants, row locks, the narrow integrity layer and durable receipts; it does not own feature workflows through procedural functions. Drizzle's native Effect PostgreSQL adapter owns application queries, using request-local connections through `@effect/sql-pg` and `pg`. Typed Drizzle mappings serve direct application and maintenance queries; the three-file baseline owns the complete DDL and integrity definitions. The [shared contracts](plans/00-shared-contracts.md) define the lock order, identity, exact values and clean-baseline rules. A generic effect interpreter is not a prerequisite.
 
 ## Planned module boundaries
 
@@ -67,9 +67,9 @@ Retain the installed Effect `4.0.0-rc.112` and its v4 API family. Retain Bun, Vi
 
 Each operation receives trusted actor/entity/book context. Connections and transactions have explicit scoped lifetimes and cleanup; mutable scope cannot live in a global singleton. A transaction uses one connection and transaction-local context. Immutable schemas and rules may be cached by version.
 
-The authoritative Hyperdrive configuration disables query caching. Operations use explicit transactions with row locks. Do not depend on session affinity, advisory locks or `LISTEN/NOTIFY`. Verify adapter support and cancellation against the selected runtime before finalizing it. The [Cloudflare driver](https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/) and [local development](https://developers.cloudflare.com/hyperdrive/configuration/local-development/) documentation are integration references, not proof that this checkout connects successfully.
+The authoritative Hyperdrive configuration disables query caching. API financial operations use explicit transactions with row locks and no session-level tenant context, advisory locks or `LISTEN/NOTIFY` dependency. The selected effect-mq Bun runner has a separate session-preserving PostgreSQL listener for queue delivery, with polling recovery; see [ADR 0009](adr/0009-effect-mq-background-jobs.md). The listener is not loaded in the API Worker and does not supply financial identity or state. Verify adapter support and cancellation against the selected runtime before relying on it. The [Cloudflare driver](https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/) and [local development](https://developers.cloudflare.com/hyperdrive/configuration/local-development/) documentation are integration references, not proof that this checkout connects successfully.
 
-Persist run checkpoints and outbox records in PostgreSQL. The hosted preparation adapter now uses Cloudflare Workflows for bounded steps and retries, with a Cron Trigger rediscovering committed admissions. PostgreSQL fences checkpoints and current authority; a manual run change stops the prior job. Queues remain reserved for demonstrated delivery/fan-out needs. A self-host task process can use the same job operations but is not connected yet. At-least-once delivery must converge through effect identities and receipts. No Effect fiber is a durable job. See [Cloudflare delivery](operations/cloudflare.md) for implementation and unverified hosted/recovery gates.
+Persist run checkpoints and outbox records in PostgreSQL. The current hosted preparation adapter uses Cloudflare Workflows and a Cron Trigger; the self-host task process is not connected yet. [ADR 0009](adr/0009-effect-mq-background-jobs.md) selects effect-mq on a persistent Bun worker to replace that background path in both installations. It consumes committed application-outbox work and calls shared application operations. effect-mq owns queue retries and leases; domain progress, current authority, cancellation versions and financial receipts remain application responsibilities. At-least-once delivery must converge through effect identities and receipts. See [Cloudflare delivery](operations/cloudflare.md) for the current implementation and the [replacement plan](plans/application-owned-accounting.md#selected-background-jobs-effect-mq) for the selected design and proof gates.
 
 Native document validators belong behind a bounded process/container interface when needed. Deployment location, archive retention and restore are explicit decisions ([D-07](open-decisions.md)); an R2 setting alone is not a complete archival design.
 

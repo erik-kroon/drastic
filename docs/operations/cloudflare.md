@@ -1,5 +1,7 @@
 # Cloudflare delivery and verification
 
+This page describes the current source implementation. [ADR 0009](../adr/0009-effect-mq-background-jobs.md) selects effect-mq on a persistent Bun worker to replace the preparation Workflow/Cron path, and [ADR 0010](../adr/0010-application-owned-accounting-replacement.md) selects the application-owned accounting boundary and clean baseline. The API Worker, Hyperdrive and object-storage composition remain; the background and accounting replacement has not been implemented or deployed.
+
 The hosted composition is web Worker → API service binding → uncached Hyperdrive → PostgreSQL. The API also owns a private R2 bucket and a preparation Workflow. Alchemy derives Worker, bucket and Workflow names from the stack/stage/resource identity. A stage must still use its own PostgreSQL database, runtime login, browser origin, authentication secret and preparation credential. Resource naming cannot isolate a shared database.
 
 This implementation has not been deployed or exercised against Cloudflare. Test changes and runs were skipped at the user's request. The configured default Alchemy Cloudflare profile reported `needs-reauth`; no account, stage, isolated PostgreSQL destination or archive jurisdiction was supplied. D-07 remains open. Static checks do not establish hosted, financial or retention behavior.
@@ -20,6 +22,8 @@ Self-hosting uses the same adapter contract through `OPENERP_OBJECT_DIRECTORY`, 
 
 ## Background preparation
 
+The following Workflow/Cron details describe the current pre-cutover source. They are retained to identify the old caller family and its failure contract, not as the target architecture. At cutover, the application commits its outbox intent, a Bun dispatcher admits a deterministic effect-mq job, and a named handler rechecks current authority before calling the shared application operation. The old Workflow instance and Cron dispatcher are deleted; no fallback or dual queue remains. The effect-mq listener uses a separate session-preserving PostgreSQL connection and polling recovery, while financial transactions still use no session-level tenant context and no advisory locks. See [ADR 0010](../adr/0010-application-owned-accounting-replacement.md) and the [replacement plan](../plans/application-owned-accounting.md#selected-background-jobs-effect-mq).
+
 `POST /api/v1/entities/:entityId/books/:bookId/preparation-runs/:id/background` accepts `{}` with `Idempotency-Key`. It records a job for an existing ready run. The corresponding GET returns the latest job or null. MCP exposes `runs_start_background` and `runs_get_background`. The preparation view offers the same command and reads progress from PostgreSQL.
 
 Configure `OPENERP_PREPARATION_TOKEN` as a dedicated API credential whose actor has the `agent` role in each allowed book. Provision and rotate it through the existing authentication setup; never use an operator, database owner or user session token. The submission records the requesting actor and credential/session reference, plus the executor identity. It does not put tokens or source documents into a Workflow payload. Prepared proposals and run audit entries identify the executor; the job identifies the requester.
@@ -28,7 +32,7 @@ Cloudflare executes up to 50 durable steps of 20 observations, matching the exis
 
 The API attempts dispatch after admission. A one-minute Cron Trigger rediscovers ready jobs even when the initial create response is lost. Dispatch uses the job ID as the Workflow instance ID. Failed instances can restart from their durable steps while PostgreSQL fences duplicates. Discovery handles at most 100 jobs per tick with rotating dispatch timestamps, and dispatch concurrency is five. This is bounded recovery, not a measured tenant quota or throughput guarantee. A paused Workflow is not resumed automatically. Monitor pending age, stopped/blocked reasons and Cloudflare dispatch warnings; a missing/revoked executor credential prevents progress.
 
-Queues and Durable Objects are not added: this preparation workload already has database admission and durable Workflow steps. Add buffering or per-key coordination when a concrete producer/consumer requires it. Self-hosted background execution remains unconnected; manual bounded preparation continues to work there.
+Queues and Durable Objects are not added for this current source. At the selected cutover, use effect-mq's PostgreSQL store and persistent Bun runner instead of adding Cloudflare Queues or a second scheduler. Self-hosted background execution is not connected in the current distribution; after implementation, both installations use the same queue path and application operations.
 
 ## Coordinated recovery
 

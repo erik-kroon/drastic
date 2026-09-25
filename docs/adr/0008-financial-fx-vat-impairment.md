@@ -1,6 +1,6 @@
 # ADR 0008: financial FX, VAT reclassification and asset impairment
 
-Status: adopted working design following the user's confirmation on 2026-09-24. Implementation, runtime verification, company applicability and external acceptance remain separate and open. Adoption authorizes this planning update; it does not execute financial actions or activate legal profiles.
+Status: adopted working design following the user's confirmation on 2026-09-24. Implementation, runtime verification, company applicability and external acceptance remain separate and open. [ADR 0010](0010-application-owned-accounting-replacement.md) supersedes the implementation/compatibility ownership while retaining the FX, VAT and impairment financial requirements. Adoption authorizes this planning update; it does not execute financial actions or activate legal profiles.
 
 ## Context and authority
 
@@ -10,7 +10,7 @@ The current source reconciliation confirmed the employee foundation in migration
 
 ## Shared decision
 
-Keep commerce/subledger ownership, Effect preparation and PostgreSQL's final authority. Preserve exact monetary wire fields, bounds, old canonicalization and sealed records. Introduce explicitly versioned semantics, never reinterpret old values or rewrite applied migrations. Effect calculates; SQL independently enforces essential authority, conservation and atomicity constraints without duplicating the full calculator.
+Keep commerce/subledger ownership, Effect preparation and the application-owned transaction. Preserve exact monetary wire fields, bounds and sealed financial meaning. The clean replacement has no old-canonicalization interpreter or old-schema compatibility path; historical records and evidence remain intact as history. Application operations calculate, authorize and write the complete group through one transaction. PostgreSQL independently enforces essential scope, conservation, immutability and atomicity constraints without duplicating the full calculator. Introduce explicitly versioned semantics and never rewrite historical financial meaning.
 
 Approve exact financial and register consequences together. Under the established authorization/book lock order, recover a successful identical request before applying new-work freshness checks; revoked access still refuses recovery. Commit journal, register consequences and receipt atomically. Generic journal/reversal paths cannot execute half of an owned operation. Evidence reuse is not a universal exclusive-capacity rule; enforce incompatible economic roles at their specific owners in both admission directions.
 

@@ -9,6 +9,8 @@
     "./money": "./src/money.ts",
     "./errors": "./src/errors.ts",
     "./ledger": "./src/ledger.ts",
+    "./canonicalization": "./src/canonicalization.ts",
+    "./posting": "./src/posting.ts",
     "./books": "./src/books.ts",
     "./exchange-rates": "./src/exchange-rates.ts"
   },

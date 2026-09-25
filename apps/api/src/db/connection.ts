@@ -9,9 +9,9 @@ import { Client, types } from "pg";
 
 const makeDatabase = PgDrizzle.makeWithDefaults();
 
-export class Database extends Context.Service<Database, Effect.Success<typeof makeDatabase>>()(
-  "open-erp/Database",
-) {}
+export type DatabaseClient = Effect.Success<typeof makeDatabase>;
+
+export class Database extends Context.Service<Database, DatabaseClient>()("open-erp/Database") {}
 
 interface PostgresConfig {
   readonly connectionString: Redacted.Redacted<string>;

@@ -20,6 +20,44 @@ export async function database() {
   return client;
 }
 
+export async function createSession(book: BookFixture) {
+  const id = `session_${randomBytes(8).toString("hex")}`;
+  const token = randomBytes(32).toString("hex");
+  const admin = await database();
+  try {
+    await admin.query(
+      `INSERT INTO openerp_auth."user"(id, name, email)
+      VALUES ($1, 'E2E session operator', $2)
+      ON CONFLICT (id) DO NOTHING`,
+      [book.actorId, `${book.actorId}@e2e.invalid`],
+    );
+    await admin.query(
+      `INSERT INTO openerp.identity_admissions(actor_id, provider_id, subject, enabled)
+      VALUES ($1, 'e2e-current-session', $2, true)
+      ON CONFLICT (actor_id) DO UPDATE SET enabled = true`,
+      [book.actorId, book.actorId],
+    );
+    await admin.query(
+      `INSERT INTO openerp_auth.session(id, token, user_id, expires_at)
+      VALUES ($1, $2, $3, now() + interval '1 hour')`,
+      [id, token, book.actorId],
+    );
+  } finally {
+    await admin.end();
+  }
+  return { id, token };
+}
+
+export async function deleteSession(id: string) {
+  const admin = await database();
+  try {
+    const deleted = await admin.query("DELETE FROM openerp_auth.session WHERE id = $1", [id]);
+    return deleted.rowCount;
+  } finally {
+    await admin.end();
+  }
+}
+
 export async function fixture() {
   const id = randomBytes(8).toString("hex");
   const token = randomBytes(32).toString("hex");
@@ -188,6 +226,18 @@ export async function execute(book: BookFixture, plan: typeof Accounting.ChangeS
 }
 export async function ledger(book: BookFixture) {
   return decoded(await request(book, "/ledger"), Accounting.LedgerSnapshot);
+}
+export async function sealedPlans(book: BookFixture) {
+  const admin = await database();
+  try {
+    const result = await admin.query<{ count: number }>(
+      "SELECT count(*)::int AS count FROM openerp.change_sets WHERE book_id = $1",
+      [book.bookId],
+    );
+    return result.rows[0]?.count ?? 0;
+  } finally {
+    await admin.end();
+  }
 }
 export async function persisted(book: BookFixture) {
   const admin = await database();

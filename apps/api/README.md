@@ -30,13 +30,17 @@ migrations/                Versioned PostgreSQL transitions and constraints
 scripts/                   Stable Bun maintenance, self-host and recovery entrypoints
 ```
 
-HTTP and MCP share `application/capabilities.ts`. Operator-only HTTP commands remain absent from the ordinary MCP catalog. VAT and SIE workflows capture/read through the database owner, call pure functions from `@open-erp/jurisdiction-se`, and seal through the existing SQL transitions. Application workflows do not import transport handlers.
+HTTP and MCP share `application/capabilities.ts`. Operator-only HTTP commands remain absent from the ordinary MCP catalog. In the current pre-cutover source, VAT and SIE workflows capture/read through the database owner, call pure functions from `@open-erp/jurisdiction-se`, and seal through existing SQL transitions. In the application-owned replacement, capture, policy, sealing and recovery move to named application operations while the pure jurisdiction functions remain. Application workflows do not import transport handlers.
 
 `@open-erp/domain` owns shared accounting models and errors. `@open-erp/contracts` owns wire commands, routes and capability metadata and preserves the existing accounting schema exports. Neither folder movement nor a new package changes the supported accounting profiles.
 
-Keep locks, voucher allocation, approval consumption and financial writes in PostgreSQL. Database connections retain the same scoped lifetime. Maintenance scripts and migrations stay at their existing paths so local setup, recovery and existing E2E callers keep working.
+The application owns accounting policy, authorization, calculations, workflow decisions and scoped writes. PostgreSQL owns relational records, the reviewed DDL, constraints, grants, row locks, aggregate integrity and durable receipts. The runtime role receives the required table/column grants; the database does not execute feature workflows through procedural functions. Use one scoped transaction and pass it through nested persistence. A financial group commits its register effects, approval use, counters, receipt and outbox intent together. See [ADR 0010](../../docs/adr/0010-application-owned-accounting-replacement.md).
+
+The current checkout still contains the pre-replacement SQL dispatch path. Do not preserve it as a fallback. Move every capability, direct HTTP handler, MCP caller, web caller, job, script and recovery control to named application operations, then delete the old path and use the three-file baseline. [ADR 0009](../../docs/adr/0009-effect-mq-background-jobs.md) selects effect-mq on a separate persistent Bun worker for durable delivery. Its session-preserving listener is not part of API or financial transaction scope.
 
 ## Query failures
+
+The following details describe the current pre-cutover `db/query.ts` source. The application-owned replacement removes that statement registry and per-call database layer after every caller is cut over; it does not retain a compatibility query path.
 
 `db/query.ts` exposes only intentional `P0001` errors with an allowlisted accounting failure code. Other database messages and bound parameters are not returned to callers. Known PostgreSQL availability failures and socket errors `ECONNRESET`, `EPIPE` and `ETIMEDOUT` map to `Unavailable` (HTTP 503); unrecognized coded query failures remain `InternalError` (HTTP 500).
 

@@ -2,6 +2,8 @@
 
 Owner: accounting work/kernel in `apps/api`, accounting/recovery contracts, and the journal/recovery workbench. Phase: P0/P1, with durable delivery extended at P3. Preserve the existing single-action lifecycle and recovery catalogue as the first implementation path.
 
+**Replacement authority:** [ADR 0010](../adr/0010-application-owned-accounting-replacement.md) supersedes the function-only implementation, old-schema compatibility and old-digest portions of this packet without changing its posting, approval, receipt, correction or recovery requirements. The current SQL and Workflow references below describe the pre-cutover source until the application caller inventory closes.
+
 ## User result and scope
 
 A person or agent retains evidence, prepares exact effects, resolves blockers, obtains the required human approval, executes once, and can recover the same result after closing the browser or losing a response. Posted values are immutable. Preparation, validation and approval do not change balances. A current source inspection or matching result does not implicitly authorize posting.
@@ -88,8 +90,10 @@ checkpoint, audit, prepared proposals or ledger. Existing terminal jobs are retu
 with an explicit `already_terminal` outcome; a new requested reason is not applied to them.
 Successful replay preserves the saved result. A later delivery cannot advance that stopped job,
 but a deliberate new admission remains separate. See [AUTOMATION.md](../../apps/api/docs/AUTOMATION.md#forward5100-stop-one-admitted-preparation-job).
-This is PST-05 containment, not remote Workflow termination or posting authority. Runtime and
-concurrency acceptance remain pending.
+This is PST-05 containment, not remote Workflow termination or posting authority. At the
+application-owned cutover, the current Workflow/Cron runner is removed and the same
+containment runs through the selected effect-mq/application operation path; a queue retry
+still cannot post. Runtime and concurrency acceptance remain pending.
 
 ### Native background-job stop binding
 

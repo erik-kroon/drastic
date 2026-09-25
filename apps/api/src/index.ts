@@ -12,6 +12,7 @@ import * as Context from "effect/Context";
 import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Redacted from "effect/Redacted";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 
@@ -33,6 +34,10 @@ import { BankSignoffHandlers } from "./transport/http/routes/bank-signoffs";
 import { BankInventorySignoffHandlers } from "./transport/http/routes/bank-inventory-signoffs";
 import { TaxAccountHandlers } from "./transport/http/routes/tax-account";
 import { ReconciliationHandlers } from "./transport/http/routes/reconciliation";
+import { AccountingErrorStatus } from "@open-erp/contracts/api";
+import { databaseFailure } from "./db/transaction";
+import { Database, databaseLayer } from "./db/connection";
+import { failure } from "./application/failures";
 
 import { SubledgerHandlers } from "./transport/http/routes/subledgers";
 
@@ -152,25 +157,69 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
   Layer.provide(HttpServer.layerServices),
 );
 
-const { handler } = HttpRouter.toWebHandler(Layer.mergeAll(ApiRoutes, McpRoutes, DeadlineFeedRoutes), {
-  disableLogger: true,
-});
+const { handler } = HttpRouter.toWebHandler(
+  Layer.mergeAll(ApiRoutes, McpRoutes, DeadlineFeedRoutes),
+  {
+    disableLogger: true,
+  },
+);
+
+function boundaryResponse(error: unknown) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    typeof error.status === "number" &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return Response.json({ message: error.message }, { status: error.status });
+  }
+  const safe = databaseFailure(error);
+  return Response.json({ message: safe.message }, { status: AccountingErrorStatus[safe.code] });
+}
+
+function withRequestDatabase<A, E, R>(bindings: Bindings, effect: Effect.Effect<A, E, R>) {
+  const connectionString = bindings.HYPERDRIVE?.connectionString || bindings.DATABASE_URL;
+  if (!connectionString) return Effect.fail(failure("Unavailable"));
+  return effect.pipe(
+    Effect.provide(
+      databaseLayer({
+        connectionString: Redacted.make(connectionString),
+        applicationName: "open-erp-api",
+        connectTimeoutMs: 5000,
+        statementTimeoutMs: 15000,
+      }),
+    ),
+    Effect.mapError(databaseFailure),
+  );
+}
 
 export default {
   async fetch(request: Request, bindings: Bindings): Promise<Response> {
     const response = await Effect.runPromise(
       boundedRequest(request).pipe(
         Effect.matchEffect({
-          onFailure: (error) =>
-            Effect.succeed(Response.json({ message: error.message }, { status: error.status })),
+          onFailure: (error) => Effect.succeed(boundaryResponse(error)),
           onSuccess: (bounded) =>
             new URL(bounded.url).pathname.startsWith("/api/auth/")
               ? authHandler(bounded, bindings)
-              : Effect.promise(() =>
-                  handler(
-                    bounded,
-                    Context.make(RequestEnvironment, { bindings, url: new URL(request.url) }),
-                  ),
+              : withRequestDatabase(
+                  bindings,
+                  Effect.gen(function* () {
+                    const db = yield* Database;
+                    return yield* Effect.tryPromise({
+                      try: () =>
+                        handler(
+                          bounded,
+                          Context.make(RequestEnvironment, {
+                            bindings,
+                            url: new URL(request.url),
+                          }).pipe(Context.add(Database, db)),
+                        ),
+                      catch: databaseFailure,
+                    });
+                  }),
                 ),
         }),
       ),

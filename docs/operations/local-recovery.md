@@ -1,6 +1,6 @@
 # Local recovery: snapshot closure and fenced restore
 
-Status: recovery package v2 has a [bounded synthetic database/object rehearsal](ops02-isolated-rehearsal.md). Its read-only application recovery, real posting receipts, historical reports, custody and hosted/production recovery remain unverified. This does not grant writer or provider activation.
+Status: recovery package v2 has a [bounded synthetic database/object rehearsal](ops02-isolated-rehearsal.md). Its read-only application recovery, real posting receipts, historical reports, custody and hosted/production recovery remain unverified. This does not grant writer or provider activation. The package currently describes the pre-cutover source and migration chain; the application-owned replacement adds the clean three-file baseline and effect-mq queue tables to the new closure contract, with no old-schema upgrade or compatibility path.
 
 This is not an encrypted archive, statutory retention service, company-readiness decision or production cutover tool. Private permissions are not encryption. A checksum is not authenticity or proof of successful recovery. D-07 remains open.
 
@@ -21,6 +21,12 @@ private target + explicit recovery plan + captured source release
 The CLI refuses remote hosts, ports 15439/55472, unexpected PostgreSQL cluster identity, PostgreSQL versions other than 17, non-superuser maintenance access and source names outside `openerp_ops_source_…`. The source must contain synthetic data only. The configuration declaration and name do not independently prove this. Better Auth accounts containing external access/refresh/ID tokens are refused. Even a synthetic dump can contain session tokens and password hashes: keep it private and handle it as sensitive material.
 
 Restore only creates a fresh `openerp_restore_…` database. It never overwrites, drops, promotes a writer, switches epochs or enables provider work. Version1 bundles lack the new closure inventory and are refused; retain them, and create a new v2 capture from a reviewed synthetic source. This tool has no conversion, cleanup or production command.
+
+## Application-owned replacement boundary
+
+[ADR 0010](../adr/0010-application-owned-accounting-replacement.md) replaces the current source inventory at cutover. A new release capture must contain the three reviewed baseline files and the effect-mq PostgreSQL queue schema in the same migration ledger. Application outbox rows, preparation runs/jobs, command receipts and domain progress remain durable business records; effect-mq claims, retries, leases and attempt history remain queue records. Both must be included in a complete post-replacement closure, but queue state is never treated as a financial receipt or provider acknowledgment.
+
+The old chain is not upgraded in place. A destination that carries the pre-replacement migration identity is refused for the clean replacement and is not silently dropped or rewritten. Recovery of a new-baseline bundle still requires fresh quarantine, closure comparison and application/provider inspection before any writer or provider is enabled.
 
 ## Operator inputs
 
@@ -111,5 +117,5 @@ attempted on ordinary success/failure after maintenance connection admission. A 
 restore receipt binds its exact hash/size. Failure or absence of either artifact cannot
 be treated as permission to resume. Ready jobs remain ready in the retained data, but no
 runtime/provider is started and `resumeAllowed` is alwaysfalse. Current outbox counters
-are not per-attempt provider receipts; remote Workflow retry/state history is not captured.
+are not per-attempt provider receipts. The current pre-cutover inventory has no effect-mq queue-table history; the post-cutover closure must capture the selected queue store's claims, leases, retries and attempt history, while keeping them separate from financial receipts and provider outcomes.
 The restricted-read application boundary and every existing promotion gate remain blocked.

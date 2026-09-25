@@ -5,6 +5,7 @@ import {
   date,
   integer,
   jsonb,
+  numeric,
   pgSchema,
   pgTable,
   text,
@@ -93,4 +94,131 @@ export const identityAdmissions = openerp.table("identity_admissions", {
   providerId: text("provider_id").notNull(),
   subject: text().notNull(),
   enabled: boolean().notNull(),
+});
+
+export const evidence = openerp.table("evidence", {
+  bookId: text("book_id").notNull(),
+  id: text().primaryKey(),
+  title: text().notNull(),
+  content: text().notNull(),
+  mediaType: text("media_type").notNull(),
+  origin: text().notNull(),
+  sha256: text().notNull(),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const events = openerp.table("events", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  evidenceId: text("evidence_id").notNull(),
+  eventKey: text("event_key").notNull(),
+});
+
+export const changeSets = openerp.table("change_sets", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  plan: jsonb("plan").notNull(),
+  digest: text().notNull(),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const approvals = openerp.table("approvals", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  changeSetId: text("change_set_id").notNull(),
+  digest: text().notNull(),
+  actorId: text("actor_id").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+  consumedAt: timestamp("consumed_at", { withTimezone: true, mode: "string" }),
+});
+
+export const seriesCounters = openerp.table("series_counters", {
+  bookId: text("book_id").notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  series: text().notNull(),
+  lastNumber: bigint("last_number", { mode: "bigint" }).notNull(),
+});
+
+export const vouchers = openerp.table("vouchers", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  periodId: text("period_id").notNull(),
+  series: text().notNull(),
+  number: bigint("number", { mode: "bigint" }).notNull(),
+  sequence: bigint("sequence", { mode: "bigint" }).notNull(),
+  postingDate: date("posting_date", { mode: "string" }).notNull(),
+  eventId: text("event_id").notNull(),
+  postingPurpose: text("posting_purpose").notNull(),
+  occurrenceKey: text("occurrence_key").notNull(),
+  correctsVoucherId: text("corrects_voucher_id"),
+  changeSetId: text("change_set_id").notNull(),
+  action: jsonb("action").notNull(),
+  expectedLineCount: integer("expected_line_count").notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const journalLines = openerp.table("journal_lines", {
+  bookId: text("book_id").notNull(),
+  voucherId: text("voucher_id").notNull(),
+  id: text().notNull(),
+  ordinal: integer().notNull(),
+  accountId: text("account_id").notNull(),
+  debitMinor: numeric("debit_minor", { mode: "string" }).notNull(),
+  creditMinor: numeric("credit_minor", { mode: "string" }).notNull(),
+  description: text().notNull(),
+});
+
+export const executionReceipts = openerp.table("execution_receipts", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  changeSetId: text("change_set_id").notNull(),
+  voucherId: text("voucher_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  body: jsonb("body").notNull(),
+});
+
+export const commandReceipts = openerp.table("command_receipts", {
+  bookId: text("book_id").notNull(),
+  key: text().notNull(),
+  requestDigest: text("request_digest").notNull(),
+  operation: text().notNull(),
+  actorId: text("actor_id").notNull(),
+  result: jsonb("result").notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const outbox = openerp.table("outbox", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  receiptId: text("receipt_id").notNull(),
+  kind: text().notNull(),
+  payload: jsonb("payload").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+  deliveredAt: timestamp("delivered_at", { withTimezone: true, mode: "string" }),
+  attempts: integer().notNull(),
+});
+
+export const postingGroupReceipts = openerp.table("posting_group_receipts", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  changeSetId: text("change_set_id").notNull(),
+  groupId: text("group_id").notNull(),
+  planDigest: text("plan_digest").notNull(),
+  body: jsonb("body").notNull(),
+  committedAt: timestamp("committed_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const approvalConsumptions = openerp.table("approval_consumptions", {
+  bookId: text("book_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  changeSetId: text("change_set_id").notNull(),
+  groupId: text("group_id").notNull(),
+  planDigest: text("plan_digest").notNull(),
+  receiptId: text("receipt_id").notNull(),
+  approverId: text("approver_id").notNull(),
+  consumedById: text("consumed_by_id").notNull(),
+  consumedAt: timestamp("consumed_at", { withTimezone: true, mode: "string" }).notNull(),
 });

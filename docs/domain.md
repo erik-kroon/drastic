@@ -1,6 +1,14 @@
 # Domain model and accounting invariants
 
-Status: working design with partial implementation. This document defines meaning and constraints; it is not an executable schema. [ADR 0002](adr/0002-exact-posting-and-approval.md) records the transaction choices, amended for wire compatibility by [ADR 0004](adr/0004-complete-accounting-delivery-contract.md).
+Status: working design with partial implementation. This document defines meaning and constraints; it is not an executable schema. [ADR 0002](adr/0002-exact-posting-and-approval.md) records the financial posting choices, amended for wire compatibility by [ADR 0004](adr/0004-complete-accounting-delivery-contract.md). [ADR 0010](adr/0010-application-owned-accounting-replacement.md) supersedes the earlier implementation/compatibility ownership while retaining these financial requirements.
+
+## Ownership and trust boundary
+
+The application process owns authentication, authorization, policy, calculations, workflow decisions and scoped financial writes. PostgreSQL owns relational records, DDL, constraints, grants, row locks, the narrow integrity layer and durable receipts. Direct application DML is a trusted backend capability, not a browser interface. Database integrity cannot establish human approval, and a compromised backend can manufacture a balanced action within its grants.
+
+Use one short book-scoped transaction for each atomic financial group. Recheck current authority, scope, immutable plan and dependencies inside that transaction; pass its transaction through every persistence call. Lock authority before the book, then periods/accounts, domain resources, approval and counters. Financial transactions use no session-level tenant context and no advisory locks. The separate effect-mq Bun listener is delivery infrastructure only.
+
+The clean replacement has no old-schema adapter, old-digest interpreter, dual writer or feature-function compatibility path. Historical records and dated evidence remain intact as history; they are not a second live accounting authority.
 
 ## Canonical vocabulary
 
@@ -30,7 +38,7 @@ Posted lines retain paired `debitMinor` and `creditMinor` canonical nonnegative 
 
 Book-currency scale belongs to versioned book/profile metadata. Rates, quantities and intermediate calculations use separate exact decimal/rational values until a named rounding boundary. Original-currency amounts remain available; they do not redefine the book-currency balance invariant. UI formatting does not participate in arithmetic.
 
-Storage must reject fractional minor units before coercion. A `NUMERIC(38,0)` column alone can round incoming fractional values; use a validated integer boundary and an exact database constraint that checks the original value. See [PostgreSQL's numeric semantics](https://www.postgresql.org/docs/18/datatype-numeric.html). Bounds and compatibility are selected in the shared plan; independent codec/canonicalization vectors remain an acceptance prerequisite ([D-03](open-decisions.md)).
+Storage must reject fractional minor units before coercion. A `NUMERIC(38,0)` column alone can round incoming fractional values; use a validated integer boundary and an exact database constraint that checks the original value. See [PostgreSQL's numeric semantics](https://www.postgresql.org/docs/18/datatype-numeric.html). Bounds and the new canonicalization are selected in the shared plan; independent codec/canonicalization vectors remain an acceptance prerequisite ([D-03](open-decisions.md)). The clean replacement does not interpret or migrate old digests.
 
 Use civil dates for documents, economic occurrence/service interval, accounting, tax point and settlement. Use UTC instants for ingestion, recording, approvals and provider events. Fiscal-year boundaries are explicit and need not follow the calendar year. Retrying a command preserves its selected accounting date.
 

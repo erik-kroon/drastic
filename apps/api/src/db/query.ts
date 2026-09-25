@@ -12,18 +12,14 @@ import { vatReclassificationStatements } from "./statements/vat-reclassification
 import { expenseTaxWithdrawalStatements } from "./statements/expense-tax-withdrawals";
 import { expenseTaxSnapshotStatements } from "./statements/expense-tax-snapshots";
 import { subledgerStatements } from "./statements/subledgers";
-import { RequestEnvironment } from "../runtime/environment";
 import { failure } from "../application/failures";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { sql, type SQL } from "drizzle-orm";
-import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core/errors";
-import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
-import * as Option from "effect/Option";
-import * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
-import * as SqlError from "effect/unstable/sql/SqlError";
-import { Database, databaseLayer } from "./connection";
+import { Database } from "./connection";
+import { databaseFailure } from "./transaction";
+import { type RequestEnvironment } from "../runtime/environment";
 import { sourceIntakeStatements } from "./statements/source-intake";
 import { registerReportStatements } from "./statements/register-report";
 import { reportComparisonStatements, reportFamilyStatements } from "./statements/reports";
@@ -59,12 +55,6 @@ import { bankSourceCoverageStatements } from "./statements/bank-source-coverage"
 import { bankSignoffStatements } from "./statements/bank-signoffs";
 import { bankInventorySignoffStatements } from "./statements/bank-inventory-signoffs";
 import { taxAccountStatements } from "./statements/tax-account";
-
-const PostgresFailure = Schema.Struct({
-  code: Schema.String,
-  detail: Schema.optional(Schema.String),
-  message: Schema.optional(Schema.String),
-});
 
 const statements = {
   ...crmMasterStatements,
@@ -402,60 +392,23 @@ const statements = {
 
 export type DatabaseOperation = keyof typeof statements;
 
-function queryFailure(error: EffectDrizzleQueryError) {
-  const nested = Cause.isCause(error.cause) ? Cause.findErrorOption(error.cause) : Option.none();
-  if (Option.isNone(nested) || !SqlError.isSqlError(nested.value)) return failure("InternalError");
-  const cause = nested.value.reason.cause;
-  if (Schema.is(PostgresFailure)(cause)) {
-    if (cause.code === "P0001" && Schema.is(Accounting.FailureCode)(cause.detail)) {
-      // Expose only intentional domain messages, never Drizzle's query or bound parameters.
-      return new Accounting.AccountingError({
-        code: cause.detail,
-        message: cause.message ?? failure(cause.detail).message,
-      });
-    }
-    if (
-      // Socket failures retain Node error codes rather than PostgreSQL SQLSTATEs.
-      ["ECONNRESET", "EPIPE", "ETIMEDOUT"].includes(cause.code) ||
-      cause.code.startsWith("08") ||
-      cause.code.startsWith("53") ||
-      ["57014", "57P01", "57P02", "57P03"].includes(cause.code)
-    ) {
-      return failure("Unavailable");
-    }
-    return failure("InternalError");
-  }
-  return failure("Unavailable");
-}
-
 export function query<A>(
   operation: DatabaseOperation,
   parameters: Array<string>,
   schema: Schema.Decoder<A>,
-) {
+): Effect.Effect<A, Accounting.AccountingError, RequestEnvironment>;
+export function query<A>(
+  operation: DatabaseOperation,
+  parameters: Array<string>,
+  schema: Schema.Decoder<A>,
+): Effect.Effect<A, Accounting.AccountingError, RequestEnvironment | Database> {
   return Effect.gen(function* () {
-    const { bindings } = yield* RequestEnvironment;
-    const connectionString = bindings.HYPERDRIVE?.connectionString || bindings.DATABASE_URL;
-    if (!connectionString) return yield* failure("Unavailable");
-
-    return yield* Effect.gen(function* () {
-      const db = yield* Database;
-      const result = yield* db
-        .execute<{ result: unknown }>(statements[operation](parameters), "objects")
-        .pipe(Effect.mapError(queryFailure));
-      return yield* Schema.decodeUnknownEffect(schema)(result[0]?.result).pipe(
-        Effect.mapError(() => failure("InternalError")),
-      );
-    }).pipe(
-      Effect.provide(
-        databaseLayer({
-          connectionString: Redacted.make(connectionString),
-          applicationName: "open-erp-api",
-          connectTimeoutMs: 5000,
-          statementTimeoutMs: 15000,
-        }),
-      ),
-      Effect.mapError((error) => (SqlError.isSqlError(error) ? failure("Unavailable") : error)),
+    const db = yield* Database;
+    const result = yield* db
+      .execute<{ result: unknown }>(statements[operation](parameters), "objects")
+      .pipe(Effect.mapError(databaseFailure));
+    return yield* Schema.decodeUnknownEffect(schema)(result[0]?.result).pipe(
+      Effect.mapError(() => failure("InternalError")),
     );
   });
 }

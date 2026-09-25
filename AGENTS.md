@@ -25,9 +25,11 @@ This repository is the starting point for the OpenERP product.
 - Create a request-scoped QueryClient through the TanStack Start router integration.
 - Validate API responses and inputs with contracts from `packages/contracts`.
 - Keep backend workflows in Effect and run them only at an owning Worker or Bun runtime boundary.
-- Use Drizzle's Effect PostgreSQL adapter for application database access. Reuse `apps/api/src/db/connection.ts` and typed table mappings in `apps/api/src/db/schema.ts`.
+- Use the native Effect/Drizzle PostgreSQL adapter for application database access. Reuse `apps/api/src/db/connection.ts` and typed table mappings in `apps/api/src/db/schema.ts`; pass the caller's transaction through nested persistence.
 - Better Auth owns browser authentication. Its official Drizzle adapter uses Promise queries through the same scoped PostgreSQL connection acquisition; accounting workflows remain native Effect. Keep API tokens for automation and book authorization in the backend.
-- Keep accounting transitions and database constraints in the versioned SQL setup. The runtime role calls approved functions; it does not gain direct table writes through Drizzle.
+- The application process owns accounting policy, authorization, calculations and scoped writes. PostgreSQL owns the reviewed DDL, constraints, grants and the narrow integrity layer; it does not own feature workflows through stored functions. The runtime role has only the scoped table/column permissions required by the application.
+- Use one book-scoped financial transaction for each atomic posting, correction or other financial group. Lock authority before the book, then periods/accounts, domain resources, approval and counters. Financial transactions use no session-level tenant context or advisory locks.
+- Use [ADR 0009](docs/adr/0009-effect-mq-background-jobs.md) and [ADR 0010](docs/adr/0010-application-owned-accounting-replacement.md) for durable work and the application-owned replacement. effect-mq owns queue claims, retries and leases in a separate Bun process; the application owns outbox intent, business progress, current authority, cancellation versions and financial receipts.
 
 ## Interface rules
 

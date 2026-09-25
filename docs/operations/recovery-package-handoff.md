@@ -1,5 +1,7 @@
 # Recovery package handoff — OPS-01 / OPS-02 / OPS-04
 
+This handoff records the current pre-cutover source. [ADR 0010](../adr/0010-application-owned-accounting-replacement.md) supersedes its old migration, function and compatibility instructions for the replacement: the new release uses a clean three-file baseline, application-owned operations and the effect-mq closure described in [ADR 0009](../adr/0009-effect-mq-background-jobs.md). The historical source results and limitations below remain intact.
+
 ## Release state
 
 Implementation-ready for root review and serialized static validation. This package has **not** been formatted, type-checked, linted or run by the worker because the assignment prohibits worker process creation. Prior v1 static results do not cover these changes. No backup/restore, database read/write, server, migration, test/fixture, credential change or external action was performed. No Git commands were used.

@@ -12,6 +12,8 @@ The status describes a decision's authority, not implementation progress. “Est
 | [0006](0006-customer-workspaces.md)                      | Working decision                | One customer application with shared records, task-based navigation and audience-specific starting views.    |
 | [0007](0007-domain-and-jurisdiction-layout.md)           | Accepted repository structure   | Separate accounting models, Swedish calculations, application workflows and runtime/transport adapters.      |
 | [0008](0008-financial-fx-vat-impairment.md) | Adopted working design | Commerce-owned paired FX balances, distinct VAT operations and atomic impairment/schedule effects. |
+| [0009](0009-effect-mq-background-jobs.md) | Accepted design; implementation pending | effect-mq PostgreSQL jobs on a persistent Bun worker, dispatched through the application outbox. |
+| [0010](0010-application-owned-accounting-replacement.md) | Accepted replacement decision; implementation pending | Application-owned accounting, clean three-file baseline, no compatibility path, narrow SQL integrity and full caller cutover. |
 
 The separately authored [Swedish VAT profile boundary](0002-swedish-vat-profile-boundary.md) also uses the number 0002 in its filename. Refer to it by title and full filename to distinguish it from the posting ADR. It records a bounded research profile and source limitations; it does not activate statutory support.
 

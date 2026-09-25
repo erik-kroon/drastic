@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import * as Accounting from "@open-erp/contracts/accounting";
 import {
   approve,
+  database,
   decoded,
   emptyPosting,
   execute,
@@ -66,7 +67,7 @@ test("review is read-only; posting preserves exact money beyond Number.MAX_SAFE_
   await saveEvidence("exact-money", book);
 });
 
-test("concurrent retries and receipt recovery converge on one committed posting", async () => {
+test("same-key replay after approval consumption and concurrent retries returns one committed posting", async () => {
   const book = await fixture();
   const plan = await prepare(book);
   const approval = await approve(book, plan);
@@ -85,6 +86,7 @@ test("concurrent retries and receipt recovery converge on one committed posting"
     ),
   );
   for (const receipt of receipts) expect(receipt).toEqual(receipts[0]);
+  expect(await persisted(book)).toEqual(onePosting);
   expect(
     await decoded(await request(book, `/receipts/${idempotencyKey}`), Accounting.ExecutionReceipt),
   ).toEqual(receipts[0]);
@@ -107,6 +109,44 @@ test("concurrent retries and receipt recovery converge on one committed posting"
   );
   expect(await persisted(book)).toEqual(onePosting);
   await saveEvidence("retry", book);
+});
+
+test("same-key replay after approval expiry returns the original receipt", async () => {
+  const book = await fixture();
+  const plan = await prepare(book);
+  const approval = await approve(book, plan);
+  const idempotencyKey = key();
+  const command = {
+    method: "POST",
+    headers: { "idempotency-key": idempotencyKey },
+    body: JSON.stringify(execution(plan, approval)),
+  };
+  const receipt = await decoded(
+    await request(book, `/change-sets/${plan.id}/execute`, command),
+    Accounting.ExecutionReceipt,
+  );
+  const admin = await database();
+  try {
+    await admin.query("ALTER TABLE openerp.approvals DISABLE TRIGGER ALL");
+    try {
+      const expired = await admin.query(
+        "UPDATE openerp.approvals SET expires_at = clock_timestamp() - interval '1 second' WHERE book_id = $1 AND id = $2",
+        [book.bookId, approval.id],
+      );
+      expect(expired.rowCount).toBe(1);
+    } finally {
+      await admin.query("ALTER TABLE openerp.approvals ENABLE TRIGGER ALL");
+    }
+  } finally {
+    await admin.end();
+  }
+  expect(
+    await decoded(
+      await request(book, `/change-sets/${plan.id}/execute`, command),
+      Accounting.ExecutionReceipt,
+    ),
+  ).toEqual(receipt);
+  expect(await persisted(book)).toEqual(onePosting);
 });
 
 test("linked reversal cancels balances and preserves the original voucher", async () => {

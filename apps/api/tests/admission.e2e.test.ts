@@ -2,7 +2,9 @@ import { expect, test } from "vitest";
 import * as Accounting from "@open-erp/contracts/accounting";
 import {
   approve,
+  createSession,
   database,
+  deleteSession,
   emptyPosting,
   evidence,
   execution,
@@ -12,6 +14,7 @@ import {
   persisted,
   prepare,
   request,
+  sealedPlans,
 } from "./support/fixtures";
 
 test("cross-book reads and agent approval cannot cross authority boundaries", async () => {
@@ -37,6 +40,76 @@ test("cross-book reads and agent approval cannot cross authority boundaries", as
   );
   expect(await persisted(owner)).toEqual(emptyPosting);
   expect(await persisted(outsider)).toEqual(emptyPosting);
+});
+
+test("credential revocation between approval and execution produces no posting", async () => {
+  const book = await fixture();
+  const plan = await prepare(book);
+  const approval = await approve(book, plan);
+  const admin = await database();
+  try {
+    const revoked = await admin.query(
+      "UPDATE openerp.credentials SET revoked_at = clock_timestamp() WHERE actor_id = $1",
+      [book.agentId],
+    );
+    expect(revoked.rowCount).toBe(1);
+  } finally {
+    await admin.end();
+  }
+  await failure(
+    await request(book, `/change-sets/${plan.id}/execute`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${book.agentToken}` },
+      body: JSON.stringify(execution(plan, approval)),
+    }),
+    401,
+    "Unauthorized",
+  );
+  expect(await persisted(book)).toEqual(emptyPosting);
+});
+
+test("deleting the current Better Auth session invalidates execution without posting", async () => {
+  const book = await fixture();
+  const session = await createSession(book);
+  const currentSession = { ...book, token: session.token };
+  const plan = await prepare(currentSession);
+  const approval = await approve(currentSession, plan);
+  expect(await deleteSession(session.id)).toBe(1);
+  await failure(
+    await request(currentSession, `/change-sets/${plan.id}/execute`, {
+      method: "POST",
+      body: JSON.stringify(execution(plan, approval)),
+    }),
+    401,
+    "Unauthorized",
+  );
+  expect(await persisted(book)).toEqual(emptyPosting);
+});
+
+test("removing approver membership between approval and execution produces no posting", async () => {
+  const book = await fixture();
+  const plan = await prepare(book);
+  const approval = await approve(book, plan);
+  const admin = await database();
+  try {
+    const deleted = await admin.query(
+      "DELETE FROM openerp.memberships WHERE book_id = $1 AND actor_id = $2",
+      [book.bookId, book.actorId],
+    );
+    expect(deleted.rowCount).toBe(1);
+  } finally {
+    await admin.end();
+  }
+  await failure(
+    await request(book, `/change-sets/${plan.id}/execute`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${book.agentToken}` },
+      body: JSON.stringify(execution(plan, approval)),
+    }),
+    403,
+    "ApprovalRequired",
+  );
+  expect(await persisted(book)).toEqual(emptyPosting);
 });
 
 test.each([
@@ -111,6 +184,28 @@ test.each(["-1", "1.5", "01", "1e3", "100000000000000000000000000000000000000"])
     expect(await persisted(book)).toEqual(emptyPosting);
   },
 );
+
+test("duplicate JSON keys are rejected before sealing", async () => {
+  const book = await fixture();
+  const source = await evidence(book);
+  const body = `${JSON.stringify(journal(source.id)).slice(0, -1)},"rationale":"duplicate"}`;
+  const response = await request(book, "/change-sets", { method: "POST", body });
+  expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({ message: "JSON object keys must be unique." });
+  expect(await sealedPlans(book)).toBe(0);
+});
+
+test("unsafe JSON number money is rejected before sealing", async () => {
+  const book = await fixture();
+  const source = await evidence(book);
+  const quoted = JSON.stringify(journal(source.id));
+  const unsafe = quoted.replace('"debitMinor":"12500"', '"debitMinor":9007199254740993');
+  expect(unsafe).not.toBe(quoted);
+  const response = await request(book, "/change-sets", { method: "POST", body: unsafe });
+  expect(response.status).toBe(400);
+  expect(await response.text()).toBe("");
+  expect(await sealedPlans(book)).toBe(0);
+});
 
 test("unbalanced lines and missing evidence reject without journaling", async () => {
   const book = await fixture();

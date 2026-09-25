@@ -1,6 +1,6 @@
 # Local development
 
-Run the web app and API Worker against an isolated PostgreSQL 17 database. Use the Bun version pinned in the root `package.json`. These steps are for development records, not an existing company database.
+Run the web app and API Worker against an isolated PostgreSQL 17 database. Use the Bun version pinned in the root `package.json`. These steps describe the current development distribution, not an existing company database. The application-owned replacement is specified in [ADR 0010](adr/0010-application-owned-accounting-replacement.md) and has not been implemented; after cutover, the clean database is created with `0001-schema.sql`, `0002-integrity.sql` and `0003-roles.sql`, with no old-schema upgrade or automatic reset. The selected [ADR 0009](adr/0009-effect-mq-background-jobs.md) Bun runner is also not wired into these commands yet.
 
 Run commands from the repository root unless noted. Create the database with your PostgreSQL administration tool before migrating it.
 
@@ -14,7 +14,7 @@ export DATABASE_ADMIN_URL='postgresql://owner:password@127.0.0.1:5432/openerp_de
 bun run --cwd apps/api db:migrate
 ```
 
-Applied migration checksums are enforced. Add a forward migration instead of editing one that has already run.
+Applied migration checksums are enforced. In the current checkout, add a forward migration instead of editing one that has already run. For the application-owned replacement, use the clean three-file baseline and recreate an explicitly disposable development database; do not add a compatibility migration for the superseded chain.
 
 ## 2. Configure the restricted runtime login
 

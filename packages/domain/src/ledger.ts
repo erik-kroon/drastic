@@ -27,6 +27,13 @@ export const Dependency = Schema.Struct({
   reason: Schema.String,
 });
 
+export const DependencyVersion = Schema.Struct({
+  dimension: Schema.Literals(["content", "posting_eligibility"]),
+  kind: Schema.String,
+  resourceId: Identifier,
+  version: Schema.String,
+});
+
 export const PostingAction = Schema.Struct({
   kind: Schema.Literal("post_voucher"),
   correctsVoucherId: Schema.NullOr(Identifier),
@@ -119,6 +126,27 @@ export const ExecutionReceipt = Schema.Struct({
   sequence: MinorUnits,
   voucherNumber: MinorUnits,
   committedAt: Schema.String,
+});
+
+export const GroupReceipt = Schema.Struct({
+  id: Identifier,
+  changeSetId: Identifier,
+  groupId: Identifier,
+  planDigest: Digest,
+  executionReceipts: Schema.Array(ExecutionReceipt).check(Schema.isMinLength(1)),
+  committedAt: Schema.String,
+});
+
+export const ApprovalConsumption = Schema.Struct({
+  id: Identifier,
+  approvalId: Identifier,
+  changeSetId: Identifier,
+  groupId: Identifier,
+  planDigest: Digest,
+  receiptId: Identifier,
+  approverId: Identifier,
+  consumedById: Identifier,
+  consumedAt: Schema.String,
 });
 
 export const Voucher = Schema.Struct({

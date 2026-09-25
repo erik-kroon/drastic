@@ -1,6 +1,6 @@
 # Restricted application recovery: root decision and operator procedure
 
-Status: blocked at a shared admission boundary. The local CLI does not grant an inspection role, start a Worker, change Better Auth, enable ordinary database connections, or activate writers/providers.
+Status: blocked at a shared admission boundary. The local CLI does not grant an inspection role, start a Worker, change Better Auth, enable ordinary database connections, or activate writers/providers. This page covers the current pre-cutover source; the clean application-owned baseline and queue recovery boundary are defined in [ADR 0010](../adr/0010-application-owned-accounting-replacement.md).
 
 ## Observed source boundary
 
@@ -42,5 +42,5 @@ No new test or fixture files are needed for this operator procedure. No step has
 
 The local [durable work inventory](durable-work-recovery.md) does not resolve this blocker.
 Its suspension report preserves pending outbox counters, jobs and saved outcomes for review,
-but grants no application/Workflow/provider access. Keep restored sessions inactive and
+but grants no application/queue/provider access. Keep restored sessions inactive and
 workers fenced even when its local inventory comparison is `matched`.

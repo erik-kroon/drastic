@@ -1,6 +1,6 @@
 # ADR 0002: exact posting and immutable approval
 
-Status: working decision with partial implementation and incomplete acceptance evidence. [ADR 0004](0004-complete-accounting-delivery-contract.md) amends the original side-plus-value wire choice to retain the implemented paired fields. The detailed meaning and invariant IDs live in [domain](../domain.md).
+Status: working decision with partial implementation and incomplete acceptance evidence. [ADR 0004](0004-complete-accounting-delivery-contract.md) amends the original side-plus-value wire choice to retain the implemented paired fields. The detailed meaning and invariant IDs live in [domain](../domain.md). [ADR 0010](0010-application-owned-accounting-replacement.md) supersedes the implementation/compatibility ownership while retaining the exact posting, approval, receipt and correction requirements.
 
 ## Decision
 
@@ -9,6 +9,10 @@ Use one PostgreSQL accounting authority per statutory book. Posted lines carry p
 Approve a stored immutable change-set revision, digest and selected immutable groups. Recheck relevant row and collection dependencies inside execution. Use one short transaction per atomic group with a book mutation barrier, transactional voucher/commit counters, approval consumption, receipt and outbox. Return prior receipts for equal retries; conflicting key reuse fails.
 
 Use an explicit year opening set plus within-year movements. Snapshot cutoffs follow committed book order. Corrections append linked effects and retain originals in sums. Approval and human display consume the same sealed plan.
+
+## Implementation ownership replacement
+
+The earlier function-only write model is not the target architecture. Under [ADR 0010](0010-application-owned-accounting-replacement.md), application operations own policy, authorization, calculations, one short book-scoped transaction and direct scoped writes. PostgreSQL keeps relational records, DDL, constraints, grants, row locks, the narrow voucher/seal integrity layer and durable receipts. The clean replacement has no old-schema adapter, old-digest interpreter, dual writer or fallback SQL path. The one-book atomicity, approval binding, receipt recovery, semantic uniqueness, immutable history and correction requirements above remain unchanged.
 
 ## Alternatives and consequences
 
@@ -22,4 +26,4 @@ The book barrier intentionally trades per-book write concurrency for a simple co
 
 ## Open details and proof
 
-[Shared contracts](../plans/00-shared-contracts.md) now select the adapter ownership, bounds, digest compatibility, lock order and public error/retry semantics. D-02/D-03/D-05 retain the actual runtime, vector and transport compatibility proof gates. Executable schemas remain owned by `packages/contracts`. [E-01–E-11](../verification.md#foundation-and-posting-scenarios) cover the initial behavior, and period/opening scenarios extend it. A schema check or build is not this proof.
+[Shared contracts](../plans/00-shared-contracts.md) now select the adapter ownership, bounds, canonicalization, lock order and public error/retry semantics. [ADR 0010](0010-application-owned-accounting-replacement.md) records the clean-baseline and no-compatibility cutover. D-02/D-03/D-05 retain the actual runtime, vector and transport proof gates. Executable schemas remain owned by `packages/contracts`. [E-01–E-11](../verification.md#foundation-and-posting-scenarios) cover the initial behavior, and period/opening scenarios extend it. A schema check or build is not this proof.

@@ -1,6 +1,6 @@
 # Verification plan
 
-Status: acceptance scenarios designed; partial implementation, existing synthetic suites and bounded runtime evidence exist, but complete phase gates remain open. This file is a reviewable plan, not test code. [AGENTS.md](../AGENTS.md) requires explicit approval for test additions ([D-09](open-decisions.md)); inspect the relevant implementation task's actual authorization before changing tests. Examples alone do not establish acceptance.
+Status: acceptance scenarios designed; partial implementation, existing synthetic suites and bounded runtime evidence exist, but complete phase gates remain open. This file is a reviewable plan, not test code. [ADR 0010](adr/0010-application-owned-accounting-replacement.md) adds the clean-baseline, application-transaction, caller-cutover and effect-mq proof gates without changing the financial scenario IDs. [AGENTS.md](../AGENTS.md) requires explicit approval for test additions ([D-09](open-decisions.md)); inspect the relevant implementation task's actual authorization before changing tests. Examples alone do not establish acceptance.
 
 The [seven-area acceptance plan](plans/09-acceptance.md) adds concrete fixture outcomes, packet traceability and required artifacts without adding test code or claiming an existing suite covers every scenario.
 
@@ -36,7 +36,7 @@ The [verification strategy](verification-strategy.md) defines runner ownership, 
 | E-17 | Duplicate delivery, failed middle group, expired approval and changed supplier identity under a recurring rule.            | Applied groups remain applied; pending groups resume only with current authority; stale treatment cannot silently broaden.               | R-06, R-10; I-05–I-08        |
 | E-18 | Unsupported SIE correction/encoding/dimension record; iXBRL that parses but has wrong semantic facts.                      | Explicit diagnostic or correct preservation; structural parse alone cannot pass the artifact gate.                                       | R-02, R-08; I-12             |
 | E-19 | Provider accepts upload then times out, or still awaits required signature.                                                | Unknown/pending state; provider lookup precedes resubmission; no false accepted/fulfilled status.                                        | R-08; I-12                   |
-| E-20 | Worker/Bun success, connection failure, cancellation and restart; migration applied twice.                                 | Consistent operation semantics, scoped cleanup, honest commit uncertainty and safe migration rerun.                                      | R-12; I-07, I-08             |
+| E-20 | Worker/Bun success, connection failure, cancellation and restart; the clean baseline is rerun, a recorded checksum drifts, or an old installation is presented. | Consistent operation semantics, scoped cleanup, honest commit uncertainty, effective grants, safe clean-baseline rerun and refusal of the old installation without modification. | R-12; I-07, I-08             |
 | E-21 | Restore database and evidence archive; old writer wakes after cutover.                                                     | Original links, balances, approvals, rules and receipts reconstruct; obsolete writer is refused.                                         | R-01, R-12; I-01, I-10, I-12 |
 
 ## Evidence artifact for every E2E run

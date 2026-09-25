@@ -2,11 +2,7 @@
 
 ## Scope and failure contract recorded before implementation
 
-Extend the local recovery bundle, not the application or provider runtime. New captures
-retain a bounded, snapshot-consistent inventory of outbox delivery counters, durable
-preparation jobs/run checkpoints and saved posting outcomes. Restore compares the same
-inventory and records database quarantine separately from unknown external worker/provider
-state. No command claims, resumes, stops or rewrites a job. No migration is needed.
+Extend the local recovery bundle, not the application or provider runtime. This document first records the current pre-cutover durable-work inventory: outbox delivery counters, durable preparation jobs/run checkpoints and saved posting outcomes. Restore compares the same inventory and records database quarantine separately from unknown external worker/provider state. No command claims, resumes, stops or rewrites a job. The current source needs no migration for this inventory; the application-owned replacement later adds its queue tables to the new baseline.
 
 ```text
 one exported snapshot -> private durable-work inventory -> manifest file hash
@@ -20,8 +16,9 @@ Source-review acceptance cases (not tests):
   owned relations, unsupported retained states, broken scoped links, over-limit inventories
   and partial output. Every included family is complete, not a truncated pending page.
 - Retain attempt counters and checkpoints without calling them provider attempt receipts.
-  The current schema has no individual outbox attempt ledger or remote Workflow history;
-  report this lack of evidence even when all local queues are empty or marked delivered.
+  The current pre-cutover schema has no effect-mq queue history; report that limitation
+  even when all local preparation jobs are empty or marked delivered. After cutover,
+  capture the selected queue store's own claims/retries/attempt history separately.
 - Do not expose credential hashes, sessions, raw command/outbox payloads, blocker text or
   provider tokens in the inventory or diagnostics. Preserve identifiers/digests and states.
 - Extend v1 RecoveryPlan and v2 BackupManifest/RestoreReceipt additively. New backups
@@ -40,6 +37,12 @@ Source-review acceptance cases (not tests):
 - No production promotion, new runtime admission, external calls, provider reconciliation,
   changed financial authority, test/helper/fixture or runtime exercise is authorized.
 
+## Post-replacement queue boundary
+
+[ADR 0009](../adr/0009-effect-mq-background-jobs.md) makes effect-mq the durable-delivery owner. At the application-owned cutover, include the pinned PostgreSQL queue schema and its claims, leases, retries and attempt history in the same clean baseline and recovery closure as the application outbox and business progress. effect-mq may redeliver or reclaim work; it cannot replace application receipts, current authority, cancellation versions or financial correction semantics. The queue's session-preserving listener is operational state, not financial transaction context.
+
+Keep the pre-cutover preparation-job and saved-posting inventory rows where they remain meaningful, and label old bundles as historical. New bundles must distinguish queue bookkeeping, application outbox intent, domain progress and provider outcomes. No queue row is inferred to be a provider receipt, and no remote worker is assumed stopped merely because the database is quarantined.
+
 ## Implemented producer and consumer path
 
 `packages/contracts/src/operations.ts` adds version1 work inventory/summary and suspension
@@ -54,7 +57,7 @@ workers or reconciled provider outcomes. Omission remains explicit as `null`.
 | --- | --- | --- |
 | `outbox` | Complete scoped IDs, receipt/kind, timestamps, attempts counter, payload hash | Delivered timestamp is not an external provider receipt; nonzero attempts do not establish their outcomes |
 | `preparation_runs` | Complete scoped IDs, state, cursor, selected-row count, latest audit ordinal | Current actor authority or valid future resumption |
-| `preparation_jobs` | Complete scoped IDs, run, requester/executor, state, checkpoint, expected audit and timestamps | Remote Workflow existence/state/retry count, valid restored credentials |
+| `preparation_jobs` | Complete scoped IDs, run, requester/executor, state, checkpoint, expected audit and timestamps | Current pre-cutover source has no effect-mq queue history; valid restored credentials remain a separate check |
 | `posting_saved_requests` | Complete scoped keys/actors, operation/digest, command key, saved outcome and command-receipt presence | No outcome is not rollback; a receipt without saved outcome does not justify another execution |
 
 Only identifiers, counters, state and digests enter the artifact. Raw command/outbox
@@ -111,7 +114,7 @@ success gates passed. That receipt binds the suspension report's exact file hash
 keeps application recovery blocked, connections disabled and writer promotion unperformed.
 
 The command does not call `pending_preparation_jobs`, `execute_preparation_job`, any
-posting dispatcher, Workflow API or provider. It does not stop/resume existing source
+posting dispatcher, effect-mq store, queue listener or provider. It does not stop/resume existing source
 processes or change the restored ready state. Database quarantine blocks ordinary restored
 runtime access; separately privileged superusers and already-running external/source work
 still require operator containment and reconciliation. Local zero pending counts cannot

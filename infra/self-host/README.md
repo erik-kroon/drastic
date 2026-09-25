@@ -1,8 +1,10 @@
 # Self-hosting OpenERP
 
-Run the current application and accounting API using Bun and PostgreSQL without a Cloudflare account. The same API implementation, contracts, restricted SQL transitions and readiness checks serve both runtimes. The Bun entrypoint serves the existing prerendered web build; it is not a new SSR or background-job implementation.
+Run the current application and accounting API using Bun and PostgreSQL without a Cloudflare account. The same API implementation, contracts and readiness checks serve both runtimes. The current Bun entrypoint serves the existing prerendered web build and does not run background jobs. [ADR 0010](../../docs/adr/0010-application-owned-accounting-replacement.md) selects application-owned accounting, a clean three-file baseline and a no-compatibility cutover; those changes are not implemented in this distribution.
 
-This is a development distribution of the current capabilities, not a production-ready accounting release. Object retention, durable outbox delivery, full statutory behavior and production recovery remain governed by the [delivery plan](../../docs/plans/README.md). Container execution must be qualified on the release platform; see [verification](VERIFICATION.md).
+[ADR 0009](../../docs/adr/0009-effect-mq-background-jobs.md) selects a separate persistent Bun process using effect-mq and PostgreSQL for background jobs in both hosted and self-host installations. The listener belongs to that process only; it is not a financial transaction session. The runner and its startup/health/shutdown integration remain implementation work, so the commands below describe the current distribution.
+
+This is a development distribution of the current capabilities, not a production-ready accounting release. Object retention, durable outbox delivery, full statutory behavior and production recovery remain governed by the [delivery plan](../../docs/plans/README.md). Container execution must be qualified on the release platform; see [verification](../../docs/verification.md).
 
 ## Container setup
 
@@ -58,7 +60,7 @@ API calls use the existing `/api/*` surface, including authenticated REST and `/
 
 ## Upgrade, stop and data retention
 
-Keep a verified database/evidence backup before upgrading. Review the migration delta and current release gates. Changing a previously applied migration correctly fails; do not bypass its checksum or discard the data volume to force startup. Existing authenticated accounting data is never seeded or reset by application startup.
+Keep a verified database/evidence backup before upgrading. Review the migration delta and current release gates. Changing a previously applied migration correctly fails; do not bypass its checksum or discard the data volume to force startup. Existing authenticated accounting data is never seeded or reset by application startup. The application-owned replacement is a clean reset for this unreleased product: install its three reviewed baseline files on an explicitly disposable database and refuse an old installation. There is no old-schema adapter, dual writer or compatibility window.
 
 Stop the app before an upgrade that changes schema or credentials, rebuild, then rerun the migration service before starting it:
 
