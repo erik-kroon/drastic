@@ -16,7 +16,8 @@
     "./statements": "./src/statements.ts",
     "./purchasing": "./src/purchasing.ts",
     "./owner-funding": "./src/owner-funding.ts",
-    "./exchange-rates": "./src/exchange-rates.ts"
+    "./exchange-rates": "./src/exchange-rates.ts",
+    "./period-work": "./src/period-work.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"
