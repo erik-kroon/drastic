@@ -115,7 +115,10 @@ export type LineageRow = {
 
 export type SizeRow = { readonly bytes: number };
 
+// The purchase recognition table is read only to refuse an independent admission
+// of components an owned recognition already published.
 export const factReadTables = [
+  "purchase_recognitions",
   "vat_fact_components",
   "vat_fact_revisions",
   "vat_return_drafts",

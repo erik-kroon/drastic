@@ -2,7 +2,9 @@ import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import * as Accounting from "./accounting";
 import * as Commerce from "./commerce";
+import * as Profiles from "./company-profiles";
 import * as Drafts from "./supplier-invoice-drafts";
+import * as Recognition from "./supplier-recognition";
 import { accountingErrors } from "./accounting-errors";
 
 const SharedSupplierAcceptanceFields = {
@@ -16,10 +18,13 @@ const SharedSupplierAcceptanceFields = {
   acknowledgeSyntheticOnly: Schema.Literal(true),
 };
 
+// A line assignment is a reviewed treatment decision, not a percentage. The
+// rate, deduction fraction, rounding and acceptance policy are the operator's
+// qualified choice and the compiler checks the asserted tax against them.
 export const SupplierLineAssignment = Schema.Struct({
   lineId: Accounting.Identifier,
   expenseAccountId: Accounting.Identifier,
-  vatRatePercent: Schema.Literals([0, 6, 12, 25]),
+  treatment: Recognition.ReviewedTreatment,
 });
 
 export const PrepareSyntheticSupplierAcceptance = Schema.Struct({
@@ -31,6 +36,7 @@ export const PrepareSyntheticSupplierAcceptance = Schema.Struct({
 export const PrepareSwedishSupplierAcceptance = Schema.Struct({
   profile: Schema.Literal("swedish-purchase-v1"),
   ...SharedSupplierAcceptanceFields,
+  taxPoint: Recognition.DraftTaxPoint,
   lineAssignments: Schema.Array(SupplierLineAssignment).check(
     Schema.isMinLength(1),
     Schema.isMaxLength(50),
@@ -73,11 +79,16 @@ export const SupplierAcceptanceReview = Schema.Struct({
         lineId: Accounting.Identifier,
         expenseAccountId: Accounting.Identifier,
         netMinor: Accounting.MinorUnits,
-        taxMinor: Accounting.MinorUnits,
-        vatRatePercent: Schema.Literals([0, 6, 12, 25]),
+        sourceTaxMinor: Accounting.MinorUnits,
+        sourceGrossMinor: Accounting.MinorUnits,
+        taxComponentId: Accounting.Identifier,
+        treatment: Recognition.ReviewedTreatment,
       }),
     ),
   ),
+  recognition: Schema.optional(Recognition.RecognitionPlan),
+  profileWitness: Schema.optional(Profiles.ProfileWitness),
+  profileGaps: Schema.optional(Schema.Array(Profiles.ProfileGap).check(Schema.isMaxLength(40))),
   inputVatAccountId: Schema.optional(Accounting.Identifier),
   legalBlockers: Schema.Array(Schema.String),
   createdAt: Schema.String,
@@ -118,6 +129,8 @@ export const SupplierAcceptanceReceipt = Schema.Struct({
   paid: Schema.Literal(false),
   postingReceipt: Accounting.ExecutionReceipt,
   registerInvoiceId: Accounting.Identifier,
+  recognitionId: Schema.NullOr(Accounting.Identifier),
+  taxFactIds: Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(50)),
   legalBlockers: Schema.Array(Schema.String),
   createdAt: Schema.String,
   receipt: Commerce.CommandReceipt,

@@ -17,12 +17,75 @@ import {
   executeChangeInTransaction,
 } from "../posting";
 import * as Shared from "./shared";
+import * as Recognition from "./recognition";
 
 type Scope = typeof Accounting.Scope.Type;
 
 type Json = Schema.Json;
 
 const ViewSchema = Credits.SupplierCreditView;
+
+type CreditSnapshot = typeof Credits.SupplierCreditSnapshot.Type;
+
+type JournalLine = {
+  readonly accountId: string;
+  readonly debitMinor: string;
+  readonly creditMinor: string;
+  readonly description: string;
+};
+
+// A synthetic credit is one explicit expense reversal. A purchase credit posts
+// the exact line releases its compiler produced.
+function creditJournalLines(snapshot: CreditSnapshot) {
+  if (snapshot.expenseAccountId) {
+    return [
+      {
+        accountId: snapshot.invoice.controlAccountId,
+        debitMinor: snapshot.amountMinor,
+        creditMinor: "0",
+        description: "Reduce supplier payable",
+      },
+      {
+        accountId: snapshot.expenseAccountId,
+        debitMinor: "0",
+        creditMinor: snapshot.amountMinor,
+        description: "Supplier credit expense",
+      },
+    ] satisfies ReadonlyArray<JournalLine>;
+  }
+
+  const payableDebit: JournalLine = {
+    accountId: snapshot.invoice.controlAccountId,
+    debitMinor: snapshot.amountMinor,
+    creditMinor: "0",
+    description: "Reduce supplier payable",
+  };
+
+  return [
+    payableDebit,
+    ...(snapshot.lineReleases ?? []).flatMap((release) => {
+      const lines: Array<JournalLine> = [
+        {
+          accountId: release.expenseAccountId,
+          debitMinor: "0",
+          creditMinor: release.expenseMinor,
+          description: `Supplier credit ${release.sourceLineId}`,
+        },
+      ];
+
+      if (BigInt(release.releasedDeductionMinor) > 0n && release.inputVatAccountId !== null) {
+        lines.push({
+          accountId: release.inputVatAccountId,
+          debitMinor: "0",
+          creditMinor: release.releasedDeductionMinor,
+          description: `Input VAT credit ${release.sourceLineId}`,
+        });
+      }
+
+      return lines;
+    }),
+  ];
+}
 
 const HistorySchema = Credits.SupplierCreditHistory;
 
@@ -45,6 +108,9 @@ const creditTables = [
   "supplier_credit_approvals",
   "supplier_credits",
   "supplier_payment_batch_items",
+  "purchase_recognitions",
+  "purchase_tax_facts",
+  "purchase_line_capacities",
 ];
 
 const maximumHistory = 50;
@@ -186,44 +252,9 @@ export const prepareSupplierCredit = Effect.fn("purchases.credits.prepare")(func
         return yield* failure("InvalidJournal");
       const snapshot = yield* creditSnapshot(tx, scope, input);
       const id = newId("supplier_credit_review");
+      const lines = creditJournalLines(snapshot);
 
-      const lines = [
-        {
-          accountId: snapshot.invoice.controlAccountId,
-          debitMinor: input.amountMinor,
-          creditMinor: "0",
-          description: "Reduce supplier payable",
-        },
-      ];
-
-      if (snapshot.expenseAccountId)
-        lines.push({
-          accountId: snapshot.expenseAccountId,
-          debitMinor: "0",
-          creditMinor: input.amountMinor,
-          description: "Supplier credit expense",
-        });
-      else {
-        for (const line of snapshot.creditLines ?? snapshot.originalLines ?? []) {
-          if (BigInt(line.netMinor) > 0n)
-            lines.push({
-              accountId: line.expenseAccountId,
-              debitMinor: "0",
-              creditMinor: line.netMinor,
-              description: `Supplier credit line ${line.lineId}`,
-            });
-        }
-
-        if (BigInt(snapshot.taxMinor) > 0n) {
-          if (!snapshot.inputVatAccountId) return yield* failure("InternalError");
-          lines.push({
-            accountId: snapshot.inputVatAccountId,
-            debitMinor: "0",
-            creditMinor: snapshot.taxMinor,
-            description: "Reduce input VAT",
-          });
-        }
-      }
+      if (lines.length < 2) return yield* failure("InvalidJournal");
 
       const postingPlan = yield* prepareJournalInTransaction(tx, principal, {
         scope,
@@ -238,7 +269,12 @@ export const prepareSupplierCredit = Effect.fn("purchases.credits.prepare")(func
           description: `Supplier credit ${input.supplierCreditNumber}`,
           rationale: input.reason,
           taxAssessment: "not_applicable",
-          lines,
+          lines: lines.map((line) => ({
+            accountId: line.accountId,
+            debitMinor: line.debitMinor,
+            creditMinor: line.creditMinor,
+            description: line.description,
+          })),
         },
       });
 
@@ -250,7 +286,6 @@ export const prepareSupplierCredit = Effect.fn("purchases.credits.prepare")(func
         snapshot,
         postingPlan,
         taxMinor: snapshot.taxMinor,
-        vatFactsCreated: false,
         createdAt: yield* isoNow(tx),
         receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
       };
@@ -399,6 +434,51 @@ export const executeSupplierCredit = Effect.fn("purchases.credits.execute")(func
 
       if (invoice.outstandingMinor === null) return yield* failure("StaleDependency");
 
+      const owned =
+        review.snapshot.recognitionId === undefined ||
+        review.snapshot.lineReleases === undefined ||
+        review.snapshot.taxAdjustments === undefined ||
+        invoice.counterpartyId === null
+          ? null
+          : yield* Recognition.recordCreditRecognitionInTransaction(tx, {
+              scope,
+              bookId: scope.bookId,
+              actorId: principal.actorId,
+              receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+              recognitionId: review.snapshot.recognitionId,
+              originalRecognitionId: review.snapshot.recognitionId,
+              invoiceId: invoice.id,
+              supplierCreditNumber: review.input.supplierCreditNumber,
+              reviewId,
+              approvalId: approval.id,
+              changeSetId: review.postingPlan.id,
+              voucherId: postingReceipt.voucherId,
+              counterpartyId: invoice.counterpartyId,
+              creditDate: review.input.creditDate,
+              taxPoint: {
+                taxPointOn: review.input.creditDate,
+                basis: "document_date",
+              },
+              creditGrossMinor: review.input.amountMinor,
+              releasedDeductionMinor: review.snapshot.lineReleases
+                .reduce((sum, release) => sum + BigInt(release.releasedDeductionMinor), 0n)
+                .toString(),
+              lineReleases: review.snapshot.lineReleases,
+              taxAdjustments: review.snapshot.taxAdjustments,
+              creditEvidence: review.snapshot.creditEvidence,
+              witness: review.snapshot.profileWitness ?? null,
+              gaps: [],
+            });
+
+      if (owned !== null) {
+        yield* Recognition.consumeLineCapacities(tx, {
+          bookId: scope.bookId,
+          recognitionId: review.snapshot.recognitionId ?? "",
+          recordedAt: owned.recordedAt,
+          releases: review.snapshot.lineReleases ?? [],
+        });
+      }
+
       const body = {
         id: newId("supplier_credit"),
         scope,
@@ -410,7 +490,8 @@ export const executeSupplierCredit = Effect.fn("purchases.credits.execute")(func
         creditDate: review.input.creditDate,
         amountMinor: review.input.amountMinor,
         taxMinor: review.taxMinor,
-        vatFactsCreated: false,
+        recognitionId: owned?.id ?? null,
+        taxFactIds: owned?.taxFactIds ?? [],
         originalAllocatedMinor: invoice.recordedAllocatedMinor,
         outstandingAfterMinor: (
           BigInt(invoice.outstandingMinor) - BigInt(review.input.amountMinor)

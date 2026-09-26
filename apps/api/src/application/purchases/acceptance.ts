@@ -1,5 +1,6 @@
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
+import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core/errors";
 import * as Effect from "effect/Effect";
 import type * as Schema from "effect/Schema";
 import { failure } from "../failures";
@@ -15,7 +16,10 @@ import {
   validatePlan,
 } from "../posting";
 import * as AcceptanceDb from "../../db/purchases/acceptance";
+import * as RecognitionDb from "../../db/purchases/recognition";
 import { createInvoiceInTransaction } from "../commerce/register";
+import * as RecognitionContract from "@open-erp/contracts/supplier-recognition";
+import * as Recognition from "./recognition";
 import * as Shared from "./shared";
 import { calculateSupplierDraft } from "./draft-calculation";
 
@@ -27,11 +31,29 @@ type Json = Schema.Json;
 
 type JsonObject = Schema.JsonObject;
 
+type Principal = Shared.Principal;
+
 const ReviewSchema = Acceptance.SupplierAcceptanceReview;
 
 const ApprovalSchema = Acceptance.SupplierAcceptanceApproval;
 
 const ViewSchema = Acceptance.SupplierAcceptanceView;
+
+type Plan = typeof RecognitionContract.RecognitionPlan.Type;
+
+type QueryFailure = Accounting.AccountingError | EffectDrizzleQueryError;
+
+type Review = typeof Acceptance.SupplierAcceptanceReview.Type;
+
+// The tax point is the reviewed date the sealed plan was compiled for.
+function taxPointOf(review: Review) {
+  const taxPointOn = review.recognition?.lines[0]?.taxPointOn;
+  const basis = "taxPoint" in review.input ? review.input.taxPoint.basis : null;
+
+  if (taxPointOn === undefined || basis === null) return null;
+
+  return { taxPointOn, basis };
+}
 
 const HistorySchema = Acceptance.SupplierAcceptanceHistory;
 
@@ -54,6 +76,9 @@ const acceptanceTables = [
   "supplier_acceptance_approvals",
   "supplier_acceptances",
   "bank_sources",
+  "purchase_recognitions",
+  "purchase_tax_facts",
+  "purchase_line_capacities",
 ];
 
 const acceptanceInserts = [
@@ -62,6 +87,9 @@ const acceptanceInserts = [
   "change_sets",
   "events",
   "command_receipts",
+  "purchase_recognitions",
+  "purchase_tax_facts",
+  "purchase_line_capacities",
 ];
 
 const legalBlockers = [
@@ -122,9 +150,122 @@ function tolerableBlocker(entry: Json) {
 
 type AcceptancePosting = {
   readonly lines: ReadonlyArray<JsonObject>;
-  readonly originalLines?: ReadonlyArray<JsonObject>;
+  readonly originalLines?: ReadonlyArray<Recognition.PurchaseLineSelection>;
+  readonly recognition?: Plan;
+  readonly profileWitness?: Json;
+  readonly profileGaps?: Json;
   readonly inputVatAccountId?: string;
 };
+
+const planJournalLines = (plan: Plan) =>
+  plan.journal.map((line) => ({
+    accountId: line.accountId,
+    debitMinor: line.debitMinor,
+    creditMinor: line.creditMinor,
+    description: line.description,
+  }));
+
+// The reviewed accounts must be real, active and outside the bank and control
+// roles before any amount is compiled for them.
+function purchaseAccounts(
+  transaction: Transaction,
+  bookId: string,
+  assignments: ReadonlyArray<{ readonly expenseAccountId: string }>,
+  control: string,
+  vat: string,
+): Effect.Effect<void, QueryFailure> {
+  return Effect.forEach(assignments, (assignment) =>
+    Effect.gen(function* () {
+      const account = (yield* AcceptanceDb.readExpenseAccount(
+        transaction,
+        bookId,
+        assignment.expenseAccountId,
+        [control, vat],
+      ))[0];
+
+      if (account === undefined || account.id !== assignment.expenseAccountId) {
+        return yield* failure("InvalidJournal");
+      }
+
+      if (
+        (yield* AcceptanceDb.readBankSourceConflict(transaction, bookId, [
+          assignment.expenseAccountId,
+        ]))[0]?.present === true ||
+        (yield* AcceptanceDb.readControlAccountConflict(
+          transaction,
+          bookId,
+          [assignment.expenseAccountId],
+          "supplier",
+        ))[0]?.present === true
+      ) {
+        return yield* failure("InvalidJournal");
+      }
+    }),
+  );
+}
+
+function purchaseRecognition(
+  transaction: Transaction,
+  scope: Scope,
+  book: { currency: string; currencyScale: number },
+  draft: JsonObject,
+  input: typeof Acceptance.PrepareSwedishSupplierAcceptance.Type,
+): Effect.Effect<AcceptancePosting, QueryFailure> {
+  return Effect.gen(function* () {
+    const control = (yield* AcceptanceDb.readBasAccount(transaction, scope.bookId, "2440"))[0]?.id;
+
+    const vat = (yield* AcceptanceDb.readBasAccount(transaction, scope.bookId, "2641"))[0]?.id;
+
+    if (control === null || control === undefined || control !== input.controlAccountId) {
+      return yield* failure("InvalidJournal");
+    }
+
+    if (vat === null || vat === undefined) return yield* failure("InvalidJournal");
+
+    const content = Shared.objectField(draft, "content");
+    const draftLines = Shared.arrayField(content, "lines");
+    const documentDate = Shared.textField(content, "documentDate");
+
+    if (documentDate === undefined || input.taxPoint.taxPointOn > documentDate) {
+      return yield* failure("InvalidJournal");
+    }
+
+    yield* purchaseAccounts(
+      transaction,
+      scope.bookId,
+      input.lineAssignments,
+      input.controlAccountId,
+      vat,
+    );
+
+    const compiled = yield* Recognition.compilePurchasePlan(transaction, scope, {
+      book,
+      content,
+      draftLines,
+      assignments: input.lineAssignments,
+      controlAccountId: input.controlAccountId,
+      inputVatAccountId: vat,
+      taxPoint: input.taxPoint,
+      recognitionDate: documentDate,
+    });
+
+    if (
+      compiled.plan.payableMinor !==
+      Shared.textField(Shared.objectField(draft, "totals"), "grossMinor")
+    ) {
+      return yield* failure("InvalidJournal");
+    }
+
+    return {
+      lines: planJournalLines(compiled.plan),
+      originalLines: compiled.selections,
+      recognition: compiled.plan,
+      profileWitness: compiled.witness,
+      profileGaps: compiled.gaps,
+      inputVatAccountId: compiled.inputVatAccountId,
+    } satisfies AcceptancePosting;
+  });
+}
 
 function acceptancePosting(
   transaction: Transaction,
@@ -132,64 +273,14 @@ function acceptancePosting(
   book: { currency: string; currencyScale: number },
   draft: JsonObject,
   input: typeof Acceptance.PrepareSupplierAcceptance.Type,
-) {
+): Effect.Effect<AcceptancePosting, QueryFailure> {
   return Effect.gen(function* () {
-    const gross = Shared.textField(Shared.objectField(draft, "totals"), "grossMinor") ?? "0";
-    const lines: JsonObject[] = [];
-
     if (input.profile === "swedish-purchase-v1") {
-      if (!("lineAssignments" in input)) return yield* failure("InvalidJournal");
-
       if (book.currency !== "SEK" || book.currencyScale !== 2) {
         return yield* Shared.unsupported();
       }
 
-      const detail = yield* purchaseLines(transaction, scope.bookId, draft, input);
-      let netTotal = 0n;
-      let taxTotal = 0n;
-
-      for (const line of detail.originalLines) {
-        const netMinor = Shared.textField(line, "netMinor") ?? "0";
-        const taxMinor = Shared.textField(line, "taxMinor") ?? "0";
-        lines.push({
-          accountId: Shared.textField(line, "expenseAccountId") ?? "",
-          debitMinor: netMinor,
-          creditMinor: "0",
-          description: `Supplier line ${Shared.textField(line, "lineId") ?? ""}`,
-        });
-        netTotal += BigInt(netMinor);
-        taxTotal += BigInt(taxMinor);
-      }
-
-      const totals = Shared.objectField(draft, "totals");
-
-      if (
-        netTotal.toString() !== Shared.textField(totals, "netMinor") ||
-        taxTotal.toString() !== Shared.textField(totals, "taxMinor") ||
-        taxTotal < 0n
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      if (taxTotal > 0n)
-        lines.push({
-          accountId: detail.inputVatAccountId,
-          debitMinor: taxTotal.toString(),
-          creditMinor: "0",
-          description: "Input VAT",
-        });
-      lines.push({
-        accountId: input.controlAccountId,
-        debitMinor: "0",
-        creditMinor: gross,
-        description: "Supplier payable",
-      });
-
-      return {
-        lines,
-        originalLines: detail.originalLines,
-        inputVatAccountId: detail.inputVatAccountId,
-      } satisfies AcceptancePosting;
+      return yield* purchaseRecognition(transaction, scope, book, draft, input);
     }
 
     if (!("debitAccountId" in input)) return yield* failure("InvalidJournal");
@@ -212,6 +303,8 @@ function acceptancePosting(
     ) {
       return yield* failure("InvalidJournal");
     }
+
+    const gross = Shared.textField(Shared.objectField(draft, "totals"), "grossMinor") ?? "0";
 
     return {
       lines: [
@@ -254,84 +347,6 @@ function readReview(transaction: Transaction, bookId: string, reviewId: string) 
 
 function readBook(transaction: Transaction, bookId: string) {
   return Shared.readBook(transaction, bookId);
-}
-
-function purchaseLines(
-  transaction: Transaction,
-  bookId: string,
-  draft: JsonObject,
-  input: typeof Acceptance.PrepareSwedishSupplierAcceptance.Type,
-) {
-  return Effect.gen(function* () {
-    const control = (yield* AcceptanceDb.readBasAccount(transaction, bookId, "2440"))[0]?.id;
-    const vat = (yield* AcceptanceDb.readBasAccount(transaction, bookId, "2641"))[0]?.id;
-
-    if (control === null || control === undefined || control !== input.controlAccountId) {
-      return yield* failure("InvalidJournal");
-    }
-
-    if (vat === null || vat === undefined) return yield* failure("InvalidJournal");
-    const draftLines = Shared.arrayField(Shared.objectField(draft, "content"), "lines");
-    const assignments = input.lineAssignments;
-
-    if (assignments.length !== draftLines.length) return yield* failure("InvalidJournal");
-    const lines: JsonObject[] = [];
-
-    for (const line of draftLines) {
-      const lineId = Shared.textField(line, "id") ?? "";
-      const matches = assignments.filter((assignment) => assignment.lineId === lineId);
-
-      if (matches.length !== 1) return yield* failure("InvalidJournal");
-      const assignment = matches[0];
-
-      if (assignment === undefined) return yield* failure("InvalidJournal");
-
-      const account = (yield* AcceptanceDb.readExpenseAccount(
-        transaction,
-        bookId,
-        assignment.expenseAccountId,
-        [control, vat],
-      ))[0];
-
-      const excluded = account === undefined || account.id !== assignment.expenseAccountId;
-
-      if (
-        excluded ||
-        (yield* AcceptanceDb.readBankSourceConflict(transaction, bookId, [
-          assignment.expenseAccountId,
-        ]))[0]?.present === true ||
-        (yield* AcceptanceDb.readControlAccountConflict(
-          transaction,
-          bookId,
-          [assignment.expenseAccountId],
-          "supplier",
-        ))[0]?.present === true
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const base = BigInt(Shared.textField(line, "baseMinor") ?? "0");
-      const discount = BigInt(Shared.textField(line, "discountMinor") ?? "0");
-      const charge = BigInt(Shared.textField(line, "chargeMinor") ?? "0");
-      const net = base - discount + charge;
-      const tax = BigInt(Shared.textField(line, "taxMinor") ?? "0");
-      const expected = (net * BigInt(assignment.vatRatePercent) + 50n) / 100n;
-
-      if (net <= 0n || tax < 0n || (tax >= expected ? tax - expected : expected - tax) > 1n) {
-        return yield* failure("InvalidJournal");
-      }
-
-      lines.push({
-        lineId,
-        expenseAccountId: assignment.expenseAccountId,
-        netMinor: net.toString(),
-        taxMinor: tax.toString(),
-        vatRatePercent: assignment.vatRatePercent,
-      });
-    }
-
-    return { originalLines: lines, inputVatAccountId: vat };
-  });
 }
 
 export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare")(function* (
@@ -436,6 +451,9 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
 
       const originalLines = posting.originalLines;
       const inputVatAccountId = posting.inputVatAccountId;
+      const recognition = posting.recognition;
+      const profileWitness = posting.profileWitness;
+      const profileGaps = posting.profileGaps;
 
       const plan = yield* prepareJournalInTransaction(transaction, principal, {
         scope: command.scope,
@@ -480,7 +498,21 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
 
       const extras: JsonObject[] = [];
 
-      if (originalLines !== undefined) extras.push({ originalLines });
+      if (originalLines !== undefined) {
+        extras.push({ originalLines: yield* Shared.toJsonObject(originalLines) });
+      }
+
+      if (recognition !== undefined) {
+        extras.push({ recognition: yield* Shared.toJsonObject(recognition) });
+      }
+
+      if (profileWitness !== undefined) {
+        extras.push({ profileWitness: yield* Shared.toJsonObject(profileWitness) });
+      }
+
+      if (profileGaps !== undefined) {
+        extras.push({ profileGaps: yield* Shared.toJsonObject(profileGaps) });
+      }
 
       if (inputVatAccountId !== undefined) extras.push({ inputVatAccountId });
       const body = Object.assign({}, bodyFields, ...extras);
@@ -731,6 +763,100 @@ export const approveSupplierAcceptance = Effect.fn("purchases.acceptance.approve
   );
 });
 
+// The reviewed supplier identity of one recognition. A second recognition of the
+// same economic key is refused; a further evidence document about it is not.
+const requireRecognitionIdentity = Effect.fn("purchases.acceptance.identity")(function* (
+  transaction: Transaction,
+  scope: Scope,
+  review: Review,
+) {
+  const documentNumber = review.draftSnapshot.content.supplierDocumentNumber;
+  const counterpartyId = review.draftSnapshot.content.counterpartyId;
+  const recognition = review.recognition;
+
+  if (
+    documentNumber === null ||
+    (recognition !== undefined &&
+      (review.originalLines === undefined ||
+        review.inputVatAccountId === undefined ||
+        taxPointOf(review) === null))
+  ) {
+    return yield* failure("InvalidJournal");
+  }
+
+  const key = Recognition.economicKey(counterpartyId, documentNumber);
+
+  if (
+    (yield* RecognitionDb.readCounterpartyDocumentRecognition(
+      transaction,
+      scope.bookId,
+      counterpartyId,
+      documentNumber,
+    ))[0]?.present === true
+  ) {
+    return yield* failure("AlreadyPosted");
+  }
+
+  return { key, documentNumber };
+});
+
+// The immutable recognition, its signed tax components and its original-line
+// capacities commit with the journal and the payable in the same transaction.
+const writeOwnedRecognition = Effect.fn("purchases.acceptance.writeRecognition")(function* (
+  transaction: Transaction,
+  command: {
+    readonly scope: Scope;
+    readonly principal: Principal;
+    readonly review: Review;
+    readonly approvalId: string;
+    readonly draft: Review["draftSnapshot"];
+    readonly key: string;
+    readonly voucherId: string;
+    readonly payableId: string;
+    readonly receipt: JsonObject;
+  },
+) {
+  const { review, draft } = command;
+  const plan = review.recognition;
+  const taxPoint = taxPointOf(review);
+
+  if (
+    plan === undefined ||
+    review.originalLines === undefined ||
+    review.inputVatAccountId === undefined ||
+    taxPoint === null
+  ) {
+    return null;
+  }
+
+  return yield* Recognition.recordRecognitionInTransaction(transaction, {
+    scope: command.scope,
+    bookId: command.scope.bookId,
+    actorId: command.principal.actorId,
+    receipt: command.receipt,
+    economicKey: command.key,
+    draftId: draft.id,
+    draftRevision: draft.revision,
+    draftDigest: draft.digest,
+    counterpartyId: draft.content.counterpartyId,
+    documentNumber: draft.content.supplierDocumentNumber ?? "",
+    reviewId: review.id,
+    approvalId: command.approvalId,
+    changeSetId: review.postingPlan.id,
+    voucherId: command.voucherId,
+    payableId: command.payableId,
+    recognitionDate: draft.content.documentDate ?? "",
+    taxPoint,
+    currency: draft.content.currency,
+    currencyScale: draft.content.currencyScale,
+    plan,
+    selections: review.originalLines,
+    inputVatAccountId: review.inputVatAccountId,
+    witness: review.profileWitness ?? null,
+    gaps: review.profileGaps ?? [],
+  });
+});
+
 export const executeSupplierAcceptance = Effect.fn("purchases.acceptance.execute")(function* (
   token: string,
   command: {
@@ -783,6 +909,8 @@ export const executeSupplierAcceptance = Effect.fn("purchases.acceptance.execute
           ?.present
       )
         return yield* failure("ApprovalRequired");
+
+      const identity = yield* requireRecognitionIdentity(transaction, scope, review);
 
       const kernel = yield* approveChangeInTransaction(transaction, principal, {
         scope,
@@ -837,6 +965,18 @@ export const executeSupplierAcceptance = Effect.fn("purchases.acceptance.execute
         },
       });
 
+      const owned = yield* writeOwnedRecognition(transaction, {
+        scope,
+        principal,
+        review,
+        approvalId: approval.id,
+        draft,
+        key: identity.key,
+        voucherId: postingReceipt.voucherId,
+        payableId: invoice.id,
+        receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+      });
+
       const body = {
         id: newId("supplier_acceptance"),
         scope,
@@ -847,12 +987,14 @@ export const executeSupplierAcceptance = Effect.fn("purchases.acceptance.execute
         draftId: draft.id,
         draftRevision: draft.revision,
         draftDigest: draft.digest,
-        supplierDocumentNumber: draft.content.supplierDocumentNumber,
+        supplierDocumentNumber: draft.content.supplierDocumentNumber ?? "",
         accepted: true,
         recognized: true,
         paid: false,
         postingReceipt,
         registerInvoiceId: invoice.id,
+        recognitionId: owned?.id ?? null,
+        taxFactIds: owned?.taxFactIds ?? [],
         legalBlockers: review.legalBlockers,
         createdAt: yield* isoNow(transaction),
         receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),

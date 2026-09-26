@@ -2,6 +2,8 @@ import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import * as Accounting from "./accounting";
 import * as Commerce from "./commerce";
+import * as Profiles from "./company-profiles";
+import * as Recognition from "./supplier-recognition";
 import { accountingErrors } from "./accounting-errors";
 
 export const PrepareSupplierCredit = Schema.Struct({
@@ -25,7 +27,7 @@ export const PrepareSupplierCredit = Schema.Struct({
       Schema.Struct({
         lineId: Accounting.Identifier,
         netMinor: Accounting.MinorUnits,
-        taxMinor: Accounting.MinorUnits,
+        sourceTaxMinor: Accounting.MinorUnits,
       }),
     ).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
   ),
@@ -46,33 +48,70 @@ export const ExecuteSupplierCredit = Schema.Struct({
   approvalId: Accounting.Identifier,
 });
 
+// A retained original source line of a recognized purchase. The deduction is
+// what the recognition actually recorded, and the credited amounts are what
+// earlier credits have already consumed of it.
+export const OriginalCreditLine = Schema.Struct({
+  lineId: Accounting.Identifier,
+  expenseAccountId: Accounting.Identifier,
+  netMinor: Accounting.MinorUnits,
+  sourceTaxMinor: Accounting.MinorUnits,
+  deductibleTaxMinor: Accounting.MinorUnits,
+  creditedNetMinor: Accounting.MinorUnits,
+  creditedSourceTaxMinor: Accounting.MinorUnits,
+  releasedDeductionMinor: Accounting.MinorUnits,
+  taxComponentId: Accounting.Identifier,
+  taxFactId: Accounting.Identifier,
+});
+
+// The reviewed request for one original line, before any release is compiled.
+export const CreditLineRequest = Schema.Struct({
+  lineId: Accounting.Identifier,
+  netMinor: Accounting.MinorUnits,
+  sourceTaxMinor: Accounting.MinorUnits,
+});
+
+// A negative signed purchase tax component this credit will append.
+export const CreditTaxAdjustment = Schema.Struct({
+  sourceLineId: Accounting.Identifier,
+  componentRole: Schema.Literal("input_tax"),
+  taxComponentId: Accounting.Identifier,
+  signedBaseMinor: Accounting.SignedMinorUnits,
+  signedOutputTaxMinor: Accounting.SignedMinorUnits,
+  signedDeductibleTaxMinor: Accounting.SignedMinorUnits,
+  sourceTaxMinor: Accounting.MinorUnits,
+  nonDeductibleTaxMinor: Accounting.MinorUnits,
+  basis: Recognition.DeductionBasis,
+  taxPointOn: Accounting.AccountingDate,
+  sourceRefs: Schema.Array(Recognition.SourceReference).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(20),
+  ),
+  adjustsTaxFactId: Accounting.Identifier,
+});
+
 export const SupplierCreditSnapshot = Schema.Struct({
   invoice: Commerce.Invoice,
   acceptanceDigest: Accounting.Digest,
   originalVoucherId: Accounting.Identifier,
   expenseAccountId: Schema.optional(Accounting.Identifier),
   inputVatAccountId: Schema.optional(Accounting.Identifier),
+  recognitionId: Schema.optional(Accounting.Identifier),
+  profileWitness: Schema.optional(Profiles.ProfileWitness),
   originalLines: Schema.optional(
-    Schema.Array(
-      Schema.Struct({
-        lineId: Accounting.Identifier,
-        expenseAccountId: Accounting.Identifier,
-        netMinor: Accounting.MinorUnits,
-        taxMinor: Accounting.MinorUnits,
-        vatRatePercent: Schema.Literals([0, 6, 12, 25]),
-      }),
-    ),
+    Schema.Array(OriginalCreditLine).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
   ),
   creditLines: Schema.optional(
-    Schema.Array(
-      Schema.Struct({
-        lineId: Accounting.Identifier,
-        expenseAccountId: Accounting.Identifier,
-        netMinor: Accounting.MinorUnits,
-        taxMinor: Accounting.MinorUnits,
-        vatRatePercent: Schema.Literals([0, 6, 12, 25]),
-      }),
+    Schema.Array(CreditLineRequest).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
+  ),
+  lineReleases: Schema.optional(
+    Schema.Array(Recognition.CreditLineRelease).check(
+      Schema.isMinLength(1),
+      Schema.isMaxLength(50),
     ),
+  ),
+  taxAdjustments: Schema.optional(
+    Schema.Array(CreditTaxAdjustment).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
   ),
   creditEvidence: Commerce.EvidenceReference,
   amountMinor: Commerce.CreateInvoice.fields.amountMinor,
@@ -94,7 +133,6 @@ export const SupplierCreditReview = Schema.Struct({
   snapshot: SupplierCreditSnapshot,
   postingPlan: Accounting.ChangeSet,
   taxMinor: Accounting.MinorUnits,
-  vatFactsCreated: Schema.Literal(false),
   createdAt: Schema.String,
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
@@ -122,7 +160,8 @@ export const SupplierCreditReceipt = Schema.Struct({
   creditDate: Accounting.AccountingDate,
   amountMinor: Commerce.CreateInvoice.fields.amountMinor,
   taxMinor: Accounting.MinorUnits,
-  vatFactsCreated: Schema.Literal(false),
+  recognitionId: Schema.NullOr(Accounting.Identifier),
+  taxFactIds: Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(50)),
   originalAllocatedMinor: Accounting.MinorUnits,
   outstandingAfterMinor: Accounting.MinorUnits,
   postingReceipt: Accounting.ExecutionReceipt,

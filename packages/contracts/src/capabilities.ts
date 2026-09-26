@@ -32,6 +32,7 @@ import { Sie4ECapabilities } from "./sie4e";
 import { InvoiceDraftCapabilities } from "./invoice-drafts";
 import { SupplierInvoiceDraftCapabilities } from "./supplier-invoice-drafts";
 import { SupplierAcceptanceCapabilities } from "./supplier-acceptance";
+import { PurchaseRecognitionCapabilities } from "./supplier-recognition";
 import { SupplierPaymentBatchCapabilities } from "./supplier-payment-batches";
 import { SupplierCreditCapabilities } from "./supplier-credits";
 import { SubledgerControlCapabilities } from "./subledger-controls";
@@ -107,6 +108,7 @@ export const Capabilities = {
   ...InvoiceDraftCapabilities,
   ...SupplierInvoiceDraftCapabilities,
   ...SupplierAcceptanceCapabilities,
+  ...PurchaseRecognitionCapabilities,
   ...SupplierPaymentBatchCapabilities,
   ...SupplierCreditCapabilities,
   ...SubledgerControlCapabilities,
