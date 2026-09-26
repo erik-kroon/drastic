@@ -21,6 +21,7 @@ The [open-accounting decision](adr/0005-open-accounting-and-managed-services.md)
 | [Compliance and interoperability](compliance.md)       | Which capabilities need dated rules, formats and external acceptance?                                    |
 | [Roadmap](roadmap.md)                                  | What has been observed, and what proves each phase complete?                                             |
 | [Accounting delivery plan](plans/README.md)            | What remains across posting, corrections, imports, commerce, accounting depth, year-end and operations?  |
+| [Reference parity backlog](plans/11-parity-backlog.md)  | What does the reference implementation still owe us, as work packets and preserved rule logic?             |
 | [FND-01 reconciliation](plans/fnd01-reconciliation.md) | Which contracts and callers exist, what must remain compatible, and what does the pinned evidence prove? |
 | [Verification scenarios](verification.md)              | Which failures must the real application withstand?                                                      |
 | [Verification strategy](verification-strategy.md)      | How should the runtime, browser and database produce repeatable evidence?                                |
