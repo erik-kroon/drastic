@@ -12,6 +12,7 @@
     "./company-profiles": "./src/company-profiles.ts",
     "./firms": "./src/firms.ts",
     "./workspace": "./src/workspace.ts",
+    "./recurring-invoices": "./src/recurring-invoices.ts",
     "./api": "./src/api.ts",
     "./system": "./src/system.ts",
     "./accounting": "./src/accounting.ts",
