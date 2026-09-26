@@ -11,6 +11,7 @@
     "./ledger": "./src/ledger.ts",
     "./canonicalization": "./src/canonicalization.ts",
     "./posting": "./src/posting.ts",
+    "./dimensions": "./src/dimensions.ts",
     "./books": "./src/books.ts",
     "./statements": "./src/statements.ts",
     "./exchange-rates": "./src/exchange-rates.ts"

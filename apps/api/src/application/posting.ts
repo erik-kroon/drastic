@@ -1,6 +1,10 @@
 import { equalJson } from "@open-erp/domain/canonicalization";
 import { admitPosting, type PostingOwner } from "./posting-admission";
 import { recordHistoricalOpening, readReservedCommand } from "../db/posting-admission";
+import {
+  applyOriginalAssignmentsInTransaction,
+  resolveAssignmentsInTransaction,
+} from "./dimensions/assignments";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { digest, versionedDigest } from "./json";
 import { resolveCompanyProfileInTransaction } from "./company-profiles";
@@ -727,7 +731,7 @@ export const prepareJournalInTransaction = Effect.fn("posting.prepareJournalInTr
         );
       }
 
-      const actionValue = {
+      const actionFields = {
         kind: "post_voucher" as const,
         correctsVoucherId: null,
         eventId,
@@ -751,8 +755,24 @@ export const prepareJournalInTransaction = Effect.fn("posting.prepareJournalInTr
         ],
       };
 
+      // A reviewed dimension policy travels with the proposal. A book with no
+      // dimension effective at the posting date carries none, and a line with
+      // none keeps exactly the shape it had.
+      const reviewed = command.input.dimensionPolicy;
+
+      const actionValue = reviewed
+        ? { ...actionFields, dimensionPolicy: [...reviewed] }
+        : actionFields;
+
       const action = yield* decode(ActionSchema, actionValue);
+
       yield* validateAction(transaction, command.scope, book, action);
+
+      // NEXT-14. Resolve and seal the original dimension assignment of every
+      // line before the proposal is hashed, so approval covers exactly the
+      // assignment set execution will retain.
+      const assigned = yield* resolveAssignmentsInTransaction(transaction, command.scope, action);
+
       const createdAt = yield* isoNow(transaction);
       const changeSetId = newId("change");
       const groupId = newId("group");
@@ -788,7 +808,7 @@ export const prepareJournalInTransaction = Effect.fn("posting.prepareJournalInTr
           {
             id: groupId,
             dependsOnGroupIds: [],
-            actions: [action],
+            actions: [assigned],
           },
         ],
       };
@@ -796,7 +816,7 @@ export const prepareJournalInTransaction = Effect.fn("posting.prepareJournalInTr
       const accountRows = yield* Db.readAccounts(
         transaction,
         command.scope.bookId,
-        action.lines.map((line) => line.accountId),
+        assigned.lines.map((line) => line.accountId),
       );
 
       const accountDependencies = accountRows.map((account) => ({
@@ -1201,6 +1221,13 @@ export const executeChangeInTransaction = Effect.fn("posting.execute")(function*
       })),
     );
 
+    // NEXT-14. The original dimension assignment of each line is retained in
+    // this same transaction, after the line it belongs to and before the
+    // receipt. The sealed assignments are re-resolved against the current
+    // catalogue first, so a change since approval refuses instead of
+    // re-classifying an approved posting.
+    yield* applyOriginalAssignmentsInTransaction(transaction, command.scope, action, voucherId);
+
     const receipt = yield* decode(ReceiptSchema, {
       id: newId("receipt"),
       changeSetId: plan.id,
@@ -1310,6 +1337,10 @@ export function sealActionInTransaction(
     const book = yield* readBook(transaction, scope);
     const period = yield* readPeriod(transaction, scope, action.accountingPeriodId);
     yield* validateAction(transaction, scope, book, action, allowLegal);
+    // NEXT-14. The original dimension assignments are resolved and sealed here,
+    // before the proposal is hashed, so every owner that seals a plan through
+    // this path carries the same reviewed assignment set.
+    const assigned = yield* resolveAssignmentsInTransaction(transaction, scope, action);
     const createdAt = yield* isoNow(transaction);
 
     const planWithoutDigest = {
@@ -1341,7 +1372,7 @@ export function sealActionInTransaction(
         ...(yield* Db.readAccounts(
           transaction,
           scope.bookId,
-          action.lines.map((line) => line.accountId),
+          assigned.lines.map((line) => line.accountId),
         )).map((account) => ({
           kind: "account" as const,
           resourceId: account.id,
@@ -1353,7 +1384,7 @@ export function sealActionInTransaction(
         {
           id: newId("group"),
           dependsOnGroupIds: [],
-          actions: [action],
+          actions: [assigned],
         },
       ],
     };

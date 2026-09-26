@@ -10,7 +10,10 @@ export const CorrectionIntent = Schema.Struct({
   rationale: Accounting.Description,
   replacement: Schema.Struct({
     description: Accounting.Description,
-    lines: Schema.Array(Accounting.JournalLine).check(
+    // NEXT-14. A replacement keeps the unaffected original assignments of the
+    // corrected voucher and explicitly reviews the changed ones. It never edits
+    // the original line and never inherits a classification silently.
+    lines: Schema.Array(Accounting.AssignableLine).check(
       Schema.isMinLength(2),
       Schema.isMaxLength(500),
     ),

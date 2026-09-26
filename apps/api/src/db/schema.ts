@@ -1,3 +1,4 @@
+import type { OriginalDimensionStatus } from "@open-erp/domain/dimensions";
 import type { IdentityProvisioning } from "@open-erp/contracts/identity";
 import type * as Recovery from "@open-erp/contracts/posting-recovery";
 import type * as Schema from "effect/Schema";
@@ -359,6 +360,30 @@ export const journalLines = openerp.table("journal_lines", {
   debitMinor: numeric("debit_minor", { mode: "string" }).notNull(),
   creditMinor: numeric("credit_minor", { mode: "string" }).notNull(),
   description: text().notNull(),
+});
+
+// NEXT-14. One immutable row per posted line and per dimension effective at that
+// line's posting date. Immutable original assignments are never rewritten, and
+// the four recorded states stay distinguishable.
+export const journalLineDimensions = openerp.table("journal_line_dimensions", {
+  bookId: text("book_id").notNull(),
+  voucherId: text("voucher_id").notNull(),
+  lineId: text("line_id").notNull(),
+  dimensionCode: text("dimension_code").notNull(),
+  dimensionRevision: integer("dimension_revision").notNull(),
+  // The reviewed baseline constrains this column to exactly the four original
+  // states, so the column carries that vocabulary rather than a bare string.
+  status: text().$type<OriginalDimensionStatus>().notNull(),
+  valueCode: text("value_code"),
+  valueRevision: integer("value_revision"),
+  capturedLabel: text("captured_label").notNull(),
+  exemptionEvidenceId: text("exemption_evidence_id"),
+  sourceValueCode: text("source_value_code"),
+  inheritedFromVoucherId: text("inherited_from_voucher_id"),
+  inheritedFromLineId: text("inherited_from_line_id"),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
 });
 
 export const executionReceipts = openerp.table("execution_receipts", {

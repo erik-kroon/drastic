@@ -1,6 +1,7 @@
 import * as Schema from "effect/Schema";
 import { Identifier, AccountingDate, Description, Digest, Scope } from "./values";
 import { MinorUnits, SignedMinorUnits, AggregateMinorUnits } from "./money";
+import { DimensionPolicy, OriginalDimensionAssignment } from "./dimensions";
 
 export const JournalLine = Schema.Struct({
   accountId: Identifier,
@@ -8,6 +9,19 @@ export const JournalLine = Schema.Struct({
   creditMinor: MinorUnits,
   description: Description,
 });
+
+// NEXT-14. The original dimension assignment of a new posting line. It is
+// optional so a proposal sealed before this owner keeps exactly the JSON it was
+// sealed with and its digest is unchanged; a line that carries none is a line
+// whose source recorded no dimension evidence, which the owner records as an
+// explicit state rather than inferring one later.
+const PostingLineFields = {
+  ...JournalLine.fields,
+  lineId: Identifier,
+  originalDimensions: Schema.optional(
+    Schema.Array(OriginalDimensionAssignment).check(Schema.isMaxLength(64)),
+  ),
+};
 
 export const Evidence = Schema.Struct({
   id: Identifier,
@@ -48,6 +62,11 @@ export const PostingAction = Schema.Struct({
   description: Description,
   rationale: Description,
   taxAssessment: Schema.Literal("not_applicable"),
+  // NEXT-14. The reviewed requirement for each dimension effective at the
+  // posting date. It is sealed into the plan so approval covers it, and the
+  // resolved original assignments travel with each line. A dimension the policy
+  // does not mention is a refusal, not an unclassified pass.
+  dimensionPolicy: Schema.optional(DimensionPolicy),
   vatReclassification: Schema.optional(
     Schema.NullOr(
       Schema.Struct({
@@ -57,7 +76,7 @@ export const PostingAction = Schema.Struct({
       }),
     ),
   ),
-  lines: Schema.Array(Schema.Struct({ ...JournalLine.fields, lineId: Identifier })),
+  lines: Schema.Array(Schema.Struct(PostingLineFields)),
   evidenceRefs: Schema.Array(
     Schema.Struct({ evidenceId: Identifier, sha256: Schema.String, locator: Schema.String }),
   ),
@@ -72,7 +91,7 @@ export const LegalArPostingAction = Schema.Struct({
   occurrenceKey: Schema.String.check(Schema.isPattern(/^legal_ar_invoice_draft_[a-f0-9]{32}$/)),
   currency: Schema.Literal("SEK"),
   taxAssessment: Schema.Literal("se-domestic-standard-25-v1"),
-  lines: Schema.Array(Schema.Struct({ ...JournalLine.fields, lineId: Identifier })).check(
+  lines: Schema.Array(Schema.Struct(PostingLineFields)).check(
     Schema.isMinLength(3),
     Schema.isMaxLength(3),
   ),

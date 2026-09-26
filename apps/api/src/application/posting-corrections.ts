@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "./failures";
 import { withAdmittedPrincipal, type VerifiedPrincipal } from "./identity";
+import { resolveAssignmentsInTransaction } from "./dimensions/assignments";
 import {
   digest,
   executeChangeInTransaction,
@@ -90,11 +91,16 @@ function makePlan(transaction: Transaction, scope: Scope, principal: Principal, 
   return Effect.gen(function* () {
     const book = yield* readBook(transaction, scope);
     const period = yield* readPeriod(transaction, scope, action.accountingPeriodId);
+    // NEXT-14. The original dimension assignments are resolved and sealed before
+    // the proposal is hashed. The reversal repeats the corrected voucher's
+    // retained bytes; the replacement keeps the unaffected assignments the
+    // reviewer carried over and requires the changed ones explicitly.
+    const assigned = yield* resolveAssignmentsInTransaction(transaction, scope, action);
 
     const accountRows = yield* Db.readAccounts(
       transaction,
       scope.bookId,
-      action.lines.map((line) => line.accountId),
+      assigned.lines.map((line) => line.accountId),
     );
 
     const createdAt = yield* isoNow(transaction);
@@ -136,7 +142,7 @@ function makePlan(transaction: Transaction, scope: Scope, principal: Principal, 
         {
           id: newId("group"),
           dependsOnGroupIds: [],
-          actions: [action],
+          actions: [assigned],
         },
       ],
     };
