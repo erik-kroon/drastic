@@ -18,7 +18,10 @@ import {
 } from "../src/db/schema";
 import { RequestEnvironment } from "../src/runtime/environment";
 import {
+  dispatchPendingExtractions,
   dispatchPendingPreparations,
+  ExtractionQueue,
+  handleExtraction,
   handlePreparation,
   PreparationQueue,
 } from "../src/runtime/preparation-queue";
@@ -65,9 +68,23 @@ const services = Layer.mergeAll(
   }),
 ).pipe(Layer.provide(postgres));
 
-const worker = PreparationQueue.toLayer(handlePreparation, { concurrency: 2 }).pipe(
-  Layer.provideMerge(Worker.layer({ concurrency: 2 })),
-  Layer.provideMerge(services),
+const worker = Layer.mergeAll(
+  PreparationQueue.toLayer(handlePreparation, { concurrency: 2 }),
+  ExtractionQueue.toLayer(handleExtraction, { concurrency: 2 }),
+).pipe(Layer.provideMerge(Worker.layer({ concurrency: 2 })), Layer.provideMerge(services));
+
+const dispatchExtractions = Effect.forever(
+  dispatchPendingExtractions().pipe(
+    Effect.catch(() =>
+      Effect.logWarning("Extraction queue dispatch failed; admission remains durable."),
+    ),
+    // A defect reaching the poll boundary must not end this fiber: the runner owns
+    // no other dispatch, so losing it would strand every ready extraction request.
+    Effect.catchDefect(() =>
+      Effect.logWarning("Extraction queue dispatch defect; admission remains durable."),
+    ),
+    Effect.andThen(Effect.sleep("30 seconds")),
+  ),
 );
 
 const dispatch = Effect.forever(
@@ -84,7 +101,10 @@ const dispatch = Effect.forever(
   ),
 );
 
-const main = dispatch.pipe(Effect.provide(worker), Effect.scoped);
+const main = Effect.all([dispatch, dispatchExtractions], { concurrency: 2 }).pipe(
+  Effect.provide(worker),
+  Effect.scoped,
+);
 
 runMain(main.pipe(Effect.tapCause(() => Effect.logError("Preparation runner stopped."))), {
   disableErrorReporting: true,

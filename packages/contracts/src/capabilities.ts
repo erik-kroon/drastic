@@ -55,6 +55,7 @@ import { CrmMasterCapabilities } from "./crm-master";
 import { CollectionsCapabilities } from "./collections";
 import { DeadlinesCapabilities } from "./deadlines";
 import { SupplierInboxCapabilities } from "./supplier-inbox";
+import { SupplierExtractionCapabilities } from "./supplier-extraction";
 
 const scoped = { scope: Accounting.Scope };
 
@@ -121,6 +122,7 @@ export const Capabilities = {
   ...CollectionsCapabilities,
   ...DeadlinesCapabilities,
   ...SupplierInboxCapabilities,
+  ...SupplierExtractionCapabilities,
   ...ClosingCapabilities,
   ...Automation.PreparationJobStopCapabilities,
   ...SubledgerCapabilities,

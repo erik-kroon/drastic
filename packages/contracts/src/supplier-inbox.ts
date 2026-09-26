@@ -27,13 +27,24 @@ export const RecordSupplierExtraction = Schema.Struct({
   diagnostics: Schema.Array(Label).check(Schema.isMaxLength(50)),
 });
 
+// One recorded extraction interpretation. The four `RecordSupplierExtraction`
+// fields stay the summary a caller-recorded attempt carries; a built-in engine
+// attempt adds its request identity, verified source hash and exact result, and
+// its field-level reading is read through the extraction state resource.
 export const ExtractionAttempt = Schema.Struct({
   ...RecordSupplierExtraction.fields,
+  status: Schema.Literals(["failed", "suggested", "succeeded", "rejected_output", "unknown"]),
   id: A.Identifier,
   occurrenceId: A.Identifier,
   ordinal: Schema.Int,
   createdBy: A.Identifier,
   createdAt: Schema.String,
+  requestId: Schema.optional(A.Identifier),
+  engineRelease: Schema.optional(Label),
+  sourceHash: Schema.optional(A.Digest),
+  textDigest: Schema.optional(Schema.NullOr(A.Digest)),
+  textByteLength: Schema.optional(Schema.Int),
+  retainedOutputHash: Schema.optional(A.Digest),
 });
 
 export const SupplierInboxView = Schema.Struct({

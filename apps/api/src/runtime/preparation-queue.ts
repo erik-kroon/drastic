@@ -9,6 +9,10 @@ import {
   executePreparationJob,
   stopFailedPreparationDelivery,
 } from "../application/preparation-jobs";
+import {
+  claimPendingSupplierExtractions,
+  runSupplierExtraction,
+} from "../application/purchases/extraction";
 import { failure } from "../application/failures";
 import { Database } from "../db/connection";
 import { jobAttempts, jobs } from "../db/schema";
@@ -28,6 +32,32 @@ export class PreparationQueue extends Job.make("preparation", {
   metadata: ({ scope }) => ({ bookId: scope.bookId }),
   defaults: { attempts: 5, backoff: { type: "exponential", delay: "10 seconds" } },
 }) {}
+
+// Supplier extraction reuses the selected effect-mq runner rather than a second
+// queue runtime. The admitted request row is the application-owned intent; this
+// queue owns scheduling, claims and retries, and the handler converges on the one
+// recorded result identity per request.
+export class ExtractionQueue extends Job.make("supplier-extraction", {
+  payload: {
+    requestId: Accounting.Identifier,
+    scope: Accounting.Scope,
+  },
+  success: Schema.String,
+  error: Accounting.AccountingError,
+  queue: "preparation",
+  idempotencyKey: extractionKey,
+  metadata: ({ scope }) => ({ bookId: scope.bookId }),
+  defaults: { attempts: 5, backoff: { type: "exponential", delay: "10 seconds" } },
+}) {}
+
+type ExtractionPayload = {
+  readonly requestId: string;
+  readonly scope: typeof Accounting.Scope.Type;
+};
+
+function extractionKey(payload: ExtractionPayload) {
+  return `${payload.scope.bookId}/${payload.requestId}`;
+}
 
 type PreparationPayload = {
   readonly jobId: string;
@@ -153,6 +183,37 @@ export const dispatchPendingPreparations = Effect.fn("Preparation.dispatchPendin
       ),
     { concurrency: 5, discard: true },
   );
+});
+
+export const dispatchPendingExtractions = Effect.fn("Extraction.dispatchPending")(function* () {
+  const { bindings } = yield* RequestEnvironment;
+
+  if (!bindings.OPENERP_PREPARATION_TOKEN) return yield* failure("Unavailable");
+  const pending = yield* claimPendingSupplierExtractions(bindings.OPENERP_PREPARATION_TOKEN);
+
+  yield* Effect.forEach(
+    pending,
+    (request) =>
+      ExtractionQueue.enqueue({
+        requestId: request.requestId,
+        scope: { entityId: request.entityId, bookId: request.bookId },
+      }).pipe(
+        // The store is reached through the defect channel, so one unreachable queue
+        // row must not end the polling fiber. The admission stays durable either
+        // way and the next poll picks the same request up again.
+        Effect.catchDefect(() =>
+          Effect.logWarning("Extraction enqueue failed; admission remains durable."),
+        ),
+      ),
+    { concurrency: 5, discard: true },
+  );
+});
+
+export const handleExtraction = Effect.fn("Extraction.handleQueueJob")(function* (payload: {
+  requestId: string;
+  scope: typeof Accounting.Scope.Type;
+}) {
+  return yield* runSupplierExtraction(payload.scope, payload.requestId);
 });
 
 export const handlePreparation = Effect.fn("Preparation.handleQueueJob")(function* (payload: {

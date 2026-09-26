@@ -17,6 +17,10 @@ import { getSupplierAcceptanceReview, supplierAcceptanceHistory } from "../purch
 import { getSupplierCreditReview, supplierCreditHistory } from "../purchases/credits";
 import { getSupplierInbox, listSupplierInboxes } from "../purchases/inbox";
 import {
+  getSupplierExtractionState,
+  prepareSupplierExtractionReview,
+} from "../purchases/extraction";
+import {
   getSupplierInvoiceDraft,
   listSupplierInvoiceDrafts,
   supplierInvoiceDraftDuplicates,
@@ -107,6 +111,14 @@ export const commerceInvoiceCapabilities = {
   ),
   supplier_inbox_list: effectCapability(Capabilities.supplier_inbox_list, listSupplierInboxes),
   supplier_inbox_get: effectCapability(Capabilities.supplier_inbox_get, getSupplierInbox),
+  supplier_inbox_extraction_state: effectCapability(
+    Capabilities.supplier_inbox_extraction_state,
+    getSupplierExtractionState,
+  ),
+  supplier_inbox_extraction_review_preparation: effectCapability(
+    Capabilities.supplier_inbox_extraction_review_preparation,
+    prepareSupplierExtractionReview,
+  ),
   commerce_get_invoice_policy_candidate: effectCapability(
     Capabilities.commerce_get_invoice_policy_candidate,
     getInvoicePolicyCandidate,

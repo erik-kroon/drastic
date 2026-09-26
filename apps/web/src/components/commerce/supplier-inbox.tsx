@@ -11,6 +11,7 @@ import { DocumentUpload } from "@/components/document-inbox";
 import { OriginalDocument } from "@/components/original-document";
 import { bookKey, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import { CommandForm, commercePath, checkScope, type CommerceProps } from "./shared";
+import { SupplierExtraction } from "./supplier-extraction";
 
 function SupplierInboxList(props: {
   items: ReadonlyArray<typeof Inbox.SupplierInboxView.Type>;
@@ -123,6 +124,12 @@ function SupplierInboxEntry(props: {
           ))}
         </Box>
       ))}
+      <SupplierExtraction
+        book={props.commerceProps.book}
+        locale={props.commerceProps.locale}
+        occurrenceId={props.id}
+        onRefresh={props.onRefresh}
+      />
       {!props.entry.draftId && props.commerceProps.book.role === "operator" ? (
         <>
           <CommandForm
