@@ -11,6 +11,7 @@ import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable
 import * as Accounting from "./accounting";
 import { SystemStatus } from "./system";
 import { ReportApi } from "./reports";
+import { StatementApi } from "./report-statements";
 import { accountingErrors } from "./accounting-errors";
 import { ReconciliationApi } from "./reconciliation";
 import { CasesApi } from "./cases";
@@ -163,6 +164,7 @@ export class Api extends HttpApi.make("open-erp")
     CompanySetupApi,
     AccountingApi,
     ReportApi,
+    StatementApi,
     ReconciliationApi,
     CasesApi,
     AutomationApi,

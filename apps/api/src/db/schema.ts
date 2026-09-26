@@ -310,6 +310,33 @@ export const correctionBundleApprovals = openerp.table("correction_bundle_approv
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });
 
+export const reportStatementSnapshots = openerp.table("report_statement_snapshots", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  asOf: date("as_of", { mode: "string" }).notNull(),
+  sequence: bigint("sequence", { mode: "bigint" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
+export const reportStatementRows = openerp.table("report_statement_rows", {
+  bookId: text("book_id").notNull(),
+  snapshotId: text("snapshot_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  rowId: text("row_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const reportStatementContributions = openerp.table("report_statement_contributions", {
+  bookId: text("book_id").notNull(),
+  snapshotId: text("snapshot_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  rowId: text("row_id").notNull(),
+  componentId: text("component_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
 export const correctionBundleReceipts = openerp.table("correction_bundle_receipts", {
   bookId: text("book_id").notNull(),
   bundleId: text("bundle_id").notNull(),

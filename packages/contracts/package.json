@@ -17,6 +17,7 @@
     "./capabilities": "./src/capabilities.ts",
     "./reconciliation": "./src/reconciliation.ts",
     "./reports": "./src/reports.ts",
+    "./report-statements": "./src/report-statements.ts",
     "./cases": "./src/cases.ts",
     "./automation": "./src/automation.ts",
     "./subledgers": "./src/subledgers.ts",

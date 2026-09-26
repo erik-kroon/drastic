@@ -12,6 +12,7 @@
     "./canonicalization": "./src/canonicalization.ts",
     "./posting": "./src/posting.ts",
     "./books": "./src/books.ts",
+    "./statements": "./src/statements.ts",
     "./exchange-rates": "./src/exchange-rates.ts"
   },
   "scripts": {

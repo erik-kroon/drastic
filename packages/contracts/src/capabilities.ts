@@ -5,6 +5,7 @@ import { LegalSalesPolicyCapabilities } from "./legal-sales-policy";
 import * as Schema from "effect/Schema";
 import * as Accounting from "./accounting";
 import * as Reports from "./reports";
+import { StatementCapabilities } from "./report-statements";
 import * as Reconciliation from "./reconciliation";
 import { CaseCapabilities } from "./cases";
 import * as Automation from "./automation";
@@ -94,6 +95,7 @@ export const Capabilities = {
   ...RegisterReportCapabilities,
   ...Reports.ReportFamilyCapabilities,
   ...Reports.ReportComparisonCapabilities,
+  ...StatementCapabilities,
   ...VatReturnCapabilities,
   ...SieCapabilities,
   ...InvoiceDraftCapabilities,
