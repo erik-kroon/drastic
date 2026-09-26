@@ -69,6 +69,8 @@
     "./crm-master": "./src/crm-master.ts",
     "./catalog": "./src/catalog.ts",
     "./payroll-foundation": "./src/payroll-foundation.ts",
+    "./roles": "./src/roles.ts",
+    "./payroll-calculations": "./src/payroll-calculations.ts",
     "./expense-tax": "./src/expense-tax.ts",
     "./owner-register": "./src/owner-register.ts"
   },

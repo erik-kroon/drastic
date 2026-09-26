@@ -55,6 +55,7 @@ import { CrmMasterCapabilities } from "./crm-master";
 import { CollectionsCapabilities } from "./collections";
 import { DeadlinesCapabilities } from "./deadlines";
 import { SupplierInboxCapabilities } from "./supplier-inbox";
+import { PayrollCalculationCapabilities } from "./payroll-calculations";
 
 const scoped = { scope: Accounting.Scope };
 
@@ -133,6 +134,7 @@ export const Capabilities = {
   ...BankSignoffCapabilities,
   ...BankInventorySignoffCapabilities,
   ...TaxAccountCapabilities,
+  ...PayrollCalculationCapabilities,
   rules_propose: {
     description:
       "Propose an immutable synthetic exact-match recurring PREPARATION rule. It never grants posting authority.",

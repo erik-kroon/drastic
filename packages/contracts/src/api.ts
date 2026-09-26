@@ -1,5 +1,6 @@
 import { DeadlinesApi } from "./deadlines";
 import { PayrollFoundationApi } from "./payroll-foundation";
+import { PayrollCalculationApi } from "./payroll-calculations";
 import { CrmMasterApi } from "./crm-master";
 import { CatalogApi } from "./catalog";
 import { CollectionsApi } from "./collections";
@@ -213,6 +214,7 @@ export class Api extends HttpApi.make("open-erp")
     CrmMasterApi,
     CatalogApi,
     PayrollFoundationApi,
+    PayrollCalculationApi,
     DeadlinesApi,
     DimensionsApi,
     ExpenseTaxApi,

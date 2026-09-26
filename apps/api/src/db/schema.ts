@@ -427,3 +427,65 @@ export const correctionBundleReceipts = openerp.table("correction_bundle_receipt
   replacementReceiptId: text("replacement_receipt_id").notNull(),
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });
+
+// A frozen payroll calculation is a captured proposal. It never carries a
+// financial effect; execution and payment are separate named operations.
+export const payrollEmployees = openerp.table("payroll_employees", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
+export const payrollRevisions = openerp.table("payroll_revisions", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  commandKey: text("command_key").notNull(),
+  employeeId: text("employee_id").notNull(),
+  kind: text("kind").notNull(),
+  effectiveOn: date("effective_on", { mode: "string" }).notNull(),
+  supersedes: text("supersedes"),
+  evidenceId: text("evidence_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
+export const payrollCurrentRevisions = openerp.table("payroll_current_revisions", {
+  bookId: text("book_id").notNull(),
+  employeeId: text("employee_id").notNull(),
+  kind: text("kind").notNull(),
+  effectiveOn: date("effective_on", { mode: "string" }).notNull(),
+  revisionId: text("revision_id").notNull(),
+});
+
+export const payrollCalculations = openerp.table("payroll_calculations", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  employeeId: text("employee_id").notNull(),
+  changeSetId: text("change_set_id").notNull(),
+  planDigest: text("plan_digest").notNull(),
+  ruleReleaseId: text("rule_release_id").notNull(),
+  earningsPeriodStart: date("earnings_period_start", { mode: "string" }).notNull(),
+  earningsPeriodEnd: date("earnings_period_end", { mode: "string" }).notNull(),
+  expectedPaymentOn: date("expected_payment_on", { mode: "string" }).notNull(),
+  grossMinor: numeric("gross_minor", { mode: "string" }).notNull(),
+  withholdingMinor: numeric("withholding_minor", { mode: "string" }).notNull(),
+  netDeductionMinor: numeric("net_deduction_minor", { mode: "string" }).notNull(),
+  contributionBaseMinor: numeric("contribution_base_minor", { mode: "string" }).notNull(),
+  employerContributionMinor: numeric("employer_contribution_minor", { mode: "string" }).notNull(),
+  payableMinor: numeric("payable_minor", { mode: "string" }).notNull(),
+  noFinancialEffect: boolean("no_financial_effect").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
+export const payrollCalculationInputs = openerp.table("payroll_calculation_inputs", {
+  bookId: text("book_id").notNull(),
+  calculationId: text("calculation_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  kind: text("kind").notNull(),
+  resourceId: text("resource_id").notNull(),
+  version: text("version").notNull(),
+  reason: text("reason").notNull(),
+});
