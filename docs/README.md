@@ -22,6 +22,7 @@ The [open-accounting decision](adr/0005-open-accounting-and-managed-services.md)
 | [Roadmap](roadmap.md)                                  | What has been observed, and what proves each phase complete?                                             |
 | [Accounting delivery plan](plans/README.md)            | What remains across posting, corrections, imports, commerce, accounting depth, year-end and operations?  |
 | [Reference parity backlog](plans/11-parity-backlog.md)  | What does the reference implementation still owe us, as work packets and preserved rule logic?             |
+| [Reference-derived defects](plans/13-reference-derived-defects.md) | What is already shipped that is wrong, and how is it fixed without editing the reviewed baseline? |
 | [NEXT dossier plan](plans/12-next-implementation-dossier.md) | What does the vendored NEXT-01…50 implementation design say for each work item, and which maintained packet owns it? |
 | [Vendored specifications](specs/README.md)             | Which external design documents are stored here, at which pinned revision, and how to verify them?           |
 | [FND-01 reconciliation](plans/fnd01-reconciliation.md) | Which contracts and callers exist, what must remain compatible, and what does the pinned evidence prove? |
