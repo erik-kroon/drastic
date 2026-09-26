@@ -1,5 +1,6 @@
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Sie4E from "@open-erp/contracts/sie4e";
+import * as Dimensions from "@open-erp/domain/dimensions";
 import {
   buildSie4EMembership,
   compareSie4E,
@@ -9,8 +10,10 @@ import {
 } from "@open-erp/jurisdiction-se/sie4e";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
+import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { readEvidence, readTableAccess } from "../db/commerce/access";
+import * as Catalogue from "../db/dimensions";
 import * as StatementDb from "../db/report-statements";
 import * as SieDb from "../db/sie4e";
 import { lockBookForShare, lockBookForUpdate } from "../db/posting";
@@ -24,6 +27,7 @@ import {
   type JsonObject,
   type Scope,
 } from "./commerce/support";
+import { objectMapSource } from "./dimensions/assignments";
 import { canonicalText, digest } from "./json";
 import { failure } from "./failures";
 import { isoNow, newId, replay, saveCommand } from "./posting";
@@ -88,6 +92,53 @@ function blocked(message: string) {
 
 function asDomainFailure(error: unknown) {
   return error instanceof Accounting.AccountingError ? error : failure("InternalError");
+}
+
+// NEXT-14 owns the original dimension assignment. The object map it freezes is
+// the only representation of those facts a type-4 export can carry, so this
+// export derives its dimension position from that owner instead of asserting
+// that no owner exists. The renderer release below still emits no object
+// records, so a non-empty map is a representation loss and the export refuses
+// rather than emitting an empty object group beside real assignments.
+function dimensionObjectMapInTransaction(
+  transaction: Transaction,
+  scope: Scope,
+  from: string,
+  to: string,
+) {
+  return Effect.gen(function* () {
+    const effective = yield* Catalogue.readEffectiveDimensions(transaction, scope.bookId, to);
+    const values = yield* Catalogue.readEffectiveDimensionValues(transaction, scope.bookId, to);
+
+    const retained =
+      effective.length === 0
+        ? []
+        : yield* Catalogue.readOriginalAssignmentsInWindow(
+            transaction,
+            scope.bookId,
+            from,
+            to,
+            Catalogue.maximumAssignmentRows,
+          );
+
+    if (retained.length > Catalogue.maximumAssignmentRows) return yield* unsupported();
+
+    const frozen = Dimensions.freezeObjectMap({
+      dimensions: effective,
+      values,
+      ...objectMapSource(retained),
+    });
+
+    if (Result.isFailure(frozen))
+      return yield* Effect.fail(
+        new Accounting.AccountingError({
+          code: "UnsupportedProfile",
+          message: frozen.failure.message,
+        }),
+      );
+
+    return frozen.success;
+  });
 }
 
 function requireSieBookAccess(transaction: Transaction, write: boolean) {
@@ -410,15 +461,16 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
 
       if (evidence === undefined) return yield* failure("MissingEvidence");
 
-      const dimensions = yield* SieDb.readSieBookDimensions(
+      const objectMap = yield* dimensionObjectMapInTransaction(
         transaction,
-        command.scope.bookId,
+        command.scope,
+        year.startsOn,
         input.asOf,
       );
 
-      if (dimensions.length > 0)
+      if (objectMap.objects.length > 0)
         return yield* blocked(
-          `This book declares dimension ${dimensions[0]?.code ?? ""} effective at ${input.asOf}. This release has no reviewed dimension-assignment owner, so no object declaration or object assignment can be represented and an empty object group is not a substitute. The complete-book export is blocked for this book until that owner exists.`,
+          `NEXT-14 retains ${objectMap.usedAssignmentCount} original dimension assignment(s) over this window and freezes them into ${objectMap.objects.length} exported object(s) across ${objectMap.dimensions.length} dimension(s). Renderer release openerp-sie4e-v1 emits no object records, so emitting this file would drop a recorded assignment. The complete-book export is blocked for this book until a reviewed object-record profile exists in the renderer release.`,
         );
 
       const boundary = book.committedSequence;
@@ -548,7 +600,7 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
           established: establishedOpening,
           reviewed: false,
         },
-        dimensions: [],
+        dimensions: objectMap.dimensions.map((dimension) => dimension.code),
         counts: {
           accounts: membership.accounts.length,
           balances: membership.balances.length,
@@ -599,8 +651,7 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
             : []),
           {
             code: "no_object_owner" as const,
-            detail:
-              "This book declares no dimension at the as-of date and this release stores no line dimension assignment, so an object group is empty because nothing is assigned, not because an assignment was reviewed away.",
+            detail: `NEXT-14 is the owner of the original dimension assignment and freezes the object map for this selection: ${objectMap.dimensions.length} declared dimension(s), ${objectMap.objects.length} exported object(s), ${objectMap.usedAssignmentCount} used assignment(s). The object group is empty here because no posted line in this window carries an explicit dimension value, not because an assignment was reviewed away.`,
           },
         ],
         createdBy: principal.actorId,

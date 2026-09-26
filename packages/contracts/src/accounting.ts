@@ -1,6 +1,7 @@
 import * as Schema from "effect/Schema";
 import { Identifier, AccountingDate, Description, Digest } from "@open-erp/domain/values";
 import { MinorUnits } from "@open-erp/domain/money";
+import { DimensionPolicy, OriginalDimensionAssignment } from "@open-erp/domain/dimensions";
 import {
   ExecutionReceipt as DomainExecutionReceipt,
   JournalLine,
@@ -42,6 +43,20 @@ export const IdempotencyHeaders = Schema.Struct({
   "idempotency-key": Schema.String.check(Schema.isPattern(/^[a-zA-Z0-9_-]{8,128}$/)),
 });
 
+export { DimensionPolicy, OriginalDimensionAssignment } from "@open-erp/domain/dimensions";
+
+// A posting line that may carry the original dimension assignment of its source
+// line. The field is optional so a request shaped before this owner keeps
+// exactly the shape it had; a line that carries none is a line whose source
+// recorded no dimension evidence, which the owner records as an explicit state
+// rather than inferring one later.
+export const AssignableLine = Schema.Struct({
+  ...JournalLine.fields,
+  originalDimensions: Schema.optional(
+    Schema.Array(OriginalDimensionAssignment).check(Schema.isMaxLength(64)),
+  ),
+});
+
 export const PrepareJournal = Schema.Struct({
   kind: Schema.Literal("manual_journal"),
   evidenceId: Identifier,
@@ -52,7 +67,11 @@ export const PrepareJournal = Schema.Struct({
   description: Description,
   rationale: Description,
   taxAssessment: Schema.Literal("not_applicable"),
-  lines: Schema.Array(JournalLine).check(Schema.isMinLength(2), Schema.isMaxLength(500)),
+  // NEXT-14. The reviewed requirement for each dimension effective at the
+  // posting date. A dimension the policy does not mention refuses the posting
+  // rather than passing unclassified.
+  dimensionPolicy: Schema.optional(DimensionPolicy),
+  lines: Schema.Array(AssignableLine).check(Schema.isMinLength(2), Schema.isMaxLength(500)),
 });
 
 export const CreateEvidence = Schema.Struct({

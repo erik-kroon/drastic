@@ -4,12 +4,18 @@ import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
 import { listDimensions, saveDimension, saveDimensionValue } from "../../../application/dimensions";
+import { dimensionAssignmentReport } from "../../../application/dimensions/assignments";
 
 export const DimensionHandlers = HttpApiBuilder.group(Api, "dimensions", (handlers) =>
   handlers
     .handle("listDimensions", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
         listDimensions(token, { scope: scopeFromPath(params) }),
+      ),
+    )
+    .handle("assignmentReport", ({ params, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        dimensionAssignmentReport(token, { scope: scopeFromPath(params), input: payload }),
       ),
     )
     .handle("saveDimension", ({ params, headers, payload }) =>

@@ -70,8 +70,6 @@ export type SieBookOrdinalRow = { readonly ordinal: string | null };
 
 export type SieBookTotalRow = { readonly total: number };
 
-export type SieBookDimensionRow = { readonly code: string };
-
 export type SieBookPriorVoucherRow = { readonly present: boolean };
 
 export function readSieBookBook(transaction: Transaction, bookId: string) {
@@ -196,22 +194,6 @@ export function readSieBookLines(
         and (v.id is distinct from ${openingVoucherId === null ? sql`null::text` : sql`${openingVoucherId}::text`})
       order by v.sequence, l.ordinal
       limit ${limit + 1}
-    `,
-    "objects",
-  );
-}
-
-// A dimension declaration is enough to block the export. This release has no
-// reviewed dimension-assignment owner, so no object mapping can be emitted and
-// an empty object group is not a substitute.
-export function readSieBookDimensions(transaction: Transaction, bookId: string, asOf: string) {
-  return transaction.execute<SieBookDimensionRow>(
-    sql`
-      select code from openerp.dimensions
-      where book_id = ${bookId} and effective_from <= ${asOf}::date
-        and (effective_to is null or effective_to >= ${asOf}::date)
-      order by code collate "C"
-      limit 501
     `,
     "objects",
   );
