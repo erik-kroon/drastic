@@ -439,17 +439,7 @@ export function combinedInformationalMinor(
  * unresolved are distinct, and a run whose children are all visited is not a
  * reconciled period.
  */
-export function countChildStates(states: ReadonlyArray<WorkChildState>): {
-  readonly pending: number;
-  readonly waitingPredecessor: number;
-  readonly needsReview: number;
-  readonly prepared: number;
-  readonly recovered: number;
-  readonly committed: number;
-  readonly refused: number;
-  readonly visited: number;
-  readonly total: number;
-} {
+export function countChildStates(states: ReadonlyArray<WorkChildState>) {
   const counts = {
     pending: 0,
     waitingPredecessor: 0,
@@ -464,16 +454,39 @@ export function countChildStates(states: ReadonlyArray<WorkChildState>): {
 
   for (const state of states) {
     if (state === "pending") counts.pending += 1;
+
     if (state === "waiting_predecessor") counts.waitingPredecessor += 1;
+
     if (state === "needs_review") counts.needsReview += 1;
+
     if (state === "prepared") counts.prepared += 1;
+
     if (state === "recovered") counts.recovered += 1;
+
     if (state === "committed") counts.committed += 1;
+
     if (state === "refused") counts.refused += 1;
+
     if (state !== "pending") counts.visited += 1;
   }
 
-  return counts;
+  return ChildStateCounts.make(counts);
 }
+
+// The counts an operator reads. Prepared, committed, blocked and unresolved stay
+// distinct on purpose, and `visited` is deliberately not `total`.
+export type ChildStateCounts = typeof ChildStateCounts.Type;
+
+export const ChildStateCounts = Schema.Struct({
+  pending: Schema.Int,
+  waitingPredecessor: Schema.Int,
+  needsReview: Schema.Int,
+  prepared: Schema.Int,
+  recovered: Schema.Int,
+  committed: Schema.Int,
+  refused: Schema.Int,
+  visited: Schema.Int,
+  total: Schema.Int,
+});
 
 export const periodWorkDescription = Description;

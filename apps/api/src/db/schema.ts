@@ -917,3 +917,81 @@ export const ownerPurchaseTaxFacts = openerp.table("owner_purchase_tax_facts", {
   digest: text().notNull(),
   recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
 });
+
+// A period-work manifest is the frozen selection for one requested interval. A
+// source that arrives after it was sealed is not in it; selecting it requires a
+// new manifest rather than an edit to this one.
+export const periodWorkManifests = openerp.table("period_work_manifests", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  startsOn: date("starts_on", { mode: "string" }).notNull(),
+  endsOn: date("ends_on", { mode: "string" }).notNull(),
+  cutoff: date("cutoff", { mode: "string" }).notNull(),
+  // A run whose children are all visited is still not a reconciled period. This
+  // is how that fact is stated rather than implied.
+  populationComplete: boolean("population_complete").notNull(),
+  selectedCount: integer("selected_count").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+// The mutable run-owned progress of one unit of work. `revision` fences a
+// redelivered handler and `cancelVersion` stops a stale handler publishing new
+// work; both move only with the state they fence.
+export const periodWorkChildren = openerp.table("period_work_children", {
+  bookId: text("book_id").notNull(),
+  workIdentity: text("work_identity").notNull(),
+  manifestId: text("manifest_id").notNull(),
+  economicIdentity: text("economic_identity").notNull(),
+  sourceRevision: text("source_revision").notNull(),
+  state: text("state").notNull(),
+  revision: bigint("revision", { mode: "bigint" }).notNull(),
+  cancelVersion: bigint("cancel_version", { mode: "bigint" }).notNull(),
+  planId: text("plan_id"),
+  planDigest: text("plan_digest"),
+  // A committed child keeps its receipt even if the plan later reads as stale.
+  receiptId: text("receipt_id"),
+  missingFacts: jsonb("missing_facts").$type<Schema.JsonObject>(),
+  refusalReason: text("refusal_reason"),
+  batchId: text("batch_id"),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+// The sealed fixed manifest a human approved. Immutable once written.
+export const periodWorkBatches = openerp.table("period_work_batches", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  manifestId: text("manifest_id").notNull(),
+  memberCount: integer("member_count").notNull(),
+  // Informational only, shown beside the members. Never a journal line and
+  // never a balancing figure.
+  combinedInformationalMinor: numeric("combined_informational_minor", { mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+// One immutable, deterministic member of a sealed batch. The unique index on
+// work_identity is what stops one gesture covering a duplicate economic effect.
+export const periodWorkBatchMembers = openerp.table("period_work_batch_members", {
+  bookId: text("book_id").notNull(),
+  batchId: text("batch_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  owner: text("owner").notNull(),
+  planId: text("plan_id").notNull(),
+  planDigest: text("plan_digest").notNull(),
+  inputIdentity: text("input_identity").notNull(),
+  workIdentity: text("work_identity").notNull(),
+});
+
+// Which exact approval covered which exact batch. The approval itself stays with
+// the existing approvals owner.
+export const periodWorkBatchApprovals = openerp.table("period_work_batch_approvals", {
+  bookId: text("book_id").notNull(),
+  batchId: text("batch_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  approverId: text("approver_id").notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
