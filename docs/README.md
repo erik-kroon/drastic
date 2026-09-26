@@ -22,6 +22,8 @@ The [open-accounting decision](adr/0005-open-accounting-and-managed-services.md)
 | [Roadmap](roadmap.md)                                  | What has been observed, and what proves each phase complete?                                             |
 | [Accounting delivery plan](plans/README.md)            | What remains across posting, corrections, imports, commerce, accounting depth, year-end and operations?  |
 | [Reference parity backlog](plans/11-parity-backlog.md)  | What does the reference implementation still owe us, as work packets and preserved rule logic?             |
+| [NEXT dossier plan](plans/12-next-implementation-dossier.md) | What does the vendored NEXT-01…50 implementation design say for each work item, and which maintained packet owns it? |
+| [Vendored specifications](specs/README.md)             | Which external design documents are stored here, at which pinned revision, and how to verify them?           |
 | [FND-01 reconciliation](plans/fnd01-reconciliation.md) | Which contracts and callers exist, what must remain compatible, and what does the pinned evidence prove? |
 | [Verification scenarios](verification.md)              | Which failures must the real application withstand?                                                      |
 | [Verification strategy](verification-strategy.md)      | How should the runtime, browser and database produce repeatable evidence?                                |
@@ -41,7 +43,7 @@ The user's current request and [repository instructions](../AGENTS.md) govern th
 
 ## Maintaining the docs
 
-High-level documents own requirements and invariants. The area plans own detailed delivery contracts and work packets. The roadmap owns progress and links to evidence. The coverage map connects these owners without creating a second specification.
+High-level documents own requirements and invariants. The area plans own detailed delivery contracts and work packets. The roadmap owns progress and links to evidence. The coverage map connects these owners without creating a second specification. `docs/specs` holds externally produced design material kept byte-identical and separately rooted; it is evidence of a design's existence and revision, never a maintained requirement.
 
 Change a material working decision through its ADR and update the affected requirements, operations and proof gates together. Record an unresolved question once and link its identifier. Do not create empty modules just to match an architecture diagram.
 

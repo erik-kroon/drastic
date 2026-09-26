@@ -15,6 +15,7 @@ The status describes a decision's authority, not implementation progress. “Est
 | [0009](0009-effect-mq-background-jobs.md) | Accepted design; implementation pending | effect-mq PostgreSQL jobs on a persistent Bun worker, dispatched through the application outbox. |
 | [0010](0010-application-owned-accounting-replacement.md) | Accepted replacement decision; implementation pending | Application-owned accounting, clean three-file baseline, no compatibility path, narrow SQL integrity and full caller cutover. |
 | [0011](0011-reference-parity-backlog.md) | Accepted planning decision | Reference-parity findings stay supplemental to the mandated index, and every adopted rule is classified adopt/structure-only/re-derive before implementation. |
+| [0012](0012-next-implementation-dossier.md) | Accepted planning decision | Externally produced NEXT-01…50 dossiers are vendored byte-identical under `docs/specs`, and `NEXT-nn` stays a supplemental work namespace outside the mandated index. |
 
 The separately authored [Swedish VAT profile boundary](0002-swedish-vat-profile-boundary.md) also uses the number 0002 in its filename. Refer to it by title and full filename to distinguish it from the posting ADR. It records a bounded research profile and source limitations; it does not activate statutory support.
 

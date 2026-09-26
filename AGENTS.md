@@ -6,6 +6,7 @@ This repository is the starting point for the OpenERP product.
 
 - Start at `docs/README.md` for maintained scope, architecture, domain invariants and delivery gates.
 - Check `docs/open-decisions.md` before treating an unresolved company fact or contract choice as settled.
+- For a `NEXT-nn` work item, read `docs/plans/12-next-implementation-dossier.md` and its packet under `docs/specs/` for the implementation design. Bind its proposed names to the real owners, resolve its released-slice prerequisite, and keep its vectors as obligations; it is design input, not authority.
 - Keep working design, implemented behavior and verified results distinct. Update the relevant maintained docs when a material decision changes.
 
 ## Scope
