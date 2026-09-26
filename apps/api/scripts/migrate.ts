@@ -11,6 +11,11 @@ class MigrationChanged extends Schema.TaggedError<MigrationChanged>()("Migration
   message: Schema.String,
 }) {}
 
+class IncompatibleInstallation extends Schema.TaggedError<IncompatibleInstallation>()(
+  "IncompatibleInstallation",
+  { message: Schema.String },
+) {}
+
 const connectionString = process.env.DATABASE_ADMIN_URL;
 if (!connectionString)
   throw new Error("Set DATABASE_ADMIN_URL to a direct PostgreSQL maintenance connection.");
@@ -29,6 +34,18 @@ await Effect.runPromise(
     yield* db.execute(sql`CREATE TABLE IF NOT EXISTS ${migrationReceipts} (
       name text PRIMARY KEY, sha256 text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now()
     )`);
+    // The ledger is this runner's own bookkeeping, so the guard reads it and applies nothing
+    // else: a receipt naming a file this directory no longer contains is a pre-baseline
+    // installation, which is replaced rather than migrated.
+    const recorded = yield* db
+      .select({ name: migrationReceipts.name, database: sql<string>`current_database()` })
+      .from(migrationReceipts)
+      .orderBy(migrationReceipts.name);
+    const absent = recorded.find((row) => !migrations.includes(row.name));
+    if (absent !== undefined)
+      return yield* new IncompatibleInstallation({
+        message: `Database ${absent.database} recorded migration ${absent.name}, which apps/api/migrations no longer contains. It predates the baseline: replace it with a fresh database instead of migrating it.`,
+      });
     for (const name of migrations) {
       if (through !== undefined && name > through) break;
       const source = yield* Effect.tryPromise(() => readFile(new URL(name, directory), "utf8"));

@@ -42,7 +42,6 @@ const requiredRuntimeFiles = [
   "apps/api/src/db/auth-schema.ts",
   "apps/api/src/adapters/auth/better-auth.ts",
   "apps/api/src/transport/http/auth.ts",
-  "apps/api/migrations/0900-better-auth.sql",
 ];
 
 export async function filesIn(root: string, prefix = ""): Promise<string[]> {
@@ -123,8 +122,13 @@ export async function captureRelease(sourceRoot: string, destination: string) {
   const names = [...releaseFiles];
   for (const directory of releaseDirectories)
     names.push(...(await sourceFiles(sourceRoot, directory)));
-  if (requiredRuntimeFiles.some((name) => !names.includes(name)))
-    refuse("Release is missing the expected Drizzle/Better Auth runtime boundary.");
+  if (
+    requiredRuntimeFiles.some((name) => !names.includes(name)) ||
+    !names.some((name) => name.startsWith("apps/api/migrations/"))
+  )
+    refuse(
+      "Release is missing the expected Drizzle/Better Auth runtime boundary or migration set.",
+    );
   const files = [];
   for (const name of names.sort()) {
     const before = await fingerprint(artifactPath(sourceRoot, name), false);

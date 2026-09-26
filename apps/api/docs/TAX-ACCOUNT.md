@@ -1,5 +1,13 @@
 # Synthetic tax-account register and GL controls — VAT-03 subset
 
+## Current ownership
+
+Application operations live in [application/vat/tax-account.ts](../src/application/vat/tax-account.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 This document records the3800 baseline. For the additive4100 exact matching/unmatch and v2
 control consumer, see [TAX-ACCOUNT-MATCHING.md](TAX-ACCOUNT-MATCHING.md).3950 owns the shared
 closing dependency integration; neither later packet rewrites3800 migration or artifact bytes.
@@ -7,7 +15,7 @@ closing dependency integration; neither later packet rewrites3800 migration or a
 Status: implemented source; forward3800 remains unapplied. Database, HTTP, concurrency and
 independent arithmetic behavior have not been exercised.
 
-## Selected bounded path
+### Selected bounded path
 
 This slice takes the authorized statement/register plus complete selected-account GL-control
 path. It does **not** add row-to-posted-line links. Such links need an owning correction,
@@ -28,7 +36,7 @@ selected account + whole statement interval
 No source event creates a voucher, payment, bank match, taxable-activity fact, VAT return
 settlement or tax-filing state. Classification does not assert legal tax treatment.
 
-## Source capture and identity
+### Source capture and identity
 
 `recordTaxAccountStatement` requires current operator authority, a native synthetic book,
 explicit `recordClass: "synthetic"`, exact book currency/scale and
@@ -63,7 +71,7 @@ Bounds:20 source accounts,200 statements,10000 retained events per book,1000 row
 and control intervals,38-digit signed source amounts and8MiB retained control artifacts.
 No list or capture silently truncates these inventories.
 
-## Actual control consumer
+### Actual control consumer
 
 `createTaxAccountControl` captures the exact account and date interval under the book lock.
 It includes every intersecting retained statement and refuses intervals that cut through a
@@ -97,7 +105,7 @@ metadata. Whole-book committed sequence conservatively stales the control after 
 posting or correction. New overlapping/intersecting sources also stale it. Original-key
 control replay still returns the historical body.
 
-## Limits and dependency integration
+### Limits and dependency integration
 
 This is not full VAT-03, source completeness, legal tax-account registration, tax-return
 settlement, payment initiation, provider ingestion, row matching or financial-close readiness.
@@ -110,7 +118,7 @@ without counting tax-account statements as VAT facts. Existing `sourceCount` sem
 unchanged. No shared closing helper is changed by3800. This integration and its shared
 contracts remain a separate owner gate, not a claimed property of the domain-local migration.
 
-## Files and shared composition
+### Files and shared composition
 
 - `migrations/3800-tax-account-register.sql`
 - `src/db/statements/tax-account.ts` — `taxAccountStatements`
@@ -138,7 +146,7 @@ MCP. Routes live under `/v1/entities/:entityId/books/:bookId/tax-account`: POST/
 The existing Effect query boundary owns the application transition. No pass-through service
 or second runtime was added.
 
-## Source review and checks
+### Source review and checks
 
 Source review compared immutable evidence and exact command replay owners, bank's active
 capacity/reversal admission, source-coverage gap controls, commerce effective allocations and
@@ -162,7 +170,7 @@ Matching, source completeness, tax settlement, legal applicability and close rea
 unavailable. This is the bounded VAT-03 register/control subset, not full VAT-03 acceptance;
 migration and runtime proof remain open.”
 
-## Unknown-event classification resolution
+### Unknown-event classification resolution
 
 Forward6700 provides a one-shot operator review for originally unknown events. It does not
 rewrite the statement or event. Use the event classification GET to distinguish the recorded

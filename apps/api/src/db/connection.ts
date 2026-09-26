@@ -5,13 +5,23 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Redacted from "effect/Redacted";
 import { ConnectionError, SqlError } from "effect/unstable/sql/SqlError";
-import { Client, types } from "pg";
+import { Client, types, type CustomTypesConfig } from "pg";
 
 const makeDatabase = PgDrizzle.makeWithDefaults();
 
 export type DatabaseClient = Effect.Success<typeof makeDatabase>;
 
 export class Database extends Context.Service<Database, DatabaseClient>()("open-erp/Database") {}
+
+// Drizzle owns date/time decoding; numeric and int8 retain pg's exact parsers.
+export const applicationPostgresTypes: CustomTypesConfig = {
+  getTypeParser: (oid, format) => {
+    if ([1184, 1114, 1082, 1186, 1231, 1115, 1185, 1187, 1182].includes(oid)) {
+      return (value: string) => value;
+    }
+    return types.getTypeParser(oid, format);
+  },
+};
 
 interface PostgresConfig {
   readonly connectionString: Redacted.Redacted<string>;
@@ -34,15 +44,7 @@ export function acquirePostgres(config: PostgresConfig) {
             connectionTimeoutMillis: config.connectTimeoutMs,
             statement_timeout: config.statementTimeoutMs,
             query_timeout: config.statementTimeoutMs,
-            types: {
-              getTypeParser: (oid, format) => {
-                // Drizzle owns date/time decoding; numeric and int8 retain pg's exact parsers.
-                if ([1184, 1114, 1082, 1186, 1231, 1115, 1185, 1187, 1182].includes(oid)) {
-                  return (value: string) => value;
-                }
-                return types.getTypeParser(oid, format);
-              },
-            },
+            types: applicationPostgresTypes,
           }),
         catch: connectionFailure,
       }),

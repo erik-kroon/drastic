@@ -1,15 +1,16 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { capabilities } from "../../../application/capabilities";
+import * as Reports from "../../../application/reports";
 
 export const ReportHandlers = HttpApiBuilder.group(Api, "reports", (handlers) =>
   handlers
     .handle("prepareReportFamily", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.reports_prepare_family.execute(token, {
-          scope: params,
+        Reports.prepareReportFamily(token, {
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -17,13 +18,13 @@ export const ReportHandlers = HttpApiBuilder.group(Api, "reports", (handlers) =>
     )
     .handle("getReportFamily", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.reports_get_family.execute(token, { scope: params, reportId: params.id }),
+        Reports.getReportFamily(token, { scope: scopeFromPath(params), reportId: params.id }),
       ),
     )
     .handle("compareReports", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.reports_compare.execute(token, {
-          scope: params,
+        Reports.compareReports(token, {
+          scope: scopeFromPath(params),
           leftReportId: params.id,
           rightReportId: params.otherId,
           after: query.after,
@@ -32,13 +33,13 @@ export const ReportHandlers = HttpApiBuilder.group(Api, "reports", (handlers) =>
     )
     .handle("listReports", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.reports_list.execute(token, { scope: params, after: query.after }),
+        Reports.listReports(token, { scope: scopeFromPath(params), after: query.after }),
       ),
     )
     .handle("prepareReport", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.reports_prepare.execute(token, {
-          scope: params,
+        Reports.prepareReport(token, {
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -46,13 +47,13 @@ export const ReportHandlers = HttpApiBuilder.group(Api, "reports", (handlers) =>
     )
     .handle("getReport", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.reports_get.execute(token, { scope: params, reportId: params.id }),
+        Reports.getReport(token, { scope: scopeFromPath(params), reportId: params.id }),
       ),
     )
     .handle("reportLines", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.reports_lines.execute(token, {
-          scope: params,
+        Reports.reportLines(token, {
+          scope: scopeFromPath(params),
           reportId: params.id,
           after: query.after,
         }),
@@ -60,8 +61,8 @@ export const ReportHandlers = HttpApiBuilder.group(Api, "reports", (handlers) =>
     )
     .handle("reportGeneralLedger", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.reports_general_ledger.execute(token, {
-          scope: params,
+        Reports.reportGeneralLedger(token, {
+          scope: scopeFromPath(params),
           reportId: params.id,
           lineId: params.lineId,
           after: query.after,
@@ -70,8 +71,8 @@ export const ReportHandlers = HttpApiBuilder.group(Api, "reports", (handlers) =>
     )
     .handle("reportExplanation", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.reports_explain.execute(token, {
-          scope: params,
+        Reports.reportExplanation(token, {
+          scope: scopeFromPath(params),
           reportId: params.id,
           lineId: params.lineId,
           after: query.after,

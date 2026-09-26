@@ -1,8 +1,16 @@
 # Reviewed bank unmatch — 1300
 
+## Current ownership
+
+Application operations live in [application/banking/match-reversals.ts](../src/application/banking/match-reversals.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 Status: domain source and shared API/MCP/database/workspace registration integrated; runtime and static validation unverified.
 
-## Scope and failure contract (before implementation)
+### Scope and failure contract (before implementation)
 
 A reviewer prepares a whole applied allocation or one retained exact match for
 unmatch. The saved plan shows original relationships, evidence, exact released amounts,
@@ -37,7 +45,7 @@ changes an invoice settlement, deletes history or reopens a period.
 
 These are source-review obligations and future acceptance cases, not new tests or proof.
 
-## Delivered source (runtime unverified)
+### Delivered source (runtime unverified)
 
 - `apps/api/migrations/1300-bank-match-reversals.sql`: append-only plans, approvals,
   revocations and reversal receipts; private effective-relationship views; scoped workflow;
@@ -68,7 +76,7 @@ Prepare a new reviewed allocation afterward if a replacement match is wanted. An
 or posted line with unmatch history is refused by the exact-match command, including
 released allocation legs. The existing reviewed allocation workflow can use restored capacity.
 
-### Effective consumers and old callers
+#### Effective consumers and old callers
 
 The sole live projections are private `openerp.bank_active_matches` and
 `openerp.bank_active_allocation_legs`. Their originals and new reversal tables are immutable.
@@ -97,7 +105,7 @@ Old report bodies and old reconciliation reads are not regenerated.
 `owner_guard_capacity` must retain these active bank view references. Root acknowledged this
 shared-function boundary. No unrelated invoice/owner correction semantics are added here.
 
-## Shared integration map
+### Shared integration map
 
 The root added the following bindings, mounted the unmatch panel and connected the historical
 allocation notice. New tables need no runtime Drizzle writes or public table grants.
@@ -112,23 +120,23 @@ These source connections have not been run or type-checked.
 5. Add these `bindCapability` mappings. `scopeParameter(input.scope)` comes first after the
    credential, which the existing dispatcher supplies. Do not add approve/revoke to MCP.
 
-| Capability | Database operation | Parameters after token |
-| --- | --- | --- |
-| `bank_prepare_match_reversal` | `prepareBankMatchReversal` | scope JSON, `input.idempotencyKey`, `JSON.stringify(input.input)` |
-| `bank_get_match_reversal` | `getBankMatchReversal` | scope JSON, `input.planId` |
-| `bank_list_match_reversals` | `listBankMatchReversals` | scope JSON, `input.after ?? ""` |
+| Capability                    | Database operation         | Parameters after token                                                            |
+| ----------------------------- | -------------------------- | --------------------------------------------------------------------------------- |
+| `bank_prepare_match_reversal` | `prepareBankMatchReversal` | scope JSON, `input.idempotencyKey`, `JSON.stringify(input.input)`                 |
+| `bank_get_match_reversal`     | `getBankMatchReversal`     | scope JSON, `input.planId`                                                        |
+| `bank_list_match_reversals`   | `listBankMatchReversals`   | scope JSON, `input.after ?? ""`                                                   |
 | `bank_execute_match_reversal` | `executeBankMatchReversal` | scope JSON, `input.idempotencyKey`, `input.planId`, `JSON.stringify(input.input)` |
 
 All statements return `as result` and call the corresponding snake-case SQL function:
 
-| REST operation | SQL signature |
-| --- | --- |
-| `prepareBankMatchReversal` | `prepare_bank_match_reversal(text,jsonb,text,jsonb)` |
-| `getBankMatchReversal` | `get_bank_match_reversal(text,jsonb,text)` |
-| `listBankMatchReversals` | `list_bank_match_reversals(text,jsonb,text)`; empty continuation becomes SQL NULL |
-| `approveBankMatchReversal` | `approve_bank_match_reversal(text,jsonb,text,text,jsonb)` |
-| `executeBankMatchReversal` | `execute_bank_match_reversal(text,jsonb,text,text,jsonb)` |
-| `revokeBankMatchReversalApproval` | `revoke_bank_match_reversal_approval(text,jsonb,text,text,jsonb)` |
+| REST operation                    | SQL signature                                                                     |
+| --------------------------------- | --------------------------------------------------------------------------------- |
+| `prepareBankMatchReversal`        | `prepare_bank_match_reversal(text,jsonb,text,jsonb)`                              |
+| `getBankMatchReversal`            | `get_bank_match_reversal(text,jsonb,text)`                                        |
+| `listBankMatchReversals`          | `list_bank_match_reversals(text,jsonb,text)`; empty continuation becomes SQL NULL |
+| `approveBankMatchReversal`        | `approve_bank_match_reversal(text,jsonb,text,text,jsonb)`                         |
+| `executeBankMatchReversal`        | `execute_bank_match_reversal(text,jsonb,text,text,jsonb)`                         |
+| `revokeBankMatchReversalApproval` | `revoke_bank_match_reversal_approval(text,jsonb,text,text,jsonb)`                 |
 
 Route prefix: `/api/v1/entities/:entityId/books/:bookId`.
 
@@ -150,7 +158,7 @@ on session identity changes through the existing root boundary:
 
 ```tsx
 import { BankMatchReversals } from "@/components/bank-match-reversals/panel";
-<BankMatchReversals key={book.id} book={book} locale={locale} />
+<BankMatchReversals key={book.id} book={book} locale={locale} />;
 ```
 
 Also integrate the historical-allocation notice into existing `settlements/review.tsx` next
@@ -158,7 +166,9 @@ to its executed receipt, and prefer it over the ordinary matched-success label w
 
 ```tsx
 import { BankAllocationUnmatchNotice } from "@/components/bank-match-reversals/notice";
-{view.unmatch ? <BankAllocationUnmatchNotice unmatch={view.unmatch} locale={locale} /> : null}
+{
+  view.unmatch ? <BankAllocationUnmatchNotice unmatch={view.unmatch} locale={locale} /> : null;
+}
 ```
 
 This notice matters: the original execution remains historical truth after unmatch and
@@ -166,7 +176,7 @@ must not be presented as currently effective matching. Existing consumers can st
 the original response because `unmatch` is optional. No shared workspace/router or dirty UI
 file was edited by this owner.
 
-## Source review and remaining limits
+### Source review and remaining limits
 
 Source review traced original/reversal uniqueness, both effective-capacity sums, current
 credential/member admission, operator-only approve/revoke, expiry/current approver checks,

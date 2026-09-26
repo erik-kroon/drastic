@@ -1,10 +1,9 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Accounting from "@open-erp/contracts/accounting";
-import * as Historical from "@open-erp/contracts/historical-migration";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { query, scopeParameter } from "../../../db/query";
+import * as Historical from "../../../application/sie/historical";
 
 export const HistoricalMigrationHandlers = HttpApiBuilder.group(
   Api,
@@ -13,172 +12,127 @@ export const HistoricalMigrationHandlers = HttpApiBuilder.group(
     handlers
       .handle("refreshHistoricalOpening", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "refreshHistoricalOpening",
-            [
-              token,
-              scopeParameter(params),
-              headers["idempotency-key"],
-              params.id,
-              JSON.stringify(payload),
-            ],
-            Historical.OpeningPreparation,
-          ),
+          Historical.refreshOpening(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            id: params.id,
+            input: payload,
+          }),
         ),
       )
       .handle("compareSieClosing", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "compareSieClosing",
-            [token, scopeParameter(params), params.id],
-            Historical.ClosingComparison,
-          ),
+          Historical.compareSieClosing(token, { scope: scopeFromPath(params), id: params.id }),
         ),
       )
       .handle("prepareHistoricalOpening", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "prepareHistoricalOpening",
-            [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-            Historical.OpeningPreparation,
-          ),
+          Historical.prepareOpening(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
         ),
       )
       .handle("getSieFinancialWorkspace", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "getSieFinancialWorkspace",
-            [token, scopeParameter(params), params.id],
-            Historical.FinancialWorkspace,
-          ),
+          Historical.getFinancialWorkspace(token, { scope: scopeFromPath(params), id: params.id }),
         ),
       )
       .handle("prepareSieFinancialVoucher", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "prepareSieFinancialVoucher",
-            [
-              token,
-              scopeParameter(params),
-              headers["idempotency-key"],
-              params.id,
-              JSON.stringify(payload),
-            ],
-            Accounting.ChangeSet,
-          ),
+          Historical.prepareFinancialVoucher(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            id: params.id,
+            input: payload,
+          }),
         ),
       )
       .handle("admitHistoricalItems", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "admitHistoricalItems",
-            [
-              token,
-              scopeParameter(params),
-              headers["idempotency-key"],
-              params.id,
-              JSON.stringify(payload),
-            ],
-            Historical.ItemAdmission,
-          ),
+          Historical.admitItems(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            id: params.id,
+            input: payload,
+          }),
         ),
       )
       .handle("getPlanHistoricalItems", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "getPlanHistoricalItems",
-            [token, scopeParameter(params), params.id],
-            Historical.PlanItemAdmission,
-          ),
+          Historical.getPlanItems(token, { scope: scopeFromPath(params), id: params.id }),
         ),
       )
       .handle("getHistoricalItems", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "getHistoricalItems",
-            [token, scopeParameter(params), params.id],
-            Historical.ItemAdmission,
-          ),
+          Historical.getItems(token, { scope: scopeFromPath(params), id: params.id }),
         ),
       )
       .handle("listHistoricalBases", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
-          query("listHistoricalBases", [token, scopeParameter(params)], Historical.BasisInventory),
+          Historical.listBases(token, { scope: scopeFromPath(params) }),
         ),
       )
       .handle("selectHistoricalBasis", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "selectHistoricalBasis",
-            [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-            Historical.Basis,
-          ),
+          Historical.selectBasis(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
         ),
       )
       .handle("getHistoricalBasis", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
-          query("getHistoricalBasis", [token, scopeParameter(params), params.id], Historical.Basis),
+          Historical.getBasis(token, { scope: scopeFromPath(params), id: params.id }),
         ),
       )
       .handle("postHistoricalOpening", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "postHistoricalOpening",
-            [
-              token,
-              scopeParameter(params),
-              headers["idempotency-key"],
-              params.id,
-              payload.planDigest,
-              payload.approvalId,
-            ],
-            Historical.Basis,
-          ),
+          Historical.postOpening(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            id: params.id,
+            planDigest: payload.planDigest,
+            approvalId: payload.approvalId,
+          }),
         ),
       )
       .handle("startSieFinancialRun", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "startSieFinancialRun",
-            [
-              token,
-              scopeParameter(params),
-              headers["idempotency-key"],
-              params.id,
-              payload.fiscalYearId,
-              payload.planDigest,
-            ],
-            Historical.RunStart,
-          ),
+          Historical.startFinancialRun(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            id: params.id,
+            fiscalYearId: payload.fiscalYearId,
+            planDigest: payload.planDigest,
+          }),
         ),
       )
       .handle("getSieFinancialRun", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
-          query("getSieFinancialRun", [token, scopeParameter(params), params.id], Historical.Run),
+          Historical.getFinancialRun(token, { scope: scopeFromPath(params), id: params.id }),
         ),
       )
       .handle("advanceSieFinancialRun", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "advanceSieFinancialRun",
-            [
-              token,
-              scopeParameter(params),
-              headers["idempotency-key"],
-              params.id,
-              JSON.stringify(payload),
-            ],
-            Historical.Chunk,
-          ),
+          Historical.advanceFinancialRun(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            id: params.id,
+            input: payload,
+          }),
         ),
       )
       .handle("reclaimSieFinancialRun", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "reclaimSieFinancialRun",
-            [token, scopeParameter(params), headers["idempotency-key"], params.id, payload.action],
-            Historical.Fence,
-          ),
+          Historical.reclaimFinancialRun(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            id: params.id,
+            action: payload.action,
+          }),
         ),
       ),
 );

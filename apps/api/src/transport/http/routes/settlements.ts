@@ -1,17 +1,25 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Settlement from "@open-erp/contracts/settlements";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { capabilities } from "../../../application/capabilities";
-import { query, scopeParameter } from "../../../db/query";
+import {
+  approveBankAllocation,
+  executeBankAllocation,
+  getBankAllocation,
+  prepareBankAllocation,
+} from "../../../application/banking/allocations";
+import {
+  getBankCapacityReconciliation,
+  reconcileBankCapacity,
+} from "../../../application/banking/reconciliations";
 
 export const SettlementHandlers = HttpApiBuilder.group(Api, "settlements", (handlers) =>
   handlers
     .handle("prepareBankAllocation", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.bank_prepare_allocation.execute(token, {
-          scope: params,
+        prepareBankAllocation(token, {
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -19,31 +27,23 @@ export const SettlementHandlers = HttpApiBuilder.group(Api, "settlements", (hand
     )
     .handle("getBankAllocation", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.bank_get_allocation.execute(token, {
-          scope: params,
-          planId: params.id,
-        }),
+        getBankAllocation(token, { scope: scopeFromPath(params), planId: params.id }),
       ),
     )
     .handle("approveBankAllocation", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "approveBankAllocation",
-          [
-            token,
-            scopeParameter(params),
-            headers["idempotency-key"],
-            params.id,
-            JSON.stringify(payload),
-          ],
-          Settlement.BankAllocationApproval,
-        ),
+        approveBankAllocation(token, {
+          scope: scopeFromPath(params),
+          planId: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("executeBankAllocation", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.bank_execute_allocation.execute(token, {
-          scope: params,
+        executeBankAllocation(token, {
+          scope: scopeFromPath(params),
           planId: params.id,
           idempotencyKey: headers["idempotency-key"],
           input: payload,
@@ -52,8 +52,8 @@ export const SettlementHandlers = HttpApiBuilder.group(Api, "settlements", (hand
     )
     .handle("reconcileBankCapacity", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.bank_reconcile_capacity.execute(token, {
-          scope: params,
+        reconcileBankCapacity(token, {
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -61,8 +61,8 @@ export const SettlementHandlers = HttpApiBuilder.group(Api, "settlements", (hand
     )
     .handle("getBankCapacityReconciliation", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.bank_get_capacity_reconciliation.execute(token, {
-          scope: params,
+        getBankCapacityReconciliation(token, {
+          scope: scopeFromPath(params),
           reconciliationId: params.id,
         }),
       ),

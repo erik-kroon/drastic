@@ -1,5 +1,13 @@
 #4500 expense source withdrawal — pre-code failure contract
 
+## Current ownership
+
+Application operations live in [application/vat/expense-tax.ts](../src/application/vat/expense-tax.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 Permanent operator withdrawal is observation review, not a posting reversal or allocation
 release. No equivalent withdrawal owner exists in0710.
 
@@ -26,7 +34,7 @@ Required failures and retained behavior:
 - No snapshot recalculation, tax/profile activation, payment, posting, coverage or readiness
   upgrade. No tests/runtime/SQL execution or migration application is authorized.
 
-## Implemented source
+### Implemented source
 
 Forward `4500-expense-tax-source-withdrawals.sql` adds one immutable withdrawal per retained
 source identity, pinned to its exact source revision and evidence. It does not change0710 or
@@ -51,7 +59,7 @@ withdrawn observations without deleting their latest review or either immutable 
 No period reopening is required for this observation-only review. It does not change posted
 periods, reverse a voucher, release allocations or repair accounting effects.
 
-### Actual assessment and duplicate ownership
+#### Actual assessment and duplicate ownership
 
 New snapshots are `schemaVersion:"2"` / `expense-tax-controls-v2`. Every withdrawn observation
 remains an entry, with withdrawal lineage and `withdrawn_source`. Its contribution and tax
@@ -79,7 +87,7 @@ matching reservations stay exactly as they were. Different source locators witho
 voucher are not automatically classified as duplicates; unproven semantic identity remains
 outside this bounded exact-identity control.
 
-### Dependencies, immutable history and downstream VAT
+#### Dependencies, immutable history and downstream VAT
 
 `expense_tax_basis` includes every retained source's withdrawal digest. Existing closing and
 accountant consumers already depend on this owner, so a withdrawal changes currentness
@@ -109,7 +117,7 @@ Necessary dependent-owner closure:
   calculations remain unchanged/readable; amendment comparison now accepts v1/v2/v3 and
   subtracts their saved exact values without recalculation. No legal/rounding rule changed.
 
-### Shared handoff
+#### Shared handoff
 
 Local files:
 
@@ -132,7 +140,7 @@ Root-owned integration:
    `duplicate_source_component`, `ambiguous_voucher_sources`; VAT `withdrawn_expense_source`.
    No UI workflow expansion was made by this worker.
 
-### Source review and checks
+#### Source review and checks
 
 Reviewed against0710 source/review/assessment and dependency owners,3700 withdrawal/replay and
 VAT draft owners, and the actual TypeScript calculator. Reviewed wrong scope/evidence/digest,
@@ -146,7 +154,7 @@ Owned five TypeScript files passed Oxlint with zero warnings/errors. Owned Oxfmt
 root-owned. No tests, fixtures, browser work, SQL/runtime execution, migration application,
 provider/external actions or VCS history changes occurred. Dynamic behavior remains unverified.
 
-### Independent review fix: SQL sealing authority
+#### Independent review fix: SQL sealing authority
 
 Independent source review identified that the initial v3 SQL sealer fenced direct VAT-fact
 withdrawal but did not enforce the derived expense-source withdrawal marker. The runtime role

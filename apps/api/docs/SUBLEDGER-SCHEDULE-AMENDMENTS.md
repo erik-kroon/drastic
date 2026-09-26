@@ -1,6 +1,14 @@
 # Bounded future schedule dates (AST-02)
 
-## Scope and failure contract recorded before implementation
+## Current ownership
+
+Application operations live in [application/subledger/schedules.ts](../src/application/subledger/schedules.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql). Impairment/disposal and two schedule-amendment operations still contain unsupported placeholders; consult the current source before relying on the historical behavior below.
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Scope and failure contract recorded before implementation
 
 The smallest amendment keeps every retained amount, account, source, occurrence key,
 ordinal, residual and installment count. It replaces only dates/periods for the entire
@@ -41,7 +49,7 @@ Source-review acceptance (not executable tests):
 Implementation and static-check results follow below. Runtime/database behavior is not
 verified. No migration application, tests, fixtures, browser or external action is allowed.
 
-## Implemented source and integration
+### Implemented source and integration
 
 Files: forward `migrations/3100-subledger-schedule-amendments.sql`, additive schemas and
 endpoint in `packages/contracts/src/subledgers.ts`, the existing HTTP subledger handler,
@@ -76,7 +84,7 @@ the instant the command owns the book barrier. Partial suffixes, overdue install
 posted suffix entries, altered counts, missing evidence, stale digests, locked old/new
 periods and no-op requests refuse before a revision or receipt remains.
 
-### Authority and stale-plan enforcement
+#### Authority and stale-plan enforcement
 
 The revision trigger still rejects ordinary revisions after basis linkage. Its sole new
 path accepts the command-owned immutable `future_dates_v1` record and checks unchanged
@@ -101,7 +109,7 @@ Stable evidence/event/purpose/occurrence identity preserves kernel duplicate ref
 rescheduling does not create a second recognition identity. Unknown cloned evidence or
 new arbitrary event keys remain outside economic deduplication, as before.
 
-### Controls and compatibility
+#### Controls and compatibility
 
 The only change to1500's control-capture function is its basis/revision match predicate.
 It accepts the retained date-amendment lineage instead of falsely marking the unchanged
@@ -115,7 +123,7 @@ Read contracts add optional amendment and posting-basis digest fields; old bytes
 decode. Standalone schedules remain unchanged and cannot use this new command until
 an eligible linked carrying basis exists.
 
-### Source review and proof limits
+#### Source review and proof limits
 
 Source review traced current operator admission, scoped evidence and schedule lookup,
 book/period/account lock order, replay before freshness, exact suffix conservation,
@@ -137,8 +145,7 @@ Static checks performed on the three owned TypeScript files:
 These checks do not establish SQL compilation, stale-plan rejection, duplicate refusal,
 concurrency, rollback or runtime compatibility. Those observations remain unverified.
 
-
-##4000 explicit estimate follow-up
+###4000 explicit estimate follow-up
 
 [Explicit remaining estimates](SUBLEDGER-ESTIMATE-AMENDMENTS.md) adds a separate reviewed
 amount/residual command under the same immutable revision owner. Date-only amendments

@@ -1,15 +1,16 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { capabilities } from "../../../application/capabilities";
+import * as RegisterReports from "../../../application/register-reports";
 
 export const RegisterReportHandlers = HttpApiBuilder.group(Api, "registerReports", (handlers) =>
   handlers
     .handle("createRegisterReport", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.commerce_create_register_report.execute(token, {
-          scope: params,
+        RegisterReports.createRegisterReport(token, {
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -17,13 +18,16 @@ export const RegisterReportHandlers = HttpApiBuilder.group(Api, "registerReports
     )
     .handle("getRegisterReport", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.commerce_get_register_report.execute(token, { scope: params, id: params.id }),
+        RegisterReports.getRegisterReport(token, {
+          scope: scopeFromPath(params),
+          reportId: params.id,
+        }),
       ),
     )
     .handle("listRegisterReports", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.commerce_list_register_reports.execute(token, {
-          scope: params,
+        RegisterReports.listRegisterReports(token, {
+          scope: scopeFromPath(params),
           after: query.after,
         }),
       ),

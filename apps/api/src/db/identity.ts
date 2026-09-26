@@ -44,6 +44,8 @@ export type AuthorityRequirement = {
   readonly operatorOnly: boolean;
 };
 
+export type AuthorityLockMode = "share" | "update";
+
 export type VerifiedPrincipal =
   | {
       readonly actorId: string;
@@ -130,12 +132,16 @@ function lockAdmission(transaction: Transaction, actorId: string) {
     .for("share");
 }
 
-function lockBook(transaction: Transaction, scope: typeof Accounting.Scope.Type) {
-  return transaction
+function lockBook(
+  transaction: Transaction,
+  scope: typeof Accounting.Scope.Type,
+  lockMode: AuthorityLockMode,
+) {
+  const query = transaction
     .select({ id: books.id, entityId: books.entityId })
     .from(books)
-    .where(and(eq(books.id, scope.bookId), eq(books.entityId, scope.entityId)))
-    .for("share");
+    .where(and(eq(books.id, scope.bookId), eq(books.entityId, scope.entityId)));
+  return lockMode === "update" ? query.for("update") : query.for("share");
 }
 
 function readDatabaseTime(transaction: Transaction) {
@@ -154,6 +160,7 @@ function verifyAuthority(
   authority: LockedAuthority,
   scope: typeof Accounting.Scope.Type,
   requirement: AuthorityRequirement,
+  lockMode: AuthorityLockMode,
   transaction: Transaction,
 ) {
   return Effect.gen(function* () {
@@ -171,7 +178,7 @@ function verifyAuthority(
       return yield* failure("Forbidden");
     }
 
-    const bookRows = yield* lockBook(transaction, scope);
+    const bookRows = yield* lockBook(transaction, scope, lockMode);
     if (!bookRows[0]) return yield* failure("Forbidden");
     yield* decodeOne(BookRow, bookRows[0]);
 
@@ -200,6 +207,7 @@ export function admitPrincipal(
   access: AccessCredential,
   scope: typeof Accounting.Scope.Type,
   requirement: AuthorityRequirement,
+  lockMode: AuthorityLockMode,
 ) {
   return Effect.gen(function* () {
     if (access.token.length < 32 || access.token.length > 512) {
@@ -221,6 +229,7 @@ export function admitPrincipal(
           },
           scope,
           requirement,
+          lockMode,
           transaction,
         );
       }
@@ -243,6 +252,7 @@ export function admitPrincipal(
       },
       scope,
       requirement,
+      lockMode,
       transaction,
     );
   });
@@ -253,6 +263,7 @@ export function recheckPrincipal(
   principal: VerifiedPrincipal,
   scope: typeof Accounting.Scope.Type,
   requirement: AuthorityRequirement,
+  lockMode: AuthorityLockMode,
 ) {
   return Effect.gen(function* () {
     if (principal.kind === "apiCredential") {
@@ -270,6 +281,7 @@ export function recheckPrincipal(
         },
         scope,
         requirement,
+        lockMode,
         transaction,
       );
     }
@@ -295,6 +307,7 @@ export function recheckPrincipal(
       },
       scope,
       requirement,
+      lockMode,
       transaction,
     );
   });

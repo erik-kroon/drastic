@@ -1,5 +1,13 @@
 # Customer invoice policy, PDF and delivery handoff (AR-1/AR-2)
 
+## Current ownership
+
+Application operations live in [application/invoice-pdf.ts](../src/application/invoice-pdf.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 Forward7200 captures an immutable synthetic issue and review, renders a versioned portable PDF from the captured facts, and stores exact bytes with SHA256 and length in PostgreSQL. GET and history rediscover interrupted or completed rendering. Capture replay reuses the issue's unique capture; seal replay only accepts identical bytes. Old SYN issue numbers, receipts, HTML generators and saved HTML bytes are unchanged. The fixed English/WinAnsi Courier renderer paginates; it rejects unsupported characters and oversize artifacts, never silently replaces source facts. The PDF says **SYNTHETIC REVIEW DOCUMENT - NOT A LEGAL INVOICE - NOT DELIVERED**. An artifact download does not prove receipt.
 
 Forward7201 stores up to 50 immutable, evidence-scoped candidate company invoice policies per book. The owner must assert a seller identity, numbering proposal, VAT treatment, rounding method, credit-note and correction policy, effective date and sources. A _different current operator_ may retain review findings tied to the exact candidate digest and review evidence. Both records are permanently **unactivated** and cannot issue a legal number, select a VAT rule, post a credit, or turn a synthetic receipt into a legal invoice. Revised assertions require a new candidate key. D-04/D-08, company facts and applicable primary-source review still govern activation; retained statements alone are not independent proof.
@@ -8,7 +16,7 @@ Forward7202 stores up to 50 immutable delivery intents per book. Each binds a se
 
 Real-company legal issuance, credit/correction posting and email/Peppol dispatch remain unsupported. D-04/D-08 and provider/operator access must be resolved before an activated seller/numbering/VAT/rounding contract or sending authority is implemented. No real attempt, provider uncertainty, retry or receipt is fabricated. A future provider adapter must save an exact byte-hash-bound attempt identity _before_ crossing its side-effect boundary, retain timeout/unknown and reconcile the original provider request before retry. This synthetic dry-run state machine is not provider recovery proof.
 
-## Root-owned shared wiring
+### Root-owned shared wiring
 
 - Export `./invoice-pdf`, `./invoice-policy`, `./invoice-delivery` from `packages/contracts/package.json`.
 - Add `InvoicePdfApi`, `InvoicePolicyApi`, `InvoiceDeliveryApi` to `packages/contracts/src/api.ts`. Spread their read-only `InvoicePdfCapabilities`, `InvoicePolicyCapabilities`, `InvoiceDeliveryCapabilities` in `packages/contracts/src/capabilities.ts`.
@@ -24,7 +32,7 @@ REST under `/v1/entities/:entityId/books/:bookId/commerce`:
 
 All mutations require an `Idempotency-Key`. The old HTML review document routes remain available.
 
-## Forward7600 legal sales policy activation (generic tenant input)
+### Forward7600 legal sales policy activation (generic tenant input)
 
 A **new** activation record references the exact immutable candidate and independent review,
 asserted legal seller, distinct uppercase legal series (never `SYN`), explicit tenant evidence,
@@ -64,7 +72,7 @@ in `apps/api/src/db/query.ts`; bind `commerce_get_legal_sales_policy` to
 Run 7600 only after 7201. Source review and static checks are not authenticated
 runtime or legal-acceptance proof.
 
-## Forward7610/7620 legal PDF and outbound evidence
+### Forward7610/7620 legal PDF and outbound evidence
 
 Forward7610 captures only an **immutable 8100 legal issue** with its reviewed seller policy,
 complete approved draft, exact output-VAT lines, posted execution receipt and customer
@@ -114,7 +122,7 @@ no provider call, real tenant setup, browser route or recipient delivery has bee
 invoice/date row, From/To columns, sparse table, right total and bottom terms, but
 contains no copied brand graphic, fictitious payment details or reused Midday code.
 
-### Full visual review of the illustrative Takumi document
+#### Full visual review of the illustrative Takumi document
 
 Scope: A4 renderer sample in `/tmp/open-erp-ar-visual/`; plain PDF CSS, no browser
 widgets. The attached reference is `/tmp/midday-invoice-pdf-reference.jpg`.
@@ -145,7 +153,7 @@ row detail across a page boundary. Screen-reader validation, provider handoff,
 Worker limits and long-document visual acceptance remain open; the clean sample
 is not release proof.
 
-### Isolated v2 pagination probe (not activated)
+#### Isolated v2 pagination probe (not activated)
 
 The unchanged pinned `openerp-se-invoice-takumi-v1` still splits a line's
 printed description/detail from its amount cells and can add a footer-only
@@ -311,7 +319,7 @@ dispatch uses the immutable capture version. Forward migration `8600` admits v2
 without changing v1 captures and seals the descriptor with the captured version.
 There is no automatic upgrade and existing sealed bytes are never re-rendered.
 
-### Live synthetic Worker PDF observation
+#### Live synthetic Worker PDF observation
 
 A fresh disposable PostgreSQL 17 database with the source migrations and a reviewed
 **synthetic** legal issue exercised the actual Worker `POST /legal-invoice-pdfs` route.
@@ -325,7 +333,7 @@ retained one issue, capture and artifact. The real-Worker PDF image was reviewed
 keep this synthetic proof distinct from actual-company acceptance. No provider send,
 recipient delivery, deployed Worker limit or long-document pagination was proven.
 
-### Integrated v1/v2 Worker observation
+#### Integrated v1/v2 Worker observation
 
 A fresh disposable database applied the complete migration sequence through `8600`.
 The Worker sealed v2 from a reviewed synthetic legal issue; identical retry, GET and
@@ -338,7 +346,7 @@ cover this local synthetic claim only. Extra-tall rows, repeated table headings 
 continuation pages, screen-reader tagging and deployed Worker limits remain open;
 no provider call, real tenant or customer receipt was observed.
 
-### Local synthetic delivery-outbox observation
+#### Local synthetic delivery-outbox observation
 
 A disposable PostgreSQL 17 and actual Worker HTTP run exercised the PDF-linked
 email/Peppol outbox after a synthetic sealed v2 invoice. All 35 bounded HTTP

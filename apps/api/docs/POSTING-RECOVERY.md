@@ -1,8 +1,16 @@
 # Posting recovery — 0310 handoff
 
+## Current ownership
+
+Application operations live in [application/posting-recovery.ts](../src/application/posting-recovery.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 Status: locally implemented, **not integrated or runtime-verified**. Owned-file Oxlint/formatting only. No tests, builds, servers, migration runs, database writes, dependency installs, Git actions, external submissions or production activation were performed for 0310. Historical root observations of 0300 are not evidence for 0310.
 
-## Owned delivery
+### Owned delivery
 
 - `apps/api/migrations/0310-saved-posting-requests.sql` — new forward migration; do not modify applied migrations through 0900.
 - `packages/contracts/src/posting-recovery.ts` — saved command/outcome schemas, six REST operations, four ordinary capabilities; revoked diagnostic.
@@ -12,7 +20,7 @@ Status: locally implemented, **not integrated or runtime-verified**. Owned-file 
 - `apps/web/src/components/posting-recovery/{request,review,copy}.ts*` — save/run requests, review/approval/revocation/posting and English/Swedish copy.
 - This document. Existing `panel.tsx` and all shared composition files are untouched.
 
-## Behavior and authority
+### Behavior and authority
 
 ```text
 Explicit save-and-run action
@@ -41,7 +49,7 @@ The refusal allow-list is `InvalidJournal`, `MissingEvidence`, `PeriodLocked`, `
 
 All reads require current book membership. Only the original saving actor can run/replay. A different current member can read history, not acquire another actor's retry authority. Human authority commands require an operator at both save and run. They have separate REST/SQL operations and are absent from ordinary MCP capabilities. The generic SQL save/run rejects approval and revocation commands even if the key is known. This uses the existing trusted operator-role boundary; it is not new proof of physical human presence.
 
-### Approval revocation
+#### Approval revocation
 
 Any current book operator can revoke an unused approval with an explicit reason. The immutable event records approval, actor, reason and server time. Consumed approval cannot be revoked. Revocation is not consumption and never reverses a voucher. Book-first ordering serializes revoke/execute; credential/member admission locks are retained.
 
@@ -49,7 +57,7 @@ A `BEFORE UPDATE OR DELETE` approval trigger protects immutable grant identity a
 
 The forward replacement of `get_posting_recovery` excludes revoked available approvals and adds `revoked` to live approval-history diagnostics. Consumed, expired and authority-lost meanings remain distinct. Old immutable approval receipts are not rewritten. The existing one-hour approval lifetime is retained; custom lifetimes and standing mandates are not introduced. The ordinary review offers revocation of the currently available grant. Other unused/expired grants can be targeted through the operator REST command; a full approval-administration UI is not included.
 
-### Browser identity and review
+#### Browser identity and review
 
 Only hashes and request keys enter localStorage. No bearer/session credentials, evidence text, financial payload or approval body is stored there. Storage failure blocks a new save. Server discovery survives cleared storage and another browser. Saved-key replay does not require localStorage.
 
@@ -59,11 +67,11 @@ Unknown requests keep their identity. The UI can replace a key only after re-sav
 
 No company legal form, fiscal dates, VAT treatment, funding classification, completeness or production readiness is inferred. First-year expenses/funding still require accountant review and an approved production profile. No posting or submission of real company data was authorized.
 
-## Root integration — required before validation
+### Root integration — required before validation
 
 The existing contract export, `PostingRecoveryApi`/`PostingRecoveryHandlers` composition and spread of `PostingRecoveryCapabilities` are already present. Leave them in place. Add the bindings below; owned handlers otherwise refer to missing shared capability/operation members. This packet is not a claim that the unintegrated repository type-checks.
 
-### Fixed Drizzle SQL statements in `apps/api/src/database.ts`
+#### Fixed Drizzle SQL statements in `apps/api/src/database.ts`
 
 Each statement returns `as result`. Keep existing `sql` parameterization; do not interpolate operation names or SQL fragments from callers.
 
@@ -85,7 +93,7 @@ savePostingRequest: (parameters) =>
 
 `DatabaseOperation` currently derives from this fixed map. No new adapter, connection pool or dependency is needed. The new tables are accessed only inside SQL functions, so the current maintenance-only Drizzle table map needs no consumer mapping for this slice. If root adds maintenance access later, preserve SQL-owned DDL/grants/triggers rather than schema push.
 
-### Shared capability dispatcher in `apps/api/src/capabilities.ts`
+#### Shared capability dispatcher in `apps/api/src/capabilities.ts`
 
 ```ts
 posting_save_request: bindCapability(Capabilities.posting_save_request, "savePostingRequest", (input) => [
@@ -104,7 +112,7 @@ posting_list_saved_requests: bindCapability(Capabilities.posting_list_saved_requ
 
 Do **not** add authority save/run capabilities to ordinary MCP. Owned REST handlers call the two authority database operations directly. Existing same-origin cookie checks and SQL Better Auth/credential admission checks remain the shared authentication boundary.
 
-### REST surface
+#### REST surface
 
 Prefix: `/api/v1/entities/:entityId/books/:bookId`.
 
@@ -129,7 +137,7 @@ REST payloads and MCP decoding reject excess properties; SQL independently check
 
 Lists return at most 20 summaries plus a scoped timestamp/key continuation. Bodies are fetched individually; pages are live, not frozen snapshots or a complete source inventory. Detail includes immutable request, original command, current-reader `sameActor`, checked time and nullable terminal outcome. Terminal outcomes return HTTP success with `state: refused` or `state: committed`; transport failures remain errors and must not be recast as terminal refusal. The existing `/posting-requests/:key` keeps its original committed/not_observed meaning; its key is the kernel key, not the saved-request key. Save/run clients use the new paths.
 
-### Workspace
+#### Workspace
 
 Root replaces the shared `JournalDraft` import/render with:
 
@@ -141,13 +149,13 @@ import { PostingDraft } from "@/components/posting-recovery/draft";
 
 Keep current `PostingRecoveryPanel` and `PostingRecoveryReview` mounts. Keep shared `journal-review.tsx` for `SealedAction`. Key the workspace/draft by book and review by proposal; clear query state on session identity change through the existing shared auth boundary. The owned draft reuses the form structure because editing shared components was outside this packet. Root can remove the unused old draft later if no other consumers remain.
 
-### Migration and compatibility
+#### Migration and compatibility
 
 0310 requires 0300 and the existing accounting schema/kernel. It is additive and preserves the later `posting_recovery_standalone` definition owned by corrections. It does not edit 0002/0210/0300/0400/0502/0900 or weaken the bank-capacity/paired-correction triggers. Existing proposal history and kernel receipt endpoints retain their meanings. Saved approve/execute dispatch refuses bundled child proposals through the current standalone gate.
 
 Private helpers, trigger functions and all three new tables are explicitly revoked from PUBLIC/runtime. Only six authenticated scoped entrypoints receive runtime EXECUTE. All functions use protected search paths. No new error codes, account types or financial profiles are required.
 
-## Root proof checklist — still unverified
+### Root proof checklist — still unverified
 
 These are future acceptance cases, not authorization to run restricted checks or add tests. Root must obtain any required permission first.
 
@@ -162,7 +170,7 @@ These are future acceptance cases, not authorization to run restricted checks or
 9. Check paged discovery/history with concurrent saves, empty pages, cleared storage, denied storage and multiple tabs. Unknown and refused remain distinct. No automatic run on page load, refetch, opening a disclosure or switching books.
 10. Capture browser evidence for preparation → exact evidence review → approval → execution → reload/recovery; retained evidence resume; terminal refusal/replacement; revocation; stale dependency; keyboard, focus, narrow widths, reduced motion and 200% zoom. This owner added no tests or fixtures and made no browser/runtime proof claim.
 
-## 0310 design record — before implementation
+### 0310 design record — before implementation
 
 Scope: saved single-action requests, terminal outcomes, deliberate replay, and append-only approval revocation. No applied migration is changed. No real-company activation is authorized.
 
@@ -182,11 +190,11 @@ Risks and acceptance cases:
 Before: only successful kernel commands were discoverable; failed/in-flight preparation body was not server retained; approval revocation was absent.
 After target: immutable admitted bodies plus separate immutable terminal outcomes; explicit existing-kernel dispatch; append-only revocation with consumption-time enforcement. Unknown is never converted to refusal merely because a response is absent.
 
-### 0310 review refinement before receipt-guard implementation
+#### 0310 review refinement before receipt-guard implementation
 
 Risk: callers can inspect the internal kernel key and send it to an existing kernel endpoint after the saved wrapper recorded refusal. A wrapper-only terminal check would not prevent that reuse. Add a command-receipt insertion guard: keys reserved by saved requests must match their immutable actor/operation/body fingerprint and must not belong to a terminally refused request. Rejection at kernel receipt insertion rolls back that kernel transaction. Verify this bypass case at root; source review alone is not proof.
 
-## Local static observations
+### Local static observations
 
 Bounded `bunx --no-install oxlint` on the seven owned TypeScript/TSX files completed with **0 warnings and 0 errors**. Bounded Oxfmt completed successfully on those files and this document. No type, SQL, integration, concurrency or browser result is implied. Source comparison against the migration files read at task start found no changes to those applied migrations.
 

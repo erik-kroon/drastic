@@ -1,15 +1,17 @@
 import * as Accounting from "@open-erp/contracts/accounting";
-import { canonicalizeOpenErpC14nV1 } from "@open-erp/domain/canonicalization";
+import { canonicalizeJson, canonicalizeOpenErpC14nV1 } from "@open-erp/domain/canonicalization";
 import { ExecutionReceipt as DomainExecutionReceipt } from "@open-erp/domain/ledger";
 import { orderPostingGroups, validatePostingLines } from "@open-erp/domain/posting";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { failure } from "./failures";
-import { withAdmittedPrincipal, type VerifiedPrincipal } from "./identity";
+import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal } from "./identity";
 import * as Db from "../db/posting";
+import { readLiveCredential } from "../db/preparation-jobs";
+import { admitHumanActor, hashToken } from "../db/human-actor";
 import * as CorrectionDb from "../db/posting-corrections";
-import { databaseFailure, type Transaction } from "../db/transaction";
+import { databaseFailure, withTransaction, type Transaction } from "../db/transaction";
 
 type Scope = typeof Accounting.Scope.Type;
 type Plan = typeof Accounting.ChangeSet.Type;
@@ -27,6 +29,7 @@ const ReceiptSchema = Accounting.ExecutionReceipt;
 const GroupReceiptSchema = Accounting.GroupReceipt;
 const BookSetupSchema = Accounting.BookSetup;
 const BookStatusSchema = Accounting.BookStatus;
+const BookDirectorySchema = Schema.Array(Accounting.Book);
 const EvidenceSchema = Accounting.Evidence;
 const EvidenceContentSchema = Accounting.EvidenceContent;
 
@@ -38,12 +41,12 @@ function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
   return Schema.decodeEffect(schema)(value).pipe(Effect.mapError(() => failure("InternalError")));
 }
 
-export function digest(
-  value: JsonObject,
-  code: typeof Accounting.FailureCode.Type = "InternalError",
+function digestCanonical<A extends { readonly bytes: Uint8Array }>(
+  canonicalize: () => Result.Result<A, unknown>,
+  code: typeof Accounting.FailureCode.Type,
 ) {
   return Effect.gen(function* () {
-    const canonical = yield* Effect.sync(() => canonicalizeOpenErpC14nV1(value));
+    const canonical = yield* Effect.sync(canonicalize);
     if (Result.isFailure(canonical)) return yield* failure(code);
     const canonicalBytes = new Uint8Array(canonical.success.bytes.byteLength);
     canonicalBytes.set(canonical.success.bytes);
@@ -56,6 +59,20 @@ export function digest(
     ).join("");
     return `sha256:${hex}`;
   });
+}
+
+export function digest(
+  value: Schema.Json,
+  code: typeof Accounting.FailureCode.Type = "InternalError",
+) {
+  return digestCanonical(() => canonicalizeJson(value), code);
+}
+
+export function versionedDigest(
+  value: JsonObject,
+  code: typeof Accounting.FailureCode.Type = "InternalError",
+) {
+  return digestCanonical(() => canonicalizeOpenErpC14nV1(value), code);
 }
 
 function requestDigest(operation: string, actorId: string, input: JsonObject) {
@@ -78,10 +95,16 @@ function withBook<A>(
   token: string,
   scope: Scope,
   operatorOnly: boolean,
+  lockMode: AuthorityLockMode,
   operation: (transaction: Transaction, principal: Principal) => Effect.Effect<A, unknown>,
 ) {
-  return withAdmittedPrincipal({ token }, scope, { operatorOnly }, (transaction, principal) =>
-    operation(transaction, principal).pipe(Effect.mapError(databaseFailure)),
+  return withAdmittedPrincipal(
+    { token },
+    scope,
+    { operatorOnly },
+    (transaction, principal) =>
+      operation(transaction, principal).pipe(Effect.mapError(databaseFailure)),
+    lockMode,
   );
 }
 
@@ -240,13 +263,22 @@ export function validatePlan(transaction: Transaction, scope: Scope, plan: Plan)
     const planWithoutDigest = Object.fromEntries(
       Object.entries(plan).filter(([key]) => key !== "planDigest"),
     );
-    const sealedDigest = yield* digest(planWithoutDigest, "StaleDependency");
+    const sealedDigest = yield* versionedDigest(planWithoutDigest, "StaleDependency");
     if (sealedDigest !== plan.planDigest) return yield* failure("StaleDependency");
     const groups = orderPostingGroups(
       plan.groups.map((group) => ({ id: group.id, dependsOnGroupIds: group.dependsOnGroupIds })),
     );
     if (Result.isFailure(groups)) return yield* failure("InvalidJournal");
     const book = yield* readBook(transaction, scope);
+    const accountVersions = new Map(
+      (yield* Db.readAccounts(
+        transaction,
+        scope.bookId,
+        plan.dependencies.flatMap((dependency) =>
+          dependency.kind === "account" ? [dependency.resourceId] : [],
+        ),
+      )).map((account) => [account.id, account.version.toString()]),
+    );
     for (const dependency of plan.dependencies) {
       let currentVersion: string | undefined;
       if (dependency.kind === "profile") currentVersion = book.profileVersion.toString();
@@ -256,10 +288,7 @@ export function validatePlan(transaction: Transaction, scope: Scope, plan: Plan)
         currentVersion = periodRows[0]?.version.toString();
       }
       if (dependency.kind === "account") {
-        const accountRows = yield* Db.readAccounts(transaction, scope.bookId, [
-          dependency.resourceId,
-        ]);
-        currentVersion = accountRows[0]?.version.toString();
+        currentVersion = accountVersions.get(dependency.resourceId);
       }
       if (currentVersion !== dependency.version) return yield* failure("StaleDependency");
     }
@@ -395,11 +424,8 @@ export const createEvidence = Effect.fn("posting.createEvidence")(function* (
     input: typeof Accounting.CreateEvidence.Type;
   },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction, principal) =>
-    Effect.gen(function* () {
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      return yield* createEvidenceInTransaction(transaction, principal, command);
-    }),
+  return yield* withBook(token, command.scope, false, "update", (transaction, principal) =>
+    createEvidenceInTransaction(transaction, principal, command),
   );
 });
 
@@ -407,7 +433,7 @@ export const getEvidence = Effect.fn("posting.getEvidence")(function* (
   token: string,
   command: { scope: Scope; evidenceId: string },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction) =>
+  return yield* withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       const row = (yield* Db.readEvidence(
@@ -421,11 +447,43 @@ export const getEvidence = Effect.fn("posting.getEvidence")(function* (
   );
 });
 
+function admitBookDirectoryActor(transaction: Transaction, token: string) {
+  return Effect.gen(function* () {
+    if (token.length < 32 || token.length > 512) return yield* failure("Unauthorized");
+    const credentialHash = yield* hashToken(token);
+    const credential = (yield* readLiveCredential(transaction, credentialHash))[0];
+    if (credential) return credential.actorId;
+    return (yield* admitHumanActor(transaction, token)).actorId;
+  });
+}
+
+export const listBooks = Effect.fn("posting.listBooks")(function* (token: string) {
+  return yield* withTransaction((transaction) =>
+    Effect.gen(function* () {
+      const actorId = yield* admitBookDirectoryActor(transaction, token);
+      const admission = yield* Db.readActorAdmission(transaction, actorId);
+      if (admission[0]?.enabled === false) return yield* failure("Unauthorized");
+      const rows = yield* Db.readBooksForActor(transaction, actorId);
+      return yield* Schema.decodeEffect(BookDirectorySchema)(
+        rows.map((row) => ({
+          entityId: row.entityId,
+          id: row.id,
+          name: row.name,
+          currency: row.currency,
+          profile: row.profile,
+          role: row.role,
+          sequence: row.sequence.toString(),
+        })),
+      ).pipe(Effect.mapError(() => failure("InternalError")));
+    }),
+  );
+});
+
 export const bookSetup = Effect.fn("posting.bookSetup")(function* (
   token: string,
   command: { scope: Scope },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction) =>
+  return yield* withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       const book = yield* readBook(transaction, command.scope);
@@ -461,7 +519,7 @@ export const bookStatus = Effect.fn("posting.bookStatus")(function* (
   token: string,
   command: { scope: Scope },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction) =>
+  return yield* withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       const book = yield* readBook(transaction, command.scope);
@@ -621,7 +679,7 @@ export const prepareJournalInTransaction = Effect.fn("posting.prepareJournalInTr
         ...planValue,
         dependencies: [...planValue.dependencies, ...accountDependencies],
       };
-      const planDigest = yield* digest(planWithoutDigest);
+      const planDigest = yield* versionedDigest(planWithoutDigest);
       const plan = yield* decode(PlanSchema, { ...planWithoutDigest, planDigest });
       yield* Db.insertPlan(transaction, {
         bookId: command.scope.bookId,
@@ -648,11 +706,8 @@ export const prepareJournal = Effect.fn("posting.prepareJournal")(function* (
   token: string,
   command: typeof import("@open-erp/contracts/capabilities").Capabilities.ledger_prepare_journal.input.Type,
 ) {
-  return yield* withBook(token, command.scope, false, (transaction, principal) =>
-    Effect.gen(function* () {
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      return yield* prepareJournalInTransaction(transaction, principal, command);
-    }),
+  return yield* withBook(token, command.scope, false, "update", (transaction, principal) =>
+    prepareJournalInTransaction(transaction, principal, command),
   );
 });
 
@@ -660,7 +715,7 @@ export const getChange = Effect.fn("posting.getChange")(function* (
   token: string,
   command: { scope: Scope; changeSetId: string },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction) =>
+  return yield* withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       return yield* readPlan(transaction, command.scope, command.changeSetId);
@@ -676,9 +731,8 @@ export const validateChange = Effect.fn("posting.validateChange")(function* (
     idempotencyKey: string;
   },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction, principal) =>
+  return yield* withBook(token, command.scope, false, "update", (transaction, principal) =>
     Effect.gen(function* () {
-      yield* Db.lockBookForUpdate(transaction, command.scope);
       const request = yield* replay(
         transaction,
         command.scope,
@@ -786,11 +840,8 @@ export const approveChange = Effect.fn("posting.approveChange")(function* (
     input: typeof Accounting.ApproveChange.Type;
   },
 ) {
-  return yield* withBook(token, command.scope, true, (transaction, principal) =>
-    Effect.gen(function* () {
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      return yield* approveChangeInTransaction(transaction, principal, command);
-    }),
+  return yield* withBook(token, command.scope, true, "update", (transaction, principal) =>
+    approveChangeInTransaction(transaction, principal, command),
   );
 });
 
@@ -1034,11 +1085,8 @@ export const executeChange = Effect.fn("posting.executeWithAdmission")(function*
     input: typeof Accounting.ExecuteChange.Type;
   },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction, principal) =>
-    Effect.gen(function* () {
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      return yield* executeChangeInTransaction(transaction, principal, command);
-    }),
+  return yield* withBook(token, command.scope, false, "update", (transaction, principal) =>
+    executeChangeInTransaction(transaction, principal, command),
   );
 });
 
@@ -1051,9 +1099,8 @@ export const prepareCorrection = Effect.fn("posting.prepareCorrection")(function
     input: typeof Accounting.PrepareCorrection.Type;
   },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction, principal) =>
+  return yield* withBook(token, command.scope, false, "update", (transaction, principal) =>
     Effect.gen(function* () {
-      yield* Db.lockBookForUpdate(transaction, command.scope);
       const request = yield* replay(
         transaction,
         command.scope,
@@ -1103,7 +1150,7 @@ export const prepareCorrection = Effect.fn("posting.prepareCorrection")(function
         canonicalization: "openerp-c14n-v1" as const,
         id: newId("change"),
         version: 1 as const,
-        scope: command.scope,
+        scope: { entityId: command.scope.entityId, bookId: command.scope.bookId },
         createdAt,
         dependencies: [
           {
@@ -1143,7 +1190,7 @@ export const prepareCorrection = Effect.fn("posting.prepareCorrection")(function
           },
         ],
       };
-      const planDigest = yield* digest(planWithoutDigest);
+      const planDigest = yield* versionedDigest(planWithoutDigest);
       const plan = yield* decode(PlanSchema, { ...planWithoutDigest, planDigest });
       yield* Db.insertPlan(transaction, {
         bookId: command.scope.bookId,
@@ -1170,7 +1217,7 @@ export const getVoucher = Effect.fn("posting.getVoucher")(function* (
   token: string,
   command: { scope: Scope; voucherId: string },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction) =>
+  return yield* withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       return yield* readVoucher(transaction, command.scope, command.voucherId);
@@ -1182,7 +1229,7 @@ export const listVouchers = Effect.fn("posting.listVouchers")(function* (
   token: string,
   command: { scope: Scope; after?: string },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction) =>
+  return yield* withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       const after = command.after ?? "0";
@@ -1204,7 +1251,7 @@ export const ledgerSnapshot = Effect.fn("posting.ledgerSnapshot")(function* (
   token: string,
   command: { scope: Scope },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction) =>
+  return yield* withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       const book = yield* readBook(transaction, command.scope);
@@ -1244,7 +1291,7 @@ export const getReceipt = Effect.fn("posting.getReceipt")(function* (
   token: string,
   command: { scope: Scope; key: string },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction) =>
+  return yield* withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       const rows = yield* Db.readCommandReceipt(

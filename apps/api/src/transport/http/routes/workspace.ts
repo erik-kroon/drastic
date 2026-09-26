@@ -1,20 +1,21 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { capabilities } from "../../../application/capabilities";
+import * as Workspace from "../../../application/workspace";
 
 export const WorkspaceHandlers = HttpApiBuilder.group(Api, "workspace", (handlers) =>
   handlers
     .handle("workspaceCoordination", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.workspace_coordination.execute(token, { scope: params }),
+        Workspace.coordination(token, { scope: scopeFromPath(params) }),
       ),
     )
     .handle("saveWorkspaceView", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.workspace_save_view.execute(token, {
-          scope: params,
+        Workspace.saveView(token, {
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -22,8 +23,8 @@ export const WorkspaceHandlers = HttpApiBuilder.group(Api, "workspace", (handler
     )
     .handle("deleteWorkspaceView", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.workspace_delete_view.execute(token, {
-          scope: params,
+        Workspace.deleteView(token, {
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -31,8 +32,8 @@ export const WorkspaceHandlers = HttpApiBuilder.group(Api, "workspace", (handler
     )
     .handle("assignWorkspaceWork", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.workspace_assign_work.execute(token, {
-          scope: params,
+        Workspace.assignWork(token, {
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -40,12 +41,12 @@ export const WorkspaceHandlers = HttpApiBuilder.group(Api, "workspace", (handler
     )
     .handle("listAttention", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.workspace_attention.execute(token, { scope: params, ...query }),
+        Workspace.listAttention(token, { scope: scopeFromPath(params), ...query }),
       ),
     )
     .handle("listWorkspaceWork", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.workspace_list_work.execute(token, { scope: params, ...query }),
+        Workspace.listWork(token, { scope: scopeFromPath(params), ...query }),
       ),
     ),
 );

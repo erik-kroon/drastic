@@ -38,9 +38,9 @@ export function readSavedRequest(
   transaction: Transaction,
   scope: typeof Accounting.Scope.Type,
   key: string,
-  lock: "share" | "update" = "share",
+  _lock: "share" | "update" = "share",
 ) {
-  const query = transaction
+  return transaction
     .select({
       bookId: postingSavedRequests.bookId,
       key: postingSavedRequests.key,
@@ -52,7 +52,6 @@ export function readSavedRequest(
     })
     .from(postingSavedRequests)
     .where(and(eq(postingSavedRequests.bookId, scope.bookId), eq(postingSavedRequests.key, key)));
-  return lock === "update" ? query.for("update") : query.for("share");
 }
 
 export function insertSavedRequest(transaction: Transaction, row: SavedRequestRow) {
@@ -76,8 +75,7 @@ export function readSavedOutcome(
     .from(postingRequestOutcomes)
     .where(
       and(eq(postingRequestOutcomes.bookId, scope.bookId), eq(postingRequestOutcomes.key, key)),
-    )
-    .for("share");
+    );
 }
 
 export function insertSavedOutcome(
@@ -125,7 +123,7 @@ export function listSavedRequests(
     )
     .orderBy(desc(postingSavedRequests.savedAt), desc(postingSavedRequests.key))
     .limit(21);
-  return after === undefined ? query.for("share") : query;
+  return query;
 }
 
 export function insertApprovalRevocation(
@@ -143,8 +141,7 @@ export function readRecoveryAnchor(
   return transaction
     .select({ id: changeSets.id, createdAt: changeSets.createdAt })
     .from(changeSets)
-    .where(and(eq(changeSets.bookId, scope.bookId), eq(changeSets.id, changeSetId)))
-    .for("share");
+    .where(and(eq(changeSets.bookId, scope.bookId), eq(changeSets.id, changeSetId)));
 }
 
 export function listRecoveryPlans(
@@ -182,7 +179,7 @@ export function listRecoveryPlans(
     )
     .orderBy(desc(changeSets.createdAt), desc(changeSets.id))
     .limit(21);
-  return after === undefined ? query.for("share") : query;
+  return query;
 }
 
 export function listRecoveryRequests(
@@ -241,7 +238,7 @@ export function listRecoveryRequests(
     )
     .orderBy(desc(commandReceipts.recordedAt), desc(commandReceipts.key))
     .limit(21);
-  return after === undefined ? query.for("share") : query;
+  return query;
 }
 
 export function readRecoveryRequestAnchor(
@@ -267,6 +264,5 @@ export function readRecoveryRequestAnchor(
         inArray(commandReceipts.operation, operations),
         sql`coalesce(${commandReceipts.result}->>'changeSetId', ${commandReceipts.result}->>'id') = ${changeSetId}`,
       ),
-    )
-    .for("share");
+    );
 }

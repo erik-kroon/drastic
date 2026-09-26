@@ -1,6 +1,14 @@
 #5800 report explanation continuation
 
-## Failure contract — before code
+## Current ownership
+
+Application operations live in [application/reports.ts](../src/application/reports.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Failure contract — before code
 
 0120 explanation accepts unbound sequence:ordinal positions. A cursor from another account
 or an unobserved position can skip retained contributions and return an empty final page.
@@ -18,7 +26,7 @@ or an unobserved position can skip retained contributions and return an empty fi
   comparison and line-list cursors, shared route/binding signatures and UI remain unchanged.
 - No new artifact, calculation, policy, tests, runtime/SQL execution, provider or VCS action.
 
-## Implemented source
+### Implemented source
 
 `5800-report-explanation-cursors.sql` forward-replaces only `explain_report_line`.
 New `next` values are `reportId:accountId:sequence:ordinal`. The owner authorizes through
@@ -41,7 +49,7 @@ General-ledger, comparison and line-list cursor definitions are untouched. Exist
 operation names, route signatures and database parameter order are unchanged. No common
 composition change or UI edit is needed.
 
-## Source checks
+### Source checks
 
 Compared the forward owner with0120: only continuation validation and emission changed.
 Reviewed valid opening/movement anchors, cross-report/account reuse, missing/wrong ordinal,

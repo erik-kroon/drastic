@@ -1,5 +1,13 @@
 # Synthetic recurring preparation
 
+## Current ownership
+
+Application operations live in [application/preparation-jobs.ts](../src/application/preparation-jobs.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 Status: the0200 proposal-preparation slice was manually exercised locally; no automated or production verification is established here. Later0940 adds durable background preparation jobs, forward2600 repairs explicit replacement admission, and forward2800 carries original-submitter identity admission into delivery and replacement. The2600/2800 repairs are source-only and runtime-unverified. None of these slices enables automatic posting, payments or tax treatment.
 
 ```text
@@ -13,7 +21,7 @@ Retained unmatched bank observations
   → separate human approval and normal kernel execution
 ```
 
-## Rule and review boundary
+### Rule and review boundary
 
 The book must use native writer authority and `synthetic-core-v1`. Rules accept only:
 
@@ -34,7 +42,7 @@ The operator activates the exact rule digest and simulation ID/digest. The serve
 
 Active rules with the same bank account, exact description and sign conflict, even when their counterpart or series differs. Operators can append a reasoned deactivation before reviewing a replacement; activation/deactivation records are never overwritten. Repeated identical command keys recover their saved receipts. A currently active activation must still refer to an actor with operator membership before a run can prepare work.
 
-## Durable runs and identity
+### Durable runs and identity
 
 `CreatePreparationRun` accepts an active activation ID and a source date interval. It freezes that rule version, activation and current eligible observations. A newly imported row is not silently added to a run. A later run can select it. Frozen source data is immutable; a row explicitly matched after run creation is skipped before journal preparation.
 
@@ -54,7 +62,7 @@ Results distinguish `prepared`, `recovered`, `already_posted`, and `skipped_matc
 
 The only journal call is `prepare_journal`. It uses original statement evidence, source posting date, exact two-sided amounts, and an open accounting period. There is no call to `approve_change` or `execute_change`. In the0200 slice, a caller explicitly advances each bounded chunk. The later0940 background job delivers these same preparation-only chunks; it adds no posting authority.
 
-## Integration
+### Integration
 
 Migration `0200-recurring-preparation.sql` adds immutable rules, simulations, activations, deactivations, observation/preparation links and run audit, plus mutable run progress with frozen-input and append-only-result guards. Only public command/read functions are granted to `openerp_runtime`; tables and internal helpers explicitly revoke runtime and PUBLIC privileges. Every public function rechecks token/entity/book scope. Mutations lock the book before dependent period/account locks.
 
@@ -76,7 +84,7 @@ All routes are below `/api/v1/entities/:entityId/books/:bookId`. POST commands r
 
 Read `getRecurringRule` for active policy and current configuration status. Read the immutable simulation before operator review. Read `getPreparationRun` after reconnecting; repeating an old mutation key returns that command's original checkpoint, not current progress. Run audit preserves each command key and actor, including blockers. To progress, issue a new command key for the next deliberate chunk.
 
-## Verification boundary
+### Verification boundary
 
 No tests, fixtures, deployment, commits or dependency additions were made. Existing lint/type checks validate the owned TypeScript but do not establish PostgreSQL execution or financial correctness. Before claiming G3 verified, an authorized runtime exercise must retain evidence for exact-match selection, legitimate equal rows, missing/locked periods, stale source/configuration, conflicting policies, agent activation denial, operator activation, bounded chunks, a mid-run blocker, cancellation/resume, replay across actors/runs, already-matched skip, proposal recovery, and separate approval/execution of the resulting journal.
 
@@ -86,9 +94,9 @@ Forward0201 rejects unsupported command keys at the SQL boundary and filters eff
 
 Manual local evidence: two identical but distinct source rows produced two distinct event/proposal IDs. A one-row chunk was cancelled and resumed at its saved cursor. Ledger sequence remained0 and all balances0 after preparation; neither proposal was approved or posted. Artifact: `.agents/work/openerp-implementation/manual-recurring-preparation-receipts.json`.
 
-## Forward2600: obsolete background-job recovery
+### Forward2600: obsolete background-job recovery
 
-### Failure cases recorded before implementation
+#### Failure cases recorded before implementation
 
 - Revoking an executor's book membership, or configuring a different executor actor, can strand its0940 job in `ready`. The scheduler cannot deliver it and the executor cannot authorize its stop. The ready-job uniqueness gate then prevents explicit replacement even after manual cancel/resume.
 - A fresh admission must not stop an active same-executor job whose original submitter authority and run audit are unchanged.
@@ -98,7 +106,7 @@ Manual local evidence: two identical but distinct source rows produced two disti
 - A blocked, cancelled or completed run cannot be resumed or advanced by admission. Only an explicitly ready run may receive a replacement job.
 - Stopping the old job and inserting/saving its replacement must be one transaction under the book lock. Any later failure must roll back the stop. Old job IDs, checkpoints, captured authority, run audit, run progress and command receipts must remain retained.
 
-### Implemented source and independent-review handoff
+#### Implemented source and independent-review handoff
 
 `2600-preparation-job-recovery.sql` replaces only `admit_preparation_job`. Historical0940, its grants, job executor, pending scheduler query, Workflow runtime and public contracts are unchanged. No shared registration change is needed for the existing function signature.
 
@@ -112,9 +120,9 @@ Source-reviewed cases: active same-executor refusal; different configured execut
 
 This remains durable preparation only. The executor calls `advance_preparation_run`, which prepares or recovers ordinary journal proposals under the existing activation and dependency checks. Separate human financial approval and normal kernel execution remain required.
 
-## Forward2800: original submitter identity admission
+### Forward2800: original submitter identity admission
 
-### Failure cases recorded before implementation
+#### Failure cases recorded before implementation
 
 - A requester may start a job with an API token and a separate enabled executor. Identity provisioning can then set the requester admission to disabled while leaving its API credential and book membership intact (empty grants or unchanged grants). New direct requests are denied by2502, but0940 checks only the retained token/session and membership before advancing.
 - Browser-session deletion during identity provisioning covers session-backed requests, not retained API credentials. Both job kinds must respect an existing disabled identity admission.
@@ -124,7 +132,7 @@ This remains durable preparation only. The executor calls `advance_preparation_r
 - Fresh replacement admission must treat an explicitly disabled original requester as obsolete, using a nonlocking read after its book barrier. Unchanged active jobs must still refuse; exact old-key replay must not silently replace them.
 - No disabled requester is authenticated or used to execute work. The authorized executor may record a stopped job, and a separately authorized fresh requester may explicitly admit a replacement. No run is resumed or advanced by replacement admission.
 
-### Implemented source and independent-review handoff
+#### Implemented source and independent-review handoff
 
 `2800-preparation-identity-admission.sql` replaces only `execute_preparation_job` from0940 and `admit_preparation_job` from2600. Historical0940/2600 and identity migrations2501/2502 remain unchanged. Existing function signatures and grants remain; no registration or endpoint change is needed.
 
@@ -136,9 +144,9 @@ For an existing identity row, the execution share lock serializes its disable up
 
 Source-reviewed cases: valid API credential plus retained membership with disabled requester and separate enabled executor; session-backed requester with a deleted session; explicit enabled or missing admission; terminal and old-step replay; future/out-of-range step refusal; disabled old submitter replacement under a different valid requester; exact original-key replay; active unchanged job refusal; and rollback of obsolete-job stop if replacement fails. No checks, tests, SQL/migration execution or runtime verification were run. Compilation, concurrent provisioning/delivery and actual Workflow recovery remain unverified. Human financial approval, profile constraints and kernel posting authority are unchanged.
 
-## Forward5100: stop one admitted preparation job
+### Forward5100: stop one admitted preparation job
 
-### Failure contract recorded before implementation
+#### Failure contract recorded before implementation
 
 - Run cancellation already prevents further preparation, but its ready job projection remains
   schedulable until an executor can authorize and observe the cancellation. A job stop must not
@@ -159,7 +167,7 @@ Source-reviewed cases: valid API credential plus retained membership with disabl
 - Stopping one job does not cancel the run or bar a future deliberate new admission. No automatic
   replacement, provider action, posting authority or new historical artifact is introduced.
 
-### Implemented stop consumer and retained result
+#### Implemented stop consumer and retained result
 
 `POST /v1/entities/:entityId/books/:bookId/preparation-jobs/:id/stop` and MCP
 `runs_stop_background` take an exact saved **job ID**, `{reason}` and an Idempotency-Key. Current
@@ -224,9 +232,9 @@ references scoped authorization, book/job state, existing job-body/replay/comman
 and typed refusal. No tests/helpers/fixtures, shared typechecks, SQL/migration/runtime/provider
 execution, operations CLI/domain changes, UI, deployment/dependencies or VCS action was performed.
 
-## Forward6000: preparation stop-reason local binding
+### Forward6000: preparation stop-reason local binding
 
-### Failure contract before implementation
+#### Failure contract before implementation
 
 The latest2800 executor assigns an unlabeled local `reason`, then uses
 `execute_preparation_job.reason` in its stop UPDATE. Function-name qualification addresses
@@ -247,7 +255,7 @@ non-ready run can therefore fail in SQL instead of committing the intended stopp
 - Replace only the latest execute_preparation_job function, preserving its signature and grants.
   Historical0940/2800 and explicit5100 stop remain untouched. No public schema/wiring change.
 
-### Implemented repair and review handoff
+#### Implemented repair and review handoff
 
 `6000-preparation-stop-reason-binding.sql` forward-replaces only
 `execute_preparation_job(text,jsonb,text,integer)` from2800. Its local declaration, five reason

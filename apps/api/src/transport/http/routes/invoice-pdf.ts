@@ -1,20 +1,16 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import {
-  prepareInvoicePdf,
-  getInvoicePdf,
-  invoicePdfHistory,
-  resumeInvoicePdf,
-} from "../../../application/invoice-pdf";
+import * as Commerce from "../../../application/commerce/documents";
 
 export const InvoicePdfHandlers = HttpApiBuilder.group(Api, "invoicePdfs", (handlers) =>
   handlers
     .handle("prepareInvoicePdf", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        prepareInvoicePdf(token, {
-          scope: params,
+        Commerce.prepareInvoicePdf(token, {
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -22,17 +18,17 @@ export const InvoicePdfHandlers = HttpApiBuilder.group(Api, "invoicePdfs", (hand
     )
     .handle("getInvoicePdf", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        getInvoicePdf(token, { scope: params, id: params.id }),
+        Commerce.getInvoicePdf(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("resumeInvoicePdf", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        resumeInvoicePdf(token, { scope: params, id: params.id }),
+        Commerce.resumeInvoicePdf(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("invoicePdfHistory", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        invoicePdfHistory(token, { scope: params, id: params.id }),
+        Commerce.invoicePdfHistory(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     ),
 );

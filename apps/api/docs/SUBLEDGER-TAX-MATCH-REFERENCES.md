@@ -1,6 +1,14 @@
 # Schedule basis tax-match references —5300
 
-## Failure contract recorded before implementation
+## Current ownership
+
+Application operations live in [application/subledger/schedules.ts](../src/application/subledger/schedules.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Failure contract recorded before implementation
 
 This is factual, non-authorizing live disclosure on the existing schedule read. It does not
 establish exclusive ownership, financial capacity, account classification or a conflict.
@@ -28,7 +36,7 @@ establish exclusive ownership, financial capacity, account classification or a c
 No tests, fixtures, SQL application, runtime or external actions are authorized. Source checks
 cannot establish SQL compilation, isolation behavior or runtime transport correctness.
 
-## Implemented source
+### Implemented source
 
 Forward `5300-subledger-tax-match-references.sql` replaces only public `get_schedule`, starting
 from4200's complete getter. The existing REST `GET /api/v1/entities/:entityId/books/:bookId/schedules/:id`
@@ -64,7 +72,7 @@ Immutable current/revision/disposal bodies, saved digests,1500/1800/4100 authori
 match views, controls and correction guards are unchanged. These are facts about related
 records, not conflict warnings, role clearance, capacity reuse or financial permission.
 
-## Verification boundary
+### Verification boundary
 
 Source review compared the full replacement with4200 and traced both existing transport
 consumers. Pending separately authorized observations: unknown/foreign schedule; equal line

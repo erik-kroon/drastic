@@ -1,6 +1,14 @@
 # Schedule basis and declared-account controls (AST-01/02)
 
-## Scope and acceptance recorded before implementation
+## Current ownership
+
+Application operations live in [application/subledger/controls.ts](../src/application/subledger/controls.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Scope and acceptance recorded before implementation
 
 Reporting and evidence-backed basis linkage only. No ledger write, depreciation-rule activation,
 opening voucher, disposal, schedule replacement or financial-close readiness is introduced.
@@ -59,7 +67,7 @@ No tests/fixtures, commands, runtime/database/browser execution or validation ru
 All behavior remains runtime-unverified. Company applicability, source coverage, original-cost
 classification, useful life and depreciation law remain independent reviewed gates.
 
-## Implemented source and root integration
+### Implemented source and root integration
 
 Source-only implementation:
 
@@ -86,24 +94,24 @@ Root composition is now connected in source (runtime-unverified):
 HTTP base: `/api/v1/entities/:entityId/books/:bookId/subledger-controls`.
 Every database statement returns `as result`; scopes and inputs use JSON serialization.
 
-| HTTP operation | Database key / SQL function | Parameters after token | Decoded schema |
-| --- | --- | --- | --- |
-| POST `/bases` | `recordSubledgerBasis` / `record_subledger_basis` | scope JSON, key text, input JSON | `SubledgerBasis` |
-| GET `/bases/:id` (schedule ID) | `getSubledgerBasis` / `get_subledger_basis` | scope JSON, schedule ID text | `SubledgerBasis` |
-| GET `/bases` | `listSubledgerBases` / `list_subledger_bases` | scope JSON | `SubledgerBasisList` |
-| POST `/snapshots` | `createSubledgerControl` / `create_subledger_control` | scope JSON, key text, input JSON | `SubledgerControl` |
-| GET `/snapshots/:id` | `getSubledgerControl` / `get_subledger_control` | scope JSON, snapshot ID text | `SubledgerControlView` |
-| GET `/snapshots` | `listSubledgerControls` / `list_subledger_controls` | scope JSON | `SubledgerControlList` |
+| HTTP operation                 | Database key / SQL function                           | Parameters after token           | Decoded schema         |
+| ------------------------------ | ----------------------------------------------------- | -------------------------------- | ---------------------- |
+| POST `/bases`                  | `recordSubledgerBasis` / `record_subledger_basis`     | scope JSON, key text, input JSON | `SubledgerBasis`       |
+| GET `/bases/:id` (schedule ID) | `getSubledgerBasis` / `get_subledger_basis`           | scope JSON, schedule ID text     | `SubledgerBasis`       |
+| GET `/bases`                   | `listSubledgerBases` / `list_subledger_bases`         | scope JSON                       | `SubledgerBasisList`   |
+| POST `/snapshots`              | `createSubledgerControl` / `create_subledger_control` | scope JSON, key text, input JSON | `SubledgerControl`     |
+| GET `/snapshots/:id`           | `getSubledgerControl` / `get_subledger_control`       | scope JSON, snapshot ID text     | `SubledgerControlView` |
+| GET `/snapshots`               | `listSubledgerControls` / `list_subledger_controls`   | scope JSON                       | `SubledgerControlList` |
 
-| MCP capability | Database key | Argument mapping after token |
-| --- | --- | --- |
-| `subledger_get_basis` | `getSubledgerBasis` | `scopeParameter(input.scope), input.id` |
-| `subledger_list_bases` | `listSubledgerBases` | `scopeParameter(input.scope)` |
+| MCP capability             | Database key             | Argument mapping after token                                                     |
+| -------------------------- | ------------------------ | -------------------------------------------------------------------------------- |
+| `subledger_get_basis`      | `getSubledgerBasis`      | `scopeParameter(input.scope), input.id`                                          |
+| `subledger_list_bases`     | `listSubledgerBases`     | `scopeParameter(input.scope)`                                                    |
 | `subledger_create_control` | `createSubledgerControl` | `scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)` |
-| `subledger_get_control` | `getSubledgerControl` | `scopeParameter(input.scope), input.id` |
-| `subledger_list_controls` | `listSubledgerControls` | `scopeParameter(input.scope)` |
+| `subledger_get_control`    | `getSubledgerControl`    | `scopeParameter(input.scope), input.id`                                          |
+| `subledger_list_controls`  | `listSubledgerControls`  | `scopeParameter(input.scope)`                                                    |
 
-### Basis meaning and bounded refusals
+#### Basis meaning and bounded refusals
 
 `RecordSubledgerBasis` requires an exact current schedule digest, explicit acquisition or
 imported-opening type, posted date, source component locator, source/review evidence,
@@ -127,7 +135,7 @@ field and prior revision remains as0700 defined. Existing preparation/posting/re
 are untouched. Incorrect basis decisions need a future reviewed amendment workflow; no edit,
 delete, relabel or automatic reversal path exists in this slice.
 
-### Snapshot/control meaning
+#### Snapshot/control meaning
 
 One book barrier captures current known schedule revisions, bases and due occurrence states,
 book committed sequence, declared account labels and every declared-account GL row through
@@ -168,7 +176,7 @@ work with `dependenciesCurrent:false`; new captures fail closed. Original saved 
 bytes remain recoverable after changes. All lists return the complete bounded inventory in
 one response, not a truncated page. The200-basis/report limits are enforced on insertion.
 
-### Closing integration for root
+#### Closing integration for root
 
 Private `openerp.subledger_control_dependencies(book text)` requires a caller-held book lock.
 It returns `version`, `basisDigest`, `basisCount`, `snapshotCount`, `missingBasisCount`, plus
@@ -182,7 +190,7 @@ migrations are unchanged. A clean snapshot cannot turn a required-assets close c
 or waive an existing source/control blocker. Historical close/pack bytes retain their meanings;
 old pending proposals become stale against the new complete dependency shape.
 
-### Source review and unperformed proof
+#### Source review and unperformed proof
 
 Source review traced scoped admission and book locking, operator-only basis review, replay-before-
 freshness, database uniqueness/FKs, exact numeric conservation, current committed cutoff,
@@ -193,7 +201,7 @@ service or deployment was run. SQL/TypeScript/runtime behavior and rendered usab
 unverified.1500 must follow0600 commerce helpers,0700 schedules and the existing admission kernel.
 The referenced methods/exports are composed by the root. Reports → Asset controls and the accounting tools workspace mount the panel under the existing book boundary.
 
-##1510 closing/review dependency follow-up — acceptance before implementation
+###1510 closing/review dependency follow-up — acceptance before implementation
 
 - Extend latest1001 private owners only; do not copy0800/0810-era replacements over later VAT or
   bank behavior.1300 active bank views and bank/reconciliation hooks remain untouched.
@@ -212,7 +220,7 @@ The referenced methods/exports are composed by the root. Reports → Asset contr
   dependenciesCurrent=false, not a truncated comparison or missing historical record.
 - Source-only review. No SQL application, check/test/browser command or external operation.
 
-##1510 implemented source and integration result
+###1510 implemented source and integration result
 
 Files: `apps/api/migrations/1510-closing-subledger-dependencies.sql`, optional dependency schema
 fields in `packages/contracts/src/closing.ts` and `packages/contracts/src/accountant-review.ts`,
@@ -256,13 +264,14 @@ approve/execute/currentness and every artifact-context caller. No checks, tests,
 browser or toolchain execution occurred. Migration syntax, runtime behavior and compatibility
 remain unverified observations, not claims of acceptance.
 
-## 1800 basis-aware posting safeguards — failure cases before implementation
+### 1800 basis-aware posting safeguards — failure cases before implementation
 
 Scope: block new recognition against a reversed/corrected linked carrying basis. Preserve
 standalone synthetic schedules without bases, immutable historical postings, receipts and reads.
 No migration application or runtime proof is authorized for this wave.
 
 Failure cases to guard:
+
 - A basis is reversed/corrected before native preparation; no new proposal or receipt may survive.
 - A valid linked basis is reversed/corrected after preparation or approval; execution must fail
   atomically, including generic kernel and bundle paths that insert vouchers.
@@ -286,7 +295,7 @@ basis checks at native preparation, shared dependency validation and voucher ins
 additive live schedule notice. Known linked events outside the native path fail closed. New event
 keys, cloned source components and unknown economics remain outside this identity-based guard.
 
-## 1800 implemented source — carrying-basis posting authority
+### 1800 implemented source — carrying-basis posting authority
 
 Implemented in `migrations/1800-subledger-basis-posting-guards.sql`; it requires1500 and leaves
 all1300–1510 files unchanged. Contracts are additive in `packages/contracts/src/subledgers.ts`.
@@ -303,7 +312,7 @@ basis correction/reversal
   -> original basis remains retained -> next recognition fails -> controls stay inspectable
 ```
 
-### Capture and compatibility
+#### Capture and compatibility
 
 `subledger_preparations.basis_dependency` is an additive nullable JSON column. New preparation
 rows capture mode, supported state, basis digest, basis voucher ID, blocker and false legal-policy
@@ -326,7 +335,7 @@ mismatch also blocks. It does not infer a replacement basis, pause future terms 
 legal profile. `supported:true` is only this prerequisite, not overall posting readiness; existing
 profile/account/period/evidence/approval checks still apply.
 
-### Exact enforcement coverage
+#### Exact enforcement coverage
 
 - `prepare_schedule_occurrence`: checks current basis before a new preparation/reuse, captures it
   on the immutable preparation row, and retains it as optional `postingBasis` in new responses.
@@ -352,7 +361,7 @@ profile/account/period/evidence/approval checks still apply.
   old response decoding valid. Generic posting recovery already converts stale dependencies into
   a visible blocker without discarding retained history. No new transport composition is needed.
 
-### Limits and remaining proof
+#### Limits and remaining proof
 
 The guard identifies retained schedule events, not arbitrary economic equivalence. Another event
 key, another evidence object or a cloned source declaration is not universally deduplicated.
@@ -369,7 +378,7 @@ were performed. Trigger ordering, SQL compilation, concurrency/rollback and rend
 remain runtime-unverified. A later authorized proof must exercise reversal-after-approval and
 basis-link-after-preparation through native, direct-kernel and correction-bundle public paths.
 
-### 1800 follow-up source review — before hardening
+#### 1800 follow-up source review — before hardening
 
 - Selected schedule reads must match the requested schedule/book/entity, including retained
   revisions. Preparation responses must match schedule, requested revision digest and ordinal.
@@ -384,7 +393,7 @@ basis-link-after-preparation through native, direct-kernel and correction-bundle
   by basis reversal. No supported current entrypoint exposes that reverse ordering. A future
   batching path must define commit-time basis validity before it is admitted.
 
-### 1800 follow-up result
+#### 1800 follow-up result
 
 No deferred voucher trigger was added. Source review of the public dispatcher and every
 `execute_change` caller found no supported recognition-then-basis-reversal atomic entrypoint.
@@ -414,7 +423,7 @@ than successful navigation. No contracts or root composition changed in this fol
 This follow-up changed only1800, `schedules.tsx`, `schedule-form.tsx` and this handoff. No commands,
 tests, database/browser execution or migration application occurred.
 
-## Retained-view live status follow-up
+### Retained-view live status follow-up
 
 Failure case before edits: a cached verified artifact may remain after a failed, pending/paused
 or not-yet-completed mounted refresh. Do not equate its stored dependency boolean with known live
@@ -426,8 +435,7 @@ or stale. Previously verified bytes stay inspectable/downloadable. A successful 
 "at the last successful refresh." Only owned views/copy changed; no SQL/API/arithmetic changes.
 No checks, tests or browser execution occurred.
 
-
-##3100 bounded future-date amendments
+###3100 bounded future-date amendments
 
 [Future schedule dates](SUBLEDGER-SCHEDULE-AMENDMENTS.md) records the new AST-02 subset.
 Operators can append a reviewed date/period revision for the whole remaining future
@@ -439,8 +447,7 @@ recognizes this retained basis lineage. Lifetime/amount changes and disposal rem
 unsupported. Forward3100 is unapplied and runtime-unverified. Root integrated shared
 query dispatch; shared type checks remain root-owned.
 
-
-##4000 explicit remaining-estimate amendments
+###4000 explicit remaining-estimate amendments
 
 [Explicit remaining estimates](SUBLEDGER-ESTIMATE-AMENDMENTS.md) extends3100's revision
 owner with reviewed positive future installment amounts and a nonnegative residual.
@@ -452,8 +459,7 @@ an added live conservation check blocks recognition after a later reversal until
 eligible estimate is reviewed. Control contributions retain original/reversal rows and
 all review/readiness limits.4000 remains unapplied and runtime-unverified.
 
-
-##4200 synthetic no-proceeds disposal
+###4200 synthetic no-proceeds disposal
 
 [Asset disposal source handoff](SUBLEDGER-DISPOSALS.md) adds operator-reviewed native
 no-proceeds disposal for intact separate gross/accumulated controls. It releases represented

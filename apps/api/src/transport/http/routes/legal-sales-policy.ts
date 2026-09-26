@@ -1,25 +1,32 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Policy from "@open-erp/contracts/legal-sales-policy";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { query, scopeParameter } from "../../../db/query";
+import * as Commerce from "../../../application/commerce/legal";
 
-export const LegalSalesPolicyHandlers = HttpApiBuilder.group(Api, "legalSalesPolicies", (handlers) =>
-  handlers
-    .handle("activateLegalSalesPolicy", ({ params, headers, payload }) =>
-      Effect.flatMap(authenticate, (token) =>
-        query("activateLegalSalesPolicy", [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)], Policy.LegalSalesPolicy),
+export const LegalSalesPolicyHandlers = HttpApiBuilder.group(
+  Api,
+  "legalSalesPolicies",
+  (handlers) =>
+    handlers
+      .handle("activateLegalSalesPolicy", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Commerce.activateLegalSalesPolicy(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
+        ),
+      )
+      .handle("legalSalesPolicyHistory", ({ params }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Commerce.readLegalSalesPolicyHistory(token, { scope: scopeFromPath(params) }),
+        ),
+      )
+      .handle("getLegalSalesPolicy", ({ params }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Commerce.getLegalSalesPolicy(token, { scope: scopeFromPath(params), id: params.id }),
+        ),
       ),
-    )
-    .handle("legalSalesPolicyHistory", ({ params }) =>
-      Effect.flatMap(authenticate, (token) =>
-        query("legalSalesPolicyHistory", [token, scopeParameter(params)], Policy.LegalSalesPolicyHistory),
-      ),
-    )
-    .handle("getLegalSalesPolicy", ({ params }) =>
-      Effect.flatMap(authenticate, (token) =>
-        query("getLegalSalesPolicy", [token, scopeParameter(params), params.id], Policy.LegalSalesPolicy),
-      ),
-    ),
 );

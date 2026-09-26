@@ -1,6 +1,14 @@
 # Supplier-invoice commercial drafts
 
-## Selected COM-01 extension — failure contract before implementation
+## Current ownership
+
+Application operations live in [application/purchases/drafts.ts](../src/application/purchases/drafts.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Selected COM-01 extension — failure contract before implementation
 
 This adds unaccepted supplier-document drafting, not financial acceptance or recognition.
 Source inspection found1200 already owns exact line calculations and customer draft history,
@@ -10,7 +18,7 @@ error behavior. Keep supplier heads/revisions in separate tables and separate AP
 Do not edit historical migrations, customer TypeScript/UI files, or external sales work.
 Migration6900 is reserved after a fresh scan; only1200 defines invoice_draft_calculate now.
 
-### Data and authority
+#### Data and authority
 
 - Current operator and native-writer checks, book lock, exact-key replay before fresh checks.
   Ordinary scoped readers can get/list/history. No mutation MCP, provider or storage fetch.
@@ -40,7 +48,7 @@ Migration6900 is reserved after a fresh scan; only1200 defines invoice_draft_cal
   approval, outbox, delivery or payment authority follows from retaining/revising a draft.
   Recognition of the original supplier document elsewhere is explicitly not assessed.
 
-### Shapes and operations
+#### Shapes and operations
 
 New module `supplier-invoice-drafts.ts` in contracts, statements and HTTP routes. Export schemas
 `SupplierDraftContent`, `CreateSupplierInvoiceDraft`, `ReviseSupplierInvoiceDraft`,
@@ -76,7 +84,7 @@ Same successful key replays the original body. Historical revisions and customer
 unchanged. No tests, fixtures, SQL compilation/application, application/runtime/provider
 execution, UI changes, commits or pushes. Static checks and source review are not execution proof.
 
-## Implemented source — not database-applied
+### Implemented source — not database-applied
 
 Migration `6900-supplier-invoice-drafts.sql` adds separate
 `supplier_invoice_drafts` and `supplier_invoice_draft_revisions` tables. The head has a stable
@@ -85,7 +93,7 @@ existing commerce identity trigger permits only the next revision; revision rows
 updated or deleted. Revision identity/digest and the128KiB row bound are checked in the table.
 There is no write to customer draft, issued-invoice or sales-register tables.
 
-### Shared calculation and customer preservation
+#### Shared calculation and customer preservation
 
 The private `commercial_invoice_draft_calculate(book,content,role)` is the1200 calculator
 with only its explicit role validation and customer/supplier counterpart selection generalized.
@@ -104,7 +112,7 @@ becomes `acceptance_not_implemented`; `recognition_not_implemented` is always pr
 A null supplier document number adds `supplier_document_number_missing`. A supplied number
 is retained as source text, never allocated or verified as a legal number.
 
-### Retention and reads
+#### Retention and reads
 
 The five public functions implement create, revise, get, complete list and complete history.
 Create/revise require a current operator, serialize on the book, replay a successful exact
@@ -130,7 +138,7 @@ remain private. No financial acceptance, numbering, source reservation/release, 
 register, VAT fact, approval, payment, delivery or outbox authority was added. Source evidence
 may already support another recognition path; this draft slice does not assess that fact.
 
-### Verification limits
+#### Verification limits
 
 The selected failure contract was written before implementation. The6900 filename scan was
 clear;1200 was the only prior calculator owner. Source deltas confirmed that the shared
@@ -139,7 +147,7 @@ was performed; no tests, fixtures, SQL compilation/application, runtime/provider
 UI work or VCS actions were performed. Contract/transport wiring and shared static checks
 are owned separately. SQL execution and transaction behavior remain unverified.
 
-## Shared integration and source review
+### Shared integration and source review
 
 All five REST handlers, statement owners, contract exports/API group and three read-only MCP
 bindings are integrated. The public route base includes the application prefix:
@@ -151,8 +159,7 @@ refer to the supplier document date. This is a source comparison, not SQL execut
 Backend/contracts/jurisdiction and web type checks passed; targeted lint found zero warnings or
 errors on eight integration/contract/transport files. SQL remains uncompiled and unapplied.
 
-
-## Duplicate review — selected failure contract before implementation
+### Duplicate review — selected failure contract before implementation
 
 Forward7000 adds read-only duplicate diagnostics for the CURRENT supplier draft revision.
 It compares other CURRENT supplier draft heads and registered supplier invoices, restricted to
@@ -171,7 +178,7 @@ claim is introduced. Do not replace3000 or alter its API/history.
 - Response `{scope,source,coverage,consistency,items,next}`. `source` is
   SupplierInvoiceDraftSummary. coverage=`current_supplier_drafts_and_registered_supplier_invoices`;
   consistency=`live_candidates`. Items are tagged `{kind:"draft",draft:SupplierInvoiceDraftSummary,
-  reasons}` or `{kind:"registered",invoice:Commerce.Invoice,reasons}`. Reasons reuse
+reasons}` or `{kind:"registered",invoice:Commerce.Invoice,reasons}`. Reasons reuse
   `same_document_number` / `same_original_evidence_content`, one or both, in that order.
 - Up to50 matching candidates,51st-row lookahead; order drafts first, then registrations,
   each by retained ID COLLATE C. Materialize matched identities before building full details.
@@ -192,7 +199,7 @@ SupplierInvoiceDraftDuplicates in the existing new supplier module. Existing gro
 compose; root adds the read binding. No tests, SQL compilation/application, runtime/provider
 execution, UI changes or VCS actions.
 
-### Implemented7000 source — not database-applied
+#### Implemented7000 source — not database-applied
 
 `7000-supplier-invoice-draft-duplicates.sql` adds only the scoped read function
 `supplier_invoice_draft_duplicates`. It authorizes the current scope and holds the book SHARE

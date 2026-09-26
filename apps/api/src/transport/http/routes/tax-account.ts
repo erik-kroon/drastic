@@ -1,140 +1,106 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Tax from "@open-erp/contracts/tax-account";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { query, scopeParameter } from "../../../db/query";
+import * as Tax from "../../../application/vat/tax-account";
 
 export const TaxAccountHandlers = HttpApiBuilder.group(Api, "taxAccount", (handlers) =>
   handlers
     .handle("listUnclassifiedTaxAccountEvents", ({ params, query: search }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "listUnclassifiedTaxAccountEvents",
-          [token, scopeParameter(params), search.accountId, search.after ?? ""],
-          Tax.TaxAccountUnclassifiedEventPage,
-        ),
+        Tax.listUnclassifiedEvents(token, {
+          scope: scopeFromPath(params),
+          accountId: search.accountId,
+          after: search.after,
+        }),
       ),
     )
     .handle("resolveTaxAccountEventClassification", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "resolveTaxAccountEventClassification",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          Tax.TaxAccountEventResolution,
-        ),
+        Tax.resolveEventClassification(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("getTaxAccountEventClassification", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "getTaxAccountEventClassification",
-          [token, scopeParameter(params), params.id],
-          Tax.TaxAccountEventClassificationView,
-        ),
+        Tax.getEventClassification(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("previewTaxAccountMatch", ({ params, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "previewTaxAccountMatch",
-          [token, scopeParameter(params), JSON.stringify(payload)],
-          Tax.TaxAccountMatchBasis,
-        ),
+        Tax.previewMatch(token, { scope: scopeFromPath(params), input: payload }),
       ),
     )
     .handle("matchTaxAccountEvent", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "matchTaxAccountEvent",
-          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-          Tax.TaxAccountMatch,
-        ),
+        Tax.matchEvent(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("unmatchTaxAccountEvent", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "unmatchTaxAccountEvent",
-          [
-            token,
-            scopeParameter(params),
-            headers["idempotency-key"],
-            params.id,
-            JSON.stringify(payload),
-          ],
-          Tax.TaxAccountUnmatch,
-        ),
+        Tax.unmatchEvent(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          id: params.id,
+          input: payload,
+        }),
       ),
     )
     .handle("getTaxAccountMatch", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "getTaxAccountMatch",
-          [token, scopeParameter(params), params.id],
-          Tax.TaxAccountMatchDetail,
-        ),
+        Tax.getMatch(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("listTaxAccountMatches", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query("listTaxAccountMatches", [token, scopeParameter(params)], Tax.TaxAccountMatchList),
+        Tax.listMatches(token, { scope: scopeFromPath(params) }),
       ),
     )
     .handle("recordTaxAccountStatement", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "recordTaxAccountStatement",
-          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-          Tax.TaxAccountStatement,
-        ),
+        Tax.recordStatement(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("getTaxAccountStatement", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "getTaxAccountStatement",
-          [token, scopeParameter(params), params.id],
-          Tax.TaxAccountStatement,
-        ),
+        Tax.getStatement(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("listTaxAccountStatements", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "listTaxAccountStatements",
-          [token, scopeParameter(params)],
-          Tax.TaxAccountStatementList,
-        ),
+        Tax.listStatements(token, { scope: scopeFromPath(params) }),
       ),
     )
     .handle("createTaxAccountControl", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "createTaxAccountControl",
-          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-          Tax.TaxAccountControl,
-        ),
+        Tax.createControl(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("getTaxAccountControl", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "getTaxAccountControl",
-          [token, scopeParameter(params), params.id],
-          Tax.TaxAccountControlView,
-        ),
+        Tax.getControl(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("listTaxAccountControls", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query("listTaxAccountControls", [token, scopeParameter(params)], Tax.TaxAccountControlList),
+        Tax.listControls(token, { scope: scopeFromPath(params) }),
       ),
     ),
 );

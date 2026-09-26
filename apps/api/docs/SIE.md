@@ -1,6 +1,14 @@
 # Synthetic SIE 4I transaction artifacts
 
-## Scope and acceptance recorded before implementation
+## Current ownership
+
+Application operations live in [application/sie/import.ts](../src/application/sie/import.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Scope and acceptance recorded before implementation
 
 This slice transfers every complete `movement` voucher from one immutable accountant-review
 pack into an explicitly synthetic SIE 4I `.SI` artifact. It is not SIE 4E, a complete-book
@@ -62,8 +70,7 @@ for this owner. Static checks cannot prove any runtime or accounting acceptance 
 Root owns integration and allowed native/API/browser evidence; independent consumer acceptance,
 actual company profile and legal review remain separate gates.
 
-
-## Source implementation and integration
+### Source implementation and integration
 
 Implemented source: `1100-sie-transaction-artifacts.sql`, `packages/contracts/src/sie.ts`,
 `jurisdictions/se/src/sie/encoder.ts`, `src/application/sie.ts`, `src/db/statements/sie.ts`, and accountant-review
@@ -92,7 +99,7 @@ The raw seal function is not a REST or MCP capability. A scoped runtime database
 call the granted function, which remains a preparation-only, non-ledger trust boundary.
 Captured-but-unrenderable work remains discoverable; no ready artifact is fabricated.
 
-### Root-owned shared map
+#### Root-owned shared map
 
 1. Export `"./sie": "./src/sie.ts"` from `packages/contracts/package.json`.
 2. Add `SieApi` to shared `Api`; spread `SieCapabilities` into shared contracts capabilities.
@@ -104,12 +111,12 @@ Captured-but-unrenderable work remains discoverable; no ready artifact is fabric
    one-query binding for prepare/resume: capture/render/seal is an owning Effect workflow.
 6. Apply1100 after0810 and current forward migrations. No direct table grants are added.
 
-| Internal database key | SQL function | Parameters including token |
-| --- | --- | --- |
-| `captureSieTransaction` | `capture_sie_transaction` | token, scope JSON, command key, input JSON |
-| `getSieTransaction` | `get_sie_transaction` | token, scope JSON, capture ID |
-| `sealSieTransaction` | `seal_sie_transaction` | token, scope JSON, capture ID, private byte/hash payload JSON |
-| `listSieTransactions` | `list_sie_transactions` | token, scope JSON, cursor or empty string |
+| Internal database key   | SQL function              | Parameters including token                                    |
+| ----------------------- | ------------------------- | ------------------------------------------------------------- |
+| `captureSieTransaction` | `capture_sie_transaction` | token, scope JSON, command key, input JSON                    |
+| `getSieTransaction`     | `get_sie_transaction`     | token, scope JSON, capture ID                                 |
+| `sealSieTransaction`    | `seal_sie_transaction`    | token, scope JSON, capture ID, private byte/hash payload JSON |
+| `listSieTransactions`   | `list_sie_transactions`   | token, scope JSON, cursor or empty string                     |
 
 Public paths: scoped `/api/v1/entities/:entityId/books/:bookId/sie-transfers`: POST prepares
 with the stable Idempotency-Key; GET lists; GET `/:id` reads capture plus nullable artifact;
@@ -128,7 +135,7 @@ Only explicit Refresh resets inventory membership. Creation can open its new cap
 without silently widening an already reviewed list. The refresh label also explains how to
 rediscover a newly saved capture after a render failure.
 
-### Verification status
+#### Verification status
 
 Source reviewed only. The official cached PDF hash was checked before implementation; its
 format passages were read. No tests, fixtures, dependency installs, database/server runs,

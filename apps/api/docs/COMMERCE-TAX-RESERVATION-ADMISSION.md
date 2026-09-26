@@ -1,6 +1,14 @@
 #5500 commerce admission for tax-reserved payment lines
 
-## Failure contract — recorded before code
+## Current ownership
+
+Application operations live in [application/commerce/register.ts](../src/application/commerce/register.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Failure contract — recorded before code
 
 4100 already rejects commerce allocation-leg inserts when the exact book/voucher/line has a
 row in `tax_account_match_capacity`.1700's payment-capacity helper and4301's candidate reader
@@ -21,7 +29,7 @@ currently ignore that reservation. Align early admission with the existing physi
   dirty commerce/frontend work and shared schemas. No UI, tests, runtime/SQL compilation,
   migration application, provider actions or VCS history changes.
 
-## Implemented source
+### Implemented source
 
 `5500-commerce-tax-reservation-admission.sql` adds only two checks:
 
@@ -41,7 +49,7 @@ snapshot checking, and target release is checked before payment capacity evaluat
 No contract, endpoint, registry, schema or UI change is needed. No native fence is weakened.
 No amounts, capacity versions, saved bodies, digests, receipts or history are rewritten.
 
-## Source checks
+### Source checks
 
 Compared both functions against their latest owners: only the three-line helper fence and
 two-line candidate predicate differ. Authorization/book barriers and the complete history

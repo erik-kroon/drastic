@@ -1,6 +1,14 @@
 # Synthetic no-proceeds asset disposal —4200 source work
 
-## Failure contract recorded before implementation
+## Current ownership
+
+Application operations live in [application/subledger/schedules.ts](../src/application/subledger/schedules.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql). Impairment/disposal and two schedule-amendment operations still contain unsupported placeholders; consult the current source before relying on the historical behavior below.
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Failure contract recorded before implementation
 
 This bounded operation may dispose only a native `synthetic-core-v1` asset with an intact
 retained gross/accumulated carrying basis. Explicit synthetic/no-proceeds/tax-not-applicable
@@ -40,7 +48,7 @@ Reject or roll back the complete transaction when:
 - Any posting/register/receipt/approval/constraint step fails. Native posting, register
   consequence and public idempotency receipt must commit together, with no ambient bypass.
 
-## Inspected owners and selected source design
+### Inspected owners and selected source design
 
 1500 retains gross/accumulated amounts and selected physical control lines;4000 preserves
 those facts across estimates.1800 already owns shared validation and immediate physical
@@ -65,8 +73,7 @@ correction vouchers as new carrying bases, but predates disposal ownership. A di
 accumulated-control release or loss debit must not be relabeled as another acquisition.
 4200 must reject native disposal vouchers at the basis-insertion boundary as well.
 
-
-## Implemented source: reviewed plan → human approval → atomic consequence
+### Implemented source: reviewed plan → human approval → atomic consequence
 
 Forward `migrations/4200-subledger-disposals.sql` implements the narrow financial path.
 Owner inspection found an existing safe pattern: ordinary native `prepare_journal`,
@@ -93,7 +100,7 @@ The selected profile is `synthetic_no_proceeds_asset_disposal_v1`, with literal
 `acknowledgeSyntheticOnly:true`. These fields express only the explicit synthetic choice.
 They never establish actual disposal facts or legal/tax treatment.
 
-### Exact represented amounts
+#### Exact represented amounts
 
 ```text
 G = retained original gross cost
@@ -131,7 +138,7 @@ occurrences strictly before disposal must be resolved first; remaining unposted 
 on or after disposal may cease. Backdated/future accounting dates must still belong to an
 open native period and cannot hide later known source history. No occurrence date is moved.
 
-### Financial authority and correction ownership
+#### Financial authority and correction ownership
 
 The domain approval seals the review digest and expires after one hour. Execution requires
 the same currently authorized operator and their unexpired, unused approval. Only then,
@@ -166,7 +173,7 @@ receive a new bypass. A basis-insertion trigger also refuses treating a disposal
 or loss debit as a new acquisition/imported opening. A later register-aware correction would
 need its own reviewed complete lifecycle; this packet does not reopen the schedule.
 
-### Register, controls and closing
+#### Register, controls and closing
 
 `ScheduleView.disposal` carries the immutable disposition. The original recognized/history
 rows remain visible, while current `remainingMinor` is zero and the disposition separately
@@ -188,7 +195,7 @@ original occurrences and correction counts remain retained. Old snapshots are no
 Before any disposal, the digest input shape remains unchanged. Neither controls nor closing
 claim legal policy, source inventory completeness or financial-close readiness.
 
-### HTTP and integration
+#### HTTP and integration
 
 Existing `SubledgerControlsApi` and `SubledgerControlsHandlers` own these routes beneath:
 `/api/v1/entities/:entityId/books/:bookId/subledger-controls`.
@@ -212,7 +219,7 @@ No new API group/package export/shared registry edit is needed. The new financia
 are operator-only REST and absent from ordinary MCP capabilities. Existing read/control
 capabilities can expose retained disposition data, not grant disposal authority.
 
-### Source review and proof limits
+#### Source review and proof limits
 
 Source review traced the amount equations, original line ownership, correction and native
 proposal ancestry, snapshot freshness at the physical insertion point, duplicate schedule
@@ -233,8 +240,7 @@ Root source review follow-up: the live account-eligibility predicate also checks
 prepared disposal at domain approval/execution and shared/physical revalidation. No test or
 runtime proof was added for this source-only correction.
 
-
-##4900 correction-impact consumer closure
+###4900 correction-impact consumer closure
 
 [Terminal disposal correction-impact closure](SUBLEDGER-DISPOSAL-CORRECTIONS.md) adds the
 two previously missing impact/admission resources: the posted disposal voucher and its

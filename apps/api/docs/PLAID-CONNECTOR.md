@@ -1,8 +1,16 @@
 # Plaid Transactions Sync connector (bounded operator job)
 
+## Current ownership
+
+Application operations live in [application/banking/connector.ts](../src/application/banking/connector.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 This opt-in adapter uses Plaid's documented [`/transactions/sync`](https://plaid.com/docs/api/products/transactions/#transactionssync) with an account-filtered cursor, `count: 20`, and provider-issued `client_id`, `secret`, and Link-issued `access_token`. It does **not** implement Plaid Link, mint access tokens, verify operator-attested consent, or imply Plaid supports a particular bank, country or tenant. The operator must confirm those provider and legal terms before provisioning. No request reaches Plaid without an actual private configuration file and a scoped API bearer token.
 
-## Configure and run
+### Configure and run
 
 1. Create the existing book's `providerId: "plaid"` connector consent with the **exact Plaid `account_id`** as `externalAccountId`, an explicit source account, active ledger account and separately retained consent evidence. The account ID is not a bank account number. Keep one consent and cursor per `(book, Plaid Item, account_id)`; do not reuse a cursor from an unfiltered Item stream.
 2. Provision an operator API token with access to **only this book**, and a private JSON config file outside the checkout, mode `0600`, owned by the job OS user. Fields: `apiOrigin` (HTTPS or loopback HTTP), `entityId`, `bookId`, `consentId`, `accountId`, `host` (`sandbox`, `development`, `production`), `clientId`, `secret`, `accessToken`. Supply the API token via `OPENERP_CONNECTOR_TOKEN`; use a process supervisor's private secret injection, not command arguments, tracked env files, logs, database rows, or browser storage. Rotate the file and token in that secret manager. Keep file directory and backups private. The PostgreSQL consent stores account mapping and cursor, not provider credentials. Do not put provider secrets in Cloudflare Worker bindings until a dedicated protected scheduling/secret store is selected.
@@ -14,7 +22,7 @@ A page is refused on an unknown shape, mismatched account, excess size/count, un
 
 **Provider limitation:** Plaid documents that `TRANSACTIONS_SYNC_MUTATION_DURING_PAGINATION` requires restarting the whole pagination loop from the first cursor. This bounded job commits one page at a time and cannot safely auto-restart an already committed pagination window. It fails closed on that error; the operator must review the cursor/retained pages and reconcile with a fresh provider snapshot before continuing. BANK-2 completion is conditional on a provider reconciliation procedure for this mutation case: until a reviewed provider snapshot establishes that no page was skipped, the feed cannot claim complete coverage. Do not claim complete history, provider account coverage, or automatic mutation recovery. Plaid documents 256-character cursor upper bound and account-filtered independent update streams; this adapter raises its Plaid cursor admission to 256 in forward migration `7800`. The API retains up to 20 updates per page and limits a run to 100 pages. External provider availability, token scope, consent validity, provider-specific API behavior, storage durability and authenticated runtime execution remain unverified until separately observed with provisioned accounts (D-07/D-10). Existing file import is unchanged.
 
-## Integration and verification
+### Integration and verification
 
 Root owns shared integration files; this recovery slice uses the existing `bankConnector`
 REST group, statements and contracts plus forward migration
@@ -27,7 +35,7 @@ write request. The API's `providerConfigured: false` remains a conservative DB s
 private OS configuration is deliberately invisible to the API. Type/syntax checks do not
 verify provider network, consent or runtime effects. No tests or fixtures were added (D-09).
 
-## Synthetic local Worker loopback observation
+### Synthetic local Worker loopback observation
 
 A disposable PostgreSQL 17 book and local Wrangler Worker with a temporary R2
 binding exercised the real Bun CLI's original-page recovery, source retention,

@@ -1,12 +1,20 @@
 # Synthetic SIE historical-source staging (IMP-01/02/03 bounded slice)
 
+## Current ownership
+
+Application operations live in [application/sie/historical.ts](../src/application/sie/historical.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql). Historical financial import operations still return unsupported placeholders; this note is not evidence of an implemented import path.
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 This source slice retains original bytes through the existing source-intake authority. PC8 interpretation follows the [pinned primary SIE 4C format review](../../../docs/sources/sie-4c-review.md), section 5.8; a bounded subset parser is not whole-file SIE Group acceptance. It captures an immutable SIE4 interpretation with encoding and record/byte locators, original series/number/date, `#TRANS` final lines and distinct `#RTRANS`/`#BTRANS` correction lines. Unsupported records are retained in the original and identified by blocking diagnostics. The bounded parser accepts an explicit byte encoding and matching `#FORMAT UTF8`, `#FORMAT WIN1252`, or official SIE 4C `#FORMAT PC8` (IBM437). SIE4i and SIE5 remain unsupported. PC8 is decoded with a fixed one-byte code page, not a UTF-8 fallback. An unsupported file can be reviewed but not planned. Reparse creates another immutable interpretation for the same occurrence before staging; only its latest preview may seal or start a plan. No byte-decoding fallback occurs.
 
 Only a retained occurrence whose `sourceSystem` starts with `synthetic_` can seal a plan; an actual source may be inspected but cannot be staged. The reviewed plan freezes a preview digest, one explicit source-to-native account mapping per referenced account, operator rationale, independently supplied `#IB`/`#UB` source-year/account comparisons, and optional independent historical open-item controls. Open items retain their source identity, asserted state, original/outstanding minor units and as-of date. An empty open-item list does not assert no unpaid items. The plan marks historical detail unreconstructable and financial admission unsupported. An existing account mapping is not permission to post SIE lines.
 
 Runs stage the frozen historical source vouchers in ordinal chunks, with the exact frozen plan digest, a fifteen-minute renewable lease, monotonically increasing fence, immutable membership digests and command receipts. Chunk effects, cursor and receipt commit together. Recovery reads the run; pause/resume revokes stale fence tokens. Successful same-key replay returns the original chunk. `staged` means source facts were retained, **not** posted, reconciled, filed, or opened. No GL, period hold, business register, fiscal counter, source-payment, bank match, opening balance or financial correction is created or claimed. Existing manual-journal posting is not an OpeningSet authority: there is no single-opening-basis owner or historical open-item admission operation, and the current report comparison explicitly treats openings as all earlier postings (`migrations/4600-report-comparisons.sql`). Posting both prior movements and an equivalent imported opening would double count. D-06 actual source/version and D-04 profile facts are missing; actual-company import and financial effects remain gated. No source occurrence is rewritten. The normal posting/correction and bank authorities are unchanged.
 
-## Bounded behavior and root integration
+### Bounded behavior and root integration
 
 - A selected retained original is at most 512 KiB for this parser. Preview is at most 4,000 records, 500 vouchers and 1 MiB normalized JSON after migration 8900; no truncation. The separate staging chunk bound remains 200 vouchers, 2,000 transaction lines and 1 MiB payload. Chunk limit is 200 vouchers, 2,000 total transaction records and 1 MiB normalized membership payload. Object-store originals still use the existing source retrieval and integrity checks.
 - Migration `7400-sie-historical-source-staging.sql` is forward-only after existing source-intake migrations. It owns five tables and eight scoped SQL operations. Review its approval and numeric-control comparisons before applying. SQL execution and runtime failure/retry proof remain open.
@@ -18,7 +26,7 @@ Runs stage the frozen historical source vouchers in ordinal chunks, with the exa
 
 Owned files: `packages/contracts/src/sie-import.ts`, `apps/api/src/application/sie-import-parser.ts`, `apps/api/src/db/statements/sie-import.ts`, `apps/api/src/transport/http/routes/sie-import.ts`, migration 7400, and this handoff. No tests were added under D-09. Type checking the owned parser/contracts alone passed; full API type checking requires root shared wiring and currently also reports unrelated in-flight worker errors. No financial/runtime behavior is verified.
 
-## Forward financial and historical-register admission (7700–7730)
+### Forward financial and historical-register admission (7700–7730)
 
 The earlier staging migration is not rewritten. `7730-reviewed-sie-source.sql` permits an explicitly reviewed external SIE4 subset occurrence (`sourceKind: reviewed_sie4`) as well as a synthetic one. The retained parser still supports only its declared bounded encoding/profile, and each source occurrence keeps its original bytes and identity. This is a generic product path, not a claim that a named company has supplied a file or that every SIE4 exporter has been verified. `financialAdmission: unsupported` on the staged plan/run remains an accurate **staging** statement; later financial admission needs its own basis and approved operation.
 
@@ -28,7 +36,7 @@ The earlier staging migration is not rewritten. `7730-reviewed-sie-source.sql` p
 
 `7720-historical-items.sql` admits a frozen, read-only source register with asserted open-item state, source payment and match identities, source dates or explicit unknown chronology (dated payments and matches do not prove invoice issuance order), distinct account/currency controls and bounded capacity. It checks outstanding versus original signed values, item/payment/match identity and match capacity. These historical facts **do not** consume live commerce or bank payment capacity and do not create new GL entries. An empty item list does not certify that a company had no historical unpaid items. Existing source-plan open-item controls were independently compared during plan seal. Actual source inventory and a reviewed bridge from historical items to live obligations remain company readiness work, not prerequisites for this machinery.
 
-### Root integration (shared files are not edited by this slice)
+#### Root integration (shared files are not edited by this slice)
 
 - Export `"./historical-migration": "./src/historical-migration.ts"` from `packages/contracts/package.json`.
 - Import `HistoricalMigrationApi` from `./historical-migration` and add it to `Api` group composition in `packages/contracts/src/api.ts`. These commands remain operator-only HTTP operations; do **not** add ordinary MCP capabilities.
@@ -37,7 +45,7 @@ The earlier staging migration is not rewritten. `7730-reviewed-sie-source.sql` p
 
 The isolated local PostgreSQL smoke applied the full dirty-tree migration chain through 7730. Migration 7740 adds primary-source PC8 admission; a local PC8 byte sample decoded `Café` and retained two exact final source lines. The disposable cluster applied 7700–7740 and retained receipts; the subsequent full-chain run failed on a concurrently added unrelated legal AR migration after 8000. This does not prove its own migration chain complete. A disposable synthetic book then selected full history, started a run, prepared and approved a manual journal through the existing SQL operations, admitted one final source voucher as a posted ledger voucher with its retained receipt, and admitted an explicitly unknown/empty historical-register inventory. This is a local synthetic path, **not** a concurrent/retry, browser, actual source, legal, statutory or provider proof. `bun run --cwd packages/contracts check-types` passed on the owned contract files. Root wiring and full API type/build checks are pending integration. D-06/D-09 remain open.
 
-## Saved preview inventory
+### Saved preview inventory
 
 Migration 8200 exposes `GET /v1/entities/:entityId/books/:bookId/source-occurrences/:id/sie-previews`.
 It authorizes the book scope and returns the occurrence's complete inventory of at most 50
@@ -46,7 +54,7 @@ readiness and creation time. It exposes neither original bytes nor approval auth
 The company history screen uses these summaries to reopen saved inspections after a reload.
 Parser readiness alone does not establish mapping, reconciliation or posting readiness.
 
-## Customer review and staging
+### Customer review and staging
 
 The `/history` company route now offers explicit account mapping, independent signed
 opening/closing controls with source descriptions, and a review rationale through
@@ -73,7 +81,7 @@ exists without an admission. A missing plan returns `NotFound`. This supports re
 recovery without persisting an admission response ID in the browser. Register
 admission remains separate from financial posting.
 
-## Browser financial migration
+### Browser financial migration
 
 The history workspace exposes fiscal-year basis choices from `GET /historical-bases`.
 Full history requires independently entered opening controls and an exact staged
@@ -120,7 +128,7 @@ execution while paused, posted through its owning run after resume, rejected a d
 and reconciled at ledger sequence 1. These are scoped local observations, not production
 or real-company acceptance.
 
-## Public SIE4 source compatibility, not migration acceptance
+### Public SIE4 source compatibility, not migration acceptance
 
 Migration `8900` keeps the one-megabyte normalized-preview bound but raises the
 retained preview inventory to 4,000 records/500 vouchers. The parser accepts

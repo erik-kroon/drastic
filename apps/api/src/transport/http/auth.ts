@@ -46,7 +46,7 @@ export const authenticate = Effect.gen(function* () {
         catch: () => failure("Unavailable"),
       });
       if (!session) return yield* failure("Unauthorized");
-      // SQL rechecks this session's expiry and membership under admission locks.
+      // Application admission rechecks session expiry and membership under database locks.
       return session.session.token;
     }),
   );

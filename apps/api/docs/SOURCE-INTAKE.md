@@ -1,6 +1,14 @@
 # Source intake: retained originals and bounded UTF-8 bank CSV
 
-## Working contract
+## Current ownership
+
+Application operations live in [application/banking/source-statement.ts](../src/application/banking/source-statement.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Working contract
 
 IMP-01 plus a bounded IMP-02 slice: scoped exact-byte retention → immutable CSV preview and diagnostics → explicit operator approval → atomic admission through the existing bank import authority → saved receipt and observed-source discovery. This does not post, match, classify tax, settle invoices or establish required-source completeness. Existing JSON import and bank allocation authority remain unchanged.
 
@@ -14,7 +22,7 @@ The object-store extension, pending upload reconciliation, coordinated recovery 
 
 Forward migration `2700-source-upload-replay.sql` lets the internal upload admission return an optional completed occurrence alongside its existing object-reference fields. The workflow still validates canonical input bytes and computes their SHA-256 first. After current authorization, the book lock and exact-command replay validation, a completed retry returns the saved occurrence/receipt without acquiring or reading/writing object storage. Pending uploads retain intent/actor validation, conditional upload, byte-length/hash readback and separately authorized completion. This returns a historical receipt; it does not establish current object availability. Public contracts and download verification are unchanged. Migration0910 remains unchanged. This repair has only been source-reviewed; no checks, tests, migration application or runtime verification were performed.
 
-## Risks and acceptance cases before implementation
+### Risks and acceptance cases before implementation
 
 - Identical byte content under two distinct declared occurrences remains two provenance records; retrying the same occurrence with changed content or metadata fails, and retrying admission cannot duplicate observations.
 - Preserve BOM, exact bytes, line endings, quoted delimiters, escaped quotes, multiline text, blank fields, row ordinal and physical-line/byte locators. Never collapse equal transactions.
@@ -27,7 +35,7 @@ Forward migration `2700-source-upload-replay.sql` lets the internal upload admis
 - UI file read races cannot attach old bytes to a new selection. No private bytes in localStorage, URLs, logs, fixtures or source code. Network uncertainty retains command keys; saved discovery recovers state after reload.
 - Source control was removed by the user. Do not initialize Git, recover history, restore/delete files or commit. Existing migrations through0900 are immutable.
 
-## Implemented source; integration and runtime gates remain open
+### Implemented source; integration and runtime gates remain open
 
 - `packages/contracts/src/source-intake.ts`: schemas, seven REST endpoints and five non-approval MCP capability definitions.
 - `apps/api/src/source-intake.ts`: Effect HTTP handlers using current Better Auth/token authentication and the existing Drizzle query owner.
@@ -47,7 +55,7 @@ Admission creates normalized JSON evidence through `create_evidence`, then invok
 
 The UI keeps command keys after uncertain failures, discovers durable state after reload, and remounts file/review state when book scope changes. Files and previews stay in memory or the scoped retained backend; no browser storage, private fixtures or logged bytes were added. Original bytes, immutable preview and admission receipt have separate downloads.
 
-## Exact root integration map
+### Exact root integration map
 
 1. Add `"./source-intake": "./src/source-intake.ts"` to the contracts package exports. Import/add `SourceIntakeApi` to the shared `Api`; spread `SourceIntakeCapabilities` into the shared capability definitions. No new error codes are required.
 2. In `apps/api/src/database.ts`, import `sourceIntakeStatements` from `./source-intake-statements` and spread it into `statements`. This extends `DatabaseOperation` through the existing owner. Keep the current Drizzle Effect connection/error handling intact.
@@ -79,7 +87,7 @@ Capability bindings use the existing `bindCapability` and these parameter arrays
 | `source_preview_csv`      | `previewSourceCsv`      | `[scopeParameter(input.scope), input.idempotencyKey, input.occurrenceId, JSON.stringify(input.input)]` |
 | `source_get_preview`      | `getSourcePreview`      | `[scopeParameter(input.scope), input.previewId]`                                                       |
 
-## Immutable reparse and review recovery (forward migration3200)
+### Immutable reparse and review recovery (forward migration3200)
 
 Implemented in source, not runtime-verified. An explicit reparse now links one unadmitted preview to a new immutable preview of the **same retained occurrence and bytes**. It records both digests, the actor, time, rationale and command receipt. It does not replace an admitted source, change bytes, merge equal rows, or approve an interpretation.
 
@@ -99,7 +107,7 @@ A and its reviews remain readable; A cannot receive a new approval or admission.
 
 Reparse and admission serialize on the existing book lock. Reparse refuses admitted occurrences, already superseded predecessors and mismatched digests. A replacement is created in the same transaction, so links cannot cycle or cross occurrences through the public command. Same-key replay returns the original pair even after a later revision; a changed request conflicts. Concurrent different-key attempts cannot create two replacements for one predecessor. No historical records are updated or deleted. Supersession may be requested by the same scoped actors who can prepare previews; only an operator can approve/admit the replacement.
 
-### Current integration delta
+#### Current integration delta
 
 The existing source-intake group, exports, statement spread and HTTP layer already exist at the current paths. No shared adapter changes are needed. Root only needs these bindings in `apps/api/src/application/capabilities.ts`:
 
@@ -116,11 +124,11 @@ source_get_revision_history: bindCapability(
 
 Owned changes are `packages/contracts/src/source-intake.ts`, `apps/api/src/transport/http/routes/source-intake.ts`, `apps/api/src/db/statements/source-intake.ts`, and `apps/api/migrations/3200-source-intake-revisions.sql`. Shared contract/capability spreads discover the additions. Both REST routes use the existing Effect query boundary; MCP uses the same SQL operations via the bindings above. Only the two new authenticated SQL commands gain runtime execution. The helper trigger and lineage table have no runtime write/execution grant. Historical migrations are unchanged.
 
-### Remaining observation gate
+#### Remaining observation gate
 
 Owned-file `oxfmt --write` passed on the three changed TypeScript files and two domain documents. Owned-file `oxlint` passed with zero warnings/errors. Source review confirmed historical migration hashes were unchanged. No tests or fixtures were added. No migration was applied and no database, transport or concurrency behavior was exercised. Root owns integrated type validation and runtime evidence. When authorized, observe stale-digest/cross-book/role-loss refusals; blocked-to-ready and ready-to-blocked reparse; expired-review recovery; exact-key response-loss recovery; concurrent reparse/admit; rejection of old-preview approval/admission without committed evidence or bank changes; unchanged old bytes/diagnostics/admitted statements/matches; and the 50-preview limit. These are pending observations, not verified acceptance.
 
-## Durable interpretation review export (3900)
+### Durable interpretation review export (3900)
 
 The [review artifact handoff](SOURCE-REVIEW-ARTIFACTS.md) adds exact retained canonical JSON
 captures of one selected preview, its original occurrence/content locator, all normalized rows
@@ -130,7 +138,7 @@ saved bytes/hash/length without reparsing or pretending historical reviews are c
 Approval IDs/commands are excluded from review/admission summaries. The artifact establishes
 neither source completeness nor posting authority. No UI or storage adapter was changed.
 
-## Verification status and root's next action
+### Verification status and root's next action
 
 Bounded owned-file formatting and Oxlint are the only worker checks. `oxfmt` completed on eight owned TypeScript files and the two domain documents; `oxlint` completed on the eight TypeScript files with zero warnings and zero errors. No native typecheck, SQL execution, migration, browser interaction, concurrency/crash/revocation experiment, test/fixture, dependency installation, Git action, build, server or real-company operation was performed. Source inspection is not runtime proof. Shared exports/group/dispatcher composition must land before native type validation; no integrated-build claim is made.
 
@@ -146,13 +154,13 @@ Manual acceptance sequence (not an added automated test or fixture):
 
 Still out of scope: SIE, bank/provider connectors, native provider profile certification, optional-column inference, foreign-currency conversion, inferred balances/VAT/company facts, arbitrary overlap maps, multi-chunk import/leases/cancel/compensation, admitted-source replacement, automatic matching/posting, new residual authority, archive certification and actual-company activation/completeness.
 
-## Root review amendment
+### Root review amendment
 
 Unapplied0510 now uses explicit `(occurrence).field` composite access in the SQL-language `intake_summary`. Approval expiry is assigned after the book lock and validation, immediately before approval creation. No other behavior changed. Source review only; no SQL/runtime check was run.
 
 0510 file SHA-256: `af448df45946719d89e4e23f7a53d5b4ab0b81de43a50c4d953abb3cb873f43d`.
 
-## Metadata-only occurrence recovery: failure contract before implementation
+### Metadata-only occurrence recovery: failure contract before implementation
 
 A known-ID original read currently depends on object storage for object-backed files. A storage
 outage or failed original integrity check must not hide the retained occurrence metadata.
@@ -169,7 +177,7 @@ outage or failed original integrity check must not hide the retained occurrence 
 - Null admission means no retained admission, not eligibility to admit. Existing selected-preview
   reads remain the owner of full interpretation details and separate currentness.
 
-### Implemented metadata-only read
+#### Implemented metadata-only read
 
 `GET /v1/entities/:entityId/books/:bookId/source-occurrences/:id/metadata` and read-only MCP
 `source_get_occurrence_metadata` return the committed public occurrence (including original
@@ -214,9 +222,9 @@ confirmed the existing storage query and original-content handler remained uncha
 typecheck, tests/helpers/fixtures, SQL/runtime/object-store access, UI, migration, provider,
 external/dependency/deployment or VCS action was performed. Root owns shared binding/type checks.
 
-## Forward5900: exact source-mapping currentness
+### Forward5900: exact source-mapping currentness
 
-### Failure contract before implementation
+#### Failure contract before implementation
 
 A preview may map retained source S to ledger account A before either has a bank mapping. A later
 statement can map S to B. Existing account-A dependencies remain equal because that import only
@@ -238,7 +246,7 @@ fresh approval can succeed even though the unchanged bank importer refuses the c
   diagnostic; only an explicit corrected mapping can change a new interpretation.
 - Do not change public contracts, role checks, routes, storage, posting authority or UI.
 
-### Implemented source and review handoff
+#### Implemented source and review handoff
 
 `5900-source-mapping-currentness.sql` adds private
 `intake_source_mapping_current(book, occurrenceId, accountId)`. It returns a boolean from the
@@ -284,7 +292,7 @@ No TypeScript changed, so no owned TypeScript lint/typecheck was needed. No test
 SQL compilation/execution/application, runtime/provider/storage access, common wiring/docs, UI,
 dependency/deployment or VCS action was performed. Root retains integration and independent review.
 
-## Key-only retention recovery: failure contract before implementation
+### Key-only retention recovery: failure contract before implementation
 
 A committed `source_retain` response can be lost before its caller receives the generated
 occurrence ID. The public retry requires original bytes even when2700 can recover a completed
@@ -310,7 +318,7 @@ an existing occurrence whose frozen receipt belongs to the original actor and ke
   No new artifact, table, generic receipt export, UI workflow or permission expansion beyond the
   scoped read. SQL/runtime/concurrency observations remain separately authorized gates.
 
-### Implemented6300 read and integration handoff
+#### Implemented6300 read and integration handoff
 
 `6300-source-retention-recovery.sql` adds `recover_source_retention(text,jsonb,text)`.
 `GET /source-retention-requests/:key` and read-only MCP `source_recover_retention` return the

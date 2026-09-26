@@ -42,9 +42,15 @@ function withBook<A>(
   scope: Scope,
   operatorOnly: boolean,
   operation: (transaction: Transaction, principal: Principal) => Effect.Effect<A, unknown>,
+  lockMode: "share" | "update" = "share",
 ) {
-  return withAdmittedPrincipal({ token }, scope, { operatorOnly }, (transaction, principal) =>
-    operation(transaction, principal).pipe(Effect.mapError(databaseFailure)),
+  return withAdmittedPrincipal(
+    { token },
+    scope,
+    { operatorOnly },
+    (transaction, principal) =>
+      operation(transaction, principal).pipe(Effect.mapError(databaseFailure)),
+    lockMode,
   );
 }
 
@@ -347,58 +353,63 @@ export const prepareCorrectionImpact = Effect.fn("posting.prepareCorrectionImpac
     input: Intent;
   },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction, principal) =>
-    Effect.gen(function* () {
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      const request = yield* replay(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_correction_impact",
-        principal.actorId,
-        { id: command.voucherId, input: command.input },
-        Corrections.CorrectionImpact,
-      );
-      if (request.previous) return request.previous;
-      yield* Db.readAllPeriods(transaction, command.scope.bookId);
-      yield* Db.readAllFiscalYears(transaction, command.scope.bookId);
-      yield* Db.readAllAccounts(transaction, command.scope.bookId);
-      const basis = yield* impactBasis(
-        transaction,
-        command.scope,
-        command.voucherId,
-        command.input,
-      );
-      const bodyWithoutDigest = {
-        id: newId("impact"),
-        scope: command.scope,
-        voucherId: command.voucherId,
-        createdBy: principal.actorId,
-        createdAt: yield* isoNow(transaction),
-        basis,
-      };
-      const bodyDigest = yield* digest(bodyWithoutDigest);
-      const impact = yield* decode(Corrections.CorrectionImpact, {
-        ...bodyWithoutDigest,
-        digest: bodyDigest,
-      });
-      yield* CorrectionDb.insertImpactReview(transaction, {
-        bookId: command.scope.bookId,
-        id: impact.id,
-        voucherId: command.voucherId,
-        body: impact,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_correction_impact",
-        principal.actorId,
-        impact,
-      );
-      return impact;
-    }),
+  return yield* withBook(
+    token,
+    command.scope,
+    false,
+    (transaction, principal) =>
+      Effect.gen(function* () {
+        yield* Db.lockBookForUpdate(transaction, command.scope);
+        const request = yield* replay(
+          transaction,
+          command.scope,
+          command.idempotencyKey,
+          "prepare_correction_impact",
+          principal.actorId,
+          { id: command.voucherId, input: command.input },
+          Corrections.CorrectionImpact,
+        );
+        if (request.previous) return request.previous;
+        yield* Db.readAllPeriods(transaction, command.scope.bookId);
+        yield* Db.readAllFiscalYears(transaction, command.scope.bookId);
+        yield* Db.readAllAccounts(transaction, command.scope.bookId);
+        const basis = yield* impactBasis(
+          transaction,
+          command.scope,
+          command.voucherId,
+          command.input,
+        );
+        const bodyWithoutDigest = {
+          id: newId("impact"),
+          scope: command.scope,
+          voucherId: command.voucherId,
+          createdBy: principal.actorId,
+          createdAt: yield* isoNow(transaction),
+          basis,
+        };
+        const bodyDigest = yield* digest(bodyWithoutDigest);
+        const impact = yield* decode(Corrections.CorrectionImpact, {
+          ...bodyWithoutDigest,
+          digest: bodyDigest,
+        });
+        yield* CorrectionDb.insertImpactReview(transaction, {
+          bookId: command.scope.bookId,
+          id: impact.id,
+          voucherId: command.voucherId,
+          body: impact,
+        });
+        yield* saveCommand(
+          transaction,
+          command.scope,
+          command.idempotencyKey,
+          request.expected,
+          "prepare_correction_impact",
+          principal.actorId,
+          impact,
+        );
+        return impact;
+      }),
+    "update",
   );
 });
 
@@ -583,165 +594,170 @@ export const prepareCorrectionBundle = Effect.fn("posting.prepareCorrectionBundl
     input: typeof Corrections.PrepareCorrectionBundle.Type;
   },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction, principal) =>
-    Effect.gen(function* () {
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      const request = yield* replay(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        "prepare_correction_bundle",
-        principal.actorId,
-        { id: command.voucherId, input: command.input },
-        Corrections.CorrectionBundle,
-      );
-      if (request.previous) return request.previous;
-      if (!command.input.impactReview) return yield* failure("UnsupportedProfile");
-      const original = yield* readVoucher(transaction, command.scope, command.voucherId);
-      if (original.action.postingPurpose === "reversal") return yield* failure("InvalidJournal");
-      if (original.action.postingPurpose !== "adjustment") {
-        return yield* failure("UnsupportedProfile");
-      }
-      if (command.input.postingDate < original.action.postingDate) {
-        return yield* failure("InvalidJournal");
-      }
-      if (
-        (yield* Db.readVoucherByReversal(transaction, command.scope.bookId, command.voucherId))
-          .length > 0
-      ) {
-        return yield* failure("AlreadyPosted");
-      }
-      const impactRow = (yield* CorrectionDb.readImpactReview(
-        transaction,
-        command.scope,
-        command.input.impactReview.id,
-      ))[0];
-      if (!impactRow) return yield* failure("StaleDependency");
-      const impact = yield* decode(Corrections.CorrectionImpact, impactRow.body);
-      const impactWithoutDigest = Object.fromEntries(
-        Object.entries(impact).filter(([key]) => key !== "digest"),
-      );
-      const storedImpactDigest = impact.digest;
-      const intent = {
-        datePolicy: command.input.datePolicy,
-        accountingPeriodId: command.input.accountingPeriodId,
-        postingDate: command.input.postingDate,
-        rationale: command.input.rationale,
-        replacement: command.input.replacement,
-      } satisfies Intent;
-      const current = yield* impactBasis(transaction, command.scope, command.voucherId, intent);
-      if (
-        impact.voucherId !== command.voucherId ||
-        impact.digest !== command.input.impactReview.digest ||
-        (yield* digest(impactWithoutDigest, "StaleDependency")) !== storedImpactDigest ||
-        (yield* digest(current)) !== (yield* digest(impact.basis))
-      ) {
-        return yield* failure("StaleDependency");
-      }
-      const blocker = current.blockers[0];
-      if (blocker) return yield* failure(blocker.code);
+  return yield* withBook(
+    token,
+    command.scope,
+    false,
+    (transaction, principal) =>
+      Effect.gen(function* () {
+        yield* Db.lockBookForUpdate(transaction, command.scope);
+        const request = yield* replay(
+          transaction,
+          command.scope,
+          command.idempotencyKey,
+          "prepare_correction_bundle",
+          principal.actorId,
+          { id: command.voucherId, input: command.input },
+          Corrections.CorrectionBundle,
+        );
+        if (request.previous) return request.previous;
+        if (!command.input.impactReview) return yield* failure("UnsupportedProfile");
+        const original = yield* readVoucher(transaction, command.scope, command.voucherId);
+        if (original.action.postingPurpose === "reversal") return yield* failure("InvalidJournal");
+        if (original.action.postingPurpose !== "adjustment") {
+          return yield* failure("UnsupportedProfile");
+        }
+        if (command.input.postingDate < original.action.postingDate) {
+          return yield* failure("InvalidJournal");
+        }
+        if (
+          (yield* Db.readVoucherByReversal(transaction, command.scope.bookId, command.voucherId))
+            .length > 0
+        ) {
+          return yield* failure("AlreadyPosted");
+        }
+        const impactRow = (yield* CorrectionDb.readImpactReview(
+          transaction,
+          command.scope,
+          command.input.impactReview.id,
+        ))[0];
+        if (!impactRow) return yield* failure("StaleDependency");
+        const impact = yield* decode(Corrections.CorrectionImpact, impactRow.body);
+        const impactWithoutDigest = Object.fromEntries(
+          Object.entries(impact).filter(([key]) => key !== "digest"),
+        );
+        const storedImpactDigest = impact.digest;
+        const intent = {
+          datePolicy: command.input.datePolicy,
+          accountingPeriodId: command.input.accountingPeriodId,
+          postingDate: command.input.postingDate,
+          rationale: command.input.rationale,
+          replacement: command.input.replacement,
+        } satisfies Intent;
+        const current = yield* impactBasis(transaction, command.scope, command.voucherId, intent);
+        if (
+          impact.voucherId !== command.voucherId ||
+          impact.digest !== command.input.impactReview.digest ||
+          (yield* digest(impactWithoutDigest, "StaleDependency")) !== storedImpactDigest ||
+          (yield* digest(current)) !== (yield* digest(impact.basis))
+        ) {
+          return yield* failure("StaleDependency");
+        }
+        const blocker = current.blockers[0];
+        if (blocker) return yield* failure(blocker.code);
 
-      const period = yield* readPeriod(
-        transaction,
-        command.scope,
-        command.input.accountingPeriodId,
-      );
-      const book = yield* readBook(transaction, command.scope);
-      const reversalValue = {
-        ...original.action,
-        correctsVoucherId: command.voucherId,
-        postingPurpose: "reversal" as const,
-        occurrenceKey: command.voucherId,
-        fiscalYearId: period.fiscalYearId,
-        accountingPeriodId: command.input.accountingPeriodId,
-        postingDate: command.input.postingDate,
-        description: `Reversal: ${original.action.description.slice(0, 1990)}`,
-        rationale: command.input.rationale,
-        lines: original.action.lines.map((line) => ({
-          ...line,
-          lineId: newId("line"),
-          debitMinor: line.creditMinor,
-          creditMinor: line.debitMinor,
-        })),
-      };
-      const sourceEvidenceId = original.action.evidenceRefs[0]?.evidenceId;
-      if (!sourceEvidenceId) return yield* failure("MissingEvidence");
-      const eventRows = yield* Db.readEvent(
-        transaction,
-        command.scope.bookId,
-        sourceEvidenceId,
-        `correction:${command.voucherId}`,
-      );
-      const replacementEventId = eventRows[0]?.id ?? newId("event");
-      if (eventRows.length === 0) {
-        yield* Db.insertEvent(
+        const period = yield* readPeriod(
+          transaction,
+          command.scope,
+          command.input.accountingPeriodId,
+        );
+        const book = yield* readBook(transaction, command.scope);
+        const reversalValue = {
+          ...original.action,
+          correctsVoucherId: command.voucherId,
+          postingPurpose: "reversal" as const,
+          occurrenceKey: command.voucherId,
+          fiscalYearId: period.fiscalYearId,
+          accountingPeriodId: command.input.accountingPeriodId,
+          postingDate: command.input.postingDate,
+          description: `Reversal: ${original.action.description.slice(0, 1990)}`,
+          rationale: command.input.rationale,
+          lines: original.action.lines.map((line) => ({
+            ...line,
+            lineId: newId("line"),
+            debitMinor: line.creditMinor,
+            creditMinor: line.debitMinor,
+          })),
+        };
+        const sourceEvidenceId = original.action.evidenceRefs[0]?.evidenceId;
+        if (!sourceEvidenceId) return yield* failure("MissingEvidence");
+        const eventRows = yield* Db.readEvent(
           transaction,
           command.scope.bookId,
-          replacementEventId,
           sourceEvidenceId,
           `correction:${command.voucherId}`,
         );
-      }
-      const replacementValue = {
-        ...original.action,
-        eventId: replacementEventId,
-        correctsVoucherId: null,
-        postingPurpose: "adjustment" as const,
-        occurrenceKey: "manual_journal",
-        fiscalYearId: period.fiscalYearId,
-        accountingPeriodId: command.input.accountingPeriodId,
-        postingDate: command.input.postingDate,
-        description: command.input.replacement.description,
-        rationale: command.input.rationale,
-        lines: command.input.replacement.lines.map((line) => ({
-          ...line,
-          lineId: newId("line"),
-        })),
-      };
-      const reversal = yield* decode(Accounting.VoucherPostingAction, reversalValue);
-      const replacement = yield* decode(Accounting.VoucherPostingAction, replacementValue);
-      yield* validateAction(transaction, command.scope, book, reversal);
-      yield* validateAction(transaction, command.scope, book, replacement);
-      const reversalPlan = yield* makePlan(transaction, command.scope, principal, reversal);
-      const replacementPlan = yield* makePlan(transaction, command.scope, principal, replacement);
-      const bodyWithoutDigest = {
-        id: newId("correction"),
-        version: 1 as const,
-        scope: command.scope,
-        impactReview: command.input.impactReview,
-        originalVoucher: original,
-        datePolicy: command.input.datePolicy,
-        rationale: command.input.rationale,
-        reversal: reversalPlan,
-        replacement: replacementPlan,
-        createdBy: principal.actorId,
-        createdAt: yield* isoNow(transaction),
-      };
-      const bundleDigest = yield* digest(bodyWithoutDigest);
-      const bundle = yield* decode(Corrections.CorrectionBundle, {
-        ...bodyWithoutDigest,
-        bundleDigest,
-      });
-      yield* CorrectionDb.insertBundle(transaction, {
-        bookId: command.scope.bookId,
-        id: bundle.id,
-        originalVoucherId: command.voucherId,
-        reversalChangeSetId: reversalPlan.id,
-        replacementChangeSetId: replacementPlan.id,
-        body: bundle,
-        digest: bundleDigest,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "prepare_correction_bundle",
-        principal.actorId,
-        bundle,
-      );
-      return bundle;
-    }),
+        const replacementEventId = eventRows[0]?.id ?? newId("event");
+        if (eventRows.length === 0) {
+          yield* Db.insertEvent(
+            transaction,
+            command.scope.bookId,
+            replacementEventId,
+            sourceEvidenceId,
+            `correction:${command.voucherId}`,
+          );
+        }
+        const replacementValue = {
+          ...original.action,
+          eventId: replacementEventId,
+          correctsVoucherId: null,
+          postingPurpose: "adjustment" as const,
+          occurrenceKey: "manual_journal",
+          fiscalYearId: period.fiscalYearId,
+          accountingPeriodId: command.input.accountingPeriodId,
+          postingDate: command.input.postingDate,
+          description: command.input.replacement.description,
+          rationale: command.input.rationale,
+          lines: command.input.replacement.lines.map((line) => ({
+            ...line,
+            lineId: newId("line"),
+          })),
+        };
+        const reversal = yield* decode(Accounting.VoucherPostingAction, reversalValue);
+        const replacement = yield* decode(Accounting.VoucherPostingAction, replacementValue);
+        yield* validateAction(transaction, command.scope, book, reversal);
+        yield* validateAction(transaction, command.scope, book, replacement);
+        const reversalPlan = yield* makePlan(transaction, command.scope, principal, reversal);
+        const replacementPlan = yield* makePlan(transaction, command.scope, principal, replacement);
+        const bodyWithoutDigest = {
+          id: newId("correction"),
+          version: 1 as const,
+          scope: command.scope,
+          impactReview: command.input.impactReview,
+          originalVoucher: original,
+          datePolicy: command.input.datePolicy,
+          rationale: command.input.rationale,
+          reversal: reversalPlan,
+          replacement: replacementPlan,
+          createdBy: principal.actorId,
+          createdAt: yield* isoNow(transaction),
+        };
+        const bundleDigest = yield* digest(bodyWithoutDigest);
+        const bundle = yield* decode(Corrections.CorrectionBundle, {
+          ...bodyWithoutDigest,
+          bundleDigest,
+        });
+        yield* CorrectionDb.insertBundle(transaction, {
+          bookId: command.scope.bookId,
+          id: bundle.id,
+          originalVoucherId: command.voucherId,
+          reversalChangeSetId: reversalPlan.id,
+          replacementChangeSetId: replacementPlan.id,
+          body: bundle,
+          digest: bundleDigest,
+        });
+        yield* saveCommand(
+          transaction,
+          command.scope,
+          command.idempotencyKey,
+          request.expected,
+          "prepare_correction_bundle",
+          principal.actorId,
+          bundle,
+        );
+        return bundle;
+      }),
+    "update",
   );
 });
 
@@ -861,91 +877,96 @@ export const approveCorrectionBundle = Effect.fn("posting.approveCorrectionBundl
     input: typeof Corrections.ApproveCorrectionBundle.Type;
   },
 ) {
-  return yield* withBook(token, command.scope, true, (transaction, principal) =>
-    Effect.gen(function* () {
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      const request = yield* replay(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        "approve_correction_bundle",
-        principal.actorId,
-        { id: command.bundleId, input: command.input },
-        BundleApproval,
-      );
-      if (request.previous) return request.previous;
-      const row = (yield* CorrectionDb.readBundle(
-        transaction,
-        command.scope,
-        command.bundleId,
-        "update",
-      ))[0];
-      if (!row) return yield* failure("NotFound");
-      const bundle = yield* bundleFromRow(row);
-      yield* validateBundle(bundle);
-      yield* validateBundleRow(row, bundle);
-      if (
-        command.input.bundleDigest !== bundle.bundleDigest ||
-        command.input.version !== bundle.version
-      ) {
-        return yield* failure("StaleDependency");
-      }
-      yield* readBundleState(transaction, command.scope, bundle);
-      if (
-        (yield* CorrectionDb.readBundleReceipt(transaction, command.scope, bundle.id)).length > 0
-      ) {
-        return yield* failure("AlreadyPosted");
-      }
-      const now = yield* Db.readDatabaseTime(transaction);
-      const expiresAt = new Date(Date.parse(now.now) + 60 * 60 * 1000).toISOString();
-      const approval = yield* decode(BundleApproval, {
-        id: newId("bundleapproval"),
-        bundleId: bundle.id,
-        bundleDigest: bundle.bundleDigest,
-        actorId: principal.actorId,
-        expiresAt,
-      });
-      const reversalApproval = yield* Db.insertApproval(transaction, {
-        bookId: command.scope.bookId,
-        id: newId("approval"),
-        changeSetId: bundle.reversal.id,
-        digest: bundle.reversal.planDigest,
-        actorId: principal.actorId,
-        expiresAt,
-      });
-      const replacementApproval = yield* Db.insertApproval(transaction, {
-        bookId: command.scope.bookId,
-        id: newId("approval"),
-        changeSetId: bundle.replacement.id,
-        digest: bundle.replacement.planDigest,
-        actorId: principal.actorId,
-        expiresAt,
-      });
-      const reversalApprovalId = reversalApproval[0]?.id;
-      const replacementApprovalId = replacementApproval[0]?.id;
-      if (!reversalApprovalId || !replacementApprovalId) {
-        return yield* failure("InternalError");
-      }
-      yield* CorrectionDb.insertBundleApproval(transaction, {
-        bookId: command.scope.bookId,
-        id: approval.id,
-        bundleId: bundle.id,
-        reversalApprovalId,
-        replacementApprovalId,
-        expiresAt,
-        body: approval,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "approve_correction_bundle",
-        principal.actorId,
-        approval,
-      );
-      return approval;
-    }),
+  return yield* withBook(
+    token,
+    command.scope,
+    true,
+    (transaction, principal) =>
+      Effect.gen(function* () {
+        yield* Db.lockBookForUpdate(transaction, command.scope);
+        const request = yield* replay(
+          transaction,
+          command.scope,
+          command.idempotencyKey,
+          "approve_correction_bundle",
+          principal.actorId,
+          { id: command.bundleId, input: command.input },
+          BundleApproval,
+        );
+        if (request.previous) return request.previous;
+        const row = (yield* CorrectionDb.readBundle(
+          transaction,
+          command.scope,
+          command.bundleId,
+          "update",
+        ))[0];
+        if (!row) return yield* failure("NotFound");
+        const bundle = yield* bundleFromRow(row);
+        yield* validateBundle(bundle);
+        yield* validateBundleRow(row, bundle);
+        if (
+          command.input.bundleDigest !== bundle.bundleDigest ||
+          command.input.version !== bundle.version
+        ) {
+          return yield* failure("StaleDependency");
+        }
+        yield* readBundleState(transaction, command.scope, bundle);
+        if (
+          (yield* CorrectionDb.readBundleReceipt(transaction, command.scope, bundle.id)).length > 0
+        ) {
+          return yield* failure("AlreadyPosted");
+        }
+        const now = yield* Db.readDatabaseTime(transaction);
+        const expiresAt = new Date(Date.parse(now.now) + 60 * 60 * 1000).toISOString();
+        const approval = yield* decode(BundleApproval, {
+          id: newId("bundleapproval"),
+          bundleId: bundle.id,
+          bundleDigest: bundle.bundleDigest,
+          actorId: principal.actorId,
+          expiresAt,
+        });
+        const reversalApproval = yield* Db.insertApproval(transaction, {
+          bookId: command.scope.bookId,
+          id: newId("approval"),
+          changeSetId: bundle.reversal.id,
+          digest: bundle.reversal.planDigest,
+          actorId: principal.actorId,
+          expiresAt,
+        });
+        const replacementApproval = yield* Db.insertApproval(transaction, {
+          bookId: command.scope.bookId,
+          id: newId("approval"),
+          changeSetId: bundle.replacement.id,
+          digest: bundle.replacement.planDigest,
+          actorId: principal.actorId,
+          expiresAt,
+        });
+        const reversalApprovalId = reversalApproval[0]?.id;
+        const replacementApprovalId = replacementApproval[0]?.id;
+        if (!reversalApprovalId || !replacementApprovalId) {
+          return yield* failure("InternalError");
+        }
+        yield* CorrectionDb.insertBundleApproval(transaction, {
+          bookId: command.scope.bookId,
+          id: approval.id,
+          bundleId: bundle.id,
+          reversalApprovalId,
+          replacementApprovalId,
+          expiresAt,
+          body: approval,
+        });
+        yield* saveCommand(
+          transaction,
+          command.scope,
+          command.idempotencyKey,
+          request.expected,
+          "approve_correction_bundle",
+          principal.actorId,
+          approval,
+        );
+        return approval;
+      }),
+    "update",
   );
 });
 
@@ -958,44 +979,123 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
     input: typeof Corrections.ExecuteCorrectionBundle.Type;
   },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction, principal) =>
-    Effect.gen(function* () {
-      yield* Db.lockBookForUpdate(transaction, command.scope);
-      const request = yield* replay(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        "execute_correction_bundle",
-        principal.actorId,
-        { id: command.bundleId, input: command.input },
-        BundleReceipt,
-      );
-      if (request.previous) return request.previous;
-      const bundleRow = (yield* CorrectionDb.readBundle(
-        transaction,
-        command.scope,
-        command.bundleId,
-      ))[0];
-      if (!bundleRow) return yield* failure("NotFound");
-      const bundle = yield* bundleFromRow(bundleRow);
-      yield* validateBundle(bundle);
-      yield* validateBundleRow(bundleRow, bundle);
-      if (
-        command.input.bundleDigest !== bundle.bundleDigest ||
-        command.input.version !== bundle.version
-      ) {
-        return yield* failure("StaleDependency");
-      }
-      const existing = (yield* CorrectionDb.readBundleReceipt(
-        transaction,
-        command.scope,
-        bundle.id,
-      ))[0];
-      if (existing) {
-        if (command.input.approvalId !== existing.approvalId) {
+  return yield* withBook(
+    token,
+    command.scope,
+    false,
+    (transaction, principal) =>
+      Effect.gen(function* () {
+        yield* Db.lockBookForUpdate(transaction, command.scope);
+        const request = yield* replay(
+          transaction,
+          command.scope,
+          command.idempotencyKey,
+          "execute_correction_bundle",
+          principal.actorId,
+          { id: command.bundleId, input: command.input },
+          BundleReceipt,
+        );
+        if (request.previous) return request.previous;
+        const bundleRow = (yield* CorrectionDb.readBundle(
+          transaction,
+          command.scope,
+          command.bundleId,
+        ))[0];
+        if (!bundleRow) return yield* failure("NotFound");
+        const bundle = yield* bundleFromRow(bundleRow);
+        yield* validateBundle(bundle);
+        yield* validateBundleRow(bundleRow, bundle);
+        if (
+          command.input.bundleDigest !== bundle.bundleDigest ||
+          command.input.version !== bundle.version
+        ) {
+          return yield* failure("StaleDependency");
+        }
+        const existing = (yield* CorrectionDb.readBundleReceipt(
+          transaction,
+          command.scope,
+          bundle.id,
+        ))[0];
+        if (existing) {
+          if (command.input.approvalId !== existing.approvalId) {
+            return yield* failure("ApprovalRequired");
+          }
+          const result = yield* decode(BundleReceipt, existing.body);
+          yield* saveCommand(
+            transaction,
+            command.scope,
+            command.idempotencyKey,
+            request.expected,
+            "execute_correction_bundle",
+            principal.actorId,
+            result,
+          );
+          return result;
+        }
+        yield* readBundleState(transaction, command.scope, bundle);
+        const approvalRow = (yield* CorrectionDb.readBundleApproval(
+          transaction,
+          command.scope,
+          bundle.id,
+          command.input.approvalId,
+          "update",
+        ))[0];
+        if (!approvalRow) return yield* failure("ApprovalRequired");
+        const approval = yield* decode(BundleApproval, approvalRow.body);
+        if (
+          approval.bundleId !== bundle.id ||
+          approval.bundleDigest !== bundle.bundleDigest ||
+          (yield* Db.readOperatorMembership(transaction, command.scope.bookId, approval.actorId))
+            .length === 0 ||
+          (yield* Db.readActorAdmission(transaction, approval.actorId))[0]?.enabled === false
+        ) {
           return yield* failure("ApprovalRequired");
         }
-        const result = yield* decode(BundleReceipt, existing.body);
+        const now = yield* Db.readDatabaseTime(transaction);
+        if (Date.parse(approval.expiresAt) <= Date.parse(now.now)) {
+          return yield* failure("ApprovalRequired");
+        }
+        const reversal = yield* executeChangeInTransaction(transaction, principal, {
+          scope: command.scope,
+          changeSetId: bundle.reversal.id,
+          idempotencyKey: newId("bundlecommand"),
+          input: {
+            planDigest: bundle.reversal.planDigest,
+            version: bundle.reversal.version,
+            approvalId: approvalRow.reversalApprovalId,
+          },
+          allowCorrectionChild: true,
+        });
+        const replacement = yield* executeChangeInTransaction(transaction, principal, {
+          scope: command.scope,
+          changeSetId: bundle.replacement.id,
+          idempotencyKey: newId("bundlecommand"),
+          input: {
+            planDigest: bundle.replacement.planDigest,
+            version: bundle.replacement.version,
+            approvalId: approvalRow.replacementApprovalId,
+          },
+          allowCorrectionChild: true,
+        });
+        const result = yield* decode(BundleReceipt, {
+          id: newId("bundlereceipt"),
+          bundleId: bundle.id,
+          bundleDigest: bundle.bundleDigest,
+          approvalId: approval.id,
+          originalVoucherId: bundle.originalVoucher.id,
+          reversal,
+          replacement,
+          committedAt: yield* isoNow(transaction),
+        });
+        yield* CorrectionDb.insertBundleReceipt(transaction, {
+          bookId: command.scope.bookId,
+          bundleId: bundle.id,
+          originalVoucherId: bundle.originalVoucher.id,
+          approvalId: approval.id,
+          reversalReceiptId: reversal.id,
+          replacementReceiptId: replacement.id,
+          body: result,
+        });
         yield* saveCommand(
           transaction,
           command.scope,
@@ -1006,82 +1106,8 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
           result,
         );
         return result;
-      }
-      yield* readBundleState(transaction, command.scope, bundle);
-      const approvalRow = (yield* CorrectionDb.readBundleApproval(
-        transaction,
-        command.scope,
-        bundle.id,
-        command.input.approvalId,
-        "update",
-      ))[0];
-      if (!approvalRow) return yield* failure("ApprovalRequired");
-      const approval = yield* decode(BundleApproval, approvalRow.body);
-      if (
-        approval.bundleId !== bundle.id ||
-        approval.bundleDigest !== bundle.bundleDigest ||
-        (yield* Db.readOperatorMembership(transaction, command.scope.bookId, approval.actorId))
-          .length === 0 ||
-        (yield* Db.readActorAdmission(transaction, approval.actorId))[0]?.enabled !== false
-      ) {
-        return yield* failure("ApprovalRequired");
-      }
-      const now = yield* Db.readDatabaseTime(transaction);
-      if (Date.parse(approval.expiresAt) <= Date.parse(now.now)) {
-        return yield* failure("ApprovalRequired");
-      }
-      const reversal = yield* executeChangeInTransaction(transaction, principal, {
-        scope: command.scope,
-        changeSetId: bundle.reversal.id,
-        idempotencyKey: newId("bundlecommand"),
-        input: {
-          planDigest: bundle.reversal.planDigest,
-          version: bundle.reversal.version,
-          approvalId: approvalRow.reversalApprovalId,
-        },
-        allowCorrectionChild: true,
-      });
-      const replacement = yield* executeChangeInTransaction(transaction, principal, {
-        scope: command.scope,
-        changeSetId: bundle.replacement.id,
-        idempotencyKey: newId("bundlecommand"),
-        input: {
-          planDigest: bundle.replacement.planDigest,
-          version: bundle.replacement.version,
-          approvalId: approvalRow.replacementApprovalId,
-        },
-        allowCorrectionChild: true,
-      });
-      const result = yield* decode(BundleReceipt, {
-        id: newId("bundlereceipt"),
-        bundleId: bundle.id,
-        bundleDigest: bundle.bundleDigest,
-        approvalId: approval.id,
-        originalVoucherId: bundle.originalVoucher.id,
-        reversal,
-        replacement,
-        committedAt: yield* isoNow(transaction),
-      });
-      yield* CorrectionDb.insertBundleReceipt(transaction, {
-        bookId: command.scope.bookId,
-        bundleId: bundle.id,
-        originalVoucherId: bundle.originalVoucher.id,
-        approvalId: approval.id,
-        reversalReceiptId: reversal.id,
-        replacementReceiptId: replacement.id,
-        body: result,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "execute_correction_bundle",
-        principal.actorId,
-        result,
-      );
-      return result;
-    }),
+      }),
+    "update",
   );
 });
 

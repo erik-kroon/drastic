@@ -1,5 +1,13 @@
 # Synthetic bank reconciliation
 
+## Current ownership
+
+Application operations live in [application/banking/reconciliations.ts](../src/application/banking/reconciliations.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 Status: implemented for `synthetic-core-v1`; manually exercised through the local Worker and restricted PostgreSQL runtime; no automated verification was performed. This module does not import arbitrary bank CSV, infer tax treatment, certify a real period, or post journals.
 
 ```text
@@ -10,7 +18,7 @@ Retained JSON evidence → immutable statement + every source row
                      immutable account/interval reconciliation
 ```
 
-## Input and identity
+### Input and identity
 
 Retain the complete `StatementSource` JSON as `application/json` evidence first. Import the same fields with `evidenceId` and `existingMatches`. PostgreSQL compares the retained JSON to the input after removing those two fields. Whitespace and object key order do not matter; array order and values do. Evidence size limits still apply.
 
@@ -25,7 +33,7 @@ Retain the complete `StatementSource` JSON as `application/json` evidence first.
 
 Synchronous reconciliation accepts at most 1,000 combined selected source/ledger rows and 100 statements. Larger selections reject without storing a partial report. Select a smaller whole-statement interval; durable large-scope reconciliation is not implemented. Full exact totals still cover the entire accepted selection.
 
-## Existing and explicit matches
+### Existing and explicit matches
 
 `existingMatches` imports supplied relationships; it does not rediscover them. A later `BankMatchInput` can connect a statement row to `voucherId` and `lineId`. Both paths use the same database guard:
 
@@ -36,7 +44,7 @@ Synchronous reconciliation accepts at most 1,000 combined selected source/ledger
 
 One row consumes one whole line. Repeating the same match does not consume capacity again or change its original provenance. Splits, partial allocations, cross-interval timing matches, rematching and automated matching are unsupported and reject. A match does not add another ledger posting. The source of the relationship (`imported` or `explicit`) and actor remain immutable.
 
-## Reconciliation and freshness
+### Reconciliation and freshness
 
 `ReconcileBank` selects one book account and inclusive interval. An interval that cuts through a retained statement rejects: deriving a partial external checkpoint is unsupported. The report keeps all selected statements, source observations, posted interval lines and matches, not only totals. Ledger opening includes every prior posted line; ledger closing includes all posted lines through `endsOn`, including originals and reversals.
 
@@ -56,7 +64,7 @@ A report is append-only. It pins the book sequence, account-scoped source collec
 - A different currency or a currently unsupported profile/writer authority also prevents a fresh result.
 - Reconciliation does not alter journal proposal dependencies or consume an approval. `complete` is never a whole-period close certificate.
 
-## API and adapter integration
+### API and adapter integration
 
 All routes use the existing `/api/v1/entities/:entityId/books/:bookId` prefix and normal authenticated session/Bearer boundary. Mutations require `Idempotency-Key`.
 
@@ -74,6 +82,6 @@ The functions authorize token/entity/book scope, acquire the book lock, then che
 
 Migration `0100-bank-reconciliation.sql` owns `bank_sources`, `bank_statements`, `bank_observations`, `bank_matches`, and `bank_reconciliations`. Runtime has no direct table privileges or helper-function execution. Only scoped security-definer command/read functions are granted, each with a protected search path. Imported matches and explicit matches are ordinary scoped bookkeeping records, not posting, payment, tax or close authority.
 
-## Verification boundary
+### Verification boundary
 
 No tests or fixtures were added, and no deployment was run. Existing TypeScript/lint checks can check contracts and handlers; they do not prove PostgreSQL behavior. Before making a verified G2 claim, an approved E2E run must cover equal legitimate rows, existing matches, exact sums, scope rejection, overlap/split rejection, command replay/conflict, capacity conservation, incomplete-but-balanced coverage, gaps, immutable report replay, and freshness after relevant versus unrelated changes. Retain the run's inputs, report and receipts as repeatable evidence.

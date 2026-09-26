@@ -1,103 +1,87 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Connector from "@open-erp/contracts/bank-connector";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { query, scopeParameter } from "../../../db/query";
+import {
+  getConnectorBatch,
+  getConnectorConsent,
+  ingestConnectorBatch,
+  listConnectorBatches,
+  listConnectorConsents,
+  listConnectorFeeds,
+  recoverConnectorBatch,
+  revokeConnectorConsent,
+  saveConnectorConsent,
+} from "../../../application/banking/connector";
 
 export const BankConnectorHandlers = HttpApiBuilder.group(Api, "bankConnector", (handlers) =>
   handlers
     .handle("listConnectorFeeds", ({ params, query: search }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "listConnectorFeeds",
-          [token, scopeParameter(params), search.cursor ?? "", search.consentId ?? ""],
-          Connector.ConnectorFeedInventory,
-        ),
+        listConnectorFeeds(token, {
+          scope: scopeFromPath(params),
+          cursor: search.cursor,
+          consentId: search.consentId,
+        }),
       ),
     )
     .handle("listConnectorConsents", ({ params, query: search }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "listConnectorConsents",
-          [token, scopeParameter(params), search.cursor ?? ""],
-          Connector.ConnectorInventory,
-        ),
+        listConnectorConsents(token, { scope: scopeFromPath(params), cursor: search.cursor }),
       ),
     )
     .handle("listConnectorBatches", ({ params, query: search }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "listConnectorBatches",
-          [token, scopeParameter(params), params.id, search.cursor ?? ""],
-          Connector.ConnectorBatchInventory,
-        ),
+        listConnectorBatches(token, {
+          scope: scopeFromPath(params),
+          consentId: params.id,
+          cursor: search.cursor,
+        }),
       ),
     )
     .handle("recoverConnectorBatch", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "recoverConnectorBatch",
-          [token, scopeParameter(params), params.key],
-          Connector.ConnectorBatch,
-        ),
+        recoverConnectorBatch(token, { scope: scopeFromPath(params), key: params.key }),
       ),
     )
     .handle("saveConnectorConsent", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "saveConnectorConsent",
-          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-          Connector.ConnectorConsent,
-        ),
+        saveConnectorConsent(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("getConnectorConsent", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "getConnectorConsent",
-          [token, scopeParameter(params), params.id],
-          Connector.ConnectorConsentState,
-        ),
+        getConnectorConsent(token, { scope: scopeFromPath(params), consentId: params.id }),
       ),
     )
     .handle("revokeConnectorConsent", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "revokeConnectorConsent",
-          [
-            token,
-            scopeParameter(params),
-            headers["idempotency-key"],
-            params.id,
-            JSON.stringify(payload),
-          ],
-          Connector.ConnectorRevocation,
-        ),
+        revokeConnectorConsent(token, {
+          scope: scopeFromPath(params),
+          consentId: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("ingestConnectorBatch", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "ingestConnectorBatch",
-          [
-            token,
-            scopeParameter(params),
-            headers["idempotency-key"],
-            params.id,
-            JSON.stringify(payload),
-          ],
-          Connector.ConnectorBatch,
-        ),
+        ingestConnectorBatch(token, {
+          scope: scopeFromPath(params),
+          consentId: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("getConnectorBatch", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "getConnectorBatch",
-          [token, scopeParameter(params), params.id],
-          Connector.ConnectorBatch,
-        ),
+        getConnectorBatch(token, { scope: scopeFromPath(params), batchId: params.id }),
       ),
     ),
 );

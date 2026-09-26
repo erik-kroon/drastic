@@ -1,6 +1,14 @@
 # Bounded invoice register snapshots
 
-## Accepted slice and failure cases (before implementation)
+## Current ownership
+
+Application operations live in [application/register-reports.ts](../src/application/register-reports.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Accepted slice and failure cases (before implementation)
 
 Create, rediscover and download an immutable synthetic same-currency receivable/payable ageing and control-account snapshot. It consumes existing registered invoices and posted allocation legs. It does not issue invoices, post journals, initiate payments or claim source completeness.
 
@@ -20,11 +28,11 @@ Create, rediscover and download an immutable synthetic same-currency receivable/
 - Report creation has no financial writes or approval consumption. Snapshot plus command receipt commit atomically. Runtime gets only scoped command/read/list function execution, never table writes.
 - UI must expose capture, saved-list recovery, exact saved report, readable ageing/control differences and a complete JSON download. Error/retry preserves captured request identity. Data stays book-scoped and out of browser persistence.
 
-## Verification gate
+### Verification gate
 
 No tests or fixtures are added or changed. Before claiming verified behavior, the integrator must exercise the actual restricted Worker/PostgreSQL and browser paths, retain report JSON/receipts, and independently calculate expected as-of residuals, ageing and per-line control differences. Required examples include a later-dated partial payment, changed due date after capture, offsetting unexplained GL lines, empty declared accounts, wrong scope, exact replay/conflict and oversize rejection. Static checks do not establish these outcomes.
 
-## Implemented source and ownership
+### Implemented source and ownership
 
 The additive migration `0920-commerce-register-snapshots.sql` stores the complete bounded manifest in `commerce_register_snapshots`. Immutable-row protection forbids update/delete. Creation takes the established authorization lock then the book mutation lock, checks/replays the command, reads current facts, saves the snapshot and command receipt atomically. Reads authorize before looking up any scope-bound record. No prior migration is edited.
 
@@ -38,7 +46,7 @@ For each account, normalize debits minus credits for customers and credits minus
 
 The commerce panel mounts `register-reports.tsx`: capture through the existing retry-safe command form; fixed-cutoff saved-report discovery (20 summaries in per-book capture order); scoped GET by saved ID; saved control/ageing/invoice/ledger/allocation views with local 50-row pagination; full JSON download. The JSON includes every retained row even when the screen shows one page. The request form has the existing explicit retry-key/manual-retention behavior, not crash-safe local persistence. Saved server reports can be rediscovered after reload.
 
-## Shared integration map (integrator-owned)
+### Shared integration map (integrator-owned)
 
 - Export `"./register-reports": "./src/register-reports.ts"` from `packages/contracts/package.json`.
 - Add `RegisterReportsApi` to `packages/contracts/src/api.ts` and spread `RegisterReportCapabilities` into `packages/contracts/src/capabilities.ts`.
@@ -46,16 +54,16 @@ The commerce panel mounts `register-reports.tsx`: capture through the existing r
 - Import/spread `registerReportStatements` from `apps/api/src/register-report-statements.ts` into `apps/api/src/database.ts`. It uses the existing Drizzle Effect adapter and no new connection owner.
 - Bind the following capabilities in `apps/api/src/capabilities.ts` using the existing `bindCapability`. Parameter lists below exclude the token that `bindCapability` prepends.
 
-| Capability | Dispatcher operation | Parameters | Output |
-| --- | --- | --- | --- |
-| `commerce_create_register_report` | `createRegisterReport` | `[scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)]` | `RegisterReport` |
-| `commerce_get_register_report` | `getRegisterReport` | `[scopeParameter(input.scope), input.id]` | `RegisterReport` |
-| `commerce_list_register_reports` | `listRegisterReports` | `[scopeParameter(input.scope), input.after ?? ""]` | `RegisterReportPage` |
+| Capability                        | Dispatcher operation   | Parameters                                                                         | Output               |
+| --------------------------------- | ---------------------- | ---------------------------------------------------------------------------------- | -------------------- |
+| `commerce_create_register_report` | `createRegisterReport` | `[scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)]` | `RegisterReport`     |
+| `commerce_get_register_report`    | `getRegisterReport`    | `[scopeParameter(input.scope), input.id]`                                          | `RegisterReport`     |
+| `commerce_list_register_reports`  | `listRegisterReports`  | `[scopeParameter(input.scope), input.after ?? ""]`                                 | `RegisterReportPage` |
 
 REST paths use `/api/v1/entities/:entityId/books/:bookId/commerce/register-snapshots`: POST with `{asOfDate}` and `Idempotency-Key`, GET list with optional opaque `after` cursor (pass unchanged), GET `/:id` for the full immutable snapshot. All are shared REST/MCP capabilities. Capture is not approval or a financial operation, so it does not add an operator-only approval endpoint.
 
 The worker changed no shared dispatcher/catalog/export/entrypoint, db mappings, global messages, workspace or UI primitives. The commerce panel and local copy own the new visible section. If maintenance needs a Drizzle table mapping, the integrator owns that mapping; runtime only calls the scoped SQL functions.
 
-## Status
+### Status
 
 Implemented source pending shared integration and runtime/browser verification. No tests/fixtures, database runs, servers, repository-wide checks, commits or deployments were performed by this worker. Owned-file formatting/lint results are reported separately at handoff. SQL behavior, capture/replay, report arithmetic, pagination, download, narrow layout, keyboard and 200% zoom remain unverified until the integration gate above is exercised.

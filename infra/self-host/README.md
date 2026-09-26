@@ -76,7 +76,7 @@ API calls use the existing `/api/*` surface, including authenticated REST and `/
 
 ## Upgrade, stop and data retention
 
-Keep a verified database/evidence backup before upgrading. Review the migration delta and current release gates. Changing a previously applied migration correctly fails; do not bypass its checksum or discard the data volume to force startup. Existing authenticated accounting data is never seeded or reset by application startup. The application-owned replacement is a clean reset for this unreleased product: install its three reviewed baseline files on an explicitly disposable database and refuse an old installation. There is no old-schema adapter, dual writer or compatibility window.
+Keep a verified database/evidence backup before upgrading. Review the migration delta and current release gates. Changing a previously applied migration correctly fails; do not bypass its checksum or discard the data volume to force startup. Existing authenticated accounting data is never seeded or reset by application startup. The application-owned replacement is a clean reset for this unreleased product: install its three reviewed baseline files on an explicitly disposable database and refuse an old installation. A database whose receipts name a migration the current set no longer contains is refused before any migration SQL runs, the migrate service exits non-zero and the app never starts; replace that database instead of migrating it. There is no old-schema adapter, dual writer or compatibility window.
 
 Stop the app before an upgrade that changes schema or credentials, rebuild, then rerun the migration service before starting it:
 

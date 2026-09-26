@@ -1,6 +1,14 @@
 # Whole synthetic invoice cancellation
 
-## Failure cases recorded before implementation
+## Current ownership
+
+Application operations live in [application/commerce/invoice-lifecycle.ts](../src/application/commerce/invoice-lifecycle.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Failure cases recorded before implementation
 
 - Unissued, foreign-book, legal/delivered or nonnative invoices must not enter cancellation. Original issued drafts/reviews/receipts/artifacts and the SYN counter remain immutable; no number reuse or draft reopening.
 - Any active1700 payment allocation must reject cancellation. No implicit unallocation, refund, legal credit, VAT adjustment or delivery is permitted.
@@ -15,15 +23,15 @@
 - Closing currentness must bind cancellation history. Original recognition with a valid cancellation must not become unexplained corruption; invalid/unpaired reversals must remain blocked.
 - Interrupted responses must recover through scoped bounded immutable history. Oversized reviews/history must refuse, never truncate.
 
-## Status
+### Status
 
 Source implementation is saved. Shared integration is root-owned. All behavior remains runtime-unverified. Feature expansion is paused while source-only error review continues.
 
-## Implemented source (runtime-unverified)
+### Implemented source (runtime-unverified)
 
 Forward migration `2200-synthetic-invoice-cancellations.sql` adds immutable cancellation reviews, approvals, revocations, private execution admissions and final receipts. No historical migration is changed. Whole cancellation is limited to issued1400 native synthetic invoices; original issue/draft/register/document bytes and the SYN counter are untouched.
 
-### Exact reversal and aggregate proof
+#### Exact reversal and aggregate proof
 
 - Preparation reads the exact issue digest and current registered recognition. It requires no active1700 payment allocations, an open source period and no conflicting owner, bank, schedule or correction resources. A direct1500 `subledger_bases.voucher_id` reference also refuses cancellation, including bases whose schedule recognition already posted. Mapping either recognition account as a bank source also refuses.
 - The kernel seals the complete opposite source journal in its original line order and accounts, retaining event/evidence, series and line IDs. The operator chooses the target period/date and reason. The date cannot precede recognition. `inspect_action` enforces target period/year, exact inverse amounts and no reversal-of-reversal.
@@ -33,7 +41,7 @@ Forward migration `2200-synthetic-invoice-cancellations.sql` adds immutable canc
 - A deferred FK requires every admission to have its final cancellation. Deferred triggers cross-check the final review, original issue/register/voucher, same human approval, consumed kernel approval, exact reversal action and kernel execution receipt.1400's deferred owned-source guard accepts only the matching final cancellation. Generic `correction_require_unbound` stays strict.
 - Current authorization and the book lock precede idempotent replay. Same-review/same-approval new-key recovery can return the committed receipt without checking fresh dependencies or reversing again. All financial effects and the receipt commit atomically.
 
-### Live and historical consumers
+#### Live and historical consumers
 
 - Live invoice reads expose `status: cancelled`, zero `effectiveAmountMinor`/outstanding, the original amount/recognition and a cancellation summary. Cancellation increments the live allocation version. This immediately removes allocation capacity even when the selected economic reversal date is later.
 - New allocations explicitly reject cancelled invoices. Existing prepared allocations still revalidate their live selection; deferred allocation proofs still require current, uncorrected recognition. Reversal vouchers remain unavailable as settlement capacity. Cancelled register records cannot be revised or reopened. Draft freezes remain unchanged.
@@ -42,13 +50,13 @@ Forward migration `2200-synthetic-invoice-cancellations.sql` adds immutable canc
 - `commerce_period_status` includes relevant immutable cancellation history in its source digest. The kernel reversal advances the committed ledger sequence. These dependencies invalidate affected live closing/review bases without changing1510 or rewriting historical certificates.
 - Source coverage stays `not_established`; cancellation proves neither company completeness nor legal credit/refund/delivery readiness.
 
-### Bounds and recovery
+#### Bounds and recovery
 
 - Maximum50 reviews per issue,50 approvals per review and256 KiB per complete review. Oversized reviews roll back rather than truncate.
 - Scoped status returns the complete bounded review inventory and any final cancellation, including when another retained review completed the cancellation.
 - Browser command forms retain exact idempotency requests and provide JSON request/result downloads. Unknown responses can replay the exact command or recover through scoped status/review reads.
 
-## Root integration surface
+### Root integration surface
 
 - Contract module/export: `@open-erp/contracts/invoice-cancellations`; `InvoiceCancellationsApi`, `InvoiceCancellationCapabilities`. The shared summary is `Commerce.InvoiceCancellationSummary`, avoiding a commerce-to-operation schema cycle.
 - HTTP layer: `InvoiceCancellationHandlers`; Drizzle statement catalog: `invoiceCancellationStatements`.
@@ -57,10 +65,10 @@ Forward migration `2200-synthetic-invoice-cancellations.sql` adds immutable canc
 - UI mount: `InvoiceCancellationPanel({ book, locale, issue })` beside the immutable issue-success/document panels. Independent recovery component: `InvoiceCancellationReviewPanel({ book, locale, id })`.
 - Shared invoice/register schemas need the agreed optional cancellation fields and contribution literals (`recognition`, `cancellation`, `allocation`, `unexplained`). Root owns exports, shared composition, catalog dispatch, UI mount and existing consumer presentation.
 
-## Verification boundary
+### Verification boundary
 
 Implementation and manual source review are not execution proof. No test/check/build, dependency/toolchain change, DB/migration execution, server, browser/mobile verification, external action, commit or deployment was performed. Runtime, migration, replay/concurrency, transport, rendering and accessibility proof remain outstanding. Do not present source readiness as verified financial or legal readiness.
 
-## Root source integration and review
+### Root source integration and review
 
 Package export, shared API group, capability catalog/two read bindings, statement dispatcher and HTTP handlers are connected. InvoiceCancellationPanel is mounted beside the historical issued receipt/document panel. Current invoice status and retained register columns use the additive shared cancellation fields. Independent source review found and owner fixed a missing carrying-basis ownership refusal; subsequent review found no remaining concrete financial blocker. The current-approval keyed form replacement was also fixed by stable retained approval entries. These are source findings only. No type/lint checks, SQL execution, migrations, browser or runtime validation were performed.

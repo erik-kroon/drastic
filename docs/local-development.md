@@ -1,6 +1,6 @@
 # Local development
 
-Run the web app and API Worker against an isolated PostgreSQL 17 database. Use the Bun version pinned in the root `package.json`. These steps describe the current development distribution, not an existing company database. The application-owned replacement is specified in [ADR 0010](adr/0010-application-owned-accounting-replacement.md) and has not been implemented; after cutover, the clean database is created with `0001-schema.sql`, `0002-integrity.sql` and `0003-roles.sql`, with no old-schema upgrade or automatic reset. The selected [ADR 0009](adr/0009-effect-mq-background-jobs.md) Bun runner is also not wired into these commands yet.
+Run the web app and API Worker against an isolated PostgreSQL 17 database. Use the Bun version pinned in the root `package.json`. Fresh databases use `0001-schema.sql`, `0002-integrity.sql` and `0003-roles.sql`. The migrator refuses receipts from the superseded chain; it never resets a database. The [application-owned replacement](adr/0010-application-owned-accounting-replacement.md) still has open domain and boundary-review gates, listed in the [API layout](../apps/api/README.md).
 
 Run commands from the repository root unless noted. Create the database with your PostgreSQL administration tool before migrating it.
 
@@ -14,7 +14,7 @@ export DATABASE_ADMIN_URL='postgresql://owner:password@127.0.0.1:5432/openerp_de
 bun run --cwd apps/api db:migrate
 ```
 
-Applied migration checksums are enforced. In the current checkout, add a forward migration instead of editing one that has already run. For the application-owned replacement, use the clean three-file baseline and recreate an explicitly disposable development database; do not add a compatibility migration for the superseded chain.
+Applied migration checksums are enforced. Add a forward migration instead of editing one that has already run. For a development database using the superseded chain, create a fresh disposable database and run this baseline; there is no compatibility migration or automatic reset.
 
 ## 2. Configure the restricted runtime login
 
@@ -64,3 +64,13 @@ curl --fail-with-body \
 ```
 
 The generated REST schema is at `/api/openapi.json`. [MCP setup](../apps/api/docs/MCP.md) covers agent authentication and transport. Keep the token, database credentials and local session secret out of commits and captured output.
+
+## 5. Run durable preparation work
+
+The [effect-mq runner](adr/0009-effect-mq-background-jobs.md) is a separate persistent Bun process. Give it the restricted runtime connection as `DATABASE_URL` and a dedicated preparation credential as `OPENERP_PREPARATION_TOKEN`, then run:
+
+```bash
+bun run --cwd apps/api jobs:preparation
+```
+
+The API records work in PostgreSQL; the runner finds ready work and owns queue claims, leases and retries. This command is separate from `bun run dev` and the Cloudflare Worker deployment.

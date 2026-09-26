@@ -1,5 +1,13 @@
 #4700 tax-account correction-impact closure — failure contract
 
+## Current ownership
+
+Application operations live in [application/vat/tax-account.ts](../src/application/vat/tax-account.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 4500 SQL sealer fix was completed and reported separately before this packet.
 
 Pre-code requirements:
@@ -26,7 +34,7 @@ currentness without replacing saved bytes. correction_require_unbound consumes t
 resource owner for standalone reversal admission. Existing command owners replay before
 new-state checks. Latest resource composition is1700;4700 only forward-replaces that owner.
 
-## Implemented source and exact ownership
+### Implemented source and exact ownership
 
 `4700-tax-account-correction-impact.sql` forward-replaces only
 `correction_impact_resources(text,text,date)` from1700. All original resource queries and
@@ -55,7 +63,7 @@ typed lineage metadata, preserving old impact decoding. Existing REST/MCP impact
 correction preparation/admission consume the new resource through the existing owner.
 Root owns any exhaustive consumer copy needed outside that local contract.
 
-## Actual consumer effects
+### Actual consumer effects
 
 - `prepareCorrectionImpact` now names the tax relation as a blocker before approval.
 - `getCorrectionImpact` keeps saved bytes and separately compares the live resource basis.
@@ -69,7 +77,7 @@ No relation is unmatched by correction preparation, approval or execution. Inval
 relations remain blockers. No bank/commerce/owner allocation, accounting amount, legal role,
 period state or source completeness claim is changed.
 
-## Source review and checks
+### Source review and checks
 
 Compared the full4700 function against1700: only tax resource construction/composition and
 its local variable were added; all previous queries, sort/owner composition and whole-read

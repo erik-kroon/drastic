@@ -1,5 +1,13 @@
 # BANK-2 provider-neutral source delivery
 
+## Current ownership
+
+Application operations live in [application/banking/connector.ts](../src/application/banking/connector.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 A bank operator can attest a scoped provider consent and one explicit source-account → active ledger-account mapping. This does **not** verify a provider grant. The consent reports `providerConfigured: false`. The [opt-in Plaid job](PLAID-CONNECTOR.md) can pull records using privately provisioned credentials. Browser credential exchange and verified provider consent are not implemented. D-10 remains an external-provider acceptance gate. There is no silent synthetic provider.
 
 An authorized operator can deliver a bounded page from an external connector through `POST /bank-connector-consents/:id/batches`. This is an actual ingest path for externally acquired raw records, not an authenticated provider callback. It accepts an opaque source revision and cursor pair, provider outcome `delivered | uncertain | failed`, and up to 20 records with stable external IDs and exact UTF-8 raw bytes (at most 64 KiB each; request at most 256 KiB). The operator must not claim this path proves provider origin. Provider credentials stay in the protected operator job configuration described by the selected adapter; this endpoint neither accepts them nor verifies provider access.
@@ -8,7 +16,7 @@ Delivered pages retain the exact bytes in the existing `intake_contents`/`intake
 
 The book lock serializes commands; the consent cursor must match the submitted previous cursor. Only a delivered page advances it, atomically with retained occurrences, immutable batch and command receipt. Empty uncertain/failed pages retain separate outcomes without moving the cursor. This is a report from the operator's delivery boundary, not detection of network success. Retrying the same key and payload returns the frozen receipt; `GET /bank-connector-batch-requests/:key` recovers a committed result for that actor without resubmitting raw data. Absence is not evidence an in-flight attempt failed. A revoked consent blocks new batches and preserves old content and receipts. Mapping conflicts block intake. Cursor order and remote pagination completeness are provider-specific and remain unsupported.
 
-## Integration handoff
+### Integration handoff
 
 Root owns and must wire:
 
@@ -19,11 +27,11 @@ Root owns and must wire:
 
 All routes use `/api/v1/entities/:entityId/books/:bookId` (the contract path omits `/api`). `POST /bank-connector-consents`, `POST /bank-connector-consents/:id/revoke` and `POST /bank-connector-consents/:id/batches` require an operator and `Idempotency-Key`. Reads include `GET /bank-connector-feeds`, `GET /bank-connector-consents/:id`, `GET /bank-connector-batches/:id`, and `GET /bank-connector-batch-requests/:key`; the feed snapshot additionally requires operator authority. REST auth derives scope and actor server-side; never supply a client-specified actor. Drizzle binds token, scope, then key/ID/input as the typed statement files show.
 
-## Verification boundary
+### Verification boundary
 
 Contract typecheck, targeted lint/format and standalone SQL application passed on an isolated PostgreSQL 18 cluster after the existing migrations through3950. Full migration replay stopped in an unrelated `6100-subledger-lifetime-amendments.sql` failure, so this is not a clean full-chain migration or SQL behavior proof. Migration 9110 was not applied or executed in this slice. No running authenticated API call was exercised. Required later observation: isolated PostgreSQL migration/application, authenticated operator vs non-operator access, duplicate/revision/overlap and changed-byte conflict, concurrent stale cursor, uncertain-result recovery and revocation. D-09 prevents adding tests without explicit approval. D-10 prevents real-provider acceptance.
 
-## Browser setup and recovery
+### Browser setup and recovery
 
 The company setup banking choice links to `/banking-setup`. The page records existing
 operator-attested consent and an explicit source-account/ledger-account mapping using

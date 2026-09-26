@@ -149,8 +149,7 @@ export function readEvidence(transaction: Transaction, bookId: string, evidenceI
       createdAt: evidence.createdAt,
     })
     .from(evidence)
-    .where(and(eq(evidence.bookId, bookId), eq(evidence.id, evidenceId)))
-    .for("share");
+    .where(and(eq(evidence.bookId, bookId), eq(evidence.id, evidenceId)));
 }
 
 export function readEvidenceBySha(transaction: Transaction, bookId: string, sha256: string) {
@@ -165,8 +164,7 @@ export function readEvidenceBySha(transaction: Transaction, bookId: string, sha2
       createdAt: evidence.createdAt,
     })
     .from(evidence)
-    .where(and(eq(evidence.bookId, bookId), eq(evidence.sha256, sha256)))
-    .for("share");
+    .where(and(eq(evidence.bookId, bookId), eq(evidence.sha256, sha256)));
 }
 
 export function insertEvidence(
@@ -209,16 +207,14 @@ export function readEvent(
         eq(events.evidenceId, evidenceId),
         eq(events.eventKey, eventKey),
       ),
-    )
-    .for("share");
+    );
 }
 
 export function readEventById(transaction: Transaction, bookId: string, eventId: string) {
   return transaction
     .select({ id: events.id, evidenceId: events.evidenceId })
     .from(events)
-    .where(and(eq(events.bookId, bookId), eq(events.id, eventId)))
-    .for("share");
+    .where(and(eq(events.bookId, bookId), eq(events.id, eventId)));
 }
 
 export function insertEvent(
@@ -234,13 +230,8 @@ export function insertEvent(
     .returning({ id: events.id });
 }
 
-export function readPeriod(
-  transaction: Transaction,
-  bookId: string,
-  periodId: string,
-  lock: "share" | "update" = "share",
-) {
-  const query = transaction
+export function readPeriod(transaction: Transaction, bookId: string, periodId: string) {
+  return transaction
     .select({
       bookId: periods.bookId,
       id: periods.id,
@@ -251,17 +242,12 @@ export function readPeriod(
       version: periods.version,
     })
     .from(periods)
-    .where(and(eq(periods.bookId, bookId), eq(periods.id, periodId)));
-  return lock === "update" ? query.for("update") : query.for("share");
+    .where(and(eq(periods.bookId, bookId), eq(periods.id, periodId)))
+    .for("share");
 }
 
-export function readFiscalYear(
-  transaction: Transaction,
-  bookId: string,
-  fiscalYearId: string,
-  lock: "share" | "update" = "share",
-) {
-  const query = transaction
+export function readFiscalYear(transaction: Transaction, bookId: string, fiscalYearId: string) {
+  return transaction
     .select({
       bookId: fiscalYears.bookId,
       id: fiscalYears.id,
@@ -270,7 +256,6 @@ export function readFiscalYear(
     })
     .from(fiscalYears)
     .where(and(eq(fiscalYears.bookId, bookId), eq(fiscalYears.id, fiscalYearId)));
-  return lock === "update" ? query.for("update") : query.for("share");
 }
 
 export function readAccounts(transaction: Transaction, bookId: string, accountIds: string[]) {
@@ -326,8 +311,7 @@ export function readAllFiscalYears(transaction: Transaction, bookId: string) {
     .select({ id: fiscalYears.id, startsOn: fiscalYears.startsOn, endsOn: fiscalYears.endsOn })
     .from(fiscalYears)
     .where(eq(fiscalYears.bookId, bookId))
-    .orderBy(asc(fiscalYears.id))
-    .for("share");
+    .orderBy(asc(fiscalYears.id));
 }
 
 export function readPlan(transaction: Transaction, bookId: string, changeSetId: string) {
@@ -341,23 +325,11 @@ export function readPlan(transaction: Transaction, bookId: string, changeSetId: 
       createdAt: changeSets.createdAt,
     })
     .from(changeSets)
-    .where(and(eq(changeSets.bookId, bookId), eq(changeSets.id, changeSetId)))
-    .for("share");
+    .where(and(eq(changeSets.bookId, bookId), eq(changeSets.id, changeSetId)));
 }
 
 export function lockPlan(transaction: Transaction, bookId: string, changeSetId: string) {
-  return transaction
-    .select({
-      bookId: changeSets.bookId,
-      id: changeSets.id,
-      plan: changeSets.plan,
-      digest: changeSets.digest,
-      createdBy: changeSets.createdBy,
-      createdAt: changeSets.createdAt,
-    })
-    .from(changeSets)
-    .where(and(eq(changeSets.bookId, bookId), eq(changeSets.id, changeSetId)))
-    .for("share");
+  return readPlan(transaction, bookId, changeSetId);
 }
 
 export function insertPlan(
@@ -388,8 +360,7 @@ export function readVoucher(transaction: Transaction, bookId: string, voucherId:
       recordedAt: vouchers.recordedAt,
     })
     .from(vouchers)
-    .where(and(eq(vouchers.bookId, bookId), eq(vouchers.id, voucherId)))
-    .for("share");
+    .where(and(eq(vouchers.bookId, bookId), eq(vouchers.id, voucherId)));
 }
 
 export function readVoucherByEconomicIdentity(
@@ -411,8 +382,7 @@ export function readVoucherByEconomicIdentity(
         eq(vouchers.postingPurpose, action.postingPurpose),
         eq(vouchers.occurrenceKey, action.occurrenceKey),
       ),
-    )
-    .for("share");
+    );
 }
 
 export function readVoucherByChangeSet(
@@ -423,8 +393,7 @@ export function readVoucherByChangeSet(
   return transaction
     .select({ id: vouchers.id })
     .from(vouchers)
-    .where(and(eq(vouchers.bookId, bookId), eq(vouchers.changeSetId, changeSetId)))
-    .for("share");
+    .where(and(eq(vouchers.bookId, bookId), eq(vouchers.changeSetId, changeSetId)));
 }
 
 export function readVoucherByReversal(
@@ -441,8 +410,7 @@ export function readVoucherByReversal(
         eq(vouchers.correctsVoucherId, correctsVoucherId),
         eq(vouchers.postingPurpose, "reversal"),
       ),
-    )
-    .for("share");
+    );
 }
 
 export function readVoucherPage(
@@ -565,17 +533,16 @@ export function readApprovalRevocation(
         eq(postingApprovalRevocations.bookId, bookId),
         eq(postingApprovalRevocations.approvalId, approvalId),
       ),
-    )
-    .for("share");
+    );
 }
 
 export function readCommandReceipt(
   transaction: Transaction,
   bookId: string,
   key: string,
-  lock: "share" | "update" = "share",
+  _lock: "share" | "update" = "share",
 ) {
-  const query = transaction
+  return transaction
     .select({
       bookId: commandReceipts.bookId,
       key: commandReceipts.key,
@@ -587,7 +554,6 @@ export function readCommandReceipt(
     })
     .from(commandReceipts)
     .where(and(eq(commandReceipts.bookId, bookId), eq(commandReceipts.key, key)));
-  return lock === "update" ? query.for("update") : query.for("share");
 }
 
 export function insertCommandReceipt(
@@ -688,8 +654,7 @@ export function readExecutionReceiptById(transaction: Transaction, bookId: strin
   return transaction
     .select({ id: executionReceipts.id, body: executionReceipts.body })
     .from(executionReceipts)
-    .where(and(eq(executionReceipts.bookId, bookId), eq(executionReceipts.id, id)))
-    .for("share");
+    .where(and(eq(executionReceipts.bookId, bookId), eq(executionReceipts.id, id)));
 }
 
 export function readExecutionReceiptByVoucher(
@@ -704,8 +669,7 @@ export function readExecutionReceiptByVoucher(
       body: executionReceipts.body,
     })
     .from(executionReceipts)
-    .where(and(eq(executionReceipts.bookId, bookId), eq(executionReceipts.voucherId, voucherId)))
-    .for("share");
+    .where(and(eq(executionReceipts.bookId, bookId), eq(executionReceipts.voucherId, voucherId)));
 }
 
 export function insertGroupReceipt(

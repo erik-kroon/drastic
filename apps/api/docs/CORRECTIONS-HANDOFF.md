@@ -1,6 +1,14 @@
 # Corrections workbench integration handoff
 
-## Released source
+## Current ownership
+
+Application operations live in [application/posting-corrections.ts](../src/application/posting-corrections.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Released source
 
 - `packages/contracts/src/corrections.ts`: additive chain, snapshot, discovery and request-recovery contracts/endpoints/capability definitions. `CorrectionIntent` is the old intent shape; `PrepareCorrectionBundle` adds optional `impactReview:{id,digest}` for wire compatibility.0410 requires that reference for new sealing; old exact command replays remain valid. `CorrectionBundle` adds optional impact reference so old retained bodies still decode.
 - `apps/api/src/corrections.ts`: new Effect REST handlers call shared named capabilities. Existing approval remains operator-only REST.
@@ -8,7 +16,7 @@
 - `apps/web/src/components/corrections/{corrections-panel,correction-review,impact-review,discovery}.tsx` and `copy.ts`: exact impact→review→seal flow, affected-resource links, chain drilldown/net sums, bundle pages and request recovery, English/Swedish copy.
 - `apps/api/docs/CORRECTIONS-WORKBENCH.md`: risks/acceptance cases written before transition changes; implementation boundaries and evidence.
 
-## Prerequisites and shared root changes
+### Prerequisites and shared root changes
 
 Use the current Drizzle Effect `query` dispatcher and Better Auth accounting credential boundary. No new connection or auth adapter is needed. The current `CorrectionApi`/`CorrectionHandlers` and spread `CorrectionCapabilities` composition remain; the spread picks up new contract definitions. Add these bindings to `apps/api/src/capabilities.ts` and operations to `apps/api/src/database.ts`:
 
@@ -36,7 +44,7 @@ Existing workspace mount needs no change. Existing book-keyed `CorrectionsPanel`
 
 0410 consumes stable schema from0400/0401,0500,0600,0700 and0800, and the existing0900 authorization boundary. It is forward-only. The migration runner must consider these prerequisites; do not expose0410 functions to traffic before all prerequisite domain migrations exist. No dependency on concurrently drafted0510/0610/0710/0810+ semantics is assumed.
 
-## What is implemented, unavailable and unverified
+### What is implemented, unavailable and unverified
 
 Implemented: one immutable impact snapshot binds exact original, replacement lines/date/rationale, connected committed chain, represented relationships, configuration and ledger sequence. New bundle digest binds the review ID/digest; sealing, approval and execution compare its current basis. Snapshot-current explicitly is not executability. Reordered, description-only or split lines with identical per-account economic balances and unchanged date/period are rejected. Standalone reversals remain visible and conflict with a new bundle. Old committed receipts replay before new live checks; old unposted bundles are subject to live unsupported-register/no-op guards.
 
@@ -46,10 +54,10 @@ Conservative limitation: any book ledger/configuration change or changed represe
 
 Not verified: new0410 runtime, PostgreSQL concurrency/rollback/crash paths, browser interaction/zoom/accessibility, real-company use, legal policy, deployment or authority acceptance. Previous0400/0401 synthetic observation is historical evidence for the earlier bundle, not proof of this package. No tests, fixtures, migrations, DB writes, server/build/repo checks, dependencies or Git operations were performed by this worker.
 
-## Owned-file checks
+### Owned-file checks
 
 `bun x --no-install oxlint packages/contracts/src/corrections.ts apps/api/src/corrections.ts apps/web/src/components/corrections/*.ts*` passed with zero warnings/errors. Oxfmt passed on those source files and the three domain documents. This is bounded source validation only; dispatcher integration and native type/runtime checks remain with root.
 
-## Next root action
+### Next root action
 
 Integrate the five dispatcher/capability mappings, inspect/apply0410 only in the authorized local environment, then serialize native type/lint/build validation and permitted manual observation. Suggested manual review (not an added test): plain changed-amount journal snapshot→seal→approve→execute→same/new-key recovery; stale snapshot after an intervening represented link; no-op, already-reversed, locked-target, matched-bank, commerce and schedule blocks; chain net totals and loss/reload discovery. Report exactly what ran; leave missing adversarial/browser/legal evidence open.

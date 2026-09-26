@@ -1,5 +1,13 @@
 #5400 tax match / retained subledger-basis disclosure — failure contract
 
+## Current ownership
+
+Application operations live in [application/vat/tax-account.ts](../src/application/vat/tax-account.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 This is a factual public-read overlay, not an exclusivity or accounting-role policy.
 
 Pre-code inspection:4100's public `get_tax_account_match` authorizes scope, takes the book
@@ -23,7 +31,7 @@ Failure contract:
 - No approval/command material, whole basis/source inputs, allocation release, new artifact,
   financial calculation, accounting role, legal inference or tests/runtime execution.
 
-## Implemented isolation
+### Implemented isolation
 
 `5400-tax-match-subledger-disclosure.sql` forward-replaces only public
 `get_tax_account_match`. The original authorization, book barrier, private-view call and
@@ -42,7 +50,7 @@ It is not a claim that two active financial roles conflict or that reuse is perm
 not assess basis currentness, schedule eligibility, correction validity or legal readiness.
 Null identifies no retained basis row for this exact pair, not proof of accounting compatibility.
 
-### Actual consumers and historical compatibility
+#### Actual consumers and historical compatibility
 
 The new getter-only `TaxAccountMatchDetail` extends the existing view fields. The shared
 `TaxAccountMatchView` remains unchanged, including its use in lists and saved control matches.
@@ -56,7 +64,7 @@ fields. The wrapper does not call public `get_schedule`, schedule eligibility, b
 or any live provider.5300's independent reciprocal schedule overlay needs no shared helper or
 cross-domain relationship schema.
 
-## Source review and checks
+### Source review and checks
 
 Checked executable public-wrapper references, all shared response-schema uses,4100 match table
 identity columns and1500 basis-line/basis primary keys. Compared the forward wrapper against

@@ -1,26 +1,34 @@
 # Financial FX feasibility — contract decision required
 
+## Current ownership
+
+Application operations live in [application/commerce-fx.ts](../src/application/commerce-fx.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 Status: bounded source investigation, not an approved design or implemented financial
 workflow. No migration is reserved. No new FX artifact, capacity projection, posting or
 company/legal policy was added.
 
-## Existing owners and their actual scope
+### Existing owners and their actual scope
 
-| Owner | Established behavior | Missing financial meaning |
-| --- | --- | --- |
-| `1900-exchange-rate-reviews.sql` | Evidence-backed directional rate revisions and exact `synthetic_half_up_nonnegative_v1` conversion reviews. | No recognized foreign obligation or financial effect; reviews explicitly retain `postingSupported:false`. |
-| `2300-exchange-rate-withdrawals.sql` | Permanent observation withdrawal, refusal of new revisions/conversions, successful old-key recovery and separate live currentness. | No policy for a posted carrying basis versus later rate withdrawal or settlement. |
-| `1700-commerce-allocation-reversals.sql`, `commerce_create_invoice` | A synthetic invoice in exactly the book currency; one amount equals an existing posted recognition line. | No separate original obligation currency/amount and book carrying currency/amount. |
-| `2200-synthetic-invoice-cancellations.sql`, `commerce_allocation_selection` | Same-account/currency invoice and settlement-control-line selection, current capacity and immutable allocation lineage. | No foreign units consumed, carrying portion released, cash/fee currencies or FX residual allocation. |
-| `1700-commerce-allocation-reversals.sql`, `commerce_assert_allocation` | One allocation amount conserves existing invoice and payment-control-line capacity; explicit unallocation preserves history. | No paired-capacity owner. A second independent FX balance could conflict with these existing capacities. |
-| Native journal kernel | Sealed book-currency adjustment/reversal, human approval, atomic posting and receipts. | A balanced journal alone does not identify FX recognition, realized gain/loss or remeasurement/register consequences. |
+| Owner                                                                       | Established behavior                                                                                                               | Missing financial meaning                                                                                             |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `1900-exchange-rate-reviews.sql`                                            | Evidence-backed directional rate revisions and exact `synthetic_half_up_nonnegative_v1` conversion reviews.                        | No recognized foreign obligation or financial effect; reviews explicitly retain `postingSupported:false`.             |
+| `2300-exchange-rate-withdrawals.sql`                                        | Permanent observation withdrawal, refusal of new revisions/conversions, successful old-key recovery and separate live currentness. | No policy for a posted carrying basis versus later rate withdrawal or settlement.                                     |
+| `1700-commerce-allocation-reversals.sql`, `commerce_create_invoice`         | A synthetic invoice in exactly the book currency; one amount equals an existing posted recognition line.                           | No separate original obligation currency/amount and book carrying currency/amount.                                    |
+| `2200-synthetic-invoice-cancellations.sql`, `commerce_allocation_selection` | Same-account/currency invoice and settlement-control-line selection, current capacity and immutable allocation lineage.            | No foreign units consumed, carrying portion released, cash/fee currencies or FX residual allocation.                  |
+| `1700-commerce-allocation-reversals.sql`, `commerce_assert_allocation`      | One allocation amount conserves existing invoice and payment-control-line capacity; explicit unallocation preserves history.       | No paired-capacity owner. A second independent FX balance could conflict with these existing capacities.              |
+| Native journal kernel                                                       | Sealed book-currency adjustment/reversal, human approval, atomic posting and receipts.                                             | A balanced journal alone does not identify FX recognition, realized gain/loss or remeasurement/register consequences. |
 
 The inspected API SQL has no `exchange_conversion_reviews` consumer outside1900/2300.
 The FX review data therefore cannot currently determine an invoice's foreign denomination,
 remaining foreign capacity or settlement effect. Adding a foreign conversion to an existing
 book-currency invoice must not silently reinterpret that immutable invoice's currency.
 
-## Decisions needed before a financial packet
+### Decisions needed before a financial packet
 
 1. **Monetary-item ownership:** choose where a foreign-denominated obligation lives and how
    it relates to the existing commerce identity without duplicating recognition or changing
@@ -43,7 +51,7 @@ These are contract/accounting-policy choices under D-03/D-08, not merely absent 
 code. Actual-company activation separately needs D-04 facts and applicable reviewed rules.
 The current evidence does not settle any choice above.
 
-## Smallest candidate after a decision, not an authorization
+### Smallest candidate after a decision, not an authorization
 
 One explicitly synthetic customer foreign-currency receivable and one full settlement into
 book-currency cash could reuse established customer-control direction, existing exact-rate
@@ -56,7 +64,7 @@ No placeholder preparation artifact is proposed: another review object would not
 the missing financial owner. Existing non-posting FX01 review remains useful within its
 current explicit limits.
 
-## Investigation and proof limits
+### Investigation and proof limits
 
 Read plan05, open decisions, ADR0004,1900/2300,0600/1700/2200 commerce owners and existing
 FX/commerce handoffs. No tests, runtime/SQL execution, migration application, external

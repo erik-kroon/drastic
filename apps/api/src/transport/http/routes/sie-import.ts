@@ -1,30 +1,26 @@
+import { scopeFromPath } from "../scope";
 import { Buffer } from "node:buffer";
 import { Api } from "@open-erp/contracts/api";
-import * as Sie from "@open-erp/contracts/sie-import";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { query, scopeParameter } from "../../../db/query";
 import { getSourceOccurrence } from "../../../application/source-retention";
 import { parseSie } from "../../../application/sie-import-parser";
 import { failure } from "../../../application/failures";
+import * as Sie from "../../../application/sie/import";
 
 export const SieImportHandlers = HttpApiBuilder.group(Api, "sieImport", (handlers) =>
   handlers
     .handle("listSieSourcePreviews", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "listSieSourcePreviews",
-          [token, scopeParameter(params), params.id],
-          Sie.SiePreviewInventory,
-        ),
+        Sie.listSourcePreviews(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("captureSieSource", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         Effect.gen(function* () {
           const source = yield* getSourceOccurrence(token, {
-            scope: params,
+            scope: scopeFromPath(params),
             occurrenceId: params.id,
           });
           const bytes = Buffer.from(source.contentBase64, "base64");
@@ -37,86 +33,73 @@ export const SieImportHandlers = HttpApiBuilder.group(Api, "sieImport", (handler
             Buffer.byteLength(JSON.stringify(parsed)) > 1048576
           )
             return yield* failure("UnsupportedProfile");
-          return yield* query(
-            "captureSieSource",
-            [
-              token,
-              scopeParameter(params),
-              headers["idempotency-key"],
-              params.id,
-              JSON.stringify({
-                ...parsed,
-                encoding: payload.encoding,
-                profile: "sie4_source_v1",
-                sourceSha256: source.occurrence.sha256,
-              }),
-            ],
-            Sie.SiePreview,
-          );
+          return yield* Sie.captureSource(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            id: params.id,
+            input: {
+              ...parsed,
+              encoding: payload.encoding,
+              profile: "sie4_source_v1",
+              sourceSha256: source.occurrence.sha256,
+            },
+          });
         }),
       ),
     )
     .handle("getSieSource", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query("getSieSource", [token, scopeParameter(params), params.id], Sie.SiePreview),
+        Sie.getSource(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("sealSieSourcePlan", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "sealSieSourcePlan",
-          [
-            token,
-            scopeParameter(params),
-            headers["idempotency-key"],
-            params.id,
-            JSON.stringify(payload),
-          ],
-          Sie.SiePlan,
-        ),
+        Sie.sealSourcePlan(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          id: params.id,
+          input: payload,
+        }),
       ),
     )
     .handle("getSieSourcePlan", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query("getSieSourcePlan", [token, scopeParameter(params), params.id], Sie.SiePlan),
+        Sie.getSourcePlan(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("startSieSourceRun", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "startSieSourceRun",
-          [token, scopeParameter(params), headers["idempotency-key"], params.id, payload.digest],
-          Sie.SieRunStart,
-        ),
+        Sie.startSourceRun(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          id: params.id,
+          digest: payload.digest,
+        }),
       ),
     )
     .handle("getSieSourceRun", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query("getSieSourceRun", [token, scopeParameter(params), params.id], Sie.SieRun),
+        Sie.getSourceRun(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("advanceSieSourceRun", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "advanceSieSourceRun",
-          [
-            token,
-            scopeParameter(params),
-            headers["idempotency-key"],
-            params.id,
-            JSON.stringify(payload),
-          ],
-          Sie.SieChunk,
-        ),
+        Sie.advanceSourceRun(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          id: params.id,
+          input: payload,
+        }),
       ),
     )
     .handle("reclaimSieSourceRun", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "reclaimSieSourceRun",
-          [token, scopeParameter(params), headers["idempotency-key"], params.id, payload.action],
-          Sie.SieFence,
-        ),
+        Sie.reclaimSourceRun(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          id: params.id,
+          action: payload.action,
+        }),
       ),
     ),
 );

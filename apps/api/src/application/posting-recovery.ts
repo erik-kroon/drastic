@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { sql } from "drizzle-orm";
 import { failure } from "./failures";
-import { withAdmittedPrincipal, type VerifiedPrincipal } from "./identity";
+import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal } from "./identity";
 import {
   approveChangeInTransaction,
   createEvidenceInTransaction,
@@ -45,10 +45,16 @@ function withBook<A>(
   token: string,
   scope: Scope,
   operatorOnly: boolean,
+  lockMode: AuthorityLockMode,
   operation: (transaction: Transaction, principal: Principal) => Effect.Effect<A, unknown>,
 ) {
-  return withAdmittedPrincipal({ token }, scope, { operatorOnly }, (transaction, principal) =>
-    operation(transaction, principal).pipe(Effect.mapError(databaseFailure)),
+  return withAdmittedPrincipal(
+    { token },
+    scope,
+    { operatorOnly },
+    (transaction, principal) =>
+      operation(transaction, principal).pipe(Effect.mapError(databaseFailure)),
+    lockMode,
   );
 }
 
@@ -158,11 +164,9 @@ function runWithSavepoint<A>(
     const result = yield* mappedOperation.pipe(
       Effect.map((value) => ({ state: "committed", result: value }) as const),
       Effect.catchIf(isPersistableRefusal, (error) =>
-        Effect.gen(function* () {
-          yield* transaction.execute(sql`ROLLBACK TO SAVEPOINT posting_saved_request`);
-          yield* transaction.execute(sql`RELEASE SAVEPOINT posting_saved_request`);
-          return { state: "refused", error } as const;
-        }).pipe(Effect.mapError(databaseFailure)),
+        transaction
+          .execute(sql`ROLLBACK TO SAVEPOINT posting_saved_request`)
+          .pipe(Effect.mapError(databaseFailure), Effect.as({ state: "refused", error } as const)),
       ),
     );
     yield* transaction
@@ -195,15 +199,13 @@ function savePostingRequestWithAuthority(
   command: { scope: Scope; idempotencyKey: string; command: SavedCommand },
   operatorOnly: boolean,
 ) {
-  return withBook(token, command.scope, operatorOnly, (transaction, principal) =>
+  return withBook(token, command.scope, operatorOnly, "update", (transaction, principal) =>
     Effect.gen(function* () {
-      yield* Db.lockBookForUpdate(transaction, command.scope);
       const decodedCommand = yield* decode(Recovery.SavedPostingCommand, command.command);
-      if (
-        operatorOnly &&
-        decodedCommand.operation !== "approve_change" &&
-        decodedCommand.operation !== "revoke_approval"
-      ) {
+      const authorityCommand =
+        decodedCommand.operation === "approve_change" ||
+        decodedCommand.operation === "revoke_approval";
+      if (authorityCommand !== operatorOnly) {
         return yield* failure("Forbidden");
       }
       const expected = yield* digest({
@@ -264,9 +266,8 @@ function runPostingRequestWithAuthority(
   command: { scope: Scope; key: string },
   operatorOnly: boolean,
 ) {
-  return withBook(token, command.scope, operatorOnly, (transaction, principal) =>
+  return withBook(token, command.scope, operatorOnly, "update", (transaction, principal) =>
     Effect.gen(function* () {
-      yield* Db.lockBookForUpdate(transaction, command.scope);
       const row = (yield* RecoveryDb.readSavedRequest(
         transaction,
         command.scope,
@@ -276,10 +277,15 @@ function runPostingRequestWithAuthority(
       if (!row) return yield* failure("NotFound");
       if (row.actorId !== principal.actorId) return yield* failure("Forbidden");
       const savedCommand = yield* decode(Recovery.SavedPostingCommand, row.command);
+      const authorityCommand =
+        savedCommand.operation === "approve_change" || savedCommand.operation === "revoke_approval";
+      if (authorityCommand !== operatorOnly) {
+        return yield* failure("Forbidden");
+      }
       if (
-        operatorOnly &&
-        savedCommand.operation !== "approve_change" &&
-        savedCommand.operation !== "revoke_approval"
+        authorityCommand &&
+        (yield* Db.readOperatorMembership(transaction, command.scope.bookId, principal.actorId))
+          .length === 0
       ) {
         return yield* failure("Forbidden");
       }
@@ -436,7 +442,7 @@ export const getSavedPostingRequest = Effect.fn("posting.getSavedRequest")(funct
   token: string,
   command: { scope: Scope; key: string },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction, principal) =>
+  return yield* withBook(token, command.scope, false, "share", (transaction, principal) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       const row = (yield* RecoveryDb.readSavedRequest(transaction, command.scope, command.key))[0];
@@ -450,7 +456,7 @@ export const listSavedPostingRequests = Effect.fn("posting.listSavedRequests")(f
   token: string,
   command: { scope: Scope; after?: string },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction, principal) =>
+  return yield* withBook(token, command.scope, false, "share", (transaction, principal) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       const anchor = command.after
@@ -529,7 +535,7 @@ export const listPostingRecovery = Effect.fn("posting.listRecovery")(function* (
   token: string,
   command: { scope: Scope; after?: string },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction, principal) =>
+  return yield* withBook(token, command.scope, false, "share", (transaction, principal) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       const anchor = command.after
@@ -561,7 +567,7 @@ export const getPostingRecovery = Effect.fn("posting.getRecovery")(function* (
   token: string,
   command: { scope: Scope; changeSetId: string; after?: string },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction, principal) =>
+  return yield* withBook(token, command.scope, false, "share", (transaction, principal) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       const row = (yield* RecoveryDb.readRecoveryAnchor(
@@ -696,7 +702,7 @@ export const recoverPostingRequest = Effect.fn("posting.recoverRequest")(functio
   token: string,
   command: { scope: Scope; key: string },
 ) {
-  return yield* withBook(token, command.scope, false, (transaction, principal) =>
+  return yield* withBook(token, command.scope, false, "share", (transaction, principal) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       const row = (yield* Db.readCommandReceipt(

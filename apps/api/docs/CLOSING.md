@@ -1,12 +1,20 @@
 # Technical period close and reopen
 
-## Status and limits
+## Current ownership
+
+Application operations live in [application/closing/](../src/application/closing/), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Status and limits
 
 Implemented source, not runtime-verified. No migration, database write, browser session, build, filing, deployment or new test was run by this domain owner. Owned-file lint is a static check, not failure/recovery proof.
 
 This module supports **synthetic technical period locking only**. A lock is not a statutory close, a company-completeness certificate, an annual report or an authority receipt. It performs no profit transfer or fiscal carryforward. INK2, SIE, iXBRL, signing and filing remain blocked by reviewed schemas, real company facts, qualified review, verification and authority. An internal trial balance is never called an annual report.
 
-## Workflow
+### Workflow
 
 ```text
 Retain source-inventory evidence
@@ -22,7 +30,7 @@ The inventory explicitly lists expected book bank account IDs, not merely accoun
 
 This narrow bank declaration never establishes a complete company source inventory. Missing invoice systems, tax accounts, payroll, owners' balances, assets, disclosures or other obligations remain statutory blockers. Installed commerce and schedule modules expose represented state, not company completeness.
 
-## Dependencies
+### Dependencies
 
 Migration `0800-technical-period-closing.sql` requires existing kernel/report migrations and these private domain hooks before first use:
 
@@ -46,7 +54,7 @@ Technical close rejects overlapping posting periods or a period outside its fisc
 
 This first implementation deliberately binds the whole book ledger sequence and all account versions. An unrelated posting or account edit can require a new proposal/report. This conservative policy costs extra reviews; it must not be described as fine-grained dependency invalidation. Larger or fragmented bank intervals are still bounded by the underlying report modules; no partial report is accepted as complete.
 
-## Reopen and retained history
+### Reopen and retained history
 
 Reopen requires the same exact proposal/approval/commit protocol but can proceed when close prerequisites have become blocked. That makes repair possible without silently editing period state.
 
@@ -56,7 +64,7 @@ Later periods can depend on earlier opening balances. Their certificates and rep
 
 Certificate lookup returns immutable content and digest separately from live `current` and `invalidatedBy`. A dependency change also makes `current=false`, even without a reopen. The certificate digest uses the existing PostgreSQL canonical JSON/digest convention over the certificate body without its own `digest` field.
 
-## Transaction and authority boundary
+### Transaction and authority boundary
 
 Mutations use existing credential/membership admission, then lock book first and period second. Every mutation has a stable command receipt scoped to book, actor, operation and exact input. Approval and execution recompute dependencies under the book lock. Operator authority for the approval is rechecked and share-locked at execution. Immutable transition uniqueness consumes an approval/proposal once. Retrying a committed execution with the same proposal/digest/approval returns the original receipt, including with a new command key; a different approval is rejected.
 
@@ -64,7 +72,7 @@ Close/reopen changes only the period lock through this explicit command. It does
 
 All closing records are append-only: inventories, proposals, approvals, transitions, certificates and invalidations. PostgreSQL storage and operations' local snapshot coverage are not proof of compliant retention, external archive or tested restore. D-07 remains open.
 
-## Shared integration
+### Shared integration
 
 Contracts export `ClosingApi` and `ClosingCapabilities` from `@open-erp/contracts/closing`. Root adds them to shared API/capability composition and registers `ClosingHandlers` from `apps/api/src/closing.ts`.
 
@@ -83,7 +91,7 @@ Use fixed parameterized `SELECT openerp.function($1::text,$2::jsonb,...) AS resu
 
 Mount `ClosingPanel` from `apps/web/src/components/closing/panel.tsx` with `{book, setup, locale}`, keyed by `book.id`. It uses the existing request-scoped TanStack Query client, response contracts, stable in-memory retry keys, owned UI/StyleX primitives and local English/Swedish copy. It offers declaration, preparation, exact review/approval/commit, proposal recovery, paginated history and live certificate status.
 
-## Required runtime observations (not performed)
+### Required runtime observations (not performed)
 
 Root must serialize permitted local execution. Static success cannot establish any of these:
 
@@ -95,7 +103,7 @@ Root must serialize permitted local execution. Static success cannot establish a
 - Concurrent posting/import/registration/schedule mutation versus closing obeys lock order and cannot commit stale readiness.
 - Rendered keyboard, narrow-width and 200% zoom behavior are usable. Source structure alone does not verify browser behavior.
 
-## Owner and expense-review integration risks (recorded before0820)
+### Owner and expense-review integration risks (recorded before0820)
 
 -0820 must replace only the private live closing basis in a new forward migration. Existing0800 bytes, certificates, approvals and receipts remain unchanged. Older proposals lack these dependencies and must become stale rather than receive implied approval for new checks.
 
@@ -105,7 +113,7 @@ Root must serialize permitted local execution. Static success cannot establish a
 - Reuse provider control/assessment helpers, without recreating owner allocation or tax eligibility rules. Expense assessment is captured in `actual_review` mode: no tax contribution or legal profile is activated by this package.
 - Old pack bytes/page meanings must not change.0810 remains unapplied and may be extended before root applies it;0820 independently upgrades current closing behavior. Root owns migration ordering, runtime observations and concurrency proof.
 
-##0820 forward owner/expense-review checks
+###0820 forward owner/expense-review checks
 
 `0820-closing-owner-tax-dependencies.sql` replaces only private `closing_basis(text,text)`; applied0800 remains unchanged. It requires0610 owner register and0710 expense review. Existing authorized close/read/approve/execute calls already hold the book barrier and automatically consume the replacement.
 
@@ -115,13 +123,13 @@ Existing proposals/certificates retain their original bytes/digests. Their contr
 
 Owner/tax mutation after proposal capture changes the pinned provider digest and fails existing approval/execution basis equality. Actual race/failure behavior remains for root runtime validation; this source change is not that proof.
 
-### Additional pre-change risk review
+#### Additional pre-change risk review
 
 A digest-current expense review can still contain unknown facts. Zero missing/stale reviews must never imply resolved tax treatment or ledger reconciliation. The current provider supplies neither posting nor reconciled close coverage, so any represented expense source conservatively blocks that coverage check, even after review. No represented sources does not prove company completeness. Count owner sources/effects/allocation legs before calling aggregating provider hooks; refuse unsupported sizes without truncated digests.
 
 Before the owner/tax hooks, bounded count queries refuse more than1000 owner sources/effects,5000 allocation legs or200 expense sources. No partial provider digest is returned. This limit applies to every live closing-basis caller (including readiness/reopen); larger books need a supported larger-scope implementation.
 
-## END-01 family inventory: scope and acceptance before0930
+### END-01 family inventory: scope and acceptance before0930
 
 Planned slice: an operator declares every close family for a synthetic period as required,
 not applicable, unsupported or unknown. Every decision includes a real calendar review date,
@@ -165,7 +173,7 @@ No new tests/fixtures, database execution, browser session, build or repository-
 are authorized for this domain owner. Root must exercise the accepted cases through the
 real scoped API/browser and retain receipts before marking them verified.
 
-## 0930 implementation and integration (source only)
+### 0930 implementation and integration (source only)
 
 `0930-closing-family-inventory.sql` replaces only `declare_closing_inventory` and private
 `closing_basis`. It adds no tables, grants no new runtime privileges and edits no applied
@@ -216,7 +224,7 @@ fault/recovery or company behavior was exercised. The pre-change acceptance case
 remain root-owned runtime gates. Effect Schema length validation uses installed
 `isMinLength`/`isMaxLength`; no unsupported helper remains.
 
-## VAT dependency integration — risk contract before1001
+### VAT dependency integration — risk contract before1001
 
 Forward-only1001 will extend live closing and accountant-review dependency capture after1000.
 Applied0930 and every older migration stay byte-for-byte unchanged. No existing stored proposal,
@@ -243,7 +251,7 @@ Failure cases and ownership:
 This task adds no tests or fixtures and runs no validation commands. Source review cannot prove
 SQL execution, migration behavior, concurrency, decoding or rendering.
 
-## 1001 VAT closing/accountant integration (implemented source; unvalidated)
+### 1001 VAT closing/accountant integration (implemented source; unvalidated)
 
 `1001-closing-vat-dependencies.sql` is a new forward migration after0930 and1000.
 It replaces `closing_basis`, `accountant_review_providers_bounded`,
@@ -264,7 +272,7 @@ live currentness and prevents a not-applicable shortcut. A finer period-scoped p
 not claimed. The full hook includes draftCount because creating a saved VAT draft does not
 change its source/ledger basisDigest. Pinning only that digest would miss a draft-only change.
 
-### Currentness and replay consumers inspected in source
+#### Currentness and replay consumers inspected in source
 
 | Consumer                                       | Existing boundary                        | Effect of the extended provider                                                                                |
 | ---------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
@@ -296,7 +304,7 @@ changes with the application. Migration application and all checks remain unperf
 as requested. This is implementation presence and source review, not verified SQL behavior,
 concurrency/replay proof, rendered UI or financial readiness.
 
-## Closing-proposal discovery (4800): failure contract before implementation
+### Closing-proposal discovery (4800): failure contract before implementation
 
 The existing known-ID read cannot rediscover an unexecuted proposal after a lost response or
 session ID. `get_closing_history` lists only committed transitions, not every saved proposal.
@@ -318,7 +326,7 @@ The new read must reuse saved proposals and optional immutable execution referen
   from the first page for new arrivals; do not promise a complete concurrent point-in-time list.
 - No writes, preparation, artifact generation, company/legal facts or closing state transitions.
 
-### Implemented discovery consumer and recovery semantics
+#### Implemented discovery consumer and recovery semantics
 
 `GET /api/v1/entities/:entityId/books/:bookId/periods/:periodId/closing-proposals`
 and read-only MCP `periods_list_closing_proposals` rediscover all saved close/reopen proposals

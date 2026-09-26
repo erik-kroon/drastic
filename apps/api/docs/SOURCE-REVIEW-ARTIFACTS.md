@@ -1,13 +1,21 @@
 # Source interpretation review artifacts (3900)
 
-## Existing path and missing behavior
+## Current ownership
+
+Application operations live in [application/banking/source-statement.ts](../src/application/banking/source-statement.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Existing path and missing behavior
 
 The source-intake UI already downloads `JSON.stringify(preview)` and admission JSON from current
 in-memory responses. Those are useful views, but they do not persist exact bytes or a capture of
 review/admission state.3900 adds that missing durable capture. It reuses the retained0510 preview
 and3200 lineage; it does not parse again, admit rows, create evidence copies or add posting authority.
 
-## Failure cases before implementation
+### Failure cases before implementation
 
 - Authenticate and authorize the book before any occurrence, preview, review or capture lookup.
   Exact selected preview digest and retained original SHA must agree. Unknown IDs cannot leak.
@@ -28,7 +36,7 @@ and3200 lineage; it does not parse again, admit rows, create evidence copies or 
   the original capture after current authorization; GET/list recover after reload without reparse
   or object-store access. Historical captures remain readable after source state changes.
 
-## Implemented flow
+### Implemented flow
 
 ```text
 retained occurrence + original content locator
@@ -85,7 +93,7 @@ capture; it never silently replaces one. GET/list do not touch parser, import, a
 storage or current review state. Neither later approval expiry nor role change changes old bytes,
 but current authorization is required to retrieve them.
 
-## Root integration
+### Root integration
 
 Owned modules extend the existing source-intake contract, statements and HTTP group:
 
@@ -124,7 +132,7 @@ only three authenticated command EXECUTEs; no table writes or summary-helper exe
 Historical migrations remain unchanged;3900 has not been applied. Root owns any optional typed
 maintenance table mapping and the shared typecheck.
 
-## Source review and remaining proof
+### Source review and remaining proof
 
 Owned-file `oxfmt --write` passed on the three changed TypeScript modules and three domain documents. Owned-file `oxlint` passed on the three TypeScript modules with zero warnings/errors. Historical migration hashes remained unchanged. Integrated API (including scripts), contracts and Swedish-domain type checks passed after shared binding integration. These checks do not execute3900 or prove financial/runtime behavior.
 
@@ -140,7 +148,7 @@ admission; response-loss same-key recovery; all bounds; and independent UTF-8 le
 original-source hash comparison. No tests, fixtures, migrations, database execution, UI/browser,
 external calls, dependency changes or VCS actions were performed.
 
-## Forward5900: mapping-aware captured currentness
+### Forward5900: mapping-aware captured currentness
 
 New captures now AND the existing dependency/supersession currentness result with the exact
 retained occurrence's live two-way source-account mapping check. A source mapped to another

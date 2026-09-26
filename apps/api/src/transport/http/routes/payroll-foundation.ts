@@ -1,9 +1,9 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Payroll from "@open-erp/contracts/payroll-foundation";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { query, scopeParameter } from "../../../db/query";
+import * as Payroll from "../../../application/payroll-foundation";
 
 export const PayrollFoundationHandlers = HttpApiBuilder.group(
   Api,
@@ -12,48 +12,29 @@ export const PayrollFoundationHandlers = HttpApiBuilder.group(
     handlers
       .handle("listPayrollEmployees", ({ params, query: filters }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "listPayrollEmployees",
-            [token, scopeParameter(params), filters.after ?? ""],
-            Payroll.PayrollEmployeePage,
-          ),
+          Payroll.listEmployees(token, { scope: scopeFromPath(params), after: filters.after }),
         ),
       )
       .handle("setPayrollAccess", ({ params, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "setPayrollAccess",
-            [token, scopeParameter(params), payload.actorId, String(payload.allowed)],
-            Payroll.PayrollAccessResult,
-          ),
+          Payroll.setAccess(token, { scope: scopeFromPath(params), input: payload }),
         ),
       )
       .handle("capturePayrollRevision", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "capturePayrollRevision",
-            [
-              token,
-              scopeParameter(params),
-              headers["idempotency-key"],
-              payload.employeeId,
-              payload.kind,
-              payload.effectiveOn,
-              payload.supersedes ?? "",
-              payload.evidenceId,
-              JSON.stringify(payload.body),
-            ],
-            Payroll.PayrollRevision,
-          ),
+          Payroll.captureRevision(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
         ),
       )
       .handle("listPayrollRevisions", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "listPayrollRevisions",
-            [token, scopeParameter(params), params.id],
-            Payroll.PayrollHistory,
-          ),
+          Payroll.listRevisions(token, {
+            scope: { entityId: params.entityId, bookId: params.bookId },
+            employeeId: params.id,
+          }),
         ),
       ),
 );

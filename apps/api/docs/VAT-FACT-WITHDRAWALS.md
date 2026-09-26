@@ -1,9 +1,17 @@
 # Permanent VAT fact withdrawal — VAT-01/04 prerequisite
 
+## Current ownership
+
+Application operations live in [application/vat/basis.ts](../src/application/vat/basis.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 Status: implemented source; forward3700 is unapplied. Static checks do not prove database,
 HTTP or concurrent-runtime behavior.
 
-## Behavior and authority
+### Behavior and authority
 
 An operator can permanently withdraw an erroneous VAT source identity with its exact
 current revision digest, retained evidence and a reason. The command writes an immutable
@@ -35,7 +43,7 @@ conflicts. A new key for an already-withdrawn identity is refused. There is no r
 implicit replacement, or deletion. A separately recorded correction remains a separate,
 reviewed source identity, not an automatic copy.
 
-## Calculation and recovery consumers
+### Calculation and recovery consumers
 
 - **Revision writer:** a `BEFORE INSERT` fence on `vat_fact_revisions` refuses every new
   revision for a withdrawn identity. It uses the same book barrier as recording and
@@ -72,7 +80,7 @@ become non-current; they are not rewritten. Later withdrawal changes the basis a
 This conservative new-engine boundary does not infer that an old saved calculation was
 wrong when it was captured.
 
-## Scope and failure review
+### Scope and failure review
 
 Withdrawal is source usability, not legal tax treatment, filing correction, settlement,
 source completeness, zero tax, or financial-close readiness. All earlier profile and filing
@@ -90,7 +98,7 @@ claims and withdrawal after amendment review. These paths were not executed.
 The existing frontend blocker dictionary is exhaustive. Root owns its new `withdrawn_fact`
 message and any later withdrawal UI. This backend slice adds no browser controls or tests.
 
-## Integration and checks
+### Integration and checks
 
 Files:
 

@@ -1,5 +1,13 @@
 # PAY-1 payment preparation and external outcome boundary
 
+## Current ownership
+
+Application operations live in [application/commerce/register.ts](../src/application/commerce/register.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 Status: implemented in source; no bank-provider acceptance, real company activation, or financial runtime proof.
 
 `7900-supplier-payment-recovery.sql` preserves the existing offline `pain.001.001.03` preview and immutable export. A scoped keyset eligibility page covers **every registered supplier invoice** in a book, including excluded invoices, with the exact live outstanding amount, allocation version and exclusion reasons. It does not claim unregistered supplier documents, historical cutoffs or a stable multi-page snapshot. Restart discovery after changes.

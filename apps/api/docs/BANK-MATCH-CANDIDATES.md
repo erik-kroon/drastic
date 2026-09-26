@@ -1,6 +1,14 @@
 # Bank matching candidate discovery (1600)
 
-## Failure cases recorded before implementation
+## Current ownership
+
+Application operations live in [application/banking/candidates.ts](../src/application/banking/candidates.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Failure cases recorded before implementation
 
 This slice reads existing synthetic bank observations and posted bank lines. It does not match,
 approve, post, pay an invoice, establish source coverage or activate a company profile.
@@ -31,7 +39,7 @@ approve, post, pay an invoice, establish source coverage or activate a company p
 - No tests, checks, toolchain/build, database, migration application, browser, server or external
   actions are authorized. Source review is not observed acceptance.
 
-## Implementation and integration
+### Implementation and integration
 
 Implemented source, not executed:
 
@@ -60,21 +68,21 @@ bank_discover_match_candidates: bindCapability(
 ),
 ```
 
-| Boundary | Contract |
-| --- | --- |
-| SQL | `openerp.discover_bank_match_candidates(token text, scope jsonb, input jsonb)` |
-| Database operation | `discoverBankMatchCandidates`; ordered parameters are token, scope JSON, input JSON |
-| REST | `POST /api/v1/entities/:entityId/books/:bookId/bank-match-candidates` |
-| Input | `DiscoverBankMatchCandidates`: `statementId`, `rowOrdinal`, optional `previousDigest` |
-| Output | `BankMatchCandidates` |
-| MCP | `bank_discover_match_candidates`, `{scope, input}`, `readOnly:true` |
+| Boundary           | Contract                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------- |
+| SQL                | `openerp.discover_bank_match_candidates(token text, scope jsonb, input jsonb)`        |
+| Database operation | `discoverBankMatchCandidates`; ordered parameters are token, scope JSON, input JSON   |
+| REST               | `POST /api/v1/entities/:entityId/books/:bookId/bank-match-candidates`                 |
+| Input              | `DiscoverBankMatchCandidates`: `statementId`, `rowOrdinal`, optional `previousDigest` |
+| Output             | `BankMatchCandidates`                                                                 |
+| MCP                | `bank_discover_match_candidates`, `{scope, input}`, `readOnly:true`                   |
 
 POST carries a structured read request. It requires no idempotency key and writes no receipt,
 plan, relationship, audit event or ledger record. The helper `bank_candidate_period_state`
 and direct table access are private. No new application service, Drizzle table mapping or
 runtime connection is needed.
 
-### Scope, eligibility and ranking
+#### Scope, eligibility and ranking
 
 The retained source determines the bank account and the entire permitted statement interval.
 Clients cannot hide ambiguity with a small search window or choose another account. Discovery
@@ -117,7 +125,7 @@ rows. Equal amounts are always explained as ambiguous evidence, not unique ident
 `identityEstablished:false` and `coverage:"not_established"` never change, even with exactly
 one eligible line. Multiple lines and equal-amount eligible counts remain visible.
 
-### Cutoff and currentness
+#### Cutoff and currentness
 
 Admission locks precede a shared book barrier, then period/account read locks. The result binds
 current committed ledger sequence, source revision, account/profile/writer versions, a digest
@@ -139,7 +147,7 @@ reservation, approval or durable saved discovery. The existing reviewed allocati
 must prepare/seal current capacity versions and recheck them when the approved plan executes.
 Discovery does not accept its own digest as authority to change a relationship.
 
-### Manual-review handoff
+#### Manual-review handoff
 
 Selecting a line shows read-only account, statement, row, voucher and line identifiers. The
 operator can copy them into the existing manual bank allocation review. An optional `onSelect`
@@ -156,7 +164,7 @@ owned by the existing reviewed bank allocation path. The selected source/line is
 can become stale immediately. Book/identity changes must clear any receiving draft as well.
 No unsent form or local selection durability is claimed after reload.
 
-## Source review and remaining proof
+### Source review and remaining proof
 
 Source review traced scoped authorization, lock order, bounded complete enumeration, effective
 capacity reuse after unmatch, correction/period blockers, exact numeric strings, ranking tie
@@ -170,12 +178,11 @@ Runtime SQL/type/response/concurrency/accessibility behavior remains unverified.
 shared composition and any later authorized validation. D-06 actual-provider facts, legal
 profile activation, source completeness and reconciliation acceptance remain independent gates.
 
-## Root source integration
+### Root source integration
 
 Shared contracts exports, API/capability catalogs, bindings, SQL dispatch and HTTP handlers are connected. Accounts → Matching and the tools workspace mount candidate discovery beside reviewed allocations. Selection remains an explicit copyable identifier handoff; no automatic plan or amount is supplied. No validation or runtime acceptance is claimed.
 
-
-## Candidate → manual allocation handoff: failure cases before edits
+### Candidate → manual allocation handoff: failure cases before edits
 
 - Candidate arrival must not change an existing allocation form, its unsent amounts/reason,
   acknowledged state, failed input or exact retry-key map. No key/remount follows candidate props.
@@ -194,8 +201,7 @@ Shared contracts exports, API/capability catalogs, bindings, SQL dispatch and HT
   formatting. The root chooses where to mount the composed workspace.
 - No tests, checks, browser, toolchain, database or external actions are authorized.
 
-
-### Implemented UI integration and root mount
+#### Implemented UI integration and root mount
 
 `BankMatchingWorkspace` in `apps/web/src/components/bank-match-candidates/workspace.tsx`
 composes candidate discovery, existing reviewed allocation/capacity reports and unmatch. Props:

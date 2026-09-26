@@ -84,14 +84,13 @@ export async function databaseInventory(
         !files.some(
           (file) => file.path === `apps/api/migrations/${row.name}` && file.sha256 === row.sha256,
         ),
-    )
+    ) ||
+    files.length === 0
   ) {
     refuse(
       "Applied migration receipts differ from the captured release. A partial or changed schema cannot be marked complete.",
     );
   }
-  if (!migrations.rows.some((row) => row.name === "0900-better-auth.sql"))
-    refuse("The current recovery profile requires Better Auth migration0900.");
   const schemaHash = await client.query<{ sha256: string }>(`
     WITH objects(kind, name, body) AS (
       SELECT 'schema', n.nspname, jsonb_build_object('owner',pg_get_userbyid(n.nspowner),

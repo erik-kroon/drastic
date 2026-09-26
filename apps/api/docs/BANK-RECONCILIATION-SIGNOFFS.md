@@ -1,6 +1,14 @@
 # Bank reconciliation signoff (3500)
 
-## Scope and failure cases before implementation
+## Current ownership
+
+Application operations live in [application/banking/signoffs.ts](../src/application/banking/signoffs.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Scope and failure cases before implementation
 
 This adds an operator attestation to one selected bank account's existing capacity reconciliation
 and an existing source-coverage report. It does not create another reconciliation engine,
@@ -24,7 +32,7 @@ establish complete company/import coverage, waive unknowns, or change closing ga
 - Bound preparation history to200/book. Reuse existing coverage and reconciliation size bounds;
   refuse oversized artifact output without truncation. No posting, match or period write occurs.
 
-## Implemented source
+### Implemented source
 
 The selected flow is:
 
@@ -80,7 +88,7 @@ historical. A new key with identical signoff input by the same actor returns the
 changed rationale/evidence/actor conflicts. One preparation cannot acquire two signoffs. This
 is receipt recovery, not a promise of currentness. Reads must inspect `dependenciesCurrent`.
 
-## Root integration
+### Root integration
 
 New owned modules:
 
@@ -126,7 +134,7 @@ shown in the contracts/statement modules. The new private tables are `bank_signo
 cannot write either table or call the currentness helper directly. Root owns optional Drizzle
 maintenance mappings. No historical migration was changed;3500 was not applied.
 
-## Verification boundary
+### Verification boundary
 
 Source review traced scoped authorization, book-lock serialization, matching report identities,
 exact monetary controls, the current active-allocation report owner, immutable receipts/artifacts,

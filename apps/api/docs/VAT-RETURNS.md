@@ -1,10 +1,18 @@
 # VAT return drafts — implementation contract and handoff
 
-## Before implementation: authority, shape and failures
+## Current ownership
+
+Application operations live in [application/vat-returns.ts](../src/application/vat-returns.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Before implementation: authority, shape and failures
 
 Scope: VAT-01/02 bounded immutable fact capture and calculated return-draft review. No active legal profile, full-return readiness, ledger posting, XML, external filing, or tax payment. Arithmetic has one TypeScript owner executed by the API Effect workflow. SQL owns admission, scoped evidence/ledger references, immutable revisions, stale-basis fencing and command receipts. Existing expense records/snapshots are never changed.
 
-### Caller and stored shape
+#### Caller and stored shape
 
 Operator records a reviewed VAT fact revision with stable component key and expected prior digest. Facts retain source evidence, reviewer-basis evidence, sale/purchase/unsupported treatment, actual/synthetic class, currency, source net/VAT/gross, explicit registration/accrual/domestic/full-deduction opinions, reviewed tax point/date basis, and optional posted voucher plus exact journal line IDs. A purchase may pin an existing current expense source/review; SQL checks its amounts, evidence, class and voucher compatibility. Missing classifications/references remain explicit blockers, not assumed defaults.
 
@@ -14,11 +22,11 @@ Actual mode remains a review: all actual rows are excluded from arithmetic contr
 
 Snapshots pin the entire bounded basis and calculation; JSON downloads contain that stored record, not a filing artifact. Read/list supports reload discovery. Local request keys survive uncertain responses while mounted; durable saved results are found in the snapshot list, not claimed as browser storage.
 
-### Limits
+#### Limits
 
 At most 200 current source components, 20 revisions each; 500 saved drafts with explicit refusal rather than truncation (list is bounded and complete). At most 20 selected journal lines per fact. Negative/credit component amounts are not admitted; their evidence may remain in the kernel. No invoice-level rounding algorithm is introduced. Fact arithmetic uses exact gross=net+VAT and exact 25% control; unsupported fractions/mismatches remain visible exclusions.
 
-### Failure cases recorded before code
+#### Failure cases recorded before code
 
 - Cross-book source/review/evidence/voucher/line references: reject before write or disclosure.
 - General agent cannot attribute an operator eligibility review; direct REST recording requires current operator permission. Read/prepare never confers review or legal activation power.
@@ -37,8 +45,7 @@ At most 200 current source components, 20 revisions each; 500 saved drafts with 
 
 The user has stopped test and validation work. Continue implementation and source review only; do not run checks or change tests/fixtures. Source presence is not runtime or financial proof.
 
-
-## Implemented source and integration ownership
+### Implemented source and integration ownership
 
 Implementation source is ready for shared registration. Migration is **1000-vat-return-drafts.sql**, forward-only and unapplied by this owner. No tests, fixtures, dependencies or existing migration changes. No validation runs, builds, type checks, database/server or browser exercises were run for this implementation. User stopped validation work; source review is not proof of behavior.
 
@@ -51,7 +58,7 @@ Owned paths:
 - `apps/web/src/components/vat-returns/{panel,forms,views,copy,blockers}`
 - This handoff and `docs/sources/vat-return-profile-research.md`.
 
-### Root composition
+#### Root composition
 
 1. Add contract export `"./vat-returns": "./src/vat-returns.ts"`.
 2. Add `VatReturnsApi` to `packages/contracts/src/api.ts` and `VatReturnsHandlers` to the API Worker handler composition. Group is `vatReturns`.
@@ -60,28 +67,28 @@ Owned paths:
 5. Register the fixed SQL statements below in `apps/api/src/db/query.ts`; retain existing parameterized Drizzle dispatch and scoped Effect connections.
 6. Lazy-mount `VatReturnsPanel` from `components/vat-returns/panel` with `{book, locale}`. Section ID: `vat-returns`. Use a scoped mount key and existing query-cache/auth isolation; local drafts must not survive identity/book changes. No `onPrepared` kernel plan action exists because this module does not create proposals.
 
-| Database operation | SQL function | Parameters following token | Decoded result |
-| --- | --- | --- | --- |
-| `recordVatFact` | `openerp.record_vat_fact` | scope JSON, key text, input JSON | `VatFact` |
-| `vatReturnBasis` | `openerp.vat_return_basis` | scope JSON | `VatBasis` |
-| `getVatFact` | `openerp.get_vat_fact` | scope JSON, fact ID text | `VatFactView` |
-| `sealVatReturnDraft` | `openerp.seal_vat_return_draft` | scope JSON, key text, input JSON, basis JSON, calculation JSON | `VatDraft` |
-| `getVatDraft` | `openerp.get_vat_return_draft` | scope JSON, draft ID text | `VatDraftView` |
-| `listVatDrafts` | `openerp.list_vat_return_drafts` | scope JSON | `VatDraftList` |
+| Database operation   | SQL function                     | Parameters following token                                     | Decoded result |
+| -------------------- | -------------------------------- | -------------------------------------------------------------- | -------------- |
+| `recordVatFact`      | `openerp.record_vat_fact`        | scope JSON, key text, input JSON                               | `VatFact`      |
+| `vatReturnBasis`     | `openerp.vat_return_basis`       | scope JSON                                                     | `VatBasis`     |
+| `getVatFact`         | `openerp.get_vat_fact`           | scope JSON, fact ID text                                       | `VatFactView`  |
+| `sealVatReturnDraft` | `openerp.seal_vat_return_draft`  | scope JSON, key text, input JSON, basis JSON, calculation JSON | `VatDraft`     |
+| `getVatDraft`        | `openerp.get_vat_return_draft`   | scope JSON, draft ID text                                      | `VatDraftView` |
+| `listVatDrafts`      | `openerp.list_vat_return_drafts` | scope JSON                                                     | `VatDraftList` |
 
 Every statement returns `as result`. Cast interpolated token/key/ID parameters to `text` and serialized scope/input/basis/calculation to `jsonb`. Schema namespace is `@open-erp/contracts/vat-returns`. The request key fingerprints only the public input and actor/operation; computed basis/calculation are not alternate public inputs. SQL replays the prior sealed result before comparing current basis, so a retry recovers the original snapshot even after changes.
 
-| Catalog capability | Database operation / Effect | Input after authenticated token |
-| --- | --- | --- |
-| `vat_return_basis` | `vatReturnBasis` | `scopeParameter(input.scope)` |
-| `vat_return_get_fact` | `getVatFact` | serialized scope, `input.factId` |
-| `vat_return_prepare_draft` | `prepareVatDraft` Effect function | whole typed `PrepareVatCommand` |
-| `vat_return_get_draft` | `getVatDraft` | serialized scope, `input.draftId` |
-| `vat_return_list_drafts` | `listVatDrafts` | serialized scope |
+| Catalog capability         | Database operation / Effect       | Input after authenticated token   |
+| -------------------------- | --------------------------------- | --------------------------------- |
+| `vat_return_basis`         | `vatReturnBasis`                  | `scopeParameter(input.scope)`     |
+| `vat_return_get_fact`      | `getVatFact`                      | serialized scope, `input.factId`  |
+| `vat_return_prepare_draft` | `prepareVatDraft` Effect function | whole typed `PrepareVatCommand`   |
+| `vat_return_get_draft`     | `getVatDraft`                     | serialized scope, `input.draftId` |
+| `vat_return_list_drafts`   | `listVatDrafts`                   | serialized scope                  |
 
 HTTP base: `/api/v1/entities/:entityId/books/:bookId/vat-returns`. POST `/facts` records operator-reviewed facts; GET `/facts` reads complete bounded current basis; GET `/facts/:id` reads history. POST `/drafts` calculates then saves; GET `/drafts` lists all bounded saved references; GET `/drafts/:id` returns immutable content plus live basis-current status.
 
-### Closing/accountant hook — root must integrate
+#### Closing/accountant hook — root must integrate
 
 Private `openerp.vat_return_dependencies(book text) RETURNS jsonb`; owning SECURITY DEFINER caller **must hold the book lock**. No runtime/public grant exists. It returns:
 
@@ -92,7 +99,7 @@ Private `openerp.vat_return_dependencies(book text) RETURNS jsonb`; owning SECUR
 
 Forward migration `1001-closing-vat-dependencies.sql` now pins this whole dependency in closing and accountant snapshots. A nonzero sourceCount **or draftCount** contradicts tax `not_applicable`; required tax remains blocked because full controls/legal activation are unavailable. Even zero counts do not prove tax non-applicability. Applied0930 remains unchanged. See `CLOSING.md` for currentness consumers, historical compatibility and new accountant generator version. Migration application and runtime behavior remain unverified.
 
-### Authority and calculation boundary
+#### Authority and calculation boundary
 
 The narrow trusted Effect owner receives only validated server-observed basis, computes BigInt controls once, and invokes SQL seal. SQL rechecks current admission and the exact basis under the book lock, preserves all assessment/source identities and rejects real-profile/readiness flags. SQL is not a second tax calculator. As with other Effect-owned workflows, the runtime database credential is trusted to run the registered backend code; it is not a safe calculator API for arbitrary clients. There is no direct table write grant.
 
@@ -100,6 +107,6 @@ Ledger controls compare only the explicitly selected posted VAT lines to the sou
 
 Actual-company preparation excludes every actual fact from contributions and returns `syntheticBoxes:null`. It still preserves source/rate/selected-ledger discrepancies and exclusion reasons. Synthetic calculation is a clearly labelled partial demonstration only; other-box absence must be expressly selected for that synthetic example. Unknown other-box absence means `box49:null`. A fractional synthetic box05 basis yields no reported box05 and a blocker, while retaining exact subtotals. All modes keep filingReady false.
 
-### Remaining proof and domain gates
+#### Remaining proof and domain gates
 
 Unperformed: syntax/type/format/lint validation, migration application, restricted-role/HTTP/MCP execution, concurrency/replay, browser interaction/zoom and artifact observation. These are not claimed as passed. Legal release, exact applicable intervals, real registrations/methods/coverage and accountant review remain external activation gates. No XML or filing adapter is implemented.

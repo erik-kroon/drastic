@@ -1,48 +1,44 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
 import { capabilities } from "../../../application/capabilities";
-import { query, scopeParameter } from "../../../db/query";
+import * as Commerce from "../../../application/commerce/invoice-lifecycle";
 
 export const InvoiceDraftHandlers = HttpApiBuilder.group(Api, "invoiceDrafts", (handlers) =>
   handlers
     .handle("salesRegister", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.commerce_sales_register.execute(token, { scope: params, ...query }),
+        capabilities.commerce_sales_register.execute(token, {
+          scope: scopeFromPath(params),
+          ...query,
+        }),
       ),
     )
     .handle("createInvoiceDraft", ({ params, headers, payload }) =>
-      Effect.gen(function* () {
-        const token = yield* authenticate;
-        return yield* query(
-          "createInvoiceDraft",
-          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-          Drafts.InvoiceDraftRevision,
-        );
-      }),
+      Effect.flatMap(authenticate, (token) =>
+        Commerce.createInvoiceDraft(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
     )
     .handle("reviseInvoiceDraft", ({ params, headers, payload }) =>
-      Effect.gen(function* () {
-        const token = yield* authenticate;
-        return yield* query(
-          "reviseInvoiceDraft",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          Drafts.InvoiceDraftRevision,
-        );
-      }),
+      Effect.flatMap(authenticate, (token) =>
+        Commerce.reviseInvoiceDraft(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
     )
     .handle("getInvoiceDraft", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.commerce_get_invoice_draft.execute(token, {
-          scope: params,
+        Commerce.getInvoiceDraft(token, {
+          scope: scopeFromPath(params),
           id: params.id,
           revision: query.revision,
         }),
@@ -50,15 +46,12 @@ export const InvoiceDraftHandlers = HttpApiBuilder.group(Api, "invoiceDrafts", (
     )
     .handle("listInvoiceDrafts", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.commerce_list_invoice_drafts.execute(token, { scope: params }),
+        Commerce.listInvoiceDrafts(token, { scope: scopeFromPath(params) }),
       ),
     )
     .handle("invoiceDraftHistory", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.commerce_invoice_draft_history.execute(token, {
-          scope: params,
-          id: params.id,
-        }),
+        Commerce.invoiceDraftHistory(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     ),
 );

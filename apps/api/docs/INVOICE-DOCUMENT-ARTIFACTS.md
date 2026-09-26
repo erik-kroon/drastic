@@ -1,6 +1,14 @@
 # Synthetic invoice review document artifacts
 
-## Failure/security cases recorded before implementation
+## Current ownership
+
+Application operations live in [application/invoice-documents.ts](../src/application/invoice-documents.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Failure/security cases recorded before implementation
 
 - Cross-book or missing issue/review IDs, mismatched immutable digests and unissued reviews must fail without capture.
 - Generation must never read current party/draft heads, allocate another SYN number, post, register another invoice or deliver anything.
@@ -14,11 +22,11 @@
 - The UI must not inject retained HTML into the application DOM. Preview requires a sandboxed frame without script, navigation or same-origin privileges; download uses exact verified bytes.
 - Rendering/sealing requires current scoped authorization. Sealed historical reads/downloads do not require current invoice approval or an open posting period and do not imply legal/external acceptance.
 
-## Status
+### Status
 
 Owned source implementation is complete. Shared registration and mounting remain root-owned. All runtime behavior is unverified. No runtime validation, tests, checks, database calls, migration application, build, servers, browser verification, external action or delegation is authorized.
 
-## Implemented source behavior
+### Implemented source behavior
 
 The fixed generator is `openerp-synthetic-invoice-html-v1`. The sole format is `synthetic-invoice-review-html`: self-contained semantic HTML, fixed English copy, UTF-8 and LF. There are no scripts, styles, links, forms, images, external assets, providers or remote requests. The application panel uses the existing UI primitives and bilingual copy; the artifact itself deliberately has one versioned language/template.
 
@@ -28,7 +36,7 @@ The visible header and footer both state:
 
 The document shows captured seller/customer facts, dates and terms, every commercial line, exact decimal totals, the internal nonlegal SYN number, immutable posting receipt/voucher/series/number/sequence, register invoice identity, evidence IDs/hashes, captured legal blockers and source/capture/issue/review/draft digests. It is not current outstanding balance, a credit note, payment instruction, legal invoice format or delivery proof. Zero asserted tax remains a synthetic evidenced input, not legal VAT treatment.
 
-### Durable capture and recovery
+#### Durable capture and recovery
 
 1. `capture_invoice_document` authorizes the current scope, locks the book and replays the exact actor/key/operation/input before selection checks.
 2. It selects the immutable1400 `invoice_issues.body` and linked `invoice_issue_reviews.body`, verifies their digests and linkage, retained issue evidence, immutable posting receipt and original register identity. It never reads current draft/counterparty heads, current residuals or current accounting configuration as document source.
@@ -40,7 +48,7 @@ The document shows captured seller/customer facts, dates and terms, every commer
 
 Bounds: one fixed-generator capture per issue, at most50 source lines inherited from1400,512 KiB capture JSON,1 MiB exact artifact bytes,1398104 canonical base64 characters. Oversized work is rejected without truncation. Scoped per-issue history is complete and bounded to one capture under this migration's fixed profile. It is not a whole-book document inventory.
 
-### HTML and exact-byte boundaries
+#### HTML and exact-byte boundaries
 
 - Every variable value enters escaped text nodes only. `&`, `<`, `>`, single and double quotes are escaped. No source value is interpolated into an attribute, tag name, CSS or URL.
 - Malformed Unicode is refused. CRLF/CR in displayed source text normalize to LF. Unicode control/format characters other than tab/LF display as `[U+....]`, including bidi controls. Original source JSON and its digest remain unchanged.
@@ -50,7 +58,7 @@ Bounds: one fixed-generator capture per issue, at most50 source lines inherited 
 - Download saves the exact verified `Uint8Array` in a Blob. It does not regenerate HTML client-side. The Blob URL exists only for the local download control and is revoked on cleanup; it is not a delivery URL or provider action.
 - As with retained SIE rendering, the approved backend renderer is a trust boundary. Hash/length checks establish byte integrity, not independent proof that arbitrary HTML is safe. Public HTTP/MCP inputs never include byte content or a seal operation. Do not expose `sealInvoiceDocument` as a user-controlled document API.
 
-## Files and ownership
+### Files and ownership
 
 - `apps/api/migrations/2100-invoice-document-artifacts.sql`
 - `packages/contracts/src/invoice-documents.ts`
@@ -64,7 +72,7 @@ Bounds: one fixed-generator capture per issue, at most50 source lines inherited 
 
 No historical migrations, shared contract registration, shared API composition, shared database dispatch/schema, finance routes or existing invoice-issuance UI were edited. Migration2100 adds two private immutable tables: `invoice_document_captures` and `invoice_document_artifacts`; the runtime receives approved function execution, not table writes.
 
-## Root integration
+### Root integration
 
 1. Contracts package export: `"./invoice-documents": "./src/invoice-documents.ts"`.
 2. Add `InvoiceDocumentsApi` to shared `Api` and spread `InvoiceDocumentCapabilities` into the shared capability catalog.
@@ -72,12 +80,12 @@ No historical migrations, shared contract registration, shared API composition, 
 4. Compose `InvoiceDocumentHandlers` from `./transport/http/routes/invoice-documents` into the HTTP API layer.
 5. Bind capabilities to the Effect application functions, **not raw capture/seal SQL**:
 
-| Capability | Application function from `./invoice-documents` |
-| --- | --- |
-| `commerce_prepare_invoice_document` | `prepareInvoiceDocument` |
-| `commerce_get_invoice_document` | `getInvoiceDocument` |
-| `commerce_resume_invoice_document` | `resumeInvoiceDocument` |
-| `commerce_invoice_document_history` | `invoiceDocumentHistory` |
+| Capability                          | Application function from `./invoice-documents` |
+| ----------------------------------- | ----------------------------------------------- |
+| `commerce_prepare_invoice_document` | `prepareInvoiceDocument`                        |
+| `commerce_get_invoice_document`     | `getInvoiceDocument`                            |
+| `commerce_resume_invoice_document`  | `resumeInvoiceDocument`                         |
+| `commerce_invoice_document_history` | `invoiceDocumentHistory`                        |
 
 6. Add root-owned typed table mappings if required by the maintained schema convention. The capture fields and bytea artifact fields are defined in2100.
 7. Exact existing UI insertion in `apps/web/src/components/commerce/invoice-issuance.tsx`:
@@ -95,34 +103,34 @@ Inside `IssueContents`, in its `issue ? (...)` success branch, directly after th
 
 This also works in the read-only historical issue review: document capture is a nonfinancial historical presentation operation, not issue approval/execution. Exported `InvoiceDocumentInspector({book, locale, id, issue?})` supports direct capture-ID recovery if a separate route is useful; the optional issue enforces an expected source match. `InvoiceDocumentPanel` remounts on entity/book/issue changes. No additional finance-route changes are needed for the alongside-review mount.
 
-### Fixed SQL dispatch
+#### Fixed SQL dispatch
 
 Arguments below exclude the leading authenticated token. These are backend statements, not all public capabilities.
 
-| Statement | SQL function | Parameters | Output |
-| --- | --- | --- | --- |
-| `captureInvoiceDocument` | `capture_invoice_document` | scope,key,JSON input | `InvoiceDocumentCapture` |
-| `getInvoiceDocument` | `get_invoice_document` | scope,capture id | `InvoiceDocumentView` |
-| `sealInvoiceDocument` | `seal_invoice_document` | scope,capture id,JSON internal seal | `InvoiceDocumentView` |
-| `invoiceDocumentHistory` | `invoice_document_history` | scope,issue id | `InvoiceDocumentHistory` |
+| Statement                | SQL function               | Parameters                          | Output                   |
+| ------------------------ | -------------------------- | ----------------------------------- | ------------------------ |
+| `captureInvoiceDocument` | `capture_invoice_document` | scope,key,JSON input                | `InvoiceDocumentCapture` |
+| `getInvoiceDocument`     | `get_invoice_document`     | scope,capture id                    | `InvoiceDocumentView`    |
+| `sealInvoiceDocument`    | `seal_invoice_document`    | scope,capture id,JSON internal seal | `InvoiceDocumentView`    |
+| `invoiceDocumentHistory` | `invoice_document_history` | scope,issue id                      | `InvoiceDocumentHistory` |
 
-### REST
+#### REST
 
 Prefix: `/api/v1/entities/:entityId/books/:bookId/commerce`.
 
-| Method | Suffix | Input/output |
-| --- | --- | --- |
-| POST | `/invoice-documents` | `Idempotency-Key`; `PrepareInvoiceDocument` → `InvoiceDocumentView` |
-| GET | `/invoice-documents/:id` | `InvoiceDocumentView` |
-| POST | `/invoice-documents/:id/render` | No caller bytes; capture identity is the idempotency boundary → `InvoiceDocumentView` |
-| GET | `/invoice-issues/:id/documents` | `InvoiceDocumentHistory` |
+| Method | Suffix                          | Input/output                                                                          |
+| ------ | ------------------------------- | ------------------------------------------------------------------------------------- |
+| POST   | `/invoice-documents`            | `Idempotency-Key`; `PrepareInvoiceDocument` → `InvoiceDocumentView`                   |
+| GET    | `/invoice-documents/:id`        | `InvoiceDocumentView`                                                                 |
+| POST   | `/invoice-documents/:id/render` | No caller bytes; capture identity is the idempotency boundary → `InvoiceDocumentView` |
+| GET    | `/invoice-issues/:id/documents` | `InvoiceDocumentHistory`                                                              |
 
 `PrepareInvoiceDocument` contains `{issueId, issueDigest, generatorVersion:"openerp-synthetic-invoice-html-v1"}`. These values identify an already committed1400 issue; the operation cannot issue or post it again.
 
-## Verification and remaining gates
+### Verification and remaining gates
 
 Only source reads/edits were performed. No tests, test edits, fixtures, checks, builds, dependency/toolchain changes, database execution, migrations applied, servers, browser/mobile work, external actions, commits or nested delegation were performed. No generated artifact has been executed or browser-verified in this wave. Source implementation, future runtime proof and real-company/legal acceptance remain separate. The root must integrate shared source; actual execution/security/accessibility proof is still open under the user's source-only gate.
 
-## Root source integration
+### Root source integration
 
 Shared contracts exports, API/capability catalogs, fixed statements and HTTP handlers are connected. All four public capabilities call the owning Effect application workflow; no caller-byte seal operation is exposed. Issued review success views mount InvoiceDocumentPanel, including historical read-only issue views. Root source review traced renderer text-only escaping, deterministic exact-string monetary formatting, source admission against1400, scoped capture/seal recovery and unchanged financial authority. Independent source security review found no concrete defect in the reviewed public-call, renderer, seal and download paths. This is not executed security proof. No artifact was executed or browser/runtime-verified.

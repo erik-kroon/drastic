@@ -1,16 +1,24 @@
 # Expense tax review — integration handoff
 
+## Current ownership
+
+Application operations live in [application/vat/expense-tax.ts](../src/application/vat/expense-tax.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 For forward4500 permanent source withdrawal, v2 expense exclusions and the dependent VAT v3
 closure, see [EXPENSE-TAX-WITHDRAWALS.md](EXPENSE-TAX-WITHDRAWALS.md). Historical snapshots
 and the0710 migration remain unchanged.
 
-## Status and scope
+### Status and scope
 
 Implementation-ready source, not runtime-verified. Risks and acceptance cases were recorded before the transitions were written in [EXPENSE-TAX-RISKS.md](EXPENSE-TAX-RISKS.md). This package adds no tests, fixtures, dependencies, servers, database mutations or Git operations. Migration0710 has not been applied by this owner. Existing migrations, asset schedules, invoice and ledger authority remain unchanged.
 
 The first-year company context is reported, not legally verified. No company type, VAT registration/method, fiscal interval, opening balance, liability, funding classification or source completeness is inferred. The company/accountant must supply those facts. A reviewer role is not proof of professional qualification or legal acceptance.
 
-## Implemented flow
+### Implemented flow
 
 ```text
 retained kernel evidence
@@ -23,7 +31,7 @@ retained kernel evidence
 
 No endpoint prepares or executes a ledger proposal, issues an invoice, activates a tax profile, maps VAT return boxes, approves a filing or submits data. Optional existing kernel proposal/voucher references must be scoped and cite the source evidence. They are context links, not a claim that this source is reconciled to a ledger control account.
 
-### Records and rules
+#### Records and rules
 
 - Stable `(book_id, source_key)` identifies one declared expense component. Recording an existing key requires the expected current source digest and appends a source revision. Actual/synthetic class is fixed for the component. Evidence hash, source locator, gross/net/VAT, currency/scale, jurisdictions, source dates and optional kernel references are immutable. Source text stays in the kernel evidence store.
 - Source facts support unknown/null monetary, date, jurisdiction, currency and reference fields. Known amounts must be canonical nonnegative integer strings below `10^38`; negative/credit-note and higher-precision inputs remain outside this bounded structured profile, while their original evidence can still be retained. No unknown amount is normalized to zero.
@@ -31,7 +39,7 @@ No endpoint prepares or executes a ledger proposal, issues an invoice, activates
 - Reviews do not overwrite observations. A new source revision makes the old review stale; old source/reviewer histories remain readable. A new review does not mutate an existing snapshot. The existing book/admission lock protocol serializes source, review and snapshot mutations with receipts.
 - Inventory is bounded at 200 declared source components, 20 source revisions and 100 review revisions per component. Reads fail rather than silently truncate a larger source inventory. The inventory read is one shared-book-lock observation, with a basis digest and observation time. Snapshot lists use a book/scope-bound high-water ordinal cursor, 25 items per page; follow `next` to null.
 
-### Exact controls and synthetic arithmetic
+#### Exact controls and synthetic arithmetic
 
 `expense-tax-controls-v1` reports source `gross - net - VAT`, reviewed `gross - net - VAT`, and reviewed-minus-source gross/net/VAT differences. Known disagreements are retained and excluded, not normalized away. All arithmetic runs once in PostgreSQL numeric; browser inputs/outputs retain integer strings.
 
@@ -47,7 +55,7 @@ The caller supplies `rateNumerator/rateDenominator` and `deductionNumerator/dedu
 
 Actual-company mode never emits a supported contribution. Its immutable snapshots remain useful for accountant review of original facts, reviewer opinions, discrepancies and missing/unsupported items. Zero synthetic totals are not actual-company VAT values. Foreign currency/supplies, reverse charge/imports, cash method, missing/unsupported registration/deduction facts, incompatible dates, unapproved profiles and unsupported rounding all exclude the affected record.
 
-### Snapshot meaning and recovery
+#### Snapshot meaning and recovery
 
 A snapshot includes every retained current source component, including wrong-mode, outside-interval, missing-review and unsupported rows. No date/classification filter silently drops an expense. It pins full source/reviewer bodies and hashes, exclusion/control/calculation results, exact synthetic totals, book profile/version, currency/scale, book sequence and source/reviewer basis digest. `schemaVersion` is `1`; `calculationEngine` is `expense-tax-controls-v1`.
 
@@ -57,9 +65,9 @@ A snapshot includes every retained current source component, including wrong-mod
 
 The same command key and actor/payload recovers the exact original result. Changed content/actor/operation/target conflicts. The UI retains uncertain command keys while mounted; after a confirmed snapshot result, a new explicit freeze click can request a new capture. Reload recovery uses the durable source inventory and snapshot list. Browser memory is not claimed as durable command storage.
 
-## Exact root integration map
+### Exact root integration map
 
-### Owned paths
+#### Owned paths
 
 - `packages/contracts/src/expense-tax.ts`
 - `apps/api/src/expense-tax.ts`
@@ -69,7 +77,7 @@ The same command key and actor/payload recovers the exact original result. Chang
 - `apps/web/src/components/expense-tax/{panel.tsx,forms.tsx,views.tsx,copy.ts,blockers.ts}`
 - Maintained implementation-boundary note in `docs/plans/05-vat-payroll-assets-fx.md`.
 
-### Shared composition changes (root-owned, not edited here)
+#### Shared composition changes (root-owned, not edited here)
 
 1. Export `"./expense-tax": "./src/expense-tax.ts"` from the contract package.
 2. Add `ExpenseTaxApi` to shared `Api`. Add `ExpenseTaxHandlers` to HTTP composition. Group name is `expenseTax`.
@@ -91,13 +99,13 @@ Every statement returns `as result`. Cast token/key/ID/cursor parameters to `tex
 
 HTTP base: `/api/v1/entities/:entityId/books/:bookId/expense-tax`. Paths are POST/GET `/sources`, GET `/sources/:id`, POST `/sources/:id/reviews`, POST/GET `/snapshots`, GET `/snapshots/:id`. Exact contracts are in the new API group.
 
-### Migration and ownership dependencies
+#### Migration and ownership dependencies
 
 0710 is forward-only and independent of new sibling migrations. It uses existing kernel books/evidence/change sets/vouchers, `authorize`, `replay`, `save_command`, `digest`, `new_id`, `immutable_row`, and `bank_date` from0100. It preserves0210 admission lock semantics and current0900 browser-auth admission through the existing `authorize` function. It does not replace any existing function or migration. All new tables and helpers explicitly revoke PUBLIC/runtime access; only scoped public entrypoints receive runtime EXECUTE.
 
 Public mutators authorize before the exclusive book barrier. Reads authorize before a shared book barrier. Nested evidence existence checks and immutable records do not introduce another mutable accounting lock owner. Operator reviews use `authorize(token, scope, true)`. No ledger, invoice, period or schedule table is written.
 
-### Future company setup / closing interface
+#### Future company setup / closing interface
 
 Private `openerp.expense_tax_dependencies(book text) RETURNS jsonb` is for a future owning SECURITY DEFINER function **while it holds the book lock**. It has no runtime grant. Result:
 
@@ -108,7 +116,7 @@ Private `openerp.expense_tax_dependencies(book text) RETURNS jsonb` is for a fut
 
 Zero missing reviews is not supported treatment, adequate registration evidence, correct deduction, source completeness or VAT readiness. Company setup must own actual registrations/methods and their effective intervals; this package's per-expense reviewer opinions must not overwrite company authority. Closing can pin this dependency or a selected current snapshot, but must keep its legal/coverage/ledger blockers. Future supported actual profiles need dated primary evidence, legal intervals, aggregation/rounding policy, applicability facts and separate qualified activation. No such release is supplied here.
 
-## Validation and next root action
+### Validation and next root action
 
 Owned TypeScript/TSX source passed bounded Oxlint with zero warnings/errors after local fixes; owned formatting is checked again at handoff. Source review checked scope/reference constraints, parameter binding, immutable revision linkage, exact arithmetic, source/mode exclusion, helper grants and cursor bounds. These observations are not database execution, browser interaction, concurrency/recovery proof, legal verification, deployment or external acknowledgement.
 

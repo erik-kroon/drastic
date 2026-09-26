@@ -1,5 +1,13 @@
 #5200 expense snapshot membership — pre-code failure contract
 
+## Current ownership
+
+Application operations live in [application/vat/expense-tax.ts](../src/application/vat/expense-tax.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 Extend the existing expense snapshot list only.0710 list summaries have no source membership;
 4500 source history has no snapshot references. Snapshot history is not capped at500.
 
@@ -28,7 +36,7 @@ expense-tax-controls-v1; each entry retains source, nullable review and assessme
 schemaVersion2/expense-tax-controls-v2 and adds nullable withdrawal per entry. The existing HTTP
 list route already forwards its query object through the existing read-only capability.
 
-## Implemented source
+### Implemented source
 
 `5200-expense-snapshot-membership.sql` adds an explicit four-argument overload of the existing
 `list_expense_tax_snapshots` owner. No-source requests delegate to the unchanged0710
@@ -40,7 +48,7 @@ accept optional `sourceId`. This is the stable retained source identity, not an 
 revision ID, voucher ID or amount match. Current scope is authorized and the source must exist
 in that book. Permanent withdrawal does not remove the source or hide its historical membership.
 
-### Bounded continuation
+#### Bounded continuation
 
 The first filtered request captures the book's maximum retained snapshot ordinal. A filtered
 cursor has an `esm1_` prefix and a full SHA-256 context digest over scope, source, ceiling and
@@ -60,7 +68,7 @@ until `next` is null to finish the captured scan. It does not prove source compl
 current eligibility or absence outside the captured inventory. Snapshot history is not
 artificially restricted to VAT's500-record bound.
 
-### Saved entry projection
+#### Saved entry projection
 
 Matching items keep the original snapshot summary and add `sourceMembership` containing:
 
@@ -88,7 +96,7 @@ The complete canonical UTF-8 response, including every matching item from the sc
 must fit8MiB. Otherwise the operation refuses; it does not shrink the page or omit history.
 No source, snapshot, review, withdrawal, receipt or financial allocation is changed.
 
-## Exact shared composition
+### Exact shared composition
 
 Local statement map: `src/db/statements/expense-tax-snapshots.ts` exports
 `expenseTaxSnapshotStatements` with the existing `listExpenseTaxSnapshots` key and explicit
@@ -107,7 +115,7 @@ The expense contract adds optional metadata to the existing page and item shapes
 responses do not gain those optional fields. Unfiltered and filtered cursor formats remain
 separate; the appropriate SQL branch refuses mode switches.
 
-## Source review and checks
+### Source review and checks
 
 Inspected0710 and4500 captured shapes and actual route forwarding before implementation.
 Reviewed source/book isolation, withdrawn readability, old unfiltered delegation, NULL/missing

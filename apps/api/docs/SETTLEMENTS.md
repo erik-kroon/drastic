@@ -1,12 +1,20 @@
 # Reviewed bank allocation plans
 
-## Scope and delivery contract
+## Current ownership
+
+Application operations live in [application/banking/allocations.ts](../src/application/banking/allocations.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Scope and delivery contract
 
 Implement synthetic, operator-reviewed partial and many-to-many matching between retained bank observations and immutable posted bank-account lines. Preserve every source identity and imported match. Matching never posts a voucher, sends a payment, or settles an invoice. Commerce alone owns invoice/control-account-line allocation capacity.
 
 Lifecycle: prepare exact legs → inspect frozen capacities and ambiguity → operator approval of digest/version → atomic execution → immutable capacity-aware reconciliation.
 
-## Failure cases to prevent
+### Failure cases to prevent
 
 - Cross-book/entity, wrong currency/account, wrong sign, zero amount or out-of-statement-date legs.
 - Aggregate over-allocation when several legs consume one source or posted line.
@@ -18,15 +26,15 @@ Lifecycle: prepare exact legs → inspect frozen capacities and ambiguity → op
 - Partial failures leaving legs without their execution receipt.
 - Reconciliation claiming completeness from zero net difference while residual amounts or coverage gaps remain.
 
-## Boundaries
+### Boundaries
 
 Only synthetic-core-v1 native books. At most 100 explicit nonzero allocation legs in one plan. Overlapping statement imports, arbitrary provider formats, currency conversion, netting opposite signs, cross-statement timing allocations and large synchronous reconciliation scopes remain unsupported. Reconciliation retains the existing bound of 1000 combined source/ledger rows and 100 whole statements and 1000 allocation legs. No inference of tax or legal/provider facts.
 
-## Status
+### Status
 
 Implemented in the owned files listed below; not integrated or locally executed yet. No new tests, fixtures, database mutations, server runs, builds or production actions are authorized for this worker. Static review does not prove concurrency/recovery behavior. Integration, local observation and production/profile verification are separate states.
 
-## Implemented authority and freshness
+### Implemented authority and freshness
 
 `0500-reviewed-bank-allocations.sql` adds immutable plans, approvals, executions, allocation legs and capacity-aware reports. Selected source/line pairs retain statement ID + ordinal, voucher ID + line ID, signed amount, source-bank identity, provider identity and evidence hash. No amount-based identity or deduplication exists.
 
@@ -40,7 +48,7 @@ The exact-match BEFORE INSERT guard rejects either endpoint if any v2 leg alread
 
 Source and posted-line SQL helpers qualify every actual parameter with the function name. In particular, source row ordinal must not resolve to the allocation leg’s separate ordinal column. No unlabeled local variable uses function qualification.
 
-## Reconciliation and close integration
+### Reconciliation and close integration
 
 New capacity reports retain original row amounts and add signed `allocatedMinor` and `remainingMinor`. A residual of zero means fully consumed; opposite-sign netting is rejected. Unmatched collections contain nonzero residuals. A complete report still requires exact opening/closing balance agreement, no remaining capacity, and declared whole-statement coverage. Explicit required-source inventory remains a separate year-end authority.
 
@@ -48,7 +56,7 @@ V1 reports remain immutable and keep their exact-match semantics. They conservat
 
 Private `bank_close_dependencies(book text, starts_on date, ends_on date)` runs under a caller-held book lock. It returns deterministic `{sources:[{accountId,sourceId,revision,reconciliationId,reconciliationKind,reconciliationCreatedAt}],allRepresentedReady}`. It chooses the latest exact-interval, complete, fresh v1 or v2 report. Missing report metadata is null. An empty represented set returns false; only the year-end owner's explicit inventory can establish whether zero sources are expected. Closing applies its own reopen/invalidation timestamp. Direct runtime execution of the helper is revoked.
 
-## Root integration mapping
+### Root integration mapping
 
 - Export `./settlements` from the contracts package.
 - Add `SettlementsApi` to the shared API and `SettlementHandlers` to the Worker layer.
@@ -83,7 +91,7 @@ export const settlementStatements = {
 
 Mount `BankAllocations` from `@/components/settlements` with `{book,setup,locale}`, keyed by scoped book identity at the workspace boundary. It owns local English/Swedish copy, explicit leg editing, frozen capacity/evidence review, exact approval/execution, saved-plan recovery, and v2 reconciliation/residual tables. Remote state uses TanStack Query; uncertain requests retain stable keys, and execution refetches durable book state. Native labeled fields and responsive owned table primitives are used; browser accessibility/layout behavior has not been observed.
 
-## Checks and remaining gates
+### Checks and remaining gates
 
 Owned TypeScript files pass `bun x oxlint` and `bun x oxfmt --write`. These are static checks, not failure/recovery or concurrency proof. Root owns group/registry/dispatcher integration and API type validation. Apply0500/0501/0502 together before exposing the new routes. Migrations0500/0501/0502 have not been applied by this worker. No tests, test fixtures, dependency installs, servers, builds, database writes, commits, pushes, deployment or external submissions were performed.
 

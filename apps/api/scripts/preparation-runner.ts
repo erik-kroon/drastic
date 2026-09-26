@@ -6,7 +6,7 @@ import { DrizzleJobStore } from "effect-mq/drizzle-postgres";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Redacted from "effect/Redacted";
-import { Database } from "../src/db/connection";
+import { applicationPostgresTypes, Database } from "../src/db/connection";
 import {
   jobAttempts,
   jobDedupe,
@@ -32,11 +32,20 @@ if (!connectionString || !token) {
 const postgres = PgClient.layer({
   url: Redacted.make(connectionString),
   applicationName: "open-erp-preparation-runner",
-  maxConnections: 8,
+  maxConnections: 4,
   connectTimeout: "5 seconds",
 });
+// Queue SQL consumes Date objects; application SQL lets Drizzle decode strings.
+// Separate bounded pools preserve both contracts without global parser changes.
+const applicationPostgres = PgClient.layer({
+  url: Redacted.make(connectionString),
+  applicationName: "open-erp-preparation-application",
+  maxConnections: 4,
+  connectTimeout: "5 seconds",
+  types: applicationPostgresTypes,
+});
 const services = Layer.mergeAll(
-  Layer.effect(Database, PgDrizzle.makeWithDefaults()),
+  Layer.effect(Database, PgDrizzle.makeWithDefaults()).pipe(Layer.provide(applicationPostgres)),
   DrizzleJobStore.layer({
     jobs,
     attempts: jobAttempts,
@@ -61,13 +70,15 @@ const dispatch = Effect.forever(
     Effect.catch(() =>
       Effect.logWarning("Preparation queue dispatch failed; admission remains durable."),
     ),
+    // A defect reaching the poll boundary must not end this fiber: the runner
+    // owns no other dispatch, so losing it would strand every ready preparation.
+    Effect.catchDefect(() =>
+      Effect.logWarning("Preparation queue dispatch defect; admission remains durable."),
+    ),
     Effect.andThen(Effect.sleep("30 seconds")),
   ),
 );
-const main = Effect.gen(function* () {
-  yield* Effect.forkScoped(dispatch);
-  return yield* Effect.never;
-}).pipe(Effect.provide(worker), Effect.scoped);
+const main = dispatch.pipe(Effect.provide(worker), Effect.scoped);
 
 runMain(main.pipe(Effect.tapCause(() => Effect.logError("Preparation runner stopped."))), {
   disableErrorReporting: true,

@@ -1,6 +1,14 @@
 #5600 bank admission against retained tax reservations
 
-## Failure contract — before code
+## Current ownership
+
+Application operations live in [application/banking/allocations.ts](../src/application/banking/allocations.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Failure contract — before code
 
 4100 physically rejects bank matches/allocation legs on an exact tax-reserved book/voucher/line.
 1300 allocation preparation, approval/currentness and1600 discovery omit that admission rule.
@@ -20,7 +28,7 @@
   root owns the two required exhaustive EN/SV labels. No UI work, tests, SQL compilation,
   runtime, migration application, providers or VCS history changes.
 
-## Implemented source
+### Implemented source
 
 `5600-bank-tax-reservation-admission.sql` forward-replaces four existing functions:
 
@@ -38,7 +46,7 @@ filter by tax match usability. Mutation refusals use4100's existing `StaleDepend
 The BankCandidateBlock contract adds that one literal. No endpoint, registry or shape changes
 are needed. Root adds only its exhaustive English/Swedish labels in existing copy.ts.
 
-## Preserved consumers
+### Preserved consumers
 
 `bank_allocated_line`, `bank_allocated_source`, `bank_allocation_versions`, reconciliation,
 capacity reports, signoffs and unmatch/reversal snapshots remain untouched. A tax-reserved
@@ -50,7 +58,7 @@ changed admission owners run.1300 historical reads retain execution/unmatch bodi
 release or subsequent tax reservation. Exact matching and imports remain atomic and use the
 existing4100 insert fence; this packet adds no duplicate mutation guard.
 
-## Source checks
+### Source checks
 
 Compared all four replacements with their latest owners. Only exact admission predicates,
 the selected-reservation currentness condition and the discovery blocker were added. Scoped

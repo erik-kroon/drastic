@@ -1,4 +1,6 @@
 import { randomBytes } from "node:crypto";
+import { readdir } from "node:fs/promises";
+import { join } from "node:path";
 import { Client } from "pg";
 import { expect, test } from "vitest";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -162,27 +164,34 @@ test("migration rerun preserves posted state and checksum drift stops the migrat
     cwd: apiDirectory,
     env: { ...process.env, DATABASE_ADMIN_URL: environment().adminUrl },
   };
+  // Name the migration set as it exists, not by a reviewed file number.
+  const [applied] = (await readdir(join(apiDirectory, "migrations")))
+    .filter((name) => name.endsWith(".sql"))
+    .sort();
+  if (!applied) throw new Error("No applied migration file to rerun");
   const rerun = await run("bun", ["scripts/migrate.ts"], options);
-  expect(rerun.stdout).toContain("0001-accounting.sql: already applied");
+  expect(rerun.stdout).toContain(`${applied}: already applied`);
   expect(await persisted(book)).toEqual(before);
   const admin = await database();
   const original = await admin.query<{ sha256: string }>(
-    "SELECT sha256 FROM public.openerp_migrations WHERE name = '0001-accounting.sql'",
+    "SELECT sha256 FROM public.openerp_migrations WHERE name = $1",
+    [applied],
   );
   const checksum = original.rows[0]?.sha256;
   if (!checksum) throw new Error("Initial migration receipt missing");
   try {
     await admin.query(
-      "UPDATE public.openerp_migrations SET sha256 = repeat('0', 64) WHERE name = '0001-accounting.sql'",
+      "UPDATE public.openerp_migrations SET sha256 = repeat('0', 64) WHERE name = $1",
+      [applied],
     );
     await expect(run("bun", ["scripts/migrate.ts"], options)).rejects.toMatchObject({
       stderr: expect.stringContaining("Add a forward migration instead"),
     });
   } finally {
-    await admin.query(
-      "UPDATE public.openerp_migrations SET sha256 = $1 WHERE name = '0001-accounting.sql'",
-      [checksum],
-    );
+    await admin.query("UPDATE public.openerp_migrations SET sha256 = $1 WHERE name = $2", [
+      checksum,
+      applied,
+    ]);
     await admin.end();
   }
   expect(await persisted(book)).toEqual(before);

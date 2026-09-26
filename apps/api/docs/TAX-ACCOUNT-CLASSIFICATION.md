@@ -1,6 +1,14 @@
 # One-shot tax-account classification resolution
 
-## Selected failure contract — before implementation
+## Current ownership
+
+Application operations live in [application/vat/tax-account.ts](../src/application/vat/tax-account.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Selected failure contract — before implementation
 
 A retained event classified `unknown` currently cannot be matched and remains unknown in
 controls. Add one immutable, evidenced operator resolution to an existing supported non-unknown
@@ -47,7 +55,7 @@ filename scan. No tests, fixtures, SQL compilation/application, application/runt
 execution, UI expansion, commits or pushes are authorized. Source and static checks are not
 runtime proof.
 
-## Implemented source — not database-applied
+### Implemented source — not database-applied
 
 Migration `6700-tax-account-classification-resolution.sql` adds one append-only resolution
 owner with a same-book event foreign key, same-book evidence foreign key, unique book/event
@@ -64,7 +72,7 @@ body remain unchanged. This read does not fetch source object content. Classific
 alone does not require an active account or open period; the existing match workflow still
 requires both and every other original eligibility check.
 
-### Matching and controls
+#### Matching and controls
 
 The shared private classification read supplies the same effective label to matching and
 control capture. A resolved event's match basis adds only the compact
@@ -81,7 +89,7 @@ balances, gaps, overlaps, balance breaks, ledger population and matching residua
 unchanged calculations. The8MiB artifact bound and all false readiness/coverage claims
 remain. Old controls and exact successful-key replay retain their original v1/v2/v3 bytes.
 
-### Currentness and historical reads
+#### Currentness and historical reads
 
 The complete resolution inventory refuses an over1000 book before any scoped aggregation.
 Account-control dependencies include only resolutions belonging to overlapping statements
@@ -99,7 +107,7 @@ bumped. No new legal classification, VAT fact, settlement effect, coverage asser
 financial-close permission follows from a resolved label. Existing historical read and
 successful replay paths remain available.
 
-### Source review and limits
+#### Source review and limits
 
 The SQL packet replaces only `tax_account_match_basis`, `create_tax_account_control`,
 `tax_account_dependency_digest` and `tax_account_close_dependencies`. The original4100
@@ -112,7 +120,7 @@ apply SQL, execute the application, contact providers, change UI or use VCS. Con
 transport and shared static integration are owned separately. SQL validity, transaction
 behavior and database/runtime results remain unverified.
 
-## Live unresolved-event worklist — failure contract before implementation
+### Live unresolved-event worklist — failure contract before implementation
 
 Migration6800 adds discovery for the existing operator resolution command, not another saved
 artifact. Require an account from this book's tax-account source register. Read current
@@ -142,7 +150,7 @@ scope authorization and hold the book SHARE barrier; do not mutate or access ori
 
 No tests, SQL compilation/application, runtime/provider execution, UI changes or VCS actions.
 
-### Worklist implementation — source only
+#### Worklist implementation — source only
 
 Migration `6800-tax-account-unclassified-worklist.sql` adds the scoped, read-only SQL owner.
 Current authorization and a book SHARE barrier precede the registered-account and cursor

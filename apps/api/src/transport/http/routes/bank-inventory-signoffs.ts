@@ -1,9 +1,14 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Signoffs from "@open-erp/contracts/bank-inventory-signoffs";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { query, scopeParameter } from "../../../db/query";
+import {
+  getBankInventorySignoff,
+  listBankInventorySignoffs,
+  prepareBankInventorySignoff,
+  signBankInventory,
+} from "../../../application/banking/inventory-signoffs";
 
 export const BankInventorySignoffHandlers = HttpApiBuilder.group(
   Api,
@@ -12,44 +17,31 @@ export const BankInventorySignoffHandlers = HttpApiBuilder.group(
     handlers
       .handle("prepareBankInventorySignoff", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "prepareBankInventorySignoff",
-            [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-            Signoffs.BankInventorySignoffPlan,
-          ),
+          prepareBankInventorySignoff(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
         ),
       )
       .handle("signBankInventory", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "signBankInventory",
-            [
-              token,
-              scopeParameter(params),
-              headers["idempotency-key"],
-              params.id,
-              JSON.stringify(payload),
-            ],
-            Signoffs.BankInventorySignoff,
-          ),
+          signBankInventory(token, {
+            scope: scopeFromPath(params),
+            planId: params.id,
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
         ),
       )
       .handle("getBankInventorySignoff", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "getBankInventorySignoff",
-            [token, scopeParameter(params), params.id],
-            Signoffs.BankInventorySignoffView,
-          ),
+          getBankInventorySignoff(token, { scope: scopeFromPath(params), planId: params.id }),
         ),
       )
       .handle("listBankInventorySignoffs", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "listBankInventorySignoffs",
-            [token, scopeParameter(params)],
-            Signoffs.BankInventorySignoffList,
-          ),
+          listBankInventorySignoffs(token, { scope: scopeFromPath(params) }),
         ),
       ),
 );

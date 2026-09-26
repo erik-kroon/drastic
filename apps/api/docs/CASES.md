@@ -1,11 +1,19 @@
 # Manual-journal case context
 
+## Current ownership
+
+Application operations live in [application/cases.ts](../src/application/cases.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 This module exposes real `openerp.events` created by manual-journal proposals.
 A case keeps the existing event ID and source identity `(evidence_id, event_key)`.
 It does not turn bank observations into business events, infer accepted facts,
 or mark a source complete.
 
-## Capture, then read
+### Capture, then read
 
 ```text
 cases_prepare_snapshot(scope, idempotencyKey, input.caseId?)
@@ -35,7 +43,7 @@ state and `nextActions` describe the captured case. Their text requires live
 checks before any mutation; this context does not replace `changes_validate`,
 current operator approval or execution-time dependency checks.
 
-## Bounds and continuation
+### Bounds and continuation
 
 - Preparation selects all manual-journal cases in one book, or one `input.caseId`.
 - Maximum selection: 1,000 cases and 10,000 plans. A larger selection fails;
@@ -65,7 +73,7 @@ plan ID. The two current manual-journal posting identities are the original
 adjustment and its optional reversal; both voucher and execution-receipt
 references are retained in the case.
 
-## Meaning and deliberate limits
+### Meaning and deliberate limits
 
 - `proposed` means no committed voucher existed at capture.
 - `posted` means the original voucher existed without a committed reversal.
@@ -87,7 +95,7 @@ references are retained in the case.
 - The scope is the native `synthetic-core-v1` profile only. This is not a generic
   context engine, production accounting assurance, or Swedish compliance claim.
 
-## Parent integration
+### Parent integration
 
 Shared schemas and capability descriptions live in
 `packages/contracts/src/cases.ts`. The `CaseHandlers` REST group and MCP use the same named `capabilities` handlers. Fixed statements live in the existing PostgreSQL dispatcher. There is no second connection owner or SQL interpolation.
@@ -117,7 +125,7 @@ updates and deletes. No tests were added or run for this slice.
 
 Manual local snapshot, evidence detail and history continuation succeeded after forward migration0111 fixed an unlabeled-local binding. Receipt artifact: `.agents/work/openerp-implementation/manual-case-context-receipts.json`. This is development observation, not automated verification.
 
-## Forward5700: correction-bundle context routing — failure contract before implementation
+### Forward5700: correction-bundle context routing — failure contract before implementation
 
 New case captures must identify a retained correction bundle that owns a plan. Context is
 not permission to approve or execute either constituent independently. Existing aggregate
@@ -151,7 +159,7 @@ plans; cross-book lookalikes; malformed/ambiguous owner refusal; old snapshot/ke
 and no change in aggregate execution isolation. No tests, fixtures, SQL compilation/application,
 runtime or provider actions are authorized for this packet.
 
-### Implemented capture contract (source review, not runtime proof)
+#### Implemented capture contract (source review, not runtime proof)
 
 `5700-case-correction-bundle-context.sql` replaces only the two private capture helpers.
 `CasePlan.correctionBundle` and `CaseSummary.latestPlanCorrectionBundle` are optional

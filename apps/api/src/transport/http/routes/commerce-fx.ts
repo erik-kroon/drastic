@@ -1,3 +1,4 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
@@ -9,7 +10,7 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
     .handle("prepareCommerceFxRecognition", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         CommerceFx.prepareRecognition(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -18,7 +19,7 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
     .handle("approveCommerceFxRecognition", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         CommerceFx.approveRecognition(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           id: params.id,
           idempotencyKey: headers["idempotency-key"],
           input: payload,
@@ -28,7 +29,7 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
     .handle("executeCommerceFxRecognition", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         CommerceFx.executeRecognition(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           id: params.id,
           idempotencyKey: headers["idempotency-key"],
           input: payload,
@@ -38,7 +39,7 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
     .handle("prepareCommerceFxSettlement", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         CommerceFx.prepareSettlement(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -47,7 +48,7 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
     .handle("approveCommerceFxSettlement", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         CommerceFx.approveSettlement(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           id: params.id,
           idempotencyKey: headers["idempotency-key"],
           input: payload,
@@ -57,7 +58,7 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
     .handle("executeCommerceFxSettlement", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         CommerceFx.executeSettlement(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           id: params.id,
           idempotencyKey: headers["idempotency-key"],
           input: payload,
@@ -67,7 +68,7 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
     .handle("prepareCommerceFxPartialSettlement", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         CommerceFx.preparePartialSettlement(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -76,7 +77,7 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
     .handle("approveCommerceFxPartialSettlement", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         CommerceFx.approvePartialSettlement(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           id: params.id,
           idempotencyKey: headers["idempotency-key"],
           input: payload,
@@ -86,7 +87,7 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
     .handle("executeCommerceFxPartialSettlement", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         CommerceFx.executePartialSettlement(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           id: params.id,
           idempotencyKey: headers["idempotency-key"],
           input: payload,
@@ -96,7 +97,7 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
     .handle("prepareCommerceFxSettlementCorrection", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         CommerceFx.prepareSettlementCorrection(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -105,7 +106,7 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
     .handle("approveCommerceFxSettlementCorrection", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         CommerceFx.approveSettlementCorrection(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           id: params.id,
           idempotencyKey: headers["idempotency-key"],
           input: payload,
@@ -115,7 +116,7 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
     .handle("executeCommerceFxSettlementCorrection", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         CommerceFx.executeSettlementCorrection(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           id: params.id,
           idempotencyKey: headers["idempotency-key"],
           input: payload,
@@ -124,12 +125,12 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
     )
     .handle("getCommerceFxItem", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        CommerceFx.getItem(token, { scope: params, id: params.id }),
+        CommerceFx.getItem(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("recoverCommerceFxCommand", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        CommerceFx.recoverCommand(token, { scope: params, key: params.key }),
+        CommerceFx.recoverCommand(token, { scope: scopeFromPath(params), key: params.key }),
       ),
     ),
 );

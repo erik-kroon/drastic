@@ -1,6 +1,14 @@
 # Bank source interval coverage (2000)
 
-## Existing owners and bounded scope
+## Current ownership
+
+Application operations live in [application/banking/coverage.ts](../src/application/banking/coverage.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Existing owners and bounded scope
 
 Existing1300 `reconcile_bank_capacity` already reports per-account item capacity and opening/
 closing controls. It refuses partial statement boundaries and does not capture a cross-account
@@ -9,7 +17,7 @@ retain operator-reviewed expected bank accounts and evidence.0510 occurrence dis
 required-account inventory.2000 reuses the closing inventory and existing bank statement bodies;
 it adds only a source-interval diagnostic snapshot, not another declaration or matching engine.
 
-## Failure cases recorded before implementation
+### Failure cases recorded before implementation
 
 - Authorize before any scoped lookup/count. Foreign inventory, period, account and evidence
   identities must not leak. Read/capture locks follow admission then the book barrier.
@@ -44,7 +52,7 @@ it adds only a source-interval diagnostic snapshot, not another declaration or m
 - No tests/test edits, checks/builds/toolchain, database/migration execution, browser/server,
   dependency/external actions or commits are authorized. All behavior remains runtime-unverified.
 
-## Implementation and root integration
+### Implementation and root integration
 
 Implemented source only:
 
@@ -57,7 +65,7 @@ Implemented source only:
 No existing migration, source admission, matching, financial posting, reconciliation or closing
 function was replaced. This report does not satisfy a closing check and creates no source mapping.
 
-### Shared composition
+#### Shared composition
 
 1. Export `"./bank-source-coverage": "./src/bank-source-coverage.ts"` from contracts.
 2. Add `BankSourceCoverageApi` to shared `Api`; spread `BankSourceCoverageCapabilities` into
@@ -69,17 +77,17 @@ function was replaced. This report does not satisfy a closing check and creates 
 5. Mount `BankSourceCoveragePanel({book,locale})` under Accounts. It remounts local state when
    the book changes. Root must preserve its existing authenticated-identity reset/cache boundary.
 
-| Capability | Statement | Arguments after token |
-| --- | --- | --- |
+| Capability                    | Statement                  | Arguments after token                                                            |
+| ----------------------------- | -------------------------- | -------------------------------------------------------------------------------- |
 | `bank_create_source_coverage` | `createBankSourceCoverage` | `scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)` |
-| `bank_get_source_coverage` | `getBankSourceCoverage` | `scopeParameter(input.scope), input.id` |
-| `bank_list_source_coverage` | `listBankSourceCoverage` | `scopeParameter(input.scope)` |
+| `bank_get_source_coverage`    | `getBankSourceCoverage`    | `scopeParameter(input.scope), input.id`                                          |
+| `bank_list_source_coverage`   | `listBankSourceCoverage`   | `scopeParameter(input.scope)`                                                    |
 
-| Method / scoped route | Input / output | SQL function |
-| --- | --- | --- |
+| Method / scoped route                                                | Input / output                                          | SQL function                                         |
+| -------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------- |
 | POST `/api/v1/entities/:entityId/books/:bookId/bank-source-coverage` | `CreateBankSourceCoverage` → `BankSourceCoverageReport` | `create_bank_source_coverage(text,jsonb,text,jsonb)` |
-| GET same collection | `BankSourceCoverageList` | `list_bank_source_coverage(text,jsonb)` |
-| GET same collection + `/:id` | `BankSourceCoverageView` | `get_bank_source_coverage(text,jsonb,text)` |
+| GET same collection                                                  | `BankSourceCoverageList`                                | `list_bank_source_coverage(text,jsonb)`              |
+| GET same collection + `/:id`                                         | `BankSourceCoverageView`                                | `get_bank_source_coverage(text,jsonb,text)`          |
 
 POST requires the existing `Idempotency-Key` header. It records a diagnostic report and command
 receipt only; its capability is not marked read-only. GET capabilities are read-only. Normal
@@ -91,7 +99,7 @@ sha256,byte_length)`. If maintained Drizzle mappings are needed, root owns them.
 only the three scoped function EXECUTEs, no table/helper grants. No service, adapter, dependency
 or direct table write is added to the application runtime.
 
-### Input and inventory reuse
+#### Input and inventory reuse
 
 `CreateBankSourceCoverage` requires `{inventoryId, startsOn, endsOn}`. The inventory is the
 latest retained `closing_inventories` row for its owning period; the requested dates must equal
@@ -113,7 +121,7 @@ previews, external provider coverage and unknown source families are not inferre
 report. All those inventories remain owned by their existing workflows. No file/feed/parser or
 provider-reference contract is added.
 
-### Inclusive boundaries and independent balances
+#### Inclusive boundaries and independent balances
 
 Every intersecting retained statement is included with its complete original `BankStatement`
 body and all original rows; this uses the existing `bank_statement_body`. A statement crossing
@@ -129,7 +137,7 @@ Per account:
   overlaps; this report preserves and exposes any retained overlap rather than assuming it absent.
 - `adjacentBalances` compares each pair with `next.startsOn = previous.endsOn + 1 day`, equal
   source-bank identity and the same book currency. `differenceMinor = next opening - previous
-  closing`. Those are independent retained checkpoints, not computed running balances.
+closing`. Those are independent retained checkpoints, not computed running balances.
 - Gaps have no balance comparison. Overlap does not authorize a preferred statement or an
   automatic union of movements. Empty adjacent-pair arrays mean no supported comparison exists,
   not that missing balances equal zero.
@@ -147,7 +155,7 @@ No total across source accounts is used to cancel a gap, balance difference or o
 bank↔ledger reconciliation, a bank-family applicability decision, statutory readiness or a new
 technical-close permission. Existing bank reconciliation and closing gates are untouched.
 
-### Cutoff, bytes and recovery
+#### Cutoff, bytes and recovery
 
 Capture follows scoped admission with a book `FOR UPDATE` barrier. Currentness reads use the
 same book's shared barrier. The dependency digest binds the selected and latest inventory,
@@ -173,7 +181,7 @@ bytes. The download carries the original content, never browser-recalculated mon
 Sensitive source rows and evidence identifiers are disclosed before download. Unsaved inputs
 and retry maps are not durable across reload; recover any committed capture through discovery.
 
-## Source review and unperformed proof
+### Source review and unperformed proof
 
 Source inspection traced admission/book scoping, original immutability, latest-inventory scope,
 bounded complete enumeration, inclusive adjacency/gap/overlap logic, independent stated balance
@@ -188,7 +196,7 @@ external actions, dependency changes, commits or nested delegation occurred. Run
 response decoding, concurrency, failure recovery, download and accessibility behavior remain
 unverified. Shared registration/mounting and any later authorized proof remain root-owned.
 
-## Root source integration
+### Root source integration
 
 Contracts exports, shared API/capability catalog, bindings, statement dispatcher and HTTP handlers are connected. Accounts → Statement coverage and the tools workspace mount the report UI. Independent source review traced inclusive union/gaps, shared-day overlaps, true adjacent balance comparisons, missing boundaries, declared/mapped union, bounds and currentness; no concrete blocker was found. Existing closing gates remain unchanged. No runtime or schema execution was performed.
 

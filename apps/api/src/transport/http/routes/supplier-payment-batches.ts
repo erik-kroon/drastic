@@ -1,9 +1,18 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Payments from "@open-erp/contracts/supplier-payment-batches";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { query, scopeParameter } from "../../../db/query";
+import {
+  exportSupplierPaymentBatch,
+  getSupplierPayee,
+  getSupplierPaymentBatch,
+  listSupplierPaymentEligibility,
+  prepareSupplierPaymentBatch,
+  proposeSupplierPayee,
+  reportSupplierPaymentOutcome,
+  verifySupplierPayee,
+} from "../../../application/purchases/payments";
 
 export const SupplierPaymentBatchHandlers = HttpApiBuilder.group(
   Api,
@@ -12,92 +21,68 @@ export const SupplierPaymentBatchHandlers = HttpApiBuilder.group(
     handlers
       .handle("prepareSupplierPaymentBatch", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "prepareSupplierPaymentBatch",
-            [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-            Payments.SupplierPaymentPreview,
-          ),
+          prepareSupplierPaymentBatch(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
         ),
       )
       .handle("exportSupplierPaymentBatch", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "exportSupplierPaymentBatch",
-            [
-              token,
-              scopeParameter(params),
-              params.id,
-              headers["idempotency-key"],
-              JSON.stringify(payload),
-            ],
-            Payments.SupplierPaymentExport,
-          ),
+          exportSupplierPaymentBatch(token, {
+            scope: scopeFromPath(params),
+            previewId: params.id,
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
         ),
       )
       .handle("listSupplierPaymentEligibility", ({ params, query: search }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "listSupplierPaymentEligibility",
-            [token, scopeParameter(params), search.after ?? ""],
-            Payments.PaymentEligibility,
-          ),
+          listSupplierPaymentEligibility(token, {
+            scope: scopeFromPath(params),
+            after: search.after,
+          }),
         ),
       )
       .handle("proposeSupplierPayee", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "proposeSupplierPayee",
-            [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-            Payments.PayeeProposal,
-          ),
+          proposeSupplierPayee(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
         ),
       )
       .handle("getSupplierPayee", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "getSupplierPayee",
-            [token, scopeParameter(params), params.id],
-            Payments.PayeeReview,
-          ),
+          getSupplierPayee(token, { scope: scopeFromPath(params), proposalId: params.id }),
         ),
       )
       .handle("verifySupplierPayee", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "verifySupplierPayee",
-            [
-              token,
-              scopeParameter(params),
-              params.id,
-              headers["idempotency-key"],
-              JSON.stringify(payload),
-            ],
-            Payments.PayeeVerification,
-          ),
+          verifySupplierPayee(token, {
+            scope: scopeFromPath(params),
+            proposalId: params.id,
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
         ),
       )
       .handle("reportSupplierPaymentOutcome", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "reportSupplierPaymentOutcome",
-            [
-              token,
-              scopeParameter(params),
-              params.id,
-              headers["idempotency-key"],
-              JSON.stringify(payload),
-            ],
-            Payments.PaymentOutcome,
-          ),
+          reportSupplierPaymentOutcome(token, {
+            scope: scopeFromPath(params),
+            exportId: params.id,
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
         ),
       )
       .handle("getSupplierPaymentBatch", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "getSupplierPaymentBatch",
-            [token, scopeParameter(params), params.id],
-            Payments.SupplierPaymentBatchView,
-          ),
+          getSupplierPaymentBatch(token, { scope: scopeFromPath(params), previewId: params.id }),
         ),
       ),
 );

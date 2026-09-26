@@ -32,10 +32,13 @@ export class CanonicalJsonError extends Schema.TaggedError<CanonicalJsonError>()
   },
 ) {}
 
-export interface CanonicalBytes {
+export interface CanonicalJsonBytes {
   readonly bytes: Uint8Array;
-  readonly canonicalization: "openerp-c14n-v1";
   readonly json: string;
+}
+
+export interface CanonicalBytes extends CanonicalJsonBytes {
+  readonly canonicalization: "openerp-c14n-v1";
   readonly version: 1;
 }
 
@@ -431,22 +434,43 @@ function writeCanonicalNode(node: JsonNode): string {
   return "null";
 }
 
-function canonicalBytes(value: Schema.JsonObject): CanonicalBytes {
-  const json = writeCanonicalNode({
-    kind: "object",
-    entries: Object.entries(value).map(([key, entry]) => ({ key, value: jsonToNode(entry) })),
-  });
-  return {
-    bytes: encodeUtf8(json),
-    canonicalization: "openerp-c14n-v1",
-    json,
-    version: 1,
-  };
+function canonicalJsonBytes(root: JsonNode): CanonicalJsonBytes {
+  const json = writeCanonicalNode(root);
+  return { bytes: encodeUtf8(json), json };
 }
 
 function toCanonicalError(error: unknown): CanonicalJsonError {
   if (Schema.is(CanonicalJsonError)(error)) return error;
   return new CanonicalJsonError({ code: "InvalidJson", message: "The input is not valid JSON." });
+}
+
+function parseArbitraryJson(value: unknown): Result.Result<JsonNode, CanonicalJsonError> {
+  if (typeof value === "string") {
+    return Result.try({ try: () => new StrictJsonParser(value).parse(), catch: toCanonicalError });
+  }
+  const decoded = Schema.decodeUnknownResult(Schema.Json)(value);
+  if (Result.isFailure(decoded)) {
+    return Result.fail(
+      new CanonicalJsonError({ code: "InvalidJson", message: decoded.failure.message }),
+    );
+  }
+  return Result.try({ try: () => jsonToNode(decoded.success), catch: toCanonicalError });
+}
+
+export const canonicalizeJson = (
+  value: unknown,
+): Result.Result<CanonicalJsonBytes, CanonicalJsonError> =>
+  Result.flatMap(parseArbitraryJson(value), (root) => Result.succeed(canonicalJsonBytes(root)));
+
+export function equalJson(left: Schema.Json | undefined, right: Schema.Json | undefined): boolean {
+  // A string here is a JSON value, not serialized JSON to parse.
+  const first = canonicalizeJson({ value: left });
+  const second = canonicalizeJson({ value: right });
+  return (
+    Result.isSuccess(first) &&
+    Result.isSuccess(second) &&
+    first.success.json === second.success.json
+  );
 }
 
 export const parseOpenErpC14nV1 = (
@@ -475,10 +499,13 @@ export const canonicalizeOpenErpC14nV1 = (
   const document =
     typeof value === "string" ? parseOpenErpC14nV1(value) : validateOpenErpC14nV1(value);
   return Result.flatMap(document, (validated) =>
-    Result.try({
-      try: () => canonicalBytes(validated.value),
-      catch: toCanonicalError,
-    }),
+    Result.flatMap(canonicalizeJson(validated.value), (canonical) =>
+      Result.succeed({
+        ...canonical,
+        canonicalization: "openerp-c14n-v1" as const,
+        version: 1 as const,
+      }),
+    ),
   );
 };
 

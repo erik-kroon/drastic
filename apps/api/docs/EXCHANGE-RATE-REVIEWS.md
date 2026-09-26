@@ -1,6 +1,14 @@
 # Manual exchange-rate observations and conversion reviews
 
-## 1900 failure cases and decisions — before implementation
+## Current ownership
+
+Application operations live in [application/exchange-rates.ts](../src/application/exchange-rates.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### 1900 failure cases and decisions — before implementation
 
 This FX-01 subset retains operator-reviewed, explicitly sourced directional rates and exact
 synthetic conversion reviews. It never posts invoices, payments, FX gains/losses or revaluation.
@@ -8,6 +16,7 @@ No feed retrieval, company/legal activation, automatic date selection or fallbac
 No checks, tests, DB execution or migration application are authorized for this wave.
 
 Failure cases:
+
 - Foreign-book evidence/observations/revisions and stale revision digests must fail before writes.
 - Missing rate, reversed direction, same-currency pair, target other than current book currency,
   wrong effective date, missing scale, zero/negative/decimal/oversized rational parts must fail.
@@ -38,12 +47,12 @@ money primitives, local routes/statements and a bounded rate/revision/capture/re
 owns exports, shared query/API/capability composition and routed mounting. Existing1700 commerce,
 1800 basis guards and every historical migration remain unchanged.
 
-## Implemented source and required root composition
+### Implemented source and required root composition
 
 This is implemented source only. Migration1900 is unapplied; no check/test/browser/DB command
 was run. No prior migration,1700 commerce logic or1800 subledger guard was changed.
 
-### Files
+#### Files
 
 - `packages/domain/src/exchange-rates.ts`: transport-independent currency/scale, positive rational,
   rate terms, named synthetic rounding policy and exact result schemas. Existing money primitives
@@ -67,32 +76,32 @@ needed because all application access goes through approved functions.
 Base route: `/api/v1/entities/:entityId/books/:bookId/exchange-rates`.
 SQL parameters below are token followed by scoped JSON and the listed arguments.
 
-| Operation | HTTP suffix | SQL function | Remaining parameters | Result |
-|---|---|---|---|---|
-| createExchangeRate | POST `/` | create_exchange_rate | key,input JSON | ExchangeRateRevision |
-| reviseExchangeRate | POST `/:id/revisions` | revise_exchange_rate | id,key,input JSON | ExchangeRateRevision |
-| getExchangeRate | GET `/:id` | get_exchange_rate | id | ExchangeRateView |
-| listExchangeRates | GET `/` | list_exchange_rates | none | ExchangeRateList |
-| captureConversionReview | POST `/reviews` | capture_conversion_review | key,input JSON | ConversionReview |
-| getConversionReview | GET `/reviews/:id` | get_conversion_review | id | ConversionReviewView |
-| listConversionReviews | GET `/reviews` | list_conversion_reviews | none | ConversionReviewList |
+| Operation               | HTTP suffix           | SQL function              | Remaining parameters | Result               |
+| ----------------------- | --------------------- | ------------------------- | -------------------- | -------------------- |
+| createExchangeRate      | POST `/`              | create_exchange_rate      | key,input JSON       | ExchangeRateRevision |
+| reviseExchangeRate      | POST `/:id/revisions` | revise_exchange_rate      | id,key,input JSON    | ExchangeRateRevision |
+| getExchangeRate         | GET `/:id`            | get_exchange_rate         | id                   | ExchangeRateView     |
+| listExchangeRates       | GET `/`               | list_exchange_rates       | none                 | ExchangeRateList     |
+| captureConversionReview | POST `/reviews`       | capture_conversion_review | key,input JSON       | ConversionReview     |
+| getConversionReview     | GET `/reviews/:id`    | get_conversion_review     | id                   | ConversionReviewView |
+| listConversionReviews   | GET `/reviews`        | list_conversion_reviews   | none                 | ConversionReviewList |
 
 Ordinary automation bindings (binder supplies token):
 
-| Capability | Dispatcher key | Remaining binding parameters |
-|---|---|---|
-| fx_list_rates | listExchangeRates | scopeParameter(input.scope) |
-| fx_get_rate | getExchangeRate | scopeParameter(input.scope),input.id |
+| Capability            | Dispatcher key          | Remaining binding parameters                                                 |
+| --------------------- | ----------------------- | ---------------------------------------------------------------------------- |
+| fx_list_rates         | listExchangeRates       | scopeParameter(input.scope)                                                  |
+| fx_get_rate           | getExchangeRate         | scopeParameter(input.scope),input.id                                         |
 | fx_capture_conversion | captureConversionReview | scopeParameter(input.scope),input.idempotencyKey,JSON.stringify(input.input) |
-| fx_get_conversion | getConversionReview | scopeParameter(input.scope),input.id |
-| fx_list_conversions | listConversionReviews | scopeParameter(input.scope) |
+| fx_get_conversion     | getConversionReview     | scopeParameter(input.scope),input.id                                         |
+| fx_list_conversions   | listConversionReviews   | scopeParameter(input.scope)                                                  |
 
 Rate creation/revision intentionally have no ordinary MCP capability. Their SQL admission calls
 `authorize(...,true)` independently of UI role visibility. Capture/read authorization remains the
 ordinary scoped member path and grants no approval. All runtime table writes/private helpers
 are revoked; only the seven authenticated entrypoints receive runtime EXECUTE.
 
-### Exact meaning and safeguards
+#### Exact meaning and safeguards
 
 Rates use target major units per source major unit. Target must equal the selected book currency;
 same-currency pairs are refused. Positive numerator/denominator each use canonical strings of up
@@ -128,7 +137,7 @@ book amount. An exact division has remainder/residual0. Output over the existing
 fails instead of clipping. Source scale0–6 is explicit; book scale0–6 comes from locked metadata.
 The browser never calculates money or supplies an assumed scale/rate.
 
-### Atomicity, recovery and currentness
+#### Atomicity, recovery and currentness
 
 All mutations use existing admission locks, then the book FOR UPDATE barrier. Existing command
 replay occurs before freshness/profile/limit checks after current authorization. Tables, immutable
@@ -154,7 +163,7 @@ keys are not durable recovery. Starting another observation is offered only afte
 The existing evidence retention/inspection controls are reused; previously retained evidence IDs
 can also be supplied directly.
 
-### Limits, source review and open proof
+#### Limits, source review and open proof
 
 `legalPolicyApproved`, `postingSupported`, and `financialCloseReady` remain false. No invoice,
 payment, realized/unrealized gain/loss, carrying-basis release, partial allocation, monetary-item
@@ -170,7 +179,7 @@ No tests or fixtures were written or changed. No tooling, checks, builds, DB/mig
 servers, browser, dependency installation or external actions occurred. SQL compilation, Effect
 and UI types, actual requests, rollback/concurrency and downloaded bytes remain unverified.
 
-## Draft/retry lifetime follow-up — failure cases before edits
+### Draft/retry lifetime follow-up — failure cases before edits
 
 - A background rate revision must not replace an edit draft or discard its unchanged-input retry
   key after an uncertain write. The edit target must be a user-captured revision, not live data.
@@ -182,11 +191,11 @@ and UI types, actual requests, rollback/concurrency and downloaded bytes remain 
   The inspector must own the chosen draft across background updates; parent navigation must wait
   until the user explicitly closes/discards it. No API/math or new state framework is introduced.
 
-## Root source integration
+### Root source integration
 
 Domain and contracts package exports, API/capability composition, fixed statements and HTTP handlers are connected. Reports → Exchange rates and the accounting tools workspace mount the scoped panel. Root source review traced exact integer scale conversion, remainder/half-up rounding,38-digit output refusal, authority/replay/currentness and byte-preserving downloads. Rate-refresh request preservation is receiving an owning UI fix. No source observation establishes runtime acceptance.
 
-### Draft/retry lifetime result
+#### Draft/retry lifetime result
 
 The inspector now captures immutable revision objects on explicit edit/conversion selection.
 Forms live outside the query-result conditional and do not receive live-digest keys. A rate
@@ -208,7 +217,7 @@ explicit discard. No commands, checks, tests or browser execution occurred. Navi
 this feature still requires saved-record recovery after reload; in-memory retry keys are not
 claimed as durable storage.
 
-## Live status after refresh failure — before implementation
+### Live status after refresh failure — before implementation
 
 Cached verified review bytes must remain inspectable/downloadable after a failed or pending live
 refresh. Cached dependenciesCurrent must not claim current or stale when the query has not
@@ -221,7 +230,7 @@ or stale. Previously verified bytes stay inspectable/downloadable. A successful 
 "at the last successful refresh." Only owned views/copy changed; no SQL/API/arithmetic changes.
 No checks, tests or browser execution occurred.
 
-## 2300 permanent withdrawal — failure cases before implementation
+### 2300 permanent withdrawal — failure cases before implementation
 
 - A currently authorized operator may withdraw one currently selected observation with its exact
   current digest, retained withdrawal evidence and rationale. No ordinary MCP mutation may do so.
@@ -244,14 +253,14 @@ private live usability helper; narrowly forward-replaced1900 revision/capture/re
 additive optional live envelopes and a local explicit withdrawal form/history notice. No posting,
 legal activation, readiness change or new generic workflow framework.
 
-## 2300 implemented source and integration
+### 2300 implemented source and integration
 
 New `migrations/2300-exchange-rate-withdrawals.sql` adds one immutable withdrawal event per
 observation, linked by scoped FK to the selected revision and retained evidence. It requires1900;
 1900 and every other historical migration are unchanged. No event or artifact is updated/deleted.
 The per-observation primary key and existing200-observation limit bound withdrawal history.
 
-### Command and authority
+#### Command and authority
 
 `WithdrawExchangeRate = {expectedDigest, evidenceId, rationale}`.
 `ExchangeRateWithdrawal` retains event ID, scope, observation ID, selected revision/digest, exact
@@ -270,7 +279,7 @@ input, evidence hash, permanent=true, timestamp, operator receipt and canonical 
 - Operator authority is rechecked even for replay. Withdrawal remains possible after book profile
   changes because this is a permanent historical rate decision, not a posting/profile activation.
 
-### Necessary forward replacements only
+#### Necessary forward replacements only
 
 `revise_exchange_rate` and `capture_conversion_review` retain their1900 bodies with one added
 `exchange_rate_require_active` call after selecting the existing observation. Their replay path
@@ -290,11 +299,11 @@ reviewed source key is required for a separate observation, never an automatic r
 
 These fields are optional only for historical envelope decoding. Live2300 SQL always emits them.
 An active observation means only not withdrawn, not legal acceptance, market freshness, current
-book/profile compatibility or permission to post. Old rate facts remain current *revision* history
+book/profile compatibility or permission to post. Old rate facts remain current _revision_ history
 while usability is separately withdrawn. Old conversion bytes/hash/length never change, even if
 withdrawal occurred against a later revision than the review originally selected.
 
-### Local UI and recovery
+#### Local UI and recovery
 
 Owned changes are in `exchange-rates/{panel,views,copy}.tsx/ts`, plus new `withdrawal-form.tsx`.
 Rate reads/lists validate withdrawal scope, identity and selected-current digest. Review reads
@@ -314,7 +323,7 @@ same-key successful commands can recover. Fresh obsolete commands remain the bac
 Missing/failed/fetching/paused/unrefreshed usability is unknown, not active or withdrawn. Cached
 verified artifacts remain downloadable. No calculator or financial authority was added to the UI.
 
-### Source review and unchanged limits
+#### Source review and unchanged limits
 
 Compared each forward replacement with1900: two admission calls, additive read envelopes, one
 currentness conjunction; exact conversion arithmetic and retained bytes are unchanged. Traced

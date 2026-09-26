@@ -1,6 +1,14 @@
 # Saved report comparisons (4600)
 
-## Existing owner and failure cases before implementation
+## Current ownership
+
+Application operations live in [application/reports.ts](../src/application/reports.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Existing owner and failure cases before implementation
 
 0120 retains synthetic trial-balance headers and every frozen account line.3400 adds movement
 paging for one report/account and saved-header discovery. Neither compares two saved snapshots.
@@ -28,7 +36,7 @@ headers. Historical bytes/replay remain unchanged; comparisons reject missing hi
 - New prepare_report differs from0120 only by retained scale; preserve every guard, lock, replay,
   line formula and receipt. No historical backfill or book metadata change.
 
-## Implemented read contract
+### Implemented read contract
 
 `GET /api/v1/entities/:entityId/books/:bookId/report-snapshots/:id/compare/:otherId`
 uses `id` as the left snapshot and `otherId` as the right snapshot. MCP `reports_compare`
@@ -80,7 +88,7 @@ No percentage, sign flip, rescaling, currency conversion or inferred profit tran
 All amounts are strings. Source opening includes earlier postings at each saved cutoff; it is not
 a reviewed OpeningSet, prior-year acceptance or comparative statutory disclosure.
 
-## Complete bounded pagination
+### Complete bounded pagination
 
 Each accepted source supports at most10000 complete account lines, independently checked before
 full-source aggregation/hashing. More rows refuse the whole comparison; no first10000 totals or
@@ -95,7 +103,7 @@ The final account can validly resume to an empty page. Later postings, new accou
 cannot enter a frozen source, change a page or alter either source digest. Authorization is checked
 again on every request; no cursor grants access.
 
-## Narrow currency-scale prerequisite approved by root
+### Narrow currency-scale prerequisite approved by root
 
 The new4600 forward replacement of `prepare_report` has exactly this functional difference from
 the latest0120 implementation:
@@ -114,7 +122,7 @@ readable. Old-key replay does not acquire current scale. Comparisons refuse miss
 than use current book metadata. There is no backfill, metadata mutation or automatic regeneration;
 a new report of historical dates uses its new actual cutoff, never masquerades as the old snapshot.
 
-## Root integration
+### Root integration
 
 Owned files:
 
@@ -141,7 +149,7 @@ receipt, UI, artifact subsystem or provider action is introduced for comparison.
 type checks and wave status.4600 creates one authenticated read function and forward-replaces
 prepare solely for scale provenance; compare's runtime role gets EXECUTE only.
 
-## Scope and remaining evidence
+### Scope and remaining evidence
 
 Owned-file `oxfmt --write` passed on the three TypeScript modules and three documents. Owned-file
 `oxlint` passed on the three TypeScript modules with zero warnings/errors. Source comparison

@@ -1,12 +1,20 @@
 # Accountant review pack (END-03)
 
-## Accepted scope
+## Current ownership
+
+Application operations live in [application/accountant-review.ts](../src/application/accountant-review.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Accepted scope
 
 Create a retained accountant-review snapshot from a **current immutable internal trial-balance report**. Materialize all pages and JSON/CSV bytes under one book barrier. Provide balances, all ledger-prefix lines (including explicitly excluded later-dated lines), receipts, evidence and separately visible source/control gaps. Old packs and artifact bytes survive later edits, posting and reopen.
 
 This is synthetic review tooling. It does not activate a real company, establish opening balances or completeness, calculate taxes, transfer results, generate SIE/iXBRL/annual reports, or claim compatibility with any Visma product. Privately paid expenses and shareholder funding need evidence and accountant classification; this pack must not label them loans, conditional/unconditional equity, VAT-free or already settled by inference.
 
-## Risks and acceptance cases recorded before implementation
+### Risks and acceptance cases recorded before implementation
 
 - **Mixed snapshots:** report creation and pack creation can race with posting. Reject a report whose sequence is not the locked book sequence. Pack creation holds book FOR UPDATE; later reads use only materialized rows/artifacts. Each page names pack ID, section, digest and fixed total.
 - **Intermediate correction:** never accept a client-chosen sequence. Use the current committed book sequence under its barrier, which excludes half-committed correction groups.
@@ -23,11 +31,11 @@ This is synthetic review tooling. It does not activate a real company, establish
 
 Root must run native types/lint and permitted local API/browser observations. This owner adds no tests/fixtures and runs no database writes, migrations, builds or servers. Static checks do not prove races, crash recovery, browser behavior or accounting correctness.
 
-## Implementation / integration
+### Implementation / integration
 
 Source implementation is present in `0810-accountant-review-packs.sql`, `packages/contracts/src/accountant-review.ts`, `src/accountant-review.ts` and `apps/web/src/components/accountant-review/`. It has not been migrated or exercised by this owner. Root owns shared composition and native/runtime validation.
 
-### Stable capture and contents
+#### Stable capture and contents
 
 The preparation input names an existing current internal report, an opening explanation, retained opening-evidence IDs, accountant notes and explicitly declared excluded sources. Additional provider materialization occurs under the same book barrier; the owner inventory digest also pins after-end excluded source revisions and identities. The UI can prepare that report first using the existing report API. A stale report or report invalidated by reopening is rejected; an old pack remains readable. No arbitrary historical sequence is accepted because live source/register state cannot be reconstructed from an old ledger watermark alone.
 
@@ -39,13 +47,13 @@ Private existing providers are consumed exactly: `bank_close_dependencies`, `com
 
 `companyCompleteness` is always `not_established`; `statutoryReady` is always false. `openingBasis.status` remains `not_verified` even when the preparer supplies evidence. This package does not implement approved opening sets or zero-opening approval.
 
-### Pagination and historical versions
+#### Pagination and historical versions
 
 Pack, materialized rows and artifacts are append-only. Page size is25. Every page repeats pack ID/digest, selected section, total and next continuation. The page function never re-queries live ledger/source rows. The book-local pack ordinal is allocated under its existing lock; no sequence-backed state is introduced.
 
 Live `dependenciesCurrent` is returned separately from immutable pack content. It compares current sequence/profile/writer, account/year/period configuration, retained evidence inventory, relevant closing history, bank declarations and provider snapshots. It is intentionally conservative: later unrelated activity can mark a pack historical. A true value is not an accounting signoff. Exact creation-key replay returns the original command result; callers should GET the pack for currentness rather than interpreting a replayed creation response as a fresh check.
 
-### Downloadable artifacts
+#### Downloadable artifacts
 
 Eight stored UTF-8 files are generated atomically:
 
@@ -62,17 +70,17 @@ Every CSV has a header and a first `recordType=manifest` row containing pack/dig
 
 SHA-256 and byte length cover the exact retained UTF-8 content, not a browser re-render. Pack/row digests use the existing canonical JSON algorithm. JSON does not contain its own artifact hash; descriptors are returned alongside the pack to avoid a self-hash cycle. The browser validates identity, length and SHA-256 before offering a Blob download. Its link ref owns and releases the object URL.
 
-### Explicit synchronous bounds
+#### Explicit synchronous bounds
 
 Preparation refuses more than1000 vouchers,5000 journal lines,1000 accounts,1000 evidence records or2 MiB total retained original evidence. Provider capture additionally refuses more than100 owners,1000 owner sources/effects,5000 owner allocation legs or200 expense sources. Each generated file is limited to8 MiB. No partial pack is saved on a refusal; a larger durable export is not implemented. Inputs allow20 opening evidence references and20 declared exclusions. The UI exposes one optional exclusion; the API supports the full bounded list.
 
-### Remaining proof and real-company gates
+#### Remaining proof and real-company gates
 
 Bounded source lint/format checks are not database, accounting, browser or security-concurrency proof. Root must review/apply the forward migration after current immutable migrations and perform allowed local observations. The meaningful manual path is prepare → inspect all sections/page boundaries → compare exact downloaded bytes/hash → mutate/reopen in an authorized synthetic book → read the unchanged old pack and observe separate historical currentness.
 
 No real-company opening balances, VAT/deductibility, owner-funding classification, liabilities, source completeness, independent file-consumer acceptance or Visma compatibility is established. No external validator, provider, filing or deployment is part of this package. Exact shared integration instructions live in `.agents/work/accountant-review-handoff.md`.
 
-## Owner and expense-review integration risks (recorded before0820)
+### Owner and expense-review integration risks (recorded before0820)
 
 -0820 must replace only the private live closing basis in a new forward migration. Existing0800 bytes, certificates, approvals and receipts remain unchanged. Older proposals lack these dependencies and must become stale rather than receive implied approval for new checks.
 
@@ -84,7 +92,7 @@ No real-company opening balances, VAT/deductibility, owner-funding classificatio
 
 Provider inventory limits are checked before aggregating source hooks, including currentness reads. If live provider state exceeds supported bounds, an old pack/descriptor read remains available with `dependenciesCurrent=false`; stored pages and artifact bytes stay readable and unchanged. Known expense sources remain explicit missing close coverage regardless of whether their review digest is current.
 
-##6400 row continuation binding — failure contract before code
+###6400 row continuation binding — failure contract before code
 
 0810 row continuation accepts an unbound ordinal. A continuation from another pack/section,
 or a nonexistent position, can silently skip materialized rows and appear terminal. For example,
@@ -111,7 +119,7 @@ The web client already separates pack/digest/section query keys; no browser repr
 Source review and static checks are not runtime proof. No tests, SQL compilation/application,
 runtime, provider, browser/UI or VCS actions are authorized for this packet.
 
-###6400 implemented source and integration
+####6400 implemented source and integration
 
 `6400-accountant-review-row-cursors.sql` replaces only the existing row-page function. New
 continuation is `packId:section:ordinal`. SQL bounds it to163 characters (128-character pack

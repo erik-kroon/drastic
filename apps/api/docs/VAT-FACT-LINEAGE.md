@@ -1,5 +1,13 @@
 #5000 retained VAT fact lineage — pre-code failure contract
 
+## Current ownership
+
+Application operations live in [application/vat/basis.ts](../src/application/vat/basis.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 This packet extends existing `getVatFact` only. No new mutation, artifact family or legal
 interpretation is authorized.4400 settlement policy remains deferred.
 
@@ -28,7 +36,7 @@ and sourceDigest.3300 saved amendment `impact.facts[]` retains exact factId, nul
 replacement revision+assessment sides, sourceChanged, assessmentChanged and contributionDelta.
 Later3700/4500 comparisons accept newer engines without rewriting this saved impact shape.
 
-## Implemented source
+### Implemented source
 
 `5000-vat-fact-lineage.sql` forward-replaces only the existing `get_vat_fact` read owner and
 adds its private immutable assessment allowlist helper.3700 and saved v1/v2/v3 drafts and
@@ -54,7 +62,7 @@ history receipts keep their original behavior. New lineage summaries use explici
 allowlists and do not copy draft/amendment command receipts, approvals or reviewer input
 payloads. Assessment projection keeps only known saved assessment/contribution fields.
 
-### Exact selection and complete-read limits
+#### Exact selection and complete-read limits
 
 Authorization precedes lookup. All rows are selected by the authorized book and exact stable
 fact ID under the existing book read barrier. Evidence hashes, amounts and similarly named
@@ -75,7 +83,7 @@ owner is evaluated. A later withdrawal or metadata change cannot rewrite the cap
 assessment shown here. Independent currentness remains available through the existing
 appropriate draft/review readers; this projection makes no currentness claim.
 
-## Source review and checks
+### Source review and checks
 
 Reviewed saved1000/3700/4500 draft shapes and their ordinal/identity sealing checks,3300/4500
 retained impact shapes, book-scoped source history and existing500/500 inventory bounds.

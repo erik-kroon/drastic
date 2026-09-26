@@ -1,8 +1,16 @@
 # VAT draft amendments — VAT-04 bounded source slice
 
+## Current ownership
+
+Application operations live in [application/vat/returns.ts](../src/application/vat/returns.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 Status: implemented source; migration3300 is unapplied. No database, HTTP or concurrent-runtime proof is claimed.
 
-## Behavior
+### Behavior
 
 ```text
 existing facts → existing prepareVatDraft / calculateVatDraft → immutable replacement draft
@@ -38,7 +46,7 @@ evidence hashes, original fact inputs, ledger-line IDs and expense-review lineag
 lineage is the existing engine version plus captured book profile/version; this slice does
 not invent a separate legal mapping release.
 
-## Review, recovery and authority
+### Review, recovery and authority
 
 `reviewVatAmendment` is operator-only. The operator must supply exact original/replacement
 digests, the comparison's `expectedImpactDigest`, retained review evidence and a rationale.
@@ -56,7 +64,7 @@ book. Pair uniqueness, scoped foreign keys and immutable triggers back the comma
 Reads require current scoped membership. Only approved entry functions are executable by
 `openerp_runtime`; the table and private comparison helper have no runtime/public grant.
 
-## Limits
+### Limits
 
 This is an internal reviewed relationship, not return approval or an artifact handoff to a
 tax authority. Both the impact and review explicitly retain `filingReady: false` and
@@ -75,7 +83,7 @@ format. Amendment relationships are available through their dedicated list/get s
 not silently added to an older pack's declared coverage. Full VAT-03/04 and legal gates
 remain open.
 
-## Files and shared integration
+### Files and shared integration
 
 Owned files:
 
@@ -125,7 +133,7 @@ Root added these query/dispatcher integrations during implementation; they are v
 source. Do not add the operator review command to ordinary MCP. No package exports or new
 API group registration are needed.
 
-## Source review and checks
+### Source review and checks
 
 Source review covered cross-book IDs/evidence, unknown engine/mode, same/reversed draft order,
 interval mismatch, exact digest mismatch, incomplete/duplicate fact lineage, contribution/box

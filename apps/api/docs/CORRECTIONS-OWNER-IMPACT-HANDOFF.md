@@ -1,8 +1,16 @@
 # 0890 owner/correction impact integration
 
+## Current ownership
+
+Application operations live in [application/posting-corrections.ts](../src/application/posting-corrections.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 Root reserved `0890-owner-correction-impact.sql` for this correction-domain fix. It requires0410 and0610 and replaces only the private impact-resource reader, while adding one private owner-resource helper. Both explicitly revoke PUBLIC/runtime EXECUTE and use protected search paths. No shared dispatcher, authentication, route, capability or Drizzle mapping change is needed.
 
-## Source behavior
+### Source behavior
 
 - Match owner sources through the original voucher's event and retained evidence/locator, including records with no posted effect.
 - Also match owner effects by voucher and posted proposal attachments by the posted change-set identity. Missing effect capture does not erase source/proposal provenance.
@@ -13,13 +21,13 @@ Root reserved `0890-owner-correction-impact.sql` for this correction-domain fix.
 
 The contract only adds `owner_record` and optional `dependencyDigest`; old persisted resources still decode. The owned impact UI displays that digest with an English/Swedish label and its existing affected-record link.
 
-## Validation and limits
+### Validation and limits
 
 Bounded owned-file Oxlint passed with zero warnings/errors on the contract and two changed UI files. Oxfmt passed on those files and the workbench document. Source review confirmed0410 and0610 bytes were unchanged during this fix. No SQL, migration, runtime, browser, tests, global check, dependency, Git action or delegation was run. Concurrent owner admission, snapshot comparison, rejection before financial writes, rollback and historical receipt recovery remain unverified. Root controls the migration batch and native validation.
 
 Next root action: inspect0890 and apply it after0610/0410 in the authorized local batch; keep the known-owner blocking policy until an explicit owner correction/release contribution exists. Acceptance cases are recorded in `CORRECTIONS-WORKBENCH.md`.
 
-## Released SHA-256
+### Released SHA-256
 
 - `apps/api/migrations/0890-owner-correction-impact.sql`: `537ec54ceb827645777d1788953c1aa6661138ac232f0ce2be1f969408913859`
 - `packages/contracts/src/corrections.ts`: `7627d0e6145ed618af91adf46b17a1c955262dc66b3ec49a4d8efd0cd5b73844`

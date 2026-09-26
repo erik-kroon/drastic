@@ -1,6 +1,14 @@
 # Synthetic invoice issue review and execution
 
-## Accepted slice and failure cases (before implementation)
+## Current ownership
+
+Application operations live in [application/commerce/invoice-lifecycle.ts](../src/application/commerce/invoice-lifecycle.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Accepted slice and failure cases (before implementation)
 
 An operator reviews a current customer draft and explicitly chooses both accounts, period and voucher series for an exact two-line synthetic journal. Preparation retains the full immutable draft as evidence and seals the kernel posting plan, without posting or allocating a document number. A separate one-hour human approval covers draft, counterpart, amounts, both accounts and the exact kernel plan. The approving operator can execute the whole synthetic issue + posting + customer-register group atomically.
 
@@ -19,11 +27,11 @@ Failure cases:
 - Exact command replay reauthorizes and returns the saved result even after approval consumption or later dependency changes. GET/history rediscover the saved issue after response loss or reload.
 - Bound reviews to 50 per draft and approvals to 50 per review. History returns all bounded summaries or fails; no silent truncation. Retained full-draft evidence uses the kernel's 65,536-character/262,144-byte limit.
 
-## Verification boundary
+### Verification boundary
 
 No tests, fixtures, validation commands, database/migration execution, servers, browser work or external actions are authorized. Implementation and manual source review are not runtime proof. Race, rollback, revoked authority, complete migration, arithmetic and browser observations remain unverified.
 
-## Implemented source
+### Implemented source
 
 - `migrations/1400-invoice-issuance.sql`: scoped immutable review/approval/issue records, transactional internal counter, draft freeze, and deferred aggregate-posting guard. No previous migration changed.
 - `../../packages/contracts/src/invoice-issuance.ts`: five endpoint contracts and two read-only MCP capabilities.
@@ -31,7 +39,7 @@ No tests, fixtures, validation commands, database/migration execution, servers, 
 - `src/db/statements/invoice-issuance.ts`: fixed parameterized Drizzle statements.
 - `../web/src/components/commerce/invoice-issuance.tsx` and `invoice-issue-copy.ts`: separate bilingual draft lookup, bounded review history, frozen preparation input, readable commercial/journal lines, evidence inspection, approval/execution and exact JSON download. No existing dirty commerce/UI files changed.
 
-### Caller flow
+#### Caller flow
 
 ```text
 current draft + explicitly chosen debit/credit accounts, period and series
@@ -58,7 +66,7 @@ Issued draft heads cannot advance. Historical draft bodies retain their original
 
 Reads hold a book SHARE barrier. History returns all at most 50 review summaries for the selected draft, including each committed issue identity. Review GET retains old content even when dependencies are stale or authority/profile changed, subject to current read admission. The latest approval is shown with a caller-specific usability envelope: the authenticated reader must be the same currently authorized operator, and the approval must be unexpired. Execution enforces those conditions again. Another review's issue is found through history, not attached to unrelated reviewed content. There is no browser persistence of private drafts or keys; existing `CommandForm` keeps exact retry identity in memory and offers request download.
 
-## Root integration map
+### Root integration map
 
 The root has connected the shared files and routed and tools UI composition below in source. Runtime acceptance remains open.
 
@@ -73,13 +81,13 @@ The root has connected the shared files and routed and tools UI composition belo
 
 REST prefix: `/api/v1/entities/:entityId/books/:bookId/commerce`. Mutation headers require `Idempotency-Key`. Parameters below omit the leading authenticated token.
 
-| Operation | Route suffix | SQL function | Parameters after token | Response |
-| --- | --- | --- | --- | --- |
-| `prepareInvoiceIssue` | POST `/invoice-issue-reviews` | `prepare_invoice_issue` | scope, key, JSON input | `InvoiceIssueReview` |
-| `approveInvoiceIssue` | POST `/invoice-issue-reviews/:id/approvals` | `approve_invoice_issue` | scope, id, key, JSON input | `InvoiceIssueApproval` |
-| `executeInvoiceIssue` | POST `/invoice-issue-reviews/:id/execute` | `execute_invoice_issue` | scope, id, key, JSON input | `InvoiceIssueReceipt` |
-| `getInvoiceIssueReview` | GET `/invoice-issue-reviews/:id` | `get_invoice_issue_review` | scope, id | `InvoiceIssueView` |
-| `invoiceIssueHistory` | GET `/invoice-drafts/:id/issue-reviews` | `invoice_issue_history` | scope, draft id | `InvoiceIssueHistory` |
+| Operation               | Route suffix                                | SQL function               | Parameters after token     | Response               |
+| ----------------------- | ------------------------------------------- | -------------------------- | -------------------------- | ---------------------- |
+| `prepareInvoiceIssue`   | POST `/invoice-issue-reviews`               | `prepare_invoice_issue`    | scope, key, JSON input     | `InvoiceIssueReview`   |
+| `approveInvoiceIssue`   | POST `/invoice-issue-reviews/:id/approvals` | `approve_invoice_issue`    | scope, id, key, JSON input | `InvoiceIssueApproval` |
+| `executeInvoiceIssue`   | POST `/invoice-issue-reviews/:id/execute`   | `execute_invoice_issue`    | scope, id, key, JSON input | `InvoiceIssueReceipt`  |
+| `getInvoiceIssueReview` | GET `/invoice-issue-reviews/:id`            | `get_invoice_issue_review` | scope, id                  | `InvoiceIssueView`     |
+| `invoiceIssueHistory`   | GET `/invoice-drafts/:id/issue-reviews`     | `invoice_issue_history`    | scope, draft id            | `InvoiceIssueHistory`  |
 
 ```ts
 commerce_get_invoice_issue_review: bindCapability(
@@ -94,7 +102,7 @@ commerce_invoice_issue_history: bindCapability(
 ),
 ```
 
-### Source-review outcome and remaining limits
+#### Source-review outcome and remaining limits
 
 Manual source review followed wrong-scope and revoked-authority admission, exact request replay/conflict, changed draft/counterpart/account/period dependencies, approval identity/expiry, competing plans, generic/equivalent posting bypass, counter rollback and immutable issuance. It compared SQL return fields with schemas, fixed statements, handlers and UI consumers. These are reasoned properties of source, **not executed verification**.
 
@@ -102,7 +110,7 @@ No tests/fixtures/checks/builds/browser/database/dependency actions ran. Migrati
 
 No real-company issuance, legal numbering, VAT determination, cash-method timing, credit notes, supplier issuance, FX, invoice correction/release, payment initiation, rendering, email/Peppol/provider delivery or complete source-coverage claim is added. Those require reviewed profiles and their own authority/acceptance. This branch is explicitly synthetic and cannot be enabled merely by supplying real facts to a request.
 
-## Customer-route overlay amendment
+### Customer-route overlay amendment
 
 `InvoiceIssuance` accepts optional `recordId` as the initial draft ID. It remounts by entity/book/record, supporting the Sales `view=issue&record=<draft>` route without stale local selection.
 

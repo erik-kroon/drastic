@@ -1,67 +1,55 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Credits from "@open-erp/contracts/supplier-credits";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { query, scopeParameter } from "../../../db/query";
+import {
+  approveSupplierCredit,
+  executeSupplierCredit,
+  getSupplierCreditReview,
+  prepareSupplierCredit,
+  supplierCreditHistory,
+} from "../../../application/purchases/credits";
 
 export const SupplierCreditHandlers = HttpApiBuilder.group(Api, "supplierCredits", (handlers) =>
   handlers
     .handle("prepareSupplierCredit", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "prepareSupplierCredit",
-          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-          Credits.SupplierCreditReview,
-        ),
+        prepareSupplierCredit(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("approveSupplierCredit", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "approveSupplierCredit",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          Credits.SupplierCreditApproval,
-        ),
+        approveSupplierCredit(token, {
+          scope: scopeFromPath(params),
+          reviewId: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("executeSupplierCredit", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "executeSupplierCredit",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          Credits.SupplierCreditReceipt,
-        ),
+        executeSupplierCredit(token, {
+          scope: scopeFromPath(params),
+          reviewId: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("getSupplierCreditReview", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "getSupplierCreditReview",
-          [token, scopeParameter(params), params.id],
-          Credits.SupplierCreditView,
-        ),
+        getSupplierCreditReview(token, { scope: scopeFromPath(params), reviewId: params.id }),
       ),
     )
     .handle("supplierCreditHistory", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "supplierCreditHistory",
-          [token, scopeParameter(params), params.id],
-          Credits.SupplierCreditHistory,
-        ),
+        supplierCreditHistory(token, { scope: scopeFromPath(params), invoiceId: params.id }),
       ),
     ),
 );

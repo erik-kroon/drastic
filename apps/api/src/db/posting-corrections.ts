@@ -29,9 +29,9 @@ export function readBundle(
   transaction: Transaction,
   scope: typeof Accounting.Scope.Type,
   bundleId: string,
-  lock: "share" | "update" = "share",
+  _lock: "share" | "update" = "share",
 ) {
-  const query = transaction
+  return transaction
     .select({
       bookId: correctionBundles.bookId,
       id: correctionBundles.id,
@@ -44,7 +44,6 @@ export function readBundle(
     })
     .from(correctionBundles)
     .where(and(eq(correctionBundles.bookId, scope.bookId), eq(correctionBundles.id, bundleId)));
-  return lock === "update" ? query.for("update") : query.for("share");
 }
 
 export function readBundleByChangeSet(
@@ -60,8 +59,7 @@ export function readBundleByChangeSet(
         eq(correctionBundles.bookId, bookId),
         sql`${changeSetId} in (${correctionBundles.reversalChangeSetId}, ${correctionBundles.replacementChangeSetId})`,
       ),
-    )
-    .for("share");
+    );
 }
 
 export function readBundleForVoucher(
@@ -88,8 +86,7 @@ export function readBundleForVoucher(
       ),
     )
     .orderBy(desc(correctionBundles.createdAt), desc(correctionBundles.id))
-    .limit(1)
-    .for("share");
+    .limit(1);
 }
 
 export function listBundles(
@@ -116,8 +113,7 @@ export function listBundles(
     )
     .where(and(eq(correctionBundles.bookId, scope.bookId), gt(correctionBundles.id, afterId)))
     .orderBy(asc(correctionBundles.id))
-    .limit(26)
-    .for("share");
+    .limit(26);
 }
 
 export function insertBundle(
@@ -140,9 +136,9 @@ export function readBundleApproval(
   scope: typeof Accounting.Scope.Type,
   bundleId: string,
   approvalId: string,
-  lock: "share" | "update" = "share",
+  _lock: "share" | "update" = "share",
 ) {
-  const query = transaction
+  return transaction
     .select({
       bookId: correctionBundleApprovals.bookId,
       id: correctionBundleApprovals.id,
@@ -160,7 +156,6 @@ export function readBundleApproval(
         eq(correctionBundleApprovals.id, approvalId),
       ),
     );
-  return lock === "update" ? query.for("update") : query.for("share");
 }
 
 export function readLatestBundleApproval(
@@ -184,8 +179,7 @@ export function readLatestBundleApproval(
       ),
     )
     .orderBy(desc(correctionBundleApprovals.expiresAt), desc(correctionBundleApprovals.id))
-    .limit(1)
-    .for("share");
+    .limit(1);
 }
 
 export function insertBundleApproval(
@@ -224,8 +218,7 @@ export function readBundleReceipt(
         eq(correctionBundleReceipts.bookId, scope.bookId),
         eq(correctionBundleReceipts.bundleId, bundleId),
       ),
-    )
-    .for("share");
+    );
 }
 
 export function insertBundleReceipt(
@@ -247,9 +240,8 @@ export function readImpactReview(
   transaction: Transaction,
   scope: typeof Accounting.Scope.Type,
   impactId: string,
-  lock: "share" | "update" = "share",
 ) {
-  const query = transaction
+  return transaction
     .select({
       bookId: correctionImpactReviews.bookId,
       id: correctionImpactReviews.id,
@@ -263,7 +255,6 @@ export function readImpactReview(
         eq(correctionImpactReviews.id, impactId),
       ),
     );
-  return lock === "update" ? query.for("update") : query.for("share");
 }
 
 export function insertImpactReview(
@@ -323,8 +314,7 @@ export function readVouchersByIds(transaction: Transaction, bookId: string, ids:
     })
     .from(vouchers)
     .where(and(eq(vouchers.bookId, bookId), inArray(vouchers.id, ids)))
-    .orderBy(asc(vouchers.sequence))
-    .for("share");
+    .orderBy(asc(vouchers.sequence));
 }
 
 export function readChainLines(transaction: Transaction, bookId: string, voucherIds: string[]) {
@@ -341,8 +331,7 @@ export function readChainLines(transaction: Transaction, bookId: string, voucher
       creditMinor: journalLines.creditMinor,
     })
     .from(journalLines)
-    .where(and(eq(journalLines.bookId, bookId), inArray(journalLines.voucherId, voucherIds)))
-    .for("share");
+    .where(and(eq(journalLines.bookId, bookId), inArray(journalLines.voucherId, voucherIds)));
 }
 
 export function readBundleReceiptsForVouchers(
@@ -365,8 +354,7 @@ export function readBundleReceiptsForVouchers(
         inArray(correctionBundleReceipts.originalVoucherId, voucherIds),
       ),
     )
-    .orderBy(sql`${correctionBundleReceipts.body}->>'committedAt'`)
-    .for("share");
+    .orderBy(sql`${correctionBundleReceipts.body}->>'committedAt'`);
 }
 
 type ResourceRow = { resource: typeof Corrections.CorrectionImpactResource.Type };

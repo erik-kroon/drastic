@@ -1,10 +1,18 @@
 # Atomic corrections
 
-## Current workbench layer
+## Current ownership
+
+Application operations live in [application/posting-corrections.ts](../src/application/posting-corrections.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Current workbench layer
 
 The new0410 source adds snapshot-bound impact review, chain/discovery and request recovery. See [CORRECTIONS-WORKBENCH.md](CORRECTIONS-WORKBENCH.md) for acceptance cases and supported/blocked behavior, and [CORRECTIONS-HANDOFF.md](CORRECTIONS-HANDOFF.md) for root integration. Its runtime evidence is separate from the earlier0400/0401 observation below. New bundle sealing requires a reviewed impact reference; registered downstream compensation remains unavailable rather than inferred.
 
-## Original bundle boundary
+### Original bundle boundary
 
 `0400-correction-bundles.sql` adds a linked reversal **and** replacement workflow for the existing `synthetic-core-v1` manual journal profile. It depends on migrations through0211 and0300 (the posting recovery hook). It does not replace the reversal-only API.
 
@@ -25,7 +33,7 @@ Both parts use the same explicitly selected open period and date, which cannot p
 
 This is a synthetic operational policy, not a finding that these dates or this workflow satisfy a company's statutory correction requirements. Tax recalculation, dimension changes, new replacement evidence, standalone-reversal upgrade, reopening and historic import correction are outside this version.
 
-## Atomicity and authority
+### Atomicity and authority
 
 After normal credential/member admission locks, mutation commands lock the book first. Preparation/approval/execution hold shared locks on the relevant period, fiscal year and union of original/replacement accounts. Execution checks both sealed dependency sets before calling either kernel command. The kernel checks each approval and locks its operator membership through commit.
 
@@ -37,7 +45,7 @@ All bundle history is append-only. Tables and private helpers explicitly revoke 
 
 A dependent domain may install a book-serialized `BEFORE INSERT` voucher guard to reject reversals of active linked records. Commerce is implementing this for active recognition/allocation links. Such a rejection rolls back the complete correction. This module does not rewrite commerce residuals or bypass those guards.
 
-## Retry and recovery contract
+### Retry and recovery contract
 
 - Same key, actor and payload returns the exact committed command result. Different content under that key conflicts.
 - Execution under a fresh key returns the original paired receipt when bundle digest/version/original approval match. It does not consume another approval or recheck already-committed dependencies.
@@ -47,7 +55,7 @@ A dependent domain may install a book-serialized `BEFORE INSERT` voucher guard t
 - GET by original voucher ID returns its committed bundle, otherwise its latest prepared bundle. No bundle found does **not** prove the original is unreversed. Ordinary voucher history still owns reversal-only records.
 - Lost prepare responses can be recovered by original voucher ID. Lost approval/execute responses can be recovered by bundle ID. The UI also retains a stable in-memory request key per exact payload and offers refresh, not blind fresh-key posting.
 
-## Integration
+### Integration
 
 Export `./corrections` from the contracts package. Add `CorrectionApi` to `Api` and `CorrectionHandlers` to the Worker layer. Spread `CorrectionCapabilities` into the common capability schema map and bind:
 
@@ -62,7 +70,7 @@ The REST-only `approveCorrectionBundle` database operation takes scope JSON, bun
 
 Mount `CorrectionsPanel` from `apps/web/src/components/corrections/corrections-panel.tsx` with `{book, setup, locale}`, inside a book-keyed boundary. The panel supplies original lookup, editable replacement lines, sealing, original/reversal/replacement and evidence review, exact approval, atomic execution and receipt recovery. It uses the owned StyleX UI primitives and a domain-local English/Swedish copy module. TanStack Query owns remote state; monetary checks use BigInt, not Number.
 
-## Evidence status and required failure work
+### Evidence status and required failure work
 
 Implementation, source review and one manual local synthetic workflow are recorded. Bounded Oxlint passed on the owned contracts, API adapter and correction UI with zero warnings/errors; Oxfmt passed on those files and this document. No tests, fixtures, migration application, server, build or database mutation were run by this domain worker. Root owns shared static validation and any authorized local development observation. Source checks do not prove PostgreSQL transaction behavior, browser layout, keyboard behavior, 200% zoom or compliance.
 

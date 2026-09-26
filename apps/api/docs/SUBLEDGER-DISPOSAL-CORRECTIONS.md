@@ -1,6 +1,14 @@
 # Terminal disposal correction-impact closure —4900
 
-## Failure contract (before implementation)
+## Current ownership
+
+Application operations live in [application/subledger/schedules.ts](../src/application/subledger/schedules.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql). Impairment/disposal and two schedule-amendment operations still contain unsupported placeholders; consult the current source before relying on the historical behavior below.
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Failure contract (before implementation)
 
 This packet closes only two discovery/admission edges left after4200: a posted disposal
 voucher and its retained acquisition/imported basis voucher. It grants no correction,
@@ -21,7 +29,7 @@ reversal, reopening, financial posting or source-completeness authority.
 - No history is deleted, no posted balance or register is released, and no new generic
   exception may bypass4200's terminal disposal owner.
 
-## Inspected consumers
+### Inspected consumers
 
 1700's current resource function identifies recognition through `subledger_preparations`,
 not disposal reviews or original basis.0410 `correction_impact_basis` materializes every
@@ -42,15 +50,14 @@ OR disposal.review_id -> review.basis.carryingBasis.input.voucherId
 Both relationships remain anchored to one disposed schedule in the authorized book.
 Ordinary recognition resources are not expanded by this packet.
 
-## Coordination gate
+### Coordination gate
 
 The failure contract was recorded while4700 still owned the replacement. Root then handed
 off completed4700.4900 was built from that exact function only after the handoff. The final
 1000-resource refusal stays after all composed contributions. No tests/runtime work is
 authorized.
 
-
-## Implemented source
+### Implemented source
 
 `migrations/4900-subledger-disposal-correction-impact.sql` replaces only the private resource
 reader. It directly aggregates the two same-book terminal ownership edges from immutable
@@ -78,7 +85,7 @@ expansion was added. The path remains `/schedules/:id`. Existing `CorrectionImpa
 already supports this schedule kind and optional dependency digest, including4700's
 independent optional tax metadata.
 
-## Verification limits
+### Verification limits
 
 Source diff against the handed-off4700 owner contains only the local result variable,
 direct disposal aggregation, composition concatenation and an explanatory comment.

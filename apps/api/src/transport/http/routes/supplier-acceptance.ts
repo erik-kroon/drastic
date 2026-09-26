@@ -1,9 +1,15 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Issuance from "@open-erp/contracts/supplier-acceptance";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { query, scopeParameter } from "../../../db/query";
+import {
+  approveSupplierAcceptance,
+  executeSupplierAcceptance,
+  getSupplierAcceptanceReview,
+  prepareSupplierAcceptance,
+  supplierAcceptanceHistory,
+} from "../../../application/purchases/acceptance";
 
 export const SupplierAcceptanceHandlers = HttpApiBuilder.group(
   Api,
@@ -11,63 +17,42 @@ export const SupplierAcceptanceHandlers = HttpApiBuilder.group(
   (handlers) =>
     handlers
       .handle("prepareSupplierAcceptance", ({ params, headers, payload }) =>
-        Effect.gen(function* () {
-          const token = yield* authenticate;
-          return yield* query(
-            "prepareSupplierAcceptance",
-            [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-            Issuance.SupplierAcceptanceReview,
-          );
-        }),
+        Effect.flatMap(authenticate, (token) =>
+          prepareSupplierAcceptance(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
+        ),
       )
       .handle("approveSupplierAcceptance", ({ params, headers, payload }) =>
-        Effect.gen(function* () {
-          const token = yield* authenticate;
-          return yield* query(
-            "approveSupplierAcceptance",
-            [
-              token,
-              scopeParameter(params),
-              params.id,
-              headers["idempotency-key"],
-              JSON.stringify(payload),
-            ],
-            Issuance.SupplierAcceptanceApproval,
-          );
-        }),
+        Effect.flatMap(authenticate, (token) =>
+          approveSupplierAcceptance(token, {
+            scope: scopeFromPath(params),
+            reviewId: params.id,
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
+        ),
       )
       .handle("executeSupplierAcceptance", ({ params, headers, payload }) =>
-        Effect.gen(function* () {
-          const token = yield* authenticate;
-          return yield* query(
-            "executeSupplierAcceptance",
-            [
-              token,
-              scopeParameter(params),
-              params.id,
-              headers["idempotency-key"],
-              JSON.stringify(payload),
-            ],
-            Issuance.SupplierAcceptanceReceipt,
-          );
-        }),
+        Effect.flatMap(authenticate, (token) =>
+          executeSupplierAcceptance(token, {
+            scope: scopeFromPath(params),
+            reviewId: params.id,
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
+        ),
       )
       .handle("getSupplierAcceptanceReview", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "getSupplierAcceptanceReview",
-            [token, scopeParameter(params), params.id],
-            Issuance.SupplierAcceptanceView,
-          ),
+          getSupplierAcceptanceReview(token, { scope: scopeFromPath(params), reviewId: params.id }),
         ),
       )
       .handle("supplierAcceptanceHistory", ({ params }) =>
         Effect.flatMap(authenticate, (token) =>
-          query(
-            "supplierAcceptanceHistory",
-            [token, scopeParameter(params), params.id],
-            Issuance.SupplierAcceptanceHistory,
-          ),
+          supplierAcceptanceHistory(token, { scope: scopeFromPath(params), draftId: params.id }),
         ),
       ),
 );

@@ -1,6 +1,14 @@
 # Synthetic commerce slice
 
-## State
+## Current ownership
+
+Application operations live in [application/commerce/register.ts](../src/application/commerce/register.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### State
 
 Implemented source: shared contracts, Effect REST adapters, applied `0600-commerce.sql`,
 and a dedicated lazy-loaded register UI in the accounting workspace. Root composed the REST/MCP
@@ -18,7 +26,7 @@ is established. Static checks are not an end-to-end release claim.
 No production authority, legal-identity verification, VAT determination, payment initiation,
 or source-inventory completeness is claimed.
 
-## Safety cases to verify before release
+### Safety cases to verify before release
 
 - Unknown, revoked, expired or wrong-book credentials cannot read/write commerce state.
 - Agent credentials cannot approve; a removed operator cannot authorize later application.
@@ -35,13 +43,13 @@ or source-inventory completeness is claimed.
 - Domain lists and immutable invoice histories paginate; a page is not a complete register.
 - Unpaid invoices do not block technical period close; unknown invoice coverage still blocks completeness claims.
 
-## Shared composition
+### Shared composition
 
 The fourteen scoped REST operations are defined in
 [`packages/contracts/src/commerce.ts`](../../../packages/contracts/src/commerce.ts), adapted in
 the [commerce HTTP routes](../src/transport/http/routes/commerce.ts), and dispatched through
 fixed database statements. The ordinary capabilities share those operations through
-[application capabilities](../src/application/capabilities.ts). Operator approval remains REST-only.
+the former application capability registry. Operator approval remains REST-only.
 
 The workspace lazy-loads [`CommercePanel`](../../web/src/components/commerce/commerce-panel.tsx).
 Queries are scoped through the request-scoped TanStack Query client and validate contract responses.
@@ -50,7 +58,7 @@ captured values and retry key. Browser persistence is not implemented. Save exac
 and key before sending; reload or leaving can lose an unsaved request. JSON export is available only
 after sending. This is not crash-safe automatic recovery.
 
-## Implemented authority boundary
+### Implemented authority boundary
 
 - Counterparty keys and roles are scoped and immutable. Names and supporting evidence append revisions.
 - Invoice natural identity is `(book, direction, counterparty, document number)`.
@@ -77,7 +85,7 @@ after sending. This is not crash-safe automatic recovery.
   the invoice may have been recognized in an earlier locked period. Metadata revisions do not rewrite
   the immutable financial identity used by closing dependencies.
 
-## Cross-domain guards
+### Cross-domain guards
 
 `commerce_voucher_reversal_boundary` is a commerce-owned trigger on voucher insertion. It rejects
 reversals/corrections of registered recognition vouchers or payment vouchers with active allocations. Both existing
@@ -88,7 +96,7 @@ accounts separate from registered bank accounts. Ordinary bank-source revision u
 Bank observation/bank-line matching belongs to settlements and never consumes invoice/payment-control
 capacity. Commerce does not require a bank match and does not infer that a payment was initiated.
 
-## Closing hook
+### Closing hook
 
 Private `openerp.commerce_period_status(p_book text,p_starts date,p_ends date)` must be called by the
 closing authority under its book lock. Its bounded response is:
@@ -113,11 +121,11 @@ closing. Unpaid invoices alone do not. `coverage: not_established` always remain
 No tests or fixtures were added. No migration, database mutation, server, build, repository-wide
 check, deployment or commit was run by this worker for this slice.
 
-## Separate native commercial drafts
+### Separate native commercial drafts
 
 The [invoice-draft packet](INVOICE-DRAFTS.md) adds an operator-owned, bounded customer commercial-draft path in migration1200. It is separate from this module's posted-recognition registration. It retains source identity evidence, exact line amounts/discounts/charges, unknown tax facts, totals and immutable editable-by-supersession revisions. Native commercial draft saving does not allocate legal invoice numbers, post, register a receivable, activate tax treatment or deliver. The local panel labels both paths separately. Source implementation is not runtime verification, and issuance/recognition/delivery dependencies remain open.
 
-## 6500 allocation approval recovery — pre-edit failure contract
+### 6500 allocation approval recovery — pre-edit failure contract
 
 A supported sequence can approve one allocation plan twice (A1, then A2) and apply it
 with still-valid A1. The old getter selects A2 by latest expiry, but the application
@@ -140,7 +148,7 @@ The approved repair changes only `commerce_get_allocation` in a forward migratio
 Source inspection is the authorized check. No tests, SQL compilation/application, runtime,
 provider calls or VCS actions are authorized. Runtime recovery remains unverified.
 
-### Implemented source and validation limit
+#### Implemented source and validation limit
 
 `migrations/6500-commerce-allocation-approval-recovery.sql` replaces only the existing
 getter. It loads the application row under the unchanged book SHARE barrier. A committed

@@ -1,10 +1,10 @@
 # ADR 0010: application-owned accounting replacement
 
-Status: accepted implementation decision, 2026-09-25. The replacement, clean database baseline and effect-mq integration are planned; implementation and runtime proof remain open.
+Status: accepted implementation decision, 2026-09-25; progress updated 2026-09-26. Application dispatch, effect-mq composition and the three-file baseline are implemented. [Baseline checks](../plans/evidence/application-owned-baseline-cutover.md) pass locally; remaining domain ports, retained SQL policy guards and broader release proof stay open.
 
 ## Context
 
-OpenERP has no users or deployed accounting data to preserve. The current source still exposes the earlier accounting boundary: most capabilities in `apps/api/src/application/capabilities.ts` bind a name and string parameters to `apps/api/src/db/query.ts`; several HTTP handlers call `query()` directly; and `query()` creates a new database layer for each call. The current hosted preparation path is a Cloudflare Workflow with a Cron dispatcher in `apps/api/src/runtime/cloudflare.ts`, while the self-host entrypoint has no connected background runner.
+OpenERP has no users or deployed accounting data to preserve. At the decision date, most capabilities bound a name and string parameters to `db/query.ts`; several HTTP handlers called it directly; and each call created a new database layer. Hosted preparation used a Cloudflare Workflow with a Cron dispatcher, while the self-host entrypoint had no connected background runner. These are the superseded boundaries that motivated this decision.
 
 The replacement must retain the financial requirements in [ADR 0002](0002-exact-posting-and-approval.md), [ADR 0004](0004-complete-accounting-delivery-contract.md) and [ADR 0008](0008-financial-fx-vat-impairment.md), but change where those rules live. It must also cover more than the HTTP surface: the same operations are reached by the MCP catalogue, web query and mutation clients, Worker jobs, Bun entrypoints, provider scripts, recovery controls and operator commands. A partial move would leave two accounting authorities or transactions that cannot share one connection.
 
@@ -122,7 +122,7 @@ The delete row is a cutover obligation, not permission to leave a half-migrated 
 
 ## Proof gates
 
-This ADR records a design decision, not runtime proof. The following gates remain open:
+This ADR records the required observations. The [baseline evidence](../plans/evidence/application-owned-baseline-cutover.md) closes the clean-installation checks below; it does not close the remaining domain, SQL policy-boundary or release gates.
 
 | Gate | Required observation |
 | --- | --- |
@@ -134,4 +134,4 @@ This ADR records a design decision, not runtime proof. The following gates remai
 | Operations and recovery | Backup/restore captures the new baseline and queue/application work inventories, keeps the database quarantined and does not claim provider acceptance or promotion. |
 | Browser and company gates | Approved browser journeys, applicable Swedish profiles, real-company facts and provider receipts remain separate evidence. Synthetic success cannot activate a company or statutory profile. |
 
-No library has been installed, no caller has been cut over, no database baseline has been applied and no runtime or E2E result is claimed by this ADR.
+Implementation and observed results are recorded separately in the [replacement plan](../plans/application-owned-accounting.md) and its dated evidence. A completed baseline does not establish whole-replacement acceptance.

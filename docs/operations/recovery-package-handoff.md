@@ -44,7 +44,7 @@ Existing `openerp.authenticate`/authorization admit credentials/sessions/members
 
 1. Review the owned diff/source and format the owned TypeScript paths with the installed formatter.
 2. Run `bun x tsc --project apps/api/scripts/operations/tsconfig.json --noEmit` and bounded owned-file lint through the repository environment. Send concrete errors to the retained owner; do not weaken checks.
-3. Review source/destination isolation and all catalog SQL before any separately authorized rehearsal. The v2 source release must exactly match the source's applied migration filenames/checksums, including0900; outstanding domain migrations therefore require a coherent reviewed release, not silent omission.
+3. Review source/destination isolation and all catalog SQL before any separately authorized rehearsal. The v2 source release must exactly match the source's applied migration filenames/checksums; outstanding domain migrations therefore require a coherent reviewed release, not silent omission.
 4. Only after separate authority, execute the documented synthetic release→backup→inspect→fresh restore procedure. Retain failure/quarantine diagnostics and do not enable an application/provider to obtain a green result. A successful CLI receipt still has application recovery blocked.
 5. Treat `inspect` JSON as a closure diagnostic, not an application-read result. The root-reviewed identity, Drizzle Effect handler, Better Auth mutation fence, provider egress fence and quarantine-preserving inspection boundary remain a separate decision.
 

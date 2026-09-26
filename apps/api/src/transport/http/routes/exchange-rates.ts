@@ -1,50 +1,77 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Rates from "@open-erp/contracts/exchange-rates";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { query, scopeParameter } from "../../../db/query";
+import {
+  captureConversionReview,
+  createExchangeRate,
+  getConversionReview,
+  getExchangeRate,
+  listConversionReviews,
+  listExchangeRates,
+  reviseExchangeRate,
+  withdrawExchangeRate,
+} from "../../../application/exchange-rates";
 
 export const ExchangeRatesHandlers = HttpApiBuilder.group(Api, "exchangeRates", (handlers) =>
   handlers
     .handle("withdrawExchangeRate", ({ params, headers, payload }) =>
-      Effect.flatMap(authenticate, (token) => query("withdrawExchangeRate", [
-        token, scopeParameter(params), params.id, headers["idempotency-key"], JSON.stringify(payload),
-      ], Rates.ExchangeRateWithdrawal)),
+      Effect.flatMap(authenticate, (token) =>
+        withdrawExchangeRate(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
     )
     .handle("createExchangeRate", ({ params, headers, payload }) =>
-      Effect.flatMap(authenticate, (token) => query("createExchangeRate", [
-        token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)
-      ], Rates.ExchangeRateRevision)),
+      Effect.flatMap(authenticate, (token) =>
+        createExchangeRate(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
     )
     .handle("reviseExchangeRate", ({ params, headers, payload }) =>
-      Effect.flatMap(authenticate, (token) => query("reviseExchangeRate", [
-        token, scopeParameter(params), params.id, headers["idempotency-key"], JSON.stringify(payload)
-      ], Rates.ExchangeRateRevision)),
+      Effect.flatMap(authenticate, (token) =>
+        reviseExchangeRate(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
     )
     .handle("getExchangeRate", ({ params }) =>
-      Effect.flatMap(authenticate, (token) => query("getExchangeRate", [
-        token, scopeParameter(params), params.id
-      ], Rates.ExchangeRateView)),
+      Effect.flatMap(authenticate, (token) =>
+        getExchangeRate(token, { scope: scopeFromPath(params), id: params.id }),
+      ),
     )
     .handle("listExchangeRates", ({ params }) =>
-      Effect.flatMap(authenticate, (token) => query("listExchangeRates", [
-        token, scopeParameter(params)
-      ], Rates.ExchangeRateList)),
+      Effect.flatMap(authenticate, (token) =>
+        listExchangeRates(token, { scope: scopeFromPath(params) }),
+      ),
     )
     .handle("captureConversionReview", ({ params, headers, payload }) =>
-      Effect.flatMap(authenticate, (token) => query("captureConversionReview", [
-        token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)
-      ], Rates.ConversionReview)),
+      Effect.flatMap(authenticate, (token) =>
+        captureConversionReview(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
     )
     .handle("getConversionReview", ({ params }) =>
-      Effect.flatMap(authenticate, (token) => query("getConversionReview", [
-        token, scopeParameter(params), params.id
-      ], Rates.ConversionReviewView)),
+      Effect.flatMap(authenticate, (token) =>
+        getConversionReview(token, { scope: scopeFromPath(params), id: params.id }),
+      ),
     )
     .handle("listConversionReviews", ({ params }) =>
-      Effect.flatMap(authenticate, (token) => query("listConversionReviews", [
-        token, scopeParameter(params)
-      ], Rates.ConversionReviewList)),
+      Effect.flatMap(authenticate, (token) =>
+        listConversionReviews(token, { scope: scopeFromPath(params) }),
+      ),
     ),
 );

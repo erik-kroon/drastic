@@ -1,6 +1,14 @@
 # Native customer-invoice commercial drafts
 
-## Authority and accepted schema (before implementation)
+## Current ownership
+
+Application operations live in [application/commerce/invoice-lifecycle.ts](../src/application/commerce/invoice-lifecycle.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Authority and accepted schema (before implementation)
 
 This COM-01 subset retains unissued customer-invoice drafts independently of the posted recognition register in migration0600. Scoped operators create and append revisions in native-writer books. Ordinary scoped readers may inspect drafts. No invoice number, journal, open item, tax/profile activation, delivery intent or payment instruction is created. Seller/customer identities are source assertions backed by retained evidence, never verified legal identities.
 
@@ -8,7 +16,7 @@ Each draft has a book-scoped caller-chosen stable draft key, an internal ID, imm
 
 Line amounts use canonical integer minor-unit strings: explicit base, discount, charge, nullable asserted tax, and nullable source gross. Quantity is a canonical positive decimal (at most 12 integer and 6 fractional digits); unit price is nullable exact minor units. The named calculation basis is explicit_line_amounts_v1. Net is base minus discount plus charge. Tax and gross totals stay unknown if any tax amount is unknown. Source gross/document totals are retained separately and compared, never used as balancing plugs. Quantity times supplied unit price is compared only when exactly integral; there is no rounding or VAT-rate engine. Unknown/nonintegral products, mismatches and unreviewed tax facts remain issuance blockers while the draft can be saved for review.
 
-## Failure cases and acceptance recorded before code
+### Failure cases and acceptance recorded before code
 
 - Wrong entity/book, revoked or agent-only authority must reject writes. All identity/tax/content evidence and counterpart revisions must belong to the same book.
 - Same operation/actor/key/input must replay its exact immutable receipt. Changed content under that key must conflict. Duplicate draft keys under a new request key must not silently create a second draft.
@@ -21,11 +29,11 @@ Line amounts use canonical integer minor-unit strings: explicit base, discount, 
 - UI supports named identity/date/term fields, repeatable line editing, explicit create/revise, current/historical reopening, stable exact-request retry and JSON download. Saving reports only a retained draft. No issue/send/pay action or eligibility claim appears.
 - Always expose issuance_not_implemented, legal_identity_not_verified and tax_profile_not_activated. These are implementation boundaries, not authority that a draft may activate.
 
-## Verification boundary
+### Verification boundary
 
 The user has stopped all tests and validation runs. This packet adds no tests or fixtures and runs no validation commands, database, server or dependency actions. Source review is not runtime proof. Implementation and remaining issuance dependencies are recorded below at handoff.
 
-## Implemented source
+### Implemented source
 
 `1200-invoice-drafts.sql` adds `invoice_drafts` and `invoice_draft_revisions`. The head can only advance by one revision; the existing identity-freeze trigger rejects other head changes/deletion. Revisions are append-only, have a deferred current-head foreign key, retained-byte bounds and a canonical digest constraint. The complete calculation and scope checks run inside the existing book-serialized SQL authority. No parallel TypeScript money calculator was added.
 
@@ -35,7 +43,7 @@ The operator-only create/revise functions reauthorize before command replay. `dr
 
 The commerce-local `invoice-drafts.tsx` provides create, explicit seller/customer and counterpart fields, nullable dates/terms/tax/source facts, add/remove stable lines, reopen, historical summaries, current-revision editing with frozen baseline, exact-request retry through the owned command form, readable line calculations/blockers/evidence and JSON downloads. A historical view never becomes an editable historical mutation. Choosing to edit the current revision starts a new revision; old records remain unchanged. It reuses the request-scoped TanStack Query integration. No private source facts are saved in browser storage. Currency scale is the only numeric form conversion; all monetary inputs remain strings.
 
-## Shared composition map
+### Shared composition map
 
 The root owns the following shared joins (some were wired during implementation):
 
@@ -46,25 +54,25 @@ The root owns the following shared joins (some were wired during implementation)
 - `apps/api/src/database.ts`: import/spread `invoiceDraftStatements` from `invoice-draft-statements.ts` using the existing Drizzle Effect connection owner.
 - `apps/api/src/capabilities.ts`: bind the three read capabilities below. Mutations are operator-only REST handlers that invoke the same fixed query owner directly; they are intentionally absent from ordinary MCP tools.
 
-| Capability | Dispatcher | Parameters after token | Response |
-| --- | --- | --- | --- |
-| `commerce_get_invoice_draft` | `getInvoiceDraft` | `[scopeParameter(input.scope), input.id, input.revision ?? ""]` | `InvoiceDraftView` |
-| `commerce_list_invoice_drafts` | `listInvoiceDrafts` | `[scopeParameter(input.scope)]` | `InvoiceDraftList` |
-| `commerce_invoice_draft_history` | `invoiceDraftHistory` | `[scopeParameter(input.scope), input.id]` | `InvoiceDraftHistory` |
+| Capability                       | Dispatcher            | Parameters after token                                          | Response              |
+| -------------------------------- | --------------------- | --------------------------------------------------------------- | --------------------- |
+| `commerce_get_invoice_draft`     | `getInvoiceDraft`     | `[scopeParameter(input.scope), input.id, input.revision ?? ""]` | `InvoiceDraftView`    |
+| `commerce_list_invoice_drafts`   | `listInvoiceDrafts`   | `[scopeParameter(input.scope)]`                                 | `InvoiceDraftList`    |
+| `commerce_invoice_draft_history` | `invoiceDraftHistory` | `[scopeParameter(input.scope), input.id]`                       | `InvoiceDraftHistory` |
 
 REST base: `/api/v1/entities/:entityId/books/:bookId/commerce/invoice-drafts`.
 
-| Operation | Route | Parameters after token |
-| --- | --- | --- |
-| `createInvoiceDraft` | POST base | scope, idempotency key, JSON `{draftKey,content}` |
-| `reviseInvoiceDraft` | POST `/:id/revisions` | scope, id, idempotency key, JSON `{expectedRevision,expectedDigest,reason,content}` |
-| `getInvoiceDraft` | GET `/:id?revision=...` | scope, id, revision or empty string |
-| `listInvoiceDrafts` | GET base | scope |
-| `invoiceDraftHistory` | GET `/:id/revisions` | scope, id |
+| Operation             | Route                   | Parameters after token                                                              |
+| --------------------- | ----------------------- | ----------------------------------------------------------------------------------- |
+| `createInvoiceDraft`  | POST base               | scope, idempotency key, JSON `{draftKey,content}`                                   |
+| `reviseInvoiceDraft`  | POST `/:id/revisions`   | scope, id, idempotency key, JSON `{expectedRevision,expectedDigest,reason,content}` |
+| `getInvoiceDraft`     | GET `/:id?revision=...` | scope, id, revision or empty string                                                 |
+| `listInvoiceDrafts`   | GET base                | scope                                                                               |
+| `invoiceDraftHistory` | GET `/:id/revisions`    | scope, id                                                                           |
 
 `InvoiceDrafts` is mounted within the owned commerce panel; local bilingual copy is in `invoice-draft-copy.ts`. No workspace/global message/UI primitive changes are required. No old migration is edited. Runtime receives only scoped public function execution and no table/helper write authority.
 
-## Actual remaining issuance dependencies
+### Actual remaining issuance dependencies
 
 This packet does not finish COM-01 or COM-02. Before issuing, implement a reviewed seller/customer legal-fact and applicable document-field contract, dated tax treatment/rounding/recognition profiles, draft sealing and exact issue approval, transactional legal numbering and immutable issue event, and required linked posting/open-item effects. Revalidate current profile, authority, evidence and counterparty facts at that issue boundary. Supplier invoices, source-occurrence linkage/duplicate-document diagnostics, credits, payment instructions and invoice delivery remain separate work.
 
@@ -72,6 +80,6 @@ Rendering/delivery must consume the immutable issued revision through a separate
 
 Status: implemented source and manual source review only. The worker ran no tests, TypeScript/lint/format/build validation, database, servers, dependency installs or external actions for this packet. The parent separately owns requested TypeScript checks and shared composition. SQL execution, arithmetic vectors, races, retry recovery, browser interaction/layout and downloads remain unverified.
 
-## Optional article selection (forward 9080)
+### Optional article selection (forward 9080)
 
 A customer or supplier draft line may retain `catalogSelection: { code, revision, unit }` beside its existing explicit line fields. Saving checks that the selected book-scoped immutable article revision exists and that its unit, description, unit price and tax description equal the copied line values. A missing revision or changed copied default blocks the draft; no catalog value silently replaces an asserted invoice amount. Older lines need no selection. The retained draft revision contains both the selection and the explicit line amounts. Editing an article later does not alter an existing draft or issued invoice. The selected article unit is snapshotted as catalog metadata, not a draft line quantity unit; the invoice quantity and price retain their existing interpretation. This source addition needs migration/runtime and caller verification; it is not a legal/tax profile or production acceptance.

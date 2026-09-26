@@ -1,6 +1,14 @@
 # Owner expense and funding register
 
-## State and authority
+## Current ownership
+
+Application operations live in [application/subledger/owners.ts](../src/application/subledger/owners.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### State and authority
 
 This is an integration-ready **source implementation**, not observed runtime behavior.
 No migration, database write, server, build, test, fixture or dependency change was performed by this owner.
@@ -21,7 +29,7 @@ helpers from0600. It uses current admission helpers (including0900 Better Auth w
 Apply it as a new pending migration even when higher-numbered historical migrations already exist;
 do not edit/replay0600 or renumber an applied migration. Root owns the migration decision and run.
 
-## Implemented boundary
+### Implemented boundary
 
 - Evidence-backed immutable owner identities and original source facts: actual company versus explicitly
   synthetic data, stable source key, source component/event key, owner/counterparty identity, original
@@ -58,7 +66,7 @@ do not edit/replay0600 or renumber an applied migration. Root owns the migration
   frozen JSON download and receipt recovery. Reused commerce command controls retain request/outcome JSON
   (their download name still uses the commerce prefix; the artifact contains the exact owner route/scope).
 
-## Deliberately blocked / not implemented
+### Deliberately blocked / not implemented
 
 Real-company activation remains blocked even after classification review. Missing company form, fiscal,
 VAT and other treatment facts are not filled with legal defaults. The synthetic bridge is not an import
@@ -81,7 +89,7 @@ revision and review. Pending proposal attachments remain historical and fail at 
 change. Historical posted effects do not disappear when a former reviewer leaves. Browser state is not
 crash-safe storage: save fields, key and IDs before sending. No automatic mutation retry is enabled.
 
-## Shared integration (root-owned)
+### Shared integration (root-owned)
 
 1. Export `./owner-register` as `./src/owner-register.ts` in `packages/contracts/package.json`.
 2. Add `OwnerRegisterApi` from `./owner-register` to `packages/contracts/src/api.ts`.
@@ -100,7 +108,7 @@ crash-safe storage: save fields, key and IDs before sending. No automatic mutati
    alone are not technical errors. Its `coverage: not_established` never satisfies statutory completeness.
    No existing0800 function is replaced here. Root/year-end owner must choose the next forward hook migration.
 
-### Database dispatch entries
+#### Database dispatch entries
 
 ```ts
  ownersCreateOwner: (parameters) => sql`select openerp.owners_create_owner(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text,${parameters[3]}::jsonb) as result`,
@@ -123,7 +131,7 @@ crash-safe storage: save fields, key and IDs before sending. No automatic mutati
  ownersRecoverCommand: (parameters) => sql`select openerp.owners_recover_command(${parameters[0]}::text,${parameters[1]}::jsonb,${parameters[2]}::text) as result`,
 ```
 
-### Capability bindings
+#### Capability bindings
 
 ```ts
  owners_create_owner: bindCapability(Capabilities.owners_create_owner, "ownersCreateOwner", (input) => [scopeParameter(input.scope), input.idempotencyKey, JSON.stringify(input.input)]),
@@ -144,7 +152,7 @@ crash-safe storage: save fields, key and IDs before sending. No automatic mutati
  owners_recover_command: bindCapability(Capabilities.owners_recover_command, "ownersRecoverCommand", (input) => [scopeParameter(input.scope), input.key]),
 ```
 
-### Public operation map
+#### Public operation map
 
 | SQL / capability                                 | REST operation            | Method / suffix                        | Input               | Output               |
 | ------------------------------------------------ | ------------------------- | -------------------------------------- | ------------------- | -------------------- |
@@ -171,7 +179,7 @@ Base route: `/v1/entities/:entityId/books/:bookId/owner-register`; browser adds 
 All writes require `Idempotency-Key`; identified command receipts bind `{id,input}`.
 Reads validate scope/admission. Runtime grants expose only the18 public functions, never private tables/helpers.
 
-## Validation and next action
+### Validation and next action
 
 Only bounded owned-file format/lint and source review are permitted here. Their final observed results
 will be recorded below. They are not proof of PostgreSQL validity, admission locking, concurrency,
@@ -180,7 +188,7 @@ financial correctness, REST/MCP parity, browser recovery, deployment or profile 
 Root next: inspect this migration and the prewritten acceptance cases; integrate shared surfaces; run
 serialized native type/runtime/browser/failure validation under actual authority. Preserve explicit gaps.
 
-### Final source-review notes
+#### Final source-review notes
 
 - Same-actor receipt recovery is implemented for all10 owner commands, including the2 operator-only REST
   commands. Recovery is a historical read, not a new approval or execution authority.
@@ -197,7 +205,7 @@ serialized native type/runtime/browser/failure validation under actual authority
 - Bounded Oxlint previously passed with zero warnings/errors. Final artifacts record the exact final
   formatting/lint observation and source hashes; neither check executes SQL or verifies financial flows.
 
-### Final bounded check result
+#### Final bounded check result
 
 The final owned-file Oxfmt run passed on the contract, Effect adapter, UI and this document.
 The final owned-file Oxlint run passed on the3 TypeScript files with **0 warnings and0 errors**.
@@ -208,7 +216,7 @@ The bridge supports only single-action ordinary `manual_journal` adjustment plan
 split-control and correction bundles are not attached through this foundation. Future treatment
 activation must explicitly reconcile this boundary; it must not bypass the owner source guard.
 
-## 6600 consumed allocation approval recovery — pre-edit failure contract
+### 6600 consumed allocation approval recovery — pre-edit failure contract
 
 The existing owner allocation command can approve unchanged plan P as A1, then A2,
 and apply P with still-valid A1. The old getter returns latest approval A2 beside an
@@ -233,7 +241,7 @@ The authorized repair changes only the getter in a forward migration:
 Source comparison is the authorized validation. No tests, SQL compilation/application,
 runtime, provider or VCS actions are authorized. Runtime recovery remains unverified.
 
-### Implemented source and validation limit
+#### Implemented source and validation limit
 
 `migrations/6600-owner-allocation-approval-recovery.sql` replaces only
 `owners_get_allocation`. The committed branch follows the application row's scoped

@@ -1,125 +1,114 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Vat from "@open-erp/contracts/vat-returns";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
 import { prepareVatDraft } from "../../../application/vat-returns";
-import { query, scopeParameter } from "../../../db/query";
+import * as Vat from "../../../application/vat/returns";
 
 export const VatReturnsHandlers = HttpApiBuilder.group(Api, "vatReturns", (handlers) =>
   handlers
     .handle("prepareVatControlReclassification", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "prepareVatControlReclassification",
-          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-          Vat.VatControlReclassificationReview,
-        ),
+        Vat.prepareReclassification(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("approveVatControlReclassification", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "approveVatControlReclassification",
-          [token, scopeParameter(params), params.id, headers["idempotency-key"], JSON.stringify(payload)],
-          Vat.VatControlReclassificationApproval,
-        ),
+        Vat.approveReclassification(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("executeVatControlReclassification", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "executeVatControlReclassification",
-          [token, scopeParameter(params), params.id, headers["idempotency-key"], JSON.stringify(payload)],
-          Vat.VatControlReclassificationEffect,
-        ),
+        Vat.executeReclassification(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("getVatControlReclassification", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query("getVatControlReclassification", [token, scopeParameter(params), params.id], Vat.VatControlReclassificationView),
+        Vat.getReclassification(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("listVatControlReclassifications", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query("listVatControlReclassifications", [token, scopeParameter(params)], Vat.VatControlReclassificationList),
+        Vat.listReclassifications(token, { scope: scopeFromPath(params) }),
       ),
     )
     .handle("recoverVatControlReclassification", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "recoverVatControlReclassification",
-          [token, scopeParameter(params), params.key],
-          Vat.VatControlReclassificationRecovery,
-        ),
+        Vat.recoverReclassification(token, { scope: scopeFromPath(params), key: params.key }),
       ),
     )
     .handle("withdrawVatFact", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "withdrawVatFact",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          Vat.VatFactWithdrawal,
-        ),
+        Vat.withdrawFact(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("compareVatDrafts", ({ params, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "compareVatDrafts",
-          [token, scopeParameter(params), JSON.stringify(payload)],
-          Vat.VatDraftImpactView,
-        ),
+        Vat.compareDrafts(token, { scope: scopeFromPath(params), input: payload }),
       ),
     )
     .handle("reviewVatAmendment", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "reviewVatAmendment",
-          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-          Vat.VatAmendment,
-        ),
+        Vat.reviewAmendment(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("getVatAmendment", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query("getVatAmendment", [token, scopeParameter(params), params.id], Vat.VatAmendmentView),
+        Vat.getAmendment(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("listVatAmendments", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query("listVatAmendments", [token, scopeParameter(params)], Vat.VatAmendmentList),
+        Vat.listAmendments(token, { scope: scopeFromPath(params) }),
       ),
     )
     .handle("recordVatFact", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "recordVatFact",
-          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-          Vat.VatFact,
-        ),
+        Vat.recordFact(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("vatReturnBasis", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query("vatReturnBasis", [token, scopeParameter(params)], Vat.VatBasis),
+        Vat.returnBasis(token, { scope: scopeFromPath(params) }),
       ),
     )
     .handle("getVatFact", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query("getVatFact", [token, scopeParameter(params), params.id], Vat.VatFactView),
+        Vat.getFact(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("prepareVatDraft", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         prepareVatDraft(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -127,12 +116,12 @@ export const VatReturnsHandlers = HttpApiBuilder.group(Api, "vatReturns", (handl
     )
     .handle("getVatDraft", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query("getVatDraft", [token, scopeParameter(params), params.id], Vat.VatDraftView),
+        Vat.getDraft(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("listVatDrafts", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query("listVatDrafts", [token, scopeParameter(params)], Vat.VatDraftList),
+        Vat.listDrafts(token, { scope: scopeFromPath(params) }),
       ),
     ),
 );

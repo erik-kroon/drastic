@@ -1,6 +1,14 @@
 # Whole declared bank-inventory signoff (4300)
 
-## Failure cases before implementation
+## Current ownership
+
+Application operations live in [application/banking/inventory-signoffs.ts](../src/application/banking/inventory-signoffs.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
+### Failure cases before implementation
 
 3500 signs one selected account. No all-account signoff exists in the maintained source.
 This packet must aggregate existing immutable signed3500 artifacts, never prepare reports or
@@ -26,7 +34,7 @@ account signoffs itself, reconcile again, import, match, post, waive or close an
 - Coverage is only the declared bank inventory. Actual-company completeness and financial-close
   readiness remain false/unestablished. No closing/provider/matching action or waiver authority.
 
-## Implemented flow and scope
+### Implemented flow and scope
 
 ```text
 latest0930 evidenced required bank inventory (one exact accounting period)
@@ -66,7 +74,7 @@ even after signing. Required source completeness is limited to this evidenced de
 is no assertion that the declaration contains all actual company bank accounts or obligations.
 No closing, statutory, provider, waiver or posting authority is introduced.
 
-## API and recovery
+### API and recovery
 
 All routes live under `/api/v1/entities/:entityId/books/:bookId`:
 
@@ -110,7 +118,7 @@ Both private tables are immutable, scoped by book, contain FK links to the inven
 and constrain stored content to its exact UTF-8 length and SHA. Only authenticated command EXECUTEs
 are granted to the runtime. No new storage adapter, download route or UI is needed for exact bytes.
 
-## Root integration
+### Root integration
 
 Owned files:
 
@@ -143,7 +151,7 @@ bank_list_inventory_signoffs: bindCapability(Capabilities.bank_list_inventory_si
 Root owns shared typechecks, maintained wave status and any optional table mappings.4300 must
 follow0930/2000/3500. Historical SQL and shared registries were not edited by this packet.
 
-## Source reasoning and remaining evidence
+### Source reasoning and remaining evidence
 
 Owned-file `oxfmt --write` passed for the three TypeScript modules and two domain documents.
 Owned-file `oxlint` passed for the three TypeScript modules with zero warnings/errors.2000 and3500

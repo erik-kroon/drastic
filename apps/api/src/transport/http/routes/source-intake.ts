@@ -1,60 +1,49 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Intake from "@open-erp/contracts/source-intake";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
 import { searchSourceArchive, exportSourceArchive } from "../../../application/source-retention";
 import { capabilities } from "../../../application/capabilities";
-import { query, scopeParameter } from "../../../db/query";
+import * as EvidenceWork from "../../../application/evidence-work";
 
 export const SourceIntakeHandlers = HttpApiBuilder.group(Api, "sourceIntake", (handlers) =>
   handlers
     .handle("recoverSourceRetention", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "recoverSourceRetention",
-          [token, scopeParameter(params), params.key],
-          Intake.SourceOccurrence,
-        ),
+        EvidenceWork.recoverSourceRetention(token, {
+          scope: scopeFromPath(params),
+          key: params.key,
+        }),
       ),
     )
     .handle("captureSourceReview", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "captureSourceReview",
-          [
-            token,
-            scopeParameter(params),
-            headers["idempotency-key"],
-            params.id,
-            JSON.stringify(payload),
-          ],
-          Intake.SourceReviewCapture,
-        ),
+        EvidenceWork.captureSourceReview(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          previewId: params.id,
+          input: payload,
+        }),
       ),
     )
     .handle("getSourceReviewArtifact", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "getSourceReviewArtifact",
-          [token, scopeParameter(params), params.id],
-          Intake.SourceReviewArtifact,
-        ),
+        EvidenceWork.getSourceReviewArtifact(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+        }),
       ),
     )
     .handle("listSourceReviewArtifacts", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "listSourceReviewArtifacts",
-          [token, scopeParameter(params)],
-          Intake.SourceReviewArtifactList,
-        ),
+        EvidenceWork.listSourceReviewArtifacts(token, { scope: scopeFromPath(params) }),
       ),
     )
     .handle("retainSource", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.source_retain.execute(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -62,11 +51,10 @@ export const SourceIntakeHandlers = HttpApiBuilder.group(Api, "sourceIntake", (h
     )
     .handle("listSourceOccurrences", ({ params, query: search }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "listSourceOccurrences",
-          [token, scopeParameter(params), search.cursor ?? ""],
-          Intake.SourceInventory,
-        ),
+        EvidenceWork.listSourceOccurrences(token, {
+          scope: scopeFromPath(params),
+          cursor: search.cursor,
+        }),
       ),
     )
     .handle("searchSourceArchive", ({ params, query: filters }) =>
@@ -78,7 +66,7 @@ export const SourceIntakeHandlers = HttpApiBuilder.group(Api, "sourceIntake", (h
     .handle("getSourceOccurrenceMetadata", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.source_get_occurrence_metadata.execute(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           occurrenceId: params.id,
         }),
       ),
@@ -86,96 +74,73 @@ export const SourceIntakeHandlers = HttpApiBuilder.group(Api, "sourceIntake", (h
     .handle("getSourceOccurrence", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.source_get_occurrence.execute(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           occurrenceId: params.id,
         }),
       ),
     )
     .handle("getSourcePurchaseLinks", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "getSourcePurchaseLinks",
-          [token, scopeParameter(params), params.id],
-          Intake.SourcePurchaseLinks,
-        ),
+        EvidenceWork.getSourcePurchaseLinks(token, {
+          scope: scopeFromPath(params),
+          occurrenceId: params.id,
+        }),
       ),
     )
     .handle("previewSourceCsv", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "previewSourceCsv",
-          [
-            token,
-            scopeParameter(params),
-            headers["idempotency-key"],
-            params.id,
-            JSON.stringify(payload),
-          ],
-          Intake.SourcePreview,
-        ),
+        EvidenceWork.previewSourceCsv(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          occurrenceId: params.id,
+          input: payload,
+        }),
       ),
     )
     .handle("reparseSourceCsv", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "reparseSourceCsv",
-          [
-            token,
-            scopeParameter(params),
-            headers["idempotency-key"],
-            params.id,
-            JSON.stringify(payload),
-          ],
-          Intake.SourceReparse,
-        ),
+        EvidenceWork.reparseSourceCsv(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          previewId: params.id,
+          input: payload,
+        }),
       ),
     )
     .handle("getSourceRevisionHistory", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "getSourceRevisionHistory",
-          [token, scopeParameter(params), params.id],
-          Intake.SourceRevisionHistory,
-        ),
+        EvidenceWork.getSourceRevisionHistory(token, {
+          scope: scopeFromPath(params),
+          occurrenceId: params.id,
+        }),
       ),
     )
     .handle("getSourcePreview", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "getSourcePreview",
-          [token, scopeParameter(params), params.id],
-          Intake.SourcePreviewView,
-        ),
+        EvidenceWork.getSourcePreview(token, {
+          scope: scopeFromPath(params),
+          previewId: params.id,
+        }),
       ),
     )
     .handle("approveSourcePreview", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "approveSourcePreview",
-          [
-            token,
-            scopeParameter(params),
-            headers["idempotency-key"],
-            params.id,
-            JSON.stringify(payload),
-          ],
-          Intake.SourceApproval,
-        ),
+        EvidenceWork.approveSourcePreview(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          previewId: params.id,
+          input: payload,
+        }),
       ),
     )
     .handle("admitSourcePreview", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "admitSourcePreview",
-          [
-            token,
-            scopeParameter(params),
-            headers["idempotency-key"],
-            params.id,
-            JSON.stringify(payload),
-          ],
-          Intake.SourceAdmission,
-        ),
+        EvidenceWork.admitSourcePreview(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          previewId: params.id,
+          input: payload,
+        }),
       ),
     ),
 );

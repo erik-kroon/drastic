@@ -1,5 +1,13 @@
 # Tax-account exact matching —4100 working failure contract
 
+## Current ownership
+
+Application operations live in [application/vat/tax-account.ts](../src/application/vat/tax-account.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 Working scope before implementation: exact whole-event/whole-posted-line review, same scoped
 account/currency, same date and signed amount. Unknown classifications and zero events cannot
 match. No timing allocation, split, many-to-many matching, posting or legal readiness.
@@ -31,12 +39,12 @@ Failure contract to preserve:
 No tests, runtime/SQL execution, migrations or external actions are authorized. Static checks
 and source review will be recorded separately from implementation.
 
-## Implemented source
+### Implemented source
 
 Forward `4100-tax-account-matching.sql` implements the contract above.3800 and3950 remain
 unchanged. This is source implementation, not applied or runtime-verified behavior.
 
-### Operator workflow
+#### Operator workflow
 
 1. Read a retained statement/control and choose its stable event plus a posted voucher/line.
 2. `previewTaxAccountMatch` accepts `eventId`, `statementDigest`, `voucherId` and `lineId`.
@@ -60,7 +68,7 @@ selected if it is not a reversing voucher and has no later correcting voucher. A
 subsequently corrected original cannot be selected. New matching and unmatching require the
 single affected period to be open. Historical reads do not require an open period.
 
-### Physical capacity and current status
+#### Physical capacity and current status
 
 `tax_account_matches` and `tax_account_unmatches` are immutable. The private
 `tax_account_match_capacity` table is a disposable reservation projection, not mutable review
@@ -94,7 +102,7 @@ new-state checks. It returns the historical receipt without reacquiring or relea
 capacity. A new-key duplicate active relation or already-unmatched review is refused.
 At most1000 reviews and1000 unmatches are retained per book; complete lists do not truncate.
 
-### Actual control and dependency consumption
+#### Actual control and dependency consumption
 
 New `synthetic_tax_account_gl_control_v2` snapshots retain the same complete source and GL
 arithmetic as3800. They additionally retain all selected-account review histories through
@@ -137,7 +145,7 @@ the control inventory itself. Creating a control does not immediately stale its 
 Matching changes elsewhere in the book conservatively stale its live dependency status.
 Immutable control JSON/hash/byte-length storage and8MiB artifact limits remain unchanged.
 
-### Transport and integration
+#### Transport and integration
 
 Local contracts/routes/statements extend the existing `taxAccount` owner; no second workflow
 runtime or pass-through application layer was added. Root has wired these read-only MCP calls:
@@ -154,7 +162,7 @@ require operator authority; neither is an MCP capability. Control capture remain
 through the existing capability and now describes effective exact matching, not unavailable
 matching. Shared API composition is root-owned.
 
-### Source review and observed checks
+#### Source review and observed checks
 
 Reviewed source against1300 active bank matching/reversal ownership,1700 effective commerce
 allocation/reversal ownership,3800 source/GL arithmetic and3950 dependency integration.
@@ -177,7 +185,7 @@ GL amounts. Matching histories/currentness participate in3950's existing VAT/clo
 owner. Source completeness, full reconciliation, financial close, legal tax treatment,
 settlement and full VAT-03 acceptance remain unavailable; runtime proof remains open.”
 
-## Reviewed unknown classifications
+### Reviewed unknown classifications
 
 Forward6700 allows a previously unknown event to pass the classification gate only after its
 one-shot evidenced operator resolution. The basis keeps the original event and separately

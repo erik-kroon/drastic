@@ -1,17 +1,17 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Commerce from "@open-erp/contracts/commerce";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
 import { capabilities } from "../../../application/capabilities";
-import { query, scopeParameter } from "../../../db/query";
+import * as Allocations from "../../../application/commerce/allocation-reversals";
 
 export const CommerceHandlers = HttpApiBuilder.group(Api, "commerce", (handlers) =>
   handlers
     .handle("commerceCreateCounterparty", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.commerce_create_counterparty.execute(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -20,7 +20,7 @@ export const CommerceHandlers = HttpApiBuilder.group(Api, "commerce", (handlers)
     .handle("commerceReviseCounterparty", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.commerce_revise_counterparty.execute(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
           id: params.id,
@@ -30,7 +30,7 @@ export const CommerceHandlers = HttpApiBuilder.group(Api, "commerce", (handlers)
     .handle("commerceGetCounterparty", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.commerce_get_counterparty.execute(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           id: params.id,
           revision: query.revision,
         }),
@@ -39,7 +39,7 @@ export const CommerceHandlers = HttpApiBuilder.group(Api, "commerce", (handlers)
     .handle("commerceListCounterparties", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.commerce_list_counterparties.execute(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           after: query.after,
         }),
       ),
@@ -47,7 +47,7 @@ export const CommerceHandlers = HttpApiBuilder.group(Api, "commerce", (handlers)
     .handle("commerceSupplierInvoiceDuplicates", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.commerce_supplier_invoice_duplicates.execute(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           ...query,
         }),
       ),
@@ -55,7 +55,7 @@ export const CommerceHandlers = HttpApiBuilder.group(Api, "commerce", (handlers)
     .handle("commerceCreateInvoice", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.commerce_create_invoice.execute(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -64,7 +64,7 @@ export const CommerceHandlers = HttpApiBuilder.group(Api, "commerce", (handlers)
     .handle("commerceReviseInvoice", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.commerce_revise_invoice.execute(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
           id: params.id,
@@ -73,13 +73,16 @@ export const CommerceHandlers = HttpApiBuilder.group(Api, "commerce", (handlers)
     )
     .handle("commerceGetInvoice", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.commerce_get_invoice.execute(token, { scope: params, id: params.id }),
+        capabilities.commerce_get_invoice.execute(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+        }),
       ),
     )
     .handle("commerceInvoicePayments", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.commerce_invoice_payments.execute(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           id: params.id,
           ...query,
         }),
@@ -88,7 +91,7 @@ export const CommerceHandlers = HttpApiBuilder.group(Api, "commerce", (handlers)
     .handle("commerceInvoiceHistory", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.commerce_invoice_history.execute(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           id: params.id,
           after: query.after,
         }),
@@ -96,13 +99,16 @@ export const CommerceHandlers = HttpApiBuilder.group(Api, "commerce", (handlers)
     )
     .handle("commerceListInvoices", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.commerce_list_invoices.execute(token, { scope: params, after: query.after }),
+        capabilities.commerce_list_invoices.execute(token, {
+          scope: scopeFromPath(params),
+          after: query.after,
+        }),
       ),
     )
     .handle("commerceGetPaymentCapacity", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.commerce_get_payment_capacity.execute(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           voucherId: params.voucherId,
           lineId: params.lineId,
         }),
@@ -111,7 +117,7 @@ export const CommerceHandlers = HttpApiBuilder.group(Api, "commerce", (handlers)
     .handle("commercePrepareAllocation", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.commerce_prepare_allocation.execute(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
@@ -119,28 +125,26 @@ export const CommerceHandlers = HttpApiBuilder.group(Api, "commerce", (handlers)
     )
     .handle("commerceGetAllocation", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        capabilities.commerce_get_allocation.execute(token, { scope: params, id: params.id }),
+        capabilities.commerce_get_allocation.execute(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+        }),
       ),
     )
     .handle("commerceApproveAllocation", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "commerceApproveAllocation",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          Commerce.AllocationApproval,
-        ),
+        Allocations.approveAllocation(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("commerceApplyAllocation", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.commerce_apply_allocation.execute(token, {
-          scope: params,
+          scope: scopeFromPath(params),
           idempotencyKey: headers["idempotency-key"],
           input: payload,
           id: params.id,

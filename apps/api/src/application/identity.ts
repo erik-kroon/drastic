@@ -4,13 +4,19 @@ import {
   admitPrincipal,
   recheckPrincipal,
   type AccessCredential,
+  type AuthorityLockMode,
   type AuthorityRequirement,
   type VerifiedPrincipal,
 } from "../db/identity";
 import { withTransaction, type Transaction } from "../db/transaction";
 import { type Database } from "../db/connection";
 
-export type { AccessCredential, AuthorityRequirement, VerifiedPrincipal } from "../db/identity";
+export type {
+  AccessCredential,
+  AuthorityLockMode,
+  AuthorityRequirement,
+  VerifiedPrincipal,
+} from "../db/identity";
 
 export function withAdmittedPrincipal<A, R>(
   access: AccessCredential,
@@ -20,10 +26,11 @@ export function withAdmittedPrincipal<A, R>(
     transaction: Transaction,
     principal: VerifiedPrincipal,
   ) => Effect.Effect<A, Accounting.AccountingError, R>,
+  lockMode: AuthorityLockMode = "share",
 ): Effect.Effect<A, Accounting.AccountingError, R | Database> {
   return withTransaction((transaction) =>
     Effect.gen(function* () {
-      const principal = yield* admitPrincipal(transaction, access, scope, requirement);
+      const principal = yield* admitPrincipal(transaction, access, scope, requirement, lockMode);
       return yield* operation(transaction, principal);
     }),
   );
@@ -37,10 +44,17 @@ export function withVerifiedPrincipal<A, R>(
     transaction: Transaction,
     verifiedPrincipal: VerifiedPrincipal,
   ) => Effect.Effect<A, Accounting.AccountingError, R>,
+  lockMode: AuthorityLockMode = "share",
 ): Effect.Effect<A, Accounting.AccountingError, R | Database> {
   return withTransaction((transaction) =>
     Effect.gen(function* () {
-      const verifiedPrincipal = yield* recheckPrincipal(transaction, principal, scope, requirement);
+      const verifiedPrincipal = yield* recheckPrincipal(
+        transaction,
+        principal,
+        scope,
+        requirement,
+        lockMode,
+      );
       return yield* operation(transaction, verifiedPrincipal);
     }),
   );

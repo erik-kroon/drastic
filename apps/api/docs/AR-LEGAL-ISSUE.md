@@ -1,8 +1,16 @@
 # Domestic B2B legal customer issue: bounded source handoff
 
+## Current ownership
+
+Application operations live in [application/commerce/legal.ts](../src/application/commerce/legal.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+
+## Historical implementation notes
+
+The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+
 Status: source implementation in forward `8100-ar-legal-issue.sql`. An isolated local PostgreSQL migration and direct SQL operation exercise succeeded on 2026-09-24; HTTP/browser, restricted-runtime and independent accounting verification remain open. This is not a general Swedish VAT engine or a company activation.
 
-## Boundary
+### Boundary
 
 A book retains its existing `synthetic-core-v1` manual-journal boundary. Legal AR does **not** make that generic profile legally valid. It needs two independently activated immutable book-specific facts:
 
@@ -15,13 +23,13 @@ The sale profile accepts a current evidence-backed customer draft only when sell
 
 The issued receipt (`ar_legal_issues.body`) is immutable and records complete draft/policy/accounting-profile snapshots, each calculated line, exact totals, a distinct legal number, posted receipt, and registered open-item ID. The registered invoice uses `kind=legal_customer_invoice_v1`; payment allocation and ageing can read its AR control line under existing capacity rules. `delivered=false` is an issue-time fact; legal PDF and delivery own their own immutable subsequent outcomes. A legal issue does not alter or promote historical `SYN-*` receipts. The legal draft and registered original terms cannot be revised through existing synthetic metadata operations. A deferred source trigger refuses generic second postings and generic corrections using the retained legal source. Credit, cancellation, refund and legally supported correction need separate reviewed operations.
 
-## Integration and release gates
+### Integration and release gates
 
 - Add `ArLegalIssueApi` to shared API, handlers to application composition, `arLegalIssueStatements` to DB query registry, and its three read capabilities to MCP registry. Keep mutations operator-only.
 - Shared `Commerce.Invoice` read contract must accept `legal_customer_invoice_v1` plus `legalIssueId` and `policyId`; live draft/status read consumers must recognize this distinct legal issue.
 - The `7610` PDF capture table receives an FK to `ar_legal_issues` in `8100`; PDF capture reads issue and policy snapshots, never synthetic issue bytes.
 - An actual company needs D-04/D-08 reviewed seller/registration/accounting method/rule applicability, activated book facts, independent official-source review and an E2E financial/browser/runtime artifact before claiming legal issuance ready. Customer identity evidence remains an operator-review fact, not an external registry verification. No tests were added.
 
-## Bounded local observation
+### Bounded local observation
 
 On a fresh isolated PostgreSQL database, the repository migration runner applied through `8100`, provisioned the synthetic example book, and the documented SQL operations created a separate policy candidate, independent review, active seller policy, separately activated accrual/account roles, draft, issue review, independent issue approval and issue receipt. The direct database observation was `AR-1`, net 10000, per-line output VAT 2500, AR gross 12500, journal debit AR 12500 / credits revenue 10000 and output VAT 2500, registered outstanding 12500, book sequence 1, and zero synthetic issues. A same-key execute replay returned the same issue without advancing the number; a different-key second issue failed `AlreadyPosted`. This is a **synthetic exercise**, not source-rule validation, runtime/HTTP acceptance or legal production activation.

@@ -94,6 +94,7 @@ export function readDirectTableAccess(transaction: Transaction) {
         case when to_regclass('openerp.' || table_name) is null then false
           else has_table_privilege(current_user, 'openerp.' || table_name, 'select') end as "canSelect",
         case when to_regclass('openerp.' || table_name) is null then false
+          when table_name not like 'commerce_fx_%' then true
           else has_table_privilege(current_user, 'openerp.' || table_name, 'insert') end as "canInsert"
       from unnest(ARRAY[
         'commerce_fx_recognition_reviews',
@@ -276,7 +277,15 @@ export function readCorrectionApproval(
 
 export function insertRecognitionApproval(
   transaction: Transaction,
-  row: { bookId: string; id: string; reviewId: string; actorId: string; digest: string; expiresAt: string; body: JsonObject },
+  row: {
+    bookId: string;
+    id: string;
+    reviewId: string;
+    actorId: string;
+    digest: string;
+    expiresAt: string;
+    body: JsonObject;
+  },
 ) {
   return transaction.execute(
     sql`
@@ -291,7 +300,15 @@ export function insertRecognitionApproval(
 
 export function insertSettlementApproval(
   transaction: Transaction,
-  row: { bookId: string; id: string; reviewId: string; actorId: string; digest: string; expiresAt: string; body: JsonObject },
+  row: {
+    bookId: string;
+    id: string;
+    reviewId: string;
+    actorId: string;
+    digest: string;
+    expiresAt: string;
+    body: JsonObject;
+  },
 ) {
   return transaction.execute(
     sql`
@@ -306,7 +323,15 @@ export function insertSettlementApproval(
 
 export function insertCorrectionApproval(
   transaction: Transaction,
-  row: { bookId: string; id: string; reviewId: string; actorId: string; digest: string; expiresAt: string; body: JsonObject },
+  row: {
+    bookId: string;
+    id: string;
+    reviewId: string;
+    actorId: string;
+    digest: string;
+    expiresAt: string;
+    body: JsonObject;
+  },
 ) {
   return transaction.execute(
     sql`
@@ -605,7 +630,11 @@ export function readCurrentRate(transaction: Transaction, bookId: string, observ
   );
 }
 
-export function readRateWithdrawal(transaction: Transaction, bookId: string, observationId: string) {
+export function readRateWithdrawal(
+  transaction: Transaction,
+  bookId: string,
+  observationId: string,
+) {
   return transaction.execute<{ readonly observationId: string }>(
     sql`
       select observation_id as "observationId"
@@ -617,11 +646,7 @@ export function readRateWithdrawal(transaction: Transaction, bookId: string, obs
   );
 }
 
-export function readCounterparty(
-  transaction: Transaction,
-  bookId: string,
-  counterpartyId: string,
-) {
+export function readCounterparty(transaction: Transaction, bookId: string, counterpartyId: string) {
   return transaction.execute<CounterpartyRow>(
     sql`
       select c.id, c.role, c.current_revision as "currentRevision", r.body

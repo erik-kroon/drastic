@@ -1,82 +1,59 @@
+import { scopeFromPath } from "../scope";
 import { Api } from "@open-erp/contracts/api";
-import * as Delivery from "@open-erp/contracts/invoice-delivery";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { query, scopeParameter } from "../../../db/query";
+import * as Commerce from "../../../application/commerce/invoice-delivery";
 
 export const InvoiceDeliveryHandlers = HttpApiBuilder.group(Api, "invoiceDeliveries", (handlers) =>
   handlers
     .handle("prepareInvoiceDelivery", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "prepareInvoiceDelivery",
-          [token, scopeParameter(params), headers["idempotency-key"], JSON.stringify(payload)],
-          Delivery.InvoiceDeliveryView,
-        ),
+        Commerce.prepareDelivery(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("approveInvoiceDelivery", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "approveInvoiceDelivery",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          Delivery.InvoiceDeliveryView,
-        ),
+        Commerce.approveDelivery(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("startInvoiceDeliverySimulation", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "startInvoiceDeliverySimulation",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          Delivery.InvoiceDeliveryView,
-        ),
+        Commerce.startSimulation(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("resolveInvoiceDeliverySimulation", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "resolveInvoiceDeliverySimulation",
-          [
-            token,
-            scopeParameter(params),
-            params.id,
-            headers["idempotency-key"],
-            JSON.stringify(payload),
-          ],
-          Delivery.InvoiceDeliveryView,
-        ),
+        Commerce.resolveSimulation(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("getInvoiceDelivery", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "getInvoiceDelivery",
-          [token, scopeParameter(params), params.id],
-          Delivery.InvoiceDeliveryView,
-        ),
+        Commerce.getDelivery(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("invoiceDeliveryHistory", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
-        query(
-          "invoiceDeliveryHistory",
-          [token, scopeParameter(params), params.id],
-          Delivery.InvoiceDeliveryHistory,
-        ),
+        Commerce.readDeliveryHistory(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     ),
 );
