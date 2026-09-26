@@ -597,37 +597,25 @@ export function planDueCycles(request: CyclePlanRequest): Checked<CyclePlan> {
       continue;
     }
 
-    const disposition = eventState(request.events, cycle);
+    const resolved = resolveCycle({ ...request, cycleOrdinal });
 
-    if (Result.isFailure(disposition)) return Result.fail(disposition.failure);
+    if (Result.isFailure(resolved)) return Result.fail(resolved.failure);
 
-    if (disposition.success.kind === "skipped") {
-      skipped.push({ cycleOrdinal, reason: disposition.success.reason });
+    if (resolved.success.disposition === "skipped" && resolved.success.reason !== null) {
+      skipped.push({ cycleOrdinal, reason: resolved.success.reason });
 
       continue;
     }
 
-    const identity = cycleIdentity(request.schedule, cycleOrdinal);
+    const planned = resolved.success.planned;
 
-    if (Result.isFailure(identity)) return Result.fail(identity.failure);
+    if (planned === null) {
+      skipped.push({ cycleOrdinal, reason: "already_materialized" });
 
-    const revision = selectRevision(request.revisions, cycle);
+      continue;
+    }
 
-    if (Result.isFailure(revision)) return Result.fail(revision.failure);
-
-    const coverage = assertNoOverlappingCoverage(
-      { cycleOrdinal, serviceInterval: identity.success.serviceInterval },
-      request.billedCoverage,
-    );
-
-    if (Result.isFailure(coverage)) return Result.fail(coverage.failure);
-
-    due.push({
-      cycleOrdinal,
-      cycleDate: identity.success.cycleDate,
-      serviceInterval: identity.success.serviceInterval,
-      selectedTemplateRevision: revision.success,
-    });
+    due.push(planned);
   }
 
   return Result.succeed({ due, skipped, continuationOrdinal: (through + 1n).toString() });
@@ -640,6 +628,96 @@ export function refuseDueInstant() {
     "DueInstantRequiresSchedulingOwner",
     "A due instant is an issue-plan input reviewed by the invoice draft owner.",
   );
+}
+
+export const CycleResolutionInput = Schema.Struct({
+  schedule: RecurrenceSchedule,
+  events: Schema.Array(AgreementEventBoundary).check(Schema.isMaxLength(200)),
+  revisions: Schema.Array(TemplateRevisionBoundary).check(Schema.isMaxLength(50)),
+  billedCoverage: Schema.Array(BilledCoverage).check(Schema.isMaxLength(2000)),
+  cycleOrdinal: CycleOrdinal,
+});
+
+export type CycleResolutionInput = typeof CycleResolutionInput.Type;
+
+export const ResolvedCycle = Schema.Struct({
+  disposition: Schema.Literals(["due", "skipped"]),
+  planned: Schema.NullOr(PlannedCycle),
+  reason: Schema.NullOr(SkippedCycleReason),
+});
+
+export type ResolvedCycle = typeof ResolvedCycle.Type;
+
+// One cycle in isolation. A paused or ended cycle resolves as skipped so the
+// caller can disclose the gap; an unresolvable cycle, a cycle outside the agreed
+// horizon and a cycle that would rebill covered service are refusals.
+export function resolveCycle(input: CycleResolutionInput): Checked<ResolvedCycle> {
+  const cycle = ordinal(input.cycleOrdinal);
+
+  if (cycle === null) return fail("InvalidCycleOrdinal", "The cycle ordinal is not an integer.");
+
+  const first = ordinal(input.schedule.firstCycleOrdinal);
+
+  if (first === null) {
+    return fail("InvalidCycleOrdinal", "The first cycle ordinal is not an integer.");
+  }
+
+  if (cycle < first) {
+    return fail("InvalidCycleOrdinal", "The cycle precedes the first cycle of the agreement.");
+  }
+
+  const disposition = eventState(input.events, cycle);
+
+  if (Result.isFailure(disposition)) return Result.fail(disposition.failure);
+
+  if (disposition.success.kind === "skipped") {
+    return Result.succeed({
+      disposition: "skipped",
+      planned: null,
+      reason: disposition.success.reason,
+    });
+  }
+
+  const identity = cycleIdentity(input.schedule, input.cycleOrdinal);
+
+  if (Result.isFailure(identity)) return Result.fail(identity.failure);
+
+  const revision = selectRevision(input.revisions, cycle);
+
+  if (Result.isFailure(revision)) return Result.fail(revision.failure);
+
+  const coverage = assertNoOverlappingCoverage(
+    { cycleOrdinal: input.cycleOrdinal, serviceInterval: identity.success.serviceInterval },
+    input.billedCoverage,
+  );
+
+  if (Result.isFailure(coverage)) return Result.fail(coverage.failure);
+
+  return Result.succeed({
+    disposition: "due",
+    reason: null,
+    planned: {
+      cycleOrdinal: input.cycleOrdinal,
+      cycleDate: identity.success.cycleDate,
+      serviceInterval: identity.success.serviceInterval,
+      selectedTemplateRevision: revision.success,
+    },
+  });
+}
+
+// A reviewed day offset from the cycle date. It is whole local calendar days
+// only: no instant, no daylight-saving arithmetic and no inferred term.
+export function shiftLocalDate(date: string, days: string): Checked<string> {
+  const offset = ordinal(days);
+
+  if (offset === null) return fail("InvalidCycleOrdinal", "The day offset is not an integer.");
+
+  const anchor = parseLocalDate(date);
+
+  if (anchor === null)
+    return fail("InvalidAnchor", "The anchor local date is not a calendar date.");
+
+  return dayStep(anchor, offset);
 }
 
 export function assertUniqueChargeComponents(keys: ReadonlyArray<string>) {

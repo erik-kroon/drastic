@@ -51,6 +51,8 @@ const Title = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)
 
 const PaymentTerms = Schema.String.check(Schema.isMaxLength(1000));
 
+const DayOffset = Schema.String.check(Schema.isPattern(/^(?:0|[1-9][0-9]{0,4})$/));
+
 // The reviewed cadence of an agreement. `timeZone` names the reviewed local
 // calendar the cycle dates are expressed in; this owner never derives a due
 // instant from it.
@@ -90,6 +92,15 @@ export type RecurringAgreement = typeof RecurringAgreement.Type;
 // A template revision is a reviewed customer-invoice draft body plus the first
 // cycle it governs. It carries no tax rate: every amount, tax description and
 // tax evidence reference is a reviewed input of the author.
+// A reviewed day offset from the cycle date. Whole local calendar days only. An
+// absent offset leaves the draft's issue date unresolved, which the invoice draft
+// owner reports as a blocker rather than this owner guessing a term.
+export const RecurringDateOffsets = Schema.Struct({
+  issueDays: DayOffset,
+  supplyDays: DayOffset,
+  dueDays: DayOffset,
+});
+
 export const RecurringTemplateInput = Schema.Struct({
   title: Title,
   counterpartyId: Accounting.Identifier,
@@ -98,6 +109,7 @@ export const RecurringTemplateInput = Schema.Struct({
   currency: Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/)),
   currencyScale: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 6 })),
   paymentTerms: Schema.NullOr(PaymentTerms),
+  dateOffsets: Schema.NullOr(RecurringDateOffsets),
   sourceTotalMinor: Schema.NullOr(Accounting.MinorUnits),
   lines: Schema.Array(Drafts.DraftLine).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
 });
@@ -266,10 +278,11 @@ export const RecurringAgreementView = Schema.Struct({
 
 export type RecurringAgreementView = typeof RecurringAgreementView.Type;
 
+// The occurrence, its billing coverage consumption and nothing else. The draft
+// itself stays with the invoice draft owner, which remains its single authority.
 export const RecurringOccurrenceView = Schema.Struct({
   occurrence: RecurringOccurrence,
   issue: Schema.NullOr(RecurringOccurrenceIssue),
-  draft: Schema.NullOr(Drafts.InvoiceDraftView),
 });
 
 export type RecurringOccurrenceView = typeof RecurringOccurrenceView.Type;
@@ -395,7 +408,7 @@ export const RecurringInvoiceCapabilities = {
   },
   commerce_get_recurring_occurrence: {
     description:
-      "Read one materialised occurrence of a recurring agreement with its billing coverage consumption and current customer draft. Not legal issuance or delivery authority.",
+      "Read one materialised occurrence of a recurring agreement with its billing coverage consumption. Read the customer draft through the invoice draft owner; this is not legal issuance or delivery authority.",
     input: Schema.Struct({
       scope: Accounting.Scope,
       agreementId: Accounting.Identifier,

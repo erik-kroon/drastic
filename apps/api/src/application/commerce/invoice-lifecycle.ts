@@ -3,11 +3,13 @@ import { admitAccountRole, admitLineOwner } from "../resource-admission";
 import { digest as digestNative } from "../json";
 import { equalJson } from "@open-erp/domain/canonicalization";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
+import * as Recurring from "@open-erp/contracts/recurring-invoices";
 import * as Issuance from "@open-erp/contracts/invoice-issuance";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Effect from "effect/Effect";
 import { readInstant } from "../../db/commerce/access";
 import * as DraftDb from "../../db/commerce/invoice-lifecycle";
+import * as RecurrenceDb from "../../db/commerce/recurring-invoices";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
 import {
@@ -27,6 +29,7 @@ import {
   commandReceipt,
   decode,
   exactKeys,
+  isJsonObject,
   requireInsertAccess,
   requireTableAccess,
   textField,
@@ -125,7 +128,7 @@ const IssueHistorySchema = Issuance.InvoiceIssueHistory;
 
 const issueReviewHistoryBound = 50;
 
-const createFields = ["content", "draftKey"] as const;
+const createFields = ["content", "draftKey", "occurrence"] as const;
 
 const reviseFields = ["content", "expectedDigest", "expectedRevision", "reason"] as const;
 
@@ -149,6 +152,134 @@ function digestOf(value: JsonObject) {
   return digestNative(value);
 }
 
+// A recurring occurrence owns its billing coverage, and this owner is the one
+// that consumes it. The check follows the occurrence reference the draft was
+// materialized with, not the draft's own identity, so a copied or edited draft
+// cannot bypass it. A draft with no reference is an ordinary customer invoice
+// and keeps exactly its current behaviour and grant needs.
+function recurringCoverageFor(
+  transaction: Transaction,
+  scope: Scope,
+  draftSnapshot: { readonly id: string; readonly occurrence?: Recurring.OccurrenceReference },
+) {
+  return Effect.gen(function* () {
+    const reference = draftSnapshot.occurrence;
+
+    if (reference === undefined) return yield* Effect.succeed(null);
+
+    yield* requireTableAccess(transaction, RecurrenceDb.occurrenceIssueTables, false);
+    yield* requireInsertAccess(transaction, ["recurring_invoice_occurrence_issues"]);
+
+    const occurrence = (yield* RecurrenceDb.readOccurrenceByDraft(
+      transaction,
+      scope.bookId,
+      draftSnapshot.id,
+    ))[0];
+
+    if (!occurrence) return yield* failure("StaleDependency");
+
+    if (
+      occurrence.agreementId !== reference.agreementId ||
+      occurrence.cycleOrdinal !== reference.cycleOrdinal
+    ) {
+      return yield* failure("StaleDependency");
+    }
+
+    const consumed = (yield* RecurrenceDb.readOccurrenceIssue(
+      transaction,
+      scope.bookId,
+      occurrence.agreementId,
+      occurrence.cycleOrdinal,
+    ))[0];
+
+    if (consumed) return yield* failure("AlreadyPosted");
+
+    return yield* Effect.succeed(occurrence);
+  });
+}
+
+// The coverage consumption is written in the same financial transaction that
+// issues the invoice, so the two commit together or neither does.
+function consumeOccurrenceCoverage(
+  transaction: Transaction,
+  scope: Scope,
+  occurrence: {
+    readonly id: string;
+    readonly agreementId: string;
+    readonly cycleOrdinal: string;
+    readonly serviceStartsOn: string;
+    readonly serviceEndsOn: string;
+    readonly draftId: string;
+    readonly body: JsonObject;
+  },
+  issue: {
+    readonly id: string;
+    readonly registerInvoiceId: string;
+    readonly documentNumber: string;
+  },
+  idempotencyKey: string,
+  actorId: string,
+) {
+  return Effect.gen(function* () {
+    const occurrenceDigest = textField(occurrence.body, "digest");
+
+    if (occurrenceDigest === undefined) return yield* failure("InternalError");
+
+    const withoutDigest: JsonObject = {
+      id: newId("recurring_occurrence_issue"),
+      scope,
+      occurrenceId: occurrence.id,
+      occurrenceDigest,
+      agreementId: occurrence.agreementId,
+      cycleOrdinal: occurrence.cycleOrdinal,
+      serviceInterval: {
+        serviceStartsOn: occurrence.serviceStartsOn,
+        serviceEndsOn: occurrence.serviceEndsOn,
+      },
+      draftId: occurrence.draftId,
+      invoiceIssueId: issue.id,
+      registerInvoiceId: issue.registerInvoiceId,
+      documentNumber: issue.documentNumber,
+      createdAt: yield* retainedNow(transaction),
+      receipt: commandReceipt(idempotencyKey, "execute_invoice_issue", actorId),
+    };
+
+    const body = yield* toJsonObject(
+      Object.assign({}, withoutDigest, { digest: yield* digestNative(withoutDigest) }),
+    );
+
+    const digestValue = textField(body, "digest");
+    const issueId = textField(body, "id");
+    const createdAt = textField(body, "createdAt");
+
+    if (digestValue === undefined || issueId === undefined || createdAt === undefined) {
+      return yield* failure("InternalError");
+    }
+
+    yield* RecurrenceDb.insertOccurrenceIssue(transaction, {
+      bookId: scope.bookId,
+      id: issueId,
+      occurrenceId: occurrence.id,
+      agreementId: occurrence.agreementId,
+      cycleOrdinal: occurrence.cycleOrdinal,
+      draftId: occurrence.draftId,
+      invoiceIssueId: issue.id,
+      registerInvoiceId: issue.registerInvoiceId,
+      documentNumber: issue.documentNumber,
+      body,
+      digest: digestValue,
+      createdAt,
+    });
+  });
+}
+
+// A recurring draft keeps the occurrence it was materialized from across every
+// revision. The reference is never client supplied on a revision, so revising a
+// draft can neither drop the occurrence nor claim a different one.
+function occurrenceOf(body: JsonObject) {
+  return isJsonObject(body.occurrence) ? body.occurrence : undefined;
+}
+
 function retainedDraft(body: JsonObject) {
   return JSON.stringify(body).length > draftBounds.retainedBytes
     ? failure("InvalidJournal")
@@ -165,6 +296,7 @@ function draftRecord(
     revision: string;
     content: JsonObject;
     reason: string;
+    occurrence?: JsonObject;
   },
   calculation: {
     counterparty: JsonObject;
@@ -203,9 +335,14 @@ function draftRecord(
       ),
     };
 
-    const digest = yield* digestNative(withoutDigest);
+    const withOccurrence: JsonObject =
+      row.occurrence === undefined
+        ? withoutDigest
+        : Object.assign({}, withoutDigest, { occurrence: row.occurrence });
 
-    return yield* retainedDraft(Object.assign({}, withoutDigest, { digest }));
+    const digest = yield* digestNative(withOccurrence);
+
+    return yield* retainedDraft(Object.assign({}, withOccurrence, { digest }));
   });
 }
 
@@ -245,6 +382,11 @@ export const createInvoiceDraftInTransaction = Effect.fn("commerce.drafts.create
 
     if (!draftKey.test(input.draftKey)) return yield* failure("InvalidJournal");
 
+    const occurrence =
+      input.occurrence === undefined
+        ? undefined
+        : yield* toJsonObject(yield* decode(Recurring.OccurrenceReference, input.occurrence));
+
     const existing = yield* DraftDb.readDraftByKey(
       transaction,
       command.scope.bookId,
@@ -272,6 +414,7 @@ export const createInvoiceDraftInTransaction = Effect.fn("commerce.drafts.create
         revision: "1",
         content: yield* toJsonObject(input.content),
         reason: draftBounds.initialReason,
+        occurrence,
       },
       calculation,
     );
@@ -400,6 +543,7 @@ export const reviseInvoiceDraft = Effect.fn("commerce.drafts.revise")(function* 
           revision,
           content: yield* toJsonObject(input.content),
           reason: input.reason,
+          occurrence: occurrenceOf(head.body),
         },
         calculation,
       );
@@ -840,6 +984,15 @@ export const executeInvoiceIssue = Effect.fn("commerce.issuance.execute")(functi
         return yield* failure("ApprovalRequired");
       }
 
+      // The occurrence's coverage is checked after the exact command replay and
+      // before any financial effect, so a second billing of an issued cycle is
+      // refused rather than deduplicated into the first one.
+      const occurrence = yield* recurringCoverageFor(
+        transaction,
+        command.scope,
+        review.draftSnapshot,
+      );
+
       const exhausted = yield* DraftDb.readCounterExhausted(
         transaction,
         command.scope.bookId,
@@ -920,6 +1073,22 @@ export const executeInvoiceIssue = Effect.fn("commerce.issuance.execute")(functi
         registerInvoiceId,
         body,
       });
+
+      if (occurrence !== null) {
+        yield* consumeOccurrenceCoverage(
+          transaction,
+          command.scope,
+          occurrence,
+          {
+            id: result.id,
+            registerInvoiceId,
+            documentNumber: result.internalDocumentNumber,
+          },
+          command.idempotencyKey,
+          principal.actorId,
+        );
+      }
+
       yield* saveCommand(
         transaction,
         command.scope,

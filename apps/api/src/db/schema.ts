@@ -1015,3 +1015,73 @@ export const ownerPurchaseTaxFacts = openerp.table("owner_purchase_tax_facts", {
   digest: text().notNull(),
   recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
 });
+
+export const recurringInvoiceAgreements = openerp.table("recurring_invoice_agreements", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  revision: bigint("revision", { mode: "bigint" }).notNull(),
+  customerId: text("customer_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const recurringInvoiceTemplateRevisions = openerp.table(
+  "recurring_invoice_template_revisions",
+  {
+    bookId: text("book_id").notNull(),
+    id: text().notNull(),
+    agreementId: text("agreement_id").notNull(),
+    revision: bigint("revision", { mode: "bigint" }).notNull(),
+    effectiveFromCycle: bigint("effective_from_cycle", { mode: "bigint" }).notNull(),
+    body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+    digest: text().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+  },
+);
+
+export const recurringInvoiceAgreementEvents = openerp.table("recurring_invoice_agreement_events", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  agreementId: text("agreement_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  kind: text().notNull(),
+  effectiveCycle: bigint("effective_cycle", { mode: "bigint" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const recurringInvoiceOccurrences = openerp.table("recurring_invoice_occurrences", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  agreementId: text("agreement_id").notNull(),
+  cycleOrdinal: bigint("cycle_ordinal", { mode: "bigint" }).notNull(),
+  cycleDate: date("cycle_date", { mode: "string" }).notNull(),
+  serviceStartsOn: date("service_starts_on", { mode: "string" }).notNull(),
+  serviceEndsOn: date("service_ends_on", { mode: "string" }).notNull(),
+  selectedTemplateRevision: bigint("selected_template_revision", { mode: "bigint" }).notNull(),
+  selectedTemplateDigest: text("selected_template_digest").notNull(),
+  draftId: text("draft_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const recurringInvoiceOccurrenceIssues = openerp.table(
+  "recurring_invoice_occurrence_issues",
+  {
+    bookId: text("book_id").notNull(),
+    id: text().notNull(),
+    occurrenceId: text("occurrence_id").notNull(),
+    agreementId: text("agreement_id").notNull(),
+    cycleOrdinal: bigint("cycle_ordinal", { mode: "bigint" }).notNull(),
+    draftId: text("draft_id").notNull(),
+    invoiceIssueId: text("invoice_issue_id").notNull(),
+    registerInvoiceId: text("register_invoice_id").notNull(),
+    documentNumber: text("document_number").notNull(),
+    body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+    digest: text().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+  },
+);
