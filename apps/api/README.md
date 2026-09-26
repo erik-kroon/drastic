@@ -53,7 +53,38 @@ Released databases take forward migrations in filename order. [0004-next-02.sql]
 
 [0007-next-11.sql](migrations/0007-next-11.sql) adds the complete-book SIE4E export: the sealed capture header, the retained account/balance/journal-line membership, and the verified object bytes with their manifest. The application owns the raw balance arithmetic, the type-4 record encoding and the independent semantic comparison; the migration declares no function, no policy and no SIE calculation, and grants only `SELECT, INSERT`. `application/sie4e.ts` owns the capture, `db/sie4e.ts` the tx-passing reads and DML, and `jurisdictions/se/src/sie/sie4e.ts` the pure balances, renderer and comparison. A dimension-bearing book refuses with `UnsupportedProfile` because no reviewed dimension-assignment owner exists, and a reviewed account classification is a required input. See [SIE.md](docs/SIE.md). The migration sequence has a deliberate gap: `0006` is reserved for an in-flight packet. It too has never been applied by PostgreSQL.
 
+[0006-next-03.sql](migrations/0006-next-03.sql) adds the owned source-line purchase
+recognition: the immutable recognition with its unique economic key, the immutable
+signed purchase tax components, and the mutable original-line capacities a later
+supplier credit consumes. It declares no function; it reuses the baseline
+`immutable_row` guard and the `digest` check helper, and carries its own runtime
+grants. It too has never been applied by PostgreSQL.
+
+[0009-next-26.sql](migrations/0009-next-26.sql) adds the bounded supplier extraction
+lifecycle: the append-only admitted request basis, its one mutable lifecycle row, and
+the immutable human field decisions. It declares no function, reuses the baseline
+`immutable_row` guard and `digest` check helper, and carries its own runtime grants. It
+too has never been applied by PostgreSQL. Extraction produces suggestions and source
+locators only; the reviewed draft stays with the supplier draft owner and an accepted
+economic document is never revised there. The built-in engine reads text media only,
+so a PDF or image original is refused with a retained `media_type_not_supported`
+diagnostic.
+
 The replacement is implemented, including historical financial import, impairment/disposal, schedule amendments and the commerce/purchase operations missed by the original placeholder inventory. Shared posting admission enforces domain ownership, source capacity and historical-import fences inside the financial transaction. TypeScript computes plans and canonical seals; the two pure SQL helpers remain for integrity constraints and read projections. Feature handoffs under `docs/` label the former SQL implementation as history; their migration and statement-map instructions do not describe the current runtime.
+
+`application/purchases/recognition.ts` owns source-line purchase recognition and the
+exact purchase tax components it publishes. The pure calculation is
+`@open-erp/domain/purchasing`: `compileDomesticPurchase` returns the exact signed journal
+group, payable, per-line deductible decision and one tax component per source line, and
+`compilePurchaseCreditLines` / `compileUnpaidPurchaseCredit` release the deduction a
+recognition actually recorded. Rate, deduction fraction, rounding mode, acceptance
+policy, tolerance and deduction basis are reviewed inputs; there is no default rate.
+The profile witness is the `vat` family resolved on the tax point date this operation
+uses, and an unadmitted family is retained as its exact gaps. Purchase tax components
+are deliberately not written into `vat_fact_components` / `vat_fact_revisions`, which
+belong to the VAT return owner's manual, evidence-backed admission, and the VAT
+`recordFact` owner refuses an independent admission of components an owned recognition
+already published.
 
 `application/company-profiles.ts` owns capability-specific company admission. It records immutable reviewed company facts, their independent reviews and reviewed account role bindings, resolves each admitted family on the date that family's own operation uses, and commits an activation, the affected family admission epoch and a no-journal receipt in one book-scoped transaction. The legal AR family keeps `commerce.legalProfile.activate` as its named owner; admission reporting reads that owner's record rather than keeping a second activation authority. `book_get_status` reports the per-family result and its blockers and never sets `productionReady`. No reviewed `rule_releases` row ships with this release, so every family currently reports a `missing_rule_release` gap until a reviewed release owner lands; that refusal is the designed behaviour, not a default.
 
