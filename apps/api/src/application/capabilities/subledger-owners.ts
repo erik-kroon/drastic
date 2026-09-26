@@ -32,6 +32,12 @@ import {
   recoverCommand as recoverOwnerCommand,
   reviseRecord as reviseOwnerRecord,
 } from "../subledger/owners";
+import {
+  executeOwnerOperation,
+  getOwnerOperation,
+  getOwnerPaidPurchase,
+  prepareOwnerOperation,
+} from "../subledger/owner-operations";
 
 export const subledgerOwnerCapabilities = {
   subledger_get_basis: effectCapability(Capabilities.subledger_get_basis, getSubledgerBasis),
@@ -129,5 +135,26 @@ export const subledgerOwnerCapabilities = {
   ),
   owners_recover_command: effectCapability(Capabilities.owners_recover_command, (token, input) =>
     recoverOwnerCommand(token, { scope: input.scope, key: input.key }),
+  ),
+  owners_prepare_operation: effectCapability(
+    Capabilities.owners_prepare_operation,
+    prepareOwnerOperation,
+  ),
+  owners_get_operation: effectCapability(Capabilities.owners_get_operation, (token, input) =>
+    getOwnerOperation(token, { scope: input.scope, id: input.id }),
+  ),
+  owners_execute_operation: effectCapability(
+    Capabilities.owners_execute_operation,
+    (token, input) =>
+      executeOwnerOperation(token, {
+        scope: input.scope,
+        id: input.id,
+        idempotencyKey: input.idempotencyKey,
+        input: input.input,
+      }),
+  ),
+  owners_get_paid_purchase: effectCapability(
+    Capabilities.owners_get_paid_purchase,
+    (token, input) => getOwnerPaidPurchase(token, { scope: input.scope, id: input.id }),
   ),
 };

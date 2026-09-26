@@ -49,6 +49,7 @@ import { AccountantReviewCapabilities } from "./accountant-review";
 import { SourceIntakeCapabilities } from "./source-intake";
 import { ExpenseTaxCapabilities } from "./expense-tax";
 import { OwnerRegisterCapabilities } from "./owner-register";
+import { OwnerOperationCapabilities } from "./owner-operations";
 import { FirmCapabilities } from "./firms";
 import { WorkspaceCapabilities } from "./workspace";
 import { CatalogCapabilities } from "./catalog";
@@ -98,6 +99,7 @@ export const Capabilities = {
   ...SourceIntakeCapabilities,
   ...ExpenseTaxCapabilities,
   ...OwnerRegisterCapabilities,
+  ...OwnerOperationCapabilities,
   ...CommerceCapabilities,
   ...RegisterReportCapabilities,
   ...Reports.ReportFamilyCapabilities,

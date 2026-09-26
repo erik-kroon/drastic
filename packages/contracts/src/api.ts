@@ -67,6 +67,7 @@ import { AccountantReviewApi } from "./accountant-review";
 import { SourceIntakeApi } from "./source-intake";
 import { ExpenseTaxApi } from "./expense-tax";
 import { OwnerRegisterApi } from "./owner-register";
+import { OwnerOperationsApi } from "./owner-operations";
 import { FirmApi } from "./firms";
 import { WorkspaceApi } from "./workspace";
 
@@ -227,6 +228,7 @@ export class Api extends HttpApi.make("open-erp")
     DimensionsApi,
     ExpenseTaxApi,
     OwnerRegisterApi,
+    OwnerOperationsApi,
     ClosingApi,
     SubledgersApi,
   )

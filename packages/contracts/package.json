@@ -76,7 +76,8 @@
     "./roles": "./src/roles.ts",
     "./payroll-calculations": "./src/payroll-calculations.ts",
     "./expense-tax": "./src/expense-tax.ts",
-    "./owner-register": "./src/owner-register.ts"
+    "./owner-register": "./src/owner-register.ts",
+    "./owner-operations": "./src/owner-operations.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"
