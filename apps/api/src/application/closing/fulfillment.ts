@@ -3,7 +3,7 @@ import * as Deadlines from "@open-erp/contracts/deadlines";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import { isoNow, newId, replay, saveCommand, versionedDigest } from "../posting";
+import { digest, isoNow, newId, replay, saveCommand } from "../posting";
 import { decode, toJsonObject, unsupported, withBook } from "../commerce/support";
 import * as Db from "../../db/deadlines";
 import * as LinkDb from "../../db/fulfillment";
@@ -61,7 +61,7 @@ const artifactFamilies = {
 const attemptFamilies = { ar_legal_delivery_attempt: "legal_ar" } as const;
 
 const environmentLimitation =
-  "The environment is asserted by the reference, not attested by its owner.";
+  "The environment is asserted by the reference, not attested by its owner, so it cannot confirm itself.";
 
 const attemptLimitation =
   "A dispatch attempt evidences delivery to a recipient, never authority acceptance.";
@@ -181,6 +181,20 @@ function verifyOwned(input: {
   }
 
   const scoped = { ...observed, periodConfirmed: true };
+
+  // No owner in this release records the environment an artifact was produced or
+  // dispatched in. The reference's own environment string is the caller's
+  // assertion, so it cannot confirm itself, and an unknown environment must not
+  // silently satisfy a production requirement. The fulfillment therefore stays
+  // pending with the exact missing evidence named; a satisfied outcome is only
+  // reachable once an owner attests the environment it observed.
+  if (!scoped.environmentConfirmed) {
+    return Basis.verification(
+      "pending",
+      "no_owner_attests_the_environment_of_this_reference",
+      scoped,
+    );
+  }
 
   if (reference.kind === "local_prepared_artifact") {
     return Basis.verification(
@@ -324,16 +338,21 @@ export const linkFulfillment = Effect.fn("deadlines.linkFulfillment")(function* 
         return yield* failure("MissingEvidence");
       }
 
-      const referenceDigest = yield* versionedDigest(yield* toJsonObject(reference));
+      const referenceDigest = yield* digest(yield* toJsonObject(reference));
 
+      // The observation for this reference under the current obligation revision.
+      // A reference verified under an earlier revision is history, not this
+      // revision's answer, so the current owner evidence is read again below.
       const existing = (yield* LinkDb.readFulfillmentByReference(
         transaction,
         command.scope.bookId,
         command.id,
+        obligation.revision,
         referenceDigest,
       ))[0];
 
-      // The same reference linked twice is the same evidence, not a new claim.
+      // The same reference already observed under this revision is the same
+      // evidence, not a new claim.
       if (existing) {
         return yield* decode(ResultSchema, {
           fulfillment: existing.body,
@@ -369,7 +388,7 @@ export const linkFulfillment = Effect.fn("deadlines.linkFulfillment")(function* 
 
       const link = yield* decode(FulfillmentSchema, {
         ...unsealed,
-        digest: yield* versionedDigest(unsealed),
+        digest: yield* digest(unsealed),
       });
 
       const identity = Basis.referenceIdentity(reference);

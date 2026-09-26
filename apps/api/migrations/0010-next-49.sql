@@ -54,11 +54,24 @@ CREATE TABLE openerp.rule_impact_snapshots (
   recorded_cutoff timestamptz NOT NULL,
   complete_target_membership boolean NOT NULL,
   total_targets integer NOT NULL,
+  covered_owners text[] NOT NULL,
+  uncovered_owners text[] NOT NULL,
   body jsonb NOT NULL,
   CONSTRAINT rule_impact_snapshots_pkey PRIMARY KEY (book_id, id),
   CONSTRAINT rule_impact_snapshots_total_check CHECK (total_targets >= 0),
-  CONSTRAINT rule_impact_snapshots_complete_check CHECK (complete_target_membership = (total_targets <= 500)),
-  CONSTRAINT rule_impact_snapshots_body_check CHECK (body ->> 'id'::text = id AND body -> 'scope'::text ->> 'bookId'::text = book_id AND body ->> 'noticeId'::text = notice_id AND NOT (body ->> 'totalTargets'::text) IS DISTINCT FROM total_targets::text),
+  -- The declared rule-dependent owner set. A capture states which owners it
+  -- actually enumerated and which it did not, and completeness is a claim about
+  -- that declared set. It is never inferred from a row count: a total below the
+  -- read bound says nothing about which owners were queried at all.
+  CONSTRAINT rule_impact_snapshots_coverage_check CHECK (
+    covered_owners <@ ARRAY['deadline_obligation'::text, 'company_activation'::text, 'payroll_calculation'::text, 'purchase_recognition'::text]
+    AND uncovered_owners <@ ARRAY['deadline_obligation'::text, 'company_activation'::text, 'payroll_calculation'::text, 'purchase_recognition'::text]
+    AND cardinality(covered_owners) BETWEEN 1 AND 20
+    AND cardinality(uncovered_owners) BETWEEN 0 AND 20
+    AND NOT covered_owners && uncovered_owners
+    AND complete_target_membership = (cardinality(uncovered_owners) = 0)
+  ),
+  CONSTRAINT rule_impact_snapshots_body_check CHECK (body ->> 'id'::text = id AND body -> 'scope'::text ->> 'bookId'::text = book_id AND body ->> 'noticeId'::text = notice_id AND body ->> 'totalTargets'::text IS NOT DISTINCT FROM total_targets::text AND body -> 'coveredOwners'::text = to_jsonb(covered_owners) AND body -> 'uncoveredOwners'::text = to_jsonb(uncovered_owners) AND body ->> 'completeTargetMembership'::text = complete_target_membership::text),
   CONSTRAINT rule_impact_snapshots_book_id_notice_id_fkey FOREIGN KEY (book_id, notice_id) REFERENCES openerp.rule_change_notices(book_id, id)
 );
 
@@ -140,7 +153,12 @@ CREATE TABLE openerp.deadline_fulfillments (
   digest text NOT NULL,
   body jsonb NOT NULL,
   CONSTRAINT deadline_fulfillments_pkey PRIMARY KEY (book_id, id),
-  CONSTRAINT deadline_fulfillments_reference_key UNIQUE (book_id, obligation_id, reference_digest),
+  -- Reference identity is immutable and reusable: the same referenced attempt may be
+  -- verified again under a later obligation revision, which is how a provider
+  -- outcome that arrives after the first observation is recorded. One observation
+  -- per reference per obligation revision, so a re-verification is explicit and a
+  -- replay within one revision cannot append a second.
+  CONSTRAINT deadline_fulfillments_reference_key UNIQUE (book_id, obligation_id, obligation_revision, reference_digest),
   CONSTRAINT deadline_fulfillments_obligation_revision_check CHECK (obligation_revision >= 1),
   CONSTRAINT deadline_fulfillments_reference_digest_check CHECK (reference_digest ~ '^sha256:[a-f0-9]{64}$'::text),
   CONSTRAINT deadline_fulfillments_outcome_kind_check CHECK (outcome_kind = ANY (ARRAY['prepared'::text, 'submitted'::text, 'accepted'::text])),
@@ -149,12 +167,14 @@ CREATE TABLE openerp.deadline_fulfillments (
   CONSTRAINT deadline_fulfillments_verification_check CHECK (verification = ANY (ARRAY['satisfied'::text, 'pending'::text, 'mismatch'::text])),
   CONSTRAINT deadline_fulfillments_witness_check CHECK (jsonb_typeof(witness) = 'object'::text AND octet_length(witness::text) <= 8192),
   CONSTRAINT deadline_fulfillments_digest_check CHECK (digest = openerp.digest(body - 'digest'::text)),
-  CONSTRAINT deadline_fulfillments_body_check CHECK (body ->> 'id'::text = id AND body -> 'scope'::text ->> 'bookId'::text = book_id AND body ->> 'obligationId'::text = obligation_id AND body ->> 'verification'::text = verification),
+  -- The verification is an object; its scalar state is the retained column. The
+  -- first step is `->` because `->>` returns text, and text has no `->>`.
+  CONSTRAINT deadline_fulfillments_body_check CHECK (body ->> 'id'::text = id AND body -> 'scope'::text ->> 'bookId'::text = book_id AND body ->> 'obligationId'::text = obligation_id AND body -> 'verification'::text ->> 'state'::text = verification),
   CONSTRAINT deadline_fulfillments_book_id_obligation_id_fkey FOREIGN KEY (book_id, obligation_id) REFERENCES openerp.deadline_obligations(book_id, id),
   CONSTRAINT deadline_fulfillments_recorded_by_fkey FOREIGN KEY (recorded_by) REFERENCES openerp.actors(id)
 );
 CREATE INDEX deadline_fulfillments_obligation ON openerp.deadline_fulfillments (book_id, obligation_id, recorded_at, id);
-CREATE INDEX deadline_fulfillments_reference ON openerp.deadline_fulfillments (book_id, reference_kind, reference ->> 'owner');
+CREATE INDEX deadline_fulfillments_reference ON openerp.deadline_fulfillments (book_id, reference_kind, (reference ->> 'owner'));
 
 -- The retained qualified basis, the fulfillment environment and the amendment
 -- link. Nullable so a released database upgrades; the application refuses an

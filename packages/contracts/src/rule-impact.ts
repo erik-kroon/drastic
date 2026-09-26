@@ -87,13 +87,35 @@ export const ImpactTarget = Schema.Struct({
   decisionReason: Schema.NullOr(Schema.String),
 });
 
+// The owners a rule release can change the meaning of. A capture declares which of
+// them it enumerated; the rest are reported as uncovered rather than assumed
+// unaffected. Payroll and purchase recognition reference a rule release directly,
+// so a capture that does not enumerate them is not a complete application
+// dependency statement.
+export const RuleDependentOwner = Schema.Literals([
+  "deadline_obligation",
+  "company_activation",
+  "payroll_calculation",
+  "purchase_recognition",
+]);
+
+export type RuleDependentOwner = typeof RuleDependentOwner.Type;
+
 export const ImpactSnapshotHeader = Schema.Struct({
   id: Identifier,
   scope: Scope,
   noticeId: Identifier,
   recordedCutoff: Schema.String,
+  // Completeness is a claim about the declared rule-dependent owner set below,
+  // never about a row count. A capture that could not enumerate every declared
+  // owner says so and is not complete.
   completeTargetMembership: Schema.Boolean,
   totalTargets: Schema.Int,
+  coveredOwners: Schema.Array(RuleDependentOwner).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(20),
+  ),
+  uncoveredOwners: Schema.Array(RuleDependentOwner).check(Schema.isMaxLength(20)),
   decidedTargets: Schema.Int,
   continuation: Schema.NullOr(Schema.String),
 });

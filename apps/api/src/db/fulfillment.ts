@@ -40,10 +40,17 @@ export type BodyRow = { readonly body: JsonObject };
 // A prepared artifact owner that reaches a report snapshot can attest the exact
 // reporting period the deliverable covers, and its descriptor digest is already
 // enforced against the stored bytes by the baseline.
+//
+// `reportId` is the snapshot that produced the artifact. `periodId` is the
+// accounting period that snapshot's own date range is, resolved against the
+// period table. A snapshot spanning more than one period resolves to no single
+// period and is reported as unresolved, rather than passing off a snapshot
+// identifier as if it were a period identifier.
 export type ArtifactOwnerRow = {
   readonly artifactId: string;
   readonly digest: string | null;
-  readonly periodId: string;
+  readonly reportId: string;
+  readonly periodId: string | null;
   readonly periodStartsOn: string;
   readonly periodEndsOn: string;
   readonly revision: string;
@@ -68,11 +75,10 @@ export function readFulfillmentAccess(transaction: Transaction) {
         requested.table_name as "tableName",
         case when to_regclass('openerp.' || requested.table_name) is null then false
           else has_table_privilege(current_user, 'openerp.' || requested.table_name, 'select') end as "canSelect",
-        case when requested.table_name = any(array[${sql.join(
-          fulfillmentInsertTables.map((name) => sql`${name}`),
-          sql`, `,
-        )}]::text[]) then false
-          when to_regclass('openerp.' || requested.table_name) is null then false
+        -- The insert privilege is asked for, including on the tables this owner
+        -- writes. Answering false for the required write tables would refuse the
+        -- operation's own tables instead of the database's grants.
+        case when to_regclass('openerp.' || requested.table_name) is null then false
           else has_table_privilege(current_user, 'openerp.' || requested.table_name, 'insert') end as "canInsert"
       from unnest(array[${sql.join(
         fulfillmentReadTables.map((name) => sql`${name}`),
@@ -90,11 +96,14 @@ export function readReviewArtifact(transaction: Transaction, bookId: string, pac
     sql`
       select a.pack_id as "artifactId",
         a.descriptor ->> 'sha256'::text as digest,
-        r.id as "periodId", r.starts_on::text as "periodStartsOn",
+        r.id as "reportId", rp.id as "periodId",
+        r.starts_on::text as "periodStartsOn",
         r.ends_on::text as "periodEndsOn", r.sequence::text as revision
       from openerp.accountant_review_artifacts a
       join openerp.accountant_review_packs p on p.book_id = a.book_id and p.id = a.pack_id
       join openerp.report_snapshots r on r.book_id = p.book_id and r.id = p.report_id
+      left join openerp.periods rp
+        on rp.book_id = r.book_id and rp.starts_on = r.starts_on and rp.ends_on = r.ends_on
       where a.book_id = ${bookId} and a.pack_id = ${packId}
     `,
     "objects",
@@ -106,12 +115,15 @@ export function readSieArtifact(transaction: Transaction, bookId: string, captur
     sql`
       select t.capture_id as "artifactId",
         t.descriptor ->> 'sha256'::text as digest,
-        r.id as "periodId", r.starts_on::text as "periodStartsOn",
+        r.id as "reportId", rp.id as "periodId",
+        r.starts_on::text as "periodStartsOn",
         r.ends_on::text as "periodEndsOn", r.sequence::text as revision
       from openerp.sie_transaction_artifacts t
       join openerp.sie_transaction_captures c on c.book_id = t.book_id and c.id = t.capture_id
-      join openerp.accountant_review_packs p on p.book_id = c.book_id and p.id = c.pack_id
+      join openerp.accountant_review_packs p on c.book_id = p.book_id and p.id = c.pack_id
       join openerp.report_snapshots r on r.book_id = p.book_id and r.id = p.report_id
+      left join openerp.periods rp
+        on rp.book_id = r.book_id and rp.starts_on = r.starts_on and rp.ends_on = r.ends_on
       where t.book_id = ${bookId} and t.capture_id = ${captureId}
     `,
     "objects",
@@ -142,16 +154,21 @@ export function readDeliveryAttempt(transaction: Transaction, bookId: string, at
   );
 }
 
+// The observation recorded for one reference under one obligation revision. A
+// later revision gets its own observation of the same reference, so an outcome
+// that arrives after the first attempt is recorded rather than hidden behind it.
 export function readFulfillmentByReference(
   transaction: Transaction,
   bookId: string,
   obligationId: string,
+  obligationRevision: number,
   referenceDigest: string,
 ) {
   return transaction.execute<BodyRow>(
     sql`
       select body from openerp.deadline_fulfillments
       where book_id = ${bookId} and obligation_id = ${obligationId}
+        and obligation_revision = ${obligationRevision}::bigint
         and reference_digest = ${referenceDigest}
       for share
     `,

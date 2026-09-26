@@ -215,6 +215,8 @@ export const ruleImpactSnapshots = openerp.table("rule_impact_snapshots", {
   recordedCutoff: timestamp("recorded_cutoff", { withTimezone: true, mode: "string" }).notNull(),
   completeTargetMembership: boolean("complete_target_membership").notNull(),
   totalTargets: integer("total_targets").notNull(),
+  coveredOwners: text("covered_owners").array().notNull(),
+  uncoveredOwners: text("uncovered_owners").array().notNull(),
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });
 

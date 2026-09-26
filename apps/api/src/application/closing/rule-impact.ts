@@ -3,7 +3,7 @@ import * as Impact from "@open-erp/contracts/rule-impact";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import { isoNow, newId, replay, saveCommand, versionedDigest } from "../posting";
+import { digest, isoNow, newId, replay, saveCommand } from "../posting";
 import { decodeRelease } from "../company-profile-basis";
 import { decode, toJsonObject, unsupported, withBook } from "../commerce/support";
 import * as Db from "../../db/rule-impact";
@@ -45,10 +45,25 @@ function decodeList<A>(schema: Schema.Decoder<ReadonlyArray<A>>, value: unknown)
 }
 
 // One page of targets, and the bound a capture must stay under. A wider selection
-// is refused so the operator names a narrower partition explicitly.
+// is refused so the operator names a narrower partition explicitly. The bound is a
+// read limit, not evidence of coverage.
 const targetPage = 100;
 
 const captureBound = 500;
+
+// The rule-dependent owners this capture enumerates, and the declared owners it
+// does not. Payroll calculations and purchase recognitions reference a rule
+// release directly, so leaving them out is a real gap in the dependency
+// statement and is reported as uncovered rather than folded into completeness.
+const enumeratedOwners: ReadonlyArray<Impact.RuleDependentOwner> = [
+  "deadline_obligation",
+  "company_activation",
+];
+
+const unenumeratedOwners: ReadonlyArray<Impact.RuleDependentOwner> = [
+  "payroll_calculation",
+  "purchase_recognition",
+];
 
 function requireImpactAccess(transaction: Transaction, write: boolean) {
   const readTables = [...Db.ruleImpactReadTables];
@@ -243,7 +258,7 @@ export const recordNotice = Effect.fn("ruleImpact.recordNotice")(function* (
 
       const notice = yield* decode(NoticeSchema, {
         ...unsealed,
-        digest: yield* versionedDigest(unsealed),
+        digest: yield* digest(unsealed),
       });
 
       yield* Db.insertNotice(transaction, {
@@ -350,13 +365,17 @@ export const captureImpact = Effect.fn("ruleImpact.captureImpact")(function* (
       const snapshotId = newId("rule_impact_snapshot");
       const total = deadlines.length + activations.length;
 
+      const completeTargetMembership = unenumeratedOwners.length === 0;
+
       const unsealedHeader = yield* toJsonObject({
         id: snapshotId,
         scope: command.scope,
         noticeId: notice.id,
         recordedCutoff,
-        completeTargetMembership: true,
+        completeTargetMembership,
         totalTargets: total,
+        coveredOwners: [...enumeratedOwners],
+        uncoveredOwners: [...unenumeratedOwners],
         decidedTargets: 0,
         continuation: null,
       });
@@ -368,8 +387,10 @@ export const captureImpact = Effect.fn("ruleImpact.captureImpact")(function* (
         id: snapshotId,
         noticeId: notice.id,
         recordedCutoff,
-        completeTargetMembership: true,
+        completeTargetMembership,
         totalTargets: total,
+        coveredOwners: [...enumeratedOwners],
+        uncoveredOwners: [...unenumeratedOwners],
         body: yield* toJsonObject(header),
       });
 
@@ -389,7 +410,7 @@ export const captureImpact = Effect.fn("ruleImpact.captureImpact")(function* (
           executionState,
         );
 
-        const basisDigest = yield* versionedDigest(row.statutoryBasis);
+        const basisDigest = yield* digest(row.statutoryBasis);
 
         yield* Db.insertTarget(transaction, {
           bookId: command.scope.bookId,
@@ -503,6 +524,8 @@ export const listImpact = Effect.fn("ruleImpact.listImpact")(function* (
         recordedCutoff: row.recordedCutoff,
         completeTargetMembership: row.completeTargetMembership,
         totalTargets: row.totalTargets,
+        coveredOwners: row.coveredOwners,
+        uncoveredOwners: row.uncoveredOwners,
         decidedTargets: Number(row.decidedTargets),
         continuation: null,
       })),
@@ -565,6 +588,8 @@ export const getImpactSnapshot = Effect.fn("ruleImpact.getSnapshot")(function* (
       recordedCutoff: snapshot.recordedCutoff,
       completeTargetMembership: snapshot.completeTargetMembership,
       totalTargets: snapshot.totalTargets,
+      coveredOwners: snapshot.coveredOwners,
+      uncoveredOwners: snapshot.uncoveredOwners,
       decidedTargets: decided,
       targets: decoded,
       continuation: more ? String(page[page.length - 1]?.ordinal ?? after) : null,
@@ -723,7 +748,7 @@ export const decideTarget = Effect.fn("ruleImpact.decideTarget")(function* (
 
       const decision = yield* decode(DecisionSchema, {
         ...unsealed,
-        digest: yield* versionedDigest(unsealed),
+        digest: yield* digest(unsealed),
       });
 
       yield* Db.insertDecision(transaction, {

@@ -82,11 +82,10 @@ export function readRuleImpactAccess(transaction: Transaction) {
         requested.table_name as "tableName",
         case when to_regclass('openerp.' || requested.table_name) is null then false
           else has_table_privilege(current_user, 'openerp.' || requested.table_name, 'select') end as "canSelect",
-        case when requested.table_name = any(array[${sql.join(
-          ruleImpactInsertTables.map((name) => sql`${name}`),
-          sql`, `,
-        )}]::text[]) then false
-          when to_regclass('openerp.' || requested.table_name) is null then false
+        -- The insert privilege is asked for, including on the tables this owner
+        -- writes. Answering false for the required write tables would refuse the
+        -- operation's own tables instead of the database's grants.
+        case when to_regclass('openerp.' || requested.table_name) is null then false
           else has_table_privilege(current_user, 'openerp.' || requested.table_name, 'insert') end as "canInsert"
       from unnest(array[${sql.join(
         ruleImpactReadTables.map((name) => sql`${name}`),
@@ -142,6 +141,8 @@ export function listSnapshots(transaction: Transaction, bookId: string) {
       recordedCutoff: ruleImpactSnapshots.recordedCutoff,
       completeTargetMembership: ruleImpactSnapshots.completeTargetMembership,
       totalTargets: ruleImpactSnapshots.totalTargets,
+      coveredOwners: ruleImpactSnapshots.coveredOwners,
+      uncoveredOwners: ruleImpactSnapshots.uncoveredOwners,
       decidedTargets: sql<number>`(
         select count(*)::integer from ${ruleImpactDecisions}
         where ${ruleImpactDecisions.bookId} = ${ruleImpactSnapshots.bookId}
@@ -159,6 +160,8 @@ const snapshotSelection = {
   recordedCutoff: ruleImpactSnapshots.recordedCutoff,
   completeTargetMembership: ruleImpactSnapshots.completeTargetMembership,
   totalTargets: ruleImpactSnapshots.totalTargets,
+  coveredOwners: ruleImpactSnapshots.coveredOwners,
+  uncoveredOwners: ruleImpactSnapshots.uncoveredOwners,
 };
 
 export function lockSnapshot(transaction: Transaction, bookId: string, id: string) {
@@ -384,10 +387,16 @@ export function insertSnapshot(
     readonly recordedCutoff: string;
     readonly completeTargetMembership: boolean;
     readonly totalTargets: number;
+    readonly coveredOwners: ReadonlyArray<string>;
+    readonly uncoveredOwners: ReadonlyArray<string>;
     readonly body: JsonObject;
   },
 ) {
-  return transaction.insert(ruleImpactSnapshots).values([row]);
+  return transaction
+    .insert(ruleImpactSnapshots)
+    .values([
+      { ...row, coveredOwners: [...row.coveredOwners], uncoveredOwners: [...row.uncoveredOwners] },
+    ]);
 }
 
 export function insertTarget(
