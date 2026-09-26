@@ -17,6 +17,7 @@ CREATE TABLE openerp.payroll_calculations (
   book_id text NOT NULL,
   id text NOT NULL,
   employee_id text NOT NULL,
+  revision integer NOT NULL,
   change_set_id text NOT NULL,
   plan_digest text NOT NULL,
   rule_release_id text NOT NULL,
@@ -34,10 +35,12 @@ CREATE TABLE openerp.payroll_calculations (
   created_by text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT payroll_calculations_pkey PRIMARY KEY (book_id, id),
-  -- One original regular earning event per employee and earnings period. A new
-  -- work or employment revision requires a new calculation, never a second
-  -- salary event for the same period.
-  CONSTRAINT payroll_calculations_earning_event_key UNIQUE (book_id, employee_id, earnings_period_start, earnings_period_end),
+  -- One earning event per employee and earnings period; many immutable
+  -- calculation revisions under it. A changed input produces a new revision of the
+  -- same event, never a second salary, and an exact replay of one basis is the same
+  -- revision. No revision reserves capacity: this owner posts nothing.
+  CONSTRAINT payroll_calculations_earning_revision_key UNIQUE (book_id, employee_id, earnings_period_start, earnings_period_end, revision),
+  CONSTRAINT payroll_calculations_revision_check CHECK (revision >= 1 AND revision <= 1000),
   CONSTRAINT payroll_calculations_plan_key UNIQUE (book_id, change_set_id),
   CONSTRAINT payroll_calculations_digest_check CHECK (plan_digest ~ '^sha256:[a-f0-9]{64}$'),
   CONSTRAINT payroll_calculations_no_effect_check CHECK (no_financial_effect),

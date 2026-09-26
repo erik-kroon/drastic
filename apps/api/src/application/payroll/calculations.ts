@@ -1,5 +1,6 @@
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Payroll from "@open-erp/contracts/payroll-calculations";
+import * as Profiles from "@open-erp/contracts/company-profiles";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -45,6 +46,9 @@ const writeTables = [...Db.payrollCalculationTables, "change_sets"] as const;
 
 const commandOperation = "prepare_payroll_calculation";
 
+// Bounded immutable revisions of one earning event.
+const maximumRevisions = 1000;
+
 const OpeningBody = Schema.Struct({
   asOf: Accounting.AccountingDate,
   balanceMinor: Accounting.SignedMinorUnits,
@@ -85,6 +89,30 @@ function requirePayrollGrant(transaction: Transaction, scope: Scope, actorId: st
 // date, never on today's date.
 function profileDates(paymentOn: string): Dates {
   return { postingOn: null, taxPointOn: null, paymentOn, reportOn: null };
+}
+
+// A monthly pay event covers one whole calendar month. The last day is derived
+// from the calendar rather than assumed, so a month boundary is exact.
+function isWholeCalendarMonth(period: { startsOn: string; endsOn: string }) {
+  const sameMonth = period.startsOn.slice(0, 7) === period.endsOn.slice(0, 7);
+  const firstDay = period.startsOn.slice(8) === "01";
+
+  if (!isCalendarDate(period.startsOn) || !isCalendarDate(period.endsOn)) return false;
+
+  if (!sameMonth || !firstDay) return false;
+
+  const last = new Date(`${period.startsOn}T00:00:00.000Z`);
+
+  last.setUTCMonth(last.getUTCMonth() + 1);
+  last.setUTCDate(0);
+
+  return period.endsOn === last.toISOString().slice(0, 10);
+}
+
+function isCalendarDate(value: string) {
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
 function evidenceReferences(input: typeof Payroll.PreparePayRun.Type) {
@@ -141,12 +169,6 @@ function basisInputRefs(
       version: releaseChecksum,
       reason: `Reviewed payroll rule release for calculator ${calculatorVersion}`,
     },
-    ...basis.priorFrozenCalculationIds.map((id) => ({
-      kind: "prior_frozen_calculation" as const,
-      resourceId: id,
-      version: id,
-      reason: "Frozen same-month contribution base already reserved by this owner",
-    })),
     ...(basis.companyActivationId === null
       ? []
       : [
@@ -184,6 +206,44 @@ function basisInputRefs(
   ] satisfies ReadonlyArray<typeof Payroll.PayrollCalculationInputRef.Type>;
 }
 
+// The next immutable revision of one stable earning event, and the month gate.
+//
+// A changed input is a new revision of the same event, not a second salary and
+// not a correction of history. A second earning event in the same calendar month
+// needs a month-to-date base that has advanced past the first, and only an
+// executed, reserved or paid run can advance it. No such owner exists yet, so the
+// prior base is never approximated by summing proposals: that is an integration
+// gate, named as one.
+const resolveEarningRevision = Effect.fn("payroll.earningRevision")(function* (
+  transaction: Transaction,
+  scope: Scope,
+  employeeId: string,
+  period: { startsOn: string; endsOn: string },
+) {
+  const otherEvents = (yield* Db.readMonthEarningEvents(
+    transaction,
+    scope.bookId,
+    employeeId,
+    period.startsOn.slice(0, 7),
+  )).filter(
+    (row) => row.earningsPeriodStart !== period.startsOn || row.earningsPeriodEnd !== period.endsOn,
+  );
+
+  if (otherEvents.length > 0) return yield* failure("UnsupportedProfile");
+
+  const latest = (yield* Db.readLatestEarningRevision(
+    transaction,
+    scope.bookId,
+    employeeId,
+    period.startsOn,
+    period.endsOn,
+  ))[0];
+
+  const revision = (latest?.revision ?? 0) + 1;
+
+  return revision > maximumRevisions ? yield* failure("InvalidJournal") : revision;
+});
+
 export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(function* (
   token: string,
   command: { scope: Scope; idempotencyKey: string; input: typeof Payroll.PreparePayRun.Type },
@@ -193,6 +253,14 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
     command.scope,
     true,
     function* (transaction, principal) {
+      // Current private payroll access is checked before any record is returned and
+      // before a saved-command replay can hand one back. A book membership is not
+      // payroll authority, and an idempotent recovery is still a read of a payroll
+      // record, so it is authorized the same way. Ordinary identical-command
+      // recovery is preserved for an authorized caller below.
+      yield* requireTableGrants(transaction, true);
+      yield* requirePayrollGrant(transaction, command.scope, principal.actorId);
+
       const input = yield* toJsonObject(command.input);
 
       const request = yield* replay(
@@ -208,9 +276,6 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
       // A committed identical command returns before any new-work, capacity or
       // duplicate-economics work.
       if (request.previous) return request.previous;
-
-      yield* requireTableGrants(transaction, true);
-      yield* requirePayrollGrant(transaction, command.scope, principal.actorId);
 
       const prepared = yield* decode(Payroll.PreparePayRun, input);
       const employeeId = prepared.employment.employeeId;
@@ -239,29 +304,33 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
         return yield* failure("UnsupportedProfile");
       }
 
-      const release = Option.getOrNull(
-        Schema.decodeUnknownOption(Payroll.PayrollRuleRelease)(releaseRow.body),
+      // The shared RuleRelease owns one nested payroll payload. Decoding the row as
+      // a payroll release would read the nested fields as if they were at the root,
+      // so the outer release is decoded under its own schema and its payroll
+      // section is selected. A release with no payroll payload is a precise
+      // unsupported profile, not a default schedule.
+      const outer = Option.getOrNull(
+        Schema.decodeUnknownOption(Profiles.RuleRelease)(releaseRow.body),
       );
 
+      if (outer === null) return yield* failure("UnsupportedProfile");
+
+      const release = outer.payroll ?? null;
+
       if (release === null) return yield* failure("UnsupportedProfile");
+
+      if (releaseRow.checksum !== outer.checksum) return yield* failure("StaleDependency");
 
       if (release.calculatorVersion !== Payroll.SupportedCalculatorVersion) {
         return yield* failure("UnsupportedProfile");
       }
 
-      // One original regular earning event per employee and earnings period. A
-      // new work revision needs a correction, never a second salary event.
-      if (
-        (yield* Db.readEarningEvent(
-          transaction,
-          command.scope.bookId,
-          employeeId,
-          period.startsOn,
-          period.endsOn,
-        )).length > 0
-      ) {
-        return yield* failure("IdempotencyConflict");
-      }
+      const revision = yield* resolveEarningRevision(
+        transaction,
+        command.scope,
+        employeeId,
+        period,
+      );
 
       const employment = (yield* Db.lockRevisionHead(
         transaction,
@@ -321,6 +390,12 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
         return yield* failure("StaleDependency");
       }
 
+      // A monthly pay event's earnings period is the whole calendar month. This
+      // calculator declares no proration and no reduced band for an irregular
+      // period, so a part-month interval is refused rather than paid a full
+      // monthly salary. A same-month interval is not thereby a full month.
+      if (!isWholeCalendarMonth(period)) return yield* failure("UnsupportedProfile");
+
       if (openingBody.asOf > period.startsOn) return yield* failure("UnsupportedProfile");
 
       if (BigInt(openingBody.balanceMinor) < 0n) return yield* failure("InvalidJournal");
@@ -328,18 +403,6 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
       for (const reference of evidenceReferences(prepared)) {
         yield* requireRetainedEvidence(transaction, command.scope.bookId, reference);
       }
-
-      // A second frozen calculation in the same calendar month would be granted
-      // the same reduced contribution band twice, so the reserved part of the
-      // prior base is the contribution base already frozen by this owner. A
-      // reservation from an executed run is the execution owner's record and is
-      // not observable from here.
-      const frozen = yield* Db.readSameMonthContributions(
-        transaction,
-        command.scope.bookId,
-        employeeId,
-        period.startsOn.slice(0, 7),
-      );
 
       const membership = yield* ProfileDb.readFamilyMembership(
         transaction,
@@ -354,11 +417,8 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
           employmentRevisionId: employment.id,
           workRevisionId: work.id,
           openingRevisionId: opening.id,
-          priorFrozenCalculationIds: frozen.map((row) => row.id),
           openingBaseMinor: openingBody.balanceMinor,
-          priorFrozenBaseMinor: frozen
-            .reduce((total, row) => total + BigInt(row.contributionBaseMinor), 0n)
-            .toString(),
+          openingObligationReference: openingBody.obligation,
           earningsPeriod: period,
           expectedPaymentOn: paymentOn,
           currency: book.currency,
@@ -445,6 +505,7 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
         bookId: command.scope.bookId,
         id: calculationId,
         employeeId,
+        revision,
         changeSetId: planId,
         planDigest: sealed,
         ruleReleaseId: releaseRow.id,
@@ -514,8 +575,11 @@ export const getCalculation = Effect.fn("payroll.getCalculation")(function* (
   token: string,
   command: { scope: Scope; calculationId: string },
 ) {
-  return yield* withBook(token, command.scope, false, function* (transaction) {
+  return yield* withBook(token, command.scope, false, function* (transaction, principal) {
     yield* requireTableGrants(transaction, false);
+
+    // A read is not a weaker boundary than the write that produced the row.
+    yield* requirePayrollGrant(transaction, command.scope, principal.actorId);
 
     const row = (yield* Db.readCalculation(
       transaction,
@@ -535,8 +599,9 @@ export const listCalculations = Effect.fn("payroll.listCalculations")(function* 
   token: string,
   command: { scope: Scope; employeeId: string; after?: string },
 ) {
-  return yield* withBook(token, command.scope, false, function* (transaction) {
+  return yield* withBook(token, command.scope, false, function* (transaction, principal) {
     yield* requireTableGrants(transaction, false);
+    yield* requirePayrollGrant(transaction, command.scope, principal.actorId);
 
     const rows = yield* Db.readCalculationsAfter(
       transaction,

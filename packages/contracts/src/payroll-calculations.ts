@@ -59,6 +59,16 @@ const AggregationPeriod = Schema.Literals([
 
 const ObligationKind = Schema.Literals(["employer_contribution", "pension", "holiday", "other"]);
 
+// Minor-unit bounds are exact integers, so they are compared as exact integers.
+// A string comparison would order "900" above "1000" and admit an inverted band.
+function isNotBelow(lower: string, upper: string) {
+  return BigInt(upper) >= BigInt(lower);
+}
+
+function isNotAbove(lower: string, upper: string) {
+  return BigInt(upper) > BigInt(lower);
+}
+
 // One reviewed band of an exact marginal schedule. `upperMinor: null` is an
 // unbounded final band. Bands are contiguous from zero; a gap or an overlap is a
 // refusal, not a silent zero range.
@@ -70,7 +80,7 @@ export const ContributionBand = Schema.Struct({
   Schema.makeFilter((band) => {
     const issues: Array<Schema.FilterIssue> = [];
 
-    if (band.upperMinor !== null && band.upperMinor <= band.lowerMinor) {
+    if (band.upperMinor !== null && !isNotAbove(band.lowerMinor, band.upperMinor)) {
       issues.push({
         path: ["upperMinor"],
         issue: "A contribution band must be strictly wider than its lower bound.",
@@ -102,7 +112,7 @@ export const WithholdingRow = Schema.Struct({
   Schema.makeFilter((row) => {
     const issues: Array<Schema.FilterIssue> = [];
 
-    if (row.upperMinor < row.lowerMinor) {
+    if (!isNotBelow(row.lowerMinor, row.upperMinor)) {
       issues.push({
         path: ["upperMinor"],
         issue: "A withholding row must end at or after its lower bound.",
@@ -335,6 +345,12 @@ export const FormulaStep = Schema.Struct({
   denominator: RateDenominator,
   roundedMinor: Accounting.SignedMinorUnits,
   residualNumerator: SignedInteger,
+  // A cumulative marginal is the difference of two rounded totals, not the
+  // rounding of one exact difference. When the result is that difference, the two
+  // rounded totals are retained beside it, so the explanation is the arithmetic
+  // that produced the amount.
+  roundedBeforeMinor: Schema.optional(Accounting.SignedMinorUnits),
+  roundedAfterMinor: Schema.optional(Accounting.SignedMinorUnits),
 });
 
 export const PayrollAccrualComponent = Schema.Struct({
@@ -364,15 +380,17 @@ export const PayrollCalculationBasis = Schema.Struct({
   workRevisionId: Accounting.Identifier,
   openingRevisionId: Accounting.Identifier,
   // The retained 9107 opening balance for the obligation this run contributes
-  // under. It is the prior compatible monthly contribution base.
+  // under. It is the prior compatible monthly contribution base, and it is the
+  // only owner of that base here. Frozen proposals are not summed into it: a
+  // calculation reserves nothing, so a discarded or corrected proposal must not
+  // move the marginal schedule. A month whose month-to-date base has advanced
+  // needs the execution owner to advance this opening revision, and until that
+  // owner exists a second event in the same calendar month is refused.
   openingBaseMinor: Accounting.MinorUnits,
-  // Contribution bases this owner already froze for the same employee and the
-  // same calendar month. The marginal schedule is evaluated over
-  // openingBaseMinor + priorFrozenBaseMinor, so a monthly reduced band is split
-  // across runs instead of granted once per run. A reservation from an executed
-  // run belongs to the execution owner.
-  priorFrozenCalculationIds: Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(40)),
-  priorFrozenBaseMinor: Accounting.MinorUnits,
+  // The obligation the retained opening balance was opened for. The calculator
+  // refuses an employer contribution whose profile names a different obligation,
+  // so a balance carried for one obligation cannot become another's prior base.
+  openingObligationReference: Accounting.Description,
   earningsPeriod: EarningsPeriod,
   expectedPaymentOn: Accounting.AccountingDate,
   currency: Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/)),

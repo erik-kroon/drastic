@@ -93,17 +93,28 @@ export function roundExact(value: Exact, mode: Rounding["mode"]): bigint {
   return negative ? -result : result;
 }
 
-// One rounding decision over the exact rational, at the component's scale. The
-// retained residual is what the decision discarded, so nothing is plugged.
-export function roundRationalToMinor(value: Exact, policy: Rounding) {
-  const denominator = value.d * 10n ** BigInt(policy.scale);
-  const rounded = roundExact({ n: value.n, d: denominator }, policy.mode);
-
-  return { rounded, residual: value.n - rounded * denominator };
+// The declared rounding quantum, expressed in the wire's own minor unit. At scale
+// 2 a quantum of 10^2 is one whole major unit, which is 100 minor units, so
+// rounding to it still returns minor units. Dividing by the quantum and returning
+// the quotient would be a reporting integer wearing a Minor label: a 3 000 000
+// minor-unit gross would come back as 30 000.
+export function quantumInMinor(policy: Rounding) {
+  return 10n ** BigInt(policy.scale);
 }
 
-export function roundMinor(amount: bigint, policy: Rounding) {
-  return roundRationalToMinor({ n: amount, d: 1n }, policy).rounded;
+// One rounding decision over the exact rational, at the component's declared
+// quantum, returning minor units. The retained residual is what the decision
+// discarded, in the exact value's own units, so nothing is plugged.
+export function roundRationalToQuantumMinor(value: Exact, policy: Rounding) {
+  const quantum = quantumInMinor(policy);
+  const units = roundExact({ n: value.n, d: value.d * quantum }, policy.mode);
+  const rounded = units * quantum;
+
+  return { rounded, residual: value.n - rounded * value.d };
+}
+
+export function roundToQuantumMinor(amount: bigint, policy: Rounding) {
+  return roundRationalToQuantumMinor({ n: amount, d: 1n }, policy).rounded;
 }
 
 function bandAmount(base: bigint, band: Band): Exact {
@@ -121,21 +132,25 @@ export function exactTieredTotal(bands: ReadonlyArray<Band>, base: bigint) {
   });
 }
 
-// Bands must tile from zero to infinity with no gap and no overlap. A gap would
-// contribute nothing over a range of bases without saying so, so it is refused.
+// Bands must tile from zero to infinity with no gap and no overlap, and exactly
+// one unbounded final band. A gap would contribute nothing over a range of bases
+// without saying so. A second unbounded band, or any band after the unbounded one,
+// would be unreachable, so it is refused rather than silently ignored.
 export function bandsAreContiguous(bands: ReadonlyArray<Band>) {
   const ordered = [...bands].sort((left, right) =>
     toExactInteger(left.lowerMinor) < toExactInteger(right.lowerMinor) ? -1 : 1,
   );
 
   let expected = 0n;
-  let bounded = true;
+  let unbounded = false;
 
   for (const band of ordered) {
+    if (unbounded) return false;
+
     if (toExactInteger(band.lowerMinor) !== expected) return false;
 
     if (band.upperMinor === null) {
-      bounded = false;
+      unbounded = true;
       continue;
     }
 
@@ -146,11 +161,11 @@ export function bandsAreContiguous(bands: ReadonlyArray<Band>) {
     expected = upper;
   }
 
-  return !bounded;
+  return unbounded;
 }
 
 function recorded(id: string, statement: string, value: Exact, policy: Rounding): Step {
-  const decision = roundRationalToMinor(value, policy);
+  const decision = roundRationalToQuantumMinor(value, policy);
 
   return {
     step: id,
@@ -304,11 +319,11 @@ function withholdingFor(release: Release, basis: Basis, withholdingBase: bigint,
 
   if (rule.kind === "fixed_amount") {
     return {
-      minor: roundMinor(toExactInteger(rule.amountMinor), policy),
+      minor: roundToQuantumMinor(toExactInteger(rule.amountMinor), policy),
       step: whole(
         "withholding",
         `Reviewed fixed withholding decision ${rule.ruleId} for this pay event`,
-        roundMinor(toExactInteger(rule.amountMinor), policy),
+        roundToQuantumMinor(toExactInteger(rule.amountMinor), policy),
       ),
     };
   }
@@ -341,7 +356,7 @@ function withholdingFor(release: Release, basis: Basis, withholdingBase: bigint,
 
   if (row === undefined) return null;
 
-  const minor = roundMinor(toExactInteger(row.amountMinor), policy);
+  const minor = roundToQuantumMinor(toExactInteger(row.amountMinor), policy);
 
   return {
     minor,
@@ -392,11 +407,11 @@ export const calculateRegularPayroll = (
 
     if (declaredGross < 0n) return yield* failure("InvalidJournal");
 
-    const gross = roundMinor(declaredGross, rounding.gross);
+    const gross = roundToQuantumMinor(declaredGross, rounding.gross);
 
     const reimbursements = [...employment.reimbursements, ...work.reimbursements];
 
-    const reimbursement = roundMinor(
+    const reimbursement = roundToQuantumMinor(
       reimbursements.reduce((total, row) => total + toExactInteger(row.minor), 0n),
       rounding.reimbursement,
     );
@@ -405,7 +420,7 @@ export const calculateRegularPayroll = (
 
     if (!benefits.ok) return yield* failure(benefits.refusal);
 
-    const netDeductions = roundMinor(
+    const netDeductions = roundToQuantumMinor(
       employment.deductionComponents.reduce((total, row) => total + toExactInteger(row.minor), 0n),
       rounding.netDeduction,
     );
@@ -460,17 +475,34 @@ export const calculateRegularPayroll = (
         return yield* failure("UnsupportedProfile");
       }
 
-      priorBase =
-        toExactInteger(basis.openingBaseMinor) + toExactInteger(basis.priorFrozenBaseMinor);
+      // The prior monthly base is the retained opening balance and nothing else.
+      // Summing every frozen proposal would let a discarded or corrected proposal
+      // move the marginal schedule, which is a reservation this owner does not make.
+      priorBase = toExactInteger(basis.openingBaseMinor);
+
+      // The opening balance must be the one opened for this obligation. A balance
+      // carried for a different obligation is not this profile's prior base.
+      if (profile.obligationReference !== basis.openingObligationReference) {
+        return yield* failure("UnsupportedProfile");
+      }
 
       // F(prior + new) - F(prior) is the marginal this pay event adds, so a
       // monthly reduced band is granted once and not once per run.
       const beforeExact = exactTieredTotal(profile.bands, priorBase);
       const afterExact = exactTieredTotal(profile.bands, priorBase + contributionBase);
 
-      contribution =
-        roundRationalToMinor(afterExact, profile.rounding).rounded -
-        roundRationalToMinor(beforeExact, profile.rounding).rounded;
+      const beforeRounded = roundRationalToQuantumMinor(beforeExact, profile.rounding);
+      const afterRounded = roundRationalToQuantumMinor(afterExact, profile.rounding);
+
+      contribution = afterRounded.rounded - beforeRounded.rounded;
+
+      // The retained step is the arithmetic the result actually uses: the two
+      // rounded totals and their exact difference. Rounding the exact difference
+      // instead would be a different amount whenever the two roundings disagree.
+      const exactDifference = reduce(
+        afterExact.n * beforeExact.d - beforeExact.n * afterExact.d,
+        afterExact.d * beforeExact.d,
+      );
 
       formulaRows.push(
         whole(
@@ -478,22 +510,24 @@ export const calculateRegularPayroll = (
           "Gross cash earnings plus contribution benefit bases",
           contributionBase,
         ),
-        recorded(
-          "employer_contribution",
-          `F(${priorBase + contributionBase}) minus F(${priorBase}) over ${profile.profileId}`,
-          reduce(
-            afterExact.n * beforeExact.d - beforeExact.n * afterExact.d,
-            afterExact.d * beforeExact.d,
-          ),
-          profile.rounding,
-        ),
       );
+
+      formulaRows.push({
+        step: "employer_contribution",
+        statement: `Rounded F(${priorBase + contributionBase}) minus rounded F(${priorBase}) over ${profile.profileId}`,
+        numerator: exactDifference.n.toString(),
+        denominator: exactDifference.d.toString(),
+        roundedMinor: contribution.toString(),
+        residualNumerator: (exactDifference.n - contribution * exactDifference.d).toString(),
+        roundedBeforeMinor: beforeRounded.rounded.toString(),
+        roundedAfterMinor: afterRounded.rounded.toString(),
+      });
     } else if (employer.length > 1) {
       // Two applicable employer contributions need a separate qualified policy.
       return yield* failure("UnsupportedProfile");
     }
 
-    const payable = roundMinor(
+    const payable = roundToQuantumMinor(
       gross + reimbursement - resolved.minor - netDeductions,
       rounding.payable,
     );

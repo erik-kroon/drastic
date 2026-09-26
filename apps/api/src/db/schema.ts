@@ -566,6 +566,7 @@ export const payrollCalculations = openerp.table("payroll_calculations", {
   bookId: text("book_id").notNull(),
   id: text("id").notNull(),
   employeeId: text("employee_id").notNull(),
+  revision: integer("revision").notNull(),
   changeSetId: text("change_set_id").notNull(),
   planDigest: text("plan_digest").notNull(),
   ruleReleaseId: text("rule_release_id").notNull(),

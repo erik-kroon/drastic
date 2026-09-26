@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type * as Schema from "effect/Schema";
 import { ruleReleases } from "../schema";
 import {
@@ -46,6 +46,7 @@ export type SameMonthRow = {
 export type CalculationRow = {
   readonly id: string;
   readonly employeeId: string;
+  readonly revision: number;
   readonly changeSetId: string;
   readonly planDigest: string;
   readonly ruleReleaseId: string;
@@ -70,6 +71,7 @@ export type CalculationWrite = {
   readonly bookId: string;
   readonly id: string;
   readonly employeeId: string;
+  readonly revision: number;
   readonly changeSetId: string;
   readonly planDigest: string;
   readonly ruleReleaseId: string;
@@ -109,7 +111,11 @@ const revisionColumns = {
 
 // The latest 9050/9107 revision of one kind on or before the requested date. A
 // newer revision is a new row, so a changed fact shows up as a changed head
-// rather than a lost one.
+// rather than a lost one. Two revisions can share an effective date, so the head
+// is ordered deterministically: without the tiebreakers the selected revision
+// would depend on the plan, and the same input could bind to a different revision
+// on a re-run. The current-pointer check below still refuses a head the pointer
+// does not name.
 function headQuery(
   transaction: Transaction,
   bookId: string,
@@ -129,7 +135,11 @@ function headQuery(
         sql`${payrollRevisions.effectiveOn} <= ${latestEffectiveOn}::date`,
       ),
     )
-    .orderBy(sql`${payrollRevisions.effectiveOn} desc`)
+    .orderBy(
+      sql`${payrollRevisions.effectiveOn} desc`,
+      sql`${payrollRevisions.createdAt} desc`,
+      sql`${payrollRevisions.id} desc`,
+    )
     .limit(1);
 
   return lock === "update" ? rows.for("update") : rows;
@@ -213,16 +223,20 @@ export function readOpeningRevisions(
 // contribution band twice, so the reserved portion of the prior base is exactly
 // the contribution base this owner has already frozen. A committed reservation
 // from an executed run belongs to the execution owner and is not observable here.
-export function readSameMonthContributions(
+// The distinct earning events already proposed in one calendar month. Nothing
+// here is a financial record: the query exists so a second event in a month whose
+// month-to-date base only an execution owner could advance is refused, rather than
+// approximated by summing proposals.
+export function readMonthEarningEvents(
   transaction: Transaction,
   bookId: string,
   employeeId: string,
   monthPrefix: string,
 ) {
   return transaction
-    .select({
-      id: payrollCalculations.id,
-      contributionBaseMinor: payrollCalculations.contributionBaseMinor,
+    .selectDistinct({
+      earningsPeriodStart: payrollCalculations.earningsPeriodStart,
+      earningsPeriodEnd: payrollCalculations.earningsPeriodEnd,
     })
     .from(payrollCalculations)
     .where(
@@ -232,12 +246,37 @@ export function readSameMonthContributions(
         sql`left(${payrollCalculations.earningsPeriodStart}::text, 7) = ${monthPrefix}`,
       ),
     )
-    .orderBy(asc(payrollCalculations.earningsPeriodStart), asc(payrollCalculations.id));
+    .orderBy(asc(payrollCalculations.earningsPeriodStart));
+}
+
+// The highest immutable revision of one stable earning event. A changed input is a
+// new revision of the same event, not a second salary event, and this owner
+// reserves no capacity for any of them.
+export function readLatestEarningRevision(
+  transaction: Transaction,
+  bookId: string,
+  employeeId: string,
+  periodStart: string,
+  periodEnd: string,
+) {
+  return transaction
+    .select({ revision: payrollCalculations.revision })
+    .from(payrollCalculations)
+    .where(
+      and(
+        eq(payrollCalculations.bookId, bookId),
+        eq(payrollCalculations.employeeId, employeeId),
+        eq(payrollCalculations.earningsPeriodStart, periodStart),
+        eq(payrollCalculations.earningsPeriodEnd, periodEnd),
+      ),
+    )
+    .orderBy(desc(payrollCalculations.revision));
 }
 
 const calculationColumns = {
   id: payrollCalculations.id,
   employeeId: payrollCalculations.employeeId,
+  revision: payrollCalculations.revision,
   changeSetId: payrollCalculations.changeSetId,
   planDigest: payrollCalculations.planDigest,
   ruleReleaseId: payrollCalculations.ruleReleaseId,
@@ -254,26 +293,6 @@ export function readCalculation(transaction: Transaction, bookId: string, calcul
     .select(calculationColumns)
     .from(payrollCalculations)
     .where(and(eq(payrollCalculations.bookId, bookId), eq(payrollCalculations.id, calculationId)));
-}
-
-export function readEarningEvent(
-  transaction: Transaction,
-  bookId: string,
-  employeeId: string,
-  periodStart: string,
-  periodEnd: string,
-) {
-  return transaction
-    .select({ id: payrollCalculations.id })
-    .from(payrollCalculations)
-    .where(
-      and(
-        eq(payrollCalculations.bookId, bookId),
-        eq(payrollCalculations.employeeId, employeeId),
-        eq(payrollCalculations.earningsPeriodStart, periodStart),
-        eq(payrollCalculations.earningsPeriodEnd, periodEnd),
-      ),
-    );
 }
 
 export function readCalculationsAfter(
