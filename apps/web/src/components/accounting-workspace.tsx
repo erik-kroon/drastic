@@ -105,6 +105,7 @@ export function AccountingWorkspace({
 }) {
   const copy = accountingCopy(locale);
   const [planId, setPlanId] = useState<string | null>(null);
+  const [correctionBundleId, setCorrectionBundleId] = useState<string | null>(null);
   const [draftNumber, setDraftNumber] = useState(0);
   const [inputError, setInputError] = useState("");
 
@@ -285,7 +286,15 @@ export function AccountingWorkspace({
           <PostedRecords book={book} locale={locale} setup={setup.data} onPrepared={setPlanId} />
         </Box>
       </details>
-      {setup.data ? <CorrectionsPanel book={book} setup={setup.data} locale={locale} /> : null}
+      {setup.data ? (
+        <CorrectionsPanel
+          key={correctionBundleId ?? "corrections"}
+          book={book}
+          setup={setup.data}
+          locale={locale}
+          {...(correctionBundleId === null ? {} : { bundleId: correctionBundleId })}
+        />
+      ) : null}
       {setup.data ? (
         <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
           <SourceIntake book={book} setup={setup.data} locale={locale} />
@@ -352,7 +361,14 @@ export function AccountingWorkspace({
       <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
         <AccountantReviewPanel key={book.id} book={book} locale={locale} />
       </Suspense>
-      <CaseSnapshots book={book} locale={locale} onPrepared={setPlanId} />
+      <CaseSnapshots
+        book={book}
+        locale={locale}
+        onReview={(target) => {
+          if (target.kind === "standalone") setPlanId(target.changeSetId);
+          else setCorrectionBundleId(target.bundleId);
+        }}
+      />
       <RecurringPreparation book={book} setup={setup.data} locale={locale} onPrepared={setPlanId} />
     </Box>
   );

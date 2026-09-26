@@ -12,17 +12,18 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { CaseContextPanel } from "@/components/case-context";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
+import type { ReviewTarget } from "@/lib/book-context";
 import type { Locale } from "@/paraglide/runtime";
 
 export function CaseSnapshots({
   book,
   locale,
-  onPrepared,
+  onReview,
   open,
 }: {
   book: typeof Accounting.Book.Type;
   locale: Locale;
-  onPrepared: (id: string) => void;
+  onReview: (target: ReviewTarget) => void;
   open?: boolean;
 }) {
   const copy = accountingCopy(locale);
@@ -75,7 +76,7 @@ export function CaseSnapshots({
             book={book}
             snapshotId={snapshotId}
             locale={locale}
-            onPrepared={onPrepared}
+            onReview={onReview}
           />
         ) : null}
       </Box>
@@ -177,12 +178,12 @@ function CapturedCases({
   book,
   snapshotId,
   locale,
-  onPrepared,
+  onReview,
 }: {
   book: typeof Accounting.Book.Type;
   snapshotId: string;
   locale: Locale;
-  onPrepared: (id: string) => void;
+  onReview: (target: ReviewTarget) => void;
 }) {
   const copy = accountingCopy(locale);
   const [caseId, setCaseId] = useState<string | null>(null);
@@ -306,7 +307,7 @@ function CapturedCases({
                 snapshotId={snapshotId}
                 caseId={caseId}
                 locale={locale}
-                onPrepared={onPrepared}
+                onReview={onReview}
               />
             ) : null}
           </Box>

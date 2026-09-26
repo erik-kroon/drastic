@@ -16,20 +16,17 @@ import { CorrectionReview } from "./correction-review";
 import { CorrectionDiscovery } from "./discovery";
 import { CorrectionChainView, CorrectionImpactDetails } from "./impact-review";
 
-export function CorrectionsPanel({
-  book,
-  setup,
-  locale,
-  open,
-}: {
+export function CorrectionsPanel(props: {
   book: typeof Accounting.Book.Type;
   setup: typeof Accounting.BookSetup.Type;
   locale: Locale;
   open?: boolean;
+  bundleId?: string;
 }) {
+  const { book, setup, locale, open } = props;
   const copy = correctionCopy(locale);
   const [originalId, setOriginalId] = useState("");
-  const [bundleId, setBundleId] = useState("");
+  const [bundleId, setBundleId] = useState(props.bundleId ?? "");
   const [error, setError] = useState("");
 
   const original = useQuery({

@@ -23,3 +23,19 @@ export function workspacePath(book: typeof Accounting.Book.Type) {
 export function reviewPath(book: typeof Accounting.Book.Type, id: string, digest?: string) {
   return `${workspacePath(book)}/reviews/${encodeURIComponent(id)}${digest ? `/${encodeURIComponent(digest)}` : "/"}`;
 }
+
+export type ReviewTarget =
+  | {
+      readonly kind: "standalone";
+      readonly changeSetId: string;
+      readonly planDigest: string;
+    }
+  | { readonly kind: "correction"; readonly bundleId: string; readonly bundleDigest: string };
+
+// Review destinations are selected from this local table. A resolved bundle or
+// plan never supplies a stored URI to navigate to.
+export function reviewTargetPath(book: typeof Accounting.Book.Type, target: ReviewTarget) {
+  return target.kind === "standalone"
+    ? reviewPath(book, target.changeSetId, target.planDigest)
+    : `${workspacePath(book)}/tools?view=corrections&bundle=${encodeURIComponent(target.bundleId)}`;
+}

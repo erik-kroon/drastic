@@ -37,5 +37,13 @@ export const CaseHandlers = HttpApiBuilder.group(Api, "cases", (handlers) =>
           detail: query.detail,
         }),
       ),
+    )
+    .handle("resolveReviewTarget", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Cases.resolveReviewTarget(token, {
+          scope: scopeFromPath(params),
+          changeSetId: params.changeSetId,
+        }),
+      ),
     ),
 );

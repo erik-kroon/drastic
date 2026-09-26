@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Cases from "@open-erp/contracts/cases";
@@ -13,6 +13,7 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { EvidenceInspector } from "@/components/evidence-inspector";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
+import type { ReviewTarget } from "@/lib/book-context";
 import type { Locale } from "@/paraglide/runtime";
 
 export function CaseContextPanel(props: {
@@ -20,7 +21,7 @@ export function CaseContextPanel(props: {
   snapshotId: string;
   caseId: string;
   locale: Locale;
-  onPrepared: (id: string) => void;
+  onReview: (target: ReviewTarget) => void;
 }) {
   const { book, snapshotId, caseId, locale } = props;
   const copy = accountingCopy(locale);
@@ -49,6 +50,45 @@ export function CaseContextPanel(props: {
     getNextPageParam: (page) => (page.detail === "summary" ? null : page.history.next),
     retry: false,
   });
+
+  // The captured summary records bundle membership at capture time only, so the
+  // destination is resolved against current ownership before any routing.
+  const resolve = useMutation({
+    mutationFn: (changeSetId: string) =>
+      readAccounting(
+        `${bookPath(book)}/review-targets/${encodeURIComponent(changeSetId)}`,
+        Cases.ReviewResolution,
+      ),
+    onSuccess: (resolution, changeSetId) => {
+      if (changeSetId !== resolve.variables) return;
+
+      if (resolution.kind === "ambiguous") return;
+
+      props.onReview(
+        resolution.kind === "standalone"
+          ? {
+              kind: "standalone",
+              changeSetId: resolution.changeSetId,
+              planDigest: resolution.planDigest,
+            }
+          : {
+              kind: "correction",
+              bundleId: resolution.bundleId,
+              bundleDigest: resolution.bundleDigest,
+            },
+      );
+    },
+  });
+
+  const conflict =
+    resolve.data?.kind === "ambiguous" && resolve.data.changeSetId === resolve.variables
+      ? resolve.data
+      : null;
+
+  const review = (changeSetId: string) => {
+    resolve.reset();
+    resolve.mutate(changeSetId);
+  };
 
   const first = context.data?.pages[0];
   const history = context.data?.pages.flatMap((page) => page.history.items) ?? [];
@@ -92,7 +132,38 @@ export function CaseContextPanel(props: {
             {copy.case_snapshot_id}: {first.snapshot.id} · {copy.report_sequence}:{" "}
             {first.snapshot.sequence} · {first.snapshot.capturedAt}
           </Text>
-          <CaseFacts item={first.case} locale={locale} onPrepared={props.onPrepared} />
+          <CaseFacts
+            item={first.case}
+            locale={locale}
+            pending={resolve.isPending}
+            onReview={review}
+          />
+          <AccountingStatus
+            write
+            locale={locale}
+            pending={resolve.isPending}
+            error={resolve.error}
+          />
+          {conflict ? (
+            <Box role="alert" display="grid" gap="sm">
+              <Heading>{copy.case_owner_conflict}</Heading>
+              <Text>{copy.case_owner_conflict_reason}</Text>
+              <DataTable
+                title={copy.case_conflicting_owners}
+                narrow="stack"
+                columns={[
+                  { id: "bundle", label: copy.case_bundle_id },
+                  { id: "role", label: copy.case_role },
+                  { id: "digest", label: copy.journal_digest },
+                ]}
+                rows={conflict.conflictingOwners.map((owner) => ({
+                  id: owner.bundleId,
+                  cells: [owner.bundleId, owner.role, owner.bundleDigest],
+                }))}
+              />
+              <Text>{copy.case_owner_conflict_recovery}</Text>
+            </Box>
+          ) : null}
           <Heading>{copy.case_history}</Heading>
           <Text role="status">
             {copy.case_history_loaded}: {history.length} · {copy.case_history_total}:{" "}
@@ -115,6 +186,7 @@ export function CaseContextPanel(props: {
                 { id: "credit", label: copy.journal_credit, numeric: true },
                 { id: "digest", label: copy.journal_digest },
                 { id: "voucher", label: copy.journal_voucher },
+                { id: "review", label: copy.case_review_plan },
               ]}
               rows={history.map((plan) => ({
                 id: plan.changeSetId,
@@ -128,6 +200,19 @@ export function CaseContextPanel(props: {
                   plan.creditMinor,
                   plan.planDigest,
                   plan.voucherId ?? "—",
+                  // Each row resolves its own plan. The latest plan's owner is
+                  // never applied to the alternatives.
+                  <Button
+                    key={plan.changeSetId}
+                    size="xl"
+                    variant="outline"
+                    disabled={resolve.isPending}
+                    onClick={() => {
+                      review(plan.changeSetId);
+                    }}
+                  >
+                    {copy.case_review_plan}
+                  </Button>,
                 ],
               }))}
             />
@@ -156,11 +241,13 @@ export function CaseContextPanel(props: {
 function CaseFacts({
   item,
   locale,
-  onPrepared,
+  pending,
+  onReview,
 }: {
   item: typeof Cases.CaseSummary.Type;
   locale: Locale;
-  onPrepared: (id: string) => void;
+  pending: boolean;
+  onReview: (changeSetId: string) => void;
 }) {
   const copy = accountingCopy(locale);
 
@@ -216,12 +303,19 @@ function CaseFacts({
       <Text>
         {copy.case_latest_plan}: {item.latestPlanId}
       </Text>
+      {item.latestPlanCorrectionBundle ? (
+        <Text tone="muted">
+          {copy.case_latest_plan_bundle}: {item.latestPlanCorrectionBundle.bundleId} ·{" "}
+          {item.latestPlanCorrectionBundle.role}
+        </Text>
+      ) : null}
       <Box>
         <Button
           size="xl"
           variant="outline"
+          disabled={pending}
           onClick={() => {
-            onPrepared(item.latestPlanId);
+            onReview(item.latestPlanId);
             requestAnimationFrame(() => document.getElementById("journal-review")?.focus());
           }}
         >

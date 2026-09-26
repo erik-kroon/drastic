@@ -1,6 +1,6 @@
 import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
-import { getCaseContext, listCases, prepareSnapshot } from "../cases";
+import { getCaseContext, listCases, prepareSnapshot, resolveReviewTarget } from "../cases";
 import {
   advanceRun,
   createPreparationRun,
@@ -28,4 +28,5 @@ export const runCaseCapabilities = {
   cases_prepare_snapshot: effectCapability(Capabilities.cases_prepare_snapshot, prepareSnapshot),
   cases_list: effectCapability(Capabilities.cases_list, listCases),
   cases_get_context: effectCapability(Capabilities.cases_get_context, getCaseContext),
+  cases_resolve_review: effectCapability(Capabilities.cases_resolve_review, resolveReviewTarget),
 };

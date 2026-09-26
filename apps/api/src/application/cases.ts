@@ -24,6 +24,8 @@ const PageSchema = CaseContract.CasePage;
 
 const ContextSchema = CaseContract.CaseContext;
 
+const ResolutionSchema = CaseContract.ReviewResolution;
+
 const detailLevels = ["summary", "standard", "evidence"] as const;
 
 const maximumCases = 1000;
@@ -477,6 +479,74 @@ export const prepareSnapshot = Effect.fn("cases.prepareSnapshot")(function* (
     },
     "update",
   );
+});
+
+export const resolveReviewTarget = Effect.fn("cases.resolveReviewTarget")(function* (
+  token: string,
+  command: { scope: Scope; changeSetId: string },
+) {
+  return yield* withBook(token, command.scope, false, function* (transaction) {
+    yield* requireCaseAccess(transaction, false);
+
+    const planRow = (yield* PostingDb.readPlan(
+      transaction,
+      command.scope.bookId,
+      command.changeSetId,
+    ))[0];
+
+    if (!planRow) return yield* failure("NotFound");
+    const plan = yield* decode(Accounting.ChangeSet, planRow.plan);
+
+    if (
+      plan.scope.entityId !== command.scope.entityId ||
+      plan.scope.bookId !== command.scope.bookId
+    ) {
+      return yield* failure("Forbidden");
+    }
+
+    const owners = yield* Db.readReviewOwners(
+      transaction,
+      command.scope.bookId,
+      command.changeSetId,
+    );
+
+    if (owners.some((owner) => !owner.consistent)) return yield* failure("StaleDependency");
+
+    const resolvedAt = (yield* PostingDb.readDatabaseTime(transaction)).now;
+    const owner = owners[0];
+
+    if (owners.length > 1) {
+      return yield* decode(ResolutionSchema, {
+        kind: "ambiguous",
+        changeSetId: plan.id,
+        conflictingOwners: owners.map((candidate) => ({
+          bundleId: candidate.bundleId,
+          bundleDigest: candidate.digest,
+          role: candidate.role,
+        })),
+        resolvedAt,
+      });
+    }
+
+    return yield* decode(
+      ResolutionSchema,
+      owner === undefined
+        ? {
+            kind: "standalone",
+            changeSetId: plan.id,
+            planDigest: plan.planDigest,
+            resolvedAt,
+          }
+        : {
+            kind: "correction",
+            bundleId: owner.bundleId,
+            bundleDigest: owner.digest,
+            constituentId: plan.id,
+            role: owner.role,
+            resolvedAt,
+          },
+    );
+  });
 });
 
 export const listCases = Effect.fn("cases.list")(function* (

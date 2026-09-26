@@ -163,6 +163,38 @@ export const CaseContext = Schema.Struct({
   }),
 });
 
+// The live owning review target for one sealed proposal. A captured case summary
+// records bundle membership at capture time only, so routing re-reads current
+// ownership instead of trusting a frozen body or a stored URI.
+export const ReviewResolution = Schema.Union([
+  Schema.Struct({
+    kind: Schema.Literal("standalone"),
+    changeSetId: Accounting.Identifier,
+    planDigest: Accounting.Digest,
+    resolvedAt: Schema.String,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("correction"),
+    bundleId: Accounting.Identifier,
+    bundleDigest: Accounting.Digest,
+    constituentId: Accounting.Identifier,
+    role: CaseCorrectionBundle.fields.role,
+    resolvedAt: Schema.String,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("ambiguous"),
+    changeSetId: Accounting.Identifier,
+    conflictingOwners: Schema.Array(
+      Schema.Struct({
+        bundleId: Accounting.Identifier,
+        bundleDigest: Accounting.Digest,
+        role: CaseCorrectionBundle.fields.role,
+      }),
+    ),
+    resolvedAt: Schema.String,
+  }),
+]);
+
 export const CaseCapabilities = {
   cases_prepare_snapshot: {
     classification: "prepare",
@@ -201,6 +233,14 @@ export const CaseCapabilities = {
     output: CaseContext,
     readOnly: true,
   },
+  cases_resolve_review: {
+    classification: "read",
+    description:
+      "Resolve the current owning review target for one sealed proposal: standalone, a correction bundle constituent, or an unresolved owner conflict. Bundle membership is read live, not from a captured case. A resolution is not approval or execution authority.",
+    input: Schema.Struct({ scope: Accounting.Scope, changeSetId: Accounting.Identifier }),
+    output: ReviewResolution,
+    readOnly: true,
+  },
 };
 
 const CasePageQuery = Schema.Struct({
@@ -220,6 +260,8 @@ const contextPath = Schema.Struct({ ...snapshotPath.fields, caseId: Accounting.I
 
 const base = "/v1/entities/:entityId/books/:bookId/case-snapshots";
 
+const scopePath = "/v1/entities/:entityId/books/:bookId";
+
 export const CasesApi = HttpApiGroup.make("cases").add(
   HttpApiEndpoint.post("prepareCaseSnapshot", base, {
     params: Accounting.Scope,
@@ -238,6 +280,11 @@ export const CasesApi = HttpApiGroup.make("cases").add(
     params: contextPath,
     query: Schema.Struct({ ...CasePageQuery.fields, detail: CaseContextInput.fields.detail }),
     success: CaseContext,
+    error: errors,
+  }),
+  HttpApiEndpoint.get("resolveReviewTarget", `${scopePath}/review-targets/:changeSetId`, {
+    params: Schema.Struct({ ...Accounting.Scope.fields, changeSetId: Accounting.Identifier }),
+    success: ReviewResolution,
     error: errors,
   }),
 );

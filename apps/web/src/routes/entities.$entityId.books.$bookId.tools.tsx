@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
+import * as Accounting from "@open-erp/contracts/accounting";
 import {
   ArrowLeft,
   BookOpen,
@@ -19,7 +20,13 @@ import {
   TaskRow,
 } from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "@/components/accounting-status";
-import { useBookWorkspace, workspacePath, reviewPath } from "@/lib/book-context";
+import {
+  reviewPath,
+  reviewTargetPath,
+  useBookWorkspace,
+  workspacePath,
+  type ReviewTarget,
+} from "@/lib/book-context";
 import { frontendCopy } from "@/lib/frontend-copy";
 
 const Owners = lazy(() =>
@@ -68,6 +75,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/tools")(
           "technical",
         ]),
       ),
+      bundle: Schema.optional(Accounting.Identifier),
     }),
   ),
   component: Tools,
@@ -75,11 +83,14 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/tools")(
 
 function Tools() {
   const { book, setup, locale } = useBookWorkspace();
-  const { view } = Route.useSearch();
+  const { view, bundle } = Route.useSearch();
   const navigate = useNavigate();
   const base = `${workspacePath(book)}/tools`;
   const sv = locale === "sv";
+
   const onPrepared = (id: string) => void navigate({ to: reviewPath(book, id) });
+
+  const onReview = (target: ReviewTarget) => void navigate({ to: reviewTargetPath(book, target) });
 
   return (
     <>
@@ -176,10 +187,17 @@ function Tools() {
             <Recurring book={book} setup={setup} locale={locale} onPrepared={onPrepared} open />
           ) : null}
           {view === "corrections" ? (
-            <Corrections book={book} setup={setup} locale={locale} open />
+            <Corrections
+              key={bundle ?? "corrections"}
+              book={book}
+              setup={setup}
+              locale={locale}
+              open
+              {...(bundle === undefined ? {} : { bundleId: bundle })}
+            />
           ) : null}
           {view === "snapshots" ? (
-            <Snapshots book={book} locale={locale} onPrepared={onPrepared} open />
+            <Snapshots book={book} locale={locale} onReview={onReview} open />
           ) : null}
           {view === "readiness" ? <Readiness book={book} locale={locale} expanded /> : null}
           {view === "recovery" ? (

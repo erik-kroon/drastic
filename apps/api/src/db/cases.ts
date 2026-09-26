@@ -78,6 +78,33 @@ export type BundleRow = {
   readonly consistent: boolean;
 };
 
+export type ReviewOwnerRow = Omit<BundleRow, "uri">;
+
+// A bundle body is only trusted when it still names this book, this original
+// voucher, exactly these two constituents and its own digest, and the constituent
+// plan it claims is byte-identical to the retained change set.
+function bundleConsistency(bookId: string) {
+  return sql`
+    (
+      jsonb_typeof(b.body) = 'object'
+      and b.body->>'id' = b.id
+      and b.body->'scope'->>'bookId' = ${bookId}
+      and b.body->'scope'->>'entityId' =
+        (select entity_id from openerp.books where id = ${bookId})
+      and b.body->'originalVoucher'->>'id' = b.original_voucher_id
+      and b.body->'reversal'->>'id' = b.reversal_change_set_id
+      and b.body->'replacement'->>'id' = b.replacement_change_set_id
+      and b.reversal_change_set_id <> b.replacement_change_set_id
+      and b.body->>'bundleDigest' = b.digest
+      and b.digest = openerp.digest(b.body - 'bundleDigest')
+      and b.body->(case when b.reversal_change_set_id = p.id then 'reversal'
+        else 'replacement' end) is not distinct from p.plan
+      and (b.body->(case when b.reversal_change_set_id = p.id then 'reversal'
+        else 'replacement' end))->>'planDigest' = p.digest
+    )
+  `;
+}
+
 export type EvidenceRow = {
   readonly sourceLength: string;
   readonly excerpt: string | null;
@@ -230,28 +257,32 @@ export function readPlanBundles(
       select p.id as "changeSetId", b.id as "bundleId", b.digest,
         case when b.reversal_change_set_id = p.id then 'reversal' else 'replacement' end as role,
         ${baseUri} || '/correction-bundles/' || b.id as uri,
-        (
-          jsonb_typeof(b.body) = 'object'
-          and b.body->>'id' = b.id
-          and b.body->'scope'->>'bookId' = ${bookId}
-          and b.body->'scope'->>'entityId' =
-            (select entity_id from openerp.books where id = ${bookId})
-          and b.body->'originalVoucher'->>'id' = b.original_voucher_id
-          and b.body->'reversal'->>'id' = b.reversal_change_set_id
-          and b.body->'replacement'->>'id' = b.replacement_change_set_id
-          and b.reversal_change_set_id <> b.replacement_change_set_id
-          and b.body->>'bundleDigest' = b.digest
-          and b.digest = openerp.digest(b.body - 'bundleDigest')
-          and b.body->(case when b.reversal_change_set_id = p.id then 'reversal'
-            else 'replacement' end) is not distinct from p.plan
-          and (b.body->(case when b.reversal_change_set_id = p.id then 'reversal'
-            else 'replacement' end))->>'planDigest' = p.digest
-        ) as consistent
+        ${bundleConsistency(bookId)} as consistent
       from openerp.correction_bundles b
       join openerp.change_sets p
         on p.book_id = b.book_id
         and p.id in (b.reversal_change_set_id, b.replacement_change_set_id)
       where b.book_id = ${bookId} and p.id = any(${textArray(changeSetIds)})
+    `,
+    "objects",
+  );
+}
+
+// Every current bundle that claims this proposal, so the caller can see an
+// unresolved owner conflict instead of silently picking one. Deliberately
+// returns no navigation URI: review routing selects a local destination.
+export function readReviewOwners(transaction: Transaction, bookId: string, changeSetId: string) {
+  return transaction.execute<ReviewOwnerRow>(
+    sql`
+      select p.id as "changeSetId", b.id as "bundleId", b.digest,
+        case when b.reversal_change_set_id = p.id then 'reversal' else 'replacement' end as role,
+        ${bundleConsistency(bookId)} as consistent
+      from openerp.correction_bundles b
+      join openerp.change_sets p
+        on p.book_id = b.book_id
+        and p.id in (b.reversal_change_set_id, b.replacement_change_set_id)
+      where b.book_id = ${bookId} and p.id = ${changeSetId}
+      order by b.id
     `,
     "objects",
   );
