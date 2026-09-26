@@ -696,5 +696,104 @@ export const supplierFieldDecisions = openerp.table("supplier_field_decisions", 
   reviewer: text("reviewer").notNull(),
   recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
   digest: text().notNull(),
+});
+
+// A legal customer credit reduces an already recognized domestic sale. These
+// mappings are query shapes for the reviewed SQL migration, not a push schema.
+export const customerCreditReviews = openerp.table("customer_credit_reviews", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  originalLegalIssueId: text("original_legal_issue_id").notNull(),
+  registerInvoiceId: text("register_invoice_id").notNull(),
+  accountingProfileId: text("accounting_profile_id").notNull(),
+  changeSetId: text("change_set_id").notNull(),
+  eventId: text("event_id").notNull(),
+  evidenceId: text("evidence_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  creditDate: date("credit_date", { mode: "string" }).notNull(),
+  netMinor: numeric("net_minor", { mode: "string" }).notNull(),
+  taxMinor: numeric("tax_minor", { mode: "string" }).notNull(),
+  grossMinor: numeric("gross_minor", { mode: "string" }).notNull(),
+  unpaidBeforeMinor: numeric("unpaid_before_minor", { mode: "string" }).notNull(),
+  unpaidAfterMinor: numeric("unpaid_after_minor", { mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const customerCreditApprovals = openerp.table("customer_credit_approvals", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  reviewId: text("review_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  actorId: text("actor_id").notNull(),
+  digest: text("digest").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const customerCreditNotes = openerp.table("customer_credit_notes", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  reviewId: text("review_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  originalLegalIssueId: text("original_legal_issue_id").notNull(),
+  registerInvoiceId: text("register_invoice_id").notNull(),
+  creditSeries: text("credit_series").notNull(),
+  creditNumber: bigint("credit_number", { mode: "bigint" }).notNull(),
+  creditDate: date("credit_date", { mode: "string" }).notNull(),
+  periodId: text("period_id").notNull(),
+  voucherId: text("voucher_id").notNull(),
+  controlLineId: text("control_line_id").notNull(),
+  documentId: text("document_id").notNull(),
+  counterpartyId: text("counterparty_id").notNull(),
+  evidenceId: text("evidence_id").notNull(),
+  netMinor: numeric("net_minor", { mode: "string" }).notNull(),
+  taxMinor: numeric("tax_minor", { mode: "string" }).notNull(),
+  grossMinor: numeric("gross_minor", { mode: "string" }).notNull(),
+  unpaidAfterMinor: numeric("unpaid_after_minor", { mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+// The consumed original-line credit capacity. Its sum under the book writer lock is
+// the only authority for how much of an issued line may still be credited.
+export const customerCreditLineCredits = openerp.table("customer_credit_line_credits", {
+  bookId: text("book_id").notNull(),
+  creditId: text("credit_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  originalLineId: text("original_line_id").notNull(),
+  netMinor: numeric("net_minor", { mode: "string" }).notNull(),
+  taxMinor: numeric("tax_minor", { mode: "string" }).notNull(),
+  grossMinor: numeric("gross_minor", { mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const customerCreditDocuments = openerp.table("customer_credit_documents", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  creditId: text("credit_id").notNull(),
+  revision: bigint("revision", { mode: "bigint" }).notNull(),
+  digest: text("digest").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+// The exact negative tax effect of the credit, bound to the original recognition
+// component and the qualified tax period. No return effect is computed or claimed.
+export const customerCreditTaxCorrections = openerp.table("customer_credit_tax_corrections", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  creditId: text("credit_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  originalLineId: text("original_line_id").notNull(),
+  originalVoucherId: text("original_voucher_id").notNull(),
+  originalControlLineId: text("original_control_line_id").notNull(),
+  originalPostingDate: date("original_posting_date", { mode: "string" }).notNull(),
+  originalEvidenceId: text("original_evidence_id").notNull(),
+  taxPeriodId: text("tax_period_id").notNull(),
+  qualifiedOn: date("qualified_on", { mode: "string" }).notNull(),
+  baseMinor: numeric("base_minor", { mode: "string" }).notNull(),
+  outputTaxMinor: numeric("output_tax_minor", { mode: "string" }).notNull(),
+  creditVoucherId: text("credit_voucher_id").notNull(),
+  revenueLineId: text("revenue_line_id").notNull(),
+  outputVatLineId: text("output_vat_line_id").notNull(),
+  controlLineId: text("control_line_id").notNull(),
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });

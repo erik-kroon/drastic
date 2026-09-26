@@ -52,6 +52,13 @@ const BookStatusSchema = Accounting.BookStatus;
 
 const BookDirectorySchema = Schema.Array(Accounting.Book);
 
+// Only an owning legal application operation may present these purposes. Every other
+// posting purpose stays synthetic and manual.
+const legalPostingPurposes: ReadonlyArray<string> = [
+  "legal_ar_recognition",
+  "legal_customer_credit_v1",
+];
+
 const EvidenceSchema = Accounting.Evidence;
 
 const EvidenceContentSchema = Accounting.EvidenceContent;
@@ -275,7 +282,7 @@ export function validateAction(
       yield* validateReversalAction(transaction, scope, action);
     } else if (
       (action.postingPurpose !== "adjustment" &&
-        !(allowLegal && action.postingPurpose === "legal_ar_recognition")) ||
+        !(allowLegal && legalPostingPurposes.includes(action.postingPurpose))) ||
       action.correctsVoucherId !== null
     ) {
       return yield* failure("InvalidJournal");
@@ -1131,7 +1138,12 @@ export const executeChangeInTransaction = Effect.fn("posting.execute")(function*
 
     if (!group || !actionValue) return yield* failure("InvalidJournal");
     const action = yield* decode(ActionSchema, actionValue);
-    yield* validatePlan(transaction, command.scope, plan, command.owner?.kind === "legal_issue");
+    yield* validatePlan(
+      transaction,
+      command.scope,
+      plan,
+      command.owner?.kind === "legal_issue" || command.owner?.kind === "legal_credit",
+    );
     yield* assertPlanUnposted(transaction, command.scope, plan);
     yield* admitPosting(transaction, command.scope, plan.id, action, command.owner);
 

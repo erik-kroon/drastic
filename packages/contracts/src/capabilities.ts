@@ -44,6 +44,7 @@ import { InvoicePdfCapabilities } from "./invoice-pdf";
 import { InvoicePolicyCapabilities } from "./invoice-policy";
 import { InvoiceDeliveryCapabilities } from "./invoice-delivery";
 import { ArLegalIssueCapabilities } from "./ar-legal-issue";
+import { CustomerCreditCapabilities } from "./customer-credit-notes";
 import { CommerceAllocationReversalCapabilities } from "./commerce-allocation-reversals";
 import { AccountantReviewCapabilities } from "./accountant-review";
 import { SourceIntakeCapabilities } from "./source-intake";
@@ -121,6 +122,7 @@ export const Capabilities = {
   ...InvoicePolicyCapabilities,
   ...InvoiceDeliveryCapabilities,
   ...ArLegalIssueCapabilities,
+  ...CustomerCreditCapabilities,
   ...CommerceAllocationReversalCapabilities,
   ...CatalogCapabilities,
   ...DimensionsCapabilities,

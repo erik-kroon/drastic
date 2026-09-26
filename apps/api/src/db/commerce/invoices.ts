@@ -160,8 +160,10 @@ function liveInvoice(bookId: string, identity: SQL | undefined) {
           ) + case when ${cancellationBody()} is null then 0 else 1 end as allocation_count,
           ${cancellationBody()} as cancellation,
           case when ${cancellationBody()} is null then 0 else i.amount_minor end as cancelled,
-          (case when ${cancellationBody()} is null then i.amount_minor else 0 end - credits.total) as effective,
-          credits.total as credited, credits.total_count as credit_count,
+          (case when ${cancellationBody()} is null then i.amount_minor else 0 end
+            - credits.total - customer_credits.total) as effective,
+          credits.total + customer_credits.total as credited,
+          credits.total_count + customer_credits.total_count as credit_count,
           coalesce((
             select jsonb_agg(remaining.value order by remaining.ordinal)
             from unnest(array_remove(array[
@@ -172,7 +174,8 @@ function liveInvoice(bookId: string, identity: SQL | undefined) {
                 and not (${voucherCurrent(sql`l.payment_voucher_id`)})
               ) then 'A retained allocation payment voucher was corrected.'::text end,
               case when credits.invalid then 'A supplier credit posting or payable line is invalid.'::text end,
-              case when credits.total + ${activeLegTotal()} > case when ${cancellationBody()} is null
+              case when customer_credits.invalid then 'A customer credit posting or receivable line is invalid.'::text end,
+              case when credits.total + customer_credits.total + ${activeLegTotal()} > case when ${cancellationBody()} is null
                 then i.amount_minor else 0 end
                 then 'Recorded allocations exceed the invoice amount.'::text end
             ], null)) with ordinality as remaining(value, ordinal)
@@ -186,6 +189,16 @@ function liveInvoice(bookId: string, identity: SQL | undefined) {
             on (l.book_id,l.voucher_id,l.id)=(c.book_id,c.voucher_id,c.control_line_id)
           where c.book_id=i.book_id and c.invoice_id=i.id
         ) credits
+        -- An issued legal customer credit reduces the same receivable control, so the
+        -- live outstanding amount, ageing, statement and collection reads all see it.
+        cross join lateral (
+          select coalesce(sum(c.gross_minor),0) as total, count(*) as total_count,
+            coalesce(bool_or(not (${voucherCurrent(sql`c.voucher_id`)}) or l.account_id<>i.control_account_id
+              or l.credit_minor<>c.gross_minor or l.debit_minor<>0),false) as invalid
+          from openerp.customer_credit_notes c join openerp.journal_lines l
+            on (l.book_id,l.voucher_id,l.id)=(c.book_id,c.voucher_id,c.control_line_id)
+          where c.book_id=i.book_id and c.register_invoice_id=i.id
+        ) customer_credits
         where i.book_id = ${bookId} and ${identity === undefined ? sql`true` : identity}
       ) base
     ) live

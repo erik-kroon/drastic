@@ -18,6 +18,7 @@ export type PostingOwner = {
     | "invoice_issue"
     | "invoice_cancellation"
     | "legal_issue"
+    | "legal_credit"
     | "supplier_acceptance"
     | "supplier_credit"
     | "asset_disposal"
@@ -52,6 +53,9 @@ export const admitPosting = Effect.fn("posting.admitOwnedSources")(function* (
     return yield* failure("UnsupportedProfile");
 
   if (action.postingPurpose === "legal_ar_recognition" && owner?.kind !== "legal_issue")
+    return yield* failure("UnsupportedProfile");
+
+  if (action.postingPurpose === "legal_customer_credit_v1" && owner?.kind !== "legal_credit")
     return yield* failure("UnsupportedProfile");
 
   if (
@@ -107,7 +111,7 @@ const admitSources = Effect.fn("posting.admitSources")(function* (
   if (ownership.length && owner?.kind !== "invoice_cancellation") {
     if (!retained) return yield* failure("StaleDependency");
 
-    if (retained.kind !== "legal_issue") {
+    if (retained.kind !== "legal_issue" && retained.kind !== "legal_credit") {
       const plan = objectField(retained.body, "postingPlan");
 
       if (retained.changeId !== changeId || !Array.isArray(plan.groups))
@@ -122,7 +126,10 @@ const admitSources = Effect.fn("posting.admitSources")(function* (
         !equalJson(first.actions[0], action)
       )
         return yield* failure("StaleDependency");
-    } else if (textField(objectField(action, "legalIssue"), "reviewId") !== retained.id)
+    } else if (retained.kind === "legal_issue") {
+      if (textField(objectField(action, "legalIssue"), "reviewId") !== retained.id)
+        return yield* failure("StaleDependency");
+    } else if (textField(objectField(action, "legalCredit"), "reviewId") !== retained.id)
       return yield* failure("StaleDependency");
   }
 });
