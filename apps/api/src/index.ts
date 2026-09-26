@@ -1,6 +1,7 @@
 import { DeadlineHandlers } from "./transport/http/routes/deadlines";
 import { DeadlineFeedRoutes } from "./transport/http/routes/deadline-feed";
 import { PayrollFoundationHandlers } from "./transport/http/routes/payroll-foundation";
+import { PayrollCalculationHandlers } from "./transport/http/routes/payroll-calculations";
 import { CrmMasterHandlers } from "./transport/http/routes/crm-master";
 import { CatalogHandlers } from "./transport/http/routes/catalog";
 import { CollectionsHandlers } from "./transport/http/routes/collections";
@@ -153,6 +154,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     CrmMasterHandlers,
     CatalogHandlers,
     PayrollFoundationHandlers,
+    PayrollCalculationHandlers,
     DeadlineHandlers,
     DimensionHandlers,
     ExpenseTaxHandlers,

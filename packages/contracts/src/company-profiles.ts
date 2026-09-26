@@ -3,14 +3,16 @@ import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 import { CommandReceipt, EvidenceReference } from "./commerce";
+import { PayrollRuleRelease } from "./payroll-calculations";
+import { RoleKind } from "./roles";
+
+export { RoleKind };
 
 // Capability-specific company admission. The four families below are the ones this
 // owner admits. The legal_ar family is activated by commerce.legalProfile.activate,
 // so it is reported as owner-bound and never activated here.
 
 export const Family = Schema.Literals(["posting_eligibility", "vat", "payroll", "statements"]);
-
-export const RoleKind = Schema.Literals(["bank", "commerce", "owner", "subledger", "tax", "vat"]);
 
 export const FactKind = Schema.Literals([
   "jurisdiction",
@@ -431,6 +433,10 @@ export const RuleRelease = Schema.Struct({
   sourceManifest: Accounting.Description,
   qualificationStatus: Schema.Literals(["reviewed", "withdrawn"]),
   recordClasses: Schema.Array(RecordClass).check(Schema.isMinLength(1), Schema.isMaxLength(2)),
+  // A family carries its own reviewed executable content in this one release
+  // record. The payroll family's tables, decisions, contribution bands and
+  // holiday policy live here, so there is exactly one rule-release authority.
+  payroll: Schema.optional(PayrollRuleRelease),
 }).check(
   Schema.makeFilter(
     (release) =>
