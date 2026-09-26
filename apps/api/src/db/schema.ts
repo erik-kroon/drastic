@@ -917,3 +917,19 @@ export const ownerPurchaseTaxFacts = openerp.table("owner_purchase_tax_facts", {
   digest: text().notNull(),
   recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
 });
+
+// NEXT-17: the reviewed fee and cash source legs a foreign-currency settlement
+// actually posted. Versioned SQL migrations own the DDL; this is the typed mapping.
+export const commerceFxSettlementSources = openerp.table("commerce_fx_settlement_sources", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  settlementId: text("settlement_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  sourceKind: text("source_kind").notNull(),
+  sourceIdentity: text("source_identity").notNull(),
+  accountId: text("account_id").notNull(),
+  journalLineId: text("journal_line_id").notNull(),
+  signedBookMinor: numeric("signed_book_minor", { mode: "string" }).notNull(),
+  evidenceId: text("evidence_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});

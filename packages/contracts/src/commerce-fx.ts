@@ -13,28 +13,57 @@ const PositiveMinor = Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,37}$/)
 
 const Profile = Schema.Literal("synthetic_customer_foreign_receivable_v1");
 
+// NEXT-17. The discriminated foreign payable variant through the same commerce FX
+// owner. It is a genuine foreign-currency obligation recognized from a qualified
+// rate, never a retained book-currency number relabelled as foreign units.
+const PayableProfile = Schema.Literal("synthetic_supplier_foreign_payable_v1");
+
+// NEXT-17. The explicit-fee settlement profile. One journal group carries the
+// gross book consideration, every fee and every actual cash leg.
+const FeeSettlementProfile = Schema.Literal("synthetic_book_currency_settlement_with_fees_v1");
+
 const SettlementProfile = Schema.Literal("synthetic_full_book_currency_settlement_v1");
 
 const PartialSettlementProfile = Schema.Literal("synthetic_partial_book_currency_settlement_v1");
+
+const ItemProfile = Schema.Literals([
+  "synthetic_customer_foreign_receivable_v1",
+  "synthetic_supplier_foreign_payable_v1",
+]);
+
+const SettlementKind = Schema.Literals([
+  "synthetic_partial_book_currency_settlement_v1",
+  "synthetic_book_currency_settlement_with_fees_v1",
+]);
 
 const CorrectionProfile = Schema.Literal("synthetic_latest_settlement_correction_v1");
 
 const RoundingPolicy = Schema.Literal("synthetic_half_up_nonnegative_v1");
 
+// The only fee expense role this profile admits. A fee is a book-currency expense
+// resolved to one reviewed account; fee tax, foreign cash, hedges and
+// multilateral netting have no reviewed owner here and are refused.
+const FeeExpenseRole = Schema.Literal("fee_expense");
+
 const AccountRole = Schema.Literals([
   "control",
   "revenue",
+  "expense",
   "cash",
   "realized_gain",
   "realized_loss",
+  "fee_expense",
 ]);
+
+// A reviewed source identity. One identity is consumed by at most one financial
+// operation, so the same bank observation or fee evidence cannot be matched twice.
+const SourceIdentity = Schema.String.check(Schema.isPattern(/^[A-Za-z0-9._:-]{1,128}$/));
 
 const EvidenceReference = Commerce.EvidenceReference;
 
 const CommandReceipt = Commerce.CommandReceipt;
 
-export const PrepareRecognition = Schema.Struct({
-  profile: Profile,
+const SharedRecognitionFields = {
   sourceKey: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(128)),
   sourceRevision: Commerce.Version,
   counterpartyId: Accounting.Identifier,
@@ -49,7 +78,6 @@ export const PrepareRecognition = Schema.Struct({
   accountingPeriodId: Accounting.Identifier,
   series: Schema.String.check(Schema.isPattern(/^[A-Z0-9]{1,16}$/)),
   controlAccountId: Accounting.Identifier,
-  revenueAccountId: Accounting.Identifier,
   cashAccountId: Accounting.Identifier,
   realizedGainAccountId: Accounting.Identifier,
   realizedLossAccountId: Accounting.Identifier,
@@ -59,7 +87,24 @@ export const PrepareRecognition = Schema.Struct({
   reason: Accounting.Description,
   syntheticNoTaxConfirmed: Schema.Literal(true),
   acknowledgeLimitedProfile: Schema.Literal(true),
+};
+
+export const PrepareRecognition = Schema.Struct({
+  profile: Profile,
+  ...SharedRecognitionFields,
+  revenueAccountId: Accounting.Identifier,
 });
+
+export const PreparePayableRecognition = Schema.Struct({
+  profile: PayableProfile,
+  ...SharedRecognitionFields,
+  expenseAccountId: Accounting.Identifier,
+});
+
+export const PrepareRecognitionCommand = Schema.Union([
+  PrepareRecognition,
+  PreparePayableRecognition,
+]);
 
 export const PrepareSettlement = Schema.Struct({
   profile: SettlementProfile,
@@ -102,6 +147,45 @@ export const PrepareSettlementCorrection = Schema.Struct({
   acknowledgeLimitedProfile: Schema.Literal(true),
 });
 
+export const SettlementFee = Schema.Struct({
+  sourceIdentity: SourceIdentity,
+  bookMinor: PositiveMinor,
+  expenseRole: FeeExpenseRole,
+  treatmentWitness: EvidenceReference,
+});
+
+// One actual cash leg created by this operation. The signed book amounts must
+// total the settlement's own signed cash amount exactly; no observation is
+// matched twice and none is manufactured from a net figure.
+export const SettlementCashSource = Schema.Struct({
+  sourceIdentity: SourceIdentity,
+  signedBookMinor: Schema.String.check(Schema.isPattern(/^-?[1-9][0-9]{0,37}$/)),
+  treatmentWitness: EvidenceReference,
+});
+
+export const PrepareFeeSettlement = Schema.Struct({
+  profile: FeeSettlementProfile,
+  itemId: Accounting.Identifier,
+  originalReleasedMinor: PositiveMinor,
+  settlementDate: Accounting.AccountingDate,
+  accountingPeriodId: Accounting.Identifier,
+  // K. The evidenced gross settlement consideration in book minor units. It is
+  // never the current exchange-rate quote multiplied by principal.
+  grossBookMinor: Accounting.MinorUnits,
+  feeExpenseAccountId: Accounting.Identifier,
+  feeAccountRoleEvidence: EvidenceReference,
+  fees: Schema.Array(SettlementFee).check(Schema.isMinLength(1), Schema.isMaxLength(20)),
+  actualCashSources: Schema.Array(SettlementCashSource).check(
+    Schema.isMaxLength(20),
+    Schema.isMinLength(0),
+  ),
+  evidenceId: Accounting.Identifier,
+  eventKey: Schema.String.check(Schema.isPattern(/^[a-zA-Z0-9_-]{1,128}$/)),
+  series: Schema.String.check(Schema.isPattern(/^[A-Z0-9]{1,16}$/)),
+  reason: Accounting.Description,
+  acknowledgeLimitedProfile: Schema.Literal(true),
+});
+
 export const ApproveFx = Schema.Struct({
   version: Schema.Literal(1),
   digest: Accounting.Digest,
@@ -115,7 +199,13 @@ export const ExecuteFx = Schema.Struct({
 export const FxApproval = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
-  kind: Schema.Literals(["recognition", "settlement", "partial_settlement", "correction"]),
+  kind: Schema.Literals([
+    "recognition",
+    "settlement",
+    "partial_settlement",
+    "fee_settlement",
+    "correction",
+  ]),
   reviewId: Accounting.Identifier,
   reviewDigest: Accounting.Digest,
   actorId: Accounting.Identifier,
@@ -135,7 +225,7 @@ const AccountBindings = Schema.Array(AccountBinding).check(
 );
 
 const SourceObligation = Schema.Struct({
-  kind: Profile,
+  kind: ItemProfile,
   sourceKey: PrepareRecognition.fields.sourceKey,
   sourceRevision: Commerce.Version,
   counterpartyId: Accounting.Identifier,
@@ -184,7 +274,7 @@ export const RecognitionReview = Schema.Struct({
   scope: Accounting.Scope,
   version: Schema.Literal(1),
   itemId: Accounting.Identifier,
-  input: PrepareRecognition,
+  input: PrepareRecognitionCommand,
   snapshot: Schema.Struct({
     bookBasis: BookBasis,
     rate: Rates.ExchangeRateRevision,
@@ -259,6 +349,100 @@ export const PartialSettlementReceipt = Schema.Struct({
   receipt: CommandReceipt,
 });
 
+const SettlementItemSnapshot = Schema.Struct({
+  id: Accounting.Identifier,
+  digest: Accounting.Digest,
+  source: SourceObligation,
+  rate: RateBinding,
+  accountBindings: AccountBindings,
+  remainingOriginalMinor: PositiveMinor,
+  remainingCarryingMinor: Accounting.MinorUnits,
+});
+
+// One retained settlement source. It binds a reviewed source identity to the exact
+// journal line this operation created and to the treatment evidence. A corrected
+// settlement releases its sources without deleting them, so the right is derived
+// from the retained history rather than from a mutable flag.
+export const SettlementSource = Schema.Struct({
+  id: Accounting.Identifier,
+  settlementId: Accounting.Identifier,
+  ordinal: Schema.Int.check(Schema.isGreaterThan(0)),
+  kind: Schema.Literals(["fee", "cash_source"]),
+  sourceIdentity: SourceIdentity,
+  accountId: Accounting.Identifier,
+  signedBookMinor: Accounting.SignedMinorUnits,
+  evidenceId: Accounting.Identifier,
+  receipt: CommandReceipt,
+  digest: Accounting.Digest,
+});
+
+const FeeSettlementCalculation = Schema.Struct({
+  legOrdinal: Schema.Int.check(Schema.isGreaterThan(0)),
+  direction: Schema.Literals(["customer", "supplier"]),
+  originalRemainingBeforeMinor: PositiveMinor,
+  originalReleasedMinor: PositiveMinor,
+  originalRemainingAfterMinor: Accounting.MinorUnits,
+  carryingRemainingBeforeMinor: Accounting.MinorUnits,
+  carryingReleasedMinor: Accounting.MinorUnits,
+  carryingRemainingAfterMinor: Accounting.MinorUnits,
+  exactNumerator: Schema.String,
+  exactDenominator: PositiveMinor,
+  quotientMinor: Accounting.MinorUnits,
+  remainderNumerator: Schema.String,
+  residualNumerator: Schema.String,
+  residualDenominator: PositiveMinor,
+  roundingPolicy: RoundingPolicy,
+  finalLeg: Schema.Boolean,
+  grossBookMinor: Accounting.MinorUnits,
+  feeTotalMinor: Accounting.MinorUnits,
+  signedCashMinor: Accounting.SignedMinorUnits,
+  realizedGainMinor: Accounting.SignedMinorUnits,
+  cashSourceCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  feeCount: Schema.Int.check(Schema.isGreaterThan(0)),
+  formula: Schema.String,
+});
+
+export const FeeSettlementReceipt = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  itemId: Accounting.Identifier,
+  profile: FeeSettlementProfile,
+  legOrdinal: Schema.Int.check(Schema.isGreaterThan(0)),
+  reviewId: Accounting.Identifier,
+  reviewDigest: Accounting.Digest,
+  approvalId: Accounting.Identifier,
+  calculation: FeeSettlementCalculation,
+  sources: Schema.Array(SettlementSource).check(Schema.isMinLength(1), Schema.isMaxLength(40)),
+  postingReceipt: Accounting.ExecutionReceipt,
+  committedAt: Schema.String,
+  digest: Accounting.Digest,
+  receipt: CommandReceipt,
+});
+
+export const FeeSettlementReview = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  version: Schema.Literal(1),
+  itemId: Accounting.Identifier,
+  input: PrepareFeeSettlement,
+  snapshot: Schema.Struct({
+    item: SettlementItemSnapshot,
+    sourceEvidence: EvidenceReference,
+    feeRoleEvidence: EvidenceReference,
+    calculation: FeeSettlementCalculation,
+    fiscalYearId: Accounting.Identifier,
+    profileVersion: Accounting.MinorUnits,
+    writerEpoch: Accounting.MinorUnits,
+    periodVersion: Accounting.MinorUnits,
+    accountBindings: AccountBindings,
+    feeExpenseAccount: AccountBinding,
+  }),
+  createdBy: Accounting.Identifier,
+  createdAt: Schema.String,
+  digest: Accounting.Digest,
+  receipt: CommandReceipt,
+});
+
 export const CorrectionReceipt = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -272,7 +456,10 @@ export const CorrectionReceipt = Schema.Struct({
   postingReceipt: Accounting.ExecutionReceipt,
   restoredOriginalMinor: PositiveMinor,
   restoredCarryingMinor: Accounting.MinorUnits,
-  settlementProfile: Schema.optional(PartialSettlementProfile),
+  // The fee and cash source rights the reversed settlement releases. The full
+  // settlement profile has none, so the field is absent rather than zero.
+  restoredSourceCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  settlementProfile: Schema.optional(SettlementKind),
   legOrdinal: Schema.optional(Schema.Int.check(Schema.isGreaterThan(0))),
   reason: Accounting.Description,
   committedAt: Schema.String,
@@ -283,8 +470,8 @@ export const CorrectionReceipt = Schema.Struct({
 export const MonetaryItem = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
-  kind: Profile,
-  direction: Schema.Literal("customer"),
+  kind: ItemProfile,
+  direction: Schema.Literals(["customer", "supplier"]),
   status: Schema.Literals(["open", "partially_settled", "settled", "corrected"]),
   source: SourceObligation,
   rate: RateBinding,
@@ -305,18 +492,9 @@ export const MonetaryItem = Schema.Struct({
   correction: Schema.NullOr(CorrectionReceipt),
   partialSettlements: Schema.optional(Schema.Array(PartialSettlementReceipt)),
   partialCorrections: Schema.optional(Schema.Array(CorrectionReceipt)),
+  feeSettlements: Schema.optional(Schema.Array(FeeSettlementReceipt)),
   receipt: CommandReceipt,
   digest: Accounting.Digest,
-});
-
-const SettlementItemSnapshot = Schema.Struct({
-  id: Accounting.Identifier,
-  digest: Accounting.Digest,
-  source: SourceObligation,
-  rate: RateBinding,
-  accountBindings: AccountBindings,
-  remainingOriginalMinor: PositiveMinor,
-  remainingCarryingMinor: Accounting.MinorUnits,
 });
 
 export const SettlementReview = Schema.Struct({
@@ -382,15 +560,18 @@ export const SettlementCorrectionReview = Schema.Struct({
   input: PrepareSettlementCorrection,
   snapshot: Schema.Struct({
     item: MonetaryItem,
-    settlement: Schema.Union([SettlementReceipt, PartialSettlementReceipt]),
+    settlement: Schema.Union([SettlementReceipt, PartialSettlementReceipt, FeeSettlementReceipt]),
     voucher: Accounting.Voucher,
     sourceEvidence: EvidenceReference,
-    reversalLines: Schema.Array(FxJournalLine).check(Schema.isMinLength(2), Schema.isMaxLength(3)),
+    // Bounded by the widest settlement journal: two cash legs, one control leg,
+    // twenty fee legs and one realized leg.
+    reversalLines: Schema.Array(FxJournalLine).check(Schema.isMinLength(2), Schema.isMaxLength(24)),
     fiscalYearId: Accounting.Identifier,
     profileVersion: Accounting.MinorUnits,
     writerEpoch: Accounting.MinorUnits,
     periodVersion: Accounting.MinorUnits,
     accountBindings: AccountBindings,
+    restoredSourceCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   }),
   createdBy: Accounting.Identifier,
   createdAt: Schema.String,
@@ -408,11 +589,13 @@ export const CommandRecovery = Schema.Struct({
       RecognitionReview,
       SettlementReview,
       PartialSettlementReview,
+      FeeSettlementReview,
       SettlementCorrectionReview,
       FxApproval,
       MonetaryItem,
       SettlementReceipt,
       PartialSettlementReceipt,
+      FeeSettlementReceipt,
       CorrectionReceipt,
     ]),
   ),
@@ -436,7 +619,7 @@ const RecoveryPath = Schema.Struct({
 export const CommerceFxApi = HttpApiGroup.make("commerceFx").add(
   HttpApiEndpoint.post("prepareCommerceFxRecognition", `${path}/recognition-reviews`, {
     ...mutation,
-    payload: PrepareRecognition.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    payload: PrepareRecognitionCommand.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: RecognitionReview,
   }),
   HttpApiEndpoint.post(
@@ -489,6 +672,29 @@ export const CommerceFxApi = HttpApiGroup.make("commerceFx").add(
       ...identifiedMutation,
       payload: ExecuteFx.annotate({ parseOptions: { onExcessProperty: "error" } }),
       success: PartialSettlementReceipt,
+    },
+  ),
+  HttpApiEndpoint.post("prepareCommerceFxFeeSettlement", `${path}/fee-settlement-reviews`, {
+    ...mutation,
+    payload: PrepareFeeSettlement.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: FeeSettlementReview,
+  }),
+  HttpApiEndpoint.post(
+    "approveCommerceFxFeeSettlement",
+    `${path}/fee-settlement-reviews/:id/approvals`,
+    {
+      ...identifiedMutation,
+      payload: ApproveFx.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: FxApproval,
+    },
+  ),
+  HttpApiEndpoint.post(
+    "executeCommerceFxFeeSettlement",
+    `${path}/fee-settlement-reviews/:id/execute`,
+    {
+      ...identifiedMutation,
+      payload: ExecuteFx.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: FeeSettlementReceipt,
     },
   ),
   HttpApiEndpoint.post("prepareCommerceFxSettlementCorrection", `${path}/settlement-corrections`, {

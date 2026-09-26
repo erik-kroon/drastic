@@ -94,6 +94,35 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
         }),
       ),
     )
+    .handle("prepareCommerceFxFeeSettlement", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        CommerceFx.prepareFeeSettlement(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("approveCommerceFxFeeSettlement", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        CommerceFx.approveFeeSettlement(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("executeCommerceFxFeeSettlement", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        CommerceFx.executeFeeSettlement(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
     .handle("prepareCommerceFxSettlementCorrection", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         CommerceFx.prepareSettlementCorrection(token, {
