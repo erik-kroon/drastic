@@ -3,6 +3,7 @@ import { admitPosting, type PostingOwner } from "./posting-admission";
 import { recordHistoricalOpening, readReservedCommand } from "../db/posting-admission";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { digest, versionedDigest } from "./json";
+import { resolveCompanyProfileInTransaction } from "./company-profiles";
 
 export { digest, versionedDigest } from "./json";
 
@@ -609,6 +610,14 @@ export const bookStatus = Effect.fn("posting.bookStatus")(function* (
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       const book = yield* readBook(transaction, command.scope);
+      const today = (yield* isoNow(transaction)).slice(0, 10);
+
+      const admission = yield* resolveCompanyProfileInTransaction(
+        transaction,
+        command.scope,
+        "actual_company",
+        { postingOn: today, taxPointOn: today, paymentOn: today, reportOn: today },
+      );
 
       return yield* decode(BookStatusSchema, {
         scope: command.scope,
@@ -625,17 +634,38 @@ export const bookStatus = Effect.fn("posting.bookStatus")(function* (
             limitation:
               "Synthetic exact manual journals only; execution requires operator approval.",
           },
+          ...admission.families.map((family) => ({
+            id: `company_profile:${family.family}`,
+            installed: true,
+            available: family.status === "resolved",
+            limitation:
+              family.status === "resolved"
+                ? `Admitted for ${family.selectorDate ?? "no date"} against a reviewed release and reviewed role bindings.`
+                : family.gaps.map((gap) => `${gap.state}: ${gap.subject}`).join("; "),
+          })),
+          ...admission.ownerBoundFamilies.map((family) => ({
+            id: `company_profile:${family.family}`,
+            installed: true,
+            available: family.admitted,
+            limitation: family.admitted ? `Admitted by ${family.activationOwner}.` : family.effect,
+          })),
         ],
         blockers: [
-          {
-            code: "CompanyProfileRequired",
-            message: "No real company compliance profile is supported by this release.",
-            requiredInputs: [
-              "Legal entity facts and accounting method",
-              "VAT registration and filing periods",
-              "Required payroll, assets, foreign currency and statutory obligations",
-            ],
-          },
+          ...admission.families
+            .filter((family) => family.status !== "resolved")
+            .map((family) => ({
+              code: `CompanyAdmissionRequired:${family.family}`,
+              message:
+                "This family is not admitted for the requested date. Record and independently review its facts, then activate it.",
+              requiredInputs: family.gaps.flatMap((gap) => gap.affectedOperations),
+            })),
+          ...admission.ownerBoundFamilies
+            .filter((family) => !family.admitted)
+            .map((family) => ({
+              code: `CompanyAdmissionRequired:${family.family}`,
+              message: `${family.family} is not admitted. ${family.effect}`,
+              requiredInputs: [`${family.activationOwner}`],
+            })),
         ],
       });
     }),
@@ -989,7 +1019,24 @@ function assertPlanUnposted(transaction: Transaction, scope: Scope, plan: Plan) 
   });
 }
 
-function executionApproval(transaction: Transaction, scope: Scope, plan: Plan, approvalId: string) {
+// Current approval authority for an exact plan digest. Named operations that seal
+// their own plan reuse this rather than repeating the consumption, membership,
+// admission, revocation and expiry checks.
+export function readExecutionApprovalInTransaction(
+  transaction: Transaction,
+  scope: Scope,
+  plan: { readonly id: string; readonly planDigest: string },
+  approvalId: string,
+) {
+  return executionApproval(transaction, scope, plan, approvalId);
+}
+
+function executionApproval(
+  transaction: Transaction,
+  scope: Scope,
+  plan: { readonly id: string; readonly planDigest: string },
+  approvalId: string,
+) {
   return Effect.gen(function* () {
     const approvalRows = yield* Db.readApproval(transaction, scope.bookId, approvalId, "update");
     const approval = approvalRows[0];

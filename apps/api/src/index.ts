@@ -7,6 +7,7 @@ import { CollectionsHandlers } from "./transport/http/routes/collections";
 import { DimensionHandlers } from "./transport/http/routes/dimensions";
 import { SupplierInboxHandlers } from "./transport/http/routes/supplier-inbox";
 import { CompanySetupHandlers } from "./transport/http/routes/company-setup";
+import { CompanyProfileHandlers } from "./transport/http/routes/company-profile";
 import { Api } from "@open-erp/contracts/api";
 import * as Context from "effect/Context";
 import * as Clock from "effect/Clock";
@@ -99,6 +100,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     WorkspaceHandlers,
     FirmHandlers,
     CompanySetupHandlers,
+    CompanyProfileHandlers,
     AccountingHandlers,
     ReportHandlers,
     ReconciliationHandlers,

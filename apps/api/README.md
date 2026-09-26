@@ -8,6 +8,8 @@ Feature implementation notes, handoffs and feasibility reviews live in [docs](..
 src/
   index.ts                 API composition and request boundary
   application/             Shared capability execution and Effect workflows
+    company-profiles.ts    Capability-specific company admission operations
+    company-profile-basis.ts  Pure family/date profile selection and overlap checks
   transport/
     http/
       routes/              REST handlers grouped by accounting area
@@ -19,6 +21,7 @@ src/
     transaction.ts         Transaction ownership and sanitized failures
     identity.ts            Admission and current authority locks
     commerce/, banking/    Scoped domain persistence
+    company-profiles.ts    Company admission reads and DML
     schema.ts              Typed application and maintenance table mappings
     auth-schema.ts         Better Auth table mappings
   adapters/
@@ -28,7 +31,7 @@ src/
     environment.ts         Request-scoped bindings
     cloudflare.ts          Request-scoped API Worker entrypoint
     preparation-queue.ts   effect-mq job definition, dispatcher and handler
-migrations/                Three-file PostgreSQL baseline and future migrations
+migrations/                Reviewed three-file baseline plus forward migrations
 scripts/                   Stable Bun maintenance, self-host and recovery entrypoints
 ```
 
@@ -46,7 +49,11 @@ The application owns accounting policy, authorization, calculations, workflow de
 
 Fresh databases use [0001-schema.sql](migrations/0001-schema.sql), [0002-integrity.sql](migrations/0002-integrity.sql) and [0003-roles.sql](migrations/0003-roles.sql). The superseded 198-file chain has been removed. The migrator refuses old migration receipts and changed checksums; recreate an explicitly disposable development database instead of upgrading the old schema. The baseline retains 17 functions for canonical hashes, immutable records, balanced vouchers, calendar relationships and version maintenance. Only `canonical` and `digest` are runtime-callable. Private integrity helpers have fixed search paths and no public execution grant. [Completion evidence](../../docs/plans/evidence/application-owned-replacement-complete.md) records the final allowlist, grants, runtime journeys and restore checks.
 
+Released databases take forward migrations. [0004-next-02.sql](migrations/0004-next-02.sql) adds the capability-specific company admission record model: rule releases, reviewed company fact revisions and their reviews, reviewed account role bindings, per-family admission epochs, activations and the activation impacts a retroactive fact correction records. It declares no function: it reuses the baseline `immutable_row` guard and the `digest` check helper, and it carries its own runtime grants rather than editing the reviewed baseline. A sealed activation proposal, its approval and its no-journal receipt reuse the existing `change_sets`, `approvals` and `posting_group_receipts` identity instead of a parallel set of tables.
+
 The replacement is implemented, including historical financial import, impairment/disposal, schedule amendments and the commerce/purchase operations missed by the original placeholder inventory. Shared posting admission enforces domain ownership, source capacity and historical-import fences inside the financial transaction. TypeScript computes plans and canonical seals; the two pure SQL helpers remain for integrity constraints and read projections. Feature handoffs under `docs/` label the former SQL implementation as history; their migration and statement-map instructions do not describe the current runtime.
+
+`application/company-profiles.ts` owns capability-specific company admission. It records immutable reviewed company facts, their independent reviews and reviewed account role bindings, resolves each admitted family on the date that family's own operation uses, and commits an activation, the affected family admission epoch and a no-journal receipt in one book-scoped transaction. The legal AR family keeps `commerce.legalProfile.activate` as its named owner; admission reporting reads that owner's record rather than keeping a second activation authority. `book_get_status` reports the per-family result and its blockers and never sets `productionReady`. No reviewed `rule_releases` row ships with this release, so every family currently reports a `missing_rule_release` gap until a reviewed release owner lands; that refusal is the designed behaviour, not a default.
 
 [ADR 0009](../../docs/adr/0009-effect-mq-background-jobs.md) selects effect-mq on a separate persistent Bun worker for durable delivery. Its session-preserving listener is not part of API or financial transaction scope.
 

@@ -56,6 +56,7 @@ export const english = {
   readOnly: "You can view these details. An operator can change them.",
   finish: "Open company",
   bankOptional: "Banking is optional during setup.",
+  admission: "Capability admission",
 };
 
 export const swedish: typeof english = {
@@ -116,4 +117,5 @@ export const swedish: typeof english = {
   readOnly: "Du kan se uppgifterna. En operatör kan ändra dem.",
   finish: "Öppna företaget",
   bankOptional: "Bankanslutning är valfri under inställningen.",
+  admission: "Funktionsbehörighet",
 };
