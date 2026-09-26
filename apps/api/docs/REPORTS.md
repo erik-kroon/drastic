@@ -18,3 +18,12 @@ explicit missing sides and stable bounded pagination with complete source totals
 captured reports retain currencyScale; comparisons refuse missing historical scale rather than
 read live book scale. Old report bytes/replay are unchanged. Comparisons are diagnostic arithmetic,
 not reviewed openings, statutory comparatives or financial-close readiness.
+
+## Semantic statement snapshots
+
+[REPORT-STATEMENTS.md](REPORT-STATEMENTS.md) documents `semantic_statement_v1`: a pure,
+deterministic profit-and-loss and balance-sheet snapshot derived from retained ledger facts under
+one reviewed mapping release, with an explicit virtual untransferred result, a topological subtotal
+graph, retained row and contribution membership, and separate arithmetic and coverage statuses. It
+is a new artifact beside the synthetic trial-balance and role-bucket family reports above, not a
+recalculation of them.

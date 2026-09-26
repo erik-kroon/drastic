@@ -23,6 +23,7 @@ import { boundedRequest } from "./transport/http/body";
 import { McpRoutes } from "./transport/mcp";
 import { type Bindings, RequestEnvironment } from "./runtime/environment";
 import { ReportHandlers } from "./transport/http/routes/reports";
+import { ReportStatementHandlers } from "./transport/http/routes/report-statements";
 import { CaseHandlers } from "./transport/http/routes/cases";
 import { AutomationHandlers } from "./transport/http/routes/automation";
 import { PostingRecoveryHandlers } from "./transport/http/routes/posting-recovery";
@@ -103,6 +104,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     CompanyProfileHandlers,
     AccountingHandlers,
     ReportHandlers,
+    ReportStatementHandlers,
     ReconciliationHandlers,
     CaseHandlers,
     AutomationHandlers,
