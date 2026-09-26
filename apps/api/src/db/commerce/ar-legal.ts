@@ -91,6 +91,25 @@ export function readArLegalAccountingProfile(transaction: Transaction, bookId: s
   );
 }
 
+// Capability-specific admission reports legal AR through its named owner rather
+// than keeping a second activation record for it.
+export function readBookArLegalAccountingProfile(
+  transaction: Transaction,
+  bookId: string,
+  effectiveOn: string,
+) {
+  return transaction.execute<{ readonly id: string; readonly body: JsonObject }>(
+    sql`
+      select p.id, p.body
+      from openerp.ar_legal_accounting_profiles p
+      where p.book_id = ${bookId}
+        and p.body -> 'input' ->> 'effectiveFrom' <= ${effectiveOn}
+      order by p.id
+    `,
+    "objects",
+  );
+}
+
 export function readArLegalIssueReview(transaction: Transaction, bookId: string, id: string) {
   return transaction.execute<LegalIssueReviewRow>(
     sql`

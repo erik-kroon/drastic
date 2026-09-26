@@ -9,6 +9,7 @@
     "./sales-register": "./src/sales-register.ts",
     "./identity": "./src/identity.ts",
     "./company-setup": "./src/company-setup.ts",
+    "./company-profiles": "./src/company-profiles.ts",
     "./firms": "./src/firms.ts",
     "./workspace": "./src/workspace.ts",
     "./api": "./src/api.ts",

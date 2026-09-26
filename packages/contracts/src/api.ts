@@ -6,6 +6,7 @@ import { CollectionsApi } from "./collections";
 import { DimensionsApi } from "./dimensions";
 import { SupplierInboxApi } from "./supplier-inbox";
 import { CompanySetupApi } from "./company-setup";
+import { CompanyProfileApi } from "./company-profiles";
 import * as Schema from "effect/Schema";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi";
 import * as Accounting from "./accounting";
@@ -161,6 +162,7 @@ export class Api extends HttpApi.make("open-erp")
     WorkspaceApi,
     FirmApi,
     CompanySetupApi,
+    CompanyProfileApi,
     AccountingApi,
     ReportApi,
     ReconciliationApi,

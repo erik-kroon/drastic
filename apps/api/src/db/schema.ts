@@ -110,6 +110,87 @@ export const accounts = openerp.table("accounts", {
   version: bigint({ mode: "bigint" }).notNull().default(1n),
 });
 
+export const ruleReleases = openerp.table("rule_releases", {
+  id: text().primaryKey(),
+  jurisdiction: text().notNull(),
+  family: text().notNull(),
+  version: integer().notNull(),
+  checksum: text().notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const companyFactRevisions = openerp.table("company_fact_revisions", {
+  entityId: text("entity_id").notNull(),
+  id: text().notNull(),
+  factKind: text("fact_kind").notNull(),
+  effectiveFrom: date("effective_from", { mode: "string" }).notNull(),
+  effectiveTo: date("effective_to", { mode: "string" }),
+  supersedesId: text("supersedes_id"),
+  recordedBy: text("recorded_by").notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+  digest: text().notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const companyFactReviews = openerp.table("company_fact_reviews", {
+  entityId: text("entity_id").notNull(),
+  factRevisionId: text("fact_revision_id").notNull(),
+  reviewer: text().notNull(),
+  result: text().notNull(),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true, mode: "string" }).notNull(),
+  digest: text().notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const companyRoleBindings = openerp.table("company_role_bindings", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  roleKind: text("role_kind").notNull(),
+  accountId: text("account_id").notNull(),
+  accountVersion: bigint("account_version", { mode: "bigint" }).notNull(),
+  effectiveFrom: date("effective_from", { mode: "string" }).notNull(),
+  effectiveTo: date("effective_to", { mode: "string" }),
+  supersedesId: text("supersedes_id"),
+  reviewer: text().notNull(),
+  recordedBy: text("recorded_by").notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+  digest: text().notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const companyFamilyMemberships = openerp.table("company_family_memberships", {
+  bookId: text("book_id").notNull(),
+  family: text().notNull(),
+  membershipEpoch: bigint("membership_epoch", { mode: "bigint" }).notNull().default(1n),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const companyActivations = openerp.table("company_activations", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  family: text().notNull(),
+  ruleReleaseId: text("rule_release_id").notNull(),
+  changeSetId: text("change_set_id"),
+  effectiveFrom: date("effective_from", { mode: "string" }).notNull(),
+  effectiveTo: date("effective_to", { mode: "string" }),
+  activatedBy: text("activated_by").notNull(),
+  activatedAt: timestamp("activated_at", { withTimezone: true, mode: "string" }).notNull(),
+  digest: text().notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const companyActivationImpacts = openerp.table("company_activation_impacts", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  factRevisionId: text("fact_revision_id").notNull(),
+  supersededRevisionId: text("superseded_revision_id").notNull(),
+  activationId: text("activation_id").notNull(),
+  alreadyInForce: boolean("already_in_force").notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+  digest: text().notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
 export const identityProvisioningReceipts = openerp.table("identity_provisioning_receipts", {
   requestId: text("request_id").primaryKey(),
   manifest: jsonb("manifest").$type<typeof IdentityProvisioning.Type>().notNull(),

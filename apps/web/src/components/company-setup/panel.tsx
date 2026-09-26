@@ -14,6 +14,7 @@ import { PageContent } from "@open-erp/ui/components/accounting-page";
 import { RecordHeading, RecordSection, RecordSplit } from "@open-erp/ui/components/record-layout";
 import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
 import { AccountingStatus } from "@/components/accounting-status";
+import { CompanyAdmission } from "@/components/company-admission/panel";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import {
   bookKey,
@@ -79,7 +80,14 @@ export function CompanySetupPanel() {
             {copy.retry}
           </Button>
         ) : null}
-        {setup.isSuccess ? <SetupJourney key={book.id} saved={setup.data} /> : null}
+        {setup.isSuccess ? (
+          <Box display="grid" gap="xl" minWidth="zero">
+            <SetupJourney key={book.id} saved={setup.data} />
+            <RecordSection title={copy.admission}>
+              <CompanyAdmission />
+            </RecordSection>
+          </Box>
+        ) : null}
       </PageContent>
     </>
   );
