@@ -3,7 +3,11 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dir, "..");
 
-const baseRef = process.argv[2] ?? "HEAD";
+const args = process.argv.slice(2);
+
+const typeAware = args.includes("--type-aware");
+
+const baseRef = args.find((arg) => arg !== "--type-aware") ?? "HEAD";
 
 const binDirectory = path.join(repoRoot, "node_modules", ".bin");
 
@@ -83,13 +87,17 @@ for (const file of [...toolFiles].sort()) {
 const failures: Array<string> = [];
 
 const run = async (label: string, tool: string, args: Array<string>) => {
+  const started = performance.now();
+
   console.log(`\n${label}`);
 
-  const exitCode = await Bun.spawn([path.join(binDirectory, tool), ...args], {
+  const exitCode = await Bun.spawn([process.execPath, path.join(binDirectory, tool), ...args], {
     cwd: repoRoot,
     stdout: "inherit",
     stderr: "inherit",
   }).exited;
+
+  console.log(`${label}: ${((performance.now() - started) / 1000).toFixed(2)}s`);
 
   if (exitCode !== 0) {
     failures.push(label);
@@ -109,19 +117,30 @@ const typeCheckProject = async (projectConfig: string, files: Array<string>) => 
   writeFileSync(temporaryConfig, `${JSON.stringify(scopedConfig, undefined, 2)}\n`);
 
   try {
-    await run(`tsc --noEmit (${projectConfig})`, "tsc", ["--noEmit", "--project", temporaryConfig]);
+    await run(`tsc --noEmit (${projectConfig})`, "tsc", [
+      "--noEmit",
+      "--incremental",
+      "--tsBuildInfoFile",
+      path.join(projectDirectory, "tsconfig.changed.tsbuildinfo"),
+      "--project",
+      temporaryConfig,
+    ]);
   } finally {
     rmSync(temporaryConfig, { force: true });
   }
 };
 
-await run("oxlint (type-aware)", "oxlint", ["--config", ".oxlintrc.type-aware.json", ...toolFiles]);
-
+// Finish writes before readers start, then run the independent checks together.
 await run("oxfmt --write", "oxfmt", ["--write", ...toolFiles]);
 
-for (const [projectConfig, files] of typeCheckGroups) {
-  await typeCheckProject(projectConfig, files);
-}
+await Promise.all([
+  run(typeAware ? "oxlint (type-aware)" : "oxlint", "oxlint", [
+    "--config",
+    typeAware ? ".oxlintrc.type-aware.json" : ".oxlintrc.json",
+    ...toolFiles,
+  ]),
+  ...[...typeCheckGroups].map(([projectConfig, files]) => typeCheckProject(projectConfig, files)),
+]);
 
 if (filesWithoutProject.length > 0) {
   console.log(

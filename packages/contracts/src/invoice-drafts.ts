@@ -3,6 +3,7 @@ import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import * as Accounting from "./accounting";
 import * as Commerce from "./commerce";
 import { accountingErrors } from "./accounting-errors";
+import { OccurrenceReference } from "./recurring-invoices";
 import { SalesQuery, SalesPage } from "./sales-register";
 
 const Name = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200));
@@ -60,6 +61,10 @@ export const DraftContent = Schema.Struct({
 export const CreateInvoiceDraft = Schema.Struct({
   draftKey: Accounting.Identifier,
   content: DraftContent,
+  // A draft produced by a recurring occurrence carries the narrow reference that
+  // names its agreement and cycle. The occurrence owner's occurrence identity is
+  // that pair alone, so this reference never carries a template revision.
+  occurrence: Schema.optional(OccurrenceReference),
 });
 
 export const ReviseInvoiceDraft = Schema.Struct({
@@ -104,6 +109,7 @@ export const InvoiceDraftRevision = Schema.Struct({
   delivered: Schema.Literal(false),
   calculationBasis: Schema.Literal("explicit_line_amounts_v1"),
   content: DraftContent,
+  occurrence: Schema.optional(OccurrenceReference),
   counterparty: Commerce.CounterpartyRevision,
   sellerEvidence: Commerce.EvidenceReference,
   customerEvidence: Commerce.EvidenceReference,

@@ -30,6 +30,7 @@ import { VatReturnCapabilities } from "./vat-returns";
 import { SieCapabilities } from "./sie";
 import { Sie4ECapabilities } from "./sie4e";
 import { InvoiceDraftCapabilities } from "./invoice-drafts";
+import { RecurringInvoiceCapabilities } from "./recurring-invoices";
 import { SupplierInvoiceDraftCapabilities } from "./supplier-invoice-drafts";
 import { SupplierAcceptanceCapabilities } from "./supplier-acceptance";
 import { PurchaseRecognitionCapabilities } from "./supplier-recognition";
@@ -110,6 +111,7 @@ export const Capabilities = {
   ...SieCapabilities,
   ...Sie4ECapabilities,
   ...InvoiceDraftCapabilities,
+  ...RecurringInvoiceCapabilities,
   ...SupplierInvoiceDraftCapabilities,
   ...SupplierAcceptanceCapabilities,
   ...PurchaseRecognitionCapabilities,

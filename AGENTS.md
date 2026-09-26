@@ -50,11 +50,16 @@ This repository is the starting point for the OpenERP product.
 
 ## Commands
 
-Run `bun run check:changed` after every edit. It lints, formats and type-checks only the files that changed, so it is the default verification gate while you work. Do not run the full `check`, `lint` or `check-types` scans to validate your own edits; they type-check and lint every workspace and are for the final pre-handoff pass.
+Run `bun run check:changed` after each coherent edit. This is the fast feedback gate: it formats changed source files, then runs normal lint (including anti-slop rules) and incremental TypeScript checks in parallel. Type checks include the changed files' imports. The first run for a project is slower; keep the ignored `tsconfig.changed.tsbuildinfo` caches so later runs reuse compiler work.
+
+Run `bun run check:changed:full` before handoff and after changes involving async or Promise handling. It adds type-aware lint, including floating/misused Promise checks, which the fast gate does not run. A passing fast gate does not replace this fuller gate. Both commands compare against `HEAD` by default and accept a base ref, e.g. `bun run check:changed:full main` to cover committed branch changes too.
+
+Do not run full-workspace `check`, `lint` or `check-types` scans after every edit. Reserve them for final integration checks when shared configuration, dependencies or cross-workspace changes warrant broader coverage. The changed-file commands select source files, so configuration-only edits need the relevant broader check.
 
 ```bash
 bun run dev
 bun run check:changed
+bun run check:changed:full
 bun run check
 bun run lint
 bun run check-types
