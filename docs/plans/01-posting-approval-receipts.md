@@ -2,7 +2,7 @@
 
 Owner: accounting work/kernel in `apps/api`, accounting/recovery contracts, and the journal/recovery workbench. Phase: P0/P1, with durable delivery extended at P3. Preserve the existing single-action lifecycle and recovery catalogue as the first implementation path.
 
-**Replacement authority:** [ADR 0010](../adr/0010-application-owned-accounting-replacement.md) supersedes the function-only implementation, old-schema compatibility and old-digest portions of this packet without changing its posting, approval, receipt, correction or recovery requirements. The current SQL and Workflow references below describe the pre-cutover source until the application caller inventory closes.
+**Replacement authority:** [ADR 0010](../adr/0010-application-owned-accounting-replacement.md) supersedes the function-only implementation, old-schema compatibility and old-digest portions of this packet without changing its posting, approval, receipt, correction or recovery requirements. SQL and Workflow references below describe the historical implementation; the application caller cutover is complete.
 
 ## User result and scope
 

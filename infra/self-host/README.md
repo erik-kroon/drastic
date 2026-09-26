@@ -68,6 +68,8 @@ The role setup is intended for this dedicated installation. It refuses an existi
 
 ## Origin and deployment configuration
 
+The web build emits a TanStack Start SPA shell for direct navigation and reload of dynamic book/review URLs. Bun serves that shell for missing HTML document routes; missing assets remain 404.
+
 `OPENERP_PUBLIC_URL` is the exact browser origin. Non-loopback origins require HTTPS. The server rejects a different Host and uses the configured origin when dispatching requests, preserving same-origin/CSRF checks. It ignores a caller-supplied Cloudflare client-IP header and derives the address from the socket. Behind a proxy, authentication rate limits therefore use the proxy address; trusted forwarded-client-IP configuration is not implemented.
 
 For remote access, place a TLS reverse proxy in front of the loopback port, preserve the public Host header and set `OPENERP_PUBLIC_URL` to that HTTPS origin. `OPENERP_BIND_ADDRESS` defaults to loopback; Compose overrides it only inside the container. `PORT` selects the Bun listening port; `OPENERP_PORT` selects the Compose host mapping. Do not expose maintenance credentials or the database port through the proxy.

@@ -156,7 +156,7 @@ CREATE FUNCTION openerp.ar_legal_freeze_draft() RETURNS trigger
   SECURITY DEFINER
   LANGUAGE plpgsql
   VOLATILE
-  
+
   PARALLEL UNSAFE
   SET search_path TO pg_catalog, openerp, pg_temp
 AS $$
@@ -171,7 +171,7 @@ CREATE FUNCTION openerp.ar_legal_freeze_register() RETURNS trigger
   SECURITY DEFINER
   LANGUAGE plpgsql
   VOLATILE
-  
+
   PARALLEL UNSAFE
   SET search_path TO pg_catalog, openerp, pg_temp
 AS $$
@@ -185,7 +185,7 @@ CREATE FUNCTION openerp.book_versions() RETURNS trigger
   SECURITY DEFINER
   LANGUAGE plpgsql
   VOLATILE
-  
+
   PARALLEL UNSAFE
   SET search_path TO pg_catalog, openerp, pg_temp
 AS $$
@@ -204,7 +204,7 @@ CREATE FUNCTION openerp.bump_version() RETURNS trigger
   SECURITY INVOKER
   LANGUAGE plpgsql
   VOLATILE
-  
+
   PARALLEL UNSAFE
   SET search_path TO pg_catalog, openerp, pg_temp
 AS $$
@@ -214,7 +214,7 @@ CREATE FUNCTION openerp.check_calendar() RETURNS trigger
   SECURITY DEFINER
   LANGUAGE plpgsql
   VOLATILE
-  
+
   PARALLEL UNSAFE
   SET search_path TO pg_catalog, openerp, pg_temp
 AS $$
@@ -243,7 +243,7 @@ CREATE FUNCTION openerp.commerce_freeze_identity() RETURNS trigger
   SECURITY DEFINER
   LANGUAGE plpgsql
   VOLATILE
-  
+
   PARALLEL UNSAFE
   SET search_path TO pg_catalog, openerp, pg_temp
 AS $$
@@ -260,8 +260,9 @@ CREATE FUNCTION openerp.dimension_identity_guard() RETURNS trigger
   SECURITY INVOKER
   LANGUAGE plpgsql
   VOLATILE
-  
+
   PARALLEL UNSAFE
+  SET search_path TO pg_catalog, openerp, pg_temp
 AS $$
 
 BEGIN
@@ -280,7 +281,7 @@ CREATE FUNCTION openerp.fail(code text, message text) RETURNS void
   SECURITY INVOKER
   LANGUAGE plpgsql
   VOLATILE
-  
+
   PARALLEL UNSAFE
   SET search_path TO pg_catalog, openerp, pg_temp
 AS $$
@@ -290,7 +291,7 @@ CREATE FUNCTION openerp.freeze_preparation_inputs() RETURNS trigger
   SECURITY DEFINER
   LANGUAGE plpgsql
   VOLATILE
-  
+
   PARALLEL UNSAFE
   SET search_path TO pg_catalog, openerp, pg_temp
 AS $$
@@ -310,7 +311,7 @@ CREATE FUNCTION openerp.guard_journal_ordinal() RETURNS trigger
   SECURITY DEFINER
   LANGUAGE plpgsql
   VOLATILE
-  
+
   PARALLEL UNSAFE
   SET search_path TO pg_catalog, openerp, pg_temp
 AS $$
@@ -328,7 +329,7 @@ CREATE FUNCTION openerp.immutable_row() RETURNS trigger
   SECURITY DEFINER
   LANGUAGE plpgsql
   VOLATILE
-  
+
   PARALLEL UNSAFE
   SET search_path TO pg_catalog, openerp, pg_temp
 AS $$
@@ -338,7 +339,7 @@ CREATE FUNCTION openerp.invoice_issue_guard_draft() RETURNS trigger
   SECURITY DEFINER
   LANGUAGE plpgsql
   VOLATILE
-  
+
   PARALLEL UNSAFE
   SET search_path TO pg_catalog, openerp, pg_temp
 AS $$
@@ -354,7 +355,7 @@ CREATE FUNCTION openerp.posting_guard_approval_consumption() RETURNS trigger
   SECURITY DEFINER
   LANGUAGE plpgsql
   VOLATILE
-  
+
   PARALLEL UNSAFE
   SET search_path TO pg_catalog, openerp, pg_temp
 AS $$
@@ -373,7 +374,7 @@ CREATE FUNCTION openerp.supplier_acceptance_guard_draft() RETURNS trigger
   SECURITY DEFINER
   LANGUAGE plpgsql
   VOLATILE
-  
+
   PARALLEL UNSAFE
   SET search_path TO pg_catalog, openerp, pg_temp
 AS $$
@@ -389,7 +390,7 @@ CREATE FUNCTION openerp.voucher_expected_line_count() RETURNS trigger
   SECURITY DEFINER
   LANGUAGE plpgsql
   VOLATILE
-  
+
   PARALLEL UNSAFE
   SET search_path TO pg_catalog, openerp, pg_temp
 AS $$

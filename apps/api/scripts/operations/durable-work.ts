@@ -10,8 +10,9 @@ import {
   TableFingerprint,
 } from "../../../../packages/contracts/src/operations";
 import { artifactPath, fingerprint, refuse } from "./safety";
+import { queueTables, readQueueSequences } from "./queue";
 
-export const workInventoryPath = "durable-work-v1.json";
+export const workInventoryPath = "durable-work-v2.json";
 
 const inventoryByteLimit = 8388608;
 
@@ -55,6 +56,27 @@ function validateInventory(
 ) {
   if (!isDeepStrictEqual(workSummary(inventory), inventory.summary))
     refuse("Durable work summary differs from its complete retained inventory.");
+
+  const queue = tables.filter(
+    (table) => table.schema === "public" && queueTables.includes(table.table),
+  );
+
+  if (queue.length !== queueTables.length || !isDeepStrictEqual(queue, inventory.queue.tables))
+    refuse("Queue work inventory differs from the complete snapshot table fingerprints.");
+
+  const expectedSequences = [
+    { name: "effect_mq_flow_outbox_id_seq", table: "effect_mq_flow_outbox", column: "id" },
+    { name: "effect_mq_jobs_seq_seq", table: "effect_mq_jobs", column: "seq" },
+  ];
+
+  if (
+    !isDeepStrictEqual(
+      inventory.queue.sequences.map(({ name, table, column }) => ({ name, table, column })),
+      expectedSequences,
+    )
+  )
+    refuse("Queue work inventory has missing or unexpected sequence identities.");
+
   const bookIds = new Set(inventory.books.map((book) => book.id));
 
   if (bookIds.size !== inventory.books.length)
@@ -159,7 +181,13 @@ export async function captureWorkInventory(
   };
 
   const inventory = Schema.decodeSync(RecoveryWorkInventory)({
-    version: 1,
+    version: 2,
+    queue: {
+      tables: tables.filter(
+        (table) => table.schema === "public" && queueTables.includes(table.table),
+      ),
+      sequences: await readQueueSequences(client),
+    },
     kind: "openerp-durable-work-inventory",
     snapshot,
     books: books.rows.map((row) => Schema.decodeUnknownSync(BookBoundary)(row.body)),

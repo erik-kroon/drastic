@@ -32,7 +32,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("PORT m
 
 const assets = resolve(import.meta.dirname, "../../web/dist/client");
 
-if (!(await Bun.file(resolve(assets, "index.html")).exists())) {
+if (!(await Bun.file(resolve(assets, "_shell.html")).exists())) {
   throw new Error("Build the web application before starting: bun run --cwd apps/web build");
 }
 
@@ -94,9 +94,16 @@ const server = Bun.serve({
     }
 
     const file = Bun.file(path);
-    const content = (await file.exists()) ? file : Bun.file(resolve(path, "index.html"));
+    let content = (await file.exists()) ? file : Bun.file(resolve(path, "index.html"));
 
-    if (!(await content.exists())) return new Response("Not found", { status: 404 });
+    if (!(await content.exists())) {
+      const navigation = request.headers.get("accept")?.includes("text/html");
+
+      if (!navigation || pathname.startsWith("/assets/"))
+        return new Response("Not found", { status: 404 });
+
+      content = Bun.file(resolve(assets, "_shell.html"));
+    }
 
     return new Response(request.method === "HEAD" ? null : content, {
       headers: {

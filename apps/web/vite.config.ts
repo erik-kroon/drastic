@@ -28,6 +28,7 @@ export default defineConfig({
     }),
     tanstackStart({
       vite: { installDevServerMiddleware: true },
+      spa: { enabled: true },
       prerender: {
         enabled: true,
         autoSubfolderIndex: true,

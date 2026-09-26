@@ -35,7 +35,10 @@ export function digest(
   value: Schema.Json,
   code: typeof Accounting.FailureCode.Type = "InternalError",
 ) {
-  return digestCanonical(() => canonicalizeJson(typeof value === "string" ? JSON.stringify(value) : value), code);
+  return digestCanonical(
+    () => canonicalizeJson(typeof value === "string" ? JSON.stringify(value) : value),
+    code,
+  );
 }
 
 export function versionedDigest(

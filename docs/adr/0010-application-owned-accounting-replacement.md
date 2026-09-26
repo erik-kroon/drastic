@@ -1,6 +1,6 @@
 # ADR 0010: application-owned accounting replacement
 
-Status: accepted implementation decision, 2026-09-25; progress updated 2026-09-26. Application dispatch, effect-mq composition and the three-file baseline are implemented. [Baseline checks](../plans/evidence/application-owned-baseline-cutover.md) pass locally; remaining domain ports, retained SQL policy guards and broader release proof stay open.
+Status: implemented and locally verified, 2026-09-26. Application dispatch, domain operations, effect-mq composition and the three-file baseline are complete. [Completion evidence](../plans/evidence/application-owned-replacement-complete.md) records the final boundary, runtime checks and recovery rehearsal. Company and hosted-provider acceptance remain separate release gates.
 
 ## Context
 
@@ -65,6 +65,7 @@ The new baseline permits only these database responsibilities:
 | DDL, primary/foreign keys, composite book-scoped references, unique effect and idempotency identities, indexes, exact amount bounds and ordinary state checks | The schema describes durable relationships and storage validity. |
 | Deferred voucher integrity | A small commit-time check verifies the expected line count, valid line shape and exact debit/credit balance; immutable history and append protection prevent later edits. |
 | Sealed records and approval-use integrity | Narrow triggers or constraints prevent rewriting sealed plans, retained revisions and receipts and prevent reuse of one approval consumption. |
+| Pure canonicalization and content hashes | `canonical` and `digest` support storage seals and read projections; they contain no policy, authorization or workflow. Application seals use the domain canonicalizer with independently checked matching bytes. |
 | Role, grant, migration and restore authority | The non-owner runtime role receives only required table/column privileges; maintenance, migration and restore credentials remain separate. |
 | Row locking and rollback-safe counters | The application acquires ordinary row locks and uses transactional counter statements such as `UPDATE ... RETURNING`; these are not feature procedures. |
 
@@ -84,7 +85,7 @@ After the clean baseline is released, normal forward migrations apply to future 
 
 ## Live replacement inventory
 
-This is the decision inventory for the plan slices, not a claim that the source has been migrated. Each row names the caller families that must move or disappear.
+This inventory names the caller families moved to application operations or removed at cutover. The final source audit and runtime observations are recorded in the completion evidence.
 
 | Plan slice or cross-cutting work | Disposition | Target and real caller families |
 | --- | --- | --- |
@@ -122,7 +123,7 @@ The delete row is a cutover obligation, not permission to leave a half-migrated 
 
 ## Proof gates
 
-This ADR records the required observations. The [baseline evidence](../plans/evidence/application-owned-baseline-cutover.md) closes the clean-installation checks below; it does not close the remaining domain, SQL policy-boundary or release gates.
+The [completion evidence](../plans/evidence/application-owned-replacement-complete.md) records the observed local checks against the completed replacement, including baseline integrity, domain ports, browser/Bun execution, durable work and quarantined restore. The table distinguishes those engineering checks from company and hosted-provider acceptance.
 
 | Gate | Required observation |
 | --- | --- |
@@ -134,4 +135,4 @@ This ADR records the required observations. The [baseline evidence](../plans/evi
 | Operations and recovery | Backup/restore captures the new baseline and queue/application work inventories, keeps the database quarantined and does not claim provider acceptance or promotion. |
 | Browser and company gates | Approved browser journeys, applicable Swedish profiles, real-company facts and provider receipts remain separate evidence. Synthetic success cannot activate a company or statutory profile. |
 
-Implementation and observed results are recorded separately in the [replacement plan](../plans/application-owned-accounting.md) and its dated evidence. A completed baseline does not establish whole-replacement acceptance.
+Implementation and observed results are recorded separately in the [replacement plan](../plans/application-owned-accounting.md) and its dated evidence. Local replacement verification does not establish company, statutory-profile or hosted-provider acceptance.

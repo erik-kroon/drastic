@@ -1,6 +1,6 @@
 # Local recovery: snapshot closure and fenced restore
 
-Status: recovery package v2 has a [bounded synthetic database/object rehearsal](ops02-isolated-rehearsal.md). Its read-only application recovery, real posting receipts, historical reports, custody and hosted/production recovery remain unverified. This does not grant writer or provider activation. The package currently describes the pre-cutover source and migration chain; the application-owned replacement adds the clean three-file baseline and effect-mq queue tables to the new closure contract, with no old-schema upgrade or compatibility path.
+Status: recovery package v2 and durable-work inventory v2 pass the [application-owned replacement rehearsal](../plans/evidence/application-owned-replacement-complete.md), including posted receipts, retained originals, effect-mq tables and queue sequences. Restricted read-only application recovery, custody and hosted/production recovery remain separate gates. Restore does not grant writer or provider activation.
 
 This is not an encrypted archive, statutory retention service, company-readiness decision or production cutover tool. Private permissions are not encryption. A checksum is not authenticity or proof of successful recovery. D-07 remains open.
 
@@ -24,7 +24,7 @@ Restore only creates a fresh `openerp_restore_…` database. It never overwrites
 
 ## Application-owned replacement boundary
 
-[ADR 0010](../adr/0010-application-owned-accounting-replacement.md) replaces the current source inventory at cutover. A new release capture must contain the three reviewed baseline files and the effect-mq PostgreSQL queue schema in the same migration ledger. Application outbox rows, preparation runs/jobs, command receipts and domain progress remain durable business records; effect-mq claims, retries, leases and attempt history remain queue records. Both must be included in a complete post-replacement closure, but queue state is never treated as a financial receipt or provider acknowledgment.
+[ADR 0010](../adr/0010-application-owned-accounting-replacement.md) defines the completed cutover. A release capture contains the three reviewed baseline files and the effect-mq PostgreSQL queue schema in the same migration ledger. Application outbox rows, preparation runs/jobs, command receipts and domain progress remain durable business records; effect-mq claims, retries, leases and attempt history remain queue records. Both must be included in a complete post-replacement closure, but queue state is never treated as a financial receipt or provider acknowledgment.
 
 The old chain is not upgraded in place. A destination that carries the pre-replacement migration identity is refused for the clean replacement and is not silently dropped or rewritten. Recovery of a new-baseline bundle still requires fresh quarantine, closure comparison and application/provider inspection before any writer or provider is enabled.
 
@@ -78,7 +78,7 @@ Record `manifest.sha256` independently when capture finishes. A digest next to a
 - Every declared supplementary/release file must exist with exact size/hash, with no undeclared file. Configuration/key-recovery procedures must resolve. Missing content prevents a complete manifest or restore receipt.
 - The owned `intake_contents.object_key` format has a versioned closure adapter: backup reads the same snapshot's references, verifies each original's hash/size and captures it under `objects/v1/...`. Restore compares the reconstructed references and recovers those files before issuing a receipt. Configure an explicit private object directory or bucket-scoped R2 read credentials as described in [Cloudflare recovery](cloudflare.md). Other object-store pointers (`objectKey`, `storageKey`, `blobKey`, version variants and snake-case forms) are still refused. Hosted R2 re-upload/application admission remains a separate unverified gate.
 
-Sequences, foreign/unlogged/materialized relations, inheritance/partitions, non-plpgsql extensions, publications/subscriptions, RLS policies/security labels, foreign servers, custom role/database settings, invalid indexes, disabled/unvalidated constraints/triggers and unsupported ownership/function kinds require a reviewed extension and are refused. Configured source database/role settings are not exported blindly because they can carry secrets or change recovery behavior. Destination's intentional read-only quarantine default is the sole allowed setting exception.
+Sequences other than the two reviewed effect-mq sequences, foreign/unlogged/materialized relations, inheritance/partitions, non-plpgsql extensions, publications/subscriptions, RLS policies/security labels, foreign servers, custom role/database settings, invalid indexes, disabled/unvalidated constraints/triggers and unsupported ownership/function kinds require a reviewed extension and are refused. Configured source database/role settings are not exported blindly because they can carry secrets or change recovery behavior. Destination's intentional read-only quarantine default is the sole allowed setting exception.
 
 ## Quarantine, diagnostics and receipts
 
@@ -96,10 +96,10 @@ Follow [application recovery](application-recovery.md) for the exact root decisi
 
 Production remains blocked on verified storage/retention/key custody, actual company/profile facts, fenced single-writer/provider recovery, independent application exercise, reconciled acknowledged effects and separate authority. A backup older than an acknowledged posting/submission cannot be promoted as if that effect never existed.
 
-## Durable work inventory extension (implemented source; runtime unverified)
+## Durable work inventory and queue recovery
 
 [Durable work recovery](durable-work-recovery.md) extends the existing commands with a
-snapshot-bound `durable-work-v1.json`. New backups retain complete bounded outbox counters,
+snapshot-bound `durable-work-v2.json`. New backups retain complete bounded outbox counters,
 preparation runs/jobs and saved posting outcome identities. `inspect` validates its full
 file/summary/snapshot closure; `restore` repeats the inventory before success and copies
 the original file into the restored artifact directory. Per-family limits are10000 rows;
@@ -117,5 +117,5 @@ attempted on ordinary success/failure after maintenance connection admission. A 
 restore receipt binds its exact hash/size. Failure or absence of either artifact cannot
 be treated as permission to resume. Ready jobs remain ready in the retained data, but no
 runtime/provider is started and `resumeAllowed` is alwaysfalse. Current outbox counters
-are not per-attempt provider receipts. The current pre-cutover inventory has no effect-mq queue-table history; the post-cutover closure must capture the selected queue store's claims, leases, retries and attempt history, while keeping them separate from financial receipts and provider outcomes.
+are not per-attempt provider receipts. The inventory binds all seven effect-mq table fingerprints, including claims, leases, retries and attempt history in the dump, and the exact positions of its two owned sequences. Sequence ownership, configuration and ACLs participate in schema review; unrelated sequences remain refused. Queue writers must be stopped during capture because sequence state is not MVCC. A changed sequence position between inventory and completed dump refuses the backup. Restore compares sequence positions and queue fingerprints before issuing a receipt. Financial counters remain transactional table rows.
 The restricted-read application boundary and every existing promotion gate remain blocked.

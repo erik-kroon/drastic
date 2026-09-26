@@ -75,7 +75,14 @@ export const admitPosting = Effect.fn("posting.admitOwnedSources")(function* (
   }
 });
 
-const admitSources = Effect.fn("posting.admitSources")(function* (tx: Transaction, scope: Scope, changeId: string, eventId: string, action: JsonObject, owner?: PostingOwner){
+const admitSources = Effect.fn("posting.admitSources")(function* (
+  tx: Transaction,
+  scope: Scope,
+  changeId: string,
+  eventId: string,
+  action: JsonObject,
+  owner?: PostingOwner,
+) {
   const evidence = (Array.isArray(action.evidenceRefs) ? action.evidenceRefs : []).flatMap((ref) =>
     typeof ref === "object" &&
     ref !== null &&
@@ -118,10 +125,16 @@ const admitSources = Effect.fn("posting.admitSources")(function* (tx: Transactio
     } else if (textField(objectField(action, "legalIssue"), "reviewId") !== retained.id)
       return yield* failure("StaleDependency");
   }
-
 });
 
-const admitHistoricalPosting = Effect.fn("posting.admitHistoricalPosting")(function* (tx: Transaction, scope: Scope, year: string, changeId: string, date: string, owner?: PostingOwner){
+const admitHistoricalPosting = Effect.fn("posting.admitHistoricalPosting")(function* (
+  tx: Transaction,
+  scope: Scope,
+  year: string,
+  changeId: string,
+  date: string,
+  owner?: PostingOwner,
+) {
   const state = (yield* Db.readHistoricalPostingState(tx, scope.bookId, year, changeId))[0];
 
   if (!state) return yield* failure("InternalError");
@@ -157,10 +170,17 @@ const admitHistoricalPosting = Effect.fn("posting.admitHistoricalPosting")(funct
     )
       return yield* failure("StaleDependency");
   }
-
 });
 
-const admitCorrectionsAndSchedules = Effect.fn("posting.admitCorrectionsAndSchedules")(function* (tx: Transaction, scope: Scope, changeId: string, eventId: string, date: string, action: JsonObject, owner?: PostingOwner){
+const admitCorrectionsAndSchedules = Effect.fn("posting.admitCorrectionsAndSchedules")(function* (
+  tx: Transaction,
+  scope: Scope,
+  changeId: string,
+  eventId: string,
+  date: string,
+  action: JsonObject,
+  owner?: PostingOwner,
+) {
   const original = textField(action, "correctsVoucherId");
 
   if (original) {
@@ -205,5 +225,4 @@ const admitCorrectionsAndSchedules = Effect.fn("posting.admitCorrectionsAndSched
     } else if ((yield* Db.readLinkedScheduleEvents(tx, scope.bookId, changeId, eventId)).length)
       return yield* failure("StaleDependency");
   }
-
 });

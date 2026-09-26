@@ -1,6 +1,6 @@
 # Restricted application recovery: root decision and operator procedure
 
-Status: blocked at a shared admission boundary. The local CLI does not grant an inspection role, start a Worker, change Better Auth, enable ordinary database connections, or activate writers/providers. This page covers the current pre-cutover source; the clean application-owned baseline and queue recovery boundary are defined in [ADR 0010](../adr/0010-application-owned-accounting-replacement.md).
+Status: blocked at a shared admission boundary. The local CLI does not grant an inspection role, start a Worker, change Better Auth, enable ordinary database connections, or activate writers/providers. The clean application-owned baseline and queue recovery boundary are defined in [ADR 0010](../adr/0010-application-owned-accounting-replacement.md).
 
 ## Observed source boundary
 

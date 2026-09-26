@@ -6,6 +6,7 @@ import {
   RoleInventory,
 } from "../../../../packages/contracts/src/operations";
 import { refuse } from "./safety";
+import { readQueueSequences } from "./queue";
 
 export async function roleInventory(client: Client) {
   const result = await client.query<{ body: unknown }>(`
@@ -42,7 +43,7 @@ export async function databaseInventory(
         WHERE n.nspname !~ '^pg_' AND n.nspname <> 'information_schema' AND t.tgenabled NOT IN ('O','A'))
       OR EXISTS(SELECT FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
         WHERE n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'
-        AND (c.reltablespace<>0 OR c.relkind NOT IN ('r','i','v','c') OR pg_get_userbyid(c.relowner)<>current_user))
+        AND (c.reltablespace<>0 OR c.relkind NOT IN ('r','i','v','c','S') OR pg_get_userbyid(c.relowner)<>current_user))
       OR EXISTS(SELECT FROM pg_namespace n WHERE n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'
         AND pg_get_userbyid(n.nspowner)<>current_user AND NOT(n.nspname='public' AND pg_get_userbyid(n.nspowner)='pg_database_owner'))
       OR EXISTS(SELECT FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace WHERE n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'
@@ -57,6 +58,8 @@ export async function databaseInventory(
     refuse(
       "Unsupported extension, replication, role/database setting, ownership, relation or disabled constraint/trigger requires reviewed recovery support.",
     );
+
+  await readQueueSequences(client);
 
   const metadata = await client.query<{
     owner: string;
@@ -113,6 +116,14 @@ export async function databaseInventory(
         'acl',(SELECT jsonb_agg(a::text ORDER BY a::text COLLATE "C") FROM unnest(coalesce(c.relacl,acldefault('r',c.relowner))) a),
         'view',CASE WHEN c.relkind='v' THEN pg_get_viewdef(c.oid) ELSE NULL END)
       FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname !~ '^pg_' AND n.nspname<>'information_schema' AND c.relkind IN ('r','v','c')
+      UNION ALL
+      SELECT 'sequence', n.nspname||'.'||c.relname, jsonb_build_object(
+        'owner',pg_get_userbyid(c.relowner),'type',format_type(s.seqtypid,NULL),
+        'start',s.seqstart::text,'increment',s.seqincrement::text,'minimum',s.seqmin::text,
+        'maximum',s.seqmax::text,'cache',s.seqcache::text,'cycle',s.seqcycle,
+        'acl',(SELECT jsonb_agg(a::text ORDER BY a::text COLLATE "C") FROM unnest(coalesce(c.relacl,acldefault('s',c.relowner))) a))
+      FROM pg_sequence s JOIN pg_class c ON c.oid=s.seqrelid JOIN pg_namespace n ON n.oid=c.relnamespace
+      WHERE n.nspname !~ '^pg_' AND n.nspname<>'information_schema'
       UNION ALL
       SELECT 'column', n.nspname||'.'||c.relname||'.'||a.attname, jsonb_build_object('type',format_type(a.atttypid,a.atttypmod),
         'ordinal',a.attnum,'notNull',a.attnotnull,'identity',a.attidentity,'generated',a.attgenerated,

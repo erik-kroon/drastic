@@ -20,6 +20,7 @@ import { renderLegalInvoicePdf } from "../legal-invoice-pdf-renderer";
 import { renderLegalInvoicePdfV2 } from "../legal-invoice-pdf-renderer-v2";
 import {
   decode,
+  objectField,
   requireTableAccess,
   unsupported,
   withBook,
@@ -1162,7 +1163,7 @@ export const sealLegalInvoicePdf = Effect.fn("commerce.legalPdfs.seal")(function
         transaction,
         command.scope.bookId,
         capture.issueId,
-        captureValue.source.issue,
+        objectField(objectField(capture.body, "source"), "issue"),
       );
 
       if (agreement[0]?.agreed !== true) return yield* failure("StaleDependency");

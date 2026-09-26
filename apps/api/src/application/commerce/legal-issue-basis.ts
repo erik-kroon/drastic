@@ -140,7 +140,7 @@ export const checkedLegalIssue = Effect.fn("commerce.legalIssue.checked")(functi
   if (!row) return yield* failure("NotFound");
   const review = yield* decode(Ar.ArLegalIssueReview, row.body);
   const saved = review.digest;
-  const body = { ...yield* toJsonObject(review) };
+  const body = { ...(yield* toJsonObject(review)) };
   delete body.digest;
 
   if (saved !== expected || (yield* digest(body)) !== saved)
@@ -171,7 +171,11 @@ export const checkedLegalIssue = Effect.fn("commerce.legalIssue.checked")(functi
   return review;
 });
 
-const readActivation = Effect.fn("commerce.legalIssue.activation")(function* (tx: Transaction, scope: Scope, input: typeof Ar.PrepareArLegalIssue.Type){
+const readActivation = Effect.fn("commerce.legalIssue.activation")(function* (
+  tx: Transaction,
+  scope: Scope,
+  input: typeof Ar.PrepareArLegalIssue.Type,
+) {
   const policyRow = (yield* Policies.readPolicy(tx, scope.bookId, input.policyId))[0];
 
   if (!policyRow) return yield* failure("UnsupportedProfile");
@@ -205,10 +209,13 @@ const readActivation = Effect.fn("commerce.legalIssue.activation")(function* (tx
   )
     return yield* failure("UnsupportedProfile");
 
-return {policy, activation};
+  return { policy, activation };
 });
 
-const requireLegalIdentities = Effect.fn("commerce.legalIssue.identities")(function* (draft: typeof Drafts.InvoiceDraftRevision.Type, policy: typeof Policy.LegalSalesPolicy.Type){
+const requireLegalIdentities = Effect.fn("commerce.legalIssue.identities")(function* (
+  draft: typeof Drafts.InvoiceDraftRevision.Type,
+  policy: typeof Policy.LegalSalesPolicy.Type,
+) {
   const { seller, customer } = draft.content,
     identity = policy.candidate.input.sellerIdentity;
 
@@ -226,10 +233,15 @@ const requireLegalIdentities = Effect.fn("commerce.legalIssue.identities")(funct
     draft.sellerEvidence.evidenceId !== policy.candidate.input.sellerEvidence.evidenceId
   )
     return yield* failure("UnsupportedProfile");
-
 });
 
-const legalPeriod = Effect.fn("commerce.legalIssue.period")(function* (tx: Transaction, scope: Scope, draft: typeof Drafts.InvoiceDraftRevision.Type, policy: typeof Policy.LegalSalesPolicy.Type, accountingPeriodId: string){
+const legalPeriod = Effect.fn("commerce.legalIssue.period")(function* (
+  tx: Transaction,
+  scope: Scope,
+  draft: typeof Drafts.InvoiceDraftRevision.Type,
+  policy: typeof Policy.LegalSalesPolicy.Type,
+  accountingPeriodId: string,
+) {
   const issueDate = draft.content.plannedIssueDate,
     supplyDate = draft.content.supplyDate,
     effective = policy.candidate.input.effectiveFrom;
@@ -256,10 +268,13 @@ const legalPeriod = Effect.fn("commerce.legalIssue.period")(function* (tx: Trans
   )
     return yield* failure("PeriodLocked");
 
-return period;
+  return period;
 });
 
-const calculateLines = Effect.fn("commerce.legalIssue.lines")(function* (draft: typeof Drafts.InvoiceDraftRevision.Type, policy: typeof Policy.LegalSalesPolicy.Type){
+const calculateLines = Effect.fn("commerce.legalIssue.lines")(function* (
+  draft: typeof Drafts.InvoiceDraftRevision.Type,
+  policy: typeof Policy.LegalSalesPolicy.Type,
+) {
   const lines: Array<(typeof Ar.ArLegalIssueReview.Type.lines)[number]> = [];
 
   let netTotal = 0n,
@@ -316,5 +331,12 @@ const calculateLines = Effect.fn("commerce.legalIssue.lines")(function* (draft: 
   )
     return yield* failure("InvalidJournal");
 
-return {lines, totals: {netMinor:netTotal.toString(), taxMinor:taxTotal.toString(), grossMinor:grossTotal.toString()}};
+  return {
+    lines,
+    totals: {
+      netMinor: netTotal.toString(),
+      taxMinor: taxTotal.toString(),
+      grossMinor: grossTotal.toString(),
+    },
+  };
 });

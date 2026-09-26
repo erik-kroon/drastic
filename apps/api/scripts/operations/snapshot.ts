@@ -6,6 +6,7 @@ import {
   TableFingerprint,
 } from "../../../../packages/contracts/src/operations";
 import { refuse } from "./safety";
+import { readQueueSequences } from "./queue";
 
 export async function readPreflight(client: Client, target: typeof LocalTarget.Type) {
   const books = await client.query<{
@@ -73,14 +74,16 @@ export async function tableFingerprints(client: Client, requireObjectTables = fa
   const unsupported = await client.query<{ found: boolean }>(`
     SELECT EXISTS(SELECT FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
       WHERE n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'
-      AND (c.relkind IN ('S','f','m') OR c.relpersistence <> 'p'))
+      AND (c.relkind IN ('f','m') OR c.relpersistence <> 'p'))
       OR EXISTS(SELECT FROM pg_largeobject_metadata) AS found`);
 
   if (unsupported.rows[0]?.found !== false) {
     refuse(
-      "Local backup supports permanent tables only; sequences, foreign/materialized/unlogged relations and large objects require a reviewed extension.",
+      "Local backup supports permanent tables and the owned queue sequences only; foreign/materialized/unlogged relations and large objects require a reviewed extension.",
     );
   }
+
+  await readQueueSequences(client);
 
   const tables = await client.query<{ schema: string; table: string }>(`
     SELECT n.nspname AS schema, c.relname AS table FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace

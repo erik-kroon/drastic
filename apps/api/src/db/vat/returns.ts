@@ -677,15 +677,6 @@ export function readControlBook(transaction: Transaction, bookId: string) {
 
 export type CountRow = { readonly total: number };
 
-export type DigestRow = { readonly digest: string };
-
-export function readJsonDigest(transaction: Transaction, value: Schema.Json) {
-  return transaction.execute<DigestRow>(
-    sql`select openerp.digest(${JSON.stringify(value)}::jsonb) as digest`,
-    "objects",
-  );
-}
-
 export function countRows(transaction: Transaction, table: string, bookId: string) {
   if (
     ![

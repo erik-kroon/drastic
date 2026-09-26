@@ -173,7 +173,7 @@ export function readSelection(
       with bound as (
         select ${JSON.stringify(rule)}::jsonb as rule
       ), configuration as (
-        select
+        select rule,
           (rule->>'id')::text as rule_id,
           (rule->>'digest')::text as rule_digest,
           (rule->'input'->>'accountId')::text as account_id,
@@ -202,10 +202,13 @@ export function readSelection(
               is distinct from dependency->>'version')
           or not exists (
             select 1 from openerp.bank_sources s
-            where s.book_id = ${bookId} and s.account_id = account_id
+            where s.book_id = ${bookId} and s.account_id = configuration.account_id
               and s.source_bank_account_id = rule->'input'->>'sourceBankAccountId')
         ) is not true as current
         from configuration
+      ), bank_consumed as (
+        select book_id,statement_id,row_ordinal from openerp.bank_active_matches where book_id=${bookId}
+        union select book_id,statement_id,row_ordinal from openerp.bank_active_allocation_legs where book_id=${bookId}
       ), eligible as (
         select o.statement_id, o.row_ordinal, o.observed_on, o.description, o.amount_minor,
           s.evidence_id, p.id as period_id, p.version as period_version, p.locked as period_locked
@@ -220,7 +223,7 @@ export function readSelection(
           and ((c.sign = 'positive' and o.amount_minor > 0)
             or (c.sign = 'negative' and o.amount_minor < 0))
           and not exists (
-            select 1 from openerp.bank_matches m
+            select 1 from bank_consumed m
             where m.book_id = o.book_id and m.statement_id = o.statement_id
               and m.row_ordinal = o.row_ordinal)
       ), rule_overlaps as (
@@ -254,7 +257,7 @@ export function readSelection(
           'totalMinor', (select coalesce(sum(e.amount_minor), 0)::text from eligible e),
           'unmatchedCount', (
             select count(*) FILTER (where not exists (
-              select 1 from openerp.bank_matches m
+              select 1 from bank_consumed m
               where m.book_id = ${bookId} and m.statement_id = o.statement_id
                 and m.row_ordinal = o.row_ordinal))::bigint
               - (select count(*)::bigint from eligible)
@@ -264,7 +267,7 @@ export function readSelection(
             where o.observed_on between c.starts_on and c.ends_on),
           'alreadyMatchedCount', (
             select count(*) FILTER (where exists (
-              select 1 from openerp.bank_matches m
+              select 1 from bank_consumed m
               where m.book_id = ${bookId} and m.statement_id = o.statement_id
                 and m.row_ordinal = o.row_ordinal))::bigint
             from openerp.bank_observations o

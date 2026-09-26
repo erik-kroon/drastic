@@ -11,6 +11,7 @@ import { digest, isoNow, newId, replay, saveCommand } from "../posting";
 import {
   toJsonObject,
   decode,
+  objectField,
   withBook,
   requireTableAccess,
   requireRetainedEvidence,
@@ -169,7 +170,7 @@ function checkedArtifact(
       pdf.descriptor.sha256 !== input.artifactSha256 ||
       (yield* sha256HexOf(bytes)) !== input.artifactSha256 ||
       !issue ||
-      !equalJson(issue.body, capture.source.issue)
+      !equalJson(issue.body, objectField(objectField(row.body, "source"), "issue"))
     )
       return yield* failure("StaleDependency");
 
@@ -184,7 +185,7 @@ function readRequest(tx: Transaction, scope: Scope, id: string) {
     if (!row) return yield* failure("NotFound");
     const request = yield* decode(Delivery.LegalDeliveryRequest, row.body);
     const sealed = request.digest;
-    const body = { ...yield* toJsonObject(request) };
+    const body = { ...(yield* toJsonObject(request)) };
     delete body.digest;
 
     if ((yield* digest(body)) !== sealed) return yield* failure("StaleDependency");

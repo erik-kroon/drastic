@@ -191,8 +191,20 @@ export const RecoveryWorkSummary = Schema.Struct({
   requestsWithoutOutcome: Count,
 });
 
+export const QueueSequence = Schema.Struct({
+  name: Schema.Literals(["effect_mq_flow_outbox_id_seq", "effect_mq_jobs_seq_seq"]),
+  table: Schema.Literals(["effect_mq_flow_outbox", "effect_mq_jobs"]),
+  column: Schema.Literals(["id", "seq"]),
+  lastValue: Count,
+  isCalled: Schema.Boolean,
+});
+
 export const RecoveryWorkInventory = Schema.Struct({
-  version: Schema.Literal(1),
+  version: Schema.Literal(2),
+  queue: Schema.Struct({
+    tables: Schema.Array(TableFingerprint).check(Schema.isLengthBetween(7, 7)),
+    sequences: Schema.Array(QueueSequence).check(Schema.isLengthBetween(2, 2)),
+  }),
   kind: Schema.Literal("openerp-durable-work-inventory"),
   snapshot: Schema.String,
   books: Schema.Array(BookBoundary),

@@ -104,7 +104,7 @@ export const checkedCancellation = Effect.fn("commerce.cancellation.checked")(fu
   if (!row) return yield* failure("NotFound");
   const review = yield* decode(Cancellations.InvoiceCancellationReview, row.body);
   const saved = review.digest;
-  const body = { ...yield* toJsonObject(review) };
+  const body = { ...(yield* toJsonObject(review)) };
   delete body.digest;
 
   if (saved !== expected || (yield* digest(body)) !== saved)

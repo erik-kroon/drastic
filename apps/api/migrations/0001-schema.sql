@@ -3520,10 +3520,9 @@ CREATE TABLE openerp_auth.verification (
   CONSTRAINT verification_pkey PRIMARY KEY (id)
 );
 
--- Checks PostgreSQL must not apply to rows that already exist, and foreign keys that
--- close a reference cycle or reach across the schema boundary.
+-- Additional checks and foreign keys that close reference cycles or cross schemas.
 ALTER TABLE openerp.collection_events
-  ADD CONSTRAINT collection_event_reminder_send_unauthorized CHECK (kind <> 'reminder_prepared'::text OR body @> '{"sendAuthorized": false}'::jsonb) NOT VALID;
+  ADD CONSTRAINT collection_event_reminder_send_unauthorized CHECK (kind <> 'reminder_prepared'::text OR body @> '{"sendAuthorized": false}'::jsonb);
 ALTER TABLE openerp.invoice_draft_revisions
   ADD CONSTRAINT invoice_draft_revisions_book_id_draft_id_fkey FOREIGN KEY (book_id, draft_id) REFERENCES openerp.invoice_drafts(book_id, id);
 ALTER TABLE openerp.commerce_counterparties

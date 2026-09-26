@@ -2,7 +2,7 @@
 
 ## Scope and failure contract recorded before implementation
 
-Extend the local recovery bundle, not the application or provider runtime. This document first records the current pre-cutover durable-work inventory: outbox delivery counters, durable preparation jobs/run checkpoints and saved posting outcomes. Restore compares the same inventory and records database quarantine separately from unknown external worker/provider state. No command claims, resumes, stops or rewrites a job. The current source needs no migration for this inventory; the application-owned replacement later adds its queue tables to the new baseline.
+The completed application-owned baseline includes application outbox intent, preparation jobs/run checkpoints, saved posting outcomes and the pinned effect-mq store. Backup and restore compare their complete inventories and keep database quarantine separate from external worker/provider state. The [completion rehearsal](../plans/evidence/application-owned-replacement-complete.md) exercises this path with retained originals, posted receipts and real queue work. Recovery commands never claim, resume, stop or rewrite a job.
 
 ```text
 one exported snapshot -> private durable-work inventory -> manifest file hash
@@ -16,9 +16,9 @@ Source-review acceptance cases (not tests):
   owned relations, unsupported retained states, broken scoped links, over-limit inventories
   and partial output. Every included family is complete, not a truncated pending page.
 - Retain attempt counters and checkpoints without calling them provider attempt receipts.
-  The current pre-cutover schema has no effect-mq queue history; report that limitation
-  even when all local preparation jobs are empty or marked delivered. After cutover,
-  capture the selected queue store's own claims/retries/attempt history separately.
+  Capture all seven effect-mq tables and its two owned sequence positions separately from
+  financial receipts. Unknown sequences, invalid ownership/configuration, changed sequence
+  positions during dump and restored queue differences refuse completion.
 - Do not expose credential hashes, sessions, raw command/outbox payloads, blocker text or
   provider tokens in the inventory or diagnostics. Preserve identifiers/digests and states.
 - Extend v1 RecoveryPlan and v2 BackupManifest/RestoreReceipt additively. New backups
@@ -34,8 +34,7 @@ Source-review acceptance cases (not tests):
   failed or unavailable work comparison. Claim database suspension only after its existing
   finalizer verifies connections disabled and limit zero. Unconfirmed quarantine still
   prevents a success receipt. External processes are not inspected; resume stays forbidden.
-- No production promotion, new runtime admission, external calls, provider reconciliation,
-  changed financial authority, test/helper/fixture or runtime exercise is authorized.
+- Recovery never promotes a writer, enables a provider or grants restored runtime authority.
 
 ## Post-replacement queue boundary
 
@@ -45,7 +44,7 @@ Keep the pre-cutover preparation-job and saved-posting inventory rows where they
 
 ## Implemented producer and consumer path
 
-`packages/contracts/src/operations.ts` adds version1 work inventory/summary and suspension
+`packages/contracts/src/operations.ts` defines version2 work inventory and version1 summary/suspension
 report schemas. `RecoveryPlan` version1 accepts optional `workRecoveryProcedurePath`.
 It must name a declared `configuration` or `key-recovery` artifact; `artifacts.ts` checks
 this before capture. It is an operator recovery procedure, not an attestation of suspended
@@ -57,7 +56,9 @@ workers or reconciled provider outcomes. Omission remains explicit as `null`.
 | --- | --- | --- |
 | `outbox` | Complete scoped IDs, receipt/kind, timestamps, attempts counter, payload hash | Delivered timestamp is not an external provider receipt; nonzero attempts do not establish their outcomes |
 | `preparation_runs` | Complete scoped IDs, state, cursor, selected-row count, latest audit ordinal | Current actor authority or valid future resumption |
-| `preparation_jobs` | Complete scoped IDs, run, requester/executor, state, checkpoint, expected audit and timestamps | Current pre-cutover source has no effect-mq queue history; valid restored credentials remain a separate check |
+| `preparation_jobs` | Complete scoped IDs, run, requester/executor, state, checkpoint, expected audit and timestamps | Queue delivery state and valid restored credentials remain separate checks |
+| Seven `public.effect_mq_*` tables | Whole-table counts/hashes bound to the full dump, including attempts, claims and leases | No queue state establishes a financial effect or provider outcome |
+| Two owned queue sequences | Exact `last_value` and `is_called`; reviewed ownership/configuration/ACLs | Financial numbering uses transactional table rows, not these sequences |
 | `posting_saved_requests` | Complete scoped keys/actors, operation/digest, command key, saved outcome and command-receipt presence | No outcome is not rollback; a receipt without saved outcome does not justify another execution |
 
 Only identifiers, counters, state and digests enter the artifact. Raw command/outbox
@@ -73,7 +74,7 @@ that closure. Counter sums use exact integer arithmetic, not floating-point valu
 
 ### Backup and inspection
 
-The existing `backup` command produces `durable-work-v1.json` while it owns the same
+The existing `backup` command produces `durable-work-v2.json` while it owns the same
 repeatable-read snapshot exported to `pg_dump`. Its exact hash/size, summary and optional
 procedure path enter `BackupManifest.durableWork` and the existing exact `files` inventory.
 No manifest is complete after a failed work capture. Snapshot ID, book cutoffs and pending
@@ -120,27 +121,10 @@ runtime access; separately privileged superusers and already-running external/so
 still require operator containment and reconciliation. Local zero pending counts cannot
 prove remote absence or authorize delivery.
 
-### Historical compatibility
+### Historical artifacts
 
-The current decoder still accepts old v2 manifests/receipts and v1 recovery plans. New
-backups always include the versioned work extension; old v2 bundles without it can still
-be inspected and restored under the previous safety gates. Their suspension/restore result
-says `not-captured-in-source` with a null source work descriptor, not an empty inventory or
-a matched comparison. No old bundle/receipt bytes are rewritten. Old consumers that reject
-unknown fields need this additive contract update to inspect new bundles; v1 backup bundles
-remain unsupported as before.
+Version1 work inventories predate queue closure and cannot satisfy the replacement's version2 inventory contract. Keep old artifacts as dated history; capture a new bundle from the reviewed baseline. Version2 manifests without a work descriptor remain explicitly legacy and do not establish queue recovery. No old artifact is rewritten or promoted by this cutover.
 
-### Integration and proof limits
+### Integrated runtime proof
 
-No migration, dependency, route, capability, runtime service or shared dispatcher change
-is needed. Existing `./operations` export and scripts tsconfig include the new module.
-Static checks remain root-owned. Worker source review followed capture/inspect/restore,
-private artifact bounds, same-snapshot ownership, exact schema columns, retry/attempt limits,
-ordinary failure/finalizer paths and old-manifest compatibility. No backup, restore,
-database query, runtime, provider call, tests, fixtures or migration was executed.
-
-Worker static checks: targeted `oxfmt --write` completed on the five owned TypeScript
-files. Targeted `oxlint` reported0 warnings/errors. Targeted `git diff --check` passed.
-Shared contracts/scripts type checks remain root-owned. These observations do not prove
-SQL query validity, filesystem behavior, restore consistency, crash handling or quarantine
-at runtime. No runtime exercise is claimed.
+The completion rehearsal ran the real capture-release, preflight, backup, inspect and restore commands on a disposable PostgreSQL 17 cluster. All 266 tables, migration files, schema/grants, original objects, financial receipts, application work and queue state matched. The finalizer confirmed disabled connections and connection limit zero. The artifact records counts, hashes, controls and the suspension report. No provider or writer was promoted; read-only application recovery and external custody remain separate gates.

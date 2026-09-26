@@ -30,6 +30,7 @@ import { databaseInventory, roleInventory } from "./inventory";
 import { recoveryControls } from "./controls";
 import { captureObjects, objectReferences, verifyObjectInventory } from "./objects";
 import { captureWorkInventory, inspectWorkInventory, workInventoryPath } from "./durable-work";
+import { readQueueSequences } from "./queue";
 
 async function diagnostic(
   directory: string,
@@ -165,6 +166,12 @@ export async function backup(targetPath: string, bundle: string, recoveryPlanPat
       ],
       target.database,
     );
+
+    // Sequence positions are not MVCC snapshots. Refuse a moving queue instead of
+    // issuing a manifest whose saved positions can disagree with pg_dump's setval.
+    if (!isDeepStrictEqual(await readQueueSequences(client), work.queue.sequences))
+      refuse("Queue sequence state changed during backup; stop queue writers and capture again.");
+
     await client.query("ROLLBACK");
     stage = "supplementary-and-release-copy";
     await copyArtifacts(plan.supplementaryDirectory, join(bundle, "supplementary"));
