@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     "./vat": "./src/vat/calculation.ts",
-    "./sie": "./src/sie/encoder.ts"
+    "./sie": "./src/sie/encoder.ts",
+    "./sie4e": "./src/sie/sie4e.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"
