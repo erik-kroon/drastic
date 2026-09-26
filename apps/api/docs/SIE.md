@@ -142,3 +142,38 @@ format passages were read. No tests, fixtures, dependency installs, database/ser
 formatter/lint/type/build or other validation runs were performed for this slice. The user's
 later instruction explicitly stopped validation. Root must not infer executable or independent
 format acceptance from source delivery. D-04/D-08 and any external upload authority remain open.
+
+## Complete-book SIE4E export (NEXT-11)
+
+Owned by `application/sie4e.ts` with `db/sie4e.ts` and the pure
+`jurisdictions/se/src/sie/sie4e.ts`. This is a separate complete-book export,
+not a second movement-transfer path: the retained `openerp-sie4i-v1` transfer
+is unchanged.
+
+Capture is one book-scoped transaction. Exact bytes are rendered and re-parsed
+by the existing inbound SIE parser **outside** every transaction, and the
+verified manifest is bound to the exact model and renderer in a short second
+transaction. Unreferenced bytes after a failed attachment do not imply a
+completed artifact.
+
+Refusals are deliberate, not gaps to fill:
+
+- A book that declares any dimension effective as-of the capture refuses with
+  `UnsupportedProfile` naming the dimension and the missing assignment owner.
+  A dimension-free book emits `#TRANS … {}` and carries a `no_object_owner`
+  limitation stating that emptiness means nothing is assigned, not that an
+  assignment was reviewed.
+- No 4E record matrix was invented. The retained source is the SIE 4C edition
+  2025-08-06, whose own review distinguishes 4E without qualifying it. That
+  edition checksum is pinned on the capture and only the record families that
+  can be stated are emitted, declared in `emittedRecords.recordProfile`.
+- A reviewed account classification is a required input. Account codes are
+  bounded to exactly four digits; other shapes refuse rather than pad or
+  remap, and unrepresentable text refuses.
+- A nominal account with a non-zero captured opening refuses, because `#RES`
+  carries the raw nominal balance and that opening would be lost silently.
+- A first fiscal year with no prior vouchers and no opening set refuses. A
+  first-year zero opening is never inferred.
+
+**No destination or statutory acceptance is established.** No database, renderer
+run, re-parse, HTTP call or browser session has exercised this export.
