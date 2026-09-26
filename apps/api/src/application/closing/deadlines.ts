@@ -6,6 +6,7 @@ import { failure } from "../failures";
 import { isoNow, newId, replay, saveCommand } from "../posting";
 import { decode, toJsonObject, unsupported, withBook } from "../commerce/support";
 import * as Db from "../../db/deadlines";
+import * as RuleDb from "../../db/rule-impact";
 import { hashToken } from "../../db/human-actor";
 import type { Transaction } from "../../db/transaction";
 
@@ -21,15 +22,15 @@ const FeedSchema = Deadlines.DeadlineFeed;
 
 const RevokedSchema = Deadlines.RevokedDeadlineFeed;
 
+const BasisSchema = Deadlines.StatutoryBasis;
+
 const outcomeKinds = ["prepared", "submitted", "accepted"] as const;
 
-const activityActions = ["dismiss_reminder", "record_outcome"] as const;
-
-const maximumReference = 500;
+const activityActions = ["dismiss_reminder"] as const;
 
 const defaultRevisionReason = "Updated obligation details";
 
-function requireDeadlineAccess(transaction: Transaction, write: boolean) {
+export function requireDeadlineAccess(transaction: Transaction, write: boolean) {
   const readTables = [...Db.deadlineReadTables];
   const insertTables = new Set<string>(Db.deadlineInsertTables);
   const updateColumns = [...Db.deadlineUpdateColumns];
@@ -59,6 +60,42 @@ function text(value: JsonObject, key: string) {
   return typeof found === "string" ? found : null;
 }
 
+// A statutory due date is a qualified input. The application stores the reviewed
+// basis it is given and cross-checks a reviewed rule release when one exists; it
+// never derives a date, and a missing basis is a refusal rather than a default.
+function requireStatutoryBasis(input: JsonObject) {
+  return Effect.gen(function* () {
+    if (text(input, "jurisdiction") === null) return yield* failure("InvalidJournal");
+
+    if (text(input, "requiredEnvironment") === null) return yield* failure("InvalidJournal");
+
+    const basis = yield* Schema.decodeUnknownEffect(BasisSchema)(input.statutoryBasis ?? null).pipe(
+      Effect.mapError(() => failure("InvalidJournal")),
+    );
+
+    if (basis.jurisdiction !== text(input, "jurisdiction")) {
+      return yield* failure("InvalidJournal");
+    }
+
+    if (basis.periodId !== text(input, "periodId")) {
+      return yield* failure("InvalidJournal");
+    }
+
+    const dueAt = text(input, "dueAt");
+    const overrideReason = text(input, "overrideReason");
+
+    if (dueAt === null) return yield* failure("InvalidJournal");
+
+    // An override keeps the original basis and its reason; the basis date and the
+    // due date may then differ, and the difference is retained, never invented.
+    if (overrideReason === null && basis.basisDueAt !== dueAt) {
+      return yield* failure("InvalidJournal");
+    }
+
+    return basis;
+  });
+}
+
 function validateInput(input: JsonObject) {
   return Effect.gen(function* () {
     if (text(input, "title") === null) return yield* failure("InvalidJournal");
@@ -79,6 +116,8 @@ function validateInput(input: JsonObject) {
     if (kind === null || !outcomeKinds.some((choice) => choice === kind)) {
       return yield* failure("InvalidJournal");
     }
+
+    return yield* requireStatutoryBasis(input);
   });
 }
 
@@ -86,6 +125,57 @@ function decodeObligationList(value: unknown) {
   return Schema.decodeUnknownEffect(Schema.Array(DeadlineSchema))(value).pipe(
     Effect.mapError(() => failure("InternalError")),
   );
+}
+
+// An amendment obligation keeps the original obligation and its retained receipt.
+// The supersession relation is written once; a later edit cannot repoint it. The
+// original is only read, so it takes a shared lock and two concurrent amendments
+// of the same obligation cannot deadlock on each other.
+function linkAmendment(transaction: Transaction, bookId: string, id: string, input: SaveInput) {
+  return Effect.gen(function* () {
+    const amendment = input.amendment;
+
+    if (amendment === undefined) return;
+
+    if (amendment.obligationId === id) return yield* failure("InvalidJournal");
+
+    const original = (yield* Db.readObligation(
+      transaction,
+      bookId,
+      amendment.obligationId,
+      false,
+    ))[0];
+
+    if (!original) return yield* failure("NotFound");
+
+    const notice = (yield* RuleDb.readNotice(transaction, bookId, amendment.noticeId))[0];
+
+    if (!notice) return yield* failure("NotFound");
+
+    const originalProjection = yield* decode(
+      DeadlineSchema,
+      (yield* Db.readProjection(transaction, bookId, amendment.obligationId))[0]!.body,
+    );
+
+    if (originalProjection.period_id === input.periodId) {
+      return yield* failure("InvalidJournal");
+    }
+
+    if (
+      (yield* Db.setAmendment(transaction, {
+        bookId,
+        id,
+        amendsObligationId: amendment.obligationId,
+        amendmentNoticeId: amendment.noticeId,
+        amendedOutcomeKind: originalProjection.outcome_reference
+          ? originalProjection.outcome_kind
+          : null,
+        amendedOutcomeReference: originalProjection.outcome_reference,
+      })).length === 0
+    ) {
+      return yield* failure("StaleDependency");
+    }
+  });
 }
 
 export const listObligations = Effect.fn("deadlines.listObligations")(function* (
@@ -136,13 +226,28 @@ export const saveObligation = Effect.fn("deadlines.saveObligation")(function* (
 
       if (!/^[a-zA-Z0-9_-]{1,128}$/.test(command.id)) return yield* failure("InvalidJournal");
       const input = yield* toJsonObject(command.input);
-      yield* validateInput(input);
+      const basis = yield* validateInput(input);
       const dueAt = text(input, "dueAt")!;
 
       if (Number.isNaN(Date.parse(dueAt))) return yield* failure("InvalidJournal");
       const timeZone = text(input, "timeZone")!;
 
       if ((yield* Db.knownTimeZone(transaction, timeZone))[0]?.present !== true) {
+        return yield* failure("InvalidJournal");
+      }
+
+      // When a reviewed release for this family and jurisdiction exists, the
+      // declared rule reference has to be that release. No release row means the
+      // declared basis is retained unreviewed, not silently upgraded.
+
+      const declaredRelease = (yield* RuleDb.readRelease(transaction, basis.ruleReference))[0];
+
+      if (
+        declaredRelease &&
+        (declaredRelease.jurisdiction !== basis.jurisdiction ||
+          declaredRelease.family !== basis.family ||
+          declaredRelease.version !== basis.ruleVersion)
+      ) {
         return yield* failure("InvalidJournal");
       }
 
@@ -156,6 +261,24 @@ export const saveObligation = Effect.fn("deadlines.saveObligation")(function* (
       }
 
       const overrideReason = text(input, "overrideReason");
+
+      const basisRow = {
+        bookId: command.scope.bookId,
+        id: command.id,
+        title: text(input, "title")!,
+        periodId: text(input, "periodId")!,
+        responsibleActorId,
+        dueAt,
+        timeZone,
+        sourceReference: text(input, "sourceReference")!,
+        sourceRevision: text(input, "sourceRevision")!,
+        overrideReason:
+          overrideReason === null || overrideReason.length === 0 ? null : overrideReason,
+        outcomeKind: text(input, "outcomeKind")!,
+        jurisdiction: text(input, "jurisdiction")!,
+        statutoryBasis: yield* toJsonObject(basis),
+        requiredEnvironment: text(input, "requiredEnvironment")!,
+      };
 
       const existing = (yield* Db.readObligation(
         transaction,
@@ -197,37 +320,13 @@ export const saveObligation = Effect.fn("deadlines.saveObligation")(function* (
           priorSourceRevision: existing.sourceRevision,
           reason: overrideReason ?? defaultRevisionReason,
         });
-        yield* Db.updateObligation(transaction, {
-          bookId: command.scope.bookId,
-          id: command.id,
-          title: text(input, "title")!,
-          periodId: text(input, "periodId")!,
-          responsibleActorId,
-          dueAt,
-          timeZone,
-          sourceReference: text(input, "sourceReference")!,
-          sourceRevision: text(input, "sourceRevision")!,
-          overrideReason:
-            overrideReason === null || overrideReason.length === 0 ? null : overrideReason,
-          outcomeKind: text(input, "outcomeKind")!,
-        });
+        yield* Db.updateBasis(transaction, basisRow);
       } else {
         if (command.expectedRevision !== null) return yield* failure("StaleDependency");
-        yield* Db.insertObligation(transaction, {
-          bookId: command.scope.bookId,
-          id: command.id,
-          title: text(input, "title")!,
-          periodId: text(input, "periodId")!,
-          responsibleActorId,
-          dueAt,
-          timeZone,
-          sourceReference: text(input, "sourceReference")!,
-          sourceRevision: text(input, "sourceRevision")!,
-          overrideReason:
-            overrideReason === null || overrideReason.length === 0 ? null : overrideReason,
-          outcomeKind: text(input, "outcomeKind")!,
-        });
+        yield* Db.insertObligation(transaction, basisRow);
       }
+
+      yield* linkAmendment(transaction, command.scope.bookId, command.id, command.input);
 
       const result = yield* decode(
         DeadlineSchema,
@@ -257,7 +356,6 @@ export const recordActivity = Effect.fn("deadlines.recordActivity")(function* (
     id: string;
     idempotencyKey: string;
     action: typeof Deadlines.DeadlineActivity.Type.action;
-    reference: typeof Deadlines.DeadlineActivity.Type.reference;
   },
 ) {
   return yield* withBook(
@@ -265,11 +363,7 @@ export const recordActivity = Effect.fn("deadlines.recordActivity")(function* (
     command.scope,
     true,
     function* (transaction, principal) {
-      const payload = yield* toJsonObject({
-        id: command.id,
-        action: command.action,
-        reference: command.reference,
-      });
+      const payload = yield* toJsonObject({ id: command.id, action: command.action });
 
       const request = yield* replay(
         transaction,
@@ -298,44 +392,18 @@ export const recordActivity = Effect.fn("deadlines.recordActivity")(function* (
       if (!existing) return yield* failure("NotFound");
       const recordedAt = yield* isoNow(transaction);
 
-      if (command.action === "dismiss_reminder" && command.reference === undefined) {
-        yield* Db.insertActivity(transaction, {
-          bookId: command.scope.bookId,
-          obligationId: command.id,
-          id: newId("deadline_activity"),
-          action: "dismiss_reminder",
-          reference: null,
-          outcomeKind: null,
-          recordedBy: principal.actorId,
-          recordedAt,
-        });
-        yield* Db.dismissReminder(transaction, command.scope.bookId, command.id, recordedAt);
-      } else if (
-        command.action === "record_outcome" &&
-        command.reference !== undefined &&
-        command.reference.length >= 1 &&
-        command.reference.length <= maximumReference
-      ) {
-        yield* Db.insertActivity(transaction, {
-          bookId: command.scope.bookId,
-          obligationId: command.id,
-          id: newId("deadline_activity"),
-          action: "record_outcome",
-          reference: command.reference,
-          outcomeKind: existing.outcomeKind,
-          recordedBy: principal.actorId,
-          recordedAt,
-        });
-        yield* Db.recordOutcome(
-          transaction,
-          command.scope.bookId,
-          command.id,
-          command.reference,
-          recordedAt,
-        );
-      } else {
-        return yield* failure("InvalidJournal");
-      }
+      // A dismissed reminder and a fulfilled obligation stay separate states.
+      yield* Db.insertActivity(transaction, {
+        bookId: command.scope.bookId,
+        obligationId: command.id,
+        id: newId("deadline_activity"),
+        action: command.action,
+        reference: null,
+        outcomeKind: null,
+        recordedBy: principal.actorId,
+        recordedAt,
+      });
+      yield* Db.dismissReminder(transaction, command.scope.bookId, command.id, recordedAt);
 
       const result = yield* decode(
         DeadlineSchema,

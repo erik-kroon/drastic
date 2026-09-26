@@ -191,6 +191,87 @@ export const companyActivationImpacts = openerp.table("company_activation_impact
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });
 
+export const ruleChangeNotices = openerp.table("rule_change_notices", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  oldReleaseId: text("old_release_id").notNull(),
+  newReleaseId: text("new_release_id").notNull(),
+  changeKind: text("change_kind").notNull(),
+  effectiveFrom: date("effective_from", { mode: "string" }).notNull(),
+  effectiveTo: date("effective_to", { mode: "string" }),
+  reason: text().notNull(),
+  qualificationEvidence: jsonb("qualification_evidence").$type<Schema.JsonObject>().notNull(),
+  changedSelectors: text("changed_selectors").array().notNull(),
+  capturedBy: text("captured_by").notNull(),
+  capturedAt: timestamp("captured_at", { withTimezone: true, mode: "string" }).notNull(),
+  digest: text().notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const ruleImpactSnapshots = openerp.table("rule_impact_snapshots", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  noticeId: text("notice_id").notNull(),
+  recordedCutoff: timestamp("recorded_cutoff", { withTimezone: true, mode: "string" }).notNull(),
+  completeTargetMembership: boolean("complete_target_membership").notNull(),
+  totalTargets: integer("total_targets").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const ruleImpactTargets = openerp.table("rule_impact_targets", {
+  bookId: text("book_id").notNull(),
+  snapshotId: text("snapshot_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  targetKind: text("target_kind").notNull(),
+  targetId: text("target_id").notNull(),
+  targetRevision: text("target_revision").notNull(),
+  family: text().notNull(),
+  periodId: text("period_id"),
+  periodStartsOn: date("period_starts_on", { mode: "string" }),
+  periodEndsOn: date("period_ends_on", { mode: "string" }),
+  usedRule: text("used_rule").notNull(),
+  basisDigest: text("basis_digest").notNull(),
+  impactKind: text("impact_kind").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const ruleImpactDecisions = openerp.table("rule_impact_decisions", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  snapshotId: text("snapshot_id").notNull(),
+  noticeId: text("notice_id").notNull(),
+  targetKind: text("target_kind").notNull(),
+  targetId: text("target_id").notNull(),
+  targetRevision: text("target_revision").notNull(),
+  decisionKind: text("decision_kind").notNull(),
+  reason: text().notNull(),
+  evidence: jsonb("evidence").$type<Schema.JsonObject>().notNull(),
+  proposedSuccessor: jsonb("proposed_successor").$type<Schema.JsonObject>(),
+  reviewer: text("reviewer").notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+  digest: text().notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const deadlineFulfillments = openerp.table("deadline_fulfillments", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  obligationId: text("obligation_id").notNull(),
+  obligationRevision: bigint("obligation_revision", { mode: "bigint" }).notNull(),
+  referenceDigest: text("reference_digest").notNull(),
+  outcomeKind: text("outcome_kind").notNull(),
+  referenceKind: text("reference_kind").notNull(),
+  reference: jsonb("reference").$type<Schema.JsonObject>().notNull(),
+  environment: text().notNull(),
+  verification: text().notNull(),
+  reason: text().notNull(),
+  witness: jsonb("witness").$type<Schema.JsonObject>().notNull(),
+  recordedBy: text("recorded_by").notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+  digest: text().notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
 export const identityProvisioningReceipts = openerp.table("identity_provisioning_receipts", {
   requestId: text("request_id").primaryKey(),
   manifest: jsonb("manifest").$type<typeof IdentityProvisioning.Type>().notNull(),

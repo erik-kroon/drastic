@@ -28,6 +28,9 @@ export function renderDeadlineCalendar(feed: typeof Deadlines.FeedEvents.Type) {
     lines.push(
       "BEGIN:VEVENT",
       `UID:${escape(feed.bookId)}-${escape(event.id)}@deadlines.openerp`,
+      // A revised due date keeps the same identity and raises the sequence, so a
+      // client updates the event in place instead of adding a second one.
+      `SEQUENCE:${event.revision}`,
       `DTSTAMP:${utc(event.updatedAt)}`,
       `LAST-MODIFIED:${utc(event.updatedAt)}`,
       `DTSTART:${utc(event.dueAt)}`,

@@ -2272,6 +2272,7 @@ export const readDeadlineFeedEvents = Effect.fn("evidenceWork.deadlineFeedEvents
           dueAt: row.dueAt,
           updatedAt: row.updatedAt,
           timeZone: row.timeZone,
+          revision: Number(row.revision),
         })),
       });
     }).pipe(Effect.mapError(databaseFailure)),
