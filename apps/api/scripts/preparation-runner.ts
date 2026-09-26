@@ -7,6 +7,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Redacted from "effect/Redacted";
 import { applicationPostgresTypes, Database } from "../src/db/connection";
+import { filesystemObjectStore } from "../src/adapters/storage/filesystem-objects";
 import {
   jobAttempts,
   jobDedupe,
@@ -16,7 +17,7 @@ import {
   jobs,
   jobSchedules,
 } from "../src/db/schema";
-import { RequestEnvironment } from "../src/runtime/environment";
+import { RequestEnvironment, type Bindings } from "../src/runtime/environment";
 import {
   dispatchPendingExtractions,
   dispatchPendingPreparations,
@@ -33,6 +34,21 @@ const token = process.env.OPENERP_PREPARATION_TOKEN;
 if (!connectionString || !token) {
   throw new Error("Set DATABASE_URL and OPENERP_PREPARATION_TOKEN for the preparation runner.");
 }
+
+// An original retained outside PostgreSQL has to be readable by the runner that
+// extracts it. Without a root the runner still starts, and an externally
+// retained original is then unavailable rather than silently misread: inline
+// stored content does not need a store at all.
+const evidenceRoot = process.env.EVIDENCE_STORE_ROOT;
+
+const objectStoreBindings = (preparationToken: string): Bindings => {
+  if (evidenceRoot === undefined) return { OPENERP_PREPARATION_TOKEN: preparationToken };
+
+  return {
+    OPENERP_PREPARATION_TOKEN: preparationToken,
+    EVIDENCE_STORE: filesystemObjectStore(evidenceRoot),
+  };
+};
 
 const postgres = PgClient.layer({
   url: Redacted.make(connectionString),
@@ -63,7 +79,7 @@ const services = Layer.mergeAll(
     flowOutbox: jobFlowOutbox,
   }),
   Layer.succeed(RequestEnvironment, {
-    bindings: { OPENERP_PREPARATION_TOKEN: token },
+    bindings: objectStoreBindings(token),
     url: new URL("http://localhost/"),
   }),
 ).pipe(Layer.provide(postgres));

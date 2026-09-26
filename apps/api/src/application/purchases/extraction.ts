@@ -120,7 +120,27 @@ type ReviewBasis = {
   readonly attempt: { readonly id: string; readonly ordinal: number; readonly body: JsonObject };
   readonly current: CapturedDraft | null;
   readonly accepted: boolean;
-  readonly base: JsonObject;
+  // Null only when the occurrence has no reviewed draft at all, so there is no
+  // reviewed base to merge against. The preview reports that as required base
+  // facts; it never invents supplier facts to fill the gap.
+  readonly base: JsonObject | null;
+};
+
+// A read-only preview states no expectation about the draft, so it must not be
+// handed an impossible null revision to compare against. A commit states the
+// exact draft it previewed and every one of those comparisons is enforced.
+type ReviewExpectations = {
+  readonly enforced: boolean;
+  readonly expectedRevision: string | null;
+  readonly expectedDigest: string | null;
+  readonly baseContent: JsonObject | null;
+};
+
+export const previewExpectations: ReviewExpectations = {
+  enforced: false,
+  expectedRevision: null,
+  expectedDigest: null,
+  baseContent: null,
 };
 
 function requireExtractionAccess(transaction: Transaction) {
@@ -261,6 +281,8 @@ function readCapturedDraft(transaction: Transaction, bookId: string, draftId: st
   });
 }
 
+// A retained decision stores the exact scalar the reviewer chose for its own
+// field, not an object keyed by field name, so it is read as that scalar.
 function readRetainedDecisions(transaction: Transaction, bookId: string, draftId: string | null) {
   if (draftId === null) return Effect.succeed([] as const);
 
@@ -270,8 +292,8 @@ function readRetainedDecisions(transaction: Transaction, bookId: string, draftId
         lineOrdinal: row.lineOrdinal,
         fieldKey: row.fieldKey,
         decisionKind: row.decisionKind,
-        baseValue: Shared.objectField(row.body, "baseValue")[row.fieldKey] ?? null,
-        selectedValue: Shared.objectField(row.body, "selectedValue")[row.fieldKey] ?? null,
+        baseValue: row.body["baseValue"] ?? null,
+        selectedValue: row.body["selectedValue"] ?? null,
       })),
     ),
   );
@@ -358,7 +380,8 @@ export const requestSupplierExtraction = Effect.fn("purchases.extraction.request
           ? null
           : yield* readCapturedDraft(transaction, command.scope.bookId, entry.draftId);
 
-      const selection = yield* digest(yield* Shared.toJsonObject(pageJson(pages)));
+      // The selected page list is an array; the object-only encoder cannot hold it.
+      const selection = yield* digest(yield* Shared.toJson(pageJson(pages)));
 
       const attemptIdentity = `sha256:${yield* sha256Hex(
         `${command.scope.bookId}:${command.occurrenceId}:${originalHash}:${nativeTextEngine}:${selection}`,
@@ -367,28 +390,27 @@ export const requestSupplierExtraction = Effect.fn("purchases.extraction.request
       const requestId = newId("supplier_extraction_request");
       const requestedAt = yield* isoNow(transaction);
 
-      const sealed = Object.assign(
-        {},
-        {
-          id: requestId,
-          occurrenceId: command.occurrenceId,
-          generation,
-          engineRelease: nativeTextEngine,
-          originalHash,
-          originalBytes,
-          attemptIdentity,
-          dataUsePolicy: command.input.dataUsePolicy,
-          selectedPages: pageJson(pages),
-          baseDraftId: base === null ? null : base.id,
-          baseRevision: base === null ? null : base.revision,
-          baseDigest: base === null ? null : base.digest,
-          requestedBy: principal.actorId,
-          requestedAt,
-        },
-        { digest: "" },
-      ) satisfies JsonObject;
+      // The stored body is complete before it is hashed, and the digest covers the
+      // body without it. Hashing a placeholder digest field instead would be a
+      // different document from the one the table verifies.
+      const unsigned = {
+        id: requestId,
+        occurrenceId: command.occurrenceId,
+        generation,
+        engineRelease: nativeTextEngine,
+        originalHash,
+        originalBytes,
+        attemptIdentity,
+        dataUsePolicy: command.input.dataUsePolicy,
+        selectedPages: pageJson(pages),
+        baseDraftId: base === null ? null : base.id,
+        baseRevision: base === null ? null : base.revision,
+        baseDigest: base === null ? null : base.digest,
+        requestedBy: principal.actorId,
+        requestedAt,
+      } satisfies JsonObject;
 
-      const body = Object.assign({}, sealed, { digest: yield* digest(sealed) });
+      const body = Object.assign({}, unsigned, { digest: yield* digest(unsigned) });
 
       yield* ExtractionDb.insertExtractionRequest(transaction, {
         bookId: command.scope.bookId,
@@ -620,16 +642,15 @@ export const getSupplierExtractionState = Effect.fn("purchases.extraction.state"
 });
 
 // One consistent read of the exact request, attempt, occurrence, draft and merge
-// basis. Preparation and commit share it so they cannot disagree about the base.
+// basis. Preparation and commit share it so they cannot disagree about the base;
+// only the commit enforces the caller's draft expectations.
 function readReviewBasis(
   transaction: Transaction,
   bookId: string,
   occurrenceId: string,
   requestId: string,
   attemptId: string,
-  expectedRevision: string | null,
-  expectedDigest: string | null,
-  baseContent: JsonObject | null,
+  expectations: ReviewExpectations,
 ) {
   return Effect.gen(function* () {
     const entry = (yield* InboxDb.readInboxForUpdate(transaction, bookId, occurrenceId))[0];
@@ -666,13 +687,17 @@ function readReviewBasis(
       return yield* failure("StaleDependency");
     }
 
-    const attempt = (yield* ExtractionDb.readAttemptForRequest(
-      transaction,
-      bookId,
-      requestId,
-    )).find((row) => row.id === attemptId);
+    const attempts = yield* ExtractionDb.readAttemptForRequest(transaction, bookId, requestId);
+    const attempt = attempts.find((row) => row.id === attemptId);
 
     if (!attempt) return yield* failure("NotFound");
+
+    // A review is submitted against the attempt that was previewed. Once a later
+    // attempt exists for the same request, the earlier one is no longer the
+    // evidence a reviewer saw, so it cannot carry a submission.
+    if (attempts[attempts.length - 1]?.id !== attempt.id) {
+      return yield* failure("StaleDependency");
+    }
 
     const current =
       entry.draftId === null ? null : yield* readCapturedDraft(transaction, bookId, entry.draftId);
@@ -681,22 +706,29 @@ function readReviewBasis(
       current !== null &&
       (yield* readSealedDraft(transaction, bookId, current.id, "supplier")).length > 0;
 
-    if (current === null && expectedRevision !== null) return yield* failure("StaleDependency");
+    if (expectations.enforced) {
+      if (current === null && expectations.expectedRevision !== null) {
+        return yield* failure("StaleDependency");
+      }
 
-    if (
-      current !== null &&
-      (current.revision !== expectedRevision || current.digest !== expectedDigest)
-    ) {
-      return yield* failure("StaleDependency");
+      if (
+        current !== null &&
+        (current.revision !== expectations.expectedRevision ||
+          current.digest !== expectations.expectedDigest)
+      ) {
+        return yield* failure("StaleDependency");
+      }
+
+      if (current === null && expectations.baseContent === null) {
+        return yield* failure("InvalidJournal");
+      }
     }
 
-    if (current === null && baseContent === null) return yield* failure("InvalidJournal");
-
     const capturedBaseDraftId = Shared.textField(request.body, "baseDraftId");
-    let base: JsonObject;
+    let base: JsonObject | null = null;
 
     if (capturedBaseDraftId === undefined) {
-      base = yield* Shared.toJsonObject(baseContent);
+      base = expectations.baseContent;
     } else if (current !== null && current.id === capturedBaseDraftId) {
       const capturedRevision = Shared.textField(request.body, "baseRevision") ?? current.revision;
 
@@ -760,6 +792,20 @@ function proposalState(
   });
 }
 
+// The base facts extraction has no vocabulary for. With no reviewed draft there
+// is nothing to merge against, so the preview names what a reviewer must supply
+// instead of inventing a counterparty, an identity or an evidence reference.
+const requiredBaseFacts = [
+  "counterpartyId",
+  "counterpartyRevision",
+  "supplier",
+  "buyer",
+  "sourceEvidenceId",
+  "currency",
+  "currencyScale",
+  "lines[].id",
+] as const;
+
 export const prepareSupplierExtractionReview = Effect.fn("purchases.extraction.prepare")(function* (
   token: string,
   command: {
@@ -782,9 +828,7 @@ export const prepareSupplierExtractionReview = Effect.fn("purchases.extraction.p
         command.occurrenceId,
         command.requestId,
         command.attemptId,
-        null,
-        null,
-        null,
+        previewExpectations,
       );
 
       const retained = yield* readRetainedDecisions(
@@ -793,15 +837,25 @@ export const prepareSupplierExtractionReview = Effect.fn("purchases.extraction.p
         basis.current === null ? null : basis.current.id,
       );
 
-      const currentContent = basis.current === null ? basis.base : basis.current.content;
+      // Without a reviewed base there is no reviewed value to compare against, so
+      // the merge runs against an absent base and the preview reports that.
+      const hasBase = basis.base !== null;
 
-      const merge = proposalState(basis.base, currentContent, basis.attempt.body, [], retained);
+      const currentContent = basis.current === null ? (basis.base ?? {}) : basis.current.content;
+
+      const merge = proposalState(
+        basis.base ?? {},
+        currentContent,
+        basis.attempt.body,
+        [],
+        retained,
+      );
 
       const uncalculated = contentDiscrepancies(merge.proposed);
       const discrepancies = [...merge.discrepancies, ...uncalculated];
 
       const calculated =
-        uncalculated.length === 0
+        hasBase && uncalculated.length === 0
           ? yield* calculateSupplierDraft(transaction, command.scope.bookId, book, merge.proposed)
           : null;
 
@@ -819,9 +873,10 @@ export const prepareSupplierExtractionReview = Effect.fn("purchases.extraction.p
         fields: merge.fields,
         lines: merge.lines,
         discrepancies,
-        proposed: basis.current === null ? null : merge.proposed,
+        proposed: hasBase ? merge.proposed : null,
         proposedTotals: calculated === null ? null : Shared.objectField(calculated, "totals"),
         proposedBlockers: calculated === null ? [] : Shared.arrayField(calculated, "blockers"),
+        requiredBaseFacts: hasBase ? [] : [...requiredBaseFacts],
       });
     }),
   );
@@ -961,6 +1016,9 @@ function appendFieldDecisions(
 ) {
   return Effect.gen(function* () {
     const records: JsonObject[] = [];
+    // One review is recorded at one instant, so every decision in it carries the
+    // same final timestamp and is hashed over that final value.
+    const recordedAt = yield* isoNow(transaction);
 
     for (const [ordinal, field] of chosen.entries()) {
       const merged = merge.fields.find(
@@ -970,34 +1028,30 @@ function appendFieldDecisions(
 
       const id = newId("supplier_field_decision");
 
-      const sealed = Object.assign(
-        {},
-        {
-          id,
-          occurrenceId,
-          requestId,
-          attemptId,
-          draftId,
-          draftRevision,
-          lineOrdinal: field.lineOrdinal,
-          fieldKey: field.fieldKey,
-          decisionKind: field.decisionKind,
-          reviewer,
-          ordinal: ordinal + 1,
-          reason,
-          baseValue: merged?.base ?? null,
-          currentValue: merged?.current ?? null,
-          suggestionValue: merged?.suggestion ?? null,
-          selectedValue: field.selected,
-          evidenceLocators: merged?.evidenceLocators ?? [],
-        },
-        { digest: "", recordedAt: "" },
-      ) satisfies JsonObject;
+      // The body is complete before it is hashed, and the digest covers the body
+      // without it: the table verifies exactly these bytes.
+      const unsigned = {
+        id,
+        occurrenceId,
+        requestId,
+        attemptId,
+        draftId,
+        draftRevision,
+        lineOrdinal: field.lineOrdinal,
+        fieldKey: field.fieldKey,
+        decisionKind: field.decisionKind,
+        reviewer,
+        ordinal: ordinal + 1,
+        reason,
+        baseValue: merged?.base ?? null,
+        currentValue: merged?.current ?? null,
+        suggestionValue: merged?.suggestion ?? null,
+        selectedValue: field.selected,
+        evidenceLocators: merged?.evidenceLocators ?? [],
+        recordedAt,
+      } satisfies JsonObject;
 
-      const body = Object.assign({}, sealed, {
-        recordedAt: yield* isoNow(transaction),
-        digest: yield* digest(sealed),
-      });
+      const body = Object.assign({}, unsigned, { digest: yield* digest(unsigned) });
 
       yield* ExtractionDb.insertFieldDecision(transaction, {
         bookId: scope.bookId,
@@ -1065,10 +1119,15 @@ export const commitSupplierExtractionReview = Effect.fn("purchases.extraction.re
         command.occurrenceId,
         command.requestId,
         command.input.attemptId,
-        command.input.expectedDraftRevision,
-        command.input.expectedDraftDigest,
-        baseContent,
+        {
+          enforced: true,
+          expectedRevision: command.input.expectedDraftRevision,
+          expectedDigest: command.input.expectedDraftDigest,
+          baseContent,
+        },
       );
+
+      if (basis.base === null) return yield* failure("InvalidJournal");
 
       const retained = yield* readRetainedDecisions(
         transaction,
@@ -1270,6 +1329,24 @@ function readOriginalText(
   });
 }
 
+// A storage or decode failure is an extraction outcome, not a reason to delete the
+// original. The specific reason is kept: an unavailable store, a missing or
+// unverifiable object and an undecodable original are different facts, and
+// collapsing them into one code would hide a configuration problem.
+const readingFailureCodes = new Map<typeof Accounting.FailureCode.Type, string>([
+  ["MissingEvidence", "retained_object_missing_or_unverified"],
+  ["Unavailable", "retained_object_store_unavailable"],
+  ["InvalidJournal", "original_not_decodable_text"],
+]);
+
+function readingFailureCode(error: unknown) {
+  if (error instanceof Accounting.AccountingError) {
+    return readingFailureCodes.get(error.code) ?? "original_not_extractable";
+  }
+
+  return "original_not_extractable";
+}
+
 function failedReading(code: string, detail: string): ExtractedReading {
   return {
     result: "failed",
@@ -1437,9 +1514,7 @@ export const runSupplierExtraction = Effect.fn("purchases.extraction.run")(funct
     byteLength,
   ).pipe(
     Effect.map((text) => runNativeEngine(text, mediaType, book.currencyScale, pages, byteLength)),
-    // A provider timeout, an undecodable original or a missing retained object is
-    // an extraction outcome, not a reason to delete the original.
-    Effect.orElseSucceed(() => failedReading("original_not_extractable", "")),
+    Effect.catch((error) => Effect.succeed(failedReading(readingFailureCode(error), ""))),
   );
 
   return yield* publishExtraction(scope, requestId, captured.state.cancelVersion, outcome);

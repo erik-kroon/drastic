@@ -177,16 +177,27 @@ function spanLocator(basis: ExtractionBasis, startByte: number, endByte: number)
   return selected ? `span:${startByte}-${endByte}` : null;
 }
 
-// Money is an exact source assertion. A decimal carrying more precision than the
-// book's currency scale cannot be converted without inventing digits, and a
-// negative or non-canonical token is not a retained source assertion, so both are
-// rejected with a retained diagnostic rather than rounded.
+// One declared printed-amount profile: a supplier document prints major units
+// under the book's currency scale. `100` and `100.00` are therefore the same
+// printed amount and cannot differ in magnitude because of punctuation alone.
+// Reading a printed token as minor units would make the same document mean two
+// things. A document that prints minor units is a different profile and a
+// different engine release, not a different reading of this one.
+//
+// The draft's own `baseMinor`, `taxMinor` and the other minor-unit fields are
+// explicit exact minor-integer strings supplied by a reviewer or a reviewed base.
+// They are never parsed from printed text and never rescaled here.
+export const printedAmountProfile = "major-units-at-currency-scale";
+
+// A printed monetary token becomes the exact minor-integer string the draft
+// stores, or null. A token carrying more precision than the book's currency scale
+// cannot be converted without inventing digits, and a negative or non-canonical
+// token is not a retained source assertion, so both are rejected with a retained
+// diagnostic rather than rounded.
 export function exactMoney(token: string, currencyScale: number) {
   const trimmed = token.trim();
 
   if (trimmed.length === 0 || trimmed.length > 40) return null;
-
-  if (Shared.minorPattern.test(trimmed)) return trimmed;
 
   const parts = decimalPattern.exec(trimmed);
 
@@ -195,7 +206,7 @@ export function exactMoney(token: string, currencyScale: number) {
 
   if (fraction.length > currencyScale) return null;
   const whole = parts[1] ?? "0";
-  const minor = fraction === "" ? whole : `${whole}${fraction.padEnd(currencyScale, "0")}`;
+  const minor = `${whole}${fraction.padEnd(currencyScale, "0")}`.replace(/^0+(?=[0-9])/, "");
 
   return Shared.minorPattern.test(minor) ? minor : null;
 }

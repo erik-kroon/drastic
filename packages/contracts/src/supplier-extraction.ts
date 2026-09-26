@@ -220,9 +220,15 @@ export const SupplierExtractionReviewPreparation = Schema.Struct({
   fields: Schema.Array(MergedField).check(Schema.isMaxLength(400)),
   lines: Schema.Array(MergedLine).check(Schema.isMaxLength(50)),
   discrepancies: Schema.Array(MergeDiscrepancy).check(Schema.isMaxLength(200)),
-  proposed: SupplierDrafts.SupplierDraftContent,
+  // Null exactly when the occurrence has no reviewed draft and therefore no
+  // reviewed base to merge against. The suggestions and locators are still shown;
+  // requiredBaseFacts names what a reviewer must supply instead.
+  proposed: Schema.NullOr(SupplierDrafts.SupplierDraftContent),
   proposedTotals: Schema.NullOr(Drafts.DraftTotals),
   proposedBlockers: Schema.Array(Drafts.DraftBlocker),
+  // The base facts extraction has no vocabulary for. Non-empty only when proposed
+  // is null, and never a value: the reviewer supplies them.
+  requiredBaseFacts: Schema.Array(Label).check(Schema.isMaxLength(32)),
 });
 
 export const SupplierExtractionCorrectionCase = Schema.Struct({

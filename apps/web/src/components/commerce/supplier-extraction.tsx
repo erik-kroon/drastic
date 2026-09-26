@@ -73,6 +73,9 @@ function mergeCopy(locale: Locale) {
     absent: sv
       ? "Inkorgsposterna har inget granskat utkast än. Skapa utkastet genom inkorgens granskning först."
       : "This inbox record has no reviewed draft yet. Create the draft through the inbox review first.",
+    requiredBase: sv
+      ? "Granskningen har inget granskat utkast att jämföra mot. Ange dessa grunduppgifter själv; extrahenteringen hittar dem inte och hittar inte på dem."
+      : "This review has no reviewed draft to compare against. Supply these base facts yourself; extraction does not read them and will not invent them.",
     resolved: sv ? "Angett värde" : "Resolved value",
   };
 }
@@ -355,6 +358,14 @@ function ExtractionMerge(props: CommerceProps & { preparation: Preparation }) {
             <Text key={index}>
               {item.code} · {item.lineOrdinal} · {item.fieldKey} {item.detail}
             </Text>
+          ))}
+        </Box>
+      ) : null}
+      {preparation.requiredBaseFacts.length > 0 ? (
+        <Box display="grid" gap="sm" minWidth="zero">
+          <Heading>{text.requiredBase}</Heading>
+          {preparation.requiredBaseFacts.map((fact) => (
+            <Text key={fact}>{fact}</Text>
           ))}
         </Box>
       ) : null}
