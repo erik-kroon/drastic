@@ -142,6 +142,7 @@ export type DeadlineRow = {
   readonly dueAt: string;
   readonly updatedAt: string;
   readonly timeZone: string;
+  readonly revision: number;
 };
 
 export function readWorkTableAccess(transaction: Transaction) {
@@ -1200,7 +1201,7 @@ export function listFeedDeadlines(transaction: Transaction, bookId: string) {
   return transaction.execute<DeadlineRow>(
     sql`
       select id, title, due_at::text as "dueAt", updated_at::text as "updatedAt",
-        time_zone as "timeZone"
+        time_zone as "timeZone", revision
       from openerp.deadline_obligations
       where book_id = ${bookId}
       order by due_at, id

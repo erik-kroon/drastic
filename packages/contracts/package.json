@@ -65,6 +65,7 @@
     "./source-intake": "./src/source-intake.ts",
     "./supplier-inbox": "./src/supplier-inbox.ts",
     "./deadlines": "./src/deadlines.ts",
+    "./rule-impact": "./src/rule-impact.ts",
     "./collections": "./src/collections.ts",
     "./dimensions": "./src/dimensions.ts",
     "./crm-master": "./src/crm-master.ts",

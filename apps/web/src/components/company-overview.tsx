@@ -1,5 +1,6 @@
 import { Upload } from "lucide-react";
 import { DeadlineObligations } from "./deadline-obligations";
+import { RuleImpactPanel } from "./rule-impact-panel";
 import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
 import {
   PageContent,
@@ -48,6 +49,7 @@ export function CompanyOverview() {
         <CompanyBankAccounts work={work} />
         <CompanyOpenInvoices work={work} />
         <DeadlineObligations book={work.book} locale={work.locale} />
+        <RuleImpactPanel book={work.book} locale={work.locale} />
       </PageContent>
     </>
   );
