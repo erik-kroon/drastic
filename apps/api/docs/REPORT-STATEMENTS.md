@@ -12,7 +12,7 @@ Arithmetic and coverage are separate statuses and the snapshot states both.
 | Wire contract, capabilities and REST group | `packages/contracts/src/report-statements.ts`                |
 | Named Effect operations                    | `apps/api/src/application/report-statements.ts`              |
 | Tx-passing reads and DML                   | `apps/api/src/db/report-statements.ts`                       |
-| DDL, immutability and grants               | `apps/api/migrations/0004-next-13.sql`                       |
+| DDL, immutability and grants               | `apps/api/migrations/0005-next-13.sql`                       |
 | Capability binding                         | `apps/api/src/application/capabilities/report-statements.ts` |
 | HTTP handlers                              | `apps/api/src/transport/http/routes/report-statements.ts`    |
 
@@ -122,7 +122,7 @@ projections in favour of this semantic owner is a separate cutover and is not cl
 
 ## Verification status
 
-Source and type-level evidence only. No PostgreSQL instance, no `0004-next-13.sql` application,
+Source and type-level evidence only. No PostgreSQL instance, no `0005-next-13.sql` application,
 no HTTP or MCP request, no browser session and no concurrent capture was observed for this slice.
 The pure model's four packet vectors were evaluated in a throwaway process against the exported
 function and are not retained as tests. Transaction behaviour, cursor behaviour under real
