@@ -5,6 +5,11 @@ import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
 import { prepareVatDraft } from "../../../application/vat-returns";
 import * as Vat from "../../../application/vat/returns";
+import {
+  getActualReturn,
+  listActualReturns,
+  prepareActualReturn,
+} from "../../../application/vat/actual-return";
 
 export const VatReturnsHandlers = HttpApiBuilder.group(Api, "vatReturns", (handlers) =>
   handlers
@@ -122,6 +127,25 @@ export const VatReturnsHandlers = HttpApiBuilder.group(Api, "vatReturns", (handl
     .handle("listVatDrafts", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
         Vat.listDrafts(token, { scope: scopeFromPath(params) }),
+      ),
+    )
+    .handle("prepareActualVatReturn", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        prepareActualReturn(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("getActualVatReturn", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        getActualReturn(token, { scope: scopeFromPath(params), id: params.id }),
+      ),
+    )
+    .handle("listActualVatReturns", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        listActualReturns(token, { scope: scopeFromPath(params) }),
       ),
     ),
 );
