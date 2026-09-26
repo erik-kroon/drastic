@@ -427,3 +427,69 @@ export const correctionBundleReceipts = openerp.table("correction_bundle_receipt
   replacementReceiptId: text("replacement_receipt_id").notNull(),
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });
+
+export const purchaseRecognitions = openerp.table("purchase_recognitions", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  economicKey: text("economic_key").notNull(),
+  eventOwner: text("event_owner").notNull(),
+  originalRecognitionId: text("original_recognition_id"),
+  draftId: text("draft_id"),
+  draftRevision: bigint("draft_revision", { mode: "bigint" }),
+  counterpartyId: text("counterparty_id").notNull(),
+  documentNumber: text("document_number").notNull(),
+  voucherId: text("voucher_id").notNull(),
+  payableId: text("payable_id").notNull(),
+  changeSetId: text("change_set_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  recognitionDate: date("recognition_date", { mode: "string" }).notNull(),
+  taxPointOn: date("tax_point_on", { mode: "string" }).notNull(),
+  grossMinor: numeric("gross_minor", { mode: "string" }).notNull(),
+  deductibleTaxMinor: numeric("deductible_tax_minor", { mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const purchaseTaxFacts = openerp.table("purchase_tax_facts", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  recognitionId: text("recognition_id").notNull(),
+  sourceLineId: text("source_line_id").notNull(),
+  componentRole: text("component_role").notNull(),
+  taxComponentId: text("tax_component_id").notNull(),
+  voucherId: text("voucher_id").notNull(),
+  signedBaseMinor: numeric("signed_base_minor", { mode: "string" }).notNull(),
+  signedOutputTaxMinor: numeric("signed_output_tax_minor", { mode: "string" }).notNull(),
+  signedDeductibleTaxMinor: numeric("signed_deductible_tax_minor", { mode: "string" }).notNull(),
+  sourceTaxMinor: numeric("source_tax_minor", { mode: "string" }).notNull(),
+  nonDeductibleTaxMinor: numeric("non_deductible_tax_minor", { mode: "string" }).notNull(),
+  taxPointOn: date("tax_point_on", { mode: "string" }).notNull(),
+  adjustsTaxFactId: text("adjusts_tax_fact_id"),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const purchaseLineCapacities = openerp.table("purchase_line_capacities", {
+  bookId: text("book_id").notNull(),
+  recognitionId: text("recognition_id").notNull(),
+  sourceLineId: text("source_line_id").notNull(),
+  expenseAccountId: text("expense_account_id").notNull(),
+  inputVatAccountId: text("input_vat_account_id"),
+  originalNetMinor: numeric("original_net_minor", { mode: "string" }).notNull(),
+  originalSourceTaxMinor: numeric("original_source_tax_minor", { mode: "string" }).notNull(),
+  originalDeductibleTaxMinor: numeric("original_deductible_tax_minor", {
+    mode: "string",
+  }).notNull(),
+  creditedNetMinor: numeric("credited_net_minor", { mode: "string" }).notNull().default("0"),
+  creditedSourceTaxMinor: numeric("credited_source_tax_minor", { mode: "string" })
+    .notNull()
+    .default("0"),
+  releasedDeductionMinor: numeric("released_deduction_minor", { mode: "string" })
+    .notNull()
+    .default("0"),
+  version: bigint({ mode: "bigint" }).notNull().default(1n),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull(),
+});

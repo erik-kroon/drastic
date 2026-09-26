@@ -8,6 +8,7 @@ import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal }
 import { isoNow, newId, replay, saveCommand } from "../posting";
 import * as Db from "../../db/posting";
 import * as VatDrafts from "../../db/vat-return-drafts";
+import * as RecognitionDb from "../../db/purchases/recognition";
 import * as VatDb from "../../db/vat/returns";
 import { databaseFailure, type Transaction } from "../../db/transaction";
 import { exactKeys, toJsonObject } from "../commerce/support";
@@ -235,6 +236,21 @@ function readFactEvidenceRefs(transaction: Transaction, bookId: string, input: F
 
     return yield* toJsonObjectList(refs);
   });
+}
+
+// An owned purchase recognition already published signed components for that
+// voucher. An independent admission over the same voucher would recognize one
+// economic event twice, so it is refused here rather than deduplicated.
+function requireUnownedPurchaseComponents(
+  transaction: Transaction,
+  bookId: string,
+  input: FactInput,
+) {
+  if (input.voucherId === null) return Effect.void;
+
+  return RecognitionDb.readRecognizedVoucher(transaction, bookId, input.voucherId).pipe(
+    Effect.flatMap((rows) => (rows[0]?.present === true ? failure("AlreadyPosted") : Effect.void)),
+  );
 }
 
 function requireVoucherLink(transaction: Transaction, bookId: string, input: FactInput) {
@@ -771,6 +787,7 @@ export const recordFact = Effect.fn("vat.recordFact")(function* (
         );
 
         yield* requireVoucherLink(transaction, command.scope.bookId, command.input);
+        yield* requireUnownedPurchaseComponents(transaction, command.scope.bookId, command.input);
 
         const expense = yield* readExpenseLinkState(
           transaction,

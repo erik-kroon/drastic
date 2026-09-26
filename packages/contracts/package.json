@@ -42,6 +42,7 @@
     "./invoice-drafts": "./src/invoice-drafts.ts",
     "./supplier-invoice-drafts": "./src/supplier-invoice-drafts.ts",
     "./supplier-acceptance": "./src/supplier-acceptance.ts",
+    "./supplier-recognition": "./src/supplier-recognition.ts",
     "./supplier-payment-batches": "./src/supplier-payment-batches.ts",
     "./supplier-credits": "./src/supplier-credits.ts",
     "./subledger-controls": "./src/subledger-controls.ts",

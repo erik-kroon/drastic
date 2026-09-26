@@ -2,9 +2,14 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
 import * as Credits from "@open-erp/contracts/supplier-credits";
 import * as Effect from "effect/Effect";
-import * as Schema from "effect/Schema";
+import * as Result from "effect/Result";
+import type * as Schema from "effect/Schema";
+import { compileUnpaidPurchaseCredit } from "@open-erp/domain/purchasing";
 import type { Transaction } from "../../db/transaction";
 import * as Db from "../../db/purchases/credits";
+import * as RecognitionDb from "../../db/purchases/recognition";
+import * as RecognitionContract from "@open-erp/contracts/supplier-recognition";
+import * as Recognition from "./recognition";
 import * as Ledger from "../../db/posting";
 import * as Assets from "../../db/subledger/assets";
 import { liveInvoice } from "../commerce/register";
@@ -13,6 +18,8 @@ import { digest, validatePlan } from "../posting";
 import * as Shared from "./shared";
 
 type Scope = typeof Accounting.Scope.Type;
+
+type JsonObject = Schema.JsonObject;
 
 type CreditInput = typeof Credits.PrepareSupplierCredit.Type;
 
@@ -35,13 +42,19 @@ type CreditCommon = Pick<
   | "supplierCreditNumber"
 >;
 
-const OriginalLine = Schema.Struct({
-  lineId: Accounting.Identifier,
-  expenseAccountId: Accounting.Identifier,
-  netMinor: Accounting.MinorUnits,
-  taxMinor: Accounting.MinorUnits,
-  vatRatePercent: Schema.Literals([0, 6, 12, 25]),
-});
+// The posted cost of a recognized source line: its net plus the tax the
+// deduction decision did not allow.
+function expenseOf(line: {
+  readonly netMinor: string;
+  readonly sourceTaxMinor: string;
+  readonly deductibleTaxMinor: string;
+}) {
+  const nonDeductible = BigInt(line.sourceTaxMinor) - BigInt(line.deductibleTaxMinor);
+
+  if (nonDeductible < 0n) return null;
+
+  return (BigInt(line.netMinor) + nonDeductible).toString();
+}
 
 function signatures(
   lines: ReadonlyArray<{ accountId: string; debitMinor: string; creditMinor: string }>,
@@ -210,55 +223,114 @@ const syntheticCreditSnapshot = Effect.fn("purchases.credits.syntheticSnapshot")
   });
 });
 
-const creditLineSelection = Effect.fn("purchases.credits.lineSelection")(function* (
+// A purchase credit releases the deduction the original recognition actually
+// recorded, in proportion to the credited source tax, from the recognized
+// original-line capacity. It never re-derives a rate of its own.
+const purchaseCreditPlan = Effect.fn("purchases.credits.purchaseCreditPlan")(function* (
   tx: Transaction,
   scope: Scope,
-  invoiceId: string,
   input: CreditInput,
-  original: ReadonlyArray<typeof OriginalLine.Type>,
-  partial: boolean,
+  review: Review,
+  recognition: typeof RecognitionContract.PurchaseRecognition.Type,
+  payableAccountId: string,
+  amounts: { readonly amount: bigint; readonly unpaidResidual: bigint },
 ) {
-  if (!partial) return original;
+  const originalLines = review.originalLines;
+  const inputVatAccountId = review.inputVatAccountId;
+  const counterparty = recognition.counterpartyId;
 
-  if (
-    !input.creditLines?.length ||
-    new Set(input.creditLines.map((line) => line.lineId)).size !== input.creditLines.length
-  )
-    return yield* failure("InvalidJournal");
-
-  const previous = yield* Effect.forEach(
-    yield* Db.readPriorCreditLines(tx, scope.bookId, invoiceId),
-    (row) => Shared.decode(Credits.SupplierCreditSnapshot, row.snapshot),
-  );
-
-  const creditLines: Array<typeof OriginalLine.Type> = [];
-
-  for (const requested of input.creditLines) {
-    const line = original.find((line) => line.lineId === requested.lineId);
-
-    if (!line) return yield* failure("InvalidJournal");
-
-    const net = BigInt(requested.netMinor),
-      tax = BigInt(requested.taxMinor),
-      expectedTax = (net * BigInt(line.vatRatePercent) + 50n) / 100n;
-
-    const used = previous
-      .flatMap((snapshot) => snapshot.creditLines ?? [])
-      .filter((prior) => prior.lineId === line.lineId);
-
-    if (
-      net <= 0n ||
-      tax < expectedTax - 1n ||
-      tax > expectedTax + 1n ||
-      net + used.reduce((sum, prior) => sum + BigInt(prior.netMinor), 0n) > BigInt(line.netMinor) ||
-      tax + used.reduce((sum, prior) => sum + BigInt(prior.taxMinor), 0n) > BigInt(line.taxMinor)
-    )
-      return yield* failure("InvalidJournal");
-    creditLines.push({ ...line, netMinor: requested.netMinor, taxMinor: requested.taxMinor });
+  if (!originalLines?.length || inputVatAccountId === undefined) {
+    return yield* failure("UnsupportedProfile");
   }
 
-  return creditLines;
+  if (counterparty === null) return yield* failure("UnsupportedProfile");
+
+  const selected = input.creditLines ?? [];
+
+  if (
+    input.creditLines === undefined &&
+    (selected.length !== 0 ||
+      new Set(originalLines.map((line) => line.lineId)).size !== originalLines.length)
+  ) {
+    return yield* failure("InvalidJournal");
+  }
+
+  if (
+    new Set(selected.map((line) => line.lineId)).size !== selected.length ||
+    selected.some((line) => !originalLines.some((original) => original.lineId === line.lineId))
+  ) {
+    return yield* failure("InvalidJournal");
+  }
+
+  const capacities = yield* Effect.forEach(
+    yield* RecognitionDb.lockCapacities(
+      tx,
+      scope.bookId,
+      recognition.id,
+      recognition.plan.lines.map((line) => line.sourceLineId),
+    ),
+    Recognition.capacityFor,
+  );
+
+  if (capacities.length !== recognition.plan.lines.length) {
+    return yield* failure("StaleDependency");
+  }
+
+  const compiled = compileUnpaidPurchaseCredit({
+    currencyScale: recognition.currencyScale,
+    taxPoint: {
+      taxPointOn: input.creditDate,
+      basis: "document_date",
+    },
+    reportingObligationId: null,
+    ruleReleaseId: recognition.profileWitness?.ruleReleaseId ?? null,
+    taxComponentPrefix: `supplier_credit_${review.id}`,
+    creditEvidence: {
+      evidenceId: input.creditEvidenceId,
+      sourceKey: `supplier_credit:${input.supplierCreditNumber}`,
+    },
+    original: capacities,
+    requested:
+      selected.length > 0
+        ? selected.map((line) => ({
+            sourceLineId: line.lineId,
+            creditNetMinor: line.netMinor,
+            creditSourceTaxMinor: line.sourceTaxMinor,
+          }))
+        : capacities.map((capacity) => ({
+            sourceLineId: capacity.sourceLineId,
+            creditNetMinor: remainingOf(capacity.originalNetMinor, capacity.creditedNetMinor),
+            creditSourceTaxMinor: remainingOf(
+              capacity.originalSourceTaxMinor,
+              capacity.creditedSourceTaxMinor,
+            ),
+          })),
+    payableAccountId,
+    unpaidResidualMinor: amounts.unpaidResidual.toString(),
+  });
+
+  if (Result.isFailure(compiled)) return yield* Recognition.refusalFor(compiled.failure.code);
+
+  if (BigInt(compiled.success.creditGrossMinor) !== amounts.amount) {
+    return yield* failure("InvalidJournal");
+  }
+
+  return {
+    recognition,
+    capacities,
+    plan: compiled.success,
+    releases: compiled.success.lines,
+    adjustments: compiled.success.taxAdjustments,
+  };
 });
+
+function remainingOf(original: string, consumed: string) {
+  const left = BigInt(original) - BigInt(consumed);
+
+  if (left <= 0n) return "0";
+
+  return left.toString();
+}
 
 const purchaseCreditSnapshot = Effect.fn("purchases.credits.purchaseSnapshot")(function* (
   tx: Transaction,
@@ -270,20 +342,33 @@ const purchaseCreditSnapshot = Effect.fn("purchases.credits.purchaseSnapshot")(f
   partial: boolean,
   amount: bigint,
   common: CreditCommon,
+  unpaidResidual: bigint,
 ) {
-  if (!review.originalLines?.length || !review.inputVatAccountId)
+  if (!review.originalLines?.length || review.inputVatAccountId === undefined) {
     return yield* failure("UnsupportedProfile");
+  }
 
   if (
     !partial &&
     (amount !== BigInt(common.invoice.amountMinor) ||
       prior.length ||
       input.creditLines !== undefined)
-  )
+  ) {
     return yield* failure("UnsupportedProfile");
+  }
 
-  const original = review.originalLines;
-  const originalTax = original.reduce((sum, line) => sum + BigInt(line.taxMinor), 0n);
+  const row = (yield* RecognitionDb.readRecognitionByPayable(
+    tx,
+    scope.bookId,
+    common.invoice.id,
+  ))[0];
+
+  if (!row) return yield* failure("UnsupportedProfile");
+
+  const recognition = yield* Shared.decode(RecognitionContract.PurchaseRecognition, row.body);
+  const original = recognition.plan.lines;
+  const originalTax = original.reduce((sum, line) => sum + BigInt(line.sourceTaxMinor), 0n);
+  const deductible = original.reduce((sum, line) => sum + BigInt(line.deductibleTaxMinor), 0n);
 
   const actual = action.lines.filter(
     (line) =>
@@ -291,54 +376,104 @@ const purchaseCreditSnapshot = Effect.fn("purchases.credits.purchaseSnapshot")(f
       line.accountId !== review.inputVatAccountId,
   );
 
+  const postedExpenses = original.map((line) => expenseOf(line));
+
   if (
+    postedExpenses.some((expense) => expense === null) ||
     signatures(actual) !==
       signatures(
-        original.map((line) => ({
+        original.map((line, index) => ({
           accountId: line.expenseAccountId,
-          debitMinor: line.netMinor,
+          debitMinor: postedExpenses[index] ?? "0",
           creditMinor: "0",
         })),
       ) ||
-    (originalTax > 0n &&
+    (deductible > 0n &&
       !action.lines.some(
         (line) =>
           line.accountId === review.inputVatAccountId &&
-          line.debitMinor === originalTax.toString() &&
+          line.debitMinor === deductible.toString() &&
           line.creditMinor === "0",
       )) ||
-    action.lines.length !== original.length + 1 + (originalTax > 0n ? 1 : 0)
-  )
+    action.lines.length !== original.length + 1 + (deductible > 0n ? 1 : 0)
+  ) {
     return yield* failure("StaleDependency");
+  }
 
-  const creditLines = yield* creditLineSelection(
+  const compiled = yield* purchaseCreditPlan(
     tx,
     scope,
-    common.invoice.id,
     input,
-    original,
-    partial,
+    review,
+    recognition,
+    common.invoice.controlAccountId,
+    {
+      amount,
+      unpaidResidual,
+    },
   );
 
-  const tax = creditLines.reduce((sum, line) => sum + BigInt(line.taxMinor), 0n);
+  const tax = compiled.adjustments.reduce(
+    (sum, adjustment) => sum + BigInt(adjustment.sourceTaxMinor),
+    0n,
+  );
 
-  if (
-    creditLines.reduce((sum, line) => sum + BigInt(line.netMinor) + BigInt(line.taxMinor), 0n) !==
-      amount ||
-    (input.taxMinor !== undefined && input.taxMinor !== tax.toString())
-  )
+  if (originalTax < 0n || (input.taxMinor !== undefined && input.taxMinor !== tax.toString())) {
     return yield* failure("InvalidJournal");
+  }
 
-  const snapshot = {
-    ...common,
-    originalLines: original,
-    inputVatAccountId: review.inputVatAccountId,
-    taxMinor: tax.toString(),
-  };
+  const witnessFields: JsonObject =
+    recognition.profileWitness === null
+      ? {}
+      : { profileWitness: yield* Shared.toJsonObject(recognition.profileWitness) };
 
-  if (!partial) return yield* Shared.decode(Credits.SupplierCreditSnapshot, snapshot);
-
-  return yield* Shared.decode(Credits.SupplierCreditSnapshot, { ...snapshot, creditLines });
+  return yield* Shared.decode(
+    Credits.SupplierCreditSnapshot,
+    Object.assign({}, common, witnessFields, {
+      recognitionId: recognition.id,
+      originalLines: compiled.capacities.map((capacity) => ({
+        lineId: capacity.sourceLineId,
+        expenseAccountId: capacity.expenseAccountId,
+        netMinor: capacity.originalNetMinor,
+        sourceTaxMinor: capacity.originalSourceTaxMinor,
+        deductibleTaxMinor: capacity.originalDeductibleTaxMinor,
+        creditedNetMinor: capacity.creditedNetMinor,
+        creditedSourceTaxMinor: capacity.creditedSourceTaxMinor,
+        releasedDeductionMinor: capacity.releasedDeductionMinor,
+        taxComponentId: `purchase_recognition_${capacity.sourceLineId}`,
+        taxFactId: capacity.taxFactId,
+      })),
+      inputVatAccountId: review.inputVatAccountId,
+      lineReleases: compiled.releases.map((release) => ({
+        sourceLineId: release.sourceLineId,
+        expenseAccountId: release.expenseAccountId,
+        inputVatAccountId: release.inputVatAccountId,
+        creditNetMinor: release.creditNetMinor,
+        creditSourceTaxMinor: release.creditSourceTaxMinor,
+        releasedDeductionMinor: release.releasedDeductionMinor,
+        expenseMinor: release.expenseMinor,
+        taxComponentId: release.taxComponentId,
+        creditedNetAfterMinor: release.creditedNetAfterMinor,
+        creditedSourceTaxAfterMinor: release.creditedSourceTaxAfterMinor,
+        releasedDeductionAfterMinor: release.releasedDeductionAfterMinor,
+      })),
+      taxAdjustments: compiled.adjustments.map((adjustment) => ({
+        sourceLineId: adjustment.sourceLineId,
+        componentRole: adjustment.componentRole,
+        taxComponentId: adjustment.taxComponentId,
+        signedBaseMinor: adjustment.signedBaseMinor,
+        signedOutputTaxMinor: adjustment.signedOutputTaxMinor,
+        signedDeductibleTaxMinor: adjustment.signedDeductibleTaxMinor,
+        sourceTaxMinor: adjustment.sourceTaxMinor,
+        nonDeductibleTaxMinor: adjustment.nonDeductibleTaxMinor,
+        basis: adjustment.treatmentId,
+        taxPointOn: adjustment.taxPointOn,
+        sourceRefs: adjustment.sourceRefs,
+        adjustsTaxFactId: adjustment.adjustsTaxFactId,
+      })),
+      taxMinor: tax.toString(),
+    }),
+  );
 });
 
 export const creditSnapshot = Effect.fn("purchases.credits.snapshot")(function* (
@@ -418,6 +553,7 @@ export const creditSnapshot = Effect.fn("purchases.credits.snapshot")(function* 
     input.profile === "swedish-purchase-partial-credit-v1",
     amount,
     common,
+    BigInt(invoice.outstandingMinor),
   );
 });
 

@@ -40,6 +40,7 @@ import { InvoiceDraftsApi } from "./invoice-drafts";
 import { SalesOrdersApi } from "./sales-orders";
 import { SupplierInvoiceDraftsApi } from "./supplier-invoice-drafts";
 import { SupplierAcceptanceApi } from "./supplier-acceptance";
+import { PurchaseRecognitionApi } from "./supplier-recognition";
 import { SupplierPaymentBatchesApi } from "./supplier-payment-batches";
 import { SupplierCreditsApi } from "./supplier-credits";
 import { SubledgerControlsApi } from "./subledger-controls";
@@ -188,6 +189,7 @@ export class Api extends HttpApi.make("open-erp")
     SalesOrdersApi,
     SupplierInvoiceDraftsApi,
     SupplierAcceptanceApi,
+    PurchaseRecognitionApi,
     SupplierPaymentBatchesApi,
     SupplierCreditsApi,
     SubledgerControlsApi,

@@ -13,6 +13,7 @@
     "./posting": "./src/posting.ts",
     "./books": "./src/books.ts",
     "./statements": "./src/statements.ts",
+    "./purchasing": "./src/purchasing.ts",
     "./exchange-rates": "./src/exchange-rates.ts"
   },
   "scripts": {

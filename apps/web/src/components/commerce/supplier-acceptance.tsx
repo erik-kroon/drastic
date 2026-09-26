@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
 import * as Drafts from "@open-erp/contracts/supplier-invoice-drafts";
+import * as Recognition from "@open-erp/contracts/supplier-recognition";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
@@ -30,15 +31,69 @@ function inferredVatRate(netMinor: string | undefined, taxMinor: string | null) 
   );
 }
 
-function selectedVatRate(value: string): 0 | 6 | 12 | 25 {
-  if (value === "0") return 0;
+type Treatment = typeof Recognition.ReviewedTreatment.Type;
 
-  if (value === "6") return 6;
+const deductionFractions = {
+  full_deduction: "1/1",
+  half_deduction: "1/2",
+  no_deduction_exclusion: "0/1",
+  no_tax_exempt: "0/1",
+} as const satisfies Record<typeof Recognition.DeductionBasis.Type, string>;
 
-  if (value === "12") return 12;
+const zeroRateBasis = "no_tax_exempt";
 
-  if (value === "25") return 25;
-  throw new Error("Select a VAT rate for each invoice line");
+function selectedVatRate(value: string) {
+  if (!/^(0|[1-9][0-9]{0,2})$/.test(value)) {
+    throw new Error("Select a VAT rate for each invoice line");
+  }
+
+  return { numerator: value, denominator: "100" };
+}
+
+const basisValues: ReadonlyArray<typeof Recognition.DeductionBasis.Type> = [
+  "full_deduction",
+  "half_deduction",
+  "no_deduction_exclusion",
+  "no_tax_exempt",
+];
+
+function selectedBasis(value: string) {
+  const basis = basisValues.find((entry) => entry === value);
+
+  if (basis === undefined) {
+    throw new Error("Select a reviewed deduction basis for each invoice line");
+  }
+
+  return basis;
+}
+
+function reviewedTreatment(fields: FormData, index: number, rateValue: string): Treatment {
+  const tolerance = textField(fields, "taxToleranceMinor") || "0";
+  const rounding = textField(fields, "taxRounding") || "half_up";
+
+  if (rounding !== "half_up" && rounding !== "half_even" && rounding !== "toward_zero") {
+    throw new Error("Select a reviewed tax rounding mode");
+  }
+
+  const rate = selectedVatRate(rateValue);
+
+  const basis =
+    rateValue === "0" && textField(fields, `deductionBasis-${index}`) === "no_deduction_exclusion"
+      ? zeroRateBasis
+      : selectedBasis(textField(fields, `deductionBasis-${index}`));
+
+  return {
+    basis,
+    rate,
+    deduction: {
+      numerator: deductionFractions[basis].split("/")[0] ?? "0",
+      denominator: deductionFractions[basis].split("/")[1] ?? "1",
+    },
+    invoiceTaxRounding: rounding,
+    deductionRounding: rounding,
+    acceptancePolicy: BigInt(tolerance) > 0n ? "qualified_tolerance" : "exact_match",
+    toleranceMinor: tolerance,
+  };
 }
 
 function textField(fields: FormData, name: string) {
@@ -195,22 +250,7 @@ function SupplierAcceptancePreparation(
         output={Acceptance.SupplierAcceptanceReview}
         label={sv ? "Förbered bokföring" : "Prepare posting"}
         allowed={props.current && setup.isSuccess && props.book.role === "operator"}
-        input={(fields) => ({
-          profile: "swedish-purchase-v1",
-          draftId: props.draft.id,
-          expectedRevision: props.draft.revision,
-          expectedDigest: props.draft.digest,
-          controlAccountId: fields.get("controlAccountId"),
-          lineAssignments: props.draft.content.lines.map((line, index) => ({
-            lineId: line.id,
-            expenseAccountId: fields.get(`expenseAccountId-${index}`),
-            vatRatePercent: selectedVatRate(textField(fields, `vatRatePercent-${index}`)),
-          })),
-          accountingPeriodId: fields.get("accountingPeriodId"),
-          series: fields.get("series"),
-          reason: fields.get("reason"),
-          acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
-        })}
+        input={(fields) => acceptanceCommand(props.draft, fields)}
         onSuccess={(review) => props.onPrepared(review.id)}
       >
         <SelectField
@@ -262,26 +302,15 @@ function SupplierAcceptancePreparation(
                   ]}
                   required
                 />
-                <SelectField
-                  name={`vatRatePercent-${index}`}
-                  label={sv ? `Momssats, rad ${index + 1}` : `VAT rate, line ${index + 1}`}
-                  options={[
-                    { value: "", label: "—" },
-                    ...[0, 6, 12, 25].map((value) => ({
-                      value: String(value),
-                      label: `${value} %`,
-                    })),
-                  ]}
-                  defaultValue={rate === null ? "" : String(rate)}
-                  required
-                />
+                <SupplierLineTreatment sv={sv} index={index} rate={rate} />
               </Box>
             );
           })}
+          <SupplierDocumentTreatment sv={sv} />
           <PageCaption>
             {sv
-              ? "Kontrollera momssatsen mot fakturans momsbelopp. Ändra fakturautkastet om beloppet är fel."
-              : "Check each VAT rate against the invoice tax amount. Edit the invoice draft if the amount is wrong."}
+              ? "Avdragsgrunden, avrundningen och den tillåtna avvikelsen är din granskade bedömning. Momsen på fakturan ändras inte av bokföringen."
+              : "The deduction basis, rounding and allowed difference are your reviewed decision. The invoice tax is never rewritten by the posting."}
           </PageCaption>
         </RecordSection>
         <SelectField
@@ -473,6 +502,150 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
   );
 }
 
+function acceptanceCommand(draft: Draft, fields: FormData) {
+  const basis =
+    textField(fields, "taxPointBasis") === "supply_date" ? "supply_date" : "document_date";
+
+  return {
+    profile: "swedish-purchase-v1",
+    draftId: draft.id,
+    expectedRevision: draft.revision,
+    expectedDigest: draft.digest,
+    controlAccountId: textField(fields, "controlAccountId"),
+    taxPoint: {
+      taxPointOn: basis === "supply_date" ? draft.content.supplyDate : draft.content.documentDate,
+      basis,
+    },
+    lineAssignments: draft.content.lines.map((line, index) => ({
+      lineId: line.id,
+      expenseAccountId: fields.get(`expenseAccountId-${index}`),
+      treatment: reviewedTreatment(fields, index, textField(fields, `vatRatePercent-${index}`)),
+    })),
+    accountingPeriodId: fields.get("accountingPeriodId"),
+    series: fields.get("series"),
+    reason: fields.get("reason"),
+    acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
+  };
+}
+
+function SupplierDocumentTreatment(props: { sv: boolean }) {
+  const { sv } = props;
+
+  const labels = sv
+    ? {
+        taxPoint: "Skattetidpunkt",
+        document: "Fakturadatum",
+        supply: "Leveransdatum",
+        rounding: "Avrundning av moms",
+        halfUp: "Närmaste, halva upp",
+        halfEven: "Närmaste, halva jämnt",
+        towardZero: "Avkortning",
+        tolerance: "Tillåten momsavvikelse (öre)",
+      }
+    : {
+        taxPoint: "Tax point date",
+        document: "Invoice date",
+        supply: "Supply date",
+        rounding: "Tax rounding",
+        halfUp: "Nearest, half up",
+        halfEven: "Nearest, half even",
+        towardZero: "Toward zero",
+        tolerance: "Allowed tax difference (minor units)",
+      };
+
+  return (
+    <>
+      <SelectField
+        name="taxPointBasis"
+        label={labels.taxPoint}
+        options={[
+          { value: "", label: "—" },
+          { value: "document_date", label: labels.document },
+          { value: "supply_date", label: labels.supply },
+        ]}
+        defaultValue="document_date"
+        required
+      />
+      <SelectField
+        name="taxRounding"
+        label={labels.rounding}
+        options={[
+          { value: "", label: "—" },
+          { value: "half_up", label: labels.halfUp },
+          { value: "half_even", label: labels.halfEven },
+          { value: "toward_zero", label: labels.towardZero },
+        ]}
+        defaultValue="half_up"
+        required
+      />
+      <InputField name="taxToleranceMinor" label={labels.tolerance} defaultValue="0" required />
+    </>
+  );
+}
+
+function SupplierLineTreatment(props: { sv: boolean; index: number; rate: number | null }) {
+  const { sv, index, rate } = props;
+
+  return (
+    <>
+      <SelectField
+        name={`vatRatePercent-${index}`}
+        label={sv ? `Momssats, rad ${index + 1}` : `VAT rate, line ${index + 1}`}
+        options={[
+          { value: "", label: "\u2014" },
+          ...[0, 6, 12, 25].map((value) => ({
+            value: String(value),
+            label: `${value} %`,
+          })),
+        ]}
+        defaultValue={rate === null ? "" : String(rate)}
+        required
+      />
+      <SelectField
+        name={`deductionBasis-${index}`}
+        label={sv ? `Avdragsgrund, rad ${index + 1}` : `Deduction basis, line ${index + 1}`}
+        options={[
+          { value: "", label: "\u2014" },
+          { value: "full_deduction", label: deductionLabel("full_deduction", sv) },
+          { value: "half_deduction", label: deductionLabel("half_deduction", sv) },
+          {
+            value: "no_deduction_exclusion",
+            label: deductionLabel("no_deduction_exclusion", sv),
+          },
+          { value: "no_tax_exempt", label: deductionLabel("no_tax_exempt", sv) },
+        ]}
+        defaultValue={rate === 0 ? "no_tax_exempt" : "full_deduction"}
+        required
+      />
+    </>
+  );
+}
+
+function ratePercent(rate: { numerator: string; denominator: string }) {
+  const percent = (BigInt(rate.numerator) * 1000n) / BigInt(rate.denominator);
+
+  const whole = percent / 10n;
+  const tenth = percent % 10n;
+
+  return tenth === 0n ? `${whole} %` : `${whole},${tenth} %`;
+}
+
+function deductionLabel(basis: string, sv: boolean) {
+  const labels = {
+    full_deduction: sv ? "Helt avdragsgill" : "Fully deductible",
+    half_deduction: sv ? "Halvt avdragsgill" : "Half deductible",
+    no_tax_exempt: sv ? "Momsfri" : "Exempt",
+  };
+
+  if (basis === "full_deduction") return labels.full_deduction;
+
+  if (basis === "half_deduction") return labels.half_deduction;
+
+  if (basis === "no_tax_exempt") return labels.no_tax_exempt;
+
+  return sv ? "Ej avdragsgill" : "Not deductible";
+}
+
 function SupplierReviewedLines(props: {
   locale: CommerceProps["locale"];
   plan: typeof Acceptance.SupplierAcceptanceReview.Type;
@@ -489,6 +662,8 @@ function SupplierReviewedLines(props: {
         { id: "line", label: sv ? "Rad" : "Line" },
         { id: "account", label: sv ? "Utgiftskonto" : "Expense account" },
         { id: "rate", label: sv ? "Momssats" : "VAT rate" },
+        { id: "basis", label: sv ? "Avdragsgrund" : "Deduction basis" },
+        { id: "deductible", label: sv ? "Avdragsbar moms" : "Deductible VAT", numeric: true },
         { id: "vat", label: sv ? "Momsbelopp" : "VAT amount", numeric: true },
       ]}
       rows={props.plan.input.lineAssignments.map((assignment) => {
@@ -498,12 +673,24 @@ function SupplierReviewedLines(props: {
 
         const account = props.accounts.find((item) => item.id === assignment.expenseAccountId);
 
+        const recognized = props.plan.recognition?.lines.find(
+          (item) => item.sourceLineId === assignment.lineId,
+        );
+
         return {
           id: assignment.lineId,
           cells: [
             line?.description ?? assignment.lineId,
             account ? `${account.code} · ${account.name}` : assignment.expenseAccountId,
-            `${assignment.vatRatePercent} %`,
+            ratePercent(assignment.treatment.rate),
+            deductionLabel(assignment.treatment.basis, sv),
+            recognized === undefined
+              ? "—"
+              : formatMinorAmount(
+                  recognized.deductibleTaxMinor,
+                  props.plan.draftSnapshot.content.currencyScale,
+                  props.locale,
+                ),
             line?.taxMinor === null || line?.taxMinor === undefined
               ? "—"
               : formatMinorAmount(
