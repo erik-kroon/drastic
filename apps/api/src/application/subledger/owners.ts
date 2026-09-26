@@ -78,6 +78,9 @@ const recoveryOperations: ReadonlyArray<string> = [
   "owners_approve_allocation",
   "owners_apply_allocation",
   "owners_prepare_control",
+  "owners_prepare_operation",
+  "owners_approve_operation",
+  "owners_execute_operation",
 ];
 
 const controlBlockers = [
@@ -428,7 +431,7 @@ export function ownerRequireReady(
   });
 }
 
-function readCapacity(transaction: Transaction, scope: Scope, effectId: string) {
+export function readCapacity(transaction: Transaction, scope: Scope, effectId: string) {
   return Effect.gen(function* () {
     const effect = (yield* OwnerDb.readEffectById(transaction, scope.bookId, effectId))[0];
 
@@ -1470,6 +1473,175 @@ export const attachPostedLine = Effect.fn("owner.attachPostedLine")(function* (
     "update",
   );
 });
+
+export type OwnerAggregateSeal = {
+  readonly scope: Scope;
+  readonly actorId: string;
+  readonly operation: string;
+  readonly idempotencyKey: string;
+  readonly ownerId: string;
+  readonly recordId: string;
+  readonly reviewId: string;
+  readonly sourceKey: string;
+  readonly locator: string;
+  readonly evidenceId: string;
+  readonly occurredOn: string;
+  readonly currency: string;
+  readonly currencyScale: number;
+  readonly amountMinor: string;
+  readonly sourceKind: "expense" | "funding" | "settlement";
+  readonly dataNature: typeof Owners.DataNature.Type;
+  readonly classification: typeof Owners.Classification.Type;
+  readonly description: string;
+  readonly reason: string;
+  readonly controlAccountId: string;
+  readonly counterparty: { readonly sourceKey: string; readonly displayName: string } | null;
+};
+
+// A named owner operation that posts its own group seals the same owner source,
+// revision, review and control account the manual path seals, inside the caller's
+// transaction. The existing record/review/revision authority is reused; this does
+// not create a second source model.
+export const sealOwnerAggregateInTransaction = Effect.fn("owner.sealAggregateInTransaction")(
+  function* (transaction: Transaction, command: OwnerAggregateSeal) {
+    const book = yield* readBook(transaction, command.scope);
+
+    const owner = (yield* OwnerDb.readOwner(transaction, command.scope.bookId, command.ownerId))[0];
+
+    if (owner === undefined) return yield* failure("NotFound");
+
+    if (textField(owner.body, "dataNature") !== command.dataNature) {
+      return yield* failure("StaleDependency");
+    }
+
+    const account = (yield* Db.readAccounts(transaction, command.scope.bookId, [
+      command.controlAccountId,
+    ])).find((row) => row.id === command.controlAccountId);
+
+    if (account === undefined || !account.active) return yield* failure("StaleDependency");
+
+    yield* requireRevisionAssertion({
+      sourceKind: command.sourceKind,
+      classification: command.classification,
+      origin: "current",
+    });
+
+    if (
+      (yield* OwnerDb.readRecordIdsByOccurrence(
+        transaction,
+        command.scope.bookId,
+        command.sourceKey,
+        command.evidenceId,
+        command.locator,
+      )).length > 0
+    ) {
+      return yield* failure("IdempotencyConflict");
+    }
+
+    const evidence = yield* readEvidenceReference(transaction, command.scope, command.evidenceId);
+
+    const metadata = yield* recordMetadata(
+      transaction,
+      command.idempotencyKey,
+      command.operation,
+      command.actorId,
+    );
+
+    const source = merge(
+      {
+        ownerId: command.ownerId,
+        dataNature: command.dataNature,
+        sourceKey: command.sourceKey,
+        sourceKind: command.sourceKind,
+        evidenceId: command.evidenceId,
+        locator: command.locator,
+        occurredOn: command.occurredOn,
+        currency: command.currency,
+        currencyScale: command.currencyScale,
+        amountMinor: command.amountMinor,
+        counterparty: command.counterparty,
+      },
+      {
+        id: command.recordId,
+        scope: command.scope,
+        ownerName: textField(owner.body, "displayName") ?? "",
+        evidence,
+      },
+      metadata,
+    );
+
+    const base = merge(
+      {
+        id: command.recordId,
+        scope: command.scope,
+        revision: "1",
+        description: command.description,
+        classification: command.classification,
+        origin: "current",
+        reason: command.reason,
+        evidence,
+      },
+      metadata,
+    );
+
+    const revisionDigest = yield* digestValue({ source, revision: base });
+    const revision = merge(base, { digest: revisionDigest });
+
+    yield* admitAccountRole(transaction, command.scope.bookId, account.id, "owner");
+    yield* OwnerDb.insertControlAccount(transaction, command.scope.bookId, account.id);
+    yield* OwnerDb.insertRecord(transaction, {
+      bookId: command.scope.bookId,
+      id: command.recordId,
+      ownerId: command.ownerId,
+      sourceKey: command.sourceKey,
+      evidenceId: command.evidenceId,
+      locator: command.locator,
+      occurredOn: command.occurredOn,
+      amountMinor: command.amountMinor,
+      body: source,
+    });
+    yield* OwnerDb.insertRevision(transaction, {
+      bookId: command.scope.bookId,
+      recordId: command.recordId,
+      revision: "1",
+      body: revision,
+    });
+
+    const review = yield* decode(
+      Owners.Review,
+      merge(
+        {
+          id: command.reviewId,
+          scope: command.scope,
+          recordId: command.recordId,
+          revision: "1",
+          revisionDigest,
+          classification: command.classification,
+          origin: "current",
+          controlAccountId: account.id,
+          syntheticNoTaxConfirmed: false,
+          reason: command.reason,
+          evidence,
+          accountVersion: account.version.toString(),
+          profileVersion: book.profileVersion.toString(),
+          writerEpoch: book.writerEpoch.toString(),
+        },
+        metadata,
+      ),
+    );
+
+    yield* OwnerDb.insertReview(transaction, {
+      bookId: command.scope.bookId,
+      id: review.id,
+      recordId: command.recordId,
+      revision: "1",
+      actorId: command.actorId,
+      body: yield* toJsonObject(review),
+    });
+
+    return { review, revisionDigest, source };
+  },
+);
 
 export const prepareAllocation = Effect.fn("owner.prepareAllocation")(function* (
   token: string,

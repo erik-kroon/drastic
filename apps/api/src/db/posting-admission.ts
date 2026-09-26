@@ -33,6 +33,7 @@ export function readOwnedSources(
       union all select 'asset_impairment',id,change_set_id,evidence_id,body from openerp.subledger_impairment_reviews where book_id=${book}
       union all select 'legal_issue',id,null,body->'sourceEvidence'->>'evidenceId',body from openerp.ar_legal_issue_reviews where book_id=${book}
       union all select 'legal_credit',id,change_set_id,evidence_id,body from openerp.customer_credit_reviews where book_id=${book}
+      union all select 'owner_operation',id,change_set_id,evidence_id,body from openerp.owner_operation_reviews where book_id=${book}
     ) select kind,id,change_id as "changeId",body from reviews where change_id in(select change_id from origins) or evidence_id in(select id from evidence)
     order by kind,id limit 1001`,
     "objects",

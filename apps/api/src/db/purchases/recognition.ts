@@ -148,6 +148,34 @@ export function readCounterpartyDocumentRecognition(
   );
 }
 
+// The recognized economic source of one supplier document, with the payable it
+// owns. A caller that must decide between recognizing a document itself and
+// discharging the obligation it already created reads the recognition here
+// instead of a second projection of the same table.
+export function readRecognitionByCounterpartyDocument(
+  tx: Transaction,
+  bookId: string,
+  counterpartyId: string,
+  documentNumber: string,
+) {
+  return tx.execute<{
+    readonly id: string;
+    readonly economicKey: string;
+    readonly eventOwner: string;
+    readonly payableId: string;
+    readonly grossMinor: string;
+  }>(
+    sql`select id, economic_key as "economicKey", event_owner as "eventOwner",
+      payable_id as "payableId", gross_minor::text as "grossMinor"
+      from openerp.purchase_recognitions
+      where book_id = ${bookId} and counterparty_id = ${counterpartyId}
+        and document_number = ${documentNumber}
+      order by id collate "C"
+      limit 1`,
+    "objects",
+  );
+}
+
 export function insertRecognition(
   tx: Transaction,
   bookId: string,

@@ -92,7 +92,7 @@ export function refusalFor(code: PurchaseFailureCode) {
   return unsupportedFailures.has(code) ? Shared.unsupported() : failure("InvalidJournal");
 }
 
-function requireConsistentTreatment(
+export function requireConsistentTreatment(
   treatment: Treatment,
   netMinor: string,
   sourceTaxMinor: string,

@@ -25,7 +25,8 @@ export type PostingOwner = {
     | "asset_impairment"
     | "historical_import"
     | "commerce_fx"
-    | "vat_reclassification";
+    | "vat_reclassification"
+    | "owner_operation";
   readonly id: string;
 };
 

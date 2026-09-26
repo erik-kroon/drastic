@@ -825,3 +825,95 @@ export const customerCreditTaxCorrections = openerp.table("customer_credit_tax_c
   controlLineId: text("control_line_id").notNull(),
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });
+
+export const ownerOperationReviews = openerp.table("owner_operation_reviews", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  mode: text("mode").notNull(),
+  ownerId: text("owner_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  changeSetId: text("change_set_id").notNull(),
+  eventId: text("event_id").notNull(),
+  evidenceId: text("evidence_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const ownerOperationApprovals = openerp.table("owner_operation_approvals", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  reviewId: text("review_id").notNull(),
+  actorId: text("actor_id").notNull(),
+  digest: text().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const ownerOperationReceipts = openerp.table("owner_operation_receipts", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  reviewId: text("review_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  mode: text("mode").notNull(),
+  ownerId: text("owner_id").notNull(),
+  ownerRecordId: text("owner_record_id").notNull(),
+  ownerEffectId: text("owner_effect_id").notNull(),
+  voucherId: text("voucher_id").notNull(),
+  controlLineId: text("control_line_id").notNull(),
+  recognitionId: text("recognition_id"),
+  invoiceId: text("invoice_id"),
+  amountMinor: numeric("amount_minor", { mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  committedAt: timestamp("committed_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const ownerOperationAllocations = openerp.table("owner_operation_allocations", {
+  bookId: text("book_id").notNull(),
+  receiptId: text("receipt_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  claimId: text("claim_id").notNull(),
+  amountMinor: numeric("amount_minor", { mode: "string" }).notNull(),
+});
+
+export const ownerPurchaseRecognitions = openerp.table("owner_purchase_recognitions", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  economicKey: text("economic_key").notNull(),
+  ownerId: text("owner_id").notNull(),
+  ownerRecordId: text("owner_record_id").notNull(),
+  ownerEffectId: text("owner_effect_id").notNull(),
+  counterpartyId: text("counterparty_id").notNull(),
+  documentNumber: text("document_number").notNull(),
+  voucherId: text("voucher_id").notNull(),
+  changeSetId: text("change_set_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  recognitionDate: date("recognition_date", { mode: "string" }).notNull(),
+  taxPointOn: date("tax_point_on", { mode: "string" }).notNull(),
+  grossMinor: numeric("gross_minor", { mode: "string" }).notNull(),
+  deductibleTaxMinor: numeric("deductible_tax_minor", { mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const ownerPurchaseTaxFacts = openerp.table("owner_purchase_tax_facts", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  recognitionId: text("recognition_id").notNull(),
+  sourceLineId: text("source_line_id").notNull(),
+  componentRole: text("component_role").notNull(),
+  taxComponentId: text("tax_component_id").notNull(),
+  voucherId: text("voucher_id").notNull(),
+  signedBaseMinor: numeric("signed_base_minor", { mode: "string" }).notNull(),
+  signedOutputTaxMinor: numeric("signed_output_tax_minor", { mode: "string" }).notNull(),
+  signedDeductibleTaxMinor: numeric("signed_deductible_tax_minor", { mode: "string" }).notNull(),
+  sourceTaxMinor: numeric("source_tax_minor", { mode: "string" }).notNull(),
+  nonDeductibleTaxMinor: numeric("non_deductible_tax_minor", { mode: "string" }).notNull(),
+  taxPointOn: date("tax_point_on", { mode: "string" }).notNull(),
+  adjustsTaxFactId: text("adjusts_tax_fact_id"),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});

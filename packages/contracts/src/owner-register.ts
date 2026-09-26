@@ -1,6 +1,11 @@
 import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import * as Accounting from "./accounting";
+import {
+  OwnerOperationApproval,
+  OwnerOperationReceipt,
+  OwnerOperationReview,
+} from "./owner-operations";
 import { accountingErrors } from "./accounting-errors";
 import {
   Version,
@@ -339,6 +344,18 @@ export const CommandRecovery = Schema.Union([
     result: AllocationReceipt,
   }),
   Schema.Struct({ operation: Schema.Literal("owners_prepare_control"), result: Control }),
+  Schema.Struct({
+    operation: Schema.Literal("owners_prepare_operation"),
+    result: OwnerOperationReview,
+  }),
+  Schema.Struct({
+    operation: Schema.Literal("owners_approve_operation"),
+    result: OwnerOperationApproval,
+  }),
+  Schema.Struct({
+    operation: Schema.Literal("owners_execute_operation"),
+    result: OwnerOperationReceipt,
+  }),
 ]);
 
 const AfterQuery = Schema.Struct({ after: Schema.optional(Accounting.Identifier) });

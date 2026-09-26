@@ -82,6 +82,7 @@ import { AccountantReviewHandlers } from "./transport/http/routes/accountant-rev
 import { SourceIntakeHandlers } from "./transport/http/routes/source-intake";
 import { ExpenseTaxHandlers } from "./transport/http/routes/expense-tax";
 import { OwnerRegisterHandlers } from "./transport/http/routes/owner-register";
+import { OwnerOperationHandlers } from "./transport/http/routes/owner-operations";
 import { FirmHandlers } from "./transport/http/routes/firms";
 import { WorkspaceHandlers } from "./transport/http/routes/workspace";
 
@@ -167,6 +168,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     DimensionHandlers,
     ExpenseTaxHandlers,
     OwnerRegisterHandlers,
+    OwnerOperationHandlers,
     ClosingHandlers,
     SubledgerHandlers,
   ]),

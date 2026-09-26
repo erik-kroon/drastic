@@ -625,41 +625,57 @@ export function insertControlAccount(transaction: Transaction, bookId: string, a
   );
 }
 
+// A claim's consumed amount and the settlement's, counted across both retained
+// allocation authorities so each leg is counted exactly once.
 export function readAllocationUsage(transaction: Transaction, bookId: string, effectId: string) {
   return transaction.execute<AllocationRow>(
     sql`
-      select coalesce(sum(l.amount_minor),0)::text as total, count(*)::text as legs
-      from openerp.owner_allocation_legs l
-      where l.book_id = ${bookId} and (l.claim_id = ${effectId} or l.settlement_id = ${effectId})
+      select (
+        coalesce((select sum(l.amount_minor) from openerp.owner_allocation_legs l
+          where l.book_id = ${bookId} and (l.claim_id = ${effectId} or l.settlement_id = ${effectId})), 0)
+        + coalesce((select sum(a.amount_minor) from openerp.owner_operation_allocations a
+          where a.book_id = ${bookId} and a.claim_id = ${effectId}), 0)
+      )::text as total,
+      (
+        (select count(*) from openerp.owner_allocation_legs l
+          where l.book_id = ${bookId} and (l.claim_id = ${effectId} or l.settlement_id = ${effectId}))
+        + (select count(*) from openerp.owner_operation_allocations a
+          where a.book_id = ${bookId} and a.claim_id = ${effectId})
+      )::text as legs
     `,
     "objects",
   );
 }
 
+// The control view reads both retained allocation authorities, so a claim's
+// consumed amount and the owner's allocations count each leg exactly once.
 export function listAllocationLegs(
   transaction: Transaction,
   bookId: string,
   ownerId: string | null,
   endsOn: string,
 ) {
+  const ownerFilter = ownerId === null ? sql`true` : sql`e.owner_id = ${ownerId}`;
+
   return transaction.execute<AllocationLegRow>(
-    ownerId === null
-      ? sql`
-          select l.receipt_id as "receiptId", l.ordinal, l.claim_id as "claimId",
-            l.settlement_id as "settlementId", l.amount_minor::text as "amountMinor"
-          from openerp.owner_allocation_legs l
-          join openerp.owner_effects e on e.book_id = l.book_id and e.id = l.settlement_id
-          where l.book_id = ${bookId} and e.posting_date <= ${endsOn}::date
-          order by l.receipt_id collate "C", l.ordinal
-        `
-      : sql`
-          select l.receipt_id as "receiptId", l.ordinal, l.claim_id as "claimId",
-            l.settlement_id as "settlementId", l.amount_minor::text as "amountMinor"
-          from openerp.owner_allocation_legs l
-          join openerp.owner_effects e on e.book_id = l.book_id and e.id = l.settlement_id
-          where l.book_id = ${bookId} and e.owner_id = ${ownerId} and e.posting_date <= ${endsOn}::date
-          order by l.receipt_id collate "C", l.ordinal
-        `,
+    sql`
+      select legs.*
+      from (
+        select l.receipt_id as "receiptId", l.ordinal, l.claim_id as "claimId",
+          l.settlement_id as "settlementId", l.amount_minor::text as "amountMinor"
+        from openerp.owner_allocation_legs l
+        join openerp.owner_effects e on e.book_id = l.book_id and e.id = l.settlement_id
+        where l.book_id = ${bookId} and e.posting_date <= ${endsOn}::date and ${ownerFilter}
+        union all
+        select a.receipt_id as "receiptId", a.ordinal, a.claim_id as "claimId",
+          r.owner_effect_id as "settlementId", a.amount_minor::text as "amountMinor"
+        from openerp.owner_operation_allocations a
+        join openerp.owner_operation_receipts r on r.book_id = a.book_id and r.id = a.receipt_id
+        join openerp.owner_effects e on e.book_id = r.book_id and e.id = r.owner_effect_id
+        where a.book_id = ${bookId} and e.posting_date <= ${endsOn}::date and ${ownerFilter}
+      ) legs
+      order by legs."receiptId" collate "C", legs.ordinal
+    `,
     "objects",
   );
 }
