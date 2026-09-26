@@ -10,8 +10,10 @@ export function attentionQueryOptions(
   filters: typeof Workspace.AttentionQuery.Type,
 ) {
   const search = new URLSearchParams();
+
   for (const [key, value] of Object.entries(filters))
     if (value !== undefined && value !== "") search.set(key, value);
+
   return queryOptions({
     queryKey: [...bookKey(book), "attention", search.toString()],
     queryFn: async ({ signal }) => {
@@ -20,23 +22,29 @@ export function attentionQueryOptions(
         Workspace.AttentionPage,
         { signal },
       );
+
       if (page.scope.entityId !== book.entityId || page.scope.bookId !== book.id)
         throw new Error("Work scope mismatch");
+
       return page;
     },
     retry: false,
   });
 }
+
 export function attentionPath(
   book: typeof Accounting.Book.Type,
   item: typeof Workspace.AttentionItem.Type,
 ) {
   if (item.kind === "journal") return reviewPath(book, item.id, item.revision);
+
   return `${workspacePath(book)}/${item.kind === "invoice" ? "sales?view=drafts" : "purchases?view=expenses"}&record=${encodeURIComponent(item.id)}`;
 }
+
 export function attentionCopy(locale: Locale) {
   return locale === "sv" ? swedish : english;
 }
+
 const english = {
   all: "All work",
   journal: "Bookkeeping",
@@ -63,6 +71,7 @@ const english = {
   next: "Next page",
   refresh: "Refresh",
 };
+
 const swedish: typeof english = {
   all: "Allt arbete",
   journal: "Bokföring",

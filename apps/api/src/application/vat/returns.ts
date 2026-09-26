@@ -1,3 +1,4 @@
+import * as ExpenseSources from "../../db/vat/expense-tax";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Vat from "@open-erp/contracts/vat-returns";
 import * as Effect from "effect/Effect";
@@ -14,39 +15,65 @@ import { digestBody, maximumFacts, readBasis, toJsonList, toJsonObjectList } fro
 import { buildImpact } from "./draft-impact";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type Principal = VerifiedPrincipal;
+
 type ReclassificationInput = typeof Vat.PrepareVatControlReclassification.Type;
+
 type ReclassificationApprovalInput = typeof Vat.ApproveVatControlReclassification.Type;
+
 type ReclassificationExecutionInput = typeof Vat.ExecuteVatControlReclassification.Type;
+
 type FactWithdrawalInput = typeof Vat.WithdrawVatFact.Type;
+
 type DraftComparisonInput = typeof Vat.CompareVatDrafts.Type;
+
 type AmendmentInput = typeof Vat.ReviewVatAmendment.Type;
+
 type FactInput = typeof Vat.VatFactInput.Type;
+
 type JsonObject = Schema.JsonObject;
+
 type Json = Schema.Json;
 
 const DraftListSchema = Vat.VatDraftList;
+
 const RecoverySchema = Vat.VatControlReclassificationRecovery;
+
 const FactSchema = Vat.VatFact;
+
 const FactViewSchema = Vat.VatFactView;
+
 const WithdrawalSchema = Vat.VatFactWithdrawal;
+
 const DraftSchema = Vat.VatDraft;
+
 const DraftViewSchema = Vat.VatDraftView;
+
 const ImpactSchema = Vat.VatDraftImpact;
+
 const ImpactViewSchema = Vat.VatDraftImpactView;
+
 const AmendmentSchema = Vat.VatAmendment;
+
 const AmendmentViewSchema = Vat.VatAmendmentView;
+
 const AmendmentListSchema = Vat.VatAmendmentList;
 
 const draftInventoryBound = 500;
+
 const factRevisionBound = 20;
+
 const lineageByteBound = 8388608;
+
 const amendmentInventoryBound = 500;
+
 const reclassificationOperations: ReadonlyArray<string> = [
   "prepare_vat_control_reclassification",
   "approve_vat_control_reclassification",
   "execute_vat_control_reclassification",
 ];
+
 const factInputKeys = [
   "sourceKey",
   "expectedDigest",
@@ -79,6 +106,7 @@ const factInputKeys = [
   "taxLineIds",
   "expenseLink",
 ] as const;
+
 const describedFactFields = [
   "recordClass",
   "treatment",
@@ -90,6 +118,7 @@ const describedFactFields = [
   "description",
   "reviewRationale",
 ] as const;
+
 const factEvidenceFields = [
   "evidenceId",
   "reviewEvidenceId",
@@ -133,6 +162,7 @@ function field(value: Json, key: string) {
 
 function textField(value: Json, key: string) {
   const found = field(value, key);
+
   return typeof found === "string" ? found : null;
 }
 
@@ -144,10 +174,13 @@ function requireFactAccess(transaction: Transaction, inserts: ReadonlyArray<stri
   return VatDb.readFactAccess(transaction).pipe(
     Effect.flatMap((rows) => {
       if (rows.length !== VatDb.factReadTables.length) return unsupported();
+
       const denied = rows.some((row) => {
         const write = inserts.includes(row.tableName);
+
         return !row.canSelect || (write && !row.canInsert);
       });
+
       return denied ? unsupported() : Effect.void;
     }),
   );
@@ -156,17 +189,22 @@ function requireFactAccess(transaction: Transaction, inserts: ReadonlyArray<stri
 function requireDescribedFactFields(input: JsonObject) {
   for (const key of describedFactFields) {
     const value = textField(input, key);
+
     if (value === null || value.length < 1 || value.length > 2000) {
       return failure("InvalidJournal");
     }
   }
+
   return Effect.void;
 }
 
 function requireTaxLineSelection(input: FactInput) {
   if (input.taxLineIds.length > 20) return failure("InvalidJournal");
+
   if (new Set(input.taxLineIds).size !== input.taxLineIds.length) return failure("InvalidJournal");
+
   if (input.voucherId === null && input.taxLineIds.length > 0) return failure("InvalidJournal");
+
   return Effect.void;
 }
 
@@ -175,20 +213,26 @@ function readFactEvidenceRefs(transaction: Transaction, bookId: string, input: F
     const cited = factEvidenceFields
       .map((key) => input[key])
       .filter((value): value is string => value !== null);
+
     const digests = new Map(
       (yield* VatDb.readEvidenceDigests(transaction, bookId, cited)).map((row) => [
         row.id,
         row.sha256,
       ]),
     );
+
     const refs = [];
+
     for (const key of factEvidenceFields) {
       const evidenceId = input[key];
+
       if (evidenceId === null) continue;
       const sha256 = digests.get(evidenceId);
+
       if (sha256 === undefined) return yield* failure("MissingEvidence");
       refs.push({ evidenceId, sha256 });
     }
+
     return yield* toJsonObjectList(refs);
   });
 }
@@ -196,19 +240,30 @@ function readFactEvidenceRefs(transaction: Transaction, bookId: string, input: F
 function requireVoucherLink(transaction: Transaction, bookId: string, input: FactInput) {
   return Effect.gen(function* () {
     if (input.voucherId === null) return;
+
+    if (
+      (yield* Db.readVoucher(transaction, bookId, input.voucherId))[0]?.postingPurpose ===
+      "vat_control_reclassification_v1"
+    )
+      return yield* failure("StaleDependency");
     const voucher = (yield* VatDb.readVoucherEvidenceRefs(transaction, bookId, input.voucherId))[0];
+
     if (!voucher) return yield* failure("MissingEvidence");
     const refs = voucher.evidenceRefs;
+
     const cites =
       Array.isArray(refs) &&
       refs.some((ref) => isJsonObject(ref) && ref.evidenceId === input.evidenceId);
+
     if (!cites) return yield* failure("MissingEvidence");
+
     const lines = yield* VatDb.readVoucherLineIds(
       transaction,
       bookId,
       input.voucherId,
       input.taxLineIds,
     );
+
     if (lines.length !== input.taxLineIds.length) return yield* failure("NotFound");
   });
 }
@@ -223,13 +278,21 @@ function readExpenseLinkState(
     if (input.expenseLink === null) return null;
     const link = yield* toJsonObject(input.expenseLink);
     const sourceId = textField(link, "sourceId");
+
     if (sourceId === null) return yield* failure("InvalidJournal");
+
+    if ((yield* ExpenseSources.readWithdrawal(transaction, bookId, sourceId)).length)
+      return yield* failure("StaleDependency");
     const state = (yield* VatDb.readExpenseLink(transaction, bookId, sourceId, link, payload))[0];
+
     if (!state || !state.found) return yield* failure("NotFound");
+
     if (input.treatment !== "domestic_purchase" || !state.digestsCurrent) {
       return yield* failure("StaleDependency");
     }
+
     if (!state.compatible) return yield* failure("InvalidJournal");
+
     return state;
   });
 }
@@ -237,20 +300,35 @@ function readExpenseLinkState(
 function openComponent(transaction: Transaction, bookId: string, input: FactInput) {
   return Effect.gen(function* () {
     const component = (yield* VatDb.readFactComponent(transaction, bookId, input.sourceKey))[0];
+
     if (!component) {
       if (input.expectedDigest !== null) return yield* failure("StaleDependency");
       const counted = yield* VatDrafts.countFactComponents(transaction, bookId);
+
       if ((counted[0]?.total ?? 0) >= maximumFacts) return yield* unsupported();
+
       return { factId: newId("vatfact"), revision: 1, previousDigest: null, opened: true } as const;
     }
-    const current = (
-      yield* VatDb.readCurrentFactRevision(transaction, bookId, component.id, "update")
-    )[0];
+
+    if ((yield* VatDb.readFactWithdrawal(transaction, bookId, component.id)).length)
+      return yield* failure("StaleDependency");
+
+    const current = (yield* VatDb.readCurrentFactRevision(
+      transaction,
+      bookId,
+      component.id,
+      "update",
+    ))[0];
+
     const previousDigest = current ? textField(current.body, "digest") : null;
+
     if (input.expectedDigest !== previousDigest) return yield* failure("StaleDependency");
+
     if (component.recordClass !== input.recordClass) return yield* failure("InvalidJournal");
     const revision = (current?.revision ?? 0) + 1;
+
     if (revision > factRevisionBound) return yield* unsupported();
+
     return { factId: component.id, revision, previousDigest, opened: false } as const;
   });
 }
@@ -259,11 +337,15 @@ function readLineage(transaction: Transaction, bookId: string, factId: string) {
   return Effect.gen(function* () {
     const drafts = (yield* VatDb.countDrafts(transaction, bookId))[0]?.drafts ?? 0;
     const amendments = (yield* VatDb.countAmendments(transaction, bookId))[0]?.amendments ?? 0;
+
     if (drafts > draftInventoryBound || amendments > draftInventoryBound) {
       return yield* unsupported();
     }
+
     const row = (yield* VatDb.readFactLineage(transaction, bookId, factId))[0];
+
     if (!row || row.rejected) return yield* unsupported();
+
     return yield* toJsonObject({
       interpretation: "retained_fact_membership",
       currentnessChecked: false,
@@ -274,23 +356,29 @@ function readLineage(transaction: Transaction, bookId: string, factId: string) {
   });
 }
 
-function readRetainedDrafts(
-  transaction: Transaction,
-  bookId: string,
-  input: DraftComparisonInput,
-) {
+function readRetainedDrafts(transaction: Transaction, bookId: string, input: DraftComparisonInput) {
   return Effect.gen(function* () {
-    const original = (yield* VatDb.readRetainedDraft(transaction, bookId, input.originalDraftId))[0];
-    const replacement = (
-      yield* VatDb.readRetainedDraft(transaction, bookId, input.replacementDraftId)
-    )[0];
+    const original = (yield* VatDb.readRetainedDraft(
+      transaction,
+      bookId,
+      input.originalDraftId,
+    ))[0];
+
+    const replacement = (yield* VatDb.readRetainedDraft(
+      transaction,
+      bookId,
+      input.replacementDraftId,
+    ))[0];
+
     if (original === undefined || replacement === undefined) return yield* failure("NotFound");
+
     if (
       original.body.digest !== input.originalDraftDigest ||
       replacement.body.digest !== input.replacementDraftDigest
     ) {
       return yield* failure("StaleDependency");
     }
+
     return {
       original: {
         ordinal: original.ordinal,
@@ -320,19 +408,24 @@ export const recoverReclassification = Effect.fn("vat.recoverReclassification")(
     Effect.gen(function* () {
       yield* requireFactAccess(transaction, []);
       yield* Db.lockBookForShare(transaction, command.scope);
+
       if (!/^[a-zA-Z0-9_-]{8,128}$/.test(command.key)) return yield* failure("IdempotencyConflict");
+
       const rows = yield* Db.readCommandReceipt(
         transaction,
         command.scope.bookId,
         command.key,
         "share",
       );
+
       const receipt = rows.find(
         (row) =>
           row.actorId === principal.actorId && reclassificationOperations.includes(row.operation),
       );
+
       if (!receipt) return yield* failure("NotFound");
       const result = yield* toJsonObject(receipt.result);
+
       return yield* decode(RecoverySchema, { state: "committed", result });
     }),
   );
@@ -349,6 +442,7 @@ export const withdrawFact = Effect.fn("vat.withdrawFact")(function* (
     (transaction, principal) =>
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -358,34 +452,42 @@ export const withdrawFact = Effect.fn("vat.withdrawFact")(function* (
           payload,
           WithdrawalSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireFactAccess(transaction, ["vat_fact_withdrawals", "command_receipts"]);
         yield* Db.lockBookForUpdate(transaction, command.scope);
-        const current = (
-          yield* VatDb.readCurrentFactRevision(
-            transaction,
-            command.scope.bookId,
-            command.id,
-            "update",
-          )
-        )[0];
+
+        const current = (yield* VatDb.readCurrentFactRevision(
+          transaction,
+          command.scope.bookId,
+          command.id,
+          "update",
+        ))[0];
+
         if (current === undefined) return yield* failure("NotFound");
+
         if (current.body.digest !== command.input.expectedDigest) {
           return yield* failure("StaleDependency");
         }
+
         if (
-          (yield* VatDb.readFactWithdrawal(transaction, command.scope.bookId, command.id))[0] !== undefined
+          (yield* VatDb.readFactWithdrawal(transaction, command.scope.bookId, command.id))[0] !==
+          undefined
         ) {
           return yield* failure("StaleDependency");
         }
+
         const evidence = yield* Db.readEvidence(
           transaction,
           command.scope.bookId,
           command.input.evidenceId,
         );
+
         const sha256 = evidence[0]?.sha256;
+
         if (sha256 === undefined) return yield* failure("MissingEvidence");
-        const body = yield* digestBody(transaction, {
+
+        const body = yield* digestBody({
           id: newId("vatwithdrawal"),
           scope: command.scope,
           factId: command.id,
@@ -402,6 +504,7 @@ export const withdrawFact = Effect.fn("vat.withdrawFact")(function* (
             actorId: principal.actorId,
           },
         });
+
         const withdrawal = yield* decode(WithdrawalSchema, body);
         yield* VatDb.insertFactWithdrawal(transaction, {
           bookId: command.scope.bookId,
@@ -420,6 +523,7 @@ export const withdrawFact = Effect.fn("vat.withdrawFact")(function* (
           principal.actorId,
           withdrawal,
         );
+
         return withdrawal;
       }),
     "update",
@@ -435,9 +539,10 @@ export const compareDrafts = Effect.fn("vat.compareDrafts")(function* (
       yield* requireFactAccess(transaction, []);
       yield* Db.lockBookForShare(transaction, command.scope);
       const retained = yield* readRetainedDrafts(transaction, command.scope.bookId, command.input);
-      const body = yield* buildImpact(transaction, retained.original, retained.replacement);
+      const body = yield* buildImpact(retained.original, retained.replacement);
       const impact = yield* decode(ImpactSchema, body);
       const basis = yield* readBasis(transaction, command.scope.bookId);
+
       return yield* decode(ImpactViewSchema, {
         impact,
         replacementBasisCurrent: basis.digest === impact.replacement.basisDigest,
@@ -457,6 +562,7 @@ export const reviewAmendment = Effect.fn("vat.reviewAmendment")(function* (
     (transaction, principal) =>
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -466,54 +572,63 @@ export const reviewAmendment = Effect.fn("vat.reviewAmendment")(function* (
           payload,
           AmendmentSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireFactAccess(transaction, ["vat_draft_amendments", "command_receipts"]);
         yield* Db.lockBookForUpdate(transaction, command.scope);
+
         const comparison: DraftComparisonInput = {
           originalDraftId: command.input.originalDraftId,
           originalDraftDigest: command.input.originalDraftDigest,
           replacementDraftId: command.input.replacementDraftId,
           replacementDraftDigest: command.input.replacementDraftDigest,
         };
-        const retained = yield* readRetainedDrafts(
-          transaction,
-          command.scope.bookId,
-          comparison,
-        );
-        const body = yield* buildImpact(transaction, retained.original, retained.replacement);
+
+        const retained = yield* readRetainedDrafts(transaction, command.scope.bookId, comparison);
+        const body = yield* buildImpact(retained.original, retained.replacement);
         const impact = yield* decode(ImpactSchema, body);
+
         if (impact.digest !== command.input.expectedImpactDigest) {
           return yield* failure("StaleDependency");
         }
+
         const basis = yield* readBasis(transaction, command.scope.bookId);
+
         if (basis.digest !== impact.replacement.basisDigest) {
           return yield* failure("StaleDependency");
         }
+
         const evidence = yield* Db.readEvidence(
           transaction,
           command.scope.bookId,
           command.input.reviewEvidenceId,
         );
+
         const sha256 = evidence[0]?.sha256;
+
         if (sha256 === undefined) return yield* failure("MissingEvidence");
+
         if (
-          (
-            yield* VatDb.readAmendmentPair(
-              transaction,
-              command.scope.bookId,
-              command.input.originalDraftId,
-              command.input.replacementDraftId,
-            )
-          ).length > 0
+          (yield* VatDb.readAmendmentPair(
+            transaction,
+            command.scope.bookId,
+            command.input.originalDraftId,
+            command.input.replacementDraftId,
+          )).length > 0
         ) {
           return yield* failure("IdempotencyConflict");
         }
-        const ordinal = (yield* VatDb.readNextAmendmentOrdinal(transaction, command.scope.bookId))[0]
-          ?.ordinal;
+
+        const ordinal = (yield* VatDb.readNextAmendmentOrdinal(
+          transaction,
+          command.scope.bookId,
+        ))[0]?.ordinal;
+
         if (ordinal === undefined || ordinal > amendmentInventoryBound) {
           return yield* unsupported();
         }
-        const amendmentBody = yield* digestBody(transaction, {
+
+        const amendmentBody = yield* digestBody({
           id: newId("vatamendment"),
           scope: command.scope,
           input: command.input,
@@ -529,6 +644,7 @@ export const reviewAmendment = Effect.fn("vat.reviewAmendment")(function* (
           filingReady: false,
           externalState: "not_submitted",
         });
+
         const amendment = yield* decode(AmendmentSchema, amendmentBody);
         yield* VatDb.insertAmendment(transaction, {
           bookId: command.scope.bookId,
@@ -548,6 +664,7 @@ export const reviewAmendment = Effect.fn("vat.reviewAmendment")(function* (
           principal.actorId,
           amendment,
         );
+
         return amendment;
       }),
     "update",
@@ -563,18 +680,27 @@ export const getAmendment = Effect.fn("vat.getAmendment")(function* (
       yield* requireFactAccess(transaction, []);
       yield* Db.lockBookForShare(transaction, command.scope);
       const row = (yield* VatDb.readAmendment(transaction, command.scope.bookId, command.id))[0];
+
       if (row === undefined) return yield* failure("NotFound");
-      const original = (
-        yield* VatDrafts.readDraft(transaction, command.scope.bookId, row.originalDraftId)
-      )[0];
-      const replacement = (
-        yield* VatDrafts.readDraft(transaction, command.scope.bookId, row.replacementDraftId)
-      )[0];
+
+      const original = (yield* VatDrafts.readDraft(
+        transaction,
+        command.scope.bookId,
+        row.originalDraftId,
+      ))[0];
+
+      const replacement = (yield* VatDrafts.readDraft(
+        transaction,
+        command.scope.bookId,
+        row.replacementDraftId,
+      ))[0];
+
       if (original === undefined || replacement === undefined) return yield* failure("NotFound");
       const amendment = yield* decode(AmendmentSchema, row.body);
       const originalDraft = yield* decode(DraftSchema, original.body);
       const replacementDraft = yield* decode(DraftSchema, replacement.body);
       const basis = yield* readBasis(transaction, command.scope.bookId);
+
       return yield* decode(AmendmentViewSchema, {
         amendment,
         originalDraft,
@@ -594,8 +720,10 @@ export const listAmendments = Effect.fn("vat.listAmendments")(function* (
       yield* requireFactAccess(transaction, []);
       yield* Db.lockBookForShare(transaction, command.scope);
       const count = yield* VatDb.countAmendments(transaction, command.scope.bookId);
+
       if ((count[0]?.amendments ?? 0) > amendmentInventoryBound) return yield* unsupported();
       const rows = yield* VatDb.listAmendmentItems(transaction, command.scope.bookId);
+
       return yield* decode(AmendmentListSchema, {
         items: rows.map((row) => row.item),
       });
@@ -614,6 +742,7 @@ export const recordFact = Effect.fn("vat.recordFact")(function* (
     (transaction, principal) =>
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -623,6 +752,7 @@ export const recordFact = Effect.fn("vat.recordFact")(function* (
           payload,
           FactSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireFactAccess(transaction, [
           "vat_fact_components",
@@ -633,19 +763,24 @@ export const recordFact = Effect.fn("vat.recordFact")(function* (
         yield* exactKeys(payload, factInputKeys);
         yield* requireDescribedFactFields(payload);
         yield* requireTaxLineSelection(command.input);
+
         const evidenceRefs = yield* readFactEvidenceRefs(
           transaction,
           command.scope.bookId,
           command.input,
         );
+
         yield* requireVoucherLink(transaction, command.scope.bookId, command.input);
+
         const expense = yield* readExpenseLinkState(
           transaction,
           command.scope.bookId,
           payload,
           command.input,
         );
+
         const component = yield* openComponent(transaction, command.scope.bookId, command.input);
+
         if (component.opened) {
           yield* VatDb.insertFactComponent(transaction, {
             bookId: command.scope.bookId,
@@ -654,9 +789,10 @@ export const recordFact = Effect.fn("vat.recordFact")(function* (
             recordClass: command.input.recordClass,
           });
         }
+
         const revisionId = newId("vatfactrev");
+
         const body = yield* digestBody(
-          transaction,
           yield* toJsonObject({
             id: revisionId,
             factId: component.factId,
@@ -675,6 +811,7 @@ export const recordFact = Effect.fn("vat.recordFact")(function* (
             },
           }),
         );
+
         yield* VatDb.insertFactRevision(transaction, {
           bookId: command.scope.bookId,
           factId: component.factId,
@@ -695,6 +832,7 @@ export const recordFact = Effect.fn("vat.recordFact")(function* (
           principal.actorId,
           result,
         );
+
         return result;
       }),
     "update",
@@ -709,6 +847,7 @@ export const returnBasis = Effect.fn("vat.returnBasis")(function* (
     Effect.gen(function* () {
       yield* requireFactAccess(transaction, []);
       yield* Db.lockBookForShare(transaction, command.scope);
+
       return yield* readBasis(transaction, command.scope.bookId);
     }),
   );
@@ -723,28 +862,41 @@ export const getFact = Effect.fn("vat.getFact")(function* (
       yield* requireFactAccess(transaction, []);
       yield* Db.lockBookForShare(transaction, command.scope);
       const revisions = yield* VatDb.readFactHistory(transaction, command.scope.bookId, command.id);
+
       if (revisions.length === 0) return yield* failure("NotFound");
+
       const history = yield* Effect.forEach(revisions, (revision) =>
         decode(FactSchema, revision.body),
       );
+
       const current = history.at(-1);
+
       if (current === undefined) return yield* failure("NotFound");
-      const withdrawn = (
-        yield* VatDb.readFactWithdrawal(transaction, command.scope.bookId, command.id)
-      )[0]?.body;
+
+      const withdrawn = (yield* VatDb.readFactWithdrawal(
+        transaction,
+        command.scope.bookId,
+        command.id,
+      ))[0]?.body;
+
       const withdrawal =
         withdrawn === undefined || withdrawn === null
           ? null
           : yield* decode(WithdrawalSchema, withdrawn);
+
       const body = yield* toJsonObject({
         current,
         history,
         withdrawal,
         lineage: yield* readLineage(transaction, command.scope.bookId, command.id),
       });
+
       const size = (yield* VatDb.readCanonicalSize(transaction, body))[0]?.bytes;
+
       if (size === undefined) return yield* failure("InternalError");
+
       if (size > lineageByteBound) return yield* unsupported();
+
       return yield* decode(FactViewSchema, body);
     }),
   );
@@ -759,9 +911,11 @@ export const getDraft = Effect.fn("vat.getDraft")(function* (
       yield* requireFactAccess(transaction, []);
       yield* Db.lockBookForShare(transaction, command.scope);
       const row = (yield* VatDrafts.readDraft(transaction, command.scope.bookId, command.id))[0];
+
       if (!row) return yield* failure("NotFound");
       const draft = yield* decode(DraftSchema, row.body);
       const basis = yield* readBasis(transaction, command.scope.bookId);
+
       return yield* decode(DraftViewSchema, {
         draft,
         basisCurrent: draft.basis.digest === basis.digest,
@@ -777,10 +931,13 @@ export const listDrafts = Effect.fn("vat.listDrafts")(function* (
   return yield* withVatBook(token, command.scope, false, (transaction) =>
     Effect.gen(function* () {
       const grants = yield* VatDb.readDraftGrants(transaction);
+
       if (grants.some((row) => !row.allowed)) return yield* unsupported();
       const counts = yield* VatDb.countDrafts(transaction, command.scope.bookId);
+
       if ((counts[0]?.drafts ?? 0) > draftInventoryBound) return yield* unsupported();
       const rows = yield* VatDb.listDraftItems(transaction, command.scope.bookId);
+
       return yield* decode(DraftListSchema, { items: rows.map((row) => row.item) });
     }),
   );

@@ -23,9 +23,11 @@ export function CompanyPosition({ work }: { work: CompanyWork }) {
   const { bank, sales, locale, to } = work;
   const sv = locale === "sv";
   const accounts = bank.isSuccess ? bank.data.accounts : undefined;
+
   const balance = accounts?.length
     ? accounts.reduce((total, account) => total + BigInt(account.ledgerBalanceMinor), 0n).toString()
     : null;
+
   return (
     <RecordSummary>
       <RecordFact label={sv ? "Bokfört på bankkonton" : "Bank accounts · ledger balance"}>
@@ -55,10 +57,13 @@ export function CompanyPosition({ work }: { work: CompanyWork }) {
 export function CompanyAttention({ work }: { work: CompanyWork }) {
   const { locale, bank, sales, base } = work;
   const sv = locale === "sv";
+
   const bankAccounts = bank.isSuccess
     ? bank.data.accounts.filter((item) => item.unmatchedCount > 0)
     : [];
+
   const overdue = sales.isSuccess ? sales.data.counts.overdue : 0;
+
   const clear =
     bank.isSuccess &&
     sales.isSuccess &&
@@ -68,6 +73,7 @@ export function CompanyAttention({ work }: { work: CompanyWork }) {
     !overdue &&
     work.journals.data.total === "0" &&
     work.expenses.data.total === "0";
+
   return (
     <TaskSection
       title={sv ? "Behöver din uppmärksamhet" : "Needs your attention"}
@@ -144,6 +150,7 @@ function ReviewTasks({ work, kind }: { work: CompanyWork; kind: "journal" | "exp
   const sv = work.locale === "sv";
   const query = kind === "journal" ? work.journals : work.expenses;
   const page = query.isSuccess ? query.data : undefined;
+
   return (
     <>
       <ReadState work={work} query={query} showPending={false} />
@@ -173,6 +180,7 @@ function ReviewTasks({ work, kind }: { work: CompanyWork; kind: "journal" | "exp
     </>
   );
 }
+
 function AttentionRow({
   work,
   item,
@@ -182,6 +190,7 @@ function AttentionRow({
 }) {
   const Icon =
     item.kind === "journal" ? BookOpen : item.kind === "expense" ? ReceiptText : FileText;
+
   return (
     <TaskRow
       href={attentionPath(work.book, item)}
@@ -200,6 +209,7 @@ function AttentionRow({
 export function ResumeInvoices({ work }: { work: CompanyWork }) {
   const sv = work.locale === "sv";
   const page = work.drafts.isSuccess ? work.drafts.data : undefined;
+
   return (
     <TaskSection
       title={sv ? "Fortsätt arbeta" : "Continue working"}
@@ -237,6 +247,7 @@ export function ResumeInvoices({ work }: { work: CompanyWork }) {
 export function CompanyBankAccounts({ work }: { work: CompanyWork }) {
   const { bank, locale, base } = work;
   const sv = locale === "sv";
+
   return (
     <TaskSection
       title={sv ? "Bankkonton" : "Bank accounts"}
@@ -289,6 +300,7 @@ export function CompanyBankAccounts({ work }: { work: CompanyWork }) {
 export function CompanyOpenInvoices({ work }: { work: CompanyWork }) {
   const { sales, locale, base } = work;
   const sv = locale === "sv";
+
   return (
     <TaskSection
       title={sv ? "Kundfakturor att följa upp" : "Customer invoices to follow up"}
@@ -359,6 +371,7 @@ type QueryState = {
   error: Error | null;
   refetch: () => Promise<unknown>;
 };
+
 function ReadState({
   work,
   query,
@@ -389,14 +402,17 @@ function ReadState({
     </>
   );
 }
+
 function money(value: string, scale: number, currency: string, locale: Locale) {
   return `${formatMinorAmount(value, scale, locale)} ${currency}`;
 }
+
 function date(value: string, locale: string) {
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(
     new Date(value),
   );
 }
+
 function accountHref(work: CompanyWork, id: string) {
   return `${work.base}/accounts?account=${encodeURIComponent(id)}&from=${work.from}&to=${work.to}`;
 }

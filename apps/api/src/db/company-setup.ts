@@ -1,5 +1,4 @@
 import { sql } from "drizzle-orm";
-import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import type { Transaction } from "./transaction";
 
@@ -170,15 +169,5 @@ export function insertCommand(
         ${JSON.stringify(row.payload)}::jsonb, ${JSON.stringify(row.result)}::jsonb)
     `,
     "objects",
-  );
-}
-
-export function digestJson(transaction: Transaction, value: JsonObject) {
-  return Effect.map(
-    transaction.execute<{ readonly digest: string }>(
-      sql`select openerp.digest(${JSON.stringify(value)}::jsonb) as digest`,
-      "objects",
-    ),
-    (rows) => rows[0]?.digest,
   );
 }

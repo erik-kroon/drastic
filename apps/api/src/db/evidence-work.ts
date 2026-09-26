@@ -5,6 +5,7 @@ import * as Schema from "effect/Schema";
 import type { Transaction } from "./transaction";
 
 type JsonObject = Schema.JsonObject;
+
 type Lock = "share" | "update";
 
 export type TableAccess = {
@@ -791,6 +792,7 @@ export function readDraftCurrentRevisions(
   occurrenceId: string,
 ) {
   if (draftIds.length === 0) return Effect.succeed<ReadonlyArray<DraftCurrentRow>>([]);
+
   return transaction.execute<DraftCurrentRow>(
     sql`
       select d.id as "draftId", r.body->'content'->>'title' as title, r.revision::text as revision,
@@ -832,6 +834,7 @@ export function readExpenseCurrentRevisions(
   occurrenceId: string,
 ) {
   if (sourceIds.length === 0) return Effect.succeed<ReadonlyArray<ExpenseCurrentRow>>([]);
+
   return transaction.execute<ExpenseCurrentRow>(
     sql`
       with selected as (
@@ -968,6 +971,7 @@ export function readRetainedProviderIds(
   if (providerIds.length === 0) {
     return Effect.succeed<ReadonlyArray<{ readonly providerId: string }>>([]);
   }
+
   return transaction.execute<{ readonly providerId: string }>(
     sql`
       select distinct o.provider_id as "providerId"

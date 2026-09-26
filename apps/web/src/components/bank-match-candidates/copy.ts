@@ -3,20 +3,23 @@ import type { Locale } from "@/paraglide/runtime";
 
 const englishBlocks = {
   account_inactive: "The mapped account is inactive.",
-  currency_mismatch: "The source, book and posted currencies must agree. Conversion is not supported.",
+  currency_mismatch:
+    "The source, book and posted currencies must agree. Conversion is not supported.",
   source_no_capacity: "The source row has no remaining capacity.",
   source_period_missing: "The source date has no accounting period.",
   source_period_ambiguous: "The source date belongs to more than one accounting period.",
   source_period_locked: "The source period is locked.",
   opposite_sign: "The source and posted amounts do not have the same sign.",
   line_no_capacity: "The posted line has no remaining capacity.",
-  tax_account_reserved: "This line is reserved by a tax-account match. Review and unmatch it before bank allocation.",
+  tax_account_reserved:
+    "This line is reserved by a tax-account match. Review and unmatch it before bank allocation.",
   reversing_voucher: "This voucher reverses another voucher.",
   reversed_voucher: "This voucher has been reversed.",
   posting_period_missing: "The posting date has no accounting period.",
   posting_period_ambiguous: "The posting date belongs to more than one accounting period.",
   posting_period_locked: "The posting period is locked.",
 } satisfies Record<typeof Candidates.BankCandidateBlock.Type, string>;
+
 const swedishBlocks = {
   account_inactive: "Det kopplade kontot är inaktivt.",
   currency_mismatch: "Källa, bok och bokföringsrad måste ha samma valuta. Omräkning stöds inte.",
@@ -26,86 +29,181 @@ const swedishBlocks = {
   source_period_locked: "Källans period är låst.",
   opposite_sign: "Källan och bokföringsraden har inte samma tecken.",
   line_no_capacity: "Bokföringsraden har inget återstående matchningsutrymme.",
-  tax_account_reserved: "Raden är reserverad av en skattekontomatchning. Granska och ångra matchningen före bankfördelning.",
+  tax_account_reserved:
+    "Raden är reserverad av en skattekontomatchning. Granska och ångra matchningen före bankfördelning.",
   reversing_voucher: "Verifikationen återför en annan verifikation.",
   reversed_voucher: "Verifikationen har återförts.",
   posting_period_missing: "Bokföringsdatumet saknar period.",
   posting_period_ambiguous: "Bokföringsdatumet ingår i flera perioder.",
   posting_period_locked: "Bokföringsperioden är låst.",
 } satisfies Record<typeof Candidates.BankCandidateBlock.Type, string>;
+
 const englishReasons = {
-  retained_relationship_history: "An exact source/line relationship exists in retained history. It may have been undone because it was wrong.",
-  statement_evidence_cited: "The voucher cites this statement's evidence. That does not identify this source row.",
-  equal_remaining_amount: "Remaining signed amounts are equal. Equal amounts do not prove identity.",
+  retained_relationship_history:
+    "An exact source/line relationship exists in retained history. It may have been undone because it was wrong.",
+  statement_evidence_cited:
+    "The voucher cites this statement's evidence. That does not identify this source row.",
+  equal_remaining_amount:
+    "Remaining signed amounts are equal. Equal amounts do not prove identity.",
   amount_proximity_heuristic: "Remaining amount distance is a heuristic, not identity evidence.",
   date_proximity_heuristic: "Date distance is a heuristic, not identity evidence.",
 } satisfies Record<typeof Candidates.BankCandidateReason.Type, string>;
+
 const swedishReasons = {
-  retained_relationship_history: "En exakt koppling mellan källa och bokföringsrad finns i historiken. Den kan ha ångrats för att den var fel.",
-  statement_evidence_cited: "Verifikationen hänvisar till kontoutdragets underlag. Det identifierar inte denna källrad.",
-  equal_remaining_amount: "Återstående belopp med tecken är lika. Lika belopp bevisar inte samma transaktion.",
-  amount_proximity_heuristic: "Avstånd mellan återstående belopp är en uppskattning, inte identitetsbevis.",
+  retained_relationship_history:
+    "En exakt koppling mellan källa och bokföringsrad finns i historiken. Den kan ha ångrats för att den var fel.",
+  statement_evidence_cited:
+    "Verifikationen hänvisar till kontoutdragets underlag. Det identifierar inte denna källrad.",
+  equal_remaining_amount:
+    "Återstående belopp med tecken är lika. Lika belopp bevisar inte samma transaktion.",
+  amount_proximity_heuristic:
+    "Avstånd mellan återstående belopp är en uppskattning, inte identitetsbevis.",
   date_proximity_heuristic: "Avstånd mellan datum är en uppskattning, inte identitetsbevis.",
 } satisfies Record<typeof Candidates.BankCandidateReason.Type, string>;
 
 export function bankCandidateCopy(locale: Locale) {
-  return locale === "sv" ? {
-    title: "Hitta möjliga bankmatchningar", statement: "Kontoutdragets ID", ordinal: "Källradens nummer",
-    help: "Läs möjliga bokföringsrader för en sparad källrad. Ingenting väljs, matchas eller bokförs automatiskt.",
-    discover: "Visa möjliga matchningar", invalid: "Ange ett giltigt kontoutdrag och radnummer mellan 1 och 10000.",
-    refresh: "Uppdatera jämförelsen", source: "Källrad", account: "Kopplat konto", window: "Hela kontoutdragsintervallet",
-    scope: "Alla bokföringsrader på det kopplade kontot i detta intervall visas, även blockerade. Andra konton och datum ingår inte. Högst 1000 rader; större urval avvisas utan trunkering.",
-    units: "Beloppen är exakta heltal i minsta valutaenhet. Valuta / decimalskala",
-    amount: "Ursprungligt belopp", used: "Redan matchat", remaining: "Återstående matchningsutrymme",
-    cutoff: "Bokföringssekvens vid läsningen", revision: "Källrevision", digest: "Jämförelsens kontrollsumma",
-    snapshot: "Detta är ett lästillfälle, inte en reservation. Ändringar efter läsningen kan göra resultatet inaktuellt. Granskad fördelning kontrollerar utrymmet igen.",
-    changed: "Underlaget har ändrats sedan föregående läsning. Granska alla rader på nytt.",
-    unchanged: "Samma underlag som vid föregående läsning. Det garanterar inte att underlaget förblir oförändrat.",
-    candidates: "Bokföringsrader i urvalet", eligible: "Möjliga att granska", equal: "Möjliga med lika återstående belopp",
-    ambiguous: "Flera rader är möjliga. Rangordningen avgör inte vilken som hör till källan.",
-    noIdentity: "Inte heller en ensam rad bevisar samma transaktion. Källtäckning är inte fastställd.",
-    ranking: "Ordning: möjliga rader, sparad kopplingshistorik, hänvisning till kontoutdrag, lika återstående belopp, beloppsavstånd, datumavstånd och stabila ID:n. Inga dolda belopps- eller datumgränser används.",
-    provider: "Leverantörens källreferens kan inte jämföras med bokföringen: ett motsvarande strukturerat fält saknas.",
-    empty: "Inga bokföringsrader finns för kontot i intervallet.", details: "Granskningsunderlag", voucher: "Verifikations-ID", line: "Bokföringsradens ID",
-    date: "Bokföringsdatum", distance: "Avstånd i minsta valutaenhet / dagar", allowed: "Kan väljas för manuell granskning", blocked: "Kan inte väljas",
-    select: "Välj identifierare för manuell granskning", selection: "Valda identifierare – ännu inte matchade",
-    manual: "Använd dessa identifierare i den granskade bankfördelningen. Ange belopp och skäl där, bekräfta osäkerheten och begär mänskligt godkännande. Detta betalar ingen faktura.",
-    evidence: "Källunderlag", sourceAccount: "Källans bankkonto", providerReference: "Sparad leverantörsreferens", unavailable: "Saknas", sameAccount: "Samma konto", sameCurrency: "Samma valuta", sameSign: "Samma tecken", yes: "Ja", no: "Nej",
-    queued: "Öppna Granskade bankfördelningar för att starta ett utkast med identifierarna. Att välja ett förslag ersätter inte ett befintligt utkast.",
-    queuedTitle: "Identifierare för ett nytt utkast", seededTitle: "Utkastets valda förslag",
-    startSeed: "Kassera utkast och använd förslaget", startBlank: "Kassera utkast och börja tomt",
-    discardWarning: "Ett nytt utkast tar bort osparade uppgifter och återförsöksnyckeln. Vid osäkert svar: försök igen oförändrat eller hämta den sparade planen innan du kasserar.",
-    seedWarning: "Förslaget kan vara inaktuellt. Endast identifierare fylls i. Ange belopp och skäl och bekräfta granskningen själv. Servern hämtar aktuellt matchningsutrymme när planen förbereds.",
-    unavailableAccount: "Inte i den aktuella kontolistan – måste granskas",
-    responseError: "Svaret hör inte till vald bok och källrad.", blocks: swedishBlocks, reasons: swedishReasons,
-  } : {
-    title: "Find bank matching candidates", statement: "Statement ID", ordinal: "Source row ordinal",
-    help: "Inspect posted lines for one retained source row. Nothing is selected, matched or posted automatically.",
-    discover: "Show candidates", invalid: "Enter a valid statement ID and a row ordinal from 1 to 10000.",
-    refresh: "Refresh comparison", source: "Source row", account: "Mapped account", window: "Full statement interval",
-    scope: "All posted lines for the mapped account in this interval are shown, including blocked lines. Other accounts and dates are outside this scope. At most 1000 lines; larger scopes refuse without truncation.",
-    units: "Amounts are exact integer minor units. Currency / scale",
-    amount: "Original amount", used: "Already allocated", remaining: "Remaining capacity",
-    cutoff: "Committed ledger sequence at read", revision: "Source revision", digest: "Comparison digest",
-    snapshot: "This is a read snapshot, not a reservation. Later changes can make it stale. Reviewed allocation checks capacity again.",
-    changed: "The basis changed since the previous read. Review every line again.",
-    unchanged: "The basis matches the previous read. This does not guarantee it will remain unchanged.",
-    candidates: "Posted lines in scope", eligible: "Eligible for review", equal: "Eligible with equal remaining amounts",
-    ambiguous: "Several lines are eligible. Ranking does not decide which belongs to the source.",
-    noIdentity: "Even one eligible line does not prove identity. Source coverage is not established.",
-    ranking: "Order: eligible lines, retained relationship history, statement evidence citation, equal remaining amount, amount distance, date distance and stable IDs. There are no hidden amount or date thresholds.",
-    provider: "The source provider reference cannot be compared with posted lines: no corresponding structured field is retained.",
-    empty: "There are no posted lines for this account in the interval.", details: "Review details", voucher: "Voucher ID", line: "Posted line ID",
-    date: "Posting date", distance: "Distance in minor units / days", allowed: "Eligible for manual review", blocked: "Not eligible",
-    select: "Select identifiers for manual review", selection: "Selected identifiers — not matched yet",
-    manual: "Use these identifiers in reviewed bank allocation. Enter the amount and reason there, acknowledge ambiguity and request human approval. This does not pay an invoice.",
-    evidence: "Source evidence", sourceAccount: "Source bank account", providerReference: "Retained provider reference", unavailable: "Not retained", sameAccount: "Same account", sameCurrency: "Same currency", sameSign: "Same sign", yes: "Yes", no: "No",
-    queued: "Open Reviewed bank allocations to start a draft with these identifiers. Selecting a candidate does not replace an existing draft.",
-    queuedTitle: "Identifiers for a new draft", seededTitle: "This draft’s selected candidate",
-    startSeed: "Discard draft and use candidate", startBlank: "Discard draft and start blank",
-    discardWarning: "A new draft discards unsaved inputs and the retry key. After an uncertain response, retry unchanged input or recover the saved plan before discarding.",
-    seedWarning: "Discovery may be stale. Only identifiers are filled. Enter the amount and reason and acknowledge review yourself. The server captures current matching capacity when it prepares the plan.",
-    unavailableAccount: "Not in the current account list — review required",
-    responseError: "The response does not belong to the selected book and source row.", blocks: englishBlocks, reasons: englishReasons,
-  };
+  return locale === "sv"
+    ? {
+        title: "Hitta möjliga bankmatchningar",
+        statement: "Kontoutdragets ID",
+        ordinal: "Källradens nummer",
+        help: "Läs möjliga bokföringsrader för en sparad källrad. Ingenting väljs, matchas eller bokförs automatiskt.",
+        discover: "Visa möjliga matchningar",
+        invalid: "Ange ett giltigt kontoutdrag och radnummer mellan 1 och 10000.",
+        refresh: "Uppdatera jämförelsen",
+        source: "Källrad",
+        account: "Kopplat konto",
+        window: "Hela kontoutdragsintervallet",
+        scope:
+          "Alla bokföringsrader på det kopplade kontot i detta intervall visas, även blockerade. Andra konton och datum ingår inte. Högst 1000 rader; större urval avvisas utan trunkering.",
+        units: "Beloppen är exakta heltal i minsta valutaenhet. Valuta / decimalskala",
+        amount: "Ursprungligt belopp",
+        used: "Redan matchat",
+        remaining: "Återstående matchningsutrymme",
+        cutoff: "Bokföringssekvens vid läsningen",
+        revision: "Källrevision",
+        digest: "Jämförelsens kontrollsumma",
+        snapshot:
+          "Detta är ett lästillfälle, inte en reservation. Ändringar efter läsningen kan göra resultatet inaktuellt. Granskad fördelning kontrollerar utrymmet igen.",
+        changed: "Underlaget har ändrats sedan föregående läsning. Granska alla rader på nytt.",
+        unchanged:
+          "Samma underlag som vid föregående läsning. Det garanterar inte att underlaget förblir oförändrat.",
+        candidates: "Bokföringsrader i urvalet",
+        eligible: "Möjliga att granska",
+        equal: "Möjliga med lika återstående belopp",
+        ambiguous: "Flera rader är möjliga. Rangordningen avgör inte vilken som hör till källan.",
+        noIdentity:
+          "Inte heller en ensam rad bevisar samma transaktion. Källtäckning är inte fastställd.",
+        ranking:
+          "Ordning: möjliga rader, sparad kopplingshistorik, hänvisning till kontoutdrag, lika återstående belopp, beloppsavstånd, datumavstånd och stabila ID:n. Inga dolda belopps- eller datumgränser används.",
+        provider:
+          "Leverantörens källreferens kan inte jämföras med bokföringen: ett motsvarande strukturerat fält saknas.",
+        empty: "Inga bokföringsrader finns för kontot i intervallet.",
+        details: "Granskningsunderlag",
+        voucher: "Verifikations-ID",
+        line: "Bokföringsradens ID",
+        date: "Bokföringsdatum",
+        distance: "Avstånd i minsta valutaenhet / dagar",
+        allowed: "Kan väljas för manuell granskning",
+        blocked: "Kan inte väljas",
+        select: "Välj identifierare för manuell granskning",
+        selection: "Valda identifierare – ännu inte matchade",
+        manual:
+          "Använd dessa identifierare i den granskade bankfördelningen. Ange belopp och skäl där, bekräfta osäkerheten och begär mänskligt godkännande. Detta betalar ingen faktura.",
+        evidence: "Källunderlag",
+        sourceAccount: "Källans bankkonto",
+        providerReference: "Sparad leverantörsreferens",
+        unavailable: "Saknas",
+        sameAccount: "Samma konto",
+        sameCurrency: "Samma valuta",
+        sameSign: "Samma tecken",
+        yes: "Ja",
+        no: "Nej",
+        queued:
+          "Öppna Granskade bankfördelningar för att starta ett utkast med identifierarna. Att välja ett förslag ersätter inte ett befintligt utkast.",
+        queuedTitle: "Identifierare för ett nytt utkast",
+        seededTitle: "Utkastets valda förslag",
+        startSeed: "Kassera utkast och använd förslaget",
+        startBlank: "Kassera utkast och börja tomt",
+        discardWarning:
+          "Ett nytt utkast tar bort osparade uppgifter och återförsöksnyckeln. Vid osäkert svar: försök igen oförändrat eller hämta den sparade planen innan du kasserar.",
+        seedWarning:
+          "Förslaget kan vara inaktuellt. Endast identifierare fylls i. Ange belopp och skäl och bekräfta granskningen själv. Servern hämtar aktuellt matchningsutrymme när planen förbereds.",
+        unavailableAccount: "Inte i den aktuella kontolistan – måste granskas",
+        responseError: "Svaret hör inte till vald bok och källrad.",
+        blocks: swedishBlocks,
+        reasons: swedishReasons,
+      }
+    : {
+        title: "Find bank matching candidates",
+        statement: "Statement ID",
+        ordinal: "Source row ordinal",
+        help: "Inspect posted lines for one retained source row. Nothing is selected, matched or posted automatically.",
+        discover: "Show candidates",
+        invalid: "Enter a valid statement ID and a row ordinal from 1 to 10000.",
+        refresh: "Refresh comparison",
+        source: "Source row",
+        account: "Mapped account",
+        window: "Full statement interval",
+        scope:
+          "All posted lines for the mapped account in this interval are shown, including blocked lines. Other accounts and dates are outside this scope. At most 1000 lines; larger scopes refuse without truncation.",
+        units: "Amounts are exact integer minor units. Currency / scale",
+        amount: "Original amount",
+        used: "Already allocated",
+        remaining: "Remaining capacity",
+        cutoff: "Committed ledger sequence at read",
+        revision: "Source revision",
+        digest: "Comparison digest",
+        snapshot:
+          "This is a read snapshot, not a reservation. Later changes can make it stale. Reviewed allocation checks capacity again.",
+        changed: "The basis changed since the previous read. Review every line again.",
+        unchanged:
+          "The basis matches the previous read. This does not guarantee it will remain unchanged.",
+        candidates: "Posted lines in scope",
+        eligible: "Eligible for review",
+        equal: "Eligible with equal remaining amounts",
+        ambiguous:
+          "Several lines are eligible. Ranking does not decide which belongs to the source.",
+        noIdentity:
+          "Even one eligible line does not prove identity. Source coverage is not established.",
+        ranking:
+          "Order: eligible lines, retained relationship history, statement evidence citation, equal remaining amount, amount distance, date distance and stable IDs. There are no hidden amount or date thresholds.",
+        provider:
+          "The source provider reference cannot be compared with posted lines: no corresponding structured field is retained.",
+        empty: "There are no posted lines for this account in the interval.",
+        details: "Review details",
+        voucher: "Voucher ID",
+        line: "Posted line ID",
+        date: "Posting date",
+        distance: "Distance in minor units / days",
+        allowed: "Eligible for manual review",
+        blocked: "Not eligible",
+        select: "Select identifiers for manual review",
+        selection: "Selected identifiers — not matched yet",
+        manual:
+          "Use these identifiers in reviewed bank allocation. Enter the amount and reason there, acknowledge ambiguity and request human approval. This does not pay an invoice.",
+        evidence: "Source evidence",
+        sourceAccount: "Source bank account",
+        providerReference: "Retained provider reference",
+        unavailable: "Not retained",
+        sameAccount: "Same account",
+        sameCurrency: "Same currency",
+        sameSign: "Same sign",
+        yes: "Yes",
+        no: "No",
+        queued:
+          "Open Reviewed bank allocations to start a draft with these identifiers. Selecting a candidate does not replace an existing draft.",
+        queuedTitle: "Identifiers for a new draft",
+        seededTitle: "This draft’s selected candidate",
+        startSeed: "Discard draft and use candidate",
+        startBlank: "Discard draft and start blank",
+        discardWarning:
+          "A new draft discards unsaved inputs and the retry key. After an uncertain response, retry unchanged input or recover the saved plan before discarding.",
+        seedWarning:
+          "Discovery may be stale. Only identifiers are filled. Enter the amount and reason and acknowledge review yourself. The server captures current matching capacity when it prepares the plan.",
+        unavailableAccount: "Not in the current account list — review required",
+        responseError: "The response does not belong to the selected book and source row.",
+        blocks: englishBlocks,
+        reasons: englishReasons,
+      };
 }

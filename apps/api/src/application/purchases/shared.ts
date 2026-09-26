@@ -10,12 +10,17 @@ import * as PurchaseDb from "../../db/purchases/shared";
 export { PurchaseDb };
 
 export type Scope = typeof Accounting.Scope.Type;
+
 export type Principal = VerifiedPrincipal;
+
 export type Json = Schema.Json;
+
 export type JsonObject = Schema.JsonObject;
 
 export const commerceProfile = "synthetic-core-v1";
+
 export const commerceAuthority = "native";
+
 export const accountColumns = [
   "books.profile",
   "books.authority",
@@ -35,12 +40,19 @@ const mutableColumns = new Map([
 ]);
 
 export const draftKeyPattern = /^[a-z][a-z0-9_-]{2,127}$/;
+
 export const lineIdPattern = /^[a-z][a-z0-9_-]{2,127}$/;
+
 export const quantityPattern = /^([1-9][0-9]{0,11}|(0|[1-9][0-9]{0,11})\.[0-9]{0,5}[1-9])$/;
+
 export const minorPattern = /^(0|[1-9][0-9]{0,37})$/;
+
 export const digestPattern = /^sha256:[a-f0-9]{64}$/;
+
 export const seriesPattern = /^[A-Z0-9]{1,16}$/;
+
 export const datePattern = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
+
 export const identifierPattern = /^[a-z][a-z0-9_-]{2,127}$/;
 
 export function unsupported() {
@@ -80,10 +92,13 @@ function mutableColumnNames(table: string) {
 
 function requireMutableColumns(transaction: Transaction, tables: ReadonlyArray<string>) {
   if (tables.length === 0) return Effect.void;
+
   if (tables.some((table) => mutableColumnNames(table).length === 0)) return unsupported();
+
   const names = tables.flatMap((table) =>
     mutableColumnNames(table).map((column) => `${table}.${column}`),
   );
+
   return PurchaseDb.readColumnUpdateAccess(transaction, names).pipe(
     Effect.flatMap((rows) =>
       rows.length === names.length && rows.every((row) => row.canUpdate)
@@ -100,11 +115,16 @@ export function requireTables(
   updates: ReadonlyArray<string> = [],
 ) {
   return Effect.gen(function* () {
-    const rows = yield* PurchaseDb.readTableAccess(transaction);
+    const rows = yield* PurchaseDb.readTableAccess(transaction, [
+      ...new Set([...selects, ...inserts]),
+    ]);
+
     const find = (name: string) => rows.find((row) => row.tableName === name);
+
     const denied =
       selects.some((name) => find(name)?.canSelect !== true) ||
       inserts.some((name) => find(name)?.canInsert !== true);
+
     if (denied) return yield* unsupported();
     yield* requireMutableColumns(transaction, updates);
   });
@@ -115,8 +135,10 @@ export function requireColumns(transaction: Transaction, names: ReadonlyArray<st
     Effect.flatMap((rows) => {
       const denied = names.some((name) => {
         const access = rows.find((row) => row.columnName === name);
+
         return access === undefined || !access.canSelect;
       });
+
       return denied ? unsupported() : Effect.void;
     }),
   );
@@ -126,6 +148,7 @@ export function readBook(transaction: Transaction, bookId: string) {
   return PurchaseDb.lockBook(transaction, bookId, "update").pipe(
     Effect.flatMap((rows) => {
       const book = rows[0];
+
       return book ? Effect.succeed(book) : failure("Forbidden");
     }),
   );
@@ -143,26 +166,31 @@ export function isJsonObject(value: unknown): value is JsonObject {
 
 export function objectField(value: Json | undefined | null, key: string): JsonObject {
   const candidate = isJsonObject(value) ? value[key] : undefined;
+
   return isJsonObject(candidate) ? candidate : {};
 }
 
 export function arrayField(value: Json | undefined | null, key: string): ReadonlyArray<Json> {
   const candidate = isJsonObject(value) ? value[key] : undefined;
+
   return Array.isArray(candidate) ? candidate : [];
 }
 
 export function textField(value: Json | undefined | null, key: string) {
   const candidate = isJsonObject(value) ? value[key] : undefined;
+
   return typeof candidate === "string" ? candidate : undefined;
 }
 
 export function booleanField(value: Json | undefined | null, key: string) {
   const candidate = isJsonObject(value) ? value[key] : undefined;
+
   return typeof candidate === "boolean" ? candidate : undefined;
 }
 
 export function numberField(value: Json | undefined | null, key: string) {
   const candidate = isJsonObject(value) ? value[key] : undefined;
+
   return typeof candidate === "number" ? candidate : undefined;
 }
 
@@ -177,7 +205,9 @@ export function sameJson(left: Json | undefined | null, right: Json | undefined 
 export function canonicalText(value: JsonObject) {
   return Effect.gen(function* () {
     const canonical = yield* Effect.sync(() => canonicalizeJson(value));
+
     if (canonical._tag === "Failure") return yield* failure("InternalError");
+
     return canonical.success.json;
   });
 }
@@ -202,6 +232,7 @@ export function readEvidenceReference(
   return PurchaseDb.readEvidence(transaction, bookId, evidenceId).pipe(
     Effect.flatMap((rows) => {
       const row = rows[0];
+
       return row
         ? Effect.succeed(evidenceReference(row.id, row.sha256))
         : failure("MissingEvidence");

@@ -30,8 +30,10 @@ export function useSavedPostingRequests(
         Recovery.SavedPostingRequests,
         { signal },
       );
+
       if (result.scope.bookId !== book.id || result.scope.entityId !== book.entityId)
         throw new Error("Response scope mismatch");
+
       return result;
     },
     retry: false,
@@ -47,6 +49,7 @@ export function SavedPostingOutcome({
   locale: Locale;
 }) {
   const copy = postingCopy(locale);
+
   return (
     <Box role="status" display="grid" gap="sm" minWidth="zero">
       <Text>
@@ -91,6 +94,7 @@ export function SavedPostingRequestsPanel(props: {
   const [after, setAfter] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const list = useSavedPostingRequests(book, after);
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.savedTitle}</Heading>
@@ -175,11 +179,13 @@ type SavedDetailProps = {
 
 function SavedRequestDetail(props: SavedDetailProps) {
   const copy = postingCopy(props.locale);
+
   const detail = useQuery({
     queryKey: [...bookKey(props.book), "posting-saved", props.requestKey],
     queryFn: ({ signal }) => readSavedPostingRequest(props.book, props.requestKey, signal),
     retry: false,
   });
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.savedCommand}</Heading>
@@ -222,6 +228,7 @@ function matchesSavedPlan(
   plan: typeof Recovery.PostingRecovery.Type | undefined,
 ) {
   if (command.operation !== "approve_change" && command.operation !== "execute_change") return true;
+
   return (
     plan !== undefined &&
     plan.scope.bookId === book.id &&
@@ -243,10 +250,12 @@ function SavedRequestActions(
   const client = useQueryClient();
   const [reviewed, setReviewed] = useState(false);
   const command = saved.command;
+
   const proposalId =
     command.operation === "approve_change" || command.operation === "execute_change"
       ? command.id
       : null;
+
   const plan = useQuery({
     queryKey: [...bookKey(book), "posting-recovery", "saved-review", proposalId],
     queryFn: ({ signal }) =>
@@ -258,6 +267,7 @@ function SavedRequestActions(
     enabled: proposalId !== null,
     retry: false,
   });
+
   const run = useMutation({
     mutationFn: (newRequest: boolean) =>
       newRequest
@@ -278,13 +288,17 @@ function SavedRequestActions(
       void client.invalidateQueries({ queryKey: bookKey(book) });
     },
   });
+
   const planReady =
     proposalId === null ||
     (!plan.isError && !plan.isFetching && matchesSavedPlan(book, command, plan.data));
+
   const busy = props.refreshing || run.isPending;
+
   const authorityAllowed =
     (command.operation !== "approve_change" && command.operation !== "revoke_approval") ||
     book.role === "operator";
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Box>
@@ -296,6 +310,7 @@ function SavedRequestActions(
             run.reset();
             setReviewed(false);
             props.onRefresh();
+
             if (proposalId !== null) void plan.refetch();
           }}
         >
@@ -384,6 +399,7 @@ function SavedProposalContent(props: {
   accounts: typeof Accounting.BookSetup.Type.accounts;
 }) {
   const copy = postingCopy(props.locale);
+
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <Text>
@@ -414,8 +430,10 @@ function SavedRequestResult(props: {
   onEvidence: (evidence: typeof Accounting.Evidence.Type) => void;
 }) {
   const copy = postingCopy(props.locale);
+
   if (props.saved.outcome?.state !== "committed") return null;
   const result = props.saved.outcome.result;
+
   if (
     props.saved.command.operation === "prepare_journal" &&
     Schema.is(Accounting.ChangeSet)(result)
@@ -427,6 +445,7 @@ function SavedRequestResult(props: {
         </Button>
       </Box>
     );
+
   if (props.saved.command.operation === "create_evidence" && Schema.is(Accounting.Evidence)(result))
     return (
       <Box>
@@ -435,5 +454,6 @@ function SavedRequestResult(props: {
         </Button>
       </Box>
     );
+
   return null;
 }

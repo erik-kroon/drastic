@@ -38,8 +38,9 @@ export const vatCapabilities = {
     Capabilities.vat_return_compare_drafts,
     compareDrafts,
   ),
-  vat_return_get_amendment: effectCapability(Capabilities.vat_return_get_amendment, (token, input) =>
-    getAmendment(token, { scope: input.scope, id: input.amendmentId }),
+  vat_return_get_amendment: effectCapability(
+    Capabilities.vat_return_get_amendment,
+    (token, input) => getAmendment(token, { scope: input.scope, id: input.amendmentId }),
   ),
   vat_return_list_amendments: effectCapability(
     Capabilities.vat_return_list_amendments,
@@ -57,10 +58,7 @@ export const vatCapabilities = {
     getDraft(token, { scope: input.scope, id: input.draftId }),
   ),
   vat_return_list_drafts: effectCapability(Capabilities.vat_return_list_drafts, listDrafts),
-  expense_tax_record_source: effectCapability(
-    Capabilities.expense_tax_record_source,
-    recordSource,
-  ),
+  expense_tax_record_source: effectCapability(Capabilities.expense_tax_record_source, recordSource),
   expense_tax_inventory: effectCapability(Capabilities.expense_tax_inventory, inventory),
   expense_tax_get_source: effectCapability(Capabilities.expense_tax_get_source, (token, input) =>
     getSource(token, { scope: input.scope, id: input.sourceId }),
@@ -69,8 +67,9 @@ export const vatCapabilities = {
     Capabilities.expense_tax_prepare_snapshot,
     prepareSnapshot,
   ),
-  expense_tax_get_snapshot: effectCapability(Capabilities.expense_tax_get_snapshot, (token, input) =>
-    getSnapshot(token, { scope: input.scope, id: input.snapshotId }),
+  expense_tax_get_snapshot: effectCapability(
+    Capabilities.expense_tax_get_snapshot,
+    (token, input) => getSnapshot(token, { scope: input.scope, id: input.snapshotId }),
   ),
   expense_tax_list_snapshots: effectCapability(
     Capabilities.expense_tax_list_snapshots,

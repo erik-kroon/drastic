@@ -55,6 +55,7 @@ const styles = stylex.create({
     "@media (pointer: coarse)": { minWidth: 44, minHeight: 44 },
   },
 });
+
 export function FormDialog({
   title,
   closeLabel,
@@ -75,8 +76,10 @@ export function FormDialog({
       onOpenChange={(open, event) => {
         if (event.reason === "escape-key") {
           event.cancel();
+
           return;
         }
+
         if (!open) onClose();
       }}
     >

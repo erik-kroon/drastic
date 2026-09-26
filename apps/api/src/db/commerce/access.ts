@@ -11,10 +11,6 @@ export type TableAccess = {
   readonly canUpdate: boolean;
 };
 
-export type DigestRow = { readonly digest: string };
-
-export type JsonTextRow = { readonly text: string };
-
 export type InstantRow = { readonly instant: string };
 
 export type EvidenceRow = {
@@ -48,20 +44,6 @@ export function readTableAccess(transaction: Transaction, tableNames: ReadonlyAr
         sql`, `,
       )}]::text[]) as requested(table_name)
     `,
-    "objects",
-  );
-}
-
-export function digestJson(transaction: Transaction, value: JsonObject) {
-  return transaction.execute<DigestRow>(
-    sql`select openerp.digest(${JSON.stringify(value)}::jsonb) as digest`,
-    "objects",
-  );
-}
-
-export function canonicalJson(transaction: Transaction, value: JsonObject) {
-  return transaction.execute<JsonTextRow>(
-    sql`select openerp.canonical(${JSON.stringify(value)}::jsonb) as text`,
     "objects",
   );
 }

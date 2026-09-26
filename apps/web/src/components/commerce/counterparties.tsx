@@ -55,15 +55,21 @@ export function counterpartyRegisterOptions(book: CommerceProps["book"], search 
     initialPageParam: "",
     queryFn: async ({ signal, pageParam }) => {
       const params = new URLSearchParams();
+
       if (search) params.set("search", search);
+
       if (role) params.set("role", role);
+
       if (pageParam) params.set("after", pageParam);
+
       const result = await readAccounting(
         `${commercePath(book)}/directory?${params}`,
         Crm.DirectoryPage,
         { signal },
       );
+
       result.items.forEach(({ party }) => checkScope(book, party.scope));
+
       return result;
     },
     getNextPageParam: (last) => last.next ?? undefined,
@@ -87,34 +93,44 @@ export function Counterparties(
   const [role, setRole] = useState(props.defaultRole ?? "");
   const selected = props.recordId ?? local;
   const select = props.onOpen ?? setLocal;
+
   const page = useInfiniteQuery({
     ...counterpartyRegisterOptions(book, search, role),
     enabled: !selected || selected === "new",
   });
+
   const exportDirectory = useQuery({
     queryKey: [...commerceKey(book), "crm-directory-export", search, role],
     queryFn: async ({ signal }) => {
       const params = new URLSearchParams();
+
       if (search) params.set("search", search);
+
       if (role) params.set("role", role);
+
       const result = await readAccounting(
         `${commercePath(book)}/directory/export?${params}`,
         Crm.DirectoryExport,
         { signal },
       );
+
       checkScope(book, result.scope);
       result.items.forEach(({ party }) => checkScope(book, party.scope));
+
       return result;
     },
     enabled: false,
     retry: false,
   });
+
   const roles = {
     customer: labels.customer,
     supplier: labels.supplier,
     both: labels.customerSupplier,
   };
+
   const items = page.data?.pages.flatMap((batch) => batch.items) ?? [];
+
   if (selected && selected !== "new")
     return (
       <Box display="grid" gap="xl">
@@ -127,6 +143,7 @@ export function Counterparties(
         <ContactDetail {...props} id={selected} />
       </Box>
     );
+
   return (
     <Box display="grid" gap="xl">
       <RecordHeading
@@ -260,10 +277,12 @@ export function Counterparties(
     </Box>
   );
 }
+
 function ContactDetail(props: CommerceProps & { id: string }) {
   const sv = props.locale === "sv";
   const labels = sv ? swedish : english;
   const [editing, setEditing] = useState(false);
+
   const party = useQuery({
     queryKey: [...commerceKey(props.book), "counterparty", props.id, ""],
     queryFn: async ({ signal }) => {
@@ -272,12 +291,16 @@ function ContactDetail(props: CommerceProps & { id: string }) {
         Commerce.CounterpartyRevision,
         { signal },
       );
+
       checkScope(props.book, result.scope);
+
       if (result.id !== props.id) throw new Error("Contact identity mismatch");
+
       return result;
     },
     retry: false,
   });
+
   return (
     <Box display="grid" gap="xl">
       <AccountingStatus locale={props.locale} pending={party.isPending} error={party.error} />
@@ -344,26 +367,34 @@ function Annotations({
   const evidenceId = useRef<string | null>(null);
   const [open, setOpen] = useState(false);
   const [invalid, setInvalid] = useState(false);
+
   const directory = useQuery({
     queryKey: [...commerceKey(book), "crm-directory", "detail", partyId, partyName],
     queryFn: async ({ signal }) => {
       let after: string | null = null;
+
       do {
         const params = new URLSearchParams({ search: partyName });
+
         if (after) params.set("after", after);
+
         const result = await readAccounting(
           `${commercePath(book)}/directory?${params}`,
           Crm.DirectoryPage,
           { signal },
         );
+
         const entry = result.items.find((item) => item.party.id === partyId);
+
         if (entry) return entry.annotations;
         after = result.next;
       } while (after);
+
       throw new Error(sv ? "Kontakten finns inte i katalogen." : "Contact not found in directory.");
     },
     retry: false,
   });
+
   const save = useMutation({
     mutationFn: async (input: {
       kind: "contact" | "alias" | "registry_provenance";
@@ -372,6 +403,7 @@ function Annotations({
     }) => {
       if (!requests.data || requests.isError)
         throw new Error(sv ? "Behörigheten kunde inte läsas." : "Your access could not be loaded.");
+
       const source = evidenceId.current
         ? null
         : await sendSavedPostingCommand({
@@ -390,6 +422,7 @@ function Annotations({
               ? "Tillåt lokal lagring för att spara uppgiften."
               : "Allow local storage to save this detail.",
           });
+
       if (source) {
         if (
           source.outcome?.state !== "committed" ||
@@ -402,7 +435,9 @@ function Annotations({
           );
         evidenceId.current = source.outcome.result.id;
       }
+
       if (!evidenceId.current) throw new Error(sv ? "Underlag saknas." : "Evidence is missing.");
+
       return readAccounting(`${commercePath(book)}/directory/annotations`, Crm.Annotation, {
         method: "POST",
         headers: { "Idempotency-Key": key.current },
@@ -423,6 +458,7 @@ function Annotations({
     },
     retry: false,
   });
+
   return (
     <RecordSection title={sv ? "Kontakter, alias och ursprung" : "Contacts, aliases & provenance"}>
       <PageCaption>
@@ -476,8 +512,10 @@ function Annotations({
             gap="lg"
             onSubmit={(event) => {
               event.preventDefault();
+
               if (save.isPending || save.isSuccess) return;
               const fields = new FormData(event.currentTarget);
+
               const parsed = Schema.decodeUnknownOption(Crm.AddAnnotation)({
                 partyId,
                 kind: fields.get("kind"),
@@ -485,7 +523,9 @@ function Annotations({
                 detail: fields.get("detail"),
                 evidenceId: "pending",
               });
+
               setInvalid(parsed._tag === "None");
+
               if (parsed._tag === "Some")
                 save.mutate({
                   kind: parsed.value.kind,
@@ -588,6 +628,7 @@ const english = {
   changesAreRetainedAsNew:
     "Changes are retained as new revisions. Legal identity has not been verified.",
 };
+
 const swedish: typeof english = {
   customer: "Kund",
   supplier: "Leverantör",

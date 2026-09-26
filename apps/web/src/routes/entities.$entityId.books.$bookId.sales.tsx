@@ -8,6 +8,7 @@ import { CatalogArticles } from "@/components/commerce/catalog-articles";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { Link } from "@open-erp/ui/components/link";
 import { PageContent } from "@open-erp/ui/components/accounting-page";
+
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/sales")({
   validateSearch: Schema.decodeUnknownSync(
     Schema.Struct({
@@ -41,11 +42,16 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/sales")(
   ),
   component: Page,
 });
+
 function Page() {
   const search = Route.useSearch();
+
   if (search.view === "orders") return <OrdersPage />;
+
   if (search.view === "articles") return <CatalogPage />;
+
   if (search.view === "collections") return <CollectionsPage />;
+
   return (
     <SalesWorkspace
       search={{
@@ -61,24 +67,39 @@ function Page() {
 
 function OrdersPage() {
   const { book, locale } = useBookWorkspace();
-  return <PageContent>
-    <Link href={`${workspacePath(book)}/sales`}>{locale === "sv" ? "Till fakturor" : "Back to invoices"}</Link>
-    <SalesOrders book={book} locale={locale} />
-  </PageContent>;
+
+  return (
+    <PageContent>
+      <Link href={`${workspacePath(book)}/sales`}>
+        {locale === "sv" ? "Till fakturor" : "Back to invoices"}
+      </Link>
+      <SalesOrders book={book} locale={locale} />
+    </PageContent>
+  );
 }
 
 function CatalogPage() {
   const { book, locale } = useBookWorkspace();
-  return <PageContent>
-    <Link href={`${workspacePath(book)}/sales`}>{locale === "sv" ? "Till fakturor" : "Back to invoices"}</Link>
-    <CatalogArticles book={book} locale={locale} />
-  </PageContent>;
+
+  return (
+    <PageContent>
+      <Link href={`${workspacePath(book)}/sales`}>
+        {locale === "sv" ? "Till fakturor" : "Back to invoices"}
+      </Link>
+      <CatalogArticles book={book} locale={locale} />
+    </PageContent>
+  );
 }
 
 function CollectionsPage() {
   const { book, locale } = useBookWorkspace();
-  return <PageContent>
-    <Link href={`${workspacePath(book)}/sales`}>{locale === "sv" ? "Till fakturor" : "Back to invoices"}</Link>
-    <CollectionsWorkspace book={book} locale={locale} />
-  </PageContent>;
+
+  return (
+    <PageContent>
+      <Link href={`${workspacePath(book)}/sales`}>
+        {locale === "sv" ? "Till fakturor" : "Back to invoices"}
+      </Link>
+      <CollectionsWorkspace book={book} locale={locale} />
+    </PageContent>
+  );
 }

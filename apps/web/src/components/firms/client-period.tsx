@@ -31,10 +31,14 @@ export function ClientPeriod({
 }) {
   const setup = useQuery(clientPeriodQueryOptions(book));
   const sv = locale === "sv";
+
   if (setup.isError) return sv ? "Ej tillgängligt" : "Unavailable";
+
   if (setup.isPending) return "…";
   const period = latestClientPeriod(setup.data);
+
   if (!period) return sv ? "Ingen period" : "No period";
+
   return (
     <Box display="grid" gap="sm">
       <Link

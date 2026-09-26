@@ -1,6 +1,7 @@
 export function expenseTaxCopy(locale: "en" | "sv") {
   return locale === "sv" ? sv : en;
 }
+
 const en = {
   title: "Expense tax review",
   value: "Value",
@@ -132,6 +133,7 @@ const en = {
   openProposal: "Open kernel proposal",
   noSnapshots: "No review snapshots retained.",
 };
+
 const sv: typeof en = {
   title: "Granska moms på utgifter",
   value: "Värde",

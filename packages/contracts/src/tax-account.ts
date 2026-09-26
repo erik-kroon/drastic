@@ -5,7 +5,9 @@ import { accountingErrors } from "./accounting-errors";
 import { CommandReceipt } from "./reconciliation";
 
 const SourceKey = Schema.String.check(Schema.isPattern(/^[a-zA-Z0-9_-]{1,128}$/));
+
 const SourceAmount = Schema.String.check(Schema.isPattern(/^(0|-?[1-9][0-9]{0,37})$/));
+
 export const TaxAccountEventInput = Schema.Struct({
   eventKey: SourceKey,
   occurredOn: A.AccountingDate,
@@ -21,6 +23,7 @@ export const TaxAccountEventInput = Schema.Struct({
   ]),
   description: A.Description,
 });
+
 export const RecordTaxAccountStatement = Schema.Struct({
   recordClass: Schema.Literal("synthetic"),
   balanceConvention: Schema.Literal("debit_minus_credit"),
@@ -39,6 +42,7 @@ export const RecordTaxAccountStatement = Schema.Struct({
   closingMinor: SourceAmount,
   rows: Schema.Array(TaxAccountEventInput).check(Schema.isMaxLength(1000)),
 });
+
 export const TaxAccountStatement = Schema.Struct({
   id: A.Identifier,
   digest: A.Digest,
@@ -55,6 +59,7 @@ export const TaxAccountStatement = Schema.Struct({
   createdAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 export const ResolveTaxAccountEventClassification = Schema.Struct({
   expectedStatementDigest: A.Digest,
   classification: Schema.Literals([
@@ -68,6 +73,7 @@ export const ResolveTaxAccountEventClassification = Schema.Struct({
   evidenceId: A.Identifier,
   rationale: A.Description,
 });
+
 export const TaxAccountEventResolution = Schema.Struct({
   id: A.Identifier,
   digest: A.Digest,
@@ -80,12 +86,14 @@ export const TaxAccountEventResolution = Schema.Struct({
   createdAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 export const TaxAccountResolutionReference = Schema.Struct({
   id: A.Identifier,
   digest: A.Digest,
   eventId: A.Identifier,
   classification: ResolveTaxAccountEventClassification.fields.classification,
 });
+
 export const TaxAccountEventClassificationView = Schema.Struct({
   statementId: A.Identifier,
   statementDigest: A.Digest,
@@ -93,14 +101,17 @@ export const TaxAccountEventClassificationView = Schema.Struct({
   resolution: Schema.NullOr(TaxAccountEventResolution),
   effectiveClassification: TaxAccountEventInput.fields.classification,
 });
+
 export const TaxAccountUnclassifiedCursor = Schema.String.check(
   Schema.isMaxLength(199),
   Schema.isPattern(/^taue1:[a-f0-9]{64}:[a-z][a-z0-9_-]{2,127}$/),
 );
+
 export const TaxAccountUnclassifiedEventQuery = Schema.Struct({
   accountId: A.Identifier,
   after: Schema.optional(TaxAccountUnclassifiedCursor),
 });
+
 export const TaxAccountUnclassifiedEventPage = Schema.Struct({
   scope: A.Scope,
   accountId: A.Identifier,
@@ -109,6 +120,7 @@ export const TaxAccountUnclassifiedEventPage = Schema.Struct({
   next: Schema.NullOr(TaxAccountUnclassifiedCursor),
   consistency: Schema.Literal("live_unclassified_events"),
 });
+
 export const TaxAccountStatementList = Schema.Struct({
   items: Schema.Array(
     Schema.Struct({
@@ -123,12 +135,14 @@ export const TaxAccountStatementList = Schema.Struct({
     }),
   ),
 });
+
 export const SelectTaxAccountMatch = Schema.Struct({
   eventId: A.Identifier,
   statementDigest: A.Digest,
   voucherId: A.Identifier,
   lineId: A.Identifier,
 });
+
 export const TaxAccountMatchBasis = Schema.Struct({
   scope: A.Scope,
   selection: SelectTaxAccountMatch,
@@ -160,17 +174,20 @@ export const TaxAccountMatchBasis = Schema.Struct({
   }),
   digest: A.Digest,
 });
+
 export const MatchTaxAccountEvent = Schema.Struct({
   selection: SelectTaxAccountMatch,
   expectedBasisDigest: A.Digest,
   evidenceId: A.Identifier,
   rationale: A.Description,
 });
+
 export const UnmatchTaxAccountEvent = Schema.Struct({
   expectedDigest: A.Digest,
   evidenceId: A.Identifier,
   rationale: A.Description,
 });
+
 export const TaxAccountMatch = Schema.Struct({
   id: A.Identifier,
   digest: A.Digest,
@@ -181,6 +198,7 @@ export const TaxAccountMatch = Schema.Struct({
   createdAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 export const TaxAccountUnmatch = Schema.Struct({
   id: A.Identifier,
   digest: A.Digest,
@@ -191,12 +209,14 @@ export const TaxAccountUnmatch = Schema.Struct({
   createdAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 export const TaxAccountMatchView = Schema.Struct({
   match: TaxAccountMatch,
   unmatch: Schema.NullOr(TaxAccountUnmatch),
   active: Schema.Boolean,
   usable: Schema.Boolean,
 });
+
 export const TaxAccountMatchDetail = Schema.Struct({
   ...TaxAccountMatchView.fields,
   subledgerBasisReference: Schema.NullOr(
@@ -209,6 +229,7 @@ export const TaxAccountMatchDetail = Schema.Struct({
   ),
   roleCompatibilityAssessed: Schema.Literal(false),
 });
+
 export const TaxAccountMatchList = Schema.Struct({ items: Schema.Array(TaxAccountMatchView) });
 
 export const CreateTaxAccountControl = Schema.Struct({
@@ -216,6 +237,7 @@ export const CreateTaxAccountControl = Schema.Struct({
   startsOn: A.AccountingDate,
   endsOn: A.AccountingDate,
 });
+
 export const TaxAccountControl = Schema.Struct({
   id: A.Identifier,
   digest: A.Digest,
@@ -307,6 +329,7 @@ export const TaxAccountControl = Schema.Struct({
   createdAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 export const TaxAccountControlView = Schema.Struct({
   snapshot: TaxAccountControl,
   dependenciesCurrent: Schema.Boolean,
@@ -317,6 +340,7 @@ export const TaxAccountControlView = Schema.Struct({
     mediaType: Schema.Literal("application/json"),
   }),
 });
+
 export const TaxAccountControlList = Schema.Struct({
   items: Schema.Array(
     Schema.Struct({
@@ -327,9 +351,13 @@ export const TaxAccountControlList = Schema.Struct({
     }),
   ),
 });
+
 const scoped = { params: A.Scope, error: accountingErrors };
+
 const identified = { params: A.ChangePath, error: accountingErrors };
+
 const path = "/v1/entities/:entityId/books/:bookId/tax-account";
+
 export const TaxAccountApi = HttpApiGroup.make("taxAccount").add(
   HttpApiEndpoint.get("listUnclassifiedTaxAccountEvents", `${path}/events/unclassified`, {
     ...scoped,
@@ -408,6 +436,7 @@ export const TaxAccountApi = HttpApiGroup.make("taxAccount").add(
     success: TaxAccountControlList,
   }),
 );
+
 // Statement capture/classification is an operator review, not an ordinary MCP mutation.
 export const TaxAccountCapabilities = {
   tax_account_list_unclassified_events: {

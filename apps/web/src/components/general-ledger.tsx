@@ -23,6 +23,7 @@ export function GeneralLedger(props: {
   const { book, report, accountId, locale } = props;
   const copy = locale === "sv" ? swedish : english;
   const base = `${bookPath(book)}/report-snapshots/${encodeURIComponent(report.id)}/lines/${encodeURIComponent(accountId)}/general-ledger`;
+
   const ledger = useInfiniteQuery({
     queryKey: [...bookKey(book), "general-ledger", report.id, accountId],
     initialPageParam: "",
@@ -32,6 +33,7 @@ export function GeneralLedger(props: {
         Reports.GeneralLedgerPage,
         { signal },
       );
+
       if (
         page.report.id !== report.id ||
         page.report.sequence !== report.sequence ||
@@ -40,16 +42,20 @@ export function GeneralLedger(props: {
         page.line.accountId !== accountId
       )
         throw new Error("General ledger scope mismatch");
+
       return page;
     },
     getNextPageParam: (page) => page.next ?? undefined,
     retry: false,
   });
+
   const first = ledger.data?.pages[0];
   const entries = ledger.data?.pages.flatMap((page) => page.items) ?? [];
   const scale = report.currencyScale ?? props.scale;
+
   const amount = (value: string) =>
     scale === undefined ? "—" : formatMinorAmount(value, scale, locale);
+
   return (
     <Box display="grid" gap="xl" minWidth="zero">
       <PageCaption>
@@ -145,6 +151,7 @@ const english = {
   empty: "No transactions in this period",
   emptyDetail: "The opening balance carries forward unchanged.",
 };
+
 const swedish: typeof english = {
   retry: "Försök igen",
   opening: "Ingående saldo",

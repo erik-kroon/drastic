@@ -21,6 +21,7 @@ export function BankingSetup({ consent }: { consent?: string }) {
   const navigate = useNavigate();
   const cache = useQueryClient();
   const queryKey = [...bookKey(book), "connector-consents"];
+
   const inventory = useInfiniteQuery({
     queryKey,
     initialPageParam: "",
@@ -32,12 +33,16 @@ export function BankingSetup({ consent }: { consent?: string }) {
         Connector.ConnectorInventory,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       for (const item of result.items) checkScope(book, item.scope);
+
       return result;
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
+
   const feedInventory = useInfiniteQuery({
     queryKey: [...queryKey, "feeds"],
     initialPageParam: "",
@@ -49,17 +54,22 @@ export function BankingSetup({ consent }: { consent?: string }) {
         Connector.ConnectorFeedInventory,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       for (const item of result.items) {
         checkScope(book, item.scope);
         checkScope(book, item.consent.scope);
       }
+
       return result;
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
+
   const base = `${workspacePath(book)}/banking-setup`;
   const open = (id: string) => void navigate({ to: base, search: { consent: id } });
+
   return (
     <>
       <WorkspaceHeader title={sv ? "Bankinställningar" : "Banking setup"} />

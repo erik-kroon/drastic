@@ -25,6 +25,7 @@ export function CreateCompany({ locale, onClose }: { locale: Locale; onClose: ()
   const cache = useQueryClient();
   const navigate = useNavigate();
   const keys = useRef(new Map<string, string>());
+
   const mutation = useMutation({
     mutationFn: (input: typeof Setup.CreateCompany.Type) =>
       readAccounting(
@@ -40,6 +41,7 @@ export function CreateCompany({ locale, onClose }: { locale: Locale; onClose: ()
       onClose();
     },
   });
+
   const form = useForm({
     defaultValues: { name: "" },
     validators: { onBlur: validator, onSubmit: validator },
@@ -47,7 +49,9 @@ export function CreateCompany({ locale, onClose }: { locale: Locale; onClose: ()
       await mutation.mutateAsync({ name: value.name.trim() });
     },
   });
+
   const uncertain = isUncertainWriteError(mutation.error);
+
   return (
     <FormDialog
       title={sv ? "Skapa företag" : "Create company"}

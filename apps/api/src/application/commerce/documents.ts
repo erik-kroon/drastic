@@ -1,3 +1,4 @@
+import { digest as digestNative } from "../json";
 import { equalJson } from "@open-erp/domain/canonicalization";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Documents from "@open-erp/contracts/invoice-documents";
@@ -7,7 +8,7 @@ import * as LegalPdf from "@open-erp/contracts/legal-invoice-pdf";
 import * as Pdf from "@open-erp/contracts/invoice-pdf";
 import * as Effect from "effect/Effect";
 import type * as Schema from "effect/Schema";
-import { digestJson } from "../../db/commerce/access";
+
 import * as CaptureDb from "../../db/commerce/documents";
 import { lockBookForUpdate } from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
@@ -27,25 +28,43 @@ import {
 } from "./support";
 
 const DocumentCaptureSchema = Documents.InvoiceDocumentCapture;
+
 const DocumentViewSchema = Documents.InvoiceDocumentView;
+
 const DocumentHistorySchema = Documents.InvoiceDocumentHistory;
+
 const DocumentPrepareSchema = Documents.PrepareInvoiceDocument;
+
 const IssueReceiptSchema = Issuance.InvoiceIssueReceipt;
+
 const IssueReviewSchema = Issuance.InvoiceIssueReview;
+
 const PdfCaptureSchema = Pdf.InvoicePdfCapture;
+
 const PdfViewSchema = Pdf.InvoicePdfView;
+
 const PdfHistorySchema = Pdf.InvoicePdfHistory;
+
 const PdfPrepareSchema = Pdf.PrepareInvoicePdf;
+
 const LegalCaptureSchema = LegalPdf.LegalInvoicePdfCapture;
+
 const LegalIssueSchema = Ar.ArLegalIssueReceipt;
+
 const LegalViewSchema = LegalPdf.LegalInvoicePdfView;
+
 const LegalHistorySchema = LegalPdf.LegalInvoicePdfHistory;
+
 const LegalPrepareSchema = LegalPdf.PrepareLegalInvoicePdf;
 
 const maxArtifactBytes = 1048576;
+
 const maxLegalArtifactBytes = 2097152;
+
 const reviewBoundary = "SYNTHETIC REVIEW DOCUMENT — NOT A LEGAL INVOICE — NOT DELIVERED";
+
 const canonicalBase64 = /^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
+
 const sha256Hex = /^[a-f0-9]{64}$/u;
 
 export type RenderedSeal = {
@@ -59,7 +78,9 @@ export type RenderedSeal = {
 
 function base64(bytes: Uint8Array) {
   let binary = "";
+
   for (const byte of bytes) binary += String.fromCharCode(byte);
+
   return btoa(binary);
 }
 
@@ -67,8 +88,9 @@ function bytesEqual(left: Uint8Array, right: Uint8Array) {
   return left.length === right.length && left.every((byte, index) => byte === right[index]);
 }
 
-function decodeBase64(value: string, maxBytes: number) {
+export function decodeBase64(value: string, maxBytes: number) {
   if (!canonicalBase64.test(value) || value.length < 4) return failure("InvalidJournal");
+
   return Effect.try({
     try: () => Uint8Array.from(atob(value), (character) => character.charCodeAt(0)),
     catch: () => failure("InvalidJournal"),
@@ -81,9 +103,10 @@ function decodeBase64(value: string, maxBytes: number) {
   );
 }
 
-function sha256HexOf(bytes: Uint8Array) {
+export function sha256HexOf(bytes: Uint8Array) {
   const copy = new Uint8Array(bytes.byteLength);
   copy.set(bytes);
+
   return Effect.tryPromise({
     try: () => crypto.subtle.digest("SHA-256", copy),
     catch: () => failure("InternalError"),
@@ -102,6 +125,7 @@ function hasReviewBoundaries(bytes: Uint8Array) {
   return Effect.try({
     try: () => {
       const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes);
+
       return (
         text.startsWith("<!doctype html>") &&
         text.endsWith("</html>\n") &&
@@ -116,17 +140,12 @@ function startsWithPdf(bytes: Uint8Array, prefix: string) {
   return String.fromCharCode(...bytes.subarray(0, prefix.length)) === prefix;
 }
 
-function digestOf(transaction: Transaction, value: JsonObject) {
-  return digestJson(transaction, value).pipe(
-    Effect.flatMap((rows) => {
-      const digest = rows[0]?.digest;
-      return digest === undefined ? failure("InternalError") : Effect.succeed(digest);
-    }),
-  );
+function digestOf(value: JsonObject) {
+  return digestNative(value);
 }
 
-function sealedBody(transaction: Transaction, withoutDigest: JsonObject) {
-  return digestOf(transaction, withoutDigest).pipe(
+function sealedBody(withoutDigest: JsonObject) {
+  return digestOf(withoutDigest).pipe(
     Effect.map((digest): JsonObject => Object.assign({}, withoutDigest, { digest })),
   );
 }
@@ -157,8 +176,10 @@ function readDocumentView(transaction: Transaction, bookId: string, id: string) 
   return Effect.gen(function* () {
     const captures = yield* CaptureDb.readDocumentCapture(transaction, bookId, id);
     const capture = captures[0];
+
     if (!capture) return yield* failure("NotFound");
     const artifacts = yield* CaptureDb.readDocumentArtifact(transaction, bookId, id);
+
     return yield* decode(DocumentViewSchema, withArtifact(capture.body, artifacts[0]));
   });
 }
@@ -167,8 +188,10 @@ function readPdfView(transaction: Transaction, bookId: string, id: string) {
   return Effect.gen(function* () {
     const captures = yield* CaptureDb.readPdfCapture(transaction, bookId, id);
     const capture = captures[0];
+
     if (!capture) return yield* failure("NotFound");
     const artifacts = yield* CaptureDb.readPdfArtifact(transaction, bookId, id);
+
     return yield* decode(PdfViewSchema, withArtifact(capture.body, artifacts[0]));
   });
 }
@@ -177,8 +200,10 @@ function readLegalPdfView(transaction: Transaction, bookId: string, id: string) 
   return Effect.gen(function* () {
     const captures = yield* CaptureDb.readLegalCapture(transaction, bookId, id);
     const capture = captures[0];
+
     if (!capture) return yield* failure("NotFound");
     const artifacts = yield* CaptureDb.readLegalArtifact(transaction, bookId, id);
+
     return yield* decode(LegalViewSchema, withArtifact(capture.body, artifacts[0]));
   });
 }
@@ -192,9 +217,11 @@ function readIssueCapture(
   return Effect.gen(function* () {
     const rows = yield* CaptureDb.readIssueWithReview(transaction, bookId, issueId, lock);
     const row = rows[0];
+
     if (!row) return yield* failure("NotFound");
     const issue = yield* decode(IssueReceiptSchema, row.issue);
     const review = yield* decode(IssueReviewSchema, row.review);
+
     return { reviewId: row.reviewId, issue, review, issueBody: row.issue, reviewBody: row.review };
   });
 }
@@ -214,6 +241,7 @@ function requireSyntheticIssue(
   ) {
     return failure("StaleDependency");
   }
+
   if (
     issue.profile !== "synthetic-manual-invoice-v1" ||
     review.profile !== "synthetic-manual-invoice-v1" ||
@@ -225,6 +253,7 @@ function requireSyntheticIssue(
   ) {
     return unsupported();
   }
+
   return Effect.void;
 }
 
@@ -241,6 +270,7 @@ function requireRegisterAgreement(
     voucherId: issue.postingReceipt.voucherId,
     documentNumber: issue.internalDocumentNumber,
   };
+
   return CaptureDb.readIssueRegisterAgreement(transaction, bookId, binding).pipe(
     Effect.flatMap((rows) => (rows[0]?.agreed === true ? Effect.void : failure("StaleDependency"))),
   );
@@ -266,6 +296,7 @@ export const getInvoiceDocument = Effect.fn("commerce.documents.get")(function* 
 ) {
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, CaptureDb.invoiceDocumentTables, false);
+
     return yield* readDocumentView(transaction, input.scope.bookId, input.id);
   });
 });
@@ -276,14 +307,17 @@ export const invoiceDocumentHistory = Effect.fn("commerce.documents.history")(fu
 ) {
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, CaptureDb.invoiceDocumentTables, false);
+
     const issues = yield* CaptureDb.readIssueWithReview(
       transaction,
       input.scope.bookId,
       input.id,
       "share",
     );
+
     if (issues.length === 0) return yield* failure("NotFound");
     const rows = yield* CaptureDb.readDocumentHistory(transaction, input.scope.bookId, input.id);
+
     return yield* decode(DocumentHistorySchema, {
       scope: input.scope,
       issueId: input.id,
@@ -322,16 +356,19 @@ export const captureInvoiceDocument = Effect.fn("commerce.documents.capture")(fu
         command.input,
         DocumentCaptureSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireTableAccess(transaction, CaptureDb.invoiceDocumentTables, true);
       yield* lockBookForUpdate(transaction, command.scope);
       const input = yield* decode(DocumentPrepareSchema, command.input);
+
       const source = yield* readIssueCapture(
         transaction,
         command.scope.bookId,
         input.issueId,
         "update",
       );
+
       if (source.issue.digest !== input.issueDigest) return yield* failure("StaleDependency");
       yield* requireSyntheticIssue(source.issue, source.review, command.scope);
       yield* requireRegisterAgreement(
@@ -346,17 +383,21 @@ export const captureInvoiceDocument = Effect.fn("commerce.documents.capture")(fu
         source.review,
         "MissingEvidence",
       );
+
       const existing = yield* CaptureDb.readDocumentCaptureByGenerator(
         transaction,
         command.scope.bookId,
         input.issueId,
         input.generatorVersion,
       );
+
       const previous = existing[0];
+
       if (previous) {
         if (!equalJson(previous.body.input, input)) {
           return yield* failure("IdempotencyConflict");
         }
+
         return yield* saveCapture(
           transaction,
           command,
@@ -367,9 +408,11 @@ export const captureInvoiceDocument = Effect.fn("commerce.documents.capture")(fu
           previous.body,
         );
       }
+
       const captureSource: JsonObject = { review: source.reviewBody, issue: source.issueBody };
       const id = newId("invoice_document");
-      const body = yield* sealedBody(transaction, {
+
+      const body = yield* sealedBody({
         id,
         scope: command.scope,
         input,
@@ -377,13 +420,14 @@ export const captureInvoiceDocument = Effect.fn("commerce.documents.capture")(fu
         format: "synthetic-invoice-review-html",
         language: "en",
         source: captureSource,
-        sourceDigest: yield* digestOf(transaction, captureSource),
+        sourceDigest: yield* digestOf(captureSource),
         createdBy: principal.actorId,
         createdAt: yield* isoNow(transaction),
         historicalOnly: true,
         legalInvoice: false,
         delivered: false,
       });
+
       if (JSON.stringify(body).length > 524288) return yield* failure("UnsupportedProfile");
       yield* CaptureDb.insertDocumentCapture(transaction, {
         bookId: command.scope.bookId,
@@ -394,6 +438,7 @@ export const captureInvoiceDocument = Effect.fn("commerce.documents.capture")(fu
         actorId: principal.actorId,
         body,
       });
+
       return yield* saveCapture(
         transaction,
         command,
@@ -428,6 +473,7 @@ function saveCapture<A extends JsonObject>(
       principal.actorId,
       result,
     );
+
     return result;
   });
 }
@@ -437,11 +483,14 @@ export const resumeInvoiceDocument = Effect.fn("commerce.documents.resume")(func
   input: { scope: Scope; id: string },
 ) {
   const view = yield* getInvoiceDocument(token, input);
+
   if (view.artifact) return view;
+
   const bytes = yield* Effect.try({
     try: () => renderInvoiceDocument(view.capture),
     catch: renderFailure,
   });
+
   return yield* sealInvoiceDocument(token, {
     scope: input.scope,
     id: input.id,
@@ -468,14 +517,18 @@ export const sealInvoiceDocument = Effect.fn("commerce.documents.seal")(function
       yield* requireTableAccess(transaction, CaptureDb.invoiceDocumentTables, true);
       yield* lockBookForUpdate(transaction, command.scope);
       yield* requireSealDeclaration(command.sealed);
+
       const captures = yield* CaptureDb.readDocumentCapture(
         transaction,
         command.scope.bookId,
         command.id,
       );
+
       const capture = captures[0];
+
       if (!capture) return yield* failure("NotFound");
       const captureValue = yield* decode(DocumentCaptureSchema, capture.body);
+
       if (
         captureValue.digest !== command.sealed.captureDigest ||
         captureValue.sourceDigest !== command.sealed.sourceDigest ||
@@ -483,6 +536,7 @@ export const sealInvoiceDocument = Effect.fn("commerce.documents.seal")(function
       ) {
         return yield* failure("StaleDependency");
       }
+
       const agreement = yield* CaptureDb.readIssueReviewAgreement(
         transaction,
         command.scope.bookId,
@@ -491,26 +545,34 @@ export const sealInvoiceDocument = Effect.fn("commerce.documents.seal")(function
         captureValue.source.issue,
         captureValue.source.review,
       );
+
       if (agreement[0]?.agreed !== true) return yield* failure("StaleDependency");
       const bytes = yield* decodeBase64(command.sealed.contentBase64, maxArtifactBytes);
+
       if (
         bytes.length !== command.sealed.byteLength ||
         (yield* sha256HexOf(bytes)) !== command.sealed.sha256
       ) {
         return yield* failure("InvalidJournal");
       }
+
       if (!(yield* hasReviewBoundaries(bytes))) return yield* failure("InvalidJournal");
+
       const existing = yield* CaptureDb.readSealedBytes(
         transaction,
         "invoice_document_artifacts",
         command.scope.bookId,
         command.id,
       );
+
       const sealedBytes = existing[0]?.content;
+
       if (sealedBytes) {
         if (!bytesEqual(sealedBytes, bytes)) return yield* failure("IdempotencyConflict");
+
         return yield* readDocumentView(transaction, command.scope.bookId, command.id);
       }
+
       yield* CaptureDb.insertArtifact(transaction, "invoice_document_artifacts", {
         bookId: command.scope.bookId,
         captureId: command.id,
@@ -536,6 +598,7 @@ export const sealInvoiceDocument = Effect.fn("commerce.documents.seal")(function
         },
         content: bytes,
       });
+
       return yield* readDocumentView(transaction, command.scope.bookId, command.id);
     },
     "update",
@@ -548,6 +611,7 @@ function documentFilename(
   capture: typeof DocumentCaptureSchema.Type,
 ) {
   if (generatorVersion !== Documents.invoiceDocumentGenerator) return `${captureId}.html`;
+
   return `invoice-${capture.source.issue.internalDocumentNumber.replace(/[^a-zA-Z0-9_-]/gu, "")}.html`;
 }
 
@@ -560,6 +624,7 @@ export const prepareInvoiceDocument = Effect.fn("commerce.documents.prepare")(fu
   },
 ) {
   const capture = yield* captureInvoiceDocument(token, command);
+
   return yield* resumeInvoiceDocument(token, { scope: command.scope, id: capture.id });
 });
 
@@ -569,6 +634,7 @@ export const getInvoicePdf = Effect.fn("commerce.pdfs.get")(function* (
 ) {
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, CaptureDb.invoicePdfTables, false);
+
     return yield* readPdfView(transaction, input.scope.bookId, input.id);
   });
 });
@@ -579,14 +645,17 @@ export const invoicePdfHistory = Effect.fn("commerce.pdfs.history")(function* (
 ) {
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, CaptureDb.invoicePdfTables, false);
+
     const issues = yield* CaptureDb.readIssueWithReview(
       transaction,
       input.scope.bookId,
       input.id,
       "share",
     );
+
     if (issues.length === 0) return yield* failure("NotFound");
     const rows = yield* CaptureDb.readPdfHistory(transaction, input.scope.bookId, input.id);
+
     return yield* decode(PdfHistorySchema, {
       scope: input.scope,
       issueId: input.id,
@@ -619,16 +688,19 @@ export const captureInvoicePdf = Effect.fn("commerce.pdfs.capture")(function* (
         command.input,
         PdfCaptureSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireTableAccess(transaction, CaptureDb.invoicePdfTables, true);
       yield* lockBookForUpdate(transaction, command.scope);
       const input = yield* decode(PdfPrepareSchema, command.input);
+
       const source = yield* readIssueCapture(
         transaction,
         command.scope.bookId,
         input.issueId,
         "update",
       );
+
       if (source.issue.digest !== input.issueDigest) return yield* failure("StaleDependency");
       yield* requireSyntheticIssue(source.issue, source.review, command.scope);
       yield* requireRegisterAgreement(
@@ -643,16 +715,20 @@ export const captureInvoicePdf = Effect.fn("commerce.pdfs.capture")(function* (
         source.review,
         "StaleDependency",
       );
+
       const existing = yield* CaptureDb.readPdfCaptureByIssue(
         transaction,
         command.scope.bookId,
         input.issueId,
       );
+
       const previous = existing[0];
+
       if (previous) {
         if (!equalJson(previous.body.input, input)) {
           return yield* failure("IdempotencyConflict");
         }
+
         return yield* saveCapture(
           transaction,
           command,
@@ -663,20 +739,23 @@ export const captureInvoicePdf = Effect.fn("commerce.pdfs.capture")(function* (
           previous.body,
         );
       }
+
       const captureSource: JsonObject = { review: source.reviewBody, issue: source.issueBody };
       const id = newId("invoice_pdf");
-      const body = yield* sealedBody(transaction, {
+
+      const body = yield* sealedBody({
         id,
         scope: command.scope,
         input,
         source: captureSource,
-        sourceDigest: yield* digestOf(transaction, captureSource),
+        sourceDigest: yield* digestOf(captureSource),
         createdBy: principal.actorId,
         createdAt: yield* isoNow(transaction),
         historicalOnly: true,
         legalInvoice: false,
         delivered: false,
       });
+
       if (JSON.stringify(body).length > 524288) return yield* failure("UnsupportedProfile");
       yield* CaptureDb.insertPdfCapture(transaction, {
         bookId: command.scope.bookId,
@@ -685,6 +764,7 @@ export const captureInvoicePdf = Effect.fn("commerce.pdfs.capture")(function* (
         actorId: principal.actorId,
         body,
       });
+
       return yield* saveCapture(
         transaction,
         command,
@@ -704,11 +784,14 @@ export const resumeInvoicePdf = Effect.fn("commerce.pdfs.resume")(function* (
   input: { scope: Scope; id: string },
 ) {
   const view = yield* getInvoicePdf(token, input);
+
   if (view.artifact) return view;
+
   const rendered = yield* Effect.try({
     try: () => new Uint8Array(renderInvoicePdf(view.capture)),
     catch: renderFailure,
   });
+
   return yield* sealInvoicePdf(token, {
     scope: input.scope,
     id: input.id,
@@ -735,20 +818,26 @@ export const sealInvoicePdf = Effect.fn("commerce.pdfs.seal")(function* (
       yield* requireTableAccess(transaction, CaptureDb.invoicePdfTables, true);
       yield* lockBookForUpdate(transaction, command.scope);
       yield* requireSealDeclaration(command.sealed);
+
       const captures = yield* CaptureDb.readPdfCapture(
         transaction,
         command.scope.bookId,
         command.id,
       );
+
       const capture = captures[0];
+
       if (!capture) return yield* failure("NotFound");
+
       if (
         capture.body.digest !== command.sealed.captureDigest ||
         capture.body.sourceDigest !== command.sealed.sourceDigest
       ) {
         return yield* failure("StaleDependency");
       }
+
       const captureValue = yield* decode(PdfCaptureSchema, capture.body);
+
       const agreement = yield* CaptureDb.readPdfSourceAgreement(
         transaction,
         command.scope.bookId,
@@ -756,8 +845,10 @@ export const sealInvoicePdf = Effect.fn("commerce.pdfs.seal")(function* (
         captureValue.source.issue,
         captureValue.source.review,
       );
+
       if (agreement[0]?.agreed !== true) return yield* failure("StaleDependency");
       const bytes = yield* decodeBase64(command.sealed.contentBase64, maxArtifactBytes);
+
       if (
         bytes.length !== command.sealed.byteLength ||
         (yield* sha256HexOf(bytes)) !== command.sealed.sha256 ||
@@ -765,17 +856,22 @@ export const sealInvoicePdf = Effect.fn("commerce.pdfs.seal")(function* (
       ) {
         return yield* failure("InvalidJournal");
       }
+
       const existing = yield* CaptureDb.readSealedBytes(
         transaction,
         "invoice_pdf_artifacts",
         command.scope.bookId,
         command.id,
       );
+
       const sealedBytes = existing[0]?.content;
+
       if (sealedBytes) {
         if (!bytesEqual(sealedBytes, bytes)) return yield* failure("IdempotencyConflict");
+
         return yield* readPdfView(transaction, command.scope.bookId, command.id);
       }
+
       yield* CaptureDb.insertArtifact(transaction, "invoice_pdf_artifacts", {
         bookId: command.scope.bookId,
         captureId: command.id,
@@ -792,6 +888,7 @@ export const sealInvoicePdf = Effect.fn("commerce.pdfs.seal")(function* (
         },
         content: bytes,
       });
+
       return yield* readPdfView(transaction, command.scope.bookId, command.id);
     },
     "update",
@@ -803,6 +900,7 @@ export const prepareInvoicePdf = Effect.fn("commerce.pdfs.prepare")(function* (
   command: { scope: Scope; idempotencyKey: string; input: typeof Pdf.PrepareInvoicePdf.Type },
 ) {
   const capture = yield* captureInvoicePdf(token, command);
+
   return yield* resumeInvoicePdf(token, { scope: command.scope, id: capture.id });
 });
 
@@ -812,6 +910,7 @@ export const getLegalInvoicePdf = Effect.fn("commerce.legalPdfs.get")(function* 
 ) {
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, CaptureDb.legalInvoicePdfTables, false);
+
     return yield* readLegalPdfView(transaction, input.scope.bookId, input.id);
   });
 });
@@ -823,8 +922,10 @@ export const legalInvoicePdfHistory = Effect.fn("commerce.legalPdfs.history")(fu
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, CaptureDb.legalInvoicePdfTables, false);
     const issues = yield* CaptureDb.readLegalIssue(transaction, input.scope.bookId, input.id);
+
     if (issues.length === 0) return yield* failure("NotFound");
     const rows = yield* CaptureDb.readLegalPdfHistory(transaction, input.scope.bookId, input.id);
+
     return yield* decode(LegalHistorySchema, {
       scope: input.scope,
       issueId: input.id,
@@ -861,18 +962,23 @@ export const captureLegalInvoicePdf = Effect.fn("commerce.legalPdfs.capture")(fu
         command.input,
         LegalCaptureSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireTableAccess(transaction, CaptureDb.legalInvoicePdfTables, true);
       yield* lockBookForUpdate(transaction, command.scope);
       const input = yield* decode(LegalPrepareSchema, command.input);
+
       const rows = yield* CaptureDb.readLegalIssue(
         transaction,
         command.scope.bookId,
         input.issueId,
       );
+
       const row = rows[0];
+
       if (!row) return yield* failure("NotFound");
       const issue = yield* decode(LegalIssueSchema, row.body);
+
       if (
         issue.digest !== input.issueDigest ||
         !equalJson(issue.scope, command.scope) ||
@@ -887,6 +993,7 @@ export const captureLegalInvoicePdf = Effect.fn("commerce.legalPdfs.capture")(fu
       ) {
         return yield* failure("StaleDependency");
       }
+
       const legalBinding: CaptureDb.LegalIssueBinding = {
         policyId: issue.policyId,
         policySnapshot: issue.policySnapshot,
@@ -895,22 +1002,28 @@ export const captureLegalInvoicePdf = Effect.fn("commerce.legalPdfs.capture")(fu
         registerInvoiceId: issue.registerInvoiceId,
         documentNumber: issue.legalDocumentNumber,
       };
+
       const agreement = yield* CaptureDb.readLegalIssueAgreement(
         transaction,
         command.scope.bookId,
         legalBinding,
       );
+
       if (agreement[0]?.agreed !== true) return yield* failure("StaleDependency");
+
       const existing = yield* CaptureDb.readLegalCaptureByIssue(
         transaction,
         command.scope.bookId,
         input.issueId,
       );
+
       const previous = existing[0];
+
       if (previous) {
         if (!equalJson(previous.body.input, input)) {
           return yield* failure("IdempotencyConflict");
         }
+
         return yield* saveCapture(
           transaction,
           command,
@@ -921,18 +1034,21 @@ export const captureLegalInvoicePdf = Effect.fn("commerce.legalPdfs.capture")(fu
           previous.body,
         );
       }
+
       const captureSource: JsonObject = { issue: row.body };
       const id = newId("ar_pdf");
-      const body = yield* sealedBody(transaction, {
+
+      const body = yield* sealedBody({
         id,
         scope: command.scope,
         issueId: input.issueId,
         input,
         source: captureSource,
-        sourceDigest: yield* digestOf(transaction, captureSource),
+        sourceDigest: yield* digestOf(captureSource),
         createdBy: principal.actorId,
         createdAt: yield* isoNow(transaction),
       });
+
       if (JSON.stringify(body).length > 524288) return yield* failure("UnsupportedProfile");
       yield* CaptureDb.insertLegalCapture(transaction, {
         bookId: command.scope.bookId,
@@ -940,6 +1056,7 @@ export const captureLegalInvoicePdf = Effect.fn("commerce.legalPdfs.capture")(fu
         issueId: input.issueId,
         body,
       });
+
       return yield* saveCapture(
         transaction,
         command,
@@ -959,8 +1076,10 @@ export const resumeLegalInvoicePdf = Effect.fn("commerce.legalPdfs.resume")(func
   input: { scope: Scope; id: string },
 ) {
   const view = yield* getLegalInvoicePdf(token, input);
+
   if (view.artifact) return view;
   const version = view.capture.input.rendererVersion;
+
   const rendered = new Uint8Array(
     yield* Effect.gen(function* () {
       if (version === "openerp-se-invoice-takumi-v1") {
@@ -969,15 +1088,18 @@ export const resumeLegalInvoicePdf = Effect.fn("commerce.legalPdfs.resume")(func
           catch: renderFailure,
         });
       }
+
       if (version === "openerp-se-invoice-takumi-v2") {
         return yield* Effect.tryPromise({
           try: () => renderLegalInvoicePdfV2(view.capture),
           catch: renderFailure,
         });
       }
+
       return yield* unsupported();
     }),
   );
+
   return yield* sealLegalInvoicePdf(token, {
     scope: input.scope,
     id: input.id,
@@ -1004,23 +1126,30 @@ export const sealLegalInvoicePdf = Effect.fn("commerce.legalPdfs.seal")(function
       yield* requireTableAccess(transaction, CaptureDb.legalInvoicePdfTables, true);
       yield* lockBookForUpdate(transaction, command.scope);
       yield* requireSealDeclaration(command.sealed);
+
       const captures = yield* CaptureDb.readLegalCapture(
         transaction,
         command.scope.bookId,
         command.id,
       );
+
       const capture = captures[0];
+
       if (!capture) return yield* failure("NotFound");
       const captureValue = yield* decode(LegalCaptureSchema, capture.body);
       const rendererVersion = captureValue.input.rendererVersion;
+
       if (rendererVersion !== command.sealed.generatorVersion) return yield* unsupported();
+
       if (
         captureValue.digest !== command.sealed.captureDigest ||
         captureValue.sourceDigest !== command.sealed.sourceDigest
       ) {
         return yield* failure("StaleDependency");
       }
+
       const bytes = yield* decodeBase64(command.sealed.contentBase64, maxLegalArtifactBytes);
+
       if (
         bytes.length !== command.sealed.byteLength ||
         (yield* sha256HexOf(bytes)) !== command.sealed.sha256 ||
@@ -1028,24 +1157,31 @@ export const sealLegalInvoicePdf = Effect.fn("commerce.legalPdfs.seal")(function
       ) {
         return yield* failure("InvalidJournal");
       }
+
       const agreement = yield* CaptureDb.readLegalIssueSourceAgreement(
         transaction,
         command.scope.bookId,
         capture.issueId,
         captureValue.source.issue,
       );
+
       if (agreement[0]?.agreed !== true) return yield* failure("StaleDependency");
+
       const existing = yield* CaptureDb.readSealedBytes(
         transaction,
         "ar_legal_pdf_artifacts",
         command.scope.bookId,
         command.id,
       );
+
       const sealedBytes = existing[0]?.content;
+
       if (sealedBytes) {
         if (!bytesEqual(sealedBytes, bytes)) return yield* failure("IdempotencyConflict");
+
         return yield* readLegalPdfView(transaction, command.scope.bookId, command.id);
       }
+
       yield* CaptureDb.insertArtifact(transaction, "ar_legal_pdf_artifacts", {
         bookId: command.scope.bookId,
         captureId: command.id,
@@ -1063,6 +1199,7 @@ export const sealLegalInvoicePdf = Effect.fn("commerce.legalPdfs.seal")(function
         },
         content: bytes,
       });
+
       return yield* readLegalPdfView(transaction, command.scope.bookId, command.id);
     },
     "update",
@@ -1078,5 +1215,6 @@ export const prepareLegalInvoicePdf = Effect.fn("commerce.legalPdfs.prepare")(fu
   },
 ) {
   const capture = yield* captureLegalInvoicePdf(token, command);
+
   return yield* resumeLegalInvoicePdf(token, { scope: command.scope, id: capture.id });
 });

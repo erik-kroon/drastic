@@ -25,6 +25,7 @@ export function InvoiceRegistration(
   const [evidenceId, setEvidenceId] = useState("");
   const metadata = useQuery(workQueryOptions(props.book, {}));
   const scale = metadata.data?.currencyScale;
+
   const contacts = useInfiniteQuery({
     queryKey: [...commerceKey(props.book), "contact-options"],
     initialPageParam: "",
@@ -34,12 +35,15 @@ export function InvoiceRegistration(
         Commerce.CounterpartyPage,
         { signal },
       );
+
       page.items.forEach((party) => checkScope(props.book, party.scope));
+
       return page;
     },
     getNextPageParam: (last) => last.next ?? undefined,
     retry: false,
   });
+
   const vouchers = useInfiniteQuery({
     queryKey: [...bookKey(props.book), "vouchers"],
     initialPageParam: "0",
@@ -52,11 +56,14 @@ export function InvoiceRegistration(
     getNextPageParam: (last) => last.next,
     retry: false,
   });
+
   const parties =
     contacts.data?.pages
       .flatMap((page) => page.items)
       .filter((party) => party.role === props.direction || party.role === "both") ?? [];
+
   const party = parties.find((item) => item.id === partyId);
+
   const candidates =
     vouchers.data?.pages
       .flatMap((page) => page.items)
@@ -68,17 +75,21 @@ export function InvoiceRegistration(
           )
           .map((line) => ({ voucher, line })),
       ) ?? [];
+
   const selected = candidates.find((item) => `${item.voucher.id}:${item.line.lineId}` === lineId);
+
   const amount = selected
     ? props.direction === "customer"
       ? selected.line.debitMinor
       : selected.line.creditMinor
     : null;
+
   const source =
     selected?.voucher.action.evidenceRefs.find((item) => item.evidenceId === evidenceId) ??
     (selected?.voucher.action.evidenceRefs.length === 1
       ? selected.voucher.action.evidenceRefs[0]
       : undefined);
+
   return (
     <CommandForm
       {...props}
@@ -207,6 +218,7 @@ const english = {
   invoiceDate: "Invoice date",
   dueDate: "Due date",
 };
+
 const swedish: typeof english = {
   registerInvoice: "Registrera faktura",
   linkTheOriginalInvoiceTo:

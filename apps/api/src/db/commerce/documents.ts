@@ -85,6 +85,7 @@ export function readIssueWithReview(
   lock: "share" | "update",
 ) {
   const lockClause = lock === "update" ? sql`for update of i` : sql`for share of i`;
+
   return transaction.execute<IssueRow>(
     sql`
       select r.id as "reviewId", i.body as issue, r.body as review

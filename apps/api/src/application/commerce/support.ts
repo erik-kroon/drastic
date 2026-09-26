@@ -7,7 +7,9 @@ import { failure } from "../failures";
 import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal } from "../identity";
 
 export type Scope = typeof Accounting.Scope.Type;
+
 export type Principal = VerifiedPrincipal;
+
 export type { JsonObject };
 
 export function unsupported() {
@@ -61,12 +63,15 @@ export function requireTableAccess(
   write: boolean,
 ) {
   const inserts = write ? tableNames.filter((name) => !readOnlyLookups.has(name)) : [];
+
   return readTableAccess(transaction, tableNames).pipe(
     Effect.flatMap((rows) => {
       if (rows.length !== tableNames.length) return unsupported();
+
       const denied =
         rows.some((row) => !row.canSelect) ||
         inserts.some((name) => rows.find((row) => row.tableName === name)?.canInsert !== true);
+
       return denied ? unsupported() : Effect.void;
     }),
   );
@@ -74,9 +79,11 @@ export function requireTableAccess(
 
 export function requireInsertAccess(transaction: Transaction, tableNames: ReadonlyArray<string>) {
   if (tableNames.length === 0) return Effect.void;
+
   return readTableAccess(transaction, tableNames).pipe(
     Effect.flatMap((rows) => {
       const denied = rows.length !== tableNames.length || rows.some((row) => !row.canInsert);
+
       return denied ? unsupported() : Effect.void;
     }),
   );
@@ -85,17 +92,21 @@ export function requireInsertAccess(transaction: Transaction, tableNames: Readon
 export function exactKeys(value: JsonObject, keys: ReadonlyArray<string>) {
   const actual = Object.keys(value).sort();
   const expected = [...keys].sort();
+
   if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) {
     return failure("InvalidJournal");
   }
+
   return Effect.void;
 }
 
 export function requireText(value: string, maximum: number) {
   const trimmed = value.trim();
+
   if (trimmed.length === 0 || trimmed !== value || value.length > maximum) {
     return failure("InvalidJournal");
   }
+
   return Effect.void;
 }
 
@@ -113,11 +124,13 @@ export function isJsonArray(value: Schema.Json | undefined): value is ReadonlyAr
 
 export function objectField(value: Schema.Json | undefined, key: string): JsonObject {
   const candidate = isJsonObject(value) ? value[key] : undefined;
+
   return isJsonObject(candidate) ? candidate : {};
 }
 
 export function textField(value: Schema.Json | undefined, key: string) {
   const candidate = isJsonObject(value) ? value[key] : undefined;
+
   return typeof candidate === "string" ? candidate : undefined;
 }
 
@@ -133,6 +146,7 @@ export function readEvidenceReference(
   return readEvidence(transaction, bookId, evidenceId).pipe(
     Effect.flatMap((rows) => {
       const row = rows[0];
+
       return row
         ? Effect.succeed({ evidenceId: row.id, sha256: row.sha256 })
         : failure("MissingEvidence");
@@ -147,7 +161,9 @@ export function requireRetainedEvidence(
 ) {
   const evidenceId = textField(reference, "evidenceId");
   const sha256 = textField(reference, "sha256");
+
   if (evidenceId === undefined || sha256 === undefined) return failure("MissingEvidence");
+
   return readEvidence(transaction, bookId, evidenceId).pipe(
     Effect.flatMap((rows) =>
       rows[0]?.sha256 === sha256 ? Effect.void : failure("MissingEvidence"),

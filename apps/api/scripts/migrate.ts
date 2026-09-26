@@ -17,11 +17,16 @@ class IncompatibleInstallation extends Schema.TaggedError<IncompatibleInstallati
 ) {}
 
 const connectionString = process.env.DATABASE_ADMIN_URL;
+
 if (!connectionString)
   throw new Error("Set DATABASE_ADMIN_URL to a direct PostgreSQL maintenance connection.");
+
 const directory = new URL("../migrations/", import.meta.url);
+
 const migrations = (await readdir(directory)).filter((name) => name.endsWith(".sql")).sort();
+
 const through = process.argv[2];
+
 if (process.argv.length > 3 || (through !== undefined && !migrations.includes(through))) {
   throw new Error("Usage: bun scripts/migrate.ts [last-reviewed-migration.sql]");
 }
@@ -34,6 +39,7 @@ await Effect.runPromise(
     yield* db.execute(sql`CREATE TABLE IF NOT EXISTS ${migrationReceipts} (
       name text PRIMARY KEY, sha256 text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now()
     )`);
+
     // The ledger is this runner's own bookkeeping, so the guard reads it and applies nothing
     // else: a receipt naming a file this directory no longer contains is a pre-baseline
     // installation, which is replaced rather than migrated.
@@ -41,35 +47,44 @@ await Effect.runPromise(
       .select({ name: migrationReceipts.name, database: sql<string>`current_database()` })
       .from(migrationReceipts)
       .orderBy(migrationReceipts.name);
+
     const absent = recorded.find((row) => !migrations.includes(row.name));
+
     if (absent !== undefined)
       return yield* new IncompatibleInstallation({
         message: `Database ${absent.database} recorded migration ${absent.name}, which apps/api/migrations no longer contains. It predates the baseline: replace it with a fresh database instead of migrating it.`,
       });
+
     for (const name of migrations) {
       if (through !== undefined && name > through) break;
       const source = yield* Effect.tryPromise(() => readFile(new URL(name, directory), "utf8"));
       const checksum = createHash("sha256").update(source).digest("hex");
+
       const applied = yield* db.transaction((tx) =>
         Effect.gen(function* () {
           yield* tx.execute(sql`LOCK TABLE ${migrationReceipts} IN EXCLUSIVE MODE`);
+
           const [existing] = yield* tx
             .select({ sha256: migrationReceipts.sha256 })
             .from(migrationReceipts)
             .where(eq(migrationReceipts.name, name));
+
           if (existing && existing.sha256 !== checksum) {
             return yield* new MigrationChanged({
               message: `Applied migration ${name} has changed. Add a forward migration instead.`,
             });
           }
+
           if (!existing) {
             // Raw SQL is restricted to checked-in migration source, never request input.
             yield* tx.execute(sql.raw(source));
             yield* tx.insert(migrationReceipts).values({ name, sha256: checksum });
           }
+
           return Boolean(existing);
         }),
       );
+
       console.info(`${name}: ${applied ? "already applied" : "applied"}`);
     }
   }).pipe(

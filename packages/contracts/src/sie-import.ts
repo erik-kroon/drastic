@@ -5,6 +5,7 @@ import * as Intake from "./source-intake";
 import { accountingErrors } from "./accounting-errors";
 
 const Label = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200));
+
 const Record = Schema.Struct({
   ordinal: Schema.Int,
   line: Schema.Int,
@@ -15,6 +16,7 @@ const Record = Schema.Struct({
   fields: Schema.Array(Schema.String),
   voucherOrdinal: Schema.NullOr(Schema.Int),
 });
+
 const Transaction = Schema.Struct({
   recordOrdinal: Schema.Int,
   kind: Schema.Literals(["TRANS", "RTRANS", "BTRANS"]),
@@ -22,6 +24,7 @@ const Transaction = Schema.Struct({
   dimensions: Schema.String,
   amount: Schema.String,
 });
+
 const Voucher = Schema.Struct({
   ordinal: Schema.Int,
   series: Schema.String,
@@ -31,6 +34,7 @@ const Voucher = Schema.Struct({
   sourceReference: Schema.String,
   transactions: Schema.Array(Transaction),
 });
+
 const Control = Schema.Struct({
   kind: Schema.Literals(["IB", "UB", "RES"]),
   year: Schema.String,
@@ -38,6 +42,7 @@ const Control = Schema.Struct({
   amount: Schema.String,
   recordOrdinal: Schema.Int,
 });
+
 const Diagnostic = Schema.Struct({
   code: Schema.String,
   severity: Schema.Literals(["error", "warning"]),
@@ -45,7 +50,9 @@ const Diagnostic = Schema.Struct({
   byteOffset: Schema.Int,
   message: Schema.String,
 });
+
 const Receipt = Intake.SourceOccurrence.fields.receipt;
+
 export const SiePreview = Schema.Struct({
   id: A.Identifier,
   scope: A.Scope,
@@ -64,10 +71,12 @@ export const SiePreview = Schema.Struct({
   digest: A.Digest,
   receipt: Receipt,
 });
+
 export const Mapping = Schema.Struct({
   sourceAccount: Schema.String.check(Schema.isPattern(/^[0-9]{4}$/)),
   accountId: A.Identifier,
 });
+
 export const SiePreviewInventory = Schema.Struct({
   scope: A.Scope,
   occurrenceId: A.Identifier,
@@ -83,6 +92,7 @@ export const SiePreviewInventory = Schema.Struct({
     }),
   ).check(Schema.isMaxLength(50)),
 });
+
 export const OpeningControl = Schema.Struct({
   sourceAccount: Mapping.fields.sourceAccount,
   year: Schema.String.check(Schema.isPattern(/^-?[0-9]{1,4}$/)),
@@ -90,6 +100,7 @@ export const OpeningControl = Schema.Struct({
   independentClosingMinor: A.SignedMinorUnits,
   basis: Label,
 });
+
 export const HistoricalOpenItem = Schema.Struct({
   sourceIdentity: Label,
   sourceAccount: Mapping.fields.sourceAccount,
@@ -101,12 +112,14 @@ export const HistoricalOpenItem = Schema.Struct({
   detailAvailability: Schema.Literals(["source_asserted", "unreconstructable"]),
   basis: A.Description,
 });
+
 export const OpenItemControl = Schema.Struct({
   sourceAccount: Mapping.fields.sourceAccount,
   currency: HistoricalOpenItem.fields.currency,
   independentOutstandingMinor: A.SignedMinorUnits,
   basis: A.Description,
 });
+
 export const SealSiePlan = Schema.Struct({
   digest: A.Digest,
   mappings: Schema.Array(Mapping).check(Schema.isMaxLength(500)),
@@ -120,6 +133,7 @@ export const SealSiePlan = Schema.Struct({
   openingPolicy: Schema.Literal("unreconstructable_detail"),
   sourceKind: Schema.Literals(["synthetic", "reviewed_sie4"]),
 });
+
 export const SiePlan = Schema.Struct({
   id: A.Identifier,
   scope: A.Scope,
@@ -135,6 +149,7 @@ export const SiePlan = Schema.Struct({
   digest: A.Digest,
   receipt: Receipt,
 });
+
 export const SieRunStart = Schema.Struct({
   id: A.Identifier,
   planId: A.Identifier,
@@ -145,6 +160,7 @@ export const SieRunStart = Schema.Struct({
   status: Schema.Literals(["running", "paused", "staged"]),
   financialAdmission: Schema.Literal("unsupported"),
 });
+
 export const SieChunk = Schema.Struct({
   runId: A.Identifier,
   planDigest: A.Digest,
@@ -155,11 +171,13 @@ export const SieChunk = Schema.Struct({
   membershipDigest: A.Digest,
   receipt: Receipt,
 });
+
 export const SieRun = Schema.Struct({
   ...SieRunStart.fields,
   voucherCount: Schema.Int,
   chunks: Schema.Array(SieChunk),
 });
+
 export const SieFence = Schema.Struct({
   id: A.Identifier,
   nextOrdinal: Schema.Int,
@@ -167,9 +185,13 @@ export const SieFence = Schema.Struct({
   leaseUntil: Schema.NullOr(Schema.String),
   status: Schema.Literals(["running", "paused", "staged"]),
 });
+
 const base = "/v1/entities/:entityId/books/:bookId";
+
 const identified = { params: A.ChangePath, error: accountingErrors };
+
 const mutation = { ...identified, headers: A.IdempotencyHeaders };
+
 export const SieImportApi = HttpApiGroup.make("sieImport")
   .add(
     HttpApiEndpoint.get("listSieSourcePreviews", `${base}/source-occurrences/:id/sie-previews`, {

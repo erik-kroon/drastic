@@ -22,6 +22,7 @@ import {
 import { commerceKey, commercePath, type CommerceProps } from "./shared";
 
 type Article = typeof Catalog.Article.Type;
+
 type ArticleForm = {
   code: string;
   expectedRevision: number;
@@ -55,8 +56,11 @@ function articleForm(article: Article, scale: number): ArticleForm {
 
 function minor(value: string, scale: number) {
   const normalized = value.trim();
+
   if (!normalized) return null;
+
   if (!/^\d+(?:[.,]\d+)?$/.test(normalized)) return "invalid";
+
   return decimalToMinor(normalized, scale) ?? "invalid";
 }
 
@@ -70,6 +74,7 @@ export function CatalogArticles(props: CommerceProps) {
   const [invalid, setInvalid] = useState(false);
   const [saved, setSaved] = useState(false);
   const metadata = useQuery(workQueryOptions(book, {}));
+
   const articles = useInfiniteQuery({
     queryKey: [...commerceKey(book), "catalog-articles"],
     initialPageParam: "",
@@ -82,9 +87,11 @@ export function CatalogArticles(props: CommerceProps) {
     getNextPageParam: (page) => page.next ?? undefined,
     retry: false,
   });
+
   const save = useMutation({
     mutationFn: (input: typeof Catalog.SaveArticle.Type) => {
       const body = JSON.stringify(input);
+
       return readAccounting(
         `${commercePath(book)}/articles`,
         Catalog.Article,
@@ -99,13 +106,16 @@ export function CatalogArticles(props: CommerceProps) {
     },
     onError: (error) => {
       setSaved(false);
+
       if (error instanceof Accounting.AccountingError && error.code === "StaleDependency")
         void client.invalidateQueries({ queryKey: [...commerceKey(book), "catalog-articles"] });
     },
     retry: false,
   });
+
   const items = articles.data?.pages.flatMap((page) => page.items) ?? [];
   const scale = metadata.data?.currencyScale;
+
   return (
     <Box display="grid" gap="xl" minWidth="zero">
       <RecordHeading
@@ -191,6 +201,7 @@ export function CatalogArticles(props: CommerceProps) {
             gap="lg"
             onSubmit={(event) => {
               event.preventDefault();
+
               const parsed = Schema.decodeOption(Catalog.SaveArticle)({
                 code: form.code,
                 expectedRevision: form.expectedRevision,
@@ -199,7 +210,9 @@ export function CatalogArticles(props: CommerceProps) {
                 unitPriceMinor: minor(form.unitPrice, scale),
                 taxDescription: form.taxDescription.trim() || null,
               });
+
               setInvalid(parsed._tag === "None");
+
               if (parsed._tag === "Some") save.mutate(parsed.value);
             }}
           >

@@ -15,7 +15,9 @@ export function ReviewProviderRows({
   locale: Locale;
 }) {
   const copy = reviewCopy(locale);
+
   if (!["owner_sources", "owner_controls", "expense_tax"].includes(section)) return null;
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Text>{copy.providerWarning}</Text>

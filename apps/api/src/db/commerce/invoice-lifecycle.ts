@@ -872,7 +872,13 @@ export function insertCounterparty(
 
 export function insertCounterpartyRevision(
   transaction: Transaction,
-  row: { bookId: string; counterpartyId: string; revision: string; evidenceId: string; body: JsonObject },
+  row: {
+    bookId: string;
+    counterpartyId: string;
+    revision: string;
+    evidenceId: string;
+    body: JsonObject;
+  },
 ) {
   return transaction.execute(
     sql`
@@ -1039,7 +1045,11 @@ export function readBankSourceAccount(transaction: Transaction, bookId: string, 
   );
 }
 
-export function readIssueHistoryForDraft(transaction: Transaction, bookId: string, draftId: string) {
+export function readIssueHistoryForDraft(
+  transaction: Transaction,
+  bookId: string,
+  draftId: string,
+) {
   return transaction.execute<IssueHistoryRow>(
     sql`
       select r.id, r.ordinal, r.draft_revision::text as "draftRevision",

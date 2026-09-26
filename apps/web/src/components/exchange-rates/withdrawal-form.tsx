@@ -24,42 +24,103 @@ export function WithdrawalForm(props: {
   const copy = exchangeRateCopy(locale);
   const keys = useRef(new Map<string, string>());
   const [invalid, setInvalid] = useState(false);
+
   const save = useMutation({
     mutationFn: async (input: typeof Rates.WithdrawExchangeRate.Type) => {
       const path = `${bookPath(book)}/exchange-rates/${rate.observationId}/withdrawals`;
-      const result = await readAccounting(path, Rates.ExchangeRateWithdrawal, mutationOptions(path, JSON.stringify(input), keys.current));
-      if (result.scope.bookId !== book.id || result.scope.entityId !== book.entityId
-        || result.observationId !== rate.observationId || result.revisionDigest !== rate.digest
-        || result.input.evidenceId !== input.evidenceId || result.input.rationale !== input.rationale) {
+
+      const result = await readAccounting(
+        path,
+        Rates.ExchangeRateWithdrawal,
+        mutationOptions(path, JSON.stringify(input), keys.current),
+      );
+
+      if (
+        result.scope.bookId !== book.id ||
+        result.scope.entityId !== book.entityId ||
+        result.observationId !== rate.observationId ||
+        result.revisionDigest !== rate.digest ||
+        result.input.evidenceId !== input.evidenceId ||
+        result.input.rationale !== input.rationale
+      ) {
         throw new Error("Withdrawal response identity mismatch");
       }
+
       return result;
     },
     onSuccess: (result) => onSaved(result.observationId),
   });
-  return <Box as="form" display="grid" gap="lg" minWidth="zero" onSubmit={(event) => {
-    event.preventDefault();
-    if (save.isPending || save.isSuccess || book.role !== "operator") return;
-    const fields = new FormData(event.currentTarget);
-    const decoded = Schema.decodeUnknownOption(Rates.WithdrawExchangeRate)({
-      expectedDigest: rate.digest, evidenceId: fields.get("evidenceId"), rationale: fields.get("rationale"),
-    });
-    if (decoded._tag === "None" || fields.get("acknowledge") !== "permanent") { setInvalid(true); return; }
-    setInvalid(false); save.mutate(decoded.value);
-  }}>
-    <Text>{copy.withdrawalHelp}</Text><Text>{rate.observationId} · {rate.revision} · {rate.digest}</Text>
-    <Text>{copy.retry}</Text>
-    <Box as="fieldset" disabled={save.isPending || save.isSuccess || book.role !== "operator"} display="grid" gap="md" minWidth="zero" padding="none" margin="none" borderWidth="none">
-      <InputField name="evidenceId" label={copy.withdrawalEvidence} required />
-      <InputField name="rationale" label={copy.rationale} required maxLength={2000} />
-      <Box as="label" display="flex" gap="md" alignItems="center">
-        <input type="checkbox" name="acknowledge" value="permanent" required /><Text>{copy.withdrawalAcknowledge}</Text>
+
+  return (
+    <Box
+      as="form"
+      display="grid"
+      gap="lg"
+      minWidth="zero"
+      onSubmit={(event) => {
+        event.preventDefault();
+
+        if (save.isPending || save.isSuccess || book.role !== "operator") return;
+        const fields = new FormData(event.currentTarget);
+
+        const decoded = Schema.decodeUnknownOption(Rates.WithdrawExchangeRate)({
+          expectedDigest: rate.digest,
+          evidenceId: fields.get("evidenceId"),
+          rationale: fields.get("rationale"),
+        });
+
+        if (decoded._tag === "None" || fields.get("acknowledge") !== "permanent") {
+          setInvalid(true);
+
+          return;
+        }
+
+        setInvalid(false);
+        save.mutate(decoded.value);
+      }}
+    >
+      <Text>{copy.withdrawalHelp}</Text>
+      <Text>
+        {rate.observationId} · {rate.revision} · {rate.digest}
+      </Text>
+      <Text>{copy.retry}</Text>
+      <Box
+        as="fieldset"
+        disabled={save.isPending || save.isSuccess || book.role !== "operator"}
+        display="grid"
+        gap="md"
+        minWidth="zero"
+        padding="none"
+        margin="none"
+        borderWidth="none"
+      >
+        <InputField name="evidenceId" label={copy.withdrawalEvidence} required />
+        <InputField name="rationale" label={copy.rationale} required maxLength={2000} />
+        <Box as="label" display="flex" gap="md" alignItems="center">
+          <input type="checkbox" name="acknowledge" value="permanent" required />
+          <Text>{copy.withdrawalAcknowledge}</Text>
+        </Box>
+        <Button type="submit" variant="destructive">
+          {copy.withdraw}
+        </Button>
       </Box>
-      <Button type="submit" variant="destructive">{copy.withdraw}</Button>
+      <Text role="status">{invalid ? copy.invalid : save.isSuccess ? copy.withdrawn : ""}</Text>
+      {save.data ? (
+        <Text>
+          {save.data.id} · {save.data.digest}
+        </Text>
+      ) : null}
+      <AccountingStatus locale={locale} write pending={save.isPending} error={save.error} />
+      <Button
+        type="button"
+        variant="ghost"
+        disabled={save.isPending}
+        onClick={() => {
+          if (!save.isPending) onDiscard();
+        }}
+      >
+        {copy.discardDraft}
+      </Button>
     </Box>
-    <Text role="status">{invalid ? copy.invalid : save.isSuccess ? copy.withdrawn : ""}</Text>
-    {save.data ? <Text>{save.data.id} · {save.data.digest}</Text> : null}
-    <AccountingStatus locale={locale} write pending={save.isPending} error={save.error} />
-    <Button type="button" variant="ghost" disabled={save.isPending} onClick={() => { if (!save.isPending) onDiscard(); }}>{copy.discardDraft}</Button>
-  </Box>;
+  );
 }

@@ -5,8 +5,11 @@ import { accountingErrors as errors } from "./accounting-errors";
 import * as Workspace from "./bank-workspace";
 
 const SourceKey = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200));
+
 const SignedAmount = Schema.String.check(Schema.isPattern(/^(0|-?[1-9][0-9]{0,37})$/));
+
 export const RowOrdinal = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 10000 }));
+
 export const BankRow = Schema.Struct({
   rowOrdinal: RowOrdinal,
   providerId: Schema.NullOr(SourceKey),
@@ -14,11 +17,13 @@ export const BankRow = Schema.Struct({
   description: Accounting.Description,
   amountMinor: SignedAmount,
 });
+
 export const ExistingBankMatch = Schema.Struct({
   rowOrdinal: RowOrdinal,
   voucherId: Accounting.Identifier,
   lineId: Accounting.Identifier,
 });
+
 export const StatementSource = Schema.Struct({
   kind: Schema.Literal("synthetic_bank_statement_v1"),
   statementIdentifier: SourceKey,
@@ -32,62 +37,74 @@ export const StatementSource = Schema.Struct({
   completeness: Schema.Struct({ declaredComplete: Schema.Boolean, basis: Accounting.Description }),
   rows: Schema.Array(BankRow).check(Schema.isMaxLength(10000)),
 });
+
 export const ImportBankStatement = Schema.Struct({
   ...StatementSource.fields,
   evidenceId: Accounting.Identifier,
   existingMatches: Schema.Array(ExistingBankMatch).check(Schema.isMaxLength(10000)),
 });
+
 export const BankMatchInput = Schema.Struct({
   statementId: Accounting.Identifier,
   ...ExistingBankMatch.fields,
 });
+
 export const BankMatch = Schema.Struct({
   ...BankMatchInput.fields,
   origin: Schema.Literals(["imported", "explicit"]),
   actorId: Accounting.Identifier,
 });
+
 export const Checkpoint = Schema.Struct({
   sequence: Accounting.MinorUnits,
   sourceRevision: Accounting.MinorUnits,
 });
+
 export const CommandReceipt = Schema.Struct({
   key: Accounting.IdempotencyHeaders.fields["idempotency-key"],
   operation: Schema.String,
   actorId: Accounting.Identifier,
 });
+
 export const BankStatement = Schema.Struct({
   ...StatementSource.fields,
   id: Accounting.Identifier,
   evidenceId: Accounting.Identifier,
   evidenceSha256: Schema.String,
 });
+
 export const StatementImportReceipt = Schema.Struct({
   statement: BankStatement,
   matches: Schema.Array(BankMatch),
   checkpoint: Checkpoint,
   receipt: CommandReceipt,
 });
+
 export const BankStatementView = Schema.Struct({
   statement: BankStatement,
   matches: Schema.Array(BankMatch),
   checkpoint: Checkpoint,
 });
+
 export const BankMatchReceipt = Schema.Struct({
   match: BankMatch,
   checkpoint: Checkpoint,
   receipt: CommandReceipt,
 });
+
 export const ReconcileBank = Schema.Struct({
   accountId: Accounting.Identifier,
   startsOn: Accounting.AccountingDate,
   endsOn: Accounting.AccountingDate,
 });
+
 export const SourceObservation = Schema.Struct({
   statementId: Accounting.Identifier,
   evidenceId: Accounting.Identifier,
   evidenceSha256: Schema.String,
   ...BankRow.fields,
 });
+
 export const BankLedgerLine = Schema.Struct({
   voucherId: Accounting.Identifier,
   lineId: Accounting.Identifier,
@@ -96,6 +113,7 @@ export const BankLedgerLine = Schema.Struct({
   description: Accounting.Description,
   amountMinor: Accounting.SignedMinorUnits,
 });
+
 export const BankReconciliation = Schema.Struct({
   ...ReconcileBank.fields,
   id: Accounting.Identifier,
@@ -122,6 +140,7 @@ export const BankReconciliation = Schema.Struct({
   receipt: CommandReceipt,
   createdAt: Schema.String,
 });
+
 export const BankReconciliationView = Schema.Struct({
   report: BankReconciliation,
   fresh: Schema.Boolean,
@@ -130,9 +149,13 @@ export const BankReconciliationView = Schema.Struct({
 });
 
 const bookPath = "/v1/entities/:entityId/books/:bookId";
+
 const scoped = { params: Accounting.Scope, error: errors };
+
 const identified = { params: Accounting.ChangePath, error: errors };
+
 const mutation = { ...scoped, headers: Accounting.IdempotencyHeaders };
+
 export const ReconciliationApi = HttpApiGroup.make("reconciliation").add(
   HttpApiEndpoint.get("bankWorkspace", `${bookPath}/bank-workspace`, {
     ...scoped,

@@ -13,10 +13,13 @@ const maxBodyBytes = 8 * 1024 * 1024;
 function assertUniqueJsonKeys(body: Uint8Array) {
   const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(body);
   const containers: Array<Set<string> | null> = [];
+
   for (let offset = 0; offset < text.length; offset++) {
     const character = text[offset];
+
     if (character === "{" || character === "[") {
       containers.push(character === "{" ? new Set<string>() : null);
+
       if (containers.length > 128) {
         throw new BodyError({
           status: 400,
@@ -28,11 +31,14 @@ function assertUniqueJsonKeys(body: Uint8Array) {
     } else if (character === '"') {
       const start = offset;
       offset++;
+
       while (offset < text.length && text[offset] !== '"') {
         if (text[offset] === "\\") offset++;
         offset++;
       }
+
       let next = offset + 1;
+
       while (
         text[next] === " " ||
         text[next] === "\t" ||
@@ -41,14 +47,18 @@ function assertUniqueJsonKeys(body: Uint8Array) {
       )
         next++;
       const keys = containers.at(-1);
+
       if (text[next] !== ":" || keys == null) continue;
       const key: unknown = JSON.parse(text.slice(start, offset + 1));
+
       if (typeof key !== "string") {
         throw new BodyError({ status: 400, message: "JSON object keys must be strings." });
       }
+
       if (keys.has(key)) {
         throw new BodyError({ status: 400, message: "JSON object keys must be unique." });
       }
+
       keys.add(key);
     }
   }
@@ -59,17 +69,21 @@ export function boundedRequest(request: Request) {
   return Effect.scoped(
     Effect.gen(function* () {
       const stream = request.body;
+
       if (stream === null) return request;
       const authRequest = new URL(request.url).pathname.startsWith("/api/auth/");
       const limit = authRequest ? 16 * 1024 : maxBodyBytes;
+
       const tooLarge = new BodyError({
         status: 413,
         message: "Request body exceeds the byte limit.",
       });
+
       const unreadable = new BodyError({
         status: 400,
         message: "Could not read the request body.",
       });
+
       const reader = yield* Effect.acquireRelease(
         Effect.try({ try: () => stream.getReader(), catch: () => unreadable }),
         (stream) =>
@@ -78,26 +92,34 @@ export function boundedRequest(request: Request) {
             Effect.andThen(Effect.sync(() => stream.releaseLock())),
           ),
       );
+
       if (Number(request.headers.get("content-length")) > limit) return yield* tooLarge;
       const chunks: Array<Uint8Array> = [];
       let length = 0;
+
       while (true) {
         const chunk = yield* Effect.tryPromise({
           try: () => reader.read(),
           catch: () => unreadable,
         });
+
         if (chunk.done) break;
         length += chunk.value.byteLength;
+
         if (length > limit) return yield* tooLarge;
         chunks.push(chunk.value);
       }
+
       const body = new Uint8Array(length);
       let offset = 0;
+
       for (const chunk of chunks) {
         body.set(chunk, offset);
         offset += chunk.byteLength;
       }
+
       const contentType = request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+
       if (!authRequest || contentType === "application/json" || contentType?.endsWith("+json")) {
         yield* Effect.try({
           try: () => assertUniqueJsonKeys(body),
@@ -110,6 +132,7 @@ export function boundedRequest(request: Request) {
                 }),
         });
       }
+
       return new Request(request, { method: request.method, body });
     }),
   ).pipe(

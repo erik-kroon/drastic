@@ -9,10 +9,13 @@ import * as Shared from "./shared";
 import { createSupplierInvoiceDraftInTransaction } from "./drafts";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type JsonObject = Schema.JsonObject;
 
 const ViewSchema = SupplierInbox.SupplierInboxView;
+
 const PageSchema = SupplierInbox.SupplierInboxPage;
+
 const ReviewSchema = SupplierInbox.SupplierInboxReview;
 
 const inboxTables = [
@@ -32,10 +35,13 @@ const inboxTables = [
   "supplier_acceptance_reviews",
   "supplier_acceptances",
 ];
+
 const inboxInserts = ["supplier_inbox", "supplier_extraction_attempts", "command_receipts"];
+
 const inboxUpdates = ["supplier_inbox"];
 
 const maximumAttempts = 50;
+
 const maximumExtractionBytes = 32768;
 
 function occurrenceSummary(row: InboxDb.OccurrenceRow) {
@@ -52,6 +58,7 @@ function occurrenceSummary(row: InboxDb.OccurrenceRow) {
 function purchaseSourceReference(content: string) {
   try {
     const parsed: unknown = JSON.parse(content);
+
     return Shared.isJsonObject(parsed) ? parsed : {};
   } catch {
     return null;
@@ -65,10 +72,13 @@ function inboxView(
 ) {
   return Effect.gen(function* () {
     const entry = (yield* InboxDb.readInbox(transaction, bookId, occurrenceId))[0];
+
     if (!entry) return yield* failure("NotFound");
     const occurrence = (yield* InboxDb.readOccurrence(transaction, bookId, occurrenceId))[0];
+
     if (!occurrence) return yield* failure("NotFound");
     const attempts = yield* InboxDb.readAttempts(transaction, bookId, occurrenceId);
+
     return yield* Shared.decode(ViewSchema, {
       occurrence: occurrenceSummary(occurrence),
       channel: entry.channel,
@@ -88,12 +98,15 @@ export const getSupplierInbox = Effect.fn("purchases.inbox.get")(function* (
   return yield* Shared.withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, inboxTables);
+
       const book = (yield* Shared.PurchaseDb.lockBook(
         transaction,
         command.scope.bookId,
         "share",
       ))[0];
+
       if (!book) return yield* failure("Forbidden");
+
       return yield* inboxView(transaction, command.scope.bookId, command.occurrenceId);
     }),
   );
@@ -106,38 +119,49 @@ export const listSupplierInboxes = Effect.fn("purchases.inbox.list")(function* (
   return yield* Shared.withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, inboxTables);
+
       const book = (yield* Shared.PurchaseDb.lockBook(
         transaction,
         command.scope.bookId,
         "share",
       ))[0];
+
       if (!book) return yield* failure("Forbidden");
+
       const page = yield* InboxDb.readOccurrencePage(
         transaction,
         command.scope.bookId,
         command.cursor ?? null,
       );
+
       const visible = page.slice(0, 20);
       const items: JsonObject[] = [];
+
       for (const entry of visible) {
         const occurrenceId = entry.occurrenceId;
+
         const occurrence = (yield* InboxDb.readOccurrence(
           transaction,
           command.scope.bookId,
           occurrenceId,
         ))[0];
+
         if (!occurrence) return yield* failure("InternalError");
+
         const stored = (yield* InboxDb.readInbox(
           transaction,
           command.scope.bookId,
           occurrenceId,
         ))[0];
+
         if (!stored) return yield* failure("InternalError");
+
         const attempts = yield* InboxDb.readAttempts(
           transaction,
           command.scope.bookId,
           occurrenceId,
         );
+
         items.push(
           yield* Shared.toJsonObject(
             Object.assign(
@@ -155,7 +179,9 @@ export const listSupplierInboxes = Effect.fn("purchases.inbox.list")(function* (
           ),
         );
       }
+
       const anchor = visible[visible.length - 1];
+
       return yield* Shared.decode(PageSchema, {
         items,
         nextCursor:
@@ -180,6 +206,7 @@ export const registerSupplierInbox = Effect.fn("purchases.inbox.register")(funct
       yield* Shared.requireTables(transaction, inboxTables, inboxInserts, inboxUpdates);
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = yield* Shared.readBook(transaction, command.scope.bookId);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -189,10 +216,12 @@ export const registerSupplierInbox = Effect.fn("purchases.inbox.register")(funct
         yield* Shared.toJsonObject(command.input),
         ViewSchema,
       );
+
       if (request.previous) return request.previous;
       yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
 
       const { occurrenceId, channel, messageIdentity } = command.input;
+
       if (
         (channel === "email" &&
           (messageIdentity === null ||
@@ -202,12 +231,15 @@ export const registerSupplierInbox = Effect.fn("purchases.inbox.register")(funct
       ) {
         return yield* failure("InvalidJournal");
       }
+
       const occurrence = (yield* InboxDb.readOccurrence(
         transaction,
         command.scope.bookId,
         occurrenceId,
       ))[0];
+
       if (!occurrence) return yield* failure("NotFound");
+
       if (
         messageIdentity !== null &&
         (yield* InboxDb.readMessageIdentityConflict(
@@ -220,12 +252,14 @@ export const registerSupplierInbox = Effect.fn("purchases.inbox.register")(funct
       ) {
         return yield* failure("IdempotencyConflict");
       }
+
       yield* InboxDb.insertInbox(transaction, {
         bookId: command.scope.bookId,
         occurrenceId,
         channel,
         messageIdentity,
       });
+
       if (
         (yield* InboxDb.readRegistration(
           transaction,
@@ -237,6 +271,7 @@ export const registerSupplierInbox = Effect.fn("purchases.inbox.register")(funct
       ) {
         return yield* failure("IdempotencyConflict");
       }
+
       const view = yield* inboxView(transaction, command.scope.bookId, occurrenceId);
       yield* saveCommand(
         transaction,
@@ -247,6 +282,7 @@ export const registerSupplierInbox = Effect.fn("purchases.inbox.register")(funct
         principal.actorId,
         yield* Shared.toJsonObject(view),
       );
+
       return view;
     }),
   );
@@ -266,6 +302,7 @@ export const recordSupplierExtraction = Effect.fn("purchases.inbox.recordExtract
       yield* Shared.requireTables(transaction, inboxTables, inboxInserts, inboxUpdates);
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = yield* Shared.readBook(transaction, command.scope.bookId);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -278,25 +315,31 @@ export const recordSupplierExtraction = Effect.fn("purchases.inbox.recordExtract
         } satisfies JsonObject,
         ViewSchema,
       );
+
       if (request.previous) return request.previous;
       yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
+
       if (Shared.byteLength(JSON.stringify(command.input)) > maximumExtractionBytes) {
         return yield* failure("InvalidJournal");
       }
+
       if (
         (yield* InboxDb.readInboxForUpdate(transaction, command.scope.bookId, command.occurrenceId))
           .length === 0
       ) {
         return yield* failure("NotFound");
       }
+
       const attemptCount = (yield* InboxDb.readAttemptCount(
         transaction,
         command.scope.bookId,
         command.occurrenceId,
       ))[0]!.total;
+
       if (attemptCount >= maximumAttempts) return yield* failure("InvalidJournal");
 
       const ordinal = attemptCount + 1;
+
       const body = Object.assign({}, command.input, {
         id: newId("supplier_extraction"),
         occurrenceId: command.occurrenceId,
@@ -304,9 +347,11 @@ export const recordSupplierExtraction = Effect.fn("purchases.inbox.recordExtract
         createdBy: principal.actorId,
         createdAt: yield* isoNow(transaction),
       }) satisfies JsonObject;
+
       if (Shared.byteLength(JSON.stringify(body)) > 65536) {
         return yield* failure("InvalidJournal");
       }
+
       const attemptId = newId("supplier_extraction");
       yield* InboxDb.insertAttempt(transaction, {
         bookId: command.scope.bookId,
@@ -325,6 +370,7 @@ export const recordSupplierExtraction = Effect.fn("purchases.inbox.recordExtract
         principal.actorId,
         yield* Shared.toJsonObject(view),
       );
+
       return view;
     }),
   );
@@ -349,6 +395,7 @@ export const reviewSupplierInbox = Effect.fn("purchases.inbox.review")(function*
       );
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       yield* Shared.readBook(transaction, command.scope.bookId);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -361,6 +408,7 @@ export const reviewSupplierInbox = Effect.fn("purchases.inbox.review")(function*
         } satisfies JsonObject,
         ReviewSchema,
       );
+
       if (request.previous) return request.previous;
 
       const entry = (yield* InboxDb.readInboxForUpdate(
@@ -368,9 +416,12 @@ export const reviewSupplierInbox = Effect.fn("purchases.inbox.review")(function*
         command.scope.bookId,
         command.occurrenceId,
       ))[0];
+
       if (!entry) return yield* failure("NotFound");
+
       if (entry.draftId !== null) return yield* failure("IdempotencyConflict");
       const attemptId = command.input.reviewAttemptId;
+
       if (
         attemptId !== null &&
         (yield* InboxDb.readAttemptPresence(
@@ -384,25 +435,32 @@ export const reviewSupplierInbox = Effect.fn("purchases.inbox.review")(function*
       }
 
       const draftContent = yield* Shared.toJsonObject(command.input.draft);
+
       const sourceEvidenceId = Shared.textField(
         Shared.objectField(draftContent, "content"),
         "sourceEvidenceId",
       );
+
       if (sourceEvidenceId === undefined) return yield* failure("InvalidJournal");
+
       const evidence = (yield* InboxDb.readReviewedEvidence(
         transaction,
         command.scope.bookId,
         sourceEvidenceId,
       ))[0];
+
       if (!evidence) return yield* failure("InvalidJournal");
       const parsed = purchaseSourceReference(evidence.content);
       const reference = Shared.objectField(parsed, "source");
+
       const occurrence = (yield* InboxDb.readOccurrence(
         transaction,
         command.scope.bookId,
         command.occurrenceId,
       ))[0];
+
       if (!occurrence) return yield* failure("NotFound");
+
       if (
         Shared.textField(reference, "occurrenceId") !== command.occurrenceId ||
         Shared.textField(reference, "sha256") !== occurrence.sha256
@@ -413,11 +471,13 @@ export const reviewSupplierInbox = Effect.fn("purchases.inbox.review")(function*
       const draftKey = `ap_${(yield* sha256Hex(
         `${command.scope.bookId}:${command.occurrenceId}`,
       )).slice(0, 60)}`;
+
       const draft = yield* createSupplierInvoiceDraftInTransaction(transaction, principal, {
         scope: command.scope,
         idempotencyKey: command.idempotencyKey,
         input: { draftKey, content: command.input.draft.content },
       });
+
       yield* InboxDb.bindDraft(
         transaction,
         command.scope.bookId,
@@ -427,6 +487,7 @@ export const reviewSupplierInbox = Effect.fn("purchases.inbox.review")(function*
         attemptId,
       );
       const view = yield* inboxView(transaction, command.scope.bookId, command.occurrenceId);
+
       const result = yield* Shared.decode(
         ReviewSchema,
         Object.assign(
@@ -437,6 +498,7 @@ export const reviewSupplierInbox = Effect.fn("purchases.inbox.review")(function*
           },
         ),
       );
+
       yield* saveCommand(
         transaction,
         command.scope,
@@ -446,6 +508,7 @@ export const reviewSupplierInbox = Effect.fn("purchases.inbox.review")(function*
         principal.actorId,
         yield* Shared.toJsonObject(result),
       );
+
       return result;
     }),
   );

@@ -29,12 +29,14 @@ export async function recoveryControls(
           OR r.body->>'changeSetId' IS DISTINCT FROM r.change_set_id)
       OR EXISTS(SELECT FROM openerp.change_sets s CROSS JOIN LATERAL jsonb_path_query(s.plan, '$.groups[*].actions[*]') a
         WHERE a->>'kind'='post_voucher' AND (jsonb_typeof(a->'evidenceRefs') IS DISTINCT FROM 'array' OR jsonb_array_length(a->'evidenceRefs')=0)) AS invalid`);
+
   if (integrity.rows[0]?.invalid !== false)
     refuse(
       "Inline evidence, voucher balance/watermark or execution-receipt links failed recovery controls.",
     );
   let jsonReferences = 0n;
   let relationalReferences = 0n;
+
   for (const table of tables) {
     const columns = await client.query<{ name: string; json: boolean }>(
       `
@@ -43,6 +45,7 @@ export async function recoveryControls(
       WHERE n.nspname=$1 AND c.relname=$2 AND a.attnum>0 AND NOT a.attisdropped`,
       [table.schema, table.table],
     );
+
     if (
       columns.rows.some(
         (column) =>
@@ -59,10 +62,13 @@ export async function recoveryControls(
         "Database object-storage references require a reviewed closure adapter; inline-only recovery cannot omit them.",
       );
     }
+
     const identifier = `${client.escapeIdentifier(table.schema)}.${client.escapeIdentifier(table.table)}`;
+
     if (columns.rows.some((column) => column.name === "evidence_id")) {
       if (!columns.rows.some((column) => column.name === "book_id"))
         refuse("Unscoped evidence link is unsupported.");
+
       const links = await client.query<{
         count: string;
         invalid: boolean;
@@ -70,12 +76,15 @@ export async function recoveryControls(
         EXISTS(SELECT FROM ONLY ${identifier} r
           LEFT JOIN openerp.evidence e ON e.book_id=r.book_id AND e.id=r.evidence_id
           WHERE r.evidence_id IS NOT NULL AND e.id IS NULL) AS invalid FROM ONLY ${identifier} r`);
+
       if (links.rows[0]?.invalid !== false)
         refuse("A retained relational evidence reference has no original content.");
       relationalReferences += BigInt(links.rows[0]?.count ?? "0");
     }
+
     for (const column of columns.rows.filter((column) => column.json)) {
       const field = client.escapeIdentifier(column.name);
+
       // Saved intent needs strict closure when a committed outcome or reserved-key receipt exists.
       // A missing outcome alone is not proof of nonexecution through older kernel endpoints.
       const requiresEvidence =
@@ -87,6 +96,7 @@ export async function recoveryControls(
             OR EXISTS(SELECT FROM openerp.command_receipts c
               WHERE c.book_id=r.book_id AND c.key=r.command_key)`
           : "true";
+
       const refs = await client.query<{ count: string; invalid: boolean; external: boolean }>(`
         WITH objects AS (SELECT to_jsonb(r)->>'book_id' AS book, (${requiresEvidence}) AS requires_evidence, j.value
           FROM ONLY ${identifier} r CROSS JOIN LATERAL jsonb_path_query(r.${field}::jsonb, '$.** ? (@.type() == "object")') j(value)),
@@ -96,7 +106,9 @@ export async function recoveryControls(
             WHERE r.requires_evidence AND (e.id IS NULL OR (r.value ? 'sha256' AND r.value->>'sha256' IS DISTINCT FROM e.sha256)
               OR (r.value ? 'evidenceSha256' AND r.value->>'evidenceSha256' IS DISTINCT FROM e.sha256))) AS invalid,
           EXISTS(SELECT FROM objects WHERE value ?| ARRAY['objectKey','storageKey','blobKey','objectVersion','storageVersion','blobVersion','object_key','storage_key','blob_key','object_version','storage_version','blob_version']) AS external`);
+
       const result = refs.rows[0];
+
       if (!result || result.invalid || result.external)
         refuse(
           "JSON evidence closure is missing/mismatched or contains unsupported external object pointers.",
@@ -104,6 +116,7 @@ export async function recoveryControls(
       jsonReferences += BigInt(result.count);
     }
   }
+
   const reportControl = await client.query<{ invalid: boolean }>(`
     SELECT EXISTS(SELECT FROM openerp.report_snapshots r JOIN openerp.books b ON b.id=r.book_id
       WHERE r.body->>'kind'='trial_balance_v1' AND (r.sequence>b.committed_sequence
@@ -126,6 +139,7 @@ export async function recoveryControls(
     refuse(
       "Historical trial-balance controls do not reconstruct from their pinned ledger boundary.",
     );
+
   const counts = await client.query<{ body: unknown }>(
     `
     SELECT jsonb_build_object('evidenceCount',(SELECT count(*)::text FROM openerp.evidence),
@@ -143,11 +157,15 @@ export async function recoveryControls(
       originalsVerified ? "retained-originals-matched" : "unsupported-pointers-refused",
     ],
   );
+
   const controls = Schema.decodeUnknownSync(RecoveryControls)(counts.rows[0]?.body);
+
   const evidenceTable = tables.find(
     (table) => table.schema === "openerp" && table.table === "evidence",
   );
+
   if (!evidenceTable) refuse("The database is missing the owned evidence table.");
+
   const evidence = Schema.decodeSync(EvidenceInventory)({
     version: 1,
     table: evidenceTable,
@@ -157,7 +175,9 @@ export async function recoveryControls(
     integrity: "matched",
     references: "matched",
   });
+
   const receiptTables = tables.filter((table) => table.table.endsWith("receipts"));
+
   if (
     !receiptTables.some(
       (table) => table.schema === "openerp" && table.table === "execution_receipts",
@@ -165,6 +185,7 @@ export async function recoveryControls(
     !receiptTables.some((table) => table.schema === "openerp" && table.table === "command_receipts")
   )
     refuse("The database is missing required accounting receipt tables.");
+
   return {
     controls,
     evidence,

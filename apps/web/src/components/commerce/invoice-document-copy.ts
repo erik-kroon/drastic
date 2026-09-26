@@ -24,6 +24,7 @@ const en = {
   recovery:
     "If creation was interrupted, refresh to find the saved document or retry the same request.",
 };
+
 const sv: typeof en = {
   title: "Sparat dokument",
   boundary: "Demodokument · HTML · Engelska · Inte skickat",
@@ -50,4 +51,5 @@ const sv: typeof en = {
   recovery:
     "Om skapandet avbröts, uppdatera för att hitta dokumentet eller försök samma begäran igen.",
 };
+
 export const invoiceDocumentCopy = (locale: Locale) => (locale === "sv" ? sv : en);

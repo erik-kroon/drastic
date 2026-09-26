@@ -22,7 +22,9 @@ function inferredVatRate(netMinor: string | undefined, taxMinor: string | null) 
   if (!netMinor || taxMinor === null) return null;
   const net = BigInt(netMinor);
   const tax = BigInt(taxMinor);
+
   if (net <= 0n || tax < 0n) return null;
+
   return (
     ([0, 6, 12, 25] as const).find((rate) => (net * BigInt(rate) + 50n) / 100n === tax) ?? null
   );
@@ -30,14 +32,18 @@ function inferredVatRate(netMinor: string | undefined, taxMinor: string | null) 
 
 function selectedVatRate(value: string): 0 | 6 | 12 | 25 {
   if (value === "0") return 0;
+
   if (value === "6") return 6;
+
   if (value === "12") return 12;
+
   if (value === "25") return 25;
   throw new Error("Select a VAT rate for each invoice line");
 }
 
 function textField(fields: FormData, name: string) {
   const value = fields.get(name);
+
   return typeof value === "string" ? value : "";
 }
 
@@ -52,8 +58,11 @@ export function useSupplierAcceptanceHistory(book: CommerceProps["book"], draftI
         Acceptance.SupplierAcceptanceHistory,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       if (result.draftId !== draftId) throw new Error("Supplier acceptance history mismatch");
+
       return result;
     },
     retry: false,
@@ -65,6 +74,7 @@ export function SupplierAcceptancePanel(props: CommerceProps & { draft: Draft; c
   const sv = props.locale === "sv";
   const history = useSupplierAcceptanceHistory(props.book, props.draft.id);
   const accepted = history.data?.items.some((item) => item.acceptanceId !== null) ?? false;
+
   return (
     <RecordSection title={sv ? "Granska och bokför" : "Review and post"}>
       <PageCaption>
@@ -118,12 +128,14 @@ function SupplierAcceptancePreparation(
   props: CommerceProps & { draft: Draft; current: boolean; onPrepared: (id: string) => void },
 ) {
   const sv = props.locale === "sv";
+
   const setup = useQuery({
     queryKey: [...bookKey(props.book), "setup"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(props.book)}/setup`, Accounting.BookSetup, { signal }),
     retry: false,
   });
+
   const suggestions = useQuery({
     queryKey: [
       ...commerceKey(props.book),
@@ -136,13 +148,17 @@ function SupplierAcceptancePreparation(
         Drafts.SupplierAccountSuggestions,
         { signal },
       );
+
       checkScope(props.book, result.scope);
+
       if (result.counterpartyId !== props.draft.content.counterpartyId)
         throw new Error("Supplier account suggestions mismatch");
+
       return result;
     },
     retry: false,
   });
+
   const accounts =
     setup.data?.accounts
       .filter((account) => account.active)
@@ -150,13 +166,18 @@ function SupplierAcceptancePreparation(
         value: account.id,
         label: `${account.code} · ${account.name}`,
       })) ?? [];
+
   const payable = setup.data?.accounts.find((account) => account.active && account.code === "2440");
+
   const expenseAccounts =
     setup.data?.accounts.filter((account) => account.active && /^[4-8]/.test(account.code)) ?? [];
+
   const suggestion = suggestions.data?.items[0];
+
   const suggestedAccount = expenseAccounts.find(
     (account) => account.id === suggestion?.expenseAccountId,
   );
+
   return (
     <Box display="grid" gap="lg">
       <Text>
@@ -210,6 +231,7 @@ function SupplierAcceptancePreparation(
           {props.draft.content.lines.map((line, index) => {
             const net = props.draft.calculatedLines.find((item) => item.id === line.id)?.netMinor;
             const rate = inferredVatRate(net, line.taxMinor);
+
             return (
               <Box key={line.id} display="grid" gap="sm">
                 <Text>
@@ -291,12 +313,14 @@ function SupplierAcceptancePreparation(
 
 function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Draft }) {
   const sv = props.locale === "sv";
+
   const setup = useQuery({
     queryKey: [...bookKey(props.book), "setup"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(props.book)}/setup`, Accounting.BookSetup, { signal }),
     retry: false,
   });
+
   const review = useQuery({
     queryKey: [...commerceKey(props.book), "supplier-acceptance-review", props.id],
     staleTime: 0,
@@ -307,16 +331,23 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
         Acceptance.SupplierAcceptanceView,
         { signal },
       );
+
       checkScope(props.book, result.plan.scope);
+
       if (result.plan.id !== props.id || result.plan.input.draftId !== props.draft.id)
         throw new Error("Supplier acceptance review mismatch");
+
       if (result.approval) checkScope(props.book, result.approval.scope);
+
       if (result.acceptance) checkScope(props.book, result.acceptance.scope);
+
       return result;
     },
     retry: false,
   });
+
   const view = review.isError ? undefined : review.data;
+
   return (
     <Box display="grid" gap="lg">
       <Button variant="outline" disabled={review.isFetching} onClick={() => void review.refetch()}>
@@ -344,6 +375,7 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
               group.actions.flatMap((action) =>
                 action.lines.map((line) => {
                   const account = setup.data?.accounts.find((item) => item.id === line.accountId);
+
                   return {
                     id: `${group.id}:${line.lineId}`,
                     cells: [
@@ -448,6 +480,7 @@ function SupplierReviewedLines(props: {
 }) {
   if (!("lineAssignments" in props.plan.input)) return null;
   const sv = props.locale === "sv";
+
   return (
     <DataTable
       title={sv ? "Granskade fakturarader" : "Reviewed invoice lines"}
@@ -462,7 +495,9 @@ function SupplierReviewedLines(props: {
         const line = props.plan.draftSnapshot.content.lines.find(
           (item) => item.id === assignment.lineId,
         );
+
         const account = props.accounts.find((item) => item.id === assignment.expenseAccountId);
+
         return {
           id: assignment.lineId,
           cells: [

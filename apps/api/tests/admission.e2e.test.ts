@@ -47,15 +47,18 @@ test("credential revocation between approval and execution produces no posting",
   const plan = await prepare(book);
   const approval = await approve(book, plan);
   const admin = await database();
+
   try {
     const revoked = await admin.query(
       "UPDATE openerp.credentials SET revoked_at = clock_timestamp() WHERE actor_id = $1",
       [book.agentId],
     );
+
     expect(revoked.rowCount).toBe(1);
   } finally {
     await admin.end();
   }
+
   await failure(
     await request(book, `/change-sets/${plan.id}/execute`, {
       method: "POST",
@@ -91,15 +94,18 @@ test("removing approver membership between approval and execution produces no po
   const plan = await prepare(book);
   const approval = await approve(book, plan);
   const admin = await database();
+
   try {
     const deleted = await admin.query(
       "DELETE FROM openerp.memberships WHERE book_id = $1 AND actor_id = $2",
       [book.bookId, book.actorId],
     );
+
     expect(deleted.rowCount).toBe(1);
   } finally {
     await admin.end();
   }
+
   await failure(
     await request(book, `/change-sets/${plan.id}/execute`, {
       method: "POST",
@@ -130,11 +136,13 @@ test.each([
     const plan = await prepare(book);
     const approval = await approve(book, plan);
     const admin = await database();
+
     try {
       await admin.query(sql, [book.bookId]);
     } finally {
       await admin.end();
     }
+
     await failure(
       await request(book, `/change-sets/${plan.id}/execute`, {
         method: "POST",
@@ -176,10 +184,12 @@ test.each(["-1", "1.5", "01", "1e3", "100000000000000000000000000000000000000"])
   async (amount) => {
     const book = await fixture();
     const source = await evidence(book);
+
     const response = await request(book, "/change-sets", {
       method: "POST",
       body: JSON.stringify(journal(source.id, amount)),
     });
+
     expect(response.status, await response.text()).toBe(400);
     expect(await persisted(book)).toEqual(emptyPosting);
   },

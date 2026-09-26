@@ -55,7 +55,9 @@ export const AttentionQuery = Schema.Struct({
     Schema.String.check(Schema.isPattern(/^(journal|invoice|expense)_[a-z][a-z0-9_-]{2,127}$/)),
   ),
 });
+
 export const WorkKind = Schema.Literals(["journal", "invoice", "expense"]);
+
 export const Assignment = Schema.Struct({
   kind: WorkKind,
   recordId: Accounting.Identifier,
@@ -66,6 +68,7 @@ export const Assignment = Schema.Struct({
   updatedAt: Schema.String,
   updatedBy: Accounting.Identifier,
 });
+
 export const AssignWork = Schema.Struct({
   kind: WorkKind,
   recordId: Accounting.Identifier,
@@ -74,6 +77,7 @@ export const AssignWork = Schema.Struct({
   note: Schema.String.check(Schema.isMaxLength(2000)),
   expectedRevision: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
 });
+
 export const ViewFilters = Schema.Struct({
   period: AttentionQuery.fields.period,
   status: AttentionQuery.fields.status,
@@ -81,16 +85,19 @@ export const ViewFilters = Schema.Struct({
   q: AttentionQuery.fields.q,
   kind: AttentionQuery.fields.kind,
 });
+
 export const SaveView = Schema.Struct({
   name: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(80)),
   visibility: Schema.Literals(["personal", "team"]),
   filters: ViewFilters,
 });
+
 export const SavedView = Schema.Struct({
   ...SaveView.fields,
   id: Accounting.Identifier,
   ownerId: Accounting.Identifier,
 });
+
 export const Coordination = Schema.Struct({
   scope: Accounting.Scope,
   actorId: Accounting.Identifier,
@@ -103,9 +110,13 @@ export const Coordination = Schema.Struct({
   ),
   views: Schema.Array(SavedView),
 });
+
 export const SavedViewResult = Schema.Struct({ scope: Accounting.Scope, view: SavedView });
+
 export const DeleteView = Schema.Struct({ id: Accounting.Identifier });
+
 export const DeletedView = Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier });
+
 export const AssignmentResult = Schema.Struct({ scope: Accounting.Scope, assignment: Assignment });
 
 export const AttentionItem = Schema.Struct({
@@ -130,6 +141,7 @@ export const AttentionItem = Schema.Struct({
     "expense_reviewed",
   ]),
 });
+
 export const AttentionPage = Schema.Struct({
   scope: Accounting.Scope,
   checkedAt: Schema.String,
@@ -148,6 +160,7 @@ const coordinationCommand = {
   scope: Accounting.Scope,
   idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
 };
+
 export const WorkspaceCapabilities = {
   workspace_coordination: {
     description:

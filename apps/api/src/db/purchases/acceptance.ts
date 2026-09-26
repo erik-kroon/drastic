@@ -2,6 +2,21 @@ import { textArray } from "../sql-values";
 import { sql } from "drizzle-orm";
 import type * as Schema from "effect/Schema";
 import type { Transaction } from "../transaction";
+import type * as Acceptance from "@open-erp/contracts/supplier-acceptance";
+
+export function insertAcceptance(
+  tx: Transaction,
+  book: string,
+  result: typeof Acceptance.SupplierAcceptanceReceipt.Type,
+) {
+  return tx.execute(
+    sql`insert into openerp.supplier_acceptances
+    (book_id,id,review_id,approval_id,draft_id,draft_revision,posting_receipt_id,register_invoice_id,body)
+    values(${book},${result.id},${result.reviewId},${result.approvalId},${result.draftId},${result.draftRevision}::bigint,
+      ${result.postingReceipt.id},${result.registerInvoiceId},${JSON.stringify(result)}::jsonb)`,
+    "objects",
+  );
+}
 
 type JsonObject = Schema.JsonObject;
 

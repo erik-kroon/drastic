@@ -3,6 +3,7 @@ import type { Transaction } from "../transaction";
 import { allocatedLineSql, allocatedSourceSql } from "./shared";
 
 type Json = import("effect/Schema").Json;
+
 type JsonObject = import("effect/Schema").JsonObject;
 
 export type StatementRow = {
@@ -383,6 +384,7 @@ export function readSourceRows(
 ) {
   const book = sql`${bookId}`;
   const allocated = allocatedSourceSql(book, sql`s.id`, sql`o.row_ordinal`);
+
   return transaction.execute<{ readonly rows: Json }>(
     sql`
       select coalesce(jsonb_agg(jsonb_build_object(
@@ -413,6 +415,7 @@ export function readLedgerRows(
 ) {
   const book = sql`${bookId}`;
   const allocated = allocatedLineSql(book, sql`l.voucher_id`, sql`l.id`);
+
   return transaction.execute<{ readonly rows: Json }>(
     sql`
       select coalesce(jsonb_agg(jsonb_build_object(

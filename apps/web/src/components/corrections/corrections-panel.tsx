@@ -31,6 +31,7 @@ export function CorrectionsPanel({
   const [originalId, setOriginalId] = useState("");
   const [bundleId, setBundleId] = useState("");
   const [error, setError] = useState("");
+
   const original = useQuery({
     queryKey: [...bookKey(book), "correction-original", originalId],
     queryFn: ({ signal }) =>
@@ -42,6 +43,7 @@ export function CorrectionsPanel({
     enabled: originalId !== "",
     retry: false,
   });
+
   const recovery = useMutation({
     mutationFn: (id: string) =>
       readAccounting(
@@ -50,6 +52,7 @@ export function CorrectionsPanel({
       ),
     onSuccess: (view) => setBundleId(view.bundle.id),
   });
+
   return (
     <details open={open} id="corrections" tabIndex={-1}>
       <summary>{copy.title}</summary>
@@ -63,10 +66,13 @@ export function CorrectionsPanel({
           onSubmit={(event) => {
             event.preventDefault();
             const id = new FormData(event.currentTarget).get("originalId");
+
             if (!Schema.is(Accounting.Identifier)(id)) {
               setError(copy.invalid);
+
               return;
             }
+
             setError("");
             setOriginalId(id);
             setBundleId("");
@@ -92,10 +98,13 @@ export function CorrectionsPanel({
           onSubmit={(event) => {
             event.preventDefault();
             const id = new FormData(event.currentTarget).get("bundleId");
+
             if (!Schema.is(Accounting.Identifier)(id)) {
               setError(copy.invalid);
+
               return;
             }
+
             setError("");
             setBundleId(id);
           }}
@@ -190,25 +199,30 @@ function ReplacementDraft(props: {
   const [error, setError] = useState("");
   const [impactConfirmed, setImpactConfirmed] = useState(false);
   const [requestKey, setRequestKey] = useState("");
+
   const impact = useMutation({
     mutationFn: (input: typeof Corrections.CorrectionIntent.Type) => {
       const path = `${bookPath(book)}/vouchers/${encodeURIComponent(original.id)}/correction-impact-reviews`;
       const body = JSON.stringify(input);
       const options = mutationOptions(path, body, keys.current);
       setRequestKey(keys.current.get(`${path}:${body}`) ?? "");
+
       return readAccounting(path, Corrections.CorrectionImpact, options);
     },
   });
+
   const prepare = useMutation({
     mutationFn: (input: typeof Corrections.PrepareCorrectionBundle.Type) => {
       const path = `${bookPath(book)}/vouchers/${encodeURIComponent(original.id)}/correction-bundles`;
       const body = JSON.stringify(input);
       const options = mutationOptions(path, body, keys.current);
       setRequestKey(keys.current.get(`${path}:${body}`) ?? "");
+
       return readAccounting(path, Corrections.CorrectionBundle, options);
     },
     onSuccess: (bundle) => props.onPrepared(bundle.id),
   });
+
   return (
     <Box
       as="form"
@@ -217,6 +231,7 @@ function ReplacementDraft(props: {
       onSubmit={(event) => {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
+
         const decoded = Schema.decodeUnknownOption(Corrections.CorrectionIntent)({
           datePolicy: "explicit_open_period",
           accountingPeriodId: fields.get("period"),
@@ -232,19 +247,25 @@ function ReplacementDraft(props: {
             })),
           },
         });
+
         if (decoded._tag === "None") {
           setError(copy.invalid);
+
           return;
         }
+
         const draft = decoded.value;
+
         const debit = draft.replacement.lines.reduce(
           (sum, line) => sum + BigInt(line.debitMinor),
           0n,
         );
+
         const credit = draft.replacement.lines.reduce(
           (sum, line) => sum + BigInt(line.creditMinor),
           0n,
         );
+
         if (
           debit === 0n ||
           debit !== credit ||
@@ -253,8 +274,10 @@ function ReplacementDraft(props: {
           )
         ) {
           setError(copy.invalid);
+
           return;
         }
+
         setError("");
         setImpactConfirmed(false);
         impact.mutate(draft);
@@ -420,6 +443,7 @@ function ReplacementDraft(props: {
               disabled={prepare.isPending}
               onClick={() => {
                 const path = `${bookPath(book)}/vouchers/${encodeURIComponent(original.id)}/correction-impact-reviews`;
+
                 if (impact.variables)
                   keys.current.delete(`${path}:${JSON.stringify(impact.variables)}`);
                 impact.reset();

@@ -5,6 +5,7 @@ import { memberships } from "./schema";
 import type { Transaction } from "./transaction";
 
 type JsonObject = Schema.JsonObject;
+
 type RevisionKind = typeof Payroll.PayrollRevision.Type.kind;
 
 export type PayrollGrantRow = {

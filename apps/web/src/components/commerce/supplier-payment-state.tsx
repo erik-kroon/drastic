@@ -10,6 +10,7 @@ export function SupplierPaymentState({
   invoice?: typeof Commerce.Invoice.Type;
 }) {
   const sv = locale === "sv";
+
   const match = invoice
     ? invoice.status === "allocated"
       ? sv
@@ -29,6 +30,7 @@ export function SupplierPaymentState({
     : sv
       ? "Inget betalningsunderlag skapas här"
       : "No payment instruction from this draft";
+
   return (
     <InvoiceProgress
       title={sv ? "Betalningsläge" : "Payment status"}

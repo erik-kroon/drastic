@@ -29,11 +29,17 @@ const openerp = pgSchema("openerp");
 
 // effect-mq owns queue writes; reviewed SQL migrations own the matching DDL.
 export const jobs = mqJobs<"preparation">();
+
 export const jobAttempts = mqJobAttempts(jobs);
+
 export const jobSchedules = mqSchedules<"preparation">();
+
 export const jobQueues = mqQueueControl();
+
 export const jobDedupe = mqDedupe<"preparation">();
+
 export const jobFlowChildren = mqFlowChildren();
+
 export const jobFlowOutbox = mqFlowOutbox();
 
 export const migrations = pgTable("openerp_migrations", {

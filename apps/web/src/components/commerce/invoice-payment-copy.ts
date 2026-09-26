@@ -54,6 +54,7 @@ const en = {
   returnFirstPage: "The list changed. Return to the first page to see current payments.",
   savedReviews: "Back to payments",
 };
+
 const sv: typeof en = {
   title: "Betalningar",
   back: "Tillbaka till fakturan",
@@ -108,6 +109,7 @@ const sv: typeof en = {
   returnFirstPage: "Listan har ändrats. Gå till första sidan för att se aktuella betalningar.",
   savedReviews: "Tillbaka till betalningar",
 };
+
 export function invoicePaymentCopy(locale: Locale) {
   return locale === "sv" ? sv : en;
 }

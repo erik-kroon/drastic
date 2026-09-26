@@ -11,6 +11,7 @@ export function useCommerceCommandRecovery<
   const actor = useSavedPostingRequests(props.book, null, props.id !== undefined);
   const client = useQueryClient();
   const actorId = actor.data?.actorId;
+
   const identity = JSON.stringify([
     "openerp:commerce-request:v1",
     actorId,
@@ -19,19 +20,25 @@ export function useCommerceCommandRecovery<
     props.path,
     props.id,
   ]);
+
   const queryKey = [...bookKey(props.book), "commerce-request", identity];
+
   const requestSchema = Schema.Struct({
     key: Accounting.IdempotencyHeaders.fields["idempotency-key"],
     input: Schema.Unknown,
   });
+
   function decode(text: string) {
     const stored = Schema.decodeUnknownSync(requestSchema)(JSON.parse(text));
+
     return { key: stored.key, input: Schema.decodeUnknownSync(props.schema)(stored.input) };
   }
+
   const saved = useQuery({
     queryKey,
     queryFn: () => {
       const text = sessionStorage.getItem(identity);
+
       return text === null ? null : decode(text);
     },
     enabled:
@@ -42,38 +49,51 @@ export function useCommerceCommandRecovery<
     staleTime: Infinity,
     retry: false,
   });
+
   const enabled = props.id !== undefined;
   const ready = !enabled || (actor.isSuccess && !actor.isFetching && saved.isSuccess);
+
   function retain(request: { key: string; input: S["Type"] }) {
     if (!enabled) return;
+
     if (!ready || !actorId) throw new Error("Command recovery is not ready");
     const existing = sessionStorage.getItem(identity);
+
     if (existing !== null) {
       const original = decode(existing);
+
       if (
         original.key !== request.key ||
         JSON.stringify(original.input) !== JSON.stringify(request.input)
       )
         throw new Error("A different command is already waiting for recovery");
     }
+
     const text = JSON.stringify(request);
     sessionStorage.setItem(identity, text);
+
     if (sessionStorage.getItem(identity) !== text)
       throw new Error("Command recovery could not be saved");
     client.setQueryData(queryKey, request);
   }
+
   function clear(key: string) {
     if (!enabled) return;
     const text = sessionStorage.getItem(identity);
+
     if (text !== null) {
       const original = decode(text);
+
       if (original.key !== key) throw new Error("Command recovery identity changed");
       sessionStorage.removeItem(identity);
+
       if (sessionStorage.getItem(identity) !== null)
         throw new Error("Command recovery could not be cleared");
     }
+
     client.setQueryData(queryKey, null);
   }
+
   return {
     ready,
     saved: enabled && saved.isSuccess ? saved.data : null,

@@ -8,6 +8,7 @@ export const PostingStatus = Schema.Literals([
   "posted_by_other_proposal",
   "unposted_at_check",
 ]);
+
 export const PostingOperation = Schema.Literals([
   "prepare_journal",
   "prepare_correction",
@@ -15,6 +16,7 @@ export const PostingOperation = Schema.Literals([
   "approve_change",
   "execute_change",
 ]);
+
 export const RecoverySummary = Schema.Struct({
   changeSetId: Accounting.Identifier,
   planDigest: Accounting.Digest,
@@ -24,17 +26,20 @@ export const RecoverySummary = Schema.Struct({
   postingStatus: PostingStatus,
   executionReceipt: Schema.NullOr(Accounting.ExecutionReceipt),
 });
+
 const observation = {
   scope: Accounting.Scope,
   actorId: Accounting.Identifier,
   checkedAt: Schema.String,
   sequence: Accounting.AggregateMinorUnits,
 };
+
 export const RecoveryList = Schema.Struct({
   ...observation,
   items: Schema.Array(RecoverySummary),
   next: Schema.NullOr(Accounting.Identifier),
 });
+
 export const RecoveryRequest = Schema.Struct({
   key: Accounting.IdempotencyHeaders.fields["idempotency-key"],
   operation: PostingOperation,
@@ -47,6 +52,7 @@ export const RecoveryRequest = Schema.Struct({
     Schema.Literals(["consumed", "revoked", "expired", "authority_lost", "unconsumed_at_check"]),
   ),
 });
+
 export const PostingRecovery = Schema.Struct({
   ...observation,
   summary: RecoverySummary,
@@ -59,11 +65,13 @@ export const PostingRecovery = Schema.Struct({
   requests: Schema.Array(RecoveryRequest),
   nextRequest: Schema.NullOr(Accounting.IdempotencyHeaders.fields["idempotency-key"]),
 });
+
 const requestObservation = {
   scope: Accounting.Scope,
   key: Accounting.IdempotencyHeaders.fields["idempotency-key"],
   checkedAt: Schema.String,
 };
+
 export const RecoveredPostingRequest = Schema.Union([
   Schema.Struct({
     ...requestObservation,
@@ -91,12 +99,15 @@ export const RecoveredPostingRequest = Schema.Union([
     sameActor: Schema.Null,
   }),
 ]);
+
 export const RecoveryListQuery = Schema.Struct({ after: Schema.optional(Accounting.Identifier) });
+
 export const RecoveryDetailQuery = Schema.Struct({
   after: Schema.optional(Accounting.IdempotencyHeaders.fields["idempotency-key"]),
 });
 
 export const SavedRequestKey = Accounting.IdempotencyHeaders.fields["idempotency-key"];
+
 export const PostingCommand = Schema.Union([
   Schema.Struct({ operation: Schema.Literal("create_evidence"), input: Accounting.CreateEvidence }),
   Schema.Struct({ operation: Schema.Literal("prepare_journal"), input: Accounting.PrepareJournal }),
@@ -106,6 +117,7 @@ export const PostingCommand = Schema.Union([
     input: Accounting.ExecuteChange,
   }),
 ]);
+
 export const PostingAuthorityCommand = Schema.Union([
   Schema.Struct({
     operation: Schema.Literal("approve_change"),
@@ -118,7 +130,9 @@ export const PostingAuthorityCommand = Schema.Union([
     input: Schema.Struct({ reason: Accounting.Description }),
   }),
 ]);
+
 export const SavedPostingCommand = Schema.Union([PostingCommand, PostingAuthorityCommand]);
+
 export const ApprovalRevocation = Schema.Struct({
   approvalId: Accounting.Identifier,
   changeSetId: Accounting.Identifier,
@@ -127,6 +141,7 @@ export const ApprovalRevocation = Schema.Struct({
   reason: Accounting.Description,
   revokedAt: Schema.String,
 });
+
 export const SavedPostingOutcome = Schema.Union([
   Schema.Struct({
     state: Schema.Literal("committed"),
@@ -147,6 +162,7 @@ export const SavedPostingOutcome = Schema.Union([
     recordedAt: Schema.String,
   }),
 ]);
+
 export const SavedPostingSummary = Schema.Struct({
   key: SavedRequestKey,
   actorId: Accounting.Identifier,
@@ -162,6 +178,7 @@ export const SavedPostingSummary = Schema.Struct({
   savedAt: Schema.String,
   state: Schema.Literals(["unknown", "committed", "refused"]),
 });
+
 export const SavedPostingRequest = Schema.Struct({
   scope: Accounting.Scope,
   checkedAt: Schema.String,
@@ -170,6 +187,7 @@ export const SavedPostingRequest = Schema.Struct({
   sameActor: Schema.Boolean,
   outcome: Schema.NullOr(SavedPostingOutcome),
 });
+
 export const SavedPostingRequests = Schema.Struct({
   scope: Accounting.Scope,
   actorId: Accounting.Identifier,
@@ -177,7 +195,9 @@ export const SavedPostingRequests = Schema.Struct({
   items: Schema.Array(SavedPostingSummary),
   next: Schema.NullOr(SavedRequestKey),
 });
+
 export const SavedPostingQuery = Schema.Struct({ after: Schema.optional(SavedRequestKey) });
+
 const savedPath = Schema.Struct({ ...Accounting.Scope.fields, key: SavedRequestKey });
 
 export const PostingRecoveryCapabilities = {
@@ -242,7 +262,9 @@ export const PostingRecoveryCapabilities = {
     readOnly: true,
   },
 };
+
 const path = "/v1/entities/:entityId/books/:bookId";
+
 export const PostingRecoveryApi = HttpApiGroup.make("postingRecovery").add(
   HttpApiEndpoint.post("savePostingRequest", `${path}/saved-posting-requests`, {
     params: Accounting.Scope,

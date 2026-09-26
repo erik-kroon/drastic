@@ -49,6 +49,7 @@ export function InputField({
 }: InputProps & { label: string; suggestions?: readonly string[] }) {
   const generatedId = useId();
   const controlId = id ?? generatedId;
+
   return (
     <div {...stylex.props(styles.field)}>
       <Label htmlFor={controlId} disabled={props.disabled} styleX={styles.label}>
@@ -70,6 +71,7 @@ export function InputField({
     </div>
   );
 }
+
 export function SelectField({
   label,
   id,
@@ -79,6 +81,7 @@ export function SelectField({
   const generatedId = useId();
   const controlId = id ?? generatedId;
   const labelId = `${controlId}-label`;
+
   return (
     <div {...stylex.props(styles.field)}>
       <Label id={labelId} htmlFor={controlId} disabled={props.disabled} styleX={styles.label}>
@@ -101,6 +104,7 @@ export function TextareaField({
 }: Omit<ComponentProps<"textarea">, "className" | "style"> & { label: string }) {
   const generatedId = useId();
   const controlId = id ?? generatedId;
+
   return (
     <div {...stylex.props(styles.field)}>
       <Label htmlFor={controlId} styleX={styles.label}>

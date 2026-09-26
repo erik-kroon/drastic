@@ -30,6 +30,7 @@ export function BankReconciliation({
   const [statementId, setStatementId] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState("");
+
   return (
     <details open={open} id="bank-reconciliation" tabIndex={-1}>
       <summary>{copy.bank_title}</summary>
@@ -46,10 +47,13 @@ export function BankReconciliation({
           onSubmit={(event) => {
             event.preventDefault();
             const id = new FormData(event.currentTarget).get("statementId");
+
             if (!Schema.is(Accounting.Identifier)(id)) {
               setLoadError(copy.bank_invalid);
+
               return;
             }
+
             setLoadError("");
             setStatementId(id);
           }}
@@ -79,10 +83,13 @@ export function BankReconciliation({
           onSubmit={(event) => {
             event.preventDefault();
             const id = new FormData(event.currentTarget).get("reportId");
+
             if (!Schema.is(Accounting.Identifier)(id)) {
               setLoadError(copy.bank_invalid);
+
               return;
             }
+
             setLoadError("");
             setReportId(id);
           }}
@@ -120,9 +127,11 @@ function ReconciliationForm({
   const copy = accountingCopy(locale);
   const keys = useRef(new Map<string, string>());
   const [inputError, setInputError] = useState("");
+
   const reconciliation = useMutation({
     mutationFn: (payload: typeof Bank.ReconcileBank.Type) => {
       const path = `${bookPath(book)}/bank-reconciliations`;
+
       return readAccounting(
         path,
         Bank.BankReconciliation,
@@ -131,6 +140,7 @@ function ReconciliationForm({
     },
     onSuccess: (report) => onCreated(report.id),
   });
+
   return (
     <Box
       as="form"
@@ -139,15 +149,19 @@ function ReconciliationForm({
       onSubmit={(event) => {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
+
         const decoded = Schema.decodeUnknownOption(Bank.ReconcileBank)({
           accountId: fields.get("accountId"),
           startsOn: fields.get("startsOn"),
           endsOn: fields.get("endsOn"),
         });
+
         if (decoded._tag === "None") {
           setInputError(copy.bank_invalid);
+
           return;
         }
+
         setInputError("");
         reconciliation.mutate(decoded.value);
       }}

@@ -39,6 +39,7 @@ type Props = {
   locale: Locale;
   onPrepared: (id: string) => void;
 };
+
 export function ExpenseTaxPanel(props: Props) {
   const { book, locale, onPrepared } = props;
   const copy = expenseTaxCopy(locale);
@@ -50,24 +51,29 @@ export function ExpenseTaxPanel(props: Props) {
   const sourceId = creating ? null : selected;
   const [search, setSearch] = useState("");
   const sv = locale === "sv";
+
   const inventory = useQuery({
     queryKey: [...bookKey(book), "expense-tax", "inventory"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(book)}/expense-tax/sources`, Tax.TaxInventory, { signal }),
     retry: false,
   });
+
   const sourceSaved = (id: string) => {
     select(id);
     void client.invalidateQueries({ queryKey: [...bookKey(book), "expense-tax"] });
   };
+
   const rows =
     inventory.data?.sources.filter((row) =>
       row.current.facts.description
         .toLocaleLowerCase(locale)
         .includes(search.toLocaleLowerCase(locale)),
     ) ?? [];
+
   if (selected === "snapshots" || selected.startsWith("snapshot:"))
     return <ExpenseReviewArchive book={book} locale={locale} selected={selected} select={select} />;
+
   if (sourceId)
     return (
       <Box display="grid" gap="xl">
@@ -88,6 +94,7 @@ export function ExpenseTaxPanel(props: Props) {
         />
       </Box>
     );
+
   return (
     <Box display="grid" gap="xl">
       <RecordHeading
@@ -192,6 +199,7 @@ function ExpenseReviewArchive({
   select,
 }: Pick<Props, "book" | "locale"> & { selected: string; select: (id: string) => void }) {
   const sv = locale === "sv";
+
   return (
     <Box display="grid" gap="xl">
       <Box>
@@ -220,6 +228,7 @@ function ExpenseTaxSourceDetail(props: Props & { sourceId: string; onChanged: ()
   const { book, locale, sourceId } = props;
   const copy = expenseTaxCopy(locale);
   const [editor, setEditor] = useState<"source" | "review" | null>(null);
+
   const source = useQuery({
     queryKey: [...bookKey(book), "expense-tax", "source", sourceId],
     queryFn: ({ signal }) =>
@@ -228,11 +237,14 @@ function ExpenseTaxSourceDetail(props: Props & { sourceId: string; onChanged: ()
       }),
     retry: false,
   });
+
   const saved = () => {
     setEditor(null);
     props.onChanged();
   };
+
   const view = source.data;
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <AccountingStatus locale={locale} pending={source.isPending} error={source.error} />
@@ -376,6 +388,7 @@ function ExpenseTaxSourceDetail(props: Props & { sourceId: string; onChanged: ()
     </Box>
   );
 }
+
 function ExpenseTaxHistory({
   book,
   locale,
@@ -385,6 +398,7 @@ function ExpenseTaxHistory({
   const [selected, setSelected] = useState<string | null>(null);
   const source = view.sourceHistory.find((entry) => entry.id === selected);
   const review = view.reviewHistory.find((entry) => entry.id === selected);
+
   const entries = [
     ...view.sourceHistory.map((entry) => ({
       id: entry.id,
@@ -399,6 +413,7 @@ function ExpenseTaxHistory({
       recordedAt: entry.recordedAt,
     })),
   ].sort((a, b) => b.recordedAt.localeCompare(a.recordedAt));
+
   return (
     <RecordSection title={copy.history}>
       <Box display="flex" gap="sm" flexWrap="wrap">
@@ -458,6 +473,7 @@ function expenseDisplayAmount(
   locale: Locale,
 ) {
   const amount = source.facts.amounts[name];
+
   return amount !== null && source.facts.currencyScale !== null
     ? `${formatMinorAmount(amount, source.facts.currencyScale, locale)} ${source.facts.currency ?? ""}`
     : "—";
@@ -475,6 +491,7 @@ function ExpenseTaxSnapshots({
   const [after, setAfter] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
   const keys = useRef(new Map<string, string>());
+
   const snapshots = useQuery({
     queryKey: [...bookKey(book), "expense-tax", "snapshots", after],
     queryFn: ({ signal }) =>
@@ -485,9 +502,11 @@ function ExpenseTaxSnapshots({
       ),
     retry: false,
   });
+
   const prepare = useMutation({
     mutationFn: (input: typeof Tax.PrepareTaxSnapshot.Type) => {
       const path = `${bookPath(book)}/expense-tax/snapshots`;
+
       return readAccounting(
         path,
         Tax.TaxSnapshot,
@@ -502,10 +521,12 @@ function ExpenseTaxSnapshots({
       void client.invalidateQueries({ queryKey: [...bookKey(book), "expense-tax", "snapshots"] });
     },
   });
+
   if (snapshotId)
     return (
       <ExpenseTaxSnapshotDetail key={snapshotId} book={book} locale={locale} id={snapshotId} />
     );
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <RecordHeading
@@ -537,15 +558,19 @@ function ExpenseTaxSnapshots({
             onSubmit={(event) => {
               event.preventDefault();
               const fields = new FormData(event.currentTarget);
+
               const decoded = Schema.decodeUnknownOption(Tax.PrepareTaxSnapshot)({
                 mode: fields.get("mode"),
                 startsOn: fields.get("startsOn"),
                 endsOn: fields.get("endsOn"),
               });
+
               if (decoded._tag === "None") {
                 setInvalid(true);
+
                 return;
               }
+
               setInvalid(false);
               prepare.mutate(decoded.value);
             }}
@@ -638,12 +663,14 @@ function ExpenseTaxSnapshots({
     </Box>
   );
 }
+
 function ExpenseTaxSnapshotDetail({
   book,
   locale,
   id,
 }: Pick<Props, "book" | "locale"> & { id: string }) {
   const copy = expenseTaxCopy(locale);
+
   const result = useQuery({
     queryKey: [...bookKey(book), "expense-tax", "snapshot", id],
     queryFn: ({ signal }) =>
@@ -652,7 +679,9 @@ function ExpenseTaxSnapshotDetail({
       }),
     retry: false,
   });
+
   const snapshot = result.data?.snapshot;
+
   const amountNames = [
     "grossMinor",
     "netMinor",
@@ -661,7 +690,9 @@ function ExpenseTaxSnapshotDetail({
     "nonDeductibleMinor",
     "expenseMinor",
   ] as const;
+
   const sv = locale === "sv";
+
   const amountLabels = {
     grossMinor: sv ? "Totalt" : "Total",
     netMinor: sv ? "Exkl. moms" : "Before tax",
@@ -670,6 +701,7 @@ function ExpenseTaxSnapshotDetail({
     nonDeductibleMinor: sv ? "Ej avdragsgill moms" : "Non-deductible tax",
     expenseMinor: sv ? "Kostnad" : "Expense",
   };
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <AccountingStatus locale={locale} pending={result.isPending} error={result.error} />
@@ -735,6 +767,7 @@ function ExpenseTaxSnapshotDetail({
                 const url = URL.createObjectURL(
                   new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" }),
                 );
+
                 const link = document.createElement("a");
                 link.href = url;
                 link.download = `${snapshot.id}.json`;

@@ -19,6 +19,7 @@ export const EnteredExpenseEvidence = Schema.Struct({
 export function enteredExpenseSource(content: string) {
   try {
     const parsed = Schema.decodeUnknownOption(EnteredExpenseEvidence)(JSON.parse(content));
+
     return parsed._tag === "Some" ? parsed.value.source : null;
   } catch {
     return null;
@@ -35,12 +36,14 @@ export function sourceDocumentOptions(book: typeof Accounting.Book.Type, id: str
         Sources.SourceOccurrenceView,
         { signal },
       );
+
       if (
         result.occurrence.id !== id ||
         result.occurrence.scope.bookId !== book.id ||
         result.occurrence.scope.entityId !== book.entityId
       )
         throw new Error("Document scope mismatch");
+
       return result;
     },
     retry: false,

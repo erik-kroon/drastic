@@ -42,6 +42,7 @@ export type InvoicePaymentNavigation = {
   onRelease: (id: string | undefined) => void;
   onBack: () => void;
 };
+
 type PaymentProps = CommerceProps & {
   invoice: typeof Commerce.Invoice.Type;
   navigation: InvoicePaymentNavigation;
@@ -53,6 +54,7 @@ export function InvoicePaymentsWorkspace(props: PaymentProps) {
   const { page, historyPage } = navigation;
   const [selected, setSelected] = useState<typeof Commerce.PaymentReference.Type | null>(null);
   const query = new URLSearchParams({ page: String(page), historyPage: String(historyPage) });
+
   const payments = useQuery({
     enabled: !navigation.planId,
     queryKey: [...commerceKey(book), "invoice-payments", invoice.id, page, historyPage],
@@ -65,15 +67,19 @@ export function InvoicePaymentsWorkspace(props: PaymentProps) {
         Commerce.InvoicePayments,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       if (
         result.invoiceId !== invoice.id ||
         result.page !== page ||
         result.historyPage !== historyPage
       )
         throw new Error("Invoice payment projection mismatch");
+
       for (const candidate of result.items) {
         checkScope(book, candidate.payment.scope);
+
         if (
           candidate.payment.accountId !== invoice.controlAccountId ||
           candidate.payment.direction !== invoice.direction ||
@@ -82,19 +88,25 @@ export function InvoicePaymentsWorkspace(props: PaymentProps) {
         )
           throw new Error("Invoice payment candidate mismatch");
       }
+
       return result;
     },
   });
+
   const ready = payments.isSuccess && payments.isFetchedAfterMount && !payments.isFetching;
+
   const candidate = ready
     ? payments.data.items.find(
         (item) =>
           item.payment.voucherId === selected?.voucherId && item.payment.lineId === selected.lineId,
       )
     : undefined;
+
   const money = (amount: string) =>
     `${formatMinorAmount(amount, invoice.currencyScale, locale)} ${invoice.currency}`;
+
   if (navigation.planId) return <InvoicePaymentReview {...props} id={navigation.planId} />;
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Box>
@@ -252,15 +264,19 @@ function PrepareInvoicePayment(
   const available = BigInt(candidate?.payment.remainingMinor ?? "0");
   const maximum = outstanding < available ? outstanding : available;
   const [amount, setAmount] = useState({ payment: "", value: "" });
+
   const paymentKey = candidate
     ? `${candidate.payment.voucherId}:${candidate.payment.lineId}:${maximum}`
     : "";
+
   const value =
     amount.payment === paymentKey
       ? amount.value
       : minorToDecimal(String(maximum), invoice.currencyScale);
+
   const parsed = decimalToMinor(value, invoice.currencyScale);
   const valid = parsed !== null && BigInt(parsed) > 0n && BigInt(parsed) <= maximum;
+
   return (
     <CommandForm
       {...props}
@@ -320,8 +336,10 @@ function PaymentPager(
   props: CommerceProps & { page: number; total: number; onPage: (page: number) => void },
 ) {
   const copy = invoicePaymentCopy(props.locale);
+
   if (props.page === 1 && props.total <= 25) return null;
   const lastPage = Math.max(1, Math.ceil(props.total / 25));
+
   return (
     <Box display="flex" gap="md" justifyContent="end" alignItems="center">
       {props.page > lastPage ? (

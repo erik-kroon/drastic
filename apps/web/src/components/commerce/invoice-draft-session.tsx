@@ -15,13 +15,16 @@ import { checkScope, type CommerceProps } from "./shared";
 import { editableInvoiceLine } from "./invoice-editor-lines";
 
 type Draft = typeof Drafts.InvoiceDraftRevision.Type;
+
 class UnreadableInvoiceEdits extends Error {}
+
 const PendingSave = Schema.Struct({
   key: Accounting.IdempotencyHeaders.fields["idempotency-key"],
   source: Accounting.CreateEvidence,
   fields: Schema.Record(Schema.String, Schema.String),
   input: Schema.NullOr(Schema.Unknown),
 });
+
 const EditingState = Schema.Struct({
   baseline: Schema.NullOr(Drafts.InvoiceDraftRevision),
   expected: Schema.optional(
@@ -43,7 +46,9 @@ const EditingState = Schema.Struct({
   ),
   pending: Schema.NullOr(PendingSave),
 });
+
 export type DraftEditingState = typeof EditingState.Type;
+
 export type DraftSession = {
   state: DraftEditingState;
   actorId: string;
@@ -51,6 +56,7 @@ export type DraftSession = {
   update: (patch: Partial<DraftEditingState>) => boolean;
   saved: (record: Draft) => void;
 };
+
 type SessionProps = CommerceProps & {
   baseline?: Draft;
   onClose: () => void;
@@ -62,6 +68,7 @@ export function InvoiceDraftSession(props: SessionProps) {
   const [downloadError, setDownloadError] = useState(false);
   const actor = useSavedPostingRequests(props.book);
   const actorId = actor.data?.actorId;
+
   const identity = JSON.stringify([
     "openerp:invoice-editor:v1",
     actorId,
@@ -69,6 +76,7 @@ export function InvoiceDraftSession(props: SessionProps) {
     props.book.id,
     props.baseline?.id ?? "new",
   ]);
+
   const local = useQuery({
     queryKey: ["invoice-editor", identity],
     enabled: actor.isSuccess && !actor.isFetching && typeof window !== "undefined",
@@ -79,25 +87,34 @@ export function InvoiceDraftSession(props: SessionProps) {
     retry: false,
     queryFn: () => {
       const text = localStorage.getItem(identity);
+
       if (text === null) return null;
       let saved: DraftEditingState;
+
       try {
         saved = Schema.decodeUnknownSync(EditingState)(JSON.parse(text));
       } catch {
         throw new UnreadableInvoiceEdits("Saved invoice edits cannot be read");
       }
+
       if (saved.baseline) checkScope(props.book, saved.baseline.scope);
+
       if (saved.customer) checkScope(props.book, saved.customer.scope);
+
       if ((saved.baseline?.id ?? undefined) !== props.baseline?.id)
         throw new Error("Invoice editor identity mismatch");
+
       if (saved.pending?.input != null)
         Schema.decodeUnknownSync(
           saved.baseline ? Drafts.ReviseInvoiceDraft : Drafts.CreateInvoiceDraft,
         )(saved.pending.input);
+
       return saved;
     },
   });
+
   const unreadable = local.error instanceof UnreadableInvoiceEdits;
+
   if (!actorId || !local.isSuccess || !local.isFetchedAfterMount)
     return (
       <FormDialog
@@ -123,6 +140,7 @@ export function InvoiceDraftSession(props: SessionProps) {
                 onClick={() => {
                   try {
                     const text = localStorage.getItem(identity);
+
                     if (text === null) throw new Error("Saved invoice edits are missing");
                     const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
                     const link = document.createElement("a");
@@ -165,6 +183,7 @@ export function InvoiceDraftSession(props: SessionProps) {
         ) : null}
       </FormDialog>
     );
+
   return (
     <EditingSession
       key={identity}
@@ -181,6 +200,7 @@ function canonical(text: string | null) {
     ? null
     : JSON.stringify(Schema.decodeUnknownSync(EditingState)(JSON.parse(text)));
 }
+
 class ConcurrentInvoiceEdit extends Error {}
 
 function initialState(baseline?: Draft): DraftEditingState {
@@ -209,45 +229,60 @@ function EditingSession(
   const [restored] = useState(props.restored !== null);
   const [dirty, setDirty] = useState(props.restored !== null);
   const [storageError, setStorageError] = useState(false);
-  const [storageIssue, setStorageIssue] = useState<"conflict" | "pending_elsewhere" | "unavailable" | null>(null);
+
+  const [storageIssue, setStorageIssue] = useState<
+    "conflict" | "pending_elsewhere" | "unavailable" | null
+  >(null);
+
   const [takeoverOpen, setTakeoverOpen] = useState(false);
   const [editorVersion, setEditorVersion] = useState(0);
   const [closing, setClosing] = useState(false);
+
   const blocker = useBlocker({
     shouldBlockFn: () => dirty && !leaving.current,
     withResolver: true,
     enableBeforeUnload: () => storageError && dirty && !leaving.current,
   });
+
   function update(patch: Partial<DraftEditingState>) {
     const next = { ...current.current, ...patch };
     current.current = next;
     setState(next);
     setDirty(true);
+
     try {
       const existing = localStorage.getItem(props.identity);
+
       if (canonical(existing) !== canonical(retained.current))
         throw new ConcurrentInvoiceEdit("Invoice edits changed in another tab");
       const text = JSON.stringify(Schema.decodeSync(EditingState)(next));
       localStorage.setItem(props.identity, text);
+
       if (localStorage.getItem(props.identity) !== text) throw new Error("Draft not retained");
       retained.current = text;
       setStorageError(false);
       setStorageIssue(null);
+
       return true;
     } catch (error) {
       setStorageError(true);
       setStorageIssue(error instanceof ConcurrentInvoiceEdit ? "conflict" : "unavailable");
+
       return false;
     }
   }
+
   function clear() {
     const existing = localStorage.getItem(props.identity);
+
     if (canonical(existing) !== canonical(retained.current))
       throw new ConcurrentInvoiceEdit("Invoice edits changed in another tab");
     localStorage.removeItem(props.identity);
+
     if (localStorage.getItem(props.identity) !== null)
       throw new Error("Invoice edits could not be cleared");
   }
+
   function leave(discard: boolean) {
     if (discard) {
       try {
@@ -255,31 +290,42 @@ function EditingSession(
       } catch (error) {
         setStorageError(true);
         setStorageIssue(error instanceof ConcurrentInvoiceEdit ? "conflict" : "unavailable");
+
         return;
       }
     }
+
     leaving.current = true;
+
     if (blocker.status === "blocked") blocker.proceed();
     else props.onClose();
   }
+
   function saved(record: Draft) {
     try {
       clear();
     } catch {
       // The server result is authoritative. Never remove another tab's edits.
     }
+
     leaving.current = true;
     props.onSaved(record);
   }
+
   function loadOtherTab() {
     try {
       const text = localStorage.getItem(props.identity);
+
       if (text === null) throw new Error("No retained invoice edits");
       const next = Schema.decodeUnknownSync(EditingState)(JSON.parse(text));
+
       if (next.baseline) checkScope(props.book, next.baseline.scope);
+
       if (next.customer) checkScope(props.book, next.customer.scope);
+
       if ((next.baseline?.id ?? undefined) !== props.baseline?.id)
         throw new Error("Invoice editor identity mismatch");
+
       if (next.pending?.input != null)
         Schema.decodeUnknownSync(
           next.baseline ? Drafts.ReviseInvoiceDraft : Drafts.CreateInvoiceDraft,
@@ -295,16 +341,22 @@ function EditingSession(
       setStorageIssue("unavailable");
     }
   }
+
   function takeOver() {
     setTakeoverOpen(false);
+
     try {
       const existing = localStorage.getItem(props.identity);
+
       if (existing && Schema.decodeUnknownSync(EditingState)(JSON.parse(existing)).pending) {
         setStorageIssue("pending_elsewhere");
+
         return;
       }
+
       const text = JSON.stringify(Schema.decodeSync(EditingState)(current.current));
       localStorage.setItem(props.identity, text);
+
       if (localStorage.getItem(props.identity) !== text) throw new Error("Draft not retained");
       retained.current = text;
       setStorageError(false);
@@ -313,10 +365,12 @@ function EditingSession(
       setStorageIssue("unavailable");
     }
   }
+
   const cancelClose = () => {
     setClosing(false);
     blocker.reset?.();
   };
+
   return (
     <>
       <FormDialog
@@ -408,21 +462,24 @@ function StorageRecovery(props: {
   requestTakeover: () => void;
 }) {
   const { sv, issue } = props;
-  const message = issue === "pending_elsewhere"
-    ? sv
-      ? "Den andra fliken har en obekräftad begäran. Återuppta den innan ändringarna ersätts."
-      : "The other tab has an unconfirmed request. Recover it before replacing its edits."
-    : issue === "conflict"
-    ? props.pending
+
+  const message =
+    issue === "pending_elsewhere"
       ? sv
-        ? "En annan flik har sparat ändringar medan en begäran väntar. Återuppta begäran i den ursprungliga fliken innan du fortsätter här."
-        : "Another tab saved edits while a request is pending. Recover the request in the original tab before continuing here."
-      : sv
-        ? "En annan flik har sparat ändringar i det här utkastet. Välj vilken fliks osparade ändringar du vill fortsätta med."
-        : "Another tab saved edits for this draft. Choose which tab’s unsaved edits to continue with."
-    : sv
-      ? "Ändringarna kunde inte behållas i webbläsaren. Stanna kvar och försök igen innan du laddar om."
-      : "Your changes could not be kept in this browser. Stay here and retry before reloading.";
+        ? "Den andra fliken har en obekräftad begäran. Återuppta den innan ändringarna ersätts."
+        : "The other tab has an unconfirmed request. Recover it before replacing its edits."
+      : issue === "conflict"
+        ? props.pending
+          ? sv
+            ? "En annan flik har sparat ändringar medan en begäran väntar. Återuppta begäran i den ursprungliga fliken innan du fortsätter här."
+            : "Another tab saved edits while a request is pending. Recover the request in the original tab before continuing here."
+          : sv
+            ? "En annan flik har sparat ändringar i det här utkastet. Välj vilken fliks osparade ändringar du vill fortsätta med."
+            : "Another tab saved edits for this draft. Choose which tab’s unsaved edits to continue with."
+        : sv
+          ? "Ändringarna kunde inte behållas i webbläsaren. Stanna kvar och försök igen innan du laddar om."
+          : "Your changes could not be kept in this browser. Stay here and retry before reloading.";
+
   return (
     <Box display="grid" gap="sm">
       <Text role="alert">{message}</Text>
@@ -473,11 +530,13 @@ function TakeoverDialog(props: { sv: boolean; onClose: () => void; onTakeOver: (
 export function restoredField(session: DraftSession, name: string, fallback = "") {
   return session.state.fields[name] ?? fallback;
 }
+
 export function selectDraftCustomer(
   session: DraftSession,
   customer: typeof Commerce.CounterpartyRevision.Type,
 ) {
   const fields = { ...session.state.fields };
+
   for (const key of ["customerName", "customerRegistration", "customerAddress", "customerCountry"])
     delete fields[key];
   session.update({ customer, fields });

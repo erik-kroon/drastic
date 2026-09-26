@@ -7,6 +7,7 @@ export function approvalExpiry(transaction: Transaction) {
   return readApprovalExpiry(transaction).pipe(
     Effect.flatMap((rows) => {
       const expiry = rows[0]?.instant;
+
       return expiry === undefined ? failure("InternalError") : Effect.succeed(expiry);
     }),
   );

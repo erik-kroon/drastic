@@ -13,6 +13,7 @@ type ButtonVariant =
   | "destructive"
   | "link"
   | "unstyled";
+
 type ButtonSize =
   | "default"
   | "xs"
@@ -155,6 +156,7 @@ const variantStyles = {
   link: styles.link,
   unstyled: undefined,
 } as const;
+
 const sizeStyles = {
   default: styles.defaultSize,
   xs: styles.xs,
@@ -195,18 +197,23 @@ function ButtonArrow({ className, ...props }: ButtonArrowProps) {
 
 function iconPixels(size: ButtonSize) {
   if (size === "xs" || size === "icon-xs") return 12;
+
   if (size === "sm") return 14;
+
   return 16;
 }
 
 function sizeIcon(child: React.ReactNode, size: ButtonSize) {
   if (!React.isValidElement<{ className?: string; style?: React.CSSProperties }>(child))
     return child;
+
   if (typeof child.type !== "object" || child.type === null) return child;
   const componentType: { displayName?: unknown } = child.type;
+
   if (typeof componentType.displayName !== "string") return child;
 
   const pixels = iconPixels(size);
+
   return React.cloneElement(child, {
     style: {
       ...child.props.style,
@@ -255,4 +262,5 @@ function Button({
 }
 
 export { Button, ButtonArrow };
+
 export type { ButtonArrowProps, ButtonProps, ButtonSize, ButtonVariant };

@@ -12,7 +12,9 @@ class RuntimeRoleSetupFailed extends Schema.TaggedError<RuntimeRoleSetupFailed>(
 ) {}
 
 const connectionString = process.env.DATABASE_ADMIN_URL;
+
 const password = process.env.OPENERP_RUNTIME_PASSWORD;
+
 if (!connectionString || !password || password.length < 32) {
   throw new Error("Set DATABASE_ADMIN_URL and OPENERP_RUNTIME_PASSWORD (at least 32 characters).");
 }
@@ -57,4 +59,5 @@ await Effect.runPromise(
     ),
   ),
 );
+
 console.info("Configured the restricted openerp_app login.");

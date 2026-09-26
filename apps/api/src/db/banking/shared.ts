@@ -3,6 +3,7 @@ import { sql, type SQL } from "drizzle-orm";
 import type { Transaction } from "../transaction";
 
 export type Json = import("effect/Schema").Json;
+
 export type JsonObject = import("effect/Schema").JsonObject;
 
 export type TableAccess = {

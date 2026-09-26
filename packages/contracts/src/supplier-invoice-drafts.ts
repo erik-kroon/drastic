@@ -24,14 +24,17 @@ export const SupplierDraftContent = Schema.Struct({
   sourceTotalMinor: Drafts.DraftContent.fields.sourceTotalMinor,
   lines: Schema.Array(Drafts.DraftLine).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
 });
+
 export const CreateSupplierInvoiceDraft = Schema.Struct({
   draftKey: Drafts.CreateInvoiceDraft.fields.draftKey,
   content: SupplierDraftContent,
 });
+
 export const ReviseSupplierInvoiceDraft = Schema.Struct({
   ...Drafts.ReviseInvoiceDraft.fields,
   content: SupplierDraftContent,
 });
+
 export const SupplierInvoiceDraftRevision = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -55,11 +58,13 @@ export const SupplierInvoiceDraftRevision = Schema.Struct({
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
 });
+
 export const SupplierInvoiceDraftView = Schema.Struct({
   record: SupplierInvoiceDraftRevision,
   currentRevision: Commerce.Version,
   currentDigest: Accounting.Digest,
 });
+
 export const SupplierInvoiceDraftSummary = Schema.Struct({
   id: Accounting.Identifier,
   draftKey: Accounting.Identifier,
@@ -76,10 +81,12 @@ export const SupplierInvoiceDraftSummary = Schema.Struct({
   createdAt: Schema.String,
   digest: Accounting.Digest,
 });
+
 export const SupplierInvoiceDraftList = Schema.Struct({
   ...Drafts.InvoiceDraftList.fields,
   items: Schema.Array(SupplierInvoiceDraftSummary).check(Schema.isMaxLength(200)),
 });
+
 export const SupplierInvoiceDraftHistory = Schema.Struct({
   ...SupplierInvoiceDraftList.fields,
   id: Accounting.Identifier,
@@ -105,11 +112,14 @@ export const SupplierInvoiceDraftDuplicateCursor = Schema.String.check(
     /^sid1:[a-f0-9]{64}:(?:d:[a-z][a-z0-9_-]{2,127}:(?:[1-9]|[1-4][0-9]|50)|r:[a-z][a-z0-9_-]{2,127}:0)$/,
   ),
 );
+
 export const SupplierInvoiceDraftDuplicateQuery = Schema.Struct({
   after: Schema.optional(SupplierInvoiceDraftDuplicateCursor),
 });
+
 const SupplierDraftDuplicateReasons =
   Commerce.SupplierInvoiceDuplicates.fields.items.value.fields.reasons;
+
 export const SupplierInvoiceDraftDuplicates = Schema.Struct({
   scope: Accounting.Scope,
   source: SupplierInvoiceDraftSummary,
@@ -133,6 +143,7 @@ export const SupplierInvoiceDraftDuplicates = Schema.Struct({
 });
 
 const path = "/v1/entities/:entityId/books/:bookId/commerce/supplier-invoice-drafts";
+
 export const SupplierInvoiceDraftsApi = HttpApiGroup.make("supplierInvoiceDrafts").add(
   HttpApiEndpoint.get(
     "supplierAccountSuggestions",

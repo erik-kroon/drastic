@@ -8,20 +8,37 @@ export const BankCandidateSource = Schema.Struct({
   statementId: Accounting.Identifier,
   rowOrdinal: RowOrdinal,
 });
+
 export const DiscoverBankMatchCandidates = Schema.Struct({
   ...BankCandidateSource.fields,
   previousDigest: Schema.optionalKey(Accounting.Digest),
 });
+
 export const BankCandidateBlock = Schema.Literals([
-  "account_inactive", "currency_mismatch", "source_no_capacity",
-  "source_period_missing", "source_period_ambiguous", "source_period_locked",
-  "opposite_sign", "line_no_capacity", "tax_account_reserved", "reversing_voucher", "reversed_voucher",
-  "posting_period_missing", "posting_period_ambiguous", "posting_period_locked",
+  "account_inactive",
+  "currency_mismatch",
+  "source_no_capacity",
+  "source_period_missing",
+  "source_period_ambiguous",
+  "source_period_locked",
+  "opposite_sign",
+  "line_no_capacity",
+  "tax_account_reserved",
+  "reversing_voucher",
+  "reversed_voucher",
+  "posting_period_missing",
+  "posting_period_ambiguous",
+  "posting_period_locked",
 ]);
+
 export const BankCandidateReason = Schema.Literals([
-  "retained_relationship_history", "statement_evidence_cited", "equal_remaining_amount",
-  "amount_proximity_heuristic", "date_proximity_heuristic",
+  "retained_relationship_history",
+  "statement_evidence_cited",
+  "equal_remaining_amount",
+  "amount_proximity_heuristic",
+  "date_proximity_heuristic",
 ]);
+
 export const BankMatchCandidate = Schema.Struct({
   voucherId: Accounting.Identifier,
   lineId: Accounting.Identifier,
@@ -44,6 +61,7 @@ export const BankMatchCandidate = Schema.Struct({
   dayDistance: Schema.Int,
   rankingReasons: Schema.Array(BankCandidateReason),
 });
+
 export const BankMatchCandidates = Schema.Struct({
   version: Schema.Literal("bank_match_candidates_v1"),
   scope: Accounting.Scope,
@@ -91,16 +109,24 @@ export const BankMatchCandidates = Schema.Struct({
 });
 
 export const BankMatchCandidatesApi = HttpApiGroup.make("bankMatchCandidates").add(
-  HttpApiEndpoint.post("discoverBankMatchCandidates", "/v1/entities/:entityId/books/:bookId/bank-match-candidates", {
-    params: Accounting.Scope,
-    payload: DiscoverBankMatchCandidates.annotate({ parseOptions: { onExcessProperty: "error" } }),
-    success: BankMatchCandidates,
-    error: accountingErrors,
-  }),
+  HttpApiEndpoint.post(
+    "discoverBankMatchCandidates",
+    "/v1/entities/:entityId/books/:bookId/bank-match-candidates",
+    {
+      params: Accounting.Scope,
+      payload: DiscoverBankMatchCandidates.annotate({
+        parseOptions: { onExcessProperty: "error" },
+      }),
+      success: BankMatchCandidates,
+      error: accountingErrors,
+    },
+  ),
 );
+
 export const BankMatchCandidateCapabilities = {
   bank_discover_match_candidates: {
-    description: "Read all bounded mapped-account lines in a retained source's statement interval. Explain effective capacity, blockers and heuristic ranking; never establish identity, select or apply a match.",
+    description:
+      "Read all bounded mapped-account lines in a retained source's statement interval. Explain effective capacity, blockers and heuristic ranking; never establish identity, select or apply a match.",
     input: Schema.Struct({ scope: Accounting.Scope, input: DiscoverBankMatchCandidates }),
     output: BankMatchCandidates,
     readOnly: true,

@@ -13,19 +13,31 @@ import type { Transaction } from "../../db/transaction";
 import { closingBasisDependencies } from "./inventories";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type JsonObject = Schema.JsonObject;
 
 const ProposalSchema = Closing.ClosingProposal;
+
 const ProposalViewSchema = Closing.ClosingProposalView;
+
 const ReadinessSchema = Closing.ClosingReadiness;
+
 const ReceiptSchema = Closing.ClosingReceipt;
+
 const CertificateViewSchema = Closing.ClosingCertificateView;
+
 const HistorySchema = Closing.ClosingHistory;
+
 const ProposalListSchema = Closing.ClosingProposalList;
+
 const proposalKeys = ["action", "reason"] as const;
+
 const executeKeys = ["digest", "approvalId"] as const;
+
 const proposalPageSize = 50;
+
 const historyPageSize = 50;
+
 const maximumReason = 2000;
 
 function requireClosingAccess(transaction: Transaction, inserts: ReadonlyArray<string>) {
@@ -33,10 +45,12 @@ function requireClosingAccess(transaction: Transaction, inserts: ReadonlyArray<s
     Effect.flatMap((rows) => {
       const denied = ClosingDb.closingTables.some((name) => {
         const access = rows.find((row) => row.tableName === name);
+
         return (
           access === undefined || !access.canSelect || (inserts.includes(name) && !access.canInsert)
         );
       });
+
       return denied ? unsupported() : Effect.void;
     }),
   );
@@ -44,17 +58,20 @@ function requireClosingAccess(transaction: Transaction, inserts: ReadonlyArray<s
 
 function objectOrNull(value: Schema.Json | undefined) {
   const parsed = Schema.decodeUnknownOption(Schema.JsonObject)(value);
+
   return Option.isSome(parsed) ? parsed.value : null;
 }
 
 function text(value: JsonObject, key: string) {
   const found = value[key];
+
   return typeof found === "string" ? found : null;
 }
 
 function requireNativeProfile(transaction: Transaction, bookId: string) {
   return Effect.gen(function* () {
     const book = (yield* ClosingDb.readSyntheticProfile(transaction, bookId))[0];
+
     if (book === undefined || book.profile !== "synthetic-core-v1" || book.authority !== "native") {
       return yield* unsupported();
     }
@@ -64,16 +81,18 @@ function requireNativeProfile(transaction: Transaction, bookId: string) {
 function readBasis(transaction: Transaction, bookId: string, periodId: string) {
   return Effect.gen(function* () {
     const period = (yield* ClosingDb.readPeriod(transaction, bookId, periodId, "share"))[0];
+
     if (period === undefined) return yield* failure("NotFound");
-    const row = (
-      yield* ClosingDb.readClosingBasis(
-        transaction,
-        bookId,
-        periodId,
-        yield* closingBasisDependencies(transaction, bookId, period),
-      )
-    )[0];
+
+    const row = (yield* ClosingDb.readClosingBasis(
+      transaction,
+      bookId,
+      periodId,
+      yield* closingBasisDependencies(transaction, bookId, period),
+    ))[0];
+
     if (!row) return yield* failure("NotFound");
+
     return row.basis;
   });
 }
@@ -84,7 +103,9 @@ function isCurrentBasis(
   right: JsonObject,
 ) {
   const parsed = objectOrNull(left);
+
   if (parsed === null) return Effect.succeed(false);
+
   return ClosingDb.sameJson(transaction, parsed, right).pipe(
     Effect.map((rows) => rows[0]?.same === true),
   );
@@ -96,12 +117,14 @@ export const closingReadiness = Effect.fn("closing.readiness")(function* (
 ) {
   return yield* withBook(token, command.scope, false, function* (transaction) {
     yield* requireClosingAccess(transaction, []);
+
     if (
       (yield* ClosingDb.readPeriod(transaction, command.scope.bookId, command.periodId, "share"))
         .length === 0
     ) {
       return yield* failure("NotFound");
     }
+
     return yield* decode(
       ReadinessSchema,
       yield* readBasis(transaction, command.scope.bookId, command.periodId),
@@ -127,6 +150,7 @@ export const prepareClosing = Effect.fn("closing.prepare")(function* (
         periodId: command.periodId,
         input: command.input,
       });
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -136,11 +160,13 @@ export const prepareClosing = Effect.fn("closing.prepare")(function* (
         payload,
         ProposalSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireClosingAccess(transaction, ["closing_proposals"]);
       const input = yield* toJsonObject(command.input);
       yield* exactKeys(input, [...proposalKeys]);
       const reason = text(input, "reason");
+
       if (
         (input.action !== "close" && input.action !== "reopen") ||
         reason === null ||
@@ -149,22 +175,27 @@ export const prepareClosing = Effect.fn("closing.prepare")(function* (
       ) {
         return yield* failure("InvalidJournal");
       }
+
       if (
         (yield* ClosingDb.readPeriod(transaction, command.scope.bookId, command.periodId, "update"))
           .length === 0
       ) {
         return yield* failure("NotFound");
       }
+
       const basis = yield* readBasis(transaction, command.scope.bookId, command.periodId);
       yield* requireNativeProfile(transaction, command.scope.bookId);
+
       if (
         (input.action === "close" && basis.technicalCloseAllowed !== true) ||
         (input.action === "reopen" && basis.locked !== true)
       ) {
         return yield* failure("StaleDependency");
       }
+
       const captured = yield* decode(ReadinessSchema, basis);
       const id = newId("closing_proposal");
+
       const body = yield* toJsonObject({
         id,
         scope: captured.scope,
@@ -175,6 +206,7 @@ export const prepareClosing = Effect.fn("closing.prepare")(function* (
         proposedBy: principal.actorId,
         createdAt: yield* isoNow(transaction),
       });
+
       const sealed = { ...body, digest: yield* digest(body) };
       yield* Db.insertProposal(transaction, {
         bookId: command.scope.bookId,
@@ -192,6 +224,7 @@ export const prepareClosing = Effect.fn("closing.prepare")(function* (
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -204,18 +237,22 @@ export const getClosingProposal = Effect.fn("closing.getProposal")(function* (
 ) {
   return yield* withBook(token, command.scope, false, function* (transaction) {
     yield* requireClosingAccess(transaction, []);
+
     const proposal = (yield* Db.lockProposal(
       transaction,
       command.scope.bookId,
       command.proposalId,
     ))[0];
+
     if (!proposal) return yield* failure("NotFound");
     const basis = yield* readBasis(transaction, command.scope.bookId, proposal.periodId);
+
     const receipt = (yield* Db.readTransition(
       transaction,
       command.scope.bookId,
       command.proposalId,
     ))[0];
+
     return yield* decode(ProposalViewSchema, {
       proposal: proposal.body,
       dependenciesCurrent: yield* isCurrentBasis(transaction, proposal.body.basis, basis),
@@ -230,13 +267,16 @@ export const listClosingProposals = Effect.fn("closing.listProposals")(function*
 ) {
   return yield* withBook(token, command.scope, false, function* (transaction) {
     yield* requireClosingAccess(transaction, []);
+
     if (
       (yield* Db.periodExists(transaction, command.scope.bookId, command.periodId))[0]?.present !==
       true
     ) {
       return yield* failure("NotFound");
     }
+
     let anchor = "";
+
     if (command.after !== undefined) {
       if (
         !/^[a-z][a-z0-9_-]{2,127}:[a-z][a-z0-9_-]{2,127}$/.test(command.after) ||
@@ -244,7 +284,9 @@ export const listClosingProposals = Effect.fn("closing.listProposals")(function*
       ) {
         return yield* failure("InvalidJournal");
       }
+
       anchor = command.after.split(":")[1]!;
+
       if (
         (yield* Db.proposalExists(transaction, command.scope.bookId, command.periodId, anchor))[0]
           ?.present !== true
@@ -252,6 +294,7 @@ export const listClosingProposals = Effect.fn("closing.listProposals")(function*
         return yield* failure("InvalidJournal");
       }
     }
+
     const rows = yield* Db.listProposals(
       transaction,
       command.scope.bookId,
@@ -259,8 +302,10 @@ export const listClosingProposals = Effect.fn("closing.listProposals")(function*
       anchor,
       proposalPageSize + 1,
     );
+
     const page = rows.slice(0, proposalPageSize);
     const last = page[page.length - 1];
+
     return yield* decode(ProposalListSchema, {
       scope: command.scope,
       periodId: command.periodId,
@@ -298,13 +343,16 @@ export const closingHistory = Effect.fn("closing.history")(function* (
   return yield* withBook(token, command.scope, false, function* (transaction) {
     yield* requireClosingAccess(transaction, []);
     const after = command.after ?? "0";
+
     if (!/^(0|[1-9][0-9]{0,37})$/.test(after)) return yield* failure("InvalidJournal");
+
     if (
       (yield* Db.periodExists(transaction, command.scope.bookId, command.periodId))[0]?.present !==
       true
     ) {
       return yield* failure("NotFound");
     }
+
     const rows = yield* Db.readHistory(
       transaction,
       command.scope.bookId,
@@ -312,15 +360,18 @@ export const closingHistory = Effect.fn("closing.history")(function* (
       after,
       historyPageSize,
     );
+
     const total = (yield* Db.countHistory(
       transaction,
       command.scope.bookId,
       command.periodId,
       after,
     ))[0]?.total;
+
     if (total === undefined) return yield* failure("InternalError");
     const items = yield* Effect.forEach(rows, (row) => decode(ReceiptSchema, row.body));
     const last = rows[rows.length - 1];
+
     return yield* decode(HistorySchema, {
       items,
       next: total === String(rows.length) ? null : (last?.periodVersion ?? null),
@@ -334,27 +385,33 @@ export const getClosingCertificate = Effect.fn("closing.getCertificate")(functio
 ) {
   return yield* withBook(token, command.scope, false, function* (transaction) {
     yield* requireClosingAccess(transaction, []);
+
     const certificate = (yield* Db.readCertificate(
       transaction,
       command.scope.bookId,
       command.certificateId,
     ))[0];
+
     if (!certificate) return yield* failure("NotFound");
     const basis = yield* readBasis(transaction, command.scope.bookId, certificate.periodId);
+
     const invalidated = (yield* Db.readInvalidation(
       transaction,
       command.scope.bookId,
       "certificate",
       command.certificateId,
     ))[0]?.transitionId;
+
     const decoded = yield* decode(ReadinessSchema, basis);
     const dependencies = objectOrNull(certificate.body.effectiveDependencies);
+
     const current =
       invalidated === null &&
       decoded.locked === true &&
       dependencies !== null &&
       (yield* isCurrentBasis(transaction, dependencies, decoded.dependencies)) &&
       decoded.checks.every((check) => check.passed);
+
     return yield* decode(CertificateViewSchema, {
       certificate: certificate.body,
       invalidatedBy: invalidated ?? null,
@@ -381,6 +438,7 @@ export const executeClosing = Effect.fn("closing.execute")(function* (
         proposalId: command.proposalId,
         input: command.input,
       });
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -390,6 +448,7 @@ export const executeClosing = Effect.fn("closing.execute")(function* (
         payload,
         ReceiptSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireClosingAccess(transaction, [
         "closing_transitions",
@@ -398,17 +457,21 @@ export const executeClosing = Effect.fn("closing.execute")(function* (
       ]);
       const input = yield* toJsonObject(command.input);
       yield* exactKeys(input, [...executeKeys]);
+
       const proposal = (yield* Db.lockProposal(
         transaction,
         command.scope.bookId,
         command.proposalId,
       ))[0];
+
       if (!proposal) return yield* failure("NotFound");
+
       const existing = (yield* Db.readTransition(
         transaction,
         command.scope.bookId,
         command.proposalId,
       ))[0];
+
       if (existing) {
         if (
           text(input, "digest") !== text(proposal.body, "digest") ||
@@ -416,6 +479,7 @@ export const executeClosing = Effect.fn("closing.execute")(function* (
         ) {
           return yield* failure("IdempotencyConflict");
         }
+
         const committed = yield* decode(ReceiptSchema, existing.body);
         yield* saveCommand(
           transaction,
@@ -426,37 +490,47 @@ export const executeClosing = Effect.fn("closing.execute")(function* (
           principal.actorId,
           committed,
         );
+
         return committed;
       }
+
       const period = (yield* Db.lockPeriodForUpdate(
         transaction,
         command.scope.bookId,
         proposal.periodId,
       ))[0];
+
       if (!period) return yield* failure("NotFound");
       const basis = yield* readBasis(transaction, command.scope.bookId, proposal.periodId);
+
       if (
         text(input, "digest") !== text(proposal.body, "digest") ||
         !(yield* isCurrentBasis(transaction, proposal.body.basis, basis))
       ) {
         return yield* failure("StaleDependency");
       }
+
       const approvalId = text(input, "approvalId");
+
       if (approvalId === null) return yield* failure("ApprovalRequired");
+
       const approval = (yield* Db.lockApproval(
         transaction,
         command.scope.bookId,
         command.proposalId,
         approvalId,
       ))[0];
+
       if (!approval) return yield* failure("ApprovalRequired");
       const now = yield* isoNow(transaction);
+
       if (
         Date.parse(approval.expiresAt) <= Date.parse(now) ||
         text(approval.body, "digest") !== text(input, "digest")
       ) {
         return yield* failure("ApprovalRequired");
       }
+
       if (
         (yield* PostingDb.readOperatorMembership(
           transaction,
@@ -466,11 +540,13 @@ export const executeClosing = Effect.fn("closing.execute")(function* (
       ) {
         return yield* failure("ApprovalRequired");
       }
+
       const action = text(proposal.body, "action");
       const transitionId = newId("closing_receipt");
       const certificateId = action === "close" ? newId("technical_certificate") : null;
       let invalidatedCertificates = 0;
       let invalidatedReports = 0;
+
       if (action === "reopen") {
         invalidatedCertificates = Number(
           (yield* Db.countInvalidationCandidates(
@@ -489,13 +565,16 @@ export const executeClosing = Effect.fn("closing.execute")(function* (
           ))[0]?.total ?? "0",
         );
       }
+
       const locked = (yield* Db.setPeriodLock(
         transaction,
         command.scope.bookId,
         period.id,
         action === "close",
       ))[0];
+
       if (!locked) return yield* failure("NotFound");
+
       const receipt = yield* toJsonObject({
         id: transitionId,
         scope: proposal.body.scope,
@@ -513,6 +592,7 @@ export const executeClosing = Effect.fn("closing.execute")(function* (
         committedAt: now,
         statutoryReady: false,
       });
+
       yield* Db.insertTransition(transaction, {
         bookId: command.scope.bookId,
         id: transitionId,
@@ -522,8 +602,10 @@ export const executeClosing = Effect.fn("closing.execute")(function* (
         periodVersion: locked.version,
         body: receipt,
       });
+
       if (certificateId !== null) {
         const effective = yield* readBasis(transaction, command.scope.bookId, period.id);
+
         const certificate = yield* toJsonObject({
           id: certificateId,
           kind: "synthetic_technical_period_lock_v1",
@@ -531,6 +613,7 @@ export const executeClosing = Effect.fn("closing.execute")(function* (
           receipt,
           effectiveDependencies: effective.dependencies,
         });
+
         yield* Db.insertCertificate(transaction, {
           bookId: command.scope.bookId,
           id: certificateId,
@@ -548,6 +631,7 @@ export const executeClosing = Effect.fn("closing.execute")(function* (
           });
         }
       }
+
       const result = yield* decode(ReceiptSchema, receipt);
       yield* saveCommand(
         transaction,
@@ -558,6 +642,7 @@ export const executeClosing = Effect.fn("closing.execute")(function* (
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",

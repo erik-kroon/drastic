@@ -4,6 +4,7 @@ import * as Schema from "effect/Schema";
 import type { Transaction } from "./transaction";
 
 type Json = Schema.Json;
+
 type JsonObject = Schema.JsonObject;
 
 export type PackRow = {
@@ -528,6 +529,7 @@ export function insertRows(
   rows: ReadonlyArray<JsonObject>,
 ) {
   if (rows.length === 0) return transaction.execute(sql`select 1`, "objects");
+
   return transaction.execute(
     sql`
       insert into openerp.accountant_review_rows (book_id, pack_id, section, ordinal, body)

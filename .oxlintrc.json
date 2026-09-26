@@ -95,6 +95,7 @@
     "anti-slop/no-ui-presence-tests": "error",
     "anti-slop/no-unsafe-dictionary-type": "error",
     "anti-slop/require-safety-comment-for-type-assertion": "error",
+    "anti-slop/require-readable-spacing": "error",
     "stylex/valid-styles": [
       "error",
       {

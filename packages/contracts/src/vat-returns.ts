@@ -5,11 +5,13 @@ import { accountingErrors } from "./accounting-errors";
 import { CommandReceipt } from "./reconciliation";
 
 const MaybeId = Schema.NullOr(A.Identifier);
+
 export const ExpenseLink = Schema.Struct({
   sourceId: A.Identifier,
   sourceDigest: A.Digest,
   reviewDigest: A.Digest,
 });
+
 export const VatFactInput = Schema.Struct({
   sourceKey: Schema.String.check(Schema.isPattern(/^[a-zA-Z0-9_-]{1,128}$/)),
   expectedDigest: Schema.NullOr(A.Digest),
@@ -42,6 +44,7 @@ export const VatFactInput = Schema.Struct({
   taxLineIds: Schema.Array(A.Identifier).check(Schema.isMaxLength(20)),
   expenseLink: Schema.NullOr(ExpenseLink),
 });
+
 export const VatFact = Schema.Struct({
   id: A.Identifier,
   factId: A.Identifier,
@@ -56,11 +59,13 @@ export const VatFact = Schema.Struct({
   expenseSourceDigest: Schema.NullOr(A.Digest),
   expenseReviewDigest: Schema.NullOr(A.Digest),
 });
+
 export const WithdrawVatFact = Schema.Struct({
   expectedDigest: A.Digest,
   evidenceId: A.Identifier,
   rationale: A.Description,
 });
+
 export const VatFactWithdrawal = Schema.Struct({
   id: A.Identifier,
   digest: A.Digest,
@@ -75,6 +80,7 @@ export const VatFactWithdrawal = Schema.Struct({
   receipt: CommandReceipt,
   permanent: Schema.Literal(true),
 });
+
 export const VatFactObservation = Schema.Struct({
   // Saved v1/v2 bases predate expense-source withdrawal.
   expenseSourceWithdrawn: Schema.optional(Schema.Boolean),
@@ -93,6 +99,7 @@ export const VatFactObservation = Schema.Struct({
     }),
   ),
 });
+
 export const VatBasis = Schema.Struct({
   digest: A.Digest,
   bookSequence: A.MinorUnits,
@@ -102,6 +109,7 @@ export const VatBasis = Schema.Struct({
   currencyScale: Schema.Int,
   facts: Schema.Array(VatFactObservation),
 });
+
 export const PrepareVatDraft = Schema.Struct({
   mode: Schema.Literals(["actual_review", "synthetic_demonstration"]),
   startsOn: A.AccountingDate,
@@ -109,6 +117,7 @@ export const PrepareVatDraft = Schema.Struct({
   periodEvidenceId: MaybeId,
   otherBoxes: Schema.Literals(["unknown", "absent_in_synthetic_example"]),
 });
+
 export const VatBlocker = Schema.Literals([
   "withdrawn_expense_source",
   "withdrawn_fact",
@@ -133,11 +142,13 @@ export const VatBlocker = Schema.Literals([
   "duplicate_source_component",
   "overlapping_tax_lines",
 ]);
+
 export const VatContribution = Schema.Struct({
   box05Minor: A.AggregateMinorUnits,
   box10Minor: A.AggregateMinorUnits,
   box48Minor: A.AggregateMinorUnits,
 });
+
 export const VatAssessment = Schema.Struct({
   factId: A.Identifier,
   sourceDigest: A.Digest,
@@ -149,11 +160,13 @@ export const VatAssessment = Schema.Struct({
   ledgerDifferenceMinor: Schema.NullOr(A.SignedMinorUnits),
   contribution: Schema.NullOr(VatContribution),
 });
+
 export const VatBox = Schema.Struct({
   exactMinor: A.SignedMinorUnits,
   reportedKrona: Schema.NullOr(A.SignedMinorUnits),
   residualMinor: Schema.NullOr(A.SignedMinorUnits),
 });
+
 export const VatCalculation = Schema.Struct({
   engine: Schema.Literals(["vat-return-draft-v1", "vat-return-draft-v2", "vat-return-draft-v3"]),
   assessments: Schema.Array(VatAssessment),
@@ -179,6 +192,7 @@ export const VatCalculation = Schema.Struct({
   legalProfileActive: Schema.Literal(false),
   filingReady: Schema.Literal(false),
 });
+
 export const VatDraft = Schema.Struct({
   id: A.Identifier,
   digest: A.Digest,
@@ -190,7 +204,9 @@ export const VatDraft = Schema.Struct({
   receipt: CommandReceipt,
   periodEvidenceSha256: Schema.NullOr(Schema.String),
 });
+
 export const VatDraftView = Schema.Struct({ draft: VatDraft, basisCurrent: Schema.Boolean });
+
 export const VatDraftList = Schema.Struct({
   items: Schema.Array(
     Schema.Struct({
@@ -208,6 +224,7 @@ export const CompareVatDrafts = Schema.Struct({
   replacementDraftId: A.Identifier,
   replacementDraftDigest: A.Digest,
 });
+
 const VatDraftReference = Schema.Struct({
   id: A.Identifier,
   digest: A.Digest,
@@ -221,11 +238,13 @@ const VatDraftReference = Schema.Struct({
   currencyScale: Schema.Int,
   blockers: VatCalculation.fields.blockers,
 });
+
 const VatFactImpactSide = Schema.Struct({
   revisionId: A.Identifier,
   revision: Schema.Int,
   assessment: VatAssessment,
 });
+
 const VatFactImpact = Schema.Struct({
   factId: A.Identifier,
   original: Schema.NullOr(VatFactImpactSide),
@@ -238,6 +257,7 @@ const VatFactImpact = Schema.Struct({
     box48Minor: A.SignedMinorUnits,
   }),
 });
+
 export const VatDraftImpact = Schema.Struct({
   digest: A.Digest,
   version: Schema.Literal("vat-draft-impact-v1"),
@@ -258,6 +278,7 @@ export const VatDraftImpact = Schema.Struct({
   filingReady: Schema.Literal(false),
   externalState: Schema.Literal("not_submitted"),
 });
+
 export const VatFactLineage = Schema.Struct({
   interpretation: Schema.Literal("retained_fact_membership"),
   currentnessChecked: Schema.Literal(false),
@@ -290,22 +311,26 @@ export const VatFactLineage = Schema.Struct({
     }),
   ).check(Schema.isMaxLength(500)),
 });
+
 export const VatFactView = Schema.Struct({
   current: VatFact,
   history: Schema.Array(VatFact),
   withdrawal: Schema.NullOr(VatFactWithdrawal),
   lineage: VatFactLineage,
 });
+
 export const VatDraftImpactView = Schema.Struct({
   impact: VatDraftImpact,
   replacementBasisCurrent: Schema.Boolean,
 });
+
 export const ReviewVatAmendment = Schema.Struct({
   ...CompareVatDrafts.fields,
   expectedImpactDigest: A.Digest,
   reviewEvidenceId: A.Identifier,
   rationale: A.Description,
 });
+
 export const VatAmendment = Schema.Struct({
   id: A.Identifier,
   digest: A.Digest,
@@ -319,12 +344,14 @@ export const VatAmendment = Schema.Struct({
   filingReady: Schema.Literal(false),
   externalState: Schema.Literal("not_submitted"),
 });
+
 export const VatAmendmentView = Schema.Struct({
   amendment: VatAmendment,
   originalDraft: VatDraft,
   replacementDraft: VatDraft,
   replacementBasisCurrent: Schema.Boolean,
 });
+
 export const VatAmendmentList = Schema.Struct({
   items: Schema.Array(
     Schema.Struct({
@@ -342,6 +369,7 @@ export const VatControlAccountRole = Schema.Literals([
   "input_vat_control",
   "vat_settlement_control",
 ]);
+
 export const PrepareVatControlReclassification = Schema.Struct({
   profile: Schema.Literal("vat_control_reclassification_v1"),
   draftId: A.Identifier,
@@ -357,14 +385,17 @@ export const PrepareVatControlReclassification = Schema.Struct({
   rationale: A.Description,
   acknowledgeSyntheticOnly: Schema.Literal(true),
 });
+
 export const ApproveVatControlReclassification = Schema.Struct({
   expectedReviewDigest: A.Digest,
   acknowledgeSyntheticOnly: Schema.Literal(true),
 });
+
 export const ExecuteVatControlReclassification = Schema.Struct({
   ...ApproveVatControlReclassification.fields,
   approvalId: A.Identifier,
 });
+
 export const VatControlProfile = Schema.Struct({
   id: A.Identifier,
   profile: Schema.Literal("vat_control_reclassification_v1"),
@@ -374,6 +405,7 @@ export const VatControlProfile = Schema.Struct({
   evidenceSha256: Schema.String,
   digest: A.Digest,
 });
+
 export const VatReportingObligation = Schema.Struct({
   id: A.Identifier,
   registrationNamespace: Schema.Literal("synthetic"),
@@ -385,6 +417,7 @@ export const VatReportingObligation = Schema.Struct({
   periodEvidenceId: Schema.NullOr(A.Identifier),
   digest: A.Digest,
 });
+
 export const VatControlAccountRoleBinding = Schema.Struct({
   role: VatControlAccountRole,
   accountId: A.Identifier,
@@ -393,6 +426,7 @@ export const VatControlAccountRoleBinding = Schema.Struct({
   name: Schema.String,
   active: Schema.Boolean,
 });
+
 export const VatControlContribution = Schema.Struct({
   factId: A.Identifier,
   factRevisionId: A.Identifier,
@@ -407,10 +441,12 @@ export const VatControlContribution = Schema.Struct({
   creditMinor: A.MinorUnits,
   balanceMinor: A.SignedMinorUnits,
 });
+
 export const VatControlPostingLine = Schema.Struct({
   lineId: A.Identifier,
   ...A.JournalLine.fields,
 });
+
 export const VatControlReclassificationAmounts = Schema.Struct({
   outputTaxMinor: A.MinorUnits,
   deductibleInputTaxMinor: A.MinorUnits,
@@ -419,6 +455,7 @@ export const VatControlReclassificationAmounts = Schema.Struct({
   reportedResidualMinor: A.SignedMinorUnits,
   assessedMinor: Schema.Null,
 });
+
 export const VatControlReclassificationBasis = Schema.Struct({
   profile: VatControlProfile,
   obligation: VatReportingObligation,
@@ -446,6 +483,7 @@ export const VatControlReclassificationBasis = Schema.Struct({
   legalProfileActive: Schema.Literal(false),
   taxAccountMatched: Schema.Literal(false),
 });
+
 export const VatControlReclassificationReview = Schema.Struct({
   id: A.Identifier,
   scope: A.Scope,
@@ -464,6 +502,7 @@ export const VatControlReclassificationReview = Schema.Struct({
   receipt: CommandReceipt,
   digest: A.Digest,
 });
+
 export const VatControlReclassificationApproval = Schema.Struct({
   id: A.Identifier,
   scope: A.Scope,
@@ -477,6 +516,7 @@ export const VatControlReclassificationApproval = Schema.Struct({
   receipt: CommandReceipt,
   digest: A.Digest,
 });
+
 export const VatControlReclassificationEffect = Schema.Struct({
   id: A.Identifier,
   scope: A.Scope,
@@ -500,12 +540,14 @@ export const VatControlReclassificationEffect = Schema.Struct({
   receipt: CommandReceipt,
   digest: A.Digest,
 });
+
 export const VatControlReclassificationView = Schema.Struct({
   review: VatControlReclassificationReview,
   approvals: Schema.Array(VatControlReclassificationApproval).check(Schema.isMaxLength(20)),
   reclassification: Schema.NullOr(VatControlReclassificationEffect),
   liveBasisCheckedAt: Schema.NullOr(Schema.String),
 });
+
 export const VatControlReclassificationList = Schema.Struct({
   scope: A.Scope,
   items: Schema.Array(
@@ -523,43 +565,69 @@ export const VatControlReclassificationList = Schema.Struct({
     }),
   ),
 });
+
 export const VatControlReclassificationCommandResult = Schema.Union([
   VatControlReclassificationReview,
   VatControlReclassificationApproval,
   VatControlReclassificationEffect,
 ]);
+
 export const VatControlReclassificationRecovery = Schema.Struct({
   state: Schema.Literal("committed"),
   result: VatControlReclassificationCommandResult,
 });
 
 const path = "/v1/entities/:entityId/books/:bookId/vat-returns";
+
 const scoped = { params: A.Scope, error: accountingErrors };
+
 const identified = { params: A.ChangePath, error: accountingErrors };
+
 export const VatReturnsApi = HttpApiGroup.make("vatReturns").add(
   HttpApiEndpoint.post("prepareVatControlReclassification", `${path}/reclassifications`, {
     ...scoped,
     headers: A.IdempotencyHeaders,
-    payload: PrepareVatControlReclassification.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    payload: PrepareVatControlReclassification.annotate({
+      parseOptions: { onExcessProperty: "error" },
+    }),
     success: VatControlReclassificationReview,
   }),
-  HttpApiEndpoint.post("approveVatControlReclassification", `${path}/reclassifications/:id/approval`, {
-    ...identified,
-    headers: A.IdempotencyHeaders,
-    payload: ApproveVatControlReclassification.annotate({ parseOptions: { onExcessProperty: "error" } }),
-    success: VatControlReclassificationApproval,
-  }),
-  HttpApiEndpoint.post("executeVatControlReclassification", `${path}/reclassifications/:id/execution`, {
-    ...identified,
-    headers: A.IdempotencyHeaders,
-    payload: ExecuteVatControlReclassification.annotate({ parseOptions: { onExcessProperty: "error" } }),
-    success: VatControlReclassificationEffect,
-  }),
-  HttpApiEndpoint.get("recoverVatControlReclassification", `${path}/reclassifications/requests/:key`, {
-    params: Schema.Struct({ ...A.Scope.fields, key: A.IdempotencyHeaders.fields["idempotency-key"] }),
-    error: accountingErrors,
-    success: VatControlReclassificationRecovery,
-  }),
+  HttpApiEndpoint.post(
+    "approveVatControlReclassification",
+    `${path}/reclassifications/:id/approval`,
+    {
+      ...identified,
+      headers: A.IdempotencyHeaders,
+      payload: ApproveVatControlReclassification.annotate({
+        parseOptions: { onExcessProperty: "error" },
+      }),
+      success: VatControlReclassificationApproval,
+    },
+  ),
+  HttpApiEndpoint.post(
+    "executeVatControlReclassification",
+    `${path}/reclassifications/:id/execution`,
+    {
+      ...identified,
+      headers: A.IdempotencyHeaders,
+      payload: ExecuteVatControlReclassification.annotate({
+        parseOptions: { onExcessProperty: "error" },
+      }),
+      success: VatControlReclassificationEffect,
+    },
+  ),
+  HttpApiEndpoint.get(
+    "recoverVatControlReclassification",
+    `${path}/reclassifications/requests/:key`,
+    {
+      params: Schema.Struct({
+        ...A.Scope.fields,
+        key: A.IdempotencyHeaders.fields["idempotency-key"],
+      }),
+      error: accountingErrors,
+      success: VatControlReclassificationRecovery,
+    },
+  ),
   HttpApiEndpoint.get("getVatControlReclassification", `${path}/reclassifications/:id`, {
     ...identified,
     success: VatControlReclassificationView,
@@ -613,12 +681,15 @@ export const VatReturnsApi = HttpApiGroup.make("vatReturns").add(
   }),
   HttpApiEndpoint.get("listVatDrafts", `${path}/drafts`, { ...scoped, success: VatDraftList }),
 );
+
 const scope = { scope: A.Scope };
+
 export const PrepareVatCommand = Schema.Struct({
   ...scope,
   idempotencyKey: A.IdempotencyHeaders.fields["idempotency-key"],
   input: PrepareVatDraft,
 });
+
 export const VatReturnCapabilities = {
   vat_return_get_reclassification: {
     input: Schema.Struct({ ...scope, reviewId: A.Identifier }),

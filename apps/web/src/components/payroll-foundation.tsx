@@ -19,6 +19,7 @@ import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accoun
 import type { Locale } from "@/paraglide/runtime";
 
 type Kind = "employment" | "work" | "opening";
+
 type RevisionDraft = {
   kind: Kind;
   effectiveOn: string;
@@ -26,6 +27,7 @@ type RevisionDraft = {
   evidenceId: string;
   body: string;
 };
+
 const examples = {
   employment: JSON.stringify(
     {
@@ -55,6 +57,7 @@ export function PayrollFoundation({
   const [employee, setEmployee] = useState("");
   const [historyEmployee, setHistoryEmployee] = useState("");
   const [selected, setSelected] = useState("");
+
   const [draft, setDraft] = useState<RevisionDraft>({
     kind: "employment",
     effectiveOn: "",
@@ -62,6 +65,7 @@ export function PayrollFoundation({
     evidenceId: "",
     body: examples.employment,
   });
+
   const [actor, setActor] = useState("");
   const [allowed, setAllowed] = useState(true);
   const [notice, setNotice] = useState("");
@@ -69,6 +73,7 @@ export function PayrollFoundation({
   const [keys] = useState(() => new Map<string, string>());
   const root = `${bookPath(book)}/payroll`;
   const payrollKey = [...bookKey(book), "payroll"];
+
   const directory = useInfiniteQuery({
     queryKey: [...payrollKey, "employees"],
     initialPageParam: "",
@@ -78,20 +83,25 @@ export function PayrollFoundation({
         Payroll.PayrollEmployeePage,
         { signal },
       );
+
       if (page.scope.entityId !== book.entityId || page.scope.bookId !== book.id) {
         throw new Error("Payroll employee scope mismatch");
       }
+
       page.items.forEach((entry) => {
         if (entry.scope.entityId !== book.entityId || entry.scope.bookId !== book.id) {
           throw new Error("Payroll employee scope mismatch");
         }
       });
+
       return page;
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry: false,
   });
+
   const employees = directory.data?.pages.flatMap((page) => page.items) ?? [];
+
   const history = useQuery(
     queryOptions({
       queryKey: [...payrollKey, "employees", selected, "revisions"],
@@ -103,6 +113,7 @@ export function PayrollFoundation({
           Payroll.PayrollHistory,
           { signal },
         );
+
         if (
           page.scope.entityId !== book.entityId ||
           page.scope.bookId !== book.id ||
@@ -110,13 +121,16 @@ export function PayrollFoundation({
         ) {
           throw new Error("Payroll history scope mismatch");
         }
+
         return page;
       },
     }),
   );
+
   const capture = useMutation({
     mutationFn: (payload: typeof Payroll.CapturePayrollRevision.Type) => {
       const path = `${root}/revisions`;
+
       return readAccounting(
         path,
         Payroll.PayrollRevision,
@@ -135,6 +149,7 @@ export function PayrollFoundation({
       await client.invalidateQueries({ queryKey: payrollKey });
     },
   });
+
   const access = useMutation({
     mutationFn: () =>
       readAccounting(`${root}/access`, Payroll.PayrollAccessResult, {
@@ -148,12 +163,14 @@ export function PayrollFoundation({
     },
     onError: () => setNotice(""),
   });
+
   const chooseEmployee = (employeeId: string) => {
     setHistoryEmployee(employeeId);
     setSelected(employeeId);
     setInputError("");
     setNotice("");
   };
+
   return (
     <RecordSection title={sv ? "Personaluppgifter för lön" : "Payroll employee facts"}>
       <Box display="grid" gap="lg" minWidth="zero">
@@ -272,6 +289,7 @@ function PayrollAccessSection(props: {
   onSubmit: () => void;
 }) {
   const sv = props.locale === "sv";
+
   return (
     <form
       onSubmit={(event) => {
@@ -321,6 +339,7 @@ function PayrollEmployeeDirectory(props: {
   onNext: () => void;
 }) {
   const sv = props.locale === "sv";
+
   return (
     <Box display="grid" gap="sm">
       <Text>{sv ? "Anställda i denna bok" : "Employees in this book"}</Text>
@@ -359,6 +378,7 @@ function PayrollHistoryLookup(props: {
   onShow: () => void;
 }) {
   const sv = props.locale === "sv";
+
   return (
     <form
       onSubmit={(event) => {
@@ -390,6 +410,7 @@ function PayrollHistoryPanel(props: {
   onCorrect: (item: typeof Payroll.PayrollHistoryItem.Type) => void;
 }) {
   const sv = props.locale === "sv";
+
   return (
     <>
       <AccountingStatus error={props.error} pending={props.pending} locale={props.locale} />
@@ -450,13 +471,16 @@ function PayrollRevisionForm(props: {
   onSave: (payload: typeof Payroll.CapturePayrollRevision.Type) => void;
 }) {
   const sv = props.locale === "sv";
+
   const update = (change: Partial<RevisionDraft>) =>
     props.onDraftChange({ ...props.draft, ...change });
+
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
         props.onInputErrorChange("");
+
         try {
           const parsed: unknown = JSON.parse(props.draft.body);
           props.onSave(
@@ -505,6 +529,7 @@ function PayrollRevisionForm(props: {
               const kind = Schema.decodeUnknownSync(
                 Schema.Literals(["employment", "work", "opening"]),
               )(event.target.value);
+
               update({ kind, body: examples[kind] });
             }}
           >

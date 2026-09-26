@@ -20,6 +20,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/settings
 function Settings() {
   const { book, setup, locale } = useBookWorkspace();
   const copy = accountingCopy(locale);
+
   return (
     <Box display="grid" gap="xl" minWidth="zero">
       <WorkspaceHeader title={copy.workspace_settings} />

@@ -82,16 +82,19 @@ function Card({
     />
   );
 }
+
 function CardHeader({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"div">>) {
   return (
     <div data-slot="card-header" {...stylexProps([styles.header, styleX], className)} {...props} />
   );
 }
+
 function CardTitle({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"div">>) {
   return (
     <div data-slot="card-title" {...stylexProps([styles.title, styleX], className)} {...props} />
   );
 }
+
 function CardDescription({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"div">>) {
   return (
     <div
@@ -101,11 +104,13 @@ function CardDescription({ className, styleX, ...props }: WithStyleX<React.Compo
     />
   );
 }
+
 function CardAction({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"div">>) {
   return (
     <div data-slot="card-action" {...stylexProps([styles.action, styleX], className)} {...props} />
   );
 }
+
 function CardContent({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"div">>) {
   return (
     <div
@@ -115,6 +120,7 @@ function CardContent({ className, styleX, ...props }: WithStyleX<React.Component
     />
   );
 }
+
 function CardFooter({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"div">>) {
   return (
     <div data-slot="card-footer" {...stylexProps([styles.footer, styleX], className)} {...props} />

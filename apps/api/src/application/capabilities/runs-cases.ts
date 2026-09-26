@@ -19,7 +19,10 @@ export const runCaseCapabilities = {
   rules_get: effectCapability(Capabilities.rules_get, getRule),
   rules_simulate: effectCapability(Capabilities.rules_simulate, simulateRule),
   rules_get_simulation: effectCapability(Capabilities.rules_get_simulation, getSimulation),
-  runs_create_preparation: effectCapability(Capabilities.runs_create_preparation, createPreparationRun),
+  runs_create_preparation: effectCapability(
+    Capabilities.runs_create_preparation,
+    createPreparationRun,
+  ),
   runs_get: effectCapability(Capabilities.runs_get, getPreparationRun),
   runs_advance: effectCapability(Capabilities.runs_advance, advanceRun),
   cases_prepare_snapshot: effectCapability(Capabilities.cases_prepare_snapshot, prepareSnapshot),

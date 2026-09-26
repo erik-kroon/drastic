@@ -21,10 +21,12 @@ export function TaxFactsTable({
   const sv = locale === "sv";
   const scale = "currencyScale" in facts ? facts.currencyScale : null;
   const currency = "currency" in facts ? facts.currency : "";
+
   const amount = (value: string | null) =>
     value !== null && scale !== null
       ? `${formatMinorAmount(value, scale, locale)} ${currency ?? ""}`
       : copy.unknown;
+
   const labels = new Map(
     Object.entries({
       ...copy,
@@ -34,6 +36,7 @@ export function TaxFactsTable({
       receivedOn: sv ? "Mottaget" : "Received",
     }),
   );
+
   const values = new Map([
     ["unknown", copy.unknown],
     ["registered", copy.registered],
@@ -48,6 +51,7 @@ export function TaxFactsTable({
     ["out_of_scope", copy.outOfScope],
     ["other", copy.other],
   ]);
+
   const visible =
     "recordClass" in facts
       ? ["supplierJurisdiction", "supplyJurisdiction", "receivedOn", "suppliedOn", "taxPointOn"]
@@ -60,6 +64,7 @@ export function TaxFactsTable({
           "taxPointOn",
           "deductionBasis",
         ];
+
   return (
     <Box display="grid" gap="lg">
       <DataTable
@@ -113,6 +118,7 @@ export function TaxSnapshotEntry(props: {
   const copy = expenseTaxCopy(locale);
   const reasons = expenseTaxBlockers(locale);
   const controls = entry.assessment.controls;
+
   const controlNames = [
     "sourceBalanceDifferenceMinor",
     "reviewBalanceDifferenceMinor",
@@ -121,7 +127,9 @@ export function TaxSnapshotEntry(props: {
     "vatDifferenceMinor",
     "calculatedVatDifferenceMinor",
   ] as const;
+
   const calculation = entry.assessment.calculation;
+
   return (
     <details>
       <summary>

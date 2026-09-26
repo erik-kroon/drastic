@@ -15,10 +15,12 @@ export function InvoiceDraftDocument({
   issued?: boolean;
 }) {
   const labels = locale === "sv" ? swedish : english;
+
   const amount = (value: string | null) =>
     value === null
       ? "—"
       : `${formatMinorAmount(value, record.content.currencyScale, locale)} ${record.content.currency}`;
+
   return (
     <InvoicePreview
       title={title ?? record.content.title}
@@ -60,6 +62,7 @@ export function InvoiceDraftDocument({
     />
   );
 }
+
 const english = {
   draftPreview: "Draft · Not issued",
   issuedPreview: "Issued demo · Not sent",
@@ -77,6 +80,7 @@ const english = {
   total: "Total",
   paymentTerms: "Payment terms",
 };
+
 const swedish: typeof english = {
   draftPreview: "Utkast · Inte utfärdad",
   issuedPreview: "Utfärdad demo · Inte skickad",

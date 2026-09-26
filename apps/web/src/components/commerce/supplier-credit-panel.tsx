@@ -17,8 +17,10 @@ import { formatMinorAmount } from "@/lib/workspace-api";
 import { CommandForm, checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
 
 type Invoice = typeof Commerce.Invoice.Type;
+
 function textField(fields: FormData, name: string) {
   const value = fields.get(name);
+
   return typeof value === "string" ? value : "";
 }
 
@@ -26,6 +28,7 @@ export function SupplierCreditPanel(props: CommerceProps & { invoice: Invoice })
   const [reviewId, setReviewId] = useState("");
   const sv = props.locale === "sv";
   const invoice = props.invoice;
+
   const history = useQuery({
     queryKey: [...commerceKey(props.book), "supplier-credit-history", invoice.id],
     queryFn: async ({ signal }) => {
@@ -34,17 +37,22 @@ export function SupplierCreditPanel(props: CommerceProps & { invoice: Invoice })
         Credits.SupplierCreditHistory,
         { signal },
       );
+
       checkScope(props.book, result.scope);
+
       if (result.invoiceId !== invoice.id) throw new Error("Supplier credit history mismatch");
+
       return result;
     },
     retry: false,
   });
+
   const available =
     invoice.supplierAcceptanceDigest &&
     invoice.status === "open" &&
     invoice.outstandingMinor === invoice.amountMinor &&
     invoice.recordedAllocatedMinor === "0";
+
   const setup = useQuery({
     queryKey: [...bookKey(props.book), "setup"],
     queryFn: ({ signal }) =>
@@ -52,6 +60,7 @@ export function SupplierCreditPanel(props: CommerceProps & { invoice: Invoice })
     enabled: !!available,
     retry: false,
   });
+
   return (
     <RecordSection title={sv ? "Kreditera leverantörsfaktura" : "Credit supplier invoice"}>
       <PageCaption>
@@ -166,6 +175,7 @@ export function SupplierCreditPanel(props: CommerceProps & { invoice: Invoice })
 
 function SupplierCreditReview(props: CommerceProps & { id: string; invoice: Invoice }) {
   const sv = props.locale === "sv";
+
   const review = useQuery({
     queryKey: [...commerceKey(props.book), "supplier-credit-review", props.id],
     staleTime: 0,
@@ -176,20 +186,26 @@ function SupplierCreditReview(props: CommerceProps & { id: string; invoice: Invo
         Credits.SupplierCreditView,
         { signal },
       );
+
       checkScope(props.book, result.review.scope);
+
       if (result.review.input.invoiceId !== props.invoice.id)
         throw new Error("Supplier credit review mismatch");
+
       return result;
     },
     retry: false,
   });
+
   const setup = useQuery({
     queryKey: [...bookKey(props.book), "setup"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(props.book)}/setup`, Accounting.BookSetup, { signal }),
     retry: false,
   });
+
   const view = review.data;
+
   return (
     <Box display="grid" gap="lg">
       <Button variant="outline" disabled={review.isFetching} onClick={() => void review.refetch()}>
@@ -211,6 +227,7 @@ function SupplierCreditReview(props: CommerceProps & { id: string; invoice: Invo
               group.actions.flatMap((action) =>
                 action.lines.map((line) => {
                   const account = setup.data?.accounts.find((item) => item.id === line.accountId);
+
                   return {
                     id: `${group.id}:${line.lineId}`,
                     cells: [

@@ -209,6 +209,7 @@ export function readCandidateCount(
   sign: number,
 ) {
   const book: SQL = sql`${bookId}`;
+
   return transaction.execute<CountRow>(
     sql`
       select count(*)::integer as total from (

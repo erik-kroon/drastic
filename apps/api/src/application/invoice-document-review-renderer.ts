@@ -11,7 +11,9 @@ function unsupported(message: string): never {
 // Source values only enter text nodes. Controls are displayed, never interpreted.
 export function text(value: string | null) {
   if (value === null) return "Not supplied";
+
   if (!value.isWellFormed()) unsupported("The captured document text contains malformed Unicode.");
+
   return value
     .replaceAll("\r\n", "\n")
     .replaceAll("\r", "\n")
@@ -26,9 +28,11 @@ export function text(value: string | null) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 }
+
 function fact(label: string, value: string | null) {
   return `<dt>${label}</dt><dd><pre>${text(value)}</pre></dd>`;
 }
+
 function identity(label: string, value: typeof Drafts.DraftIdentity.Type) {
   return `<section><h2>${label} (captured, not independently verified)</h2><dl>${[
     fact("Name", value.legalName),
@@ -38,6 +42,7 @@ function identity(label: string, value: typeof Drafts.DraftIdentity.Type) {
     fact("Country code", value.countryCode),
   ].join("")}</dl></section>`;
 }
+
 export function amount(value: string | null, scale: number) {
   if (value === null || !/^(?:0|-?[1-9][0-9]{0,40})$/.test(value))
     return unsupported(
@@ -45,6 +50,7 @@ export function amount(value: string | null, scale: number) {
     );
   const negative = value.startsWith("-");
   const digits = (negative ? value.slice(1) : value).padStart(scale + 1, "0");
+
   return `${negative ? "-" : ""}${scale === 0 ? digits : `${digits.slice(0, -scale)}.${digits.slice(-scale)}`}`;
 }
 
@@ -61,6 +67,7 @@ export function renderInvoiceReviewDocument(capture: typeof Documents.InvoiceDoc
   const draft = review.draftSnapshot;
   const content = draft.content;
   const scale = content.currencyScale;
+
   if (
     scale < 0 ||
     scale > 6 ||
@@ -82,11 +89,14 @@ export function renderInvoiceReviewDocument(capture: typeof Documents.InvoiceDoc
     content.dueDate === null
   )
     unsupported("The complete immutable synthetic issued source is required for rendering.");
+
   const rows = content.lines
     .map((line, index) => {
       const calculated = draft.calculatedLines[index];
+
       if (!calculated || calculated.id !== line.id || line.taxMinor !== "0")
         return unsupported("Every captured line must have its matching synthetic calculation.");
+
       return `<tr><th scope="row">${text(line.id)}</th><td>${text(line.description)}</td><td>${text(line.quantity)}</td>${[
         line.unitPriceMinor,
         line.baseMinor,
@@ -100,6 +110,7 @@ export function renderInvoiceReviewDocument(capture: typeof Documents.InvoiceDoc
         .join("")}<td>${text(line.taxDescription)}</td></tr>`;
     })
     .join("\n");
+
   const totals = [
     ["Base", draft.totals.baseMinor],
     ["Discounts", draft.totals.discountMinor],
@@ -114,6 +125,7 @@ export function renderInvoiceReviewDocument(capture: typeof Documents.InvoiceDoc
         `<tr><th scope="row">${text(label ?? null)}</th><td>${amount(value ?? null, scale)}</td></tr>`,
     )
     .join("\n");
+
   const evidence = [
     ["Issue source", review.evidence.id, review.evidence.sha256],
     ["Seller identity", draft.sellerEvidence.evidenceId, draft.sellerEvidence.sha256],
@@ -131,6 +143,7 @@ export function renderInvoiceReviewDocument(capture: typeof Documents.InvoiceDoc
   ]
     .map((row) => `<tr>${row.map((value) => `<td>${text(value)}</td>`).join("")}</tr>`)
     .join("\n");
+
   const journal = review.postingPlan.groups
     .flatMap((group) =>
       group.actions.flatMap((action) =>
@@ -141,6 +154,7 @@ export function renderInvoiceReviewDocument(capture: typeof Documents.InvoiceDoc
       ),
     )
     .join("\n");
+
   const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -210,10 +224,13 @@ ${evidence}
 </body>
 </html>
 `;
+
   const bytes = new TextEncoder().encode(html);
+
   if (bytes.length > Documents.invoiceDocumentMaxBytes)
     unsupported(
       "The complete synthetic document exceeds1 MiB. No truncated artifact is supported.",
     );
+
   return bytes;
 }

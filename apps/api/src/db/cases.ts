@@ -224,6 +224,7 @@ export function readPlanBundles(
   if (changeSetIds.length === 0) {
     return transaction.execute<BundleRow>(sql`select ''::text where false`, "objects");
   }
+
   return transaction.execute<BundleRow>(
     sql`
       select p.id as "changeSetId", b.id as "bundleId", b.digest,
@@ -302,6 +303,7 @@ export function insertItems(
   }>,
 ) {
   if (rows.length === 0) return Effect.void;
+
   return transaction.execute(
     sql`
       insert into openerp.case_context_items (book_id, snapshot_id, event_id, ordinal, body)
@@ -325,6 +327,7 @@ export function insertPlans(
   }>,
 ) {
   if (rows.length === 0) return Effect.void;
+
   return transaction.execute(
     sql`
       insert into openerp.case_context_plans

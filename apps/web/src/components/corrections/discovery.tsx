@@ -24,6 +24,7 @@ export function CorrectionDiscovery({
   const copy = correctionCopy(locale);
   const [after, setAfter] = useState("");
   const [error, setError] = useState("");
+
   const bundles = useQuery({
     queryKey: [...bookKey(book), "correction-bundles", after],
     queryFn: ({ signal }) =>
@@ -34,6 +35,7 @@ export function CorrectionDiscovery({
       ),
     retry: false,
   });
+
   const recovery = useMutation({
     mutationFn: (key: string) =>
       readAccounting(
@@ -41,6 +43,7 @@ export function CorrectionDiscovery({
         Corrections.CorrectionRequestRecovery,
       ),
   });
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.discover}</Heading>
@@ -97,10 +100,13 @@ export function CorrectionDiscovery({
         onSubmit={(event) => {
           event.preventDefault();
           const key = new FormData(event.currentTarget).get("requestKey");
+
           if (!Schema.is(Accounting.IdempotencyHeaders.fields["idempotency-key"])(key)) {
             setError(copy.invalid);
+
             return;
           }
+
           setError("");
           recovery.mutate(key);
         }}
@@ -135,6 +141,7 @@ export function CorrectionDiscovery({
                 variant="outline"
                 onClick={() => {
                   const result = recovery.data?.result;
+
                   if (Schema.is(Corrections.CorrectionBundle)(result)) onSelected(result.id);
                 }}
               >
@@ -151,6 +158,7 @@ export function CorrectionDiscovery({
                 variant="outline"
                 onClick={() => {
                   const result = recovery.data?.result;
+
                   if (
                     Schema.is(Corrections.CorrectionBundleApproval)(result) ||
                     Schema.is(Corrections.CorrectionBundleReceipt)(result)

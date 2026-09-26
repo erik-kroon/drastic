@@ -36,6 +36,7 @@ export function readWorkspaceAccounts(
   endsOn: string,
 ) {
   const book = sql`${bookId}`;
+
   return transaction.execute<WorkspaceAccountsRow>(
     sql`
       select coalesce(jsonb_agg(jsonb_build_object(
@@ -101,6 +102,7 @@ export function readWorkspaceActivity(
   page: number,
 ) {
   const book = sql`${bookId}`;
+
   return transaction.execute<WorkspaceActivityRow>(
     sql`
       with activity as materialized (

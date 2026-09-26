@@ -272,6 +272,7 @@ export function readEvidenceDigests(
   evidenceIds: ReadonlyArray<string>,
 ) {
   if (evidenceIds.length === 0) return Effect.succeed<ReadonlyArray<EvidenceDigestRow>>([]);
+
   return transaction.execute<EvidenceDigestRow>(
     sql`
       select id, sha256 from openerp.evidence
@@ -304,6 +305,7 @@ export function readVoucherLineIds(
   lineIds: ReadonlyArray<string>,
 ) {
   if (lineIds.length === 0) return Effect.succeed<ReadonlyArray<LineIdRow>>([]);
+
   return transaction.execute<LineIdRow>(
     sql`
       select id from openerp.journal_lines
@@ -697,6 +699,7 @@ export function countRows(transaction: Transaction, table: string, bookId: strin
   ) {
     return Effect.succeed<ReadonlyArray<CountRow>>([]);
   }
+
   return transaction.execute<CountRow>(
     sql`select count(*)::integer as total from openerp.${sql.identifier(table)} where book_id = ${bookId}`,
     "objects",
@@ -744,7 +747,11 @@ export type AccountRoleRow = {
   readonly active: boolean;
 };
 
-export function readControlAccountRoles(transaction: Transaction, bookId: string, profileId: string) {
+export function readControlAccountRoles(
+  transaction: Transaction,
+  bookId: string,
+  profileId: string,
+) {
   return transaction.execute<AccountRoleRow>(
     sql`
       select role, account_id as "accountId", account_version::text as "accountVersion",
@@ -772,13 +779,15 @@ export function insertControlAccountRoles(
   }>,
 ) {
   if (rows.length === 0) return Effect.succeed([]);
+
   return transaction.execute(
     sql`
       insert into openerp.vat_control_account_roles
         (book_id, profile_id, role, account_id, account_version, code, name, active)
       values ${sql.join(
-        rows.map((row) =>
-          sql`(${row.bookId}, ${row.profileId}, ${row.role}, ${row.accountId}, ${row.accountVersion},
+        rows.map(
+          (row) =>
+            sql`(${row.bookId}, ${row.profileId}, ${row.role}, ${row.accountId}, ${row.accountVersion},
             ${row.code}, ${row.name}, ${row.active})`,
         ),
         sql`, `,
@@ -863,7 +872,11 @@ export function readReview(transaction: Transaction, bookId: string, id: string)
   );
 }
 
-export function countReviewsForObligation(transaction: Transaction, bookId: string, obligationId: string) {
+export function countReviewsForObligation(
+  transaction: Transaction,
+  bookId: string,
+  obligationId: string,
+) {
   return transaction.execute<{ readonly ordinal: number }>(
     sql`
       select (count(*)::integer + 1) as ordinal
@@ -946,7 +959,11 @@ export function readApproval(transaction: Transaction, bookId: string, id: strin
   );
 }
 
-export function countApprovalsForReview(transaction: Transaction, bookId: string, reviewId: string) {
+export function countApprovalsForReview(
+  transaction: Transaction,
+  bookId: string,
+  reviewId: string,
+) {
   return transaction.execute<CountRow>(
     sql`
       select count(*)::integer as total from openerp.vat_control_reclassification_approvals
@@ -956,11 +973,7 @@ export function countApprovalsForReview(transaction: Transaction, bookId: string
   );
 }
 
-export function insertDomainApproval(
-  transaction: Transaction,
-  bookId: string,
-  row: ApprovalWrite,
-) {
+export function insertDomainApproval(transaction: Transaction, bookId: string, row: ApprovalWrite) {
   return transaction.execute(
     sql`
       insert into openerp.vat_control_reclassification_approvals
@@ -979,7 +992,11 @@ export type EffectRow = {
   readonly body: JsonObject;
 };
 
-export function readEffectByObligation(transaction: Transaction, bookId: string, obligationId: string) {
+export function readEffectByObligation(
+  transaction: Transaction,
+  bookId: string,
+  obligationId: string,
+) {
   return transaction.execute<EffectRow>(
     sql`
       select id, review_id as "reviewId", outcome, body
@@ -1045,13 +1062,15 @@ export function insertContributions(
   }>,
 ) {
   if (rows.length === 0) return Effect.succeed([]);
+
   return transaction.execute(
     sql`
       insert into openerp.vat_control_reclassification_contributions
         (book_id, id, effect_id, ordinal, fact_id, fact_revision_id, voucher_id, line_id, body)
       values ${sql.join(
-        rows.map((row) =>
-          sql`(${row.bookId}, ${row.id}, ${row.effectId}, ${row.ordinal}, ${row.factId},
+        rows.map(
+          (row) =>
+            sql`(${row.bookId}, ${row.id}, ${row.effectId}, ${row.ordinal}, ${row.factId},
             ${row.factRevisionId}, ${row.voucherId}, ${row.lineId}, ${JSON.stringify(row.body)}::jsonb)`,
         ),
         sql`, `,

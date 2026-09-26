@@ -4,6 +4,7 @@ import type { Transaction } from "../transaction";
 import { allocatedLineSql, allocatedSourceSql } from "./shared";
 
 type Json = Schema.Json;
+
 type JsonObject = Schema.JsonObject;
 
 export type ReversalPlanRow = {

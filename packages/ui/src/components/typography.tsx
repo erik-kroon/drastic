@@ -27,6 +27,7 @@ const styles = stylex.create({
     fontVariantNumeric: "tabular-nums",
   },
 });
+
 export function Text({
   tone = "default",
   ...props
@@ -42,6 +43,7 @@ export function Text({
     />
   );
 }
+
 export function Heading({ level = 2, children }: { level?: 1 | 2; children: ReactNode }) {
   return level === 1 ? (
     <h1 {...stylex.props(styles.title)}>{children}</h1>

@@ -29,17 +29,23 @@ const Provision = Schema.Struct({
     Schema.Struct({ id: Identifier, code: Schema.String, name: Description }),
   ).check(Schema.isMinLength(2)),
 });
+
 const filename = process.argv[2];
+
 const connectionString = process.env.DATABASE_ADMIN_URL;
+
 const token = process.env.OPENERP_ACCESS_TOKEN;
+
 if (!filename || !connectionString || !token || token.length < 32 || token.length > 512) {
   throw new Error(
     "Usage: DATABASE_ADMIN_URL=… OPENERP_ACCESS_TOKEN=… bun scripts/provision.ts <explicit-synthetic-book.json>. Use a random token of 32–512 characters.",
   );
 }
+
 const config = Schema.decodeSync(Schema.fromJsonString(Provision))(
   await readFile(filename, "utf8"),
 );
+
 await Effect.runPromise(
   Effect.gen(function* () {
     const db = yield* Database;
@@ -89,6 +95,7 @@ await Effect.runPromise(
     ),
   ),
 );
+
 console.info(
   `Created synthetic book ${config.book.id}. No production or compliance capability is enabled.`,
 );

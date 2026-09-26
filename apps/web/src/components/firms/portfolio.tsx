@@ -40,40 +40,50 @@ export function FirmPortfolio(props: {
   const search = props.filters.q ?? "";
   const view = props.filters.view ?? "all";
   const page = props.filters.page ?? 0;
+
   const setFilters = (filters: PortfolioFilters) =>
     props.onFilters({ ...filters, firm: workspace.firm.id });
+
   const [editing, setEditing] = useState<{ client: typeof Firms.Client.Type | null } | null>(null);
   const today = new Intl.DateTimeFormat("sv-SE").format(new Date());
 
   const filtered = workspace.clients.filter((client) =>
     matchesPortfolio(client, workspace.actorId, search, view, today, locale),
   );
+
   const sorted = [...filtered].sort(
     (a, b) =>
       (a.nextReviewOn ?? "9999").localeCompare(b.nextReviewOn ?? "9999") ||
       a.book.name.localeCompare(b.book.name, locale),
   );
+
   const currentPage = Math.min(page, Math.max(0, Math.ceil(sorted.length / 10) - 1));
   const visible = sorted.slice(currentPage * 10, (currentPage + 1) * 10);
+
   const periods = useQueries({
     queries: visible.map((client) => clientPeriodQueryOptions(client.book)),
   });
+
   const work = useQueries({
     queries: visible.map((client, index) => {
       const period = periods[index]?.data ? latestClientPeriod(periods[index].data) : undefined;
+
       return {
         ...attentionQueryOptions(client.book, { status: "open", period: period?.id }),
         enabled: Boolean(period),
       };
     }),
   });
+
   const portfolioHref = portfolioPath(workspace.firm.id, search, view, currentPage);
+
   const canLink =
     workspace.firm.role === "admin" &&
     props.books.some(
       (book) =>
         book.role === "operator" && !workspace.clients.some((client) => client.book.id === book.id),
     );
+
   return (
     <Box display="grid" gap="lg">
       <RecordHeading
@@ -134,11 +144,14 @@ export function FirmPortfolio(props: {
           ]}
           rows={visible.map((client, index) => {
             const tasks = work[index];
+
             const period = periods[index]?.data
               ? latestClientPeriod(periods[index].data)
               : undefined;
+
             const lead = workspace.members.find((member) => member.actorId === client.leadId);
             const manage = client.book.role === "operator";
+
             return {
               id: client.book.id,
               cells: [
@@ -282,9 +295,13 @@ function matchesPortfolio(
 
 function portfolioPath(firmId: string, search: string, view: string, page: number) {
   const params = new URLSearchParams({ firm: firmId, tab: "clients" });
+
   if (search) params.set("q", search);
+
   if (view !== "all") params.set("view", view);
+
   if (page) params.set("page", String(page));
+
   return `/firms?${params}`;
 }
 

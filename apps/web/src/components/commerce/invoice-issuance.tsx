@@ -48,6 +48,7 @@ type IssueWorkspaceProps = CommerceProps & {
   onReviewOpen?: (id: string) => void;
   onIssued?: (id: string) => void;
 };
+
 export function InvoiceIssuance(props: IssueWorkspaceProps) {
   return (
     <IssueWorkspace
@@ -56,12 +57,14 @@ export function InvoiceIssuance(props: IssueWorkspaceProps) {
     />
   );
 }
+
 function IssueWorkspace(props: IssueWorkspaceProps) {
   const copy = invoiceIssueCopy(props.locale);
   const [draftId, setDraftId] = useState(props.recordId ?? "");
   const [localReviewId, setLocalReviewId] = useState("");
   const reviewId = props.reviewId ?? localReviewId;
   const setReviewId = props.onReviewOpen ?? setLocalReviewId;
+
   const drafts = useQuery({
     queryKey: [...commerceKey(props.book), "invoice-drafts"],
     queryFn: ({ signal }) =>
@@ -71,6 +74,7 @@ function IssueWorkspace(props: IssueWorkspaceProps) {
     retry: false,
     enabled: !props.recordId,
   });
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       {!reviewId ? (
@@ -142,9 +146,11 @@ function IssueWorkspace(props: IssueWorkspaceProps) {
     </Box>
   );
 }
+
 function IssueDraft(props: CommerceProps & { id: string; onOpen: (id: string) => void }) {
   const { book, locale, id } = props;
   const copy = invoiceIssueCopy(locale);
+
   const draft = useQuery({
     queryKey: [...commerceKey(book), "issue-draft", id],
     staleTime: 0,
@@ -155,12 +161,16 @@ function IssueDraft(props: CommerceProps & { id: string; onOpen: (id: string) =>
         Drafts.InvoiceDraftView,
         { signal },
       );
+
       checkScope(book, result.record.scope);
+
       if (result.record.id !== id) throw new Error("Issue draft identity mismatch");
+
       return result;
     },
     retry: false,
   });
+
   const history = useQuery({
     queryKey: [...commerceKey(book), "invoice-issue-history", id],
     staleTime: 0,
@@ -171,12 +181,16 @@ function IssueDraft(props: CommerceProps & { id: string; onOpen: (id: string) =>
         Issuance.InvoiceIssueHistory,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       if (result.draftId !== id) throw new Error("Issue history draft mismatch");
+
       return result;
     },
     retry: false,
   });
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Box>
@@ -241,6 +255,7 @@ function IssueDraft(props: CommerceProps & { id: string; onOpen: (id: string) =>
     </Box>
   );
 }
+
 export function LegalInvoiceInspector(
   props: CommerceProps & {
     draftId?: string;
@@ -251,6 +266,7 @@ export function LegalInvoiceInspector(
   const { book, locale } = props;
   const copy = invoiceIssueCopy(locale);
   const client = useQueryClient();
+
   const policyHistory = useQuery({
     queryKey: [...commerceKey(book), "ar-legal", "sales-policy-history"],
     queryFn: async ({ signal }) => {
@@ -259,21 +275,27 @@ export function LegalInvoiceInspector(
         LegalSalesPolicy.LegalSalesPolicyHistory,
         { signal },
       );
+
       checkScope(book, result.scope);
       result.items.forEach((policy) => checkScope(book, policy.scope));
+
       return result;
     },
     staleTime: 0,
     refetchOnMount: "always",
     retry: false,
   });
+
   const issueReads = useLegalIssueRead(props);
+
   const { policy, accountingProfile } = useLegalActivationRead(
     book,
     issueReads.review.data,
     issueReads.issue,
   );
+
   const { pdfHistory, captureId, pdf, deliveries } = useLegalArtifactRead(book, issueReads.issue);
+
   const queries = [
     policyHistory,
     issueReads.issueRead,
@@ -285,7 +307,9 @@ export function LegalInvoiceInspector(
     pdf,
     deliveries,
   ];
+
   const error = queries.map((query) => query.error).find(Boolean) ?? null;
+
   const draftInputBlockers = issueReads.draft?.blockers.filter(
     (blocker) =>
       ![
@@ -294,6 +318,7 @@ export function LegalInvoiceInspector(
         "tax_profile_not_activated",
       ].includes(blocker.code),
   );
+
   const draftBoundaryBlockers = issueReads.draft?.blockers.filter((blocker) =>
     [
       "issuance_not_implemented",
@@ -301,9 +326,12 @@ export function LegalInvoiceInspector(
       "tax_profile_not_activated",
     ].includes(blocker.code),
   );
+
   const selectedPolicy = policy.data ?? issueReads.review.data?.review.policySnapshot;
+
   const selectedAccountingProfile =
     accountingProfile.data ?? issueReads.review.data?.review.accountingProfileSnapshot;
+
   return (
     <Details title={copy.legalHistory}>
       <Box display="grid" gap="lg" minWidth="zero">
@@ -387,6 +415,7 @@ function useLegalIssueRead(
   },
 ) {
   const [selectedReview, setSelectedReview] = useState("");
+
   const issueRead = useQuery({
     queryKey: [...commerceKey(props.book), "ar-legal", "issue", props.issueId ?? ""],
     queryFn: async ({ signal }) => {
@@ -395,8 +424,11 @@ function useLegalIssueRead(
         ArLegal.ArLegalIssueReceipt,
         { signal },
       );
+
       checkScope(props.book, result.scope);
+
       if (result.id !== props.issueId) throw new Error("Legal issue identity mismatch");
+
       return result;
     },
     enabled: Boolean(props.issueId),
@@ -404,7 +436,9 @@ function useLegalIssueRead(
     refetchOnMount: "always",
     retry: false,
   });
+
   const draftId = props.draftId ?? issueRead.data?.draftId ?? "";
+
   const history = useQuery({
     queryKey: [...commerceKey(props.book), "ar-legal", "issue-history", draftId],
     queryFn: async ({ signal }) => {
@@ -413,8 +447,11 @@ function useLegalIssueRead(
         ArLegal.ArLegalIssueHistory,
         { signal },
       );
+
       checkScope(props.book, result.scope);
+
       if (result.draftId !== draftId) throw new Error("Legal issue history draft mismatch");
+
       return result;
     },
     enabled: Boolean(draftId),
@@ -422,9 +459,11 @@ function useLegalIssueRead(
     refetchOnMount: "always",
     retry: false,
   });
+
   const selectedReviewId = props.issueId
     ? (issueRead.data?.reviewId ?? "")
     : selectedReview || history.data?.items.at(-1)?.id || "";
+
   const review = useQuery({
     queryKey: [...commerceKey(props.book), "ar-legal", "issue-review", selectedReviewId],
     queryFn: async ({ signal }) => {
@@ -433,26 +472,33 @@ function useLegalIssueRead(
         ArLegal.ArLegalIssueView,
         { signal },
       );
+
       checkScope(props.book, result.review.scope);
+
       if (
         result.review.id !== selectedReviewId ||
         result.review.input.draftId !== result.review.draftSnapshot.id ||
         (draftId && result.review.draftSnapshot.id !== draftId)
       )
         throw new Error("Legal issue review identity mismatch");
+
       if (result.issue) {
         checkScope(props.book, result.issue.scope);
+
         if (
           result.issue.reviewId !== result.review.id ||
           result.issue.reviewDigest !== result.review.digest
         )
           throw new Error("Legal issue review receipt mismatch");
       }
+
       if (result.approval) {
         checkScope(props.book, result.approval.scope);
+
         if (result.approval.reviewId !== result.review.id)
           throw new Error("Legal issue approval identity mismatch");
       }
+
       return result;
     },
     enabled: Boolean(selectedReviewId),
@@ -460,7 +506,9 @@ function useLegalIssueRead(
     refetchOnMount: "always",
     retry: false,
   });
+
   const issue = issueRead.data ?? review.data?.issue ?? undefined;
+
   return {
     issueRead,
     draftId,
@@ -478,6 +526,7 @@ function useLegalActivationRead(
   issue: typeof ArLegal.ArLegalIssueReceipt.Type | undefined,
 ) {
   const policyId = review?.review.input.policyId ?? issue?.policyId ?? "";
+
   const policy = useQuery({
     queryKey: [...commerceKey(book), "ar-legal", "sales-policy", policyId],
     queryFn: async ({ signal }) => {
@@ -486,14 +535,18 @@ function useLegalActivationRead(
         LegalSalesPolicy.LegalSalesPolicy,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       if (result.id !== policyId) throw new Error("Legal sales policy identity mismatch");
+
       if (
         review &&
         (result.digest !== review.review.input.policyDigest ||
           result.digest !== review.review.policySnapshot.digest)
       )
         throw new Error("Legal sales policy snapshot mismatch");
+
       return result;
     },
     enabled: Boolean(policyId),
@@ -501,7 +554,9 @@ function useLegalActivationRead(
     refetchOnMount: "always",
     retry: false,
   });
+
   const accountingProfileId = review?.review.input.accountingProfileId ?? "";
+
   const accountingProfile = useQuery({
     queryKey: [...commerceKey(book), "ar-legal", "accounting-profile", accountingProfileId],
     queryFn: async ({ signal }) => {
@@ -510,7 +565,9 @@ function useLegalActivationRead(
         ArLegal.ArLegalAccountingProfile,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       if (
         result.id !== accountingProfileId ||
         (review &&
@@ -519,6 +576,7 @@ function useLegalActivationRead(
             result.digest !== review.review.accountingProfileSnapshot.digest))
       )
         throw new Error("Legal accounting profile identity mismatch");
+
       return result;
     },
     enabled: Boolean(accountingProfileId),
@@ -526,6 +584,7 @@ function useLegalActivationRead(
     refetchOnMount: "always",
     retry: false,
   });
+
   return { policy, accountingProfile };
 }
 
@@ -541,8 +600,11 @@ function useLegalArtifactRead(
         LegalInvoicePdf.LegalInvoicePdfHistory,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       if (result.issueId !== issue?.id) throw new Error("Legal PDF history issue mismatch");
+
       return result;
     },
     enabled: Boolean(issue?.id),
@@ -550,7 +612,9 @@ function useLegalArtifactRead(
     refetchOnMount: "always",
     retry: false,
   });
+
   const captureId = pdfHistory.data?.items[0]?.id ?? "";
+
   const pdf = useQuery({
     queryKey: [...commerceKey(book), "ar-legal", "pdf", captureId],
     queryFn: async ({ signal }) => {
@@ -559,7 +623,9 @@ function useLegalArtifactRead(
         LegalInvoicePdf.LegalInvoicePdfView,
         { signal },
       );
+
       checkScope(book, result.capture.scope);
+
       if (
         result.capture.id !== captureId ||
         result.capture.issueId !== issue?.id ||
@@ -567,6 +633,7 @@ function useLegalArtifactRead(
         result.capture.source.issue.digest !== issue?.digest
       )
         throw new Error("Legal PDF capture identity mismatch");
+
       return {
         ...result,
         verified: result.artifact
@@ -579,6 +646,7 @@ function useLegalArtifactRead(
     refetchOnMount: "always",
     retry: false,
   });
+
   const deliveries = useQuery({
     queryKey: [...commerceKey(book), "ar-legal", "delivery-history", captureId],
     queryFn: async ({ signal }) => {
@@ -587,24 +655,31 @@ function useLegalArtifactRead(
         LegalDelivery.LegalDeliveryHistory,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       if (result.pdfCaptureId !== captureId) throw new Error("Legal delivery history PDF mismatch");
       result.items.forEach((item) => {
         checkScope(book, item.request.scope);
+
         if (
           item.request.input.pdfCaptureId !== captureId ||
           item.request.issueId !== issue?.id ||
           item.delivered
         )
           throw new Error("Legal delivery request identity mismatch");
+
         if (item.approval) checkScope(book, item.approval.scope);
         item.attempts.forEach(({ attempt, reconciliation }) => {
           checkScope(book, attempt.scope);
+
           if (attempt.requestId !== item.request.id || attempt.delivered)
             throw new Error("Legal delivery attempt identity mismatch");
+
           if (reconciliation) checkScope(book, reconciliation.scope);
         });
       });
+
       return result;
     },
     enabled: Boolean(captureId),
@@ -612,10 +687,12 @@ function useLegalArtifactRead(
     refetchOnMount: "always",
     retry: false,
   });
+
   return { pdfHistory, captureId, pdf, deliveries };
 }
 
 type LegalCopy = ReturnType<typeof invoiceIssueCopy>;
+
 type LegalPdfInspection = typeof LegalInvoicePdf.LegalInvoicePdfView.Type & {
   verified: Awaited<ReturnType<typeof verifyLegalPdf>> | null;
 };
@@ -766,8 +843,10 @@ function LegalStateSection(props: {
 }) {
   const totals = props.review?.review.totals ?? props.issue?.totals;
   const scale = props.draft?.content.currencyScale ?? 2;
+
   const amount = (value: string | null | undefined) =>
     value == null ? props.copy.notAvailable : formatMinorAmount(value, scale, props.locale);
+
   return (
     <RecordSection title={props.copy.legalStatesAndTotals}>
       <RecordSummary>
@@ -881,6 +960,7 @@ function LegalArtifactSection(props: {
         <Text>{props.copy.noIssueForArtifacts}</Text>
       </RecordSection>
     );
+
   if (!props.history?.items.length)
     return (
       <RecordSection title={props.copy.legalArtifacts}>
@@ -888,6 +968,7 @@ function LegalArtifactSection(props: {
       </RecordSection>
     );
   const verified = props.pdf?.verified;
+
   return (
     <RecordSection title={props.copy.legalArtifacts}>
       <DataTable
@@ -968,12 +1049,14 @@ function LegalDeliverySection({
         <Text>{copy.noPdfForDelivery}</Text>
       </RecordSection>
     );
+
   if (!history?.items.length)
     return (
       <RecordSection title={copy.deliveryHistory}>
         <Text>{loaded ? copy.noDelivery : copy.notAvailable}</Text>
       </RecordSection>
     );
+
   return (
     <RecordSection title={copy.deliveryHistory}>
       {history.items.map((item) => (
@@ -1070,12 +1153,15 @@ async function verifyLegalPdf(
   )
     throw new Error("Legal PDF artifact identity mismatch");
   const binary = atob(artifact.contentBase64);
+
   if (btoa(binary) !== artifact.contentBase64) throw new Error("Noncanonical legal PDF bytes");
   const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
   const digest = await crypto.subtle.digest("SHA-256", bytes);
+
   const sha256 = [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
+
   if (
     bytes.length !== artifact.byteLength ||
     sha256 !== artifact.sha256 ||
@@ -1083,11 +1169,13 @@ async function verifyLegalPdf(
   )
     throw new Error("Legal PDF hash, length or signature mismatch");
   checkScope(book, capture.source.issue.scope);
+
   return { bytes, filename: artifact.filename };
 }
 
 function SyntheticAcknowledgment({ locale }: { locale: CommerceProps["locale"] }) {
   const copy = invoiceIssueCopy(locale);
+
   return (
     <Box as="label" display="flex" alignItems="start" gap="md" padding="md">
       <input type="checkbox" name="acknowledgeSyntheticOnly" required />
@@ -1095,6 +1183,7 @@ function SyntheticAcknowledgment({ locale }: { locale: CommerceProps["locale"] }
     </Box>
   );
 }
+
 function IssuePreparation(
   props: CommerceProps & {
     draft: typeof Drafts.InvoiceDraftRevision.Type;
@@ -1105,17 +1194,21 @@ function IssuePreparation(
   const copy = invoiceIssueCopy(props.locale);
   // Keep the expected revision and draft review stable while a command is pending or uncertain.
   const [draft] = useState(props.draft);
+
   const setup = useQuery({
     queryKey: [...bookKey(props.book), "setup"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(props.book)}/setup`, Accounting.BookSetup, { signal }),
     retry: false,
   });
+
   const missing = invoiceIssueMissing(draft, props.locale);
+
   const accounts =
     setup.data?.accounts
       .filter((account) => account.active)
       .map((account) => ({ value: account.id, label: `${account.code} · ${account.name}` })) ?? [];
+
   return (
     <RecordSplit
       aside={
@@ -1200,6 +1293,7 @@ function IssuePreparation(
     </RecordSplit>
   );
 }
+
 export function InvoiceIssueReviewPanel(
   props: CommerceProps & {
     id: string;
@@ -1210,6 +1304,7 @@ export function InvoiceIssueReviewPanel(
 ) {
   const { book, locale, id } = props;
   const copy = invoiceIssueCopy(locale);
+
   const review = useQuery({
     queryKey: [...commerceKey(book), "invoice-issue-review", id, props.draftId ?? ""],
     staleTime: 0,
@@ -1220,21 +1315,29 @@ export function InvoiceIssueReviewPanel(
         Issuance.InvoiceIssueView,
         { signal },
       );
+
       checkScope(book, result.plan.scope);
+
       if (result.plan.id !== id || (props.draftId && result.plan.input.draftId !== props.draftId))
         throw new Error("Issue review identity mismatch");
+
       if (result.issue) {
         checkScope(book, result.issue.scope);
+
         if (result.issue.reviewId !== id) throw new Error("Issue receipt review mismatch");
       }
+
       if (result.approval) {
         checkScope(book, result.approval.scope);
+
         if (result.approval.reviewId !== id) throw new Error("Issue approval review mismatch");
       }
+
       return result;
     },
     retry: false,
   });
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.review}</Heading>
@@ -1261,6 +1364,7 @@ export function InvoiceIssueReviewPanel(
     </Box>
   );
 }
+
 function IssueContents(
   props: CommerceProps & {
     view: typeof Issuance.InvoiceIssueView.Type;
@@ -1274,12 +1378,14 @@ function IssueContents(
   const copy = invoiceIssueCopy(locale);
   const draft = plan.draftSnapshot;
   const path = `${commercePath(book)}/invoice-issue-reviews/${encodeURIComponent(plan.id)}`;
+
   const setup = useQuery({
     queryKey: [...bookKey(book), "setup"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
     retry: false,
   });
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <InvoiceDraftDocument record={draft} locale={locale} />
@@ -1394,6 +1500,7 @@ function IssueContents(
                     const account = setup.data?.accounts.find(
                       (entry) => entry.id === line.accountId,
                     );
+
                     return account ? `${account.code} · ${account.name}` : line.accountId;
                   })(),
                   formatMinorAmount(line.debitMinor, draft.content.currencyScale, locale),
@@ -1451,6 +1558,7 @@ function IssueContents(
               const url = URL.createObjectURL(
                 new Blob([JSON.stringify(view, null, 2)], { type: "application/json" }),
               );
+
               const link = document.createElement("a");
               link.href = url;
               link.download = `${plan.id}.json`;
@@ -1483,12 +1591,14 @@ function invoiceIssueMissing(
         ].includes(blocker.code),
     )
     .map((blocker) => invoiceDraftBlocker(blocker.code, locale));
+
   if (draft.totals.taxMinor !== "0")
     reasons.push(
       locale === "sv"
         ? "Demoutfärdande stöder endast uttryckligt nollbelopp i moms."
         : "Demo issuance supports an explicitly entered zero tax amount only.",
     );
+
   if (
     draft.totals.sourceTotalMatches !== true ||
     draft.calculatedLines.some((line) => line.sourceGrossMatches !== true)
@@ -1498,5 +1608,6 @@ function invoiceIssueMissing(
         ? "Ange avtalade radbelopp och totalbelopp i fakturautkastet. De måste stämma med beräkningen."
         : "Enter the agreed line totals and overall total in the draft. They must match the calculated amounts.",
     );
+
   return reasons;
 }

@@ -55,11 +55,14 @@ import { DeadlinesCapabilities } from "./deadlines";
 import { SupplierInboxCapabilities } from "./supplier-inbox";
 
 const scoped = { scope: Accounting.Scope };
+
 const mutation = {
   ...scoped,
   idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
 };
+
 const change = { ...scoped, changeSetId: Accounting.Identifier };
+
 const changeMutation = { ...mutation, changeSetId: Accounting.Identifier };
 
 export const Capabilities = {

@@ -6,7 +6,9 @@ import { accountingErrors } from "./accounting-errors";
 import { SalesQuery, SalesPage } from "./sales-register";
 
 const Name = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200));
+
 const Note = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(1000));
+
 export const DraftIdentity = Schema.Struct({
   legalName: Name,
   registrationId: Schema.NullOr(Name),
@@ -15,6 +17,7 @@ export const DraftIdentity = Schema.Struct({
   countryCode: Schema.NullOr(Schema.String.check(Schema.isPattern(/^[A-Z]{2}$/))),
   evidenceId: Accounting.Identifier,
 });
+
 export const DraftLine = Schema.Struct({
   id: Accounting.Identifier,
   description: Name,
@@ -29,12 +32,15 @@ export const DraftLine = Schema.Struct({
   taxDescription: Schema.NullOr(Name),
   taxEvidenceId: Schema.NullOr(Accounting.Identifier),
   sourceGrossMinor: Schema.NullOr(Accounting.MinorUnits),
-  catalogSelection: Schema.optional(Schema.Struct({
-    code: Schema.String.check(Schema.isPattern(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/)),
-    revision: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100000 })),
-    unit: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(32)),
-  })),
+  catalogSelection: Schema.optional(
+    Schema.Struct({
+      code: Schema.String.check(Schema.isPattern(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/)),
+      revision: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100000 })),
+      unit: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(32)),
+    }),
+  ),
 });
+
 export const DraftContent = Schema.Struct({
   title: Name,
   counterpartyId: Accounting.Identifier,
@@ -50,16 +56,19 @@ export const DraftContent = Schema.Struct({
   sourceTotalMinor: Schema.NullOr(Accounting.MinorUnits),
   lines: Schema.Array(DraftLine).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
 });
+
 export const CreateInvoiceDraft = Schema.Struct({
   draftKey: Accounting.Identifier,
   content: DraftContent,
 });
+
 export const ReviseInvoiceDraft = Schema.Struct({
   expectedRevision: Commerce.Version,
   expectedDigest: Accounting.Digest,
   reason: Accounting.Description,
   content: DraftContent,
 });
+
 export const DraftTotals = Schema.Struct({
   baseMinor: Accounting.AggregateMinorUnits,
   discountMinor: Accounting.AggregateMinorUnits,
@@ -69,6 +78,7 @@ export const DraftTotals = Schema.Struct({
   grossMinor: Schema.NullOr(Accounting.AggregateMinorUnits),
   sourceTotalMatches: Schema.NullOr(Schema.Boolean),
 });
+
 export const CalculatedDraftLine = Schema.Struct({
   id: Accounting.Identifier,
   calculatedBaseMinor: Schema.NullOr(Accounting.AggregateMinorUnits),
@@ -77,10 +87,12 @@ export const CalculatedDraftLine = Schema.Struct({
   sourceGrossMatches: Schema.NullOr(Schema.Boolean),
   taxEvidence: Schema.NullOr(Commerce.EvidenceReference),
 });
+
 export const DraftBlocker = Schema.Struct({
   code: Schema.String,
   lineId: Schema.NullOr(Accounting.Identifier),
 });
+
 export const InvoiceDraftRevision = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -103,11 +115,13 @@ export const InvoiceDraftRevision = Schema.Struct({
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
 });
+
 export const InvoiceDraftView = Schema.Struct({
   record: InvoiceDraftRevision,
   currentRevision: Commerce.Version,
   currentDigest: Accounting.Digest,
 });
+
 export const InvoiceDraftSummary = Schema.Struct({
   id: Accounting.Identifier,
   draftKey: Accounting.Identifier,
@@ -121,6 +135,7 @@ export const InvoiceDraftSummary = Schema.Struct({
   createdAt: Schema.String,
   digest: Accounting.Digest,
 });
+
 export const InvoiceDraftList = Schema.Struct({
   scope: Accounting.Scope,
   complete: Schema.Literal(true),
@@ -129,14 +144,18 @@ export const InvoiceDraftList = Schema.Struct({
   digest: Accounting.Digest,
   items: Schema.Array(InvoiceDraftSummary).check(Schema.isMaxLength(200)),
 });
+
 export const InvoiceDraftHistory = Schema.Struct({
   ...InvoiceDraftList.fields,
   id: Accounting.Identifier,
   currentRevision: Commerce.Version,
   items: Schema.Array(InvoiceDraftSummary).check(Schema.isMaxLength(50)),
 });
+
 export const DraftRevisionQuery = Schema.Struct({ revision: Schema.optional(Commerce.Version) });
+
 const path = "/v1/entities/:entityId/books/:bookId/commerce/invoice-drafts";
+
 export const InvoiceDraftsApi = HttpApiGroup.make("invoiceDrafts").add(
   HttpApiEndpoint.get(
     "salesRegister",
@@ -179,6 +198,7 @@ export const InvoiceDraftsApi = HttpApiGroup.make("invoiceDrafts").add(
     error: accountingErrors,
   }),
 );
+
 // Draft mutations require operator authority and are deliberately absent from ordinary MCP tools.
 export const InvoiceDraftCapabilities = {
   commerce_sales_register: {

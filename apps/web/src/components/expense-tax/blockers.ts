@@ -1,7 +1,9 @@
 import type * as Tax from "@open-erp/contracts/expense-tax";
+
 export function expenseTaxBlockers(locale: "en" | "sv") {
   return locale === "sv" ? sv : en;
 }
+
 const en = {
   withdrawn_source: "This expense source was permanently withdrawn. Its amounts are excluded.",
   duplicate_source_component: "Multiple active sources identify the same evidence component.",
@@ -44,6 +46,7 @@ const en = {
   calculated_tax_difference: "Calculated tax conflicts with reviewed VAT or gross.",
   amount_out_of_range: "The calculated amount exceeds the supported exact amount bound.",
 } satisfies Record<typeof Tax.ExpenseTaxBlocker.Type, string>;
+
 const sv: typeof en = {
   withdrawn_source: "Kostnadsunderlaget har återkallats permanent. Beloppen ingår inte.",
   duplicate_source_component: "Flera aktiva underlag avser samma underlagskomponent.",

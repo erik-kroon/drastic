@@ -27,6 +27,7 @@ export function InternalReports({
   const copy = accountingCopy(locale);
   const [reportId, setReportId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState("");
+
   return (
     <details open={open} id="internal-reports" tabIndex={-1}>
       <summary>{copy.report_title}</summary>
@@ -41,10 +42,13 @@ export function InternalReports({
           onSubmit={(event) => {
             event.preventDefault();
             const id = new FormData(event.currentTarget).get("reportId");
+
             if (!Schema.is(Accounting.Identifier)(id)) {
               setLoadError(copy.journal_invalid);
+
               return;
             }
+
             setLoadError("");
             setReportId(id);
           }}
@@ -84,9 +88,11 @@ function PrepareSnapshot({
   const client = useQueryClient();
   const keys = useRef(new Map<string, string>());
   const [inputError, setInputError] = useState("");
+
   const snapshot = useMutation({
     mutationFn: (payload: typeof Reports.PrepareReport.Type) => {
       const path = `${bookPath(book)}/report-snapshots`;
+
       return readAccounting(
         path,
         Reports.ReportSnapshot,
@@ -98,6 +104,7 @@ function PrepareSnapshot({
       onCreated(report.id);
     },
   });
+
   return (
     <Box
       as="form"
@@ -106,15 +113,19 @@ function PrepareSnapshot({
       onSubmit={(event) => {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
+
         const decoded = Schema.decodeUnknownOption(Reports.PrepareReport)({
           kind: "trial_balance_v1",
           startsOn: fields.get("startsOn"),
           endsOn: fields.get("endsOn"),
         });
+
         if (decoded._tag === "None") {
           setInputError(copy.journal_invalid);
+
           return;
         }
+
         setInputError("");
         snapshot.mutate(decoded.value);
       }}
@@ -168,7 +179,11 @@ function PrepareSnapshot({
   );
 }
 
-function SavedComparison({ book, locale, reportId }: {
+function SavedComparison({
+  book,
+  locale,
+  reportId,
+}: {
   book: typeof Accounting.Book.Type;
   locale: Locale;
   reportId: string;
@@ -176,6 +191,7 @@ function SavedComparison({ book, locale, reportId }: {
   const [otherId, setOtherId] = useState("");
   const [selected, setSelected] = useState("");
   const [accountId, setAccountId] = useState("");
+
   const comparison = useInfiniteQuery({
     queryKey: [...bookKey(book), "report-comparison", reportId, selected],
     enabled: selected !== "",
@@ -189,54 +205,127 @@ function SavedComparison({ book, locale, reportId }: {
     getNextPageParam: (page) => page.next,
     retry: false,
   });
+
   const sv = locale === "sv";
   const first = comparison.data?.pages[0];
-  const amount = (minor: string) => first
-    ? `${formatMinorAmount(minor, first.currencyScale, locale)} ${first.currency}`
-    : minor;
+
+  const amount = (minor: string) =>
+    first ? `${formatMinorAmount(minor, first.currencyScale, locale)} ${first.currency}` : minor;
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{sv ? "Jämför sparade saldobalanser" : "Compare saved trial balances"}</Heading>
-      <Box as="form" display="grid" gap="md" onSubmit={(event) => {
-        event.preventDefault();
-        if (Schema.is(Accounting.Identifier)(otherId) && otherId !== reportId) {
-          setSelected(otherId);
-          setAccountId("");
-        }
-      }}>
-        <InputField label={sv ? "Andra rapportens id" : "Other report ID"} value={otherId}
-          onChange={(event) => setOtherId(event.target.value)} required />
-        <Box><Button type="submit" variant="outline">{sv ? "Jämför" : "Compare"}</Button></Box>
+      <Box
+        as="form"
+        display="grid"
+        gap="md"
+        onSubmit={(event) => {
+          event.preventDefault();
+
+          if (Schema.is(Accounting.Identifier)(otherId) && otherId !== reportId) {
+            setSelected(otherId);
+            setAccountId("");
+          }
+        }}
+      >
+        <InputField
+          label={sv ? "Andra rapportens id" : "Other report ID"}
+          value={otherId}
+          onChange={(event) => setOtherId(event.target.value)}
+          required
+        />
+        <Box>
+          <Button type="submit" variant="outline">
+            {sv ? "Jämför" : "Compare"}
+          </Button>
+        </Box>
       </Box>
-      <AccountingStatus locale={locale} pending={comparison.isPending && selected !== ""} error={comparison.error} />
-      {first ? <>
-        <Text>{first.left.report.startsOn} – {first.left.report.endsOn} → {first.right.report.startsOn} – {first.right.report.endsOn}</Text>
-        <Text>{sv ? "Differens = höger − vänster. Diagnostik, inte fastställda årsredovisningsjämförelsetal." : "Difference = right − left. Diagnostic only, not reviewed statutory comparatives."}</Text>
-        <Text>{sv ? "Samtliga konton" : "All accounts"}: {first.totalAccounts}. {sv ? "Inlästa" : "Loaded"}: {comparison.data?.pages.flatMap((page) => page.items).length}.</Text>
-        <DataTable title={sv ? "Kontoskillnader" : "Account differences"} narrow="stack"
-          columns={[{ id: "account", label: sv ? "Konto" : "Account" },
-            { id: "left", label: sv ? "Vänster saldo" : "Left closing", numeric: true },
-            { id: "right", label: sv ? "Höger saldo" : "Right closing", numeric: true },
-            { id: "difference", label: sv ? "Förändring" : "Difference", numeric: true }]}
-          rows={comparison.data!.pages.flatMap((page) => page.items).map((line) => ({
-            id: line.accountId,
-            cells: [<Button key={line.accountId} type="button" variant="outline" onClick={() => setAccountId(line.accountId)}>
-              {line.right?.code ?? line.left?.code} · {line.right?.name ?? line.left?.name}
-            </Button>, line.left ? amount(line.left.closingMinor) : "—",
-            line.right ? amount(line.right.closingMinor) : "—",
-            line.difference ? amount(line.difference.closingMinor) : "—"],
-          }))} />
-        {comparison.hasNextPage ? <Box><Button type="button" variant="outline"
-          disabled={comparison.isFetching} onClick={() => { void comparison.fetchNextPage(); }}>
-          {sv ? "Fler konton" : "More accounts"}
-        </Button></Box> : null}
-        {accountId ? <Box display="grid" gap="lg">
-          <Heading>{sv ? "Bidragande verifikat" : "Contributing entries"}</Heading>
-          <TrialBalance key={`${reportId}:${accountId}`} book={book} id={reportId} locale={locale} accountId={accountId} onSelectAccount={setAccountId} />
-          <TrialBalance key={`${selected}:${accountId}`} book={book} id={selected} locale={locale} accountId={accountId} onSelectAccount={setAccountId} />
-        </Box> : null}
-      </> : null}
+      <AccountingStatus
+        locale={locale}
+        pending={comparison.isPending && selected !== ""}
+        error={comparison.error}
+      />
+      {first ? (
+        <>
+          <Text>
+            {first.left.report.startsOn} – {first.left.report.endsOn} →{" "}
+            {first.right.report.startsOn} – {first.right.report.endsOn}
+          </Text>
+          <Text>
+            {sv
+              ? "Differens = höger − vänster. Diagnostik, inte fastställda årsredovisningsjämförelsetal."
+              : "Difference = right − left. Diagnostic only, not reviewed statutory comparatives."}
+          </Text>
+          <Text>
+            {sv ? "Samtliga konton" : "All accounts"}: {first.totalAccounts}.{" "}
+            {sv ? "Inlästa" : "Loaded"}:{" "}
+            {comparison.data?.pages.flatMap((page) => page.items).length}.
+          </Text>
+          <DataTable
+            title={sv ? "Kontoskillnader" : "Account differences"}
+            narrow="stack"
+            columns={[
+              { id: "account", label: sv ? "Konto" : "Account" },
+              { id: "left", label: sv ? "Vänster saldo" : "Left closing", numeric: true },
+              { id: "right", label: sv ? "Höger saldo" : "Right closing", numeric: true },
+              { id: "difference", label: sv ? "Förändring" : "Difference", numeric: true },
+            ]}
+            rows={comparison
+              .data!.pages.flatMap((page) => page.items)
+              .map((line) => ({
+                id: line.accountId,
+                cells: [
+                  <Button
+                    key={line.accountId}
+                    type="button"
+                    variant="outline"
+                    onClick={() => setAccountId(line.accountId)}
+                  >
+                    {line.right?.code ?? line.left?.code} · {line.right?.name ?? line.left?.name}
+                  </Button>,
+                  line.left ? amount(line.left.closingMinor) : "—",
+                  line.right ? amount(line.right.closingMinor) : "—",
+                  line.difference ? amount(line.difference.closingMinor) : "—",
+                ],
+              }))}
+          />
+          {comparison.hasNextPage ? (
+            <Box>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={comparison.isFetching}
+                onClick={() => {
+                  void comparison.fetchNextPage();
+                }}
+              >
+                {sv ? "Fler konton" : "More accounts"}
+              </Button>
+            </Box>
+          ) : null}
+          {accountId ? (
+            <Box display="grid" gap="lg">
+              <Heading>{sv ? "Bidragande verifikat" : "Contributing entries"}</Heading>
+              <TrialBalance
+                key={`${reportId}:${accountId}`}
+                book={book}
+                id={reportId}
+                locale={locale}
+                accountId={accountId}
+                onSelectAccount={setAccountId}
+              />
+              <TrialBalance
+                key={`${selected}:${accountId}`}
+                book={book}
+                id={selected}
+                locale={locale}
+                accountId={accountId}
+                onSelectAccount={setAccountId}
+              />
+            </Box>
+          ) : null}
+        </>
+      ) : null}
     </Box>
   );
 }
-

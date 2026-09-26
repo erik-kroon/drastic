@@ -3,6 +3,7 @@ import type * as Schema from "effect/Schema";
 import type { Transaction } from "../transaction";
 
 type Json = Schema.Json;
+
 type JsonObject = Schema.JsonObject;
 
 export type PreviewRow = {
@@ -128,11 +129,12 @@ export function insertExportItems(
   invoiceIds: ReadonlyArray<string>,
 ) {
   if (invoiceIds.length === 0) return transaction.execute(sql`select 1`, "objects");
+
   return transaction.execute(
     sql`
       insert into openerp.supplier_payment_batch_items (book_id, export_id, invoice_id)
       select ${bookId}, ${exportId}, invoice_id
-      from jsonb_array_elements(${JSON.stringify(invoiceIds)}::jsonb) item(invoice_id)
+      from jsonb_array_elements_text(${JSON.stringify(invoiceIds)}::jsonb) item(invoice_id)
     `,
     "objects",
   );
@@ -319,8 +321,10 @@ export function readPayeeStillCurrent(transaction: Transaction, bookId: string, 
       join openerp.commerce_invoices i on i.book_id = ${bookId} and i.id = item.value->>'invoiceId'
       join openerp.commerce_counterparties c on c.book_id = i.book_id and c.id = i.counterparty_id
       left join openerp.supplier_payee_verifications x
-        on x.book_id = i.book_id and x.proposal_id = item.value->>'payeeVerificationId'
+        on x.book_id = i.book_id and x.id = item.value->>'payeeVerificationId'
        and x.counterparty_id = c.id and x.counterparty_revision = c.current_revision
+       and x.proposal_id = (select p.id from openerp.supplier_payee_proposals p
+         where p.book_id=x.book_id and p.counterparty_id=x.counterparty_id order by p.body->>'createdAt' desc,p.id collate "C" desc limit 1)
     `,
     "objects",
   );
@@ -361,3 +365,30 @@ export function readDatabaseDate(transaction: Transaction) {
 }
 
 export type { Json as PaymentJson };
+
+export function readEligibleInvoiceIds(tx: Transaction, book: string, after: string) {
+  return tx.execute<{ readonly id: string }>(
+    sql`select id from openerp.commerce_invoices where book_id=${book} and direction='supplier' and id collate "C">${after} collate "C" order by id collate "C" limit 26`,
+    "objects",
+  );
+}
+
+export function readInvoicePaymentFacts(tx: Transaction, book: string, invoice: string) {
+  return tx.execute<{
+    readonly accepted: boolean;
+    readonly exported: boolean;
+    readonly currentRevision: string;
+    readonly verification: JsonObject | null;
+  }>(
+    sql`
+    select exists(select from openerp.supplier_acceptances a where a.book_id=i.book_id and a.register_invoice_id=i.id) as accepted,
+      exists(select from openerp.supplier_payment_batch_items b where b.book_id=i.book_id and b.invoice_id=i.id) as exported,
+      c.current_revision::text as "currentRevision",
+      (select v.body from openerp.supplier_payee_verifications v where v.book_id=c.book_id and v.counterparty_id=c.id and v.counterparty_revision=c.current_revision
+        and v.proposal_id=(select p.id from openerp.supplier_payee_proposals p where p.book_id=c.book_id and p.counterparty_id=c.id order by p.body->>'createdAt' desc,p.id collate "C" desc limit 1)
+        order by v.body->>'createdAt' desc,v.id collate "C" desc limit 1) as verification
+    from openerp.commerce_invoices i join openerp.commerce_counterparties c on c.book_id=i.book_id and c.id=i.counterparty_id
+    where i.book_id=${book} and i.id=${invoice}`,
+    "objects",
+  );
+}

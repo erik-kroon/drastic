@@ -1,8 +1,9 @@
+import { digest as digestNative } from "./json";
 import * as Vat from "@open-erp/contracts/vat-returns";
 import { calculateVatDraft } from "@open-erp/jurisdiction-se/vat";
 import * as Effect from "effect/Effect";
 import { failure } from "./failures";
-import { digestJson } from "../db/commerce/access";
+
 import { lockBookForUpdate } from "../db/posting";
 import * as VatDb from "../db/vat-return-drafts";
 import type { Transaction } from "../db/transaction";
@@ -19,10 +20,13 @@ import {
 type PrepareVatCommand = typeof Vat.PrepareVatCommand.Type;
 
 const DraftSchema = Vat.VatDraft;
+
 const BasisSchema = Vat.VatBasis;
+
 const CalculationSchema = Vat.VatCalculation;
 
 const draftInputKeys = ["mode", "startsOn", "endsOn", "periodEvidenceId", "otherBoxes"] as const;
+
 const calculationKeys = [
   "engine",
   "assessments",
@@ -35,8 +39,11 @@ const calculationKeys = [
   "legalProfileActive",
   "filingReady",
 ] as const;
+
 const maximumFacts = 200;
+
 const maximumDrafts = 500;
+
 const maximumIntervalDays = 365;
 
 function requireDraftAccess(transaction: Transaction, write: boolean) {
@@ -44,23 +51,21 @@ function requireDraftAccess(transaction: Transaction, write: boolean) {
     Effect.flatMap((rows) => {
       const denied = VatDb.draftTables.some((name) => {
         const access = rows.find((row) => row.tableName === name);
+
         return (
           access === undefined ||
           !access.canSelect ||
           (write && ["vat_return_drafts", "command_receipts"].includes(name) && !access.canInsert)
         );
       });
+
       return denied ? unsupported() : Effect.void;
     }),
   );
 }
 
-function digestBody(transaction: Transaction, body: JsonObject) {
-  return digestJson(transaction, body).pipe(
-    Effect.flatMap((rows) => {
-      const digest = rows[0]?.digest;
-      return digest === undefined ? failure("InternalError") : Effect.succeed(digest);
-    }),
+function digestBody(body: JsonObject) {
+  return digestNative(body).pipe(
     Effect.map((digest): JsonObject => Object.assign({}, body, { digest })),
   );
 }
@@ -68,13 +73,16 @@ function digestBody(transaction: Transaction, body: JsonObject) {
 function readBasis(transaction: Transaction, bookId: string) {
   return Effect.gen(function* () {
     const state = (yield* VatDb.readBookState(transaction, bookId))[0];
+
     if (!state) return yield* failure("Forbidden");
     const counted = yield* VatDb.countFactComponents(transaction, bookId);
+
     if ((counted[0]?.total ?? 0) > maximumFacts) return yield* unsupported();
     const facts = (yield* VatDb.readBasisFacts(transaction, bookId))[0]?.facts ?? [];
+
     return yield* decode(
       BasisSchema,
-      yield* digestBody(transaction, {
+      yield* digestBody({
         bookSequence: state.committedSequence,
         bookProfile: state.profile,
         bookProfileVersion: state.profileVersion,
@@ -89,8 +97,10 @@ function readBasis(transaction: Transaction, bookId: string) {
 function requireOrderedInterval(input: typeof Vat.PrepareVatDraft.Type) {
   const starts = Date.parse(`${input.startsOn}T00:00:00.000Z`);
   const ends = Date.parse(`${input.endsOn}T00:00:00.000Z`);
+
   if (!Number.isFinite(starts) || !Number.isFinite(ends)) return failure("InvalidJournal");
   const days = (ends - starts) / 86400000;
+
   return starts <= ends && days <= maximumIntervalDays ? Effect.void : failure("InvalidJournal");
 }
 
@@ -98,6 +108,7 @@ function requireSupportedMode(input: typeof Vat.PrepareVatDraft.Type) {
   if (input.mode === "actual_review" && input.otherBoxes !== "unknown") {
     return failure("InvalidJournal");
   }
+
   return Effect.void;
 }
 
@@ -108,12 +119,14 @@ function requireCalculationLineage(
 ) {
   return Effect.gen(function* () {
     yield* exactKeys(yield* toJsonObject(calculation), calculationKeys);
+
     if (
       calculation.engine !== "vat-return-draft-v3" ||
       calculation.assessments.length !== basis.facts.length
     ) {
       return yield* failure("InvalidJournal");
     }
+
     if (
       calculation.coverageEstablished !== false ||
       calculation.ledgerReconciled !== false ||
@@ -122,18 +135,23 @@ function requireCalculationLineage(
     ) {
       return yield* unsupported();
     }
+
     if (
       input.mode === "actual_review" &&
       (calculation.syntheticBoxes !== null || calculation.includedCount !== 0)
     ) {
       return yield* unsupported();
     }
+
     for (const [index, assessment] of calculation.assessments.entries()) {
       const fact = basis.facts[index];
+
       if (!fact) return yield* failure("InvalidJournal");
+
       if (assessment.factId !== fact.fact.factId || assessment.sourceDigest !== fact.fact.digest) {
         return yield* failure("InvalidJournal");
       }
+
       if (
         fact.withdrawal != null &&
         (assessment.state !== "excluded" ||
@@ -142,6 +160,7 @@ function requireCalculationLineage(
       ) {
         return yield* failure("InvalidJournal");
       }
+
       if (
         fact.expenseSourceWithdrawn === true &&
         (assessment.state !== "excluded" ||
@@ -150,6 +169,7 @@ function requireCalculationLineage(
       ) {
         return yield* failure("InvalidJournal");
       }
+
       if (
         assessment.state === "included_synthetic" &&
         (input.mode !== "synthetic_demonstration" ||
@@ -172,6 +192,7 @@ export const prepareVatDraft = Effect.fn("vat.prepareDraft")(function* (
     false,
     function* (transaction, principal) {
       const payload = yield* toJsonObject(command.input);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -181,12 +202,14 @@ export const prepareVatDraft = Effect.fn("vat.prepareDraft")(function* (
         payload,
         DraftSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireDraftAccess(transaction, true);
       yield* lockBookForUpdate(transaction, command.scope);
       yield* exactKeys(payload, draftInputKeys);
       yield* requireSupportedMode(command.input);
       yield* requireOrderedInterval(command.input);
+
       const periodEvidenceSha256 =
         command.input.periodEvidenceId === null
           ? null
@@ -195,17 +218,22 @@ export const prepareVatDraft = Effect.fn("vat.prepareDraft")(function* (
               command.scope.bookId,
               command.input.periodEvidenceId,
             ))[0]?.sha256 ?? null);
+
       if (command.input.periodEvidenceId !== null && periodEvidenceSha256 === null) {
         return yield* failure("MissingEvidence");
       }
+
       const basis = yield* readBasis(transaction, command.scope.bookId);
       const calculation = calculateVatDraft(basis, command.input);
       yield* decode(CalculationSchema, calculation);
       yield* requireCalculationLineage(basis, calculation, command.input);
+
       const ordinal = (yield* VatDb.readNextDraftOrdinal(transaction, command.scope.bookId))[0]
         ?.ordinal;
+
       if (ordinal === undefined || ordinal > maximumDrafts) return yield* unsupported();
-      const body = yield* digestBody(transaction, {
+
+      const body = yield* digestBody({
         id: newId("vatdraft"),
         scope: command.scope,
         input: command.input,
@@ -219,6 +247,7 @@ export const prepareVatDraft = Effect.fn("vat.prepareDraft")(function* (
           actorId: principal.actorId,
         },
       });
+
       const draft = yield* decode(DraftSchema, body);
       yield* VatDb.insertDraft(transaction, {
         bookId: command.scope.bookId,
@@ -235,6 +264,7 @@ export const prepareVatDraft = Effect.fn("vat.prepareDraft")(function* (
         principal.actorId,
         draft,
       );
+
       return draft;
     },
     "update",

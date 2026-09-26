@@ -22,6 +22,7 @@ export function WorkHandoff(props: { item: typeof Workspace.AttentionItem.Type }
   const current = props.item.assignment;
   const members = team.isError ? [] : (team.data?.members ?? []);
   const member = members.find((item) => item.id === current?.assigneeId);
+
   const label = !team.isSuccess
     ? sv
       ? "Läs ansvarig"
@@ -31,6 +32,7 @@ export function WorkHandoff(props: { item: typeof Workspace.AttentionItem.Type }
       : sv
         ? "Tilldela"
         : "Assign";
+
   return (
     <>
       <Box display="grid" gap="sm">
@@ -105,6 +107,7 @@ function HandoffFields(props: {
   const { current, members, locale } = props;
   const sv = locale === "sv";
   const member = members.find((item) => item.id === current?.assigneeId);
+
   return (
     <>
       {" "}

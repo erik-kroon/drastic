@@ -44,16 +44,20 @@ export function SiePlanReview({
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const keys = useRef(new Map<string, string>());
+
   const sourceAccounts = [
     ...new Set(
       preview.records.flatMap((record) => {
         if (["KONTO", "TRANS", "RTRANS", "BTRANS"].includes(record.tag))
           return record.fields.slice(0, 1);
+
         if (["IB", "UB", "RES"].includes(record.tag)) return record.fields.slice(1, 2);
+
         return [];
       }),
     ),
   ].sort();
+
   const controls = preview.controls
     .filter((control) => control.kind === "IB" || control.kind === "UB")
     .filter(
@@ -62,20 +66,24 @@ export function SiePlanReview({
           (other) => other.account === control.account && other.year === control.year,
         ) === index,
     );
+
   const activeAccounts = setup.accounts.filter((account) => account.active);
   const exactAccounts = new Map(activeAccounts.map((account) => [account.code, account.id]));
   const unresolvedAccounts = sourceAccounts.filter((code) => !exactAccounts.has(code));
   const path = `${bookPath(book)}/sie-previews/${encodeURIComponent(preview.id)}/plans`;
+
   const seal = useMutation({
     mutationFn: (input: typeof Sie.SealSiePlan.Type) =>
       readAccounting(path, Sie.SiePlan, mutationOptions(path, JSON.stringify(input), keys.current)),
     onSuccess: (result) => {
       checkScope(book, result.scope);
+
       if (result.previewId !== preview.id || result.previewDigest !== preview.digest)
         throw new Error("SIE plan identity mismatch");
       onSealed(result);
     },
   });
+
   const form = useForm({
     defaultValues: {
       mappings: sourceAccounts.map((sourceAccount) => ({
@@ -115,13 +123,17 @@ export function SiePlanReview({
         openingPolicy: "unreconstructable_detail",
         sourceKind: sourceSystem.startsWith("synthetic_") ? "synthetic" : "reviewed_sie4",
       });
+
       await seal.mutateAsync(
         isUncertainWriteError(seal.error) && seal.variables ? seal.variables : input,
       );
     },
   });
+
   const disabled = seal.isPending || isUncertainWriteError(seal.error) || book.role !== "operator";
+
   if (!preview.ready) return null;
+
   if (!setup.accounts.length)
     return (
       <Text>
@@ -130,6 +142,7 @@ export function SiePlanReview({
           : "Set up the company’s chart of accounts before mapping the file’s accounts."}
       </Text>
     );
+
   return (
     <Box
       as="form"
@@ -378,6 +391,7 @@ export function SavedSiePlan({
   const sv = locale === "sv";
   const keys = useRef(new Map<string, string>());
   const startPath = `${bookPath(book)}/sie-plans/${encodeURIComponent(plan)}/runs`;
+
   const start = useMutation({
     mutationFn: (digest: string) =>
       readAccounting(
@@ -390,6 +404,7 @@ export function SavedSiePlan({
       onStarted();
     },
   });
+
   const savedPlan = useQuery({
     queryKey: [...bookKey(book), "sie-plan", plan],
 
@@ -400,12 +415,16 @@ export function SavedSiePlan({
         Sie.SiePlan,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       if (result.id !== plan || result.previewId !== preview)
         throw new Error("SIE plan identity mismatch");
+
       return result;
     },
   });
+
   return (
     <RecordSection title={sv ? "Sparad importplan" : "Saved import plan"}>
       <AccountingStatus locale={locale} pending={savedPlan.isPending} error={savedPlan.error} />

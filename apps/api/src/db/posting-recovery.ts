@@ -13,6 +13,7 @@ import {
 import type { Transaction } from "./transaction";
 
 type JsonObject = Schema.JsonObject;
+
 type SavedCommand = typeof Recovery.SavedPostingCommand.Type;
 
 export type SavedRequestRow = {
@@ -107,6 +108,7 @@ export function listSavedRequests(
             lt(postingSavedRequests.key, after.key),
           ),
         );
+
   const query = transaction
     .select({
       bookId: postingSavedRequests.bookId,
@@ -123,6 +125,7 @@ export function listSavedRequests(
     )
     .orderBy(desc(postingSavedRequests.savedAt), desc(postingSavedRequests.key))
     .limit(21);
+
   return query;
 }
 
@@ -156,6 +159,7 @@ export function listRecoveryPlans(
           lt(changeSets.createdAt, after.createdAt),
           and(eq(changeSets.createdAt, after.createdAt), lt(changeSets.id, after.id)),
         );
+
   const query = transaction
     .select({
       bookId: changeSets.bookId,
@@ -179,6 +183,7 @@ export function listRecoveryPlans(
     )
     .orderBy(desc(changeSets.createdAt), desc(changeSets.id))
     .limit(21);
+
   return query;
 }
 
@@ -195,6 +200,7 @@ export function listRecoveryRequests(
     "approve_change",
     "execute_change",
   ];
+
   const cursor =
     after === undefined
       ? undefined
@@ -202,6 +208,7 @@ export function listRecoveryRequests(
           lt(commandReceipts.recordedAt, after.recordedAt),
           and(eq(commandReceipts.recordedAt, after.recordedAt), lt(commandReceipts.key, after.key)),
         );
+
   const query = transaction
     .select({
       key: commandReceipts.key,
@@ -238,6 +245,7 @@ export function listRecoveryRequests(
     )
     .orderBy(desc(commandReceipts.recordedAt), desc(commandReceipts.key))
     .limit(21);
+
   return query;
 }
 
@@ -254,6 +262,7 @@ export function readRecoveryRequestAnchor(
     "approve_change",
     "execute_change",
   ];
+
   return transaction
     .select({ key: commandReceipts.key, recordedAt: commandReceipts.recordedAt })
     .from(commandReceipts)

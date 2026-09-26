@@ -21,6 +21,7 @@ export const PrepareReviewPack = Schema.Struct({
     Schema.Struct({ name: Accounting.Description, reason: Accounting.Description }),
   ).check(Schema.isMaxLength(20)),
 });
+
 export const ReviewSection = Schema.Literals([
   "balances",
   "journal",
@@ -30,6 +31,7 @@ export const ReviewSection = Schema.Literals([
   "owner_controls",
   "expense_tax",
 ]);
+
 export const ReviewFormat = Schema.Literals([
   "json",
   "balances_csv",
@@ -40,12 +42,14 @@ export const ReviewFormat = Schema.Literals([
   "owner_controls_csv",
   "expense_tax_csv",
 ]);
+
 export const ReviewCoverage = Schema.Struct({
   section: Schema.Literal("coverage"),
   code: Schema.String,
   status: Schema.Literals(["observed", "missing", "unavailable", "unverified", "excluded"]),
   detail: Schema.String,
 });
+
 export const ReviewBalance = Schema.Struct({
   section: Schema.Literal("balances"),
   accountId: Accounting.Identifier,
@@ -56,6 +60,7 @@ export const ReviewBalance = Schema.Struct({
   movementCreditMinor: Accounting.AggregateMinorUnits,
   recordedClosingMinor: Accounting.SignedMinorUnits,
 });
+
 export const ReviewJournalLine = Schema.Struct({
   section: Schema.Literal("journal"),
   part: Schema.Literals(["opening", "movement", "excluded_after_end"]),
@@ -84,6 +89,7 @@ export const ReviewJournalLine = Schema.Struct({
   committedAt: Schema.String,
   evidenceRefs: Accounting.PostingAction.fields.evidenceRefs,
 });
+
 export const ReviewEvidence = Schema.Struct({
   section: Schema.Literal("evidence"),
   id: Accounting.Identifier,
@@ -103,6 +109,7 @@ export const ReviewEvidence = Schema.Struct({
     "no_included_posting",
   ]),
 });
+
 export const ReviewOwnerSource = Schema.Struct({
   section: Schema.Literal("owner_sources"),
   source: Owners.Source,
@@ -110,6 +117,7 @@ export const ReviewOwnerSource = Schema.Struct({
   review: Schema.NullOr(Owners.Review),
   disposition: Schema.Literals(["through_period_end", "excluded_after_end"]),
 });
+
 export const ReviewOwnerControl = Schema.Struct({
   section: Schema.Literal("owner_controls"),
   owner: Owners.Control.fields.owner,
@@ -128,6 +136,7 @@ export const ReviewOwnerControl = Schema.Struct({
   accountControls: Owners.Control.fields.accountControls,
   blockers: Owners.Control.fields.blockers,
 });
+
 export const ReviewExpenseTax = Schema.Struct({
   section: Schema.Literal("expense_tax"),
   assessmentMode: Schema.Literal("actual_review"),
@@ -140,6 +149,7 @@ export const ReviewExpenseTax = Schema.Struct({
     contribution: Schema.Null,
   }),
 });
+
 export const ReviewRow = Schema.Union([
   ReviewBalance,
   ReviewJournalLine,
@@ -149,6 +159,7 @@ export const ReviewRow = Schema.Union([
   ReviewOwnerControl,
   ReviewExpenseTax,
 ]);
+
 const BankBasis = Schema.Struct({
   sources: Schema.Array(
     Schema.Struct({
@@ -162,6 +173,7 @@ const BankBasis = Schema.Struct({
   ),
   allRepresentedReady: Schema.Boolean,
 });
+
 const CommerceBasis = Schema.Struct({
   schemaVersion: Schema.Literal(1),
   coverage: Schema.Literal("not_established"),
@@ -174,6 +186,7 @@ const CommerceBasis = Schema.Struct({
   sourceDigest: Accounting.Digest,
   blockers: Schema.Array(Schema.String),
 });
+
 const ScheduleBasis = Schema.Struct({
   coverageEstablished: Schema.Literal(false),
   scheduleRevisionDigest: Accounting.Digest,
@@ -184,6 +197,7 @@ const ScheduleBasis = Schema.Struct({
   conflictedOccurrenceCount: Schema.Int,
   limitation: Schema.String,
 });
+
 export const ReviewBasis = Schema.Struct({
   sequence: Accounting.MinorUnits,
   profile: Schema.String,
@@ -212,6 +226,7 @@ export const ReviewBasis = Schema.Struct({
     }),
   ),
 });
+
 export const ReviewPack = Schema.Struct({
   id: Accounting.Identifier,
   kind: Schema.Literal("accountant_review_pack_v1"),
@@ -248,6 +263,7 @@ export const ReviewPack = Schema.Struct({
   createdBy: Accounting.Identifier,
   createdAt: Schema.String,
 });
+
 export const ReviewArtifactDescriptor = Schema.Struct({
   format: ReviewFormat,
   filename: Schema.String,
@@ -257,11 +273,13 @@ export const ReviewArtifactDescriptor = Schema.Struct({
   sha256: Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/)),
   cellEncoding: Schema.Literals(["json_exact", "apostrophe_prefixed_text_v1"]),
 });
+
 export const ReviewPackView = Schema.Struct({
   pack: ReviewPack,
   artifacts: Schema.Array(ReviewArtifactDescriptor),
   dependenciesCurrent: Schema.Boolean,
 });
+
 const ReviewRowCursor = Schema.String.check(
   Schema.isPattern(
     /^[a-z][a-z0-9_-]{2,127}:(balances|journal|evidence|coverage|owner_sources|owner_controls|expense_tax):[1-9][0-9]{0,18}$/,
@@ -271,6 +289,7 @@ const ReviewRowCursor = Schema.String.check(
     },
   ),
 );
+
 export const ReviewPage = Schema.Struct({
   packId: Accounting.Identifier,
   packDigest: Accounting.Digest,
@@ -279,12 +298,14 @@ export const ReviewPage = Schema.Struct({
   items: Schema.Array(ReviewRow),
   next: Schema.NullOr(ReviewRowCursor),
 });
+
 export const ReviewArtifact = Schema.Struct({
   packId: Accounting.Identifier,
   packDigest: Accounting.Digest,
   descriptor: ReviewArtifactDescriptor,
   content: Schema.String,
 });
+
 export const ReviewPackList = Schema.Struct({
   items: Schema.Array(
     Schema.Struct({
@@ -299,19 +320,27 @@ export const ReviewPackList = Schema.Struct({
   ),
   next: Schema.NullOr(Accounting.MinorUnits),
 });
+
 export const ReviewPagePath = Schema.Struct({
   ...Accounting.ChangePath.fields,
   section: ReviewSection,
 });
+
 export const ReviewArtifactPath = Schema.Struct({
   ...Accounting.ChangePath.fields,
   format: ReviewFormat,
 });
+
 const cursor = Schema.Struct({ after: Schema.optional(Accounting.MinorUnits) });
+
 const ReviewRowQuery = Schema.Struct({ after: Schema.optional(ReviewRowCursor) });
+
 const scoped = { params: Accounting.Scope, error: accountingErrors };
+
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
+
 const path = "/v1/entities/:entityId/books/:bookId/accountant-review-packs";
+
 export const AccountantReviewApi = HttpApiGroup.make("accountantReview").add(
   HttpApiEndpoint.post("prepareReviewPack", path, {
     ...scoped,
@@ -337,7 +366,9 @@ export const AccountantReviewApi = HttpApiGroup.make("accountantReview").add(
     success: ReviewArtifact,
   }),
 );
+
 const scope = { scope: Accounting.Scope };
+
 export const AccountantReviewCapabilities = {
   accountant_review_prepare: {
     description:

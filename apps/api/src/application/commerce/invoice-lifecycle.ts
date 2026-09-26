@@ -1,10 +1,12 @@
+import { readSealedDraft } from "../../db/posting-admission";
+import { admitAccountRole, admitLineOwner } from "../resource-admission";
+import { digest as digestNative } from "../json";
 import { equalJson } from "@open-erp/domain/canonicalization";
-import * as Cancellations from "@open-erp/contracts/invoice-cancellations";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import * as Issuance from "@open-erp/contracts/invoice-issuance";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Effect from "effect/Effect";
-import { digestJson, readInstant } from "../../db/commerce/access";
+import { readInstant } from "../../db/commerce/access";
 import * as DraftDb from "../../db/commerce/invoice-lifecycle";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
@@ -33,15 +35,23 @@ import {
   withBook,
   type JsonObject,
   type Scope,
+  type Principal,
 } from "./support";
 
 const RevisionSchema = Drafts.InvoiceDraftRevision;
+
 const IssueReviewSchema = Issuance.InvoiceIssueReview;
+
 const IssuePrepareSchema = Issuance.PrepareInvoiceIssue;
+
 const IssueApproveSchema = Issuance.ApproveInvoiceIssue;
+
 const IssueExecuteSchema = Issuance.ExecuteInvoiceIssue;
+
 const IssueApprovalSchema = Issuance.InvoiceIssueApproval;
+
 const IssueReceiptSchema = Issuance.InvoiceIssueReceipt;
+
 const issueReviewTables = [
   ...new Set([
     ...DraftDb.invoiceIssueTables,
@@ -66,18 +76,22 @@ const issueReviewTables = [
 ];
 
 const issueBound = 50;
+
 const reviewBytes = 262144;
+
 const legalBlockers = [
   "legal_identity_not_verified",
   "legal_number_not_allocated",
   "tax_profile_not_activated",
   "delivery_not_implemented",
 ] as const;
+
 const standingCodes = new Set([
   "issuance_not_implemented",
   "legal_identity_not_verified",
   "tax_profile_not_activated",
 ]);
+
 const issuePrepareFields = [
   "acknowledgeSyntheticOnly",
   "accountingPeriodId",
@@ -90,25 +104,38 @@ const issuePrepareFields = [
   "reason",
   "series",
 ] as const;
+
 const issueAuthorityFields = ["acknowledgeSyntheticOnly", "digest", "version"] as const;
+
 const executeIssueFields = ["acknowledgeSyntheticOnly", "approvalId", "digest", "version"] as const;
+
 const CreateSchema = Drafts.CreateInvoiceDraft;
+
 const ReviseSchema = Drafts.ReviseInvoiceDraft;
+
 const ViewSchema = Drafts.InvoiceDraftView;
+
 const ListSchema = Drafts.InvoiceDraftList;
+
 const HistorySchema = Drafts.InvoiceDraftHistory;
+
 const IssueViewSchema = Issuance.InvoiceIssueView;
+
 const IssueHistorySchema = Issuance.InvoiceIssueHistory;
+
 const issueReviewHistoryBound = 50;
 
 const createFields = ["content", "draftKey"] as const;
+
 const reviseFields = ["content", "expectedDigest", "expectedRevision", "reason"] as const;
+
 const draftKey = /^[a-z][a-z0-9_-]{2,127}$/u;
 
 function retainedNow(transaction: Transaction) {
   return readInstant(transaction).pipe(
     Effect.flatMap((rows) => {
       const instant = rows[0]?.instant;
+
       return instant === undefined ? failure("InternalError") : Effect.succeed(instant);
     }),
   );
@@ -118,13 +145,8 @@ function requireNativeWriter(authority: string) {
   return authority === "native" ? Effect.void : failure("Forbidden");
 }
 
-function digestOf(transaction: Transaction, value: JsonObject) {
-  return digestJson(transaction, value).pipe(
-    Effect.flatMap((rows) => {
-      const digest = rows[0]?.digest;
-      return digest === undefined ? failure("InternalError") : Effect.succeed(digest);
-    }),
-  );
+function digestOf(value: JsonObject) {
+  return digestNative(value);
 }
 
 function retainedDraft(body: JsonObject) {
@@ -180,96 +202,116 @@ function draftRecord(
         principal.actorId,
       ),
     };
-    const digests = yield* digestJson(transaction, withoutDigest);
-    const digest = digests[0]?.digest;
-    if (digest === undefined) return yield* failure("InternalError");
+
+    const digest = yield* digestNative(withoutDigest);
+
     return yield* retainedDraft(Object.assign({}, withoutDigest, { digest }));
   });
 }
 
+type CreateDraftCommand = {
+  scope: Scope;
+  idempotencyKey: string;
+  input: typeof Drafts.CreateInvoiceDraft.Type;
+};
+
+export const createInvoiceDraftInTransaction = Effect.fn("commerce.drafts.createInTransaction")(
+  function* (transaction: Transaction, principal: Principal, command: CreateDraftCommand) {
+    const request = yield* replay(
+      transaction,
+      command.scope,
+      command.idempotencyKey,
+      "create_invoice_draft",
+      principal.actorId,
+      command.input,
+      RevisionSchema,
+    );
+
+    if (request.previous) return request.previous;
+    yield* requireTableAccess(transaction, DraftDb.invoiceDraftTables, false);
+    yield* requireInsertAccess(transaction, ["invoice_drafts", "invoice_draft_revisions"]);
+    const books = yield* DraftDb.readBookCurrency(transaction, command.scope.bookId);
+    const book = books[0];
+
+    if (!book) return yield* failure("Forbidden");
+    yield* requireNativeWriter(book.authority);
+    yield* exactKeys(yield* toJsonObject(command.input), createFields);
+
+    if (JSON.stringify(command.input).length > draftBounds.inputBytes) {
+      return yield* failure("InvalidJournal");
+    }
+
+    const input = yield* decode(CreateSchema, command.input);
+
+    if (!draftKey.test(input.draftKey)) return yield* failure("InvalidJournal");
+
+    const existing = yield* DraftDb.readDraftByKey(
+      transaction,
+      command.scope.bookId,
+      input.draftKey,
+    );
+
+    if (existing[0]?.present === true) return yield* failure("IdempotencyConflict");
+
+    const counts = yield* DraftDb.readDraftCount(
+      transaction,
+      command.scope.bookId,
+      draftBounds.inventory,
+    );
+
+    if ((counts[0]?.count ?? 0) >= draftBounds.inventory) return yield* failure("InvalidJournal");
+    const calculation = yield* calculateDraft(transaction, command.scope, book, input.content);
+
+    const body = yield* draftRecord(
+      transaction,
+      command,
+      principal,
+      {
+        id: newId("invoice_draft"),
+        draftKey: input.draftKey,
+        revision: "1",
+        content: yield* toJsonObject(input.content),
+        reason: draftBounds.initialReason,
+      },
+      calculation,
+    );
+
+    const result = yield* decode(RevisionSchema, body);
+    yield* DraftDb.insertDraft(transaction, {
+      bookId: command.scope.bookId,
+      id: result.id,
+      draftKey: input.draftKey,
+    });
+    yield* DraftDb.insertDraftRevision(transaction, {
+      bookId: command.scope.bookId,
+      draftId: result.id,
+      revision: "1",
+      body,
+    });
+    yield* saveCommand(
+      transaction,
+      command.scope,
+      command.idempotencyKey,
+      request.expected,
+      "create_invoice_draft",
+      principal.actorId,
+      result,
+    );
+
+    return result;
+  },
+);
+
 export const createInvoiceDraft = Effect.fn("commerce.drafts.create")(function* (
   token: string,
-  command: {
-    scope: Scope;
-    idempotencyKey: string;
-    input: typeof Drafts.CreateInvoiceDraft.Type;
-  },
+  command: CreateDraftCommand,
 ) {
   return yield* withBook(
     token,
     command.scope,
     true,
     function* (transaction, principal) {
-      const request = yield* replay(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        "create_invoice_draft",
-        principal.actorId,
-        command.input,
-        RevisionSchema,
-      );
-      if (request.previous) return request.previous;
-      yield* requireTableAccess(transaction, DraftDb.invoiceDraftTables, false);
-      yield* requireInsertAccess(transaction, ["invoice_drafts", "invoice_draft_revisions"]);
-      const books = yield* DraftDb.readBookCurrency(transaction, command.scope.bookId);
-      const book = books[0];
-      if (!book) return yield* failure("Forbidden");
-      yield* requireNativeWriter(book.authority);
-      yield* exactKeys(yield* toJsonObject(command.input), createFields);
-      if (JSON.stringify(command.input).length > draftBounds.inputBytes) {
-        return yield* failure("InvalidJournal");
-      }
-      const input = yield* decode(CreateSchema, command.input);
-      if (!draftKey.test(input.draftKey)) return yield* failure("InvalidJournal");
-      const existing = yield* DraftDb.readDraftByKey(
-        transaction,
-        command.scope.bookId,
-        input.draftKey,
-      );
-      if (existing[0]?.present === true) return yield* failure("IdempotencyConflict");
-      const counts = yield* DraftDb.readDraftCount(
-        transaction,
-        command.scope.bookId,
-        draftBounds.inventory,
-      );
-      if ((counts[0]?.count ?? 0) >= draftBounds.inventory) return yield* failure("InvalidJournal");
-      const calculation = yield* calculateDraft(transaction, command.scope, book, input.content);
-      const body = yield* draftRecord(
-        transaction,
-        command,
-        principal,
-        {
-          id: newId("invoice_draft"),
-          draftKey: input.draftKey,
-          revision: "1",
-          content: yield* toJsonObject(input.content),
-          reason: draftBounds.initialReason,
-        },
-        calculation,
-      );
-      const result = yield* decode(RevisionSchema, body);
-      yield* DraftDb.insertDraft(transaction, {
-        bookId: command.scope.bookId,
-        id: result.id,
-        draftKey: input.draftKey,
-      });
-      yield* DraftDb.insertDraftRevision(transaction, {
-        bookId: command.scope.bookId,
-        draftId: result.id,
-        revision: "1",
-        body,
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "create_invoice_draft",
-        principal.actorId,
-        result,
-      );
-      return result;
+      return yield* createInvoiceDraftInTransaction(transaction, principal, command);
     },
     "update",
   );
@@ -290,6 +332,7 @@ export const reviseInvoiceDraft = Effect.fn("commerce.drafts.revise")(function* 
     true,
     function* (transaction, principal) {
       const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -299,38 +342,54 @@ export const reviseInvoiceDraft = Effect.fn("commerce.drafts.revise")(function* 
         replayInput,
         RevisionSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireTableAccess(transaction, DraftDb.invoiceDraftTables, false);
       yield* requireInsertAccess(transaction, ["invoice_draft_revisions"]);
       const books = yield* DraftDb.readBookCurrency(transaction, command.scope.bookId);
       const book = books[0];
+
       if (!book) return yield* failure("Forbidden");
       yield* requireNativeWriter(book.authority);
       yield* exactKeys(yield* toJsonObject(command.input), reviseFields);
+
       if (JSON.stringify(command.input).length > draftBounds.inputBytes) {
         return yield* failure("InvalidJournal");
       }
+
       const input = yield* decode(ReviseSchema, command.input);
+
       const draft = (yield* DraftDb.readDraft(
         transaction,
         command.scope.bookId,
         command.id,
         true,
       ))[0];
+
       if (!draft) return yield* failure("NotFound");
+
+      if (
+        (yield* readSealedDraft(transaction, command.scope.bookId, command.id, "customer")).length
+      )
+        return yield* failure("Forbidden");
       const head = (yield* DraftDb.readDraftHead(transaction, command.scope.bookId, command.id))[0];
+
       if (!head) return yield* failure("NotFound");
+
       if (
         input.expectedRevision !== draft.currentRevision ||
         input.expectedDigest !== textField(head.body, "digest")
       ) {
         return yield* failure("StaleDependency");
       }
+
       if (Number(draft.currentRevision) >= draftBounds.revisions) {
         return yield* failure("InvalidJournal");
       }
+
       const calculation = yield* calculateDraft(transaction, command.scope, book, input.content);
       const revision = (BigInt(draft.currentRevision) + 1n).toString();
+
       const body = yield* draftRecord(
         transaction,
         command,
@@ -344,6 +403,7 @@ export const reviseInvoiceDraft = Effect.fn("commerce.drafts.revise")(function* 
         },
         calculation,
       );
+
       const result = yield* decode(RevisionSchema, body);
       yield* DraftDb.insertDraftRevision(transaction, {
         bookId: command.scope.bookId,
@@ -361,6 +421,7 @@ export const reviseInvoiceDraft = Effect.fn("commerce.drafts.revise")(function* 
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -373,12 +434,16 @@ export const getInvoiceDraft = Effect.fn("commerce.drafts.get")(function* (
 ) {
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, DraftDb.invoiceDraftTables, false);
+
     if (input.revision !== undefined && !/^[1-9][0-9]{0,17}$/u.test(input.revision)) {
       return yield* failure("InvalidJournal");
     }
+
     const head = (yield* DraftDb.readDraftHead(transaction, input.scope.bookId, input.id))[0];
+
     if (!head) return yield* failure("NotFound");
     const current = (yield* decode(RevisionSchema, head.body)).revision;
+
     const record =
       input.revision === undefined
         ? head
@@ -388,7 +453,9 @@ export const getInvoiceDraft = Effect.fn("commerce.drafts.get")(function* (
             input.id,
             input.revision,
           ))[0];
+
     if (!record) return yield* failure("NotFound");
+
     return yield* decode(ViewSchema, {
       record: yield* decode(RevisionSchema, record.body),
       currentRevision: current,
@@ -403,13 +470,16 @@ export const listInvoiceDrafts = Effect.fn("commerce.drafts.list")(function* (
 ) {
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, DraftDb.invoiceDraftTables, false);
+
     const rows = yield* DraftDb.readDraftSummaries(
       transaction,
       input.scope.bookId,
       null,
       draftBounds.inventory,
     );
+
     if (rows.length > draftBounds.inventory) return yield* failure("InvalidJournal");
+
     const withoutDigest: JsonObject = {
       scope: input.scope,
       complete: true,
@@ -417,7 +487,9 @@ export const listInvoiceDrafts = Effect.fn("commerce.drafts.list")(function* (
       items: rows.map((row) => row.body),
       capturedAt: yield* retainedNow(transaction),
     };
-    const digest = yield* digestOf(transaction, withoutDigest);
+
+    const digest = yield* digestOf(withoutDigest);
+
     return yield* decode(ListSchema, Object.assign({}, withoutDigest, { digest }));
   });
 });
@@ -429,16 +501,20 @@ export const invoiceDraftHistory = Effect.fn("commerce.drafts.history")(function
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, DraftDb.invoiceDraftTables, false);
     const draft = (yield* DraftDb.readDraft(transaction, input.scope.bookId, input.id, false))[0];
+
     if (!draft) return yield* failure("NotFound");
+
     const rows = yield* DraftDb.readDraftSummaries(
       transaction,
       input.scope.bookId,
       input.id,
       draftBounds.revisions,
     );
+
     if (rows.length !== Number(draft.currentRevision) || rows.length > draftBounds.revisions) {
       return yield* failure("InvalidJournal");
     }
+
     const withoutDigest: JsonObject = {
       scope: input.scope,
       id: input.id,
@@ -448,7 +524,9 @@ export const invoiceDraftHistory = Effect.fn("commerce.drafts.history")(function
       items: rows.map((row) => row.body),
       capturedAt: yield* retainedNow(transaction),
     };
-    const digest = yield* digestOf(transaction, withoutDigest);
+
+    const digest = yield* digestOf(withoutDigest);
+
     return yield* decode(HistorySchema, Object.assign({}, withoutDigest, { digest }));
   });
 });
@@ -475,6 +553,7 @@ export const prepareInvoiceIssue = Effect.fn("commerce.issuance.prepare")(functi
         command.input,
         IssueReviewSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireTableAccess(transaction, DraftDb.invoiceIssueTables, false);
       yield* requireInsertAccess(transaction, [
@@ -488,6 +567,7 @@ export const prepareInvoiceIssue = Effect.fn("commerce.issuance.prepare")(functi
       ]);
       const books = yield* DraftDb.readBookProfile(transaction, command.scope.bookId);
       const book = books[0];
+
       if (!book) return yield* failure("Forbidden");
       yield* requireNativeWriter(book.authority);
       yield* requireSupportedProfile(book.profile);
@@ -496,14 +576,18 @@ export const prepareInvoiceIssue = Effect.fn("commerce.issuance.prepare")(functi
       const input = yield* decode(IssuePrepareSchema, command.input);
       const draft = yield* issuableDraft(transaction, command.scope, book, input);
       yield* requireIssueAccounts(transaction, command.scope.bookId, input);
+
       const ordinals = yield* DraftDb.readIssueOrdinal(
         transaction,
         command.scope.bookId,
         input.draftId,
       );
+
       const ordinal = ordinals[0]?.ordinal ?? 1;
+
       if (ordinal > issueBound) return yield* failure("InvalidJournal");
       const reviewId = newId("issue_review");
+
       const evidence = yield* createEvidenceInTransaction(transaction, principal, {
         scope: command.scope,
         idempotencyKey: `ii_${reviewId}_evidence`,
@@ -515,13 +599,16 @@ export const prepareInvoiceIssue = Effect.fn("commerce.issuance.prepare")(functi
             "Immutable synthetic invoice draft revision; not a legal invoice or VAT determination",
         },
       });
+
       const history = yield* DraftDb.readPostedEvidenceHistory(
         transaction,
         command.scope.bookId,
         evidence.id,
       );
+
       if (history[0]?.present === true) return yield* failure("AlreadyPosted");
       const amount = draft.draft.totals.grossMinor ?? "";
+
       const plan = yield* prepareJournalInTransaction(transaction, principal, {
         scope: command.scope,
         idempotencyKey: `ii_${reviewId}_prepare`,
@@ -551,7 +638,9 @@ export const prepareInvoiceIssue = Effect.fn("commerce.issuance.prepare")(functi
           ],
         },
       });
+
       const planValue = yield* toJsonObject(plan);
+
       const withoutDigest: JsonObject = {
         id: reviewId,
         scope: command.scope,
@@ -566,12 +655,15 @@ export const prepareInvoiceIssue = Effect.fn("commerce.issuance.prepare")(functi
         createdAt: yield* retainedNow(transaction),
         receipt: commandReceipt(command.idempotencyKey, "prepare_invoice_issue", principal.actorId),
       };
-      const digest = yield* digestOf(transaction, withoutDigest);
+
+      const digest = yield* digestOf(withoutDigest);
+
       if (JSON.stringify(withoutDigest).length > reviewBytes)
         return yield* failure("InvalidJournal");
       const body: JsonObject = Object.assign({}, withoutDigest, { digest });
       const result = yield* decode(IssueReviewSchema, body);
       const action = result.postingPlan.groups[0]?.actions[0];
+
       if (!action) return yield* failure("InternalError");
       yield* DraftDb.insertIssueReview(transaction, {
         bookId: command.scope.bookId,
@@ -593,6 +685,7 @@ export const prepareInvoiceIssue = Effect.fn("commerce.issuance.prepare")(functi
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -614,6 +707,7 @@ export const approveInvoiceIssue = Effect.fn("commerce.issuance.approve")(functi
     true,
     function* (transaction, principal) {
       const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -623,6 +717,7 @@ export const approveInvoiceIssue = Effect.fn("commerce.issuance.approve")(functi
         replayInput,
         IssueApprovalSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireTableAccess(transaction, DraftDb.invoiceIssueTables, false);
       yield* requireInsertAccess(transaction, ["invoice_issue_approvals"]);
@@ -630,14 +725,18 @@ export const approveInvoiceIssue = Effect.fn("commerce.issuance.approve")(functi
       yield* exactKeys(yield* toJsonObject(command.input), issueAuthorityFields);
       const input = yield* decode(IssueApproveSchema, command.input);
       const review = yield* currentIssueReview(transaction, command.scope, command.id, input);
+
       const counts = yield* DraftDb.readIssueApprovalCount(
         transaction,
         command.scope.bookId,
         command.id,
       );
+
       const ordinal = (counts[0]?.count ?? 0) + 1;
+
       if (ordinal > issueBound) return yield* failure("InvalidJournal");
       const expiresAt = yield* approvalExpiry(transaction);
+
       const withoutDigest: JsonObject = {
         id: newId("issue_approval"),
         scope: command.scope,
@@ -650,6 +749,7 @@ export const approveInvoiceIssue = Effect.fn("commerce.issuance.approve")(functi
         createdAt: yield* retainedNow(transaction),
         receipt: commandReceipt(command.idempotencyKey, "approve_invoice_issue", principal.actorId),
       };
+
       const result = yield* decode(IssueApprovalSchema, withoutDigest);
       yield* DraftDb.insertIssueApproval(transaction, {
         bookId: command.scope.bookId,
@@ -670,6 +770,7 @@ export const approveInvoiceIssue = Effect.fn("commerce.issuance.approve")(functi
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -691,6 +792,7 @@ export const executeInvoiceIssue = Effect.fn("commerce.issuance.execute")(functi
     true,
     function* (transaction, principal) {
       const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -700,6 +802,7 @@ export const executeInvoiceIssue = Effect.fn("commerce.issuance.execute")(functi
         replayInput,
         IssueReceiptSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireTableAccess(transaction, DraftDb.invoiceIssueTables, false);
       yield* requireInsertAccess(transaction, [
@@ -713,17 +816,20 @@ export const executeInvoiceIssue = Effect.fn("commerce.issuance.execute")(functi
       yield* exactKeys(yield* toJsonObject(command.input), executeIssueFields);
       const input = yield* decode(IssueExecuteSchema, command.input);
       const review = yield* currentIssueReview(transaction, command.scope, command.id, input);
+
       const approval = (yield* DraftDb.readIssueApproval(
         transaction,
         command.scope.bookId,
         command.id,
         input.approvalId,
       ))[0];
+
       const used = yield* DraftDb.readIssueForApproval(
         transaction,
         command.scope.bookId,
         input.approvalId,
       );
+
       if (
         !approval ||
         approval.actorId !== principal.actorId ||
@@ -733,28 +839,36 @@ export const executeInvoiceIssue = Effect.fn("commerce.issuance.execute")(functi
       ) {
         return yield* failure("ApprovalRequired");
       }
+
       const exhausted = yield* DraftDb.readCounterExhausted(
         transaction,
         command.scope.bookId,
         999999999999999999n,
       );
+
       if (exhausted[0]?.exhausted === true) return yield* unsupported();
+
       const kernel = yield* approveChangeInTransaction(transaction, principal, {
         scope: command.scope,
         changeSetId: review.postingPlan.id,
         idempotencyKey: `ii_${approval.id}_approve`,
         input: { version: 1, planDigest: review.postingPlan.planDigest },
       });
+
       const posting = yield* executeChangeInTransaction(transaction, principal, {
         scope: command.scope,
         changeSetId: review.postingPlan.id,
         idempotencyKey: `ii_${approval.id}_post`,
+        owner: { kind: "invoice_issue", id: review.id },
         input: { version: 1, planDigest: review.postingPlan.planDigest, approvalId: kernel.id },
       });
+
       const numbers = yield* DraftDb.allocateInternalNumber(transaction, command.scope.bookId);
       const internalSequence = numbers[0]?.nextNumber;
+
       if (internalSequence === undefined) return yield* failure("InternalError");
       const documentNumber = `SYN-${internalSequence}`;
+
       const registerInvoiceId = yield* registerRecognizedInvoice(
         transaction,
         command.scope,
@@ -764,7 +878,9 @@ export const executeInvoiceIssue = Effect.fn("commerce.issuance.execute")(functi
         command.idempotencyKey,
         principal.actorId,
       );
+
       const postingValue = yield* toJsonObject(posting);
+
       const withoutDigest: JsonObject = {
         id: newId("invoice_issue"),
         scope: command.scope,
@@ -788,7 +904,8 @@ export const executeInvoiceIssue = Effect.fn("commerce.issuance.execute")(functi
         createdAt: yield* retainedNow(transaction),
         receipt: commandReceipt(command.idempotencyKey, "execute_invoice_issue", principal.actorId),
       };
-      const digest = yield* digestOf(transaction, withoutDigest);
+
+      const digest = yield* digestOf(withoutDigest);
       const body: JsonObject = Object.assign({}, withoutDigest, { digest });
       const result = yield* decode(IssueReceiptSchema, body);
       yield* DraftDb.insertIssue(transaction, {
@@ -812,6 +929,7 @@ export const executeInvoiceIssue = Effect.fn("commerce.issuance.execute")(functi
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -830,14 +948,19 @@ function issuableDraft(
 ) {
   return Effect.gen(function* () {
     const head = (yield* DraftDb.readDraftHead(transaction, scope.bookId, input.draftId))[0];
+
     if (!head) return yield* failure("NotFound");
     const draft = yield* decode(RevisionSchema, head.body);
+
     if (input.expectedRevision !== draft.revision || input.expectedDigest !== draft.digest) {
       return yield* failure("StaleDependency");
     }
+
     const issued = yield* DraftDb.readIssueForDraft(transaction, scope.bookId, input.draftId);
+
     if (issued[0]?.present === true) return yield* failure("AlreadyPosted");
     const calculation = yield* calculateDraft(transaction, scope, book, draft.content);
+
     const current: JsonObject = {
       counterparty: calculation.counterparty,
       sellerEvidence: calculation.sellerEvidence,
@@ -846,6 +969,7 @@ function issuableDraft(
       calculatedLines: calculation.calculatedLines,
       blockers: calculation.blockers,
     };
+
     const stored: JsonObject = {
       counterparty: head.body.counterparty ?? null,
       sellerEvidence: head.body.sellerEvidence ?? null,
@@ -854,9 +978,11 @@ function issuableDraft(
       calculatedLines: head.body.calculatedLines ?? null,
       blockers: head.body.blockers ?? null,
     };
+
     if (!equalJson(current, stored)) {
       return yield* failure("StaleDependency");
     }
+
     if (
       calculation.blockers.some((entry) => !standingCodes.has(entry.code)) ||
       draft.totals.taxMinor !== "0" ||
@@ -865,12 +991,15 @@ function issuableDraft(
     ) {
       return yield* unsupported();
     }
+
     if (draft.content.plannedIssueDate === null || draft.content.dueDate === null) {
       return yield* failure("InvalidJournal");
     }
+
     if (!/^[1-9][0-9]{0,37}$/u.test(draft.totals.grossMinor ?? "")) {
       return yield* unsupported();
     }
+
     return {
       body: head.body,
       draft,
@@ -885,6 +1014,7 @@ function requireIssueAccounts(
   input: typeof IssuePrepareSchema.Type,
 ) {
   if (input.controlAccountId === input.creditAccountId) return failure("InvalidJournal");
+
   return DraftDb.readControlAccountConflict(
     transaction,
     bookId,
@@ -908,20 +1038,25 @@ function currentIssueReview(
       IssueReviewSchema,
       (yield* DraftDb.readIssueReview(transaction, scope.bookId, id))[0]?.body ?? {},
     );
+
     if (input.digest !== review.digest) return yield* failure("StaleDependency");
     const books = yield* DraftDb.readBookProfile(transaction, scope.bookId);
     const book = books[0];
+
     if (!book) return yield* failure("Forbidden");
     yield* requireSupportedProfile(book.profile);
     yield* issuableDraft(transaction, scope, book, review.input);
     yield* requireIssueAccounts(transaction, scope.bookId, review.input);
     yield* validatePlan(transaction, scope, review.postingPlan);
+
     const executed = yield* DraftDb.readExecutedChangeSet(
       transaction,
       scope.bookId,
       review.postingPlan.id,
     );
+
     if (executed[0]?.present === true) return yield* failure("StaleDependency");
+
     return review;
   });
 }
@@ -940,19 +1075,24 @@ function registerRecognizedInvoice(
     const line = review.postingPlan.groups[0]?.actions[0]?.lines[0];
     const issueDate = review.draftSnapshot.content.plannedIssueDate;
     const dueDate = review.draftSnapshot.content.dueDate;
+
     if (!line || issueDate === null || dueDate === null) {
       return yield* failure("InternalError");
     }
+
     const recognition = (yield* DraftDb.readRecognitionLine(
       transaction,
       scope.bookId,
       voucherId,
       line.lineId,
     ))[0];
+
     if (!recognition || recognition.periodLocked) return yield* failure("PeriodLocked");
     const accounts = yield* readAccounts(transaction, scope.bookId, [input.controlAccountId]);
+
     if (accounts[0]?.active !== true) return yield* failure("InvalidJournal");
     const current = yield* DraftDb.readVoucherCurrent(transaction, scope.bookId, voucherId);
+
     if (
       recognition.accountId !== input.controlAccountId ||
       recognition.debitMinor !== review.draftSnapshot.totals.grossMinor ||
@@ -962,7 +1102,9 @@ function registerRecognizedInvoice(
     ) {
       return yield* failure("InvalidJournal");
     }
+
     const evidenceRefs = recognition.evidenceRefs;
+
     if (
       !Array.isArray(evidenceRefs) ||
       !evidenceRefs.some(
@@ -976,6 +1118,7 @@ function registerRecognizedInvoice(
     ) {
       return yield* failure("MissingEvidence");
     }
+
     const duplicate = yield* DraftDb.readRegisterIdentity(
       transaction,
       scope.bookId,
@@ -984,27 +1127,35 @@ function registerRecognizedInvoice(
       voucherId,
       line.lineId,
     );
+
     if (duplicate[0]?.present === true) return yield* failure("IdempotencyConflict");
+    yield* admitAccountRole(transaction, scope.bookId, review.input.controlAccountId, "commerce");
+    yield* admitLineOwner(transaction, scope.bookId, voucherId, line.lineId, "commerce");
     yield* DraftDb.claimControlAccount(
       transaction,
       scope.bookId,
       recognition.accountId,
       "customer",
     );
+
     const classified = yield* DraftDb.readControlAccount(
       transaction,
       scope.bookId,
       recognition.accountId,
       "customer",
     );
+
     if (classified[0]?.present !== true) return yield* failure("InvalidJournal");
     const invoiceId = newId("invoice");
     const gross = review.draftSnapshot.totals.grossMinor;
+
     if (gross === null) return yield* failure("InternalError");
+
     const evidence = {
       evidenceId: review.evidence.id,
       sha256: review.evidence.sha256,
     } satisfies JsonObject;
+
     const revisionWithoutDigest: JsonObject = {
       id: invoiceId,
       scope,
@@ -1016,6 +1167,7 @@ function registerRecognizedInvoice(
       createdAt: yield* retainedNow(transaction),
       receipt: commandReceipt(idempotencyKey, "commerce_create_invoice", actorId),
     };
+
     const withoutDigest: JsonObject = {
       id: invoiceId,
       scope,
@@ -1038,6 +1190,7 @@ function registerRecognizedInvoice(
         postingDate: recognition.postingDate,
       } satisfies JsonObject,
     };
+
     yield* DraftDb.insertRegisteredInvoice(transaction, {
       bookId: scope.bookId,
       id: invoiceId,
@@ -1060,58 +1213,17 @@ function registerRecognizedInvoice(
       evidenceId: review.evidence.id,
       body: revisionWithoutDigest,
     });
+
     return invoiceId;
   });
 }
 
-export const prepareInvoiceCancellation = Effect.fn("commerce.cancellation.prepare")(function* (
-  _token: string,
-  _command: {
-    scope: Scope;
-    idempotencyKey: string;
-    input: typeof Cancellations.PrepareInvoiceCancellation.Type;
-  },
-) {
-  return yield* unsupported();
-});
-
-export const approveInvoiceCancellation = Effect.fn("commerce.cancellation.approve")(function* (
-  _token: string,
-  _command: {
-    scope: Scope;
-    id: string;
-    idempotencyKey: string;
-    input: typeof Cancellations.ApproveInvoiceCancellation.Type;
-  },
-) {
-  return yield* unsupported();
-});
-
-export const executeInvoiceCancellation = Effect.fn("commerce.cancellation.execute")(function* (
-  _token: string,
-  _command: {
-    scope: Scope;
-    id: string;
-    idempotencyKey: string;
-    input: typeof Cancellations.ExecuteInvoiceCancellation.Type;
-  },
-) {
-  return yield* unsupported();
-});
-
-export const revokeInvoiceCancellationApproval = Effect.fn("commerce.cancellation.revoke")(
-  function* (
-    _token: string,
-    _command: {
-      scope: Scope;
-      id: string;
-      idempotencyKey: string;
-      input: typeof Cancellations.RevokeInvoiceCancellationApproval.Type;
-    },
-  ) {
-    return yield* unsupported();
-  },
-);
+export {
+  prepareInvoiceCancellation,
+  approveInvoiceCancellation,
+  executeInvoiceCancellation,
+  revokeInvoiceCancellationApproval,
+} from "./cancellations";
 
 function issueBlockers(
   transaction: Transaction,
@@ -1124,30 +1236,36 @@ function issueBlockers(
       scope.bookId,
       review.input.draftId,
     );
+
     if (issued[0]?.present === true) {
       return yield* Effect.succeed<ReadonlyArray<string>>([
         "This draft already has a retained synthetic issue.",
       ]);
     }
+
     return yield* Effect.gen(function* () {
       const books = yield* DraftDb.readBookProfile(transaction, scope.bookId);
       const book = books[0];
+
       if (!book) return yield* failure("Forbidden");
       yield* requireNativeWriter(book.authority);
       yield* requireSupportedProfile(book.profile);
       yield* issuableDraft(transaction, scope, book, review.input);
       yield* requireIssueAccounts(transaction, scope.bookId, review.input);
       yield* validatePlan(transaction, scope, review.postingPlan);
+
       const executed = yield* DraftDb.readExecutedChangeSet(
         transaction,
         scope.bookId,
         review.postingPlan.id,
       );
+
       if (executed[0]?.present === true) {
         return yield* Effect.succeed<ReadonlyArray<string>>([
           "The linked posting already executed. A second recognition is refused.",
         ]);
       }
+
       return yield* Effect.succeed<ReadonlyArray<string>>([]);
     }).pipe(
       Effect.catch((error) =>
@@ -1167,23 +1285,28 @@ export const getInvoiceIssueReview = Effect.fn("commerce.issuance.get")(function
     yield* requireTableAccess(transaction, issueReviewTables, false);
     const reviews = yield* DraftDb.readIssueReview(transaction, input.scope.bookId, input.id);
     const stored = reviews[0]?.body;
+
     if (stored === undefined) return yield* failure("NotFound");
     const plan = yield* decode(IssueReviewSchema, stored);
+
     const approvals = yield* DraftDb.readLatestIssueApproval(
       transaction,
       input.scope.bookId,
       input.id,
     );
+
     const approval = approvals[0];
     const issues = yield* DraftDb.readIssueForReview(transaction, input.scope.bookId, input.id);
     const issue = issues[0];
     const blockers = yield* issueBlockers(transaction, input.scope, plan);
     const current = yield* retainedNow(transaction);
+
     const usable =
       approval !== undefined &&
       approval.actorId === principal.actorId &&
       approval.expiresAt > current &&
       approval.operator;
+
     return yield* decode(IssueViewSchema, {
       plan,
       approval: approval === undefined ? null : yield* decode(IssueApprovalSchema, approval.body),
@@ -1202,12 +1325,16 @@ export const invoiceIssueHistory = Effect.fn("commerce.issuance.history")(functi
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, issueReviewTables, false);
     const drafts = yield* DraftDb.readDraft(transaction, input.scope.bookId, input.id, false);
+
     if (!drafts[0]) return yield* failure("NotFound");
     const rows = yield* DraftDb.readIssueHistoryForDraft(transaction, input.scope.bookId, input.id);
+
     if (rows.length > issueReviewHistoryBound) return yield* failure("InvalidJournal");
+
     const items = yield* Effect.forEach(rows, (row) =>
       Effect.gen(function* () {
         if (row.digest === null || row.createdAt === null) return yield* failure("InternalError");
+
         return {
           id: row.id,
           ordinal: row.ordinal,
@@ -1219,6 +1346,7 @@ export const invoiceIssueHistory = Effect.fn("commerce.issuance.history")(functi
         };
       }),
     );
+
     return yield* decode(IssueHistorySchema, {
       scope: input.scope,
       draftId: input.id,

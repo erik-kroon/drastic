@@ -8,7 +8,13 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
-import { RecordColumns, RecordFact, RecordHeading, RecordSection, RecordSummary } from "@open-erp/ui/components/record-layout";
+import {
+  RecordColumns,
+  RecordFact,
+  RecordHeading,
+  RecordSection,
+  RecordSummary,
+} from "@open-erp/ui/components/record-layout";
 import { WorkflowSteps } from "@open-erp/ui/components/workflow";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -36,11 +42,13 @@ type Setup = typeof Accounting.BookSetup.Type;
 export function VatControlReclassificationPanel({ book, locale, recordId, onOpen }: Props) {
   const { setup } = useBookWorkspace();
   const labels = reclassificationCopy(locale);
+
   const selected = recordId?.startsWith("new:")
     ? { kind: "new" as const, id: recordId.slice(4) }
     : recordId
       ? { kind: "review" as const, id: recordId }
       : null;
+
   if (selected) {
     return (
       <Box display="grid" gap="xl" minWidth="zero">
@@ -68,13 +76,10 @@ export function VatControlReclassificationPanel({ book, locale, recordId, onOpen
       </Box>
     );
   }
+
   return (
     <Box display="grid" gap="xl" minWidth="zero" id="vat-reclassifications">
-      <RecordHeading
-        title={labels.title}
-        subtitle={labels.subtitle}
-        action={null}
-      />
+      <RecordHeading title={labels.title} subtitle={labels.subtitle} action={null} />
       <PageCaption>{labels.boundary}</PageCaption>
       <SavedDrafts book={book} locale={locale} onOpen={onOpen} />
       <SavedReclassifications book={book} locale={locale} onOpen={onOpen} />
@@ -82,19 +87,17 @@ export function VatControlReclassificationPanel({ book, locale, recordId, onOpen
   );
 }
 
-function SavedDrafts({
-  book,
-  locale,
-  onOpen,
-}: Pick<Props, "book" | "locale" | "onOpen">) {
+function SavedDrafts({ book, locale, onOpen }: Pick<Props, "book" | "locale" | "onOpen">) {
   const copy = vatCopy(locale);
   const labels = reclassificationCopy(locale);
+
   const drafts = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "drafts"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(book)}/vat-returns/drafts`, Vat.VatDraftList, { signal }),
     retry: false,
   });
+
   return (
     <RecordSection title={copy.drafts}>
       <AccountingStatus locale={locale} pending={drafts.isPending} error={drafts.error} />
@@ -111,11 +114,7 @@ function SavedDrafts({
           rows={drafts.data.items.map((draft) => ({
             id: draft.id,
             cells: [
-              <Button
-                key="open"
-                variant="ghost"
-                onClick={() => onOpen(`new:${draft.id}`)}
-              >
+              <Button key="open" variant="ghost" onClick={() => onOpen(`new:${draft.id}`)}>
                 {draft.input.startsOn} – {draft.input.endsOn}
               </Button>,
               draft.input.mode === "synthetic_demonstration" ? copy.synthetic : copy.actual,
@@ -135,6 +134,7 @@ function SavedReclassifications({
 }: Pick<Props, "book" | "locale" | "onOpen">) {
   const copy = vatCopy(locale);
   const labels = reclassificationCopy(locale);
+
   const reclassifications = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "reclassifications"],
     queryFn: async ({ signal }) => {
@@ -143,13 +143,16 @@ function SavedReclassifications({
         Vat.VatControlReclassificationList,
         { signal },
       );
+
       if (result.scope.bookId !== book.id || result.scope.entityId !== book.entityId) {
         throw new Error("VAT reclassification scope mismatch");
       }
+
       return result;
     },
     retry: false,
   });
+
   return (
     <RecordSection title={labels.saved}>
       <AccountingStatus
@@ -192,6 +195,7 @@ function PreparationDetail(
   },
 ) {
   const { book, setup, locale, draftId } = props;
+
   const draft = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "draft", draftId],
     queryFn: async ({ signal }) => {
@@ -200,11 +204,14 @@ function PreparationDetail(
         Vat.VatDraftView,
         { signal },
       );
+
       if (result.draft.id !== draftId) throw new Error("VAT draft identity mismatch");
+
       return result;
     },
     retry: false,
   });
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <AccountingStatus locale={locale} pending={draft.isPending} error={draft.error} />
@@ -236,6 +243,7 @@ function PreparationForm(
   const path = `${bookPath(book)}/vat-returns/reclassifications`;
   const keys = useRef(new Map<string, string>());
   const [invalid, setInvalid] = useState(false);
+
   const save = useMutation({
     mutationFn: (input: typeof Vat.PrepareVatControlReclassification.Type) =>
       readAccounting(
@@ -245,24 +253,29 @@ function PreparationForm(
       ),
     onSuccess: (review) => props.onOpen(review.id),
   });
+
   const requestKey = save.variables
     ? keys.current.get(`${path}:${JSON.stringify(save.variables)}`)
     : undefined;
+
   const disabled =
     save.isPending ||
-     save.isSuccess ||
-     book.role !== "operator" ||
-     !props.basisCurrent ||
+    save.isSuccess ||
+    book.role !== "operator" ||
+    !props.basisCurrent ||
     draft.input.mode !== "synthetic_demonstration" ||
     isUncertainWriteError(save.error);
+
   const accountOptions = setup.accounts.map((account) => ({
     value: account.id,
     label: `${account.code} · ${account.name} · ${account.id}`,
   }));
+
   const periodOptions = setup.periods.map((period) => ({
     value: period.id,
     label: `${period.startsOn} – ${period.endsOn} · ${period.id}${period.locked ? ` · ${locale === "sv" ? "låst" : "locked"}` : ""}`,
   }));
+
   return (
     <Box
       as="form"
@@ -272,6 +285,7 @@ function PreparationForm(
       onSubmit={(event) => {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
+
         const decoded = Schema.decodeUnknownOption(Vat.PrepareVatControlReclassification)({
           profile: "vat_control_reclassification_v1",
           draftId: draft.id,
@@ -287,10 +301,13 @@ function PreparationForm(
           rationale: fields.get("rationale"),
           acknowledgeSyntheticOnly: fields.get("acknowledgeSyntheticOnly") === "on",
         });
+
         if (decoded._tag === "None") {
           setInvalid(true);
+
           return;
         }
+
         setInvalid(false);
         save.mutate(decoded.value);
       }}
@@ -300,9 +317,9 @@ function PreparationForm(
         subtitle={`${draft.id} · ${copy.digest} ${draft.digest}`}
       />
       <PageCaption>{labels.boundary}</PageCaption>
-       {!props.basisCurrent ? <Text role="alert">{copy.stale}</Text> : null}
-       {book.role !== "operator" ? <Text role="alert">{labels.operatorOnly}</Text> : null}
-       {draft.input.mode !== "synthetic_demonstration" ? (
+      {!props.basisCurrent ? <Text role="alert">{copy.stale}</Text> : null}
+      {book.role !== "operator" ? <Text role="alert">{labels.operatorOnly}</Text> : null}
+      {draft.input.mode !== "synthetic_demonstration" ? (
         <Text role="alert">{labels.syntheticDraftRequired}</Text>
       ) : null}
       <Box
@@ -390,12 +407,7 @@ function PreparationForm(
               pattern="[A-Z0-9]{1,16}"
             />
           </Box>
-          <InputField
-            label={labels.rationale}
-            name="rationale"
-            required
-            maxLength={2000}
-          />
+          <InputField label={labels.rationale} name="rationale" required maxLength={2000} />
         </RecordSection>
         <Box as="label" display="flex" alignItems="center" gap="md">
           <input type="checkbox" name="acknowledgeSyntheticOnly" required />
@@ -425,8 +437,11 @@ function PreparationForm(
 }
 
 type Review = typeof Vat.VatControlReclassificationReview.Type;
+
 type Approval = typeof Vat.VatControlReclassificationApproval.Type;
+
 type ReclassificationEffect = typeof Vat.VatControlReclassificationEffect.Type;
+
 type ReviewView = typeof Vat.VatControlReclassificationView.Type;
 
 function reviewActionDisabled(props: {
@@ -463,7 +478,12 @@ function reviewActionDisabled(props: {
   };
 }
 
-function ReviewDetail({ book, locale, id, onOpen }: Pick<Props, "book" | "locale" | "onOpen"> & { id: string }) {
+function ReviewDetail({
+  book,
+  locale,
+  id,
+  onOpen,
+}: Pick<Props, "book" | "locale" | "onOpen"> & { id: string }) {
   const labels = reclassificationCopy(locale);
   const client = useQueryClient();
   const approvalKeys = useRef(new Map<string, string>());
@@ -471,10 +491,12 @@ function ReviewDetail({ book, locale, id, onOpen }: Pick<Props, "book" | "locale
   const [selectedApprovalId, setSelectedApprovalId] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
   const base = `${bookPath(book)}/vat-returns/reclassifications/${encodeURIComponent(id)}`;
+
   const view = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "reclassification", id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(base, Vat.VatControlReclassificationView, { signal });
+
       if (
         result.review.id !== id ||
         result.review.scope.bookId !== book.id ||
@@ -482,15 +504,18 @@ function ReviewDetail({ book, locale, id, onOpen }: Pick<Props, "book" | "locale
       ) {
         throw new Error("VAT reclassification identity mismatch");
       }
+
       return result;
     },
     retry: false,
     staleTime: 0,
     refetchOnMount: "always",
   });
+
   const approve = useMutation({
     mutationFn: (input: typeof Vat.ApproveVatControlReclassification.Type) => {
       const path = `${base}/approval`;
+
       return readAccounting(
         path,
         Vat.VatControlReclassificationApproval,
@@ -502,9 +527,11 @@ function ReviewDetail({ book, locale, id, onOpen }: Pick<Props, "book" | "locale
       void client.invalidateQueries({ queryKey: [...bookKey(book), "vat-returns"] });
     },
   });
+
   const execute = useMutation({
     mutationFn: (input: typeof Vat.ExecuteVatControlReclassification.Type) => {
       const path = `${base}/execution`;
+
       return readAccounting(
         path,
         Vat.VatControlReclassificationEffect,
@@ -516,31 +543,38 @@ function ReviewDetail({ book, locale, id, onOpen }: Pick<Props, "book" | "locale
       void client.invalidateQueries({ queryKey: [...bookKey(book), "vat-returns"] });
     },
   });
+
   const viewData = view.data;
   const review = viewData?.review;
   const effect = execute.data ?? viewData?.reclassification ?? null;
+
   const approvalHistory = [
     ...(viewData?.approvals ?? []),
     ...(approve.data ? [approve.data] : []),
   ].filter((approval, index, all) => all.findIndex((item) => item.id === approval.id) === index);
+
   const currentApproval = approvalHistory.at(-1);
+
   const selectedApproval =
     approvalHistory.find((approval) => approval.id === selectedApprovalId) ?? currentApproval;
+
   const basisCurrent = !effect && viewData?.liveBasisCheckedAt !== null && viewData !== undefined;
   const expired = selectedApproval ? Date.parse(selectedApproval.expiresAt) <= Date.now() : false;
   const newProposal = requiresNewProposal(approve.error) || requiresNewProposal(execute.error);
-  const uncertainWrite = isUncertainWriteError(approve.error) || isUncertainWriteError(execute.error);
+
+  const uncertainWrite =
+    isUncertainWriteError(approve.error) || isUncertainWriteError(execute.error);
+
   const busy = view.isFetching || approve.isPending || execute.isPending;
+
   const approvalRequestKey = approve.variables
-    ? approvalKeys.current.get(
-        `${base}/approval:${JSON.stringify(approve.variables)}`,
-      )
+    ? approvalKeys.current.get(`${base}/approval:${JSON.stringify(approve.variables)}`)
     : undefined;
+
   const executionRequestKey = execute.variables
-    ? executionKeys.current.get(
-        `${base}/execution:${JSON.stringify(execute.variables)}`,
-      )
+    ? executionKeys.current.get(`${base}/execution:${JSON.stringify(execute.variables)}`)
     : undefined;
+
   const actionDisabled = reviewActionDisabled({
     bookRole: book.role,
     acknowledged,
@@ -553,6 +587,7 @@ function ReviewDetail({ book, locale, id, onOpen }: Pick<Props, "book" | "locale
     uncertainWrite,
     busy,
   });
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <WorkflowSteps
@@ -701,6 +736,7 @@ function ReviewSummary(props: {
 }) {
   const copy = vatCopy(props.locale);
   const labels = reclassificationCopy(props.locale);
+
   return (
     <>
       <RecordHeading
@@ -708,28 +744,25 @@ function ReviewSummary(props: {
         subtitle={`${props.review.input.draftId} · ${copy.digest} ${props.review.digest}`}
       />
       <RecordSummary>
-        <RecordFact label={labels.exactNet}>{props.review.basis.amounts.accountingNetMinor}</RecordFact>
+        <RecordFact label={labels.exactNet}>
+          {props.review.basis.amounts.accountingNetMinor}
+        </RecordFact>
         <RecordFact label={labels.obligation}>{props.review.basis.obligation.id}</RecordFact>
         <RecordFact label={labels.profile}>{props.review.basis.profile.profile}</RecordFact>
         <RecordFact label={labels.basisState}>
-          {props.effect
-            ? labels.committed
-            : props.basisCurrent
-              ? labels.current
-              : labels.stale}
+          {props.effect ? labels.committed : props.basisCurrent ? labels.current : labels.stale}
         </RecordFact>
         <RecordFact label={labels.liveBasisCheckedAt}>
-          {props.effect ? labels.notChecked : props.liveBasisCheckedAt ?? labels.stale}
+          {props.effect ? labels.notChecked : (props.liveBasisCheckedAt ?? labels.stale)}
         </RecordFact>
       </RecordSummary>
-      {!props.effect && !props.basisCurrent ? (
-        <Text role="alert">{labels.staleDetail}</Text>
-      ) : null}
-      <Text>{labels.rationale}: {props.review.input.rationale}</Text>
+      {!props.effect && !props.basisCurrent ? <Text role="alert">{labels.staleDetail}</Text> : null}
       <Text>
-        {labels.syntheticBoundaryShort} · {props.review.input.acknowledgeSyntheticOnly
-          ? copy.confirmed
-          : copy.unknown}
+        {labels.rationale}: {props.review.input.rationale}
+      </Text>
+      <Text>
+        {labels.syntheticBoundaryShort} ·{" "}
+        {props.review.input.acknowledgeSyntheticOnly ? copy.confirmed : copy.unknown}
       </Text>
     </>
   );
@@ -738,6 +771,7 @@ function ReviewSummary(props: {
 function ReviewBasis(props: { locale: Locale; review: Review }) {
   const copy = vatCopy(props.locale);
   const labels = reclassificationCopy(props.locale);
+
   return (
     <RecordColumns>
       <RecordSection title={labels.obligationAndProfile}>
@@ -780,7 +814,10 @@ function ReviewBasis(props: { locale: Locale; review: Review }) {
               ],
             },
             { id: "coverage", cells: [labels.coverage, props.review.basis.coverage] },
-            { id: "legal", cells: [labels.legalProfile, String(props.review.basis.legalProfileActive)] },
+            {
+              id: "legal",
+              cells: [labels.legalProfile, String(props.review.basis.legalProfileActive)],
+            },
             {
               id: "matched",
               cells: [labels.taxAccountMatched, String(props.review.basis.taxAccountMatched)],
@@ -815,6 +852,7 @@ function ReviewBasis(props: { locale: Locale; review: Review }) {
 
 function ReviewContributions(props: { locale: Locale; review: Review }) {
   const labels = reclassificationCopy(props.locale);
+
   return (
     <RecordSection title={labels.sourceContributions}>
       <DataTable
@@ -847,11 +885,13 @@ function ReviewContributions(props: { locale: Locale; review: Review }) {
 function ReviewPostingLines(props: { locale: Locale; review: Review }) {
   const copy = vatCopy(props.locale);
   const labels = reclassificationCopy(props.locale);
+
   return (
     <RecordSection title={labels.proposedPostingLines}>
       {props.review.postingPlan ? (
         <Text>
-          {labels.changeSet}: {props.review.postingPlan.id} · {copy.digest} {props.review.postingPlan.planDigest}
+          {labels.changeSet}: {props.review.postingPlan.id} · {copy.digest}{" "}
+          {props.review.postingPlan.planDigest}
         </Text>
       ) : null}
       {props.review.basis.postingLines.length ? (
@@ -867,7 +907,13 @@ function ReviewPostingLines(props: { locale: Locale; review: Review }) {
           ]}
           rows={props.review.basis.postingLines.map((line) => ({
             id: line.lineId,
-            cells: [line.lineId, line.accountId, line.debitMinor, line.creditMinor, line.description],
+            cells: [
+              line.lineId,
+              line.accountId,
+              line.debitMinor,
+              line.creditMinor,
+              line.description,
+            ],
           }))}
         />
       ) : (
@@ -880,6 +926,7 @@ function ReviewPostingLines(props: { locale: Locale; review: Review }) {
 function ReviewApprovalHistory(props: { locale: Locale; approvalHistory: Approval[] }) {
   const copy = vatCopy(props.locale);
   const labels = reclassificationCopy(props.locale);
+
   return (
     <RecordSection title={labels.approvalHistory}>
       {props.approvalHistory.length ? (
@@ -914,6 +961,7 @@ function ReviewApprovalHistory(props: { locale: Locale; approvalHistory: Approva
 function ReviewReceipt(props: { locale: Locale; effect: ReclassificationEffect }) {
   const copy = vatCopy(props.locale);
   const labels = reclassificationCopy(props.locale);
+
   return (
     <RecordSection title={labels.effect}>
       <Box role="status" display="grid" gap="sm">
@@ -924,11 +972,13 @@ function ReviewReceipt(props: { locale: Locale; effect: ReclassificationEffect }
           {labels.effectId}: {props.effect.id} · {copy.digest} {props.effect.digest}
         </Text>
         <Text>
-          {labels.approvalId}: {props.effect.approvalId} · {labels.changeSet}: {props.effect.changeSetId ?? "—"} · {labels.voucherId}: {props.effect.voucherId ?? "—"}
+          {labels.approvalId}: {props.effect.approvalId} · {labels.changeSet}:{" "}
+          {props.effect.changeSetId ?? "—"} · {labels.voucherId}: {props.effect.voucherId ?? "—"}
         </Text>
         {props.effect.postingReceipt ? (
           <Text>
-            {labels.postingReceipt}: {props.effect.postingReceipt.id} · {props.effect.postingReceipt.voucherNumber} · {props.effect.postingReceipt.committedAt}
+            {labels.postingReceipt}: {props.effect.postingReceipt.id} ·{" "}
+            {props.effect.postingReceipt.voucherNumber} · {props.effect.postingReceipt.committedAt}
           </Text>
         ) : (
           <Text>{labels.noEffectResult}</Text>
@@ -960,6 +1010,7 @@ function ReviewActions(props: {
   onExecute: () => void;
 }) {
   const labels = reclassificationCopy(props.locale);
+
   return (
     <RecordSection title={labels.actions}>
       <Text>{props.book.role === "operator" ? labels.approvalOperator : labels.approvalAgent}</Text>
@@ -990,7 +1041,12 @@ function ReviewActions(props: {
             {props.approving ? labels.approving : labels.approve}
           </Button>
         ) : null}
-        <Button type="button" variant="outline" disabled={props.executionDisabled} onClick={props.onExecute}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={props.executionDisabled}
+          onClick={props.onExecute}
+        >
           {props.executing ? labels.executing : labels.execute}
         </Button>
       </Box>
@@ -1054,19 +1110,21 @@ function RequestRecovery({
   requestKey,
   onOpen,
 }: Pick<Props, "book" | "locale" | "onOpen"> & { requestKey: string }) {
-   const labels = reclassificationCopy(locale);
-   const client = useQueryClient();
-   const [key, setKey] = useState(requestKey);
-   const recovery = useMutation({
+  const labels = reclassificationCopy(locale);
+  const client = useQueryClient();
+  const [key, setKey] = useState(requestKey);
+
+  const recovery = useMutation({
     mutationFn: (value: string) =>
       readAccounting(
         `${bookPath(book)}/vat-returns/reclassifications/requests/${encodeURIComponent(value)}`,
-         Vat.VatControlReclassificationRecovery,
-       ),
-     onSuccess: () => {
-       void client.invalidateQueries({ queryKey: [...bookKey(book), "vat-returns"] });
-     },
-   });
+        Vat.VatControlReclassificationRecovery,
+      ),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: [...bookKey(book), "vat-returns"] });
+    },
+  });
+
   return (
     <RecordSection title={labels.recovery}>
       <Text>{labels.recoveryHelp}</Text>
@@ -1077,6 +1135,7 @@ function RequestRecovery({
         onSubmit={(event) => {
           event.preventDefault();
           const value = new FormData(event.currentTarget).get("requestKey");
+
           if (!Schema.is(Accounting.IdempotencyHeaders.fields["idempotency-key"])(value)) return;
           setKey(value);
           recovery.mutate(value);
@@ -1098,7 +1157,9 @@ function RequestRecovery({
         </Box>
       </Box>
       <AccountingStatus locale={locale} pending={recovery.isPending} error={recovery.error} />
-      {recovery.data ? <RecoveryResult result={recovery.data.result} locale={locale} onOpen={onOpen} /> : null}
+      {recovery.data ? (
+        <RecoveryResult result={recovery.data.result} locale={locale} onOpen={onOpen} />
+      ) : null}
     </RecordSection>
   );
 }
@@ -1114,18 +1175,22 @@ function RecoveryResult({
 }) {
   const copy = vatCopy(locale);
   const labels = reclassificationCopy(locale);
+
   const reviewId = Schema.is(Vat.VatControlReclassificationReview)(result)
     ? result.id
     : result.reviewId;
+
   const digest = Schema.is(Vat.VatControlReclassificationReview)(result)
     ? result.digest
     : Schema.is(Vat.VatControlReclassificationApproval)(result)
       ? result.digest
       : result.digest;
+
   return (
     <Box role="status" display="grid" gap="sm" minWidth="zero">
       <Text>
-        {labels.recovered}: {Schema.is(Vat.VatControlReclassificationReview)(result)
+        {labels.recovered}:{" "}
+        {Schema.is(Vat.VatControlReclassificationReview)(result)
           ? labels.prepared
           : Schema.is(Vat.VatControlReclassificationApproval)(result)
             ? labels.approved
@@ -1141,7 +1206,8 @@ function RecoveryResult({
       ) : null}
       {Schema.is(Vat.VatControlReclassificationEffect)(result) ? (
         <Text>
-          {labels.effectId}: {result.id} · {labels.outcome}: {labels.effectOutcome(result.outcome)} · {labels.voucherId}: {result.voucherId ?? "—"}
+          {labels.effectId}: {result.id} · {labels.outcome}: {labels.effectOutcome(result.outcome)}{" "}
+          · {labels.voucherId}: {result.voucherId ?? "—"}
         </Text>
       ) : null}
       <Box>
@@ -1169,10 +1235,12 @@ const en = {
   action: "Next step",
   prepare: "Prepare reclassification",
   prepareTitle: "Prepare VAT control reclassification",
-  syntheticDraftRequired: "This saved draft is not a synthetic demonstration. Only a saved synthetic demonstration can enter this flow.",
+  syntheticDraftRequired:
+    "This saved draft is not a synthetic demonstration. Only a saved synthetic demonstration can enter this flow.",
   operatorOnly: "Only an admitted operator can prepare this financial review.",
   accountsAndPeriod: "Account roles and period",
-  accountHelp: "Select the three roles from the current book setup. This surface does not infer roles from BAS numbers.",
+  accountHelp:
+    "Select the three roles from the current book setup. This surface does not infer roles from BAS numbers.",
   outputAccount: "Output VAT control account",
   inputAccount: "Input VAT control account",
   settlementAccount: "VAT settlement control account",
@@ -1184,7 +1252,8 @@ const en = {
   series: "Series",
   rationale: "Rationale",
   acknowledge: "I acknowledge that this command is synthetic-only and does not file or assess VAT.",
-  invalid: "Check the required fields, IDs, date, series and acknowledgement. Your entries are retained.",
+  invalid:
+    "Check the required fields, IDs, date, series and acknowledgement. Your entries are retained.",
   workflow: "VAT reclassification workflow",
   prepared: "Prepared",
   approved: "Approved",
@@ -1199,7 +1268,8 @@ const en = {
   committed: "Committed",
   liveBasisCheckedAt: "Live basis checked at",
   notChecked: "Not checked after execution",
-  staleDetail: "The live basis could not be established. Prepare a new reclassification proposal from a current saved draft.",
+  staleDetail:
+    "The live basis could not be established. Prepare a new reclassification proposal from a current saved draft.",
   syntheticBoundaryShort: "Synthetic-only review",
   obligationAndProfile: "Obligation and profile",
   field: "Field",
@@ -1251,8 +1321,10 @@ const en = {
   noEffectResult: "No effect: no change set, voucher or posting receipt was created.",
   effectOutcome: (outcome: string): string => (outcome === "posted" ? "Posted" : "No effect"),
   actions: "Approval and execution",
-  approvalOperator: "Only an operator can approve. An authorized agent can execute after an approval exists.",
-  approvalAgent: "An operator must approve before execution. You can execute after an approval exists.",
+  approvalOperator:
+    "Only an operator can approve. An authorized agent can execute after an approval exists.",
+  approvalAgent:
+    "An operator must approve before execution. You can execute after an approval exists.",
   approvalToExecute: "Approval to execute",
   approve: "Approve reclassification",
   approving: "Approving…",
@@ -1261,7 +1333,8 @@ const en = {
   newProposal: "The stored proposal is no longer current. Prepare a new reclassification proposal.",
   uncertain: "The write may have committed. Recover the original request before retrying it.",
   recovery: "Recover an original request",
-  recoveryHelp: "Enter the original idempotency key. Recovery reads its committed review, approval or effect without creating another request.",
+  recoveryHelp:
+    "Enter the original idempotency key. Recovery reads its committed review, approval or effect without creating another request.",
   requestKey: "Original request key",
   recover: "Recover request",
   recovering: "Recovering…",
@@ -1277,15 +1350,18 @@ const sv: typeof en = {
     "Endast syntetiskt område: ytan sparar en granskning och kan bokföra en intern syntetisk omklassning. Den aktiverar ingen rättslig momsprofil, bedömer inte skatt, överför inga pengar och lämnar ingen deklaration.",
   saved: "Sparade momsomklassningar",
   savedResult: "Sparat. Den sparade granskningen öppnas.",
-  noReviews: "Inga sparade momsomklassningar. Öppna ett sparat syntetiskt momsutkast för att förbereda en.",
+  noReviews:
+    "Inga sparade momsomklassningar. Öppna ett sparat syntetiskt momsutkast för att förbereda en.",
   noDrafts: "Inga sparade momsutkast. Förbered ett momsutkast innan omklassningen börjar.",
   action: "Nästa steg",
   prepare: "Förbered omklassning",
   prepareTitle: "Förbered omklassning av momskonton",
-  syntheticDraftRequired: "Det sparade utkastet är inte ett syntetiskt demonstrationsutkast. Endast ett sparat syntetiskt demonstrationsutkast kan gå vidare här.",
+  syntheticDraftRequired:
+    "Det sparade utkastet är inte ett syntetiskt demonstrationsutkast. Endast ett sparat syntetiskt demonstrationsutkast kan gå vidare här.",
   operatorOnly: "Endast en behörig operatör kan förbereda den här finansiella granskningen.",
   accountsAndPeriod: "Kontoroller och period",
-  accountHelp: "Välj de tre rollerna från bokens aktuella grunduppsättning. Ytan härleder inga roller från BAS-nummer.",
+  accountHelp:
+    "Välj de tre rollerna från bokens aktuella grunduppsättning. Ytan härleder inga roller från BAS-nummer.",
   outputAccount: "Utgående momskonto",
   inputAccount: "Ingående momskonto",
   settlementAccount: "Momskonto för avstämning",
@@ -1296,8 +1372,10 @@ const sv: typeof en = {
   postingDate: "Bokföringsdatum",
   series: "Serie",
   rationale: "Motivering",
-  acknowledge: "Jag bekräftar att kommandot endast gäller syntetiska exempel och inte lämnar eller bedömer moms.",
-  invalid: "Kontrollera obligatoriska fält, ID, datum, serie och bekräftelse. Dina uppgifter finns kvar.",
+  acknowledge:
+    "Jag bekräftar att kommandot endast gäller syntetiska exempel och inte lämnar eller bedömer moms.",
+  invalid:
+    "Kontrollera obligatoriska fält, ID, datum, serie och bekräftelse. Dina uppgifter finns kvar.",
   workflow: "Arbetsflöde för momsomklassning",
   prepared: "Förberedd",
   approved: "Godkänd",
@@ -1312,7 +1390,8 @@ const sv: typeof en = {
   committed: "Bokförd",
   liveBasisCheckedAt: "Aktuell grund kontrollerad",
   notChecked: "Kontrolleras inte efter utförande",
-  staleDetail: "Den aktuella grunden kunde inte fastställas. Förbered en ny omklassning från ett aktuellt sparat utkast.",
+  staleDetail:
+    "Den aktuella grunden kunde inte fastställas. Förbered en ny omklassning från ett aktuellt sparat utkast.",
   syntheticBoundaryShort: "Granskning endast för syntetiska exempel",
   obligationAndProfile: "Skyldighet och profil",
   field: "Fält",
@@ -1361,11 +1440,14 @@ const sv: typeof en = {
   approvalId: "Godkännande-ID",
   voucherId: "Verifikations-ID",
   postingReceipt: "Bokföringskvitto",
-  noEffectResult: "Ingen effekt: ingen ändringsuppsättning, verifikation eller bokföringskvitto skapades.",
+  noEffectResult:
+    "Ingen effekt: ingen ändringsuppsättning, verifikation eller bokföringskvitto skapades.",
   effectOutcome: (outcome: string): string => (outcome === "posted" ? "Bokförd" : "Ingen effekt"),
   actions: "Godkännande och utförande",
-  approvalOperator: "Endast en operatör kan godkänna. En behörig agent kan utföra efter att ett godkännande finns.",
-  approvalAgent: "En operatör måste godkänna före utförandet. Du kan utföra när ett godkännande finns.",
+  approvalOperator:
+    "Endast en operatör kan godkänna. En behörig agent kan utföra efter att ett godkännande finns.",
+  approvalAgent:
+    "En operatör måste godkänna före utförandet. Du kan utföra när ett godkännande finns.",
   approvalToExecute: "Godkännande att utföra",
   approve: "Godkänn omklassning",
   approving: "Godkänner…",
@@ -1374,7 +1456,8 @@ const sv: typeof en = {
   newProposal: "Det sparade förslaget är inte längre aktuellt. Förbered ett nytt förslag.",
   uncertain: "Skrivningen kan ha bokförts. Hämta det ursprungliga anropet innan du försöker igen.",
   recovery: "Hämta ett ursprungligt anrop",
-  recoveryHelp: "Ange den ursprungliga idempotensnyckeln. Hämtningen läser den bokförda granskningen, godkännandet eller effekten utan att skapa ett nytt anrop.",
+  recoveryHelp:
+    "Ange den ursprungliga idempotensnyckeln. Hämtningen läser den bokförda granskningen, godkännandet eller effekten utan att skapa ett nytt anrop.",
   requestKey: "Ursprunglig anropsnyckel",
   recover: "Hämta anrop",
   recovering: "Hämtar…",

@@ -29,9 +29,11 @@ export function RecurringRuleForm({
   const descriptionId = useId();
   const keys = useRef(new Map<string, string>());
   const [inputError, setInputError] = useState("");
+
   const proposal = useMutation({
     mutationFn: (payload: typeof Automation.ProposeRecurringRule.Type) => {
       const path = `${bookPath(book)}/recurring-rules`;
+
       return readAccounting(
         path,
         Automation.RecurringRule,
@@ -40,11 +42,13 @@ export function RecurringRuleForm({
     },
     onSuccess: (rule) => onProposed(rule.id),
   });
+
   const accounts = setup.accounts.map((account) => ({
     value: account.id,
     label: `${account.code} · ${account.name} · ${account.id}`,
     disabled: !account.active,
   }));
+
   return (
     <Box
       as="form"
@@ -53,6 +57,7 @@ export function RecurringRuleForm({
       onSubmit={(event) => {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
+
         const decoded = Schema.decodeUnknownOption(Automation.ProposeRecurringRule)({
           kind: "synthetic_recurring_preparation_v1",
           name: fields.get("name"),
@@ -64,14 +69,19 @@ export function RecurringRuleForm({
           series: fields.get("series"),
           taxAssessment: "not_applicable",
         });
+
         if (decoded._tag === "None") {
           setInputError(copy.journal_invalid);
+
           return;
         }
+
         if (decoded.value.accountId === decoded.value.counterpartAccountId) {
           setInputError(copy.auto_different_accounts);
+
           return;
         }
+
         setInputError("");
         proposal.mutate(decoded.value);
       }}

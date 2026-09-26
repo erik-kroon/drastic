@@ -5,8 +5,11 @@ import * as Commerce from "./commerce";
 import { accountingErrors } from "./accounting-errors";
 
 const Iban = Schema.String.check(Schema.isPattern(/^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/));
+
 const Bic = Schema.String.check(Schema.isPattern(/^[A-Z]{6}[A-Z0-9]{2}(?:[A-Z0-9]{3})?$/));
+
 const Name = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(70));
+
 export const SupplierPaymentItemInput = Schema.Struct({
   invoiceId: Accounting.Identifier,
   expectedOutstandingMinor: Accounting.MinorUnits,
@@ -18,6 +21,7 @@ export const SupplierPaymentItemInput = Schema.Struct({
   payeeEvidenceId: Accounting.Identifier,
   payeeVerificationId: Schema.optional(Accounting.Identifier),
 });
+
 export const PrepareSupplierPaymentBatch = Schema.Struct({
   profile: Schema.Literal("synthetic-offline-pain001-v1"),
   executionDate: Accounting.AccountingDate,
@@ -31,10 +35,12 @@ export const PrepareSupplierPaymentBatch = Schema.Struct({
   reason: Accounting.Description,
   acknowledgeOfflineOnly: Schema.Literal(true),
 });
+
 export const ExportSupplierPaymentBatch = Schema.Struct({
   digest: Accounting.Digest,
   acknowledgeOfflineOnly: Schema.Literal(true),
 });
+
 const SupplierPaymentSelectionItem = Schema.Struct({
   invoiceId: Accounting.Identifier,
   supplierDocumentNumber: Schema.String,
@@ -48,6 +54,7 @@ const SupplierPaymentSelectionItem = Schema.Struct({
   counterpartyRevision: Schema.optional(Accounting.MinorUnits),
   payeeEvidence: Commerce.EvidenceReference,
 });
+
 export const SupplierPaymentSelection = Schema.Struct({
   items: Schema.Array(SupplierPaymentSelectionItem).check(
     Schema.isMinLength(1),
@@ -56,6 +63,7 @@ export const SupplierPaymentSelection = Schema.Struct({
   totalMinor: Commerce.CreateInvoice.fields.amountMinor,
   count: Schema.Int,
 });
+
 export const SupplierPaymentPreview = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -70,6 +78,7 @@ export const SupplierPaymentPreview = Schema.Struct({
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
 });
+
 export const SupplierPaymentExport = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -88,6 +97,7 @@ export const SupplierPaymentExport = Schema.Struct({
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
 });
+
 export const PayeeProposalInput = Schema.Struct({
   counterpartyId: Accounting.Identifier,
   expectedRevision: Accounting.MinorUnits,
@@ -97,6 +107,7 @@ export const PayeeProposalInput = Schema.Struct({
   evidenceId: Accounting.Identifier,
   reason: Accounting.Description,
 });
+
 export const PayeeProposal = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -113,12 +124,14 @@ export const PayeeProposal = Schema.Struct({
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
 });
+
 export const VerifyPayeeInput = Schema.Struct({
   digest: Accounting.Digest,
   evidenceId: Accounting.Identifier,
   reason: Accounting.Description,
   confirmIndependentCheck: Schema.Literal(true),
 });
+
 export const PayeeVerification = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -137,11 +150,13 @@ export const PayeeVerification = Schema.Struct({
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
 });
+
 export const PayeeReview = Schema.Struct({
   proposal: PayeeProposal,
   verification: Schema.NullOr(PayeeVerification),
   current: Schema.Boolean,
 });
+
 export const PaymentEligibility = Schema.Struct({
   scope: Accounting.Scope,
   items: Schema.Array(
@@ -162,6 +177,7 @@ export const PaymentEligibility = Schema.Struct({
   pageSize: Schema.Literal(25),
   coverage: Schema.Literal("registered_supplier_invoices_live"),
 });
+
 export const OutcomeInput = Schema.Struct({
   exportSha256: Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/)),
   status: Schema.Literals([
@@ -175,6 +191,7 @@ export const OutcomeInput = Schema.Struct({
   reason: Accounting.Description,
   acknowledgeNoAccountingEffect: Schema.Literal(true),
 });
+
 export const PaymentOutcome = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -192,6 +209,7 @@ export const PaymentOutcome = Schema.Struct({
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
 });
+
 export const SupplierPaymentBatchView = Schema.Struct({
   preview: SupplierPaymentPreview,
   export: Schema.NullOr(SupplierPaymentExport),
@@ -209,7 +227,9 @@ export const SupplierPaymentBatchView = Schema.Struct({
   allocationCreated: Schema.Literal(false),
   recovery: Schema.String,
 });
+
 const path = "/v1/entities/:entityId/books/:bookId/commerce/supplier-payment-batches";
+
 export const SupplierPaymentBatchesApi = HttpApiGroup.make("supplierPaymentBatches").add(
   HttpApiEndpoint.post("prepareSupplierPaymentBatch", path, {
     params: Accounting.Scope,
@@ -263,6 +283,7 @@ export const SupplierPaymentBatchesApi = HttpApiGroup.make("supplierPaymentBatch
     error: accountingErrors,
   }),
 );
+
 export const SupplierPaymentBatchCapabilities = {
   commerce_list_supplier_payment_eligibility: {
     description:

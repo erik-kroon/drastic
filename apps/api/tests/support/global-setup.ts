@@ -11,6 +11,7 @@ import type { TestProject } from "vitest/node";
 import type { E2EEnvironment } from "./environment";
 
 const run = promisify(execFile);
+
 const root = resolve(import.meta.dirname, "../../../..");
 
 async function unusedPort() {
@@ -20,10 +21,12 @@ async function unusedPort() {
     server.listen(0, "127.0.0.1", resolvePort);
   });
   const address = server.address();
+
   if (address === null || typeof address === "string") throw new Error("No TCP address allocated");
   await new Promise<void>((resolveClose, reject) =>
     server.close((error) => (error ? reject(error) : resolveClose())),
   );
+
   return address.port;
 }
 
@@ -40,11 +43,14 @@ export default async function setup(project: TestProject) {
   const port = await unusedPort();
   const adminUrl = `postgresql://postgres:${password}@127.0.0.1:${port}/postgres`;
   const runtimeUrl = `postgresql://e2e_runtime:${password}@127.0.0.1:${port}/postgres`;
+
   const server = createTestHarness({
     root: join(root, "apps/api"),
     workers: [{ configPath: "wrangler.jsonc", secrets: { DATABASE_URL: runtimeUrl } }],
   });
+
   let started = false;
+
   async function cleanup() {
     try {
       await writeFile(join(artifacts, "worker.json"), JSON.stringify(server.getLogs(), null, 2));
@@ -58,6 +64,7 @@ export default async function setup(project: TestProject) {
       }
     }
   }
+
   try {
     await run(join(pgBin, "initdb"), [
       "-D",
@@ -81,13 +88,16 @@ export default async function setup(project: TestProject) {
       "start",
     ]);
     started = true;
+
     const migration = await run("bun", ["scripts/migrate.ts"], {
       cwd: join(root, "apps/api"),
       env: { ...process.env, DATABASE_ADMIN_URL: adminUrl },
     });
+
     await writeFile(join(artifacts, "migrations.log"), migration.stdout);
     const admin = new Client({ connectionString: adminUrl });
     await admin.connect();
+
     try {
       await admin.query(
         `CREATE ROLE e2e_runtime LOGIN PASSWORD '${password}' IN ROLE openerp_runtime`,
@@ -95,7 +105,9 @@ export default async function setup(project: TestProject) {
     } finally {
       await admin.end();
     }
+
     const listening = await server.listen();
+
     const environment: E2EEnvironment = {
       baseUrl: listening.url.origin,
       adminUrl,
@@ -103,10 +115,13 @@ export default async function setup(project: TestProject) {
       artifacts,
       scratch,
     };
+
     project.provide("e2e", environment);
+
     const names = (await readdir(join(root, "apps/api/migrations")))
       .filter((name) => name.endsWith(".sql"))
       .sort();
+
     const migrations = await Promise.all(
       names.map(async (name) => ({
         name,
@@ -115,11 +130,14 @@ export default async function setup(project: TestProject) {
           .digest("hex"),
       })),
     );
+
     const git = await run("git", ["rev-parse", "HEAD"], { cwd: root });
+
     const diff = await run("git", ["diff", "--binary", "HEAD"], {
       cwd: root,
       maxBuffer: 20 * 1024 * 1024,
     });
+
     await writeFile(
       join(artifacts, "manifest.json"),
       JSON.stringify(
@@ -140,6 +158,7 @@ export default async function setup(project: TestProject) {
         2,
       ),
     );
+
     return cleanup;
   } catch (error) {
     await cleanup();

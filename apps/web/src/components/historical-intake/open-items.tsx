@@ -8,7 +8,9 @@ import { Text } from "@open-erp/ui/components/typography";
 import { useBookWorkspace } from "@/lib/book-context";
 
 type Item = typeof Sie.HistoricalOpenItem.Type;
+
 type Control = typeof Sie.OpenItemControl.Type;
+
 function emptyItem(): Item {
   return {
     sourceIdentity: "",
@@ -22,9 +24,11 @@ function emptyItem(): Item {
     basis: "",
   };
 }
+
 function emptyControl(): Control {
   return { sourceAccount: "", currency: "", independentOutstandingMinor: "", basis: "" };
 }
+
 type Props<T> = {
   disabled: boolean;
   sourceAccounts: string[];
@@ -35,6 +39,7 @@ type Props<T> = {
 export function SavedOpenItems({ plan }: { plan: typeof Sie.SiePlan.Type }) {
   const { locale } = useBookWorkspace();
   const sv = locale === "sv";
+
   return (
     <details>
       <summary>
@@ -95,6 +100,7 @@ export function SavedOpenItems({ plan }: { plan: typeof Sie.SiePlan.Type }) {
 export function OpenItemEntry({ disabled, sourceAccounts, onAdd, onDraftChange }: Props<Item>) {
   const { locale } = useBookWorkspace();
   const sv = locale === "sv";
+
   const form = useForm({
     defaultValues: emptyItem(),
     listeners: { onChange: ({ formApi }) => onDraftChange(formApi.state.isDirty) },
@@ -105,6 +111,7 @@ export function OpenItemEntry({ disabled, sourceAccounts, onAdd, onDraftChange }
       onDraftChange(false);
     },
   });
+
   const fields = [
     {
       name: "sourceIdentity",
@@ -125,6 +132,7 @@ export function OpenItemEntry({ disabled, sourceAccounts, onAdd, onDraftChange }
     name: "sourceIdentity" | "currency" | "originalMinor" | "outstandingMinor" | "asOf" | "basis";
     label: string;
   }>;
+
   return (
     <details>
       <summary>{sv ? "Lägg till en öppen post" : "Add an open item"}</summary>
@@ -267,6 +275,7 @@ export function OpenItemControlEntry({
 }: Props<Control>) {
   const { locale } = useBookWorkspace();
   const sv = locale === "sv";
+
   const form = useForm({
     defaultValues: emptyControl(),
     listeners: { onChange: ({ formApi }) => onDraftChange(formApi.state.isDirty) },
@@ -277,6 +286,7 @@ export function OpenItemControlEntry({
       onDraftChange(false);
     },
   });
+
   const fields = [
     { name: "currency", label: sv ? "Kontrollvaluta" : "Control currency" },
     {
@@ -287,6 +297,7 @@ export function OpenItemControlEntry({
     },
     { name: "basis", label: sv ? "Oberoende kontrollunderlag" : "Independent control source" },
   ] satisfies Array<{ name: "currency" | "independentOutstandingMinor" | "basis"; label: string }>;
+
   return (
     <details>
       <summary>

@@ -25,30 +25,53 @@ import { databaseFailure, withTransaction, type Transaction } from "../db/transa
 import { exactKeys } from "./commerce/support";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type Principal = VerifiedPrincipal;
+
 type JsonObject = Schema.JsonObject;
+
 type CsvMapping = typeof Intake.CsvMapping.Type;
+
 type ReparseInput = typeof Intake.ReparseSourceCsv.Type;
+
 type ApprovePreview = typeof Intake.ApproveSourcePreview.Type;
+
 type AdmitPreview = typeof Intake.AdmitSourcePreview.Type;
+
 type ActivateRule = typeof Automation.ActivateRecurringRule.Type;
+
 type DeactivateRule = typeof Automation.DeactivateRecurringRule.Type;
 
 const SourceOccurrenceSchema = Intake.SourceOccurrence;
+
 const SourceApprovalSchema = Intake.SourceApproval;
+
 const SourceAdmissionSchema = Intake.SourceAdmission;
+
 const SourcePreviewSchema = Intake.SourcePreview;
+
 const SourceSupersessionSchema = Intake.SourceSupersession;
+
 const SourceReviewCaptureSchema = Intake.SourceReviewCapture;
+
 const RevisionHistorySchema = Intake.SourceRevisionHistory;
+
 const PreviewViewSchema = Intake.SourcePreviewView;
+
 const InventorySchema = Intake.SourceInventory;
+
 const PurchaseLinksSchema = Intake.SourcePurchaseLinks;
+
 const ReviewArtifactSchema = Intake.SourceReviewArtifact;
+
 const ReviewArtifactListSchema = Intake.SourceReviewArtifactList;
+
 const ReviewSnapshotSchema = Intake.SourceReviewSnapshot;
+
 const RuleDeactivationSchema = Automation.RuleDeactivation;
+
 const FeedEventsSchema = Deadlines.FeedEvents;
+
 const CheckpointSchema = Bank.Checkpoint;
 
 const privateArtifactFields = [
@@ -67,7 +90,9 @@ const intakeTables = [
   "intake_preview_supersessions",
   "command_receipts",
 ];
+
 const reviewTables = [...intakeTables, "intake_contents", "source_review_artifacts"];
+
 const purchaseTables = [
   "intake_occurrences",
   "supplier_invoice_drafts",
@@ -78,7 +103,9 @@ const purchaseTables = [
   "expense_tax_source_withdrawals",
   "evidence",
 ];
+
 const recurringTables = ["recurring_activations", "recurring_deactivations", "command_receipts"];
+
 const bookVersionColumns = ["books.profile_version", "books.writer_epoch"];
 
 function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
@@ -101,10 +128,13 @@ function requireRecurringAccess(transaction: Transaction, inserts: ReadonlyArray
   return Work.readRecurringAccess(transaction).pipe(
     Effect.flatMap((rows) => {
       if (rows.length !== Work.recurringTablesForActivation.length) return unsupported();
+
       const denied = rows.some((row) => {
         const write = inserts.includes(row.tableName);
+
         return !row.canSelect || (write && !row.canInsert);
       });
+
       return denied ? unsupported() : Effect.void;
     }),
   );
@@ -124,6 +154,7 @@ function field(value: Schema.Json, key: string) {
 
 function textField(value: Schema.Json, key: string) {
   const found = field(value, key);
+
   return typeof found === "string" ? found : null;
 }
 
@@ -136,7 +167,9 @@ function withoutFields(value: JsonObject, keys: ReadonlyArray<string>) {
 function canonicalJson(value: JsonObject) {
   return Effect.gen(function* () {
     const canonical = yield* Effect.sync(() => canonicalizeJson(value));
+
     if (Result.isFailure(canonical)) return yield* failure("InternalError");
+
     return canonical.success;
   });
 }
@@ -167,10 +200,12 @@ function requireTables(
     Effect.flatMap((rows) => {
       const denied = [...selects, ...inserts].some((name) => {
         const access = rows.find((row) => row.tableName === name);
+
         return (
           access === undefined || !access.canSelect || (inserts.includes(name) && !access.canInsert)
         );
       });
+
       return denied ? unsupported() : Effect.void;
     }),
   );
@@ -181,8 +216,10 @@ function requireColumns(transaction: Transaction, names: ReadonlyArray<string>) 
     Effect.flatMap((rows) => {
       const denied = names.some((name) => {
         const access = rows.find((row) => row.columnName === name);
+
         return access === undefined || !access.canSelect;
       });
+
       return denied ? unsupported() : Effect.void;
     }),
   );
@@ -190,26 +227,34 @@ function requireColumns(transaction: Transaction, names: ReadonlyArray<string>) 
 
 function previewIsCurrent(transaction: Transaction, bookId: string, preview: Work.PreviewRow) {
   return Effect.gen(function* () {
+    if ((yield* Work.readSupersedingPreviewId(transaction, bookId, preview.id)).length)
+      return false;
     const accountId = textField(field(preview.body, "mapping"), "accountId");
+
     if (accountId === null) return yield* failure("InvalidJournal");
     yield* requireTables(transaction, ["bank_sources", "accounts"]);
     yield* requireColumns(transaction, bookVersionColumns);
     const occurrence = (yield* Work.readOccurrence(transaction, bookId, preview.occurrenceId))[0];
+
     if (!occurrence) return yield* failure("NotFound");
     const versions = (yield* Work.readDependencyVersions(transaction, bookId, accountId))[0];
+
     if (!versions) return yield* failure("NotFound");
     const recorded = field(preview.body, "dependencies");
+
     const versionsMatch =
       textField(recorded, "profileVersion") === versions.profileVersion &&
       textField(recorded, "writerEpoch") === versions.writerEpoch &&
       textField(recorded, "accountVersion") === versions.accountVersion &&
       textField(recorded, "sourceRevision") === versions.sourceRevision;
+
     const conflicts = yield* Work.readConflictingSourceMappings(
       transaction,
       bookId,
       accountId,
       occurrence.sourceAccountId,
     );
+
     return versionsMatch && conflicts.length === 0;
   });
 }
@@ -217,6 +262,7 @@ function previewIsCurrent(transaction: Transaction, bookId: string, preview: Wor
 function admissionSummary(row: Work.AdmissionRow) {
   return Effect.gen(function* () {
     const checkpoint = yield* decodeField(CheckpointSchema, row.checkpoint);
+
     return {
       previewId: row.previewId,
       digest: row.digest,
@@ -233,6 +279,7 @@ function readAdmission(transaction: Transaction, bookId: string, occurrenceId: s
   return Work.readAdmission(transaction, bookId, occurrenceId).pipe(
     Effect.flatMap((rows) => {
       const row = rows[0];
+
       return row ? decode(SourceAdmissionSchema, row.body) : Effect.succeed(null);
     }),
   );
@@ -240,20 +287,26 @@ function readAdmission(transaction: Transaction, bookId: string, occurrenceId: s
 
 function purchaseSourceReference(content: string) {
   const parsed = Result.try({ try: () => JSON.parse(content), catch: () => undefined });
+
   if (Result.isFailure(parsed)) return null;
   const entry = Schema.decodeUnknownResult(Schema.JsonObject)(parsed.success);
+
   if (Result.isFailure(entry)) return null;
   const kind = entry.success.kind;
+
   if (kind !== "expense_entry_v1" && kind !== "supplier_invoice_source_v1") return null;
   const source = field(entry.success, "source");
+
   if (!isJsonObject(source)) return null;
   const occurrenceId = textField(source, "occurrenceId");
   const sha256 = textField(source, "sha256");
+
   return occurrenceId === null || sha256 === null ? null : { occurrenceId, sha256 };
 }
 
 function referencesOccurrence(content: string, occurrenceId: string, sha256: string) {
   const reference = purchaseSourceReference(content);
+
   return (
     reference !== null && reference.occurrenceId === occurrenceId && reference.sha256 === sha256
   );
@@ -276,14 +329,18 @@ export const recoverSourceRetention = Effect.fn("evidenceWork.recoverSourceReten
   return yield* withBook(token, command.scope, false, "share", (transaction, principal) =>
     Effect.gen(function* () {
       yield* requireTables(transaction, ["command_receipts"]);
+
       if (!/^[a-zA-Z0-9_-]{8,128}$/.test(command.key)) return yield* failure("InvalidJournal");
+
       const row = (yield* Work.readRetentionReceipt(
         transaction,
         command.scope.bookId,
         command.key,
         principal.actorId,
       ))[0];
+
       if (!row) return yield* failure("NotFound");
+
       return yield* decode(SourceOccurrenceSchema, row.result);
     }),
   );
@@ -296,19 +353,24 @@ export const listSourceOccurrences = Effect.fn("evidenceWork.listSourceOccurrenc
   return yield* withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
       yield* requireTables(transaction, intakeTables);
+
       const rows = yield* Work.readOccurrenceInventory(
         transaction,
         command.scope.bookId,
         command.cursor ?? null,
       );
+
       const page = rows.slice(0, 20);
+
       const items = yield* Effect.forEach(page, (row) =>
         Effect.gen(function* () {
           const occurrence = yield* decode(SourceOccurrenceSchema, row.body);
+
           const admission =
             row.admissionBody === null
               ? null
               : yield* decode(SourceAdmissionSchema, row.admissionBody);
+
           return {
             occurrence,
             latestPreviewId: row.latestPreviewId,
@@ -316,6 +378,7 @@ export const listSourceOccurrences = Effect.fn("evidenceWork.listSourceOccurrenc
           } satisfies typeof Intake.OccurrenceSummary.Type;
         }),
       );
+
       return {
         items,
         nextCursor: rows.length > page.length ? (page.at(-1)?.id ?? null) : null,
@@ -331,28 +394,34 @@ export const getSourceRevisionHistory = Effect.fn("evidenceWork.getRevisionHisto
   return yield* withBook(token, command.scope, false, "share", (transaction, principal) =>
     Effect.gen(function* () {
       yield* requireTables(transaction, intakeTables);
+
       const occurrence = (yield* Work.readOccurrence(
         transaction,
         command.scope.bookId,
         command.occurrenceId,
       ))[0];
+
       if (!occurrence) return yield* failure("NotFound");
+
       const revisions = yield* Work.readRevisionHistory(
         transaction,
         command.scope.bookId,
         command.occurrenceId,
       );
+
       const supersessions = yield* Work.readOccurrenceSupersessions(
         transaction,
         command.scope.bookId,
         command.occurrenceId,
       );
+
       const approvals = yield* Work.readOwnRevisionApprovals(
         transaction,
         command.scope.bookId,
         command.occurrenceId,
         principal.actorId,
       );
+
       const history = {
         occurrenceId: command.occurrenceId,
         previews: revisions.map((row) => ({
@@ -374,6 +443,7 @@ export const getSourceRevisionHistory = Effect.fn("evidenceWork.getRevisionHisto
         ),
         admission: yield* readAdmission(transaction, command.scope.bookId, command.occurrenceId),
       } satisfies typeof RevisionHistorySchema.Type;
+
       return yield* decode(RevisionHistorySchema, history);
     }),
   );
@@ -386,18 +456,22 @@ export const getSourcePreview = Effect.fn("evidenceWork.getPreview")(function* (
   return yield* withBook(token, command.scope, false, "share", (transaction, principal) =>
     Effect.gen(function* () {
       yield* requireTables(transaction, intakeTables);
+
       const preview = (yield* Work.readPreview(
         transaction,
         command.scope.bookId,
         command.previewId,
       ))[0];
+
       if (!preview) return yield* failure("NotFound");
+
       const replacement =
         (yield* Work.readSupersedingPreviewId(
           transaction,
           command.scope.bookId,
           command.previewId,
         ))[0]?.replacementPreviewId ?? null;
+
       const approvalRow =
         replacement === null
           ? (yield* Work.readCurrentOwnApproval(
@@ -407,10 +481,12 @@ export const getSourcePreview = Effect.fn("evidenceWork.getPreview")(function* (
               principal.actorId,
             ))[0]
           : undefined;
+
       const current =
         replacement === null
           ? yield* previewIsCurrent(transaction, command.scope.bookId, preview)
           : false;
+
       return yield* decode(PreviewViewSchema, {
         preview: yield* decode(SourcePreviewSchema, preview.body),
         approval: approvalRow ? yield* decode(SourceApprovalSchema, approvalRow.body) : null,
@@ -429,12 +505,15 @@ export const getSourceReviewArtifact = Effect.fn("evidenceWork.getReviewArtifact
   return yield* withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
       yield* requireTables(transaction, ["source_review_artifacts"]);
+
       const row = (yield* Work.readReviewArtifact(
         transaction,
         command.scope.bookId,
         command.id,
       ))[0];
+
       if (!row) return yield* failure("NotFound");
+
       return yield* decode(ReviewArtifactSchema, {
         capture: artifactSummary(row),
         snapshot: yield* decode(ReviewSnapshotSchema, row.body),
@@ -452,9 +531,11 @@ export const listSourceReviewArtifacts = Effect.fn("evidenceWork.listReviewArtif
     Effect.gen(function* () {
       yield* requireTables(transaction, ["source_review_artifacts"]);
       const rows = yield* Work.listReviewArtifacts(transaction, command.scope.bookId);
+
       const items = yield* Effect.forEach(rows, (row) =>
         decode(SourceReviewCaptureSchema, artifactSummary(row)),
       );
+
       return yield* decode(ReviewArtifactListSchema, { scope: command.scope, items });
     }),
   );
@@ -475,6 +556,7 @@ export const captureSourceReview = Effect.fn("evidenceWork.captureReview")(funct
         "source_review_artifacts",
         "command_receipts",
       ]);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -484,30 +566,39 @@ export const captureSourceReview = Effect.fn("evidenceWork.captureReview")(funct
         { previewId: command.previewId, input: command.input },
         SourceReviewCaptureSchema,
       );
+
       if (request.previous) return request.previous;
+
       const preview = (yield* Work.readPreview(
         transaction,
         command.scope.bookId,
         command.previewId,
       ))[0];
+
       if (!preview) return yield* failure("NotFound");
       const previewDigest = textField(preview.body, "digest");
+
       if (previewDigest === null || previewDigest !== command.input.digest) {
         return yield* failure("StaleDependency");
       }
+
       const occurrence = (yield* Work.readOccurrence(
         transaction,
         command.scope.bookId,
         preview.occurrenceId,
       ))[0];
+
       if (!occurrence) return yield* failure("MissingEvidence");
+
       const original = (yield* Work.readContentManifest(
         transaction,
         command.scope.bookId,
         occurrence.sha256,
       ))[0];
+
       if (!original) return yield* failure("MissingEvidence");
       const sealedDigest = yield* digest(withoutFields(preview.body, ["digest", "receipt"]));
+
       if (
         textField(preview.body, "sourceSha256") !== original.sha256 ||
         textField(occurrence.body, "sha256") !== original.sha256 ||
@@ -516,23 +607,28 @@ export const captureSourceReview = Effect.fn("evidenceWork.captureReview")(funct
       ) {
         return yield* failure("MissingEvidence");
       }
+
       const artifacts = (yield* Work.countReviewArtifacts(transaction, command.scope.bookId))[0]
         ?.total;
+
       const reviewed = (yield* Work.countPreviewApprovals(
         transaction,
         command.scope.bookId,
         preview.id,
       ))[0]?.total;
+
       const interpreted = (yield* Work.countPreviews(
         transaction,
         command.scope.bookId,
         preview.occurrenceId,
       ))[0]?.total;
+
       const replaced = (yield* Work.countOccurrenceSupersessions(
         transaction,
         command.scope.bookId,
         preview.occurrenceId,
       ))[0]?.total;
+
       if (
         artifacts === undefined ||
         reviewed === undefined ||
@@ -545,31 +641,37 @@ export const captureSourceReview = Effect.fn("evidenceWork.captureReview")(funct
       ) {
         return yield* unsupported();
       }
+
       const replacement =
         (yield* Work.readSupersedingPreviewId(
           transaction,
           command.scope.bookId,
           command.previewId,
         ))[0]?.replacementPreviewId ?? null;
+
       const approvals = yield* Work.readPreviewApprovalSummaries(
         transaction,
         command.scope.bookId,
         preview.id,
       );
+
       const supersessions = yield* Work.readOccurrenceSupersessions(
         transaction,
         command.scope.bookId,
         preview.occurrenceId,
       );
+
       const admittedRow = (yield* Work.readAdmission(
         transaction,
         command.scope.bookId,
         preview.occurrenceId,
       ))[0];
+
       const admitted = admittedRow ? yield* admissionSummary(admittedRow) : null;
       const current = yield* previewIsCurrent(transaction, command.scope.bookId, preview);
       const artifactId = newId("source_review");
       const capturedAt = yield* isoNow(transaction);
+
       const body = {
         id: artifactId,
         kind: "source_review_artifact_v1",
@@ -606,15 +708,19 @@ export const captureSourceReview = Effect.fn("evidenceWork.captureReview")(funct
           selectedPreviewAdmitted: admitted !== null && admitted.previewId === preview.id,
         },
       } satisfies JsonObject;
+
       const canonical = yield* canonicalJson(body);
       const byteLength = canonical.bytes.byteLength;
+
       if (byteLength > 4194304) return yield* unsupported();
       const sha256 = yield* sha256Hex(canonical.json);
+
       const receipt = {
         key: command.idempotencyKey,
         operation: "capture_source_review",
         actorId: principal.actorId,
       } satisfies JsonObject;
+
       yield* Work.insertReviewArtifact(transaction, {
         bookId: command.scope.bookId,
         id: artifactId,
@@ -626,6 +732,7 @@ export const captureSourceReview = Effect.fn("evidenceWork.captureReview")(funct
         byteLength,
         receipt,
       });
+
       const summaryValue = {
         ...withoutFields(body, privateArtifactFields),
         sha256,
@@ -633,6 +740,7 @@ export const captureSourceReview = Effect.fn("evidenceWork.captureReview")(funct
         mediaType: "application/json",
         receipt,
       } satisfies JsonObject;
+
       const result = yield* decode(SourceReviewCaptureSchema, summaryValue);
       yield* saveCommand(
         transaction,
@@ -643,6 +751,7 @@ export const captureSourceReview = Effect.fn("evidenceWork.captureReview")(funct
         principal.actorId,
         summaryValue,
       );
+
       return result;
     }),
   );
@@ -660,6 +769,7 @@ export const approveSourcePreview = Effect.fn("evidenceWork.approvePreview")(fun
   return yield* withBook(token, command.scope, true, "update", (transaction, principal) =>
     Effect.gen(function* () {
       yield* requireTables(transaction, intakeTables, ["intake_approvals", "command_receipts"]);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -669,30 +779,39 @@ export const approveSourcePreview = Effect.fn("evidenceWork.approvePreview")(fun
         { previewId: command.previewId, input: command.input },
         SourceApprovalSchema,
       );
+
       if (request.previous) return request.previous;
+
       const preview = (yield* Work.readPreview(
         transaction,
         command.scope.bookId,
         command.previewId,
       ))[0];
+
       if (!preview) return yield* failure("NotFound");
       const digest = textField(preview.body, "digest");
+
       if (digest === null || command.input.digest !== digest || command.input.version !== 1) {
         return yield* failure("ApprovalRequired");
       }
+
       if (preview.body.ready !== true) return yield* failure("InvalidJournal");
+
       if (!(yield* previewIsCurrent(transaction, command.scope.bookId, preview))) {
         return yield* failure("StaleDependency");
       }
+
       const admitted = yield* Work.readAdmission(
         transaction,
         command.scope.bookId,
         preview.occurrenceId,
       );
+
       if (admitted.length > 0) return yield* failure("IdempotencyConflict");
       const now = yield* Db.readDatabaseTime(transaction);
       const approvalId = newId("intakeapproval");
       const expiresAt = new Date(Date.parse(now.now) + 60 * 60 * 1000).toISOString();
+
       const body = {
         ...command.input,
         id: approvalId,
@@ -705,6 +824,7 @@ export const approveSourcePreview = Effect.fn("evidenceWork.approvePreview")(fun
           actorId: principal.actorId,
         },
       } satisfies JsonObject;
+
       yield* Work.insertApproval(transaction, {
         bookId: command.scope.bookId,
         id: approvalId,
@@ -723,28 +843,44 @@ export const approveSourcePreview = Effect.fn("evidenceWork.approvePreview")(fun
         principal.actorId,
         result,
       );
+
       return result;
     }),
   );
 });
 
 const PreviewSchema = Intake.SourcePreview;
+
 const ReparseSchema = Intake.SourceReparse;
+
 const SupersessionSchema = Intake.SourceSupersession;
+
 const AdmissionSchema = Intake.SourceAdmission;
+
 const SelectionSchema = Automation.SimulationSelection;
+
 const ActivationSchema = Automation.RuleActivation;
 
 const csvByteBound = 65536;
+
 const csvFieldByteBound = 4000;
+
 const csvColumnBound = 32;
+
 const csvRecordBound = 201;
+
 const previewOrdinalBound = 50;
+
 const statementCharacterBound = 65536;
+
 const statementByteBound = 262144;
+
 const maxSelectedObservations = 1000;
+
 const previewTables = [...intakeTables, "intake_contents"];
+
 const reparseInputKeys = ["digest", "version", "rationale", "mapping"] as const;
+
 const mappingKeys = [
   "profile",
   "delimiter",
@@ -832,6 +968,7 @@ class CsvScanner {
 
   get failure(): CsvFailure | null {
     if (this.#failure === null) return null;
+
     return {
       ...this.#failure,
       recordOrdinal: this.#ordinal,
@@ -846,6 +983,7 @@ class CsvScanner {
       const step = this.#scanByte(byte);
       this.#position += step;
     }
+
     return this;
   }
 
@@ -861,51 +999,66 @@ class CsvScanner {
     if (byte === 13 && this.#lineEnding === "crlf" && this.#bytes[this.#position + 1] === 10) {
       return 2;
     }
+
     if (byte === 13 || (byte === 10 && this.#lineEnding !== "lf")) {
       this.#fail("line_ending", lineEndingFailure);
     }
+
     return 1;
   }
 
   #scanByte(byte: number) {
     if (this.#state === "quoted") return this.#scanQuoted(byte);
+
     if (this.#state === "start" && byte === 34) {
       this.#state = "quoted";
       this.#fieldStart = this.#position + 1;
+
       return 1;
     }
+
     if (byte === -1 || this.#isLineEnding(byte) || byte === this.#delimiter) {
       return this.#scanSeparator(byte);
     }
+
     if (byte === 34 || this.#state === "closed") {
       this.#fail(
         "quote_syntax",
         "Quotes must surround the whole field; text after a closing quote is unsupported.",
       );
+
       return 1;
     }
+
     this.#state = "unquoted";
+
     return 1;
   }
 
   #scanQuoted(byte: number) {
     if (byte === -1) {
       this.#fail("unclosed_quote", "The quoted field is not closed.");
+
       return 1;
     }
+
     let step = 1;
+
     if (byte === 34) {
       if (this.#bytes[this.#position + 1] === 34) return 2;
       this.#fieldEnd = this.#position;
       this.#state = "closed";
     } else if (this.#isLineEnding(byte)) {
       step = this.#lineEndingStep(byte);
+
       if (this.#failure !== null) return step;
       this.#line += 1;
     }
+
     if (this.#position - this.#fieldStart > csvFieldByteBound) {
       this.#fail("field_limit", "A field exceeds 4000 source bytes.");
     }
+
     return step;
   }
 
@@ -917,28 +1070,40 @@ class CsvScanner {
       this.#state === "start"
     ) {
       this.#done = true;
+
       return 1;
     }
+
     const step = this.#isLineEnding(byte) ? this.#lineEndingStep(byte) : 1;
+
     if (this.#failure !== null) return step;
+
     if (this.#state !== "closed") this.#fieldEnd = this.#position;
+
     if (this.#fieldEnd - this.#fieldStart > csvFieldByteBound) {
       this.#fail("field_limit", "A field exceeds 4000 source bytes.");
+
       return step;
     }
+
     if (!this.#appendField()) return step;
+
     if (this.#fields.length > csvColumnBound) {
       this.#fail("column_limit", "At most 32 columns are supported.");
+
       return step;
     }
+
     if (byte !== this.#delimiter) {
       if (this.#ordinal > csvRecordBound) {
         this.#fail(
           "record_limit",
           "At most 200 data records are supported. No partial import is available.",
         );
+
         return step;
       }
+
       this.#records.push({
         recordOrdinal: this.#ordinal,
         lineStart: this.#recordLine,
@@ -949,12 +1114,15 @@ class CsvScanner {
       });
       this.#fields = [];
       this.#ordinal += 1;
+
       if (byte !== -1) this.#line += 1;
       this.#recordLine = this.#line;
       this.#recordStart = this.#position + step;
     }
+
     this.#state = "start";
     this.#fieldStart = this.#position + step;
+
     return step;
   }
 
@@ -963,13 +1131,18 @@ class CsvScanner {
       this.#fieldStart,
       this.#fieldStart + (this.#fieldEnd - this.#fieldStart),
     );
+
     let value = decodeUtf8(slice);
+
     if (value === null) {
       this.#fail("encoding", "Only valid UTF-8 without NUL is supported.");
+
       return false;
     }
+
     if (this.#state === "closed") value = value.split('""').join('"');
     this.#fields.push(value);
+
     return true;
   }
 }
@@ -979,6 +1152,7 @@ class CsvScanner {
 // bounds, diagnostics and readiness have exactly one implementation.
 function parseCsvRecords(bytes: Uint8Array, delimiter: string, lineEnding: string): CsvParse {
   const hasBom = bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
+
   if (decodeUtf8(bytes) === null) {
     return {
       structuralComplete: false,
@@ -993,16 +1167,20 @@ function parseCsvRecords(bytes: Uint8Array, delimiter: string, lineEnding: strin
       },
     };
   }
+
   const scanner = new CsvScanner(bytes, delimiter, lineEnding, hasBom ? 3 : 0).scan();
+
   if (scanner.failed) {
     return { structuralComplete: false, hasBom, records: [], failure: scanner.failure };
   }
+
   return { structuralComplete: true, hasBom, records: scanner.records, failure: null };
 }
 
 function decodeUtf8(bytes: Uint8Array) {
   try {
     const text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes);
+
     return text.includes("\u0000") ? null : text;
   } catch {
     return null;
@@ -1011,28 +1189,35 @@ function decodeUtf8(bytes: Uint8Array) {
 
 function calendarDate(value: string) {
   const parsed = Date.parse(`${value}T00:00:00.000Z`);
+
   if (!Number.isFinite(parsed)) return null;
+
   return new Date(parsed).toISOString().slice(0, 10) === value ? value : null;
 }
 
 function parseMinorUnits(value: string | null, separator: string, scale: number) {
   if (value === null || value.length > 48) return null;
+
   const pattern =
     scale === 0
       ? /^[+-]?(?:0|[1-9][0-9]*)$/
       : new RegExp(`^[+-]?(?:0|[1-9][0-9]*)(?:[${separator}][0-9]{1,${scale}})$`);
+
   if (!pattern.test(value)) return null;
   const negative = value.startsWith("-");
   const parts = value.replace(/^[+-]/, "").split(separator);
   const fraction = (parts[1] ?? "").padEnd(scale, "0") || "0";
   const magnitude = BigInt(parts[0] ?? "0") * 10n ** BigInt(scale) + BigInt(fraction);
+
   if (magnitude >= 10n ** 38n) return null;
+
   return negative ? -magnitude : magnitude;
 }
 
 function headerIndex(headers: ReadonlyArray<string>, name: string | null) {
   if (name === null) return null;
   const found = headers.indexOf(name);
+
   return found < 0 ? null : found;
 }
 
@@ -1056,9 +1241,11 @@ type CsvIndices = {
 function headerFindings(records: ReadonlyArray<CsvRecord>, input: CsvMapping) {
   const diagnostics: Array<JsonObject> = [];
   const headers = records[0]?.fields ?? [];
+
   if (records.length < 2) {
     diagnostics.push(blockingDiagnostic("no_records", "At least one data record is required."));
   }
+
   if (
     headers.some((header) => header.length < 1 || header.length > 200) ||
     new Set(headers).size !== headers.length
@@ -1073,11 +1260,13 @@ function headerFindings(records: ReadonlyArray<CsvRecord>, input: CsvMapping) {
       ),
     );
   }
+
   const date = headerIndex(headers, input.dateColumn);
   const description = headerIndex(headers, input.descriptionColumn);
   const amount = headerIndex(headers, input.amountColumn);
   const provider = headerIndex(headers, input.providerIdColumn);
   const selected = [date, description, amount, provider].filter((index) => index !== null);
+
   if (
     date === null ||
     description === null ||
@@ -1094,15 +1283,19 @@ function headerFindings(records: ReadonlyArray<CsvRecord>, input: CsvMapping) {
         0,
       ),
     );
+
     return { diagnostics, indices: null };
   }
+
   const indices: CsvIndices = { date, description, amount, provider };
+
   const mapped = [
     input.dateColumn,
     input.descriptionColumn,
     input.amountColumn,
     input.providerIdColumn,
   ].filter((name) => name !== null);
+
   for (const header of headers) {
     if (mapped.includes(header)) continue;
     diagnostics.push({
@@ -1114,12 +1307,14 @@ function headerFindings(records: ReadonlyArray<CsvRecord>, input: CsvMapping) {
       byteOffset: 0,
     });
   }
+
   return { diagnostics, indices };
 }
 
 function recordDate(value: string, input: CsvMapping) {
   if (input.dateFormat !== "DD/MM/YYYY") return value;
   const european = /^([0-9]{2})\/([0-9]{2})\/([0-9]{4})$/.exec(value);
+
   return european === null ? null : `${european[3]}-${european[2]}-${european[1]}`;
 }
 
@@ -1131,6 +1326,7 @@ function recordFindings(
   existing: ReadonlySet<string>,
 ) {
   const diagnostics: Array<JsonObject> = [];
+
   if (record.fields.length !== headers.length || record.fields.join("") === "") {
     return {
       diagnostics: [
@@ -1145,8 +1341,10 @@ function recordFindings(
       row: null,
     };
   }
+
   const normalized = recordDate(record.fields[indices.date] ?? "", input);
   const date = normalized !== null && calendarDate(normalized) !== null ? normalized : null;
+
   if (date === null || date < input.startsOn || date > input.endsOn) {
     diagnostics.push(
       blockingDiagnostic(
@@ -1158,7 +1356,9 @@ function recordFindings(
       ),
     );
   }
+
   const description = record.fields[indices.description] ?? "";
+
   if (description.length < 1 || description.length > 2000) {
     diagnostics.push(
       blockingDiagnostic(
@@ -1170,11 +1370,13 @@ function recordFindings(
       ),
     );
   }
+
   const parsed = parseMinorUnits(
     record.fields[indices.amount] ?? null,
     input.decimalSeparator,
     input.currencyScale,
   );
+
   if (parsed === null) {
     diagnostics.push(
       blockingDiagnostic(
@@ -1186,14 +1388,17 @@ function recordFindings(
       ),
     );
   }
+
   const amount = input.sign === "outflow_positive" && parsed !== null ? -parsed : parsed;
   const providerId = indices.provider === null ? null : (record.fields[indices.provider] ?? null);
+
   const taken =
     indices.provider !== null &&
     (providerId === null ||
       providerId.length < 1 ||
       providerId.length > 200 ||
       existing.has(providerId));
+
   if (taken) {
     diagnostics.push(
       blockingDiagnostic(
@@ -1205,7 +1410,9 @@ function recordFindings(
       ),
     );
   }
+
   if (diagnostics.length > 0 || amount === null || date === null) return { diagnostics, row: null };
+
   return {
     diagnostics,
     row: {
@@ -1230,8 +1437,10 @@ function interpretCsv(
     const diagnostics: Array<JsonObject> = parse.failure
       ? [blockingDiagnostic(parse.failure.code, parse.failure.message)]
       : [];
+
     const rows: Array<JsonObject> = [];
     let total = 0n;
+
     if (parse.records.length === 0) {
       if (parse.structuralComplete) {
         diagnostics.push(
@@ -1242,6 +1451,7 @@ function interpretCsv(
       const headers = parse.records[0]?.fields ?? [];
       const found = headerFindings(parse.records, input);
       diagnostics.push(...found.diagnostics);
+
       if (found.indices !== null) {
         const existing = new Set(
           (yield* Work.readRetainedProviderIds(
@@ -1251,18 +1461,22 @@ function interpretCsv(
             parse.records.flatMap((record) => record.fields),
           )).map((row) => row.providerId),
         );
+
         for (const record of parse.records) {
           if (record.recordOrdinal <= 1) continue;
           const findings = recordFindings(record, headers, input, found.indices, existing);
           diagnostics.push(...findings.diagnostics);
+
           if (findings.row === null) continue;
           const providerId = textField(findings.row, "providerId");
+
           if (providerId !== null) existing.add(providerId);
           rows.push(findings.row);
           total += BigInt(textField(findings.row, "amountMinor") ?? "0");
         }
       }
     }
+
     const statement = yield* buildStatement(
       transaction,
       scope,
@@ -1272,6 +1486,7 @@ function interpretCsv(
       total,
       diagnostics,
     );
+
     return yield* toJsonObject({
       structuralComplete: parse.structuralComplete,
       hasBom: parse.hasBom,
@@ -1300,6 +1515,7 @@ function buildStatement(
     const candidates = rows
       .map((row) => textField(row, "providerId"))
       .filter((value): value is string => value !== null);
+
     const context = (yield* Work.readInterpretationContext(
       transaction,
       scope.bookId,
@@ -1311,6 +1527,7 @@ function buildStatement(
       input.endsOn,
       candidates,
     ))[0];
+
     const gates: ReadonlyArray<readonly [boolean, string, string]> = [
       [
         context === undefined || !context.accountReady,
@@ -1338,9 +1555,11 @@ function buildStatement(
         "Declared opening plus all valid movements does not equal declared closing. Invalid records also block admission.",
       ],
     ];
+
     for (const [blocked, code, message] of gates) {
       if (blocked) diagnostics.push(blockingDiagnostic(code, message));
     }
+
     const statement = yield* toJsonObject({
       kind: "synthetic_bank_statement_v1",
       statementIdentifier: occurrence.id,
@@ -1354,7 +1573,9 @@ function buildStatement(
       completeness: input.completeness,
       rows,
     });
+
     const sealed = yield* canonicalJson(statement);
+
     if (
       sealed.json.length > statementCharacterBound ||
       sealed.bytes.byteLength > statementByteBound
@@ -1366,6 +1587,7 @@ function buildStatement(
         ),
       );
     }
+
     return { statement };
   });
 }
@@ -1388,38 +1610,50 @@ function interpretPreview(
       yield* toJsonObject({ occurrenceId, mapping: input }),
       PreviewSchema,
     );
+
     if (request.previous) return request.previous;
     yield* requireTables(transaction, previewTables, ["intake_previews", "command_receipts"]);
     const occurrence = (yield* Work.readOccurrence(transaction, scope.bookId, occurrenceId))[0];
+
     if (!occurrence) return yield* failure("NotFound");
     const byteLength = Number(textField(occurrence.body, "byteLength"));
+
     if (textField(occurrence.body, "mediaType") !== "text/csv" || byteLength > csvByteBound) {
       return yield* unsupported();
     }
+
     if ((yield* Work.readAdmission(transaction, scope.bookId, occurrenceId)).length > 0) {
       return yield* failure("IdempotencyConflict");
     }
+
     const ordinal = (yield* Work.readNextPreviewOrdinal(transaction, scope.bookId, occurrenceId))[0]
       ?.ordinal;
+
     if (ordinal === undefined) return yield* failure("InternalError");
+
     if (ordinal > previewOrdinalBound) return yield* failure("InvalidJournal");
+
     const content = (yield* Work.readInlineContent(
       transaction,
       scope.bookId,
       occurrence.sha256,
     ))[0];
+
     if (!content || content.bytes === null) return yield* unsupported();
     const mapping = yield* toJsonObject(input);
     yield* requireMapping(mapping, input);
+
     const versions = (yield* Work.readDependencyVersions(
       transaction,
       scope.bookId,
       input.accountId,
     ))[0];
+
     if (!versions) return yield* failure("NotFound");
     const parse = parseCsvRecords(content.bytes, input.delimiter, input.lineEnding);
     const interpretation = yield* interpretCsv(transaction, scope, occurrence, input, parse);
     const id = newId("preview");
+
     const body = yield* toJsonObject({
       ...interpretation,
       id,
@@ -1432,11 +1666,13 @@ function interpretPreview(
       createdBy: principal.actorId,
       createdAt: yield* isoNow(transaction),
     });
+
     const sealed = yield* toJsonObject({
       ...body,
       digest: yield* digest(withoutFields(body, ["digest", "receipt"])),
       receipt: { key: idempotencyKey, operation: "preview_source_csv", actorId: principal.actorId },
     });
+
     yield* Work.insertPreview(transaction, {
       bookId: scope.bookId,
       id,
@@ -1454,6 +1690,7 @@ function interpretPreview(
       principal.actorId,
       result,
     );
+
     return result;
   });
 }
@@ -1461,13 +1698,16 @@ function interpretPreview(
 function requireMapping(mapping: JsonObject, input: CsvMapping) {
   const declared = Object.keys(mapping).sort();
   const expected = [...mappingKeys].sort();
+
   if (
     declared.length !== expected.length ||
     declared.some((key, index) => key !== expected[index])
   ) {
     return failure("InvalidJournal");
   }
+
   if (input.startsOn > input.endsOn) return failure("InvalidJournal");
+
   return Effect.void;
 }
 
@@ -1502,6 +1742,7 @@ export const reparseSourceCsv = Effect.fn("evidenceWork.reparseCsv")(function* (
         yield* toJsonObject({ previewId: command.previewId, input: command.input }),
         ReparseSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireTables(transaction, previewTables, [
         "intake_previews",
@@ -1509,28 +1750,34 @@ export const reparseSourceCsv = Effect.fn("evidenceWork.reparseCsv")(function* (
         "command_receipts",
       ]);
       yield* exactKeys(yield* toJsonObject(command.input), reparseInputKeys);
+
       const preview = (yield* Work.readPreview(
         transaction,
         command.scope.bookId,
         command.previewId,
         "update",
       ))[0];
+
       if (!preview) return yield* failure("NotFound");
+
       if (command.input.digest !== textField(preview.body, "digest")) {
         return yield* failure("StaleDependency");
       }
+
       if (
         (yield* Work.readAdmission(transaction, command.scope.bookId, preview.occurrenceId))
           .length > 0
       ) {
         return yield* failure("IdempotencyConflict");
       }
+
       if (
         (yield* Work.readSupersedingPreviewId(transaction, command.scope.bookId, command.previewId))
           .length > 0
       ) {
         return yield* failure("StaleDependency");
       }
+
       const replacement = yield* interpretPreview(
         transaction,
         principal,
@@ -1539,6 +1786,7 @@ export const reparseSourceCsv = Effect.fn("evidenceWork.reparseCsv")(function* (
         command.input.mapping,
         newId("intakereparse"),
       );
+
       const supersession = yield* decode(
         SupersessionSchema,
         yield* toJsonObject({
@@ -1557,6 +1805,7 @@ export const reparseSourceCsv = Effect.fn("evidenceWork.reparseCsv")(function* (
           },
         }),
       );
+
       yield* Work.insertSupersession(transaction, {
         bookId: command.scope.bookId,
         previousPreviewId: preview.id,
@@ -1573,6 +1822,7 @@ export const reparseSourceCsv = Effect.fn("evidenceWork.reparseCsv")(function* (
         principal.actorId,
         result,
       );
+
       return result;
     }),
   );
@@ -1593,28 +1843,34 @@ export const admitSourcePreview = Effect.fn("evidenceWork.admitPreview")(functio
         yield* toJsonObject({ previewId: command.previewId, input: command.input }),
         AdmissionSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireTables(transaction, previewTables, [
         "intake_admissions",
         "command_receipts",
         "evidence",
       ]);
+
       const preview = (yield* Work.readPreview(
         transaction,
         command.scope.bookId,
         command.previewId,
         "update",
       ))[0];
+
       if (!preview) return yield* failure("NotFound");
       const digestValue = textField(preview.body, "digest");
+
       if (command.input.digest !== digestValue || command.input.version !== 1) {
         return yield* failure("ApprovalRequired");
       }
+
       const existing = (yield* Work.readAdmission(
         transaction,
         command.scope.bookId,
         preview.occurrenceId,
       ))[0];
+
       if (existing) {
         if (
           existing.previewId !== command.previewId ||
@@ -1622,6 +1878,7 @@ export const admitSourcePreview = Effect.fn("evidenceWork.admitPreview")(functio
         ) {
           return yield* failure("IdempotencyConflict");
         }
+
         const admitted = yield* decode(AdmissionSchema, existing.body);
         yield* saveCommand(
           transaction,
@@ -1632,8 +1889,10 @@ export const admitSourcePreview = Effect.fn("evidenceWork.admitPreview")(functio
           principal.actorId,
           admitted,
         );
+
         return admitted;
       }
+
       const approval = (yield* Work.readApproval(
         transaction,
         command.scope.bookId,
@@ -1641,6 +1900,7 @@ export const admitSourcePreview = Effect.fn("evidenceWork.admitPreview")(functio
         command.previewId,
         principal.actorId,
       ))[0];
+
       if (
         !approval ||
         approval.expiredAtCapture ||
@@ -1648,17 +1908,23 @@ export const admitSourcePreview = Effect.fn("evidenceWork.admitPreview")(functio
       ) {
         return yield* failure("ApprovalRequired");
       }
+
       const statement = field(preview.body, "statement");
+
       if (preview.body.ready !== true || statement === null) {
         return yield* failure("InvalidJournal");
       }
+
       if (!(yield* previewIsCurrent(transaction, command.scope.bookId, preview))) {
         return yield* failure("StaleDependency");
       }
+
       const internal = `intake_${preview.occurrenceId}`;
       const sourceSha256 = textField(preview.body, "sourceSha256");
+
       if (!isJsonObject(statement)) return yield* failure("InvalidJournal");
       const statementText = (yield* canonicalJson(statement)).json;
+
       const evidence = yield* createEvidenceInTransaction(transaction, principal, {
         scope: command.scope,
         idempotencyKey: `${internal}_evidence`,
@@ -1669,6 +1935,7 @@ export const admitSourcePreview = Effect.fn("evidenceWork.admitPreview")(functio
           origin: `Retained source ${preview.occurrenceId}; preview ${command.previewId}; ${sourceSha256 ?? ""}`,
         },
       });
+
       const imported = yield* admitReviewedStatement(
         transaction,
         command.scope,
@@ -1680,6 +1947,7 @@ export const admitSourcePreview = Effect.fn("evidenceWork.admitPreview")(functio
           existingMatches: [],
         },
       );
+
       const body = yield* toJsonObject({
         occurrenceId: preview.occurrenceId,
         previewId: command.previewId,
@@ -1693,6 +1961,7 @@ export const admitSourcePreview = Effect.fn("evidenceWork.admitPreview")(functio
           actorId: principal.actorId,
         },
       });
+
       yield* Work.insertAdmission(transaction, {
         bookId: command.scope.bookId,
         occurrenceId: preview.occurrenceId,
@@ -1710,6 +1979,7 @@ export const admitSourcePreview = Effect.fn("evidenceWork.admitPreview")(functio
         principal.actorId,
         result,
       );
+
       return result;
     }),
   );
@@ -1730,48 +2000,61 @@ export const activateRecurringRule = Effect.fn("evidenceWork.activateRule")(func
         yield* toJsonObject(command.input),
         ActivationSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireRecurringAccess(transaction, ["recurring_activations", "command_receipts"]);
+
       const rule = (yield* Work.readRule(
         transaction,
         command.scope.bookId,
         command.input.ruleId,
       ))[0];
+
       if (!rule) return yield* failure("NotFound");
+
       const simulation = (yield* Work.readSimulation(
         transaction,
         command.scope.bookId,
         command.input.simulationId,
         command.input.ruleId,
       ))[0];
+
       if (!simulation) return yield* failure("NotFound");
+
       if (
         textField(rule.body, "digest") !== command.input.ruleDigest ||
         textField(simulation.body, "digest") !== command.input.simulationDigest
       ) {
         return yield* failure("StaleDependency");
       }
+
       const current = (yield* Work.readCurrentSelection(
         transaction,
         command.scope.bookId,
         rule.body,
         simulation.body,
       ))[0];
+
       if (!current || current.stale) return yield* failure("StaleDependency");
       const selection = yield* decode(SelectionSchema, current.selection);
+
       if (selection.blockers.length > 0 || selection.matchingCount === 0) {
         return yield* failure("InvalidJournal");
       }
+
       if (selection.matchingCount > maxSelectedObservations) {
         return yield* failure("InvalidJournal");
       }
+
       if (
         (yield* Work.readActiveActivation(transaction, command.scope.bookId, command.input.ruleId))
           .length > 0
       ) {
         return yield* failure("InvalidJournal");
       }
+
       const id = newId("activation");
+
       const body = yield* toJsonObject({
         ...command.input,
         id,
@@ -1784,6 +2067,7 @@ export const activateRecurringRule = Effect.fn("evidenceWork.activateRule")(func
           actorId: principal.actorId,
         },
       });
+
       yield* Work.insertActivation(transaction, {
         bookId: command.scope.bookId,
         id,
@@ -1801,6 +2085,7 @@ export const activateRecurringRule = Effect.fn("evidenceWork.activateRule")(func
         principal.actorId,
         result,
       );
+
       return result;
     }),
   );
@@ -1815,15 +2100,19 @@ export const getSourcePurchaseLinks = Effect.fn("evidenceWork.getPurchaseLinks")
       yield* requireTables(transaction, purchaseTables);
       const bookId = command.scope.bookId;
       const occurrence = (yield* Work.readOccurrence(transaction, bookId, command.occurrenceId))[0];
+
       if (!occurrence) return yield* failure("NotFound");
       const drafts = (yield* Work.countSupplierInvoiceDrafts(transaction, bookId))[0]?.total ?? 0;
       const expenses = (yield* Work.countExpenseTaxSources(transaction, bookId))[0]?.total ?? 0;
+
       if (drafts > 200 || expenses > 200) return yield* unsupported();
+
       const linkedDrafts = yield* Work.readLinkedDraftRevisions(
         transaction,
         bookId,
         command.occurrenceId,
       );
+
       const draftIds = [
         ...new Set(
           linkedDrafts
@@ -1833,17 +2122,20 @@ export const getSourcePurchaseLinks = Effect.fn("evidenceWork.getPurchaseLinks")
             .map((row) => row.draftId),
         ),
       ].sort();
+
       const currentDrafts = yield* Work.readDraftCurrentRevisions(
         transaction,
         bookId,
         draftIds,
         command.occurrenceId,
       );
+
       const linkedExpenses = yield* Work.readLinkedExpenseRevisions(
         transaction,
         bookId,
         command.occurrenceId,
       );
+
       const sourceIds = [
         ...new Set(
           linkedExpenses
@@ -1853,12 +2145,14 @@ export const getSourcePurchaseLinks = Effect.fn("evidenceWork.getPurchaseLinks")
             .map((row) => row.sourceId),
         ),
       ].sort();
+
       const currentExpenses = yield* Work.readExpenseCurrentRevisions(
         transaction,
         bookId,
         sourceIds,
         command.occurrenceId,
       );
+
       return yield* decode(PurchaseLinksSchema, {
         scope: command.scope,
         occurrenceId: command.occurrenceId,
@@ -1894,6 +2188,7 @@ export const deactivateRecurringRule = Effect.fn("evidenceWork.deactivateRule")(
         "recurring_deactivations",
         "command_receipts",
       ]);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -1903,18 +2198,23 @@ export const deactivateRecurringRule = Effect.fn("evidenceWork.deactivateRule")(
         command.input,
         RuleDeactivationSchema,
       );
+
       if (request.previous) return request.previous;
+
       const activation = (yield* Work.readActivation(
         transaction,
         command.scope.bookId,
         command.input.activationId,
       ))[0];
+
       if (!activation) return yield* failure("NotFound");
+
       const existing = (yield* Work.readDeactivation(
         transaction,
         command.scope.bookId,
         command.input.activationId,
       ))[0];
+
       const body =
         existing?.body ??
         ({
@@ -1927,6 +2227,7 @@ export const deactivateRecurringRule = Effect.fn("evidenceWork.deactivateRule")(
             actorId: principal.actorId,
           },
         } satisfies JsonObject);
+
       if (!existing) {
         yield* Work.insertDeactivation(transaction, {
           bookId: command.scope.bookId,
@@ -1934,6 +2235,7 @@ export const deactivateRecurringRule = Effect.fn("evidenceWork.deactivateRule")(
           body,
         });
       }
+
       const result = yield* decode(RuleDeactivationSchema, body);
       yield* saveCommand(
         transaction,
@@ -1944,6 +2246,7 @@ export const deactivateRecurringRule = Effect.fn("evidenceWork.deactivateRule")(
         principal.actorId,
         result,
       );
+
       return result;
     }),
   );
@@ -1953,11 +2256,14 @@ export const readDeadlineFeedEvents = Effect.fn("evidenceWork.deadlineFeedEvents
   secret: string,
 ) {
   const tokenHash = yield* sha256Hex(secret);
+
   return yield* withTransaction((transaction) =>
     Effect.gen(function* () {
       const feed = (yield* Work.readFeedByTokenHash(transaction, tokenHash))[0];
+
       if (!feed) return yield* failure("Forbidden");
       const events = yield* Work.listFeedDeadlines(transaction, feed.bookId);
+
       return yield* decode(FeedEventsSchema, {
         bookId: feed.bookId,
         events: events.map((row) => ({

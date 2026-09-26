@@ -151,6 +151,7 @@ const en = {
   reviewSnapshot: "Complete legal review, approval, blocker and state record",
   issueSnapshot: "Complete immutable legal issue receipt",
 };
+
 const sv: typeof en = {
   title: "Granska faktura",
   boundary:
@@ -303,6 +304,7 @@ const sv: typeof en = {
   reviewSnapshot: "Fullständig juridisk granskning, godkännande, hinder och tillstånd",
   issueSnapshot: "Fullständigt oföränderligt kvitto för juridisk utfärdande",
 };
+
 export function invoiceIssueCopy(locale: Locale) {
   return locale === "sv" ? sv : en;
 }

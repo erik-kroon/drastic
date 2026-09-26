@@ -36,22 +36,27 @@ export function CorrectionReview({
   const keys = useRef(new Map<string, string>());
   const [confirmed, setConfirmed] = useState(false);
   const base = `${bookPath(book)}/correction-bundles/${encodeURIComponent(id)}`;
+
   const view = useQuery({
     queryKey: [...bookKey(book), "correction-bundle", id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(base, Corrections.CorrectionBundleView, { signal });
+
       if (
         result.bundle.id !== id ||
         result.bundle.scope.bookId !== book.id ||
         result.bundle.scope.entityId !== book.entityId
       )
         throw new Error("Response scope mismatch");
+
       return result;
     },
     retry: false,
   });
+
   const [requestKey, setRequestKey] = useState("");
   const impactId = view.data?.bundle.impactReview?.id;
+
   const impact = useQuery({
     queryKey: [...bookKey(book), "correction-impact", impactId],
     queryFn: ({ signal }) =>
@@ -63,24 +68,28 @@ export function CorrectionReview({
     enabled: !!impactId,
     retry: false,
   });
+
   const approval = useMutation({
     mutationFn: (bundle: typeof Corrections.CorrectionBundle.Type) => {
       const path = `${base}/approvals`;
       const body = JSON.stringify({ bundleDigest: bundle.bundleDigest, version: bundle.version });
       const options = mutationOptions(path, body, keys.current);
       setRequestKey(keys.current.get(`${path}:${body}`) ?? "");
+
       return readAccounting(path, Corrections.CorrectionBundleApproval, options);
     },
     onSuccess: () => {
       void view.refetch();
     },
   });
+
   const execution = useMutation({
     mutationFn: (input: typeof Corrections.ExecuteCorrectionBundle.Type) => {
       const path = `${base}/execute`;
       const body = JSON.stringify(input);
       const options = mutationOptions(path, body, keys.current);
       setRequestKey(keys.current.get(`${path}:${body}`) ?? "");
+
       return readAccounting(path, Corrections.CorrectionBundleReceipt, options);
     },
     onSuccess: () => {
@@ -88,16 +97,21 @@ export function CorrectionReview({
       void client.invalidateQueries({ queryKey: booksKey });
     },
   });
+
   const bundle = view.data?.bundle;
   const currentApproval = view.data?.approval;
   const receipt = execution.data ?? view.data?.receipt;
+
   const busy = [approval.isPending, execution.isPending, view.isFetching, impact.isFetching].some(
     Boolean,
   );
+
   const impactBlocked =
     !!impactId && (!impact.data?.snapshotCurrent || impact.data.impact.basis.blockers.length > 0);
+
   const expired = currentApproval ? Date.parse(currentApproval.expiresAt) <= Date.now() : false;
   const stale = requiresNewProposal(approval.error) || requiresNewProposal(execution.error);
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.review}</Heading>
@@ -110,6 +124,7 @@ export function CorrectionReview({
           disabled={busy}
           onClick={() => {
             void view.refetch();
+
             if (impactId) void impact.refetch();
           }}
         >
@@ -271,8 +286,10 @@ export function CorrectionReview({
                           bundleDigest: bundle.bundleDigest,
                           version: bundle.version,
                         });
+
                         keys.current.delete(`${base}/approvals:${body}`);
                       }
+
                       approval.mutate(bundle);
                     }}
                   >
@@ -317,7 +334,9 @@ function SavedImpactReview(props: {
 }) {
   const { book, locale, impact } = props;
   const copy = correctionCopy(locale);
+
   if (!props.reference) return <Text tone="muted">{copy.missingImpact}</Text>;
+
   return (
     <>
       <AccountingStatus locale={locale} pending={impact.isPending} error={impact.error} />

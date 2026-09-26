@@ -17,8 +17,10 @@ import { Details, type CommerceProps } from "./shared";
 export function CommercePanel(props: CommerceProps) {
   return <CommerceWorkspace key={`${props.book.entityId}:${props.book.id}`} {...props} />;
 }
+
 function CommerceWorkspace(props: CommerceProps) {
   const copy = commerceCopy(props.locale);
+
   return (
     <Box display="grid" gap="xl" minWidth="zero">
       <Heading>{copy.title}</Heading>

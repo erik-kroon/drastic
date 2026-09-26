@@ -13,6 +13,7 @@ export function PreparationSelection({
   locale: Locale;
 }) {
   const copy = accountingCopy(locale);
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Text>

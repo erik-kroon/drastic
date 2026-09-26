@@ -32,6 +32,7 @@ export function ScheduleForm(props: {
   const policyId = useId();
   const [sourceKey] = useState(() => current?.sourceKey ?? `schedule_${crypto.randomUUID()}`);
   const [count, setCount] = useState(terms?.usefulPeriods ?? 1);
+
   const accounts = [
     { value: "", label: labels.chooseAccount },
     ...setup.accounts.map((account) => ({
@@ -40,6 +41,7 @@ export function ScheduleForm(props: {
       disabled: !account.active,
     })),
   ];
+
   const periods = [
     { value: "", label: labels.choosePeriod },
     ...setup.periods.map((period) => ({
@@ -48,8 +50,10 @@ export function ScheduleForm(props: {
       disabled: period.locked,
     })),
   ];
+
   if (scale === undefined || metadata.isError)
     return <AccountingStatus locale={locale} pending={metadata.isPending} error={metadata.error} />;
+
   return (
     <EvidenceCommandForm
       book={book}
@@ -96,6 +100,7 @@ export function ScheduleForm(props: {
             accountingPeriodId: fields.get(`period_${index}`),
           })),
         };
+
         return current
           ? { expectedDigest: current.digest, terms: nextTerms }
           : { sourceKey, terms: nextTerms };
@@ -248,6 +253,7 @@ export function ScheduleForm(props: {
     </EvidenceCommandForm>
   );
 }
+
 const english = {
   chooseAccount: "Choose account",
   choosePeriod: "Choose accounting period",
@@ -265,6 +271,7 @@ const english = {
   evidenceHelp:
     "Use an existing retained evidence reference if this schedule is based on it. Otherwise, your entered details and assessment are retained as its source; they do not establish that original documents are complete.",
 };
+
 const swedish: typeof english = {
   chooseAccount: "Välj konto",
   choosePeriod: "Välj bokföringsperiod",
@@ -284,5 +291,6 @@ const swedish: typeof english = {
 
 function fieldText(fields: FormData, name: string) {
   const value = fields.get(name);
+
   return typeof value === "string" ? value : "";
 }

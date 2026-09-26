@@ -1,3 +1,4 @@
+import { admitPosting } from "../posting-admission";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Vat from "@open-erp/contracts/vat-returns";
 import { canonicalizeJson } from "@open-erp/domain/canonicalization";
@@ -8,45 +9,81 @@ import * as Db from "../../db/posting";
 import { databaseFailure, type Transaction } from "../../db/transaction";
 import * as ReclassDb from "../../db/vat/reclassification";
 import * as VatDb from "../../db/vat/returns";
-import { decode, toJsonObject, unsupported, type JsonObject, type Principal, type Scope } from "../commerce/support";
+import {
+  decode,
+  toJsonObject,
+  unsupported,
+  type JsonObject,
+  type Principal,
+  type Scope,
+} from "../commerce/support";
 import { failure } from "../failures";
 import { withAdmittedPrincipal, type AuthorityLockMode } from "../identity";
 import { isoNow, newId, replay, saveCommand } from "../posting";
 import { digestBody, digestValue, readCurrentFactObservations } from "./basis";
 
 type ReclassificationInput = typeof Vat.PrepareVatControlReclassification.Type;
+
 type Draft = typeof Vat.VatDraft.Type;
+
 type Observation = typeof Vat.VatFactObservation.Type;
+
 type Assessment = typeof Vat.VatAssessment.Type;
+
 type Contribution = typeof Vat.VatControlContribution.Type;
+
 type Action = typeof Accounting.VoucherPostingAction.Type;
+
 type VatRole = "output_vat_control" | "input_vat_control";
+
 type ControlRole = VatRole | "vat_settlement_control";
 
 const BasisSchema = Vat.VatControlReclassificationBasis;
+
 const ReviewSchema = Vat.VatControlReclassificationReview;
+
 const DomainApprovalSchema = Vat.VatControlReclassificationApproval;
+
 const EffectSchema = Vat.VatControlReclassificationEffect;
+
 const ViewSchema = Vat.VatControlReclassificationView;
+
 const ListSchema = Vat.VatControlReclassificationList;
+
 const ActionSchema = Accounting.VoucherPostingAction;
+
 const PlanSchema = Accounting.ChangeSet;
+
 const ReceiptSchema = Accounting.ExecutionReceipt;
+
 const GroupReceiptSchema = Accounting.GroupReceipt;
+
 const KernelApprovalSchema = Accounting.Approval;
 
 const profileName = "vat_control_reclassification_v1";
+
 const profileVersion = "1";
+
 const scheme = "synthetic_output_input_v1";
+
 const registrationId = "synthetic_registration";
+
 const reviewBound = 500;
+
 const obligationReviewBound = 20;
+
 const profileBound = 20;
+
 const obligationBound = 200;
+
 const approvalBound = 20;
+
 const contributionBound = 500;
+
 const contributionInventoryBound = 5000;
+
 const postingLineBound = 500;
+
 const approvalLifetimeMs = 60 * 60 * 1000;
 
 const roleBindings: ReadonlyArray<{
@@ -90,22 +127,27 @@ function withVatBook<A>(
 function sameJson(left: Schema.Json, right: Schema.Json) {
   const first = canonicalizeJson(left);
   const second = canonicalizeJson(right);
+
   if (Result.isFailure(first) || Result.isFailure(second)) return false;
+
   return first.success.json === second.success.json;
 }
 
-function shortDigest(transaction: Transaction, value: JsonObject) {
-  return digestValue(transaction, value).pipe(Effect.map((digest) => digest.slice(8, 40)));
+function shortDigest(value: JsonObject) {
+  return digestValue(value).pipe(Effect.map((digest) => digest.slice(8, 40)));
 }
 
 function requireReclassificationAccess(transaction: Transaction, write: boolean) {
   return VatDb.readReclassificationAccess(transaction).pipe(
     Effect.flatMap((rows) => {
       if (rows.length !== VatDb.reclassificationTables.length) return unsupported();
+
       const denied = rows.some((row) => {
         if (!row.canSelect) return true;
+
         return write && writableTables.has(row.tableName) && !row.canInsert;
       });
+
       return denied ? unsupported() : Effect.void;
     }),
   );
@@ -117,6 +159,7 @@ function withinInterval(value: string | null, startsOn: string, endsOn: string) 
 
 function isCalendarDate(value: string) {
   const parsed = Date.parse(`${value}T00:00:00.000Z`);
+
   return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === value;
 }
 
@@ -126,6 +169,7 @@ function minor(value: string) {
 
 function textField(value: JsonObject, key: string) {
   const found = value[key];
+
   return typeof found === "string" ? found : null;
 }
 
@@ -138,22 +182,31 @@ function readControlAccounts(
   return Effect.gen(function* () {
     const roleEvidence = yield* Db.readEvidence(transaction, scope.bookId, input.roleEvidenceId);
     const roleSha = roleEvidence[0]?.sha256;
+
     if (roleSha === undefined) return yield* failure("MissingEvidence");
     const selected = [input.outputAccountId, input.inputAccountId, input.settlementAccountId];
+
     if (new Set(selected).size !== selected.length) return yield* failure("InvalidJournal");
     const accounts = yield* ReclassDb.readAccountStateRows(transaction, scope.bookId, selected);
+
     if (accounts.length !== selected.length || accounts.some((account) => !account.active)) {
       return yield* failure("StaleDependency");
     }
-    if ((yield* ReclassDb.readAccountRoleConflicts(transaction, scope.bookId, selected))[0]?.conflict) {
+
+    if (
+      (yield* ReclassDb.readAccountRoleConflicts(transaction, scope.bookId, selected))[0]?.conflict
+    ) {
       return yield* failure("InvalidJournal");
     }
+
     if (
       (yield* ReclassDb.readRetainedAccountOwners(transaction, scope.bookId, selected))[0]?.conflict
     ) {
       return yield* failure("InvalidJournal");
     }
+
     const states = new Map(accounts.map((account) => [account.id, account]));
+
     const accountRoles: Array<{
       readonly role: ControlRole;
       readonly accountId: string;
@@ -162,8 +215,10 @@ function readControlAccounts(
       readonly name: string;
       readonly active: boolean;
     }> = [];
+
     for (const binding of roleBindings) {
       const account = states.get(input[binding.key]);
+
       if (account === undefined) return yield* failure("StaleDependency");
       accountRoles.push({
         role: binding.role,
@@ -174,29 +229,38 @@ function readControlAccounts(
         active: account.active,
       });
     }
-    const identity = yield* digestValue(transaction, {
+
+    const identity = yield* digestValue({
       profile: profileName,
       profileVersion,
       roleEvidenceId: input.roleEvidenceId,
       accountRoles,
     });
+
     const existing = (yield* VatDb.readControlProfile(transaction, scope.bookId, identity))[0];
+
     if (existing === undefined && !create) return yield* failure("StaleDependency");
+
     if (existing !== undefined) {
       const retained = yield* VatDb.readControlAccountRoles(transaction, scope.bookId, existing.id);
+
       if (!sameJson(retained, accountRoles)) {
         return yield* failure("StaleDependency");
       }
+
       return {
         profileId: existing.id,
         profile: yield* decode(BasisSchema.fields.profile, existing.body),
         accountRoles,
       };
     }
+
     const count = yield* VatDb.countRows(transaction, "vat_control_profiles", scope.bookId);
+
     if ((count[0]?.total ?? 0) >= profileBound) return yield* unsupported();
     const profileId = newId("vatprofile");
-    const body = yield* digestBody(transaction, {
+
+    const body = yield* digestBody({
       id: profileId,
       profile: profileName,
       profileVersion,
@@ -204,6 +268,7 @@ function readControlAccounts(
       scheme,
       evidenceSha256: roleSha,
     });
+
     yield* VatDb.insertControlProfile(transaction, {
       bookId: scope.bookId,
       id: profileId,
@@ -224,6 +289,7 @@ function readControlAccounts(
         active: binding.active,
       })),
     );
+
     return {
       profileId,
       profile: yield* decode(BasisSchema.fields.profile, body),
@@ -232,29 +298,31 @@ function readControlAccounts(
   });
 }
 
-function readObligation(
-  transaction: Transaction,
-  scope: Scope,
-  draft: Draft,
-  create: boolean,
-) {
+function readObligation(transaction: Transaction, scope: Scope, draft: Draft, create: boolean) {
   return Effect.gen(function* () {
     let periodEvidenceSha256: string | null = null;
+
     if (draft.input.periodEvidenceId !== null) {
-      const evidence = yield* Db.readEvidence(transaction, scope.bookId, draft.input.periodEvidenceId);
+      const evidence = yield* Db.readEvidence(
+        transaction,
+        scope.bookId,
+        draft.input.periodEvidenceId,
+      );
+
       periodEvidenceSha256 = evidence[0]?.sha256 ?? null;
+
       if (periodEvidenceSha256 === null || periodEvidenceSha256 !== draft.periodEvidenceSha256) {
         return yield* failure("StaleDependency");
       }
     }
-    const existing = (
-      yield* VatDb.readReportingObligation(
-        transaction,
-        scope.bookId,
-        draft.input.startsOn,
-        draft.input.endsOn,
-      )
-    )[0];
+
+    const existing = (yield* VatDb.readReportingObligation(
+      transaction,
+      scope.bookId,
+      draft.input.startsOn,
+      draft.input.endsOn,
+    ))[0];
+
     if (existing !== undefined) {
       if (
         existing.periodEvidenceSha256 !== periodEvidenceSha256 ||
@@ -262,13 +330,17 @@ function readObligation(
       ) {
         return yield* failure("StaleDependency");
       }
+
       return yield* decode(BasisSchema.fields.obligation, existing.body);
     }
+
     if (!create) return yield* failure("StaleDependency");
     const count = yield* VatDb.countRows(transaction, "vat_reporting_obligations", scope.bookId);
+
     if ((count[0]?.total ?? 0) >= obligationBound) return yield* unsupported();
     const id = newId("vatobligation");
-    const body = yield* digestBody(transaction, {
+
+    const body = yield* digestBody({
       id,
       registrationNamespace: "synthetic",
       registrationId,
@@ -278,6 +350,7 @@ function readObligation(
       endsOn: draft.input.endsOn,
       periodEvidenceId: draft.input.periodEvidenceId,
     });
+
     yield* VatDb.insertReportingObligation(transaction, {
       bookId: scope.bookId,
       id,
@@ -288,22 +361,22 @@ function readObligation(
       body,
       digest: textField(body, "digest") ?? "",
     });
+
     return yield* decode(BasisSchema.fields.obligation, body);
   });
 }
 
-function readSelectedDraft(
-  transaction: Transaction,
-  scope: Scope,
-  input: ReclassificationInput,
-) {
+function readSelectedDraft(transaction: Transaction, scope: Scope, input: ReclassificationInput) {
   return Effect.gen(function* () {
     const row = (yield* VatDb.readRetainedDraft(transaction, scope.bookId, input.draftId))[0];
+
     if (row === undefined) return yield* failure("NotFound");
     const draft = yield* decode(Vat.VatDraft, row.body);
+
     if (draft.digest !== input.expectedDraftDigest || !sameJson(draft.scope, scope)) {
       return yield* failure("StaleDependency");
     }
+
     if (
       draft.input.mode !== "synthetic_demonstration" ||
       draft.input.otherBoxes !== "absent_in_synthetic_example" ||
@@ -315,6 +388,7 @@ function readSelectedDraft(
     ) {
       return yield* unsupported();
     }
+
     return draft;
   });
 }
@@ -322,6 +396,7 @@ function readSelectedDraft(
 function requireCompleteLineage(draft: Draft) {
   const facts = draft.basis.facts;
   const assessments = draft.calculation.assessments;
+
   if (
     facts.length > 200 ||
     facts.length !== assessments.length ||
@@ -330,8 +405,10 @@ function requireCompleteLineage(draft: Draft) {
   ) {
     return unsupported();
   }
+
   for (const [index, observation] of facts.entries()) {
     const assessment = assessments[index];
+
     if (
       assessment === undefined ||
       assessment.factId !== observation.fact.factId ||
@@ -340,6 +417,7 @@ function requireCompleteLineage(draft: Draft) {
       return unsupported();
     }
   }
+
   return Effect.void;
 }
 
@@ -355,6 +433,7 @@ function requireIncludedAssessment(assessment: Assessment) {
   ) {
     return failure("StaleDependency");
   }
+
   return Effect.void;
 }
 
@@ -371,7 +450,9 @@ function requireMatchingContribution(
   facts: typeof Vat.VatFactInput.Type,
 ) {
   const contribution = assessment.contribution;
+
   if (contribution === null) return failure("StaleDependency");
+
   const matches =
     role === "output_vat_control"
       ? contribution.box05Minor === facts.netMinor &&
@@ -380,11 +461,13 @@ function requireMatchingContribution(
       : contribution.box05Minor === "0" &&
         contribution.box10Minor === "0" &&
         contribution.box48Minor === facts.vatMinor;
+
   return matches ? Effect.void : failure("StaleDependency");
 }
 
 function requirePostedTaxLineBasis(observation: Observation, startsOn: string, endsOn: string) {
   const selected = observation.fact.input.taxLineIds;
+
   if (
     observation.fact.input.voucherId === null ||
     selected.length === 0 ||
@@ -399,6 +482,7 @@ function requirePostedTaxLineBasis(observation: Observation, startsOn: string, e
   ) {
     return failure("StaleDependency");
   }
+
   return Effect.void;
 }
 
@@ -421,18 +505,25 @@ function readRelevantFacts(
     const startsOn = draft.input.startsOn;
     const endsOn = draft.input.endsOn;
     const current = yield* readCurrentFactObservations(transaction, scope.bookId);
+
     const currentByFactId = new Map(
       current.map((observation) => [observation.fact.factId, observation]),
     );
+
     const relevant: Array<RelevantFact> = [];
+
     for (const [index, saved] of draft.basis.facts.entries()) {
       const assessment = draft.calculation.assessments[index];
+
       if (assessment === undefined) return yield* unsupported();
       const observed = currentByFactId.get(saved.fact.factId);
       const savedRelevant = withinInterval(saved.fact.input.taxPointOn, startsOn, endsOn);
+
       const currentRelevant =
         observed !== undefined && withinInterval(observed.fact.input.taxPointOn, startsOn, endsOn);
+
       if (!savedRelevant && !currentRelevant) continue;
+
       if (
         observed === undefined ||
         savedRelevant !== currentRelevant ||
@@ -440,16 +531,20 @@ function readRelevantFacts(
       ) {
         return yield* failure("StaleDependency");
       }
+
       yield* requireIncludedAssessment(assessment);
       const facts = saved.fact.input;
+
       if (
         facts.recordClass !== "synthetic" ||
         (facts.treatment !== "domestic_sale" && facts.treatment !== "domestic_purchase")
       ) {
         return yield* unsupported();
       }
+
       const role: VatRole =
         facts.treatment === "domestic_sale" ? "output_vat_control" : "input_vat_control";
+
       yield* requireExactSource(facts);
       yield* requireMatchingContribution(assessment, role, facts);
       yield* requirePostedTaxLineBasis(observed, startsOn, endsOn);
@@ -462,6 +557,7 @@ function readRelevantFacts(
         observation: observed,
       });
     }
+
     return { relevant, current, startsOn, endsOn };
   });
 }
@@ -479,15 +575,19 @@ function readContributions(
     const sourceStates: Array<JsonObject> = [];
     const pairs: Array<{ readonly voucherId: string; readonly lineId: string }> = [];
     let latestSourceDate = "";
+
     for (const item of relevant) {
       const voucherId = item.observation.fact.input.voucherId;
+
       if (voucherId === null) return yield* failure("StaleDependency");
       const voucher = (yield* ReclassDb.readSourceVoucher(transaction, scope.bookId, voucherId))[0];
+
       const corrections = yield* ReclassDb.readCorrectionVoucherIds(
         transaction,
         scope.bookId,
         voucherId,
       );
+
       if (
         voucher === undefined ||
         minor(voucher.sequence) > minor(committedSequence) ||
@@ -498,7 +598,9 @@ function readContributions(
       ) {
         return yield* failure("StaleDependency");
       }
+
       if (voucher.postingDate > latestSourceDate) latestSourceDate = voucher.postingDate;
+
       const collected = yield* readFactContributions(
         transaction,
         scope,
@@ -514,16 +616,22 @@ function readContributions(
         corrections.map((correction) => correction.id),
         contributions,
       );
+
       for (const entry of collected.contributions) contributions.push(entry);
+
       for (const state of collected.sourceStates) sourceStates.push(state);
+
       for (const pair of collected.pairs) pairs.push(pair);
     }
+
     if (pairs.length > 0) {
       const claims = yield* ReclassDb.readClaimedLineRows(transaction, scope.bookId, pairs);
+
       if (claims.length !== pairs.length || claims.some((claim) => claim.claimed)) {
         return yield* failure("InvalidJournal");
       }
     }
+
     return { contributions, sourceStates, latestSourceDate };
   });
 }
@@ -548,23 +656,33 @@ function readFactContributions(
     const contributions: Array<Contribution> = [];
     const sourceStates: Array<JsonObject> = [];
     let ledgerTax = 0n;
+
     const ordered = [...item.observation.taxLines].sort((left, right) =>
       left.id === right.id ? 0 : left.id < right.id ? -1 : 1,
     );
+
     for (const taxLine of ordered) {
-      const account = (
-        yield* ReclassDb.readAccountStateRows(transaction, scope.bookId, [taxLine.accountId])
-      )[0];
-      const line = (yield* ReclassDb.readSourceLine(transaction, scope.bookId, voucherId, taxLine.id))[0];
+      const account = (yield* ReclassDb.readAccountStateRows(transaction, scope.bookId, [
+        taxLine.accountId,
+      ]))[0];
+
+      const line = (yield* ReclassDb.readSourceLine(
+        transaction,
+        scope.bookId,
+        voucherId,
+        taxLine.id,
+      ))[0];
+
       if (account === undefined || line === undefined) return yield* failure("StaleDependency");
+
       if (!matchesTaxLineRole(item, line, account.active)) {
         return yield* failure("InvalidJournal");
       }
-      if (
-        existing.some((entry) => entry.voucherId === voucherId && entry.lineId === taxLine.id)
-      ) {
+
+      if (existing.some((entry) => entry.voucherId === voucherId && entry.lineId === taxLine.id)) {
         return yield* failure("InvalidJournal");
       }
+
       pairs.push({ voucherId, lineId: taxLine.id });
       const balance = minor(line.debitMinor) - minor(line.creditMinor);
       ledgerTax +=
@@ -608,12 +726,14 @@ function readFactContributions(
         correctionVoucherIds,
       });
     }
+
     if (
       ledgerTax !== minor(item.input.vatMinor) ||
       item.assessment.ledgerTaxMinor !== ledgerTax.toString()
     ) {
       return yield* failure("StaleDependency");
     }
+
     return { pairs, contributions, sourceStates };
   });
 }
@@ -626,7 +746,9 @@ function matchesTaxLineRole(
   if (line.accountId !== item.accountId || !accountActive) return false;
   const debit = minor(line.debitMinor);
   const credit = minor(line.creditMinor);
+
   if (item.role === "output_vat_control") return debit === 0n && credit > 0n;
+
   return debit > 0n && credit === 0n;
 }
 
@@ -640,21 +762,22 @@ function requireCompleteRoleLedger(
   committedSequence: string,
 ) {
   return Effect.gen(function* () {
-    const roleLedger = (
-      yield* ReclassDb.readRoleLedger(
-        transaction,
-        scope.bookId,
-        [input.outputAccountId, input.inputAccountId, input.settlementAccountId],
-        startsOn,
-        endsOn,
-        committedSequence,
-      )
-    ).map((row) => row.item);
+    const roleLedger = (yield* ReclassDb.readRoleLedger(
+      transaction,
+      scope.bookId,
+      [input.outputAccountId, input.inputAccountId, input.settlementAccountId],
+      startsOn,
+      endsOn,
+      committedSequence,
+    )).map((row) => row.item);
+
     const contributed = new Set(contributions.map((entry) => `${entry.voucherId}:${entry.lineId}`));
+
     for (const item of roleLedger) {
       const accountId = item.accountId;
       const voucherId = item.voucherId;
       const lineId = item.lineId;
+
       if (
         typeof accountId !== "string" ||
         typeof voucherId !== "string" ||
@@ -662,7 +785,9 @@ function requireCompleteRoleLedger(
       ) {
         return yield* failure("InternalError");
       }
+
       if (accountId === input.settlementAccountId) return yield* failure("StaleDependency");
+
       if (
         (accountId === input.outputAccountId || accountId === input.inputAccountId) &&
         !contributed.has(`${voucherId}:${lineId}`)
@@ -670,6 +795,7 @@ function requireCompleteRoleLedger(
         return yield* failure("StaleDependency");
       }
     }
+
     return roleLedger;
   });
 }
@@ -678,40 +804,51 @@ function readBoxTotals(draft: Draft, relevant: ReadonlyArray<RelevantFact>) {
   return Effect.gen(function* () {
     const assessments = draft.calculation.assessments;
     const included = assessments.filter((assessment) => assessment.contribution !== null);
+
     if (
       draft.calculation.includedCount !== included.length ||
       draft.calculation.excludedCount !== assessments.length - included.length
     ) {
       return yield* unsupported();
     }
+
     const sum = (key: "box05Minor" | "box10Minor" | "box48Minor") =>
       included.reduce(
         (total, assessment) => total + minor(assessment.contribution?.[key] ?? "0"),
         0n,
       );
+
     const boxes = draft.calculation.syntheticBoxes;
+
     if (boxes === null) return yield* unsupported();
+
     if (
       minor(boxes.box10.exactMinor) !== sum("box10Minor") ||
       minor(boxes.box48.exactMinor) !== sum("box48Minor")
     ) {
       return yield* unsupported();
     }
+
     const outputTax = minor(boxes.box10.exactMinor);
     const deductibleInputTax = minor(boxes.box48.exactMinor);
     const net = minor(boxes.box49?.exactMinor ?? "0");
+
     if (outputTax < 0n || deductibleInputTax < 0n || net !== outputTax - deductibleInputTax) {
       return yield* unsupported();
     }
+
     const currentOutput = relevant
       .filter((item) => item.input.treatment === "domestic_sale")
       .reduce((total, item) => total + minor(item.input.vatMinor), 0n);
+
     const currentInput = relevant
       .filter((item) => item.input.treatment === "domestic_purchase")
       .reduce((total, item) => total + minor(item.input.vatMinor), 0n);
+
     if (currentOutput !== outputTax || currentInput !== deductibleInputTax) {
       return yield* failure("StaleDependency");
     }
+
     return {
       outputTax,
       deductibleInputTax,
@@ -729,7 +866,6 @@ function readBoxTotals(draft: Draft, relevant: ReadonlyArray<RelevantFact>) {
 }
 
 function buildPostingLines(
-  transaction: Transaction,
   obligationId: string,
   settlementAccountId: string,
   contributions: ReadonlyArray<Contribution>,
@@ -737,20 +873,26 @@ function buildPostingLines(
 ) {
   return Effect.gen(function* () {
     const lines: Array<JsonObject> = [];
+
     const ordered = [...contributions].sort((left, right) => {
       if (left.voucherId !== right.voucherId) return left.voucherId < right.voucherId ? -1 : 1;
+
       return left.lineId === right.lineId ? 0 : left.lineId < right.lineId ? -1 : 1;
     });
+
     for (const contribution of ordered) {
       const balance = minor(contribution.balanceMinor);
+
       if (balance === 0n) continue;
-      const lineId = `vatline_${yield* shortDigest(transaction, {
+
+      const lineId = `vatline_${yield* shortDigest({
         obligationId,
         kind: "reverse",
         factId: contribution.factId,
         voucherId: contribution.voucherId,
         lineId: contribution.lineId,
       })}`;
+
       lines.push({
         lineId,
         accountId: contribution.accountId,
@@ -759,8 +901,9 @@ function buildPostingLines(
         description: `Reverse ${contribution.role} VAT control`,
       });
     }
+
     if (net !== 0n) {
-      const lineId = `vatline_${yield* shortDigest(transaction, { obligationId, kind: "settlement" })}`;
+      const lineId = `vatline_${yield* shortDigest({ obligationId, kind: "settlement" })}`;
       lines.push({
         lineId,
         accountId: settlementAccountId,
@@ -769,7 +912,9 @@ function buildPostingLines(
         description: "VAT settlement control",
       });
     }
+
     if (lines.length > postingLineBound) return yield* unsupported();
+
     return lines;
   });
 }
@@ -777,7 +922,9 @@ function buildPostingLines(
 function readReclassificationBook(transaction: Transaction, scope: Scope) {
   return Effect.gen(function* () {
     const book = (yield* VatDb.readControlBook(transaction, scope.bookId))[0];
+
     if (book === undefined) return yield* failure("Forbidden");
+
     if (
       book.profile !== "synthetic-core-v1" ||
       book.authority !== "native" ||
@@ -786,6 +933,7 @@ function readReclassificationBook(transaction: Transaction, scope: Scope) {
     ) {
       return yield* unsupported();
     }
+
     return book;
   });
 }
@@ -800,13 +948,28 @@ export function readReclassificationBasis(
     if (!isCalendarDate(input.postingDate)) return yield* failure("InvalidJournal");
     const book = yield* readReclassificationBook(transaction, scope);
     const draft = yield* readSelectedDraft(transaction, scope, input);
-    const reviewEvidence = yield* Db.readEvidence(transaction, scope.bookId, input.reviewEvidenceId);
+
+    const reviewEvidence = yield* Db.readEvidence(
+      transaction,
+      scope.bookId,
+      input.reviewEvidenceId,
+    );
+
     const reviewSha = reviewEvidence[0]?.sha256;
+
     if (reviewSha === undefined) return yield* failure("MissingEvidence");
     const period = (yield* Db.readPeriod(transaction, scope.bookId, input.accountingPeriodId))[0];
+
     if (period === undefined) return yield* failure("NotFound");
-    const fiscalYear = (yield* Db.readFiscalYear(transaction, scope.bookId, period.fiscalYearId))[0];
+
+    const fiscalYear = (yield* Db.readFiscalYear(
+      transaction,
+      scope.bookId,
+      period.fiscalYearId,
+    ))[0];
+
     if (fiscalYear === undefined) return yield* failure("NotFound");
+
     if (
       period.locked ||
       input.postingDate < period.startsOn ||
@@ -816,20 +979,26 @@ export function readReclassificationBasis(
     ) {
       return yield* failure("PeriodLocked");
     }
+
     const control = yield* readControlAccounts(transaction, scope, input, create);
     const obligation = yield* readObligation(transaction, scope, draft, create);
+
     if (
-      (yield* VatDb.readEffectByObligation(transaction, scope.bookId, obligation.id))[0] !== undefined
+      (yield* VatDb.readEffectByObligation(transaction, scope.bookId, obligation.id))[0] !==
+      undefined
     ) {
       return yield* failure("AlreadyPosted");
     }
+
     yield* requireCompleteLineage(draft);
+
     const { relevant, current, startsOn, endsOn } = yield* readRelevantFacts(
       transaction,
       scope,
       draft,
       input,
     );
+
     const { contributions, sourceStates, latestSourceDate } = yield* readContributions(
       transaction,
       scope,
@@ -838,10 +1007,13 @@ export function readReclassificationBasis(
       endsOn,
       book.committedSequence,
     );
+
     if (latestSourceDate !== "" && input.postingDate < latestSourceDate) {
       return yield* failure("StaleDependency");
     }
+
     const selected = new Set(relevant.map((item) => item.factId));
+
     if (
       current.some(
         (observation) =>
@@ -851,8 +1023,10 @@ export function readReclassificationBasis(
     ) {
       return yield* failure("StaleDependency");
     }
+
     if (contributions.length > contributionBound) return yield* unsupported();
     const totals = yield* readBoxTotals(draft, relevant);
+
     if (
       relevant.length === 0 &&
       (totals.outputTax !== 0n || totals.deductibleInputTax !== 0n || totals.net !== 0n) &&
@@ -860,7 +1034,10 @@ export function readReclassificationBasis(
     ) {
       return yield* failure("InvalidJournal");
     }
-    if (relevant.length === 0 && contributions.length !== 0) return yield* failure("InvalidJournal");
+
+    if (relevant.length === 0 && contributions.length !== 0)
+      return yield* failure("InvalidJournal");
+
     const roleLedger = yield* requireCompleteRoleLedger(
       transaction,
       scope,
@@ -870,15 +1047,17 @@ export function readReclassificationBasis(
       endsOn,
       book.committedSequence,
     );
+
     const postingLines = yield* buildPostingLines(
-      transaction,
       obligation.id,
       input.settlementAccountId,
       contributions,
       totals.net,
     );
+
     const currentRelevant = relevant.map((item) => item.observation);
-    const dependencyDigest = yield* digestValue(transaction, {
+
+    const dependencyDigest = yield* digestValue({
       version: "vat_control_reclassification_dependency_v1",
       book: {
         profile: book.profile,
@@ -909,6 +1088,7 @@ export function readReclassificationBasis(
       amounts: totals.amounts,
       contributions,
     });
+
     return yield* decode(BasisSchema, {
       profile: control.profile,
       obligation,
@@ -927,7 +1107,7 @@ export function readReclassificationBasis(
       roleEvidenceSha256: control.profile.evidenceSha256,
       reviewEvidenceSha256: reviewSha,
       postingLines,
-      currentFactDigest: yield* digestValue(transaction, currentRelevant),
+      currentFactDigest: yield* digestValue(currentRelevant),
       dependencyDigest,
       coverage: "not_established",
       legalProfileActive: false,
@@ -954,7 +1134,9 @@ function sealPlan(
       dependencies,
       groups: [{ id: newId("group"), dependsOnGroupIds: [], actions }],
     };
-    const planDigest = yield* digestValue(transaction, withoutDigest);
+
+    const planDigest = yield* digestValue(withoutDigest);
+
     return yield* decode(PlanSchema, { ...withoutDigest, planDigest });
   });
 }
@@ -1003,6 +1185,7 @@ export const prepareReclassification = Effect.fn("vat.prepareReclassification")(
     (transaction, principal) =>
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -1012,47 +1195,60 @@ export const prepareReclassification = Effect.fn("vat.prepareReclassification")(
           payload,
           ReviewSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireReclassificationAccess(transaction, true);
         yield* Db.lockBookForUpdate(transaction, command.scope);
+
         const basis = yield* readReclassificationBasis(
           transaction,
           command.scope,
           command.input,
           true,
         );
+
         const reviews = yield* VatDb.countRows(
           transaction,
           "vat_control_reclassification_reviews",
           command.scope.bookId,
         );
+
         if ((reviews[0]?.total ?? 0) >= reviewBound) return yield* unsupported();
-        const ordinal = (
-          yield* VatDb.countReviewsForObligation(
-            transaction,
-            command.scope.bookId,
-            basis.obligation.id,
-          )
-        )[0]?.ordinal;
+
+        const ordinal = (yield* VatDb.countReviewsForObligation(
+          transaction,
+          command.scope.bookId,
+          basis.obligation.id,
+        ))[0]?.ordinal;
+
         if (ordinal === undefined || ordinal > obligationReviewBound) return yield* unsupported();
         const book = (yield* VatDb.readControlBook(transaction, command.scope.bookId))[0];
-        const period = (
-          yield* Db.readPeriod(transaction, command.scope.bookId, command.input.accountingPeriodId)
-        )[0];
+
+        const period = (yield* Db.readPeriod(
+          transaction,
+          command.scope.bookId,
+          command.input.accountingPeriodId,
+        ))[0];
+
         if (book === undefined || period === undefined) return yield* failure("NotFound");
+
         const accounts = yield* Db.readAccounts(transaction, command.scope.bookId, [
           command.input.outputAccountId,
           command.input.inputAccountId,
           command.input.settlementAccountId,
         ]);
+
         const eventKey = `vat_control_reclassification_${basis.obligation.id}`;
+
         const existingEvents = yield* Db.readEvent(
           transaction,
           command.scope.bookId,
           command.input.roleEvidenceId,
           eventKey,
         );
+
         const eventId = existingEvents[0]?.id ?? newId("event");
+
         if (existingEvents.length === 0) {
           yield* Db.insertEvent(
             transaction,
@@ -1062,11 +1258,14 @@ export const prepareReclassification = Effect.fn("vat.prepareReclassification")(
             eventKey,
           );
         }
+
         const reviewId = newId("vatreview");
         let changeSetId: string | null = null;
         let plan: typeof Accounting.ChangeSet.Type | null = null;
+
         if (basis.postingLines.length > 0) {
           changeSetId = newId("change");
+
           const action = yield* decode(ActionSchema, {
             kind: "post_voucher",
             correctsVoucherId: null,
@@ -1106,6 +1305,7 @@ export const prepareReclassification = Effect.fn("vat.prepareReclassification")(
               },
             ],
           });
+
           plan = yield* sealPlan(
             transaction,
             command.scope,
@@ -1114,7 +1314,8 @@ export const prepareReclassification = Effect.fn("vat.prepareReclassification")(
             [action],
           );
         }
-        const body = yield* digestBody(transaction, {
+
+        const body = yield* digestBody({
           id: reviewId,
           scope: command.scope,
           version: 1,
@@ -1135,6 +1336,7 @@ export const prepareReclassification = Effect.fn("vat.prepareReclassification")(
             actorId: principal.actorId,
           },
         });
+
         const review = yield* decode(ReviewSchema, body);
         yield* VatDb.insertReview(transaction, {
           bookId: command.scope.bookId,
@@ -1147,6 +1349,7 @@ export const prepareReclassification = Effect.fn("vat.prepareReclassification")(
           changeSetId,
           body,
         });
+
         if (plan !== null && changeSetId !== null) {
           yield* Db.insertPlan(transaction, {
             bookId: command.scope.bookId,
@@ -1156,6 +1359,7 @@ export const prepareReclassification = Effect.fn("vat.prepareReclassification")(
             createdBy: principal.actorId,
           });
         }
+
         yield* saveCommand(
           transaction,
           command.scope,
@@ -1165,6 +1369,7 @@ export const prepareReclassification = Effect.fn("vat.prepareReclassification")(
           principal.actorId,
           review,
         );
+
         return review;
       }),
     "update",
@@ -1182,20 +1387,28 @@ function requireReclassificationAction(
     if (action.postingPurpose !== "vat_control_reclassification_v1") {
       return yield* failure("InvalidJournal");
     }
+
     if (!bindsRetainedReview(review, action, book)) return yield* failure("InvalidJournal");
     const period = yield* requireOpenPeriod(transaction, scope, action);
     const accountIds = action.lines.map((line) => line.accountId);
     const accounts = yield* Db.readAccounts(transaction, scope.bookId, accountIds);
+
     if (accounts.length !== new Set(accountIds).size) return yield* failure("InvalidJournal");
+
     if (accounts.some((account) => !account.active)) return yield* failure("InvalidJournal");
+
     if (!balancesExactly(action.lines)) return yield* failure("InvalidJournal");
+
     for (const reference of action.evidenceRefs) {
       const evidence = yield* Db.readEvidence(transaction, scope.bookId, reference.evidenceId);
+
       if (evidence[0]?.sha256 !== reference.sha256) return yield* failure("MissingEvidence");
     }
+
     if ((yield* Db.readEventById(transaction, scope.bookId, action.eventId)).length !== 1) {
       return yield* failure("InvalidJournal");
     }
+
     if (period.locked) return yield* failure("PeriodLocked");
   });
 }
@@ -1206,30 +1419,44 @@ function bindsRetainedReview(
   book: { readonly currency: string; readonly profile: string },
 ) {
   const meta = action.vatReclassification;
+
   if (meta === null || meta === undefined) return false;
+
   if (action.correctsVoucherId !== null) return false;
+
   if (action.occurrenceKey !== `vat_control_reclassification_${review.basis.obligation.id}`) {
     return false;
   }
+
   if (meta.reviewId !== review.id) return false;
+
   if (meta.obligationId !== review.basis.obligation.id) return false;
+
   if (meta.draftId !== review.input.draftId) return false;
+
   if (action.currency !== book.currency) return false;
+
   if (book.profile !== "synthetic-core-v1") return false;
+
   if (action.lines.length < 2 || action.lines.length > 500) return false;
+
   if (action.evidenceRefs.length < 1) return false;
+
   return isCalendarDate(action.postingDate);
 }
 
-function requireOpenPeriod(
-  transaction: Transaction,
-  scope: Scope,
-  action: Action,
-) {
+function requireOpenPeriod(transaction: Transaction, scope: Scope, action: Action) {
   return Effect.gen(function* () {
     const period = (yield* Db.readPeriod(transaction, scope.bookId, action.accountingPeriodId))[0];
+
     if (period === undefined) return yield* failure("InvalidJournal");
-    const fiscalYear = (yield* Db.readFiscalYear(transaction, scope.bookId, period.fiscalYearId))[0];
+
+    const fiscalYear = (yield* Db.readFiscalYear(
+      transaction,
+      scope.bookId,
+      period.fiscalYearId,
+    ))[0];
+
     if (
       fiscalYear === undefined ||
       action.fiscalYearId !== period.fiscalYearId ||
@@ -1240,27 +1467,36 @@ function requireOpenPeriod(
     ) {
       return yield* failure("InvalidJournal");
     }
+
     return period;
   });
 }
 
 function balancesExactly(
-  lines: ReadonlyArray<{ readonly lineId: string; readonly debitMinor: string; readonly creditMinor: string }>,
+  lines: ReadonlyArray<{
+    readonly lineId: string;
+    readonly debitMinor: string;
+    readonly creditMinor: string;
+  }>,
 ) {
   let debit = 0n;
   let credit = 0n;
   const lineIds = new Set<string>();
+
   for (const line of lines) {
     if (lineIds.has(line.lineId)) return false;
     lineIds.add(line.lineId);
     const lineDebit = minor(line.debitMinor);
     const lineCredit = minor(line.creditMinor);
+
     if (!((lineDebit > 0n && lineCredit === 0n) || (lineCredit > 0n && lineDebit === 0n))) {
       return false;
     }
+
     debit += lineDebit;
     credit += lineCredit;
   }
+
   return debit === credit && debit > 0n;
 }
 
@@ -1272,11 +1508,14 @@ function requirePlanCurrent(
 ) {
   return Effect.gen(function* () {
     const plan = review.postingPlan;
+
     if (plan === null || changeSetId === null) {
       if (plan !== null) return yield* failure("StaleDependency");
+
       return { plan: null, action: null } as const;
     }
-    const sealed = yield* digestValue(transaction, {
+
+    const sealed = yield* digestValue({
       schemaVersion: plan.schemaVersion,
       canonicalization: plan.canonicalization,
       id: plan.id,
@@ -1286,9 +1525,12 @@ function requirePlanCurrent(
       dependencies: plan.dependencies,
       groups: plan.groups,
     });
+
     if (sealed !== plan.planDigest) return yield* failure("StaleDependency");
     const book = (yield* Db.readBook(transaction, scope))[0];
+
     if (book === undefined) return yield* failure("Forbidden");
+
     const accounts = yield* Db.readAccounts(
       transaction,
       scope.bookId,
@@ -1296,21 +1538,31 @@ function requirePlanCurrent(
         dependency.kind === "account" ? [dependency.resourceId] : [],
       ),
     );
+
     const versions = new Map(accounts.map((account) => [account.id, account.version.toString()]));
+
     for (const dependency of plan.dependencies) {
       let current: string | undefined;
+
       if (dependency.kind === "profile") current = book.profileVersion.toString();
+
       if (dependency.kind === "writer_epoch") current = book.writerEpoch.toString();
+
       if (dependency.kind === "period") {
         const period = (yield* Db.readPeriod(transaction, scope.bookId, dependency.resourceId))[0];
         current = period?.version.toString();
       }
+
       if (dependency.kind === "account") current = versions.get(dependency.resourceId);
+
       if (current !== dependency.version) return yield* failure("StaleDependency");
     }
+
     const action = plan.groups[0]?.actions[0];
+
     if (plan.groups.length !== 1 || action === undefined) return yield* failure("InvalidJournal");
     yield* requireReclassificationAction(transaction, scope, review, action, book);
+
     return { plan, action, changeSetId } as const;
   });
 }
@@ -1331,6 +1583,7 @@ export const approveReclassification = Effect.fn("vat.approveReclassification")(
     (transaction, principal) =>
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -1340,52 +1593,64 @@ export const approveReclassification = Effect.fn("vat.approveReclassification")(
           payload,
           DomainApprovalSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireReclassificationAccess(transaction, true);
         yield* Db.lockBookForUpdate(transaction, command.scope);
         const row = (yield* VatDb.readReview(transaction, command.scope.bookId, command.id))[0];
+
         if (row === undefined) return yield* failure("NotFound");
         const review = yield* decode(ReviewSchema, row.body);
+
         if (review.digest !== command.input.expectedReviewDigest) {
           return yield* failure("StaleDependency");
         }
+
         const retained = yield* VatDb.countApprovalsForReview(
           transaction,
           command.scope.bookId,
           review.id,
         );
+
         if ((retained[0]?.total ?? 0) >= approvalBound) return yield* unsupported();
+
         const current = yield* readReclassificationBasis(
           transaction,
           command.scope,
           review.input,
           false,
         );
+
         if (!sameJson(current, review.basis)) return yield* failure("StaleDependency");
+
         const { plan } = yield* requirePlanCurrent(
           transaction,
           command.scope,
           review,
           row.changeSetId,
         );
+
         let kernelApproval: typeof Accounting.Approval.Type | null = null;
+
         if (plan !== null) {
           if (
-            (yield* Db.readVoucherByChangeSet(transaction, command.scope.bookId, plan.id)).length > 0
+            (yield* Db.readVoucherByChangeSet(transaction, command.scope.bookId, plan.id)).length >
+            0
           ) {
             return yield* failure("AlreadyPosted");
           }
+
           const now = yield* Db.readDatabaseTime(transaction);
-          const stored = (
-            yield* Db.insertApproval(transaction, {
-              bookId: command.scope.bookId,
-              id: newId("approval"),
-              changeSetId: plan.id,
-              digest: plan.planDigest,
-              actorId: principal.actorId,
-              expiresAt: new Date(Date.parse(now.now) + approvalLifetimeMs).toISOString(),
-            })
-          )[0];
+
+          const stored = (yield* Db.insertApproval(transaction, {
+            bookId: command.scope.bookId,
+            id: newId("approval"),
+            changeSetId: plan.id,
+            digest: plan.planDigest,
+            actorId: principal.actorId,
+            expiresAt: new Date(Date.parse(now.now) + approvalLifetimeMs).toISOString(),
+          }))[0];
+
           if (stored === undefined) return yield* failure("InternalError");
           kernelApproval = yield* decode(KernelApprovalSchema, {
             id: stored.id,
@@ -1395,8 +1660,10 @@ export const approveReclassification = Effect.fn("vat.approveReclassification")(
             expiresAt: stored.expiresAt,
           });
         }
+
         const createdAt = yield* isoNow(transaction);
-        const body = yield* digestBody(transaction, {
+
+        const body = yield* digestBody({
           id: newId("vatapproval"),
           scope: command.scope,
           version: 1,
@@ -1412,6 +1679,7 @@ export const approveReclassification = Effect.fn("vat.approveReclassification")(
             actorId: principal.actorId,
           },
         });
+
         const approval = yield* decode(DomainApprovalSchema, body);
         yield* VatDb.insertDomainApproval(transaction, command.scope.bookId, {
           id: approval.id,
@@ -1431,6 +1699,7 @@ export const approveReclassification = Effect.fn("vat.approveReclassification")(
           principal.actorId,
           approval,
         );
+
         return approval;
       }),
     "update",
@@ -1445,16 +1714,22 @@ function readCurrentApproval(
 ) {
   return Effect.gen(function* () {
     const row = (yield* VatDb.readApproval(transaction, scope.bookId, approvalId))[0];
+
     if (row === undefined || row.reviewId !== review.id) return yield* failure("ApprovalRequired");
+
     if (row.reviewDigest !== review.digest) return yield* failure("ApprovalRequired");
     const now = yield* Db.readDatabaseTime(transaction);
+
     if (Date.parse(row.expiresAt) <= Date.parse(now.now)) return yield* failure("ApprovalRequired");
+
     if ((yield* Db.readOperatorMembership(transaction, scope.bookId, row.actorId)).length === 0) {
       return yield* failure("ApprovalRequired");
     }
+
     if ((yield* Db.readActorAdmission(transaction, row.actorId))[0]?.enabled === false) {
       return yield* failure("ApprovalRequired");
     }
+
     return row;
   });
 }
@@ -1468,7 +1743,13 @@ function commitReclassificationVoucher(
   kernelApprovalId: string,
 ) {
   return Effect.gen(function* () {
-    const approval = (yield* Db.readApproval(transaction, scope.bookId, kernelApprovalId, "update"))[0];
+    const approval = (yield* Db.readApproval(
+      transaction,
+      scope.bookId,
+      kernelApprovalId,
+      "update",
+    ))[0];
+
     if (
       approval === undefined ||
       approval.changeSetId !== plan.id ||
@@ -1477,35 +1758,53 @@ function commitReclassificationVoucher(
     ) {
       return yield* failure("ApprovalRequired");
     }
-    if ((yield* Db.readOperatorMembership(transaction, scope.bookId, approval.actorId)).length === 0) {
+
+    if (
+      (yield* Db.readOperatorMembership(transaction, scope.bookId, approval.actorId)).length === 0
+    ) {
       return yield* failure("ApprovalRequired");
     }
+
     if ((yield* Db.readActorAdmission(transaction, approval.actorId))[0]?.enabled === false) {
       return yield* failure("ApprovalRequired");
     }
+
     if ((yield* Db.readApprovalRevocation(transaction, scope.bookId, approval.id)).length > 0) {
       return yield* failure("ApprovalRequired");
     }
+
     const now = yield* Db.readDatabaseTime(transaction);
+
     if (Date.parse(approval.expiresAt) <= Date.parse(now.now)) {
       return yield* failure("ApprovalRequired");
     }
+
     if ((yield* Db.readVoucherByChangeSet(transaction, scope.bookId, plan.id)).length > 0) {
       return yield* failure("AlreadyPosted");
     }
+
+    yield* admitPosting(transaction, scope, plan.id, yield* toJsonObject(action), {
+      kind: "vat_reclassification",
+      id: action.vatReclassification?.reviewId ?? "",
+    });
+
     const counter = yield* Db.allocateSeriesCounter(
       transaction,
       scope.bookId,
       action.fiscalYearId,
       action.series,
     );
+
     const sequence = yield* Db.allocateSequence(transaction, scope.bookId);
     const voucherNumber = counter[0]?.lastNumber;
     const sequenceValue = sequence[0]?.sequence;
+
     if (voucherNumber === undefined || sequenceValue === undefined) {
       return yield* failure("InternalError");
     }
+
     const voucherId = newId("voucher");
+
     const voucher = yield* Db.insertVoucher(transaction, {
       bookId: scope.bookId,
       id: voucherId,
@@ -1523,7 +1822,9 @@ function commitReclassificationVoucher(
       action: yield* toJsonObject(action),
       expectedLineCount: action.lines.length,
     });
+
     const recordedAt = voucher[0]?.recordedAt;
+
     if (recordedAt === undefined) return yield* failure("InternalError");
     yield* Db.insertJournalLines(
       transaction,
@@ -1538,6 +1839,7 @@ function commitReclassificationVoucher(
         description: line.description,
       })),
     );
+
     const receipt = yield* decode(ReceiptSchema, {
       id: newId("receipt"),
       changeSetId: plan.id,
@@ -1547,6 +1849,7 @@ function commitReclassificationVoucher(
       voucherNumber: voucherNumber.toString(),
       committedAt: recordedAt,
     });
+
     const groupReceipt = yield* decode(GroupReceiptSchema, {
       id: newId("group_receipt"),
       changeSetId: plan.id,
@@ -1555,6 +1858,7 @@ function commitReclassificationVoucher(
       executionReceipts: [receipt],
       committedAt: recordedAt,
     });
+
     yield* Db.insertExecutionReceipt(transaction, {
       bookId: scope.bookId,
       id: receipt.id,
@@ -1583,12 +1887,8 @@ function commitReclassificationVoucher(
       consumedById: principal.actorId,
       consumedAt: recordedAt,
     });
-    const consumed = yield* Db.consumeApproval(
-      transaction,
-      scope.bookId,
-      approval.id,
-      recordedAt,
-    );
+    const consumed = yield* Db.consumeApproval(transaction, scope.bookId, approval.id, recordedAt);
+
     if (consumed.length !== 1) return yield* failure("InternalError");
     yield* Db.insertOutbox(transaction, {
       bookId: scope.bookId,
@@ -1597,6 +1897,7 @@ function commitReclassificationVoucher(
       kind: "voucher.posted.v1",
       payload: receipt,
     });
+
     return receipt;
   });
 }
@@ -1617,6 +1918,7 @@ export const executeReclassification = Effect.fn("vat.executeReclassification")(
     (transaction, principal) =>
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -1626,54 +1928,69 @@ export const executeReclassification = Effect.fn("vat.executeReclassification")(
           payload,
           EffectSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireReclassificationAccess(transaction, true);
         yield* Db.lockBookForUpdate(transaction, command.scope);
         const row = (yield* VatDb.readReview(transaction, command.scope.bookId, command.id))[0];
+
         if (row === undefined) return yield* failure("NotFound");
         const review = yield* decode(ReviewSchema, row.body);
+
         if (review.digest !== command.input.expectedReviewDigest) {
           return yield* failure("StaleDependency");
         }
+
         if (
-          (yield* VatDb.readEffectByObligation(transaction, command.scope.bookId, row.obligationId))[0] !==
-          undefined
+          (yield* VatDb.readEffectByObligation(
+            transaction,
+            command.scope.bookId,
+            row.obligationId,
+          ))[0] !== undefined
         ) {
           return yield* failure("AlreadyPosted");
         }
+
         const approval = yield* readCurrentApproval(
           transaction,
           command.scope,
           command.input.approvalId,
           review,
         );
+
         const current = yield* readReclassificationBasis(
           transaction,
           command.scope,
           review.input,
           false,
         );
+
         if (!sameJson(current, review.basis)) return yield* failure("StaleDependency");
+
         const inventory = yield* VatDb.countRows(
           transaction,
           "vat_control_reclassification_contributions",
           command.scope.bookId,
         );
+
         if (
           (inventory[0]?.total ?? 0) + review.basis.contributions.length >
           contributionInventoryBound
         ) {
           return yield* unsupported();
         }
+
         const { plan, action, changeSetId } = yield* requirePlanCurrent(
           transaction,
           command.scope,
           review,
           row.changeSetId,
         );
+
         const effectId = newId("vateffect");
         const createdAt = yield* isoNow(transaction);
         let postingReceipt: typeof Accounting.ExecutionReceipt.Type | null = null;
+
         if (plan !== null && action !== null) {
           if (approval.kernelApprovalId === null) return yield* failure("ApprovalRequired");
           postingReceipt = yield* commitReclassificationVoucher(
@@ -1685,7 +2002,8 @@ export const executeReclassification = Effect.fn("vat.executeReclassification")(
             approval.kernelApprovalId,
           );
         }
-        const body = yield* digestBody(transaction, {
+
+        const body = yield* digestBody({
           id: effectId,
           scope: command.scope,
           version: 1,
@@ -1711,6 +2029,7 @@ export const executeReclassification = Effect.fn("vat.executeReclassification")(
             actorId: principal.actorId,
           },
         });
+
         const effect = yield* decode(EffectSchema, body);
         yield* VatDb.insertEffect(transaction, {
           bookId: command.scope.bookId,
@@ -1726,10 +2045,12 @@ export const executeReclassification = Effect.fn("vat.executeReclassification")(
           postingDate: review.input.postingDate,
           body,
         });
+
         if (postingReceipt !== null) {
           const contributions = yield* Effect.forEach(review.basis.contributions, (contribution) =>
             toJsonObject(contribution),
           );
+
           yield* VatDb.insertContributions(
             transaction,
             contributions.map((contribution, index) => ({
@@ -1745,6 +2066,7 @@ export const executeReclassification = Effect.fn("vat.executeReclassification")(
             })),
           );
         }
+
         yield* saveCommand(
           transaction,
           command.scope,
@@ -1754,6 +2076,7 @@ export const executeReclassification = Effect.fn("vat.executeReclassification")(
           principal.actorId,
           effect,
         );
+
         return effect;
       }),
     "update",
@@ -1769,11 +2092,19 @@ export const getReclassification = Effect.fn("vat.getReclassification")(function
       yield* requireReclassificationAccess(transaction, false);
       yield* Db.lockBookForShare(transaction, command.scope);
       const row = (yield* VatDb.readReview(transaction, command.scope.bookId, command.id))[0];
+
       if (row === undefined) return yield* failure("NotFound");
       const review = yield* decode(ReviewSchema, row.body);
       const approvals = yield* VatDb.readApprovals(transaction, command.scope.bookId, review.id);
-      const effect = (yield* VatDb.readEffectByReview(transaction, command.scope.bookId, review.id))[0];
+
+      const effect = (yield* VatDb.readEffectByReview(
+        transaction,
+        command.scope.bookId,
+        review.id,
+      ))[0];
+
       let liveBasisCheckedAt: string | null = null;
+
       if (effect === undefined) {
         const checked = yield* readReclassificationBasis(
           transaction,
@@ -1784,8 +2115,10 @@ export const getReclassification = Effect.fn("vat.getReclassification")(function
           Effect.map(() => true),
           Effect.orElseSucceed(() => false),
         );
+
         if (checked) liveBasisCheckedAt = yield* isoNow(transaction);
       }
+
       return yield* decode(ViewSchema, {
         review,
         approvals: yield* Effect.forEach(approvals, (approval) =>
@@ -1807,8 +2140,10 @@ export const listReclassifications = Effect.fn("vat.listReclassifications")(func
       yield* requireReclassificationAccess(transaction, false);
       yield* Db.lockBookForShare(transaction, command.scope);
       const count = yield* VatDb.countReviewItems(transaction, command.scope.bookId);
+
       if ((count[0]?.total ?? 0) > reviewBound) return yield* unsupported();
       const rows = yield* VatDb.listReviewItems(transaction, command.scope.bookId);
+
       return yield* decode(ListSchema, {
         scope: command.scope,
         items: rows.map((row) => row.item),

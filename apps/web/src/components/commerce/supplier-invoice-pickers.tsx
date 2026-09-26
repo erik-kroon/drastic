@@ -28,6 +28,7 @@ export function SupplierPicker(
   const [search, setSearch] = useState("");
   const [choosing, setChoosing] = useState(!props.selected);
   const [creating, setCreating] = useState(false);
+
   const contacts = useInfiniteQuery({
     queryKey: [...commerceKey(props.book), "contact-options"],
     initialPageParam: "",
@@ -37,12 +38,15 @@ export function SupplierPicker(
         Commerce.CounterpartyPage,
         { signal },
       );
+
       page.items.forEach((party) => checkScope(props.book, party.scope));
+
       return page;
     },
     getNextPageParam: (page) => page.next ?? undefined,
     retry: false,
   });
+
   const matches =
     contacts.data?.pages
       .flatMap((page) => page.items)
@@ -53,6 +57,7 @@ export function SupplierPicker(
             .toLocaleLowerCase(props.locale)
             .includes(search.toLocaleLowerCase(props.locale)),
       ) ?? [];
+
   return (
     <Box display="grid" gap="md">
       {choosing ? (
@@ -155,6 +160,7 @@ export function SupplierPicker(
                 props.onSelect(party);
                 setChoosing(false);
               }
+
               setCreating(false);
             }}
           />
@@ -168,6 +174,7 @@ export function SupplierDocumentPicker(props: CommerceProps & { onSelect: (id: s
   const sv = props.locale === "sv";
   const [search, setSearch] = useState("");
   const [uploading, setUploading] = useState(false);
+
   const documents = useInfiniteQuery({
     queryKey: [...bookKey(props.book), "document-inbox"],
     initialPageParam: "",
@@ -177,12 +184,15 @@ export function SupplierDocumentPicker(props: CommerceProps & { onSelect: (id: s
         Sources.SourceInventory,
         { signal },
       );
+
       page.items.forEach((item) => checkScope(props.book, item.occurrence.scope));
+
       return page;
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry: false,
   });
+
   const matches =
     documents.data?.pages
       .flatMap((page) => page.items)
@@ -191,6 +201,7 @@ export function SupplierDocumentPicker(props: CommerceProps & { onSelect: (id: s
           .toLocaleLowerCase(props.locale)
           .includes(search.toLocaleLowerCase(props.locale)),
       ) ?? [];
+
   return (
     <Box display="grid" gap="lg">
       <PageCaption>

@@ -7,6 +7,7 @@ import { RecordEditor } from "@open-erp/ui/components/record-layout";
 import type { CommerceProps } from "./shared";
 
 type Party = typeof Drafts.DraftContent.Type.customer;
+
 export function InvoiceDraftParty(props: {
   title: string;
   party: Pick<Party, "legalName" | "registrationId" | "countryCode" | "address">;
@@ -17,6 +18,7 @@ export function InvoiceDraftParty(props: {
   const { party, prefix, locale } = props;
   const [details, setDetails] = useState(party);
   const sv = locale === "sv";
+
   return (
     <RecordEditor
       title={props.title}

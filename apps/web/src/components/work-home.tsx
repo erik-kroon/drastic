@@ -13,6 +13,7 @@ import { CompanyAttention, ResumeInvoices } from "./company-work-sections";
 export function WorkHome() {
   const work = useCompanyWork();
   const sv = work.locale === "sv";
+
   return (
     <>
       <WorkspaceHeader

@@ -64,4 +64,5 @@ function Input({ className, styleX, type, ...props }: InputProps) {
 }
 
 export { Input };
+
 export type { InputProps };

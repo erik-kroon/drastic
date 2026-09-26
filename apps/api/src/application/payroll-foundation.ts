@@ -10,17 +10,24 @@ import * as PayrollDb from "../db/payroll-foundation";
 import { databaseFailure, type Transaction } from "../db/transaction";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type Principal = VerifiedPrincipal;
+
 type JsonObject = Schema.JsonObject;
+
 type CaptureInput = typeof Payroll.CapturePayrollRevision.Type;
+
 type RevisionKind = typeof Payroll.PayrollRevision.Type.kind;
 
 const RevisionReceipt = Schema.Struct({
   ...Payroll.PayrollRevision.fields,
   body: Schema.JsonObject,
 });
+
 const EmployeePage = Payroll.PayrollEmployeePage;
+
 const AccessResult = Payroll.PayrollAccessResult;
+
 const History = Payroll.PayrollHistory;
 
 const bodyByteLimit = 65536;
@@ -68,6 +75,7 @@ function requirePayrollGrant(transaction: Transaction, scope: Scope, principal: 
 
 function dateValue(value: string) {
   const parsed = new Date(`${value}T00:00:00.000Z`);
+
   return Number.isNaN(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== value
     ? failure("InvalidJournal")
     : Effect.succeed(value);
@@ -79,16 +87,20 @@ function hasExactKeys(present: ReadonlyArray<string>, required: ReadonlyArray<st
 
 function revisionFacts(input: CaptureInput) {
   const exact = hasExactKeys(Object.keys(input.body), requiredBodyKeys[input.kind]);
+
   if (!exact) return failure("InvalidJournal");
+
   if (
     input.kind === "work" &&
     (input.body.inputs.length < 1 || input.body.periodStart > input.body.periodEnd)
   ) {
     return failure("InvalidJournal");
   }
+
   if (input.kind === "opening" && input.body.asOf !== input.effectiveOn) {
     return failure("InvalidJournal");
   }
+
   return Effect.void;
 }
 
@@ -107,12 +119,15 @@ export const listEmployees = Effect.fn("payroll.listEmployees")(function* (
       yield* requireTableGrants(transaction, false);
       yield* Db.lockBookForShare(transaction, command.scope);
       yield* requirePayrollGrant(transaction, command.scope, principal);
+
       const rows = yield* PayrollDb.listEmployees(
         transaction,
         command.scope.bookId,
         command.after ?? "",
       );
+
       const page = rows.slice(0, 50);
+
       return yield* decode(EmployeePage, {
         scope: command.scope,
         items: page.map((row) => ({
@@ -134,12 +149,15 @@ export const setAccess = Effect.fn("payroll.setAccess")(function* (
     Effect.gen(function* () {
       yield* requireTableGrants(transaction, true);
       yield* Db.lockBookForUpdate(transaction, command.scope);
+
       const members = yield* PayrollDb.readBookMember(
         transaction,
         command.scope.bookId,
         command.input.actorId,
       );
+
       if (members.length === 0) return yield* failure("NotFound");
+
       if (command.input.allowed) {
         yield* PayrollDb.grantPayrollAccess(transaction, {
           bookId: command.scope.bookId,
@@ -153,6 +171,7 @@ export const setAccess = Effect.fn("payroll.setAccess")(function* (
           command.input.actorId,
         );
       }
+
       return yield* decode(AccessResult, {
         scope: command.scope,
         actorId: command.input.actorId,
@@ -168,11 +187,13 @@ export const captureRevision = Effect.fn("payroll.captureRevision")(function* (
 ) {
   const input = command.input;
   const fingerprint = yield* payrollFacts(input);
+
   return yield* withPayrollBook(token, command.scope, false, (transaction, principal) =>
     Effect.gen(function* () {
       yield* requireTableGrants(transaction, true);
       yield* Db.lockBookForUpdate(transaction, command.scope);
       yield* requirePayrollGrant(transaction, command.scope, principal);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -182,16 +203,19 @@ export const captureRevision = Effect.fn("payroll.captureRevision")(function* (
         fingerprint,
         RevisionReceipt,
       );
+
       if (request.previous) return request.previous;
       const effectiveOn = yield* dateValue(input.effectiveOn);
       yield* revisionFacts(input);
       const body = yield* payrollFacts(input.body);
       yield* boundedFacts(body);
+
       if (
         (yield* Db.readEvidence(transaction, command.scope.bookId, input.evidenceId)).length === 0
       ) {
         return yield* failure("MissingEvidence");
       }
+
       const head = yield* PayrollDb.readCurrentRevision(
         transaction,
         command.scope.bookId,
@@ -199,10 +223,13 @@ export const captureRevision = Effect.fn("payroll.captureRevision")(function* (
         input.kind,
         effectiveOn,
       );
+
       if (input.supersedes !== (head[0]?.revisionId ?? null)) {
         return yield* failure("StaleDependency");
       }
+
       yield* PayrollDb.insertEmployee(transaction, command.scope.bookId, input.employeeId);
+
       const current = {
         bookId: command.scope.bookId,
         employeeId: input.employeeId,
@@ -210,6 +237,7 @@ export const captureRevision = Effect.fn("payroll.captureRevision")(function* (
         effectiveOn,
         revisionId: newId("payrev"),
       };
+
       yield* PayrollDb.insertRevision(transaction, {
         ...current,
         id: current.revisionId,
@@ -219,11 +247,13 @@ export const captureRevision = Effect.fn("payroll.captureRevision")(function* (
         body,
         createdBy: principal.actorId,
       });
+
       if (head[0]) {
         yield* PayrollDb.replaceCurrentRevision(transaction, current);
       } else {
         yield* PayrollDb.insertCurrentRevision(transaction, current);
       }
+
       const result = yield* decode(RevisionReceipt, {
         ...current,
         id: current.revisionId,
@@ -233,6 +263,7 @@ export const captureRevision = Effect.fn("payroll.captureRevision")(function* (
         body,
         createdBy: principal.actorId,
       });
+
       yield* saveCommand(
         transaction,
         command.scope,
@@ -242,6 +273,7 @@ export const captureRevision = Effect.fn("payroll.captureRevision")(function* (
         principal.actorId,
         result,
       );
+
       return result;
     }),
   );
@@ -256,11 +288,13 @@ export const listRevisions = Effect.fn("payroll.listRevisions")(function* (
       yield* requireTableGrants(transaction, false);
       yield* Db.lockBookForShare(transaction, command.scope);
       yield* requirePayrollGrant(transaction, command.scope, principal);
+
       const rows = yield* PayrollDb.listRevisions(
         transaction,
         command.scope.bookId,
         command.employeeId,
       );
+
       return yield* decode(History, {
         scope: command.scope,
         employeeId: command.employeeId,

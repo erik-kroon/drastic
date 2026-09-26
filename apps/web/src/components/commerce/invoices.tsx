@@ -73,6 +73,7 @@ export function Invoices(
   const [status, setStatus] = useState("");
   const selected = props.recordId ?? local;
   const select = props.onOpen ?? setLocal;
+
   const page = useInfiniteQuery({
     queryKey: [...commerceKey(book), "invoice-register"],
     initialPageParam: "",
@@ -82,12 +83,15 @@ export function Invoices(
         Commerce.InvoicePage,
         { signal },
       );
+
       result.items.forEach((invoice) => checkScope(book, invoice.scope));
+
       return result;
     },
     getNextPageParam: (last) => last.next ?? undefined,
     retry: false,
   });
+
   const statuses = {
     open: labels.open,
     partially_allocated: labels.partlyAllocated,
@@ -97,6 +101,7 @@ export function Invoices(
     blocked: labels.needsReview,
     cancelled: labels.cancelled,
   };
+
   const invoices =
     page.data?.pages
       .flatMap((batch) => batch.items)
@@ -108,6 +113,7 @@ export function Invoices(
             .toLocaleLowerCase(locale)
             .includes(search.toLocaleLowerCase(locale)),
       ) ?? [];
+
   if (selected && selected !== "new")
     return (
       <Box display="grid" gap="xl">
@@ -122,6 +128,7 @@ export function Invoices(
         <InvoiceDetail {...props} id={selected} />
       </Box>
     );
+
   return (
     <Box display="grid" gap="xl">
       <RecordHeading
@@ -226,6 +233,7 @@ export function Invoices(
     </Box>
   );
 }
+
 export function InvoiceDetail(
   props: CommerceProps & {
     id: string;
@@ -235,6 +243,7 @@ export function InvoiceDetail(
 ) {
   const { book, locale, id } = props;
   const copy = commerceCopy(locale);
+
   const invoice = useQuery({
     queryKey: [...commerceKey(book), "invoice", id],
     queryFn: async ({ signal }) => {
@@ -243,17 +252,23 @@ export function InvoiceDetail(
         Commerce.Invoice,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       if (result.id !== id) throw new Error("Invoice identity mismatch");
+
       return result;
     },
     retry: false,
   });
+
   const ready = invoice.isSuccess && !invoice.isFetching;
+
   if (props.paymentView && invoice.data && !invoice.isError)
     return (
       <InvoicePaymentsWorkspace {...props} invoice={invoice.data} navigation={props.paymentView} />
     );
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <AccountingStatus locale={locale} pending={invoice.isPending} error={invoice.error} />
@@ -393,12 +408,14 @@ export function InvoiceDetail(
     </Box>
   );
 }
+
 function InvoiceRevisionForm(
   props: CommerceProps & { id: string; invoice: typeof Commerce.Invoice.Type; allowed: boolean },
 ) {
   const { invoice, allowed } = props;
   const [baseline, setBaseline] = useState(invoice);
   const copy = commerceCopy(props.locale);
+
   return (
     <CommandForm
       {...props}
@@ -437,10 +454,12 @@ function InvoiceRevisionForm(
     </CommandForm>
   );
 }
+
 function InvoiceHistory(props: CommerceProps & { id: string }) {
   const { book, locale, id } = props;
   const copy = commerceCopy(locale);
   const [after, setAfter] = useState("");
+
   const history = useQuery({
     queryKey: [...commerceKey(book), "invoice-history", id, after],
     queryFn: async ({ signal }) => {
@@ -449,14 +468,18 @@ function InvoiceHistory(props: CommerceProps & { id: string }) {
         Commerce.InvoiceHistory,
         { signal },
       );
+
       result.items.forEach((revision) => {
         checkScope(book, revision.scope);
+
         if (revision.id !== id) throw new Error("Invoice history mismatch");
       });
+
       return result;
     },
     retry: false,
   });
+
   return (
     <Box display="grid" gap="lg">
       <AccountingStatus locale={locale} pending={history.isPending} error={history.error} />
@@ -524,6 +547,7 @@ const english = {
   registerAnInvoiceOnceIts: "Register an invoice once its amount is recorded in the books.",
   close: "Close",
 };
+
 const swedish: typeof english = {
   open: "Utestående",
   partlyAllocated: "Delvis reglerad",

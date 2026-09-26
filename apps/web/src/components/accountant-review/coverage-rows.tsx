@@ -64,17 +64,24 @@ const expenseReasons = {
 function controlName(code: string, locale: Locale) {
   const language = locale === "sv" ? 1 : 0;
   const known = Object.entries(controlNames).find(([key]) => key === code)?.[1];
+
   if (known) return known[language];
+
   if (code.startsWith("expense_")) {
     const reason = Object.entries(expenseReasons).find(([key]) => code.endsWith(`_${key}`));
+
     if (reason) return reason[1][language] ?? code;
   }
+
   if (code.startsWith("bank_inventory_"))
     return locale === "sv" ? "Förväntade bankkonton" : "Expected bank accounts";
+
   if (code.startsWith("expected_bank_"))
     return locale === "sv" ? "Förväntat kontoutdrag" : "Expected bank statement";
+
   if (code.startsWith("declared_exclusion_"))
     return locale === "sv" ? "Angivet undantag" : "Declared exclusion";
+
   return code;
 }
 
@@ -86,6 +93,7 @@ export function CoverageRows({
   locale: Locale;
 }) {
   const copy = reviewCopy(locale);
+
   const statuses =
     locale === "sv"
       ? {
@@ -102,6 +110,7 @@ export function CoverageRows({
           unverified: "Unverified",
           excluded: "Excluded",
         };
+
   return (
     <DataTable
       title={copy.coverage}

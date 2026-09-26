@@ -32,6 +32,7 @@ export function JournalReview({
   accounts: (typeof Accounting.BookSetup.Type)["accounts"];
 }) {
   const copy = accountingCopy(locale);
+
   const plan = useQuery({
     queryKey: [...bookKey(book), "change-set", id],
     queryFn: async ({ signal }) => {
@@ -40,16 +41,19 @@ export function JournalReview({
         Accounting.ChangeSet,
         { signal },
       );
+
       if (
         result.id !== id ||
         result.scope.bookId !== book.id ||
         result.scope.entityId !== book.entityId
       )
         throw new Error("Response scope mismatch");
+
       return result;
     },
     retry: false,
   });
+
   return (
     <Box as="section" id="journal-review" tabIndex={-1} display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.journal_review}</Heading>
@@ -97,9 +101,11 @@ function PlanReview({
   const [stale, setStale] = useState(false);
   const [operatorApproval, setOperatorApproval] = useState("");
   const base = `${bookPath(book)}/change-sets/${encodeURIComponent(plan.id)}`;
+
   const validation = useMutation({
     mutationFn: () => {
       const path = `${base}/validate`;
+
       return readAccounting(
         path,
         Accounting.ValidationReport,
@@ -110,13 +116,16 @@ function PlanReview({
       if (requiresNewProposal(error)) setStale(true);
     },
   });
+
   const approval = useMutation({
     mutationFn: () => {
       const path = `${base}/approvals`;
+
       const payload = Schema.decodeSync(Accounting.ApproveChange)({
         planDigest: plan.planDigest,
         version: plan.version,
       });
+
       return readAccounting(
         path,
         Accounting.Approval,
@@ -127,14 +136,17 @@ function PlanReview({
       if (requiresNewProposal(error)) setStale(true);
     },
   });
+
   const execution = useMutation({
     mutationFn: () => {
       const path = `${base}/execute`;
+
       const payload = Schema.decodeSync(Accounting.ExecuteChange)({
         planDigest: plan.planDigest,
         version: plan.version,
         approvalId: approval.data?.id ?? operatorApproval,
       });
+
       return readAccounting(
         path,
         Accounting.ExecutionReceipt,
@@ -156,13 +168,17 @@ function PlanReview({
       }
     },
   });
+
   const validated =
     validation.data?.changeSetId === plan.id && validation.data.planDigest === plan.planDigest;
+
   const approved =
     approval.data?.changeSetId === plan.id && approval.data.planDigest === plan.planDigest;
+
   const agentApproval = book.role === "agent" && Schema.is(Accounting.Identifier)(operatorApproval);
   const busy = validation.isPending || approval.isPending || execution.isPending;
   const locked = busy || stale || execution.isSuccess;
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Text>{copy.journal_review_help}</Text>
@@ -317,6 +333,7 @@ export function SealedAction({
   setupAccounts: typeof Accounting.BookSetup.Type.accounts;
 }) {
   const copy = accountingCopy(locale);
+
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <Text>{action.description}</Text>
@@ -348,6 +365,7 @@ export function SealedAction({
         ]}
         rows={action.lines.map((line) => {
           const account = setupAccounts.find((item) => item.id === line.accountId);
+
           return {
             id: line.lineId,
             cells: [

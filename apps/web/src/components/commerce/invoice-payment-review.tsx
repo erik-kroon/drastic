@@ -31,6 +31,7 @@ export function InvoicePaymentReview(
 ) {
   const { book, locale, id, invoice } = props;
   const copy = invoicePaymentCopy(locale);
+
   const view = useQuery({
     queryKey: [...commerceKey(book), "allocation", id],
     staleTime: 0,
@@ -42,8 +43,10 @@ export function InvoicePaymentReview(
         Commerce.AllocationView,
         { signal },
       );
+
       checkScope(book, result.plan.scope);
       checkScope(book, result.plan.payment.scope);
+
       if (
         result.plan.id !== id ||
         !result.plan.legs.some((leg) => leg.invoiceId === invoice.id) ||
@@ -51,18 +54,24 @@ export function InvoicePaymentReview(
         result.plan.payment.currencyScale !== invoice.currencyScale
       )
         throw new Error("Invoice allocation review binding mismatch");
+
       for (const receipt of [result.approval, result.application]) {
         if (receipt && (receipt.planId !== id || receipt.planDigest !== result.plan.digest))
           throw new Error("Invoice allocation receipt mismatch");
       }
+
       if (result.application) checkScope(book, result.application.scope);
+
       return result;
     },
   });
+
   const ready = view.isSuccess && view.isFetchedAfterMount && !view.isFetching;
   const plan = view.data?.plan;
+
   const money = (amount: string) =>
     `${formatMinorAmount(amount, invoice.currencyScale, locale)} ${invoice.currency}`;
+
   if (props.navigation.releaseId && plan && view.data?.application && !view.isError)
     return (
       <InvoicePaymentUndo
@@ -74,6 +83,7 @@ export function InvoicePaymentReview(
         navigation={props.navigation}
       />
     );
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Box>
@@ -165,6 +175,7 @@ function InvoicePaymentActions(
   const approval = view.approval;
   const actionable = ready && view.dependenciesCurrent && !view.application;
   const approvalCurrent = !!approval && Date.parse(approval.expiresAt) > Date.now();
+
   return (
     <Box display="grid" gap="md">
       {!view.application && !view.dependenciesCurrent ? (

@@ -27,23 +27,29 @@ const Owners = lazy(() =>
     default: m.OwnerRegisterPanel,
   })),
 );
+
 const Recurring = lazy(() =>
   import("@/components/recurring-preparation").then((m) => ({ default: m.RecurringPreparation })),
 );
+
 const Corrections = lazy(() =>
   import("@/components/corrections/corrections-panel").then((m) => ({
     default: m.CorrectionsPanel,
   })),
 );
+
 const Snapshots = lazy(() =>
   import("@/components/case-snapshots").then((m) => ({ default: m.CaseSnapshots })),
 );
+
 const Readiness = lazy(() =>
   import("@/components/book-readiness").then((m) => ({ default: m.BookReadiness })),
 );
+
 const Recovery = lazy(() =>
   import("@/components/posting-recovery/panel").then((m) => ({ default: m.PostingRecoveryPanel })),
 );
+
 const Technical = lazy(() =>
   import("@/components/accounting-workspace").then((m) => ({ default: m.AccountingWorkspace })),
 );
@@ -74,6 +80,7 @@ function Tools() {
   const base = `${workspacePath(book)}/tools`;
   const sv = locale === "sv";
   const onPrepared = (id: string) => void navigate({ to: reviewPath(book, id) });
+
   return (
     <>
       <WorkspaceHeader title={frontendCopy(locale).tools} />

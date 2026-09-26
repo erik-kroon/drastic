@@ -86,9 +86,11 @@ export function InvoiceLines({
     </div>
   );
 }
+
 export function InvoiceAmountInput(props: InputProps) {
   return <Input {...props} styleX={styles.numeric} />;
 }
+
 export function InvoiceLine({
   cells,
   details,
@@ -124,6 +126,7 @@ export function InvoiceLine({
     </div>
   );
 }
+
 export function InvoiceTotals({
   rows,
 }: {

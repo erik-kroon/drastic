@@ -21,6 +21,7 @@ export function FirmTeam({
   const sv = locale === "sv";
   const [editing, setEditing] = useState<{ member: typeof Firms.Member.Type | null } | null>(null);
   const admin = workspace.firm.role === "admin";
+
   return (
     <Box display="grid" gap="lg">
       <RecordHeading

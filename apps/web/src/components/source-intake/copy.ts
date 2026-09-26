@@ -1,4 +1,5 @@
 import type { Locale } from "@/paraglide/runtime";
+
 const en = {
   title: "Retain source documents",
   scope:
@@ -105,6 +106,7 @@ const en = {
   approvalHelp:
     "Approval expires after one hour. If admission outcome is uncertain, retry without changing the input, or refresh this source to recover its durable receipt.",
 };
+
 const sv = {
   title: "Bevara källdokument",
   scope:
@@ -211,6 +213,7 @@ const sv = {
   approvalHelp:
     "Godkännandet gäller en timme. Vid osäkert importresultat: försök igen utan att ändra indata, eller uppdatera källan för att hämta det beständiga kvittot.",
 } satisfies Record<keyof typeof en, string>;
+
 export function intakeCopy(locale: Locale) {
   return locale === "sv" ? sv : en;
 }

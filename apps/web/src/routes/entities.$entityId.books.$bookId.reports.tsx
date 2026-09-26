@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
 import { FinanceArea } from "@/components/finance-area";
+
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/reports")({
   validateSearch: Schema.decodeUnknownSync(
     Schema.Struct({
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/reports"
   ),
   component: Page,
 });
+
 function Page() {
   return (
     <FinanceArea

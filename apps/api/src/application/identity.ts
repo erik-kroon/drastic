@@ -31,6 +31,7 @@ export function withAdmittedPrincipal<A, R>(
   return withTransaction((transaction) =>
     Effect.gen(function* () {
       const principal = yield* admitPrincipal(transaction, access, scope, requirement, lockMode);
+
       return yield* operation(transaction, principal);
     }),
   );
@@ -55,6 +56,7 @@ export function withVerifiedPrincipal<A, R>(
         requirement,
         lockMode,
       );
+
       return yield* operation(transaction, verifiedPrincipal);
     }),
   );

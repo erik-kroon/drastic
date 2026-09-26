@@ -81,10 +81,13 @@ const english = {
   confirm:
     "I reviewed the period, reason, source declaration, checks and dependency snapshot. This is a technical transition only.",
   execute: "Commit approved transition",
-  stale: "At the last successful refresh, dependencies had changed. Prepare and approve a new proposal.",
+  stale:
+    "At the last successful refresh, dependencies had changed. Prepare and approve a new proposal.",
   current: "At the last successful refresh, dependencies matched the proposal.",
-  currentnessUnknown: "Current status is unknown. Retained facts remain available; new actions need a successful refresh.",
-  retryRequest: "Retry sends the same captured request and key. A failed refresh does not show whether the transition committed.",
+  currentnessUnknown:
+    "Current status is unknown. Retained facts remain available; new actions need a successful refresh.",
+  retryRequest:
+    "Retry sends the same captured request and key. A failed refresh does not show whether the transition committed.",
   retryApproval: "Retry the same approval request",
   retryExecution: "Retry the same transition request",
   receipt: "Committed transition receipt",
@@ -113,6 +116,7 @@ const english = {
   prepareHelp:
     "Prepare a proposal, review it, approve its exact digest, then commit. Approval expires after15 minutes.",
 };
+
 const swedish: typeof english = {
   familyInventory: "Områden och kontroller",
   familyScope: "Denna tekniska omfattning kräver ett beslut för varje område.",
@@ -199,8 +203,10 @@ const swedish: typeof english = {
   stale:
     "Vid den senaste lyckade uppdateringen hade beroendena ändrats. Förbered och godkänn ett nytt förslag.",
   current: "Vid den senaste lyckade uppdateringen stämde beroendena med förslaget.",
-  currentnessUnknown: "Aktuell status är okänd. Sparade uppgifter finns kvar; nya åtgärder kräver en lyckad uppdatering.",
-  retryRequest: "Försöket skickar samma sparade begäran och nyckel. En misslyckad uppdatering visar inte om ändringen genomfördes.",
+  currentnessUnknown:
+    "Aktuell status är okänd. Sparade uppgifter finns kvar; nya åtgärder kräver en lyckad uppdatering.",
+  retryRequest:
+    "Försöket skickar samma sparade begäran och nyckel. En misslyckad uppdatering visar inte om ändringen genomfördes.",
   retryApproval: "Försök med samma godkännandebegäran igen",
   retryExecution: "Försök med samma ändringsbegäran igen",
   receipt: "Kvitto på genomförd ändring",
@@ -211,7 +217,8 @@ const swedish: typeof english = {
   next: "Nästa historiksida",
   first: "Första historiksidan",
   certificate: "Tekniskt intyg",
-  currentCertificate: "Underlaget för teknisk låsning stämde vid den senaste lyckade uppdateringen.",
+  currentCertificate:
+    "Underlaget för teknisk låsning stämde vid den senaste lyckade uppdateringen.",
   invalidCertificate: "Historiskt intyg — inte aktuellt vid den senaste lyckade uppdateringen.",
   viewCertificate: "Granska intyg",
   immutable: "Historiska poster bevaras oförändrade.",
@@ -229,6 +236,7 @@ const swedish: typeof english = {
   prepareHelp:
     "Förbered ett förslag, granska det, godkänn den exakta kontrollsumman och verkställ sedan. Godkännandet gäller i15 minuter.",
 };
+
 export function closingCopy(locale: string) {
   return locale === "sv" ? swedish : english;
 }

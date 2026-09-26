@@ -19,6 +19,7 @@ import {
 export function CompanyOverview() {
   const work = useCompanyWork();
   const sv = work.locale === "sv";
+
   return (
     <>
       <WorkspaceHeader

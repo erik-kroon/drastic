@@ -18,7 +18,7 @@ The failure cases below precede the test implementation. Tests drive HTTP into t
 | Runtime login can bypass admission            | Direct table writes fail under the actual Worker database role.                                     |
 | Transaction fails after writing some rows     | Voucher, lines, counters, approval consumption, receipt and outbox all roll back.                   |
 | Reapplying migrations corrupts state          | Second run preserves populated ledger; changed recorded checksum fails loudly.                      |
-| Old installation takes the new baseline      | A receipt naming a migration the current set lacks is refused before any migration SQL runs.         |
+| Old installation takes the new baseline       | A receipt naming a migration the current set lacks is refused before any migration SQL runs.        |
 | MCP bypasses HTTP admission                   | Real JSON-RPC requests enforce authentication and expose no approval tool.                          |
 
 The retired token-session and browser sign-in tests were removed because they targeted routes and UI that no longer exist. The expiry case was removed because it tried to update an immutable approval. The suite currently has no automated browser, supplier AP, current-session security, or approval-expiry journey. Existing local HTTP/browser proof artifacts are not recurring regression coverage. A green kernel suite is not browser or AP acceptance.

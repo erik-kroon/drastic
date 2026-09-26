@@ -41,6 +41,7 @@ function StatementReview({ book, id, locale }: StatementReviewProps) {
   const candidateLabel = locale === "sv" ? "Hitta matchning" : "Find match";
   const metadata = useQuery(workQueryOptions(book, {}));
   const scale = metadata.data?.currencyScale;
+
   const statement = useQuery({
     queryKey: [...bookKey(book), "bank-statement", id],
     queryFn: async ({ signal }) => {
@@ -49,13 +50,16 @@ function StatementReview({ book, id, locale }: StatementReviewProps) {
         Bank.BankStatementView,
         { signal },
       );
+
       if (result.statement.id !== id || result.matches.some((match) => match.statementId !== id)) {
         throw new Error("Bank statement response identity mismatch");
       }
+
       return result;
     },
     retry: false,
   });
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <RecordHeading
@@ -158,18 +162,23 @@ export function BankStatementDetails({
 }) {
   const copy = accountingCopy(locale);
   const metadata = useQuery(workQueryOptions(book, {}));
+
   const setup = useQuery({
     queryKey: [...bookKey(book), "setup"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
     retry: false,
   });
+
   const account = setup.data?.accounts.find((item) => item.id === statement.accountId);
+
   const amount = (value: string) =>
     metadata.data
       ? `${formatMinorAmount(value, metadata.data.currencyScale, locale)} ${statement.currency}`
       : "—";
+
   const sv = locale === "sv";
+
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <PageCaption>
@@ -224,6 +233,7 @@ export function BankMatches({
   locale: Locale;
 }) {
   const copy = accountingCopy(locale);
+
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <DataTable
@@ -267,9 +277,11 @@ function BankMatchForm({
   const keys = useRef(new Map<string, string>());
   const client = useQueryClient();
   const [inputError, setInputError] = useState("");
+
   const match = useMutation({
     mutationFn: (payload: typeof Bank.BankMatchInput.Type) => {
       const path = `${bookPath(book)}/bank-matches`;
+
       return readAccounting(
         path,
         Bank.BankMatchReceipt,
@@ -283,6 +295,7 @@ function BankMatchForm({
       void client.invalidateQueries({ queryKey: [...bookKey(book), "bank-reconciliation"] });
     },
   });
+
   return (
     <Box
       as="form"
@@ -291,16 +304,20 @@ function BankMatchForm({
       onSubmit={(event) => {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
+
         const decoded = Schema.decodeUnknownOption(Bank.BankMatchInput)({
           statementId: statement.statement.id,
           rowOrdinal: Number(fields.get("rowOrdinal")),
           voucherId: fields.get("voucherId"),
           lineId: fields.get("lineId"),
         });
+
         if (decoded._tag === "None") {
           setInputError(copy.bank_invalid);
+
           return;
         }
+
         setInputError("");
         match.mutate(decoded.value);
       }}

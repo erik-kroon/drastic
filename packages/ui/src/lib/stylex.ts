@@ -39,8 +39,10 @@ export function stylexProps<State>(
   inlineStyle?: CSSProperties,
 ): ComposedStyleProps<string | undefined | ((state: State) => string | undefined)> {
   const compiled = stylex.props(...styles);
+
   const merge = (custom?: string) =>
     [compiled.className, custom].filter(Boolean).join(" ") || undefined;
+
   const composed = {
     ...compiled,
     className:
@@ -48,7 +50,9 @@ export function stylexProps<State>(
         ? (state: State) => merge(className(state))
         : merge(className),
   };
+
   if (inlineStyle === undefined) return composed;
+
   return { ...composed, style: { ...compiled.style, ...inlineStyle } };
 }
 

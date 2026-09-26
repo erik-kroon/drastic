@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AccountingAccess } from "@/components/accounting-access";
 import { FirmsWorkspace } from "@/components/firms";
 import { usePageLocale } from "@/lib/use-page-locale";
+
 export const Route = createFileRoute("/firms")({
   validateSearch: Schema.decodeUnknownSync(
     Schema.Struct({
@@ -15,10 +16,12 @@ export const Route = createFileRoute("/firms")({
   ),
   component: Firms,
 });
+
 function Firms() {
   const locale = usePageLocale();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
+
   return (
     <AccountingAccess locale={locale}>
       {(books) => (
@@ -33,7 +36,8 @@ function Firms() {
           tab={search.tab ?? "clients"}
           onNavigate={(firm, tab) => {
             void navigate({
-              search: !search.firm || search.firm === firm ? { ...search, firm, tab } : { firm, tab },
+              search:
+                !search.firm || search.firm === firm ? { ...search, firm, tab } : { firm, tab },
             });
           }}
         />

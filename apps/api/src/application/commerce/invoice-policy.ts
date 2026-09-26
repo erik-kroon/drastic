@@ -1,6 +1,7 @@
+import { digest as digestNative } from "../json";
 import * as Policy from "@open-erp/contracts/invoice-policy";
 import * as Effect from "effect/Effect";
-import { digestJson } from "../../db/commerce/access";
+
 import * as PolicyDb from "../../db/commerce/invoice-policy";
 import type { Transaction } from "../../db/transaction";
 import { isoNow, newId, replay, saveCommand } from "../posting";
@@ -9,10 +10,15 @@ import { failure } from "../failures";
 import { decode, requireTableAccess, withBook, type JsonObject, type Scope } from "./support";
 
 const CandidateSchema = Policy.InvoicePolicyCandidate;
+
 const ReviewSchema = Policy.InvoicePolicyReview;
+
 const CandidateInputSchema = Policy.InvoicePolicyCandidateInput;
+
 const ReviewInputSchema = Policy.ReviewInvoicePolicy;
+
 const ViewSchema = Policy.InvoicePolicyView;
+
 const HistorySchema = Policy.InvoicePolicyHistory;
 
 const evidenceFields = [
@@ -67,15 +73,18 @@ export const saveCandidate = Effect.fn("commerce.invoicePolicy.saveCandidate")(f
         command.input,
         CandidateSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireTableAccess(transaction, PolicyDb.invoicePolicyTables, true);
       yield* lockBookForUpdate(transaction, command.scope);
       const input = yield* decode(CandidateInputSchema, command.input);
+
       const existing = yield* PolicyDb.readCandidateByProfileKey(
         transaction,
         command.scope.bookId,
         input.profileKey,
       );
+
       if (existing.length > 0) return yield* failure("IdempotencyConflict");
       yield* requireRetainedEvidence(
         transaction,
@@ -83,7 +92,9 @@ export const saveCandidate = Effect.fn("commerce.invoicePolicy.saveCandidate")(f
         evidenceFields.map((field) => input[field]),
       );
       const counts = yield* PolicyDb.readCandidateCount(transaction, command.scope.bookId);
+
       if ((counts[0]?.count ?? 0) >= 50) return yield* failure("UnsupportedProfile");
+
       const withoutDigest: JsonObject = {
         id: newId("invoice_policy"),
         scope: command.scope,
@@ -92,10 +103,10 @@ export const saveCandidate = Effect.fn("commerce.invoicePolicy.saveCandidate")(f
         createdBy: principal.actorId,
         createdAt: yield* isoNow(transaction),
       };
-      const digests = yield* digestJson(transaction, withoutDigest);
-      const digest = digests[0]?.digest;
-      if (digest === undefined) return yield* failure("InternalError");
+
+      const digest = yield* digestNative(withoutDigest);
       const body: JsonObject = Object.assign({}, withoutDigest, { digest });
+
       if (JSON.stringify(body).length > 131072) return yield* failure("UnsupportedProfile");
       const result = yield* decode(CandidateSchema, body);
       yield* PolicyDb.insertCandidate(transaction, {
@@ -114,6 +125,7 @@ export const saveCandidate = Effect.fn("commerce.invoicePolicy.saveCandidate")(f
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -135,6 +147,7 @@ export const reviewCandidate = Effect.fn("commerce.invoicePolicy.reviewCandidate
     true,
     function* (transaction, principal) {
       const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -144,22 +157,29 @@ export const reviewCandidate = Effect.fn("commerce.invoicePolicy.reviewCandidate
         replayInput,
         ReviewSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireTableAccess(transaction, PolicyDb.invoicePolicyTables, true);
       yield* lockBookForUpdate(transaction, command.scope);
       const input = yield* decode(ReviewInputSchema, command.input);
       const rows = yield* PolicyDb.readCandidate(transaction, command.scope.bookId, command.id);
       const candidate = rows[0];
+
       if (!candidate) return yield* failure("NotFound");
+
       if (input.candidateDigest !== candidate.body.digest) return yield* failure("StaleDependency");
+
       if (candidate.actorId === principal.actorId) return yield* failure("ApprovalRequired");
       yield* requireRetainedEvidence(transaction, command.scope.bookId, [input.reviewEvidence]);
+
       const reviews = yield* PolicyDb.readReviewForCandidate(
         transaction,
         command.scope.bookId,
         command.id,
       );
+
       if (reviews.length > 0) return yield* failure("IdempotencyConflict");
+
       const withoutDigest: JsonObject = {
         id: newId("invoice_policy_review"),
         scope: command.scope,
@@ -170,9 +190,8 @@ export const reviewCandidate = Effect.fn("commerce.invoicePolicy.reviewCandidate
         status: "reviewed_unactivated",
         legalInvoiceEnabled: false,
       };
-      const digests = yield* digestJson(transaction, withoutDigest);
-      const digest = digests[0]?.digest;
-      if (digest === undefined) return yield* failure("InternalError");
+
+      const digest = yield* digestNative(withoutDigest);
       const body: JsonObject = Object.assign({}, withoutDigest, { digest });
       const result = yield* decode(ReviewSchema, body);
       yield* PolicyDb.insertReview(transaction, {
@@ -191,6 +210,7 @@ export const reviewCandidate = Effect.fn("commerce.invoicePolicy.reviewCandidate
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -203,13 +223,17 @@ export const getCandidate = Effect.fn("commerce.invoicePolicy.getCandidate")(fun
 ) {
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, PolicyDb.invoicePolicyTables, false);
+
     const rows = yield* PolicyDb.readPolicyCandidateWithReview(
       transaction,
       input.scope.bookId,
       input.id,
     );
+
     const row = rows[0];
+
     if (!row) return yield* failure("NotFound");
+
     return yield* decode(ViewSchema, policyView(row));
   });
 });
@@ -221,6 +245,7 @@ export const readHistory = Effect.fn("commerce.invoicePolicy.readHistory")(funct
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, PolicyDb.invoicePolicyTables, false);
     const rows = yield* PolicyDb.readPolicyHistory(transaction, input.scope.bookId);
+
     return yield* decode(HistorySchema, {
       scope: input.scope,
       complete: true,

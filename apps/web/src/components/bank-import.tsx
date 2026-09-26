@@ -63,20 +63,25 @@ export function BankImport({
   const client = useQueryClient();
   const keys = useRef(new Map<string, string>());
   const [inputError, setInputError] = useState("");
+
   const imported = useMutation({
     mutationFn: async (draft: BankImportDraft) => {
       const evidencePath = `${bookPath(book)}/evidence`;
+
       const evidence = await readAccounting(
         evidencePath,
         Accounting.Evidence,
         mutationOptions(evidencePath, JSON.stringify(draft.evidence), keys.current),
       );
+
       const path = `${bookPath(book)}/bank-statements`;
+
       const payload = Schema.decodeSync(Bank.ImportBankStatement)({
         ...draft.source,
         evidenceId: evidence.id,
         existingMatches: draft.existingMatches,
       });
+
       return readAccounting(
         path,
         Bank.StatementImportReceipt,
@@ -91,30 +96,40 @@ export function BankImport({
       onImported(receipt.statement.id);
     },
   });
+
   function submit(form: HTMLFormElement) {
     const fields = new FormData(form);
+
     const evidence = Schema.decodeUnknownOption(Accounting.CreateEvidence)({
       title: fields.get("title"),
       origin: fields.get("origin"),
       content: fields.get("source"),
       mediaType: "application/json",
     });
+
     const matchesText = fields.get("matches");
+
     if (evidence._tag === "None" || !Schema.is(Schema.String)(matchesText)) {
       setInputError(copy.bank_invalid);
+
       return;
     }
+
     try {
       const source = Schema.decodeUnknownOption(Bank.StatementSource, {
         onExcessProperty: "error",
       })(JSON.parse(evidence.value.content));
+
       const matches = Schema.decodeUnknownOption(Bank.ImportBankStatement.fields.existingMatches, {
         onExcessProperty: "error",
       })(JSON.parse(matchesText.trim() || "[]"));
+
       if (source._tag === "None" || matches._tag === "None") {
         setInputError(copy.bank_invalid);
+
         return;
       }
+
       setInputError("");
       imported.mutate({
         source: source.value,
@@ -125,6 +140,7 @@ export function BankImport({
       setInputError(copy.bank_invalid);
     }
   }
+
   return (
     <Box
       as="form"

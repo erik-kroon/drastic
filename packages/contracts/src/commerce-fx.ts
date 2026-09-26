@@ -6,13 +6,21 @@ import * as Commerce from "./commerce";
 import * as Rates from "./exchange-rates";
 
 const Currency = Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/));
+
 const CurrencyScale = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 6 }));
+
 const PositiveMinor = Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,37}$/));
+
 const Profile = Schema.Literal("synthetic_customer_foreign_receivable_v1");
+
 const SettlementProfile = Schema.Literal("synthetic_full_book_currency_settlement_v1");
+
 const PartialSettlementProfile = Schema.Literal("synthetic_partial_book_currency_settlement_v1");
+
 const CorrectionProfile = Schema.Literal("synthetic_latest_settlement_correction_v1");
+
 const RoundingPolicy = Schema.Literal("synthetic_half_up_nonnegative_v1");
+
 const AccountRole = Schema.Literals([
   "control",
   "revenue",
@@ -20,7 +28,9 @@ const AccountRole = Schema.Literals([
   "realized_gain",
   "realized_loss",
 ]);
+
 const EvidenceReference = Commerce.EvidenceReference;
+
 const CommandReceipt = Commerce.CommandReceipt;
 
 export const PrepareRecognition = Schema.Struct({
@@ -50,6 +60,7 @@ export const PrepareRecognition = Schema.Struct({
   syntheticNoTaxConfirmed: Schema.Literal(true),
   acknowledgeLimitedProfile: Schema.Literal(true),
 });
+
 export const PrepareSettlement = Schema.Struct({
   profile: SettlementProfile,
   itemId: Accounting.Identifier,
@@ -64,6 +75,7 @@ export const PrepareSettlement = Schema.Struct({
   fullSettlementOnly: Schema.Literal(true),
   acknowledgeLimitedProfile: Schema.Literal(true),
 });
+
 export const PreparePartialSettlement = Schema.Struct({
   profile: PartialSettlementProfile,
   itemId: Accounting.Identifier,
@@ -78,6 +90,7 @@ export const PreparePartialSettlement = Schema.Struct({
   feesExcluded: Schema.Literal(true),
   acknowledgeLimitedProfile: Schema.Literal(true),
 });
+
 export const PrepareSettlementCorrection = Schema.Struct({
   profile: CorrectionProfile,
   settlementId: Accounting.Identifier,
@@ -88,14 +101,17 @@ export const PrepareSettlementCorrection = Schema.Struct({
   latestUnconsumedOnly: Schema.Literal(true),
   acknowledgeLimitedProfile: Schema.Literal(true),
 });
+
 export const ApproveFx = Schema.Struct({
   version: Schema.Literal(1),
   digest: Accounting.Digest,
 });
+
 export const ExecuteFx = Schema.Struct({
   ...ApproveFx.fields,
   approvalId: Accounting.Identifier,
 });
+
 export const FxApproval = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -106,15 +122,18 @@ export const FxApproval = Schema.Struct({
   expiresAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 const AccountBinding = Schema.Struct({
   role: AccountRole,
   accountId: Accounting.Identifier,
   version: Accounting.MinorUnits,
 });
+
 const AccountBindings = Schema.Array(AccountBinding).check(
   Schema.isMinLength(5),
   Schema.isMaxLength(5),
 );
+
 const SourceObligation = Schema.Struct({
   kind: Profile,
   sourceKey: PrepareRecognition.fields.sourceKey,
@@ -126,12 +145,14 @@ const SourceObligation = Schema.Struct({
   recognitionDate: Accounting.AccountingDate,
   evidence: EvidenceReference,
 });
+
 const RateBinding = Schema.Struct({
   observationId: Accounting.Identifier,
   revision: Schema.Int,
   digest: Accounting.Digest,
   rate: Rates.ExchangeRateRevision,
 });
+
 const BookBasis = Schema.Struct({
   currency: Currency,
   currencyScale: CurrencyScale,
@@ -140,6 +161,7 @@ const BookBasis = Schema.Struct({
   writerAuthority: Schema.String,
   writerEpoch: Accounting.MinorUnits,
 });
+
 const RecognitionCalculation = Schema.Struct({
   originalCurrency: Currency,
   originalScale: CurrencyScale,
@@ -156,6 +178,7 @@ const RecognitionCalculation = Schema.Struct({
   roundingPolicy: RoundingPolicy,
   formula: Schema.String,
 });
+
 export const RecognitionReview = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -180,6 +203,7 @@ export const RecognitionReview = Schema.Struct({
   digest: Accounting.Digest,
   receipt: CommandReceipt,
 });
+
 export const SettlementReceipt = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -197,6 +221,7 @@ export const SettlementReceipt = Schema.Struct({
   digest: Accounting.Digest,
   receipt: CommandReceipt,
 });
+
 const PartialSettlementCalculation = Schema.Struct({
   legOrdinal: Schema.Int.check(Schema.isGreaterThan(0)),
   originalRemainingBeforeMinor: PositiveMinor,
@@ -217,6 +242,7 @@ const PartialSettlementCalculation = Schema.Struct({
   realizedGainMinor: Accounting.SignedMinorUnits,
   formula: Schema.String,
 });
+
 export const PartialSettlementReceipt = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -232,6 +258,7 @@ export const PartialSettlementReceipt = Schema.Struct({
   digest: Accounting.Digest,
   receipt: CommandReceipt,
 });
+
 export const CorrectionReceipt = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -252,6 +279,7 @@ export const CorrectionReceipt = Schema.Struct({
   digest: Accounting.Digest,
   receipt: CommandReceipt,
 });
+
 export const MonetaryItem = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -280,6 +308,7 @@ export const MonetaryItem = Schema.Struct({
   receipt: CommandReceipt,
   digest: Accounting.Digest,
 });
+
 const SettlementItemSnapshot = Schema.Struct({
   id: Accounting.Identifier,
   digest: Accounting.Digest,
@@ -289,6 +318,7 @@ const SettlementItemSnapshot = Schema.Struct({
   remainingOriginalMinor: PositiveMinor,
   remainingCarryingMinor: Accounting.MinorUnits,
 });
+
 export const SettlementReview = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -316,6 +346,7 @@ export const SettlementReview = Schema.Struct({
   digest: Accounting.Digest,
   receipt: CommandReceipt,
 });
+
 export const PartialSettlementReview = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -337,10 +368,12 @@ export const PartialSettlementReview = Schema.Struct({
   digest: Accounting.Digest,
   receipt: CommandReceipt,
 });
+
 const FxJournalLine = Schema.Struct({
   ...Accounting.JournalLine.fields,
   lineId: Accounting.Identifier,
 });
+
 export const SettlementCorrectionReview = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -364,6 +397,7 @@ export const SettlementCorrectionReview = Schema.Struct({
   digest: Accounting.Digest,
   receipt: CommandReceipt,
 });
+
 export const CommandRecovery = Schema.Struct({
   key: Accounting.IdempotencyHeaders.fields["idempotency-key"],
   checkedAt: Schema.String,
@@ -385,14 +419,20 @@ export const CommandRecovery = Schema.Struct({
 });
 
 const path = "/v1/entities/:entityId/books/:bookId/commerce/fx";
+
 const scoped = { params: Accounting.Scope, error: accountingErrors };
+
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
+
 const mutation = { ...scoped, headers: Accounting.IdempotencyHeaders };
+
 const identifiedMutation = { ...identified, headers: Accounting.IdempotencyHeaders };
+
 const RecoveryPath = Schema.Struct({
   ...Accounting.Scope.fields,
   key: Accounting.IdempotencyHeaders.fields["idempotency-key"],
 });
+
 export const CommerceFxApi = HttpApiGroup.make("commerceFx").add(
   HttpApiEndpoint.post("prepareCommerceFxRecognition", `${path}/recognition-reviews`, {
     ...mutation,

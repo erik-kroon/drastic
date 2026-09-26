@@ -28,6 +28,7 @@ function Work() {
   const navigate = Route.useNavigate();
   const [error, setError] = useState("");
   const copy = accountingCopy(locale);
+
   return (
     <>
       <WorkspaceHeader
@@ -80,6 +81,7 @@ function Work() {
             onSubmit={(event) => {
               event.preventDefault();
               const fields = new FormData(event.currentTarget);
+
               const parsed = Schema.decodeUnknownOption(AttentionQuery)({
                 q: fields.get("q"),
                 kind: filters.kind ?? "all",
@@ -87,10 +89,13 @@ function Work() {
                 status: filters.status ?? "open",
                 sort: fields.get("sort"),
               });
+
               if (parsed._tag === "None") {
                 setError(copy.journal_invalid);
+
                 return;
               }
+
               setError("");
               void navigate({ search: parsed.value });
             }}

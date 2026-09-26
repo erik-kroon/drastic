@@ -15,11 +15,14 @@ export function makeAuth(bindings: Bindings, includeProviders = true) {
     const connectionString = bindings.HYPERDRIVE?.connectionString || bindings.DATABASE_URL;
     const secret = bindings.BETTER_AUTH_SECRET;
     const baseURL = bindings.BETTER_AUTH_URL;
+
     if (!connectionString || !secret || secret.length < 32 || !baseURL) {
       return yield* failure("Unavailable");
     }
+
     const config = yield* authConfiguration(bindings);
     const { url, local } = config;
+
     const client = yield* acquirePostgres({
       connectionString: Redacted.make(connectionString),
       applicationName: "open-erp-auth",
@@ -39,6 +42,20 @@ export function makeAuth(bindings: Bindings, includeProviders = true) {
         schema,
         transaction: true,
       }),
+      databaseHooks: {
+        session: {
+          create: {
+            before: async (session) => {
+              const admission = await client.query<{ enabled: boolean }>(
+                "select enabled from openerp.identity_admissions where actor_id = $1",
+                [session.userId],
+              );
+
+              return admission.rows[0]?.enabled !== false;
+            },
+          },
+        },
+      },
       emailAndPassword: {
         enabled: config.method === "password",
         disableSignUp: true,
@@ -84,9 +101,11 @@ export function authHandler(request: Request, bindings: Bindings) {
       ),
     );
   }
+
   return Effect.scoped(
     Effect.gen(function* () {
       const auth = yield* makeAuth(bindings);
+
       return yield* Effect.tryPromise({
         try: () => auth.handler(request),
         catch: () => failure("Unavailable"),

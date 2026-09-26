@@ -7,10 +7,12 @@ export const Route = createFileRoute("/")({ component: HomePage });
 
 function HomePage() {
   const locale = usePageLocale();
+
   return (
     <AccountingAccess locale={locale}>
       {(books) => {
         const single = books.length === 1 ? books[0] : undefined;
+
         if (single)
           return (
             <Navigate
@@ -19,6 +21,7 @@ function HomePage() {
               replace
             />
           );
+
         return <CompanyDirectory books={books} locale={locale} />;
       }}
     </AccountingAccess>

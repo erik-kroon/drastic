@@ -3,6 +3,7 @@ import * as Schema from "effect/Schema";
 import type { Transaction } from "./transaction";
 
 type JsonObject = Schema.JsonObject;
+
 type Lock = "share" | "update";
 
 export type DirectTableAccess = {
@@ -78,12 +79,14 @@ export type FxCorrectionRow = {
 };
 
 export type RateRow = { readonly body: JsonObject };
+
 export type CounterpartyRow = {
   readonly id: string;
   readonly role: string;
   readonly currentRevision: string;
   readonly body: JsonObject;
 };
+
 export type BankAccountRow = { readonly accountId: string };
 
 export function readDirectTableAccess(transaction: Transaction) {
@@ -687,6 +690,7 @@ export function readControlAccount(
       "objects",
     );
   }
+
   if (table === "owner_control_accounts") {
     return transaction.execute<BankAccountRow>(
       sql`
@@ -696,6 +700,7 @@ export function readControlAccount(
       "objects",
     );
   }
+
   return transaction.execute<BankAccountRow>(
     sql`
       select account_id as "accountId" from openerp.vat_control_account_roles

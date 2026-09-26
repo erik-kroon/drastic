@@ -22,8 +22,10 @@ type Props = {
   initial?: Partial<typeof Vat.VatFactInput.Type>;
   onSaved: (id: string) => void;
 };
+
 function nullable(fields: FormData, name: string) {
   const value = fields.get(name);
+
   return typeof value === "string" && value !== "" ? value : null;
 }
 
@@ -32,13 +34,16 @@ export function VatFactEditor(props: Props) {
   const sv = locale === "sv";
   const copy = vatCopy(locale);
   const [sourceKey] = useState(() => initial?.sourceKey ?? `vat_${crypto.randomUUID()}`);
+
   const basis = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "basis"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(book)}/vat-returns/facts`, Vat.VatBasis, { signal }),
     retry: false,
   });
+
   const scale = basis.data?.currencyScale;
+
   return (
     <EvidenceCommandForm
       book={book}
@@ -253,8 +258,10 @@ export function VatFactEditor(props: Props) {
     </EvidenceCommandForm>
   );
 }
+
 function VatChoices({ locale, initial }: Pick<Props, "locale" | "initial">) {
   const copy = vatCopy(locale);
+
   const options = {
     treatment: [
       { value: "domestic_sale", label: copy.sale },
@@ -278,6 +285,7 @@ function VatChoices({ locale, initial }: Pick<Props, "locale" | "initial">) {
       { value: "unsupported", label: copy.unsupported },
     ],
   };
+
   return (
     <>
       {(

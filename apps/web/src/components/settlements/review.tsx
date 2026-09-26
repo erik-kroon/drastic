@@ -29,6 +29,7 @@ export function AllocationReview({
   const approvalKeys = useRef(new Map<string, string>());
   const executionKeys = useRef(new Map<string, string>());
   const base = `${bookPath(book)}/bank-allocation-plans/${encodeURIComponent(id)}`;
+
   const plan = useQuery({
     queryKey: [...bookKey(book), "bank-allocation", id],
     staleTime: 0,
@@ -36,15 +37,18 @@ export function AllocationReview({
     retry: false,
     queryFn: async ({ signal }) => {
       const view = await readAccounting(base, Settlement.BankAllocationView, { signal });
+
       if (
         view.plan.id !== id ||
         view.plan.scope.bookId !== book.id ||
         view.plan.scope.entityId !== book.entityId
       )
         throw new Error("Allocation scope mismatch");
+
       return view;
     },
   });
+
   const approval = useMutation({
     mutationFn: (input: typeof Settlement.ApproveBankAllocation.Type) =>
       readAccounting(
@@ -60,6 +64,7 @@ export function AllocationReview({
       void plan.refetch();
     },
   });
+
   const execution = useMutation({
     mutationFn: (input: typeof Settlement.ExecuteBankAllocation.Type) =>
       readAccounting(
@@ -71,12 +76,16 @@ export function AllocationReview({
       void client.invalidateQueries({ queryKey: bookKey(book) });
     },
   });
+
   const view = plan.data;
   const executed = view?.execution ?? execution.data;
   const writesPending = approval.isPending || execution.isPending;
   const busy = plan.isFetching || writesPending;
   const known = plan.isSuccess && plan.fetchStatus === "idle" && plan.isFetchedAfterMount;
-  const current = known && view?.dependenciesCurrent && !writesPending && !executed && !view?.unmatch;
+
+  const current =
+    known && view?.dependenciesCurrent && !writesPending && !executed && !view?.unmatch;
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.capacity}</Heading>
@@ -262,22 +271,43 @@ export function AllocationReview({
           />
         </>
       ) : null}
-      <RequestRecovery locale={locale} label={copy.approve}
-        request={JSON.stringify(approval.variables)} requestKey={approvalKeys.current.get(`${base}/approve:${JSON.stringify(approval.variables)}`)}
-        complete={approval.isSuccess} pending={writesPending}
-        onRetry={() => { if (!writesPending && approval.variables) approval.mutate(approval.variables); }}
+      <RequestRecovery
+        locale={locale}
+        label={copy.approve}
+        request={JSON.stringify(approval.variables)}
+        requestKey={approvalKeys.current.get(
+          `${base}/approve:${JSON.stringify(approval.variables)}`,
+        )}
+        complete={approval.isSuccess}
+        pending={writesPending}
+        onRetry={() => {
+          if (!writesPending && approval.variables) approval.mutate(approval.variables);
+        }}
         onDiscard={() => {
           if (writesPending) return;
-          approval.reset(); approvalKeys.current.clear(); setReviewed(false);
-        }} />
-      <RequestRecovery locale={locale} label={copy.execute}
-        request={JSON.stringify(execution.variables)} requestKey={executionKeys.current.get(`${base}/execute:${JSON.stringify(execution.variables)}`)}
-        complete={execution.isSuccess} pending={writesPending}
-        onRetry={() => { if (!writesPending && execution.variables) execution.mutate(execution.variables); }}
+          approval.reset();
+          approvalKeys.current.clear();
+          setReviewed(false);
+        }}
+      />
+      <RequestRecovery
+        locale={locale}
+        label={copy.execute}
+        request={JSON.stringify(execution.variables)}
+        requestKey={executionKeys.current.get(
+          `${base}/execute:${JSON.stringify(execution.variables)}`,
+        )}
+        complete={execution.isSuccess}
+        pending={writesPending}
+        onRetry={() => {
+          if (!writesPending && execution.variables) execution.mutate(execution.variables);
+        }}
         onDiscard={() => {
           if (writesPending) return;
-          execution.reset(); executionKeys.current.clear();
-        }} />
+          execution.reset();
+          executionKeys.current.clear();
+        }}
+      />
     </Box>
   );
 }
@@ -293,19 +323,29 @@ function RequestRecovery(props: {
   onDiscard: () => void;
 }) {
   if (!props.request || props.complete) return null;
-  return <Box display="grid" gap="md" minWidth="zero">
-    <Text>{props.label}</Text>
-    <Text>{props.locale === "sv"
-      ? "Anropet kan ha sparats även om svaret saknas. Återförsök samma anrop eller läs kvittot innan du kastar återförsöksnyckeln."
-      : "The request may have committed even if its response is missing. Retry the same request or recover its receipt before discarding the retry key."}</Text>
-    <Text>{props.requestKey}</Text><Text>{props.request}</Text>
-    <Box display="flex" flexWrap="wrap" gap="md">
-      <Button type="button" variant="outline" disabled={props.pending} onClick={props.onRetry}>
-        {props.locale === "sv" ? "Återförsök bevarat anrop" : "Retry retained request"} · {props.label}
-      </Button>
-      <Button type="button" variant="ghost" disabled={props.pending} onClick={props.onDiscard}>
-        {props.locale === "sv" ? "Kasta anrop och återförsöksnyckel" : "Discard request and retry key"} · {props.label}
-      </Button>
+
+  return (
+    <Box display="grid" gap="md" minWidth="zero">
+      <Text>{props.label}</Text>
+      <Text>
+        {props.locale === "sv"
+          ? "Anropet kan ha sparats även om svaret saknas. Återförsök samma anrop eller läs kvittot innan du kastar återförsöksnyckeln."
+          : "The request may have committed even if its response is missing. Retry the same request or recover its receipt before discarding the retry key."}
+      </Text>
+      <Text>{props.requestKey}</Text>
+      <Text>{props.request}</Text>
+      <Box display="flex" flexWrap="wrap" gap="md">
+        <Button type="button" variant="outline" disabled={props.pending} onClick={props.onRetry}>
+          {props.locale === "sv" ? "Återförsök bevarat anrop" : "Retry retained request"} ·{" "}
+          {props.label}
+        </Button>
+        <Button type="button" variant="ghost" disabled={props.pending} onClick={props.onDiscard}>
+          {props.locale === "sv"
+            ? "Kasta anrop och återförsöksnyckel"
+            : "Discard request and retry key"}{" "}
+          · {props.label}
+        </Button>
+      </Box>
     </Box>
-  </Box>;
+  );
 }

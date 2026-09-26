@@ -56,6 +56,7 @@ export function readRegisteredAccounts(
   endsOn: string,
 ) {
   if (accountIds.length === 0) return Effect.succeed<ReadonlyArray<RegisteredAccountRow>>([]);
+
   return transaction.execute<RegisteredAccountRow>(
     sql`
       select e.account_id as "accountId",

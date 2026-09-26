@@ -10,12 +10,15 @@ import { digest, isoNow, newId, replay, saveCommand } from "../posting";
 import { checkControls } from "./source-controls";
 
 type Identified = { readonly scope: Scope; readonly id: string };
+
 type Command = Identified & { readonly idempotencyKey: string };
 
 function readPreview(transaction: Transaction, scope: Scope, id: string) {
   return Effect.gen(function* () {
     const row = (yield* Db.readPreview(transaction, scope.bookId, id))[0];
+
     if (!row) return yield* failure("NotFound");
+
     return yield* decode(Sie.SiePreview, row.body);
   });
 }
@@ -23,7 +26,9 @@ function readPreview(transaction: Transaction, scope: Scope, id: string) {
 function readPlan(transaction: Transaction, scope: Scope, id: string) {
   return Effect.gen(function* () {
     const row = (yield* Db.readPlan(transaction, scope.bookId, id))[0];
+
     if (!row) return yield* failure("NotFound");
+
     return yield* decode(Sie.SiePlan, row.body);
   });
 }
@@ -31,7 +36,9 @@ function readPlan(transaction: Transaction, scope: Scope, id: string) {
 function readRun(transaction: Transaction, scope: Scope, id: string) {
   return Effect.gen(function* () {
     const row = (yield* Db.readRun(transaction, scope.bookId, id))[0];
+
     if (!row) return yield* failure("NotFound");
+
     return {
       ...row,
       leaseUntil: row.leaseUntil === null ? null : new Date(row.leaseUntil).toISOString(),
@@ -47,7 +54,9 @@ export const listSourcePreviews = Effect.fn("sie.listSourcePreviews")(function* 
     if (!(yield* Db.readSource(transaction, command.scope.bookId, command.id))[0])
       return yield* failure("NotFound");
     const rows = yield* Db.listPreviews(transaction, command.scope.bookId, command.id);
+
     if (rows.length > 50) return yield* failure("UnsupportedProfile");
+
     const items = yield* Effect.forEach(rows, (row) =>
       decode(Sie.SiePreview, row.body).pipe(
         Effect.map((preview) => ({
@@ -61,6 +70,7 @@ export const listSourcePreviews = Effect.fn("sie.listSourcePreviews")(function* 
         })),
       ),
     );
+
     return yield* decode(Sie.SiePreviewInventory, {
       scope: command.scope,
       occurrenceId: command.id,
@@ -80,6 +90,7 @@ export const captureSource = Effect.fn("sie.captureSource")(function* (
     function* (transaction, principal) {
       const { scope, id, idempotencyKey, input } = command;
       const operation = "capture_sie_source";
+
       const request = yield* replay(
         transaction,
         scope,
@@ -89,15 +100,21 @@ export const captureSource = Effect.fn("sie.captureSource")(function* (
         { occurrenceId: id, preview: input },
         Sie.SiePreview,
       );
+
       if (request.previous) return request.previous;
       yield* requireInsertAccess(transaction, ["sie_source_previews", "command_receipts"]);
       const source = (yield* Db.readSource(transaction, scope.bookId, id))[0];
+
       if (!source) return yield* failure("NotFound");
+
       if (source.sha256 !== input.sourceSha256) return yield* failure("StaleDependency");
       const history = yield* Db.listPreviews(transaction, scope.bookId, id);
+
       if (history.some((row) => row.runId !== null)) return yield* failure("IdempotencyConflict");
+
       if (history.length >= 50) return yield* failure("UnsupportedProfile");
       const previous = history[0] ? yield* decode(Sie.SiePreview, history[0].body) : undefined;
+
       const body = Object.assign({}, input, {
         id: newId("siepreview"),
         scope,
@@ -106,6 +123,7 @@ export const captureSource = Effect.fn("sie.captureSource")(function* (
         ordinal: (previous?.ordinal ?? 0) + 1,
         createdAt: yield* isoNow(transaction),
       });
+
       const result = yield* decode(
         Sie.SiePreview,
         Object.assign({}, body, {
@@ -113,6 +131,7 @@ export const captureSource = Effect.fn("sie.captureSource")(function* (
           receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
         }),
       );
+
       if (
         result.records.length > 4000 ||
         result.vouchers.length > 500 ||
@@ -129,6 +148,7 @@ export const captureSource = Effect.fn("sie.captureSource")(function* (
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -152,6 +172,7 @@ export const sealSourcePlan = Effect.fn("sie.sealSourcePlan")(function* (
     function* (transaction, principal) {
       const { scope, id, idempotencyKey, input } = command;
       const operation = "seal_sie_source_plan";
+
       const request = yield* replay(
         transaction,
         scope,
@@ -161,25 +182,34 @@ export const sealSourcePlan = Effect.fn("sie.sealSourcePlan")(function* (
         { previewId: id, input },
         Sie.SiePlan,
       );
+
       if (request.previous) return request.previous;
       yield* requireInsertAccess(transaction, ["sie_source_plans", "command_receipts"]);
       const preview = yield* readPreview(transaction, scope, id);
       const source = (yield* Db.readSource(transaction, scope.bookId, preview.occurrenceId))[0];
+
       if (!source) return yield* failure("MissingEvidence");
+
       if (source.sourceSystem.startsWith("synthetic_") !== (input.sourceKind === "synthetic"))
         return yield* failure("UnsupportedProfile");
       const history = yield* Db.listPreviews(transaction, scope.bookId, preview.occurrenceId);
+
       if (history[0]?.body.id !== id) return yield* failure("StaleDependency");
+
       if (!preview.ready || input.digest !== preview.digest)
         return yield* failure("ApprovalRequired");
+
       if (history.some((row) => row.body.id === id && row.planId !== null))
         return yield* failure("IdempotencyConflict");
+
       const accounts = yield* PostingDb.readAccounts(transaction, scope.bookId, [
         ...new Set(input.mappings.map((m) => m.accountId)),
       ]);
+
       if (input.mappings.some((m) => !accounts.some((a) => a.id === m.accountId)))
         return yield* failure("InvalidJournal");
       yield* checkControls(preview, input);
+
       const body = {
         id: newId("sieplan"),
         scope,
@@ -193,11 +223,13 @@ export const sealSourcePlan = Effect.fn("sie.sealSourcePlan")(function* (
         financialAdmission: "unsupported" as const,
         unreconstructableDetail: true as const,
       };
+
       const result = yield* decode(Sie.SiePlan, {
         ...body,
         digest: yield* digest(body),
         receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
       });
+
       yield* Db.insertPlan(transaction, scope.bookId, result.id, id, result);
       yield* saveCommand(
         transaction,
@@ -208,6 +240,7 @@ export const sealSourcePlan = Effect.fn("sie.sealSourcePlan")(function* (
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -234,6 +267,7 @@ export const startSourceRun = Effect.fn("sie.startSourceRun")(function* (
     function* (transaction, principal) {
       const { scope, id, idempotencyKey } = command;
       const operation = "start_sie_source_run";
+
       const request = yield* replay(
         transaction,
         scope,
@@ -243,14 +277,19 @@ export const startSourceRun = Effect.fn("sie.startSourceRun")(function* (
         { planId: id, digest: command.digest },
         Sie.SieRunStart,
       );
+
       if (request.previous) return request.previous;
       yield* requireInsertAccess(transaction, ["sie_source_runs", "command_receipts"]);
       const plan = yield* readPlan(transaction, scope, id);
+
       if (plan.digest !== command.digest) return yield* failure("StaleDependency");
       const preview = yield* readPreview(transaction, scope, plan.previewId);
       const history = yield* Db.listPreviews(transaction, scope.bookId, preview.occurrenceId);
+
       if (history[0]?.body.id !== preview.id) return yield* failure("StaleDependency");
+
       if (history.some((row) => row.runId !== null)) return yield* failure("IdempotencyConflict");
+
       const row = {
         id: newId("sierun"),
         planId: id,
@@ -259,11 +298,13 @@ export const startSourceRun = Effect.fn("sie.startSourceRun")(function* (
         leaseUntil: new Date(Date.parse(yield* isoNow(transaction)) + 900000).toISOString(),
         status: "running" as const,
       };
+
       const result = yield* decode(Sie.SieRunStart, {
         ...row,
         planDigest: plan.digest,
         financialAdmission: "unsupported",
       });
+
       yield* Db.insertRun(transaction, scope.bookId, row);
       yield* saveCommand(
         transaction,
@@ -274,6 +315,7 @@ export const startSourceRun = Effect.fn("sie.startSourceRun")(function* (
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -288,6 +330,7 @@ export const getSourceRun = Effect.fn("sie.getSourceRun")(function* (
     const run = yield* readRun(transaction, command.scope, command.id);
     const plan = yield* readPlan(transaction, command.scope, run.planId);
     const chunks = yield* Db.listChunks(transaction, command.scope.bookId, run.id);
+
     return yield* decode(Sie.SieRun, {
       ...run,
       planDigest: plan.digest,
@@ -315,6 +358,7 @@ export const advanceSourceRun = Effect.fn("sie.advanceSourceRun")(function* (
     function* (transaction, principal) {
       const { scope, id, idempotencyKey, input } = command;
       const operation = "advance_sie_source_run";
+
       const request = yield* replay(
         transaction,
         scope,
@@ -324,6 +368,7 @@ export const advanceSourceRun = Effect.fn("sie.advanceSourceRun")(function* (
         { runId: id, input },
         Sie.SieChunk,
       );
+
       if (request.previous) return request.previous;
       yield* requireInsertAccess(transaction, [
         "sie_source_vouchers",
@@ -334,6 +379,7 @@ export const advanceSourceRun = Effect.fn("sie.advanceSourceRun")(function* (
       const plan = yield* readPlan(transaction, scope, run.planId);
       const preview = yield* readPreview(transaction, scope, plan.previewId);
       const now = Date.parse(yield* isoNow(transaction));
+
       if (
         run.status !== "running" ||
         run.leaseUntil === null ||
@@ -345,17 +391,22 @@ export const advanceSourceRun = Effect.fn("sie.advanceSourceRun")(function* (
         return yield* failure("StaleDependency");
       const firstOrdinal = run.nextOrdinal;
       const lastOrdinal = Math.min(plan.voucherCount, firstOrdinal + 199);
+
       if (firstOrdinal > plan.voucherCount) return yield* failure("IdempotencyConflict");
+
       const vouchers = preview.vouchers
         .filter((v) => v.ordinal >= firstOrdinal && v.ordinal <= lastOrdinal)
         .sort((a, b) => a.ordinal - b.ordinal);
+
       if (
         vouchers.length !== lastOrdinal - firstOrdinal + 1 ||
         vouchers.some((v, i) => v.ordinal !== firstOrdinal + i)
       )
         return yield* failure("MissingEvidence");
+
       if (vouchers.reduce((sum, v) => sum + v.transactions.length, 0) > 2000)
         return yield* failure("UnsupportedProfile");
+
       const result = yield* decode(Sie.SieChunk, {
         runId: id,
         planDigest: plan.digest,
@@ -366,6 +417,7 @@ export const advanceSourceRun = Effect.fn("sie.advanceSourceRun")(function* (
         membershipDigest: yield* digest(vouchers),
         receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
       });
+
       yield* Db.insertVouchers(transaction, scope.bookId, id, vouchers);
       yield* Db.insertChunk(transaction, scope.bookId, id, firstOrdinal, result);
       yield* Db.advanceRun(transaction, scope.bookId, {
@@ -383,6 +435,7 @@ export const advanceSourceRun = Effect.fn("sie.advanceSourceRun")(function* (
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -400,6 +453,7 @@ export const reclaimSourceRun = Effect.fn("sie.reclaimSourceRun")(function* (
     function* (transaction, principal) {
       const { scope, id, idempotencyKey, action } = command;
       const operation = "reclaim_sie_source_run";
+
       const request = yield* replay(
         transaction,
         scope,
@@ -409,10 +463,14 @@ export const reclaimSourceRun = Effect.fn("sie.reclaimSourceRun")(function* (
         { runId: id, action },
         Sie.SieFence,
       );
+
       if (request.previous) return request.previous;
       const run = yield* readRun(transaction, scope, id);
+
       if (run.status === "staged") return yield* failure("InvalidJournal");
+
       if (BigInt(run.fence) >= 9223372036854775807n) return yield* failure("UnsupportedProfile");
+
       const updated = {
         ...run,
         fence: (BigInt(run.fence) + 1n).toString(),
@@ -422,6 +480,7 @@ export const reclaimSourceRun = Effect.fn("sie.reclaimSourceRun")(function* (
             ? null
             : new Date(Date.parse(yield* isoNow(transaction)) + 900000).toISOString(),
       };
+
       const result = yield* decode(Sie.SieFence, updated);
       yield* Db.advanceRun(transaction, scope.bookId, updated);
       yield* saveCommand(
@@ -433,6 +492,7 @@ export const reclaimSourceRun = Effect.fn("sie.reclaimSourceRun")(function* (
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",

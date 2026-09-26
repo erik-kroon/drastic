@@ -9,13 +9,16 @@ export const SalesStatus = Schema.Literals([
   "settled",
   "cancelled",
 ]);
+
 export const SalesSort = Schema.Literals(["newest", "oldest", "customer", "due"]);
+
 export const SalesQuery = Schema.Struct({
   q: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
   status: Schema.optional(SalesStatus),
   sort: Schema.optional(SalesSort),
   page: Schema.optional(Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,5}$/))),
 });
+
 export const SalesRow = Schema.Struct({
   id: Accounting.Identifier,
   kind: Schema.Literals(["draft", "invoice"]),
@@ -41,6 +44,7 @@ export const SalesRow = Schema.Struct({
   draftId: Schema.NullOr(Accounting.Identifier),
   issueReviewId: Schema.NullOr(Accounting.Identifier),
 });
+
 export const SalesPage = Schema.Struct({
   scope: Accounting.Scope,
   checkedAt: Schema.String,

@@ -32,6 +32,7 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
   const [selectedPreview, setSelectedPreview] = useState<string | null | undefined>(undefined);
   const [mappingSeed, setMappingSeed] = useState<typeof Intake.SourcePreview.Type | null>(null);
   const [mappingOpen, setMappingOpen] = useState(false);
+
   const source = useQuery({
     queryKey: [...bookKey(book), "source-occurrence", id],
     retry: false,
@@ -44,15 +45,18 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
         Intake.SourceOccurrenceView,
         { signal },
       );
+
       if (
         view.occurrence.id !== id ||
         view.occurrence.scope.bookId !== book.id ||
         view.occurrence.scope.entityId !== book.entityId
       )
         throw new Error("Source scope mismatch");
+
       return view;
     },
   });
+
   if (selectedPreview === undefined && source.data) {
     setSelectedPreview(source.data.latestPreviewId);
     setMappingOpen(
@@ -62,9 +66,12 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
         source.data.latestPreviewId === null,
     );
   }
+
   const previewId = selectedPreview;
+
   const sourceKnown =
     source.isSuccess && source.fetchStatus === "idle" && source.isFetchedAfterMount;
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <RecordHeading
@@ -163,6 +170,7 @@ export function SourceWorkspace({ book, setup, locale, id }: IntakeProps & { id:
               onSubmit={(event) => {
                 event.preventDefault();
                 const selected = new FormData(event.currentTarget).get("previewId");
+
                 if (typeof selected === "string") setSelectedPreview(selected);
               }}
             >
@@ -222,9 +230,11 @@ function MappingForm(
   const copy = intakeCopy(locale);
   const keys = useRef(new Map<string, string>());
   const [error, setError] = useState("");
+
   const mutation = useMutation({
     mutationFn: (input: typeof Intake.CsvMapping.Type) => {
       const path = `${bookPath(book)}/source-occurrences/${encodeURIComponent(id)}/previews`;
+
       return readAccounting(
         path,
         Intake.SourcePreview,
@@ -233,6 +243,7 @@ function MappingForm(
     },
     onSuccess: props.onCreated,
   });
+
   const choices = {
     delimiter: [
       { value: ",", label: copy.comma },
@@ -259,8 +270,10 @@ function MappingForm(
         label: `${account.code} · ${account.name}`,
       })),
   };
+
   if (scale === undefined)
     return <AccountingStatus locale={locale} pending={metadata.isPending} error={metadata.error} />;
+
   return (
     <Box
       as="form"
@@ -269,8 +282,10 @@ function MappingForm(
       minWidth="zero"
       onSubmit={(event) => {
         event.preventDefault();
+
         if (!props.allowed || mutation.isPending || mutation.isError) return;
         const fields = new FormData(event.currentTarget);
+
         const result = Schema.decodeUnknownOption(Intake.CsvMapping)({
           profile: "bank_csv_utf8_v1",
           ...Object.fromEntries(fields),
@@ -284,14 +299,17 @@ function MappingForm(
             basis: fields.get("basis"),
           },
         });
+
         if (result._tag === "None") {
           setError(
             locale === "sv"
               ? "Kontrollera kolumner, filformat, konto, datum och saldon."
               : "Check the columns, file format, account, dates and balances.",
           );
+
           return;
         }
+
         setError("");
         mutation.mutate(result.value);
       }}
@@ -442,5 +460,6 @@ function MappingForm(
 
 function mappingAmount(fields: FormData, name: string, scale: number) {
   const value = fields.get(name);
+
   return typeof value === "string" ? signedDecimalToMinor(value, scale) : null;
 }

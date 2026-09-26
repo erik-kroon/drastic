@@ -10,7 +10,9 @@ export const BookContext = createContext<{
 
 export function useBookWorkspace() {
   const context = useContext(BookContext);
+
   if (!context) throw new Error("Book workspace is required");
+
   return context;
 }
 

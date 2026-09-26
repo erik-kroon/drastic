@@ -25,6 +25,7 @@ export function CaseContextPanel(props: {
   const { book, snapshotId, caseId, locale } = props;
   const copy = accountingCopy(locale);
   const [detail, setDetail] = useState<(typeof Cases.CaseContextInput.Type)["detail"]>("standard");
+
   const context = useInfiniteQuery({
     queryKey: [...bookKey(book), "case-context", snapshotId, caseId, detail],
     initialPageParam: "",
@@ -34,6 +35,7 @@ export function CaseContextPanel(props: {
         Cases.CaseContext,
         { signal },
       );
+
       if (
         page.snapshot.id !== snapshotId ||
         page.case.id !== caseId ||
@@ -41,13 +43,16 @@ export function CaseContextPanel(props: {
         page.snapshot.scope.entityId !== book.entityId
       )
         throw new Error("Case context scope mismatch");
+
       return page;
     },
     getNextPageParam: (page) => (page.detail === "summary" ? null : page.history.next),
     retry: false,
   });
+
   const first = context.data?.pages[0];
   const history = context.data?.pages.flatMap((page) => page.history.items) ?? [];
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.case_inspect}</Heading>
@@ -158,11 +163,13 @@ function CaseFacts({
   onPrepared: (id: string) => void;
 }) {
   const copy = accountingCopy(locale);
+
   const state = {
     proposed: copy.case_proposed,
     posted: copy.case_posted,
     reversed: copy.case_reversed,
   };
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Text>
@@ -266,11 +273,13 @@ function CaseSource({
 }) {
   const copy = accountingCopy(locale);
   const contentId = useId();
+
   const contentState = {
     not_requested: copy.case_content_not_requested,
     excerpt: copy.case_content_excerpt,
     complete: copy.case_content_complete,
   };
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.journal_evidence_refs}</Heading>

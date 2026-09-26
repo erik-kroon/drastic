@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
+
 const styles = stylex.create({
   row: {
     display: "flex",
@@ -20,6 +21,7 @@ const styles = stylex.create({
     borderBlockStartColor: tokens.border,
   },
 });
+
 export function FormActions({
   children,
   sticky = false,

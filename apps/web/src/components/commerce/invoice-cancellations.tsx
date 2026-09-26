@@ -25,7 +25,9 @@ import {
 } from "./shared";
 
 type Issue = typeof Issuance.InvoiceIssueReceipt.Type;
+
 type CancellationProps = CommerceProps & { issue: Issue };
+
 export function InvoiceCancellationPanel(props: CancellationProps) {
   return (
     <CancellationPanel
@@ -34,10 +36,12 @@ export function InvoiceCancellationPanel(props: CancellationProps) {
     />
   );
 }
+
 function CancellationPanel(props: CancellationProps) {
   const { book, locale, issue } = props;
   const copy = invoiceCancellationCopy(locale);
   const [selected, setSelected] = useState<string | null>(null);
+
   const status = useQuery({
     queryKey: [...commerceKey(book), "invoice-cancellation-status", issue.id],
     staleTime: 0,
@@ -48,12 +52,16 @@ function CancellationPanel(props: CancellationProps) {
         Cancellation.InvoiceCancellationStatus,
         { signal },
       );
+
       checkScope(book, result.scope);
       checkScope(book, result.issue.scope);
+
       if (result.issue.id !== issue.id || result.issue.digest !== issue.digest)
         throw new Error("Cancellation source identity mismatch");
+
       if (result.cancellation) {
         checkScope(book, result.cancellation.scope);
+
         if (
           result.cancellation.issueId !== issue.id ||
           result.cancellation.registerInvoiceId !== issue.registerInvoiceId ||
@@ -61,12 +69,15 @@ function CancellationPanel(props: CancellationProps) {
         )
           throw new Error("Cancellation target identity mismatch");
       }
+
       return result;
     },
     retry: false,
   });
+
   const ready = status.isSuccess && status.isFetchedAfterMount && status.fetchStatus === "idle";
   const reviewId = selected ?? status.data?.reviews[0]?.id;
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <AccountingStatus locale={locale} pending={status.isPending} error={status.error} />
@@ -144,6 +155,7 @@ function CancellationPanel(props: CancellationProps) {
     </Box>
   );
 }
+
 function CancellationAcknowledgment({ locale }: Pick<CommerceProps, "locale">) {
   return (
     <Box as="label" display="flex" alignItems="start" gap="md">
@@ -152,6 +164,7 @@ function CancellationAcknowledgment({ locale }: Pick<CommerceProps, "locale">) {
     </Box>
   );
 }
+
 function useCancellationSetup(book: CommerceProps["book"]) {
   return useQuery({
     queryKey: [...bookKey(book), "setup"],
@@ -162,18 +175,22 @@ function useCancellationSetup(book: CommerceProps["book"]) {
     retry: false,
   });
 }
+
 function CancellationPreparation(
   props: CancellationProps & { allowed: boolean; onOpen: (id: string) => void },
 ) {
   const { book, locale, issue } = props;
   const copy = invoiceCancellationCopy(locale);
   const setup = useCancellationSetup(book);
+
   const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm" }).format(
     new Date(),
   );
+
   const currentPeriod = setup.data?.periods.find(
     (period) => !period.locked && period.startsOn <= today && period.endsOn >= today,
   );
+
   return (
     <Box display="grid" gap="lg">
       <Text tone="muted">{copy.requirements}</Text>
@@ -198,6 +215,7 @@ function CancellationPreparation(
         })}
         onSuccess={(review) => {
           checkScope(book, review.scope);
+
           if (review.input.issueId !== issue.id || review.input.issueDigest !== issue.digest)
             throw new Error("Cancellation preparation identity mismatch");
           props.onOpen(review.id);
@@ -234,9 +252,11 @@ function CancellationPreparation(
     </Box>
   );
 }
+
 export function InvoiceCancellationReviewPanel(props: CancellationProps & { id: string }) {
   const { book, locale, id, issue } = props;
   const copy = invoiceCancellationCopy(locale);
+
   const review = useQuery({
     queryKey: [...commerceKey(book), "invoice-cancellation-review", id, issue.id],
     staleTime: 0,
@@ -247,9 +267,11 @@ export function InvoiceCancellationReviewPanel(props: CancellationProps & { id: 
         Cancellation.InvoiceCancellationView,
         { signal },
       );
+
       checkScope(book, result.review.scope);
       checkScope(book, result.review.snapshot.issue.scope);
       checkScope(book, result.review.snapshot.invoice.scope);
+
       if (
         result.review.id !== id ||
         result.review.input.issueId !== issue.id ||
@@ -258,20 +280,26 @@ export function InvoiceCancellationReviewPanel(props: CancellationProps & { id: 
         result.review.snapshot.invoice.id !== issue.registerInvoiceId
       )
         throw new Error("Cancellation review identity mismatch");
+
       if (result.approval) {
         checkScope(book, result.approval.scope);
+
         if (result.approval.reviewId !== id || result.approval.digest !== result.review.digest)
           throw new Error("Cancellation approval identity mismatch");
       }
+
       if (result.cancellation) {
         checkScope(book, result.cancellation.scope);
+
         if (result.cancellation.issueId !== issue.id)
           throw new Error("Cancellation receipt identity mismatch");
       }
+
       return result;
     },
     retry: false,
   });
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <AccountingStatus locale={locale} pending={review.isPending} error={review.error} />
@@ -298,6 +326,7 @@ export function InvoiceCancellationReviewPanel(props: CancellationProps & { id: 
     </Box>
   );
 }
+
 function CancellationReviewContents(
   props: CommerceProps & { view: typeof Cancellation.InvoiceCancellationView.Type; ready: boolean },
 ) {
@@ -309,6 +338,7 @@ function CancellationReviewContents(
   const posting = review.postingPlan.groups[0]?.actions[0];
   const current = ready && view.dependenciesCurrent && !cancellation;
   const path = `${commercePath(book)}/invoice-cancellation-reviews/${encodeURIComponent(review.id)}`;
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       {!cancellation ? (
@@ -341,6 +371,7 @@ function CancellationReviewContents(
               ]}
               rows={posting.lines.map((line) => {
                 const account = setup.data?.accounts.find((entry) => entry.id === line.accountId);
+
                 return {
                   id: line.lineId,
                   cells: [

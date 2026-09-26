@@ -48,6 +48,7 @@ export function ChoiceField(props: {
   const id = useId();
   const [localValue, setLocalValue] = useState(props.defaultValue);
   const selected = props.value ?? localValue;
+
   return (
     <fieldset disabled={props.disabled} {...stylex.props(styles.field)}>
       <legend {...stylex.props(styles.legend)}>{props.label}</legend>

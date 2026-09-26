@@ -33,28 +33,36 @@ export function TrialBalance(props: {
   const metadata = useQuery(workQueryOptions(book, {}));
   const [localAccount, setLocalAccount] = useState<string | null>(null);
   const accountId = props.onSelectAccount ? props.accountId : localAccount;
+
   const setAccountId = (value: string | null) => {
     setLocalAccount(value);
     props.onSelectAccount?.(value ?? "");
   };
+
   const base = `${bookPath(book)}/report-snapshots/${encodeURIComponent(id)}`;
+
   const report = useQuery({
     queryKey: [...bookKey(book), "report-snapshot", id],
     queryFn: async ({ signal }) => {
       const snapshot = await readAccounting(base, Reports.ReportSnapshot, { signal });
+
       if (
         snapshot.id !== id ||
         snapshot.scope.entityId !== book.entityId ||
         snapshot.scope.bookId !== book.id
       )
         throw new Error("Report scope mismatch");
+
       return snapshot;
     },
     retry: false,
   });
+
   const scale = report.data?.currencyScale ?? metadata.data?.currencyScale;
+
   const amount = (value: string) =>
     scale === undefined ? "—" : formatMinorAmount(value, scale, locale);
+
   const lines = useInfiniteQuery({
     queryKey: [...bookKey(book), "report-lines", id],
     initialPageParam: "",
@@ -64,13 +72,17 @@ export function TrialBalance(props: {
         Reports.ReportLines,
         { signal },
       );
+
       if (page.reportId !== id) throw new Error("Report line scope mismatch");
+
       return page;
     },
     getNextPageParam: (page) => page.next,
     retry: false,
   });
+
   const loaded = lines.data?.pages.flatMap((page) => page.items) ?? [];
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <AccountingStatus
@@ -175,6 +187,7 @@ function AccountReportSheet(props: {
   onClose: () => void;
 }) {
   const { book, report, accountId, locale } = props;
+
   return (
     <RecordSheet
       title={
@@ -221,8 +234,10 @@ function SnapshotHeader({
   mode?: "trial" | "ledger";
 }) {
   const sv = locale === "sv";
+
   const amount = (value: string) =>
     scale === undefined ? "—" : `${formatMinorAmount(value, scale, locale)} ${report.currency}`;
+
   return (
     <Box display="grid" gap="lg">
       <RecordHeading
@@ -267,6 +282,7 @@ function ReportBasis({
   locale: Locale;
 }) {
   const sv = locale === "sv";
+
   return (
     <Disclosure title={sv ? "Rapportunderlag & begränsningar" : "Report basis & limitations"}>
       <Text>
@@ -298,9 +314,12 @@ export function AccountExplanation({
   const copy = accountingCopy(locale);
   const metadata = useQuery(workQueryOptions(book, {}));
   const scale = report.currencyScale ?? metadata.data?.currencyScale;
+
   const amount = (value: string) =>
     scale === undefined ? "—" : formatMinorAmount(value, scale, locale);
+
   const base = `${bookPath(book)}/report-snapshots/${encodeURIComponent(report.id)}/lines/${encodeURIComponent(accountId)}/explanation`;
+
   const explanation = useInfiniteQuery({
     queryKey: [...bookKey(book), "report-explanation", report.id, accountId],
     initialPageParam: "",
@@ -310,19 +329,23 @@ export function AccountExplanation({
         Reports.ReportExplanation,
         { signal },
       );
+
       if (
         page.report.id !== report.id ||
         page.report.sequence !== report.sequence ||
         page.line.accountId !== accountId
       )
         throw new Error("Explanation scope mismatch");
+
       return page;
     },
     getNextPageParam: (page) => page.next,
     retry: false,
   });
+
   const first = explanation.data?.pages[0];
   const contributions = explanation.data?.pages.flatMap((page) => page.items) ?? [];
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.report_explanation}</Heading>

@@ -4,12 +4,15 @@ import * as A from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 
 const Label = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(2000));
+
 const Year = A.Identifier;
+
 const Control = Schema.Struct({
   accountId: A.Identifier,
   signedMinor: A.SignedMinorUnits,
   basis: Label,
 });
+
 const Receipt = Schema.Struct({
   id: A.Identifier,
   changeSetId: A.Identifier,
@@ -19,6 +22,7 @@ const Receipt = Schema.Struct({
   voucherNumber: Schema.String,
   committedAt: Schema.String,
 });
+
 export const SelectBasis = Schema.Struct({
   fiscalYearId: Year,
   mode: Schema.Literals(["full_history", "opening_set"]),
@@ -29,6 +33,7 @@ export const SelectBasis = Schema.Struct({
   controls: Schema.Array(Control).check(Schema.isMinLength(2), Schema.isMaxLength(500)),
   rationale: Label,
 });
+
 export const Basis = Schema.Struct({
   ...SelectBasis.fields,
   actorId: A.Identifier,
@@ -36,6 +41,7 @@ export const Basis = Schema.Struct({
   voucherId: Schema.optional(Schema.NullOr(A.Identifier)),
   ledgerReceipt: Schema.optional(Receipt),
 });
+
 export const PrepareOpening = Schema.Struct({
   fiscalYearId: Year,
   cutoverOn: A.AccountingDate,
@@ -46,7 +52,9 @@ export const PrepareOpening = Schema.Struct({
   accountingPeriodId: A.Identifier,
   series: Schema.String.check(Schema.isPattern(/^[A-Z0-9]{1,16}$/)),
 });
+
 export const OpeningPreparation = Schema.Struct({ basis: Basis, proposal: A.ChangeSet });
+
 export const RefreshOpening = Schema.Struct({
   expectedChangeSetId: A.Identifier,
   accountingPeriodId: PrepareOpening.fields.accountingPeriodId,
@@ -64,13 +72,16 @@ export const RunStart = Schema.Struct({
   status: Schema.Literals(["running", "paused", "posted"]),
   sourceYear: Schema.optional(Schema.String),
 });
+
 const Posting = Schema.Struct({
   ordinal: Schema.Int,
   sourceReference: Schema.String,
   sourceDigest: A.Digest,
   ledgerReceipt: Receipt,
 });
+
 export const Run = Schema.Struct({ ...RunStart.fields, items: Schema.Array(Posting) });
+
 export const ClosingComparison = Schema.Struct({
   scope: A.Scope,
   sourceRunId: A.Identifier,
@@ -90,10 +101,12 @@ export const ClosingComparison = Schema.Struct({
     }),
   ),
 });
+
 export const FinancialWorkspace = Schema.Struct({
   run: Schema.NullOr(Run),
   nextProposal: Schema.NullOr(A.ChangeSet),
 });
+
 export const PrepareSourceVoucher = Schema.Struct({
   fence: Schema.String,
   planDigest: A.Digest,
@@ -102,6 +115,7 @@ export const PrepareSourceVoucher = Schema.Struct({
   series: Schema.String.check(Schema.isPattern(/^[A-Z0-9]{1,16}$/)),
   rationale: Label,
 });
+
 export const Chunk = Schema.Struct({
   id: A.Identifier,
   nextOrdinal: Schema.Int,
@@ -109,6 +123,7 @@ export const Chunk = Schema.Struct({
   status: Schema.Literals(["running", "paused", "posted"]),
   items: Schema.Array(Posting),
 });
+
 export const Fence = Schema.Struct({
   id: A.Identifier,
   nextOrdinal: Schema.Int,
@@ -124,6 +139,7 @@ export const Payment = Schema.Struct({
   sourceDate: Schema.NullOr(A.AccountingDate),
   basis: Label,
 });
+
 export const HistoricalMatch = Schema.Struct({
   sourceIdentity: Payment.fields.sourceIdentity,
   itemIdentity: Payment.fields.sourceIdentity,
@@ -132,12 +148,14 @@ export const HistoricalMatch = Schema.Struct({
   sourceDate: Schema.NullOr(A.AccountingDate),
   basis: Label,
 });
+
 export const AmountControl = Schema.Struct({
   sourceAccount: Payment.fields.sourceAccount,
   currency: Payment.fields.currency,
   independentTotalMinor: A.MinorUnits,
   basis: Label,
 });
+
 export const AdmitItems = Schema.Struct({
   planDigest: A.Digest,
   payments: Schema.Array(Payment).check(Schema.isMaxLength(500)),
@@ -147,6 +165,7 @@ export const AdmitItems = Schema.Struct({
   chronology: Schema.Literals(["dated_source", "unknown"]),
   rationale: Label,
 });
+
 export const ItemAdmission = Schema.Struct({
   id: A.Identifier,
   sourcePlanId: A.Identifier,
@@ -193,8 +212,11 @@ export const BasisInventory = Schema.Struct({
 export const PlanItemAdmission = Schema.NullOr(ItemAdmission);
 
 const base = "/v1/entities/:entityId/books/:bookId";
+
 const identified = { params: A.ChangePath, error: accountingErrors };
+
 const mutation = { ...identified, headers: A.IdempotencyHeaders };
+
 export const HistoricalMigrationApi = HttpApiGroup.make("historicalMigration")
   .add(
     HttpApiEndpoint.post("refreshHistoricalOpening", `${base}/historical-bases/:id/proposals`, {

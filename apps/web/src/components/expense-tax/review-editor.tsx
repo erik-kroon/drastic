@@ -21,6 +21,7 @@ export function ExpenseReviewForm(
   const previous = source.reviewCurrent ? source.latestReview?.facts : null;
   const scale = source.current.facts.currencyScale;
   const copy = expenseTaxCopy(props.locale);
+
   return (
     <EvidenceCommandForm
       {...props}
@@ -165,6 +166,7 @@ export function ExpenseReviewForm(
     </EvidenceCommandForm>
   );
 }
+
 function ReviewDecisions(props: {
   locale: CommerceProps["locale"];
   previous: typeof Tax.TaxReviewFacts.Type | null | undefined;
@@ -172,6 +174,7 @@ function ReviewDecisions(props: {
   const sv = props.locale === "sv";
   const copy = expenseTaxCopy(props.locale);
   const previous = props.previous;
+
   return (
     <>
       <Box display="grid" gap="lg">
@@ -274,35 +277,46 @@ function ReviewDecisions(props: {
     </>
   );
 }
+
 function amountField(fields: FormData, name: string, scale: number | null) {
   const value = nullableValue(fields, name);
+
   return value === null
     ? null
     : scale === null
       ? "invalid"
       : (decimalToMinor(value, scale) ?? "invalid");
 }
+
 function percentFraction(fields: FormData, name: string) {
   const value = nullableValue(fields, name);
+
   if (value === null) return { numerator: null, denominator: null };
+
   if (/^[0-9]+\/[1-9][0-9]*$/.test(value)) {
     const separator = value.indexOf("/");
+
     return {
       numerator: value.slice(0, separator),
       denominator: (BigInt(value.slice(separator + 1)) * 100n).toString(),
     };
   }
+
   return { numerator: decimalToMinor(value, 6) ?? "invalid", denominator: "100000000" };
 }
+
 function displayAmount(value: string | null, scale: number | null) {
   return value === null || scale === null ? "" : minorToDecimal(value, scale);
 }
+
 function displayPercent(
   numerator: string | null | undefined,
   denominator: string | null | undefined,
 ) {
   if (numerator == null || denominator == null || BigInt(denominator) === 0n) return "";
   const scaled = BigInt(numerator) * 10000n;
+
   if (scaled % BigInt(denominator) !== 0n) return `${BigInt(numerator) * 100n}/${denominator}`;
+
   return displayAmount((scaled / BigInt(denominator)).toString(), 2);
 }

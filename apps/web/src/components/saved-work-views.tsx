@@ -25,14 +25,18 @@ export function SavedWorkViews(props: {
   const [dialog, setDialog] = useState<"save" | "remove" | null>(null);
   const current = savedFilters(props.filters);
   const views = query.isError ? [] : (query.data?.views ?? []);
+
   const selected = views.find(
     (view) => JSON.stringify(savedFilters(view.filters)) === JSON.stringify(current),
   );
+
   const close = () => setDialog(null);
+
   const saved = () => {
     void client.invalidateQueries({ queryKey: bookKey(book) });
     close();
   };
+
   return (
     <Box display="grid" gap="md">
       <Box display="flex" alignItems="end" flexWrap="wrap" gap="md">
@@ -44,6 +48,7 @@ export function SavedWorkViews(props: {
               disabled={!query.isSuccess}
               onValueChange={(value) => {
                 const view = views.find((item) => item.id === value);
+
                 if (view) props.onSelect(view.filters);
               }}
               options={[

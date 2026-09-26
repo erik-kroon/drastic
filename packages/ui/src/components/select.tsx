@@ -1,4 +1,5 @@
 "use client";
+
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 
 import { Select as SelectPrimitive } from "@base-ui/react/select";
@@ -13,6 +14,7 @@ import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import type * as React from "react";
 
 const Select = SelectPrimitive.Root;
+
 const styles = stylex.create({
   control: { width: "100%" },
   comfortable: {
@@ -193,6 +195,7 @@ function SelectValue({ className, styleX, ...props }: WithStyleX<SelectPrimitive
     />
   );
 }
+
 function SelectTrigger({
   className,
   children,
@@ -305,9 +308,11 @@ function SelectItem({
     </SelectPrimitive.Item>
   );
 }
+
 function SelectGroup(props: SelectPrimitive.Group.Props) {
   return <SelectPrimitive.Group data-slot="select-group" {...props} />;
 }
+
 function SelectLabel({
   className,
   styleX,
@@ -321,6 +326,7 @@ function SelectLabel({
     />
   );
 }
+
 function SelectSeparator({
   className,
   styleX,
@@ -400,4 +406,5 @@ export {
   SelectTrigger,
   SelectValue,
 };
+
 export type { SelectControlProps, SelectOption };

@@ -13,6 +13,7 @@ export const PrepareLegalInvoicePdf = Schema.Struct({
     "openerp-se-invoice-takumi-v2",
   ]),
 });
+
 export const LegalIssuePdfFacts = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -49,6 +50,7 @@ export const LegalIssuePdfFacts = Schema.Struct({
   delivered: Schema.Literal(false),
   digest: Accounting.Digest,
 });
+
 export const LegalInvoicePdfCapture = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -60,6 +62,7 @@ export const LegalInvoicePdfCapture = Schema.Struct({
   createdAt: Schema.String,
   digest: Accounting.Digest,
 });
+
 export const LegalInvoicePdfArtifact = Schema.Struct({
   captureId: Accounting.Identifier,
   captureDigest: Accounting.Digest,
@@ -76,10 +79,12 @@ export const LegalInvoicePdfArtifact = Schema.Struct({
     "openerp-se-invoice-takumi-v2",
   ]),
 });
+
 export const LegalInvoicePdfView = Schema.Struct({
   capture: LegalInvoicePdfCapture,
   artifact: Schema.NullOr(LegalInvoicePdfArtifact),
 });
+
 export const LegalInvoicePdfHistory = Schema.Struct({
   scope: Accounting.Scope,
   issueId: Accounting.Identifier,
@@ -93,7 +98,9 @@ export const LegalInvoicePdfHistory = Schema.Struct({
     }),
   ).check(Schema.isMaxLength(1)),
 });
+
 const base = "/v1/entities/:entityId/books/:bookId/commerce";
+
 export const LegalInvoicePdfApi = HttpApiGroup.make("legalInvoicePdfs").add(
   HttpApiEndpoint.post("prepareLegalInvoicePdf", `${base}/legal-invoice-pdfs`, {
     params: Accounting.Scope,
@@ -118,6 +125,7 @@ export const LegalInvoicePdfApi = HttpApiGroup.make("legalInvoicePdfs").add(
     success: LegalInvoicePdfHistory,
   }),
 );
+
 export const LegalInvoicePdfCapabilities = {
   commerce_get_legal_invoice_pdf: {
     description:

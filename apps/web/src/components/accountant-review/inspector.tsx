@@ -46,6 +46,7 @@ export function ReviewPackInspector({
 }) {
   const copy = reviewCopy(locale);
   const [section, setSection] = useState<typeof Review.ReviewSection.Type>("coverage");
+
   const view = useQuery({
     queryKey: [...bookKey(book), "accountant-review", id],
     retry: false,
@@ -57,16 +58,20 @@ export function ReviewPackInspector({
         Review.ReviewPackView,
         { signal },
       );
+
       if (
         result.pack.id !== id ||
         result.pack.scope.bookId !== book.id ||
         result.pack.scope.entityId !== book.entityId
       )
         throw new Error("Review pack scope mismatch");
+
       return result;
     },
   });
+
   const pack = view.data?.pack;
+
   return (
     <Box as="section" display="grid" gap="xl" minWidth="zero">
       <RecordHeading
@@ -182,12 +187,14 @@ function ArtifactDownload({
   locale: Locale;
 }) {
   const copy = reviewCopy(locale);
+
   const download = useMutation({
     mutationFn: async () => {
       const artifact = await readAccounting(
         `${bookPath(book)}/accountant-review-packs/${encodeURIComponent(pack.id)}/artifacts/${descriptor.format}`,
         Review.ReviewArtifact,
       );
+
       if (
         artifact.packId !== pack.id ||
         artifact.packDigest !== pack.digest ||
@@ -198,17 +205,21 @@ function ArtifactDownload({
         throw new Error("Review artifact identity mismatch");
       const bytes = new TextEncoder().encode(artifact.content);
       const digest = await crypto.subtle.digest("SHA-256", bytes);
+
       const sha256 = Array.from(new Uint8Array(digest), (byte) =>
         byte.toString(16).padStart(2, "0"),
       ).join("");
+
       if (bytes.byteLength !== descriptor.byteLength || sha256 !== descriptor.sha256)
         throw new Error("Review artifact bytes differ from the retained hash");
+
       return bytes;
     },
     onSuccess: (bytes) => {
       const url = URL.createObjectURL(
         new Blob([bytes], { type: `${descriptor.mediaType};charset=utf-8` }),
       );
+
       const link = document.createElement("a");
       link.href = url;
       link.download = descriptor.filename;
@@ -218,6 +229,7 @@ function ArtifactDownload({
       window.setTimeout(() => URL.revokeObjectURL(url), 0);
     },
   });
+
   const names = {
     json: locale === "sv" ? "Hela granskningspaketet" : "Complete review pack",
     balances_csv: copy.balances,
@@ -228,6 +240,7 @@ function ArtifactDownload({
     owner_controls_csv: copy.owner_controls,
     expense_tax_csv: copy.expense_tax,
   };
+
   return (
     <Box display="grid" gap="sm" paddingBlock="md" minWidth="zero">
       <Box display="flex" justifyContent="between" alignItems="center" gap="lg">
@@ -280,6 +293,7 @@ function ReviewRows({
 }) {
   const copy = reviewCopy(locale);
   const amount = (value: string) => formatMinorAmount(value, pack.basis.currencyScale, locale);
+
   const pages = useInfiniteQuery({
     queryKey: [...bookKey(book), "accountant-review-rows", pack.id, pack.digest, section],
     initialPageParam: "",
@@ -290,6 +304,7 @@ function ReviewRows({
         Review.ReviewPage,
         { signal },
       );
+
       if (
         page.packId !== pack.id ||
         page.packDigest !== pack.digest ||
@@ -298,11 +313,14 @@ function ReviewRows({
         page.items.some((row) => row.section !== section)
       )
         throw new Error("Review page basis mismatch");
+
       return page;
     },
     getNextPageParam: (last) => last.next ?? undefined,
   });
+
   const items = pages.data?.pages.flatMap((page) => page.items) ?? [];
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{copy[section]}</Heading>

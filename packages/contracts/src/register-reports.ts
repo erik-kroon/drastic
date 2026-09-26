@@ -5,6 +5,7 @@ import * as Commerce from "./commerce";
 import { accountingErrors } from "./accounting-errors";
 
 export const CreateRegisterReport = Schema.Struct({ asOfDate: Accounting.AccountingDate });
+
 export const AgeBucket = Schema.Literals([
   "not_due",
   "days_1_30",
@@ -12,6 +13,7 @@ export const AgeBucket = Schema.Literals([
   "days_61_90",
   "over_90",
 ]);
+
 export const Ageing = Schema.Struct({
   not_due: Accounting.AggregateMinorUnits,
   days_1_30: Accounting.AggregateMinorUnits,
@@ -19,6 +21,7 @@ export const Ageing = Schema.Struct({
   days_61_90: Accounting.AggregateMinorUnits,
   over_90: Accounting.AggregateMinorUnits,
 });
+
 export const RegisterInvoice = Schema.Struct({
   id: Accounting.Identifier,
   direction: Commerce.Direction,
@@ -41,6 +44,7 @@ export const RegisterInvoice = Schema.Struct({
   daysOverdue: Schema.Int,
   ageBucket: AgeBucket,
 });
+
 export const RegisterAllocation = Schema.Struct({
   receiptId: Accounting.Identifier,
   ordinal: Schema.Int,
@@ -53,6 +57,7 @@ export const RegisterAllocation = Schema.Struct({
   planDigest: Accounting.Digest,
   committedAt: Schema.String,
 });
+
 export const RegisterLedgerLine = Schema.Struct({
   accountId: Accounting.Identifier,
   voucherId: Accounting.Identifier,
@@ -72,6 +77,7 @@ export const RegisterLedgerLine = Schema.Struct({
   registerEffectMinor: Accounting.SignedMinorUnits,
   unexplainedMinor: Accounting.SignedMinorUnits,
 });
+
 export const RegisterControl = Schema.Struct({
   accountId: Accounting.Identifier,
   code: Schema.String,
@@ -89,6 +95,7 @@ export const RegisterControl = Schema.Struct({
   unexplainedLineCount: Schema.Int,
   ageing: Ageing,
 });
+
 export const RegisterReportSummary = Schema.Struct({
   id: Accounting.Identifier,
   ordinal: Accounting.MinorUnits,
@@ -110,6 +117,7 @@ export const RegisterReportSummary = Schema.Struct({
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
 });
+
 export const RegisterReport = Schema.Struct({
   ...RegisterReportSummary.fields,
   controls: Schema.Array(RegisterControl),
@@ -117,10 +125,12 @@ export const RegisterReport = Schema.Struct({
   allocations: Schema.Array(RegisterAllocation),
   ledgerLines: Schema.Array(RegisterLedgerLine),
 });
+
 export const RegisterInventoryCursor = Schema.String.check(
   Schema.isPattern(/^rr1_(?:[a-f0-9]{2})+$/),
   Schema.isMaxLength(2048),
 );
+
 export const RegisterReportPage = Schema.Struct({
   scope: Accounting.Scope,
   cutoff: Accounting.MinorUnits,
@@ -129,10 +139,13 @@ export const RegisterReportPage = Schema.Struct({
   items: Schema.Array(RegisterReportSummary).check(Schema.isMaxLength(20)),
   next: Schema.NullOr(RegisterInventoryCursor),
 });
+
 export const RegisterReportQuery = Schema.Struct({
   after: Schema.optional(RegisterInventoryCursor),
 });
+
 const path = "/v1/entities/:entityId/books/:bookId/commerce/register-snapshots";
+
 export const RegisterReportsApi = HttpApiGroup.make("registerReports").add(
   HttpApiEndpoint.post("createRegisterReport", path, {
     params: Accounting.Scope,
@@ -153,6 +166,7 @@ export const RegisterReportsApi = HttpApiGroup.make("registerReports").add(
     error: accountingErrors,
   }),
 );
+
 export const RegisterReportCapabilities = {
   commerce_create_register_report: {
     description:

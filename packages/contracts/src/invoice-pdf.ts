@@ -9,6 +9,7 @@ export const PrepareInvoicePdf = Schema.Struct({
   issueDigest: Accounting.Digest,
   generatorVersion: Schema.Literal("openerp-synthetic-invoice-pdf-v1"),
 });
+
 export const InvoicePdfCapture = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -22,6 +23,7 @@ export const InvoicePdfCapture = Schema.Struct({
   legalInvoice: Schema.Literal(false),
   delivered: Schema.Literal(false),
 });
+
 export const InvoicePdfArtifact = Schema.Struct({
   captureId: Accounting.Identifier,
   captureDigest: Accounting.Digest,
@@ -34,10 +36,12 @@ export const InvoicePdfArtifact = Schema.Struct({
   legalInvoice: Schema.Literal(false),
   delivered: Schema.Literal(false),
 });
+
 export const InvoicePdfView = Schema.Struct({
   capture: InvoicePdfCapture,
   artifact: Schema.NullOr(InvoicePdfArtifact),
 });
+
 export const InvoicePdfHistory = Schema.Struct({
   scope: Accounting.Scope,
   issueId: Accounting.Identifier,
@@ -51,8 +55,11 @@ export const InvoicePdfHistory = Schema.Struct({
     }),
   ).check(Schema.isMaxLength(1)),
 });
+
 const path = "/v1/entities/:entityId/books/:bookId/commerce";
+
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
+
 export const InvoicePdfApi = HttpApiGroup.make("invoicePdfs").add(
   HttpApiEndpoint.post("prepareInvoicePdf", `${path}/invoice-pdfs`, {
     params: Accounting.Scope,
@@ -74,6 +81,7 @@ export const InvoicePdfApi = HttpApiGroup.make("invoicePdfs").add(
     success: InvoicePdfHistory,
   }),
 );
+
 export const InvoicePdfCapabilities = {
   commerce_get_invoice_pdf: {
     description: "Read retained synthetic PDF bytes and digest, not a legal invoice or a delivery.",

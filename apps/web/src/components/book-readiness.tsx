@@ -21,19 +21,23 @@ export function BookReadiness({
 }) {
   const copy = accountingCopy(locale);
   const [open, setOpen] = useState(expanded);
+
   const status = useQuery({
     queryKey: [...bookKey(book), "status"],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(`${bookPath(book)}/status`, Accounting.BookStatus, {
         signal,
       });
+
       if (result.scope.bookId !== book.id || result.scope.entityId !== book.entityId)
         throw new Error("Book status scope mismatch");
+
       return result;
     },
     enabled: open,
     retry: false,
   });
+
   return (
     <details
       id="book-readiness"

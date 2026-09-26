@@ -27,6 +27,7 @@ export type UndoContext = {
   invoice: typeof Commerce.Invoice.Type;
   receipt: typeof Commerce.AllocationReceipt.Type;
 };
+
 type ReviewProps = CommerceProps & {
   id: string;
   context?: UndoContext;
@@ -37,6 +38,7 @@ type ReviewProps = CommerceProps & {
 export function CommerceAllocationReversalReview(props: ReviewProps) {
   const { book, locale, id } = props;
   const copy = paymentUndoCopy(locale);
+
   const review = useQuery({
     queryKey: [...commerceKey(book), "unallocation-review", id],
     staleTime: 0,
@@ -48,11 +50,15 @@ export function CommerceAllocationReversalReview(props: ReviewProps) {
         Reversal.CommerceAllocationReversalView,
         { signal },
       );
+
       checkReview(props, result);
+
       return result;
     },
   });
+
   const ready = review.isSuccess && review.isFetchedAfterMount && !review.isFetching;
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       {props.onBack ? (
@@ -93,9 +99,12 @@ function checkReview(
 ) {
   const { plan, approval, execution } = view;
   const snapshot = plan.snapshot;
+
   for (const record of [plan, snapshot.original, snapshot.originalPlan, snapshot.payment])
     checkScope(props.book, record.scope);
+
   for (const item of snapshot.invoices) checkScope(props.book, item.invoice.scope);
+
   if (
     plan.id !== props.id ||
     plan.input.receiptId !== snapshot.original.id ||
@@ -103,6 +112,7 @@ function checkReview(
     snapshot.original.planDigest !== snapshot.originalPlan.digest
   )
     throw new Error("Undo review binding mismatch");
+
   if (
     props.context &&
     (plan.input.receiptId !== props.context.receipt.id ||
@@ -112,8 +122,10 @@ function checkReview(
       !snapshot.invoices.some((item) => item.invoice.id === props.context?.invoice.id))
   )
     throw new Error("Invoice undo context mismatch");
+
   if (approval && (approval.planId !== plan.id || approval.digest !== plan.digest))
     throw new Error("Undo approval binding mismatch");
+
   for (const entry of view.approvals) {
     if (
       entry.approval.planId !== plan.id ||
@@ -122,8 +134,10 @@ function checkReview(
     )
       throw new Error("Undo approval history mismatch");
   }
+
   if (execution) {
     checkScope(props.book, execution.scope);
+
     if (
       execution.planId !== plan.id ||
       execution.receiptId !== plan.input.receiptId ||
@@ -142,8 +156,10 @@ function ReviewContents(
   const { locale, view } = props;
   const copy = paymentUndoCopy(locale);
   const plan = view.plan;
+
   const money = (amount: string) =>
     `${formatMinorAmount(amount, plan.currencyScale, locale)} ${plan.currency}`;
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       {view.execution ? (
@@ -233,6 +249,7 @@ function UndoActions(
   const current = ready && view.dependenciesCurrent && !execution;
   const approvalCurrent = !!approval && Date.parse(approval.expiresAt) > Date.now();
   const path = `${commercePath(book)}/allocation-reversal-plans/${encodeURIComponent(plan.id)}`;
+
   return (
     <Box display="grid" gap="md">
       {!execution && book.role !== "operator" ? <Text>{copy.operator}</Text> : null}

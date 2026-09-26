@@ -44,24 +44,29 @@ async function diagnostic(
     message,
     recordedAt: new Date().toISOString(),
   });
+
   await writePrivate(
     join(directory, `${Date.now()}-${randomUUID()}.json`),
     JSON.stringify(body, null, 2) + "\n",
   );
 }
+
 function sourceDatabase(name: string) {
   if (!/^openerp_ops_source_[a-z0-9_]+$/.test(name))
     refuse("Source database must have an explicit openerp_ops_source_ synthetic name.");
 }
+
 function disjoint(first: string, second: string) {
   if (first === second || first.startsWith(second + "/") || second.startsWith(first + "/"))
     refuse("Operational input and output directories must not overlap.");
 }
+
 export async function preflight(targetPath: string, receiptPath: string) {
   const target = await readTarget(targetPath);
   sourceDatabase(target.database);
   await privatePath(dirname(receiptPath), true);
   const client = await connect(target);
+
   try {
     await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
     const result = await readPreflight(client, target);
@@ -71,6 +76,7 @@ export async function preflight(targetPath: string, receiptPath: string) {
     await client.end();
   }
 }
+
 export async function backup(targetPath: string, bundle: string, recoveryPlanPath: string) {
   const target = await readTarget(targetPath);
   sourceDatabase(target.database);
@@ -86,6 +92,7 @@ export async function backup(targetPath: string, bundle: string, recoveryPlanPat
     "started",
     "Private backup started; no complete manifest exists yet.",
   );
+
   const client = await connect(target).catch(async () => {
     await diagnostic(
       diagnostics,
@@ -93,16 +100,22 @@ export async function backup(targetPath: string, bundle: string, recoveryPlanPat
       "failed",
       "Source connection or identity validation failed; no content was exported.",
     );
+
     return refuse("Source connection or identity validation failed.");
   });
+
   let stage = "snapshot";
+
   try {
     await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
     const source = await readPreflight(client, target);
+
     const snapshotResult = await client.query<{ snapshot: string }>(
       "SELECT pg_export_snapshot() AS snapshot",
     );
+
     const snapshot = snapshotResult.rows[0]?.snapshot;
+
     if (!snapshot) refuse("No PostgreSQL snapshot was exported.");
     const tables = await tableFingerprints(client, true);
     const release = await inspectRelease(plan.releaseDirectory);
@@ -116,12 +129,14 @@ export async function backup(targetPath: string, bundle: string, recoveryPlanPat
     stage = "durable-work-snapshot";
     const work = await captureWorkInventory(client, tables, snapshot);
     await writePrivate(join(bundle, workInventoryPath), JSON.stringify(work, null, 2) + "\n");
+
     const durableWork = Schema.decodeSync(BackupWorkInventory)({
       version: 1,
       file: { path: workInventoryPath, ...(await fingerprint(join(bundle, workInventoryPath))) },
       summary: work.summary,
       recoveryProcedurePath: plan.workRecoveryProcedurePath ?? null,
     });
+
     const closure = Schema.decodeSync(RecoveryClosure)({
       version: 1,
       database: "matched",
@@ -130,6 +145,7 @@ export async function backup(targetPath: string, bundle: string, recoveryPlanPat
       receipts: recovery.receipts,
       durableWork: "matched",
     });
+
     await diagnostic(
       diagnostics,
       stage,
@@ -153,18 +169,25 @@ export async function backup(targetPath: string, bundle: string, recoveryPlanPat
     stage = "supplementary-and-release-copy";
     await copyArtifacts(plan.supplementaryDirectory, join(bundle, "supplementary"));
     await copyArtifacts(plan.releaseDirectory, join(bundle, "release"));
+
     if (JSON.stringify(await inspectRelease(join(bundle, "release"))) !== JSON.stringify(release))
       refuse("Release changed during backup capture.");
+
     for (const artifact of plan.artifacts) {
       const copied = await fingerprint(artifactPath(join(bundle, "supplementary"), artifact.path));
+
       if (copied.sha256 !== artifact.sha256 || copied.bytes !== artifact.bytes)
         refuse("Supplementary copy differs from declared content.");
     }
+
     const files = [];
+
     for (const path of (await filesIn(bundle)).filter((path) => !path.startsWith("diagnostics/"))) {
       files.push({ path, ...(await fingerprint(artifactPath(bundle, path))) });
     }
+
     stage = "manifest";
+
     const manifest = Schema.decodeSync(BackupManifest)({
       version: 2,
       kind: "openerp-local-backup",
@@ -188,6 +211,7 @@ export async function backup(targetPath: string, bundle: string, recoveryPlanPat
       restoreStatus: "not-exercised",
       productionAction: "disabled",
     });
+
     await writePrivate(join(bundle, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
     const hash = await fingerprint(join(bundle, "manifest.json"));
     await writePrivate(join(bundle, "manifest.sha256"), hash.sha256 + "\n");
@@ -211,17 +235,23 @@ export async function backup(targetPath: string, bundle: string, recoveryPlanPat
     await client.end();
   }
 }
+
 export async function inspectBundle(bundle: string, expectedDigest: string) {
   await privatePath(bundle, true);
+
   if (!/^[a-f0-9]{64}$/.test(expectedDigest))
     refuse("Supply the separately recorded manifest SHA-256.");
   const hash = await fingerprint(join(bundle, "manifest.json"));
+
   if (hash.sha256 !== expectedDigest)
     refuse("Manifest checksum does not match the operator reference.");
+
   const manifest = Schema.decodeUnknownSync(BackupManifest)(
     JSON.parse(await readFile(join(bundle, "manifest.json"), "utf8")),
   );
+
   const paths = manifest.files.map((file) => file.path).sort();
+
   if (
     paths.filter((path) => path === "database.dump").length !== 1 ||
     new Set(paths).size !== paths.length ||
@@ -235,29 +265,36 @@ export async function inspectBundle(bundle: string, expectedDigest: string) {
     )
   )
     refuse("Unexpected bundle file inventory.");
+
   const actualPaths = (await filesIn(bundle)).filter(
     (path) =>
       !["manifest.json", "manifest.sha256"].includes(path) && !path.startsWith("diagnostics/"),
   );
+
   if (JSON.stringify(paths) !== JSON.stringify(actualPaths))
     refuse("Bundle file inventory differs from its manifest.");
+
   for (const file of manifest.files) {
     const actual = await fingerprint(artifactPath(bundle, file.path));
+
     if (actual.sha256 !== file.sha256 || actual.bytes !== file.bytes)
       refuse("A backup file failed checksum validation.");
   }
+
   if (
     JSON.stringify(await inspectRelease(join(bundle, "release"))) !==
     JSON.stringify(manifest.release)
   )
     refuse("Captured release differs from the backup manifest.");
   const artifactNames = manifest.artifacts.map((file) => `supplementary/${file.path}`).sort();
+
   if (
     new Set(artifactNames).size !== artifactNames.length ||
     JSON.stringify(artifactNames) !==
       JSON.stringify(paths.filter((path) => path.startsWith("supplementary/")))
   )
     refuse("Supplementary reference inventory is incomplete.");
+
   for (const artifact of manifest.artifacts) {
     if (
       !manifest.files.some(
@@ -269,7 +306,9 @@ export async function inspectBundle(bundle: string, expectedDigest: string) {
     )
       refuse("Supplementary reference hash differs from retained content.");
   }
+
   const requiredConfiguration = ["DATABASE_URL", "BETTER_AUTH_SECRET", "BETTER_AUTH_URL"];
+
   if (
     manifest.configuration.length !== 3 ||
     requiredConfiguration.some(
@@ -285,26 +324,35 @@ export async function inspectBundle(bundle: string, expectedDigest: string) {
     )
   )
     refuse("Configuration/key custody closure is incomplete.");
+
   if (manifest.closure) {
     await verifyObjectInventory(bundle, manifest.closure.objects);
+
     const evidenceTable = manifest.tables.find(
       (table) => table.schema === "openerp" && table.table === "evidence",
     );
+
     if (
       !evidenceTable ||
       JSON.stringify(evidenceTable) !== JSON.stringify(manifest.closure.evidence.table)
     )
       refuse("Evidence inventory is not bound to the complete database table inventory.");
     const receiptTables = manifest.tables.filter((table) => table.table.endsWith("receipts"));
+
     if (JSON.stringify(receiptTables) !== JSON.stringify(manifest.closure.receipts.tables))
       refuse("Receipt inventory is not bound to the complete database table inventory.");
+
     if (!manifest.durableWork) refuse("Durable-work closure is missing its inventory.");
   }
+
   await inspectWorkInventory(bundle, manifest);
+
   return manifest;
 }
+
 export async function inspectBundleResult(bundle: string, expectedDigest: string) {
   const manifest = await inspectBundle(bundle, expectedDigest);
+
   return Schema.decodeSync(BundleInspection)({
     version: 1,
     kind: "openerp-local-bundle-inspection",
@@ -322,6 +370,7 @@ export async function inspectBundleResult(bundle: string, expectedDigest: string
     productionAction: "disabled",
   });
 }
+
 export async function restore(
   targetPath: string,
   bundle: string,
@@ -330,14 +379,17 @@ export async function restore(
   receiptDirectory: string,
 ) {
   const started = performance.now();
+
   if (!/^openerp_restore_[a-z0-9_]{1,40}$/.test(database))
     refuse("Use a fresh openerp_restore_ database name (up to 56 characters).");
   const target = await readTarget(targetPath);
+
   if (target.database !== "postgres")
     refuse("Restore configuration must name the postgres maintenance database.");
   disjoint(bundle, receiptDirectory);
   const manifest = await inspectBundle(bundle, digest);
   const sourceWork = await inspectWorkInventory(bundle, manifest);
+
   if (target.user !== manifest.inventory.owner)
     refuse("Restore maintenance role must match the captured object owner.");
   await newDirectory(receiptDirectory);
@@ -349,6 +401,7 @@ export async function restore(
     "started",
     "Restore starts fenced. No application/provider admission is authorized.",
   );
+
   const admin = await connect(target).catch(async () => {
     await diagnostic(
       diagnostics,
@@ -356,28 +409,37 @@ export async function restore(
       "failed",
       "Destination connection or identity validation failed; no database was created.",
     );
+
     return refuse("Destination connection or identity validation failed.");
   });
+
   const identifier = admin.escapeIdentifier(database);
   let created = false;
   let reconstructionComplete = false;
   let stage = "destination-preflight";
   let verifiedControls: typeof manifest.controls | undefined;
+
   let workVerification: (typeof RestoreSuspensionReport.Type)["inventoryVerification"] = sourceWork
     ? "not-run"
     : "not-captured-in-source";
+
   let connectionState: (typeof RestoreSuspensionReport.Type)["connections"] = "not-created";
+
   try {
     const existing = await admin.query("SELECT 1 FROM pg_database WHERE datname=$1", [database]);
+
     if (existing.rowCount !== 0)
       refuse("Destination already exists. It will not be changed or restored over.");
+
     if (JSON.stringify(await roleInventory(admin)) !== JSON.stringify(manifest.inventory.roles))
       refuse(
         "Destination role attributes/memberships differ from source. Provision reviewed roles separately.",
       );
+
     const roleSettings = await admin.query(
       "SELECT 1 FROM pg_db_role_setting WHERE setdatabase=0 LIMIT 1",
     );
+
     if (roleSettings.rowCount !== 0)
       refuse("Destination cluster role settings need explicit recovery review.");
     stage = "create-quarantine";
@@ -413,11 +475,14 @@ export async function restore(
     );
     stage = "reconstruction-controls";
     const restored = await connect(target, database);
+
     try {
       await restored.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
       const actual = await tableFingerprints(restored, Boolean(manifest.closure));
+
       if (JSON.stringify(actual) !== JSON.stringify(manifest.tables))
         refuse("Restored table fingerprints differ.");
+
       if (
         JSON.stringify(await databaseInventory(restored, manifest.release, true)) !==
         JSON.stringify(manifest.inventory)
@@ -425,51 +490,65 @@ export async function restore(
         refuse("Restored schema/migration/environment inventory differs.");
       const objects = await objectReferences(restored, actual, Boolean(manifest.closure));
       await verifyObjectInventory(bundle, objects);
+
       if (manifest.closure && JSON.stringify(objects) !== JSON.stringify(manifest.closure.objects))
         refuse("Restored object inventory differs from the backup manifest.");
+
       const recovery = await recoveryControls(
         restored,
         actual,
         manifest.controls.externalObjects === "retained-originals-matched",
       );
+
       verifiedControls = recovery.controls;
+
       if (JSON.stringify(verifiedControls) !== JSON.stringify(manifest.controls))
         refuse("Restored evidence/receipt/report controls differ.");
+
       if (
         manifest.closure &&
         (JSON.stringify(recovery.evidence) !== JSON.stringify(manifest.closure.evidence) ||
           JSON.stringify(recovery.receipts) !== JSON.stringify(manifest.closure.receipts))
       )
         refuse("Restored evidence or receipt inventory differs from the backup manifest.");
+
       if (sourceWork) {
         stage = "durable-work-reconstruction";
         workVerification = "failed";
         const restoredWork = await captureWorkInventory(restored, actual, manifest.snapshot);
+
         if (!isDeepStrictEqual(restoredWork, sourceWork))
           refuse(
             "Restored durable jobs, attempt counters or saved outcomes differ from the source snapshot.",
           );
         workVerification = "matched";
       }
+
       await restored.query("ROLLBACK");
     } finally {
       await restored.end();
     }
+
     stage = "recovered-files";
     await copyArtifacts(join(bundle, "supplementary"), join(receiptDirectory, "supplementary"));
     await copyArtifacts(join(bundle, "release"), join(receiptDirectory, "release"));
+
     if (manifest.files.some((file) => file.path.startsWith("objects/")))
       await copyArtifacts(join(bundle, "objects"), join(receiptDirectory, "objects"));
+
     if (sourceWork)
       await writePrivate(
         join(receiptDirectory, workInventoryPath),
         await readFile(join(bundle, workInventoryPath), "utf8"),
       );
+
     for (const file of manifest.files.filter((file) => file.path !== "database.dump")) {
       const recovered = await fingerprint(artifactPath(receiptDirectory, file.path));
+
       if (recovered.sha256 !== file.sha256 || recovered.bytes !== file.bytes)
         refuse("Recovered file differs from the manifest.");
     }
+
     await diagnostic(
       diagnostics,
       stage,
@@ -492,10 +571,12 @@ export async function restore(
       if (created) {
         try {
           await admin.query(`ALTER DATABASE ${identifier} ALLOW_CONNECTIONS false`);
+
           const quarantine = await admin.query<{ closed: boolean }>(
             `SELECT NOT datallowconn AND datconnlimit=0 AS closed FROM pg_database WHERE datname=$1`,
             [database],
           );
+
           if (quarantine.rows[0]?.closed !== true)
             refuse("Destination quarantine could not be confirmed.");
           connectionState = "disabled";
@@ -536,6 +617,7 @@ export async function restore(
           providerOutcomes: "not-reconciled",
           resumeAllowed: false,
         });
+
         await writePrivate(
           join(receiptDirectory, "suspension-report.json"),
           JSON.stringify(suspension, null, 2) + "\n",
@@ -543,9 +625,12 @@ export async function restore(
       }
     }
   }
+
   if (workVerification !== "matched" && workVerification !== "not-captured-in-source")
     refuse("Durable work reconstruction is incomplete. No success receipt can be issued.");
+
   if (!verifiedControls) refuse("No recovery controls were completed.");
+
   const receipt = Schema.decodeSync(RestoreReceipt)({
     version: 2,
     kind: "openerp-local-restore",
@@ -576,6 +661,7 @@ export async function restore(
     archiveCompliance: "not-established",
     productionAction: "disabled",
   });
+
   await writePrivate(
     join(receiptDirectory, "restore-receipt.json"),
     JSON.stringify(receipt, null, 2) + "\n",

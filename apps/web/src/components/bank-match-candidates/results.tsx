@@ -34,44 +34,61 @@ function aggregateMatch(
   remainingMinor: string,
 ) {
   const available = candidates.filter((candidate) => candidate.eligible);
+
   if (available.some((candidate) => candidate.remainingMinor === remainingMinor)) return null;
   const eligible = available.slice(0, 20);
   const midpoint = Math.ceil(eligible.length / 2);
+
   const combinations = (items: typeof eligible) => {
     const found = new Map<string, number[]>();
+
     for (let mask = 0; mask < 2 ** items.length; mask++) {
       let sum = 0n;
       const indices: number[] = [];
+
       for (let index = 0; index < items.length; index++) {
         const item = items[index];
+
         if (item && mask & (1 << index)) {
           sum += BigInt(item.remainingMinor);
           indices.push(index);
         }
       }
+
       const key = sum.toString();
+
       if (!found.has(key) || indices.length < (found.get(key)?.length ?? Infinity))
         found.set(key, indices);
     }
+
     return found;
   };
+
   const left = combinations(eligible.slice(0, midpoint));
   const right = combinations(eligible.slice(midpoint));
   const target = BigInt(remainingMinor);
+
   for (const [sum, leftIndices] of left) {
     const rightIndices = right.get((target - BigInt(sum)).toString());
+
     if (!rightIndices || leftIndices.length + rightIndices.length < 2) continue;
     const selected: typeof eligible = [];
+
     for (const index of leftIndices) {
       const candidate = eligible[index];
+
       if (candidate) selected.push(candidate);
     }
+
     for (const index of rightIndices) {
       const candidate = eligible[midpoint + index];
+
       if (candidate) selected.push(candidate);
     }
+
     return selected.length >= 2 ? selected : null;
   }
+
   return null;
 }
 
@@ -88,19 +105,24 @@ export function BankCandidateResults({
 }) {
   const copy = bankCandidateCopy(locale);
   const client = useQueryClient();
+
   const queryKey = [
     ...bookKey(book),
     "bank-match-candidates",
     source.statementId,
     source.rowOrdinal,
   ];
+
   const [selected, setSelected] = useState<BankCandidateSelection | null>(null);
+
   const comparison = useQuery({
     queryKey,
     queryFn: async ({ signal }) => {
       const previousDigest =
         client.getQueryData<typeof Candidates.BankMatchCandidates.Type>(queryKey)?.digest;
+
       const input = previousDigest ? { ...source, previousDigest } : source;
+
       const result = await readAccounting(
         `${bookPath(book)}/bank-match-candidates`,
         Candidates.BankMatchCandidates,
@@ -110,6 +132,7 @@ export function BankCandidateResults({
           signal,
         },
       );
+
       if (
         result.scope.entityId !== book.entityId ||
         result.scope.bookId !== book.id ||
@@ -118,6 +141,7 @@ export function BankCandidateResults({
       ) {
         throw new Error(copy.responseError);
       }
+
       return result;
     },
     retry: false,
@@ -125,19 +149,24 @@ export function BankCandidateResults({
     refetchOnReconnect: false,
     refetchOnMount: "always",
   });
+
   const setup = useQuery({
     queryKey: [...bookKey(book), "setup"],
     retry: false,
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
   });
+
   const result = comparison.data;
   const account = setup.data?.accounts.find((entry) => entry.id === result?.window.accountId);
+
   const money = (value: string) =>
     result ? `${formatMinorAmount(value, result.currencyScale, locale)} ${result.currency}` : "—";
+
   const selectionAvailable = !comparison.isFetching && !comparison.isPaused && !comparison.isError;
   const aggregate = result ? aggregateMatch(result.candidates, result.source.remainingMinor) : null;
   const aggregateFirst = aggregate?.[0];
+
   return (
     <Box display="grid" gap="xl" minWidth="zero">
       <RecordHeading
@@ -272,6 +301,7 @@ export function BankCandidateResults({
                           lineId: candidate.lineId,
                           discoveryDigest: result.digest,
                         };
+
                         setSelected(selection);
                         onSelect?.(selection);
                       }}

@@ -1,10 +1,12 @@
+import { admitAccountRole, admitLineOwner } from "../resource-admission";
+import { digest as digestNative } from "../json";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Owners from "@open-erp/contracts/owner-register";
 import { canonicalizeJson } from "@open-erp/domain/canonicalization";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
-import { digestJson, readEvidence } from "../../db/commerce/access";
+import { readEvidence } from "../../db/commerce/access";
 import * as ControlDb from "../../db/owner-register/control-body";
 import * as OwnerDb from "../../db/owner-register/register";
 import * as Db from "../../db/posting";
@@ -14,33 +16,57 @@ import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal }
 import { isoNow, newId, replay, saveCommand, validatePlan } from "../posting";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type Principal = VerifiedPrincipal;
+
 type JsonObject = Schema.JsonObject;
+
 type RecordReviewInput = typeof Owners.ReviewRecord.Type;
+
 type AllocationApprovalInput = typeof Owners.ApproveAllocation.Type;
+
 type CreateOwnerInput = typeof Owners.CreateOwner.Type;
+
 type CreateRecordInput = typeof Owners.CreateRecord.Type;
+
 type ReviseRecordInput = typeof Owners.ReviseRecord.Type;
+
 type PrepareAllocationInput = typeof Owners.PrepareAllocation.Type;
+
 type Capacity = typeof Owners.Capacity.Type;
 
 const OwnerSchema = Owners.Owner;
+
 const OwnerPageSchema = Owners.OwnerPage;
+
 const RecordViewSchema = Owners.RecordView;
+
 const RecordPageSchema = Owners.RecordPage;
+
 const RecordHistorySchema = Owners.RecordHistory;
+
 const ProposalLinkSchema = Owners.ProposalLink;
+
 const PostedEffectSchema = Owners.PostedEffect;
+
 const AllocationPlanSchema = Owners.AllocationPlan;
+
 const AllocationReceiptSchema = Owners.AllocationReceipt;
+
 const AllocationViewSchema = Owners.AllocationView;
+
 const ControlSchema = Owners.Control;
+
 const ControlViewSchema = Owners.ControlView;
+
 const CommandRecoverySchema = Owners.CommandRecovery;
 
 const ownerPageBound = 50;
+
 const historyPageBound = 50;
+
 const controlRecordBound = 1000;
+
 const recoveryOperations: ReadonlyArray<string> = [
   "owners_create_owner",
   "owners_create_record",
@@ -53,6 +79,7 @@ const recoveryOperations: ReadonlyArray<string> = [
   "owners_apply_allocation",
   "owners_prepare_control",
 ];
+
 const controlBlockers = [
   "Source coverage and complete opening balances are not established.",
   "Company accounting, statutory treatment and contribution repayment rights are not activated.",
@@ -78,17 +105,21 @@ function isJsonObject(value: unknown): value is JsonObject {
 
 function textField(value: JsonObject | undefined, key: string) {
   const candidate = value?.[key];
+
   return typeof candidate === "string" ? candidate : undefined;
 }
 
 function scalarField(value: JsonObject | undefined, key: string) {
   const candidate = value?.[key];
+
   if (typeof candidate === "string") return candidate;
+
   return typeof candidate === "number" ? String(candidate) : undefined;
 }
 
 function objectField(value: JsonObject | undefined, key: string): JsonObject {
   const candidate = value?.[key];
+
   return isJsonObject(candidate) ? candidate : {};
 }
 
@@ -106,6 +137,7 @@ function minor(value: string) {
 
 function isCalendarDate(value: string) {
   const parsed = Date.parse(`${value}T00:00:00.000Z`);
+
   return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === value;
 }
 
@@ -118,26 +150,22 @@ function requireTrimmed(value: string, max: number) {
 function sameJson(left: Schema.Json, right: Schema.Json) {
   const first = canonicalizeJson(left);
   const second = canonicalizeJson(right);
+
   if (Result.isFailure(first) || Result.isFailure(second)) return false;
+
   return first.success.json === second.success.json;
 }
 
-function digestValue(transaction: Transaction, value: Schema.Json) {
-  return toJsonObject(value).pipe(
-    Effect.flatMap((object) => digestJson(transaction, object)),
-    Effect.flatMap((rows) => {
-      const digest = rows[0]?.digest;
-      return digest === undefined ? failure("InternalError") : Effect.succeed(digest);
-    }),
-  );
+function digestValue(value: Schema.Json) {
+  return toJsonObject(value).pipe(Effect.flatMap((object) => digestNative(object)));
 }
 
 function merge(...sources: ReadonlyArray<JsonObject>): JsonObject {
   return Object.assign({}, ...sources);
 }
 
-function digestBody(transaction: Transaction, body: JsonObject) {
-  return digestValue(transaction, body).pipe(Effect.map((digest) => merge(body, { digest })));
+function digestBody(body: JsonObject) {
+  return digestValue(body).pipe(Effect.map((digest) => merge(body, { digest })));
 }
 
 function recordMetadata(transaction: Transaction, key: string, operation: string, actorId: string) {
@@ -166,7 +194,9 @@ function withOwnerBook<A>(
 function readBook(transaction: Transaction, scope: Scope) {
   return Effect.gen(function* () {
     const book = (yield* Db.readBook(transaction, scope))[0];
+
     if (book === undefined) return yield* failure("Forbidden");
+
     return book;
   });
 }
@@ -181,11 +211,15 @@ function requireOwnerAccess(transaction: Transaction, write: boolean) {
   return OwnerDb.readOwnerAccess(transaction).pipe(
     Effect.flatMap((rows) => {
       if (rows.length !== OwnerDb.ownerTables.length) return unsupported();
+
       const denied = rows.some((row) => {
         if (!row.canSelect) return true;
+
         if (!write) return false;
+
         return !row.canInsert && row.tableName !== "owner_records";
       });
+
       return denied ? unsupported() : Effect.void;
     }),
   );
@@ -195,6 +229,7 @@ function readEvidenceReference(transaction: Transaction, scope: Scope, evidenceI
   return readEvidence(transaction, scope.bookId, evidenceId).pipe(
     Effect.flatMap((rows) => {
       const row = rows[0];
+
       return row === undefined
         ? failure("MissingEvidence")
         : Effect.succeed({ evidenceId: row.id, sha256: row.sha256 });
@@ -205,7 +240,9 @@ function readEvidenceReference(transaction: Transaction, scope: Scope, evidenceI
 function readRecord(transaction: Transaction, scope: Scope, recordId: string) {
   return Effect.gen(function* () {
     const row = (yield* OwnerDb.readRecord(transaction, scope.bookId, recordId))[0];
+
     if (row === undefined) return yield* failure("NotFound");
+
     return row;
   });
 }
@@ -218,33 +255,42 @@ function readRecordView(transaction: Transaction, scope: Scope, record: OwnerDb.
       record.id,
       record.currentRevision,
     ))[0];
+
     if (revision === undefined) return yield* failure("InternalError");
+
     const review = (yield* OwnerDb.readReviewByRevision(
       transaction,
       scope.bookId,
       record.id,
       record.currentRevision,
     ))[0];
+
     const effect = (yield* OwnerDb.readEffectByRecord(transaction, scope.bookId, record.id))[0];
     const links = yield* OwnerDb.listProposalLinks(transaction, scope.bookId, record.id);
+
     const usage =
       effect === undefined
         ? undefined
         : (yield* OwnerDb.readAllocationUsage(transaction, scope.bookId, effect.id))[0];
+
     const allocated = minor(usage?.total ?? "0");
     const blockers: Array<string> = [];
+
     if (textField(record.body, "dataNature") !== "synthetic_example") {
       blockers.push("Company accounting activation is not implemented; retained review only.");
     }
+
     if (review === undefined) {
       blockers.push("An exact operator classification review is required.");
     }
+
     if (
       textField(revision.body, "classification") === "unknown" ||
       textField(revision.body, "origin") === "unknown"
     ) {
       blockers.push("Classification or opening/current origin is unresolved.");
     }
+
     if (
       review !== undefined &&
       (textField(review.body, "controlAccountId") === undefined ||
@@ -252,6 +298,7 @@ function readRecordView(transaction: Transaction, scope: Scope, record: OwnerDb.
     ) {
       blockers.push("Explicit synthetic treatment and control account are not confirmed.");
     }
+
     if (effect === undefined && blockers.length === 0 && review !== undefined) {
       blockers.push(
         ...(yield* ownerRequireReady(transaction, scope, record.id, review.id, true).pipe(
@@ -259,6 +306,7 @@ function readRecordView(transaction: Transaction, scope: Scope, record: OwnerDb.
         )),
       );
     }
+
     return yield* decode(RecordViewSchema, {
       source: record.body,
       currentRevision: revision.body,
@@ -280,7 +328,7 @@ function readRecordViewById(transaction: Transaction, scope: Scope, recordId: st
   );
 }
 
-function ownerRequireReady(
+export function ownerRequireReady(
   transaction: Transaction,
   scope: Scope,
   recordId: string,
@@ -289,23 +337,29 @@ function ownerRequireReady(
 ) {
   return Effect.gen(function* () {
     const record = yield* readRecord(transaction, scope, recordId);
+
     const revisionRow = (yield* OwnerDb.readRevision(
       transaction,
       scope.bookId,
       recordId,
       record.currentRevision,
     ))[0];
+
     if (revisionRow === undefined) return yield* failure("InternalError");
     const revisionDigest = textField(revisionRow.body, "digest");
     const book = yield* readBook(transaction, scope);
-    const retained = yield* digestValue(transaction, {
+
+    const retained = yield* digestValue({
       source: record.body,
       revision: withoutKeys(revisionRow.body, ["digest"]),
     });
+
     if (revisionDigest === undefined || retained !== revisionDigest) {
       return yield* failure("StaleDependency");
     }
+
     yield* requireNativeProfile(book);
+
     if (
       scalarField(record.body, "dataNature") !== "synthetic_example" ||
       scalarField(record.body, "currency") !== book.currency ||
@@ -313,7 +367,9 @@ function ownerRequireReady(
     ) {
       return yield* unsupported();
     }
+
     const review = (yield* OwnerDb.readReviewById(transaction, scope.bookId, reviewId))[0];
+
     if (
       review === undefined ||
       review.recordId !== recordId ||
@@ -325,10 +381,12 @@ function ownerRequireReady(
     ) {
       return yield* failure("ApprovalRequired");
     }
+
     const postedReview =
       historical &&
       (yield* OwnerDb.readPostedReviewLink(transaction, scope.bookId, recordId, reviewId)).length >
         0;
+
     if (!postedReview) {
       if (
         (yield* Db.readOperatorMembership(transaction, scope.bookId, review.actorId)).length === 0
@@ -336,10 +394,13 @@ function ownerRequireReady(
         return yield* failure("ApprovalRequired");
       }
     }
+
     const controlAccountId = textField(review.body, "controlAccountId") ?? "";
+
     const account = (yield* Db.readAccounts(transaction, scope.bookId, [controlAccountId])).find(
       (row) => row.id === controlAccountId,
     );
+
     if (
       account === undefined ||
       (!postedReview &&
@@ -350,12 +411,14 @@ function ownerRequireReady(
     ) {
       return yield* failure("StaleDependency");
     }
+
     if (
       textField(revisionRow.body, "origin") === "opening" &&
       textField(record.body, "sourceKind") === "settlement"
     ) {
       return yield* unsupported();
     }
+
     return {
       digest: revisionDigest,
       revisionNumber: record.currentRevision,
@@ -368,23 +431,29 @@ function ownerRequireReady(
 function readCapacity(transaction: Transaction, scope: Scope, effectId: string) {
   return Effect.gen(function* () {
     const effect = (yield* OwnerDb.readEffectById(transaction, scope.bookId, effectId))[0];
+
     if (effect === undefined) return yield* failure("NotFound");
     const voucher = (yield* Db.readVoucher(transaction, scope.bookId, effect.voucherId))[0];
+
     const current =
       voucher !== undefined &&
       voucher.correctsVoucherId === null &&
       voucher.postingPurpose !== "reversal" &&
       (yield* Db.readVoucherByReversal(transaction, scope.bookId, voucher.id)).length === 0;
+
     if (!current) return yield* failure("StaleDependency");
     const usage = (yield* OwnerDb.readAllocationUsage(transaction, scope.bookId, effectId))[0];
     const allocated = minor(usage?.total ?? "0");
+
     if (allocated > minor(effect.amountMinor)) return yield* failure("StaleDependency");
+
     const capacity = yield* decode(Owners.Capacity, {
       effect: effect.body,
       allocatedMinor: allocated.toString(),
       remainingMinor: (minor(effect.amountMinor) - allocated).toString(),
       capacityVersion: usage?.legs ?? "0",
     });
+
     return capacity;
   });
 }
@@ -406,6 +475,7 @@ function readAllocationSelection(
     yield* requireTrimmed(input.rationale, 2000);
     const settlement = yield* readCapacity(transaction, scope, input.settlementId);
     const settlementEffect = settlement.effect;
+
     if (
       (settlementEffect.classification !== "owner_reimbursement" &&
         settlementEffect.classification !== "loan_repayment") ||
@@ -413,37 +483,49 @@ function readAllocationSelection(
     ) {
       return yield* failure("InvalidJournal");
     }
+
     const account = (yield* Db.readAccounts(transaction, scope.bookId, [
       settlementEffect.accountId,
     ])).find((row) => row.id === settlementEffect.accountId);
+
     if (account === undefined) return yield* failure("InternalError");
+
     if (!account.active) return yield* failure("StaleDependency");
+
     const voucher = (yield* Db.readVoucher(
       transaction,
       scope.bookId,
       settlementEffect.voucherId,
     ))[0];
+
     if (voucher === undefined) return yield* failure("InternalError");
+
     const period = (yield* Db.readPeriod(
       transaction,
       scope.bookId,
       textField(voucher.action, "accountingPeriodId") ?? "",
     ))[0];
+
     if (period === undefined) return yield* failure("InternalError");
+
     if (period.locked) return yield* failure("PeriodLocked");
+
     const expected =
       settlementEffect.classification === "owner_reimbursement"
         ? "owner_expense"
         : "shareholder_loan";
+
     const seen = new Set<string>();
     const legs: Array<JsonObject> = [];
     let total = 0n;
+
     for (const leg of input.allocations) {
       if (seen.has(leg.claimId)) return yield* failure("InvalidJournal");
       seen.add(leg.claimId);
       const amount = minor(leg.amountMinor);
       const claim: Capacity = yield* readCapacity(transaction, scope, leg.claimId);
       const claimEffect = claim.effect;
+
       if (
         claimEffect.classification !== expected ||
         claimEffect.side !== "credit" ||
@@ -456,6 +538,7 @@ function readAllocationSelection(
       ) {
         return yield* failure("InvalidJournal");
       }
+
       if (amount > minor(claim.remainingMinor)) return yield* failure("StaleDependency");
       total += amount;
       legs.push(
@@ -466,7 +549,9 @@ function readAllocationSelection(
         }),
       );
     }
+
     if (total > minor(settlement.remainingMinor)) return yield* failure("StaleDependency");
+
     return {
       input,
       settlement,
@@ -484,19 +569,22 @@ function readAllocationSelection(
 
 function readAllocationCurrent(transaction: Transaction, scope: Scope, plan: JsonObject) {
   return Effect.gen(function* () {
-    if (
-      (yield* digestValue(transaction, withoutKeys(plan, ["digest"]))) !== textField(plan, "digest")
-    ) {
+    if ((yield* digestValue(withoutKeys(plan, ["digest"]))) !== textField(plan, "digest")) {
       return false;
     }
+
     const input = yield* decode(Owners.PrepareAllocation, objectField(plan, "input")).pipe(
       Effect.match({ onFailure: () => undefined, onSuccess: (value) => value }),
     );
+
     if (input === undefined) return false;
+
     const selected = yield* readAllocationSelection(transaction, scope, input).pipe(
       Effect.match({ onFailure: () => undefined, onSuccess: (value) => value }),
     );
+
     if (selected === undefined) return false;
+
     return sameJson(
       yield* toJsonObject(selected),
       withoutKeys(plan, ["id", "scope", "version", "digest", "createdAt", "receipt"]),
@@ -504,7 +592,7 @@ function readAllocationCurrent(transaction: Transaction, scope: Scope, plan: Jso
   });
 }
 
-function validateOwnerLine(
+export function validateOwnerLine(
   transaction: Transaction,
   scope: Scope,
   ready: { readonly source: JsonObject; readonly review: JsonObject },
@@ -514,6 +602,7 @@ function validateOwnerLine(
   return Effect.gen(function* () {
     const source = ready.source;
     const debit = textField(source, "sourceKind") === "settlement";
+
     if (
       textField(action, "postingPurpose") !== "adjustment" ||
       textField(action, "occurrenceKey") !== "manual_journal" ||
@@ -524,30 +613,39 @@ function validateOwnerLine(
     ) {
       return yield* failure("InvalidJournal");
     }
+
     const references = Array.isArray(action.evidenceRefs) ? action.evidenceRefs : [];
+
     const matched = references.some((reference) => {
       if (!isJsonObject(reference)) return false;
+
       return (
         textField(reference, "evidenceId") === textField(source, "evidenceId") &&
         textField(reference, "sha256") === textField(objectField(source, "evidence"), "sha256") &&
         textField(reference, "locator") === textField(source, "locator")
       );
     });
+
     if (!matched) return yield* failure("InvalidJournal");
     const eventId = textField(action, "eventId");
+
     const events = yield* Db.readEvent(
       transaction,
       scope.bookId,
       textField(source, "evidenceId") ?? "",
       textField(source, "locator") ?? "",
     );
+
     if (eventId === undefined || !events.some((event) => event.id === eventId)) {
       return yield* failure("InvalidJournal");
     }
+
     const lines = Array.isArray(action.lines) ? action.lines : [];
+
     const line = lines.find(
       (candidate) => isJsonObject(candidate) && textField(candidate, "lineId") === lineId,
     );
+
     if (
       line === undefined ||
       !isJsonObject(line) ||
@@ -557,6 +655,7 @@ function validateOwnerLine(
     ) {
       return yield* failure("InvalidJournal");
     }
+
     return line;
   });
 }
@@ -572,6 +671,7 @@ export const createOwner = Effect.fn("owner.createOwner")(function* (
     (transaction, principal) =>
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -581,17 +681,20 @@ export const createOwner = Effect.fn("owner.createOwner")(function* (
           payload,
           OwnerSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireOwnerAccess(transaction, true);
         yield* Db.lockBookForUpdate(transaction, command.scope);
         yield* requireTrimmed(command.input.sourceKey, 200);
         yield* requireTrimmed(command.input.displayName, 200);
         yield* requireTrimmed(command.input.reason, 2000);
+
         const evidence = yield* readEvidenceReference(
           transaction,
           command.scope,
           command.input.evidenceId,
         );
+
         if (
           (yield* OwnerDb.readOwnerBySourceKey(
             transaction,
@@ -601,8 +704,8 @@ export const createOwner = Effect.fn("owner.createOwner")(function* (
         ) {
           return yield* failure("IdempotencyConflict");
         }
+
         const body = yield* digestBody(
-          transaction,
           merge(
             yield* toJsonObject(command.input),
             { id: newId("owner"), scope: command.scope, evidence, legalIdentityVerified: false },
@@ -614,6 +717,7 @@ export const createOwner = Effect.fn("owner.createOwner")(function* (
             ),
           ),
         );
+
         const owner = yield* decode(OwnerSchema, body);
         yield* OwnerDb.insertOwner(transaction, {
           bookId: command.scope.bookId,
@@ -631,6 +735,7 @@ export const createOwner = Effect.fn("owner.createOwner")(function* (
           principal.actorId,
           owner,
         );
+
         return owner;
       }),
     "update",
@@ -646,7 +751,9 @@ export const getOwner = Effect.fn("owner.getOwner")(function* (
       yield* requireOwnerAccess(transaction, false);
       yield* Db.lockBookForShare(transaction, command.scope);
       const row = (yield* OwnerDb.readOwner(transaction, command.scope.bookId, command.id))[0];
+
       if (row === undefined) return yield* failure("NotFound");
+
       return yield* decode(OwnerSchema, row.body);
     }),
   );
@@ -660,13 +767,16 @@ export const listOwners = Effect.fn("owner.listOwners")(function* (
     Effect.gen(function* () {
       yield* requireOwnerAccess(transaction, false);
       yield* Db.lockBookForShare(transaction, command.scope);
+
       const rows = yield* OwnerDb.listOwners(
         transaction,
         command.scope.bookId,
         command.after ?? "",
         ownerPageBound,
       );
+
       const items = yield* Effect.forEach(rows, (row) => decode(OwnerSchema, row.body));
+
       return yield* decode(OwnerPageSchema, {
         items,
         next: rows.length === ownerPageBound ? (rows.at(-1)?.id ?? null) : null,
@@ -677,7 +787,9 @@ export const listOwners = Effect.fn("owner.listOwners")(function* (
 
 function compatibleClassification(sourceKind: string, classification: string) {
   if (classification === "unknown") return true;
+
   if (sourceKind === "expense") return classification === "owner_expense";
+
   if (sourceKind === "funding") {
     return (
       classification === "shareholder_loan" ||
@@ -685,6 +797,7 @@ function compatibleClassification(sourceKind: string, classification: string) {
       classification === "unconditional_contribution"
     );
   }
+
   return classification === "owner_reimbursement" || classification === "loan_repayment";
 }
 
@@ -710,6 +823,7 @@ export const createRecord = Effect.fn("owner.createRecord")(function* (
     (transaction, principal) =>
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -719,32 +833,39 @@ export const createRecord = Effect.fn("owner.createRecord")(function* (
           payload,
           RecordViewSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireOwnerAccess(transaction, true);
         yield* Db.lockBookForUpdate(transaction, command.scope);
         yield* requireTrimmed(command.input.sourceKey, 200);
         yield* requireTrimmed(command.input.description, 2000);
         yield* requireTrimmed(command.input.reason, 2000);
+
         if (
           !isCalendarDate(command.input.occurredOn) ||
           !/^[a-zA-Z0-9_-]{1,128}$/.test(command.input.locator)
         ) {
           return yield* failure("InvalidJournal");
         }
+
         const owner = (yield* OwnerDb.readOwner(
           transaction,
           command.scope.bookId,
           command.input.ownerId,
         ))[0];
+
         if (owner === undefined) return yield* failure("NotFound");
+
         if (textField(owner.body, "dataNature") !== command.input.dataNature) {
           return yield* failure("InvalidJournal");
         }
+
         yield* requireRevisionAssertion({
           sourceKind: command.input.sourceKind,
           classification: command.input.classification,
           origin: command.input.origin,
         });
+
         if (
           (yield* OwnerDb.readRecordIdsByOccurrence(
             transaction,
@@ -756,19 +877,24 @@ export const createRecord = Effect.fn("owner.createRecord")(function* (
         ) {
           return yield* failure("IdempotencyConflict");
         }
+
         const evidence = yield* readEvidenceReference(
           transaction,
           command.scope,
           command.input.evidenceId,
         );
+
         const recordId = newId("owner_record");
+
         const metadata = yield* recordMetadata(
           transaction,
           command.idempotencyKey,
           "owners_create_record",
           principal.actorId,
         );
+
         const input = yield* toJsonObject(command.input);
+
         const source = merge(
           withoutKeys(input, ["description", "classification", "origin", "reason"]),
           {
@@ -779,6 +905,7 @@ export const createRecord = Effect.fn("owner.createRecord")(function* (
           },
           metadata,
         );
+
         const base = merge(
           {
             id: recordId,
@@ -792,9 +919,11 @@ export const createRecord = Effect.fn("owner.createRecord")(function* (
           },
           metadata,
         );
+
         const revision = merge(base, {
-          digest: yield* digestValue(transaction, { source, revision: base }),
+          digest: yield* digestValue({ source, revision: base }),
         });
+
         yield* OwnerDb.insertRecord(transaction, {
           bookId: command.scope.bookId,
           id: recordId,
@@ -822,6 +951,7 @@ export const createRecord = Effect.fn("owner.createRecord")(function* (
           principal.actorId,
           result,
         );
+
         return result;
       }),
     "update",
@@ -839,6 +969,7 @@ export const reviseRecord = Effect.fn("owner.reviseRecord")(function* (
     (transaction, principal) =>
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -848,29 +979,36 @@ export const reviseRecord = Effect.fn("owner.reviseRecord")(function* (
           payload,
           RecordViewSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireOwnerAccess(transaction, true);
         yield* Db.lockBookForUpdate(transaction, command.scope);
         const record = yield* readRecord(transaction, command.scope, command.id);
+
         if (command.input.expectedRevision !== record.currentRevision) {
           return yield* failure("StaleDependency");
         }
+
         const effects = yield* OwnerDb.readEffectByRecord(
           transaction,
           command.scope.bookId,
           command.id,
         );
+
         const links = yield* OwnerDb.readProposalLinksByRecord(
           transaction,
           command.scope.bookId,
           command.id,
         );
+
         const posted = yield* Effect.forEach(links, (link) =>
           Db.readVoucherByChangeSet(transaction, command.scope.bookId, link.changeSetId),
         );
+
         if (effects.length > 0 || posted.some((rows) => rows.length > 0)) {
           return yield* failure("StaleDependency");
         }
+
         yield* requireTrimmed(command.input.description, 2000);
         yield* requireTrimmed(command.input.reason, 2000);
         yield* requireRevisionAssertion({
@@ -878,13 +1016,16 @@ export const reviseRecord = Effect.fn("owner.reviseRecord")(function* (
           classification: command.input.classification,
           origin: command.input.origin,
         });
+
         const evidence = yield* readEvidenceReference(
           transaction,
           command.scope,
           command.input.evidenceId,
         );
+
         const next = (minor(record.currentRevision) + 1n).toString();
         const input = yield* toJsonObject(command.input);
+
         const base = merge(
           withoutKeys(input, ["expectedRevision", "evidenceId"]),
           { id: command.id, scope: command.scope, revision: next, evidence },
@@ -895,9 +1036,11 @@ export const reviseRecord = Effect.fn("owner.reviseRecord")(function* (
             principal.actorId,
           ),
         );
+
         const revision = merge(base, {
-          digest: yield* digestValue(transaction, { source: record.body, revision: base }),
+          digest: yield* digestValue({ source: record.body, revision: base }),
         });
+
         yield* OwnerDb.insertRevision(transaction, {
           bookId: command.scope.bookId,
           recordId: command.id,
@@ -920,6 +1063,7 @@ export const reviseRecord = Effect.fn("owner.reviseRecord")(function* (
           principal.actorId,
           result,
         );
+
         return result;
       }),
     "update",
@@ -934,6 +1078,7 @@ export const getRecord = Effect.fn("owner.getRecord")(function* (
     Effect.gen(function* () {
       yield* requireOwnerAccess(transaction, false);
       yield* Db.lockBookForShare(transaction, command.scope);
+
       return yield* readRecordViewById(transaction, command.scope, command.id);
     }),
   );
@@ -947,15 +1092,18 @@ export const listRecords = Effect.fn("owner.listRecords")(function* (
     Effect.gen(function* () {
       yield* requireOwnerAccess(transaction, false);
       yield* Db.lockBookForShare(transaction, command.scope);
+
       const rows = yield* OwnerDb.listRecordIds(
         transaction,
         command.scope.bookId,
         command.after ?? "",
         ownerPageBound,
       );
+
       const items = yield* Effect.forEach(rows, (row) =>
         readRecordViewById(transaction, command.scope, row.id),
       );
+
       return yield* decode(RecordPageSchema, {
         items,
         next: rows.length === ownerPageBound ? (rows.at(-1)?.id ?? null) : null,
@@ -974,12 +1122,15 @@ export const recordHistory = Effect.fn("owner.recordHistory")(function* (
       yield* Db.lockBookForShare(transaction, command.scope);
       void (yield* readRecordViewById(transaction, command.scope, command.id));
       const after = command.after ?? "";
+
       if (after !== "" && !/^[1-9][0-9]{0,17}$/.test(after)) {
         return yield* failure("InvalidJournal");
       }
+
       const retained = yield* OwnerDb.listRevisions(transaction, command.scope.bookId, command.id);
       const rows = retained.filter((row) => after === "" || minor(row.revision) > minor(after));
       const page = rows.slice(0, historyPageBound);
+
       const items = yield* Effect.forEach(page, (row) =>
         Effect.gen(function* () {
           const review = (yield* OwnerDb.readReviewByRevision(
@@ -988,9 +1139,11 @@ export const recordHistory = Effect.fn("owner.recordHistory")(function* (
             command.id,
             row.revision,
           ))[0];
+
           return { revision: row.body, review: review === undefined ? null : review.body };
         }),
       );
+
       return yield* decode(RecordHistorySchema, {
         items,
         next: page.length === historyPageBound ? (page.at(-1)?.revision ?? null) : null,
@@ -1015,6 +1168,7 @@ export const attachProposal = Effect.fn("owner.attachProposal")(function* (
     (transaction, principal) =>
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -1024,9 +1178,11 @@ export const attachProposal = Effect.fn("owner.attachProposal")(function* (
           payload,
           ProposalLinkSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireOwnerAccess(transaction, true);
         yield* Db.lockBookForUpdate(transaction, command.scope);
+
         const ready = yield* ownerRequireReady(
           transaction,
           command.scope,
@@ -1034,22 +1190,27 @@ export const attachProposal = Effect.fn("owner.attachProposal")(function* (
           command.input.reviewId,
           false,
         );
+
         if (
           (yield* OwnerDb.readEffectByRecord(transaction, command.scope.bookId, command.id))
             .length > 0
         ) {
           return yield* failure("AlreadyPosted");
         }
+
         const planRow = (yield* Db.readPlan(
           transaction,
           command.scope.bookId,
           command.input.changeSetId,
         ))[0];
+
         if (planRow === undefined) return yield* failure("NotFound");
         const plan = yield* decode(Accounting.ChangeSet, planRow.plan);
+
         if (plan.groups.length !== 1 || plan.groups[0]?.actions.length !== 1) {
           return yield* unsupported();
         }
+
         yield* validatePlan(transaction, command.scope, plan);
         yield* validateOwnerLine(
           transaction,
@@ -1058,24 +1219,27 @@ export const attachProposal = Effect.fn("owner.attachProposal")(function* (
           yield* toJsonObject(plan.groups[0]?.actions[0]),
           command.input.lineId,
         );
+
         const existing = yield* OwnerDb.readProposalLinksByRecord(
           transaction,
           command.scope.bookId,
           command.id,
         );
+
         const byChangeSet = yield* OwnerDb.readProposalLinksByChangeSet(
           transaction,
           command.scope.bookId,
           command.input.changeSetId,
         );
+
         if (
           existing.some((link) => link.changeSetId === command.input.changeSetId) ||
           byChangeSet.some((link) => link.lineId === command.input.lineId)
         ) {
           return yield* failure("IdempotencyConflict");
         }
+
         const body = yield* digestBody(
-          transaction,
           merge(
             yield* toJsonObject(command.input),
             {
@@ -1094,6 +1258,7 @@ export const attachProposal = Effect.fn("owner.attachProposal")(function* (
             ),
           ),
         );
+
         const link = yield* decode(ProposalLinkSchema, body);
         yield* OwnerDb.insertProposalLink(transaction, {
           bookId: command.scope.bookId,
@@ -1113,6 +1278,7 @@ export const attachProposal = Effect.fn("owner.attachProposal")(function* (
           principal.actorId,
           link,
         );
+
         return link;
       }),
     "update",
@@ -1135,6 +1301,7 @@ export const attachPostedLine = Effect.fn("owner.attachPostedLine")(function* (
     (transaction, principal) =>
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -1144,9 +1311,11 @@ export const attachPostedLine = Effect.fn("owner.attachPostedLine")(function* (
           payload,
           PostedEffectSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireOwnerAccess(transaction, true);
         yield* Db.lockBookForUpdate(transaction, command.scope);
+
         const ready = yield* ownerRequireReady(
           transaction,
           command.scope,
@@ -1154,12 +1323,15 @@ export const attachPostedLine = Effect.fn("owner.attachPostedLine")(function* (
           command.input.reviewId,
           true,
         );
+
         const voucher = (yield* Db.readVoucher(
           transaction,
           command.scope.bookId,
           command.input.voucherId,
         ))[0];
+
         if (voucher === undefined) return yield* failure("NotFound");
+
         if (
           voucher.correctsVoucherId !== null ||
           voucher.postingPurpose === "reversal" ||
@@ -1167,18 +1339,22 @@ export const attachPostedLine = Effect.fn("owner.attachPostedLine")(function* (
         ) {
           return yield* failure("StaleDependency");
         }
+
         const period = (yield* Db.readPeriod(
           transaction,
           command.scope.bookId,
           textField(voucher.action, "accountingPeriodId") ?? "",
         ))[0];
+
         if (period === undefined || period.locked) return yield* failure("PeriodLocked");
+
         const links = yield* OwnerDb.readPostedProposalLink(
           transaction,
           command.scope.bookId,
           command.id,
           voucher.changeSetId,
         );
+
         if (
           links.some(
             (link) =>
@@ -1189,6 +1365,7 @@ export const attachPostedLine = Effect.fn("owner.attachPostedLine")(function* (
         ) {
           return yield* failure("StaleDependency");
         }
+
         yield* validateOwnerLine(
           transaction,
           command.scope,
@@ -1197,12 +1374,14 @@ export const attachPostedLine = Effect.fn("owner.attachPostedLine")(function* (
           command.input.lineId,
         );
         const amountMinor = textField(ready.source, "amountMinor") ?? "0";
+
         const line = (yield* OwnerDb.readJournalLine(
           transaction,
           command.scope.bookId,
           voucher.id,
           command.input.lineId,
         ))[0];
+
         if (
           line === undefined ||
           line.accountId !== textField(ready.review, "controlAccountId") ||
@@ -1210,20 +1389,23 @@ export const attachPostedLine = Effect.fn("owner.attachPostedLine")(function* (
         ) {
           return yield* failure("InvalidJournal");
         }
+
         const effects = yield* OwnerDb.readEffectByRecord(
           transaction,
           command.scope.bookId,
           command.id,
         );
+
         const sameLine = yield* OwnerDb.readEffectByLine(
           transaction,
           command.scope.bookId,
           voucher.id,
           line.id,
         );
+
         if (effects.length > 0 || sameLine.length > 0) return yield* failure("AlreadyPosted");
+
         const body = yield* digestBody(
-          transaction,
           merge(
             yield* toJsonObject(command.input),
             {
@@ -1254,7 +1436,9 @@ export const attachPostedLine = Effect.fn("owner.attachPostedLine")(function* (
             ),
           ),
         );
+
         const effect = yield* decode(PostedEffectSchema, body);
+        yield* admitLineOwner(transaction, command.scope.bookId, voucher.id, line.id, "owner");
         yield* OwnerDb.insertEffect(transaction, {
           bookId: command.scope.bookId,
           id: effect.id,
@@ -1280,6 +1464,7 @@ export const attachPostedLine = Effect.fn("owner.attachPostedLine")(function* (
           principal.actorId,
           effect,
         );
+
         return effect;
       }),
     "update",
@@ -1297,6 +1482,7 @@ export const prepareAllocation = Effect.fn("owner.prepareAllocation")(function* 
     (transaction, principal) =>
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -1306,12 +1492,13 @@ export const prepareAllocation = Effect.fn("owner.prepareAllocation")(function* 
           payload,
           AllocationPlanSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireOwnerAccess(transaction, true);
         yield* Db.lockBookForUpdate(transaction, command.scope);
         const selection = yield* readAllocationSelection(transaction, command.scope, command.input);
+
         const body = yield* digestBody(
-          transaction,
           merge(
             yield* toJsonObject(selection),
             { id: newId("allocation"), scope: command.scope, version: 1 },
@@ -1323,6 +1510,7 @@ export const prepareAllocation = Effect.fn("owner.prepareAllocation")(function* 
             ),
           ),
         );
+
         const plan = yield* decode(AllocationPlanSchema, body);
         yield* OwnerDb.insertAllocationPlan(transaction, {
           bookId: command.scope.bookId,
@@ -1338,6 +1526,7 @@ export const prepareAllocation = Effect.fn("owner.prepareAllocation")(function* 
           principal.actorId,
           plan,
         );
+
         return plan;
       }),
     "update",
@@ -1352,22 +1541,27 @@ export const getAllocation = Effect.fn("owner.getAllocation")(function* (
     Effect.gen(function* () {
       yield* requireOwnerAccess(transaction, false);
       yield* Db.lockBookForShare(transaction, command.scope);
+
       const retained = (yield* OwnerDb.readAllocationPlan(
         transaction,
         command.scope.bookId,
         command.id,
       ))[0];
+
       if (retained === undefined) return yield* failure("NotFound");
+
       const approval = (yield* OwnerDb.readLatestApprovalForPlan(
         transaction,
         command.scope.bookId,
         command.id,
       ))[0];
+
       const receipt = (yield* OwnerDb.readReceiptForPlan(
         transaction,
         command.scope.bookId,
         command.id,
       ))[0];
+
       return yield* decode(AllocationViewSchema, {
         plan: yield* decode(AllocationPlanSchema, retained.body),
         dependenciesCurrent: yield* readAllocationCurrent(
@@ -1398,6 +1592,7 @@ export const applyAllocation = Effect.fn("owner.applyAllocation")(function* (
     (transaction, principal) =>
       Effect.gen(function* () {
         const payload = yield* toJsonObject({ id: command.id, input: command.input });
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -1407,34 +1602,43 @@ export const applyAllocation = Effect.fn("owner.applyAllocation")(function* (
           payload,
           AllocationReceiptSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireOwnerAccess(transaction, true);
         yield* Db.lockBookForUpdate(transaction, command.scope);
+
         const retained = (yield* OwnerDb.readAllocationPlan(
           transaction,
           command.scope.bookId,
           command.id,
         ))[0];
+
         if (retained === undefined) return yield* failure("NotFound");
+
         if (
           (yield* OwnerDb.readReceiptForPlan(transaction, command.scope.bookId, command.id))
             .length > 0
         ) {
           return yield* failure("IdempotencyConflict");
         }
+
         const plan = yield* decode(AllocationPlanSchema, retained.body);
+
         if (
           command.input.planDigest !== plan.digest ||
           !(yield* readAllocationCurrent(transaction, command.scope, retained.body))
         ) {
           return yield* failure("StaleDependency");
         }
+
         const approval = (yield* OwnerDb.readApproval(
           transaction,
           command.scope.bookId,
           command.input.approvalId,
         ))[0];
+
         const now = yield* isoNow(transaction);
+
         if (
           approval === undefined ||
           approval.planId !== command.id ||
@@ -1444,12 +1648,14 @@ export const applyAllocation = Effect.fn("owner.applyAllocation")(function* (
         ) {
           return yield* failure("ApprovalRequired");
         }
+
         if (
           (yield* Db.readOperatorMembership(transaction, command.scope.bookId, approval.actorId))
             .length === 0
         ) {
           return yield* failure("ApprovalRequired");
         }
+
         const body = yield* toJsonObject({
           id: newId("allocation_receipt"),
           scope: command.scope,
@@ -1465,6 +1671,7 @@ export const applyAllocation = Effect.fn("owner.applyAllocation")(function* (
             actorId: principal.actorId,
           },
         });
+
         const receipt = yield* decode(AllocationReceiptSchema, body);
         yield* OwnerDb.insertReceipt(transaction, {
           bookId: command.scope.bookId,
@@ -1493,6 +1700,7 @@ export const applyAllocation = Effect.fn("owner.applyAllocation")(function* (
           principal.actorId,
           receipt,
         );
+
         return receipt;
       }),
     "update",
@@ -1511,10 +1719,13 @@ function ownerMovements(effects: ReadonlyArray<OwnerDb.EffectRow>, startsOn: str
       closing: bigint;
     }
   >();
+
   for (const effect of effects) {
     const key = `${effect.accountId} ${effect.classification}`;
+
     const signed =
       effect.side === "credit" ? minor(effect.amountMinor) : -minor(effect.amountMinor);
+
     const group = groups.get(key) ?? {
       accountId: effect.accountId,
       classification: effect.classification,
@@ -1523,12 +1734,16 @@ function ownerMovements(effects: ReadonlyArray<OwnerDb.EffectRow>, startsOn: str
       movement: 0n,
       closing: 0n,
     };
+
     if (effect.origin === "opening") group.opening += signed;
+
     if (effect.origin === "current" && effect.postingDate < startsOn) group.prior += signed;
+
     if (effect.origin === "current" && effect.postingDate >= startsOn) group.movement += signed;
     group.closing += signed;
     groups.set(key, group);
   }
+
   return Effect.forEach(
     [...groups.values()].sort(
       (left, right) =>
@@ -1556,14 +1771,18 @@ function accountControls(
 ) {
   return Effect.gen(function* () {
     const ledgerById = new Map(ledger.map((row) => [row.accountId, row]));
+
     const registered = new Map(
       (yield* ControlDb.readRegisteredAccounts(transaction, scope.bookId, accountIds, endsOn)).map(
         (row) => [row.accountId, row],
       ),
     );
+
     const controls: Array<JsonObject> = [];
+
     for (const accountId of accountIds) {
       const retained = registered.get(accountId);
+
       if (retained === undefined) return yield* failure("InternalError");
       const ledgerAmount = minor(ledgerById.get(accountId)?.amount ?? "0");
       const registeredAmount = minor(retained.amount);
@@ -1578,6 +1797,7 @@ function accountControls(
         }),
       );
     }
+
     return controls;
   });
 }
@@ -1587,6 +1807,7 @@ function ownerBalances(
   legs: ReadonlyArray<OwnerDb.AllocationLegRow>,
 ) {
   const allocatedByEffect = new Map<string, bigint>();
+
   for (const leg of legs) {
     for (const effectId of [leg.claimId, leg.settlementId]) {
       allocatedByEffect.set(
@@ -1595,6 +1816,7 @@ function ownerBalances(
       );
     }
   }
+
   const groups = new Map<
     string,
     {
@@ -1608,9 +1830,11 @@ function ownerBalances(
       unconditional: bigint;
     }
   >();
+
   for (const effect of effects) {
     const amount = minor(effect.amountMinor);
     const open = amount - (allocatedByEffect.get(effect.id) ?? 0n);
+
     const group = groups.get(effect.accountId) ?? {
       accountId: effect.accountId,
       net: 0n,
@@ -1621,15 +1845,23 @@ function ownerBalances(
       conditional: 0n,
       unconditional: 0n,
     };
+
     group.net += effect.side === "credit" ? amount : -amount;
+
     if (effect.classification === "owner_expense") group.expense += open;
+
     if (effect.classification === "shareholder_loan") group.loan += open;
+
     if (effect.classification === "owner_reimbursement") group.reimbursement += open;
+
     if (effect.classification === "loan_repayment") group.repayment += open;
+
     if (effect.classification === "conditional_contribution") group.conditional += amount;
+
     if (effect.classification === "unconditional_contribution") group.unconditional += amount;
     groups.set(effect.accountId, group);
   }
+
   return Effect.forEach(
     [...groups.values()].sort((left, right) => compareText(left.accountId, right.accountId)),
     (group) =>
@@ -1659,7 +1891,9 @@ function readRetainedRecords(
       ownerId,
       endsOn,
     ))[0];
+
     if (retained === undefined) return yield* failure("InternalError");
+
     return {
       recordCount: retained.recordCount,
       views: yield* Effect.forEach(retained.records, (record) => toJsonObject(record)),
@@ -1677,6 +1911,7 @@ function requireOwnerCurrency(
       scalarField(effect.body, "currency") !== book.currency ||
       scalarField(effect.body, "currencyScale") !== String(book.currencyScale),
   );
+
   return mixed ? unsupported() : Effect.void;
 }
 
@@ -1691,15 +1926,20 @@ export const controlBody = Effect.fn("owner.controlBody")(function* (
   const book = yield* readBook(transaction, scope);
   const bookEffects = yield* OwnerDb.listEffects(transaction, scope.bookId, null, endsOn);
   yield* requireOwnerCurrency(bookEffects, book);
+
   if (!isCalendarDate(startsOn) || !isCalendarDate(endsOn) || startsOn > endsOn) {
     return yield* failure("InvalidJournal");
   }
+
   const owner = (yield* OwnerDb.readOwner(transaction, scope.bookId, ownerId))[0];
+
   if (owner === undefined) return yield* failure("NotFound");
   const retained = yield* readRetainedRecords(transaction, scope, ownerId, endsOn);
+
   if (retained.recordCount > controlRecordBound) return yield* failure("InvalidJournal");
   const effects = yield* OwnerDb.listEffects(transaction, scope.bookId, ownerId, endsOn);
   const legs = yield* OwnerDb.listAllocationLegs(transaction, scope.bookId, ownerId, endsOn);
+
   const allocations = yield* Effect.forEach(legs, (leg) =>
     toJsonObject({
       receiptId: leg.receiptId,
@@ -1709,7 +1949,9 @@ export const controlBody = Effect.fn("owner.controlBody")(function* (
       amountMinor: leg.amountMinor,
     }),
   );
+
   const accountIds = [...new Set(effects.map((effect) => effect.accountId))].sort(compareText);
+
   const controls = yield* accountControls(
     transaction,
     scope,
@@ -1717,6 +1959,7 @@ export const controlBody = Effect.fn("owner.controlBody")(function* (
     endsOn,
     yield* OwnerDb.readLedgerBalances(transaction, scope.bookId, accountIds, endsOn),
   );
+
   return {
     owner: owner.body,
     currency: book.currency,
@@ -1747,6 +1990,7 @@ export const prepareControl = Effect.fn("owner.prepareControl")(function* (
     (transaction, principal) =>
       Effect.gen(function* () {
         const payload = yield* toJsonObject(command.input);
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -1756,9 +2000,11 @@ export const prepareControl = Effect.fn("owner.prepareControl")(function* (
           payload,
           ControlSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireOwnerAccess(transaction, true);
         yield* Db.lockBookForUpdate(transaction, command.scope);
+
         const body = yield* controlBody(
           transaction,
           command.scope,
@@ -1766,8 +2012,8 @@ export const prepareControl = Effect.fn("owner.prepareControl")(function* (
           command.input.startsOn,
           command.input.endsOn,
         );
+
         const snapshot = yield* digestBody(
-          transaction,
           merge(
             yield* toJsonObject(body),
             { id: newId("owner_control"), scope: command.scope, version: 1 },
@@ -1779,6 +2025,7 @@ export const prepareControl = Effect.fn("owner.prepareControl")(function* (
             ),
           ),
         );
+
         const control = yield* decode(ControlSchema, snapshot);
         yield* OwnerDb.insertControl(transaction, {
           bookId: command.scope.bookId,
@@ -1794,6 +2041,7 @@ export const prepareControl = Effect.fn("owner.prepareControl")(function* (
           principal.actorId,
           control,
         );
+
         return control;
       }),
     "update",
@@ -1808,12 +2056,15 @@ export const getControl = Effect.fn("owner.getControl")(function* (
     Effect.gen(function* () {
       yield* requireOwnerAccess(transaction, false);
       yield* Db.lockBookForShare(transaction, command.scope);
+
       const retained = (yield* OwnerDb.readControl(
         transaction,
         command.scope.bookId,
         command.id,
       ))[0];
+
       if (retained === undefined) return yield* failure("NotFound");
+
       const current_ = controlBody(
         transaction,
         command.scope,
@@ -1821,20 +2072,25 @@ export const getControl = Effect.fn("owner.getControl")(function* (
         textField(retained.body, "startsOn") ?? "",
         textField(retained.body, "endsOn") ?? "",
       );
+
       const body = yield* Effect.match(current_, {
         onFailure: () => undefined,
         onSuccess: (value) => value,
       });
+
       const current = body === undefined ? null : yield* toJsonObject(body);
+
       const intact =
-        (yield* digestValue(transaction, withoutKeys(retained.body, ["digest"]))) ===
+        (yield* digestValue(withoutKeys(retained.body, ["digest"]))) ===
         textField(retained.body, "digest");
+
       const matches =
         current !== null &&
         sameJson(
           current,
           withoutKeys(retained.body, ["id", "scope", "version", "createdAt", "receipt", "digest"]),
         );
+
       return yield* decode(ControlViewSchema, {
         snapshot: yield* decode(ControlSchema, retained.body),
         current: intact && matches,
@@ -1851,6 +2107,7 @@ export const recoverCommand = Effect.fn("owner.recoverCommand")(function* (
     Effect.gen(function* () {
       yield* requireOwnerAccess(transaction, false);
       yield* Db.lockBookForShare(transaction, command.scope);
+
       const receipt = (yield* Db.readCommandReceipt(
         transaction,
         command.scope.bookId,
@@ -1859,7 +2116,9 @@ export const recoverCommand = Effect.fn("owner.recoverCommand")(function* (
       )).find(
         (row) => row.actorId === principal.actorId && recoveryOperations.includes(row.operation),
       );
+
       if (receipt === undefined) return yield* failure("NotFound");
+
       return yield* decode(CommandRecoverySchema, {
         operation: receipt.operation,
         result: receipt.result,
@@ -1879,6 +2138,7 @@ export const reviewRecord = Effect.fn("owner.reviewRecord")(function* (
     (transaction, principal) =>
       Effect.gen(function* () {
         const operation = "owners_review_record";
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -1888,22 +2148,27 @@ export const reviewRecord = Effect.fn("owner.reviewRecord")(function* (
           yield* toJsonObject({ id: command.id, input: command.input }),
           Owners.Review,
         );
+
         if (request.previous) return request.previous;
         yield* requireOwnerAccess(transaction, true);
         const record = yield* readRecord(transaction, command.scope, command.id);
+
         const stored = (yield* OwnerDb.readRevision(
           transaction,
           command.scope.bookId,
           record.id,
           record.currentRevision,
         ))[0];
+
         if (!stored) return yield* failure("InternalError");
         const revision = yield* decode(Owners.Revision, stored.body);
+
         if (
           command.input.expectedRevision !== record.currentRevision ||
           command.input.revisionDigest !== revision.digest
         )
           return yield* failure("StaleDependency");
+
         if (
           (yield* OwnerDb.readReviewByRevision(
             transaction,
@@ -1914,21 +2179,29 @@ export const reviewRecord = Effect.fn("owner.reviewRecord")(function* (
         )
           return yield* failure("IdempotencyConflict");
         yield* requireTrimmed(command.input.reason, 2000);
+
         if (
           command.input.syntheticNoTaxConfirmed &&
           record.body.dataNature !== "synthetic_example"
         ) {
           return yield* unsupported();
         }
+
         const book = yield* readBook(transaction, command.scope);
         const accountId = command.input.controlAccountId;
+
         const account =
           accountId === null
             ? undefined
             : (yield* Db.readAccounts(transaction, command.scope.bookId, [accountId]))[0];
+
         if (accountId !== null && !account?.active) return yield* failure("InvalidJournal");
-        if (account)
+
+        if (account) {
+          yield* admitAccountRole(transaction, command.scope.bookId, account.id, "owner");
           yield* OwnerDb.insertControlAccount(transaction, command.scope.bookId, account.id);
+        }
+
         const body = merge(
           withoutKeys(yield* toJsonObject(command.input), ["expectedRevision", "evidenceId"]),
           {
@@ -1949,6 +2222,7 @@ export const reviewRecord = Effect.fn("owner.reviewRecord")(function* (
           },
           yield* recordMetadata(transaction, command.idempotencyKey, operation, principal.actorId),
         );
+
         const result = yield* decode(Owners.Review, body);
         yield* OwnerDb.insertReview(transaction, {
           bookId: command.scope.bookId,
@@ -1967,6 +2241,7 @@ export const reviewRecord = Effect.fn("owner.reviewRecord")(function* (
           principal.actorId,
           result,
         );
+
         return result;
       }),
     "update",
@@ -1984,6 +2259,7 @@ export const approveAllocation = Effect.fn("owner.approveAllocation")(function* 
     (transaction, principal) =>
       Effect.gen(function* () {
         const operation = "owners_approve_allocation";
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -1993,15 +2269,19 @@ export const approveAllocation = Effect.fn("owner.approveAllocation")(function* 
           yield* toJsonObject({ id: command.id, input: command.input }),
           Owners.AllocationApproval,
         );
+
         if (request.previous) return request.previous;
         yield* requireOwnerAccess(transaction, true);
+
         const row = (yield* OwnerDb.readAllocationPlan(
           transaction,
           command.scope.bookId,
           command.id,
         ))[0];
+
         if (!row) return yield* failure("NotFound");
         const plan = yield* decode(AllocationPlanSchema, row.body);
+
         if (
           command.input.version !== 1 ||
           command.input.planDigest !== plan.digest ||
@@ -2009,12 +2289,14 @@ export const approveAllocation = Effect.fn("owner.approveAllocation")(function* 
         ) {
           return yield* failure("StaleDependency");
         }
+
         if (
           (yield* OwnerDb.readReceiptForPlan(transaction, command.scope.bookId, command.id))
             .length > 0
         ) {
           return yield* failure("IdempotencyConflict");
         }
+
         const result = yield* decode(Owners.AllocationApproval, {
           id: newId("allocation_approval"),
           planId: command.id,
@@ -2023,6 +2305,7 @@ export const approveAllocation = Effect.fn("owner.approveAllocation")(function* 
           expiresAt: new Date(Date.parse(yield* isoNow(transaction)) + 3_600_000).toISOString(),
           receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
         });
+
         yield* OwnerDb.insertApproval(transaction, {
           bookId: command.scope.bookId,
           id: result.id,
@@ -2041,6 +2324,7 @@ export const approveAllocation = Effect.fn("owner.approveAllocation")(function* 
           principal.actorId,
           result,
         );
+
         return result;
       }),
     "update",

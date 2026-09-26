@@ -72,6 +72,7 @@ export function readPdfCaptureIdentity(
   lock: "share" | "update",
 ) {
   const lockClause = lock === "update" ? sql`for update` : sql`for share`;
+
   return transaction.execute<PdfCaptureIdentityRow>(
     sql`
       select c.id, c.issue_id as "issueId", c.body

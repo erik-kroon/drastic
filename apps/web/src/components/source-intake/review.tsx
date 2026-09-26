@@ -35,6 +35,7 @@ export function PreviewReview(
   const [page, setPage] = useState(0);
   const [inputError, setInputError] = useState("");
   const base = `${bookPath(book)}/source-previews/${encodeURIComponent(id)}`;
+
   const query = useQuery({
     queryKey: [...bookKey(book), "source-preview", id],
     retry: false,
@@ -43,6 +44,7 @@ export function PreviewReview(
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(base, Intake.SourcePreviewView, { signal });
+
       if (
         result.preview.id !== id ||
         result.preview.occurrenceId !== occurrenceId ||
@@ -50,9 +52,11 @@ export function PreviewReview(
         result.preview.scope.entityId !== book.entityId
       )
         throw new Error("Preview scope mismatch");
+
       return result;
     },
   });
+
   const approval = useMutation({
     mutationFn: (input: typeof Intake.ApproveSourcePreview.Type) =>
       readAccounting(
@@ -68,6 +72,7 @@ export function PreviewReview(
       void query.refetch();
     },
   });
+
   const admission = useMutation({
     mutationFn: (input: typeof Intake.AdmitSourcePreview.Type) =>
       readAccounting(
@@ -79,6 +84,7 @@ export function PreviewReview(
       void client.invalidateQueries({ queryKey: bookKey(book) });
     },
   });
+
   const view = query.data;
   const preview = view?.preview;
   const writesPending = approval.isPending || admission.isPending;
@@ -87,6 +93,7 @@ export function PreviewReview(
   const current = known && view?.dependenciesCurrent && preview?.ready && !writesPending;
   const canApprove = current && !approval.isError;
   const saved = view?.admission ?? admission.data;
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <RecordHeading
@@ -208,17 +215,22 @@ export function PreviewReview(
                 gap="md"
                 onSubmit={(event) => {
                   event.preventDefault();
+
                   if (!canApprove) return;
                   const data = new FormData(event.currentTarget);
+
                   const input = Schema.decodeUnknownOption(Intake.ApproveSourcePreview)({
                     digest: preview.digest,
                     version: 1,
                     rationale: data.get("rationale"),
                   });
+
                   if (input._tag === "None" || !reviewed) {
                     setInputError(copy.invalid);
+
                     return;
                   }
+
                   setInputError("");
                   approval.mutate(input.value);
                 }}
@@ -343,6 +355,7 @@ export function IntakeRequestRecovery(props: {
   onDiscard: () => void;
 }) {
   if (!props.request || props.complete) return null;
+
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <Text>{props.label}</Text>
@@ -380,8 +393,10 @@ function PreviewSummary(props: {
   const sv = locale === "sv";
   const mapping = preview.mapping;
   const account = props.setup.accounts.find((item) => item.id === mapping.accountId);
+
   const amount = (value: string) =>
     `${formatMinorAmount(value, mapping.currencyScale, locale)} ${mapping.currency}`;
+
   return (
     <Box display="grid" gap="md">
       <PageCaption>
@@ -428,6 +443,7 @@ function PreviewTechnicalDetails({
   locale: IntakeProps["locale"];
 }) {
   const copy = intakeCopy(locale);
+
   return (
     <Disclosure
       title={
@@ -499,6 +515,7 @@ function PreviewDiagnostics({
   locale: IntakeProps["locale"];
 }) {
   const copy = intakeCopy(locale);
+
   return (
     <>
       {preview.diagnostics.length ? (
@@ -543,6 +560,7 @@ function PreviewStatus(props: {
   locale: IntakeProps["locale"];
 }) {
   const copy = intakeCopy(props.locale);
+
   return (
     <Text role="status">
       {!props.known
@@ -570,6 +588,7 @@ function PreviewReceipt({
   locale: IntakeProps["locale"];
 }) {
   const copy = intakeCopy(locale);
+
   return (
     <>
       {saved.previewId !== id ? (

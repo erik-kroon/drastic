@@ -69,6 +69,7 @@ const en = {
   details: "Saved provenance",
   leg: "Allocation leg",
 };
+
 const sv: typeof en = {
   title: "Granskade bankfördelningar",
   warning:

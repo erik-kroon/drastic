@@ -2534,7 +2534,6 @@ CREATE TABLE openerp.sie_financial_runs (
   fence bigint DEFAULT 1 NOT NULL,
   lease_until timestamptz NOT NULL,
   status text DEFAULT 'running'::text NOT NULL,
-  permitted_change_id text,
   CONSTRAINT sie_financial_runs_pkey PRIMARY KEY (book_id, id),
   CONSTRAINT sie_financial_runs_book_id_source_run_id_key UNIQUE (book_id, source_run_id),
   CONSTRAINT sie_financial_runs_status_check CHECK (status = ANY (ARRAY['running'::text, 'paused'::text, 'posted'::text])),

@@ -8,10 +8,12 @@ import { Text } from "@open-erp/ui/components/typography";
 import { useBookWorkspace } from "@/lib/book-context";
 
 export type EntryKind = "payments" | "matches" | "paymentControls" | "matchControls";
+
 export type HistoryEntry =
   | { kind: "payments"; value: typeof Historical.Payment.Type }
   | { kind: "matches"; value: typeof Historical.HistoricalMatch.Type }
   | { kind: "paymentControls" | "matchControls"; value: typeof Historical.AmountControl.Type };
+
 const empty = () => ({
   sourceIdentity: "",
   sourceAccount: "",
@@ -23,6 +25,7 @@ const empty = () => ({
   paymentIdentity: "",
   independentTotalMinor: "",
 });
+
 type Draft = ReturnType<typeof empty>;
 
 function decodeEntry(kind: EntryKind, draft: Draft): HistoryEntry | null {
@@ -35,8 +38,10 @@ function decodeEntry(kind: EntryKind, draft: Draft): HistoryEntry | null {
       sourceDate: draft.sourceDate || null,
       basis: draft.basis,
     };
+
     return Schema.is(Historical.Payment)(value) ? { kind, value } : null;
   }
+
   if (kind === "matches") {
     const value = {
       sourceIdentity: draft.sourceIdentity,
@@ -46,14 +51,17 @@ function decodeEntry(kind: EntryKind, draft: Draft): HistoryEntry | null {
       sourceDate: draft.sourceDate || null,
       basis: draft.basis,
     };
+
     return Schema.is(Historical.HistoricalMatch)(value) ? { kind, value } : null;
   }
+
   const value = {
     sourceAccount: draft.sourceAccount,
     currency: draft.currency,
     independentTotalMinor: draft.independentTotalMinor,
     basis: draft.basis,
   };
+
   return Schema.is(Historical.AmountControl)(value) ? { kind, value } : null;
 }
 
@@ -70,6 +78,7 @@ export function PaymentHistoryEntry({
 }) {
   const { locale } = useBookWorkspace();
   const sv = locale === "sv";
+
   const titles = sv
     ? {
         payments: "Lägg till källbetalning",
@@ -83,6 +92,7 @@ export function PaymentHistoryEntry({
         paymentControls: "Add payment control",
         matchControls: "Add match control",
       };
+
   const labels = sv
     ? {
         sourceIdentity: "Källidentitet",
@@ -106,6 +116,7 @@ export function PaymentHistoryEntry({
         paymentIdentity: "Payment source identity",
         independentTotalMinor: "Independent total in minor units",
       };
+
   const fields: (keyof Draft)[] =
     kind === "payments"
       ? ["sourceIdentity", "sourceAccount", "currency", "amountMinor", "sourceDate", "basis"]
@@ -119,6 +130,7 @@ export function PaymentHistoryEntry({
             "basis",
           ]
         : ["sourceAccount", "currency", "independentTotalMinor", "basis"];
+
   const form = useForm({
     defaultValues: empty(),
     validators: {
@@ -131,6 +143,7 @@ export function PaymentHistoryEntry({
     },
     onSubmit: ({ value }) => {
       const entry = decodeEntry(kind, value);
+
       if (entry) {
         onAdd(entry);
         form.reset(empty());
@@ -138,6 +151,7 @@ export function PaymentHistoryEntry({
       }
     },
   });
+
   return (
     <details>
       <summary>{titles[kind]}</summary>

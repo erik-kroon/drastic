@@ -23,16 +23,20 @@ export const SieImportHandlers = HttpApiBuilder.group(Api, "sieImport", (handler
             scope: scopeFromPath(params),
             occurrenceId: params.id,
           });
+
           const bytes = Buffer.from(source.contentBase64, "base64");
+
           if (bytes.length > 524288 || source.occurrence.byteLength !== bytes.length)
             return yield* failure("UnsupportedProfile");
           const parsed = parseSie(bytes, payload.encoding);
+
           if (
             parsed.records.length > 4000 ||
             parsed.vouchers.length > 500 ||
             Buffer.byteLength(JSON.stringify(parsed)) > 1048576
           )
             return yield* failure("UnsupportedProfile");
+
           return yield* Sie.captureSource(token, {
             scope: scopeFromPath(params),
             idempotencyKey: headers["idempotency-key"],

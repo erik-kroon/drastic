@@ -55,10 +55,13 @@ const styles = stylex.create({
     textAlign: "start",
   },
 });
+
 type ChartType = "area" | "bar" | "line";
+
 interface ChartDatum {
   [key: string]: string | number | null | undefined;
 }
+
 type ChartSeries = {
   color: string;
   dataKey: string;
@@ -66,6 +69,7 @@ type ChartSeries = {
   dashed?: boolean;
   valueFormatter?: (value: ChartDatum[string]) => string;
 };
+
 type ChartProps = {
   ariaLabel: string;
   className?: string;
@@ -80,9 +84,11 @@ type ChartProps = {
   xKey: string;
   xLabel?: string;
 };
+
 function stringValue(value: ChartDatum[string]) {
   return value == null ? "—" : String(value);
 }
+
 function ChartDataTable({
   data,
   series,
@@ -120,6 +126,7 @@ function ChartDataTable({
     </table>
   );
 }
+
 function Chart({
   ariaLabel,
   className,
@@ -138,6 +145,7 @@ function Chart({
     data: [...data],
     margin: { bottom: 4, left: 0, right: 12, top: 8 },
   };
+
   const axes = (
     <>
       <CartesianGrid stroke={tokens.border} strokeDasharray="3 3" vertical={false} />
@@ -168,6 +176,7 @@ function Chart({
       {showLegend ? <Legend /> : null}
     </>
   );
+
   const marks = series.map((item) =>
     type === "bar" ? (
       <Bar
@@ -204,6 +213,7 @@ function Chart({
       />
     ),
   );
+
   const graph =
     type === "bar" ? (
       <BarChart accessibilityLayer={false} {...common}>
@@ -221,6 +231,7 @@ function Chart({
         {marks}
       </LineChart>
     );
+
   return (
     <figure aria-label={ariaLabel} {...stylexProps([styles.root, styleX], className)}>
       <p {...stylex.props(styles.summary)}>{description}</p>
@@ -235,5 +246,7 @@ function Chart({
     </figure>
   );
 }
+
 export { Chart, ChartDataTable };
+
 export type { ChartDatum, ChartProps, ChartSeries, ChartType };

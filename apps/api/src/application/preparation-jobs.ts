@@ -33,13 +33,20 @@ import {
 } from "./commerce/support";
 
 const maximumCheckpoint = 49;
+
 const maximumChunk = 20;
+
 const maximumSelectedObservations = 1000;
+
 const reasonLimit = 2000;
+
 const digestPrefix = "sha256:";
+
 const advanceActions = ["continue", "cancel", "resume"] as const;
+
 const policyBlockedMessage =
   "The preparation policy could not be checked. No pending row was processed.";
+
 const stepBlockedMessage =
   "The preparation step failed. The observation remains pending and no partial proposal was retained.";
 
@@ -90,23 +97,32 @@ const RulePolicy = Schema.Struct({
 });
 
 type Observation = typeof FrozenObservation.Type;
+
 type Policy = typeof RulePolicy.Type;
 
 function requireJobAccess(transaction: Transaction, write: boolean) {
   return Effect.gen(function* () {
     const rows = yield* JobDb.readJobAccess(transaction);
+
     const denied = JobDb.jobTables.some((name) => {
       const access = rows.find((row) => row.tableName === name);
+
       return access === undefined || !access.canSelect;
     });
+
     if (denied) return yield* unsupported();
+
     if (!write) return;
+
     const missingInsert = JobDb.jobInsertTables.some(
       (name) => !rows.some((row) => row.tableName === name && row.canInsert),
     );
+
     if (missingInsert) return yield* unsupported();
     const columns = yield* JobDb.readJobColumnAccess(transaction);
+
     if (columns.length !== JobDb.jobUpdateColumns.length) return yield* unsupported();
+
     if (columns.some((row) => !row.canUpdate)) return yield* unsupported();
   });
 }
@@ -116,8 +132,10 @@ function requireAdvanceAccess(transaction: Transaction) {
     Effect.flatMap((rows) => {
       const denied = JobDb.advanceTables.some((name) => {
         const access = rows.find((row) => row.tableName === name);
+
         return access === undefined || !access.canSelect;
       });
+
       return denied ? unsupported() : Effect.void;
     }),
   );
@@ -127,14 +145,23 @@ function requireRunAccess(transaction: Transaction, write: boolean) {
   return Effect.gen(function* () {
     yield* requireJobAccess(transaction, write);
     const rows = yield* JobDb.readRunTableAccess(transaction);
+
     const denied = JobDb.runReadTables.some((name) => {
       const access = rows.find((row) => row.tableName === name);
+
       return access === undefined || !access.canSelect;
     });
+
     if (denied) return yield* unsupported();
+
     if (!write) return;
     const inserts = yield* JobDb.readRunInsertAccess(transaction);
-    if (JobDb.runInsertTables.some((name) => !inserts.some((row) => row.tableName === name && row.canInsert))) {
+
+    if (
+      JobDb.runInsertTables.some(
+        (name) => !inserts.some((row) => row.tableName === name && row.canInsert),
+      )
+    ) {
       return yield* unsupported();
     }
   });
@@ -165,13 +192,17 @@ function jobBody(row: JobDb.JobRow) {
 function runBody(transaction: Transaction, bookId: string, runId: string) {
   return Effect.gen(function* () {
     const run = (yield* JobDb.readRunState(transaction, bookId, runId))[0];
+
     if (!run) return yield* failure("NotFound");
     const rule = (yield* JobDb.readRule(transaction, bookId, run.ruleId))[0];
+
     if (!rule) return yield* failure("NotFound");
     const scope = rule.body.scope;
     const ruleDigest = rule.body.digest;
+
     if (scope === undefined || ruleDigest === undefined) return yield* failure("InternalError");
     const audit = yield* JobDb.readRunAudit(transaction, bookId, runId);
+
     return yield* decode(Automation.PreparationRun, {
       id: run.id,
       scope,
@@ -201,6 +232,7 @@ function auditRun(
 ) {
   return Effect.gen(function* () {
     const run = (yield* JobDb.readRunState(transaction, bookId, runId))[0];
+
     if (!run) return yield* failure("NotFound");
     const ordinal = (yield* countAudit(transaction, bookId, runId)) + 1;
     yield* JobDb.insertRunAudit(
@@ -219,6 +251,7 @@ function auditRun(
         receipt: { key, operation, actorId },
       }),
     );
+
     return yield* runBody(transaction, bookId, runId);
   });
 }
@@ -235,8 +268,10 @@ function submitterAuthority(transaction: Transaction, bookId: string, row: JobDb
       row.credentialHash === null
         ? ((yield* JobDb.readLiveSession(transaction, row.sessionId ?? ""))[0]?.actorId ?? null)
         : ((yield* JobDb.readLiveCredential(transaction, row.credentialHash))[0]?.actorId ?? null);
+
     const enabled = (yield* JobDb.readSubmitterAdmission(transaction, row.requestedBy))[0]?.enabled;
     const members = yield* JobDb.readSubmitterMembership(transaction, bookId, row.requestedBy);
+
     return { actorId: live, enabled: enabled ?? null, member: members.length > 0 };
   });
 }
@@ -252,16 +287,21 @@ function replacementReason(
     if (previous.executorId !== executorId) {
       return "Stopped by explicit replacement admission with a different configured executor.";
     }
+
     if (!(yield* hasAgentRole(transaction, bookId, previous.executorId))) {
       return "The previous executor no longer has the agent role.";
     }
+
     const authority = yield* submitterAuthority(transaction, bookId, previous);
+
     if (!authority.member || authority.enabled === false || authority.actorId === null) {
       return "The previous submitting authority is missing, expired or revoked.";
     }
+
     if (previous.expectedAudit !== audit) {
       return "The preparation run was changed manually before explicit replacement admission.";
     }
+
     return null;
   });
 }
@@ -287,6 +327,7 @@ function insertJob(
       expectedAudit: audit,
     });
     const row = (yield* JobDb.readJob(transaction, scope.bookId, id))[0];
+
     return row === undefined ? yield* failure("InternalError") : yield* jobBody(row);
   });
 }
@@ -297,7 +338,9 @@ export const startPreparationJob = Effect.fn("Preparation.startJob")(function* (
 ) {
   const { bindings } = yield* RequestEnvironment;
   const executorToken = bindings.OPENERP_PREPARATION_TOKEN;
+
   if (!executorToken) return yield* failure("Unavailable");
+
   return yield* withTransaction((transaction) =>
     Effect.gen(function* () {
       const requester = yield* admitPrincipal(
@@ -307,6 +350,7 @@ export const startPreparationJob = Effect.fn("Preparation.startJob")(function* (
         { operatorOnly: false },
         "update",
       );
+
       const executor = yield* admitPrincipal(
         transaction,
         { token: executorToken },
@@ -314,14 +358,18 @@ export const startPreparationJob = Effect.fn("Preparation.startJob")(function* (
         { operatorOnly: false },
         "update",
       );
+
       yield* requireJobAccess(transaction, true);
+
       if (!(yield* hasAgentRole(transaction, input.scope.bookId, executor.actorId))) {
         return yield* failure("Forbidden");
       }
+
       const payload: JsonObject = yield* toJsonObject({
         runId: input.runId,
         executorId: executor.actorId,
       });
+
       const request = yield* replay(
         transaction,
         input.scope,
@@ -331,13 +379,17 @@ export const startPreparationJob = Effect.fn("Preparation.startJob")(function* (
         payload,
         Automation.PreparationJob,
       );
+
       if (request.previous) return request.previous;
       yield* lockBookForUpdate(transaction, input.scope);
       const run = (yield* JobDb.readRun(transaction, input.scope.bookId, input.runId))[0];
+
       if (!run) return yield* failure("NotFound");
+
       if (run.state !== "ready") return yield* failure("InvalidJournal");
       const audit = yield* countAudit(transaction, input.scope.bookId, run.id);
       const existing = (yield* JobDb.lockReadyJob(transaction, input.scope.bookId, run.id))[0];
+
       if (existing) {
         const reason = yield* replacementReason(
           transaction,
@@ -346,9 +398,11 @@ export const startPreparationJob = Effect.fn("Preparation.startJob")(function* (
           executor.actorId,
           audit,
         );
+
         if (reason === null) return yield* failure("InvalidJournal");
         yield* JobDb.stopJob(transaction, input.scope.bookId, existing.id, reason);
       }
+
       const job = yield* insertJob(
         transaction,
         input.scope,
@@ -357,6 +411,7 @@ export const startPreparationJob = Effect.fn("Preparation.startJob")(function* (
         executor.actorId,
         audit,
       );
+
       yield* saveCommand(
         transaction,
         input.scope,
@@ -366,6 +421,7 @@ export const startPreparationJob = Effect.fn("Preparation.startJob")(function* (
         requester.actorId,
         job,
       );
+
       return job;
     }).pipe(Effect.mapError(databaseFailure)),
   );
@@ -378,7 +434,9 @@ export const readPreparationJob = Effect.fn("Preparation.readJob")(function* (
   return yield* withBook(token, command.scope, false, function* (transaction) {
     yield* requireJobAccess(transaction, false);
     const job = (yield* JobDb.readLatestJob(transaction, command.scope.bookId, command.runId))[0];
+
     if (!job) return null;
+
     return yield* jobBody(job);
   });
 });
@@ -389,6 +447,7 @@ export const getPreparationRun = Effect.fn("Preparation.getRun")(function* (
 ) {
   return yield* withBook(token, command.scope, false, function* (transaction) {
     yield* requireRunAccess(transaction, false);
+
     return yield* runBody(transaction, command.scope.bookId, command.runId);
   });
 });
@@ -405,6 +464,7 @@ function savepointed<A>(
     yield* transaction
       .execute(sql`SAVEPOINT preparation_step`)
       .pipe(Effect.mapError(databaseFailure));
+
     const outcome = yield* operation.pipe(
       Effect.mapError(databaseFailure),
       Effect.map((value) => ({ state: "committed", result: value }) as const),
@@ -414,9 +474,11 @@ function savepointed<A>(
           .pipe(Effect.mapError(databaseFailure), Effect.as({ state: "refused", error } as const)),
       ),
     );
+
     yield* transaction
       .execute(sql`RELEASE SAVEPOINT preparation_step`)
       .pipe(Effect.mapError(databaseFailure));
+
     return outcome;
   });
 }
@@ -436,23 +498,33 @@ function dependenciesCurrent(
 ) {
   return Effect.gen(function* () {
     const sealed = Object.fromEntries(Object.entries(ruleBody).filter(([key]) => key !== "digest"));
+
     if ((yield* digest(sealed)) !== rule.digest) return false;
     const book = (yield* JobDb.readPolicy(transaction, bookId))[0];
+
     if (!book || book.profile !== "synthetic-core-v1" || book.authority !== "native") return false;
+
     const accounts = new Map(
       (yield* JobDb.readActiveAccountVersions(transaction, bookId, [
         rule.input.accountId,
         rule.input.counterpartAccountId,
       ])).map((row) => [row.id, row.version]),
     );
+
     for (const dependency of rule.dependencies) {
       let current: string | undefined;
+
       if (dependency.kind === "profile") current = book.profileVersion;
+
       if (dependency.kind === "writer_epoch") current = book.writerEpoch;
+
       if (dependency.kind === "account") current = accounts.get(dependency.resourceId);
+
       if (current !== dependency.version) return false;
     }
+
     const source = (yield* JobDb.readBankSource(transaction, bookId, rule.input.accountId))[0];
+
     return source !== undefined && source.sourceBankAccountId === rule.input.sourceBankAccountId;
   });
 }
@@ -460,14 +532,17 @@ function dependenciesCurrent(
 function checkPolicy(transaction: Transaction, bookId: string, run: JobDb.RunProgressRow) {
   return Effect.gen(function* () {
     const stored = (yield* JobDb.readRule(transaction, bookId, run.ruleId))[0];
+
     if (!stored) return yield* failure("NotFound");
     const rule = yield* decode(RulePolicy, stored.body);
+
     const activation = yield* JobDb.readActiveOperatorActivation(
       transaction,
       bookId,
       run.activationId,
       run.ruleId,
     );
+
     if (activation.length === 0) return yield* failure("ApprovalRequired");
     yield* JobDb.lockSelectionPeriods(transaction, bookId, run.rows);
     yield* JobDb.lockRuleAccounts(transaction, bookId, [
@@ -475,6 +550,7 @@ function checkPolicy(transaction: Transaction, bookId: string, run: JobDb.RunPro
       rule.input.counterpartAccountId,
     ]);
     const current = yield* dependenciesCurrent(transaction, bookId, rule, stored.body);
+
     const overlaps = yield* JobDb.readOverlappingRuleIds(
       transaction,
       bookId,
@@ -483,7 +559,9 @@ function checkPolicy(transaction: Transaction, bookId: string, run: JobDb.RunPro
       rule.input.description,
       rule.input.sign,
     );
+
     if (!current || overlaps.length > 0) return yield* failure("StaleDependency");
+
     return rule;
   });
 }
@@ -498,12 +576,14 @@ function prepareObservation(
   return Effect.gen(function* () {
     const statementId = row.statementId;
     const rowOrdinal = row.rowOrdinal;
+
     const allocated = (yield* JobDb.readAllocatedSource(
       transaction,
       scope.bookId,
       statementId,
       rowOrdinal,
     ))[0]?.total;
+
     if (allocated !== undefined && BigInt(allocated) !== 0n) {
       return yield* toJsonObject({
         statementId,
@@ -514,25 +594,30 @@ function prepareObservation(
         voucherId: null,
       });
     }
+
     const eventKey = `bank_${statementId}_${rowOrdinal}`;
+
     const eventId = (yield* JobDb.readEventByKey(
       transaction,
       scope.bookId,
       row.evidenceId,
       eventKey,
     ))[0]?.id;
+
     if (eventId !== undefined) {
       const voucher = (yield* JobDb.readPostedAdjustmentVoucher(
         transaction,
         scope.bookId,
         eventId,
       ))[0];
+
       if (voucher) {
         const digestRow = (yield* JobDb.readPlanDigest(
           transaction,
           scope.bookId,
           voucher.changeSetId,
         ))[0];
+
         return yield* toJsonObject({
           statementId,
           rowOrdinal,
@@ -543,24 +628,29 @@ function prepareObservation(
         });
       }
     }
+
     const prepared = (yield* JobDb.readPreparation(
       transaction,
       scope.bookId,
       statementId,
       rowOrdinal,
     ))[0];
+
     if (prepared) {
       if (prepared.ruleId !== rule.id) {
         return yield* failure("InvalidJournal");
       }
+
       const stored = (yield* JobDb.readPlanBody(
         transaction,
         scope.bookId,
         prepared.changeSetId,
       ))[0];
+
       if (!stored) return yield* failure("NotFound");
       const plan = yield* decode(Accounting.ChangeSet, stored.body);
       yield* validatePlan(transaction, scope, plan);
+
       return yield* toJsonObject({
         statementId,
         rowOrdinal,
@@ -570,22 +660,29 @@ function prepareObservation(
         voucherId: null,
       });
     }
+
     if (eventId !== undefined) {
       const duplicate = yield* JobDb.readProposalForEvent(transaction, scope.bookId, eventId);
+
       if (duplicate.length > 0) return yield* failure("InvalidJournal");
     }
+
     const period = (yield* JobDb.lockPeriod(transaction, scope.bookId, row.accountingPeriodId))[0];
+
     if (!period || period.version !== row.periodVersion) return yield* failure("StaleDependency");
+
     if (period.locked) return yield* failure("PeriodLocked");
     const amount = BigInt(row.amountMinor);
     const magnitude = (amount < 0n ? -amount : amount).toString();
     const bankDebit = amount > 0n ? magnitude : "0";
     const bankCredit = amount < 0n ? magnitude : "0";
+
     const commandKey = `auto_${(yield* digest({
       bookId: scope.bookId,
       statementId,
       rowOrdinal,
     })).slice(digestPrefix.length)}`;
+
     const plan = yield* prepareJournalInTransaction(transaction, principal, {
       scope,
       idempotencyKey: commandKey,
@@ -615,6 +712,7 @@ function prepareObservation(
         ],
       },
     });
+
     yield* JobDb.insertPreparation(transaction, {
       bookId: scope.bookId,
       statementId,
@@ -622,6 +720,7 @@ function prepareObservation(
       ruleId: rule.id,
       changeSetId: plan.id,
     });
+
     return yield* toJsonObject({
       statementId,
       rowOrdinal,
@@ -647,6 +746,7 @@ function advancePreparationRun(
     let results: readonly JsonObject[] = run.results;
     let current: JsonObject | null = run.blocker;
     let reason: string | null = null;
+
     if (checked.state === "refused") {
       state = "blocked";
       current = blocker(checked.error, policyBlockedMessage);
@@ -656,26 +756,33 @@ function advancePreparationRun(
       state = "ready";
       current = null;
       let processed = 0;
+
       while (state === "ready" && cursor < run.rows.length && processed < limit) {
         const frozen = run.rows[cursor];
+
         if (frozen === undefined) return yield* failure("InternalError");
         const observation = yield* decode(FrozenObservation, frozen);
+
         const prepared = yield* savepointed(
           transaction,
           prepareObservation(transaction, scope, principal, rule, observation),
         );
+
         if (prepared.state === "refused") {
           state = "blocked";
           current = blocker(prepared.error, stepBlockedMessage);
           reason = stepBlockedMessage;
           break;
         }
+
         results = [...results, prepared.result];
         cursor = cursor + 1;
         processed = processed + 1;
       }
+
       if (state === "ready" && cursor === run.rows.length) state = "completed";
     }
+
     yield* JobDb.writeRunProgress(transaction, {
       bookId: scope.bookId,
       runId: run.id,
@@ -684,6 +791,7 @@ function advancePreparationRun(
       results,
       blocker: current,
     });
+
     return { state, cursor, blocker: current, reason };
   });
 }
@@ -703,6 +811,7 @@ export const createPreparationRun = Effect.fn("Preparation.createRun")(function*
     function* (transaction, principal) {
       const input = yield* toJsonObject(command.input);
       yield* exactKeys(input, ["activationId", "startsOn", "endsOn"]);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -712,52 +821,74 @@ export const createPreparationRun = Effect.fn("Preparation.createRun")(function*
         input,
         Automation.PreparationRun,
       );
+
       if (request.previous) return request.previous;
       yield* requireRunAccess(transaction, true);
       const bookId = command.scope.bookId;
-      const activation = (
-        yield* WorkDb.readActivation(transaction, bookId, command.input.activationId)
-      )[0];
+
+      const activation = (yield* WorkDb.readActivation(
+        transaction,
+        bookId,
+        command.input.activationId,
+      ))[0];
+
       if (!activation) return yield* failure("NotFound");
+
       const active = yield* JobDb.readActiveOperatorActivation(
         transaction,
         bookId,
         activation.id,
         activation.ruleId,
       );
+
       if (active.length === 0) return yield* failure("ApprovalRequired");
       const rule = (yield* JobDb.readRule(transaction, bookId, activation.ruleId))[0];
+
       if (!rule) return yield* failure("NotFound");
       const policy = yield* decode(RulePolicy, rule.body);
       const startsOn = calendarDate(command.input.startsOn);
       const endsOn = calendarDate(command.input.endsOn);
+
       if (startsOn === null || endsOn === null || startsOn > endsOn) {
         return yield* failure("InvalidJournal");
       }
+
       yield* RecurringDb.lockSelectionAccounts(transaction, bookId, [
         policy.input.accountId,
         policy.input.counterpartAccountId,
       ]);
       yield* RecurringDb.lockSelectionPeriods(transaction, bookId, startsOn, endsOn);
-      const selected = (
-        yield* RecurringDb.readSelection(transaction, bookId, rule.body, startsOn, endsOn)
-      )[0];
+
+      const selected = (yield* RecurringDb.readSelection(
+        transaction,
+        bookId,
+        rule.body,
+        startsOn,
+        endsOn,
+      ))[0];
+
       if (!selected?.current || selected.selection === null) {
         return yield* failure("StaleDependency");
       }
+
       const selection = yield* decode(Automation.SimulationSelection, selected.selection);
+
       if (selection.matchingCount > maximumSelectedObservations) {
         return yield* failure("InvalidJournal");
       }
+
       const firstBlocker = selection.blockers[0];
+
       const state =
         firstBlocker !== undefined
           ? "blocked"
           : selection.rows.length === 0
             ? "completed"
             : "ready";
+
       const blocker =
         firstBlocker === undefined ? null : { code: "InvalidJournal", message: firstBlocker };
+
       const id = newId("run");
       yield* JobDb.insertRun(transaction, {
         bookId,
@@ -768,6 +899,7 @@ export const createPreparationRun = Effect.fn("Preparation.createRun")(function*
         state,
         blocker,
       });
+
       const result = yield* auditRun(
         transaction,
         bookId,
@@ -777,6 +909,7 @@ export const createPreparationRun = Effect.fn("Preparation.createRun")(function*
         "create_preparation_run",
         "create",
       );
+
       yield* saveCommand(
         transaction,
         command.scope,
@@ -786,6 +919,7 @@ export const createPreparationRun = Effect.fn("Preparation.createRun")(function*
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -808,6 +942,7 @@ export const advanceRun = Effect.fn("Preparation.advanceRun")(function* (
     function* (transaction, principal) {
       const input = yield* toJsonObject(command.input);
       yield* exactKeys(input, ["action", "maxItems"]);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -817,18 +952,25 @@ export const advanceRun = Effect.fn("Preparation.advanceRun")(function* (
         yield* toJsonObject({ id: command.runId, input }),
         Automation.PreparationRun,
       );
+
       if (request.previous) return request.previous;
       yield* requireRunAccess(transaction, true);
+
       if (!advanceActions.some((choice) => choice === command.input.action)) {
         return yield* failure("InvalidJournal");
       }
+
       const limit = command.input.maxItems;
+
       if (!Number.isInteger(limit) || limit < 1 || limit > maximumChunk) {
         return yield* failure("InvalidJournal");
       }
+
       const bookId = command.scope.bookId;
       const run = (yield* JobDb.lockRun(transaction, bookId, command.runId))[0];
+
       if (!run) return yield* failure("NotFound");
+
       if (run.state !== "completed") {
         if (command.input.action === "cancel") {
           yield* JobDb.writeRunProgress(transaction, {
@@ -846,10 +988,12 @@ export const advanceRun = Effect.fn("Preparation.advanceRun")(function* (
           ) {
             return yield* failure("InvalidJournal");
           }
+
           yield* requireAdvanceAccess(transaction);
           yield* advancePreparationRun(transaction, command.scope, principal, run, limit);
         }
       }
+
       const result = yield* auditRun(
         transaction,
         bookId,
@@ -859,6 +1003,7 @@ export const advanceRun = Effect.fn("Preparation.advanceRun")(function* (
         "advance_preparation_run",
         command.input.action,
       );
+
       yield* saveCommand(
         transaction,
         command.scope,
@@ -868,6 +1013,7 @@ export const advanceRun = Effect.fn("Preparation.advanceRun")(function* (
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -889,6 +1035,7 @@ export const stopPreparationJob = Effect.fn("Preparation.stopJob")(function* (
     false,
     function* (transaction, principal) {
       const input = yield* toJsonObject(command.input);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -898,27 +1045,29 @@ export const stopPreparationJob = Effect.fn("Preparation.stopJob")(function* (
         yield* toJsonObject({ jobId: command.jobId, input }),
         Automation.PreparationJobStop,
       );
+
       if (request.previous) return request.previous;
       yield* requireJobAccess(transaction, true);
       yield* exactKeys(input, ["reason"]);
       const reason = input.reason;
-      if (
-        typeof reason !== "string" ||
-        reason.trim().length < 1 ||
-        reason.length > reasonLimit
-      ) {
+
+      if (typeof reason !== "string" || reason.trim().length < 1 || reason.length > reasonLimit) {
         return yield* failure("InvalidJournal");
       }
+
       const bookId = command.scope.bookId;
       const job = (yield* JobDb.lockJob(transaction, bookId, command.jobId))[0];
+
       if (!job) return yield* failure("NotFound");
       const outcome = job.state === "ready" ? "stopped" : "already_terminal";
+
       if (outcome === "stopped") yield* JobDb.stopJob(transaction, bookId, job.id, reason);
+
       const current =
-        outcome === "stopped"
-          ? (yield* JobDb.readJob(transaction, bookId, job.id))[0]
-          : job;
+        outcome === "stopped" ? (yield* JobDb.readJob(transaction, bookId, job.id))[0] : job;
+
       if (!current) return yield* failure("InternalError");
+
       const result = yield* decode(Automation.PreparationJobStop, {
         job: yield* jobBody(current),
         outcome,
@@ -928,6 +1077,7 @@ export const stopPreparationJob = Effect.fn("Preparation.stopJob")(function* (
           actorId: principal.actorId,
         },
       });
+
       yield* saveCommand(
         transaction,
         command.scope,
@@ -937,6 +1087,7 @@ export const stopPreparationJob = Effect.fn("Preparation.stopJob")(function* (
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -957,11 +1108,15 @@ function stopReason(
   if (authority.actorId !== row.requestedBy || !authority.member) {
     return "Submitting authority expired or was revoked.";
   }
+
   if (authority.enabled === false) return "The submitting identity is disabled.";
+
   if (!executorIsAgent) return "Executor no longer has the agent role.";
+
   if (audit !== row.expectedAudit) {
     return "The preparation run was changed manually. Start a new background job explicitly.";
   }
+
   return runState === "ready" ? null : "The preparation run is no longer ready.";
 }
 
@@ -971,7 +1126,9 @@ export const executePreparationJob = Effect.fn("Preparation.executeJob")(functio
 ) {
   const { bindings } = yield* RequestEnvironment;
   const executorToken = bindings.OPENERP_PREPARATION_TOKEN;
+
   if (!executorToken) return yield* failure("Unavailable");
+
   return yield* withTransaction((transaction) =>
     Effect.gen(function* () {
       const executor = yield* admitPrincipal(
@@ -981,35 +1138,50 @@ export const executePreparationJob = Effect.fn("Preparation.executeJob")(functio
         { operatorOnly: false },
         "update",
       );
+
       yield* requireJobAccess(transaction, true);
       const job = (yield* JobDb.readJob(transaction, payload.scope.bookId, payload.jobId))[0];
+
       if (!job || job.executorId !== executor.actorId) return yield* failure("Forbidden");
+
       if (!Number.isInteger(step) || step < 0 || step > maximumCheckpoint) {
         return yield* failure("InvalidJournal");
       }
+
       const authority = yield* submitterAuthority(transaction, payload.scope.bookId, job);
+
       const executorIsAgent = yield* hasAgentRole(
         transaction,
         payload.scope.bookId,
         executor.actorId,
       );
+
       yield* lockBookForUpdate(transaction, payload.scope);
       const locked = (yield* JobDb.readJob(transaction, payload.scope.bookId, payload.jobId))[0];
+
       if (!locked) return yield* failure("NotFound");
+
       if (locked.state !== "ready" || step < locked.checkpoint) return yield* jobBody(locked);
+
       if (step !== locked.checkpoint) return yield* failure("InvalidJournal");
       const run = (yield* JobDb.readRun(transaction, payload.scope.bookId, locked.runId))[0];
+
       if (!run) return yield* failure("NotFound");
       const audit = yield* countAudit(transaction, payload.scope.bookId, locked.runId);
       const reason = stopReason(authority, executorIsAgent, audit, locked, run.state);
+
       if (reason !== null) {
         yield* JobDb.stopJob(transaction, payload.scope.bookId, locked.id, reason);
         const stopped = (yield* JobDb.readJob(transaction, payload.scope.bookId, locked.id))[0];
+
         return stopped === undefined ? yield* failure("InternalError") : yield* jobBody(stopped);
       }
+
       yield* requireAdvanceAccess(transaction);
       const progress = (yield* JobDb.lockRun(transaction, payload.scope.bookId, locked.runId))[0];
+
       if (!progress) return yield* failure("NotFound");
+
       const advanced = yield* advancePreparationRun(
         transaction,
         payload.scope,
@@ -1017,6 +1189,7 @@ export const executePreparationJob = Effect.fn("Preparation.executeJob")(functio
         progress,
         maximumChunk,
       );
+
       const ordinal = audit + 1;
       yield* JobDb.insertRunAudit(
         transaction,
@@ -1048,6 +1221,7 @@ export const executePreparationJob = Effect.fn("Preparation.executeJob")(functio
         advanced.reason,
       );
       const next = (yield* JobDb.readJob(transaction, payload.scope.bookId, locked.id))[0];
+
       return next === undefined ? yield* failure("InternalError") : yield* jobBody(next);
     }).pipe(Effect.mapError(databaseFailure)),
   );
@@ -1057,9 +1231,12 @@ function admitRunnerActor(transaction: Transaction, token: string) {
   return Effect.gen(function* () {
     if (token.length < 32 || token.length > 512) return yield* failure("Unauthorized");
     const credential = (yield* JobDb.readLiveCredential(transaction, yield* hashToken(token)))[0];
+
     if (!credential) return yield* failure("Unauthorized");
     const admission = (yield* JobDb.readSubmitterAdmission(transaction, credential.actorId))[0];
+
     if (admission?.enabled === false) return yield* failure("Unauthorized");
+
     return credential.actorId;
   });
 }
@@ -1072,6 +1249,7 @@ export const claimPendingPreparationJobs = Effect.fn("Preparation.claimPending")
       const actorId = yield* admitRunnerActor(transaction, token);
       yield* requireJobAccess(transaction, true);
       const rows = yield* JobDb.claimReadyJobs(transaction, actorId);
+
       return yield* Effect.forEach(rows, (row) => jobBody(row));
     }).pipe(Effect.mapError(databaseFailure)),
   );
@@ -1082,7 +1260,9 @@ export const stopFailedPreparationDelivery = Effect.fn("Preparation.stopFailedDe
   function* (payload: { jobId: string; scope: Scope; checkpoint: number }) {
     const { bindings } = yield* RequestEnvironment;
     const token = bindings.OPENERP_PREPARATION_TOKEN;
+
     if (!token) return yield* failure("Unavailable");
+
     return yield* withTransaction((transaction) =>
       Effect.gen(function* () {
         const executor = yield* admitPrincipal(
@@ -1092,11 +1272,15 @@ export const stopFailedPreparationDelivery = Effect.fn("Preparation.stopFailedDe
           { operatorOnly: false },
           "update",
         );
+
         if (!(yield* hasAgentRole(transaction, payload.scope.bookId, executor.actorId))) {
           return yield* failure("Forbidden");
         }
+
         const job = (yield* JobDb.readJob(transaction, payload.scope.bookId, payload.jobId))[0];
+
         if (!job || job.executorId !== executor.actorId) return yield* failure("Forbidden");
+
         if (job.state !== "ready" || job.checkpoint !== payload.checkpoint) return;
         yield* JobDb.stopJob(
           transaction,

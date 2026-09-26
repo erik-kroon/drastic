@@ -17,6 +17,7 @@ export function RetainedNote({
 }: CommerceProps & { onSaved: (evidence: typeof Accounting.Evidence.Type) => void }) {
   const requests = useSavedPostingRequests(book);
   const sv = locale === "sv";
+
   const save = useMutation({
     mutationFn: async (input: typeof Accounting.CreateEvidence.Type) => {
       if (!requests.data || requests.isError)
@@ -25,6 +26,7 @@ export function RetainedNote({
             ? "Kunde inte läsa behörigheten. Försök igen."
             : "Could not load your access. Try again.",
         );
+
       const result = await sendSavedPostingCommand({
         book,
         actorId: requests.data.actorId,
@@ -33,6 +35,7 @@ export function RetainedNote({
           ? "Tillåt lokal lagring för att spara underlaget."
           : "Allow local storage to save this source.",
       });
+
       if (
         result.outcome?.state !== "committed" ||
         !Schema.is(Accounting.Evidence)(result.outcome.result)
@@ -42,10 +45,12 @@ export function RetainedNote({
             ? "Underlaget är inte bekräftat. Försök igen med samma innehåll."
             : "The source is not confirmed. Retry with the same content.",
         );
+
       return result.outcome.result;
     },
     onSuccess: onSaved,
   });
+
   return (
     <Box
       as="form"
@@ -54,12 +59,14 @@ export function RetainedNote({
       onSubmit={(event) => {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
+
         const input = Schema.decodeUnknownSync(Accounting.CreateEvidence)({
           title: fields.get("title"),
           origin: fields.get("origin"),
           content: fields.get("content"),
           mediaType: "text/plain",
         });
+
         save.mutate(input);
       }}
     >

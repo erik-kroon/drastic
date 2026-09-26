@@ -1,4 +1,5 @@
 "use client";
+
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 
 import { stylexProps, type StyleXStyles, type WithStyleX } from "@open-erp/ui/lib/stylex";

@@ -29,6 +29,7 @@ function IntakeWorkspace(props: IntakeProps) {
   const copy = intakeCopy(locale);
   const [selected, setSelected] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
+
   const inventory = useQuery({
     queryKey: [...bookKey(book), "source-occurrences", cursor],
     retry: false,
@@ -39,6 +40,7 @@ function IntakeWorkspace(props: IntakeProps) {
         { signal },
       ),
   });
+
   return (
     <details open={props.open} id="source-intake" tabIndex={-1}>
       <summary>{copy.title}</summary>
@@ -107,6 +109,7 @@ function IntakeWorkspace(props: IntakeProps) {
           onSubmit={(event) => {
             event.preventDefault();
             const id = new FormData(event.currentTarget).get("id");
+
             if (Schema.is(Accounting.Identifier)(id)) setSelected(id);
           }}
         >
@@ -138,6 +141,7 @@ function RetainForm({
   const client = useQueryClient();
   const keys = useRef(new Map<string, string>());
   const [error, setError] = useState("");
+
   const mutation = useMutation({
     mutationFn: async ({
       file,
@@ -147,15 +151,19 @@ function RetainForm({
       fields: Record<string, FormDataEntryValue | null>;
     }) => {
       let bytes: Uint8Array;
+
       try {
         bytes = new Uint8Array(await file.arrayBuffer());
       } catch {
         throw new Error(copy.readFailure);
       }
+
       const chunks: string[] = [];
+
       for (let offset = 0; offset < bytes.length; offset += 8192)
         chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + 8192)));
       const mediaType = file.name.toLowerCase().endsWith(".csv") ? "text/csv" : file.type;
+
       const input = Schema.decodeUnknownSync(Intake.RetainSource)({
         ...fields,
         filename: file.name,
@@ -164,7 +172,9 @@ function RetainForm({
           : "application/octet-stream",
         contentBase64: btoa(chunks.join("")),
       });
+
       const path = `${bookPath(book)}/source-occurrences`;
+
       return readAccounting(
         path,
         Intake.SourceOccurrence,
@@ -176,6 +186,7 @@ function RetainForm({
       void client.invalidateQueries({ queryKey: [...bookKey(book), "source-occurrences"] });
     },
   });
+
   return (
     <Box
       as="form"
@@ -186,16 +197,20 @@ function RetainForm({
         event.preventDefault();
         const data = new FormData(event.currentTarget);
         const file = data.get("file");
+
         if (!(file instanceof File) || file.size < 1 || file.size > Intake.maxSourceBytes) {
           setError(copy.invalidFile);
+
           return;
         }
+
         const fields = {
           sourceSystem: data.get("sourceSystem"),
           sourceAccountId: data.get("sourceAccountId"),
           occurrenceKey: data.get("occurrenceKey"),
           sourceRevision: data.get("sourceRevision"),
         };
+
         setError("");
         mutation.mutate({ file, fields });
       }}

@@ -1,6 +1,12 @@
 import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
-import { captureConversionReview, getConversionReview, getExchangeRate, listConversionReviews, listExchangeRates } from "../exchange-rates";
+import {
+  captureConversionReview,
+  getConversionReview,
+  getExchangeRate,
+  listConversionReviews,
+  listExchangeRates,
+} from "../exchange-rates";
 
 export const fxCapabilities = {
   fx_list_rates: effectCapability(Capabilities.fx_list_rates, listExchangeRates),

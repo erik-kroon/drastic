@@ -21,9 +21,11 @@ import { RateForm } from "./forms";
 import { ConversionInspector, RateInspector, RateUsabilityStatus } from "./views";
 
 type Props = { book: typeof Accounting.Book.Type; locale: Locale };
+
 export function ExchangeRateReviewsPanel(props: Props) {
   return <Panel key={JSON.stringify(bookKey(props.book))} {...props} />;
 }
+
 function Panel({ book, locale }: Props) {
   const copy = exchangeRateCopy(locale);
   const labels = locale === "sv" ? swedish : english;
@@ -31,6 +33,7 @@ function Panel({ book, locale }: Props) {
   const [selectedRate, setSelectedRate] = useState<string | null>(null);
   const [selectedReview, setSelectedReview] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+
   const rates = useQuery({
     queryKey: [...bookKey(book), "exchange-rates", "rates"],
     queryFn: async ({ signal }) => {
@@ -39,6 +42,7 @@ function Panel({ book, locale }: Props) {
         Rates.ExchangeRateList,
         { signal },
       );
+
       if (
         result.scope.bookId !== book.id ||
         result.scope.entityId !== book.entityId ||
@@ -48,6 +52,7 @@ function Panel({ book, locale }: Props) {
       ) {
         throw new Error("Exchange-rate inventory scope mismatch");
       }
+
       if (
         result.statuses &&
         (result.statuses.length !== result.items.length ||
@@ -56,9 +61,11 @@ function Panel({ book, locale }: Props) {
       ) {
         throw new Error("Exchange-rate status inventory mismatch");
       }
+
       for (const status of result.statuses ?? []) {
         const rate = result.items.find((item) => item.observationId === status.observationId);
         const withdrawal = status.usability.withdrawal;
+
         if (
           !rate ||
           (withdrawal &&
@@ -70,10 +77,12 @@ function Panel({ book, locale }: Props) {
           throw new Error("Exchange-rate withdrawal inventory mismatch");
         }
       }
+
       return result;
     },
     retry: false,
   });
+
   const reviews = useQuery({
     queryKey: [...bookKey(book), "exchange-rates", "reviews"],
     queryFn: async ({ signal }) => {
@@ -82,22 +91,27 @@ function Panel({ book, locale }: Props) {
         Rates.ConversionReviewList,
         { signal },
       );
+
       if (result.scope.bookId !== book.id || result.scope.entityId !== book.entityId)
         throw new Error("Conversion inventory scope mismatch");
+
       return result;
     },
     retry: false,
   });
+
   const rateSaved = (id: string) => {
     setSelectedRate(id);
     setCreating(false);
     void client.invalidateQueries({ queryKey: [...bookKey(book), "exchange-rates"] });
   };
+
   const conversionSaved = (id: string) => {
     setSelectedReview(id);
     setSelectedRate(null);
     void client.invalidateQueries({ queryKey: [...bookKey(book), "exchange-rates", "reviews"] });
   };
+
   if (selectedRate || selectedReview)
     return (
       <Box display="grid" gap="xl">
@@ -132,6 +146,7 @@ function Panel({ book, locale }: Props) {
         ) : null}
       </Box>
     );
+
   return (
     <Box display="grid" gap="xl" minWidth="zero">
       <RecordHeading
@@ -270,6 +285,7 @@ const english = {
   scope: "Scope and calculation rules",
   close: "Close",
 };
+
 const swedish: typeof english = {
   back: "Alla kurser och omräkningar",
   title: "Valutakurser",

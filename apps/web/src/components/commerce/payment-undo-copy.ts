@@ -41,6 +41,7 @@ const en = {
   matchedAmount: "Matched amount",
   completedAt: "Undone on",
 };
+
 const sv: typeof en = {
   title: "Ångra betalningsmatchning",
   back: "Tillbaka till betalningsmatchningen",
@@ -82,6 +83,7 @@ const sv: typeof en = {
   matchedAmount: "Matchat belopp",
   completedAt: "Ångrad den",
 };
+
 export function paymentUndoCopy(locale: Locale) {
   return locale === "sv" ? sv : en;
 }

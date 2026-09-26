@@ -44,6 +44,7 @@ const en = {
   receipt: "Cancellation receipt",
   journal: "Reversal details",
 };
+
 const sv: typeof en = {
   title: "Makulera demofaktura",
   boundary:
@@ -89,4 +90,5 @@ const sv: typeof en = {
   receipt: "Makuleringskvitto",
   journal: "Återföringsuppgifter",
 };
+
 export const invoiceCancellationCopy = (locale: Locale) => (locale === "sv" ? sv : en);

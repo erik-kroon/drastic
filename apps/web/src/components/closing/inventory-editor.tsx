@@ -30,9 +30,11 @@ export function PeriodInventoryEditor({
   const sv = locale === "sv";
   const copy = closingCopy(locale);
   const today = new Intl.DateTimeFormat("sv-SE").format(new Date());
+
   const [decisions, setDecisions] = useState<Decision[]>(() =>
     Closing.ClosingFamily.literals.map((family) => {
       const saved = basis.inventory?.families?.find((item) => item.family === family);
+
       return {
         family,
         status: saved?.status ?? null,
@@ -41,20 +43,28 @@ export function PeriodInventoryEditor({
       };
     }),
   );
+
   const [selected, setSelected] = useState(0);
+
   const [accounts, setAccounts] = useState<readonly string[]>(
     basis.inventory?.bankAccountIds ?? [],
   );
+
   const [accountSearch, setAccountSearch] = useState("");
   const current = decisions[selected];
+
   const complete = (item: Decision) =>
     !!item.status && !!item.rationale.trim() && !!item.reviewedOn;
+
   const completed = decisions.filter(complete).length;
+
   const update = (change: Partial<Decision>) =>
     setDecisions((items) =>
       items.map((item, index) => (index === selected ? { ...item, ...change } : item)),
     );
+
   if (!current) return null;
+
   return (
     <EvidenceCommandForm
       book={book}

@@ -5,21 +5,27 @@ import * as Issuance from "./invoice-issuance";
 import { accountingErrors } from "./accounting-errors";
 
 export const invoiceDocumentV1Generator = "openerp-synthetic-invoice-html-v1";
+
 export const invoiceDocumentGenerator = "openerp-synthetic-invoice-html-v2";
+
 const InvoiceDocumentGenerator = Schema.Literals([
   invoiceDocumentV1Generator,
   invoiceDocumentGenerator,
 ]);
+
 export const invoiceDocumentMaxBytes = 1048576;
+
 export const PrepareInvoiceDocument = Schema.Struct({
   issueId: Accounting.Identifier,
   issueDigest: Accounting.Digest,
   generatorVersion: InvoiceDocumentGenerator,
 });
+
 export const InvoiceDocumentSource = Schema.Struct({
   review: Issuance.InvoiceIssueReview,
   issue: Issuance.InvoiceIssueReceipt,
 });
+
 export const InvoiceDocumentCapture = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -36,6 +42,7 @@ export const InvoiceDocumentCapture = Schema.Struct({
   legalInvoice: Schema.Literal(false),
   delivered: Schema.Literal(false),
 });
+
 export const InvoiceDocumentArtifact = Schema.Struct({
   captureId: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -57,10 +64,12 @@ export const InvoiceDocumentArtifact = Schema.Struct({
   legalInvoice: Schema.Literal(false),
   delivered: Schema.Literal(false),
 });
+
 export const InvoiceDocumentView = Schema.Struct({
   capture: InvoiceDocumentCapture,
   artifact: Schema.NullOr(InvoiceDocumentArtifact),
 });
+
 export const InvoiceDocumentHistory = Schema.Struct({
   scope: Accounting.Scope,
   issueId: Accounting.Identifier,
@@ -76,9 +85,13 @@ export const InvoiceDocumentHistory = Schema.Struct({
     }),
   ).check(Schema.isMaxLength(2)),
 });
+
 const path = "/v1/entities/:entityId/books/:bookId/commerce";
+
 const scoped = { params: Accounting.Scope, error: accountingErrors };
+
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
+
 export const InvoiceDocumentsApi = HttpApiGroup.make("invoiceDocuments").add(
   HttpApiEndpoint.post("prepareInvoiceDocument", `${path}/invoice-documents`, {
     ...scoped,
@@ -99,6 +112,7 @@ export const InvoiceDocumentsApi = HttpApiGroup.make("invoiceDocuments").add(
     success: InvoiceDocumentHistory,
   }),
 );
+
 export const InvoiceDocumentCapabilities = {
   commerce_prepare_invoice_document: {
     description:

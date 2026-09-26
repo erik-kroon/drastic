@@ -1,6 +1,7 @@
 export function subledgerCopy(locale: "en" | "sv") {
   return locale === "sv" ? sv : en;
 }
+
 const en = {
   title: "Assets and deferrals",
   warning:
@@ -152,7 +153,8 @@ const en = {
   impairmentFutureSuffix: "Complete revised future installments",
   impairmentInstallment: "Revised installment",
   impairmentResidual: "Residual after impairment",
-  impairmentInstallmentTotalMatches: "The revised installment total matches the required future amount.",
+  impairmentInstallmentTotalMatches:
+    "The revised installment total matches the required future amount.",
   impairmentInstallmentTotalMismatch: "Revised total / required total:",
   impairmentInstallmentTotalPending:
     "Enter the impairment, residual and every positive installment to check the exact total.",
@@ -205,7 +207,8 @@ const en = {
   impairmentConsequence: "Consequence",
   impairmentFreshDisposal:
     "Later recognition, a different disposal date or changed history requires a fresh disposal review. These amounts do not create a disposal.",
-  impairmentNoDisposalEffect: "No disposal effect exists from this review until the impairment executes and a later disposal is separately prepared.",
+  impairmentNoDisposalEffect:
+    "No disposal effect exists from this review until the impairment executes and a later disposal is separately prepared.",
   impairmentDisposalCommitted: "A post-impairment disposal is now committed.",
   frozen:
     "This schedule is not editable through the ordinary revision form. Use the operator amendment commands above, then prepare a fresh proposal for human approval.",
@@ -218,6 +221,7 @@ const en = {
   newSchedule: "Start another schedule",
   limit: "Up to 120 explicit occurrences and 20 immutable revisions before preparation.",
 };
+
 const sv: typeof en = {
   title: "Tillgångar och periodiseringar",
   warning:
@@ -337,7 +341,8 @@ const sv: typeof en = {
   impairmentAssetOnly: "Nedskrivning stöds endast för tillgångsplaner.",
   impairmentDisposed: "Tillgången är avyttrad. Nedskrivningen och hela historiken bevaras.",
   impairmentBasisRequired: "En aktuell kopplad redovisningsgrund krävs före nedskrivning.",
-  impairmentBasisUnavailable: "Uppdatera aktuell redovisningsgrund innan du förbereder en nedskrivning.",
+  impairmentBasisUnavailable:
+    "Uppdatera aktuell redovisningsgrund innan du förbereder en nedskrivning.",
   impairmentSuffixRequired: "En komplett obokförd framtida suffix krävs före nedskrivning.",
   impairmentSetupUnavailable: "Aktuell konto- och perioduppsättning krävs före nedskrivning.",
   impairmentCarryingUnavailable: "Ett positivt aktuellt bokfört värde krävs före nedskrivning.",
@@ -369,7 +374,8 @@ const sv: typeof en = {
   impairmentFutureSuffix: "Komplett ändrat framtida suffix",
   impairmentInstallment: "Ändrat installeringstillfälle",
   impairmentResidual: "Restvärde efter nedskrivning",
-  impairmentInstallmentTotalMatches: "Det ändrade installeringstotalet stämmer med det obligatoriska framtida beloppet.",
+  impairmentInstallmentTotalMatches:
+    "Det ändrade installeringstotalet stämmer med det obligatoriska framtida beloppet.",
   impairmentInstallmentTotalMismatch: "Ändrat totalt / obligatoriskt totalt:",
   impairmentInstallmentTotalPending:
     "Ange nedskrivning, restvärde och varje positiva installering för att kontrollera det exakta totaltbeloppet.",
@@ -400,7 +406,8 @@ const sv: typeof en = {
   impairmentApprovalHelp:
     "Godkännande och körning använder samma operatörs aktuella, ej utgångna behörighet. Servern kontrollerar alla beroenden inför varje kommando.",
   impairmentApprove: "Godkänn nedskrivning",
-  impairmentApproveAcknowledge: "Jag godkänner denna exakta bevarade syntetiska nedskrivningsgranskning.",
+  impairmentApproveAcknowledge:
+    "Jag godkänner denna exakta bevarade syntetiska nedskrivningsgranskning.",
   impairmentExecute: "Kör nedskrivning",
   impairmentExecuteAcknowledge:
     "Jag godkänner bokföring av denna exakta nedskrivning och ersättning av hela framtida plansuffixet.",
@@ -422,7 +429,8 @@ const sv: typeof en = {
   impairmentConsequence: "Konsekvens",
   impairmentFreshDisposal:
     "Senare redovisning, ett annat avyttringsdatum eller ändrad historik kräver en ny avyttringsgranskning. Dessa belopp skapar ingen avyttring.",
-  impairmentNoDisposalEffect: "Granskningen skapar ingen avyttringseffekt förrän nedskrivningen körs och en senare avyttring förbereds separat.",
+  impairmentNoDisposalEffect:
+    "Granskningen skapar ingen avyttringseffekt förrän nedskrivningen körs och en senare avyttring förbereds separat.",
   impairmentDisposalCommitted: "En avyttring efter nedskrivningen är nu bokförd.",
   frozen:
     "Planen kan inte redigeras via den vanliga versionsformuläret. Använd operatörens ändringskommandon ovan och förbered sedan ett nytt förslag för mänskligt godkännande.",

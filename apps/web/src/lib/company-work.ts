@@ -10,11 +10,14 @@ import { checkScope, commercePath, commerceKey } from "@/components/commerce/sha
 export function useCompanyWork() {
   const { book, setup, locale } = useBookWorkspace();
   const today = new Date().toISOString().slice(0, 10);
+
   const period =
     setup.periods.find((item) => item.startsOn <= today && item.endsOn >= today) ??
     setup.periods.at(-1);
+
   const from = period?.startsOn ?? today;
   const to = period && period.endsOn < today ? period.endsOn : today;
+
   const bankQuery = new URLSearchParams({
     startsOn: from,
     endsOn: to,
@@ -22,6 +25,7 @@ export function useCompanyWork() {
     page: "1",
     q: "",
   });
+
   const bank = useQuery({
     queryKey: [...bookKey(book), "bank-workspace", bankQuery.toString()],
     queryFn: async ({ signal }) => {
@@ -30,12 +34,16 @@ export function useCompanyWork() {
         Bank.BankWorkspace,
         { signal },
       );
+
       checkScope(book, value.scope);
+
       return value;
     },
     retry: false,
   });
+
   const salesQuery = new URLSearchParams({ status: "open", sort: "due", page: "1", q: "" });
+
   const sales = useQuery({
     queryKey: [...commerceKey(book), "sales-register", salesQuery.toString()],
     queryFn: async ({ signal }) => {
@@ -44,20 +52,26 @@ export function useCompanyWork() {
         Sales.SalesPage,
         { signal },
       );
+
       checkScope(book, value.scope);
+
       return value;
     },
     retry: false,
   });
+
   const journals = useQuery(
     attentionQueryOptions(book, { status: "open", kind: "journal", sort: "oldest" }),
   );
+
   const expenses = useQuery(
     attentionQueryOptions(book, { status: "open", kind: "expense", sort: "oldest" }),
   );
+
   const drafts = useQuery(
     attentionQueryOptions(book, { status: "open", kind: "invoice", sort: "newest" }),
   );
+
   return {
     book,
     locale,
@@ -71,4 +85,5 @@ export function useCompanyWork() {
     drafts,
   };
 }
+
 export type CompanyWork = ReturnType<typeof useCompanyWork>;

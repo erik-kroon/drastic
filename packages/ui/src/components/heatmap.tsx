@@ -25,6 +25,7 @@ const styles = stylex.create({
 });
 
 type HeatmapDatum = { date: Date | string | number; value: number };
+
 type HeatmapProps = WithStyleX<Omit<React.ComponentProps<"div">, "children">> & {
   color?: string;
   data: readonly HeatmapDatum[];
@@ -42,6 +43,7 @@ function dayKey(date: Date) {
 
 function startOfUtcDay(value: Date | string | number) {
   const date = value instanceof Date ? value : new Date(value);
+
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
@@ -61,6 +63,7 @@ function Heatmap({
   const values = new Map(
     data.map((item) => [dayKey(startOfUtcDay(item.date)), Math.max(0, item.value)]),
   );
+
   const dates = data.map((item) => startOfUtcDay(item.date).getTime()).filter(Number.isFinite);
   const end = startOfUtcDay(endDate ?? (dates.length > 0 ? Math.max(...dates) : Date.now()));
   const start = startOfUtcDay(startDate ?? (dates.length > 0 ? Math.min(...dates) : end));
@@ -70,8 +73,10 @@ function Heatmap({
   for (let time = start.getTime(); time <= end.getTime(); time += DAY) {
     const date = new Date(time);
     const value = values.get(dayKey(date)) ?? 0;
+
     const level =
       max > 0 && value > 0 ? Math.max(1, Math.ceil((value / max) * Math.max(1, levels - 1))) : 0;
+
     const label = `${dateLabel(date)}: ${valueLabel(value)}`;
     cells.push(
       <time
@@ -103,4 +108,5 @@ function Heatmap({
 }
 
 export { Heatmap };
+
 export type { HeatmapDatum, HeatmapProps };

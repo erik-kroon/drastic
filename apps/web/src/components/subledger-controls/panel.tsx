@@ -24,19 +24,23 @@ type Props = {
   setup: typeof Accounting.BookSetup.Type;
   locale: Locale;
 };
+
 export function SubledgerControlsPanel(props: Props) {
   return <Panel key={JSON.stringify(bookKey(props.book))} {...props} />;
 }
+
 function Panel({ book, setup, locale }: Props) {
   const copy = controlCopy(locale);
   const [id, setId] = useState("");
   const [creating, setCreating] = useState<"basis" | "snapshot" | null>(null);
   const [invalid, setInvalid] = useState(false);
   const base = `${bookPath(book)}/subledger-controls`;
+
   const bases = useQuery({
     queryKey: [...bookKey(book), "subledger-controls", "bases"],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(`${base}/bases`, Controls.SubledgerBasisList, { signal });
+
       if (
         result.scope.bookId !== book.id ||
         result.scope.entityId !== book.entityId ||
@@ -45,22 +49,27 @@ function Panel({ book, setup, locale }: Props) {
         )
       )
         throw new Error("Basis inventory scope mismatch");
+
       return result;
     },
     retry: false,
   });
+
   const snapshots = useQuery({
     queryKey: [...bookKey(book), "subledger-controls", "snapshots"],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(`${base}/snapshots`, Controls.SubledgerControlList, {
         signal,
       });
+
       if (result.scope.bookId !== book.id || result.scope.entityId !== book.entityId)
         throw new Error("Control inventory scope mismatch");
+
       return result;
     },
     retry: false,
   });
+
   if (id)
     return (
       <Box display="grid" gap="xl">
@@ -72,6 +81,7 @@ function Panel({ book, setup, locale }: Props) {
         <ControlInspector key={id} book={book} locale={locale} id={id} />
       </Box>
     );
+
   return (
     <Box display="grid" gap="xl" minWidth="zero">
       <RecordHeading
@@ -164,10 +174,13 @@ function Panel({ book, setup, locale }: Props) {
           onSubmit={(event) => {
             event.preventDefault();
             const value = new FormData(event.currentTarget).get("id");
+
             if (!Schema.is(Accounting.Identifier)(value)) {
               setInvalid(true);
+
               return;
             }
+
             setInvalid(false);
             setId(value);
           }}
@@ -187,6 +200,7 @@ function Panel({ book, setup, locale }: Props) {
     </Box>
   );
 }
+
 function CaptureControl({
   book,
   setup,
@@ -197,16 +211,20 @@ function CaptureControl({
   const [invalid, setInvalid] = useState(false);
   const keys = useRef(new Map<string, string>());
   const client = useQueryClient();
+
   const save = useMutation({
     mutationFn: async (input: typeof Controls.CreateSubledgerControl.Type) => {
       const path = `${bookPath(book)}/subledger-controls/snapshots`;
+
       const result = await readAccounting(
         path,
         Controls.SubledgerControl,
         mutationOptions(path, JSON.stringify(input), keys.current),
       );
+
       if (result.scope.bookId !== book.id || result.scope.entityId !== book.entityId)
         throw new Error("Control snapshot scope mismatch");
+
       return result;
     },
     onSuccess: async (result) => {
@@ -214,6 +232,7 @@ function CaptureControl({
       await client.invalidateQueries({ queryKey: [...bookKey(book), "subledger-controls"] });
     },
   });
+
   return (
     <Box
       as="form"
@@ -223,16 +242,20 @@ function CaptureControl({
       onSubmit={(event) => {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
+
         const decoded = Schema.decodeUnknownOption(Controls.CreateSubledgerControl)({
           asOfDate: fields.get("asOfDate"),
           accountIds: fields.getAll("accountIds"),
           inventoryEvidenceId: fields.get("inventoryEvidenceId"),
           rationale: fields.get("rationale"),
         });
+
         if (decoded._tag === "None") {
           setInvalid(true);
+
           return;
         }
+
         setInvalid(false);
         save.mutate(decoded.value);
       }}

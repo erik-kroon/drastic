@@ -236,3 +236,141 @@ export function readLegalDeliveryRequestsByCapture(
     "objects",
   );
 }
+
+export function readProfileForPolicy(tx: Transaction, book: string, policy: string) {
+  return tx.execute<AccountingProfileRow>(
+    sql`select body from openerp.ar_legal_accounting_profiles where book_id=${book} and policy_id=${policy}`,
+    "objects",
+  );
+}
+
+export function insertAccountingProfile(
+  tx: Transaction,
+  book: string,
+  result: typeof import("@open-erp/contracts/ar-legal-issue").ArLegalAccountingProfile.Type,
+) {
+  return tx.execute(
+    sql`insert into openerp.ar_legal_accounting_profiles(book_id,id,policy_id,actor_id,body)
+    values(${book},${result.id},${result.policyId},${result.activatedBy},${JSON.stringify(result)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function insertIssueReview(
+  tx: Transaction,
+  book: string,
+  actor: string,
+  result: typeof import("@open-erp/contracts/ar-legal-issue").ArLegalIssueReview.Type,
+) {
+  return tx.execute(
+    sql`insert into openerp.ar_legal_issue_reviews(book_id,id,draft_id,policy_id,ordinal,actor_id,body)
+    values(${book},${result.id},${result.input.draftId},${result.input.policyId},${result.ordinal},${actor},${JSON.stringify(result)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function readIssueApprovals(tx: Transaction, book: string, review: string) {
+  return tx.execute<LegalIssueApprovalRow>(
+    sql`select actor_id as "actorId",expires_at::text as "expiresAt",body from openerp.ar_legal_issue_approvals where book_id=${book} and review_id=${review} order by ordinal limit 51`,
+    "objects",
+  );
+}
+
+export function insertIssueApproval(
+  tx: Transaction,
+  book: string,
+  result: typeof import("@open-erp/contracts/ar-legal-issue").ArLegalIssueApproval.Type,
+) {
+  return tx.execute(
+    sql`insert into openerp.ar_legal_issue_approvals(book_id,id,review_id,ordinal,actor_id,digest,expires_at,body)
+    values(${book},${result.id},${result.reviewId},${result.ordinal},${result.actorId},${result.digest},${result.expiresAt}::timestamptz,${JSON.stringify(result)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function allocateLegalNumber(tx: Transaction, book: string, policy: string) {
+  return tx.execute<{ readonly number: string }>(
+    sql`insert into openerp.ar_legal_issue_counters(book_id,policy_id,last_number)values(${book},${policy},1)
+    on conflict(book_id,policy_id)do update set last_number=openerp.ar_legal_issue_counters.last_number+1
+    where openerp.ar_legal_issue_counters.last_number<999999999999999999 returning last_number::text as number`,
+    "objects",
+  );
+}
+
+export function insertIssue(
+  tx: Transaction,
+  book: string,
+  result: typeof import("@open-erp/contracts/ar-legal-issue").ArLegalIssueReceipt.Type,
+) {
+  return tx.execute(
+    sql`insert into openerp.ar_legal_issues(book_id,id,review_id,approval_id,draft_id,policy_id,legal_number,posting_receipt_id,register_invoice_id,body)
+    values(${book},${result.id},${result.reviewId},${result.approvalId},${result.draftId},${result.policyId},${result.legalDocumentNumber},${result.postingReceipt.id},${result.registerInvoiceId},${JSON.stringify(result)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function readDeliveryRequestSummaries(tx: Transaction, book: string) {
+  return tx.execute<{
+    readonly captureId: string;
+    readonly channel: string;
+    readonly destination: string;
+  }>(
+    sql`select capture_id as "captureId",channel,body->'input'->>'destination' as destination from openerp.ar_legal_delivery_requests where book_id=${book} limit 51`,
+    "objects",
+  );
+}
+
+export function readDeliveryAttempt(tx: Transaction, book: string, id: string) {
+  return tx.execute<{ readonly body: JsonObject }>(
+    sql`select body from openerp.ar_legal_delivery_attempts where book_id=${book} and id=${id}`,
+    "objects",
+  );
+}
+
+export function insertDeliveryRequest(
+  tx: Transaction,
+  book: string,
+  result: typeof import("@open-erp/contracts/legal-delivery").LegalDeliveryRequest.Type,
+) {
+  return tx.execute(
+    sql`insert into openerp.ar_legal_delivery_requests(book_id,id,capture_id,channel,created_by,body)
+    values(${book},${result.id},${result.input.pdfCaptureId},${result.input.channel},${result.createdBy},${JSON.stringify(result)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function insertDeliveryApproval(
+  tx: Transaction,
+  book: string,
+  result: typeof import("@open-erp/contracts/legal-delivery").LegalDeliveryApproval.Type,
+) {
+  return tx.execute(
+    sql`insert into openerp.ar_legal_delivery_approvals(book_id,id,request_id,actor_id,body)
+    values(${book},${result.id},${result.requestId},${result.actorId},${JSON.stringify(result)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function insertDeliveryAttempt(
+  tx: Transaction,
+  book: string,
+  result: typeof import("@open-erp/contracts/legal-delivery").LegalDeliveryAttempt.Type,
+) {
+  return tx.execute(
+    sql`insert into openerp.ar_legal_delivery_attempts(book_id,id,request_id,approval_id,ordinal,body)
+    values(${book},${result.id},${result.requestId},${result.approvalId},${result.ordinal},${JSON.stringify(result)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function insertDeliveryReconciliation(
+  tx: Transaction,
+  book: string,
+  result: typeof import("@open-erp/contracts/legal-delivery").LegalDeliveryReconciliation.Type,
+) {
+  return tx.execute(
+    sql`insert into openerp.ar_legal_delivery_reconciliations(book_id,id,attempt_id,body)
+    values(${book},${result.id},${result.attemptId},${JSON.stringify(result)}::jsonb)`,
+    "objects",
+  );
+}

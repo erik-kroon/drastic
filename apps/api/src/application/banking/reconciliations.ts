@@ -12,12 +12,17 @@ import type { Transaction } from "../../db/transaction";
 import * as Shared from "./shared";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type Json = Schema.Json;
+
 type JsonObject = Schema.JsonObject;
 
 const ReconciliationSchema = Bank.BankReconciliation;
+
 const ReconciliationViewSchema = Bank.BankReconciliationView;
+
 const CapacitySchema = Settlement.BankCapacityReconciliation;
+
 const CapacityViewSchema = Settlement.BankCapacityReconciliationView;
 
 const reconciliationTables = [
@@ -35,8 +40,11 @@ const reconciliationTables = [
   "evidence",
   "command_receipts",
 ];
+
 const maximumCombinedRows = 1000;
+
 const maximumStatements = 100;
+
 const maximumAllocations = 1000;
 
 type Basis = "exact" | "capacity";
@@ -58,36 +66,46 @@ function intervalWalk(
   let bankClosing: bigint | undefined;
   let lastEnd: string | undefined;
   let lastClosing: bigint | undefined;
+
   for (const statement of statements) {
     const opening = Shared.minor(statement.openingMinor);
     const closing = Shared.minor(statement.closingMinor);
+
     if (opening === undefined || closing === undefined) return undefined;
+
     if (lastEnd === undefined) {
       bankOpening = opening;
+
       if (statement.startsOn !== startsOn) {
         gaps.push("No statement covers the start of the requested interval.");
       }
     } else {
       const continuation = Shared.nextDay(lastEnd);
+
       if (statement.startsOn !== continuation) {
         gaps.push("There is a gap between retained statement intervals.");
       }
+
       if (opening !== lastClosing) {
         differences.push("Consecutive statement closing and opening balances differ.");
       }
     }
+
     if (statement.declaredComplete !== "true") {
       gaps.push(`Statement ${statement.id} is explicitly declared incomplete.`);
     }
+
     bankClosing = closing;
     lastClosing = closing;
     lastEnd = statement.endsOn;
   }
+
   if (lastEnd === undefined) {
     gaps.push("No bank statement covers this interval.");
   } else if (lastEnd !== endsOn) {
     gaps.push("No statement covers the end of the requested interval.");
   }
+
   return { gaps, differences, bankOpening, bankClosing };
 }
 
@@ -99,18 +117,22 @@ function unmatchedSourceRows(
   if (basis === "capacity") {
     return rows.filter((row) => Shared.minor(Shared.textField(row, "remainingMinor")) !== 0n);
   }
+
   const matched = new Set(
     matches.flatMap((match) => {
       const statementId = Shared.textField(match, "statementId");
       const rowOrdinal = Shared.numberField(match, "rowOrdinal");
+
       return statementId === undefined || rowOrdinal === undefined
         ? []
         : [`${statementId}:${rowOrdinal}`];
     }),
   );
+
   return rows.filter((row) => {
     const statementId = Shared.textField(row, "statementId");
     const rowOrdinal = Shared.numberField(row, "rowOrdinal");
+
     return (
       statementId === undefined ||
       rowOrdinal === undefined ||
@@ -127,16 +149,20 @@ function unmatchedLedgerRows(
   if (basis === "capacity") {
     return rows.filter((row) => Shared.minor(Shared.textField(row, "remainingMinor")) !== 0n);
   }
+
   const matched = new Set(
     matches.flatMap((match) => {
       const voucherId = Shared.textField(match, "voucherId");
       const lineId = Shared.textField(match, "lineId");
+
       return voucherId === undefined || lineId === undefined ? [] : [`${voucherId}:${lineId}`];
     }),
   );
+
   return rows.filter((row) => {
     const voucherId = Shared.textField(row, "voucherId");
     const lineId = Shared.textField(row, "lineId");
+
     return (
       voucherId === undefined || lineId === undefined || !matched.has(`${voucherId}:${lineId}`)
     );
@@ -158,8 +184,11 @@ function readReportScope(
     ) {
       return yield* failure("InvalidJournal");
     }
+
     const account = (yield* BankDb.readAccount(transaction, scope.bookId, input.accountId))[0];
+
     if (!account) return yield* failure("InvalidJournal");
+
     if (
       (yield* StatementDb.readStatementCut(
         transaction,
@@ -171,6 +200,7 @@ function readReportScope(
     ) {
       return yield* failure("InvalidJournal");
     }
+
     const bounds = (yield* StatementDb.readReportBounds(
       transaction,
       scope.bookId,
@@ -179,7 +209,9 @@ function readReportScope(
       input.endsOn,
       book.committedSequence,
     ))[0];
+
     if (!bounds) return yield* failure("InternalError");
+
     if (
       bounds.observations + bounds.lines > maximumCombinedRows ||
       bounds.statements > maximumStatements ||
@@ -205,8 +237,11 @@ function readReportMaterial(
       input.startsOn,
       input.endsOn,
     );
+
     const walk = intervalWalk(statements, input.startsOn, input.endsOn);
+
     if (!walk) return yield* failure("InvalidJournal");
+
     const totals = (yield* StatementDb.readLedgerTotals(
       transaction,
       scope.bookId,
@@ -215,12 +250,15 @@ function readReportMaterial(
       input.endsOn,
       book.committedSequence,
     ))[0];
+
     if (!totals) return yield* failure("InternalError");
     const ledgerOpening = Shared.minor(totals.openingMinor);
     const ledgerClosing = Shared.minor(totals.closingMinor);
+
     if (ledgerOpening === undefined || ledgerClosing === undefined) {
       return yield* failure("InternalError");
     }
+
     return {
       statements,
       walk,
@@ -281,16 +319,19 @@ function summarize(
   basis: Basis,
 ) {
   const differences = [...walk.differences];
+
   if (walk.bankOpening === undefined || walk.bankClosing === undefined) {
     differences.push("Bank opening and closing balances are unavailable.");
   } else {
     if (walk.bankOpening !== ledgerOpening) {
       differences.push("The bank and ledger opening balances differ.");
     }
+
     if (walk.bankClosing !== ledgerClosing) {
       differences.push("The bank and ledger closing balances differ.");
     }
   }
+
   if (unmatchedSource > 0) {
     differences.push(
       basis === "capacity"
@@ -298,6 +339,7 @@ function summarize(
         : "Retained bank observations have no exact posted-line match.",
     );
   }
+
   if (unmatchedLedger > 0) {
     differences.push(
       basis === "capacity"
@@ -305,6 +347,7 @@ function summarize(
         : "Posted bank lines have no retained source match.",
     );
   }
+
   return {
     differences,
     status:
@@ -327,11 +370,13 @@ function buildReport(
   receipt: JsonObject,
 ) {
   const capacity = basis === "capacity";
+
   return Effect.gen(function* () {
     yield* readReportScope(transaction, book, scope, input, capacity);
     const found = yield* readReportMaterial(transaction, book, scope, input, capacity);
     const unmatchedSource = unmatchedSourceRows(found.sourceRows, found.matches, basis);
     const unmatchedLedger = unmatchedLedgerRows(found.ledgerRows, found.matches, basis);
+
     const summary = summarize(
       found.walk,
       found.ledgerOpening,
@@ -340,7 +385,9 @@ function buildReport(
       unmatchedLedger.length,
       basis,
     );
+
     const checkpoint = yield* Shared.readCheckpoint(transaction, scope.bookId, input.accountId);
+
     const common = {
       id: reportId,
       scope,
@@ -377,6 +424,7 @@ function buildReport(
       receipt,
       createdAt,
     } satisfies JsonObject;
+
     return yield* Shared.toJsonObject(
       capacity
         ? Object.assign({}, common, {
@@ -401,8 +449,10 @@ function saveReconciliation(
   basis: Basis,
 ) {
   const operation = basis === "capacity" ? "reconcile_bank_capacity" : "reconcile_bank";
+
   const reportTable =
     basis === "capacity" ? "bank_capacity_reconciliations" : "bank_reconciliations";
+
   return Shared.withBook(token, command.scope, false, "update", (transaction, principal) =>
     Effect.gen(function* () {
       yield* Shared.requireTables(
@@ -412,7 +462,9 @@ function saveReconciliation(
       );
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "update"))[0];
+
       if (!book) return yield* failure("Forbidden");
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -422,6 +474,7 @@ function saveReconciliation(
         yield* Shared.toJsonObject(command.input),
         basis === "capacity" ? CapacitySchema : ReconciliationSchema,
       );
+
       if (request.previous) return request.previous;
       yield* Shared.requireNativeBankProfile(book.profile, book.authority);
 
@@ -435,11 +488,14 @@ function saveReconciliation(
         yield* isoNow(transaction),
         Shared.receipt(command.idempotencyKey, operation, principal.actorId),
       );
+
       const accountId = Shared.textField(body, "accountId");
       const reportId = Shared.textField(body, "id");
+
       if (accountId === undefined || reportId === undefined) {
         return yield* failure("InternalError");
       }
+
       yield* ReportDb.insertReconciliation(transaction, {
         bookId: command.scope.bookId,
         id: reportId,
@@ -455,6 +511,7 @@ function saveReconciliation(
         principal.actorId,
         body,
       );
+
       return body;
     }),
   );
@@ -499,21 +556,28 @@ function readReportFreshness(
     const stored = yield* basis === "capacity"
       ? ReportDb.readCapacityReconciliation(transaction, scope.bookId, reconciliationId)
       : ReportDb.readReconciliation(transaction, scope.bookId, reconciliationId);
+
     const report = stored[0];
+
     if (!report) return yield* failure("NotFound");
     const accountId = Shared.textField(report.body, "accountId");
     const endsOn = Shared.textField(report.body, "endsOn");
+
     if (accountId === undefined || endsOn === undefined) {
       return yield* failure("InternalError");
     }
+
     const checkpoint = yield* Shared.readCheckpoint(transaction, scope.bookId, accountId);
+
     const sequence = (yield* StatementDb.readAccountLedgerSequence(
       transaction,
       scope.bookId,
       accountId,
       endsOn,
     ))[0]?.sequence;
+
     if (sequence === undefined) return yield* failure("InternalError");
+
     return {
       body: report.body,
       current: {
@@ -540,7 +604,9 @@ export const getBankReconciliation = Effect.fn("banking.reconciliation.get")(fun
       yield* Shared.requireTables(transaction, [...reconciliationTables, "bank_reconciliations"]);
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
       if (!book) return yield* failure("Forbidden");
+
       const found = yield* readReportFreshness(
         transaction,
         command.scope,
@@ -548,6 +614,7 @@ export const getBankReconciliation = Effect.fn("banking.reconciliation.get")(fun
         command.reconciliationId,
         "exact",
       );
+
       return yield* Shared.decode(ReconciliationViewSchema, {
         report: yield* Shared.decode(ReconciliationSchema, found.body),
         ...found.current,
@@ -566,7 +633,9 @@ export const getBankCapacityReconciliation = Effect.fn("banking.reconciliation.c
         ]);
         yield* Shared.requireColumns(transaction, Shared.accountColumns);
         const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
         if (!book) return yield* failure("Forbidden");
+
         const found = yield* readReportFreshness(
           transaction,
           command.scope,
@@ -574,6 +643,7 @@ export const getBankCapacityReconciliation = Effect.fn("banking.reconciliation.c
           command.reconciliationId,
           "capacity",
         );
+
         return yield* Shared.decode(CapacityViewSchema, {
           report: yield* Shared.decode(CapacitySchema, found.body),
           ...found.current,

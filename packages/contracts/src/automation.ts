@@ -15,6 +15,7 @@ export const ProposeRecurringRule = Schema.Struct({
   series: Schema.String.check(Schema.isPattern(/^[A-Z0-9]{1,16}$/)),
   taxAssessment: Schema.Literal("not_applicable"),
 });
+
 export const RecurringRule = Schema.Struct({
   id: Accounting.Identifier,
   version: Schema.Literal(1),
@@ -26,14 +27,17 @@ export const RecurringRule = Schema.Struct({
   proposedBy: Accounting.Identifier,
   receipt: CommandReceipt,
 });
+
 export const SimulationInterval = Schema.Struct({
   startsOn: Accounting.AccountingDate,
   endsOn: Accounting.AccountingDate,
 });
+
 export const SimulateRecurringRule = Schema.Struct({
   ...SimulationInterval.fields,
   ruleId: Accounting.Identifier,
 });
+
 export const RuleObservation = Schema.Struct({
   statementId: Accounting.Identifier,
   rowOrdinal: RowOrdinal,
@@ -44,6 +48,7 @@ export const RuleObservation = Schema.Struct({
   accountingPeriodId: Schema.NullOr(Accounting.Identifier),
   periodVersion: Schema.NullOr(Accounting.MinorUnits),
 });
+
 export const SimulationSelection = Schema.Struct({
   ...SimulationInterval.fields,
   sourceRevision: Accounting.MinorUnits,
@@ -56,6 +61,7 @@ export const SimulationSelection = Schema.Struct({
   overlappingRuleIds: Schema.Array(Accounting.Identifier),
   blockers: Schema.Array(Schema.String),
 });
+
 export const RuleSimulation = Schema.Struct({
   ...SimulationSelection.fields,
   id: Accounting.Identifier,
@@ -65,12 +71,14 @@ export const RuleSimulation = Schema.Struct({
   createdAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 export const ActivateRecurringRule = Schema.Struct({
   ruleId: Accounting.Identifier,
   ruleDigest: Accounting.Digest,
   simulationId: Accounting.Identifier,
   simulationDigest: Accounting.Digest,
 });
+
 export const RuleActivation = Schema.Struct({
   id: Accounting.Identifier,
   ...ActivateRecurringRule.fields,
@@ -79,29 +87,35 @@ export const RuleActivation = Schema.Struct({
   authority: Schema.Literal("prepare_only"),
   receipt: CommandReceipt,
 });
+
 export const DeactivateRecurringRule = Schema.Struct({
   activationId: Accounting.Identifier,
   reason: Accounting.Description,
 });
+
 export const RuleDeactivation = Schema.Struct({
   ...DeactivateRecurringRule.fields,
   actorId: Accounting.Identifier,
   deactivatedAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 export const RecurringRuleView = Schema.Struct({
   rule: RecurringRule,
   activeActivation: Schema.NullOr(RuleActivation),
   dependenciesCurrent: Schema.Boolean,
 });
+
 export const CreatePreparationRun = Schema.Struct({
   ...SimulationInterval.fields,
   activationId: Accounting.Identifier,
 });
+
 export const AdvancePreparationRun = Schema.Struct({
   action: Schema.Literals(["continue", "cancel", "resume"]),
   maxItems: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 20 })),
 });
+
 export const PreparationResult = Schema.Struct({
   statementId: Accounting.Identifier,
   rowOrdinal: RowOrdinal,
@@ -110,6 +124,7 @@ export const PreparationResult = Schema.Struct({
   planDigest: Schema.NullOr(Accounting.Digest),
   voucherId: Schema.NullOr(Accounting.Identifier),
 });
+
 export const RunAuditEntry = Schema.Struct({
   index: Schema.Int,
   action: Schema.String,
@@ -120,6 +135,7 @@ export const RunAuditEntry = Schema.Struct({
   recordedAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 export const PreparationRun = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -151,11 +167,13 @@ export const PreparationJob = Schema.Struct({
 });
 
 export const StopPreparationJob = Schema.Struct({ reason: Accounting.Description });
+
 export const PreparationJobStop = Schema.Struct({
   job: PreparationJob,
   outcome: Schema.Literals(["stopped", "already_terminal"]),
   receipt: CommandReceipt,
 });
+
 export const PreparationJobStopCapabilities = {
   runs_stop_background: {
     description:
@@ -172,9 +190,13 @@ export const PreparationJobStopCapabilities = {
 };
 
 const path = "/v1/entities/:entityId/books/:bookId";
+
 const scoped = { params: Accounting.Scope, error: accountingErrors };
+
 const mutation = { ...scoped, headers: Accounting.IdempotencyHeaders };
+
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
+
 export const AutomationApi = HttpApiGroup.make("automation").add(
   HttpApiEndpoint.post("stopPreparationJob", `${path}/preparation-jobs/:id/stop`, {
     ...identified,

@@ -4,19 +4,26 @@ import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 
 export const Version = Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,17}$/));
+
 const Name = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200));
+
 const PositiveMinor = Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,37}$/));
+
 const Currency = Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/));
+
 export const Direction = Schema.Literals(["customer", "supplier"]);
+
 export const EvidenceReference = Schema.Struct({
   evidenceId: Accounting.Identifier,
   sha256: Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/)),
 });
+
 export const CommandReceipt = Schema.Struct({
   key: Accounting.IdempotencyHeaders.fields["idempotency-key"],
   operation: Schema.String,
   actorId: Accounting.Identifier,
 });
+
 export const CreateCounterparty = Schema.Struct({
   kind: Schema.Literal("synthetic_counterparty_v1"),
   externalKey: Name,
@@ -25,12 +32,14 @@ export const CreateCounterparty = Schema.Struct({
   evidenceId: Accounting.Identifier,
   reason: Accounting.Description,
 });
+
 export const ReviseCounterparty = Schema.Struct({
   expectedRevision: Version,
   displayName: Name,
   evidenceId: Accounting.Identifier,
   reason: Accounting.Description,
 });
+
 export const CounterpartyRevision = Schema.Struct({
   ...CreateCounterparty.fields,
   id: Accounting.Identifier,
@@ -41,10 +50,12 @@ export const CounterpartyRevision = Schema.Struct({
   createdAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 export const CounterpartyPage = Schema.Struct({
   items: Schema.Array(CounterpartyRevision),
   next: Schema.NullOr(Accounting.Identifier),
 });
+
 export const CreateInvoice = Schema.Struct({
   kind: Schema.Literal("synthetic_invoice_v1"),
   direction: Direction,
@@ -61,6 +72,7 @@ export const CreateInvoice = Schema.Struct({
   evidenceId: Accounting.Identifier,
   description: Accounting.Description,
 });
+
 export const ReviseInvoice = Schema.Struct({
   expectedRevision: Version,
   dueOn: Accounting.AccountingDate,
@@ -68,12 +80,14 @@ export const ReviseInvoice = Schema.Struct({
   evidenceId: Accounting.Identifier,
   reason: Accounting.Description,
 });
+
 export const Recognition = Schema.Struct({
   voucherId: Accounting.Identifier,
   lineId: Accounting.Identifier,
   eventId: Accounting.Identifier,
   postingDate: Accounting.AccountingDate,
 });
+
 export const InvoiceRevision = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -85,6 +99,7 @@ export const InvoiceRevision = Schema.Struct({
   createdAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 export const InvoiceCancellationSummary = Schema.Struct({
   id: Accounting.Identifier,
   reviewId: Accounting.Identifier,
@@ -94,6 +109,7 @@ export const InvoiceCancellationSummary = Schema.Struct({
   postingDate: Accounting.AccountingDate,
   committedAt: Schema.String,
 });
+
 export const Invoice = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -149,16 +165,19 @@ export const Invoice = Schema.Struct({
     ),
   ),
 });
+
 export const InvoicePage = Schema.Struct({
   items: Schema.Array(Invoice),
   next: Schema.NullOr(Accounting.Identifier),
 });
+
 export const SupplierInvoiceDuplicateQuery = Schema.Struct({
   counterpartyId: Accounting.Identifier,
   documentNumber: CreateInvoice.fields.documentNumber,
   evidenceId: Accounting.Identifier,
   after: Schema.optional(Accounting.Identifier),
 });
+
 export const SupplierInvoiceDuplicates = Schema.Struct({
   scope: Accounting.Scope,
   counterpartyId: Accounting.Identifier,
@@ -175,14 +194,17 @@ export const SupplierInvoiceDuplicates = Schema.Struct({
   ).check(Schema.isMaxLength(50)),
   next: Schema.NullOr(Accounting.Identifier),
 });
+
 export const InvoiceHistory = Schema.Struct({
   items: Schema.Array(InvoiceRevision),
   next: Schema.NullOr(Version),
 });
+
 export const PaymentReference = Schema.Struct({
   voucherId: Accounting.Identifier,
   lineId: Accounting.Identifier,
 });
+
 export const PaymentCapacity = Schema.Struct({
   ...PaymentReference.fields,
   scope: Accounting.Scope,
@@ -196,6 +218,7 @@ export const PaymentCapacity = Schema.Struct({
   remainingMinor: Accounting.MinorUnits,
   capacityVersion: Accounting.MinorUnits,
 });
+
 export const PrepareAllocation = Schema.Struct({
   ...PaymentReference.fields,
   evidenceId: Accounting.Identifier,
@@ -204,6 +227,7 @@ export const PrepareAllocation = Schema.Struct({
     Schema.Struct({ invoiceId: Accounting.Identifier, amountMinor: PositiveMinor }),
   ).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
 });
+
 export const AllocationLeg = Schema.Struct({
   invoiceId: Accounting.Identifier,
   revision: Version,
@@ -217,6 +241,7 @@ export const AllocationLeg = Schema.Struct({
   amountMinor: PositiveMinor,
   outstandingAfterMinor: Accounting.MinorUnits,
 });
+
 export const AllocationPlan = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -235,14 +260,17 @@ export const AllocationPlan = Schema.Struct({
   createdAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 export const ApproveAllocation = Schema.Struct({
   version: Schema.Literal(1),
   planDigest: Accounting.Digest,
 });
+
 export const ApplyAllocation = Schema.Struct({
   ...ApproveAllocation.fields,
   approvalId: Accounting.Identifier,
 });
+
 export const AllocationApproval = Schema.Struct({
   id: Accounting.Identifier,
   planId: Accounting.Identifier,
@@ -251,6 +279,7 @@ export const AllocationApproval = Schema.Struct({
   expiresAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 export const AllocationReceipt = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -262,17 +291,21 @@ export const AllocationReceipt = Schema.Struct({
   committedAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 export const AllocationView = Schema.Struct({
   plan: AllocationPlan,
   dependenciesCurrent: Schema.Boolean,
   approval: Schema.NullOr(AllocationApproval),
   application: Schema.NullOr(AllocationReceipt),
 });
+
 const PaymentPageNumber = Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,5}$/));
+
 export const InvoicePaymentsQuery = Schema.Struct({
   page: Schema.optional(PaymentPageNumber),
   historyPage: Schema.optional(PaymentPageNumber),
 });
+
 export const InvoicePaymentCandidate = Schema.Struct({
   payment: PaymentCapacity,
   voucherLabel: Schema.String,
@@ -280,6 +313,7 @@ export const InvoicePaymentCandidate = Schema.Struct({
   evidence: EvidenceReference,
   sourceTitle: Schema.String,
 });
+
 export const InvoicePayments = Schema.Struct({
   scope: Accounting.Scope,
   invoiceId: Accounting.Identifier,
@@ -301,18 +335,28 @@ export const InvoicePayments = Schema.Struct({
     }),
   ),
 });
+
 export const AfterQuery = Schema.Struct({ after: Schema.optional(Accounting.Identifier) });
+
 export const RevisionQuery = Schema.Struct({ revision: Schema.optional(Version) });
+
 export const HistoryQuery = Schema.Struct({ after: Schema.optional(Version) });
+
 const path = "/v1/entities/:entityId/books/:bookId/commerce";
+
 const scoped = { params: Accounting.Scope, error: accountingErrors };
+
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
+
 const mutation = { ...scoped, headers: Accounting.IdempotencyHeaders };
+
 const identifiedMutation = { ...identified, headers: Accounting.IdempotencyHeaders };
+
 export const PaymentPath = Schema.Struct({
   ...Accounting.Scope.fields,
   ...PaymentReference.fields,
 });
+
 export const CommerceApi = HttpApiGroup.make("commerce").add(
   HttpApiEndpoint.post("commerceCreateCounterparty", `${path}/counterparties`, {
     ...mutation,
@@ -395,12 +439,16 @@ export const CommerceApi = HttpApiGroup.make("commerce").add(
 );
 
 const capabilityScope = { scope: Accounting.Scope };
+
 const capabilityMutation = {
   ...capabilityScope,
   idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
 };
+
 const capabilityIdentified = { ...capabilityScope, id: Accounting.Identifier };
+
 const capabilityIdentifiedMutation = { ...capabilityMutation, id: Accounting.Identifier };
+
 export const CommerceCapabilities = {
   commerce_create_counterparty: {
     description:

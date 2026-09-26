@@ -14,10 +14,13 @@ import type { Locale } from "@/paraglide/runtime";
 import { expenseTaxCopy } from "./copy";
 
 type Common = { book: typeof Accounting.Book.Type; locale: Locale };
+
 export function nullableValue(fields: FormData, name: string) {
   const value = fields.get(name);
+
   return typeof value === "string" && value !== "" ? value : null;
 }
+
 function readAmounts(fields: FormData) {
   return {
     grossMinor: nullableValue(fields, "grossMinor"),
@@ -25,6 +28,7 @@ function readAmounts(fields: FormData) {
     vatMinor: nullableValue(fields, "vatMinor"),
   };
 }
+
 function AmountInputs({
   locale,
   amounts,
@@ -33,6 +37,7 @@ function AmountInputs({
   amounts?: typeof Tax.TaxAmounts.Type;
 }) {
   const copy = expenseTaxCopy(locale);
+
   return (
     <Box display="grid" gap="md">
       <InputField
@@ -59,6 +64,7 @@ function AmountInputs({
     </Box>
   );
 }
+
 const sourceTextNames = [
   "currency",
   "supplierJurisdiction",
@@ -70,6 +76,7 @@ const sourceTextNames = [
   "changeSetId",
   "voucherId",
 ] as const;
+
 export function TaxSourceForm(
   props: Common & { current?: typeof Tax.TaxSourceRevision.Type; onSaved: (id: string) => void },
 ) {
@@ -79,9 +86,11 @@ export function TaxSourceForm(
   const [current] = useState(props.current);
   const keys = useRef(new Map<string, string>());
   const [invalid, setInvalid] = useState(false);
+
   const save = useMutation({
     mutationFn: (input: typeof Tax.RecordTaxSource.Type) => {
       const path = `${bookPath(book)}/expense-tax/sources`;
+
       return readAccounting(
         path,
         Tax.TaxSourceRevision,
@@ -90,6 +99,7 @@ export function TaxSourceForm(
     },
     onSuccess: (source) => props.onSaved(source.sourceId),
   });
+
   return (
     <Box
       as="form"
@@ -100,10 +110,13 @@ export function TaxSourceForm(
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
         const scale = nullableValue(fields, "currencyScale");
+
         if (scale !== null && !/^[0-6]$/.test(scale)) {
           setInvalid(true);
+
           return;
         }
+
         const decoded = Schema.decodeUnknownOption(Tax.RecordTaxSource)({
           sourceKey: current?.sourceKey ?? fields.get("sourceKey"),
           expectedSourceDigest: current?.digest ?? null,
@@ -119,10 +132,13 @@ export function TaxSourceForm(
             currencyScale: scale === null ? null : Number(scale),
           },
         });
+
         if (decoded._tag === "None") {
           setInvalid(true);
+
           return;
         }
+
         setInvalid(false);
         save.mutate(decoded.value);
       }}
@@ -215,6 +231,7 @@ export function TaxSourceForm(
     </Box>
   );
 }
+
 const reviewTextNames = [
   "registrationEvidenceId",
   "methodEvidenceId",
@@ -232,6 +249,7 @@ const reviewTextNames = [
   "deductionBasis",
   "deductionEvidenceId",
 ] as const;
+
 export function TaxReviewForm(
   props: Common & { source: typeof Tax.TaxSourceView.Type; onSaved: () => void },
 ) {
@@ -241,9 +259,11 @@ export function TaxReviewForm(
   const copy = expenseTaxCopy(locale);
   const keys = useRef(new Map<string, string>());
   const [invalid, setInvalid] = useState(false);
+
   const save = useMutation({
     mutationFn: (input: typeof Tax.ReviewTaxSource.Type) => {
       const path = `${bookPath(book)}/expense-tax/sources/${source.current.sourceId}/reviews`;
+
       return readAccounting(
         path,
         Tax.TaxReview,
@@ -252,6 +272,7 @@ export function TaxReviewForm(
     },
     onSuccess: () => props.onSaved(),
   });
+
   return (
     <Box
       as="form"
@@ -261,6 +282,7 @@ export function TaxReviewForm(
       onSubmit={(event) => {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
+
         const decoded = Schema.decodeUnknownOption(Tax.ReviewTaxSource)({
           sourceDigest: source.current.digest,
           expectedReviewDigest: source.latestReview?.digest ?? null,
@@ -277,10 +299,13 @@ export function TaxReviewForm(
             ),
           },
         });
+
         if (decoded._tag === "None") {
           setInvalid(true);
+
           return;
         }
+
         setInvalid(false);
         save.mutate(decoded.value);
       }}
@@ -379,14 +404,17 @@ export function TaxReviewForm(
     </Box>
   );
 }
+
 export function TaxEvidenceForm({ book, locale }: Common) {
   const copy = expenseTaxCopy(locale);
   const contentId = useId();
   const keys = useRef(new Map<string, string>());
   const [invalid, setInvalid] = useState(false);
+
   const save = useMutation({
     mutationFn: (input: typeof Accounting.CreateEvidence.Type) => {
       const path = `${bookPath(book)}/evidence`;
+
       return readAccounting(
         path,
         Accounting.Evidence,
@@ -394,6 +422,7 @@ export function TaxEvidenceForm({ book, locale }: Common) {
       );
     },
   });
+
   return (
     <details>
       <summary>{copy.sourceEvidence}</summary>
@@ -406,16 +435,20 @@ export function TaxEvidenceForm({ book, locale }: Common) {
         onSubmit={(event) => {
           event.preventDefault();
           const fields = new FormData(event.currentTarget);
+
           const decoded = Schema.decodeUnknownOption(Accounting.CreateEvidence)({
             title: fields.get("title"),
             origin: fields.get("origin"),
             content: fields.get("content"),
             mediaType: "text/plain",
           });
+
           if (decoded._tag === "None") {
             setInvalid(true);
+
             return;
           }
+
           setInvalid(false);
           save.mutate(decoded.value);
         }}

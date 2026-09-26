@@ -43,12 +43,15 @@ export function PostingDraft({
   const posting = postingCopy(locale);
   const requests = useSavedPostingRequests(book);
   const client = useQueryClient();
+
   const [retainedEvidence, setRetainedEvidence] = useState<typeof Accounting.Evidence.Type | null>(
     null,
   );
+
   const evidence = useMutation({
     mutationFn: (payload: typeof Accounting.CreateEvidence.Type) => {
       if (!requests.data || requests.isError) throw new Error(posting.unknown);
+
       return sendSavedPostingCommand({
         book,
         actorId: requests.data.actorId,
@@ -67,6 +70,7 @@ export function PostingDraft({
       void client.invalidateQueries({ queryKey: bookKey(book) });
     },
   });
+
   return (
     <Box id="journal-draft" tabIndex={-1} display="grid" gap="md">
       <Box display="grid" gap="xl" minWidth="zero">
@@ -79,16 +83,20 @@ export function PostingDraft({
             onSubmit={(event) => {
               event.preventDefault();
               const fields = new FormData(event.currentTarget);
+
               const decoded = Schema.decodeUnknownOption(Accounting.CreateEvidence)({
                 title: fields.get("title"),
                 content: fields.get("content"),
                 origin: fields.get("origin"),
                 mediaType: "text/plain",
               });
+
               if (decoded._tag === "None") {
                 setInputError(copy.journal_invalid);
+
                 return;
               }
+
               setInputError("");
               evidence.mutate(decoded.value);
             }}
@@ -239,13 +247,16 @@ function JournalForm(props: {
   const requests = useSavedPostingRequests(book);
   const posting = postingCopy(locale);
   const nextLine = useRef(3);
+
   const [lines, setLines] = useState([
     { id: 1, debit: "", credit: "" },
     { id: 2, debit: "", credit: "" },
   ]);
+
   const [eventKey] = useState(() => `journal_${crypto.randomUUID()}`);
   const metadata = useQuery(workQueryOptions(book, {}));
   const scale = metadata.data?.currencyScale;
+
   const parsed =
     scale === undefined
       ? []
@@ -253,16 +264,20 @@ function JournalForm(props: {
           debit: decimalToMinor(line.debit, scale),
           credit: decimalToMinor(line.credit, scale),
         }));
+
   const amountsValid =
     parsed.length === lines.length &&
     parsed.every((line) => line.debit !== null && line.credit !== null);
+
   const debitTotal = parsed.reduce((sum, line) => sum + BigInt(line.debit ?? "0"), 0n);
   const creditTotal = parsed.reduce((sum, line) => sum + BigInt(line.credit ?? "0"), 0n);
   const balanced = amountsValid && debitTotal > 0n && debitTotal === creditTotal;
   const [inputError, setInputError] = useState("");
+
   const prepare = useMutation({
     mutationFn: (payload: typeof Accounting.PrepareJournal.Type) => {
       if (!requests.data || requests.isError) throw new Error(posting.unknown);
+
       return sendSavedPostingCommand({
         book,
         actorId: requests.data.actorId,
@@ -284,12 +299,16 @@ function JournalForm(props: {
       void client.invalidateQueries({ queryKey: bookKey(book) });
     },
   });
+
   function submit(form: HTMLFormElement) {
     if (scale === undefined || !amountsValid) {
       setInputError(copy.workspace_amount_invalid);
+
       return;
     }
+
     const fields = new FormData(form);
+
     const decoded = Schema.decodeUnknownOption(Accounting.PrepareJournal)({
       kind: "manual_journal",
       evidenceId: props.evidenceId,
@@ -307,13 +326,17 @@ function JournalForm(props: {
         description: fields.get(`description-${line.id}`) || fields.get("description"),
       })),
     });
+
     if (decoded._tag === "None") {
       setInputError(copy.journal_invalid);
+
       return;
     }
+
     const journal = decoded.value;
     const debit = journal.lines.reduce((total, line) => total + BigInt(line.debitMinor), 0n);
     const credit = journal.lines.reduce((total, line) => total + BigInt(line.creditMinor), 0n);
+
     if (
       debit === 0n ||
       debit !== credit ||
@@ -322,11 +345,14 @@ function JournalForm(props: {
       )
     ) {
       setInputError(copy.journal_balance_error);
+
       return;
     }
+
     setInputError("");
     prepare.mutate(journal);
   }
+
   return (
     <Box
       as="form"

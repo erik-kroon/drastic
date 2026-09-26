@@ -8,6 +8,7 @@ export const SchedulePeriod = Schema.Struct({
   postingDate: Accounting.AccountingDate,
   accountingPeriodId: Accounting.Identifier,
 });
+
 export const ScheduleTerms = Schema.Struct({
   kind: Schema.Literals(["asset", "deferral"]),
   name: Accounting.Description,
@@ -23,6 +24,7 @@ export const ScheduleTerms = Schema.Struct({
   periods: Schema.Array(SchedulePeriod).check(Schema.isMinLength(1), Schema.isMaxLength(120)),
   taxAssessment: Schema.Literal("not_applicable"),
 });
+
 export const RetainedScheduleTerms = Schema.Struct({
   ...ScheduleTerms.fields,
   allocationPolicy: Schema.Literals([
@@ -30,14 +32,17 @@ export const RetainedScheduleTerms = Schema.Struct({
     "explicit_remaining_minor_v1",
   ]),
 });
+
 export const CreateSchedule = Schema.Struct({
   sourceKey: Schema.String.check(Schema.isPattern(/^[a-zA-Z0-9_-]{1,128}$/)),
   terms: ScheduleTerms,
 });
+
 export const ReviseSchedule = Schema.Struct({
   expectedDigest: Accounting.Digest,
   terms: ScheduleTerms,
 });
+
 export const AmendScheduleFutureDates = Schema.Struct({
   expectedDigest: Accounting.Digest,
   expectedBasisDigest: Accounting.Digest,
@@ -47,6 +52,7 @@ export const AmendScheduleFutureDates = Schema.Struct({
   reviewEvidenceId: Accounting.Identifier,
   rationale: Accounting.Description,
 });
+
 export const ScheduleDateAmendment = Schema.Struct({
   kind: Schema.Literal("future_dates_v1"),
   input: AmendScheduleFutureDates,
@@ -55,6 +61,7 @@ export const ScheduleDateAmendment = Schema.Struct({
   reviewSha256: Schema.String,
   reviewedOn: Accounting.AccountingDate,
 });
+
 export const AmendScheduleEstimate = Schema.Struct({
   expectedDigest: Accounting.Digest,
   expectedBasisDigest: Accounting.Digest,
@@ -70,6 +77,7 @@ export const AmendScheduleEstimate = Schema.Struct({
   reviewEvidenceId: Accounting.Identifier,
   rationale: Accounting.Description,
 });
+
 export const PrepareAssetImpairment = Schema.Struct({
   profile: Schema.Literal("synthetic_asset_impairment_v1"),
   scheduleId: Accounting.Identifier,
@@ -96,6 +104,7 @@ export const PrepareAssetImpairment = Schema.Struct({
   taxAssessment: Schema.Literal("not_applicable"),
   acknowledgeSyntheticOnly: Schema.Literal(true),
 });
+
 export const ScheduleImpairmentAmendment = Schema.Struct({
   kind: Schema.Literal("impairment_v1"),
   reviewId: Accounting.Identifier,
@@ -111,6 +120,7 @@ export const ScheduleImpairmentAmendment = Schema.Struct({
   reviewSha256: Schema.String,
   reviewedOn: Accounting.AccountingDate,
 });
+
 export const ScheduleEstimateAmendment = Schema.Struct({
   kind: Schema.Literal("remaining_estimate_v1"),
   input: AmendScheduleEstimate,
@@ -121,16 +131,19 @@ export const ScheduleEstimateAmendment = Schema.Struct({
   reviewSha256: Schema.String,
   reviewedOn: Accounting.AccountingDate,
 });
+
 export const ScheduleLifetimeAmendment = Schema.Struct({
   ...ScheduleEstimateAmendment.fields,
   kind: Schema.Literal("remaining_lifetime_v1"),
 });
+
 export const ScheduleOccurrence = Schema.Struct({
   ordinal: Schema.Int,
   ...SchedulePeriod.fields,
   eventKey: Schema.String,
   amountMinor: Accounting.MinorUnits,
 });
+
 export const ScheduleRevision = Schema.Struct({
   scheduleId: Accounting.Identifier,
   sourceKey: Schema.String,
@@ -155,6 +168,7 @@ export const ScheduleRevision = Schema.Struct({
   createdAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 export const OccurrenceState = Schema.Struct({
   ...ScheduleOccurrence.fields,
   changeSetId: Schema.NullOr(Accounting.Identifier),
@@ -163,6 +177,7 @@ export const OccurrenceState = Schema.Struct({
   reversalVoucherId: Schema.NullOr(Accounting.Identifier),
   state: Schema.Literals(["unprepared", "prepared", "posted", "reversed", "conflicted"]),
 });
+
 // Live prerequisite state, not a legal policy or reconciliation certificate.
 export const SchedulePostingBasis = Schema.Struct({
   mode: Schema.Literals(["standalone_synthetic", "linked_basis"]),
@@ -180,6 +195,7 @@ export const SchedulePostingBasis = Schema.Struct({
   ),
   legalPolicyApproved: Schema.Literal(false),
 });
+
 export const AssetDisposal = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -206,6 +222,7 @@ export const AssetDisposal = Schema.Struct({
   receipt: CommandReceipt,
   digest: Accounting.Digest,
 });
+
 // Live references only. Reservation presence does not assess role compatibility or authority.
 export const AssetImpairment = Schema.Struct({
   id: Accounting.Identifier,
@@ -241,6 +258,7 @@ export const AssetImpairment = Schema.Struct({
   receipt: CommandReceipt,
   digest: Accounting.Digest,
 });
+
 export const ScheduleBasisTaxMatches = Schema.Struct({
   roleCompatibility: Schema.Literal("not_assessed"),
   matches: Schema.Array(
@@ -253,6 +271,7 @@ export const ScheduleBasisTaxMatches = Schema.Struct({
     }),
   ).check(Schema.isMaxLength(20)),
 });
+
 export const ScheduleView = Schema.Struct({
   basisTaxMatches: Schema.optional(ScheduleBasisTaxMatches),
   disposal: Schema.optional(Schema.NullOr(AssetDisposal)),
@@ -269,6 +288,7 @@ export const ScheduleView = Schema.Struct({
   controlAccountReconciled: Schema.Literal(false),
   requiresPostingApproval: Schema.Literal(true),
 });
+
 export const ScheduleSummary = Schema.Struct({
   id: Accounting.Identifier,
   sourceKey: Schema.String,
@@ -277,15 +297,19 @@ export const ScheduleSummary = Schema.Struct({
   revision: Schema.Int,
   digest: Accounting.Digest,
 });
+
 export const SchedulePage = Schema.Struct({
   items: Schema.Array(ScheduleSummary),
   next: Schema.NullOr(Accounting.Identifier),
 });
+
 export const ScheduleQuery = Schema.Struct({ after: Schema.optional(Accounting.Identifier) });
+
 export const PrepareScheduleOccurrence = Schema.Struct({
   expectedDigest: Accounting.Digest,
   ordinal: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 120 })),
 });
+
 export const SchedulePreparation = Schema.Struct({
   scheduleId: Accounting.Identifier,
   revisionDigest: Accounting.Digest,
@@ -296,9 +320,13 @@ export const SchedulePreparation = Schema.Struct({
   requiresPostingApproval: Schema.Literal(true),
   receipt: CommandReceipt,
 });
+
 const path = "/v1/entities/:entityId/books/:bookId/schedules";
+
 const scoped = { params: Accounting.Scope, error: accountingErrors };
+
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
+
 export const SubledgersApi = HttpApiGroup.make("subledgers").add(
   HttpApiEndpoint.post("createSchedule", path, {
     ...scoped,
@@ -337,11 +365,14 @@ export const SubledgersApi = HttpApiGroup.make("subledgers").add(
     success: SchedulePreparation,
   }),
 );
+
 const scope = { scope: Accounting.Scope };
+
 const mutation = {
   ...scope,
   idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
 };
+
 export const SubledgerCapabilities = {
   schedules_create: {
     description:

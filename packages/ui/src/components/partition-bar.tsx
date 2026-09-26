@@ -36,17 +36,20 @@ const styles = stylex.create({
     whiteSpace: "nowrap",
   },
 });
+
 type Partition = {
   ariaLabel?: string;
   color?: string;
   label: string;
   value: number;
 };
+
 type PartitionBarProps = WithStyleX<Omit<React.ComponentProps<"ul">, "children">> & {
   items: readonly Partition[];
   styleX?: StyleXStyles;
   valueLabel?: (item: Partition, total: number) => string;
 };
+
 function PartitionBar({
   className,
   items,
@@ -58,11 +61,13 @@ function PartitionBar({
     (sum, item) => sum + (Number.isFinite(item.value) ? Math.max(0, item.value) : 0),
     0,
   );
+
   return (
     <ul data-slot="partition-bar" {...stylexProps([styles.root, styleX], className)} {...props}>
       {items.map((item, index) => {
         const value = Math.max(0, item.value);
         const label = item.label;
+
         return (
           <li
             key={index}
@@ -86,5 +91,7 @@ function PartitionBar({
     </ul>
   );
 }
+
 export { PartitionBar };
+
 export type { Partition, PartitionBarProps };

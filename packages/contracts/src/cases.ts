@@ -6,23 +6,28 @@ import { accountingErrors as errors } from "./accounting-errors";
 export const PrepareCaseSnapshot = Schema.Struct({
   caseId: Schema.optional(Accounting.Identifier),
 });
+
 export const CaseCursor = Schema.String.check(
   Schema.isPattern(/^[a-z][a-z0-9_-]{2,127}(?::[a-z][a-z0-9_-]{2,127})?:[0-9]{1,18}$/),
 );
+
 export const CasePageInput = Schema.Struct({
   maxItems: Schema.Number.check(Schema.isInt(), Schema.isBetween({ minimum: 1, maximum: 50 })),
   cursor: Schema.optional(CaseCursor),
 });
+
 export const CaseContextInput = Schema.Struct({
   ...CasePageInput.fields,
   detail: Schema.Literals(["summary", "standard", "evidence"]),
 });
+
 export const CaseCoverage = Schema.Struct({
   status: Schema.Literal("unknown"),
   bankImportsIncluded: Schema.Literal(false),
   reconciliationReportId: Schema.Null,
   reason: Schema.String,
 });
+
 export const CaseSnapshot = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -46,12 +51,14 @@ export const CaseSnapshot = Schema.Struct({
   }),
   coverage: CaseCoverage,
 });
+
 export const CaseAccess = Schema.Struct({
   role: Schema.Literals(["operator", "agent"]),
   canPrepareSnapshot: Schema.Boolean,
   canPrepareJournal: Schema.Boolean,
   canApprove: Schema.Boolean,
 });
+
 export const CaseEvidence = Schema.Struct({
   evidenceId: Accounting.Identifier,
   sha256: Schema.String,
@@ -61,6 +68,7 @@ export const CaseEvidence = Schema.Struct({
   locator: Schema.String,
   uri: Schema.String,
 });
+
 export const CaseVoucher = Schema.Struct({
   voucherId: Accounting.Identifier,
   sequence: Accounting.AggregateMinorUnits,
@@ -70,12 +78,14 @@ export const CaseVoucher = Schema.Struct({
   receipt: Accounting.ExecutionReceipt,
   receiptUri: Schema.String,
 });
+
 export const CaseCorrectionBundle = Schema.Struct({
   bundleId: Accounting.Identifier,
   bundleDigest: Accounting.Digest,
   role: Schema.Literals(["reversal", "replacement"]),
   uri: Schema.String,
 });
+
 export const CaseSummary = Schema.Struct({
   id: Accounting.Identifier,
   eventKey: Schema.String,
@@ -104,6 +114,7 @@ export const CaseSummary = Schema.Struct({
     }),
   ),
 });
+
 export const CasePlan = Schema.Struct({
   changeSetId: Accounting.Identifier,
   correctionBundle: Schema.optional(CaseCorrectionBundle),
@@ -121,6 +132,7 @@ export const CasePlan = Schema.Struct({
   voucherId: Schema.NullOr(Accounting.Identifier),
   uri: Schema.String,
 });
+
 export const CasePage = Schema.Struct({
   snapshot: CaseSnapshot,
   access: CaseAccess,
@@ -128,6 +140,7 @@ export const CasePage = Schema.Struct({
   remaining: Accounting.AggregateMinorUnits,
   next: Schema.NullOr(CaseCursor),
 });
+
 export const CaseContext = Schema.Struct({
   snapshot: CaseSnapshot,
   access: CaseAccess,
@@ -197,12 +210,16 @@ const CasePageQuery = Schema.Struct({
   ),
   cursor: Schema.optional(CaseCursor),
 });
+
 const snapshotPath = Schema.Struct({
   ...Accounting.Scope.fields,
   snapshotId: Accounting.Identifier,
 });
+
 const contextPath = Schema.Struct({ ...snapshotPath.fields, caseId: Accounting.Identifier });
+
 const base = "/v1/entities/:entityId/books/:bookId/case-snapshots";
+
 export const CasesApi = HttpApiGroup.make("cases").add(
   HttpApiEndpoint.post("prepareCaseSnapshot", base, {
     params: Accounting.Scope,

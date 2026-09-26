@@ -11,75 +11,93 @@ import { frontendCopy } from "@/lib/frontend-copy";
 const DocumentInbox = lazy(() =>
   import("@/components/document-inbox").then((module) => ({ default: module.DocumentInbox })),
 );
+
 const BankingWorkspace = lazy(() =>
   import("@/components/banking-workspace").then((module) => ({ default: module.BankingWorkspace })),
 );
+
 const PaymentAllocations = lazy(() =>
   import("@/components/commerce/allocations").then((module) => ({ default: module.Allocations })),
 );
+
 const CommerceAllocationReversals = lazy(() =>
   import("@/components/commerce/allocation-reversals").then((module) => ({
     default: module.CommerceAllocationReversals,
   })),
 );
+
 const Invoices = lazy(() =>
   import("@/components/commerce/invoices").then((module) => ({ default: module.Invoices })),
 );
+
 const SupplierInvoiceDrafts = lazy(() =>
   import("@/components/commerce/supplier-invoice-drafts").then((module) => ({
     default: module.SupplierInvoiceDrafts,
   })),
 );
+
 const SupplierPaymentFiles = lazy(() =>
   import("@/components/commerce/supplier-payment-files").then((module) => ({
     default: module.SupplierPaymentFiles,
   })),
 );
+
 const InvoiceDrafts = lazy(() =>
   import("@/components/commerce/invoice-draft-issue-overlay").then((module) => ({
     default: module.InvoiceDraftIssueOverlay,
   })),
 );
+
 const Counterparties = lazy(() =>
   import("@/components/commerce/counterparties").then((module) => ({
     default: module.Counterparties,
   })),
 );
+
 const StatementImports = lazy(() =>
   import("@/components/statement-imports").then((module) => ({ default: module.StatementImports })),
 );
+
 const ReportLibrary = lazy(() =>
   import("@/components/report-workspace").then((module) => ({ default: module.ReportLibrary })),
 );
+
 const TrialBalanceWorkspace = lazy(() =>
   import("@/components/report-workspace").then((module) => ({
     default: module.TrialBalanceWorkspace,
   })),
 );
+
 const ReportFamilyWorkspace = lazy(() =>
   import("@/components/report-workspace").then((module) => ({
     default: module.ReportFamilyWorkspace,
   })),
 );
+
 const RegisterReports = lazy(() =>
   import("@/components/commerce/register-reports").then((module) => ({
     default: module.RegisterReports,
   })),
 );
+
 const AccountantReviewPanel = lazy(() =>
   import("@/components/accountant-review/panel").then((module) => ({
     default: module.AccountantReviewPanel,
   })),
 );
+
 const ClosingWorkspace = lazy(() =>
   import("@/components/closing/workspace").then((module) => ({ default: module.ClosingWorkspace })),
 );
+
 const ExpenseTaxPanel = lazy(() =>
   import("@/components/expense-tax/panel").then((module) => ({ default: module.ExpenseTaxPanel })),
 );
+
 const VatReturnsPanel = lazy(() =>
   import("@/components/vat-returns/panel").then((module) => ({ default: module.VatReturnsPanel })),
 );
+
 const VatControlReclassificationPanel = lazy(() =>
   import("@/components/vat-returns/reclassification-panel").then((module) => ({
     default: module.VatControlReclassificationPanel,
@@ -91,26 +109,31 @@ const BankSourceCoveragePanel = lazy(() =>
     default: module.BankSourceCoveragePanel,
   })),
 );
+
 const BankMatchingWorkspace = lazy(() =>
   import("@/components/bank-match-candidates/workspace").then((module) => ({
     default: module.BankMatchingWorkspace,
   })),
 );
+
 const InvoiceIssuance = lazy(() =>
   import("@/components/commerce/invoice-issuance").then((module) => ({
     default: module.InvoiceIssuance,
   })),
 );
+
 const AssetWorkspace = lazy(() =>
   import("@/components/subledgers/workspace").then((module) => ({
     default: module.AssetWorkspace,
   })),
 );
+
 const ExchangeRateReviewsPanel = lazy(() =>
   import("@/components/exchange-rates/panel").then((module) => ({
     default: module.ExchangeRateReviewsPanel,
   })),
 );
+
 const trialBalanceModes = new Set(["trial", "ledger"]);
 
 function isTrialBalanceMode(value: string | undefined): value is "trial" | "ledger" {
@@ -136,12 +159,15 @@ export function FinanceArea({
   const selected = tabs.find((tab) => tab.key === view)?.key ?? tabs[0]?.key;
   const recordId = record ?? "";
   const base = `${workspacePath(book)}/${area}`;
+
   const onPrepared = (id: string) => {
     void navigate({ to: reviewPath(book, id) });
   };
+
   const onOpen = (id: string) => {
     void navigate({ to: base, search: { view: selected, record: id || undefined } });
   };
+
   return (
     <>
       <WorkspaceHeader
@@ -305,6 +331,7 @@ function ReportFamilyArea(props: {
   ) {
     return null;
   }
+
   return (
     <ReportFamilyWorkspace
       family={props.selected}
@@ -318,6 +345,7 @@ function SupplierPaymentFileArea(
   props: ComponentProps<typeof SupplierPaymentFiles> & { selected?: string },
 ) {
   if (props.selected !== "supplier-payment-files") return null;
+
   return <SupplierPaymentFiles book={props.book} locale={props.locale} recordId={props.recordId} />;
 }
 
@@ -329,7 +357,9 @@ function FinanceNavigation(props: {
 }) {
   if (props.area === "reports") return null;
   const tabs = areaTabs(props.area, props.locale);
+
   if (tabs.length < 2) return null;
+
   return (
     <PageTabs label={frontendCopy(props.locale)[props.area]}>
       {tabs.map((tab) => (
@@ -351,6 +381,7 @@ function areaTabs(
 ) {
   const copy = frontendCopy(locale);
   const sv = locale === "sv";
+
   return {
     accounts: [
       { key: "bank", label: copy.bank },

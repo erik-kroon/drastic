@@ -1,6 +1,8 @@
 import type * as Vat from "@open-erp/contracts/vat-returns";
 import type { Locale } from "@/paraglide/runtime";
+
 type Code = typeof Vat.VatBlocker.Type | (typeof Vat.VatCalculation.Type)["blockers"][number];
+
 const messages = {
   actual_profile_unapproved: [
     "Actual-company legal profile is not active.",
@@ -120,6 +122,7 @@ const messages = {
     "Exkluderade fakta finns kvar i ögonblicksbilden; delsumman är ofullständig.",
   ],
 } satisfies Record<Code, readonly [string, string]>;
+
 export function vatBlocker(code: Code, locale: Locale) {
   return messages[code][locale === "sv" ? 1 : 0];
 }

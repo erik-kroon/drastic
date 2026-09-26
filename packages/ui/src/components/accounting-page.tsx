@@ -203,9 +203,11 @@ const styles = stylex.create({
     "@media (pointer: coarse)": { minHeight: 44, fontSize: tokens.fontSizeBase },
   },
 });
+
 export function PageContent({ children }: { children: ReactNode }) {
   return <div {...stylex.props(styles.body)}>{children}</div>;
 }
+
 export function WorkspaceWelcome({ title, context }: { title: string; context: string }) {
   return (
     <div {...stylex.props(styles.welcome)}>
@@ -214,9 +216,11 @@ export function WorkspaceWelcome({ title, context }: { title: string; context: s
     </div>
   );
 }
+
 export function TaskColumns({ children }: { children: ReactNode }) {
   return <div {...stylex.props(styles.columns)}>{children}</div>;
 }
+
 export function TaskSection({
   title,
   action,
@@ -236,9 +240,11 @@ export function TaskSection({
     </section>
   );
 }
+
 export function TaskBand({ children }: { children: ReactNode }) {
   return <h3 {...stylex.props(styles.sectionLabel)}>{children}</h3>;
 }
+
 export function TaskRow(props: {
   href: string;
   icon: ReactNode;
@@ -258,6 +264,7 @@ export function TaskRow(props: {
     </Link>
   );
 }
+
 export function PageEmpty({
   title,
   detail,
@@ -275,12 +282,14 @@ export function PageEmpty({
     </div>
   );
 }
+
 export function PageAction({
   quiet = false,
   ...props
 }: ComponentProps<typeof Link> & { quiet?: boolean }) {
   return <Link {...props} {...stylex.props(styles.action, quiet && styles.quiet)} />;
 }
+
 export function RecordToggle({
   children,
   expanded,
@@ -297,6 +306,7 @@ export function RecordToggle({
     </button>
   );
 }
+
 export function RecordOpen({ children, ...props }: ComponentProps<"button">) {
   return (
     <button {...props} type="button" {...stylex.props(styles.record, styles.openRecord)}>
@@ -305,6 +315,7 @@ export function RecordOpen({ children, ...props }: ComponentProps<"button">) {
     </button>
   );
 }
+
 export function RegisterChoices({
   label,
   value,
@@ -332,12 +343,15 @@ export function RegisterChoices({
     </div>
   );
 }
+
 export function PageCaption(props: ComponentProps<"p">) {
   return <p {...props} {...stylex.props(styles.muted)} />;
 }
+
 export function RegisterFilters({ children }: { children: ReactNode }) {
   return <div {...stylex.props(styles.filters)}>{children}</div>;
 }
+
 export function RegisterSearch(props: Omit<ComponentProps<"input">, "style" | "className">) {
   return <input {...props} type="search" {...stylex.props(styles.search)} />;
 }

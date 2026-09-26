@@ -1,7 +1,9 @@
+import { admitLineOwner } from "../resource-admission";
+import { digest as digestNative, canonicalText as canonicalNative } from "../json";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Reversal from "@open-erp/contracts/commerce-allocation-reversals";
 import * as Effect from "effect/Effect";
-import { canonicalJson, digestJson, readInstant } from "../../db/commerce/access";
+import { readInstant } from "../../db/commerce/access";
 import * as AllocationDb from "../../db/commerce/allocations";
 import * as InvoiceDb from "../../db/commerce/invoices";
 import { lockBookForUpdate, readAccounts } from "../../db/posting";
@@ -29,42 +31,72 @@ import {
 } from "./support";
 
 const PlanSchema = Reversal.CommerceAllocationReversalPlan;
+
 const PrepareSchema = Reversal.PrepareCommerceAllocationReversal;
+
 const ApproveInputSchema = Reversal.ApproveCommerceAllocationReversal;
+
 const ExecuteInputSchema = Reversal.ExecuteCommerceAllocationReversal;
+
 const ApprovalSchema = Reversal.CommerceAllocationReversalApproval;
+
 const ExecutionSchema = Reversal.CommerceAllocationReversalExecution;
+
 const RevokeInputSchema = Reversal.RevokeCommerceAllocationReversalApproval;
+
 const RevocationSchema = Reversal.CommerceAllocationReversalRevocation;
+
 const ViewSchema = Reversal.CommerceAllocationReversalView;
+
 const ListSchema = Reversal.CommerceAllocationReversalList;
+
 const StatusSchema = Reversal.CommerceAllocationStatus;
+
 const RegisterStatusSchema = Reversal.CommerceRegisterAllocationStatus;
+
 const AllocationPlanSchema = Commerce.AllocationPlan;
+
 const AllocationReceiptSchema = Commerce.AllocationReceipt;
+
 const PaymentCapacitySchema = Commerce.PaymentCapacity;
+
 const AllocationApprovalSchema = Commerce.AllocationApproval;
+
 const ApproveAllocationInputSchema = Commerce.ApproveAllocation;
+
 const InvoiceSchema = Commerce.Invoice;
+
 const PrepareAllocationSchema = Commerce.PrepareAllocation;
+
 const ApplyAllocationSchema = Commerce.ApplyAllocation;
+
 const AllocationViewSchema = Commerce.AllocationView;
 
 const planBound = 50;
+
 const approvalBound = 50;
+
 const pageSize = 25;
+
 const identifier = /^[a-z][a-z0-9_-]{2,127}$/u;
+
 const expectedDependencies = new Set([
   "StaleDependency",
   "PeriodLocked",
   "UnsupportedProfile",
   "NotFound",
 ]);
+
 const snapshotBytes = 262144;
+
 const prepareFields = ["receiptId", "reason"] as const;
+
 const approveFields = ["digest", "version"] as const;
+
 const executeFields = ["approvalId", "digest", "version"] as const;
+
 const revokeFields = ["reason"] as const;
+
 const prepareAllocationFields = [
   "allocations",
   "evidenceId",
@@ -72,16 +104,20 @@ const prepareAllocationFields = [
   "rationale",
   "voucherId",
 ] as const;
+
 const applyAllocationFields = ["approvalId", "planDigest", "version"] as const;
+
 const allocationLegFields = ["amountMinor", "invoiceId"] as const;
+
 const syntheticProfile = "synthetic-core-v1";
+
 const nativeAuthority = "native";
 
 type AllocationPlan = typeof Commerce.AllocationPlan.Type;
 
-function sameJson(transaction: Transaction, left: JsonObject, right: JsonObject) {
-  return Effect.all([canonicalJson(transaction, left), canonicalJson(transaction, right)]).pipe(
-    Effect.map(([first, second]) => first[0]?.text === second[0]?.text),
+function sameJson(left: JsonObject, right: JsonObject) {
+  return Effect.all([canonicalNative(left), canonicalNative(right)]).pipe(
+    Effect.map(([first, second]) => first === second),
   );
 }
 
@@ -115,6 +151,7 @@ function retainedNow(transaction: Transaction) {
   return readInstant(transaction).pipe(
     Effect.flatMap((rows) => {
       const instant = rows[0]?.instant;
+
       return instant === undefined ? failure("InternalError") : Effect.succeed(instant);
     }),
   );
@@ -124,6 +161,7 @@ function requireBook(book: AllocationDb.BookAuthorityRow) {
   if (book.profile !== syntheticProfile || book.authority !== nativeAuthority) {
     return unsupported();
   }
+
   return Effect.void;
 }
 
@@ -137,9 +175,12 @@ function requirePaymentCapacity(payment: AllocationDb.PaymentRow) {
   ) {
     return failure("InvalidJournal");
   }
+
   if (payment.reserved) return failure("StaleDependency");
   const amount = BigInt(payment.debitMinor) + BigInt(payment.creditMinor);
+
   if (BigInt(payment.allocatedMinor) > amount) return failure("StaleDependency");
+
   return Effect.succeed({
     voucherId: payment.voucherId,
     lineId: payment.lineId,
@@ -157,7 +198,9 @@ function paymentCapacityView(
 ) {
   return Effect.gen(function* () {
     const totals = yield* requirePaymentCapacity(payment);
+
     if (payment.direction === null) return yield* failure("InvalidJournal");
+
     return yield* decode(PaymentCapacitySchema, {
       scope,
       direction: payment.direction,
@@ -182,6 +225,7 @@ function requireAppliedAllocation(
     const plan = yield* decode(AllocationPlanSchema, row.plan);
     yield* decode(AllocationApprovalSchema, approval.body);
     const planned = plan.legs;
+
     if (
       legs.length === 0 ||
       legs.length > planBound ||
@@ -193,8 +237,10 @@ function requireAppliedAllocation(
     ) {
       return yield* failure("InvalidJournal");
     }
+
     for (const [index, leg] of legs.entries()) {
       const plannedLeg = planned[index];
+
       if (
         !plannedLeg ||
         plannedLeg.invoiceId !== leg.invoiceId ||
@@ -206,6 +252,7 @@ function requireAppliedAllocation(
         return yield* failure("InvalidJournal");
       }
     }
+
     return { receipt, plan };
   });
 }
@@ -222,25 +269,33 @@ function reversalSnapshot(
       scope.bookId,
       receiptId,
     );
+
     const row = receipts[0];
+
     if (!row) return yield* failure("NotFound");
     const reversed = yield* AllocationDb.readReversedReceipt(transaction, scope.bookId, receiptId);
+
     if (reversed[0]?.present === true) return yield* failure("StaleDependency");
     const legs = yield* AllocationDb.readAllocationLegs(transaction, scope.bookId, receiptId);
+
     const approvals = yield* AllocationDb.readAllocationApproval(
       transaction,
       scope.bookId,
       row.approvalId,
     );
+
     const approval = approvals[0];
+
     if (!approval) return yield* failure("NotFound");
     const plan = yield* decode(AllocationPlanSchema, row.plan);
+
     const paymentRows = yield* AllocationDb.readPaymentCapacity(
       transaction,
       scope.bookId,
       plan.payment.voucherId,
       plan.payment.lineId,
     );
+
     const applied = yield* requireAppliedAllocation(
       row,
       legs,
@@ -248,9 +303,12 @@ function reversalSnapshot(
       plan.payment.voucherId,
       plan.payment.lineId,
     );
+
     const paymentRow = paymentRows[0];
+
     if (!paymentRow) return yield* failure("NotFound");
     const payment = yield* paymentCapacityView(book, scope, paymentRow);
+
     const invoices = yield* Effect.forEach(legs, (leg) =>
       Effect.gen(function* () {
         const live = (yield* InvoiceDb.readLiveInvoice(
@@ -258,10 +316,13 @@ function reversalSnapshot(
           scope.bookId,
           leg.invoiceId,
         ))[0];
+
         if (!live) return yield* failure("NotFound");
+
         if (live.status === "blocked" || BigInt(live.allocatedMinor) < BigInt(leg.amountMinor)) {
           return yield* failure("StaleDependency");
         }
+
         return {
           invoice: yield* decode(InvoiceSchema, live.body),
           releasedMinor: leg.amountMinor,
@@ -271,28 +332,36 @@ function reversalSnapshot(
         };
       }),
     );
+
     const periodRows = yield* AllocationDb.readAffectedPeriods(
       transaction,
       scope.bookId,
       receiptId,
       applied.plan.payment.voucherId,
     );
+
     const periods = periodRows;
+
     if (periods.length === 0 || periods.some((period) => period.locked)) {
       return yield* failure("PeriodLocked");
     }
+
     const account = (yield* AllocationDb.readAccountAuthority(
       transaction,
       scope.bookId,
       payment.accountId,
     ))[0];
+
     if (!account?.active) return yield* failure("StaleDependency");
+
     const overallocated = yield* AllocationDb.readOverAllocatedInvoice(
       transaction,
       scope.bookId,
       legs.map((leg) => leg.invoiceId),
     );
+
     if (overallocated[0]?.present === true) return yield* failure("InvalidJournal");
+
     return {
       original: applied.receipt,
       originalPlan: applied.plan,
@@ -329,20 +398,25 @@ function currentReversalPlan(
   return Effect.gen(function* () {
     const rows = yield* AllocationDb.readReversalPlan(transaction, scope.bookId, id);
     const row = rows[0];
+
     if (!row) return yield* failure("NotFound");
     const plan = yield* decode(PlanSchema, row.body);
+
     if (input.digest !== plan.digest) return yield* failure("StaleDependency");
     const books = yield* AllocationDb.readBookAuthority(transaction, scope.bookId);
     const book = books[0];
+
     if (!book) return yield* failure("Forbidden");
     yield* requireBook(book);
     const snapshot = yield* reversalSnapshot(transaction, scope, book, row.receiptId);
+
     const unchanged = yield* sameJson(
-      transaction,
       yield* toJsonObject(snapshot),
       yield* toJsonObject(plan.snapshot),
     );
+
     if (!unchanged) return yield* failure("StaleDependency");
+
     return { row, plan, book };
   });
 }
@@ -362,6 +436,7 @@ export const approveAllocation = Effect.fn("commerce.allocation.approve")(functi
     true,
     function* (transaction, principal) {
       const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -371,36 +446,47 @@ export const approveAllocation = Effect.fn("commerce.allocation.approve")(functi
         replayInput,
         AllocationApprovalSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireTableAccess(transaction, AllocationDb.allocationTables, false);
       yield* requireInsertAccess(transaction, ["commerce_allocation_approvals"]);
       yield* lockBookForUpdate(transaction, command.scope);
       yield* exactKeys(yield* toJsonObject(command.input), approveFields);
       const input = yield* decode(ApproveAllocationInputSchema, command.input);
+
       const plans = yield* AllocationDb.readPlanForReceipt(
         transaction,
         command.scope.bookId,
         command.id,
       );
+
       const plan = plans[0];
+
       if (!plan) return yield* failure("NotFound");
+
       if (input.planDigest !== textField(plan.body, "digest"))
         return yield* failure("StaleDependency");
       const books = yield* AllocationDb.readBookAuthority(transaction, command.scope.bookId);
       const book = books[0];
+
       if (!book) return yield* failure("Forbidden");
       yield* requireBook(book);
+
       const accounts = yield* readAccounts(transaction, command.scope.bookId, [
         textField(objectField(plan.body, "payment"), "accountId") ?? "",
       ]);
+
       if (accounts[0]?.active !== true) return yield* failure("StaleDependency");
+
       const applied = yield* AllocationDb.readAllocationApplication(
         transaction,
         command.scope.bookId,
         command.id,
       );
+
       if (applied[0]?.present === true) return yield* failure("IdempotencyConflict");
       const expiresAt = yield* approvalExpiry(transaction);
+
       const result = yield* decode(AllocationApprovalSchema, {
         id: newId("allocation_approval"),
         planId: command.id,
@@ -413,6 +499,7 @@ export const approveAllocation = Effect.fn("commerce.allocation.approve")(functi
           principal.actorId,
         ),
       });
+
       yield* AllocationDb.insertAllocationApproval(transaction, {
         bookId: command.scope.bookId,
         id: result.id,
@@ -431,6 +518,7 @@ export const approveAllocation = Effect.fn("commerce.allocation.approve")(functi
         principal.actorId,
         yield* toJsonObject(result),
       );
+
       return result;
     },
     "update",
@@ -460,23 +548,28 @@ export const prepareAllocationReversal = Effect.fn("commerce.allocationReversal.
           command.input,
           PlanSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireTableAccess(transaction, AllocationDb.allocationTables, false);
         yield* requireInsertAccess(transaction, ["commerce_allocation_reversal_plans"]);
         const books = yield* AllocationDb.readBookAuthority(transaction, command.scope.bookId);
         const book = books[0];
+
         if (!book) return yield* failure("Forbidden");
         yield* requireBook(book);
         yield* lockBookForUpdate(transaction, command.scope);
         yield* exactKeys(yield* toJsonObject(command.input), prepareFields);
         const input = yield* decode(PrepareSchema, command.input);
+
         const counts = yield* AllocationDb.readReversalPlanCount(
           transaction,
           command.scope.bookId,
           input.receiptId,
         );
+
         if ((counts[0]?.count ?? 0) >= planBound) return yield* unsupported();
         const snapshot = yield* reversalSnapshot(transaction, command.scope, book, input.receiptId);
+
         const withoutDigest: JsonObject = {
           id: newId("unallocation"),
           version: 1,
@@ -494,10 +587,10 @@ export const prepareAllocationReversal = Effect.fn("commerce.allocationReversal.
             principal.actorId,
           ),
         };
-        const digests = yield* digestJson(transaction, withoutDigest);
-        const digest = digests[0]?.digest;
-        if (digest === undefined) return yield* failure("InternalError");
+
+        const digest = yield* digestNative(withoutDigest);
         const body: JsonObject = Object.assign({}, withoutDigest, { digest });
+
         if (JSON.stringify(body).length > snapshotBytes) return yield* unsupported();
         const result = yield* decode(PlanSchema, body);
         yield* AllocationDb.insertReversalPlan(transaction, {
@@ -515,6 +608,7 @@ export const prepareAllocationReversal = Effect.fn("commerce.allocationReversal.
           principal.actorId,
           result,
         );
+
         return result;
       },
       "update",
@@ -538,6 +632,7 @@ export const approveAllocationReversal = Effect.fn("commerce.allocationReversal.
       true,
       function* (transaction, principal) {
         const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -547,6 +642,7 @@ export const approveAllocationReversal = Effect.fn("commerce.allocationReversal.
           replayInput,
           ApprovalSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireTableAccess(transaction, AllocationDb.allocationTables, false);
         yield* requireInsertAccess(transaction, ["commerce_allocation_reversal_approvals"]);
@@ -554,13 +650,16 @@ export const approveAllocationReversal = Effect.fn("commerce.allocationReversal.
         yield* exactKeys(yield* toJsonObject(command.input), approveFields);
         const input = yield* decode(ApproveInputSchema, command.input);
         yield* currentReversalPlan(transaction, command.scope, command.id, input);
+
         const counts = yield* AllocationDb.readReversalApprovalCount(
           transaction,
           command.scope.bookId,
           command.id,
         );
+
         if ((counts[0]?.count ?? 0) >= approvalBound) return yield* unsupported();
         const expiresAt = yield* approvalExpiry(transaction);
+
         const result = yield* decode(ApprovalSchema, {
           ...input,
           id: newId("unallocationapproval"),
@@ -573,6 +672,7 @@ export const approveAllocationReversal = Effect.fn("commerce.allocationReversal.
             principal.actorId,
           ),
         });
+
         yield* AllocationDb.insertReversalApproval(transaction, {
           bookId: command.scope.bookId,
           id: result.id,
@@ -590,6 +690,7 @@ export const approveAllocationReversal = Effect.fn("commerce.allocationReversal.
           principal.actorId,
           yield* toJsonObject(result),
         );
+
         return result;
       },
       "update",
@@ -613,6 +714,7 @@ export const executeAllocationReversal = Effect.fn("commerce.allocationReversal.
       false,
       function* (transaction, principal) {
         const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -622,30 +724,38 @@ export const executeAllocationReversal = Effect.fn("commerce.allocationReversal.
           replayInput,
           ExecutionSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireTableAccess(transaction, AllocationDb.allocationTables, false);
         yield* requireInsertAccess(transaction, ["commerce_allocation_reversals"]);
         yield* lockBookForUpdate(transaction, command.scope);
         yield* exactKeys(yield* toJsonObject(command.input), executeFields);
         const input = yield* decode(ExecuteInputSchema, command.input);
+
         const plans = yield* AllocationDb.readReversalPlan(
           transaction,
           command.scope.bookId,
           command.id,
         );
+
         const planRow = plans[0];
+
         if (!planRow) return yield* failure("NotFound");
         const plan = yield* decode(PlanSchema, planRow.body);
+
         if (input.digest !== plan.digest) return yield* failure("StaleDependency");
+
         const executed = (yield* AllocationDb.readExecutionForPlan(
           transaction,
           command.scope.bookId,
           command.id,
         ))[0];
+
         if (executed) {
           if (textField(executed.body, "approvalId") !== input.approvalId) {
             return yield* failure("ApprovalRequired");
           }
+
           const recovered = yield* decode(ExecutionSchema, executed.body);
           yield* saveCommand(
             transaction,
@@ -656,16 +766,21 @@ export const executeAllocationReversal = Effect.fn("commerce.allocationReversal.
             principal.actorId,
             yield* toJsonObject(recovered),
           );
+
           return recovered;
         }
+
         yield* currentReversalPlan(transaction, command.scope, command.id, input);
+
         const approval = (yield* AllocationDb.readUsableReversalApproval(
           transaction,
           command.scope.bookId,
           command.id,
           input.approvalId,
         ))[0];
+
         const now = yield* retainedNow(transaction);
+
         if (
           !approval ||
           approval.expiresAt <= now ||
@@ -675,6 +790,7 @@ export const executeAllocationReversal = Effect.fn("commerce.allocationReversal.
         ) {
           return yield* failure("ApprovalRequired");
         }
+
         const result = yield* decode(ExecutionSchema, {
           version: 1,
           digest: input.digest,
@@ -694,6 +810,7 @@ export const executeAllocationReversal = Effect.fn("commerce.allocationReversal.
             principal.actorId,
           ),
         });
+
         yield* AllocationDb.insertExecution(transaction, {
           bookId: command.scope.bookId,
           planId: command.id,
@@ -710,6 +827,7 @@ export const executeAllocationReversal = Effect.fn("commerce.allocationReversal.
           principal.actorId,
           yield* toJsonObject(result),
         );
+
         return result;
       },
       "update",
@@ -733,6 +851,7 @@ export const revokeAllocationReversalApproval = Effect.fn("commerce.allocationRe
       true,
       function* (transaction, principal) {
         const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -742,26 +861,32 @@ export const revokeAllocationReversalApproval = Effect.fn("commerce.allocationRe
           replayInput,
           RevocationSchema,
         );
+
         if (request.previous) return request.previous;
         yield* requireTableAccess(transaction, AllocationDb.allocationTables, false);
         yield* requireInsertAccess(transaction, ["commerce_allocation_reversal_revocations"]);
         yield* lockBookForUpdate(transaction, command.scope);
         yield* exactKeys(yield* toJsonObject(command.input), revokeFields);
         const input = yield* decode(RevokeInputSchema, command.input);
+
         const approval = (yield* AllocationDb.readReversalApprovalById(
           transaction,
           command.scope.bookId,
           command.id,
         ))[0];
+
         if (!approval) return yield* failure("NotFound");
+
         const executed = yield* AllocationDb.readExecutionForApproval(
           transaction,
           command.scope.bookId,
           command.id,
         );
+
         if (executed[0]?.present === true || approval.revoked === true) {
           return yield* failure("ApprovalRequired");
         }
+
         const result = yield* decode(RevocationSchema, {
           approvalId: command.id,
           reason: input.reason,
@@ -773,6 +898,7 @@ export const revokeAllocationReversalApproval = Effect.fn("commerce.allocationRe
             principal.actorId,
           ),
         });
+
         yield* AllocationDb.insertRevocation(transaction, {
           bookId: command.scope.bookId,
           approvalId: command.id,
@@ -787,6 +913,7 @@ export const revokeAllocationReversalApproval = Effect.fn("commerce.allocationRe
           principal.actorId,
           yield* toJsonObject(result),
         );
+
         return result;
       },
       "update",
@@ -802,19 +929,24 @@ export const getAllocationReversal = Effect.fn("commerce.allocationReversal.get"
     yield* requireTableAccess(transaction, AllocationDb.allocationTables, false);
     const rows = yield* AllocationDb.readReversalPlan(transaction, input.scope.bookId, input.id);
     const row = rows[0];
+
     if (!row) return yield* failure("NotFound");
     const plan = yield* decode(PlanSchema, row.body);
+
     const execution = (yield* AllocationDb.readExecutionForPlan(
       transaction,
       input.scope.bookId,
       input.id,
     ))[0];
+
     const approvals = yield* AllocationDb.readReversalApprovals(
       transaction,
       input.scope.bookId,
       input.id,
     );
+
     const now = yield* retainedNow(transaction);
+
     const decodedApprovals = yield* Effect.forEach(approvals, (approval) =>
       Effect.gen(function* () {
         const revocation = yield* AllocationDb.readRevocation(
@@ -822,6 +954,7 @@ export const getAllocationReversal = Effect.fn("commerce.allocationReversal.get"
           input.scope.bookId,
           approval.id,
         );
+
         return {
           approval: yield* decode(ApprovalSchema, approval.body),
           revocation:
@@ -831,6 +964,7 @@ export const getAllocationReversal = Effect.fn("commerce.allocationReversal.get"
         };
       }),
     );
+
     const usable = approvals.filter(
       (approval) =>
         approval.operator === true &&
@@ -838,6 +972,7 @@ export const getAllocationReversal = Effect.fn("commerce.allocationReversal.get"
         approval.expiresAt > now &&
         execution === undefined,
     );
+
     const dependenciesCurrent =
       execution === undefined
         ? yield* Effect.gen(function* () {
@@ -845,10 +980,11 @@ export const getAllocationReversal = Effect.fn("commerce.allocationReversal.get"
               transaction,
               input.scope.bookId,
             ))[0];
+
             if (!book) return false;
             const snapshot = yield* reversalSnapshot(transaction, input.scope, book, row.receiptId);
+
             return yield* sameJson(
-              transaction,
               yield* toJsonObject(snapshot),
               yield* toJsonObject(plan.snapshot),
             );
@@ -860,6 +996,7 @@ export const getAllocationReversal = Effect.fn("commerce.allocationReversal.get"
             ),
           )
         : false;
+
     return yield* decode(ViewSchema, {
       plan,
       approval:
@@ -879,20 +1016,25 @@ export const listAllocationReversals = Effect.fn("commerce.allocationReversal.li
 ) {
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, AllocationDb.allocationTables, false);
+
     if (input.after !== "" && !identifier.test(input.after)) {
       return yield* failure("InvalidJournal");
     }
+
     const rows = yield* AllocationDb.readReversalPage(
       transaction,
       input.scope.bookId,
       input.after,
       pageSize + 1,
     );
+
     const page = rows.slice(0, pageSize);
+
     return yield* decode(ListSchema, {
       items: yield* Effect.forEach(page, (row) =>
         Effect.gen(function* () {
           const plan = yield* decode(PlanSchema, row.body);
+
           return {
             id: plan.id,
             receiptId: row.receiptId,
@@ -914,18 +1056,23 @@ export const getAllocationStatus = Effect.fn("commerce.allocationReversal.status
 ) {
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, AllocationDb.allocationTables, false);
+
     const receipts = yield* AllocationDb.readAllocationReceipt(
       transaction,
       input.scope.bookId,
       input.id,
     );
+
     const row = receipts[0];
+
     if (!row) return yield* failure("NotFound");
+
     const plans = yield* AllocationDb.readReversalPlanSummaries(
       transaction,
       input.scope.bookId,
       input.id,
     );
+
     const decoded = yield* Effect.forEach(plans, (entry) =>
       decode(PlanSchema, entry.body).pipe(
         Effect.map((plan) => ({
@@ -935,11 +1082,13 @@ export const getAllocationStatus = Effect.fn("commerce.allocationReversal.status
         })),
       ),
     );
+
     const execution = (yield* AllocationDb.readExecutionForReceipt(
       transaction,
       input.scope.bookId,
       input.id,
     ))[0];
+
     return yield* decode(StatusSchema, {
       original: yield* decode(AllocationReceiptSchema, row.body),
       active: execution === undefined,
@@ -961,29 +1110,37 @@ export const getRegisterAllocationStatus = Effect.fn("commerce.allocationReversa
         ],
         false,
       );
+
       const reports = yield* AllocationDb.readRegisterSnapshot(
         transaction,
         input.scope.bookId,
         input.id,
       );
+
       const report = reports[0];
+
       if (!report) return yield* failure("NotFound");
       const asOf = textField(report.body, "asOfDate");
+
       if (asOf === undefined) return yield* failure("InvalidJournal");
       const captured = isJsonArray(report.body.allocations) ? report.body.allocations : [];
+
       const agreement = yield* AllocationDb.readRegisterAllocationAgreement(
         transaction,
         input.scope.bookId,
         asOf,
         captured,
       );
+
       let basisCurrent: boolean;
+
       if (report.historyVersion !== null) {
         const history = yield* AllocationDb.readAllocationHistoryVersion(
           transaction,
           input.scope.bookId,
           asOf,
         );
+
         basisCurrent = history[0]?.version === report.historyVersion;
       } else {
         const untouched = yield* AllocationDb.readPreCaptureReversalAgreement(
@@ -991,8 +1148,10 @@ export const getRegisterAllocationStatus = Effect.fn("commerce.allocationReversa
           input.scope.bookId,
           asOf,
         );
+
         basisCurrent = untouched[0]?.untouched === true;
       }
+
       return yield* decode(RegisterStatusSchema, {
         reportId: input.id,
         allocationDependenciesCurrent: basisCurrent && agreement[0]?.current === true,
@@ -1009,17 +1168,22 @@ export const getPaymentCapacity = Effect.fn("commerce.allocation.capacity")(func
 ) {
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, AllocationDb.allocationTables, false);
+
     const rows = yield* AllocationDb.readPaymentCapacity(
       transaction,
       input.scope.bookId,
       input.voucherId,
       input.lineId,
     );
+
     const payment = rows[0];
+
     if (!payment) return yield* failure("NotFound");
     const books = yield* AllocationDb.readBookAuthority(transaction, input.scope.bookId);
     const book = books[0];
+
     if (!book) return yield* failure("Forbidden");
+
     return yield* paymentCapacityView(book, input.scope, payment);
   });
 });
@@ -1032,45 +1196,59 @@ function allocationSelection(
 ) {
   return Effect.gen(function* () {
     yield* requireBook(book);
+
     const rows = yield* AllocationDb.readPaymentCapacity(
       transaction,
       scope.bookId,
       input.voucherId,
       input.lineId,
     );
+
     const row = rows[0];
+
     if (!row) return yield* failure("NotFound");
     const payment = yield* paymentCapacityView(book, scope, row);
     const evidence = yield* readEvidenceReference(transaction, scope.bookId, input.evidenceId);
+
     const accounts = yield* AllocationDb.readAccountAuthority(
       transaction,
       scope.bookId,
       payment.accountId,
     );
+
     const account = accounts[0];
+
     if (!account?.active) return yield* failure("StaleDependency");
+
     const vouchers = yield* AllocationDb.readPaymentVoucher(
       transaction,
       scope.bookId,
       payment.voucherId,
     );
+
     const voucher = vouchers[0];
+
     if (!voucher || voucher.periodLocked) return yield* failure("PeriodLocked");
     let counterpartyId: string | null = null;
     let total = 0n;
     const legs: Array<JsonObject> = [];
+
     for (const allocation of input.allocations) {
       yield* exactKeys(yield* toJsonObject(allocation), allocationLegFields);
       const amount = BigInt(allocation.amountMinor);
+
       const live = (yield* InvoiceDb.readLiveInvoice(
         transaction,
         scope.bookId,
         allocation.invoiceId,
       ))[0];
+
       if (!live) return yield* failure("NotFound");
       const invoice = yield* decode(InvoiceSchema, live.body);
       const outstanding = invoice.outstandingMinor;
+
       if (outstanding === null) return yield* failure("InvalidJournal");
+
       if (
         invoice.status === "blocked" ||
         invoice.direction !== payment.direction ||
@@ -1081,8 +1259,11 @@ function allocationSelection(
       ) {
         return yield* failure("InvalidJournal");
       }
+
       if (counterpartyId === null) counterpartyId = invoice.counterpartyId;
+
       if (counterpartyId !== invoice.counterpartyId) return yield* failure("InvalidJournal");
+
       if (amount > BigInt(outstanding)) return yield* failure("StaleDependency");
       total += amount;
       legs.push({
@@ -1099,7 +1280,9 @@ function allocationSelection(
         outstandingAfterMinor: (BigInt(outstanding) - amount).toString(),
       });
     }
+
     if (total > BigInt(payment.remainingMinor)) return yield* failure("StaleDependency");
+
     return {
       profileVersion: book.profileVersion,
       writerEpoch: book.writerEpoch,
@@ -1122,8 +1305,10 @@ function currentAllocation(
   plan: AllocationPlan,
 ) {
   return Effect.gen(function* () {
-    const digests = yield* digestJson(transaction, yield* toJsonObject(planBody(plan)));
-    if (digests[0]?.digest !== plan.digest) return false;
+    const digests = yield* digestNative(yield* toJsonObject(planBody(plan)));
+
+    if (digests !== plan.digest) return false;
+
     const current = yield* allocationSelection(transaction, scope, book, {
       voucherId: plan.payment.voucherId,
       lineId: plan.payment.lineId,
@@ -1134,7 +1319,8 @@ function currentAllocation(
         amountMinor: leg.amountMinor,
       })),
     });
-    return yield* sameJson(transaction, current, yield* toJsonObject(planSelection(plan)));
+
+    return yield* sameJson(current, yield* toJsonObject(planSelection(plan)));
   });
 }
 
@@ -1160,17 +1346,20 @@ export const prepareAllocation = Effect.fn("commerce.allocation.prepare")(functi
         command.input,
         AllocationPlanSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireTableAccess(transaction, AllocationDb.allocationTables, false);
       yield* requireInsertAccess(transaction, ["commerce_allocation_plans"]);
       const books = yield* AllocationDb.readBookAuthority(transaction, command.scope.bookId);
       const book = books[0];
+
       if (!book) return yield* failure("Forbidden");
       yield* lockBookForUpdate(transaction, command.scope);
       yield* exactKeys(yield* toJsonObject(command.input), prepareAllocationFields);
       const input = yield* decode(PrepareAllocationSchema, command.input);
       yield* requireText(input.rationale, 2000);
       const selection = yield* allocationSelection(transaction, command.scope, book, input);
+
       const withoutDigest: JsonObject = {
         ...selection,
         id: newId("allocation"),
@@ -1183,13 +1372,14 @@ export const prepareAllocation = Effect.fn("commerce.allocation.prepare")(functi
           principal.actorId,
         ),
       };
-      const digests = yield* digestJson(transaction, withoutDigest);
-      const digest = digests[0]?.digest;
-      if (digest === undefined) return yield* failure("InternalError");
+
+      const digest = yield* digestNative(withoutDigest);
+
       const result = yield* decode(
         AllocationPlanSchema,
         Object.assign({}, withoutDigest, { digest }),
       );
+
       yield* AllocationDb.insertAllocationPlan(transaction, {
         bookId: command.scope.bookId,
         id: result.id,
@@ -1204,6 +1394,7 @@ export const prepareAllocation = Effect.fn("commerce.allocation.prepare")(functi
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -1218,26 +1409,32 @@ export const getAllocation = Effect.fn("commerce.allocation.get")(function* (
     yield* requireTableAccess(transaction, AllocationDb.allocationTables, false);
     const plans = yield* AllocationDb.readPlanForReceipt(transaction, input.scope.bookId, input.id);
     const stored = plans[0]?.body;
+
     if (stored === undefined) return yield* failure("NotFound");
     const plan = yield* decode(AllocationPlanSchema, stored);
     const books = yield* AllocationDb.readBookAuthority(transaction, input.scope.bookId);
     const book = books[0];
+
     if (!book) return yield* failure("Forbidden");
+
     const dependenciesCurrent = yield* currentAllocation(transaction, input.scope, book, plan).pipe(
       Effect.catch((error) =>
         error instanceof Accounting.AccountingError ? Effect.succeed(false) : Effect.fail(error),
       ),
     );
+
     const approvals = yield* AllocationDb.readLatestAllocationApproval(
       transaction,
       input.scope.bookId,
       input.id,
     );
+
     const receipts = yield* AllocationDb.readAllocationReceiptForPlan(
       transaction,
       input.scope.bookId,
       input.id,
     );
+
     return yield* decode(AllocationViewSchema, {
       plan,
       dependenciesCurrent,
@@ -1266,6 +1463,7 @@ export const applyAllocation = Effect.fn("commerce.allocation.apply")(function* 
     false,
     function* (transaction, principal) {
       const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -1275,6 +1473,7 @@ export const applyAllocation = Effect.fn("commerce.allocation.apply")(function* 
         replayInput,
         AllocationReceiptSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireTableAccess(transaction, AllocationDb.allocationTables, false);
       yield* requireInsertAccess(transaction, [
@@ -1284,38 +1483,50 @@ export const applyAllocation = Effect.fn("commerce.allocation.apply")(function* 
       yield* lockBookForUpdate(transaction, command.scope);
       yield* exactKeys(yield* toJsonObject(command.input), applyAllocationFields);
       const input = yield* decode(ApplyAllocationSchema, command.input);
+
       const plans = yield* AllocationDb.readPlanForReceipt(
         transaction,
         command.scope.bookId,
         command.id,
       );
+
       const stored = plans[0]?.body;
+
       if (stored === undefined) return yield* failure("NotFound");
+
       const applied = yield* AllocationDb.readAllocationApplication(
         transaction,
         command.scope.bookId,
         command.id,
       );
+
       if (applied[0]?.present === true) return yield* failure("IdempotencyConflict");
       const plan = yield* decode(AllocationPlanSchema, stored);
       const books = yield* AllocationDb.readBookAuthority(transaction, command.scope.bookId);
       const book = books[0];
+
       if (!book) return yield* failure("Forbidden");
+
       if (input.planDigest !== plan.digest) return yield* failure("StaleDependency");
+
       if (!(yield* currentAllocation(transaction, command.scope, book, plan))) {
         return yield* failure("StaleDependency");
       }
+
       const approvals = yield* AllocationDb.readAllocationApproval(
         transaction,
         command.scope.bookId,
         input.approvalId,
       );
+
       const approval = approvals[0];
+
       const consumed = yield* AllocationDb.readAllocationReceiptForApproval(
         transaction,
         command.scope.bookId,
         input.approvalId,
       );
+
       if (
         !approval ||
         approval.planId !== command.id ||
@@ -1325,13 +1536,16 @@ export const applyAllocation = Effect.fn("commerce.allocation.apply")(function* 
       ) {
         return yield* failure("ApprovalRequired");
       }
+
       const operator = yield* AllocationDb.readOperatorMembership(
         transaction,
         command.scope.bookId,
         approval.actorId,
       );
+
       if (operator[0]?.present !== true) return yield* failure("ApprovalRequired");
       const id = newId("allocation_receipt");
+
       const result = yield* decode(AllocationReceiptSchema, {
         id,
         scope: command.scope,
@@ -1347,6 +1561,14 @@ export const applyAllocation = Effect.fn("commerce.allocation.apply")(function* 
           principal.actorId,
         ),
       });
+
+      yield* admitLineOwner(
+        transaction,
+        command.scope.bookId,
+        plan.payment.voucherId,
+        plan.payment.lineId,
+        "commerce",
+      );
       yield* AllocationDb.insertAllocationReceipt(transaction, {
         bookId: command.scope.bookId,
         id,
@@ -1374,6 +1596,7 @@ export const applyAllocation = Effect.fn("commerce.allocation.apply")(function* 
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",

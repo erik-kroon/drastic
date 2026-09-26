@@ -23,6 +23,7 @@ export function RecurringPreparation(props: {
   const [ruleId, setRuleId] = useState<string | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [inputError, setInputError] = useState("");
+
   return (
     <details open={props.open} id="recurring-preparation" tabIndex={-1}>
       <summary>{copy.auto_title}</summary>
@@ -41,10 +42,13 @@ export function RecurringPreparation(props: {
           onSubmit={(event) => {
             event.preventDefault();
             const id = new FormData(event.currentTarget).get("ruleId");
+
             if (!Schema.is(Accounting.Identifier)(id)) {
               setInputError(copy.journal_invalid);
+
               return;
             }
+
             setInputError("");
             setRuleId(id);
           }}
@@ -77,10 +81,13 @@ export function RecurringPreparation(props: {
           onSubmit={(event) => {
             event.preventDefault();
             const id = new FormData(event.currentTarget).get("runId");
+
             if (!Schema.is(Accounting.Identifier)(id)) {
               setInputError(copy.journal_invalid);
+
               return;
             }
+
             setInputError("");
             setRunId(id);
           }}

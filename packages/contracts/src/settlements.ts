@@ -11,12 +11,14 @@ export const AllocationLeg = Schema.Struct({
   lineId: Accounting.Identifier,
   amountMinor: Schema.String.check(Schema.isPattern(/^-?[1-9][0-9]{0,37}$/)),
 });
+
 export const PrepareBankAllocation = Schema.Struct({
   accountId: Accounting.Identifier,
   reason: Accounting.Description,
   ambiguityAcknowledged: Schema.Literal(true),
   legs: Schema.Array(AllocationLeg).check(Schema.isMinLength(1), Schema.isMaxLength(100)),
 });
+
 export const AllocationVersions = Schema.Struct({
   profileVersion: Accounting.MinorUnits,
   writerEpoch: Accounting.MinorUnits,
@@ -24,6 +26,7 @@ export const AllocationVersions = Schema.Struct({
   sourceRevision: Accounting.MinorUnits,
   accountLedgerSequence: Accounting.MinorUnits,
 });
+
 export const AllocationCapacity = Schema.Struct({
   leg: AllocationLeg,
   sourceAmountMinor: Accounting.SignedMinorUnits,
@@ -38,6 +41,7 @@ export const AllocationCapacity = Schema.Struct({
   postedOn: Accounting.AccountingDate,
   candidateCount: Schema.Int,
 });
+
 export const BankAllocationPlan = Schema.Struct({
   id: Accounting.Identifier,
   version: Schema.Literal(1),
@@ -54,10 +58,12 @@ export const BankAllocationPlan = Schema.Struct({
   digest: Accounting.Digest,
   receipt: Bank.CommandReceipt,
 });
+
 export const ApproveBankAllocation = Schema.Struct({
   digest: Accounting.Digest,
   version: Schema.Literal(1),
 });
+
 export const BankAllocationApproval = Schema.Struct({
   ...ApproveBankAllocation.fields,
   id: Accounting.Identifier,
@@ -66,15 +72,18 @@ export const BankAllocationApproval = Schema.Struct({
   expiresAt: Schema.String,
   receipt: Bank.CommandReceipt,
 });
+
 export const ExecuteBankAllocation = Schema.Struct({
   ...ApproveBankAllocation.fields,
   approvalId: Accounting.Identifier,
 });
+
 export const AllocatedLeg = Schema.Struct({
   ...AllocationLeg.fields,
   planId: Accounting.Identifier,
   ordinal: Schema.Int,
 });
+
 export const BankAllocationExecution = Schema.Struct({
   ...ExecuteBankAllocation.fields,
   planId: Accounting.Identifier,
@@ -86,27 +95,35 @@ export const BankAllocationExecution = Schema.Struct({
   executedAt: Schema.String,
   receipt: Bank.CommandReceipt,
 });
+
 export const BankAllocationView = Schema.Struct({
   plan: BankAllocationPlan,
   approval: Schema.NullOr(BankAllocationApproval),
   execution: Schema.NullOr(BankAllocationExecution),
   dependenciesCurrent: Schema.Boolean,
-  unmatch: Schema.optionalKey(Schema.NullOr(Schema.Struct({
-    planId: Accounting.Identifier,
-    executedAt: Schema.String,
-    reason: Accounting.Description,
-  }))),
+  unmatch: Schema.optionalKey(
+    Schema.NullOr(
+      Schema.Struct({
+        planId: Accounting.Identifier,
+        executedAt: Schema.String,
+        reason: Accounting.Description,
+      }),
+    ),
+  ),
 });
+
 export const SourceCapacity = Schema.Struct({
   ...Bank.SourceObservation.fields,
   allocatedMinor: Accounting.SignedMinorUnits,
   remainingMinor: Accounting.SignedMinorUnits,
 });
+
 export const LedgerCapacity = Schema.Struct({
   ...Bank.BankLedgerLine.fields,
   allocatedMinor: Accounting.SignedMinorUnits,
   remainingMinor: Accounting.SignedMinorUnits,
 });
+
 export const BankCapacityReconciliation = Schema.Struct({
   ...Bank.BankReconciliation.fields,
   schemaVersion: Schema.Literal("bank-capacity-v2"),
@@ -117,16 +134,22 @@ export const BankCapacityReconciliation = Schema.Struct({
   unmatchedLedger: Schema.Array(LedgerCapacity),
   allocations: Schema.Array(AllocatedLeg),
 });
+
 export const BankCapacityReconciliationView = Schema.Struct({
   ...Bank.BankReconciliationView.fields,
   report: BankCapacityReconciliation,
 });
 
 const path = "/v1/entities/:entityId/books/:bookId";
+
 const scoped = { params: Accounting.Scope, error: accountingErrors };
+
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
+
 const mutation = { ...scoped, headers: Accounting.IdempotencyHeaders };
+
 const identifiedMutation = { ...identified, headers: Accounting.IdempotencyHeaders };
+
 export const SettlementsApi = HttpApiGroup.make("settlements").add(
   HttpApiEndpoint.post("prepareBankAllocation", `${path}/bank-allocation-plans`, {
     ...mutation,
@@ -163,10 +186,12 @@ export const SettlementsApi = HttpApiGroup.make("settlements").add(
 );
 
 const capabilityScope = { scope: Accounting.Scope };
+
 const capabilityMutation = {
   ...capabilityScope,
   idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
 };
+
 // Approval remains operator-only REST, outside the ordinary agent tool registry.
 export const SettlementCapabilities = {
   bank_prepare_allocation: {

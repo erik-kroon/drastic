@@ -40,7 +40,7 @@ export type WorklistRow = {
   readonly ordinal: number;
 };
 
-function voucherCurrent(voucher: string) {
+function voucherCurrent(voucher: SQL) {
   return sql`exists (
     select from openerp.vouchers v
     where v.book_id = i.book_id and v.id = ${voucher}
@@ -51,7 +51,7 @@ function voucherCurrent(voucher: string) {
   )`;
 }
 
-function recognitionAccounted(voucher: string) {
+function recognitionAccounted(voucher: SQL) {
   return sql`(${voucherCurrent(voucher)} or exists (
     select from openerp.invoice_cancellations c
       join openerp.vouchers v on v.book_id = c.book_id and v.id = c.reversal_voucher_id
@@ -119,7 +119,8 @@ function liveInvoice(bookId: string, identity: SQL | undefined) {
     from (
       select base.body || jsonb_build_object(
           'currentRevision', base.revision,
-          'allocationVersion', base.allocation_count::text,
+          'allocationVersion', (base.allocation_count + base.credit_count)::text,
+          'creditedMinor', base.credited::text, 'creditCount', base.credit_count::text,
           'cancelledMinor', base.cancelled::text,
           'effectiveAmountMinor', base.effective::text,
           'cancellation', case when base.cancellation is null then null else jsonb_build_object(
@@ -137,6 +138,8 @@ function liveInvoice(bookId: string, identity: SQL | undefined) {
           'status', case
             when base.blockers <> '[]'::jsonb then 'blocked'
             when base.cancellation is not null then 'cancelled'
+            when base.credited > 0 and base.allocated = base.effective then 'credited'
+            when base.credited > 0 then 'partially_credited'
             when base.allocated = 0 then 'open'
             when base.allocated = base.effective then 'allocated'
             else 'partially_allocated' end,
@@ -156,23 +159,33 @@ function liveInvoice(bookId: string, identity: SQL | undefined) {
             where l.book_id = i.book_id and l.invoice_id = i.id
           ) + case when ${cancellationBody()} is null then 0 else 1 end as allocation_count,
           ${cancellationBody()} as cancellation,
-          case when ${cancellationBody()} is null then i.amount_minor else 0 end as cancelled,
-          case when ${cancellationBody()} is null then i.amount_minor else 0 end as effective,
+          case when ${cancellationBody()} is null then 0 else i.amount_minor end as cancelled,
+          (case when ${cancellationBody()} is null then i.amount_minor else 0 end - credits.total) as effective,
+          credits.total as credited, credits.total_count as credit_count,
           coalesce((
             select jsonb_agg(remaining.value order by remaining.ordinal)
             from unnest(array_remove(array[
-              case when not (${recognitionAccounted("i.recognition_voucher_id")})
+              case when not (${recognitionAccounted(sql`i.recognition_voucher_id`)})
                 then 'The retained recognition voucher was corrected.'::text end,
               case when exists (
-                select from ${activeLegs()} l
-                where not (${voucherCurrent("l.payment_voucher_id")})
+                select from ${activeLegs()}
+                and not (${voucherCurrent(sql`l.payment_voucher_id`)})
               ) then 'A retained allocation payment voucher was corrected.'::text end,
-              case when ${activeLegTotal()} > case when ${cancellationBody()} is null
+              case when credits.invalid then 'A supplier credit posting or payable line is invalid.'::text end,
+              case when credits.total + ${activeLegTotal()} > case when ${cancellationBody()} is null
                 then i.amount_minor else 0 end
                 then 'Recorded allocations exceed the invoice amount.'::text end
             ], null)) with ordinality as remaining(value, ordinal)
           ), '[]'::jsonb) as blockers
         from openerp.commerce_invoices i
+        cross join lateral (
+          select coalesce(sum(c.amount_minor),0) as total, count(*) as total_count,
+            coalesce(bool_or(not (${voucherCurrent(sql`c.voucher_id`)}) or l.account_id<>i.control_account_id
+              or l.debit_minor<>c.amount_minor or l.credit_minor<>0),false) as invalid
+          from openerp.supplier_credits c join openerp.journal_lines l
+            on (l.book_id,l.voucher_id,l.id)=(c.book_id,c.voucher_id,c.control_line_id)
+          where c.book_id=i.book_id and c.invoice_id=i.id
+        ) credits
         where i.book_id = ${bookId} and ${identity === undefined ? sql`true` : identity}
       ) base
     ) live
@@ -215,7 +228,7 @@ export function readSalesInvoiceRows(transaction: Transaction, bookId: string) {
     sql`
       select i.id, live.body, issued.draft_id as "draftId", issued.review_id as "reviewId"
       from openerp.commerce_invoices i
-      cross join lateral (${liveInvoice(bookId, sql`i.direction = 'customer'`)}) live
+      join lateral (${liveInvoice(bookId, sql`i.direction = 'customer'`)}) live on live.id = i.id
       left join openerp.invoice_issues issued
         on issued.book_id = i.book_id and issued.register_invoice_id = i.id
       where i.book_id = ${bookId} and i.direction = 'customer'
@@ -268,7 +281,7 @@ export function readBlockedCustomerInvoices(
     sql`
       select exists (
         select from openerp.commerce_invoices i
-        cross join lateral (${liveInvoice(bookId, undefined)}) live
+        join lateral (${liveInvoice(bookId, undefined)}) live on live.id = i.id
         where i.book_id = ${bookId} and i.counterparty_id = ${customerId} and i.direction = 'customer'
           and i.issued_on <= ${asOf}::date
           and live."status" = 'blocked'
@@ -315,7 +328,7 @@ export function readCustomerWorklistPage(
             row_number() over (order by (live.body->'currentRevision'->>'dueOn')::date,
               lower(i.body->>'counterpartyName') collate "C", i.id collate "C") as ordinal
           from openerp.commerce_invoices i
-          cross join lateral (${liveInvoice(bookId, undefined)}) live
+          join lateral (${liveInvoice(bookId, undefined)}) live on live.id = i.id
           where i.book_id = ${bookId} and i.direction = 'customer'
             and live."status" in ('open', 'partially_allocated', 'blocked')
         ) ordered
@@ -351,7 +364,7 @@ export function readCustomerStatementItems(
             'disputed', ${openDispute()}
           ) as row
         from openerp.commerce_invoices i
-        cross join lateral (${liveInvoice(bookId, undefined)}) live
+        join lateral (${liveInvoice(bookId, undefined)}) live on live.id = i.id
         cross join lateral (
           select coalesce(sum(l.amount_minor), 0) as total
           from openerp.commerce_allocation_legs l

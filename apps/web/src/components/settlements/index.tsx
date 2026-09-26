@@ -29,6 +29,7 @@ export function BankAllocations({
 }) {
   const copy = settlementCopy(locale);
   const [planId, setPlanId] = useState<string | null>(null);
+
   return (
     <details id="bank-allocations" tabIndex={-1}>
       <summary>{copy.title}</summary>
@@ -50,6 +51,7 @@ export function BankAllocations({
           onSubmit={(event) => {
             event.preventDefault();
             const id = new FormData(event.currentTarget).get("planId");
+
             if (Schema.is(Accounting.Identifier)(id)) setPlanId(id);
           }}
         >
@@ -86,9 +88,11 @@ function AllocationForm(props: {
   const [legs, setLegs] = useState(["first"]);
   const [error, setError] = useState("");
   const keys = useRef(new Map<string, string>());
+
   const mutation = useMutation({
     mutationFn: (input: typeof Settlement.PrepareBankAllocation.Type) => {
       const path = `${bookPath(book)}/bank-allocation-plans`;
+
       return readAccounting(
         path,
         Settlement.BankAllocationPlan,
@@ -97,6 +101,7 @@ function AllocationForm(props: {
     },
     onSuccess: (plan) => props.onCreated(plan.id),
   });
+
   const startDraft = (nextSeed: BankCandidateSelection | null) => {
     if (mutation.isPending) return;
     setSeed(nextSeed);
@@ -106,18 +111,21 @@ function AllocationForm(props: {
     keys.current.clear();
     setDraftVersion((version) => version + 1);
   };
+
   const accounts = setup.accounts
     .filter((account) => account.active || account.id === seed?.accountId)
     .map((account) => ({
       value: account.id,
       label: `${account.code} · ${account.name} · ${account.id}`,
     }));
+
   if (seed && !accounts.some((account) => account.value === seed.accountId)) {
     accounts.push({
       value: seed.accountId,
       label: `${seed.accountId} · ${candidateCopy.unavailableAccount}`,
     });
   }
+
   return (
     <Box
       as="form"
@@ -127,6 +135,7 @@ function AllocationForm(props: {
       onSubmit={(event) => {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
+
         const result = Schema.decodeUnknownOption(Settlement.PrepareBankAllocation)({
           accountId: fields.get("accountId"),
           reason: fields.get("reason"),
@@ -139,10 +148,13 @@ function AllocationForm(props: {
             amountMinor: fields.get(`${id}-amount`),
           })),
         });
+
         if (result._tag === "None") {
           setError(copy.invalid);
+
           return;
         }
+
         setError("");
         mutation.mutate(result.value);
       }}

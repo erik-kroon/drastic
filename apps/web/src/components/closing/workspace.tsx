@@ -38,6 +38,7 @@ export function ClosingWorkspace({
   const [proposal, setProposal] = useState("");
   const [preparing, setPreparing] = useState(false);
   const [reviewingScope, setReviewingScope] = useState(false);
+
   const readiness = useQuery({
     queryKey: [...bookKey(book), "closing-readiness", period?.id],
     enabled: !!period,
@@ -47,19 +48,24 @@ export function ClosingWorkspace({
         Closing.ClosingReadiness,
         { signal },
       );
+
       if (
         result.scope.bookId !== book.id ||
         result.scope.entityId !== book.entityId ||
         result.periodId !== period?.id
       )
         throw new Error("Closing scope mismatch");
+
       return result;
     },
     retry: false,
   });
+
   const basis = readiness.isError ? undefined : readiness.data;
+
   if (!period)
     return <PageEmpty title={labels.noAccountingPeriod} detail={labels.setUpAnAccountingPeriod} />;
+
   return (
     <Box display="grid" gap="xl">
       <RecordHeading
@@ -75,6 +81,7 @@ export function ClosingWorkspace({
                   setProposal("");
                   setPreparing(false);
                   setReviewingScope(false);
+
                   if (value) onOpen(value);
                 }}
                 options={setup.periods.map((item) => ({
@@ -186,6 +193,7 @@ const english = {
   aPeriodLockProtectsThe:
     "A period lock protects the books. It does not mean an annual report or tax return has been filed.",
 };
+
 const swedish: typeof english = {
   noAccountingPeriod: "Ingen räkenskapsperiod",
   setUpAnAccountingPeriod: "Lägg upp en period innan du förbereder bokslutet.",
@@ -218,6 +226,7 @@ function ReadinessChecklist({
   const labels = locale === "sv" ? swedish : english;
   const pending = checks.filter((check) => !check.passed);
   const completed = checks.filter((check) => check.passed);
+
   return (
     <RecordSection title={labels.readinessChecklist}>
       <Box display="grid" gap="sm">
@@ -277,6 +286,7 @@ function ReadinessCheck({
   const name = readinessNames.get(check.code)?.[locale] ?? check.code;
   const destination = readinessDestinations.get(check.code);
   const scope = check.code === "DeclaredBankInventory" || check.code === "CompleteFamilyInventory";
+
   return (
     <Box display="flex" gap="lg" alignItems="start" paddingBlock="md">
       <Box paddingBlock="md">
@@ -305,6 +315,7 @@ function ReadinessCheck({
     </Box>
   );
 }
+
 const readinessHelp = new Map<string, { en: string; sv: string }>([
   [
     "DeclaredBankInventory",
@@ -349,6 +360,7 @@ const readinessHelp = new Map<string, { en: string; sv: string }>([
     },
   ],
 ]);
+
 const readinessDestinations = new Map<string, { path: string; en: string; sv: string }>([
   [
     "CurrentTrialBalance",
@@ -385,6 +397,7 @@ const readinessDestinations = new Map<string, { path: string; en: string; sv: st
     { path: "reports?view=subledgers", en: "Review schedules", sv: "Granska planer" },
   ],
 ]);
+
 const readinessNames = new Map<string, { en: string; sv: string }>([
   ["DeclaredBankInventory", { en: "Expected bank accounts", sv: "Förväntade bankkonton" }],
   ["SyntheticNativeProfile", { en: "Book profile", sv: "Bokprofil" }],

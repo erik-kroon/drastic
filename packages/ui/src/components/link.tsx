@@ -21,5 +21,6 @@ export function LinkProvider({
 /** Let the host application supply its router without coupling UI to one router. */
 export function Link(props: ComponentProps<"a">) {
   const Component = useContext(LinkComponent);
+
   return <Component {...props} />;
 }

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 import { Plus, Minus } from "lucide-react";
+
 const styles = stylex.create({
   root: {
     minWidth: 0,
@@ -37,6 +38,7 @@ const styles = stylex.create({
   },
   icon: { flexShrink: 0, color: tokens.mutedForeground },
 });
+
 export function Disclosure({
   label,
   open,
@@ -51,6 +53,7 @@ export function Disclosure({
   children: ReactNode;
 }) {
   const [expanded, setExpanded] = useState(open ?? false);
+
   return (
     <details
       {...stylex.props(

@@ -27,6 +27,7 @@ import { failure } from "../application/failures";
 import type { Transaction } from "./transaction";
 
 const DatabaseTime = Schema.Struct({ now: Schema.String });
+
 type JsonObject = Schema.JsonObject;
 
 export type PlanRow = {
@@ -260,6 +261,7 @@ export function readFiscalYear(transaction: Transaction, bookId: string, fiscalY
 
 export function readAccounts(transaction: Transaction, bookId: string, accountIds: string[]) {
   if (accountIds.length === 0) return Effect.succeed([]);
+
   return transaction
     .select({
       bookId: accounts.bookId,
@@ -459,6 +461,7 @@ export function readApproval(
     })
     .from(approvals)
     .where(and(eq(approvals.bookId, bookId), eq(approvals.id, approvalId)));
+
   return lock === "update" ? query.for("update") : query.for("share");
 }
 

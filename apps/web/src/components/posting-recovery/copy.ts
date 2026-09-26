@@ -91,6 +91,7 @@ const english = {
   authority_lost: "Operator authority lost",
   unconsumed_at_check: "Unconsumed at this check",
 };
+
 const swedish: typeof english = {
   revoked: "Återkallat",
   savedTitle: "Återuppta sparat arbete",
@@ -185,6 +186,7 @@ const swedish: typeof english = {
   authority_lost: "Operatörsbehörighet saknas",
   unconsumed_at_check: "Oförbrukat vid kontrollen",
 };
+
 export function postingCopy(locale: Locale) {
   return locale === "sv" ? swedish : english;
 }

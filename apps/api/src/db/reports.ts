@@ -1,6 +1,5 @@
 import { textArray } from "./sql-values";
 import { sql } from "drizzle-orm";
-import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import type { Transaction } from "./transaction";
 
@@ -544,6 +543,7 @@ export function readFamilyLines(
 ) {
   const allowed = rolesFor(family);
   const catalog = familyRoles.filter((entry) => allowed.find((role) => role === entry.role));
+
   return transaction.execute<FamilyRow>(
     sql`
       with role_map as (
@@ -781,15 +781,5 @@ export function readComparisonMappingRows(
               and l.account_id = m->>'accountId'))::text as unused
     `,
     "objects",
-  );
-}
-
-export function digestJson(transaction: Transaction, value: JsonObject) {
-  return Effect.map(
-    transaction.execute<{ readonly digest: string }>(
-      sql`select openerp.digest(${JSON.stringify(value)}::jsonb) as digest`,
-      "objects",
-    ),
-    (rows) => rows[0]?.digest,
   );
 }

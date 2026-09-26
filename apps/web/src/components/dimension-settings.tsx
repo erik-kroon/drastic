@@ -12,7 +12,9 @@ import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accoun
 import type { Locale } from "@/paraglide/runtime";
 
 type Item = typeof Dimensions.SaveDimension.Type;
+
 type Value = typeof Dimensions.SaveDimensionValue.Type;
+
 const empty: Item = {
   expectedRevision: 0,
   code: "",
@@ -23,9 +25,11 @@ const empty: Item = {
 };
 
 type Saved = typeof Dimensions.DimensionSaved.Type | typeof Dimensions.DimensionValueSaved.Type;
+
 type SaveResult =
   | { kind: "dimension"; result: typeof Dimensions.DimensionSaved.Type }
   | { kind: "value"; result: typeof Dimensions.DimensionValueSaved.Type };
+
 type SaveRequest = { kind: "dimension"; item: Item } | { kind: "value"; item: Value };
 
 async function saveDimensionRequest(
@@ -39,14 +43,18 @@ async function saveDimensionRequest(
       Dimensions.DimensionSaved,
       mutationOptions(path, JSON.stringify(request.item), keys),
     );
+
     return { kind: request.kind, result } as const;
   }
+
   const target = `${path}/values`;
+
   const result = await readAccounting(
     target,
     Dimensions.DimensionValueSaved,
     mutationOptions(target, JSON.stringify(request.item), keys),
   );
+
   return { kind: request.kind, result } as const;
 }
 
@@ -91,12 +99,14 @@ export function DimensionSettings({
   const [keys] = useState(() => new Map<string, string>());
   const path = `${bookPath(book)}/dimensions`;
   const key = [...bookKey(book), "dimensions"];
+
   const list = useQuery(
     queryOptions({
       queryKey: key,
       queryFn: ({ signal }) => readAccounting(path, Dimensions.DimensionList, { signal }),
     }),
   );
+
   const save = useMutation<SaveResult, Error, SaveRequest>({
     mutationFn: (request) => saveDimensionRequest(path, keys, request),
     onSuccess: async ({ result }) => {
@@ -106,8 +116,10 @@ export function DimensionSettings({
     },
     onError: () => setSaved(false),
   });
+
   const sv = locale === "sv";
   const dimensions = list.data?.dimensions ?? [];
+
   const dimensionCopy =
     dimension.expectedRevision > 0
       ? {
@@ -118,6 +130,7 @@ export function DimensionSettings({
           title: sv ? "Skapa dimension" : "Create dimension",
           submit: sv ? "Skapa dimension" : "Create dimension",
         };
+
   const valueCopy =
     value.expectedRevision > 0
       ? {
@@ -125,6 +138,7 @@ export function DimensionSettings({
           submit: sv ? "Spara ändring" : "Save update",
         }
       : { title: sv ? "Skapa värde" : "Create value", submit: sv ? "Skapa värde" : "Create value" };
+
   return (
     <RecordSection title={sv ? "Dimensioner" : "Dimensions"}>
       <Box display="grid" gap="lg" minWidth="zero">
@@ -294,6 +308,7 @@ function DimensionEntries(props: {
   onArchiveValue: (item: Value) => void;
 }) {
   const sv = props.locale === "sv";
+
   return (
     <>
       {props.dimensions.map((entry) => {
@@ -305,18 +320,20 @@ function DimensionEntries(props: {
           effectiveTo: entry.effectiveTo,
           archived: entry.archived,
         };
+
         const history = entry.revisions
           .map(
             (revision) =>
               `${revision.revision}: ${revision.name} (${revision.effectiveFrom}–${revision.effectiveTo ?? (sv ? "t.o.m." : "open")}${revision.archived ? (sv ? ", arkiverad" : ", archived") : ""})`,
           )
           .join(" · ");
+
         return (
           <Box key={entry.code} display="grid" gap="sm">
             <Text>
               {entry.code} — {entry.name}
-              {entry.archived ? (sv ? " (arkiverad)" : " (archived)") : ""} ·{" "}
-              revision {entry.revision}
+              {entry.archived ? (sv ? " (arkiverad)" : " (archived)") : ""} · revision{" "}
+              {entry.revision}
             </Text>
             <Text>
               {sv ? "Historik" : "History"}: {history}
@@ -349,18 +366,20 @@ function DimensionEntries(props: {
                 effectiveTo: option.effectiveTo,
                 archived: option.archived,
               };
+
               const valueHistory = option.revisions
                 .map(
                   (revision) =>
                     `${revision.revision}: ${revision.name} (${revision.effectiveFrom}–${revision.effectiveTo ?? (sv ? "t.o.m." : "open")}${revision.archived ? (sv ? ", arkiverat" : ", archived") : ""})`,
                 )
                 .join(" · ");
+
               return (
                 <Box key={option.code} display="grid" gap="sm">
                   <Text>
                     {option.code} — {option.name}
-                    {option.archived ? (sv ? " (arkiverat)" : " (archived)") : ""} ·{" "}
-                    revision {option.revision}
+                    {option.archived ? (sv ? " (arkiverat)" : " (archived)") : ""} · revision{" "}
+                    {option.revision}
                   </Text>
                   <Text>
                     {sv ? "Historik" : "History"}: {valueHistory}

@@ -792,6 +792,7 @@ export function insertAllocationLegs(
   }>,
 ) {
   if (rows.length === 0) return Effect.void;
+
   return transaction.execute(
     sql`
       insert into openerp.owner_allocation_legs
@@ -860,6 +861,7 @@ export function readLedgerBalances(
   endsOn: string,
 ) {
   if (accountIds.length === 0) return Effect.succeed([]);
+
   return transaction.execute<LedgerBalanceRow>(
     sql`
       select l.account_id as "accountId",

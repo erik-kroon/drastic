@@ -29,6 +29,7 @@ type UndoProps = CommerceProps &
 export function InvoicePaymentUndo(props: UndoProps) {
   const { book, locale, receipt, navigation } = props;
   const copy = paymentUndoCopy(locale);
+
   const status = useQuery({
     queryKey: [...commerceKey(book), "allocation-release-status", receipt.id],
     staleTime: 0,
@@ -40,22 +41,29 @@ export function InvoicePaymentUndo(props: UndoProps) {
         Reversal.CommerceAllocationStatus,
         { signal },
       );
+
       checkScope(book, result.original.scope);
+
       if (
         result.original.id !== receipt.id ||
         result.original.planId !== props.plan.id ||
         result.original.planDigest !== props.plan.digest
       )
         throw new Error("Invoice payment status mismatch");
+
       if (result.reversal) {
         checkScope(book, result.reversal.scope);
+
         if (result.reversal.receiptId !== receipt.id)
           throw new Error("Invoice payment undo mismatch");
       }
+
       return result;
     },
   });
+
   const ready = status.isSuccess && status.isFetchedAfterMount && !status.isFetching;
+
   if (navigation.releaseId && navigation.releaseId !== "new")
     return (
       <CommerceAllocationReversalReview
@@ -67,6 +75,7 @@ export function InvoicePaymentUndo(props: UndoProps) {
         onNewReview={ready && status.data?.active ? () => navigation.onRelease("new") : undefined}
       />
     );
+
   return (
     <Box display="grid" gap="lg">
       {navigation.releaseId === "new" ? (
@@ -147,8 +156,10 @@ export function InvoicePaymentUndo(props: UndoProps) {
 function PrepareUndo(props: UndoProps & { ready: boolean }) {
   const { book, locale, plan, invoice } = props;
   const copy = paymentUndoCopy(locale);
+
   const money = (amount: string) =>
     `${formatMinorAmount(amount, invoice.currencyScale, locale)} ${invoice.currency}`;
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <RecordSummary>

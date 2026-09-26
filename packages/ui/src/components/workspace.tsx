@@ -336,6 +336,7 @@ export function Workspace(props: {
   useLayoutEffect(() => {
     main.current?.scrollTo({ top: 0 });
   }, [props.pageKey]);
+
   return (
     <div {...stylex.props(styles.shell)}>
       <aside {...stylex.props(styles.sidebar)}>
@@ -388,6 +389,7 @@ export function WorkspaceMobileNavigation(props: {
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <nav aria-label={props.label} {...stylex.props(styles.mobileBar)}>

@@ -23,9 +23,13 @@ import * as CorrectionDb from "../db/posting-corrections";
 import { databaseFailure, type Transaction } from "../db/transaction";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type Principal = VerifiedPrincipal;
+
 type SavedCommand = typeof Recovery.SavedPostingCommand.Type;
+
 type JsonObject = Schema.JsonObject;
+
 type SavedResult =
   | typeof Accounting.Evidence.Type
   | typeof Accounting.ChangeSet.Type
@@ -34,7 +38,9 @@ type SavedResult =
   | typeof Recovery.ApprovalRevocation.Type;
 
 const ApprovalSchema = Accounting.Approval;
+
 type RecoveryRequest = typeof Recovery.RecoveryRequest.Type;
+
 type RecoveredRequest = typeof Recovery.RecoveredPostingRequest.Type;
 
 function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
@@ -64,11 +70,15 @@ function operationForSavedCommand(command: SavedCommand) {
 
 function resultSchema(operation: string): Schema.Decoder<SavedResult> {
   if (operation === "create_evidence") return Accounting.Evidence;
+
   if (operation === "prepare_journal" || operation === "prepare_correction") {
     return Accounting.ChangeSet;
   }
+
   if (operation === "approve_change") return Accounting.Approval;
+
   if (operation === "execute_change") return Accounting.ExecutionReceipt;
+
   return Recovery.ApprovalRevocation;
 }
 
@@ -81,8 +91,11 @@ function recoveredResultSchema(
   | typeof Accounting.ExecutionReceipt.Type
 > {
   if (operation === "approve_change") return Accounting.Approval;
+
   if (operation === "execute_change") return Accounting.ExecutionReceipt;
+
   if (operation === "validate_change") return Accounting.ValidationReport;
+
   return Accounting.ChangeSet;
 }
 
@@ -111,6 +124,7 @@ function savedView(
   return Effect.gen(function* () {
     const command = yield* decode(Recovery.SavedPostingCommand, row.command);
     const outcomeRow = (yield* RecoveryDb.readSavedOutcome(transaction, scope, row.key))[0];
+
     const outcome = outcomeRow
       ? yield* decode(Recovery.SavedPostingOutcome, {
           state: outcomeRow.state,
@@ -119,6 +133,7 @@ function savedView(
           recordedAt: outcomeRow.recordedAt,
         } satisfies JsonObject)
       : null;
+
     return {
       scope,
       checkedAt: yield* isoNow(transaction),
@@ -161,6 +176,7 @@ function runWithSavepoint<A>(
       .execute(sql`SAVEPOINT posting_saved_request`)
       .pipe(Effect.mapError(databaseFailure));
     const mappedOperation = operation.pipe(Effect.mapError(databaseFailure));
+
     const result = yield* mappedOperation.pipe(
       Effect.map((value) => ({ state: "committed", result: value }) as const),
       Effect.catchIf(isPersistableRefusal, (error) =>
@@ -169,9 +185,11 @@ function runWithSavepoint<A>(
           .pipe(Effect.mapError(databaseFailure), Effect.as({ state: "refused", error } as const)),
       ),
     );
+
     yield* transaction
       .execute(sql`RELEASE SAVEPOINT posting_saved_request`)
       .pipe(Effect.mapError(databaseFailure));
+
     return result;
   });
 }
@@ -202,36 +220,45 @@ function savePostingRequestWithAuthority(
   return withBook(token, command.scope, operatorOnly, "update", (transaction, principal) =>
     Effect.gen(function* () {
       const decodedCommand = yield* decode(Recovery.SavedPostingCommand, command.command);
+
       const authorityCommand =
         decodedCommand.operation === "approve_change" ||
         decodedCommand.operation === "revoke_approval";
+
       if (authorityCommand !== operatorOnly) {
         return yield* failure("Forbidden");
       }
+
       const expected = yield* digest({
         scope: command.scope,
         actorId: principal.actorId,
         command: decodedCommand,
       });
+
       const existing = (yield* RecoveryDb.readSavedRequest(
         transaction,
         command.scope,
         command.idempotencyKey,
         "update",
       ))[0];
+
       if (existing) {
         if (existing.actorId !== principal.actorId || existing.digest !== expected) {
           return yield* failure("IdempotencyConflict");
         }
+
         return yield* savedView(transaction, command.scope, existing, principal.actorId);
       }
+
       const commandKey = newId("posting_command");
+
       if (
         (yield* Db.readCommandReceipt(transaction, command.scope.bookId, commandKey, "update"))
           .length > 0
       ) {
         return yield* failure("IdempotencyConflict");
       }
+
       const row: RecoveryDb.SavedRequestRow = {
         bookId: command.scope.bookId,
         key: command.idempotencyKey,
@@ -241,7 +268,9 @@ function savePostingRequestWithAuthority(
         commandKey,
         savedAt: yield* isoNow(transaction),
       };
+
       yield* RecoveryDb.insertSavedRequest(transaction, row);
+
       return yield* savedView(transaction, command.scope, row, principal.actorId);
     }),
   );
@@ -274,14 +303,19 @@ function runPostingRequestWithAuthority(
         command.key,
         "update",
       ))[0];
+
       if (!row) return yield* failure("NotFound");
+
       if (row.actorId !== principal.actorId) return yield* failure("Forbidden");
       const savedCommand = yield* decode(Recovery.SavedPostingCommand, row.command);
+
       const authorityCommand =
         savedCommand.operation === "approve_change" || savedCommand.operation === "revoke_approval";
+
       if (authorityCommand !== operatorOnly) {
         return yield* failure("Forbidden");
       }
+
       if (
         authorityCommand &&
         (yield* Db.readOperatorMembership(transaction, command.scope.bookId, principal.actorId))
@@ -289,12 +323,16 @@ function runPostingRequestWithAuthority(
       ) {
         return yield* failure("Forbidden");
       }
+
       const prior = (yield* RecoveryDb.readSavedOutcome(transaction, command.scope, row.key))[0];
+
       if (prior) return yield* savedView(transaction, command.scope, row, principal.actorId);
+
       const operation = yield* runWithSavepoint(
         transaction,
         runSavedCommand(transaction, principal, command.scope, savedCommand, row.commandKey),
       );
+
       if (operation.state === "refused") {
         const refusal = { code: operation.error.code, message: operation.error.message };
         yield* RecoveryDb.insertSavedOutcome(transaction, {
@@ -316,6 +354,7 @@ function runPostingRequestWithAuthority(
           recordedAt: yield* isoNow(transaction),
         });
       }
+
       return yield* savedView(transaction, command.scope, row, principal.actorId);
     }),
   );
@@ -339,6 +378,7 @@ function runSavedCommand(
         }),
       } as const;
     }
+
     if (command.operation === "prepare_journal") {
       return {
         operation: command.operation,
@@ -349,6 +389,7 @@ function runSavedCommand(
         }),
       } as const;
     }
+
     if (command.operation === "approve_change") {
       return {
         operation: command.operation,
@@ -360,6 +401,7 @@ function runSavedCommand(
         }),
       } as const;
     }
+
     if (command.operation === "execute_change") {
       return {
         operation: command.operation,
@@ -371,6 +413,7 @@ function runSavedCommand(
         }),
       } as const;
     }
+
     return {
       operation: command.operation,
       result: yield* revokeApprovalInTransaction(transaction, principal, scope, {
@@ -398,18 +441,24 @@ function revokeApprovalInTransaction(
       { id: command.approvalId, input: command.input },
       Recovery.ApprovalRevocation,
     );
+
     if (request.previous) return request.previous;
+
     const approval = (yield* Db.readApproval(
       transaction,
       scope.bookId,
       command.approvalId,
       "update",
     ))[0];
+
     if (!approval) return yield* failure("NotFound");
+
     if (approval.consumedAt !== null) return yield* failure("AlreadyPosted");
+
     if ((yield* Db.readApprovalRevocation(transaction, scope.bookId, approval.id)).length > 0) {
       return yield* failure("ApprovalRequired");
     }
+
     const result = yield* decode(Recovery.ApprovalRevocation, {
       approvalId: approval.id,
       changeSetId: approval.changeSetId,
@@ -418,6 +467,7 @@ function revokeApprovalInTransaction(
       reason: command.input.reason,
       revokedAt: yield* isoNow(transaction),
     });
+
     yield* RecoveryDb.insertApprovalRevocation(transaction, {
       bookId: scope.bookId,
       approvalId: approval.id,
@@ -434,6 +484,7 @@ function revokeApprovalInTransaction(
       principal.actorId,
       result,
     );
+
     return result;
   });
 }
@@ -446,7 +497,9 @@ export const getSavedPostingRequest = Effect.fn("posting.getSavedRequest")(funct
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       const row = (yield* RecoveryDb.readSavedRequest(transaction, command.scope, command.key))[0];
+
       if (!row) return yield* failure("NotFound");
+
       return yield* savedView(transaction, command.scope, row, principal.actorId);
     }),
   );
@@ -459,12 +512,15 @@ export const listSavedPostingRequests = Effect.fn("posting.listSavedRequests")(f
   return yield* withBook(token, command.scope, false, "share", (transaction, principal) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
+
       const anchor = command.after
         ? (yield* RecoveryDb.readSavedRequest(transaction, command.scope, command.after))[0]
         : undefined;
+
       if (command.after && !anchor) return yield* failure("NotFound");
       const rows = yield* RecoveryDb.listSavedRequests(transaction, command.scope, anchor);
       const page = rows.slice(0, 20);
+
       const items = yield* Effect.forEach(page, (row) =>
         Effect.gen(function* () {
           const outcome = (yield* RecoveryDb.readSavedOutcome(
@@ -472,10 +528,12 @@ export const listSavedPostingRequests = Effect.fn("posting.listSavedRequests")(f
             command.scope,
             row.key,
           ))[0];
+
           const state =
             outcome?.state === "committed" || outcome?.state === "refused"
               ? outcome.state
               : "unknown";
+
           return summaryForCommand(
             row,
             state,
@@ -483,6 +541,7 @@ export const listSavedPostingRequests = Effect.fn("posting.listSavedRequests")(f
           );
         }),
       );
+
       return {
         scope: command.scope,
         actorId: principal.actorId,
@@ -506,15 +565,20 @@ function recoverySummary(
 ) {
   return Effect.gen(function* () {
     const action = plan.groups[0]?.actions[0];
+
     if (!action) return yield* failure("InvalidJournal");
     const voucherIds = yield* Db.readVoucherByEconomicIdentity(transaction, scope.bookId, action);
+
     const candidates = yield* Effect.forEach(voucherIds, (row) =>
       Db.readExecutionReceiptByVoucher(transaction, scope.bookId, row.id),
     );
+
     const receiptRows = candidates.flat();
+
     const receipt = receiptRows[0]
       ? yield* decode(Accounting.ExecutionReceipt, receiptRows[0].body)
       : null;
+
     return {
       changeSetId: plan.id,
       planDigest: plan.planDigest,
@@ -538,18 +602,23 @@ export const listPostingRecovery = Effect.fn("posting.listRecovery")(function* (
   return yield* withBook(token, command.scope, false, "share", (transaction, principal) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
+
       const anchor = command.after
         ? (yield* RecoveryDb.readRecoveryAnchor(transaction, command.scope, command.after))[0]
         : undefined;
+
       if (command.after && !anchor) return yield* failure("NotFound");
       const rows = yield* RecoveryDb.listRecoveryPlans(transaction, command.scope, anchor);
       const page = rows.slice(0, 20);
+
       const items = yield* Effect.forEach(page, (row) =>
         Effect.gen(function* () {
           const plan = yield* planFromRow(row);
+
           return yield* recoverySummary(transaction, command.scope, plan, row.createdBy);
         }),
       );
+
       return {
         scope: command.scope,
         actorId: principal.actorId,
@@ -570,26 +639,33 @@ export const getPostingRecovery = Effect.fn("posting.getRecovery")(function* (
   return yield* withBook(token, command.scope, false, "share", (transaction, principal) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
+
       const row = (yield* RecoveryDb.readRecoveryAnchor(
         transaction,
         command.scope,
         command.changeSetId,
       ))[0];
+
       if (!row) return yield* failure("NotFound");
+
       const bundle = yield* CorrectionDb.readBundleByChangeSet(
         transaction,
         command.scope.bookId,
         command.changeSetId,
       );
+
       if (bundle.length > 0) return yield* failure("UnsupportedProfile");
+
       const planRow = (yield* Db.readPlan(
         transaction,
         command.scope.bookId,
         command.changeSetId,
       ))[0];
+
       if (!planRow) return yield* failure("NotFound");
       const plan = yield* decode(Accounting.ChangeSet, planRow.plan);
       const summary = yield* recoverySummary(transaction, command.scope, plan, planRow.createdBy);
+
       const validation = yield* validatePlan(transaction, command.scope, plan).pipe(
         Effect.asVoid,
         Effect.mapError(databaseFailure),
@@ -601,9 +677,11 @@ export const getPostingRecovery = Effect.fn("posting.getRecovery")(function* (
           onSuccess: () => ({ status: "current" as const, blocker: null }),
         }),
       );
+
       const now = yield* Db.readDatabaseTime(transaction);
       const approvalRows = yield* Db.readApprovals(transaction, command.scope.bookId, plan.id);
       let availableApproval: typeof Accounting.Approval.Type | null = null;
+
       for (const approval of approvalRows) {
         if (
           approval.digest === plan.planDigest &&
@@ -625,6 +703,7 @@ export const getPostingRecovery = Effect.fn("posting.getRecovery")(function* (
           break;
         }
       }
+
       const requestAnchor = command.after
         ? (yield* RecoveryDb.readRecoveryRequestAnchor(
             transaction,
@@ -633,26 +712,33 @@ export const getPostingRecovery = Effect.fn("posting.getRecovery")(function* (
             command.after,
           ))[0]
         : undefined;
+
       if (command.after && !requestAnchor) return yield* failure("NotFound");
+
       const requestRows = yield* RecoveryDb.listRecoveryRequests(
         transaction,
         command.scope,
         command.changeSetId,
         requestAnchor,
       );
+
       const requestPage = requestRows.slice(0, 20);
+
       const requests = yield* Effect.forEach(requestPage, (request) =>
         Effect.gen(function* () {
           const operation = yield* Schema.decodeUnknownEffect(Recovery.PostingOperation)(
             request.operation,
           ).pipe(Effect.mapError(() => failure("InternalError")));
+
           const metadata = yield* Schema.decodeEffect(
             Schema.Struct({
               id: Schema.optional(Accounting.Identifier),
               planDigest: Schema.optional(Accounting.Digest),
             }),
           )(request.result).pipe(Effect.mapError(() => failure("InternalError")));
+
           let approvalState: RecoveryRequest["approvalState"] = null;
+
           if (operation === "approve_change") {
             approvalState = request.approvalConsumedAt
               ? "consumed"
@@ -669,6 +755,7 @@ export const getPostingRecovery = Effect.fn("posting.getRecovery")(function* (
                     ? "authority_lost"
                     : "unconsumed_at_check";
           }
+
           return {
             key: request.key,
             operation,
@@ -681,6 +768,7 @@ export const getPostingRecovery = Effect.fn("posting.getRecovery")(function* (
           } satisfies RecoveryRequest;
         }),
       );
+
       return {
         scope: command.scope,
         actorId: principal.actorId,
@@ -705,6 +793,7 @@ export const recoverPostingRequest = Effect.fn("posting.recoverRequest")(functio
   return yield* withBook(token, command.scope, false, "share", (transaction, principal) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
+
       const row = (yield* Db.readCommandReceipt(
         transaction,
         command.scope.bookId,
@@ -719,6 +808,7 @@ export const recoverPostingRequest = Effect.fn("posting.recoverRequest")(functio
           "execute_change",
         ].includes(item.operation),
       );
+
       if (!row) {
         return {
           scope: command.scope,
@@ -733,10 +823,13 @@ export const recoverPostingRequest = Effect.fn("posting.recoverRequest")(functio
           sameActor: null,
         } satisfies RecoveredRequest;
       }
+
       const operation = yield* Schema.decodeUnknownEffect(Recovery.PostingOperation)(
         row.operation,
       ).pipe(Effect.mapError(() => failure("InternalError")));
+
       const result = yield* decode(recoveredResultSchema(operation), row.result);
+
       return {
         scope: command.scope,
         key: command.key,

@@ -7,9 +7,12 @@ import { readDeadlineFeedEvents } from "../../../application/evidence-work";
 const feed = Effect.gen(function* () {
   const params = yield* HttpRouter.params;
   const secret = params.secret?.replace(/\.ics$/, "");
+
   if (!secret || !/^[a-f0-9]{64}$/.test(secret)) return HttpServerResponse.empty({ status: 404 });
   const result = yield* Effect.result(readDeadlineFeedEvents(secret));
+
   if (Result.isFailure(result)) return HttpServerResponse.empty({ status: 404 });
+
   return HttpServerResponse.text(renderDeadlineCalendar(result.success), {
     headers: {
       "content-type": "text/calendar; charset=utf-8",

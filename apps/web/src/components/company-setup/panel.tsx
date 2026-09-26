@@ -26,6 +26,7 @@ import {
 import { english, swedish } from "./copy";
 
 const validator = Schema.toStandardSchemaV1(Setup.CompanyDetails);
+
 const fieldSteps = {
   name: 0,
   legalForm: 0,
@@ -38,6 +39,7 @@ const fieldSteps = {
   historyChoice: 2,
   bankChoice: 3,
 } satisfies Record<keyof typeof Setup.CompanyDetails.Type, number>;
+
 const setupFields = [
   "name",
   "legalForm",
@@ -54,12 +56,14 @@ const setupFields = [
 export function CompanySetupPanel() {
   const { book, locale } = useBookWorkspace();
   const copy = locale === "sv" ? swedish : english;
+
   const setup = useQuery({
     queryKey: [...bookKey(book), "company-setup"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(book)}/company-setup`, Setup.CompanySetup, { signal }),
     retry: false,
   });
+
   return (
     <>
       <WorkspaceHeader title={copy.title} />
@@ -86,17 +90,24 @@ function SetupJourney({ saved }: { saved: typeof Setup.CompanySetup.Type }) {
   const copy = locale === "sv" ? swedish : english;
   const cache = useQueryClient();
   const keys = useRef(new Map<string, string>());
+
   const [step, setStep] = useState(() => {
     if (saved.missing.some((field) => field === "legalForm" || field === "organizationNumber"))
       return 0;
+
     if (saved.missing.length) return 1;
+
     if (saved.details.historyChoice === null) return 2;
+
     if (saved.details.bankChoice === null) return 3;
+
     return 4;
   });
+
   const heading = useRef<HTMLDivElement>(null);
   const formElement = useRef<HTMLFormElement>(null);
   const path = `${bookPath(book)}/company-setup`;
+
   const mutation = useMutation({
     mutationFn: (input: typeof Setup.SaveCompanySetup.Type) =>
       readAccounting(
@@ -109,7 +120,9 @@ function SetupJourney({ saved }: { saved: typeof Setup.CompanySetup.Type }) {
       await cache.invalidateQueries({ queryKey: booksKey });
     },
   });
+
   const steps = [copy.identity, copy.accounting, copy.history, copy.banking, copy.review];
+
   const reload = useMutation({
     mutationFn: () => readAccounting(path, Setup.CompanySetup),
     onSuccess: (current) => {
@@ -118,8 +131,10 @@ function SetupJourney({ saved }: { saved: typeof Setup.CompanySetup.Type }) {
       mutation.reset();
     },
   });
+
   const uncertain = isUncertainWriteError(mutation.error);
   const disabled = book.role !== "operator" || mutation.isPending || reload.isPending || uncertain;
+
   const form = useForm({
     defaultValues: saved.details,
     validators: { onBlur: validator, onSubmit: validator },
@@ -140,11 +155,13 @@ function SetupJourney({ saved }: { saved: typeof Setup.CompanySetup.Type }) {
           ? mutation.variables
           : { expectedRevision: saved.revision, details: value },
       );
+
       formApi.reset(result.details);
       setStep((current) => Math.min(current + 1, steps.length - 1));
       heading.current?.focus();
     },
   });
+
   return (
     <>
       <RecordHeading title={saved.details.name} subtitle={copy.intro} />
@@ -304,6 +321,7 @@ function SetupJourney({ saved }: { saved: typeof Setup.CompanySetup.Type }) {
                         field.handleChange(
                           value === "true" ? true : value === "false" ? false : null,
                         );
+
                         if (value !== "true") form.setFieldValue("vatPeriod", null);
                         field.handleBlur();
                       }}

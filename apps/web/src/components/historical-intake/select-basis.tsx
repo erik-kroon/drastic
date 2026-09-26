@@ -39,6 +39,7 @@ export function SelectHistoricalBasis({
   const keys = useRef(new Map<string, string>());
   const opening = mode === "opening_set";
   const path = `${bookPath(book)}/${opening ? "historical-openings" : "historical-bases"}`;
+
   const accountIds = [
     ...new Set(
       plan.input.openingControls.flatMap((control) =>
@@ -48,26 +49,32 @@ export function SelectHistoricalBasis({
       ),
     ),
   ];
+
   const save = useMutation({
     mutationFn: async (
       input: typeof Historical.SelectBasis.Type | typeof Historical.PrepareOpening.Type,
     ) => {
       const options = mutationOptions(path, JSON.stringify(input), keys.current);
+
       const result = opening
         ? (await readAccounting(path, Historical.OpeningPreparation, options)).basis
         : await readAccounting(path, Historical.Basis, options);
+
       if (
         result.fiscalYearId !== year.id ||
         result.sourcePlanId !== plan.id ||
         result.sourceDigest !== plan.digest
       )
         throw new Error("Historical basis identity mismatch");
+
       return result;
     },
     onSuccess: onSaved,
   });
+
   const uncertain = isUncertainWriteError(save.error);
   const disabled = book.role !== "operator" || save.isPending || uncertain || save.isSuccess;
+
   const form = useForm({
     defaultValues: {
       cutoverOn: "",
@@ -98,6 +105,7 @@ export function SelectHistoricalBasis({
         sourceDigest: plan.digest,
         controls: value.controls,
       };
+
       await save
         .mutateAsync(
           opening
@@ -112,6 +120,7 @@ export function SelectHistoricalBasis({
         .catch(() => undefined);
     },
   });
+
   return (
     <details>
       <summary>

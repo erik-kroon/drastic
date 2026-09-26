@@ -22,15 +22,23 @@ import * as CorrectionDb from "../db/posting-corrections";
 import { databaseFailure, type Transaction } from "../db/transaction";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type Principal = VerifiedPrincipal;
+
 type Action = typeof Accounting.VoucherPostingAction.Type;
+
 type Intent = typeof Corrections.CorrectionIntent.Type;
+
 type Impact = typeof Corrections.CorrectionImpact.Type;
+
 type ImpactBasis = typeof Corrections.CorrectionImpactBasis.Type;
+
 type Blocker = typeof Corrections.CorrectionBlocker.Type;
+
 type JsonObject = Schema.JsonObject;
 
 const BundleApproval = Corrections.CorrectionBundleApproval;
+
 const BundleReceipt = Corrections.CorrectionBundleReceipt;
 
 function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
@@ -63,7 +71,9 @@ function assertBundleDigest(bundle: typeof Corrections.CorrectionBundle.Type) {
     const withoutDigest = Object.fromEntries(
       Object.entries(bundle).filter(([key]) => key !== "bundleDigest"),
     );
+
     const current = yield* digest(withoutDigest, "StaleDependency");
+
     if (current !== bundle.bundleDigest) return yield* failure("StaleDependency");
   });
 }
@@ -71,6 +81,7 @@ function assertBundleDigest(bundle: typeof Corrections.CorrectionBundle.Type) {
 function validateBundle(bundle: typeof Corrections.CorrectionBundle.Type) {
   return Effect.gen(function* () {
     yield* assertBundleDigest(bundle);
+
     if (bundle.reversal.id === bundle.replacement.id) return yield* failure("StaleDependency");
   });
 }
@@ -79,12 +90,15 @@ function makePlan(transaction: Transaction, scope: Scope, principal: Principal, 
   return Effect.gen(function* () {
     const book = yield* readBook(transaction, scope);
     const period = yield* readPeriod(transaction, scope, action.accountingPeriodId);
+
     const accountRows = yield* Db.readAccounts(
       transaction,
       scope.bookId,
       action.lines.map((line) => line.accountId),
     );
+
     const createdAt = yield* isoNow(transaction);
+
     const withoutDigest = {
       schemaVersion: "1" as const,
       canonicalization: "openerp-c14n-v1" as const,
@@ -126,6 +140,7 @@ function makePlan(transaction: Transaction, scope: Scope, principal: Principal, 
         },
       ],
     };
+
     const planDigest = yield* digest(withoutDigest);
     const plan = yield* decode(Accounting.ChangeSet, { ...withoutDigest, planDigest });
     yield* Db.insertPlan(transaction, {
@@ -135,6 +150,7 @@ function makePlan(transaction: Transaction, scope: Scope, principal: Principal, 
       digest: planDigest,
       createdBy: principal.actorId,
     });
+
     return plan;
   });
 }
@@ -142,11 +158,15 @@ function makePlan(transaction: Transaction, scope: Scope, principal: Principal, 
 function correctionChain(transaction: Transaction, scope: Scope, voucherId: string) {
   return Effect.gen(function* () {
     const idRows = yield* CorrectionDb.readChainVoucherIds(transaction, scope.bookId, voucherId);
+
     if (idRows.length === 0) return yield* failure("NotFound");
+
     if (idRows.length > 200) return yield* failure("UnsupportedProfile");
     const ids = idRows.map((row) => row.id);
     const voucherRows = yield* CorrectionDb.readVouchersByIds(transaction, scope.bookId, ids);
+
     if (voucherRows.length === 0) return yield* failure("NotFound");
+
     const retainedVouchers = yield* Effect.forEach(voucherRows, (row) =>
       decode(Accounting.Voucher, {
         id: row.id,
@@ -156,22 +176,27 @@ function correctionChain(transaction: Transaction, scope: Scope, voucherId: stri
         action: row.action,
       }),
     );
+
     const lineRows = yield* CorrectionDb.readChainLines(transaction, scope.bookId, ids);
     const totals = new Map<string, { debit: bigint; credit: bigint }>();
+
     for (const line of lineRows) {
       const current = totals.get(line.accountId) ?? { debit: 0n, credit: 0n };
       current.debit += BigInt(line.debitMinor);
       current.credit += BigInt(line.creditMinor);
       totals.set(line.accountId, current);
     }
+
     const receiptRows = yield* CorrectionDb.readBundleReceiptsForVouchers(
       transaction,
       scope.bookId,
       ids,
     );
+
     const receipts = yield* Effect.forEach(receiptRows, (row) => decode(BundleReceipt, row.body));
     receipts.sort((left, right) => left.committedAt.localeCompare(right.committedAt));
     const book = yield* readBook(transaction, scope);
+
     return {
       scope,
       selectedVoucherId: voucherId,
@@ -181,6 +206,7 @@ function correctionChain(transaction: Transaction, scope: Scope, voucherId: stri
       receipts,
       balances: Array.from(totals, ([accountId, total]) => {
         const balance = total.debit - total.credit;
+
         return {
           accountId,
           debitMinor: total.debit.toString(),
@@ -196,18 +222,21 @@ function netChange(transaction: Transaction, scope: Scope, voucherId: string, in
   return Effect.gen(function* () {
     const original = yield* readVoucher(transaction, scope, voucherId);
     const deltas = new Map<string, bigint>();
+
     for (const line of original.action.lines) {
       deltas.set(
         line.accountId,
         (deltas.get(line.accountId) ?? 0n) - BigInt(line.debitMinor) + BigInt(line.creditMinor),
       );
     }
+
     for (const line of input.replacement.lines) {
       deltas.set(
         line.accountId,
         (deltas.get(line.accountId) ?? 0n) + BigInt(line.debitMinor) - BigInt(line.creditMinor),
       );
     }
+
     return Array.from(deltas, ([accountId, delta]) => ({ accountId, deltaMinor: delta.toString() }))
       .filter((row) => row.deltaMinor !== "0")
       .sort((left, right) => left.accountId.localeCompare(right.accountId));
@@ -218,31 +247,38 @@ function impactBasis(transaction: Transaction, scope: Scope, voucherId: string, 
   return Effect.gen(function* () {
     const original = yield* readVoucher(transaction, scope, voucherId);
     const chain = yield* correctionChain(transaction, scope, voucherId);
+
     const resourceRows = yield* CorrectionDb.readImpactResources(
       transaction,
       scope.bookId,
       voucherId,
       input.postingDate,
     );
+
     if (resourceRows.length > 1000) return yield* failure("UnsupportedProfile");
+
     const resources = yield* Effect.forEach(resourceRows, (row) =>
       decode(Corrections.CorrectionImpactResource, row.resource),
     );
+
     const blockers: Array<Blocker> = resources
       .filter((resource) => resource.blocks)
       .map((resource) => ({ code: "UnsupportedProfile", message: resource.detail }));
+
     if (original.action.postingPurpose === "reversal") {
       blockers.push({
         code: "InvalidJournal",
         message: "Correct the original or its replacement, not a reversal.",
       });
     }
+
     if (input.postingDate < original.action.postingDate) {
       blockers.push({
         code: "InvalidJournal",
         message: "Correction date cannot precede the original posting date.",
       });
     }
+
     if ((yield* Db.readVoucherByReversal(transaction, scope.bookId, voucherId)).length > 0) {
       blockers.push({
         code: "AlreadyPosted",
@@ -257,6 +293,7 @@ function impactBasis(transaction: Transaction, scope: Scope, voucherId: string, 
     const periodList = yield* Db.readAllPeriods(transaction, scope.bookId);
     const yearList = yield* Db.readAllFiscalYears(transaction, scope.bookId);
     const changes = yield* netChange(transaction, scope, voucherId, input);
+
     if (period) {
       const reviewAction = {
         ...original.action,
@@ -273,13 +310,17 @@ function impactBasis(transaction: Transaction, scope: Scope, voucherId: string, 
           lineId: `review_line_${index + 1}`,
         })),
       };
+
       const action = yield* decode(Accounting.VoucherPostingAction, reviewAction);
+
       const validation = yield* validateAction(transaction, scope, book, action).pipe(
         Effect.asVoid,
         Effect.mapError(databaseFailure),
         Effect.catch((error) => Effect.succeed(error)),
       );
+
       if (validation) blockers.push({ code: validation.code, message: validation.message });
+
       if (
         input.postingDate === original.action.postingDate &&
         input.accountingPeriodId === original.action.accountingPeriodId &&
@@ -297,6 +338,7 @@ function impactBasis(transaction: Transaction, scope: Scope, voucherId: string, 
         message: "The accounting period does not belong to this book.",
       });
     }
+
     const configurationDigest = yield* digest({
       book: {
         id: book.id,
@@ -327,6 +369,7 @@ function impactBasis(transaction: Transaction, scope: Scope, voucherId: string, 
       })),
       years: yearList,
     });
+
     return {
       intent: input,
       chain,
@@ -360,6 +403,7 @@ export const prepareCorrectionImpact = Effect.fn("posting.prepareCorrectionImpac
     (transaction, principal) =>
       Effect.gen(function* () {
         yield* Db.lockBookForUpdate(transaction, command.scope);
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -369,16 +413,19 @@ export const prepareCorrectionImpact = Effect.fn("posting.prepareCorrectionImpac
           { id: command.voucherId, input: command.input },
           Corrections.CorrectionImpact,
         );
+
         if (request.previous) return request.previous;
         yield* Db.readAllPeriods(transaction, command.scope.bookId);
         yield* Db.readAllFiscalYears(transaction, command.scope.bookId);
         yield* Db.readAllAccounts(transaction, command.scope.bookId);
+
         const basis = yield* impactBasis(
           transaction,
           command.scope,
           command.voucherId,
           command.input,
         );
+
         const bodyWithoutDigest = {
           id: newId("impact"),
           scope: command.scope,
@@ -387,11 +434,14 @@ export const prepareCorrectionImpact = Effect.fn("posting.prepareCorrectionImpac
           createdAt: yield* isoNow(transaction),
           basis,
         };
+
         const bodyDigest = yield* digest(bodyWithoutDigest);
+
         const impact = yield* decode(Corrections.CorrectionImpact, {
           ...bodyWithoutDigest,
           digest: bodyDigest,
         });
+
         yield* CorrectionDb.insertImpactReview(transaction, {
           bookId: command.scope.bookId,
           id: impact.id,
@@ -407,6 +457,7 @@ export const prepareCorrectionImpact = Effect.fn("posting.prepareCorrectionImpac
           principal.actorId,
           impact,
         );
+
         return impact;
       }),
     "update",
@@ -420,28 +471,36 @@ export const getCorrectionImpact = Effect.fn("posting.getCorrectionImpact")(func
   return yield* withBook(token, command.scope, false, (transaction) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
+
       const row = (yield* CorrectionDb.readImpactReview(
         transaction,
         command.scope,
         command.impactId,
       ))[0];
+
       if (!row) return yield* failure("NotFound");
       const impact = yield* decode(Corrections.CorrectionImpact, row.body);
+
       const withoutDigest = Object.fromEntries(
         Object.entries(impact).filter(([key]) => key !== "digest"),
       );
+
       const storedDigest = impact.digest;
+
       if ((yield* digest(withoutDigest, "StaleDependency")) !== storedDigest) {
         return yield* failure("StaleDependency");
       }
+
       const current = yield* impactBasis(
         transaction,
         command.scope,
         impact.voucherId,
         impact.basis.intent,
       );
+
       const currentDigest = yield* digest(current);
       const storedBasisDigest = yield* digest(impact.basis);
+
       return {
         impact,
         snapshotCurrent: currentDigest === storedBasisDigest,
@@ -458,6 +517,7 @@ export const getCorrectionChain = Effect.fn("posting.getCorrectionChain")(functi
   return yield* withBook(token, command.scope, false, (transaction) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
+
       return yield* correctionChain(transaction, command.scope, command.voucherId);
     }),
   );
@@ -472,6 +532,7 @@ export const listCorrectionBundles = Effect.fn("posting.listCorrectionBundles")(
       yield* Db.lockBookForShare(transaction, command.scope);
       const rows = yield* CorrectionDb.listBundles(transaction, command.scope, command.after);
       const page = rows.slice(0, 25);
+
       const result = {
         items: page.map((row) => ({
           id: row.id,
@@ -482,6 +543,7 @@ export const listCorrectionBundles = Effect.fn("posting.listCorrectionBundles")(
         })),
         next: rows.length > 25 ? (page.at(-1)?.id ?? null) : null,
       };
+
       return yield* decode(Corrections.CorrectionBundlePage, result);
     }),
   );
@@ -494,6 +556,7 @@ export const recoverCorrectionRequest = Effect.fn("posting.recoverCorrectionRequ
   return yield* withBook(token, command.scope, false, (transaction, principal) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
+
       const row = (yield* Db.readCommandReceipt(
         transaction,
         command.scope.bookId,
@@ -509,7 +572,9 @@ export const recoverCorrectionRequest = Effect.fn("posting.recoverCorrectionRequ
             "execute_correction_bundle",
           ].includes(item.operation),
       );
+
       const result = row ? yield* decode(itemSchema(row.operation), row.result) : null;
+
       return {
         key: command.key,
         checkedAt: yield* isoNow(transaction),
@@ -530,8 +595,11 @@ function itemSchema(
   | Impact
 > {
   if (operation === "prepare_correction_impact") return Corrections.CorrectionImpact;
+
   if (operation === "prepare_correction_bundle") return Corrections.CorrectionBundle;
+
   if (operation === "approve_correction_bundle") return BundleApproval;
+
   return BundleReceipt;
 }
 
@@ -542,18 +610,23 @@ function readBundleState(
 ) {
   return Effect.gen(function* () {
     yield* validateBundle(bundle);
+
     if (bundle.impactReview) {
       const impactRow = (yield* CorrectionDb.readImpactReview(
         transaction,
         scope,
         bundle.impactReview.id,
       ))[0];
+
       if (!impactRow) return yield* failure("StaleDependency");
       const impact = yield* decode(Corrections.CorrectionImpact, impactRow.body);
+
       const impactWithoutDigest = Object.fromEntries(
         Object.entries(impact).filter(([key]) => key !== "digest"),
       );
+
       const storedDigest = impact.digest;
+
       if (
         impact.voucherId !== bundle.originalVoucher.id ||
         impact.digest !== bundle.impactReview.digest ||
@@ -561,22 +634,28 @@ function readBundleState(
       ) {
         return yield* failure("StaleDependency");
       }
+
       const current = yield* impactBasis(
         transaction,
         scope,
         bundle.originalVoucher.id,
         impact.basis.intent,
       );
+
       if ((yield* digest(current)) !== (yield* digest(impact.basis))) {
         return yield* failure("StaleDependency");
       }
+
       const blocker = current.blockers[0];
+
       if (blocker) return yield* failure(blocker.code);
     }
+
     const reversalRows = yield* Db.readPlan(transaction, scope.bookId, bundle.reversal.id);
     const replacementRows = yield* Db.readPlan(transaction, scope.bookId, bundle.replacement.id);
     const reversalRow = reversalRows[0];
     const replacementRow = replacementRows[0];
+
     if (!reversalRow || !replacementRow) return yield* failure("NotFound");
     const reversal = yield* decode(Accounting.ChangeSet, reversalRow.plan);
     const replacement = yield* decode(Accounting.ChangeSet, replacementRow.plan);
@@ -601,6 +680,7 @@ export const prepareCorrectionBundle = Effect.fn("posting.prepareCorrectionBundl
     (transaction, principal) =>
       Effect.gen(function* () {
         yield* Db.lockBookForUpdate(transaction, command.scope);
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -610,33 +690,44 @@ export const prepareCorrectionBundle = Effect.fn("posting.prepareCorrectionBundl
           { id: command.voucherId, input: command.input },
           Corrections.CorrectionBundle,
         );
+
         if (request.previous) return request.previous;
+
         if (!command.input.impactReview) return yield* failure("UnsupportedProfile");
         const original = yield* readVoucher(transaction, command.scope, command.voucherId);
+
         if (original.action.postingPurpose === "reversal") return yield* failure("InvalidJournal");
+
         if (original.action.postingPurpose !== "adjustment") {
           return yield* failure("UnsupportedProfile");
         }
+
         if (command.input.postingDate < original.action.postingDate) {
           return yield* failure("InvalidJournal");
         }
+
         if (
           (yield* Db.readVoucherByReversal(transaction, command.scope.bookId, command.voucherId))
             .length > 0
         ) {
           return yield* failure("AlreadyPosted");
         }
+
         const impactRow = (yield* CorrectionDb.readImpactReview(
           transaction,
           command.scope,
           command.input.impactReview.id,
         ))[0];
+
         if (!impactRow) return yield* failure("StaleDependency");
         const impact = yield* decode(Corrections.CorrectionImpact, impactRow.body);
+
         const impactWithoutDigest = Object.fromEntries(
           Object.entries(impact).filter(([key]) => key !== "digest"),
         );
+
         const storedImpactDigest = impact.digest;
+
         const intent = {
           datePolicy: command.input.datePolicy,
           accountingPeriodId: command.input.accountingPeriodId,
@@ -644,7 +735,9 @@ export const prepareCorrectionBundle = Effect.fn("posting.prepareCorrectionBundl
           rationale: command.input.rationale,
           replacement: command.input.replacement,
         } satisfies Intent;
+
         const current = yield* impactBasis(transaction, command.scope, command.voucherId, intent);
+
         if (
           impact.voucherId !== command.voucherId ||
           impact.digest !== command.input.impactReview.digest ||
@@ -653,7 +746,9 @@ export const prepareCorrectionBundle = Effect.fn("posting.prepareCorrectionBundl
         ) {
           return yield* failure("StaleDependency");
         }
+
         const blocker = current.blockers[0];
+
         if (blocker) return yield* failure(blocker.code);
 
         const period = yield* readPeriod(
@@ -661,7 +756,9 @@ export const prepareCorrectionBundle = Effect.fn("posting.prepareCorrectionBundl
           command.scope,
           command.input.accountingPeriodId,
         );
+
         const book = yield* readBook(transaction, command.scope);
+
         const reversalValue = {
           ...original.action,
           correctsVoucherId: command.voucherId,
@@ -679,15 +776,20 @@ export const prepareCorrectionBundle = Effect.fn("posting.prepareCorrectionBundl
             creditMinor: line.debitMinor,
           })),
         };
+
         const sourceEvidenceId = original.action.evidenceRefs[0]?.evidenceId;
+
         if (!sourceEvidenceId) return yield* failure("MissingEvidence");
+
         const eventRows = yield* Db.readEvent(
           transaction,
           command.scope.bookId,
           sourceEvidenceId,
           `correction:${command.voucherId}`,
         );
+
         const replacementEventId = eventRows[0]?.id ?? newId("event");
+
         if (eventRows.length === 0) {
           yield* Db.insertEvent(
             transaction,
@@ -697,6 +799,7 @@ export const prepareCorrectionBundle = Effect.fn("posting.prepareCorrectionBundl
             `correction:${command.voucherId}`,
           );
         }
+
         const replacementValue = {
           ...original.action,
           eventId: replacementEventId,
@@ -713,12 +816,14 @@ export const prepareCorrectionBundle = Effect.fn("posting.prepareCorrectionBundl
             lineId: newId("line"),
           })),
         };
+
         const reversal = yield* decode(Accounting.VoucherPostingAction, reversalValue);
         const replacement = yield* decode(Accounting.VoucherPostingAction, replacementValue);
         yield* validateAction(transaction, command.scope, book, reversal);
         yield* validateAction(transaction, command.scope, book, replacement);
         const reversalPlan = yield* makePlan(transaction, command.scope, principal, reversal);
         const replacementPlan = yield* makePlan(transaction, command.scope, principal, replacement);
+
         const bodyWithoutDigest = {
           id: newId("correction"),
           version: 1 as const,
@@ -732,11 +837,14 @@ export const prepareCorrectionBundle = Effect.fn("posting.prepareCorrectionBundl
           createdBy: principal.actorId,
           createdAt: yield* isoNow(transaction),
         };
+
         const bundleDigest = yield* digest(bodyWithoutDigest);
+
         const bundle = yield* decode(Corrections.CorrectionBundle, {
           ...bodyWithoutDigest,
           bundleDigest,
         });
+
         yield* CorrectionDb.insertBundle(transaction, {
           bookId: command.scope.bookId,
           id: bundle.id,
@@ -755,6 +863,7 @@ export const prepareCorrectionBundle = Effect.fn("posting.prepareCorrectionBundl
           principal.actorId,
           bundle,
         );
+
         return bundle;
       }),
     "update",
@@ -769,25 +878,32 @@ function bundleView(
   return Effect.gen(function* () {
     const receiptRow = (yield* CorrectionDb.readBundleReceipt(transaction, scope, bundle.id))[0];
     const receipt = receiptRow ? yield* decode(BundleReceipt, receiptRow.body) : null;
+
     const approvalRow = (yield* CorrectionDb.readLatestBundleApproval(
       transaction,
       scope,
       bundle.id,
     ))[0];
+
     let approval: typeof Corrections.CorrectionBundleApproval.Type | null = null;
+
     if (approvalRow && !receipt) {
       const candidate = yield* decode(BundleApproval, approvalRow.body);
+
       const reversal = (yield* Db.readApproval(
         transaction,
         scope.bookId,
         approvalRow.reversalApprovalId,
       ))[0];
+
       const replacement = (yield* Db.readApproval(
         transaction,
         scope.bookId,
         approvalRow.replacementApprovalId,
       ))[0];
+
       const now = yield* Db.readDatabaseTime(transaction);
+
       if (
         candidate.bundleDigest === bundle.bundleDigest &&
         candidate.bundleId === bundle.id &&
@@ -809,6 +925,7 @@ function bundleView(
         approval = candidate;
       }
     }
+
     return { bundle, approval, receipt } satisfies typeof Corrections.CorrectionBundleView.Type;
   });
 }
@@ -827,10 +944,12 @@ function validateBundleRow(
 function readBundleView(transaction: Transaction, scope: Scope, bundleId: string) {
   return Effect.gen(function* () {
     const row = (yield* CorrectionDb.readBundle(transaction, scope, bundleId))[0];
+
     if (!row) return yield* failure("NotFound");
     const bundle = yield* bundleFromRow(row);
     yield* validateBundle(bundle);
     yield* validateBundleRow(row, bundle);
+
     return yield* bundleView(transaction, scope, bundle);
   });
 }
@@ -842,6 +961,7 @@ export const getCorrectionBundle = Effect.fn("posting.getCorrectionBundle")(func
   return yield* withBook(token, command.scope, false, (transaction) =>
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
+
       return yield* readBundleView(transaction, command.scope, command.bundleId);
     }),
   );
@@ -853,15 +973,18 @@ export const getCorrectionBundleForVoucher = Effect.fn("posting.getCorrectionBun
       Effect.gen(function* () {
         yield* Db.lockBookForShare(transaction, command.scope);
         yield* readVoucher(transaction, command.scope, command.voucherId);
+
         const row = (yield* CorrectionDb.readBundleForVoucher(
           transaction,
           command.scope,
           command.voucherId,
         ))[0];
+
         if (!row) return yield* failure("NotFound");
         const bundle = yield* bundleFromRow(row);
         yield* validateBundle(bundle);
         yield* validateBundleRow(row, bundle);
+
         return yield* bundleView(transaction, command.scope, bundle);
       }),
     );
@@ -884,6 +1007,7 @@ export const approveCorrectionBundle = Effect.fn("posting.approveCorrectionBundl
     (transaction, principal) =>
       Effect.gen(function* () {
         yield* Db.lockBookForUpdate(transaction, command.scope);
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -893,31 +1017,39 @@ export const approveCorrectionBundle = Effect.fn("posting.approveCorrectionBundl
           { id: command.bundleId, input: command.input },
           BundleApproval,
         );
+
         if (request.previous) return request.previous;
+
         const row = (yield* CorrectionDb.readBundle(
           transaction,
           command.scope,
           command.bundleId,
           "update",
         ))[0];
+
         if (!row) return yield* failure("NotFound");
         const bundle = yield* bundleFromRow(row);
         yield* validateBundle(bundle);
         yield* validateBundleRow(row, bundle);
+
         if (
           command.input.bundleDigest !== bundle.bundleDigest ||
           command.input.version !== bundle.version
         ) {
           return yield* failure("StaleDependency");
         }
+
         yield* readBundleState(transaction, command.scope, bundle);
+
         if (
           (yield* CorrectionDb.readBundleReceipt(transaction, command.scope, bundle.id)).length > 0
         ) {
           return yield* failure("AlreadyPosted");
         }
+
         const now = yield* Db.readDatabaseTime(transaction);
         const expiresAt = new Date(Date.parse(now.now) + 60 * 60 * 1000).toISOString();
+
         const approval = yield* decode(BundleApproval, {
           id: newId("bundleapproval"),
           bundleId: bundle.id,
@@ -925,6 +1057,7 @@ export const approveCorrectionBundle = Effect.fn("posting.approveCorrectionBundl
           actorId: principal.actorId,
           expiresAt,
         });
+
         const reversalApproval = yield* Db.insertApproval(transaction, {
           bookId: command.scope.bookId,
           id: newId("approval"),
@@ -933,6 +1066,7 @@ export const approveCorrectionBundle = Effect.fn("posting.approveCorrectionBundl
           actorId: principal.actorId,
           expiresAt,
         });
+
         const replacementApproval = yield* Db.insertApproval(transaction, {
           bookId: command.scope.bookId,
           id: newId("approval"),
@@ -941,11 +1075,14 @@ export const approveCorrectionBundle = Effect.fn("posting.approveCorrectionBundl
           actorId: principal.actorId,
           expiresAt,
         });
+
         const reversalApprovalId = reversalApproval[0]?.id;
         const replacementApprovalId = replacementApproval[0]?.id;
+
         if (!reversalApprovalId || !replacementApprovalId) {
           return yield* failure("InternalError");
         }
+
         yield* CorrectionDb.insertBundleApproval(transaction, {
           bookId: command.scope.bookId,
           id: approval.id,
@@ -964,6 +1101,7 @@ export const approveCorrectionBundle = Effect.fn("posting.approveCorrectionBundl
           principal.actorId,
           approval,
         );
+
         return approval;
       }),
     "update",
@@ -986,6 +1124,7 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
     (transaction, principal) =>
       Effect.gen(function* () {
         yield* Db.lockBookForUpdate(transaction, command.scope);
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -995,31 +1134,38 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
           { id: command.bundleId, input: command.input },
           BundleReceipt,
         );
+
         if (request.previous) return request.previous;
+
         const bundleRow = (yield* CorrectionDb.readBundle(
           transaction,
           command.scope,
           command.bundleId,
         ))[0];
+
         if (!bundleRow) return yield* failure("NotFound");
         const bundle = yield* bundleFromRow(bundleRow);
         yield* validateBundle(bundle);
         yield* validateBundleRow(bundleRow, bundle);
+
         if (
           command.input.bundleDigest !== bundle.bundleDigest ||
           command.input.version !== bundle.version
         ) {
           return yield* failure("StaleDependency");
         }
+
         const existing = (yield* CorrectionDb.readBundleReceipt(
           transaction,
           command.scope,
           bundle.id,
         ))[0];
+
         if (existing) {
           if (command.input.approvalId !== existing.approvalId) {
             return yield* failure("ApprovalRequired");
           }
+
           const result = yield* decode(BundleReceipt, existing.body);
           yield* saveCommand(
             transaction,
@@ -1030,9 +1176,12 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
             principal.actorId,
             result,
           );
+
           return result;
         }
+
         yield* readBundleState(transaction, command.scope, bundle);
+
         const approvalRow = (yield* CorrectionDb.readBundleApproval(
           transaction,
           command.scope,
@@ -1040,8 +1189,10 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
           command.input.approvalId,
           "update",
         ))[0];
+
         if (!approvalRow) return yield* failure("ApprovalRequired");
         const approval = yield* decode(BundleApproval, approvalRow.body);
+
         if (
           approval.bundleId !== bundle.id ||
           approval.bundleDigest !== bundle.bundleDigest ||
@@ -1051,10 +1202,13 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
         ) {
           return yield* failure("ApprovalRequired");
         }
+
         const now = yield* Db.readDatabaseTime(transaction);
+
         if (Date.parse(approval.expiresAt) <= Date.parse(now.now)) {
           return yield* failure("ApprovalRequired");
         }
+
         const reversal = yield* executeChangeInTransaction(transaction, principal, {
           scope: command.scope,
           changeSetId: bundle.reversal.id,
@@ -1066,6 +1220,7 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
           },
           allowCorrectionChild: true,
         });
+
         const replacement = yield* executeChangeInTransaction(transaction, principal, {
           scope: command.scope,
           changeSetId: bundle.replacement.id,
@@ -1077,6 +1232,7 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
           },
           allowCorrectionChild: true,
         });
+
         const result = yield* decode(BundleReceipt, {
           id: newId("bundlereceipt"),
           bundleId: bundle.id,
@@ -1087,6 +1243,7 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
           replacement,
           committedAt: yield* isoNow(transaction),
         });
+
         yield* CorrectionDb.insertBundleReceipt(transaction, {
           bookId: command.scope.bookId,
           bundleId: bundle.id,
@@ -1105,6 +1262,7 @@ export const executeCorrectionBundle = Effect.fn("posting.executeCorrectionBundl
           principal.actorId,
           result,
         );
+
         return result;
       }),
     "update",

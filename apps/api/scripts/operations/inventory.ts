@@ -17,8 +17,10 @@ export async function roleInventory(client: Client) {
         'inherit', m.inherit_option, 'set', m.set_option) ORDER BY g.rolname COLLATE "C", pg_get_userbyid(m.grantor) COLLATE "C")
         FROM pg_auth_members m JOIN pg_roles g ON g.oid=m.roleid WHERE m.member=r.oid), '[]')) AS body
     FROM pg_roles r WHERE r.rolname !~ '^pg_' ORDER BY r.rolname COLLATE "C"`);
+
   return result.rows.map((row) => Schema.decodeUnknownSync(RoleInventory)(row.body));
 }
+
 export async function databaseInventory(
   client: Client,
   release: typeof ReleaseManifest.Type,
@@ -50,10 +52,12 @@ export async function databaseInventory(
         AND (p.prokind<>'f' OR l.lanname NOT IN ('sql','plpgsql') OR pg_get_userbyid(p.proowner)<>current_user)) AS found`,
     [quarantined],
   );
+
   if (unsupported.rows[0]?.found !== false)
     refuse(
       "Unsupported extension, replication, role/database setting, ownership, relation or disabled constraint/trigger requires reviewed recovery support.",
     );
+
   const metadata = await client.query<{
     owner: string;
     encoding: string;
@@ -65,18 +69,24 @@ export async function databaseInventory(
       datcollate AS collation, datctype AS ctype, datlocprovider AS "localeProvider"
     FROM pg_database WHERE datname=current_database() AND datdba=(SELECT oid FROM pg_roles WHERE rolname=current_user)
       AND dattablespace=(SELECT oid FROM pg_tablespace WHERE spcname='pg_default')`);
+
   const database = metadata.rows[0];
+
   if (!database || database.localeProvider !== "c")
     refuse("Only explicitly owned libc-locale default-tablespace databases are supported.");
+
   const extensions = await client.query<{ name: string; version: string }>(
     'SELECT extname AS name, extversion AS version FROM pg_extension ORDER BY extname COLLATE "C"',
   );
+
   const migrations = await client.query<{ name: string; sha256: string }>(
     'SELECT name, sha256 FROM public.openerp_migrations ORDER BY name COLLATE "C"',
   );
+
   const files = release.files.filter((file) =>
     /^apps\/api\/migrations\/[^/]+\.sql$/.test(file.path),
   );
+
   if (
     files.length !== migrations.rows.length ||
     migrations.rows.some(
@@ -91,6 +101,7 @@ export async function databaseInventory(
       "Applied migration receipts differ from the captured release. A partial or changed schema cannot be marked complete.",
     );
   }
+
   const schemaHash = await client.query<{ sha256: string }>(`
     WITH objects(kind, name, body) AS (
       SELECT 'schema', n.nspname, jsonb_build_object('owner',pg_get_userbyid(n.nspowner),
@@ -139,6 +150,7 @@ export async function databaseInventory(
         (SELECT jsonb_agg(a::text ORDER BY a::text COLLATE "C") FROM unnest(d.defaclacl) a)
       FROM pg_default_acl d LEFT JOIN pg_namespace n ON n.oid=d.defaclnamespace
     ) SELECT encode(sha256(convert_to(coalesce(jsonb_agg(jsonb_build_array(kind,name,body) ORDER BY kind COLLATE "C",name COLLATE "C",body::text COLLATE "C"),'[]')::text,'UTF8')),'hex') AS sha256 FROM objects`);
+
   return Schema.decodeUnknownSync(DatabaseInventory)({
     ...database,
     schemaSha256: schemaHash.rows[0]?.sha256,

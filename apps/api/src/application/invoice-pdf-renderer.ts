@@ -32,6 +32,7 @@ const extra = new Map([
   [0x017e, 0x9e],
   [0x0178, 0x9f],
 ]);
+
 function invalid(): never {
   throw new Accounting.AccountingError({
     code: "UnsupportedProfile",
@@ -39,25 +40,34 @@ function invalid(): never {
       "PDF text contains characters outside the fixed WinAnsi font. No fact was omitted or replaced.",
   });
 }
+
 function hex(value: string) {
   let result = "";
+
   for (const char of value) {
     const code = char.codePointAt(0);
+
     if (code === undefined || code < 32 || (code >= 127 && code < 160)) invalid();
     const byte = code <= 255 ? code : extra.get(code);
+
     if (byte === undefined) invalid();
     result += byte.toString(16).padStart(2, "0");
   }
+
   return result;
 }
+
 function append(label: string, value: string | null, output: string[]) {
   const normalized = (value ?? "Not supplied").replaceAll("\r\n", "\n").replaceAll("\r", "\n");
+
   for (const [index, line] of normalized.split("\n").entries()) {
     const content = `${index === 0 ? label + ": " : "  "}${line}`;
     // Fixed-width 9pt Courier; wrapping changes layout only, never source text.
     const characters = Array.from(content);
+
     for (let offset = 0; offset < characters.length; offset += 92)
       output.push(characters.slice(offset, offset + 92).join(""));
+
     if (!content.length) output.push("");
   }
 }
@@ -92,8 +102,10 @@ export function renderInvoicePdf(capture: typeof Pdf.InvoicePdfCapture.Type) {
       : `${money(content.sourceTotalMinor)} ${content.currency}`,
     lines,
   );
+
   for (const [index, line] of content.lines.entries()) {
     const calculated = draft.calculatedLines[index];
+
     if (!calculated) invalid();
     lines.push("", `Line ${index + 1}`);
     append("Description", line.description, lines);
@@ -116,6 +128,7 @@ export function renderInvoicePdf(capture: typeof Pdf.InvoicePdfCapture.Type) {
     );
     append("Tax description (asserted)", line.taxDescription, lines);
   }
+
   lines.push("");
   append("Net total", `${money(draft.totals.netMinor)} ${content.currency}`, lines);
   append("Asserted tax total", `${money(draft.totals.taxMinor)} ${content.currency}`, lines);
@@ -126,24 +139,32 @@ export function renderInvoicePdf(capture: typeof Pdf.InvoicePdfCapture.Type) {
   append("Review digest", review.digest, lines);
   lines.push("", "SYNTHETIC REVIEW DOCUMENT - NOT A LEGAL INVOICE - NOT DELIVERED");
   const pages: string[][] = [];
+
   for (let offset = 0; offset < lines.length; offset += 65)
     pages.push(lines.slice(offset, offset + 65));
   const objects: string[] = [];
+
   const add = (body: string) => {
     objects.push(body);
+
     return objects.length;
   };
+
   const catalog = add("");
   const pageTree = add("");
+
   const font = add(
     "<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>",
   );
+
   const pageIds: number[] = [];
+
   for (const page of pages) {
     const stream =
       page
         .map((line, index) => `BT /F1 9 Tf 45 ${790 - index * 11} Td <${hex(line)}> Tj ET`)
         .join("\n") + "\n";
+
     const streamId = add(`<< /Length ${stream.length} >>\nstream\n${stream}endstream`);
     pageIds.push(
       add(
@@ -151,15 +172,18 @@ export function renderInvoicePdf(capture: typeof Pdf.InvoicePdfCapture.Type) {
       ),
     );
   }
+
   objects[catalog - 1] = `<< /Type /Catalog /Pages ${pageTree} 0 R >>`;
   objects[pageTree - 1] =
     `<< /Type /Pages /Count ${pageIds.length} /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] >>`;
   let output = "%PDF-1.4\n";
   const offsets = [0];
+
   for (const [index, object] of objects.entries()) {
     offsets.push(output.length);
     output += `${index + 1} 0 obj\n${object}\nendobj\n`;
   }
+
   const xref = output.length;
   output += `xref\n0 ${offsets.length}\n0000000000 65535 f \n${offsets
     .slice(1)
@@ -168,10 +192,12 @@ export function renderInvoicePdf(capture: typeof Pdf.InvoicePdfCapture.Type) {
       "",
     )}trailer\n<< /Size ${offsets.length} /Root ${catalog} 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
   const bytes = new TextEncoder().encode(output);
+
   if (bytes.length > 1048576)
     throw new Accounting.AccountingError({
       code: "UnsupportedProfile",
       message: "PDF exceeds 1 MiB. The complete source cannot be rendered within this profile.",
     });
+
   return bytes;
 }

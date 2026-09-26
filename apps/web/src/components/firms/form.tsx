@@ -25,6 +25,7 @@ export function FirmForm<S extends Schema.Top & { readonly DecodingServices: nev
   const cache = useQueryClient();
   const keys = useRef(new Map<string, string>());
   const [invalid, setInvalid] = useState(false);
+
   const mutation = useMutation({
     mutationFn: (input: S["Type"]) =>
       readAccounting(
@@ -39,7 +40,9 @@ export function FirmForm<S extends Schema.Top & { readonly DecodingServices: nev
       props.onClose();
     },
   });
+
   const sv = props.locale === "sv";
+
   return (
     <FormDialog
       size="compact"
@@ -55,11 +58,15 @@ export function FirmForm<S extends Schema.Top & { readonly DecodingServices: nev
         gap="lg"
         onSubmit={(event) => {
           event.preventDefault();
+
           if (mutation.isPending) return;
+
           const input = Schema.decodeUnknownOption(props.schema)(
             props.input(new FormData(event.currentTarget)),
           );
+
           setInvalid(input._tag === "None");
+
           if (input._tag === "Some") mutation.mutate(input.value);
         }}
       >
@@ -110,5 +117,6 @@ export function FirmForm<S extends Schema.Top & { readonly DecodingServices: nev
 
 export function formText(fields: FormData, name: string) {
   const value = fields.get(name);
+
   return typeof value === "string" ? value : "";
 }

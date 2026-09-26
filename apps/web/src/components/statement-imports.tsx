@@ -32,7 +32,9 @@ export function statementImportsOptions(book: typeof Accounting.Book.Type) {
         Sources.SourceInventory,
         { signal },
       );
+
       page.items.forEach((item) => checkScope(book, item.occurrence.scope));
+
       return page;
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
@@ -44,10 +46,12 @@ export function StatementImports(props: { recordId?: string; onOpen: (id: string
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const [search, setSearch] = useState("");
+
   const query = useInfiniteQuery({
     ...statementImportsOptions(book),
     enabled: !props.recordId || props.recordId === "new",
   });
+
   const rows =
     query.data?.pages
       .flatMap((page) => page.items)
@@ -58,6 +62,7 @@ export function StatementImports(props: { recordId?: string; onOpen: (id: string
             .toLocaleLowerCase(locale)
             .includes(search.toLocaleLowerCase(locale)),
       ) ?? [];
+
   if (props.recordId && props.recordId !== "new")
     return (
       <Box display="grid" gap="xl">
@@ -76,6 +81,7 @@ export function StatementImports(props: { recordId?: string; onOpen: (id: string
         />
       </Box>
     );
+
   return (
     <Box display="grid" gap="xl">
       <RecordHeading

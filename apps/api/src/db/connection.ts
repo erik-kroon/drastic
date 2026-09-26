@@ -19,6 +19,7 @@ export const applicationPostgresTypes: CustomTypesConfig = {
     if ([1184, 1114, 1082, 1186, 1231, 1115, 1185, 1187, 1182].includes(oid)) {
       return (value: string) => value;
     }
+
     return types.getTypeParser(oid, format);
   },
 };
@@ -33,6 +34,7 @@ interface PostgresConfig {
 export function acquirePostgres(config: PostgresConfig) {
   const connectionFailure = (cause: unknown) =>
     new SqlError({ reason: new ConnectionError({ cause, operation: "connect" }) });
+
   return Effect.gen(function* () {
     // Register cleanup before connecting, including failed or interrupted connections.
     const client = yield* Effect.acquireRelease(
@@ -50,9 +52,11 @@ export function acquirePostgres(config: PostgresConfig) {
       }),
       (client) => Effect.tryPromise(() => client.end()).pipe(Effect.ignore),
     );
+
     // Idle socket errors are emitted separately; query errors still reach the Effect channel.
     client.on("error", () => undefined);
     yield* Effect.tryPromise({ try: () => client.connect(), catch: connectionFailure });
+
     return client;
   });
 }
@@ -65,6 +69,7 @@ export function databaseLayer(config: PostgresConfig) {
       applicationName: config.applicationName,
     }),
   );
+
   // Construct per request/CLI invocation: Workers cannot share sockets across requests.
   // The default Drizzle services disable query logging and caching.
   return Layer.effect(Database, makeDatabase).pipe(Layer.provide(clientLayer));

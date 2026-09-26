@@ -7,7 +7,9 @@ const Provenance = Schema.Struct({
   evidenceId: Accounting.Identifier,
   sha256: Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/)),
 });
+
 const PolicyText = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(2000));
+
 export const InvoicePolicyCandidateInput = Schema.Struct({
   profileKey: Accounting.Identifier,
   sellerIdentity: Schema.Struct({
@@ -31,6 +33,7 @@ export const InvoicePolicyCandidateInput = Schema.Struct({
   reason: Accounting.Description,
   acknowledgeUnactivated: Schema.Literal(true),
 });
+
 export const InvoicePolicyCandidate = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -40,12 +43,14 @@ export const InvoicePolicyCandidate = Schema.Struct({
   createdAt: Schema.String,
   digest: Accounting.Digest,
 });
+
 export const ReviewInvoicePolicy = Schema.Struct({
   candidateDigest: Accounting.Digest,
   reviewEvidence: Provenance,
   findings: PolicyText,
   acknowledgeNoLegalActivation: Schema.Literal(true),
 });
+
 export const InvoicePolicyReview = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -57,17 +62,21 @@ export const InvoicePolicyReview = Schema.Struct({
   legalInvoiceEnabled: Schema.Literal(false),
   digest: Accounting.Digest,
 });
+
 export const InvoicePolicyView = Schema.Struct({
   candidate: InvoicePolicyCandidate,
   review: Schema.NullOr(InvoicePolicyReview),
   legalInvoiceEnabled: Schema.Literal(false),
 });
+
 export const InvoicePolicyHistory = Schema.Struct({
   scope: Accounting.Scope,
   complete: Schema.Literal(true),
   items: Schema.Array(InvoicePolicyView).check(Schema.isMaxLength(50)),
 });
+
 const path = "/v1/entities/:entityId/books/:bookId/commerce/invoice-policies";
+
 export const InvoicePolicyApi = HttpApiGroup.make("invoicePolicies").add(
   HttpApiEndpoint.post("saveInvoicePolicyCandidate", path, {
     params: Accounting.Scope,
@@ -94,6 +103,7 @@ export const InvoicePolicyApi = HttpApiGroup.make("invoicePolicies").add(
     success: InvoicePolicyHistory,
   }),
 );
+
 export const InvoicePolicyCapabilities = {
   commerce_get_invoice_policy_candidate: {
     description:

@@ -6,6 +6,7 @@ import { Fragment, type ReactNode } from "react";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 
 const features = tableFeatures({});
+
 const styles = stylex.create({
   scroll: {
     minWidth: 0,
@@ -122,6 +123,7 @@ export function DataGrid<Row extends object>({
   renderDetail?: (row: Row) => ReactNode;
 }) {
   const column = createColumnHelper<typeof features, Row>();
+
   const table = useTable({
     features,
     data: [...rows],
@@ -136,6 +138,7 @@ export function DataGrid<Row extends object>({
       ),
     ),
   });
+
   return (
     <div
       {...stylex.props(styles.scroll)}
@@ -182,6 +185,7 @@ export function DataGrid<Row extends object>({
         <tbody {...stylex.props(narrow === "stack" && styles.stackedBody)} role="rowgroup">
           {table.getRowModel().rows.map((row) => {
             const detail = renderDetail?.(row.original);
+
             return (
               <Fragment key={row.id}>
                 <tr

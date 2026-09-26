@@ -23,10 +23,12 @@ const search = Schema.Struct({
   q: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
   period: Schema.optional(Schema.String),
 });
+
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/books")({
   validateSearch: Schema.decodeUnknownSync(search),
   component: Books,
 });
+
 function Books() {
   const { book, setup, locale } = useBookWorkspace();
   const query = Route.useSearch();
@@ -34,9 +36,11 @@ function Books() {
   const navigate = useNavigate();
   const copy = frontendCopy(locale);
   const base = `${workspacePath(book)}/books`;
+
   const onPrepared = (id: string) => {
     void navigate({ to: reviewPath(book, id) });
   };
+
   return (
     <>
       <WorkspaceHeader
@@ -66,10 +70,20 @@ function Books() {
             query={query.q ?? ""}
             period={query.period ?? ""}
             onQuery={(q) =>
-              void navigate({ to: base, search: { ...query, q: q || undefined }, replace: true, resetScroll: false })
+              void navigate({
+                to: base,
+                search: { ...query, q: q || undefined },
+                replace: true,
+                resetScroll: false,
+              })
             }
             onPeriod={(period) =>
-              void navigate({ to: base, search: { ...query, period: period || undefined }, replace: true, resetScroll: false })
+              void navigate({
+                to: base,
+                search: { ...query, period: period || undefined },
+                replace: true,
+                resetScroll: false,
+              })
             }
           />
         ) : null}

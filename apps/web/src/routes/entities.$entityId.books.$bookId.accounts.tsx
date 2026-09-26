@@ -3,6 +3,7 @@ import * as Schema from "effect/Schema";
 import { FinanceArea } from "@/components/finance-area";
 import { BankAccountWorkspace } from "@/components/bank-account-workspace";
 import { AccountingDate, Identifier } from "@open-erp/contracts/accounting";
+
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/accounts")({
   validateSearch: Schema.decodeUnknownSync(
     Schema.Struct({
@@ -23,8 +24,10 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/accounts
   ),
   component: Page,
 });
+
 function Page() {
   const search = Route.useSearch();
+
   if (!search.view || search.view === "imports")
     return (
       <BankAccountWorkspace
@@ -35,5 +38,6 @@ function Page() {
         }}
       />
     );
+
   return <FinanceArea area="accounts" view={search.view} record={search.record} />;
 }

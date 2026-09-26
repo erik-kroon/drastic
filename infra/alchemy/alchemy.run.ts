@@ -12,10 +12,12 @@ export default Alchemy.Stack(
   },
   Effect.gen(function* () {
     const path = yield* Path;
+
     const evidence = yield* Cloudflare.R2.Bucket("Evidence", {
       jurisdiction: yield* Config.literals(["eu", "default"], "OPENERP_ARCHIVE_JURISDICTION"),
       publicAccess: false,
     }).pipe(Alchemy.RemovalPolicy.retain());
+
     const database = yield* Cloudflare.Hyperdrive.Connection("AccountingDatabase", {
       origin: {
         scheme: "postgres",
@@ -27,6 +29,7 @@ export default Alchemy.Stack(
       },
       caching: { disabled: true },
     });
+
     const api = yield* Cloudflare.Worker("Api", {
       compatibility: { date: "2026-09-22", flags: ["nodejs_compat"] },
       main: path.resolve(import.meta.dirname, "../../apps/api/src/runtime/cloudflare.ts"),
@@ -43,6 +46,7 @@ export default Alchemy.Stack(
       },
       observability: { enabled: true },
     });
+
     const website = yield* Cloudflare.Website.Vite("Website", {
       rootDir: path.resolve(import.meta.dirname, "../../apps/web"),
       main: "src/worker.ts",

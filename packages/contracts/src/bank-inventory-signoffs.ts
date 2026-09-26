@@ -16,12 +16,15 @@ export const PrepareBankInventorySignoff = Schema.Struct({
   endsOn: A.AccountingDate,
   signoffPlanIds: Schema.Array(A.Identifier).check(Schema.isMinLength(1), Schema.isMaxLength(100)),
 });
+
 const ArtifactIdentity = Schema.Struct({
   sha256: Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/)),
   byteLength: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 8388608 })),
   mediaType: Schema.Literal("application/json"),
 });
+
 const Artifact = Schema.Struct({ ...ArtifactIdentity.fields, content: Schema.String });
+
 export const BankInventorySignoffPlan = Schema.Struct({
   id: A.Identifier,
   version: Schema.Literal(1),
@@ -57,8 +60,11 @@ export const BankInventorySignoffPlan = Schema.Struct({
   receipt: CommandReceipt,
   digest: A.Digest,
 });
+
 export const SignBankInventory = SignBankReconciliation;
+
 export const BankInventorySignoff = BankReconciliationSignoff;
+
 export const BankInventorySignoffView = Schema.Struct({
   plan: BankInventorySignoffPlan,
   signoff: Schema.NullOr(BankInventorySignoff),
@@ -66,6 +72,7 @@ export const BankInventorySignoffView = Schema.Struct({
   signedArtifact: Schema.NullOr(Artifact),
   dependenciesCurrent: Schema.Boolean,
 });
+
 export const BankInventorySignoffList = Schema.Struct({
   scope: A.Scope,
   items: Schema.Array(
@@ -82,7 +89,9 @@ export const BankInventorySignoffList = Schema.Struct({
     }),
   ).check(Schema.isMaxLength(200)),
 });
+
 const path = "/v1/entities/:entityId/books/:bookId/bank-inventory-signoff-plans";
+
 export const BankInventorySignoffApi = HttpApiGroup.make("bankInventorySignoffs").add(
   HttpApiEndpoint.post("prepareBankInventorySignoff", path, {
     params: A.Scope,
@@ -109,6 +118,7 @@ export const BankInventorySignoffApi = HttpApiGroup.make("bankInventorySignoffs"
     error: accountingErrors,
   }),
 );
+
 // Whole-inventory signing remains operator-only REST, never an MCP approval tool.
 export const BankInventorySignoffCapabilities = {
   bank_prepare_inventory_signoff: {

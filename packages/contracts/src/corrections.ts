@@ -16,14 +16,17 @@ export const CorrectionIntent = Schema.Struct({
     ),
   }),
 });
+
 export const ImpactReference = Schema.Struct({
   id: Accounting.Identifier,
   digest: Accounting.Digest,
 });
+
 export const PrepareCorrectionBundle = Schema.Struct({
   ...CorrectionIntent.fields,
   impactReview: Schema.optional(ImpactReference),
 });
+
 export const CorrectionBundle = Schema.Struct({
   id: Accounting.Identifier,
   version: Schema.Literal(1),
@@ -38,10 +41,12 @@ export const CorrectionBundle = Schema.Struct({
   bundleDigest: Accounting.Digest,
   impactReview: Schema.optional(ImpactReference),
 });
+
 export const ApproveCorrectionBundle = Schema.Struct({
   bundleDigest: Accounting.Digest,
   version: Schema.Literal(1),
 });
+
 export const CorrectionBundleApproval = Schema.Struct({
   id: Accounting.Identifier,
   bundleId: Accounting.Identifier,
@@ -49,10 +54,12 @@ export const CorrectionBundleApproval = Schema.Struct({
   actorId: Accounting.Identifier,
   expiresAt: Schema.String,
 });
+
 export const ExecuteCorrectionBundle = Schema.Struct({
   ...ApproveCorrectionBundle.fields,
   approvalId: Accounting.Identifier,
 });
+
 export const CorrectionBundleReceipt = Schema.Struct({
   id: Accounting.Identifier,
   bundleId: Accounting.Identifier,
@@ -63,6 +70,7 @@ export const CorrectionBundleReceipt = Schema.Struct({
   replacement: Accounting.ExecutionReceipt,
   committedAt: Schema.String,
 });
+
 export const CorrectionBundleView = Schema.Struct({
   bundle: CorrectionBundle,
   approval: Schema.NullOr(CorrectionBundleApproval),
@@ -85,6 +93,7 @@ export const CorrectionChain = Schema.Struct({
     }),
   ),
 });
+
 export const CorrectionImpactResource = Schema.Struct({
   kind: Schema.Literals([
     "bank_match",
@@ -115,10 +124,12 @@ export const CorrectionImpactResource = Schema.Struct({
     }),
   ),
 });
+
 export const CorrectionBlocker = Schema.Struct({
   code: Accounting.FailureCode,
   message: Schema.String,
 });
+
 export const CorrectionImpactBasis = Schema.Struct({
   intent: CorrectionIntent,
   chain: CorrectionChain,
@@ -131,6 +142,7 @@ export const CorrectionImpactBasis = Schema.Struct({
   executable: Schema.Literal(false),
   limitations: Schema.Array(Schema.String),
 });
+
 export const CorrectionImpact = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -140,11 +152,13 @@ export const CorrectionImpact = Schema.Struct({
   basis: CorrectionImpactBasis,
   digest: Accounting.Digest,
 });
+
 export const CorrectionImpactView = Schema.Struct({
   impact: CorrectionImpact,
   snapshotCurrent: Schema.Boolean,
   executable: Schema.Literal(false),
 });
+
 export const CorrectionBundlePage = Schema.Struct({
   items: Schema.Array(
     Schema.Struct({
@@ -157,6 +171,7 @@ export const CorrectionBundlePage = Schema.Struct({
   ),
   next: Schema.NullOr(Accounting.Identifier),
 });
+
 export const CorrectionRequestRecovery = Schema.Struct({
   key: Accounting.IdempotencyHeaders.fields["idempotency-key"],
   checkedAt: Schema.String,
@@ -173,8 +188,11 @@ export const CorrectionRequestRecovery = Schema.Struct({
 });
 
 const path = "/v1/entities/:entityId/books/:bookId";
+
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
+
 const mutation = { ...identified, headers: Accounting.IdempotencyHeaders };
+
 export const CorrectionApi = HttpApiGroup.make("corrections").add(
   HttpApiEndpoint.post(
     "prepareCorrectionImpact",
@@ -233,10 +251,12 @@ export const CorrectionApi = HttpApiGroup.make("corrections").add(
 );
 
 const scoped = { scope: Accounting.Scope };
+
 const command = {
   ...scoped,
   idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
 };
+
 export const CorrectionCapabilities = {
   corrections_review_impact: {
     description:

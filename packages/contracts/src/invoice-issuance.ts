@@ -17,15 +17,18 @@ export const PrepareInvoiceIssue = Schema.Struct({
   reason: Accounting.Description,
   acknowledgeSyntheticOnly: Schema.Literal(true),
 });
+
 export const ApproveInvoiceIssue = Schema.Struct({
   version: Schema.Literal(1),
   digest: Accounting.Digest,
   acknowledgeSyntheticOnly: Schema.Literal(true),
 });
+
 export const ExecuteInvoiceIssue = Schema.Struct({
   ...ApproveInvoiceIssue.fields,
   approvalId: Accounting.Identifier,
 });
+
 export const InvoiceIssueReview = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -41,6 +44,7 @@ export const InvoiceIssueReview = Schema.Struct({
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
 });
+
 export const InvoiceIssueApproval = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -53,6 +57,7 @@ export const InvoiceIssueApproval = Schema.Struct({
   createdAt: Schema.String,
   receipt: Commerce.CommandReceipt,
 });
+
 export const InvoiceIssueReceipt = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -77,6 +82,7 @@ export const InvoiceIssueReceipt = Schema.Struct({
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
 });
+
 export const InvoiceIssueView = Schema.Struct({
   plan: InvoiceIssueReview,
   approval: Schema.NullOr(InvoiceIssueApproval),
@@ -85,23 +91,33 @@ export const InvoiceIssueView = Schema.Struct({
   dependenciesCurrent: Schema.Boolean,
   approvalUsable: Schema.Boolean,
 });
+
 export const InvoiceIssueHistory = Schema.Struct({
   scope: Accounting.Scope,
   draftId: Accounting.Identifier,
   complete: Schema.Literal(true),
   count: Schema.Int,
-  items: Schema.Array(Schema.Struct({
-    id: Accounting.Identifier,
-    ordinal: Schema.Int,
-    draftRevision: Commerce.Version,
-    digest: Accounting.Digest,
-    createdAt: Schema.String,
-    issueId: Schema.NullOr(Accounting.Identifier),
-    internalDocumentNumber: Schema.NullOr(Schema.String),
-  })).check(Schema.isMaxLength(50)),
+  items: Schema.Array(
+    Schema.Struct({
+      id: Accounting.Identifier,
+      ordinal: Schema.Int,
+      draftRevision: Commerce.Version,
+      digest: Accounting.Digest,
+      createdAt: Schema.String,
+      issueId: Schema.NullOr(Accounting.Identifier),
+      internalDocumentNumber: Schema.NullOr(Schema.String),
+    }),
+  ).check(Schema.isMaxLength(50)),
 });
+
 const path = "/v1/entities/:entityId/books/:bookId/commerce";
-const mutation = { params: Accounting.ChangePath, headers: Accounting.IdempotencyHeaders, error: accountingErrors };
+
+const mutation = {
+  params: Accounting.ChangePath,
+  headers: Accounting.IdempotencyHeaders,
+  error: accountingErrors,
+};
+
 export const InvoiceIssuanceApi = HttpApiGroup.make("invoiceIssuance").add(
   HttpApiEndpoint.post("prepareInvoiceIssue", `${path}/invoice-issue-reviews`, {
     params: Accounting.Scope,
@@ -131,16 +147,19 @@ export const InvoiceIssuanceApi = HttpApiGroup.make("invoiceIssuance").add(
     error: accountingErrors,
   }),
 );
+
 // All issue/recognition mutations are operator-only. Ordinary MCP exposes recovery reads only.
 export const InvoiceIssuanceCapabilities = {
   commerce_get_invoice_issue_review: {
-    description: "Read a sealed synthetic invoice issue and exact posting review, its current blockers, human approval and committed aggregate receipt. Not legal invoice or delivery authority.",
+    description:
+      "Read a sealed synthetic invoice issue and exact posting review, its current blockers, human approval and committed aggregate receipt. Not legal invoice or delivery authority.",
     input: Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier }),
     output: InvoiceIssueView,
     readOnly: true,
   },
   commerce_invoice_issue_history: {
-    description: "Read the complete bounded issue-review history for one customer draft, including saved synthetic issue identities for recovery after reload.",
+    description:
+      "Read the complete bounded issue-review history for one customer draft, including saved synthetic issue identities for recovery after reload.",
     input: Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier }),
     output: InvoiceIssueHistory,
     readOnly: true,

@@ -49,11 +49,14 @@ const styles = stylex.create({
     color: tokens.foreground,
   },
 });
+
 type BadgeVariant = "default" | "secondary" | "success" | "warning" | "destructive" | "outline";
+
 type BadgeProps = WithStyleX<React.ComponentProps<"span">> & {
   styleX?: StyleXStyles;
   variant?: BadgeVariant;
 };
+
 const variants = {
   default: styles.default,
   secondary: styles.secondary,
@@ -62,6 +65,7 @@ const variants = {
   destructive: styles.destructive,
   outline: styles.outline,
 } as const;
+
 function Badge({ className, styleX, variant = "default", ...props }: BadgeProps) {
   return (
     <span
@@ -72,5 +76,7 @@ function Badge({ className, styleX, variant = "default", ...props }: BadgeProps)
     />
   );
 }
+
 export { Badge };
+
 export type { BadgeProps, BadgeVariant };

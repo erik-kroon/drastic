@@ -3,6 +3,7 @@ import type * as Schema from "effect/Schema";
 import type { Transaction } from "./transaction";
 
 type BodyRow = { readonly body: Schema.JsonObject };
+
 export type RunRow = {
   readonly id: string;
   readonly planId: string;

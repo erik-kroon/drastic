@@ -748,7 +748,10 @@ export function readPaymentVoucher(transaction: Transaction, bookId: string, vou
   );
 }
 
-export function insertAllocationPlan(transaction: Transaction, row: { bookId: string; id: string; body: JsonObject }) {
+export function insertAllocationPlan(
+  transaction: Transaction,
+  row: { bookId: string; id: string; body: JsonObject },
+) {
   return transaction.execute(
     sql`
       insert into openerp.commerce_allocation_plans (book_id, id, body)
@@ -758,7 +761,11 @@ export function insertAllocationPlan(transaction: Transaction, row: { bookId: st
   );
 }
 
-export function readAllocationReceiptForPlan(transaction: Transaction, bookId: string, planId: string) {
+export function readAllocationReceiptForPlan(
+  transaction: Transaction,
+  bookId: string,
+  planId: string,
+) {
   return transaction.execute<{ readonly body: JsonObject }>(
     sql`
       select r.body from openerp.commerce_allocation_receipts r
@@ -784,11 +791,7 @@ export function readAllocationReceiptForApproval(
   );
 }
 
-export function readOperatorMembership(
-  transaction: Transaction,
-  bookId: string,
-  actorId: string,
-) {
+export function readOperatorMembership(transaction: Transaction, bookId: string, actorId: string) {
   return transaction.execute<PresentRow>(
     sql`
       select exists (
@@ -932,6 +935,7 @@ export function readPaymentCandidatePage(
     recognitionEventId,
     recognitionPostingDate,
   );
+
   return transaction.execute<PagedRow<PaymentCandidateRow>>(
     sql`
       select paged.* from (
@@ -964,6 +968,7 @@ export function countPaymentCandidates(
     recognitionEventId,
     recognitionPostingDate,
   );
+
   return transaction.execute<CountRow>(
     sql`
       select count(*)::integer as count from (
@@ -1013,6 +1018,7 @@ export function readInvoiceAllocationHistory(
   limit: number,
 ) {
   const history = invoiceAllocationHistoryEntry(bookId, invoiceId);
+
   return transaction.execute<PagedRow<AllocationHistoryRow>>(
     sql`
       select paged.* from (
@@ -1031,6 +1037,7 @@ export function countInvoiceAllocationHistory(
   invoiceId: string,
 ) {
   const history = invoiceAllocationHistoryEntry(bookId, invoiceId);
+
   return transaction.execute<CountRow>(
     sql`select count(*)::integer as count from (${history}) counted`,
     "objects",

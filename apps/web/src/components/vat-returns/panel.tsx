@@ -24,6 +24,7 @@ type Props = {
   book: typeof Accounting.Book.Type;
   locale: Locale;
 };
+
 export function VatReturnsPanel(props: Props) {
   const { book, locale } = props;
   const copy = vatCopy(locale);
@@ -33,28 +34,33 @@ export function VatReturnsPanel(props: Props) {
   const [localRecord, setLocalRecord] = useState("");
   const record = props.recordId ?? localRecord;
   const select = props.onOpen ?? setLocalRecord;
+
   const selected = record.startsWith("fact:")
     ? { kind: "fact", id: record.slice(5) }
     : record.startsWith("draft:")
       ? { kind: "draft", id: record.slice(6) }
       : null;
+
   const basis = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "basis"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(book)}/vat-returns/facts`, Vat.VatBasis, { signal }),
     retry: false,
   });
+
   const drafts = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "drafts"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(book)}/vat-returns/drafts`, Vat.VatDraftList, { signal }),
     retry: false,
   });
+
   const saved = (kind: "fact" | "draft", id: string) => {
     setCreating(null);
     select(`${kind}:${id}`);
     void client.invalidateQueries({ queryKey: [...bookKey(book), "vat-returns"] });
   };
+
   if (selected)
     return (
       <Box display="grid" gap="xl">
@@ -77,6 +83,7 @@ export function VatReturnsPanel(props: Props) {
         )}
       </Box>
     );
+
   return (
     <Box display="grid" gap="xl" id="vat-returns">
       <RecordHeading
@@ -180,6 +187,7 @@ export function VatReturnsPanel(props: Props) {
     </Box>
   );
 }
+
 function FactDetail({
   book,
   locale,
@@ -189,13 +197,16 @@ function FactDetail({
   const copy = vatCopy(locale);
   const [revision, setRevision] = useState<string | null>(null);
   const [editing, setEditing] = useState<typeof Vat.VatFact.Type | null>(null);
+
   const result = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "fact", id],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(book)}/vat-returns/facts/${id}`, Vat.VatFactView, { signal }),
     retry: false,
   });
+
   const view = result.data;
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <AccountingStatus locale={locale} pending={result.isPending} error={result.error} />
@@ -255,6 +266,7 @@ function FactDetail({
     </Box>
   );
 }
+
 function DraftDetail({ book, locale, id }: Props & { id: string }) {
   const result = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "draft", id],
@@ -262,6 +274,7 @@ function DraftDetail({ book, locale, id }: Props & { id: string }) {
       readAccounting(`${bookPath(book)}/vat-returns/drafts/${id}`, Vat.VatDraftView, { signal }),
     retry: false,
   });
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <AccountingStatus locale={locale} pending={result.isPending} error={result.error} />

@@ -14,16 +14,25 @@ import {
 } from "./support";
 
 type DraftContent = typeof Drafts.DraftContent.Type;
+
 type DraftLine = typeof Drafts.DraftLine.Type;
+
 type DraftIdentity = typeof Drafts.DraftIdentity.Type;
 
 const maximumMinor = 10n ** 38n;
+
 const draftBound = 200;
+
 const revisionBound = 50;
+
 const inputBytes = 65536;
+
 const retainedBytes = 131072;
+
 const initialReason = "Initial commercial draft";
+
 const calculationBasis = "explicit_line_amounts_v1";
+
 const contentFields = [
   "counterpartyId",
   "counterpartyRevision",
@@ -39,6 +48,7 @@ const contentFields = [
   "supplyDate",
   "title",
 ] as const;
+
 const lineFields = [
   "baseMinor",
   "chargeMinor",
@@ -52,6 +62,7 @@ const lineFields = [
   "taxMinor",
   "unitPriceMinor",
 ] as const;
+
 const identityFields = [
   "address",
   "countryCode",
@@ -60,6 +71,7 @@ const identityFields = [
   "registrationId",
   "taxId",
 ] as const;
+
 const selectionFields = ["code", "revision", "unit"] as const;
 
 const standingBlockers: ReadonlyArray<{ readonly code: string; readonly lineId: null }> = [
@@ -84,6 +96,7 @@ function exactLineBase(quantity: string, unitPriceMinor: string | null) {
   const [whole = "0", fraction = ""] = quantity.split(".");
   const scale = 10n ** BigInt(fraction.length);
   const product = BigInt(whole + fraction) * BigInt(unitPriceMinor);
+
   return product % scale === 0n ? product / scale : null;
 }
 
@@ -97,7 +110,9 @@ function identityBlockers(identity: DraftIdentity, role: string) {
 
 function requireCatalogAgreement(transaction: Transaction, bookId: string, line: DraftLine) {
   const selection = line.catalogSelection;
+
   if (selection === undefined) return Effect.void;
+
   return Effect.gen(function* () {
     const article = (yield* CatalogDb.readArticleRevision(
       transaction,
@@ -105,8 +120,10 @@ function requireCatalogAgreement(transaction: Transaction, bookId: string, line:
       selection.code,
       String(selection.revision),
     ))[0];
+
     if (!article) return yield* failure("StaleDependency");
     const body = article.body;
+
     if (
       textField(body, "unit") !== selection.unit ||
       textField(body, "description") !== line.description ||
@@ -120,6 +137,7 @@ function requireCatalogAgreement(transaction: Transaction, bookId: string, line:
 
 function lineEvidence(transaction: Transaction, bookId: string, line: DraftLine) {
   if (line.taxEvidenceId === null) return Effect.succeed<JsonObject | null>(null);
+
   return readEvidenceReference(transaction, bookId, line.taxEvidenceId);
 }
 
@@ -134,33 +152,44 @@ function calculateLine(
       yield* toJsonObject(line),
       line.catalogSelection === undefined ? lineFields : [...lineFields, "catalogSelection"],
     );
+
     if (line.catalogSelection !== undefined) {
       yield* exactKeys(yield* toJsonObject(line.catalogSelection), selectionFields);
       yield* requireCatalogAgreement(transaction, bookId, line);
     }
+
     const taxEvidence = yield* lineEvidence(transaction, bookId, line);
+
     if (line.taxMinor === null || taxEvidence === null || line.taxDescription === null) {
       blockers.push(blocker("tax_inputs_unreviewed", line.id));
     }
+
     const base = BigInt(line.baseMinor);
     const discount = BigInt(line.discountMinor);
     const charge = BigInt(line.chargeMinor);
+
     if (discount > base) return yield* failure("InvalidJournal");
     const net = base - discount + charge;
     const tax = optionalMinor(line.taxMinor);
     const gross = tax === null ? null : net + tax;
+
     if (net >= maximumMinor || (gross !== null && gross >= maximumMinor)) {
       return yield* failure("InvalidJournal");
     }
+
     const calculatedBase = exactLineBase(line.quantity, line.unitPriceMinor);
+
     if (calculatedBase === null) {
       blockers.push(blocker("quantity_price_not_exact", line.id));
     } else if (calculatedBase !== base) {
       blockers.push(blocker("line_base_mismatch", line.id));
     }
+
     const source = optionalMinor(line.sourceGrossMinor);
     const sourceGrossMatches = gross === null || source === null ? null : gross === source;
+
     if (sourceGrossMatches === false) blockers.push(blocker("line_total_mismatch", line.id));
+
     return { taxEvidence, net, gross, tax, calculatedBase, sourceGrossMatches };
   });
 }
@@ -180,33 +209,41 @@ export function calculateDraft(
     yield* exactKeys(yield* toJsonObject(content), contentFields);
     yield* exactKeys(yield* toJsonObject(content.seller), identityFields);
     yield* exactKeys(yield* toJsonObject(content.customer), identityFields);
+
     if (content.currency !== book.currency || content.currencyScale !== book.currencyScale) {
       return yield* failure("InvalidJournal");
     }
+
     const sellerEvidence = yield* readEvidenceReference(
       transaction,
       scope.bookId,
       content.seller.evidenceId,
     );
+
     const customerEvidence = yield* readEvidenceReference(
       transaction,
       scope.bookId,
       content.customer.evidenceId,
     );
+
     const blockers: Blocker[] = [...standingBlockers];
     blockers.push(...identityBlockers(content.seller, "seller"));
     blockers.push(...identityBlockers(content.customer, "customer"));
+
     const counterparty = (yield* DraftDb.readCustomerCounterparty(
       transaction,
       scope.bookId,
       content.counterpartyId,
     ))[0];
+
     if (!counterparty || (counterparty.role !== "customer" && counterparty.role !== "both")) {
       return yield* failure("InvalidJournal");
     }
+
     if (counterparty.currentRevision !== content.counterpartyRevision) {
       return yield* failure("StaleDependency");
     }
+
     if (
       content.dueDate !== null &&
       content.plannedIssueDate !== null &&
@@ -214,6 +251,7 @@ export function calculateDraft(
     ) {
       return yield* failure("InvalidJournal");
     }
+
     if (
       content.plannedIssueDate === null ||
       content.dueDate === null ||
@@ -222,6 +260,7 @@ export function calculateDraft(
     ) {
       blockers.push(blocker("dates_or_terms_missing", null));
     }
+
     const sourceTotal = optionalMinor(content.sourceTotalMinor);
     const seen = new Set<string>();
     const calculatedLines: Array<JsonObject> = [];
@@ -231,6 +270,7 @@ export function calculateDraft(
     let netTotal = 0n;
     let taxTotal = 0n;
     let taxKnown = true;
+
     for (const line of content.lines) {
       if (seen.has(line.id)) return yield* failure("InvalidJournal");
       seen.add(line.id);
@@ -239,6 +279,7 @@ export function calculateDraft(
       discountTotal += BigInt(line.discountMinor);
       chargeTotal += BigInt(line.chargeMinor);
       netTotal += calculated.net;
+
       if (calculated.tax === null) taxKnown = false;
       else taxTotal += calculated.tax;
       calculatedLines.push({
@@ -250,10 +291,14 @@ export function calculateDraft(
         taxEvidence: calculated.taxEvidence,
       });
     }
+
     const grossTotal = taxKnown ? netTotal + taxTotal : null;
+
     const sourceTotalMatches =
       grossTotal === null || sourceTotal === null ? null : grossTotal === sourceTotal;
+
     if (sourceTotalMatches === false) blockers.push(blocker("document_total_mismatch", null));
+
     return {
       counterparty: counterparty.revision,
       sellerEvidence,

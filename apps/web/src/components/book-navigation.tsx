@@ -32,8 +32,10 @@ export function BookNavigation(props: {
   const home = pathname === base || pathname === `${base}/`;
   const reviewing = pathname.includes("/reviews/") || pathname.endsWith("/work");
   const bookkeeping = pathname === `${base}/books`;
+
   const preloadAccounts = () => {
     const setup = props.setup;
+
     if (pathname === `${base}/accounts` || !setup) return;
     void import("@/components/bank-account-workspace")
       .then((module) =>
@@ -43,6 +45,7 @@ export function BookNavigation(props: {
       )
       .catch(() => undefined);
   };
+
   const preloadSales = () => {
     if (pathname === `${base}/sales` || !props.setup) return;
     void import("@/components/commerce/sales-workspace")
@@ -56,6 +59,7 @@ export function BookNavigation(props: {
       )
       .catch(() => undefined);
   };
+
   return (
     <>
       <WorkspaceNavigation label={copy.todo} showLabel={false}>

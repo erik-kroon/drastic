@@ -21,11 +21,13 @@ const review = Schema.Struct({
   ...Connector.SaveConnectorConsent.fields,
   confirmed: Schema.Literal(true),
 });
+
 export function ConsentForm({ onSaved }: { onSaved: (id: string) => void }) {
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const keys = useRef(new Map<string, string>());
   const path = `${bookPath(book)}/bank-connector-consents`;
+
   const save = useMutation({
     mutationFn: async (input: typeof Connector.SaveConnectorConsent.Type) => {
       const result = await readAccounting(
@@ -33,13 +35,17 @@ export function ConsentForm({ onSaved }: { onSaved: (id: string) => void }) {
         Connector.ConnectorConsent,
         mutationOptions(path, JSON.stringify(input), keys.current),
       );
+
       checkScope(book, result.scope);
+
       return result;
     },
     onSuccess: (result) => onSaved(result.id),
   });
+
   const uncertain = isUncertainWriteError(save.error);
   const disabled = book.role !== "operator" || save.isPending || uncertain || save.isSuccess;
+
   const form = useForm({
     defaultValues: {
       providerId: "",
@@ -69,6 +75,7 @@ export function ConsentForm({ onSaved }: { onSaved: (id: string) => void }) {
         .catch(() => undefined);
     },
   });
+
   const fields = [
     {
       name: "providerId",
@@ -104,6 +111,7 @@ export function ConsentForm({ onSaved }: { onSaved: (id: string) => void }) {
     label: string;
     hint: string;
   }[];
+
   return (
     <Box
       as="form"

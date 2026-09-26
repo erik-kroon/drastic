@@ -14,8 +14,11 @@ import {
 } from "./support";
 
 const DirectoryPageSchema = Crm.DirectoryPage;
+
 const DirectoryExportSchema = Crm.DirectoryExport;
+
 const AnnotationSchema = Crm.Annotation;
+
 const AddAnnotationSchema = Crm.AddAnnotation;
 
 const annotationKinds = ["contact", "alias", "registry_provenance"] as const;
@@ -32,6 +35,7 @@ function boundedFilter(filters: { search: string; role: string; after: string })
   if (filters.search.length > 200 || filters.after.length > 200 || !validRole(filters.role)) {
     return failure("InvalidJournal");
   }
+
   return Effect.void;
 }
 
@@ -42,6 +46,7 @@ export const readDirectory = Effect.fn("commerce.crm.readDirectory")(function* (
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, CrmDb.crmMasterTables, false);
     yield* boundedFilter(input.filters);
+
     const rows = yield* CrmDb.readDirectoryPage(
       transaction,
       input.scope.bookId,
@@ -50,7 +55,9 @@ export const readDirectory = Effect.fn("commerce.crm.readDirectory")(function* (
       input.filters.after,
       50,
     );
+
     const last = rows[rows.length - 1];
+
     return yield* decode(DirectoryPageSchema, {
       items: rows.map(directoryEntry),
       next: last?.hasMore === true ? last.id : null,
@@ -65,6 +72,7 @@ export const readDirectoryExport = Effect.fn("commerce.crm.readDirectoryExport")
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, CrmDb.crmMasterTables, false);
     yield* boundedFilter(input.filters);
+
     const rows = yield* CrmDb.readDirectoryPage(
       transaction,
       input.scope.bookId,
@@ -73,7 +81,9 @@ export const readDirectoryExport = Effect.fn("commerce.crm.readDirectoryExport")
       input.filters.after,
       200,
     );
+
     const last = rows[rows.length - 1];
+
     return yield* decode(DirectoryExportSchema, {
       scope: input.scope,
       items: rows.map(directoryEntry),
@@ -100,12 +110,15 @@ export const addAnnotation = Effect.fn("commerce.crm.addAnnotation")(function* (
         command.input,
         AnnotationSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireTableAccess(transaction, CrmDb.crmMasterTables, true);
       yield* lockBookForUpdate(transaction, command.scope);
       const input = yield* decode(AddAnnotationSchema, command.input);
       yield* exactKeys(input, ["partyId", "kind", "label", "detail", "evidenceId"]);
+
       if (!annotationKinds.includes(input.kind)) return yield* failure("InvalidJournal");
+
       if (
         input.partyId.length > 200 ||
         input.label.length > 200 ||
@@ -114,17 +127,21 @@ export const addAnnotation = Effect.fn("commerce.crm.addAnnotation")(function* (
       ) {
         return yield* failure("InvalidJournal");
       }
+
       const evidence = yield* CrmDb.readEvidenceIdentity(
         transaction,
         command.scope.bookId,
         input.evidenceId,
       );
+
       if (evidence.length === 0) return yield* failure("MissingEvidence");
+
       const parties = yield* CrmDb.readPartyExists(
         transaction,
         command.scope.bookId,
         input.partyId,
       );
+
       if (parties[0]?.present !== true) return yield* failure("NotFound");
       const id = newId("crm");
       yield* CrmDb.insertAnnotation(transaction, {
@@ -139,7 +156,9 @@ export const addAnnotation = Effect.fn("commerce.crm.addAnnotation")(function* (
       });
       const recorded = yield* CrmDb.readAnnotation(transaction, command.scope.bookId, id);
       const row = recorded[0];
+
       if (!row) return yield* failure("InternalError");
+
       const result = yield* decode(AnnotationSchema, {
         id: row.id,
         partyId: row.partyId,
@@ -150,6 +169,7 @@ export const addAnnotation = Effect.fn("commerce.crm.addAnnotation")(function* (
         recordedBy: row.recordedBy,
         recordedAt: row.recordedAt,
       });
+
       yield* saveCommand(
         transaction,
         command.scope,
@@ -159,6 +179,7 @@ export const addAnnotation = Effect.fn("commerce.crm.addAnnotation")(function* (
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",

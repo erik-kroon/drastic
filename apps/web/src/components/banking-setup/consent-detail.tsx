@@ -23,16 +23,20 @@ export function ConsentDetail({ id }: { id: string }) {
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const path = `${bookPath(book)}/bank-connector-consents/${encodeURIComponent(id)}`;
+
   const consent = useQuery({
     queryKey: [...bookKey(book), "connector-consent", id],
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(path, Connector.ConnectorConsentState, { signal });
       checkScope(book, result.scope);
+
       if (result.id !== id) throw new Error("Connector consent identity mismatch");
+
       return result;
     },
   });
+
   const batches = useInfiniteQuery({
     queryKey: [...bookKey(book), "connector-batches", id],
     initialPageParam: "",
@@ -43,16 +47,22 @@ export function ConsentDetail({ id }: { id: string }) {
         Connector.ConnectorBatchInventory,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       if (result.consentId !== id) throw new Error("Connector delivery identity mismatch");
+
       for (const item of result.items) {
         checkScope(book, item.scope);
+
         if (item.consentId !== id) throw new Error("Connector delivery identity mismatch");
       }
+
       return result;
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
+
   const feed = useQuery({
     queryKey: [...bookKey(book), "connector-feed", id],
     retry: false,
@@ -62,13 +72,17 @@ export function ConsentDetail({ id }: { id: string }) {
         Connector.ConnectorFeedInventory,
         { signal },
       );
+
       checkScope(book, result.scope);
       const item = result.items[0];
+
       if (result.items.length !== 1 || !item || item.consent.id !== id) {
         throw new Error("Connector feed identity mismatch");
       }
+
       checkScope(book, item.consent.scope);
       checkScope(book, item.scope);
+
       return item;
     },
   });
@@ -221,6 +235,7 @@ function RetainedFeedEvidence({
   error: Error | null;
 }) {
   const sv = locale === "sv";
+
   return (
     <RecordSection title={sv ? "Bevarad anslutningsstatus" : "Retained feed evidence"}>
       <AccountingStatus locale={locale} pending={pending} error={error} />
@@ -261,6 +276,7 @@ function RevokeConsent({ id, onSaved }: { id: string; onSaved: () => void }) {
   const sv = locale === "sv";
   const keys = useRef(new Map<string, string>());
   const path = `${bookPath(book)}/bank-connector-consents/${encodeURIComponent(id)}/revoke`;
+
   const save = useMutation({
     mutationFn: async (input: typeof Connector.RevokeConnectorConsent.Type) => {
       const result = await readAccounting(
@@ -268,13 +284,17 @@ function RevokeConsent({ id, onSaved }: { id: string; onSaved: () => void }) {
         Connector.ConnectorRevocation,
         mutationOptions(path, JSON.stringify(input), keys.current),
       );
+
       if (result.consentId !== id) throw new Error("Connector revocation identity mismatch");
+
       return result;
     },
     onSuccess: onSaved,
   });
+
   const uncertain = isUncertainWriteError(save.error);
   const disabled = book.role !== "operator" || save.isPending || uncertain || save.isSuccess;
+
   const form = useForm({
     defaultValues: { reason: "" },
     validators: {
@@ -285,6 +305,7 @@ function RevokeConsent({ id, onSaved }: { id: string; onSaved: () => void }) {
       await save.mutateAsync(value).catch(() => undefined);
     },
   });
+
   return (
     <details>
       <summary>{sv ? "Stoppa nya leveranser" : "Stop new deliveries"}</summary>

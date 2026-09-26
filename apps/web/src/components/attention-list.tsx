@@ -21,6 +21,7 @@ export function AttentionList(props: {
   const query = useQuery(attentionQueryOptions(book, props.filters));
   const page = query.isError ? undefined : query.data;
   const copy = attentionCopy(locale);
+
   return (
     <Box display="grid" gap="lg">
       <Box display="flex" justifyContent="between" alignItems="center">

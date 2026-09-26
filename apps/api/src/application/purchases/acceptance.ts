@@ -5,6 +5,8 @@ import type * as Schema from "effect/Schema";
 import { failure } from "../failures";
 import {
   digest,
+  approveChangeInTransaction,
+  executeChangeInTransaction,
   isoNow,
   newId,
   prepareJournalInTransaction,
@@ -13,17 +15,24 @@ import {
   validatePlan,
 } from "../posting";
 import * as AcceptanceDb from "../../db/purchases/acceptance";
+import { createInvoiceInTransaction } from "../commerce/register";
 import * as Shared from "./shared";
 import { calculateSupplierDraft } from "./draft-calculation";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type Transaction = import("../../db/transaction").Transaction;
+
 type Json = Schema.Json;
+
 type JsonObject = Schema.JsonObject;
 
 const ReviewSchema = Acceptance.SupplierAcceptanceReview;
+
 const ApprovalSchema = Acceptance.SupplierAcceptanceApproval;
+
 const ViewSchema = Acceptance.SupplierAcceptanceView;
+
 const HistorySchema = Acceptance.SupplierAcceptanceHistory;
 
 const acceptanceTables = [
@@ -46,6 +55,7 @@ const acceptanceTables = [
   "supplier_acceptances",
   "bank_sources",
 ];
+
 const acceptanceInserts = [
   "supplier_acceptance_reviews",
   "supplier_acceptance_approvals",
@@ -53,22 +63,21 @@ const acceptanceInserts = [
   "events",
   "command_receipts",
 ];
+
 const legalBlockers = [
   "legal_identity_not_verified",
   "tax_profile_not_activated",
   "payment_not_initiated",
 ] as const;
-const toleratedBlockers = new Set([
-  "acceptance_not_implemented",
-  "recognition_not_implemented",
-  "legal_identity_not_verified",
-  "tax_profile_not_activated",
-  "supplier_document_number_missing",
-]);
+
 const maximumReviews = 50;
+
 const maximumApprovals = 50;
+
 const maximumReviewBytes = 262144;
+
 const approvalWindowMs = 60 * 60 * 1000;
+
 const recoverableBlockers = new Set([
   "acceptance_not_implemented",
   "recognition_not_implemented",
@@ -80,24 +89,35 @@ const recoverableBlockers = new Set([
   "tax_inputs_unreviewed",
 ]);
 
-function draftAcceptable(body: JsonObject) {
+function draftAcceptable(body: JsonObject, profile: string) {
   const totals = Shared.objectField(body, "totals");
   const content = Shared.objectField(body, "content");
+
   if (Shared.arrayField(body, "blockers").some((entry) => !tolerableBlocker(entry))) return false;
+
   if (content.supplierDocumentNumber === null || content.supplierDocumentNumber === undefined) {
     return false;
   }
-  if (Shared.textField(totals, "taxMinor") !== "0") return false;
+
+  const tax = Shared.textField(totals, "taxMinor");
+
+  if (tax === undefined || !/^(0|[1-9][0-9]{0,37})$/.test(tax)) return false;
+
+  if (profile === "synthetic-manual-supplier-v1" && tax !== "0") return false;
+
   if (!/^[1-9][0-9]{0,37}$/.test(Shared.textField(totals, "grossMinor") ?? "")) return false;
+
   if (totals.sourceTotalMatches !== true) return false;
+
   return Shared.arrayField(body, "calculatedLines").every(
-    (line) => Shared.objectField(line, "sourceGrossMatches").sourceGrossMatches === true,
+    (line) => Shared.isJsonObject(line) && line.sourceGrossMatches === true,
   );
 }
 
 function tolerableBlocker(entry: Json) {
   const code = Shared.textField(entry, "code");
-  return code !== undefined && toleratedBlockers.has(code);
+
+  return code !== undefined && recoverableBlockers.has(code);
 }
 
 type AcceptancePosting = {
@@ -119,12 +139,15 @@ function acceptancePosting(
 
     if (input.profile === "swedish-purchase-v1") {
       if (!("lineAssignments" in input)) return yield* failure("InvalidJournal");
+
       if (book.currency !== "SEK" || book.currencyScale !== 2) {
         return yield* Shared.unsupported();
       }
+
       const detail = yield* purchaseLines(transaction, scope.bookId, draft, input);
       let netTotal = 0n;
       let taxTotal = 0n;
+
       for (const line of detail.originalLines) {
         const netMinor = Shared.textField(line, "netMinor") ?? "0";
         const taxMinor = Shared.textField(line, "taxMinor") ?? "0";
@@ -137,28 +160,31 @@ function acceptancePosting(
         netTotal += BigInt(netMinor);
         taxTotal += BigInt(taxMinor);
       }
+
       const totals = Shared.objectField(draft, "totals");
+
       if (
         netTotal.toString() !== Shared.textField(totals, "netMinor") ||
         taxTotal.toString() !== Shared.textField(totals, "taxMinor") ||
-        taxTotal <= 0n
+        taxTotal < 0n
       ) {
         return yield* failure("InvalidJournal");
       }
-      lines.push(
-        {
+
+      if (taxTotal > 0n)
+        lines.push({
           accountId: detail.inputVatAccountId,
           debitMinor: taxTotal.toString(),
           creditMinor: "0",
           description: "Input VAT",
-        },
-        {
-          accountId: input.controlAccountId,
-          debitMinor: "0",
-          creditMinor: gross,
-          description: "Supplier payable",
-        },
-      );
+        });
+      lines.push({
+        accountId: input.controlAccountId,
+        debitMinor: "0",
+        creditMinor: gross,
+        description: "Supplier payable",
+      });
+
       return {
         lines,
         originalLines: detail.originalLines,
@@ -167,9 +193,11 @@ function acceptancePosting(
     }
 
     if (!("debitAccountId" in input)) return yield* failure("InvalidJournal");
+
     if (input.controlAccountId === input.debitAccountId) {
       return yield* failure("InvalidJournal");
     }
+
     if (
       (yield* AcceptanceDb.readBankSourceConflict(transaction, scope.bookId, [
         input.controlAccountId,
@@ -184,6 +212,7 @@ function acceptancePosting(
     ) {
       return yield* failure("InvalidJournal");
     }
+
     return {
       lines: [
         {
@@ -207,6 +236,7 @@ function readDraftForAcceptance(transaction: Transaction, bookId: string, draftI
   return AcceptanceDb.readDraftHead(transaction, bookId, draftId).pipe(
     Effect.flatMap((rows) => {
       const head = rows[0];
+
       return head ? Effect.succeed(head) : failure("NotFound");
     }),
   );
@@ -216,6 +246,7 @@ function readReview(transaction: Transaction, bookId: string, reviewId: string) 
   return AcceptanceDb.readReview(transaction, bookId, reviewId).pipe(
     Effect.flatMap((rows) => {
       const review = rows[0];
+
       return review ? Effect.succeed(review) : failure("NotFound");
     }),
   );
@@ -234,27 +265,36 @@ function purchaseLines(
   return Effect.gen(function* () {
     const control = (yield* AcceptanceDb.readBasAccount(transaction, bookId, "2440"))[0]?.id;
     const vat = (yield* AcceptanceDb.readBasAccount(transaction, bookId, "2641"))[0]?.id;
+
     if (control === null || control === undefined || control !== input.controlAccountId) {
       return yield* failure("InvalidJournal");
     }
+
     if (vat === null || vat === undefined) return yield* failure("InvalidJournal");
     const draftLines = Shared.arrayField(Shared.objectField(draft, "content"), "lines");
     const assignments = input.lineAssignments;
+
     if (assignments.length !== draftLines.length) return yield* failure("InvalidJournal");
     const lines: JsonObject[] = [];
+
     for (const line of draftLines) {
       const lineId = Shared.textField(line, "id") ?? "";
       const matches = assignments.filter((assignment) => assignment.lineId === lineId);
+
       if (matches.length !== 1) return yield* failure("InvalidJournal");
       const assignment = matches[0];
+
       if (assignment === undefined) return yield* failure("InvalidJournal");
+
       const account = (yield* AcceptanceDb.readExpenseAccount(
         transaction,
         bookId,
         assignment.expenseAccountId,
         [control, vat],
       ))[0];
+
       const excluded = account === undefined || account.id !== assignment.expenseAccountId;
+
       if (
         excluded ||
         (yield* AcceptanceDb.readBankSourceConflict(transaction, bookId, [
@@ -269,15 +309,18 @@ function purchaseLines(
       ) {
         return yield* failure("InvalidJournal");
       }
+
       const base = BigInt(Shared.textField(line, "baseMinor") ?? "0");
       const discount = BigInt(Shared.textField(line, "discountMinor") ?? "0");
       const charge = BigInt(Shared.textField(line, "chargeMinor") ?? "0");
       const net = base - discount + charge;
       const tax = BigInt(Shared.textField(line, "taxMinor") ?? "0");
       const expected = (net * BigInt(assignment.vatRatePercent) + 50n) / 100n;
-      if (net <= 0n || tax < 0n || (tax - expected > 1n ? tax - expected : expected - tax) > 1n) {
+
+      if (net <= 0n || tax < 0n || (tax >= expected ? tax - expected : expected - tax) > 1n) {
         return yield* failure("InvalidJournal");
       }
+
       lines.push({
         lineId,
         expenseAccountId: assignment.expenseAccountId,
@@ -286,6 +329,7 @@ function purchaseLines(
         vatRatePercent: assignment.vatRatePercent,
       });
     }
+
     return { originalLines: lines, inputVatAccountId: vat };
   });
 }
@@ -304,6 +348,7 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = yield* readBook(transaction, command.scope.bookId);
       yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -313,20 +358,24 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
         yield* Shared.toJsonObject(command.input),
         ReviewSchema,
       );
+
       if (request.previous) return request.previous;
 
       const swedish = command.input.profile === "swedish-purchase-v1";
+
       const head = yield* readDraftForAcceptance(
         transaction,
         command.scope.bookId,
         command.input.draftId,
       );
+
       if (
         command.input.expectedRevision !== head.currentRevision ||
         command.input.expectedDigest !== Shared.textField(head.body, "digest")
       ) {
         return yield* failure("StaleDependency");
       }
+
       if (
         (yield* AcceptanceDb.readAcceptanceForDraft(
           transaction,
@@ -336,16 +385,19 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
       ) {
         return yield* failure("AlreadyPosted");
       }
+
       const recalculated = yield* calculateSupplierDraft(
         transaction,
         command.scope.bookId,
         book,
         Shared.objectField(head.body, "content"),
       );
+
       if (!Shared.sameJson(recalculated, retainedFacts(head.body))) {
         return yield* failure("StaleDependency");
       }
-      if (!draftAcceptable(head.body)) return yield* Shared.unsupported();
+
+      if (!draftAcceptable(head.body, command.input.profile)) return yield* Shared.unsupported();
 
       const ordinal =
         (yield* AcceptanceDb.readReviewCount(
@@ -353,15 +405,18 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
           command.scope.bookId,
           command.input.draftId,
         ))[0]!.total + 1;
+
       if (ordinal > maximumReviews) return yield* failure("InvalidJournal");
 
       const sourceEvidenceId =
         Shared.textField(Shared.objectField(head.body, "content"), "sourceEvidenceId") ?? "";
+
       const evidence = yield* Shared.readEvidenceReference(
         transaction,
         command.scope.bookId,
         sourceEvidenceId,
       );
+
       if (
         yield* Shared.evidenceHasPostedHistory(transaction, command.scope.bookId, sourceEvidenceId)
       ) {
@@ -370,6 +425,7 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
 
       const content = Shared.objectField(head.body, "content");
       const reviewId = newId("supplier_review");
+
       const posting = yield* acceptancePosting(
         transaction,
         command.scope,
@@ -377,6 +433,7 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
         head.body,
         command.input,
       );
+
       const originalLines = posting.originalLines;
       const inputVatAccountId = posting.inputVatAccountId;
 
@@ -420,20 +477,27 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
           principal.actorId,
         ),
       };
+
       const extras: JsonObject[] = [];
+
       if (originalLines !== undefined) extras.push({ originalLines });
+
       if (inputVatAccountId !== undefined) extras.push({ inputVatAccountId });
       const body = Object.assign({}, bodyFields, ...extras);
       const sealed = Object.assign({}, body, { digest: yield* digest(body) });
+
       if (Shared.byteLength(JSON.stringify(sealed)) > maximumReviewBytes) {
         return yield* failure("InvalidJournal");
       }
+
       const review = yield* Shared.decode(ReviewSchema, sealed);
       const planId = plan.id;
       const firstAction = plan.groups[0]?.actions[0];
+
       if (planId === "" || firstAction === undefined) {
         return yield* failure("InternalError");
       }
+
       const eventId = firstAction.eventId;
       yield* AcceptanceDb.insertReview(transaction, {
         bookId: command.scope.bookId,
@@ -455,6 +519,7 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
         principal.actorId,
         yield* Shared.toJsonObject(review),
       );
+
       return review;
     }),
   );
@@ -477,6 +542,7 @@ function retainedFacts(body: JsonObject) {
     "receipt",
     "digest",
   ]);
+
   return Object.fromEntries(Object.entries(body).filter(([key]) => !omitted.has(key)));
 }
 
@@ -486,10 +552,12 @@ function acceptanceBlockers(
   review: AcceptanceDb.ReviewRow,
 ) {
   const bookId = scope.bookId;
+
   return Effect.gen(function* () {
     const body = review.body;
     const input = Shared.objectField(body, "input");
     const evidenceId = Shared.textField(Shared.objectField(body, "evidence"), "evidenceId") ?? "";
+
     if (
       (yield* AcceptanceDb.readAcceptanceForDraft(
         transaction,
@@ -499,17 +567,21 @@ function acceptanceBlockers(
     ) {
       return ["This draft already has a retained supplier acceptance."] as const;
     }
+
     if (yield* Shared.evidenceHasPostedHistory(transaction, bookId, evidenceId)) {
       return [
         "The original supplier source already has posted history; a second recognition is refused.",
       ] as const;
     }
+
     const blockers: string[] = [];
+
     const head = yield* AcceptanceDb.readDraftHead(
       transaction,
       bookId,
       Shared.textField(input, "draftId") ?? "",
     );
+
     if (!head[0]) {
       blockers.push("The reviewed supplier draft is no longer available.");
     } else if (
@@ -517,21 +589,24 @@ function acceptanceBlockers(
       Shared.textField(input, "expectedDigest") !== Shared.textField(head[0].body, "digest")
     ) {
       blockers.push("The supplier draft changed after this review was prepared.");
-    } else if (!draftAcceptable(head[0].body)) {
+    } else if (!draftAcceptable(head[0].body, Shared.textField(input, "profile") ?? "")) {
       blockers.push(
         "The reviewed supplier draft is no longer acceptable for synthetic recognition.",
       );
     }
+
     if (
       (yield* AcceptanceDb.readReviewByChangeSet(transaction, bookId, review.changeSetId))[0]
         ?.present === true
     ) {
       return ["The linked posting already executed. A second recognition is refused."] as const;
     }
+
     const plan = yield* Shared.decode(
       Accounting.ChangeSet,
       Shared.objectField(body, "postingPlan"),
     );
+
     blockers.push(
       ...(yield* validatePlan(transaction, scope, plan).pipe(
         Effect.match({
@@ -540,14 +615,19 @@ function acceptanceBlockers(
         }),
       )),
     );
+
     if (blockers.length > 0) return blockers;
+
     if (blockers.length === 0) {
       const codes = Shared.arrayField(head[0]?.body ?? {}, "blockers").flatMap((entry) => {
         const code = Shared.textField(entry, "code");
+
         return code === undefined || recoverableBlockers.has(code) ? [] : [code];
       });
+
       blockers.push(...codes);
     }
+
     return blockers;
   });
 }
@@ -567,6 +647,7 @@ export const approveSupplierAcceptance = Effect.fn("purchases.acceptance.approve
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = yield* readBook(transaction, command.scope.bookId);
       void book;
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -579,13 +660,17 @@ export const approveSupplierAcceptance = Effect.fn("purchases.acceptance.approve
         } satisfies JsonObject,
         ApprovalSchema,
       );
+
       if (request.previous) return request.previous;
 
       const review = yield* readReview(transaction, command.scope.bookId, command.reviewId);
+
       if (command.input.digest !== Shared.textField(review.body, "digest")) {
         return yield* failure("StaleDependency");
       }
+
       const blockers = yield* acceptanceBlockers(transaction, command.scope, review);
+
       if (blockers.length > 0) return yield* failure("StaleDependency");
 
       const ordinal =
@@ -594,8 +679,10 @@ export const approveSupplierAcceptance = Effect.fn("purchases.acceptance.approve
           command.scope.bookId,
           command.reviewId,
         ))[0]!.total + 1;
+
       if (ordinal > maximumApprovals) return yield* failure("InvalidJournal");
       const now = (yield* AcceptanceDb.readDatabaseTime(transaction))[0]?.now;
+
       if (now === undefined) return yield* failure("InternalError");
 
       const body = Object.assign(
@@ -617,6 +704,7 @@ export const approveSupplierAcceptance = Effect.fn("purchases.acceptance.approve
           ),
         },
       ) satisfies JsonObject;
+
       const approval = yield* Shared.decode(ApprovalSchema, body);
       yield* AcceptanceDb.insertApproval(transaction, {
         bookId: command.scope.bookId,
@@ -637,6 +725,7 @@ export const approveSupplierAcceptance = Effect.fn("purchases.acceptance.approve
         principal.actorId,
         yield* Shared.toJsonObject(approval),
       );
+
       return approval;
     }),
   );
@@ -651,12 +740,141 @@ export const executeSupplierAcceptance = Effect.fn("purchases.acceptance.execute
     readonly input: typeof Acceptance.ExecuteSupplierAcceptance.Type;
   },
 ) {
-  return yield* Shared.withBook(token, command.scope, true, "update", (transaction) =>
+  return yield* Shared.withBook(token, command.scope, true, "update", (transaction, principal) =>
     Effect.gen(function* () {
+      const { scope, reviewId, input, idempotencyKey } = command,
+        operation = "execute_supplier_acceptance";
+
+      const request = yield* replay(
+        transaction,
+        scope,
+        idempotencyKey,
+        operation,
+        principal.actorId,
+        { reviewId, input },
+        Acceptance.SupplierAcceptanceReceipt,
+      );
+
+      if (request.previous) return request.previous;
       yield* Shared.requireTables(transaction, acceptanceTables, acceptanceInserts);
-      yield* readBook(transaction, command.scope.bookId);
-      void command;
-      return yield* Shared.unsupported();
+      yield* readBook(transaction, scope.bookId);
+      const row = yield* readReview(transaction, scope.bookId, reviewId);
+      const review = yield* Shared.decode(ReviewSchema, row.body);
+
+      if (
+        review.digest !== input.digest ||
+        (yield* acceptanceBlockers(transaction, scope, row)).length
+      )
+        return yield* failure("StaleDependency");
+
+      const approval = (yield* AcceptanceDb.readApprovalById(
+        transaction,
+        scope.bookId,
+        input.approvalId,
+        reviewId,
+      ))[0];
+
+      if (
+        !approval ||
+        approval.actorId !== principal.actorId ||
+        approval.digest !== review.digest ||
+        Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(transaction)) ||
+        (yield* AcceptanceDb.readAcceptanceByApproval(transaction, scope.bookId, approval.id))[0]
+          ?.present
+      )
+        return yield* failure("ApprovalRequired");
+
+      const kernel = yield* approveChangeInTransaction(transaction, principal, {
+        scope,
+        changeSetId: review.postingPlan.id,
+        idempotencyKey: newId("supplier_approve"),
+        input: { version: 1, planDigest: review.postingPlan.planDigest },
+      });
+
+      const postingReceipt = yield* executeChangeInTransaction(transaction, principal, {
+        scope,
+        changeSetId: review.postingPlan.id,
+        idempotencyKey: newId("supplier_post"),
+        input: { version: 1, planDigest: review.postingPlan.planDigest, approvalId: kernel.id },
+        owner: { kind: "supplier_acceptance", id: reviewId },
+      });
+
+      const draft = review.draftSnapshot;
+
+      const line = review.postingPlan.groups[0]?.actions[0]?.lines.find(
+        (line) =>
+          line.accountId === review.input.controlAccountId &&
+          line.creditMinor === draft.totals.grossMinor,
+      );
+
+      if (
+        !line ||
+        draft.totals.grossMinor === null ||
+        draft.content.documentDate === null ||
+        draft.content.dueDate === null ||
+        draft.content.supplierDocumentNumber === null
+      )
+        return yield* failure("InvalidJournal");
+
+      const invoice = yield* createInvoiceInTransaction(transaction, principal, {
+        scope,
+        idempotencyKey: newId("supplier_register"),
+        input: {
+          kind: "synthetic_invoice_v1",
+          direction: "supplier",
+          counterpartyId: draft.content.counterpartyId,
+          counterpartyRevision: draft.content.counterpartyRevision,
+          documentNumber: draft.content.supplierDocumentNumber,
+          issuedOn: draft.content.documentDate,
+          dueOn: draft.content.dueDate,
+          currency: draft.content.currency,
+          amountMinor: draft.totals.grossMinor,
+          controlAccountId: review.input.controlAccountId,
+          recognitionVoucherId: postingReceipt.voucherId,
+          recognitionLineId: line.lineId,
+          evidenceId: review.evidence.evidenceId,
+          description: `Supplier invoice: ${draft.content.title}`,
+        },
+      });
+
+      const body = {
+        id: newId("supplier_acceptance"),
+        scope,
+        reviewId,
+        reviewDigest: review.digest,
+        approvalId: approval.id,
+        profile: review.profile,
+        draftId: draft.id,
+        draftRevision: draft.revision,
+        draftDigest: draft.digest,
+        supplierDocumentNumber: draft.content.supplierDocumentNumber,
+        accepted: true,
+        recognized: true,
+        paid: false,
+        postingReceipt,
+        registerInvoiceId: invoice.id,
+        legalBlockers: review.legalBlockers,
+        createdAt: yield* isoNow(transaction),
+        receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+      };
+
+      const result = yield* Shared.decode(Acceptance.SupplierAcceptanceReceipt, {
+        ...body,
+        digest: yield* digest(body),
+      });
+
+      yield* AcceptanceDb.insertAcceptance(transaction, scope.bookId, result);
+      yield* saveCommand(
+        transaction,
+        scope,
+        idempotencyKey,
+        request.expected,
+        operation,
+        principal.actorId,
+        result,
+      );
+
+      return result;
     }),
   );
 });
@@ -669,31 +887,38 @@ export const getSupplierAcceptanceReview = Effect.fn("purchases.acceptance.get")
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, acceptanceTables);
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
+
       const book = (yield* Shared.PurchaseDb.lockBook(
         transaction,
         command.scope.bookId,
         "share",
       ))[0];
+
       if (!book) return yield* failure("Forbidden");
       const review = yield* readReview(transaction, command.scope.bookId, command.reviewId);
+
       const approval = (yield* AcceptanceDb.readApproval(
         transaction,
         command.scope.bookId,
         command.reviewId,
       ))[0];
+
       const acceptance = (yield* AcceptanceDb.readAcceptanceByReview(
         transaction,
         command.scope.bookId,
         command.reviewId,
       ))[0];
+
       const blockers = yield* acceptanceBlockers(transaction, command.scope, review);
       const now = (yield* AcceptanceDb.readDatabaseTime(transaction))[0]?.now ?? "";
+
       const usable =
         approval !== undefined &&
         approval.actorId === principal.actorId &&
         Date.parse(approval.expiresAt) > Date.parse(now) &&
         acceptance === undefined &&
         blockers.length === 0;
+
       return yield* Shared.decode(ViewSchema, {
         plan: yield* Shared.decode(ReviewSchema, review.body),
         approval: approval ? yield* Shared.decode(ApprovalSchema, approval.body) : null,
@@ -713,24 +938,30 @@ export const supplierAcceptanceHistory = Effect.fn("purchases.acceptance.history
   return yield* Shared.withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, acceptanceTables);
+
       const book = (yield* Shared.PurchaseDb.lockBook(
         transaction,
         command.scope.bookId,
         "share",
       ))[0];
+
       if (!book) return yield* failure("Forbidden");
+
       if (
         (yield* AcceptanceDb.readDraftExists(transaction, command.scope.bookId, command.draftId))[0]
           ?.present !== true
       ) {
         return yield* failure("NotFound");
       }
+
       const rows = yield* AcceptanceDb.readAcceptanceHistory(
         transaction,
         command.scope.bookId,
         command.draftId,
       );
+
       if (rows.length > maximumReviews) return yield* failure("InvalidJournal");
+
       return yield* Shared.decode(HistorySchema, {
         scope: command.scope,
         draftId: command.draftId,

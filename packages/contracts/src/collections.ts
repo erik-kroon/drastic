@@ -7,6 +7,7 @@ export const CaptureCollectionStatement = Schema.Struct({
   customerId: Accounting.Identifier,
   asOf: Accounting.AccountingDate,
 });
+
 export const CollectionStatementItem = Schema.Struct({
   invoiceId: Accounting.Identifier,
   number: Schema.String,
@@ -19,6 +20,7 @@ export const CollectionStatementItem = Schema.Struct({
   status: Schema.String,
   disputed: Schema.Boolean,
 });
+
 export const CollectionStatement = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -30,6 +32,7 @@ export const CollectionStatement = Schema.Struct({
   createdAt: Schema.String,
   digest: Accounting.Digest,
 });
+
 export const OpenCollectionDispute = Schema.Struct({
   invoiceId: Accounting.Identifier,
   reason: Accounting.Description,
@@ -37,6 +40,7 @@ export const OpenCollectionDispute = Schema.Struct({
   ownerId: Accounting.Identifier,
   holdReminders: Schema.Boolean,
 });
+
 export const CollectionDispute = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -50,6 +54,7 @@ export const CollectionDispute = Schema.Struct({
   createdAt: Schema.String,
   digest: Accounting.Digest,
 });
+
 export const RecordCollectionAction = Schema.Struct({
   invoiceId: Accounting.Identifier,
   kind: Schema.Literals(["contact", "follow_up", "dispute_resolved", "reminder_prepared"]),
@@ -57,6 +62,7 @@ export const RecordCollectionAction = Schema.Struct({
   ownerId: Accounting.Identifier,
   disputeId: Schema.NullOr(Accounting.Identifier),
 });
+
 export const CollectionAction = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -72,6 +78,7 @@ export const CollectionAction = Schema.Struct({
   sendAuthorized: Schema.Literal(false),
   digest: Accounting.Digest,
 });
+
 export const CollectionHistory = Schema.Struct({
   scope: Accounting.Scope,
   customerId: Accounting.Identifier,
@@ -80,6 +87,7 @@ export const CollectionHistory = Schema.Struct({
   disputes: Schema.Array(CollectionDispute),
   events: Schema.Array(CollectionAction),
 });
+
 export const CollectionHistoryPage = Schema.Struct({
   scope: Accounting.Scope,
   customerId: Accounting.Identifier,
@@ -88,6 +96,7 @@ export const CollectionHistoryPage = Schema.Struct({
   events: Schema.Array(CollectionAction),
   nextCursor: Schema.NullOr(Schema.String.check(Schema.isMaxLength(256))),
 });
+
 export const CollectionWorklistItem = Schema.Struct({
   invoiceId: Accounting.Identifier,
   invoiceNumber: Schema.String,
@@ -108,6 +117,7 @@ export const CollectionWorklistItem = Schema.Struct({
     "follow_up",
   ]),
 });
+
 export const CollectionWorklist = Schema.Struct({
   scope: Accounting.Scope,
   checkedAt: Schema.String,
@@ -117,6 +127,7 @@ export const CollectionWorklist = Schema.Struct({
   total: Schema.Int,
   items: Schema.Array(CollectionWorklistItem),
 });
+
 export const CollectionStatementExport = Schema.Struct({
   scope: Accounting.Scope,
   statementId: Accounting.Identifier,
@@ -128,38 +139,51 @@ export const CollectionStatementExport = Schema.Struct({
   sha256: Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/)),
   body: Schema.String,
 });
+
 const historyQuery = Schema.Struct({
   after: Schema.optional(Schema.String.check(Schema.isMaxLength(256))),
 });
+
 const worklistQuery = Schema.Struct({
   page: Schema.optional(Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,5}$/))),
 });
+
 export const CollectionsCapabilities = {
   collections_worklist: {
-    description: "Read a paginated live customer receivable worklist with residual, dispute, hold and next-action state. It does not prepare or deliver reminders.",
+    description:
+      "Read a paginated live customer receivable worklist with residual, dispute, hold and next-action state. It does not prepare or deliver reminders.",
     input: Schema.Struct({ scope: Accounting.Scope, ...worklistQuery.fields }),
     output: CollectionWorklist,
     readOnly: true,
   },
   collections_statement_export: {
-    description: "Read the exact retained UTF-8 JSON body and SHA-256 for one immutable collection statement in this book.",
+    description:
+      "Read the exact retained UTF-8 JSON body and SHA-256 for one immutable collection statement in this book.",
     input: Schema.Struct({ scope: Accounting.Scope, statementId: Accounting.Identifier }),
     output: CollectionStatementExport,
     readOnly: true,
   },
   collections_history: {
-    description: "Read bounded immutable collection statements, disputes and append-only actions. Reminder preparation is not delivery.",
-    input: Schema.Struct({ scope: Accounting.Scope, customerId: Accounting.Identifier, after: Schema.optional(Schema.String.check(Schema.isMaxLength(256))) }),
+    description:
+      "Read bounded immutable collection statements, disputes and append-only actions. Reminder preparation is not delivery.",
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      customerId: Accounting.Identifier,
+      after: Schema.optional(Schema.String.check(Schema.isMaxLength(256))),
+    }),
     output: CollectionHistoryPage,
     readOnly: true,
   },
 };
+
 const base = "/v1/entities/:entityId/books/:bookId/commerce/collections";
+
 const mutation = {
   params: Accounting.Scope,
   headers: Accounting.IdempotencyHeaders,
   error: accountingErrors,
 };
+
 export const CollectionsApi = HttpApiGroup.make("collections")
   .add(
     HttpApiEndpoint.get("collectionWorklist", `${base}/worklist`, {

@@ -21,6 +21,7 @@ export const sourceDigest = Effect.fn("Source.digest")(function* (bytes: Uint8Ar
     try: () => crypto.subtle.digest("SHA-256", Uint8Array.from(bytes)),
     catch: () => failure("Unavailable"),
   });
+
   return `sha256:${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 });
 
@@ -28,11 +29,14 @@ export function r2ObjectStore(bucket: R2Bucket): RetainedObjectStore {
   return {
     async get(key) {
       const object = await bucket.get(key);
+
       if (!object) return null;
+
       if (object.size > maxSourceBytes) {
         await object.body.cancel();
         throw new Error("Retained object exceeds the supported size.");
       }
+
       return new Uint8Array(await object.arrayBuffer());
     },
     async put(key, bytes) {
@@ -46,8 +50,11 @@ export function r2ObjectStore(bucket: R2Bucket): RetainedObjectStore {
 
 export const objectStore = Effect.gen(function* () {
   const { bindings } = yield* RequestEnvironment;
+
   if (bindings.EVIDENCE_STORE) return bindings.EVIDENCE_STORE;
+
   if (bindings.EVIDENCE_BUCKET) return r2ObjectStore(bindings.EVIDENCE_BUCKET);
+
   return yield* failure("Unavailable");
 });
 
@@ -59,7 +66,10 @@ export const readRetainedObject = Effect.fn("Source.readObject")(function* (
     try: () => store.get(reference.objectKey),
     catch: () => failure("Unavailable"),
   });
+
   if (!bytes || bytes.byteLength !== reference.byteLength) return yield* failure("MissingEvidence");
+
   if ((yield* sourceDigest(bytes)) !== reference.sha256) return yield* failure("MissingEvidence");
+
   return bytes;
 });

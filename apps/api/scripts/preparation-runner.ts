@@ -24,7 +24,9 @@ import {
 } from "../src/runtime/preparation-queue";
 
 const connectionString = process.env.DATABASE_URL;
+
 const token = process.env.OPENERP_PREPARATION_TOKEN;
+
 if (!connectionString || !token) {
   throw new Error("Set DATABASE_URL and OPENERP_PREPARATION_TOKEN for the preparation runner.");
 }
@@ -35,6 +37,7 @@ const postgres = PgClient.layer({
   maxConnections: 4,
   connectTimeout: "5 seconds",
 });
+
 // Queue SQL consumes Date objects; application SQL lets Drizzle decode strings.
 // Separate bounded pools preserve both contracts without global parser changes.
 const applicationPostgres = PgClient.layer({
@@ -44,6 +47,7 @@ const applicationPostgres = PgClient.layer({
   connectTimeout: "5 seconds",
   types: applicationPostgresTypes,
 });
+
 const services = Layer.mergeAll(
   Layer.effect(Database, PgDrizzle.makeWithDefaults()).pipe(Layer.provide(applicationPostgres)),
   DrizzleJobStore.layer({
@@ -60,6 +64,7 @@ const services = Layer.mergeAll(
     url: new URL("http://localhost/"),
   }),
 ).pipe(Layer.provide(postgres));
+
 const worker = PreparationQueue.toLayer(handlePreparation, { concurrency: 2 }).pipe(
   Layer.provideMerge(Worker.layer({ concurrency: 2 })),
   Layer.provideMerge(services),
@@ -78,6 +83,7 @@ const dispatch = Effect.forever(
     Effect.andThen(Effect.sleep("30 seconds")),
   ),
 );
+
 const main = dispatch.pipe(Effect.provide(worker), Effect.scoped);
 
 runMain(main.pipe(Effect.tapCause(() => Effect.logError("Preparation runner stopped."))), {

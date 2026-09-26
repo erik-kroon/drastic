@@ -29,6 +29,7 @@ test("runtime has scoped DML while protected posting history rejects mutation", 
   const otherReceipt = await execute(otherBook, await prepare(otherBook));
   const runtime = new Client({ connectionString: environment().runtimeUrl });
   await runtime.connect();
+
   try {
     const evidenceId = `evidence_runtime_${randomBytes(8).toString("hex")}`;
     const content = "Synthetic runtime grant probe";
@@ -39,15 +40,18 @@ test("runtime has scoped DML while protected posting history rejects mutation", 
       [book.bookId, evidenceId, content, book.actorId],
     );
     const observer = await database();
+
     try {
       const observed = await observer.query<{ count: number }>(
         "SELECT count(*)::int AS count FROM openerp.evidence WHERE book_id = $1 AND id = $2 AND sha256 = encode(sha256(convert_to($3, 'UTF8')), 'hex')",
         [book.bookId, evidenceId, content],
       );
+
       expect(observed.rows).toEqual([{ count: 1 }]);
     } finally {
       await observer.end();
     }
+
     const lineSuffix = randomBytes(8).toString("hex");
     await expect(
       runtime.query(
@@ -100,7 +104,9 @@ test("runtime has scoped DML while protected posting history rejects mutation", 
   } finally {
     await runtime.end();
   }
+
   const admin = await database();
+
   try {
     await expect(
       admin.query("UPDATE openerp.vouchers SET number = 2 WHERE book_id = $1 AND id = $2", [
@@ -114,6 +120,7 @@ test("runtime has scoped DML while protected posting history rejects mutation", 
   } finally {
     await admin.end();
   }
+
   expect(await persisted(book)).toEqual(onePosting);
   expect(await persisted(otherBook)).toEqual(onePosting);
 });
@@ -124,11 +131,13 @@ test("a late database fault rolls back the complete posting and leaves a retry u
   const approval = await approve(book, plan);
   const admin = await database();
   const idempotencyKey = crypto.randomUUID();
+
   const command = {
     method: "POST",
     headers: { "idempotency-key": idempotencyKey },
     body: JSON.stringify(execution(plan, approval)),
   };
+
   try {
     await admin.query(`CREATE FUNCTION openerp.e2e_reject_outbox() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN IF NEW.book_id = '${book.bookId}' THEN RAISE EXCEPTION 'E2E injected outbox failure'; END IF; RETURN NEW; END $$`);
@@ -138,16 +147,19 @@ test("a late database fault rolls back the complete posting and leaves a retry u
     const response = await request(book, `/change-sets/${plan.id}/execute`, command);
     expect(response.status, await response.text()).toBe(500);
     expect(await persisted(book)).toEqual(emptyPosting);
+
     const commands = await admin.query<{ count: number }>(
       "SELECT count(*)::int AS count FROM openerp.command_receipts WHERE book_id = $1 AND key = $2",
       [book.bookId, idempotencyKey],
     );
+
     expect(commands.rows).toEqual([{ count: 0 }]);
   } finally {
     await admin.query("DROP TRIGGER IF EXISTS e2e_outbox_fault ON openerp.outbox");
     await admin.query("DROP FUNCTION IF EXISTS openerp.e2e_reject_outbox()");
     await admin.end();
   }
+
   await decoded(
     await request(book, `/change-sets/${plan.id}/execute`, command),
     Accounting.ExecutionReceipt,
@@ -160,25 +172,32 @@ test("migration rerun preserves posted state and checksum drift stops the migrat
   const book = await fixture();
   await execute(book, await prepare(book));
   const before = await persisted(book);
+
   const options = {
     cwd: apiDirectory,
     env: { ...process.env, DATABASE_ADMIN_URL: environment().adminUrl },
   };
+
   // Name the migration set as it exists, not by a reviewed file number.
   const [applied] = (await readdir(join(apiDirectory, "migrations")))
     .filter((name) => name.endsWith(".sql"))
     .sort();
+
   if (!applied) throw new Error("No applied migration file to rerun");
   const rerun = await run("bun", ["scripts/migrate.ts"], options);
   expect(rerun.stdout).toContain(`${applied}: already applied`);
   expect(await persisted(book)).toEqual(before);
   const admin = await database();
+
   const original = await admin.query<{ sha256: string }>(
     "SELECT sha256 FROM public.openerp_migrations WHERE name = $1",
     [applied],
   );
+
   const checksum = original.rows[0]?.sha256;
+
   if (!checksum) throw new Error("Initial migration receipt missing");
+
   try {
     await admin.query(
       "UPDATE public.openerp_migrations SET sha256 = repeat('0', 64) WHERE name = $1",
@@ -194,5 +213,6 @@ test("migration rerun preserves posted state and checksum drift stops the migrat
     ]);
     await admin.end();
   }
+
   expect(await persisted(book)).toEqual(before);
 });

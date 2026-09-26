@@ -1,3 +1,4 @@
+import { digest as digestNative } from "./json";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Automation from "@open-erp/contracts/automation";
 import { sql } from "drizzle-orm";
@@ -12,12 +13,17 @@ import * as PostingDb from "../db/posting";
 import type { Transaction } from "../db/transaction";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type JsonObject = Schema.JsonObject;
 
 const RuleSchema = Automation.RecurringRule;
+
 const RuleViewSchema = Automation.RecurringRuleView;
+
 const SelectionSchema = Automation.SimulationSelection;
+
 const SimulationSchema = Automation.RuleSimulation;
+
 const ruleKeys = [
   "kind",
   "name",
@@ -29,15 +35,20 @@ const ruleKeys = [
   "series",
   "taxAssessment",
 ] as const;
+
 const maximumSelectedObservations = 1000;
+
 const descriptionLimit = 2000;
 
 function requireRuleAccess(transaction: Transaction, write: boolean) {
   const tables = [...Db.recurringRuleTables];
+
   return Db.readRuleAccess(transaction).pipe(
     Effect.flatMap((rows) => {
       if (rows.length !== tables.length) return unsupported();
+
       if (rows.some((row) => !row.canSelect)) return unsupported();
+
       return write &&
         rows.some(
           (row) =>
@@ -54,17 +65,21 @@ function requireRuleAccess(transaction: Transaction, write: boolean) {
 export function calendarDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const parsed = Date.parse(`${value}T00:00:00.000Z`);
+
   if (!Number.isFinite(parsed)) return null;
+
   return new Date(parsed).toISOString().slice(0, 10) === value ? value : null;
 }
 
 function objectOrNull(value: Schema.Json | undefined) {
   const parsed = Schema.decodeUnknownOption(Schema.JsonObject)(value);
+
   return Option.isSome(parsed) ? parsed.value : null;
 }
 
 function text(value: JsonObject, key: string) {
   const found = value[key];
+
   return typeof found === "string" ? found : null;
 }
 
@@ -72,9 +87,11 @@ function requireNativeProfile(transaction: Transaction, scope: Scope) {
   return PostingDb.readBook(transaction, scope).pipe(
     Effect.flatMap((rows) => {
       const book = rows[0];
+
       if (!book || book.profile !== "synthetic-core-v1" || book.authority !== "native") {
         return unsupported();
       }
+
       return Effect.succeed(book);
     }),
   );
@@ -102,11 +119,13 @@ export const proposeRule = Effect.fn("recurring.proposeRule")(function* (
         yield* toJsonObject(command.input),
         RuleSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireRuleAccess(transaction, true);
       const book = yield* requireNativeProfile(transaction, command.scope);
       const input = yield* toJsonObject(command.input);
       yield* exactKeys(input, [...ruleKeys]);
+
       if (
         input.kind !== "synthetic_recurring_preparation_v1" ||
         input.taxAssessment !== "not_applicable" ||
@@ -114,12 +133,14 @@ export const proposeRule = Effect.fn("recurring.proposeRule")(function* (
       ) {
         return yield* failure("InvalidJournal");
       }
+
       const name = text(input, "name");
       const description = text(input, "description");
       const series = text(input, "series");
       const accountId = text(input, "accountId");
       const counterpartAccountId = text(input, "counterpartAccountId");
       const sourceBankAccountId = text(input, "sourceBankAccountId");
+
       if (
         name === null ||
         name.length < 1 ||
@@ -136,13 +157,16 @@ export const proposeRule = Effect.fn("recurring.proposeRule")(function* (
       ) {
         return yield* failure("InvalidJournal");
       }
+
       const accounts = yield* Db.lockSelectionAccounts(transaction, command.scope.bookId, [
         accountId,
         counterpartAccountId,
       ]);
+
       if (accounts.length !== 2 || accounts.some((row) => !row.active)) {
         return yield* failure("InvalidJournal");
       }
+
       const source = yield* transaction.execute<{ readonly accountId: string }>(
         sql`
           select account_id as "accountId" from openerp.bank_sources
@@ -152,8 +176,10 @@ export const proposeRule = Effect.fn("recurring.proposeRule")(function* (
         `,
         "objects",
       );
+
       if (source.length === 0) return yield* failure("InvalidJournal");
       const id = newId("rule");
+
       const dependencies: Array<JsonObject> = [
         {
           kind: "profile",
@@ -176,6 +202,7 @@ export const proposeRule = Effect.fn("recurring.proposeRule")(function* (
             reason: "Exact recurring account configuration",
           })),
       ];
+
       const base = yield* toJsonObject({
         id,
         version: 1,
@@ -190,7 +217,9 @@ export const proposeRule = Effect.fn("recurring.proposeRule")(function* (
           actorId: principal.actorId,
         },
       });
-      const digest = yield* Db.digestJson(transaction, base);
+
+      const digest = yield* digestNative(base);
+
       if (digest === undefined) return yield* failure("InternalError");
       const body = yield* toJsonObject({ ...base, digest });
       yield* Db.insertRule(transaction, { bookId: command.scope.bookId, id, body });
@@ -204,6 +233,7 @@ export const proposeRule = Effect.fn("recurring.proposeRule")(function* (
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -217,18 +247,23 @@ export const getRule = Effect.fn("recurring.getRule")(function* (
   return yield* withBook(token, command.scope, false, function* (transaction) {
     yield* requireRuleAccess(transaction, false);
     const rule = (yield* Db.readRule(transaction, command.scope.bookId, command.ruleId))[0];
+
     if (!rule) return yield* failure("NotFound");
+
     const activation = (yield* Db.readActiveActivation(
       transaction,
       command.scope.bookId,
       command.ruleId,
     ))[0];
+
     const current = (yield* Db.readDependenciesCurrent(
       transaction,
       command.scope.bookId,
       rule.body,
     ))[0]?.current;
+
     if (current === undefined) return yield* failure("InternalError");
+
     return yield* decode(RuleViewSchema, {
       rule,
       activeActivation: activation ?? null,
@@ -259,27 +294,35 @@ export const simulateRule = Effect.fn("recurring.simulateRule")(function* (
         yield* toJsonObject(command.input),
         SimulationSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireRuleAccess(transaction, true);
       const rule = (yield* Db.readRule(transaction, command.scope.bookId, command.input.ruleId))[0];
+
       if (!rule) return yield* failure("NotFound");
       const startsOn = calendarDate(command.input.startsOn);
       const endsOn = calendarDate(command.input.endsOn);
+
       if (startsOn === null || endsOn === null || startsOn > endsOn) {
         return yield* failure("InvalidJournal");
       }
+
       const configured = objectOrNull(rule.body.input);
       const accountId = configured === null ? null : text(configured, "accountId");
+
       const counterpartAccountId =
         configured === null ? null : text(configured, "counterpartAccountId");
+
       if (accountId === null || counterpartAccountId === null) {
         return yield* failure("InternalError");
       }
+
       yield* Db.lockSelectionAccounts(transaction, command.scope.bookId, [
         accountId,
         counterpartAccountId,
       ]);
       yield* Db.lockSelectionPeriods(transaction, command.scope.bookId, startsOn, endsOn);
+
       const selected = (yield* Db.readSelection(
         transaction,
         command.scope.bookId,
@@ -287,14 +330,19 @@ export const simulateRule = Effect.fn("recurring.simulateRule")(function* (
         startsOn,
         endsOn,
       ))[0];
+
       if (!selected?.current || selected.selection === null) {
         return yield* failure("StaleDependency");
       }
+
       const selection = yield* decode(SelectionSchema, selected.selection);
+
       if (selection.matchingCount > maximumSelectedObservations) {
         return yield* failure("InvalidJournal");
       }
+
       const id = newId("simulation");
+
       const base = yield* toJsonObject({
         startsOn: selection.startsOn,
         endsOn: selection.endsOn,
@@ -317,7 +365,9 @@ export const simulateRule = Effect.fn("recurring.simulateRule")(function* (
           actorId: principal.actorId,
         },
       });
-      const digest = yield* Db.digestJson(transaction, base);
+
+      const digest = yield* digestNative(base);
+
       if (digest === undefined) return yield* failure("InternalError");
       const body = yield* toJsonObject({ ...base, digest });
       yield* Db.insertSimulation(transaction, {
@@ -336,6 +386,7 @@ export const simulateRule = Effect.fn("recurring.simulateRule")(function* (
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -348,12 +399,15 @@ export const getSimulation = Effect.fn("recurring.getSimulation")(function* (
 ) {
   return yield* withBook(token, command.scope, false, function* (transaction) {
     yield* requireRuleAccess(transaction, false);
+
     const simulation = (yield* Db.readSimulation(
       transaction,
       command.scope.bookId,
       command.simulationId,
     ))[0];
+
     if (!simulation) return yield* failure("NotFound");
+
     return yield* decode(SimulationSchema, simulation.body);
   });
 });

@@ -7,6 +7,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/banking-
   validateSearch: Schema.decodeUnknownSync(Schema.Struct({ consent: Schema.optional(Identifier) })),
   component: Page,
 });
+
 function Page() {
   return <BankingSetup {...Route.useSearch()} />;
 }

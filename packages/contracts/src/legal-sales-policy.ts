@@ -8,6 +8,7 @@ const EvidenceRef = Schema.Struct({
   evidenceId: Accounting.Identifier,
   sha256: Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/)),
 });
+
 export const ActivateLegalSalesPolicy = Schema.Struct({
   candidateId: Accounting.Identifier,
   candidateDigest: Accounting.Digest,
@@ -21,6 +22,7 @@ export const ActivateLegalSalesPolicy = Schema.Struct({
   acceptReviewedPolicy: Schema.Literal(true),
   acknowledgeIssueBlocked: Schema.Literal(true),
 });
+
 export const LegalSalesPolicy = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -35,12 +37,15 @@ export const LegalSalesPolicy = Schema.Struct({
   deliveryEnabled: Schema.Literal(false),
   digest: Accounting.Digest,
 });
+
 export const LegalSalesPolicyHistory = Schema.Struct({
   scope: Accounting.Scope,
   complete: Schema.Literal(true),
   items: Schema.Array(LegalSalesPolicy).check(Schema.isMaxLength(50)),
 });
+
 const path = "/v1/entities/:entityId/books/:bookId/commerce/legal-sales-policies";
+
 export const LegalSalesPolicyApi = HttpApiGroup.make("legalSalesPolicies").add(
   HttpApiEndpoint.post("activateLegalSalesPolicy", path, {
     params: Accounting.Scope,
@@ -60,6 +65,7 @@ export const LegalSalesPolicyApi = HttpApiGroup.make("legalSalesPolicies").add(
     success: LegalSalesPolicy,
   }),
 );
+
 export const LegalSalesPolicyCapabilities = {
   commerce_legal_sales_policy_history: {
     description:

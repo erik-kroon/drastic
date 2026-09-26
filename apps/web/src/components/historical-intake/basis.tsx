@@ -23,6 +23,7 @@ export function HistoricalBases({
 }) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
+
   const query = useQuery({
     queryKey: [...bookKey(book), "historical-bases"],
     retry: false,
@@ -32,10 +33,13 @@ export function HistoricalBases({
         Historical.BasisInventory,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       return result;
     },
   });
+
   return (
     <Box display="grid" gap="sm">
       <Text>{sv ? "Historik per räkenskapsår" : "Historical basis by fiscal year"}</Text>

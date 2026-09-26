@@ -10,13 +10,17 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import type { E2EEnvironment } from "./environment";
 
 export const run = promisify(execFile);
+
 export const apiDirectory = resolve(import.meta.dirname, "../..");
+
 export const environment = (): E2EEnvironment => inject("e2e");
+
 export const key = () => randomUUID();
 
 export async function database() {
   const client = new Client({ connectionString: environment().adminUrl });
   await client.connect();
+
   return client;
 }
 
@@ -24,6 +28,7 @@ export async function createSession(book: BookFixture) {
   const id = `session_${randomBytes(8).toString("hex")}`;
   const token = randomBytes(32).toString("hex");
   const admin = await database();
+
   try {
     await admin.query(
       `INSERT INTO openerp_auth."user"(id, name, email)
@@ -45,13 +50,16 @@ export async function createSession(book: BookFixture) {
   } finally {
     await admin.end();
   }
+
   return { id, token };
 }
 
 export async function deleteSession(id: string) {
   const admin = await database();
+
   try {
     const deleted = await admin.query("DELETE FROM openerp_auth.session WHERE id = $1", [id]);
+
     return deleted.rowCount;
   } finally {
     await admin.end();
@@ -66,6 +74,7 @@ export async function fixture() {
   const bookId = `book_${id}`;
   const actorId = `operator_${id}`;
   const agentId = `agent_${id}`;
+
   const config = {
     entity: { id: entityId, name: "Synthetic E2E entity" },
     book: { id: bookId, name: "Synthetic E2E book", currency: "SEK", profile: "synthetic-core-v1" },
@@ -82,6 +91,7 @@ export async function fixture() {
       { id: "account_clearing", code: "2999", name: "Clearing" },
     ],
   };
+
   const path = join(environment().scratch, `${bookId}.json`);
   await writeFile(path, JSON.stringify(config));
   await run("bun", ["scripts/provision.ts", path], {
@@ -93,6 +103,7 @@ export async function fixture() {
     },
   });
   const admin = await database();
+
   try {
     await admin.query("INSERT INTO openerp.actors(id, name) VALUES ($1, 'E2E agent')", [agentId]);
     await admin.query(
@@ -106,6 +117,7 @@ export async function fixture() {
   } finally {
     await admin.end();
   }
+
   return {
     entityId,
     bookId,
@@ -116,24 +128,32 @@ export async function fixture() {
     path: `/api/v1/entities/${entityId}/books/${bookId}`,
   };
 }
+
 export type BookFixture = Awaited<ReturnType<typeof fixture>>;
 
 export function request(book: BookFixture, path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
+
   if (!headers.has("authorization")) headers.set("authorization", `Bearer ${book.token}`);
+
   if (init.body) headers.set("content-type", "application/json");
+
   if (init.method === "POST" && !headers.has("idempotency-key"))
     headers.set("idempotency-key", key());
+
   return fetch(`${environment().baseUrl}${book.path}${path}`, { ...init, headers });
 }
+
 export async function decoded<S extends Schema.Top & { readonly DecodingServices: never }>(
   response: Response,
   schema: S,
 ): Promise<S["Type"]> {
   const body = await response.text();
   expect(response.status, body).toBe(200);
+
   return Schema.decodeSync(Schema.fromJsonString(schema))(body);
 }
+
 export async function failure(
   response: Response,
   status: number,
@@ -145,6 +165,7 @@ export async function failure(
     code,
   );
 }
+
 export async function evidence(book: BookFixture) {
   return decoded(
     await request(book, "/evidence", {
@@ -159,6 +180,7 @@ export async function evidence(book: BookFixture) {
     Accounting.Evidence,
   );
 }
+
 export function journal(
   evidenceId: string,
   amount = "12500",
@@ -189,8 +211,10 @@ export function journal(
     ],
   };
 }
+
 export async function prepare(book: BookFixture, amount = "12500") {
   const source = await evidence(book);
+
   return decoded(
     await request(book, "/change-sets", {
       method: "POST",
@@ -199,6 +223,7 @@ export async function prepare(book: BookFixture, amount = "12500") {
     Accounting.ChangeSet,
   );
 }
+
 export async function approve(book: BookFixture, plan: typeof Accounting.ChangeSet.Type) {
   return decoded(
     await request(book, `/change-sets/${plan.id}/approvals`, {
@@ -208,14 +233,17 @@ export async function approve(book: BookFixture, plan: typeof Accounting.ChangeS
     Accounting.Approval,
   );
 }
+
 export function execution(
   plan: typeof Accounting.ChangeSet.Type,
   approval: typeof Accounting.Approval.Type,
 ) {
   return { planDigest: plan.planDigest, version: plan.version, approvalId: approval.id };
 }
+
 export async function execute(book: BookFixture, plan: typeof Accounting.ChangeSet.Type) {
   const approval = await approve(book, plan);
+
   return decoded(
     await request(book, `/change-sets/${plan.id}/execute`, {
       method: "POST",
@@ -224,23 +252,29 @@ export async function execute(book: BookFixture, plan: typeof Accounting.ChangeS
     Accounting.ExecutionReceipt,
   );
 }
+
 export async function ledger(book: BookFixture) {
   return decoded(await request(book, "/ledger"), Accounting.LedgerSnapshot);
 }
+
 export async function sealedPlans(book: BookFixture) {
   const admin = await database();
+
   try {
     const result = await admin.query<{ count: number }>(
       "SELECT count(*)::int AS count FROM openerp.change_sets WHERE book_id = $1",
       [book.bookId],
     );
+
     return result.rows[0]?.count ?? 0;
   } finally {
     await admin.end();
   }
 }
+
 export async function persisted(book: BookFixture) {
   const admin = await database();
+
   try {
     const result = await admin.query<{
       sequence: string;
@@ -262,12 +296,15 @@ export async function persisted(book: BookFixture) {
       FROM openerp.books WHERE id = $1`,
       [book.bookId],
     );
+
     expect(result.rows).toHaveLength(1);
+
     return result.rows[0];
   } finally {
     await admin.end();
   }
 }
+
 export const emptyPosting = {
   sequence: "0",
   vouchers: 0,
@@ -277,6 +314,7 @@ export const emptyPosting = {
   consumed: 0,
   counter: "0",
 };
+
 export const onePosting = {
   sequence: "1",
   vouchers: 1,
@@ -286,6 +324,7 @@ export const onePosting = {
   consumed: 1,
   counter: "1",
 };
+
 export async function saveEvidence(name: string, book: BookFixture) {
   await writeFile(
     join(environment().artifacts, `${name}.json`),

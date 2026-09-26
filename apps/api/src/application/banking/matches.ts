@@ -1,3 +1,4 @@
+import { admitBankMatch } from "../resource-admission";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Bank from "@open-erp/contracts/reconciliation";
 import * as Effect from "effect/Effect";
@@ -10,6 +11,7 @@ import * as StatementDb from "../../db/banking/statements";
 import * as Shared from "./shared";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type JsonObject = Schema.JsonObject;
 
 const MatchReceiptSchema = Bank.BankMatchReceipt;
@@ -26,7 +28,9 @@ const matchTables = [
   "vouchers",
   "command_receipts",
 ];
+
 const matchInserts = ["bank_matches", "command_receipts"];
+
 const matchUpdates = ["bank_sources"];
 
 export type MatchTarget = {
@@ -53,23 +57,29 @@ export function addMatch(
     ) {
       return yield* failure("InvalidJournal");
     }
+
     const observation = (yield* StatementDb.readObservation(
       transaction,
       bookId,
       target.statementId,
       target.rowOrdinal,
     ))[0];
+
     if (!observation) return yield* failure("NotFound");
+
     const line = (yield* StatementDb.readLine(
       transaction,
       bookId,
       target.voucherId,
       target.lineId,
     ))[0];
+
     if (!line) return yield* failure("NotFound");
     const observed = Shared.minor(observation.amountMinor);
     const posted = Shared.minor(line.amountMinor);
+
     if (observed === undefined || posted === undefined) return yield* Shared.unsupported();
+
     if (
       line.accountId !== observation.accountId ||
       posted !== observed ||
@@ -85,18 +95,22 @@ export function addMatch(
       target.statementId,
       target.rowOrdinal,
     ))[0];
+
     if (retained) {
       if (retained.voucherId !== target.voucherId || retained.lineId !== target.lineId) {
         return yield* failure("InvalidJournal");
       }
+
       return yield* Shared.toJsonObject(retained);
     }
+
     if (
       (yield* StatementDb.readLineMatch(transaction, bookId, target.voucherId, target.lineId))
         .length > 0
     ) {
       return yield* failure("InvalidJournal");
     }
+
     if (
       (yield* StatementDb.readAllocatedLegPresence(
         transaction,
@@ -110,6 +124,7 @@ export function addMatch(
       return yield* failure("InvalidJournal");
     }
 
+    yield* admitBankMatch(transaction, bookId, target);
     yield* StatementDb.insertMatch(transaction, {
       bookId,
       statementId: target.statementId,
@@ -120,6 +135,7 @@ export function addMatch(
       actorId,
     });
     yield* BankDb.bumpSourceRevision(transaction, bookId, observation.accountId);
+
     return yield* Shared.toJsonObject({
       statementId: target.statementId,
       rowOrdinal: target.rowOrdinal,
@@ -144,7 +160,9 @@ export const matchBankObservation = Effect.fn("banking.match.observation")(funct
       yield* Shared.requireTables(transaction, matchTables, matchInserts, matchUpdates);
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "update"))[0];
+
       if (!book) return yield* failure("Forbidden");
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -154,6 +172,7 @@ export const matchBankObservation = Effect.fn("banking.match.observation")(funct
         yield* Shared.toJsonObject(command.input),
         MatchReceiptSchema,
       );
+
       if (request.previous) return request.previous;
       yield* Shared.requireNativeBankProfile(book.profile, book.authority);
 
@@ -169,12 +188,15 @@ export const matchBankObservation = Effect.fn("banking.match.observation")(funct
         },
         "explicit",
       );
+
       const statement = (yield* StatementDb.readStatement(
         transaction,
         command.scope.bookId,
         command.input.statementId,
       ))[0];
+
       if (!statement) return yield* failure("NotFound");
+
       const body = yield* Shared.toJsonObject({
         match: matched,
         checkpoint: yield* Shared.readCheckpoint(
@@ -188,6 +210,7 @@ export const matchBankObservation = Effect.fn("banking.match.observation")(funct
           principal.actorId,
         ),
       } satisfies JsonObject);
+
       const receipt = yield* Shared.decode(MatchReceiptSchema, body);
       yield* saveCommand(
         transaction,
@@ -198,6 +221,7 @@ export const matchBankObservation = Effect.fn("banking.match.observation")(funct
         principal.actorId,
         body,
       );
+
       return receipt;
     }),
   );

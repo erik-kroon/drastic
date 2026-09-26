@@ -29,6 +29,7 @@ export function ClosingPanel({
   const [periodId, setPeriodId] = useState("");
   const [proposalId, setProposalId] = useState("");
   const [error, setError] = useState("");
+
   return (
     <details open={open} id="technical-closing" tabIndex={-1}>
       <summary>{copy.title}</summary>
@@ -42,10 +43,13 @@ export function ClosingPanel({
           onSubmit={(event) => {
             event.preventDefault();
             const id = new FormData(event.currentTarget).get("periodId");
+
             if (!Schema.is(Accounting.Identifier)(id)) {
               setError(copy.invalid);
+
               return;
             }
+
             setError("");
             setPeriodId(id);
             setProposalId("");
@@ -79,10 +83,13 @@ export function ClosingPanel({
           onSubmit={(event) => {
             event.preventDefault();
             const id = new FormData(event.currentTarget).get("proposalId");
+
             if (!Schema.is(Accounting.Identifier)(id)) {
               setError(copy.invalid);
+
               return;
             }
+
             setError("");
             setProposalId(id);
           }}
@@ -121,6 +128,7 @@ export function PeriodClosing(props: {
   const queryClient = useQueryClient();
   const [error, setError] = useState("");
   const path = `${bookPath(book)}/periods/${encodeURIComponent(periodId)}`;
+
   const readiness = useQuery({
     queryKey: [...bookKey(book), "closing-readiness", periodId],
     retry: false,
@@ -128,18 +136,22 @@ export function PeriodClosing(props: {
       const result = await readAccounting(`${path}/closing-readiness`, Closing.ClosingReadiness, {
         signal,
       });
+
       if (
         result.scope.bookId !== book.id ||
         result.scope.entityId !== book.entityId ||
         result.periodId !== periodId
       )
         throw new Error("Closing scope mismatch");
+
       return result;
     },
   });
+
   const inventory = useMutation({
     mutationFn: (input: typeof Closing.DeclareClosingInventory.Type) => {
       const endpoint = `${path}/closing-source-inventories`;
+
       return readAccounting(
         endpoint,
         Closing.ClosingInventory,
@@ -148,9 +160,11 @@ export function PeriodClosing(props: {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: bookKey(book) }),
   });
+
   const prepare = useMutation({
     mutationFn: (input: typeof Closing.PrepareClosing.Type) => {
       const endpoint = `${path}/closing-proposals`;
+
       return readAccounting(
         endpoint,
         Closing.ClosingProposal,
@@ -159,8 +173,10 @@ export function PeriodClosing(props: {
     },
     onSuccess: (result) => onPrepared(result.id),
   });
+
   const basis = readiness.data;
   const ready = readiness.isSuccess && !readiness.isFetching && !inventory.isPending;
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <AccountingStatus locale={locale} pending={readiness.isPending} error={readiness.error} />
@@ -191,20 +207,27 @@ export function PeriodClosing(props: {
                 event.preventDefault();
                 const values = new FormData(event.currentTarget);
                 const accountValue = values.get("accountIds");
+
                 if (typeof accountValue !== "string") {
                   setError(copy.invalid);
+
                   return;
                 }
+
                 const accountIds = accountValue.trim();
+
                 const result = Schema.decodeUnknownOption(Closing.DeclareClosingInventory)({
                   evidenceId: values.get("evidenceId"),
                   bankAccountIds: accountIds ? accountIds.split(",").map((id) => id.trim()) : [],
                   families: readFamilyDecisions(values),
                 });
+
                 if (result._tag === "None") {
                   setError(copy.invalid);
+
                   return;
                 }
+
                 setError("");
                 inventory.mutate(result.value);
               }}
@@ -251,14 +274,18 @@ export function PeriodClosing(props: {
             gap="md"
             onSubmit={(event) => {
               event.preventDefault();
+
               const result = Schema.decodeUnknownOption(Closing.PrepareClosing)({
                 action: basis.locked ? "reopen" : "close",
                 reason: new FormData(event.currentTarget).get("reason"),
               });
+
               if (result._tag === "None") {
                 setError(copy.invalid);
+
                 return;
               }
+
               setError("");
               prepare.mutate(result.value);
             }}

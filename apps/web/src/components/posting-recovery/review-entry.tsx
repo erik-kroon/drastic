@@ -25,6 +25,7 @@ export function ReviewEntry({
   const metadata = useQuery(workQueryOptions(book, {}));
   const scale = metadata.data?.currencyScale;
   const total = action.lines.reduce((sum, line) => sum + BigInt(line.debitMinor), 0n);
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Box display="flex" flexWrap="wrap" justifyContent="between" alignItems="start" gap="md">
@@ -76,6 +77,7 @@ export function ReviewEntry({
           ]}
           rows={action.lines.map((line) => {
             const account = accounts.find((item) => item.id === line.accountId);
+
             return {
               id: line.lineId,
               cells: [

@@ -21,6 +21,7 @@ type SaveProps = CommerceProps & {
   children: ReactNode;
   footerSummary: ReactNode;
 };
+
 class InvalidDraftInput extends Error {}
 
 export function InvoiceDraftSave(props: SaveProps) {
@@ -32,10 +33,12 @@ export function InvoiceDraftSave(props: SaveProps) {
   const client = useQueryClient();
   const [invalid, setInvalid] = useState(false);
   const problem = useRef<HTMLDivElement>(null);
+
   const save = useMutation({
     mutationFn: async (pending: NonNullable<DraftEditingState["pending"]>) => {
       if (book.role !== "operator") throw new Error("Operator access required");
       let input = pending.input;
+
       if (input === null) {
         const retained = await sendSavedPostingCommand({
           book,
@@ -45,6 +48,7 @@ export function InvoiceDraftSave(props: SaveProps) {
             ? "Tillåt lokal lagring för att spara."
             : "Allow local storage to save.",
         });
+
         if (
           retained.outcome?.state !== "committed" ||
           !Schema.is(Accounting.Evidence)(retained.outcome.result)
@@ -55,28 +59,37 @@ export function InvoiceDraftSave(props: SaveProps) {
               : "The source is not confirmed. Retry the save.",
           );
         const fields = new FormData();
+
         for (const [name, value] of Object.entries(pending.fields)) fields.set(name, value);
+
         const parsed = Schema.decodeUnknownOption(schema)(
           props.input(fields, retained.outcome.result),
         );
+
         if (parsed._tag === "None") throw new InvalidDraftInput();
         input = parsed.value;
       }
+
       const command = Schema.decodeUnknownSync(schema)(input);
+
       if (!session.update({ pending: { ...pending, input: command } }))
         throw new Error(
           sv
             ? "Sparandet har pausats. Begäran måste behållas innan den skickas."
             : "Saving is paused. The request must be kept before it is sent.",
         );
+
       const result = await readAccounting(path, Drafts.InvoiceDraftRevision, {
         method: "POST",
         body: JSON.stringify(command),
         headers: { "Idempotency-Key": pending.key },
       });
+
       checkScope(book, result.scope);
+
       if (result.draftKey !== session.state.draftKey || (baseline && result.id !== baseline.id))
         throw new Error("Saved invoice draft identity mismatch");
+
       return result;
     },
     onError: (error) => {
@@ -89,11 +102,15 @@ export function InvoiceDraftSave(props: SaveProps) {
     },
     retry: false,
   });
+
   const refused = save.error instanceof Accounting.AccountingError;
   const invalidInput = save.error instanceof InvalidDraftInput;
+
   const conflict =
     save.error instanceof Accounting.AccountingError && save.error.code === "StaleDependency";
+
   const pending = session.state.pending;
+
   return (
     <Box
       as="form"
@@ -102,6 +119,7 @@ export function InvoiceDraftSave(props: SaveProps) {
       minWidth="zero"
       onChange={(event) => {
         const target = event.target;
+
         if (
           !pending &&
           (target instanceof HTMLInputElement ||
@@ -114,20 +132,25 @@ export function InvoiceDraftSave(props: SaveProps) {
       onSubmit={(event) => {
         event.preventDefault();
         event.stopPropagation();
+
         if (pending || !session.state.customer || book.role !== "operator") return;
         const fields = new FormData(event.currentTarget);
         const source = Schema.decodeOption(Accounting.CreateEvidence)(props.source(fields));
         setInvalid(source._tag === "None");
+
         if (source._tag === "None") return;
+
         const values = Object.fromEntries(
           Array.from(fields.entries()).map(([name, value]) => [name, String(value)]),
         );
+
         const request = {
           key: crypto.randomUUID(),
           source: source.value,
           fields: values,
           input: null,
         };
+
         if (session.update({ fields: values, pending: request })) save.mutate(request);
       }}
     >
@@ -210,6 +233,7 @@ function DraftSaveFooter(
   const sv = props.locale === "sv";
   const session = props.session;
   const pending = session.state.pending;
+
   return (
     <FormActions sticky>
       <Box display="grid" gap="sm">
@@ -253,6 +277,7 @@ function DraftConflict(
 ) {
   const sv = props.locale === "sv";
   const id = props.session.state.baseline?.id;
+
   const latest = useQuery({
     queryKey: [...bookKey(props.book), "invoice-conflict", id],
     staleTime: 0,
@@ -264,20 +289,25 @@ function DraftConflict(
         Drafts.InvoiceDraftView,
         { signal },
       );
+
       checkScope(props.book, view.record.scope);
+
       if (
         view.record.id !== id ||
         view.record.revision !== view.currentRevision ||
         view.record.digest !== view.currentDigest
       )
         throw new Error("Current invoice draft mismatch");
+
       return view.record;
     },
   });
+
   const changed =
     latest.data &&
     latest.data.digest !==
       (props.session.state.expected?.digest ?? props.session.state.baseline?.digest);
+
   return (
     <Box display="grid" gap="md">
       <Text role="alert">

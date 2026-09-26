@@ -4,6 +4,7 @@ import * as React from "react";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 
 const LastItemContext = React.createContext(false);
+
 const styles = stylex.create({
   timeline: { display: "grid", listStyle: "none", padding: 0, margin: 0 },
   item: {
@@ -52,6 +53,7 @@ function Timeline({
   ...props
 }: WithStyleX<React.ComponentProps<"ol">>) {
   const items = React.Children.toArray(children);
+
   return (
     <ol
       role="list"
@@ -88,8 +90,10 @@ function TimelineItem({
     </LastItemContext.Provider>
   );
 }
+
 function TimelineRail({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"span">>) {
   const isLast = React.useContext(LastItemContext);
+
   return (
     <span
       aria-hidden="true"
@@ -99,6 +103,7 @@ function TimelineRail({ className, styleX, ...props }: WithStyleX<React.Componen
     />
   );
 }
+
 function TimelineDot({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"span">>) {
   return (
     <span
@@ -109,6 +114,7 @@ function TimelineDot({ className, styleX, ...props }: WithStyleX<React.Component
     />
   );
 }
+
 function TimelineContent({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"div">>) {
   return (
     <div
@@ -118,6 +124,7 @@ function TimelineContent({ className, styleX, ...props }: WithStyleX<React.Compo
     />
   );
 }
+
 function TimelineDate({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"time">>) {
   return (
     <time data-slot="timeline-date" {...stylexProps([styles.date, styleX], className)} {...props} />
@@ -125,4 +132,5 @@ function TimelineDate({ className, styleX, ...props }: WithStyleX<React.Componen
 }
 
 export { Timeline, TimelineContent, TimelineDate, TimelineDot, TimelineItem, TimelineRail };
+
 export type { TimelineItemProps };

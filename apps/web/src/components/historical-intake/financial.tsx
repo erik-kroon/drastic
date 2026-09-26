@@ -33,6 +33,7 @@ export function FinancialImport({
   const base = bookPath(book);
   const queryKey = [...bookKey(book), "sie-financial-workspace", sourceRunId];
   const refresh = () => cache.invalidateQueries({ queryKey });
+
   const workspace = useQuery({
     queryKey,
     retry: false,
@@ -42,6 +43,7 @@ export function FinancialImport({
         Historical.FinancialWorkspace,
         { signal },
       );
+
       if (
         result.run &&
         (result.run.sourceRunId !== sourceRunId ||
@@ -49,10 +51,13 @@ export function FinancialImport({
           result.run.fiscalYearId !== yearId)
       )
         throw new Error("Financial import identity mismatch");
+
       return result;
     },
   });
+
   const startPath = `${base}/sie-runs/${encodeURIComponent(sourceRunId)}/financial-runs`;
+
   const start = useMutation({
     mutationFn: () =>
       readAccounting(
@@ -66,7 +71,9 @@ export function FinancialImport({
       ),
     onSuccess: refresh,
   });
+
   const run = workspace.data?.run;
+
   return (
     <Box display="grid" gap="md">
       <AccountingStatus locale={locale} pending={workspace.isPending} error={workspace.error} />
@@ -175,6 +182,7 @@ function FinancialLease({
   const sv = locale === "sv";
   const keys = useRef(new Map<string, string>());
   const path = `${bookPath(book)}/sie-financial-runs/${encodeURIComponent(run.id)}/lease`;
+
   const lease = useMutation({
     mutationFn: (action: "pause" | "resume") =>
       readAccounting(
@@ -187,7 +195,9 @@ function FinancialLease({
       await onChanged();
     },
   });
+
   const uncertain = isUncertainWriteError(lease.error);
+
   return (
     <Box display="grid" gap="sm">
       <Box display="flex" flexWrap="wrap" gap="sm">

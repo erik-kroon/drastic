@@ -34,6 +34,7 @@ export function BankingWorkspace({
   const statement = recordId?.startsWith("statement:") ? recordId.slice(10) : null;
   const keys = useRef(new Map<string, string>());
   const period = setup.periods.at(-1);
+
   const sources = useInfiniteQuery({
     queryKey: [...bookKey(book), "bank-source-register"],
     initialPageParam: "",
@@ -46,9 +47,11 @@ export function BankingWorkspace({
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry: false,
   });
+
   const reconcile = useMutation({
     mutationFn: (input: typeof Bank.ReconcileBank.Type) => {
       const path = `${bookPath(book)}/bank-reconciliations`;
+
       return readAccounting(
         path,
         Bank.BankReconciliation,
@@ -57,9 +60,11 @@ export function BankingWorkspace({
     },
     onSuccess: (report) => onOpen(report.id),
   });
+
   const imported =
     sources.data?.pages.flatMap((page) => page.items).filter((item) => item.admission !== null) ??
     [];
+
   if (recordId && !statement)
     return (
       <Box display="grid" gap="xl">
@@ -72,6 +77,7 @@ export function BankingWorkspace({
         <BankReport book={book} locale={locale} id={recordId} />
       </Box>
     );
+
   if (statement)
     return (
       <Box display="grid" gap="xl">
@@ -84,6 +90,7 @@ export function BankingWorkspace({
         <BankStatementReview book={book} locale={locale} id={statement} />
       </Box>
     );
+
   return (
     <Box display="grid" gap="xl">
       <RecordHeading
@@ -206,6 +213,7 @@ const english = {
   importedBalancesAreNotA:
     "Imported balances are not a live bank feed. Missing coverage is shown in the reconciliation.",
 };
+
 const swedish: typeof english = {
   backToReconciliation: "Till avstämning",
   allStatements: "Alla kontoutdrag",

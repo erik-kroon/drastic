@@ -27,6 +27,7 @@ export function RefreshOpening({
   const sv = locale === "sv";
   const keys = useRef(new Map<string, string>());
   const path = `${bookPath(book)}/historical-bases/${encodeURIComponent(basis.fiscalYearId)}/proposals`;
+
   const save = useMutation({
     mutationFn: async (input: typeof Historical.RefreshOpening.Type) => {
       const result = await readAccounting(
@@ -34,18 +35,22 @@ export function RefreshOpening({
         Historical.OpeningPreparation,
         mutationOptions(path, JSON.stringify(input), keys.current),
       );
+
       if (
         result.basis.fiscalYearId !== basis.fiscalYearId ||
         result.basis.sourcePlanId !== basis.sourcePlanId ||
         result.basis.sourceDigest !== basis.sourceDigest
       )
         throw new Error("Historical opening identity mismatch");
+
       return result;
     },
     onSuccess: onSaved,
   });
+
   const uncertain = isUncertainWriteError(save.error);
   const disabled = book.role !== "operator" || save.isPending || uncertain || save.isSuccess;
+
   const form = useForm({
     defaultValues: {
       expectedChangeSetId: basis.changeSetId ?? "",
@@ -63,6 +68,7 @@ export function RefreshOpening({
       await save.mutateAsync(value).catch(() => undefined);
     },
   });
+
   return (
     <details>
       <summary>{sv ? "Förbered ingående saldon igen" : "Prepare opening balances again"}</summary>

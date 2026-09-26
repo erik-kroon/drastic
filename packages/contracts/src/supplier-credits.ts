@@ -35,14 +35,17 @@ export const PrepareSupplierCredit = Schema.Struct({
   reason: Accounting.Description,
   acknowledgeSyntheticOnly: Schema.Literal(true),
 });
+
 export const ApproveSupplierCredit = Schema.Struct({
   digest: Accounting.Digest,
   acknowledgeSyntheticOnly: Schema.Literal(true),
 });
+
 export const ExecuteSupplierCredit = Schema.Struct({
   ...ApproveSupplierCredit.fields,
   approvalId: Accounting.Identifier,
 });
+
 export const SupplierCreditSnapshot = Schema.Struct({
   invoice: Commerce.Invoice,
   acceptanceDigest: Accounting.Digest,
@@ -77,6 +80,7 @@ export const SupplierCreditSnapshot = Schema.Struct({
   creditDate: Accounting.AccountingDate,
   supplierCreditNumber: PrepareSupplierCredit.fields.supplierCreditNumber,
 });
+
 export const SupplierCreditReview = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -95,6 +99,7 @@ export const SupplierCreditReview = Schema.Struct({
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
 });
+
 export const SupplierCreditApproval = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -105,6 +110,7 @@ export const SupplierCreditApproval = Schema.Struct({
   createdAt: Schema.String,
   receipt: Commerce.CommandReceipt,
 });
+
 export const SupplierCreditReceipt = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -127,19 +133,23 @@ export const SupplierCreditReceipt = Schema.Struct({
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
 });
+
 export const SupplierCreditView = Schema.Struct({
   review: SupplierCreditReview,
   approval: Schema.NullOr(SupplierCreditApproval),
   credit: Schema.NullOr(SupplierCreditReceipt),
   dependenciesCurrent: Schema.Boolean,
 });
+
 export const SupplierCreditHistory = Schema.Struct({
   scope: Accounting.Scope,
   invoiceId: Accounting.Identifier,
   count: Schema.Int,
   items: Schema.Array(SupplierCreditReceipt).check(Schema.isMaxLength(50)),
 });
+
 const path = "/v1/entities/:entityId/books/:bookId/commerce";
+
 export const SupplierCreditsApi = HttpApiGroup.make("supplierCredits").add(
   HttpApiEndpoint.post("prepareSupplierCredit", `${path}/supplier-credit-reviews`, {
     params: Accounting.Scope,
@@ -173,6 +183,7 @@ export const SupplierCreditsApi = HttpApiGroup.make("supplierCredits").add(
     error: accountingErrors,
   }),
 );
+
 export const SupplierCreditCapabilities = {
   commerce_get_supplier_credit_review: {
     description:

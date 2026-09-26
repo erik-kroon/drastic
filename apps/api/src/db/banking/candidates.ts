@@ -110,6 +110,7 @@ export function readCandidateLines(
   rowOrdinal: number,
 ) {
   const book = sql`${bookId}`;
+
   return transaction.execute<CandidateLinesRow>(
     sql`
       select

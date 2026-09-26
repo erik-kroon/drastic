@@ -57,7 +57,9 @@ const styles = stylex.create({
   },
   action: { alignItems: "center", display: "flex", gridColumn: "3", gridRow: "1 / span 2" },
 });
+
 type AlertVariant = "default" | "info" | "success" | "warning" | "destructive";
+
 const variantStyles = {
   default: undefined,
   info: styles.info,
@@ -65,7 +67,9 @@ const variantStyles = {
   warning: styles.warning,
   destructive: styles.destructive,
 } as const;
+
 type AlertProps = WithStyleX<React.ComponentProps<"div">> & { variant?: AlertVariant };
+
 function Alert({ className, role = "alert", styleX, variant = "default", ...props }: AlertProps) {
   return (
     <div
@@ -77,12 +81,15 @@ function Alert({ className, role = "alert", styleX, variant = "default", ...prop
     />
   );
 }
+
 function AlertIcon({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"div">>) {
   return <div aria-hidden="true" {...stylexProps([styles.icon, styleX], className)} {...props} />;
 }
+
 function AlertTitle({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"h3">>) {
   return <h3 {...stylexProps([styles.title, styleX], className)} {...props} />;
 }
+
 function AlertDescription({
   className,
   styleX,
@@ -90,8 +97,11 @@ function AlertDescription({
 }: WithStyleX<React.ComponentProps<"div">>) {
   return <div {...stylexProps([styles.description, styleX], className)} {...props} />;
 }
+
 function AlertAction({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"div">>) {
   return <div {...stylexProps([styles.action, styleX], className)} {...props} />;
 }
+
 export { Alert, AlertAction, AlertDescription, AlertIcon, AlertTitle };
+
 export type { AlertProps, AlertVariant };

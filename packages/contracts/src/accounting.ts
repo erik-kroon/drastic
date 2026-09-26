@@ -8,8 +8,11 @@ import {
 } from "@open-erp/domain/ledger";
 
 export { Identifier, AccountingDate, Description, Digest, Scope } from "@open-erp/domain/values";
+
 export { MinorUnits, SignedMinorUnits, AggregateMinorUnits } from "@open-erp/domain/money";
+
 export { FailureCode, AccountingError } from "@open-erp/domain/errors";
+
 export {
   JournalLine,
   Evidence,
@@ -24,6 +27,7 @@ export {
   LedgerSnapshot,
   ValidationReport,
 } from "@open-erp/domain/ledger";
+
 export { Book, BookSetup, BookStatus } from "@open-erp/domain/books";
 
 export const ExecutionReceipt = DomainExecutionReceipt;

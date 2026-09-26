@@ -44,6 +44,7 @@ export function HistoricalIntake({
   const base = `${workspacePath(book)}/history`;
   const inventory = useInfiniteQuery({ ...statementImportsOptions(book), enabled: !source });
   const openSource = (id: string) => void navigate({ to: base, search: { source: id } });
+
   return (
     <>
       <WorkspaceHeader title={sv ? "Tidigare bokföring" : "Previous bookkeeping"} />
@@ -117,6 +118,7 @@ function SieSource({ source, preview, plan }: { source: string; preview?: string
   const keys = useRef(new Map<string, string>());
   const base = `${workspacePath(book)}/history`;
   const sourcePath = `${bookPath(book)}/source-occurrences/${encodeURIComponent(source)}`;
+
   const previews = useQuery({
     queryKey: [...bookKey(book), "sie-preview-inventory", source],
     retry: false,
@@ -124,11 +126,15 @@ function SieSource({ source, preview, plan }: { source: string; preview?: string
       const result = await readAccounting(`${sourcePath}/sie-previews`, Sie.SiePreviewInventory, {
         signal,
       });
+
       checkScope(book, result.scope);
+
       if (result.occurrenceId !== source) throw new Error("SIE inventory identity mismatch");
+
       return result;
     },
   });
+
   const original = useQuery({
     queryKey: [...bookKey(book), "source-metadata", source],
     retry: false,
@@ -138,11 +144,15 @@ function SieSource({ source, preview, plan }: { source: string; preview?: string
         Sources.SourceOccurrenceMetadata,
         { signal },
       );
+
       checkScope(book, result.occurrence.scope);
+
       if (result.occurrence.id !== source) throw new Error("Source identity mismatch");
+
       return result;
     },
   });
+
   const capture = useMutation({
     mutationFn: (encoding: typeof Encoding.Type) =>
       readAccounting(
@@ -152,6 +162,7 @@ function SieSource({ source, preview, plan }: { source: string; preview?: string
       ),
     onSuccess: (result) => {
       checkScope(book, result.scope);
+
       if (result.occurrenceId !== source) throw new Error("SIE source identity mismatch");
       cache.setQueryData([...bookKey(book), "sie-preview", result.id], result);
       void cache.invalidateQueries({
@@ -160,6 +171,7 @@ function SieSource({ source, preview, plan }: { source: string; preview?: string
       void navigate({ to: base, search: { source, preview: result.id } });
     },
   });
+
   const form = useForm({
     defaultValues: { encoding: Schema.decodeSync(Encoding)("ibm437") },
     onSubmit: async ({ value }) => {
@@ -170,6 +182,7 @@ function SieSource({ source, preview, plan }: { source: string; preview?: string
       );
     },
   });
+
   const inspection = useQuery({
     queryKey: [...bookKey(book), "sie-preview", preview],
     enabled: Boolean(preview),
@@ -180,12 +193,16 @@ function SieSource({ source, preview, plan }: { source: string; preview?: string
         Sie.SiePreview,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       if (result.id !== preview || result.occurrenceId !== source)
         throw new Error("SIE preview identity mismatch");
+
       return result;
     },
   });
+
   return (
     <Box display="grid" gap="xl" minWidth="zero">
       <Link href={base}>{sv ? "Alla historiska filer" : "All historical files"}</Link>

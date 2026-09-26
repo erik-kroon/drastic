@@ -4,6 +4,7 @@ import { readTableAccess } from "../commerce/access";
 import type { Transaction } from "../transaction";
 
 type Json = Schema.Json;
+
 type JsonObject = Schema.JsonObject;
 
 export type BankSourceRow = {
@@ -1118,13 +1119,6 @@ export function readTaxAccountClassifications(transaction: Transaction, bookId: 
       where r.book_id = ${bookId}
       order by r.id collate "C"
     `,
-    "objects",
-  );
-}
-
-export function digestJson(transaction: Transaction, value: Json) {
-  return transaction.execute<{ readonly digest: string }>(
-    sql`select openerp.digest(${JSON.stringify(value)}::jsonb) as digest`,
     "objects",
   );
 }

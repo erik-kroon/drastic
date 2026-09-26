@@ -127,6 +127,7 @@ const styles = stylex.create({
     borderBlockEndColor: tokens.border,
   },
 });
+
 export function RecordHeading({
   title,
   subtitle,
@@ -146,9 +147,11 @@ export function RecordHeading({
     </div>
   );
 }
+
 export function RecordSummary({ children }: { children: ReactNode }) {
   return <div {...stylex.props(styles.summary)}>{children}</div>;
 }
+
 export function RecordFact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div {...stylex.props(styles.fact)}>
@@ -157,6 +160,7 @@ export function RecordFact({ label, children }: { label: string; children: React
     </div>
   );
 }
+
 export function RecordSplit({ children, aside }: { children: ReactNode; aside: ReactNode }) {
   return (
     <div {...stylex.props(styles.split)}>
@@ -165,6 +169,7 @@ export function RecordSplit({ children, aside }: { children: ReactNode; aside: R
     </div>
   );
 }
+
 export function DocumentPaper({
   children,
   compact = false,
@@ -176,6 +181,7 @@ export function DocumentPaper({
     <article {...stylex.props(styles.paper, compact && styles.compactPaper)}>{children}</article>
   );
 }
+
 export function RecordSection({
   title,
   children,
@@ -216,6 +222,7 @@ export function RecordEditor({
   children: ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
+
   return (
     <section {...stylex.props(styles.editor)}>
       <details open={editing} onToggle={(event) => setEditing(event.currentTarget.open)}>
@@ -223,8 +230,10 @@ export function RecordEditor({
           {...stylex.props(styles.editorTrigger)}
           onClick={(event) => {
             if (!editing) return;
+
             const invalid =
               event.currentTarget.parentElement?.querySelector<HTMLInputElement>("input:invalid");
+
             if (!invalid) return;
             event.preventDefault();
             invalid.reportValidity();

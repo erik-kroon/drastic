@@ -9,11 +9,15 @@ import * as BankDb from "../../db/banking/shared";
 import * as Shared from "./shared";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type JsonObject = Schema.JsonObject;
 
 const PlanSchema = Signoffs.BankSignoffPlan;
+
 const SignoffSchema = Signoffs.BankReconciliationSignoff;
+
 const ViewSchema = Signoffs.BankSignoffView;
+
 const ListSchema = Signoffs.BankSignoffList;
 
 const signoffTables = [
@@ -28,10 +32,12 @@ const signoffTables = [
   "vouchers",
   "journal_lines",
 ];
+
 const signoffInserts = ["bank_signoff_plans", "evidence", "command_receipts"];
 
 function coverageAccountIsComplete(account: JsonObject, coverage: JsonObject) {
   const families = Shared.arrayField(Shared.objectField(coverage, "inventory"), "families");
+
   return (
     account.declared === true &&
     account.active === true &&
@@ -72,8 +78,10 @@ export function signoffDependenciesCurrent(
       bookId,
       plan.basis.inventoryId,
     );
+
     if (digestRows[0]?.digest !== plan.basis.dependencyDigest) return false;
     const account = yield* BankDb.readAccount(transaction, bookId, plan.accountId);
+
     return account[0]?.active === true;
   });
 }
@@ -86,7 +94,9 @@ function readPlan(
   return Effect.gen(function* () {
     const rows = yield* SignoffDb.readSignoffPlan(transaction, bookId, planId);
     const row = rows[0];
+
     if (!row) return yield* failure("NotFound");
+
     return yield* Shared.decode(PlanSchema, row.body);
   });
 }
@@ -95,6 +105,7 @@ function readBook(transaction: import("../../db/transaction").Transaction, scope
   return BankDb.lockBook(transaction, scope.bookId, "update").pipe(
     Effect.flatMap((rows) => {
       const book = rows[0];
+
       return book ? Effect.succeed(book) : failure("Forbidden");
     }),
   );
@@ -113,6 +124,7 @@ export const prepareBankSignoff = Effect.fn("banking.signoff.prepare")(function*
       yield* Shared.requireTables(transaction, signoffTables, signoffInserts);
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = yield* readBook(transaction, command.scope);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -122,8 +134,10 @@ export const prepareBankSignoff = Effect.fn("banking.signoff.prepare")(function*
         yield* Shared.toJsonObject(command.input),
         PlanSchema,
       );
+
       if (request.previous) return request.previous;
       yield* Shared.requireNativeBankProfile(book.profile, book.authority);
+
       if (
         !Shared.identifierPattern.test(command.input.coverageReportId) ||
         !Shared.identifierPattern.test(command.input.reconciliationId)
@@ -136,13 +150,17 @@ export const prepareBankSignoff = Effect.fn("banking.signoff.prepare")(function*
         command.scope.bookId,
         command.input.coverageReportId,
       ))[0];
+
       if (!coverage) return yield* failure("NotFound");
+
       const report = (yield* SignoffDb.readCapacityReconciliation(
         transaction,
         command.scope.bookId,
         command.input.reconciliationId,
       ))[0];
+
       if (!report) return yield* failure("NotFound");
+
       if (
         (yield* SignoffDb.readSignoffPlanCount(transaction, command.scope.bookId))[0]!.total >= 200
       ) {
@@ -154,9 +172,11 @@ export const prepareBankSignoff = Effect.fn("banking.signoff.prepare")(function*
         command.scope.bookId,
         coverage.inventoryId,
       ))[0]?.digest;
+
       if (dependencyDigest === undefined || dependencyDigest === null) {
         return yield* Shared.unsupported();
       }
+
       if (dependencyDigest !== Shared.textField(coverage.body, "dependencyDigest")) {
         return yield* failure("StaleDependency");
       }
@@ -164,17 +184,21 @@ export const prepareBankSignoff = Effect.fn("banking.signoff.prepare")(function*
       const accountCandidate = Shared.arrayField(coverage.body, "accounts").find(
         (candidate) => Shared.textField(candidate, "accountId") === report.accountId,
       );
+
       if (
         !Shared.isJsonObject(accountCandidate) ||
         !coverageAccountIsComplete(accountCandidate, coverage.body)
       ) {
         return yield* failure("InvalidJournal");
       }
+
       const account = accountCandidate;
 
       const startsOn = Shared.textField(report.body, "startsOn");
       const endsOn = Shared.textField(report.body, "endsOn");
+
       if (startsOn === undefined || endsOn === undefined) return yield* failure("StaleDependency");
+
       const accountSequence =
         (yield* SignoffDb.readAccountLedgerSequence(
           transaction,
@@ -182,8 +206,10 @@ export const prepareBankSignoff = Effect.fn("banking.signoff.prepare")(function*
           report.accountId,
           endsOn,
         ))[0]?.sequence ?? "0";
+
       const coverageInput = Shared.objectField(coverage.body, "input");
       const checkpoint = Shared.objectField(report.body, "checkpoint");
+
       if (
         startsOn !== Shared.textField(coverageInput, "startsOn") ||
         endsOn !== Shared.textField(coverageInput, "endsOn") ||
@@ -196,6 +222,7 @@ export const prepareBankSignoff = Effect.fn("banking.signoff.prepare")(function*
       ) {
         return yield* failure("StaleDependency");
       }
+
       if (!resolutionIsComplete(report.body, account)) return yield* failure("InvalidJournal");
 
       const statementBasis = Shared.arrayField(account, "statements")
@@ -203,15 +230,19 @@ export const prepareBankSignoff = Effect.fn("banking.signoff.prepare")(function*
         .sort((left, right) =>
           (Shared.textField(left, "id") ?? "") < (Shared.textField(right, "id") ?? "") ? -1 : 1,
         );
+
       const reportStatements = Shared.arrayField(report.body, "statements")
         .filter(Shared.isJsonObject)
         .sort((left, right) => ((left.id ?? "") < (right.id ?? "") ? -1 : 1));
+
       const statementDigestSource = yield* Shared.toJsonObject({ statements: statementBasis });
+
       if (!Shared.sameJson(statementBasis, reportStatements)) {
         return yield* failure("StaleDependency");
       }
 
       const inventory = Shared.objectField(coverage.body, "inventory");
+
       const body = Object.assign(
         {},
         {
@@ -251,6 +282,7 @@ export const prepareBankSignoff = Effect.fn("banking.signoff.prepare")(function*
           ),
         },
       ) satisfies JsonObject;
+
       const sealed = Object.assign({}, body, { digest: yield* digest(body) });
       const plan = yield* Shared.decode(PlanSchema, sealed);
       yield* SignoffDb.insertSignoffPlan(transaction, {
@@ -269,6 +301,7 @@ export const prepareBankSignoff = Effect.fn("banking.signoff.prepare")(function*
         principal.actorId,
         yield* Shared.toJsonObject(plan),
       );
+
       return plan;
     }),
   );
@@ -290,6 +323,7 @@ export const signBankReconciliation = Effect.fn("banking.signoff.sign")(function
         "bank_reconciliation_signoffs",
       ]);
       const book = yield* readBook(transaction, command.scope);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -302,6 +336,7 @@ export const signBankReconciliation = Effect.fn("banking.signoff.sign")(function
         } satisfies JsonObject,
         SignoffSchema,
       );
+
       if (request.previous) return request.previous;
 
       const stored = (yield* SignoffDb.readSignoffPlan(
@@ -309,7 +344,9 @@ export const signBankReconciliation = Effect.fn("banking.signoff.sign")(function
         command.scope.bookId,
         command.planId,
       ))[0];
+
       if (!stored) return yield* failure("NotFound");
+
       if (command.input.digest !== stored.body.digest) return yield* failure("StaleDependency");
 
       const existing = (yield* SignoffDb.readReconciliationSignoff(
@@ -317,6 +354,7 @@ export const signBankReconciliation = Effect.fn("banking.signoff.sign")(function
         command.scope.bookId,
         command.planId,
       ))[0];
+
       if (existing) {
         const retained = yield* Shared.toJsonObject(
           Object.fromEntries(
@@ -326,12 +364,14 @@ export const signBankReconciliation = Effect.fn("banking.signoff.sign")(function
             ),
           ),
         );
+
         if (
           Shared.textField(existing.body, "actorId") !== principal.actorId ||
           !Shared.sameJson(retained, yield* Shared.toJsonObject(command.input))
         ) {
           return yield* failure("IdempotencyConflict");
         }
+
         const recovered = yield* Shared.decode(SignoffSchema, existing.body);
         yield* saveCommand(
           transaction,
@@ -342,19 +382,23 @@ export const signBankReconciliation = Effect.fn("banking.signoff.sign")(function
           principal.actorId,
           yield* Shared.toJsonObject(recovered),
         );
+
         return recovered;
       }
 
       yield* Shared.requireNativeBankProfile(book.profile, book.authority);
       const plan = yield* Shared.decode(PlanSchema, stored.body);
+
       if (!(yield* signoffDependenciesCurrent(transaction, command.scope.bookId, plan))) {
         return yield* failure("StaleDependency");
       }
+
       const source = (yield* BankDb.readEvidence(
         transaction,
         command.scope.bookId,
         command.input.evidenceId,
       ))[0];
+
       if (!source) return yield* failure("MissingEvidence");
 
       const body = Object.assign({}, command.input, {
@@ -368,8 +412,10 @@ export const signBankReconciliation = Effect.fn("banking.signoff.sign")(function
           principal.actorId,
         ),
       }) satisfies JsonObject;
+
       const content = yield* Shared.canonicalText({ plan: stored.body, signoff: body });
       const length = Shared.byteLength(content);
+
       if (length > 1048576) return yield* Shared.unsupported();
       yield* SignoffDb.insertReconciliationSignoff(transaction, {
         bookId: command.scope.bookId,
@@ -390,6 +436,7 @@ export const signBankReconciliation = Effect.fn("banking.signoff.sign")(function
         principal.actorId,
         yield* Shared.toJsonObject(signoff),
       );
+
       return signoff;
     }),
   );
@@ -404,13 +451,16 @@ export const getBankSignoff = Effect.fn("banking.signoff.get")(function* (
       yield* Shared.requireTables(transaction, signoffTables);
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
       if (!book) return yield* failure("Forbidden");
       const plan = yield* readPlan(transaction, command.scope.bookId, command.planId);
+
       const signed = (yield* SignoffDb.readReconciliationSignoff(
         transaction,
         command.scope.bookId,
         command.planId,
       ))[0];
+
       return yield* Shared.decode(ViewSchema, {
         plan,
         signoff: signed ? yield* Shared.decode(SignoffSchema, signed.body) : null,
@@ -440,8 +490,10 @@ export const listBankSignoffs = Effect.fn("banking.signoff.list")(function* (
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, signoffTables);
       const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
       if (!book) return yield* failure("Forbidden");
       const rows = yield* SignoffDb.listSignoffPlans(transaction, command.scope.bookId);
+
       return yield* Shared.decode(ListSchema, {
         scope: command.scope,
         items: rows.map((row) => ({

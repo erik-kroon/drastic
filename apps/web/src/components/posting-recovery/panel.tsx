@@ -22,6 +22,7 @@ export function PostingRecoveryPanel({
 }) {
   const copy = postingCopy(locale);
   const [after, setAfter] = useState<string | null>(null);
+
   const recovery = useQuery({
     queryKey: [...bookKey(book), "posting-recovery", "list", after],
     queryFn: ({ signal }) =>
@@ -32,6 +33,7 @@ export function PostingRecoveryPanel({
       ),
     retry: false,
   });
+
   return (
     <Box as="section" id="posting-recovery" tabIndex={-1} display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.title}</Heading>
@@ -114,6 +116,7 @@ function RequestLookup({
   const copy = postingCopy(locale);
   const [key, setKey] = useState("");
   const [error, setError] = useState("");
+
   const lookup = useQuery({
     queryKey: [...bookKey(book), "posting-recovery", "request", key],
     queryFn: ({ signal }) =>
@@ -125,13 +128,16 @@ function RequestLookup({
     enabled: key !== "",
     retry: false,
   });
+
   const receipt = lookup.isError ? undefined : lookup.data;
+
   const proposalId =
     receipt?.state === "committed"
       ? "changeSetId" in receipt.result
         ? receipt.result.changeSetId
         : receipt.result.id
       : null;
+
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <Heading>{copy.requestTitle}</Heading>
@@ -142,11 +148,15 @@ function RequestLookup({
         onSubmit={(event) => {
           event.preventDefault();
           const value = new FormData(event.currentTarget).get("key");
+
           if (!Schema.is(Accounting.IdempotencyHeaders.fields["idempotency-key"])(value)) {
             setError(copy.invalidKey);
+
             return;
           }
+
           setError("");
+
           if (key === value) void lookup.refetch();
           else setKey(value);
         }}

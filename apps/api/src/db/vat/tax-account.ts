@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import * as Effect from "effect/Effect";
 import type * as Schema from "effect/Schema";
-import { readTableAccess, canonicalJson, type JsonObject } from "../commerce/access";
+import { readTableAccess, type JsonObject } from "../commerce/access";
 import type { Transaction } from "../transaction";
 
 type Json = Schema.Json;
@@ -159,6 +159,7 @@ const countableTables = new Set([
 
 export function readCount(transaction: Transaction, table: string, bookId: string) {
   if (!countableTables.has(table)) return Effect.succeed<ReadonlyArray<CountRow>>([]);
+
   return transaction.execute<CountRow>(
     sql`select count(*)::integer as total from openerp.${sql.identifier(table)} where book_id = ${bookId}`,
     "objects",
@@ -410,13 +411,15 @@ export function insertEvents(
   }>,
 ) {
   if (rows.length === 0) return Effect.succeed([]);
+
   return transaction.execute(
     sql`
       insert into openerp.tax_account_events
         (book_id, id, account_id, event_key, statement_id, ordinal)
       values ${sql.join(
-        rows.map((row) =>
-          sql`(${row.bookId}, ${row.id}, ${row.accountId}, ${row.eventKey}, ${row.statementId}, ${row.ordinal})`,
+        rows.map(
+          (row) =>
+            sql`(${row.bookId}, ${row.id}, ${row.accountId}, ${row.eventKey}, ${row.statementId}, ${row.ordinal})`,
         ),
         sql`, `,
       )}
@@ -769,11 +772,7 @@ export function readLedgerTotals(
   );
 }
 
-export function readVoucherSequence(
-  transaction: Transaction,
-  bookId: string,
-  voucherId: string,
-) {
+export function readVoucherSequence(transaction: Transaction, bookId: string, voucherId: string) {
   return transaction.execute<{ readonly sequence: string; readonly postingPurpose: string }>(
     sql`
       select sequence::text as sequence, posting_purpose as "postingPurpose"
@@ -871,8 +870,4 @@ export function insertControl(
     `,
     "objects",
   );
-}
-
-export function readCanonicalText(transaction: Transaction, value: JsonObject) {
-  return canonicalJson(transaction, value);
 }

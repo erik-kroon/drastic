@@ -7,6 +7,7 @@ import { SubledgerControlsPanel } from "@/components/subledger-controls/panel";
 export function AssetWorkspace(props: { recordId?: string; onOpen: (id: string) => void }) {
   const { book, setup, locale } = useBookWorkspace();
   const navigate = useNavigate();
+
   return (
     <Tabs defaultValue="schedules">
       <TabsList>

@@ -24,6 +24,7 @@ import {
 } from "./commerce/support";
 
 type Filters = typeof Intake.ArchiveFilters.Type;
+
 type OccurrenceKey = {
   readonly sourceSystem: string;
   readonly sourceAccountId: string;
@@ -32,14 +33,19 @@ type OccurrenceKey = {
 };
 
 const OccurrenceSchema = Intake.SourceOccurrence;
+
 const AdmissionSchema = Intake.SourceAdmission;
+
 const ArchiveSchema = Intake.ArchiveSearch;
+
 const ExportSchema = Intake.ArchiveExport;
+
 const SourceStorage = Schema.Struct({
   ...Intake.SourceOccurrenceView.fields,
   contentBase64: Schema.NullOr(Schema.String),
   object: Schema.NullOr(RetainedObject),
 });
+
 const SourceUpload = Schema.Struct({
   ...RetainedObject.fields,
   completed: Schema.optional(OccurrenceSchema),
@@ -52,6 +58,7 @@ const archiveFilterKeys = [
   "retainedFrom",
   "retainedTo",
 ] as const;
+
 const uploadMetadataKeys = [
   "sourceSystem",
   "sourceAccountId",
@@ -62,7 +69,9 @@ const uploadMetadataKeys = [
   "byteLength",
   "mediaType",
 ] as const;
+
 const inlineBytesBound = 65536;
+
 const archivePageSize = 10;
 
 function requireRetentionAccess(transaction: Transaction, write: boolean) {
@@ -70,18 +79,21 @@ function requireRetentionAccess(transaction: Transaction, write: boolean) {
     Effect.flatMap((rows) => {
       const denied = Retention.retentionTables.some((name) => {
         const access = rows.find((row) => row.tableName === name);
+
         const inserts = [
           "intake_occurrences",
           "intake_contents",
           "source_uploads",
           "command_receipts",
         ];
+
         return (
           access === undefined ||
           !access.canSelect ||
           (write && inserts.includes(name) && !access.canInsert)
         );
       });
+
       return denied ? unsupported() : Effect.void;
     }),
   );
@@ -89,11 +101,13 @@ function requireRetentionAccess(transaction: Transaction, write: boolean) {
 
 function textField(value: JsonObject, key: string) {
   const found = value[key];
+
   return typeof found === "string" ? found : null;
 }
 
 function numberField(value: JsonObject, key: string) {
   const found = value[key];
+
   return typeof found === "number" ? found : null;
 }
 
@@ -145,6 +159,7 @@ export const retainSource = Effect.fn("Source.retain")(function* (
     try: () => Buffer.from(command.input.contentBase64, "base64"),
     catch: () => failure("InvalidJournal"),
   });
+
   if (
     bytes.length < 1 ||
     bytes.length > Intake.maxSourceBytes ||
@@ -152,8 +167,10 @@ export const retainSource = Effect.fn("Source.retain")(function* (
   ) {
     return yield* failure("InvalidJournal");
   }
+
   const mediaType = command.input.mediaType ?? "text/csv";
   const key: OccurrenceKey = command.input;
+
   return yield* withBook(
     token,
     command.scope,
@@ -161,9 +178,11 @@ export const retainSource = Effect.fn("Source.retain")(function* (
     function* (transaction, principal) {
       yield* requireRetentionAccess(transaction, true);
       yield* lockBookForUpdate(transaction, command.scope);
+
       if (mediaType === "text/csv" && bytes.length <= inlineBytesBound) {
         return yield* retainInline(transaction, command, principal.actorId, key, mediaType, bytes);
       }
+
       return yield* retainExternal(transaction, command, principal.actorId, key, mediaType, bytes);
     },
     "update",
@@ -180,6 +199,7 @@ function retainInline(
 ) {
   return Effect.gen(function* () {
     const payload = yield* toJsonObject(command.input);
+
     const request = yield* replay(
       transaction,
       command.scope,
@@ -189,15 +209,19 @@ function retainInline(
       payload,
       OccurrenceSchema,
     );
+
     if (request.previous) return request.previous;
     const sha256 = yield* sourceDigest(bytes);
+
     const content = (yield* Retention.readExternalContent(
       transaction,
       command.scope.bookId,
       sha256,
     ))[0];
+
     if (content?.objectKey !== null && content !== undefined) return yield* unsupported();
     const found = (yield* Retention.readOccurrenceByKey(transaction, command.scope.bookId, key))[0];
+
     const body =
       found === undefined
         ? yield* insertInlineOccurrence(
@@ -213,6 +237,7 @@ function retainInline(
           )
         : (yield* requireMatchingOccurrence(found, sha256, command.input.filename, mediaType),
           found.body);
+
     const occurrence = yield* decode(OccurrenceSchema, body);
     yield* saveCommand(
       transaction,
@@ -223,6 +248,7 @@ function retainInline(
       actorId,
       occurrence,
     );
+
     return occurrence;
   });
 }
@@ -241,6 +267,7 @@ function insertInlineOccurrence(
   return Effect.gen(function* () {
     yield* Retention.insertInlineContent(transaction, scope.bookId, sha256, bytes);
     const id = newId("source");
+
     const body: JsonObject = Object.assign(
       occurrenceReceipt(key, filename, mediaType, sha256, bytes.length),
       {
@@ -251,6 +278,7 @@ function insertInlineOccurrence(
         receipt: { key: idempotencyKey, operation: "retain_source", actorId },
       },
     );
+
     yield* Retention.insertOccurrence(transaction, {
       bookId: scope.bookId,
       id,
@@ -261,6 +289,7 @@ function insertInlineOccurrence(
       sourceRevision: key.sourceRevision,
       body,
     });
+
     return body;
   });
 }
@@ -275,6 +304,7 @@ function retainExternal(
 ) {
   return Effect.gen(function* () {
     const sha256 = yield* sourceDigest(bytes);
+
     const metadata: JsonObject = occurrenceReceipt(
       key,
       command.input.filename,
@@ -282,6 +312,7 @@ function retainExternal(
       sha256,
       bytes.length,
     );
+
     const reference = yield* beginUpload(
       transaction,
       command.scope,
@@ -289,6 +320,7 @@ function retainExternal(
       actorId,
       metadata,
     );
+
     if (reference.completed !== undefined) return reference.completed;
     const store = yield* objectStore;
     yield* Effect.tryPromise({
@@ -296,6 +328,7 @@ function retainExternal(
       catch: () => failure("Unavailable"),
     });
     yield* readRetainedObject(store, reference);
+
     return yield* completeUpload(
       transaction,
       command.scope,
@@ -321,12 +354,15 @@ function beginUpload(
   return Effect.gen(function* () {
     const sha256 = textField(metadata, "sha256") ?? "";
     const byteLength = numberField(metadata, "byteLength");
+
     if (byteLength === null) return yield* failure("InvalidJournal");
+
     const reference = {
       objectKey: objectKeyFor(scope.bookId, sha256),
       sha256,
       byteLength,
     } satisfies JsonObject;
+
     const request = yield* replay(
       transaction,
       scope,
@@ -336,12 +372,14 @@ function beginUpload(
       metadata,
       OccurrenceSchema,
     );
+
     if (request.previous) {
       return yield* decode(
         SourceUpload,
         Object.assign({}, reference, { completed: request.previous }),
       );
     }
+
     yield* exactKeys(metadata, uploadMetadataKeys);
     yield* Retention.insertSourceUpload(
       transaction,
@@ -351,6 +389,7 @@ function beginUpload(
       actorId,
     );
     const saved = (yield* Retention.readSourceUpload(transaction, scope.bookId, idempotencyKey))[0];
+
     if (
       saved === undefined ||
       (yield* digest(saved.input)) !== (yield* digest(metadata)) ||
@@ -358,6 +397,7 @@ function beginUpload(
     ) {
       return yield* failure("IdempotencyConflict");
     }
+
     return yield* decode(SourceUpload, reference);
   });
 }
@@ -376,7 +416,9 @@ function completeUpload(
 ) {
   return Effect.gen(function* () {
     const saved = (yield* Retention.readSourceUpload(transaction, scope.bookId, idempotencyKey))[0];
+
     if (saved === undefined || saved.createdBy !== actorId) return yield* failure("NotFound");
+
     const request = yield* replay(
       transaction,
       scope,
@@ -386,8 +428,10 @@ function completeUpload(
       saved.input,
       OccurrenceSchema,
     );
+
     if (request.previous) return request.previous;
     const found = (yield* Retention.readOccurrenceByKey(transaction, scope.bookId, key))[0];
+
     const body =
       found === undefined
         ? yield* insertExternalOccurrence(
@@ -403,6 +447,7 @@ function completeUpload(
             reference,
           )
         : (yield* requireMatchingOccurrence(found, sha256, filename, mediaType), found.body);
+
     const occurrence = yield* decode(OccurrenceSchema, body);
     yield* saveCommand(
       transaction,
@@ -413,6 +458,7 @@ function completeUpload(
       actorId,
       occurrence,
     );
+
     return occurrence;
   });
 }
@@ -438,10 +484,13 @@ function insertExternalOccurrence(
       byteLength,
     );
     const content = (yield* Retention.readExternalContent(transaction, scope.bookId, sha256))[0];
+
     if (content === undefined || content.byteLength !== byteLength) {
       return yield* failure("MissingEvidence");
     }
+
     const id = newId("source");
+
     const body: JsonObject = Object.assign(
       occurrenceReceipt(key, filename, mediaType, sha256, byteLength),
       {
@@ -452,6 +501,7 @@ function insertExternalOccurrence(
         receipt: { key: idempotencyKey, operation: "retain_source_object", actorId },
       },
     );
+
     yield* Retention.insertOccurrence(transaction, {
       bookId: scope.bookId,
       id,
@@ -462,6 +512,7 @@ function insertExternalOccurrence(
       sourceRevision: key.sourceRevision,
       body,
     });
+
     return body;
   });
 }
@@ -470,11 +521,15 @@ function readStorage(transaction: Transaction, scope: Scope, occurrenceId: strin
   return Retention.readOccurrenceStorage(transaction, scope.bookId, occurrenceId).pipe(
     Effect.flatMap((rows) => {
       const row = rows[0];
+
       if (!row) return failure("NotFound");
+
       return Effect.gen(function* () {
         const occurrence = yield* decode(OccurrenceSchema, row.body);
+
         const admission =
           row.admissionBody === null ? null : yield* decode(AdmissionSchema, row.admissionBody);
+
         const object =
           row.objectKey === null
             ? null
@@ -483,6 +538,7 @@ function readStorage(transaction: Transaction, scope: Scope, occurrenceId: strin
                 sha256: row.objectSha256,
                 byteLength: row.objectByteLength,
               });
+
         return yield* decode(SourceStorage, {
           occurrence,
           latestPreviewId: row.latestPreviewId,
@@ -500,6 +556,7 @@ function readOccurrenceView(token: string, scope: Scope, occurrenceId: string) {
   return withBook(token, scope, false, function* (transaction) {
     yield* requireRetentionAccess(transaction, false);
     yield* lockBookForShare(transaction, scope);
+
     return yield* readStorage(transaction, scope, occurrenceId);
   });
 }
@@ -509,15 +566,19 @@ export const getSourceOccurrence = Effect.fn("Source.getOccurrence")(function* (
   command: typeof Intake.SourceIntakeCapabilities.source_get_occurrence.input.Type,
 ) {
   const storage = yield* readOccurrenceView(token, command.scope, command.occurrenceId);
+
   const contentBase64 =
     storage.object === null
       ? storage.contentBase64
       : encodeSource(yield* readRetainedObject(yield* objectStore, storage.object));
+
   const rechecked =
     storage.object === null
       ? storage
       : yield* readOccurrenceView(token, command.scope, command.occurrenceId);
+
   if (contentBase64 === null) return yield* failure("MissingEvidence");
+
   return {
     occurrence: rechecked.occurrence,
     latestPreviewId: rechecked.latestPreviewId,
@@ -533,6 +594,7 @@ export const getSourceOccurrenceMetadata = Effect.fn("Source.getOccurrenceMetada
 ) {
   const storage = yield* readOccurrenceView(token, command.scope, command.occurrenceId);
   const admission = storage.admission;
+
   return {
     occurrence: storage.occurrence,
     latestPreviewId: storage.latestPreviewId,
@@ -561,6 +623,7 @@ export const searchSourceArchive = Effect.fn("Source.searchArchive")(function* (
   return yield* withBook(token, scope, false, function* (transaction) {
     yield* requireRetentionAccess(transaction, false);
     yield* lockBookForShare(transaction, scope);
+
     return yield* readArchive(transaction, scope, filters);
   });
 });
@@ -568,6 +631,7 @@ export const searchSourceArchive = Effect.fn("Source.searchArchive")(function* (
 function readArchive(transaction: Transaction, scope: Scope, filters: Filters) {
   return Effect.gen(function* () {
     yield* exactKeys(yield* toJsonObject(filters), archiveFilterKeys);
+
     const rows = yield* Retention.listArchive(transaction, scope.bookId, {
       cursor: filters.cursor ?? null,
       sourceSystem: filters.sourceSystem ?? null,
@@ -575,8 +639,10 @@ function readArchive(transaction: Transaction, scope: Scope, filters: Filters) {
       retainedFrom: filters.retainedFrom ?? null,
       retainedTo: filters.retainedTo ?? null,
     });
+
     const page = rows.slice(0, archivePageSize);
     const items = yield* Effect.forEach(page, (row) => decode(OccurrenceSchema, row.body));
+
     return yield* decode(ArchiveSchema, {
       items,
       nextCursor: rows.length > page.length ? (page.at(-1)?.id ?? null) : null,
@@ -591,10 +657,13 @@ export const exportSourceArchive = Effect.fn("Source.exportArchive")(function* (
 ) {
   const page = yield* searchSourceArchive(token, scope, filters);
   const items = [];
+
   for (const occurrence of page.items) {
     const original = yield* getSourceOccurrence(token, { scope, occurrenceId: occurrence.id });
     items.push({ occurrence, contentBase64: original.contentBase64 });
   }
+
   yield* searchSourceArchive(token, scope, filters);
+
   return yield* decode(ExportSchema, { scope, items, nextCursor: page.nextCursor });
 });

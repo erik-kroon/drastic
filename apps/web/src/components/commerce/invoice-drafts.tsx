@@ -56,7 +56,9 @@ import {
 } from "./shared";
 
 type Draft = typeof Drafts.InvoiceDraftRevision.Type;
+
 type DraftActions = { issueAction?: ReactNode; issueStatus?: ReactNode; contextual?: boolean };
+
 export function NewInvoiceDraft(
   props: CommerceProps & { onSaved: (id: string) => void; onClose: () => void },
 ) {
@@ -66,6 +68,7 @@ export function NewInvoiceDraft(
     </InvoiceDraftSession>
   );
 }
+
 export function InvoiceDrafts(
   props: CommerceProps & DraftActions & { recordId?: string; onOpen?: (id: string) => void },
 ) {
@@ -75,6 +78,7 @@ export function InvoiceDrafts(
   const [search, setSearch] = useState("");
   const selected = props.recordId ?? local;
   const select = props.onOpen ?? setLocal;
+
   const list = useQuery({
     queryKey: [...commerceKey(props.book), "invoice-drafts"],
     queryFn: async ({ signal }) => {
@@ -83,11 +87,14 @@ export function InvoiceDrafts(
         Drafts.InvoiceDraftList,
         { signal },
       );
+
       checkScope(props.book, result.scope);
+
       return result;
     },
     retry: false,
   });
+
   if (selected && selected !== "new")
     return (
       <Box display="grid" gap="xl">
@@ -102,12 +109,14 @@ export function InvoiceDrafts(
         <DraftDetail {...props} id={selected} />
       </Box>
     );
+
   const items =
     list.data?.items.filter((record) =>
       `${record.title} ${record.customerName}`
         .toLocaleLowerCase(props.locale)
         .includes(search.toLocaleLowerCase(props.locale)),
     ) ?? [];
+
   return (
     <Box display="grid" gap="xl">
       <RecordHeading
@@ -176,20 +185,28 @@ export function InvoiceDrafts(
     </Box>
   );
 }
+
 function inputText(fields: FormData, name: string) {
   const value = fields.get(name);
+
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
+
 function decimalField(fields: FormData, name: string, scale: number, optional = false) {
   const value = inputText(fields, name);
+
   if (optional && value === null) return null;
+
   return decimalToMinor(value ?? "", scale) ?? "invalid";
 }
+
 function editAmount(value: string | null | undefined, scale: number) {
   if (value == null) return "";
   const padded = value.padStart(scale + 1, "0");
+
   return scale ? `${padded.slice(0, -scale)}.${padded.slice(-scale)}` : padded;
 }
+
 function DraftEditor(props: CommerceProps & { session: DraftSession }) {
   const sv = props.locale === "sv";
   const labels = sv ? swedish : english;
@@ -201,10 +218,12 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
   const lines = session.state.lines;
   const metadata = useQuery(workQueryOptions(props.book, {}));
   const scale = content?.currencyScale ?? metadata.data?.currencyScale;
+
   if (scale === undefined)
     return (
       <AccountingStatus locale={props.locale} pending={metadata.isPending} error={metadata.error} />
     );
+
   return (
     <InvoiceDraftSave
       {...props}
@@ -225,6 +244,7 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
       })}
       input={(fields, evidence) => {
         const evidenceId = evidence.id;
+
         const next = {
           title: inputText(fields, "title"),
           counterpartyId: customer?.id,
@@ -254,6 +274,7 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
           sourceTotalMinor: decimalField(fields, "sourceTotal", scale, true),
           lines: lines.map((line) => {
             const catalogSelection = line.defaults?.catalogSelection;
+
             const nextLine = {
               id: line.id,
               description: catalogSelection
@@ -273,9 +294,11 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
               taxEvidenceId: inputText(fields, `${line.id}_tax`) === null ? null : evidenceId,
               sourceGrossMinor: decimalField(fields, `${line.id}_sourceGross`, scale, true),
             };
+
             return catalogSelection ? { ...nextLine, catalogSelection } : nextLine;
           }),
         };
+
         return baseline
           ? {
               expectedRevision: session.state.expected?.revision ?? baseline.revision,
@@ -328,11 +351,13 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
             fields={session.state.fields}
             onChange={(next, changedLineId) => {
               const fields = { ...session.state.fields };
+
               if (changedLineId) {
                 for (const key of Object.keys(fields)) {
                   if (key.startsWith(`${changedLineId}_`)) delete fields[key];
                 }
               }
+
               session.update({ lines: next, fields });
             }}
             scale={scale}
@@ -381,6 +406,7 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
     </InvoiceDraftSave>
   );
 }
+
 function DraftFooter(props: {
   lines: readonly EditableInvoiceLine[];
   scale: number;
@@ -391,6 +417,7 @@ function DraftFooter(props: {
   const labels = props.locale === "sv" ? swedish : english;
   const gross = invoiceEditorTotals(props.lines, props.scale).gross;
   const currency = props.content?.currency ?? props.bookCurrency;
+
   return (
     <Box display="grid" gap="xs">
       <Text>
@@ -411,6 +438,7 @@ function DraftDetail(props: CommerceProps & DraftActions & { id: string }) {
   const labels = sv ? swedish : english;
   const [revision, setRevision] = useState("");
   const [editing, setEditing] = useState<Draft | null>(null);
+
   const view = useQuery({
     queryKey: [...commerceKey(props.book), "invoice-draft", props.id, revision],
     queryFn: async ({ signal }) => {
@@ -419,12 +447,16 @@ function DraftDetail(props: CommerceProps & DraftActions & { id: string }) {
         Drafts.InvoiceDraftView,
         { signal },
       );
+
       checkScope(props.book, result.record.scope);
+
       if (result.record.id !== props.id) throw new Error("Invoice draft identity mismatch");
+
       return result;
     },
     retry: false,
   });
+
   const history = useQuery({
     queryKey: [...commerceKey(props.book), "invoice-draft-history", props.id],
     queryFn: async ({ signal }) => {
@@ -433,13 +465,18 @@ function DraftDetail(props: CommerceProps & DraftActions & { id: string }) {
         Drafts.InvoiceDraftHistory,
         { signal },
       );
+
       checkScope(props.book, result.scope);
+
       if (result.id !== props.id) throw new Error("Invoice history identity mismatch");
+
       return result;
     },
     retry: false,
   });
+
   const record = view.data?.record;
+
   return (
     <Box display="grid" gap="xl">
       <AccountingStatus locale={props.locale} pending={view.isPending} error={view.error} />
@@ -526,19 +563,23 @@ function DraftDetail(props: CommerceProps & DraftActions & { id: string }) {
 
 function DraftReadiness({ record, locale }: { record: Draft; locale: CommerceProps["locale"] }) {
   const labels = locale === "sv" ? swedish : english;
+
   const setupCodes = new Set([
     "issuance_not_implemented",
     "legal_identity_not_verified",
     "tax_profile_not_activated",
   ]);
+
   const details = record.blockers.filter((item) => !setupCodes.has(item.code));
   const setup = record.blockers.filter((item) => setupCodes.has(item.code));
+
   const rows = (items: Draft["blockers"]) =>
     items.map((blocker, index) => (
       <Text key={`${blocker.code}:${blocker.lineId}:${index}`}>
         {invoiceDraftBlocker(blocker.code, locale)}
       </Text>
     ));
+
   return (
     <>
       {details[0] ? (
@@ -555,6 +596,7 @@ function DraftReadiness({ record, locale }: { record: Draft; locale: CommercePro
 }
 
 type DraftContent = typeof Drafts.DraftContent.Type;
+
 function DraftDates({
   content,
   locale,
@@ -565,6 +607,7 @@ function DraftDates({
   session: DraftSession;
 }) {
   const labels = locale === "sv" ? swedish : english;
+
   return (
     <Box display="grid" gap="lg">
       <DocumentTitleField
@@ -676,6 +719,7 @@ const english = {
   total: "Total",
   editInvoice: "Edit invoice",
 };
+
 const swedish: typeof english = {
   beforeLiveInvoicing: "Inför riktig fakturering",
   countryCode: "Landskod",
@@ -760,6 +804,7 @@ function DraftCustomerPicker(
   const sv = props.locale === "sv";
   const labels = sv ? swedish : english;
   const [adding, setAdding] = useState(false);
+
   const customers = useInfiniteQuery({
     queryKey: [...commerceKey(props.book), "contact-options"],
     initialPageParam: "",
@@ -769,18 +814,23 @@ function DraftCustomerPicker(
         Commerce.CounterpartyPage,
         { signal },
       );
+
       page.items.forEach((party) => checkScope(props.book, party.scope));
+
       return page;
     },
     getNextPageParam: (last) => last.next ?? undefined,
     retry: false,
   });
+
   const parties =
     customers.data?.pages
       .flatMap((page) => page.items)
       .filter((party) => party.role !== "supplier") ?? [];
+
   if (props.customer && !parties.some((party) => party.id === props.customer?.id))
     parties.unshift(props.customer);
+
   const picker = (
     <Box display="grid" gap="md">
       <SelectField
@@ -788,6 +838,7 @@ function DraftCustomerPicker(
         value={props.customer?.id ?? ""}
         onValueChange={(id) => {
           const party = parties.find((item) => item.id === id);
+
           if (party) props.onChange(party);
         }}
         options={[
@@ -814,6 +865,7 @@ function DraftCustomerPicker(
       </Box>
     </Box>
   );
+
   return (
     <Box display="grid" gap="sm">
       <AccountingStatus

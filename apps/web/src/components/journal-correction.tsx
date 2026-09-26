@@ -23,9 +23,11 @@ export function JournalCorrection(props: {
   const client = useQueryClient();
   const keys = useRef(new Map<string, string>());
   const [inputError, setInputError] = useState("");
+
   const correction = useMutation({
     mutationFn: (payload: typeof Accounting.PrepareCorrection.Type) => {
       const path = `${bookPath(book)}/vouchers/${encodeURIComponent(voucherId)}/correction-proposals`;
+
       return readAccounting(
         path,
         Accounting.ChangeSet,
@@ -37,6 +39,7 @@ export function JournalCorrection(props: {
       onPrepared(plan.id);
     },
   });
+
   return (
     <Box
       as="form"
@@ -45,15 +48,19 @@ export function JournalCorrection(props: {
       onSubmit={(event) => {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
+
         const decoded = Schema.decodeUnknownOption(Accounting.PrepareCorrection)({
           accountingPeriodId: fields.get("period"),
           postingDate: fields.get("date"),
           rationale: fields.get("rationale"),
         });
+
         if (decoded._tag === "None") {
           setInputError(copy.journal_invalid);
+
           return;
         }
+
         setInputError("");
         correction.mutate(decoded.value);
       }}

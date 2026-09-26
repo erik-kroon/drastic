@@ -15,6 +15,7 @@ export function IssuedInvoiceDocument(
   props: CommerceProps & { invoice: typeof Commerce.Invoice.Type; reviewId: string },
 ) {
   const { book, locale, invoice, reviewId } = props;
+
   const view = useQuery({
     queryKey: [...commerceKey(book), "issued-invoice-document", invoice.id, reviewId],
     queryFn: async ({ signal }) => {
@@ -23,7 +24,9 @@ export function IssuedInvoiceDocument(
         Issuance.InvoiceIssueView,
         { signal },
       );
+
       checkScope(book, result.plan.scope);
+
       if (
         result.plan.id !== reviewId ||
         result.issue?.registerInvoiceId !== invoice.id ||
@@ -31,10 +34,12 @@ export function IssuedInvoiceDocument(
       )
         throw new Error("Invoice document origin mismatch");
       checkScope(book, result.issue.scope);
+
       return result;
     },
     retry: false,
   });
+
   return (
     <Box display="grid" gap="lg">
       <AccountingStatus locale={locale} pending={view.isPending} error={view.error} />

@@ -23,9 +23,11 @@ export function ScheduleEvidence({
   const contentId = useId();
   const keys = useRef(new Map<string, string>());
   const [invalid, setInvalid] = useState(false);
+
   const save = useMutation({
     mutationFn: (input: typeof Accounting.CreateEvidence.Type) => {
       const path = `${bookPath(book)}/evidence`;
+
       return readAccounting(
         path,
         Accounting.Evidence,
@@ -33,6 +35,7 @@ export function ScheduleEvidence({
       );
     },
   });
+
   return (
     <details>
       <summary>{copy.evidenceCreate}</summary>
@@ -45,16 +48,20 @@ export function ScheduleEvidence({
         onSubmit={(event) => {
           event.preventDefault();
           const fields = new FormData(event.currentTarget);
+
           const decoded = Schema.decodeUnknownOption(Accounting.CreateEvidence)({
             title: fields.get("title"),
             content: fields.get("content"),
             origin: fields.get("origin"),
             mediaType: "text/plain",
           });
+
           if (decoded._tag === "None") {
             setInvalid(true);
+
             return;
           }
+
           setInvalid(false);
           save.mutate(decoded.value);
         }}

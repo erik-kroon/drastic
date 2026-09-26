@@ -4,13 +4,17 @@ import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 
 const Revision = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 2147483646 }));
+
 export const FirmRole = Schema.Literals(["admin", "accountant"]);
+
 export const Firm = Schema.Struct({
   id: Accounting.Identifier,
   name: Schema.String,
   role: FirmRole,
 });
+
 export const FirmList = Schema.Array(Firm).check(Schema.isMaxLength(100));
+
 export const Member = Schema.Struct({
   actorId: Accounting.Identifier,
   name: Schema.String,
@@ -20,6 +24,7 @@ export const Member = Schema.Struct({
   signInEnabled: Schema.Boolean,
   revision: Revision,
 });
+
 export const Client = Schema.Struct({
   book: Accounting.Book,
   leadId: Schema.NullOr(Accounting.Identifier),
@@ -29,15 +34,18 @@ export const Client = Schema.Struct({
   revision: Revision,
   eligibleLeadIds: Schema.Array(Accounting.Identifier),
 });
+
 export const Workspace = Schema.Struct({
   firm: Firm,
   actorId: Accounting.Identifier,
   clients: Schema.Array(Client).check(Schema.isMaxLength(200)),
   members: Schema.Array(Member).check(Schema.isMaxLength(100)),
 });
+
 export const CreateFirm = Schema.Struct({
   name: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(100)),
 });
+
 export const SaveClient = Schema.Struct({
   scope: Accounting.Scope,
   leadId: Schema.NullOr(Accounting.Identifier),
@@ -45,19 +53,25 @@ export const SaveClient = Schema.Struct({
   note: Schema.String.check(Schema.isMaxLength(2000)),
   expectedRevision: Revision,
 });
+
 export const RemoveClient = Schema.Struct({ scope: Accounting.Scope, expectedRevision: Revision });
+
 export const SaveMember = Schema.Struct({
   email: Schema.String.check(Schema.isMinLength(3), Schema.isMaxLength(254)),
   role: FirmRole,
   active: Schema.Boolean,
   expectedRevision: Revision,
 });
+
 export const CommandResult = Schema.Struct({ firmId: Accounting.Identifier, revision: Revision });
+
 const path = Schema.Struct({ firmId: Accounting.Identifier });
+
 const command = {
   ...path.fields,
   idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
 };
+
 export const FirmCapabilities = {
   firm_list: {
     description: "List firms for the signed-in human. Firm membership grants no book access.",
@@ -101,6 +115,7 @@ export const FirmCapabilities = {
     readOnly: false,
   },
 };
+
 export const FirmApi = HttpApiGroup.make("firms").add(
   HttpApiEndpoint.get("listFirms", "/v1/firms", { success: FirmList, error: accountingErrors }),
   HttpApiEndpoint.get("getFirm", "/v1/firms/:firmId", {

@@ -430,7 +430,9 @@ export function readEvidenceDigests(
   evidenceIds: ReadonlyArray<string>,
 ) {
   const unique = [...new Set(evidenceIds)];
+
   if (unique.length === 0) return Effect.succeed<ReadonlyArray<EvidenceRow>>([]);
+
   return transaction.execute<EvidenceRow>(
     sql`
       select id, sha256 from openerp.evidence

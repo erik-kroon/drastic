@@ -61,6 +61,7 @@ type QueueSnapshot = {
 function readQueueSnapshot(ids: ReadonlyArray<JobStore.JobId>) {
   return Effect.gen(function* () {
     const db = yield* Database;
+
     const records = yield* db
       .select({
         id: jobs.id,
@@ -71,12 +72,14 @@ function readQueueSnapshot(ids: ReadonlyArray<JobStore.JobId>) {
       .from(jobs)
       .where(inArray(jobs.id, [...ids]))
       .pipe(Effect.mapError(databaseFailure));
+
     const recorded = yield* db
       .select({ id: jobAttempts.jobId, total: sql<number>`count(*)::integer` })
       .from(jobAttempts)
       .where(inArray(jobAttempts.jobId, [...ids]))
       .groupBy(jobAttempts.jobId)
       .pipe(Effect.mapError(databaseFailure));
+
     return {
       records: new Map(records.map((row) => [row.id, row])),
       recorded: new Map(recorded.map((row) => [row.id, row.total])),
@@ -95,7 +98,9 @@ function dispatchPreparation(
   const payload = { jobId: job.id, scope: job.scope, checkpoint: job.checkpoint };
   const id = JobStore.JobId(preparationRecordId(payload));
   const record = snapshot.records.get(id);
+
   if (record?.state === "cancelled") return stopFailedPreparationDelivery(payload);
+
   if (
     record === undefined ||
     record.state !== "failed" ||
@@ -103,10 +108,13 @@ function dispatchPreparation(
   ) {
     return PreparationQueue.enqueue(payload).pipe(Effect.asVoid);
   }
+
   const recorded = snapshot.recorded.get(id) ?? 0;
+
   if (recorded >= record.attemptsMax * (1 + rearmGenerations)) {
     return stopFailedPreparationDelivery(payload);
   }
+
   // Retrying preserves the checkpoint; application receipts prevent duplicate work.
   return PreparationQueue.retry(id).pipe(
     Effect.catchTags({
@@ -118,9 +126,12 @@ function dispatchPreparation(
 
 export const dispatchPendingPreparations = Effect.fn("Preparation.dispatchPending")(function* () {
   const { bindings } = yield* RequestEnvironment;
+
   if (!bindings.OPENERP_PREPARATION_TOKEN) return yield* failure("Unavailable");
   const pending = yield* claimPendingPreparationJobs(bindings.OPENERP_PREPARATION_TOKEN);
+
   if (pending.length === 0) return;
+
   const snapshot = yield* readQueueSnapshot(
     pending.map((job) =>
       JobStore.JobId(
@@ -128,6 +139,7 @@ export const dispatchPendingPreparations = Effect.fn("Preparation.dispatchPendin
       ),
     ),
   );
+
   yield* Effect.forEach(
     pending,
     (job) =>
@@ -149,10 +161,13 @@ export const handlePreparation = Effect.fn("Preparation.handleQueueJob")(functio
   checkpoint: number;
 }) {
   let checkpoint = payload.checkpoint;
+
   for (let count = 0; count < 50; count++) {
     const result = yield* executePreparationJob(payload, checkpoint);
+
     if (result.state !== "ready") return result.state;
     checkpoint = result.checkpoint;
   }
+
   return "ready";
 });

@@ -8,6 +8,7 @@ export const PrepareBankSignoff = Schema.Struct({
   coverageReportId: A.Identifier,
   reconciliationId: A.Identifier,
 });
+
 export const BankSignoffPlan = Schema.Struct({
   id: A.Identifier,
   version: Schema.Literal(1),
@@ -38,12 +39,14 @@ export const BankSignoffPlan = Schema.Struct({
   receipt: CommandReceipt,
   digest: A.Digest,
 });
+
 export const SignBankReconciliation = Schema.Struct({
   digest: A.Digest,
   version: Schema.Literal(1),
   evidenceId: A.Identifier,
   rationale: A.Description,
 });
+
 export const BankReconciliationSignoff = Schema.Struct({
   ...SignBankReconciliation.fields,
   planId: A.Identifier,
@@ -52,6 +55,7 @@ export const BankReconciliationSignoff = Schema.Struct({
   signedAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 export const BankSignoffView = Schema.Struct({
   plan: BankSignoffPlan,
   signoff: Schema.NullOr(BankReconciliationSignoff),
@@ -65,6 +69,7 @@ export const BankSignoffView = Schema.Struct({
     }),
   ),
 });
+
 export const BankSignoffList = Schema.Struct({
   scope: A.Scope,
   items: Schema.Array(
@@ -79,7 +84,9 @@ export const BankSignoffList = Schema.Struct({
     }),
   ).check(Schema.isMaxLength(200)),
 });
+
 const path = "/v1/entities/:entityId/books/:bookId/bank-signoff-plans";
+
 export const BankSignoffApi = HttpApiGroup.make("bankSignoffs").add(
   HttpApiEndpoint.post("prepareBankSignoff", path, {
     params: A.Scope,
@@ -106,6 +113,7 @@ export const BankSignoffApi = HttpApiGroup.make("bankSignoffs").add(
     error: accountingErrors,
   }),
 );
+
 // Human signoff remains operator-only REST, not an ordinary automation capability.
 export const BankSignoffCapabilities = {
   bank_prepare_signoff: {

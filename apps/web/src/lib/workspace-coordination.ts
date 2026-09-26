@@ -10,13 +10,16 @@ export function coordinationOptions(book: typeof Accounting.Book.Type) {
       const data = await readAccounting(`${bookPath(book)}/workspace`, Workspace.Coordination, {
         signal,
       });
+
       if (data.scope.bookId !== book.id || data.scope.entityId !== book.entityId)
         throw new Error("Workspace scope mismatch");
+
       return data;
     },
     retry: false,
   });
 }
+
 export function savedFilters(filters: typeof Workspace.AttentionQuery.Type) {
   return {
     kind: filters.kind ?? "all",

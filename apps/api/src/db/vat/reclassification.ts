@@ -84,6 +84,7 @@ export function readAccountStates(bookId: string, accountIds: ReadonlyArray<stri
   if (accountIds.length === 0) {
     return sql`select ''::text as id, ''::text as version, ''::text as code, ''::text as name, false as active where false`;
   }
+
   return sql`
     select id, version::text as version, code, name, active from openerp.accounts
     where book_id = ${bookId} and id = any(array[${sql.join(
@@ -100,10 +101,7 @@ export function readAccountStateRows(
   bookId: string,
   accountIds: ReadonlyArray<string>,
 ) {
-  return transaction.execute<AccountStateRow>(
-    readAccountStates(bookId, accountIds),
-    "objects",
-  );
+  return transaction.execute<AccountStateRow>(readAccountStates(bookId, accountIds), "objects");
 }
 
 export type ConflictRow = { readonly conflict: boolean };
@@ -192,6 +190,7 @@ export function readClaimedLines(
   if (pairs.length === 0) {
     return sql`select ''::text as "voucherId", ''::text as "lineId", false as claimed where false`;
   }
+
   return sql`
     select pair."voucherId", pair."lineId",
       exists(select from openerp.tax_account_match_capacity c
@@ -212,9 +211,7 @@ export function readClaimedLines(
           and l.payment_line_id = pair."lineId") as claimed
     from unnest(array[
       ${sql.join(
-        pairs.map(
-          (pair) => sql`array[${pair.voucherId}, ${pair.lineId}]::text[]`,
-        ),
+        pairs.map((pair) => sql`array[${pair.voucherId}, ${pair.lineId}]::text[]`),
         sql`, `,
       )}
     ]::text[][]) as pair("voucherId", "lineId")

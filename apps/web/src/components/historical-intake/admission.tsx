@@ -45,6 +45,7 @@ export function AdmitOpenItems({
   const sv = locale === "sv";
   const keys = useRef(new Map<string, string>());
   const path = `${bookPath(book)}/sie-plans/${encodeURIComponent(plan.id)}/historical-items`;
+
   const save = useMutation({
     mutationFn: async (input: typeof Historical.AdmitItems.Type) => {
       const result = await readAccounting(
@@ -52,14 +53,18 @@ export function AdmitOpenItems({
         Historical.ItemAdmission,
         mutationOptions(path, JSON.stringify(input), keys.current),
       );
+
       if (result.sourcePlanId !== plan.id || result.planDigest !== plan.digest)
         throw new Error("Historical admission identity mismatch");
+
       return result;
     },
     onSuccess: onSaved,
   });
+
   const uncertain = isUncertainWriteError(save.error);
   const disabled = book.role !== "operator" || save.isPending || uncertain;
+
   const form = useForm({
     defaultValues: {
       rationale: "",
@@ -93,6 +98,7 @@ export function AdmitOpenItems({
         .catch(() => undefined);
     },
   });
+
   return (
     <Box
       as="form"

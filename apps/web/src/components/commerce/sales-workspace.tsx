@@ -54,7 +54,9 @@ export function salesRegisterOptions(book: typeof Accounting.Book.Type, query: U
         Sales.SalesPage,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       return result;
     },
     retry: false,
@@ -73,13 +75,16 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
   const sort = search.sort ?? "newest";
   const pageNumber = Number(search.page ?? "1");
   const [searchText, setSearchText] = useState({ applied: search.q ?? "", text: search.q ?? "" });
+
   if (searchText.applied !== (search.q ?? ""))
     setSearchText({ applied: search.q ?? "", text: search.q ?? "" });
   const query = new URLSearchParams({ status, sort, page: String(pageNumber), q: search.q ?? "" });
+
   const register = useQuery({
     ...salesRegisterOptions(book, query),
     enabled: !contacts,
   });
+
   const preloadInvoices = () => {
     if (contacts)
       void client.prefetchQuery(
@@ -89,12 +94,15 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
         ),
       );
   };
+
   const preloadCustomers = () => {
     if (!contacts) void client.prefetchInfiniteQuery(counterpartyRegisterOptions(book));
   };
+
   const change = (next: SalesSearch, replace = false) => {
     void navigate({ to: base, search: next, replace, resetScroll: false });
   };
+
   const close = () =>
     change({
       ...search,
@@ -108,6 +116,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
       paymentPage: undefined,
       paymentHistoryPage: undefined,
     });
+
   const open = (id: string, kind: "draft" | "invoice") =>
     change({
       ...search,
@@ -121,6 +130,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
       paymentPage: undefined,
       paymentHistoryPage: undefined,
     });
+
   const rowUrl = (row: typeof Sales.SalesRow.Type) => {
     return `${base}${defaultStringifySearch({
       status,
@@ -131,6 +141,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
       kind: row.kind,
     })}`;
   };
+
   const statuses: Array<{ value: typeof Sales.SalesStatus.Type; label: string }> = [
     { value: "all", label: labels.all },
     { value: "draft", label: labels.drafts },
@@ -139,12 +150,17 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
     { value: "settled", label: labels.settled },
     { value: "cancelled", label: labels.cancelled },
   ];
+
   const rowStatus = (row: typeof Sales.SalesRow.Type) => {
     if (row.overdue) return labels.overdueInvoice;
+
     if (row.status === "cancelled") return labels.cancelledInvoice;
+
     if (row.status === "draft") return row.needsDetails ? labels.needsDetails : labels.draft;
+
     return labels[row.status];
   };
+
   return (
     <>
       <WorkspaceHeader
@@ -176,16 +192,13 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
           >
             {labels.customers}
           </PageTab>
-           <PageTab href={`${base}?view=collections`} active={search.view === "collections"}>
-
+          <PageTab href={`${base}?view=collections`} active={search.view === "collections"}>
             {sv ? "Krav" : "Collections"}
           </PageTab>
-           <PageTab href={`${base}?view=orders`} active={search.view === "orders"}>
-
+          <PageTab href={`${base}?view=orders`} active={search.view === "orders"}>
             {sv ? "Offerter och order" : "Quotes and orders"}
           </PageTab>
-           <PageTab href={`${base}?view=articles`} active={search.view === "articles"}>
-
+          <PageTab href={`${base}?view=articles`} active={search.view === "articles"}>
             {labels.articleCatalog}
           </PageTab>
         </PageTabs>
@@ -422,6 +435,7 @@ function SalesPagination(props: {
   const pages = Math.max(1, Math.ceil(data.total / data.pageSize));
   const first = (page - 1) * data.pageSize + 1;
   const last = first + data.items.length - 1;
+
   return (
     <Box display="flex" justifyContent="between" alignItems="center" gap="lg">
       <PageCaption>
@@ -474,6 +488,7 @@ function SalesRecord({
   const labels = locale === "sv" ? swedish : english;
   const selectedKind = search.kind ?? (search.view === "invoices" ? "invoice" : "draft");
   const reviewing = search.stage === "review" || search.view === "issue";
+
   return (
     <>
       {search.record === "new" ? (
@@ -611,6 +626,7 @@ const english = {
   reviewInvoice: "Review invoice",
   close: "Close invoice",
 };
+
 const swedish: typeof english = {
   invoicing: "Fakturering",
   articleCatalog: "Artikelkatalog",

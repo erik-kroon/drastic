@@ -86,10 +86,12 @@ export const LegalArPostingAction = Schema.Struct({
     taxMinor: MinorUnits,
   }),
 });
+
 const SyntheticVoucherAction = Schema.Struct({
   ...PostingAction.fields,
   legalIssue: Schema.optional(Schema.Null),
 });
+
 export const VoucherPostingAction = Schema.Union([SyntheticVoucherAction, LegalArPostingAction]);
 
 export const ChangeSet = Schema.Struct({

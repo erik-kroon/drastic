@@ -2,19 +2,28 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Payments from "@open-erp/contracts/supplier-payment-batches";
 import * as Effect from "effect/Effect";
 import { failure } from "../failures";
-import { digest, isoNow, newId, replay, saveCommand } from "../posting";
+import { digest, isoNow, newId, replay, saveCommand, sha256Hex } from "../posting";
 import * as PaymentDb from "../../db/purchases/payments";
+import { liveInvoice } from "../commerce/register";
+import { paymentDocument } from "./payment-document";
 import * as Shared from "./shared";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type JsonObject = import("effect/Schema").JsonObject;
 
 const ProposalSchema = Payments.PayeeProposal;
+
 const VerificationSchema = Payments.PayeeVerification;
+
 const ReviewSchema = Payments.PayeeReview;
+
 const OutcomeSchema = Payments.PaymentOutcome;
+
 const BatchViewSchema = Payments.SupplierPaymentBatchView;
+
 const PreviewSchema = Payments.SupplierPaymentPreview;
+
 const ExportSchema = Payments.SupplierPaymentExport;
 
 const paymentTables = [
@@ -33,30 +42,39 @@ const paymentTables = [
   "supplier_payee_verifications",
   "supplier_payment_outcomes",
 ];
+
 const payeeInserts = [
   "supplier_payee_proposals",
   "supplier_payee_verifications",
   "supplier_payment_outcomes",
   "command_receipts",
 ];
+
 const maximumOutcomes = 50;
+
 const maximumPreviews = 200;
 
 const ibanPattern = /^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$/;
+
 const bicPattern = /^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/;
 
 function checkIban(value: string) {
   if (!ibanPattern.test(value)) return yieldInvalid();
   const reordered = value.slice(4) + value.slice(0, 4);
   let remainder = 0;
+
   for (const character of reordered) {
     const code = character.charCodeAt(0);
+
     const addend =
-      code >= 65 && code <= 90 ? 100 + (code - 65) : code >= 48 && code <= 57 ? code - 48 : -1;
+      code >= 65 && code <= 90 ? 10 + (code - 65) : code >= 48 && code <= 57 ? code - 48 : -1;
+
     if (addend < 0) return yieldInvalid();
     remainder = (remainder * (addend > 9 ? 100 : 10) + addend) % 97;
   }
+
   if (remainder !== 1) return yieldInvalid();
+
   return value;
 }
 
@@ -66,14 +84,17 @@ function yieldInvalid(): never {
 
 function checkBic(value: string) {
   if (!bicPattern.test(value)) return yieldInvalid();
+
   return value;
 }
 
 function checkXmlText(value: string) {
   for (let index = 0; index < value.length; index += 1) {
     const code = value.charCodeAt(index);
+
     if (code < 0x20 || code === 0x7f) return yieldInvalid();
   }
+
   return value;
 }
 
@@ -94,6 +115,7 @@ export const proposeSupplierPayee = Effect.fn("purchases.payments.proposePayee")
       yield* Shared.requireTables(transaction, paymentTables, payeeInserts);
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = yield* readBook(transaction, command.scope.bookId);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -103,6 +125,7 @@ export const proposeSupplierPayee = Effect.fn("purchases.payments.proposePayee")
         yield* Shared.toJsonObject(command.input),
         ProposalSchema,
       );
+
       if (request.previous) return request.previous;
       yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
 
@@ -111,15 +134,21 @@ export const proposeSupplierPayee = Effect.fn("purchases.payments.proposePayee")
         command.scope.bookId,
         command.input.counterpartyId,
       ))[0];
+
       if (!party || (party.role !== "supplier" && party.role !== "both")) {
         return yield* failure("NotFound");
       }
+
       if (party.currentRevision !== command.input.expectedRevision) {
         return yield* failure("StaleDependency");
       }
-      checkXmlText(command.input.creditorName);
-      checkIban(command.input.creditorIban);
-      checkBic(command.input.creditorBic);
+
+      yield* validateAccount(
+        command.input.creditorName,
+        command.input.creditorIban,
+        command.input.creditorBic,
+      );
+
       const evidence = yield* Shared.readEvidenceReference(
         transaction,
         command.scope.bookId,
@@ -148,6 +177,7 @@ export const proposeSupplierPayee = Effect.fn("purchases.payments.proposePayee")
           ),
         },
       ) satisfies JsonObject;
+
       const sealed = Object.assign({}, body, { digest: yield* digest(body) });
       const proposal = yield* Shared.decode(ProposalSchema, sealed);
       yield* PaymentDb.insertPayeeProposal(transaction, {
@@ -171,6 +201,7 @@ export const proposeSupplierPayee = Effect.fn("purchases.payments.proposePayee")
         principal.actorId,
         yield* Shared.toJsonObject(proposal),
       );
+
       return proposal;
     }),
   );
@@ -190,6 +221,7 @@ export const verifySupplierPayee = Effect.fn("purchases.payments.verifyPayee")(f
       yield* Shared.requireTables(transaction, paymentTables, payeeInserts);
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       yield* readBook(transaction, command.scope.bookId);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -202,6 +234,7 @@ export const verifySupplierPayee = Effect.fn("purchases.payments.verifyPayee")(f
         } satisfies JsonObject,
         VerificationSchema,
       );
+
       if (request.previous) return request.previous;
 
       const proposal = (yield* PaymentDb.readPayeeProposal(
@@ -209,7 +242,9 @@ export const verifySupplierPayee = Effect.fn("purchases.payments.verifyPayee")(f
         command.scope.bookId,
         command.proposalId,
       ))[0];
+
       if (!proposal) return yield* failure("NotFound");
+
       if (proposal.actorId === principal.actorId) return yield* failure("ApprovalRequired");
 
       const latest = (yield* PaymentDb.readLatestProposalForCounterparty(
@@ -217,11 +252,13 @@ export const verifySupplierPayee = Effect.fn("purchases.payments.verifyPayee")(f
         command.scope.bookId,
         proposal.counterpartyId,
       ))[0]?.id;
+
       const counterparty = (yield* PaymentDb.readCounterpartyRevision(
         transaction,
         command.scope.bookId,
         proposal.counterpartyId,
       ))[0];
+
       if (
         command.input.digest !== Shared.textField(proposal.body, "digest") ||
         (yield* PaymentDb.readPayeeVerificationByProposal(
@@ -235,6 +272,7 @@ export const verifySupplierPayee = Effect.fn("purchases.payments.verifyPayee")(f
       ) {
         return yield* failure("StaleDependency");
       }
+
       if (command.input.evidenceId !== proposal.evidenceId) {
         return yield* failure("MissingEvidence");
       }
@@ -263,6 +301,7 @@ export const verifySupplierPayee = Effect.fn("purchases.payments.verifyPayee")(f
           ),
         },
       ) satisfies JsonObject;
+
       const sealed = Object.assign({}, body, { digest: yield* digest(body) });
       const verification = yield* Shared.decode(VerificationSchema, sealed);
       yield* PaymentDb.insertPayeeVerification(transaction, {
@@ -287,6 +326,7 @@ export const verifySupplierPayee = Effect.fn("purchases.payments.verifyPayee")(f
         principal.actorId,
         yield* Shared.toJsonObject(verification),
       );
+
       return verification;
     }),
   );
@@ -299,40 +339,50 @@ export const getSupplierPayee = Effect.fn("purchases.payments.getPayee")(functio
   return yield* Shared.withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, paymentTables);
+
       const book = (yield* Shared.PurchaseDb.lockBook(
         transaction,
         command.scope.bookId,
         "share",
       ))[0];
+
       if (!book) return yield* failure("Forbidden");
+
       const proposal = (yield* PaymentDb.readPayeeProposal(
         transaction,
         command.scope.bookId,
         command.proposalId,
       ))[0];
+
       if (!proposal) return yield* failure("NotFound");
+
       const verification = (yield* PaymentDb.readPayeeVerificationByProposal(
         transaction,
         command.scope.bookId,
         command.proposalId,
       ))[0];
+
       let current = false;
+
       if (verification) {
         const latest = (yield* PaymentDb.readLatestProposalForCounterparty(
           transaction,
           command.scope.bookId,
           proposal.counterpartyId,
         ))[0]?.id;
+
         const counterparty = (yield* PaymentDb.readCounterpartyRevision(
           transaction,
           command.scope.bookId,
           proposal.counterpartyId,
         ))[0];
+
         current =
           latest === proposal.id &&
           counterparty !== undefined &&
           counterparty.currentRevision === proposal.counterpartyRevision;
       }
+
       return yield* Shared.decode(ReviewSchema, {
         proposal: yield* Shared.decode(ProposalSchema, proposal.body),
         verification: verification
@@ -359,6 +409,7 @@ export const reportSupplierPaymentOutcome = Effect.fn("purchases.payments.report
         yield* Shared.requireTables(transaction, paymentTables, payeeInserts);
         yield* Shared.requireColumns(transaction, Shared.accountColumns);
         yield* readBook(transaction, command.scope.bookId);
+
         const request = yield* replay(
           transaction,
           command.scope,
@@ -371,6 +422,7 @@ export const reportSupplierPaymentOutcome = Effect.fn("purchases.payments.report
           } satisfies JsonObject,
           OutcomeSchema,
         );
+
         if (request.previous) return request.previous;
 
         const exported = (yield* PaymentDb.readExport(
@@ -378,27 +430,34 @@ export const reportSupplierPaymentOutcome = Effect.fn("purchases.payments.report
           command.scope.bookId,
           command.exportId,
         ))[0];
+
         if (!exported) return yield* failure("NotFound");
+
         if (command.input.exportSha256 !== Shared.textField(exported.body, "sha256")) {
           return yield* failure("StaleDependency");
         }
+
         const evidence = yield* Shared.readEvidenceReference(
           transaction,
           command.scope.bookId,
           command.input.evidenceId,
         );
+
         const latest = (yield* PaymentDb.readLatestOutcome(
           transaction,
           command.scope.bookId,
           command.exportId,
         ))[0];
+
         const ordinal = latest?.nextOrdinal ?? 1;
+
         const priorAccepted =
           (yield* PaymentDb.readPriorAcceptedOutcome(
             transaction,
             command.scope.bookId,
             command.exportId,
           ))[0]?.present === true;
+
         if (
           ordinal > maximumOutcomes ||
           latest?.status === "reported_settled" ||
@@ -434,6 +493,7 @@ export const reportSupplierPaymentOutcome = Effect.fn("purchases.payments.report
             ),
           },
         ) satisfies JsonObject;
+
         const sealed = Object.assign({}, body, { digest: yield* digest(body) });
         const outcome = yield* Shared.decode(OutcomeSchema, sealed);
         yield* PaymentDb.insertOutcome(transaction, {
@@ -455,6 +515,7 @@ export const reportSupplierPaymentOutcome = Effect.fn("purchases.payments.report
           principal.actorId,
           yield* Shared.toJsonObject(outcome),
         );
+
         return outcome;
       }),
     );
@@ -468,31 +529,39 @@ export const getSupplierPaymentBatch = Effect.fn("purchases.payments.getBatch")(
   return yield* Shared.withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, paymentTables);
+
       const book = (yield* Shared.PurchaseDb.lockBook(
         transaction,
         command.scope.bookId,
         "share",
       ))[0];
+
       if (!book) return yield* failure("Forbidden");
+
       const preview = (yield* PaymentDb.readPreview(
         transaction,
         command.scope.bookId,
         command.previewId,
       ))[0];
+
       if (!preview) return yield* failure("NotFound");
+
       const exported = (yield* PaymentDb.readExportByPreview(
         transaction,
         command.scope.bookId,
         command.previewId,
       ))[0];
+
       const outcomes =
         exported === undefined
           ? []
           : yield* PaymentDb.readOutcomes(transaction, command.scope.bookId, exported.id);
+
       const latest =
         exported === undefined
           ? undefined
           : (yield* PaymentDb.readLatestOutcome(transaction, command.scope.bookId, exported.id))[0];
+
       const current =
         exported === undefined
           ? false
@@ -501,6 +570,7 @@ export const getSupplierPaymentBatch = Effect.fn("purchases.payments.getBatch")(
               command.scope.bookId,
               command.previewId,
             ))[0]?.current === true;
+
       return yield* Shared.decode(BatchViewSchema, {
         preview: yield* Shared.decode(PreviewSchema, preview.body),
         export: exported === undefined ? null : yield* Shared.decode(ExportSchema, exported.body),
@@ -516,6 +586,96 @@ export const getSupplierPaymentBatch = Effect.fn("purchases.payments.getBatch")(
   );
 });
 
+function validateAccount(name: string, iban: string, bic: string) {
+  return Effect.try({
+    try: () => {
+      checkXmlText(name);
+      checkIban(iban);
+      checkBic(bic);
+    },
+    catch: () => failure("InvalidJournal"),
+  });
+}
+
+const paymentSelection = Effect.fn("purchases.payments.selection")(function* (
+  tx: import("../../db/transaction").Transaction,
+  scope: Scope,
+  input: typeof Payments.PrepareSupplierPaymentBatch.Type,
+) {
+  const book = yield* readBook(tx, scope.bookId);
+  yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
+
+  if (book.currency !== "SEK" || book.currencyScale !== 2)
+    return yield* failure("UnsupportedProfile");
+  const today = (yield* PaymentDb.readDatabaseDate(tx))[0]?.today;
+  const date = Date.parse(`${input.executionDate}T00:00:00Z`);
+
+  if (!Number.isFinite(date) || new Date(date).toISOString().slice(0, 10) !== input.executionDate)
+    return yield* failure("InvalidJournal");
+
+  if (!today || input.executionDate < today) return yield* failure("StaleDependency");
+  yield* validateAccount(input.debtorName, input.debtorIban, input.debtorBic);
+
+  if (new Set(input.items.map((item) => item.invoiceId)).size !== input.items.length)
+    return yield* failure("InvalidJournal");
+  const items: Array<(typeof Payments.SupplierPaymentSelection.Type.items)[number]> = [];
+  let total = 0n;
+
+  for (const item of input.items) {
+    yield* validateAccount(item.creditorName, item.creditorIban, item.creditorBic);
+    const invoice = yield* liveInvoice(tx, scope.bookId, item.invoiceId);
+    const facts = (yield* PaymentDb.readInvoicePaymentFacts(tx, scope.bookId, item.invoiceId))[0];
+
+    if (invoice.direction !== "supplier" || !facts?.accepted) return yield* failure("NotFound");
+
+    if (facts.exported || !facts.verification) return yield* failure("StaleDependency");
+    const payee = yield* Shared.decode(VerificationSchema, facts.verification);
+    const evidence = yield* Shared.readEvidenceReference(tx, scope.bookId, item.payeeEvidenceId);
+
+    if (
+      payee.id !== item.payeeVerificationId ||
+      payee.creditorName !== item.creditorName ||
+      payee.creditorIban !== item.creditorIban ||
+      payee.creditorBic !== item.creditorBic ||
+      payee.evidence.evidenceId !== evidence.evidenceId ||
+      payee.evidence.sha256 !== evidence.sha256
+    )
+      return yield* failure("StaleDependency");
+    const amount = BigInt(item.amountMinor);
+
+    if (
+      invoice.blockers.length ||
+      invoice.outstandingMinor === null ||
+      invoice.outstandingMinor !== item.expectedOutstandingMinor ||
+      invoice.allocationVersion !== item.expectedAllocationVersion ||
+      amount > BigInt(invoice.outstandingMinor)
+    )
+      return yield* failure("StaleDependency");
+    total += amount;
+
+    if (amount <= 0n || total >= 10n ** 36n) return yield* failure("InvalidJournal");
+    yield* Effect.try({
+      try: () => checkXmlText(invoice.documentNumber),
+      catch: () => failure("InvalidJournal"),
+    });
+    items.push({
+      invoiceId: invoice.id,
+      supplierDocumentNumber: invoice.documentNumber,
+      amountMinor: item.amountMinor,
+      outstandingMinor: invoice.outstandingMinor,
+      allocationVersion: invoice.allocationVersion,
+      creditorName: item.creditorName,
+      creditorIban: item.creditorIban,
+      creditorBic: item.creditorBic,
+      payeeVerificationId: payee.id,
+      counterpartyRevision: facts.currentRevision,
+      payeeEvidence: evidence,
+    });
+  }
+
+  return { items, totalMinor: total.toString(), count: items.length };
+});
+
 export const prepareSupplierPaymentBatch = Effect.fn("purchases.payments.prepareBatch")(function* (
   token: string,
   command: {
@@ -524,20 +684,65 @@ export const prepareSupplierPaymentBatch = Effect.fn("purchases.payments.prepare
     readonly input: typeof Payments.PrepareSupplierPaymentBatch.Type;
   },
 ) {
-  return yield* Shared.withBook(token, command.scope, true, "update", (transaction) =>
+  return yield* Shared.withBook(token, command.scope, true, "update", (tx, principal) =>
     Effect.gen(function* () {
-      yield* Shared.requireTables(transaction, paymentTables, [
-        "supplier_payment_batch_previews",
-        "command_receipts",
-      ]);
-      yield* readBook(transaction, command.scope.bookId);
+      const { scope, input, idempotencyKey } = command,
+        operation = "prepare_supplier_payment_batch";
+
+      const request = yield* replay(
+        tx,
+        scope,
+        idempotencyKey,
+        operation,
+        principal.actorId,
+        input,
+        PreviewSchema,
+      );
+
+      if (request.previous) return request.previous;
+
       if (
-        (yield* PaymentDb.readPreviewCount(transaction, command.scope.bookId))[0]!.total >=
+        ((yield* PaymentDb.readPreviewCount(tx, scope.bookId))[0]?.total ?? maximumPreviews) >=
         maximumPreviews
-      ) {
+      )
         return yield* failure("InvalidJournal");
-      }
-      return yield* Shared.unsupported();
+      const selection = yield* paymentSelection(tx, scope, input);
+
+      const body = {
+        id: newId("pb"),
+        scope,
+        input,
+        selection,
+        format: "pain.001.001.03",
+        status: "preview",
+        bankCompatible: false,
+        bankAccepted: false,
+        paid: false,
+        createdAt: yield* isoNow(tx),
+        receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+      };
+
+      const result = yield* Shared.decode(PreviewSchema, { ...body, digest: yield* digest(body) });
+
+      if (Shared.byteLength(JSON.stringify(result)) > 131072)
+        return yield* failure("InvalidJournal");
+      yield* PaymentDb.insertPreview(tx, {
+        bookId: scope.bookId,
+        id: result.id,
+        actorId: principal.actorId,
+        body: result,
+      });
+      yield* saveCommand(
+        tx,
+        scope,
+        idempotencyKey,
+        request.expected,
+        operation,
+        principal.actorId,
+        result,
+      );
+
+      return result;
     }),
   );
 });
@@ -551,31 +756,144 @@ export const exportSupplierPaymentBatch = Effect.fn("purchases.payments.exportBa
     readonly input: typeof Payments.ExportSupplierPaymentBatch.Type;
   },
 ) {
-  return yield* Shared.withBook(token, command.scope, true, "update", (transaction) =>
+  return yield* Shared.withBook(token, command.scope, true, "update", (tx, principal) =>
     Effect.gen(function* () {
-      yield* Shared.requireTables(transaction, paymentTables, [
-        "supplier_payment_batch_exports",
-        "supplier_payment_batch_items",
-        "command_receipts",
-      ]);
-      yield* readBook(transaction, command.scope.bookId);
-      return yield* Shared.unsupported();
+      const { scope, previewId, input, idempotencyKey } = command,
+        operation = "export_supplier_payment_batch";
+
+      const request = yield* replay(
+        tx,
+        scope,
+        idempotencyKey,
+        operation,
+        principal.actorId,
+        { previewId, input },
+        ExportSchema,
+      );
+
+      if (request.previous) return request.previous;
+      const row = (yield* PaymentDb.readPreview(tx, scope.bookId, previewId))[0];
+
+      if (!row) return yield* failure("NotFound");
+      const preview = yield* Shared.decode(PreviewSchema, row.body);
+
+      if (row.actorId !== principal.actorId || preview.digest !== input.digest)
+        return yield* failure("ApprovalRequired");
+
+      if ((yield* PaymentDb.readExportByPreview(tx, scope.bookId, previewId)).length)
+        return yield* failure("IdempotencyConflict");
+      const selection = yield* paymentSelection(tx, scope, preview.input);
+
+      if ((yield* digest(selection)) !== (yield* digest(preview.selection)))
+        return yield* failure("StaleDependency");
+
+      const xml = paymentDocument(preview),
+        bytes = new TextEncoder().encode(xml);
+
+      let binary = "";
+
+      for (const byte of bytes) binary += String.fromCharCode(byte);
+
+      const body = {
+        id: newId("payment_export"),
+        scope,
+        previewId,
+        previewDigest: preview.digest,
+        format: "pain.001.001.03",
+        mediaType: "application/xml",
+        sha256: yield* sha256Hex(xml),
+        base64: btoa(binary),
+        status: "exported",
+        bankCompatible: false,
+        bankAccepted: false,
+        paid: false,
+        selection,
+        createdAt: yield* isoNow(tx),
+        receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+      };
+
+      const result = yield* Shared.decode(ExportSchema, { ...body, digest: yield* digest(body) });
+      yield* PaymentDb.insertExport(tx, {
+        bookId: scope.bookId,
+        id: result.id,
+        previewId,
+        body: result,
+      });
+      yield* PaymentDb.insertExportItems(
+        tx,
+        scope.bookId,
+        result.id,
+        selection.items.map((item) => item.invoiceId),
+      );
+      yield* saveCommand(
+        tx,
+        scope,
+        idempotencyKey,
+        request.expected,
+        operation,
+        principal.actorId,
+        result,
+      );
+
+      return result;
     }),
   );
 });
 
 export const listSupplierPaymentEligibility = Effect.fn("purchases.payments.eligibility")(
   function* (token: string, command: { readonly scope: Scope; readonly after?: string }) {
-    return yield* Shared.withBook(token, command.scope, false, "share", (transaction) =>
+    return yield* Shared.withBook(token, command.scope, false, "share", (tx) =>
       Effect.gen(function* () {
-        yield* Shared.requireTables(transaction, paymentTables);
-        const book = (yield* Shared.PurchaseDb.lockBook(
-          transaction,
-          command.scope.bookId,
-          "share",
-        ))[0];
-        if (!book) return yield* failure("Forbidden");
-        return yield* Shared.unsupported();
+        const { scope } = command;
+
+        if (command.after !== undefined && !Shared.identifierPattern.test(command.after))
+          return yield* failure("InvalidJournal");
+        const rows = yield* PaymentDb.readEligibleInvoiceIds(tx, scope.bookId, command.after ?? "");
+        const items: Array<(typeof Payments.PaymentEligibility.Type.items)[number]> = [];
+
+        for (const row of rows.slice(0, 25)) {
+          const invoice = yield* liveInvoice(tx, scope.bookId, row.id);
+          const facts = (yield* PaymentDb.readInvoicePaymentFacts(tx, scope.bookId, row.id))[0];
+
+          if (!facts) return yield* failure("InternalError");
+
+          const verification = facts.verification
+            ? yield* Shared.decode(VerificationSchema, facts.verification)
+            : null;
+
+          const reasons: Array<string> = [];
+
+          if (!facts.accepted) reasons.push("not_accepted_supplier_invoice");
+
+          if (invoice.blockers.length) reasons.push("invoice_blocked");
+
+          if (invoice.outstandingMinor === null || BigInt(invoice.outstandingMinor) <= 0n)
+            reasons.push("no_positive_outstanding");
+
+          if (!verification) reasons.push("no_current_verified_payee");
+
+          if (facts.exported) reasons.push("already_exported_outcome_unresolved");
+          items.push({
+            invoiceId: row.id,
+            supplierDocumentNumber: invoice.documentNumber,
+            counterpartyId: invoice.counterpartyId,
+            currentCounterpartyRevision: facts.currentRevision,
+            payeeVerification: verification,
+            outstandingMinor: invoice.outstandingMinor,
+            allocationVersion: invoice.allocationVersion,
+            invoiceBlockers: invoice.blockers,
+            eligible: reasons.length === 0,
+            reasons,
+          });
+        }
+
+        return yield* Shared.decode(Payments.PaymentEligibility, {
+          scope,
+          items,
+          next: rows.length > 25 ? (items.at(-1)?.invoiceId ?? null) : null,
+          pageSize: 25,
+          coverage: "registered_supplier_invoices_live",
+        });
       }),
     );
   },

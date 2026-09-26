@@ -9,15 +9,19 @@ export async function oidcProviderId(issuer: string, clientId: string) {
     "SHA-256",
     new TextEncoder().encode(JSON.stringify([issuer, clientId])),
   );
+
   return `oidc_${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }
+
 export function authConfiguration(bindings: Bindings) {
   return Effect.gen(function* () {
     const url = yield* Effect.try({
       try: () => new URL(bindings.BETTER_AUTH_URL ?? ""),
       catch: () => failure("Unavailable"),
     });
+
     const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+
     if (
       (url.protocol !== "https:" && !(local && url.protocol === "http:")) ||
       url.username ||
@@ -28,8 +32,10 @@ export function authConfiguration(bindings: Bindings) {
     )
       return yield* failure("Unavailable");
     const mode = bindings.OPENERP_AUTH_MODE ?? (local ? "local" : "oidc");
+
     if (mode === "local" && local)
       return { method: "password" as const, url, local, provider: null };
+
     if (
       mode !== "oidc" ||
       !bindings.OIDC_ISSUER ||
@@ -37,10 +43,12 @@ export function authConfiguration(bindings: Bindings) {
       !bindings.OIDC_CLIENT_SECRET
     )
       return yield* failure("Unavailable");
+
     const issuer = yield* Effect.try({
       try: () => new URL(bindings.OIDC_ISSUER ?? ""),
       catch: () => failure("Unavailable"),
     });
+
     if (
       issuer.protocol !== "https:" ||
       issuer.username ||
@@ -49,10 +57,12 @@ export function authConfiguration(bindings: Bindings) {
       issuer.hash
     )
       return yield* failure("Unavailable");
+
     const providerId = yield* Effect.tryPromise({
       try: () => oidcProviderId(bindings.OIDC_ISSUER ?? "", bindings.OIDC_CLIENT_ID ?? ""),
       catch: () => failure("Unavailable"),
     });
+
     return {
       method: "oidc" as const,
       url,

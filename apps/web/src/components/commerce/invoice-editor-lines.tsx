@@ -21,6 +21,7 @@ import { decimalToMinor, minorToDecimal, formatMinorAmount } from "@/lib/workspa
 import { commerceKey, commercePath, type CommerceProps } from "./shared";
 
 type DraftLine = typeof Drafts.DraftLine.Type;
+
 export type EditableInvoiceLine = {
   id: string;
   defaults?: DraftLine;
@@ -30,6 +31,7 @@ export type EditableInvoiceLine = {
   tax: string;
   explicitAmount: boolean;
 };
+
 export function editableInvoiceLine(scale: number, defaults?: DraftLine): EditableInvoiceLine {
   return {
     id: defaults?.id ?? `line_${crypto.randomUUID().replaceAll("-", "")}`,
@@ -43,9 +45,11 @@ export function editableInvoiceLine(scale: number, defaults?: DraftLine): Editab
       : false,
   };
 }
+
 function enteredMinor(value: string, scale: number) {
   return value.trim() ? decimalToMinor(value, scale) : null;
 }
+
 function canonicalQuantity(value: string) {
   return value
     .trim()
@@ -53,8 +57,10 @@ function canonicalQuantity(value: string) {
     .replace(/(\.\d*?)0+$/, "$1")
     .replace(/\.$/, "");
 }
+
 function exactLineAmount(quantity: string, price: string | null) {
   const normalized = canonicalQuantity(quantity);
+
   if (
     price === null ||
     !/^(?:[1-9][0-9]{0,11}|(?:0|[1-9][0-9]{0,11})\.[0-9]{0,5}[1-9])$/.test(normalized)
@@ -63,11 +69,14 @@ function exactLineAmount(quantity: string, price: string | null) {
   const [whole = "", fraction = ""] = normalized.split(".");
   const divisor = 10n ** BigInt(fraction.length);
   const product = BigInt(`${whole}${fraction}`) * BigInt(price);
+
   return product % divisor === 0n ? (product / divisor).toString() : null;
 }
+
 export function invoiceQuantity(value: string | null) {
   return value === null ? null : canonicalQuantity(value);
 }
+
 function changedLine(
   line: EditableInvoiceLine,
   field: "quantity" | "price" | "amount" | "tax",
@@ -75,11 +84,14 @@ function changedLine(
   scale: number,
 ) {
   const next = { ...line, [field]: value };
+
   if (field === "amount") return { ...next, explicitAmount: true };
+
   if ((field === "quantity" || field === "price") && !line.explicitAmount) {
     const calculated = exactLineAmount(next.quantity, enteredMinor(next.price, scale));
     next.amount = calculated === null ? "" : minorToDecimal(calculated, scale);
   }
+
   return next;
 }
 
@@ -88,6 +100,7 @@ export function invoiceEditorTotals(lines: readonly EditableInvoiceLine[], scale
     (sum, line) => {
       const base = enteredMinor(line.amount, scale);
       const tax = enteredMinor(line.tax, scale);
+
       return {
         net:
           sum.net === null || base === null
@@ -101,6 +114,7 @@ export function invoiceEditorTotals(lines: readonly EditableInvoiceLine[], scale
     },
     { net: 0n, tax: 0n },
   );
+
   return {
     ...totals,
     gross: totals.net === null || totals.tax === null ? null : totals.net + totals.tax,
@@ -120,9 +134,11 @@ export function InvoiceEditorLines(props: {
   const { lines, onChange, scale, locale } = props;
   const [showDetails, setShowDetails] = useState(false);
   const sv = locale === "sv";
+
   const labels = sv
     ? ["Beskrivning", "Antal", "Enhetspris", "Exkl. moms", "Momsbelopp"]
     : ["Description", "Qty", "Unit price", "Before tax", "Tax amount"];
+
   const catalog = useInfiniteQuery({
     queryKey: props.book
       ? [...commerceKey(props.book), "catalog-articles"]
@@ -131,6 +147,7 @@ export function InvoiceEditorLines(props: {
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) => {
       if (!props.book) throw new Error("Catalog article query requires a book");
+
       return readAccounting(
         `${commercePath(props.book)}/articles${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
         Catalog.ArticlePage,
@@ -140,12 +157,15 @@ export function InvoiceEditorLines(props: {
     getNextPageParam: (page) => page.next ?? undefined,
     retry: false,
   });
+
   const articles = catalog.data?.pages.flatMap((page) => page.items) ?? [];
   const totals = invoiceEditorTotals(lines, props.scale);
+
   const amount = (value: bigint | null) =>
     value === null
       ? "—"
       : `${formatMinorAmount(value.toString(), props.scale, locale)} ${props.currency}`;
+
   return (
     <Box display="grid" gap="md">
       {props.book ? (
@@ -250,6 +270,7 @@ export function InvoiceEditorLines(props: {
     </Box>
   );
 }
+
 function EditorLine(props: {
   book?: CommerceProps["book"];
   line: EditableInvoiceLine;
@@ -267,6 +288,7 @@ function EditorLine(props: {
   const sv = locale === "sv";
   const calculated = exactLineAmount(line.quantity, enteredMinor(line.price, scale));
   const catalogSelection = line.defaults?.catalogSelection;
+
   const description = (
     <Box display="grid" gap="sm">
       <Input
@@ -289,6 +311,7 @@ function EditorLine(props: {
       ) : null}
     </Box>
   );
+
   const controls = (["quantity", "price", "amount", "tax"] as const).map((field, fieldIndex) => (
     <InvoiceAmountInput
       key={field}
@@ -302,6 +325,7 @@ function EditorLine(props: {
       onChange={(event) => props.onChange(changedLine(line, field, event.target.value, scale))}
     />
   ));
+
   return (
     <InvoiceLine
       labels={props.labels}
@@ -406,20 +430,24 @@ function CatalogArticleSelect(props: {
   const sv = locale === "sv";
   const selection = line.defaults?.catalogSelection;
   const selectedValue = selection ? `${selection.code}:${selection.revision}` : "";
+
   const selectedIsListed = articles.some(
     (article) => `${article.code}:${article.revision}` === selectedValue,
   );
+
   const option = (article: typeof Catalog.Article.Type) => ({
     value: `${article.code}:${article.revision}`,
     label: `${article.code} · ${article.revision} — ${article.description}`,
     disabled: article.description.length > 200,
   });
+
   const clearSelection = () => {
     if (!line.defaults) return;
     const defaults = { ...line.defaults };
     delete defaults.catalogSelection;
     props.onChange({ ...line, defaults }, line.id);
   };
+
   return (
     <Box display="grid" gap="xs">
       <SelectField
@@ -440,10 +468,14 @@ function CatalogArticleSelect(props: {
         onValueChange={(value) => {
           if (!value) {
             clearSelection();
+
             return;
           }
+
           const article = articles.find((item) => `${item.code}:${item.revision}` === value);
+
           if (!article) return;
+
           const defaults: DraftLine = {
             id: line.id,
             description: article.description,
@@ -462,6 +494,7 @@ function CatalogArticleSelect(props: {
               unit: article.unit,
             },
           };
+
           props.onChange(
             {
               ...line,
@@ -480,19 +513,16 @@ function CatalogArticleSelect(props: {
           <PageCaption>
             {selection.code} · {selection.revision} · {selection.unit}
           </PageCaption>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={clearSelection}
-          >
+          <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
             {sv ? "Ta bort val" : "Clear selection"}
           </Button>
         </Box>
       ) : null}
       {selection && line.defaults?.unitPriceMinor == null ? (
         <PageCaption>
-          {sv ? "Artikeln saknar pris. Ange ett explicit radbelopp." : "This article has no price. Enter an explicit line amount."}
+          {sv
+            ? "Artikeln saknar pris. Ange ett explicit radbelopp."
+            : "This article has no price. Enter an explicit line amount."}
         </PageCaption>
       ) : null}
     </Box>

@@ -28,9 +28,11 @@ export function CapacityReports({
   const [id, setId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const keys = useRef(new Map<string, string>());
+
   const mutation = useMutation({
     mutationFn: (input: typeof Bank.ReconcileBank.Type) => {
       const path = `${bookPath(book)}/bank-capacity-reconciliations`;
+
       return readAccounting(
         path,
         Settlement.BankCapacityReconciliation,
@@ -39,6 +41,7 @@ export function CapacityReports({
     },
     onSuccess: (report) => setId(report.id),
   });
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.report}</Heading>
@@ -50,15 +53,19 @@ export function CapacityReports({
         onSubmit={(event) => {
           event.preventDefault();
           const fields = new FormData(event.currentTarget);
+
           const result = Schema.decodeUnknownOption(Bank.ReconcileBank)({
             accountId: fields.get("accountId"),
             startsOn: fields.get("startsOn"),
             endsOn: fields.get("endsOn"),
           });
+
           if (result._tag === "None") {
             setError(copy.invalid);
+
             return;
           }
+
           setError("");
           mutation.mutate(result.value);
         }}
@@ -121,6 +128,7 @@ export function CapacityReports({
         onSubmit={(event) => {
           event.preventDefault();
           const value = new FormData(event.currentTarget).get("reportId");
+
           if (Schema.is(Accounting.Identifier)(value)) setId(value);
         }}
       >
@@ -151,6 +159,7 @@ function CapacityReport({
   locale: Locale;
 }) {
   const copy = settlementCopy(locale);
+
   const report = useQuery({
     queryKey: [...bookKey(book), "bank-capacity-reconciliation", id],
     retry: false,
@@ -160,21 +169,26 @@ function CapacityReport({
         Settlement.BankCapacityReconciliationView,
         { signal },
       );
+
       if (
         view.report.id !== id ||
         view.report.scope.bookId !== book.id ||
         view.report.scope.entityId !== book.entityId
       )
         throw new Error("Bank report scope mismatch");
+
       return view;
     },
   });
+
   const view = report.data;
+
   const statuses = {
     complete: copy.complete,
     balanced_but_incomplete: copy.incomplete,
     differences: copy.differences,
   };
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Box>

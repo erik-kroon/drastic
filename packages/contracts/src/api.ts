@@ -73,9 +73,13 @@ const SystemApi = HttpApiGroup.make("system").add(
 );
 
 const bookPath = "/v1/entities/:entityId/books/:bookId";
+
 const scoped = { params: Accounting.Scope, error: accountingErrors };
+
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
+
 const mutation = { ...scoped, headers: Accounting.IdempotencyHeaders };
+
 const identifiedMutation = { ...identified, headers: Accounting.IdempotencyHeaders };
 
 const AccountingApi = HttpApiGroup.make("accounting").add(

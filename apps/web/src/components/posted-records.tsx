@@ -55,6 +55,7 @@ export function PostedRecords(props: PostedRecordsProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const metadata = useQuery(workQueryOptions(book, {}));
   const scale = metadata.data?.currencyScale;
+
   const vouchers = useInfiniteQuery({
     queryKey: [...bookKey(book), "vouchers"],
     initialPageParam: "0",
@@ -67,7 +68,9 @@ export function PostedRecords(props: PostedRecordsProps) {
     getNextPageParam: (page) => page.next,
     retry: false,
   });
+
   const loaded = vouchers.isError ? [] : (vouchers.data?.pages.flatMap((page) => page.items) ?? []);
+
   const matching = loaded.filter(
     (voucher) =>
       (!period || voucher.action.accountingPeriodId === period) &&
@@ -75,6 +78,7 @@ export function PostedRecords(props: PostedRecordsProps) {
         .toLocaleLowerCase(locale)
         .includes(query.toLocaleLowerCase(locale)),
   );
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <RegisterFilters>
@@ -159,6 +163,7 @@ export function PostedRecords(props: PostedRecordsProps) {
                   (sum, line) => sum + BigInt(line.debitMinor),
                   0n,
                 );
+
                 return scale === undefined
                   ? "—"
                   : formatMinorAmount(total.toString(), scale, locale);
@@ -170,13 +175,13 @@ export function PostedRecords(props: PostedRecordsProps) {
               label: "",
               cell: (voucher) => {
                 const search = new URLSearchParams({ view: "vouchers", record: voucher.id });
+
                 if (query) search.set("q", query);
+
                 if (period) search.set("period", period);
+
                 return (
-                  <PageAction
-                    quiet
-                    href={`${workspacePath(book)}/books?${search}`}
-                  >
+                  <PageAction quiet href={`${workspacePath(book)}/books?${search}`}>
                     {locale === "sv" ? "Öppna" : "Open"}
                   </PageAction>
                 );
@@ -227,6 +232,7 @@ export function PostedRecords(props: PostedRecordsProps) {
 
 export function PostedRecord(props: PostedRecordsProps & { id: string }) {
   const { book, id, locale } = props;
+
   const record = useQuery({
     queryKey: [...bookKey(book), "voucher", id],
     queryFn: async ({ signal }) => {
@@ -235,12 +241,16 @@ export function PostedRecord(props: PostedRecordsProps & { id: string }) {
         Voucher,
         { signal },
       );
+
       if (value.id !== id) throw new Error("Voucher identity mismatch");
+
       return value;
     },
     retry: false,
   });
+
   const voucher = record.isSuccess ? record.data : undefined;
+
   return (
     <>
       <AccountingStatus locale={locale} pending={record.isPending} error={record.error} />
@@ -270,8 +280,10 @@ function VoucherDetails(props: PostedRecordsProps & { voucher: typeof Accounting
   const metadata = useQuery(workQueryOptions(book, {}));
   const scale = metadata.isSuccess ? metadata.data.currencyScale : undefined;
   const total = voucher.action.lines.reduce((sum, line) => sum + BigInt(line.debitMinor), 0n);
+
   const amount = (value: string) =>
     scale === undefined ? "—" : formatMinorAmount(value, scale, locale);
+
   return (
     <Box display="grid" gap="lg" paddingBlock="lg" minWidth="zero">
       <RecordSummary>
@@ -297,6 +309,7 @@ function VoucherDetails(props: PostedRecordsProps & { voucher: typeof Accounting
         ]}
         rows={voucher.action.lines.map((line) => {
           const account = props.setup?.accounts.find((item) => item.id === line.accountId);
+
           return {
             id: line.lineId,
             cells: [
@@ -332,12 +345,7 @@ function VoucherDetails(props: PostedRecordsProps & { voucher: typeof Accounting
         <details onToggle={(event) => setHistoryOpen(event.currentTarget.open)}>
           <summary>{sv ? "Rättelser och historik" : "Corrections and history"}</summary>
           {historyOpen ? (
-            <CorrectionChainView
-              book={book}
-              setup={props.setup}
-              locale={locale}
-              id={voucher.id}
-            />
+            <CorrectionChainView book={book} setup={props.setup} locale={locale} id={voucher.id} />
           ) : null}
         </details>
       ) : null}
@@ -357,8 +365,11 @@ function VoucherDetails(props: PostedRecordsProps & { voucher: typeof Accounting
   );
 }
 
-function VoucherCorrectionRecovery(props: PostedRecordsProps & { voucher: typeof Accounting.Voucher.Type }) {
+function VoucherCorrectionRecovery(
+  props: PostedRecordsProps & { voucher: typeof Accounting.Voucher.Type },
+) {
   const [bundleId, setBundleId] = useState<string | null>(null);
+
   const recovery = useMutation({
     mutationFn: () =>
       readAccounting(
@@ -367,7 +378,9 @@ function VoucherCorrectionRecovery(props: PostedRecordsProps & { voucher: typeof
       ),
     onSuccess: (view) => setBundleId(view.bundle.id),
   });
+
   if (!props.setup) return null;
+
   return (
     <Box display="grid" gap="md">
       <Box>

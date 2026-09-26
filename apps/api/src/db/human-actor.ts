@@ -31,6 +31,7 @@ export function hashToken(token: string) {
   return Effect.tryPromise({
     try: async () => {
       const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+
       return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(
         "",
       );
@@ -48,6 +49,7 @@ function decodeOne<A>(schema: Schema.Decoder<A>, value: unknown) {
 function expiryIsCurrent(expiresAt: string, now: string) {
   const expiry = Date.parse(expiresAt);
   const current = Date.parse(now);
+
   return Number.isFinite(expiry) && Number.isFinite(current) && expiry > current;
 }
 
@@ -97,11 +99,15 @@ export function admitHumanActor(transaction: Transaction, token: string) {
     const credentialRows = yield* lockCredential(transaction, credentialHash);
     const browserRows = yield* lockSession(transaction, token);
     const browser = browserRows[0] ? yield* decodeOne(SessionRow, browserRows[0]) : undefined;
+
     if (!credentialRows[0] && !browser) return yield* failure("Unauthorized");
+
     if (!browser) return yield* failure("Forbidden");
+
     if (credentialRows[0]) {
       const credential = yield* decodeOne(CredentialRow, credentialRows[0]);
       const credentialTime = yield* readDatabaseTime(transaction);
+
       if (
         credential.actorId !== browser.userId ||
         credential.revokedAt !== null ||
@@ -110,15 +116,21 @@ export function admitHumanActor(transaction: Transaction, token: string) {
         return yield* failure("Unauthorized");
       }
     }
+
     const browserTime = yield* readDatabaseTime(transaction);
+
     if (!expiryIsCurrent(browser.expiresAt, browserTime.now)) {
       return yield* failure("Unauthorized");
     }
+
     const admissionRows = yield* lockAdmission(transaction, browser.userId);
+
     const admission = admissionRows[0]
       ? yield* decodeOne(AdmissionRow, admissionRows[0])
       : undefined;
+
     if (admission?.enabled === false) return yield* failure("Unauthorized");
+
     return {
       actorId: browser.userId,
       kind: "betterAuthSession",

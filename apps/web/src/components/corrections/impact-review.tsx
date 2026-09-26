@@ -22,6 +22,7 @@ export function CorrectionImpactDetails({
 }) {
   const copy = correctionCopy(locale);
   const basis = impact.basis;
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.impact}</Heading>
@@ -111,6 +112,7 @@ export function CorrectionChainView({
   id: string;
 }) {
   const copy = correctionCopy(locale);
+
   const chain = useQuery({
     queryKey: [...bookKey(book), "correction-chain", id],
     queryFn: ({ signal }) =>
@@ -121,6 +123,7 @@ export function CorrectionChainView({
       ),
     retry: false,
   });
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.chain}</Heading>

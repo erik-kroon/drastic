@@ -18,21 +18,37 @@ import type { Transaction } from "../db/transaction";
 type Scope = typeof Accounting.Scope.Type;
 
 const CoordinationSchema = Workspace.Coordination;
+
 const SavedViewResultSchema = Workspace.SavedViewResult;
+
 const DeletedViewSchema = Workspace.DeletedView;
+
 const AssignmentResultSchema = Workspace.AssignmentResult;
+
 const WorkPageSchema = Workspace.WorkPage;
+
 const AttentionPageSchema = Workspace.AttentionPage;
+
 const statuses = ["all", "open", "completed"] as const;
+
 const sorts = ["newest", "oldest"] as const;
+
 const workKinds = ["journal", "invoice", "expense"] as const;
+
 const attentionKinds = ["all", ...workKinds] as const;
+
 const filterKeys = ["kind", "period", "status", "sort", "q"] as const;
+
 const maximumTeamSize = 200;
+
 const maximumViews = 50;
+
 const maximumSearch = 200;
+
 const viewInserts = ["workspace_views", "command_receipts"];
+
 const assignmentInserts = ["workspace_assignments", "command_receipts"];
+
 const receiptInserts = ["command_receipts"];
 
 function requireWorkspaceAccess(transaction: Transaction, inserts: ReadonlyArray<string>) {
@@ -48,9 +64,12 @@ function trimmed(value: string | undefined) {
 
 function calendarDate(value: string | undefined) {
   if (value === undefined) return null;
+
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
   const parsed = Date.parse(`${value}T00:00:00.000Z`);
+
   if (!Number.isFinite(parsed)) return undefined;
+
   return new Date(parsed).toISOString().slice(0, 10) === value ? value : undefined;
 }
 
@@ -61,35 +80,48 @@ function oneOf<C extends string>(value: string, choices: ReadonlyArray<C>) {
 function viewFilters(input: typeof Workspace.ViewFilters.Type) {
   return Effect.gen(function* () {
     const filters: Schema.MutableJsonObject = {};
+
     if (input.kind !== undefined) filters.kind = input.kind;
+
     if (input.period !== undefined) filters.period = input.period;
+
     if (input.status !== undefined) filters.status = input.status;
+
     if (input.sort !== undefined) filters.sort = input.sort;
+
     if (input.q !== undefined) filters.q = input.q;
+
     if (Object.keys(filters).some((key) => !filterKeys.find((allowed) => allowed === key))) {
       return yield* failure("InvalidJournal");
     }
+
     if (typeof filters.kind === "string" && oneOf(filters.kind, attentionKinds) === null) {
       return yield* failure("InvalidJournal");
     }
+
     if (typeof filters.status === "string" && oneOf(filters.status, statuses) === null) {
       return yield* failure("InvalidJournal");
     }
+
     if (typeof filters.sort === "string" && oneOf(filters.sort, sorts) === null) {
       return yield* failure("InvalidJournal");
     }
+
     if (typeof filters.q === "string" && filters.q.length > maximumSearch) {
       return yield* failure("InvalidJournal");
     }
+
     return yield* toJsonObject(filters);
   });
 }
 
 function assignmentView(row: Db.AssignmentRow) {
   const kind = oneOf(row.kind, workKinds);
+
   if (kind === null) {
     throw new Error("retained assignment kind is outside the supported contract");
   }
+
   return {
     kind,
     recordId: row.recordId,
@@ -108,13 +140,16 @@ export const coordination = Effect.fn("workspace.coordination")(function* (
 ) {
   return yield* withBook(token, command.scope, false, function* (transaction, principal) {
     yield* requireWorkspaceAccess(transaction, []);
+
     if (
       (yield* Db.countBookMembers(transaction, command.scope.bookId))[0]!.total > maximumTeamSize
     ) {
       return yield* failure("Unavailable");
     }
+
     const members = yield* Db.listBookMembers(transaction, command.scope.bookId);
     const views = yield* Db.listVisibleViews(transaction, command.scope.bookId, principal.actorId);
+
     return yield* decode(CoordinationSchema, {
       scope: command.scope,
       actorId: principal.actorId,
@@ -150,6 +185,7 @@ export const saveView = Effect.fn("workspace.saveView")(function* (
     command.input.visibility === "team",
     function* (transaction, principal) {
       yield* requireWorkspaceAccess(transaction, viewInserts);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -159,17 +195,21 @@ export const saveView = Effect.fn("workspace.saveView")(function* (
         yield* toJsonObject(command.input),
         SavedViewResultSchema,
       );
+
       if (request.previous) return request.previous;
       const name = command.input.name.trim();
+
       if (name.length < 1 || name.length > 80) return yield* failure("InvalidJournal");
       const filters = yield* viewFilters(command.input.filters);
       const period = command.input.filters.period;
+
       if (
         period !== undefined &&
         (yield* Db.readPeriod(transaction, command.scope.bookId, period)).length === 0
       ) {
         return yield* failure("NotFound");
       }
+
       if (
         (yield* Db.countViews(
           transaction,
@@ -180,6 +220,7 @@ export const saveView = Effect.fn("workspace.saveView")(function* (
       ) {
         return yield* failure("InvalidJournal");
       }
+
       const id = newId("view");
       yield* Db.insertView(transaction, {
         bookId: command.scope.bookId,
@@ -189,6 +230,7 @@ export const saveView = Effect.fn("workspace.saveView")(function* (
         visibility: command.input.visibility,
         filters,
       });
+
       const result = yield* decode(SavedViewResultSchema, {
         scope: command.scope,
         view: {
@@ -199,6 +241,7 @@ export const saveView = Effect.fn("workspace.saveView")(function* (
           filters: yield* toJsonObject(command.input.filters),
         },
       });
+
       yield* saveCommand(
         transaction,
         command.scope,
@@ -208,6 +251,7 @@ export const saveView = Effect.fn("workspace.saveView")(function* (
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -222,46 +266,65 @@ export const deleteView = Effect.fn("workspace.deleteView")(function* (
     input: typeof Workspace.DeleteView.Type;
   },
 ) {
-  return yield* withBook(token, command.scope, false, function* (transaction, principal) {
-    yield* requireWorkspaceAccess(transaction, receiptInserts);
-    const request = yield* replay(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      "workspace_delete_view",
-      principal.actorId,
-      yield* toJsonObject(command.input),
-      DeletedViewSchema,
-    );
-    if (request.previous) return request.previous;
-    const target = (yield* Db.readOwnedView(
-      transaction,
-      command.scope.bookId,
-      principal.actorId,
-      command.input.id,
-    ))[0];
-    if (!target) return yield* failure("NotFound");
-    if (target.visibility === "team") {
-      const membership = (yield* Db.readBookMembershipRole(
+  return yield* withBook(
+    token,
+    command.scope,
+    false,
+    function* (transaction, principal) {
+      yield* requireWorkspaceAccess(transaction, receiptInserts);
+
+      const request = yield* replay(
+        transaction,
+        command.scope,
+        command.idempotencyKey,
+        "workspace_delete_view",
+        principal.actorId,
+        yield* toJsonObject(command.input),
+        DeletedViewSchema,
+      );
+
+      if (request.previous) return request.previous;
+
+      const target = (yield* Db.readOwnedView(
         transaction,
         command.scope.bookId,
         principal.actorId,
+        command.input.id,
       ))[0];
-      if (membership?.role !== "operator") return yield* failure("Forbidden");
-    }
-    yield* Db.deleteView(transaction, command.scope.bookId, command.input.id);
-    const result = yield* decode(DeletedViewSchema, { scope: command.scope, id: command.input.id });
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      "workspace_delete_view",
-      principal.actorId,
-      result,
-    );
-    return result;
-  }, "update");
+
+      if (!target) return yield* failure("NotFound");
+
+      if (target.visibility === "team") {
+        const membership = (yield* Db.readBookMembershipRole(
+          transaction,
+          command.scope.bookId,
+          principal.actorId,
+        ))[0];
+
+        if (membership?.role !== "operator") return yield* failure("Forbidden");
+      }
+
+      yield* Db.deleteView(transaction, command.scope.bookId, command.input.id);
+
+      const result = yield* decode(DeletedViewSchema, {
+        scope: command.scope,
+        id: command.input.id,
+      });
+
+      yield* saveCommand(
+        transaction,
+        command.scope,
+        command.idempotencyKey,
+        request.expected,
+        "workspace_delete_view",
+        principal.actorId,
+        result,
+      );
+
+      return result;
+    },
+    "update",
+  );
 });
 
 export const assignWork = Effect.fn("workspace.assignWork")(function* (
@@ -278,6 +341,7 @@ export const assignWork = Effect.fn("workspace.assignWork")(function* (
     true,
     function* (transaction, principal) {
       yield* requireWorkspaceAccess(transaction, assignmentInserts);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -287,10 +351,14 @@ export const assignWork = Effect.fn("workspace.assignWork")(function* (
         yield* toJsonObject(command.input),
         AssignmentResultSchema,
       );
+
       if (request.previous) return request.previous;
+
       if (command.input.note.length > 2000) return yield* failure("InvalidJournal");
       const dueOn = calendarDate(command.input.dueOn ?? undefined);
+
       if (dueOn === undefined) return yield* failure("InvalidJournal");
+
       if (
         (yield* Db.readWorkItem(
           transaction,
@@ -301,6 +369,7 @@ export const assignWork = Effect.fn("workspace.assignWork")(function* (
       ) {
         return yield* failure("NotFound");
       }
+
       if (command.input.assigneeId !== null) {
         if (
           (yield* Db.readBookMembershipRole(
@@ -312,16 +381,20 @@ export const assignWork = Effect.fn("workspace.assignWork")(function* (
           return yield* failure("InvalidJournal");
         }
       }
+
       const current = (yield* Db.readAssignmentRevision(
         transaction,
         command.scope.bookId,
         command.input.kind,
         command.input.recordId,
       ))[0]?.revision;
+
       if (current === undefined) return yield* failure("InternalError");
+
       if (Number(current) !== command.input.expectedRevision) {
         return yield* failure("StaleDependency");
       }
+
       const saved = (yield* Db.insertAssignment(transaction, {
         bookId: command.scope.bookId,
         kind: command.input.kind,
@@ -333,11 +406,14 @@ export const assignWork = Effect.fn("workspace.assignWork")(function* (
         updatedBy: principal.actorId,
         updatedAt: yield* isoNow(transaction),
       }))[0];
+
       if (!saved) return yield* failure("InternalError");
+
       const result = yield* decode(AssignmentResultSchema, {
         scope: command.scope,
         assignment: assignmentView(saved),
       });
+
       yield* saveCommand(
         transaction,
         command.scope,
@@ -347,6 +423,7 @@ export const assignWork = Effect.fn("workspace.assignWork")(function* (
         principal.actorId,
         result,
       );
+
       return result;
     },
     "update",
@@ -363,25 +440,32 @@ export const listWork = Effect.fn("workspace.listWork")(function* (
     const status = command.status ?? "open";
     const sort = command.sort ?? "newest";
     const search = trimmed(command.q);
+
     if (search.length > maximumSearch) return yield* failure("InvalidJournal");
+
     if (
       period !== null &&
       (yield* Db.readPeriod(transaction, command.scope.bookId, period)).length === 0
     ) {
       return yield* failure("NotFound");
     }
+
     const anchor =
       command.after === undefined
         ? null
         : ((yield* Db.readWorkAnchor(transaction, command.scope.bookId, command.after))[0] ?? null);
+
     if (command.after !== undefined && !anchor) return yield* failure("NotFound");
     const filters = { period, status, sort, search, anchor } satisfies Db.WorkFilters;
     const rows = yield* Db.listWorkItems(transaction, command.scope.bookId, filters);
     const counts = (yield* Db.countWorkItems(transaction, command.scope.bookId, filters))[0];
+
     if (!counts) return yield* failure("InternalError");
     const page = rows.slice(0, 50);
     const book = (yield* PostingDb.readBook(transaction, command.scope))[0];
+
     if (!book) return yield* failure("NotFound");
+
     if (
       page.some(
         (row) =>
@@ -393,6 +477,7 @@ export const listWork = Effect.fn("workspace.listWork")(function* (
     ) {
       return yield* failure("InternalError");
     }
+
     return yield* decode(WorkPageSchema, {
       scope: command.scope,
       actorId: principal.actorId,
@@ -437,19 +522,24 @@ export const listAttention = Effect.fn("workspace.listAttention")(function* (
     const status = command.status ?? "open";
     const sort = command.sort ?? "newest";
     const search = trimmed(command.q);
+
     if (search.length > maximumSearch) return yield* failure("InvalidJournal");
     const period = command.period ?? null;
+
     const starts =
       period === null
         ? null
         : ((yield* Db.readPeriod(transaction, command.scope.bookId, period))[0]?.startsOn ?? null);
+
     const ends =
       period === null
         ? null
         : ((yield* Db.readPeriod(transaction, command.scope.bookId, period))[0]?.endsOn ?? null);
+
     if (period !== null && starts === null) return yield* failure("NotFound");
     const after = command.after ?? null;
     const filters = { kind, period, status, sort, search, after } satisfies Db.AttentionFilters;
+
     if (
       after !== null &&
       (yield* Db.readAttentionAnchor(
@@ -465,6 +555,7 @@ export const listAttention = Effect.fn("workspace.listAttention")(function* (
     ) {
       return yield* failure("NotFound");
     }
+
     const rows = yield* Db.listAttentionItems(
       transaction,
       command.scope.bookId,
@@ -472,6 +563,7 @@ export const listAttention = Effect.fn("workspace.listAttention")(function* (
       starts,
       ends,
     );
+
     const counts = (yield* Db.countAttentionItems(
       transaction,
       command.scope.bookId,
@@ -479,8 +571,10 @@ export const listAttention = Effect.fn("workspace.listAttention")(function* (
       starts,
       ends,
     ))[0];
+
     if (!counts) return yield* failure("InternalError");
     const page = rows.slice(0, 50);
+
     return yield* decode(AttentionPageSchema, {
       scope: command.scope,
       checkedAt: yield* isoNow(transaction),

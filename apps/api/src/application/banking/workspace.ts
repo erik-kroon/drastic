@@ -8,6 +8,7 @@ import * as BankDb from "../../db/banking/shared";
 import * as Shared from "./shared";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type JsonObject = Schema.JsonObject;
 
 const WorkspaceSchema = Workspace.BankWorkspace;
@@ -37,20 +38,26 @@ export const bankWorkspace = Effect.fn("banking.workspace")(function* (
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, workspaceTables);
       const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
       if (!book) return yield* failure("Forbidden");
 
       const { startsOn, endsOn } = command.input;
+
       if (startsOn > endsOn) return yield* failure("InvalidJournal");
       const view = command.input.view ?? "unmatched";
+
       if (!views.includes(view)) return yield* failure("InvalidJournal");
       const search = (command.input.q ?? "").toLowerCase();
+
       if (search.length > 200) return yield* failure("InvalidJournal");
       const page = Number.parseInt(command.input.page ?? "1", 10);
+
       if (!Number.isSafeInteger(page) || page < 1 || page > 999999) {
         return yield* failure("InvalidJournal");
       }
 
       const accountId = command.input.accountId;
+
       if (
         accountId !== undefined &&
         (yield* WorkspaceDb.readBankSourceExists(transaction, command.scope.bookId, accountId))[0]
@@ -66,6 +73,7 @@ export const bankWorkspace = Effect.fn("banking.workspace")(function* (
         startsOn,
         endsOn,
       ))[0];
+
       const activity =
         accountId === undefined
           ? { total: 0, counts: { all: 0, unmatched: 0, matched: 0, ledger: 0 }, rows: [] }
@@ -80,6 +88,7 @@ export const bankWorkspace = Effect.fn("banking.workspace")(function* (
               search,
               page,
             ))[0];
+
       const reviews =
         accountId === undefined
           ? []
@@ -90,9 +99,11 @@ export const bankWorkspace = Effect.fn("banking.workspace")(function* (
               startsOn,
               endsOn,
             ))[0]?.reviews ?? []);
+
       const checkedAt = (yield* WorkspaceDb.readDatabaseTime(transaction))[0]?.now;
 
       if (checkedAt === undefined) return yield* failure("InternalError");
+
       return yield* Shared.decode(WorkspaceSchema, {
         scope: command.scope,
         currency: book.currency,

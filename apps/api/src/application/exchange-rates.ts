@@ -1,10 +1,11 @@
+import { digest as digestNative } from "./json";
 import * as Rates from "@open-erp/contracts/exchange-rates";
 import { canonicalizeJson } from "@open-erp/domain/canonicalization";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import { failure } from "./failures";
 import { lockBookForShare, lockBookForUpdate } from "../db/posting";
-import { digestJson } from "../db/commerce/access";
+
 import * as RateDb from "../db/exchange-rates";
 import type { Transaction } from "../db/transaction";
 import { isoNow, newId, replay, saveCommand } from "./posting";
@@ -19,22 +20,37 @@ import {
 } from "./commerce/support";
 
 type CreateInput = typeof Rates.CreateExchangeRate.Type;
+
 type ReviseInput = typeof Rates.ReviseExchangeRate.Type;
+
 type WithdrawInput = typeof Rates.WithdrawExchangeRate.Type;
+
 type CaptureInput = typeof Rates.CaptureConversionReview.Type;
+
 type Terms = typeof Rates.ExchangeRateTerms.Type;
+
 type BookBasis = typeof Rates.ConversionBookBasis.Type;
+
 type RevisionBody = typeof Rates.ExchangeRateRevision.Type;
+
 type Amounts = typeof Rates.ConversionAmounts.Type;
 
 const RevisionSchema = Rates.ExchangeRateRevision;
+
 const WithdrawalSchema = Rates.ExchangeRateWithdrawal;
+
 const UsabilitySchema = Rates.ExchangeRateUsability;
+
 const BookBasisSchema = Rates.ConversionBookBasis;
+
 const ViewSchema = Rates.ExchangeRateView;
+
 const ListSchema = Rates.ExchangeRateList;
+
 const ReviewSchema = Rates.ConversionReview;
+
 const ReviewViewSchema = Rates.ConversionReviewView;
+
 const ReviewListSchema = Rates.ConversionReviewList;
 
 const termKeys = [
@@ -49,7 +65,9 @@ const termKeys = [
   "reviewEvidenceId",
   "rationale",
 ] as const;
+
 const withdrawalInputKeys = ["expectedDigest", "evidenceId", "rationale"] as const;
+
 const conversionInputKeys = [
   "observationId",
   "revisionDigest",
@@ -62,12 +80,18 @@ const conversionInputKeys = [
   "sourceLocator",
   "rationale",
 ] as const;
+
 const conversionFormula =
   "N = originalMinor * rateNumerator * 10^bookScale; D = rateDenominator * 10^sourceScale; rounded = div(N,D) + (2*mod(N,D) >= D ? 1 : 0); residualNumerator = N - rounded*D; residualDenominator = D";
+
 const maximumRevision = 20;
+
 const maximumObservations = 200;
+
 const maximumConversions = 200;
+
 const maximumArtifactBytes = 1048576;
+
 const minorUnitBound = 10n ** 38n;
 
 function requireRateAccess(transaction: Transaction, write: boolean) {
@@ -75,8 +99,10 @@ function requireRateAccess(transaction: Transaction, write: boolean) {
     Effect.flatMap((rows) => {
       const denied = RateDb.rateTables.some((name) => {
         const access = rows.find((row) => row.tableName === name);
+
         return access === undefined || !access.canSelect || (write && !access.canInsert);
       });
+
       return denied ? unsupported() : Effect.void;
     }),
   );
@@ -98,6 +124,7 @@ function readCurrent(transaction: Transaction, bookId: string, observationId: st
   return RateDb.readRevisions(transaction, bookId, observationId).pipe(
     Effect.flatMap((rows) => {
       const row = rows.at(-1);
+
       return row ? decode(RevisionSchema, row.body) : failure("NotFound");
     }),
   );
@@ -107,6 +134,7 @@ function readUsability(transaction: Transaction, bookId: string, observationId: 
   return RateDb.readWithdrawal(transaction, bookId, observationId).pipe(
     Effect.flatMap((rows) => {
       const body = rows[0]?.body;
+
       return decode(UsabilitySchema, {
         state: body === undefined ? "active" : "withdrawn",
         withdrawal: body ?? null,
@@ -125,6 +153,7 @@ function readBookBasis(transaction: Transaction, bookId: string) {
   return RateDb.readBookBasis(transaction, bookId).pipe(
     Effect.flatMap((rows) => {
       const row = rows[0];
+
       return row ? decode(BookBasisSchema, row) : failure("Forbidden");
     }),
   );
@@ -133,8 +162,10 @@ function readBookBasis(transaction: Transaction, bookId: string) {
 function readNativeBook(transaction: Transaction, bookId: string) {
   return Effect.gen(function* () {
     const row = (yield* RateDb.readBookBasis(transaction, bookId))[0];
+
     if (!row) return yield* failure("Forbidden");
     yield* requireNativeSynthetic(row);
+
     return yield* decode(BookBasisSchema, row);
   });
 }
@@ -143,6 +174,7 @@ function readEvidenceSha(transaction: Transaction, bookId: string, evidenceId: s
   return RateDb.readEvidenceDigest(transaction, bookId, evidenceId).pipe(
     Effect.flatMap((rows) => {
       const row = rows[0];
+
       return row ? Effect.succeed(row.sha256) : failure("MissingEvidence");
     }),
   );
@@ -152,12 +184,8 @@ function recordMetadata(actorId: string, key: string, operation: string, now: st
   return { createdAt: now, receipt: { key, operation, actorId } } satisfies JsonObject;
 }
 
-function digestBody(transaction: Transaction, body: JsonObject) {
-  return digestJson(transaction, body).pipe(
-    Effect.flatMap((rows) => {
-      const digest = rows[0]?.digest;
-      return digest === undefined ? failure("InternalError") : Effect.succeed(digest);
-    }),
+function digestBody(body: JsonObject) {
+  return digestNative(body).pipe(
     Effect.map((digest): JsonObject => Object.assign({}, body, { digest })),
   );
 }
@@ -165,7 +193,9 @@ function digestBody(transaction: Transaction, body: JsonObject) {
 function canonicalContent(body: JsonObject) {
   return Effect.gen(function* () {
     const canonical = yield* Effect.sync(() => canonicalizeJson(body));
+
     if (Result.isFailure(canonical)) return yield* failure("InternalError");
+
     return canonical.success.json;
   });
 }
@@ -174,6 +204,7 @@ function sha256Hex(value: string) {
   return Effect.tryPromise({
     try: async () => {
       const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+
       return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(
         "",
       );
@@ -197,21 +228,26 @@ function buildRevision(
 ) {
   return Effect.gen(function* () {
     yield* exactKeys(yield* toJsonObject(row.terms), termKeys);
+
     if (row.terms.fromCurrency === row.terms.toCurrency || row.terms.toCurrency !== bookCurrency) {
       return yield* unsupported();
     }
+
     yield* requireTrimmable(row.terms.sourceLocator);
     yield* requireTrimmable(row.terms.rationale);
     const sourceSha256 = yield* readEvidenceSha(transaction, scope.bookId, row.terms.evidenceId);
+
     const reviewSha256 = yield* readEvidenceSha(
       transaction,
       scope.bookId,
       row.terms.reviewEvidenceId,
     );
+
     const now = yield* isoNow(transaction);
+
     return yield* decode(
       RevisionSchema,
-      yield* digestBody(transaction, {
+      yield* digestBody({
         observationId: row.observationId,
         sourceKey: row.sourceKey,
         revision: row.revision,
@@ -238,6 +274,7 @@ export const createExchangeRate = Effect.fn("exchangeRates.create")(function* (
     true,
     function* (transaction, principal) {
       const payload = yield* toJsonObject(command.input);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -247,20 +284,25 @@ export const createExchangeRate = Effect.fn("exchangeRates.create")(function* (
         payload,
         RevisionSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireRateAccess(transaction, true);
       yield* lockBookForUpdate(transaction, command.scope);
       yield* exactKeys(payload, ["sourceKey", "terms"]);
       const book = yield* readNativeBook(transaction, command.scope.bookId);
+
       const existing = yield* RateDb.readObservationBySourceKey(
         transaction,
         command.scope.bookId,
         command.input.sourceKey,
       );
+
       if (existing.length > 0) return yield* failure("IdempotencyConflict");
       const bound = yield* RateDb.countObservations(transaction, command.scope.bookId);
+
       if ((bound[0]?.total ?? 0) >= maximumObservations) return yield* unsupported();
       const observationId = newId("rate");
+
       const body = yield* buildRevision(
         transaction,
         command.scope,
@@ -278,6 +320,7 @@ export const createExchangeRate = Effect.fn("exchangeRates.create")(function* (
           actorId: principal.actorId,
         },
       );
+
       yield* RateDb.insertObservation(transaction, {
         bookId: command.scope.bookId,
         id: observationId,
@@ -300,6 +343,7 @@ export const createExchangeRate = Effect.fn("exchangeRates.create")(function* (
         principal.actorId,
         body,
       );
+
       return body;
     },
     "update",
@@ -311,6 +355,7 @@ export const reviseExchangeRate = Effect.fn("exchangeRates.revise")(function* (
   command: { scope: Scope; id: string; idempotencyKey: string; input: ReviseInput },
 ) {
   const payload: JsonObject = { id: command.id, input: command.input };
+
   return yield* withBook(
     token,
     command.scope,
@@ -325,6 +370,7 @@ export const reviseExchangeRate = Effect.fn("exchangeRates.revise")(function* (
         payload,
         RevisionSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireRateAccess(transaction, true);
       yield* lockBookForUpdate(transaction, command.scope);
@@ -332,9 +378,12 @@ export const reviseExchangeRate = Effect.fn("exchangeRates.revise")(function* (
       const book = yield* readNativeBook(transaction, command.scope.bookId);
       const current = yield* readCurrent(transaction, command.scope.bookId, command.id);
       yield* requireActive(transaction, command.scope.bookId, command.id);
+
       if (current.digest !== command.input.expectedDigest) return yield* failure("StaleDependency");
       const revision = current.revision + 1;
+
       if (revision > maximumRevision) return yield* unsupported();
+
       const body = yield* buildRevision(
         transaction,
         command.scope,
@@ -352,6 +401,7 @@ export const reviseExchangeRate = Effect.fn("exchangeRates.revise")(function* (
           actorId: principal.actorId,
         },
       );
+
       yield* RateDb.insertRevision(transaction, {
         bookId: command.scope.bookId,
         observationId: command.id,
@@ -369,6 +419,7 @@ export const reviseExchangeRate = Effect.fn("exchangeRates.revise")(function* (
         principal.actorId,
         payload,
       );
+
       return body;
     },
     "update",
@@ -380,6 +431,7 @@ export const withdrawExchangeRate = Effect.fn("exchangeRates.withdraw")(function
   command: { scope: Scope; id: string; idempotencyKey: string; input: WithdrawInput },
 ) {
   const payload: JsonObject = { id: command.id, input: command.input };
+
   return yield* withBook(
     token,
     command.scope,
@@ -394,23 +446,28 @@ export const withdrawExchangeRate = Effect.fn("exchangeRates.withdraw")(function
         payload,
         WithdrawalSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireRateAccess(transaction, true);
       yield* lockBookForUpdate(transaction, command.scope);
       yield* exactKeys(yield* toJsonObject(command.input), withdrawalInputKeys);
       const current = yield* readCurrent(transaction, command.scope.bookId, command.id);
+
       if (current.digest !== command.input.expectedDigest) return yield* failure("StaleDependency");
       yield* requireActive(transaction, command.scope.bookId, command.id);
       yield* requireTrimmable(command.input.rationale);
+
       const evidenceSha256 = yield* readEvidenceSha(
         transaction,
         command.scope.bookId,
         command.input.evidenceId,
       );
+
       const now = yield* isoNow(transaction);
+
       const body = yield* decode(
         WithdrawalSchema,
-        yield* digestBody(transaction, {
+        yield* digestBody({
           id: newId("rate_withdrawal"),
           scope: command.scope,
           observationId: command.id,
@@ -427,6 +484,7 @@ export const withdrawExchangeRate = Effect.fn("exchangeRates.withdraw")(function
           ),
         }),
       );
+
       yield* RateDb.insertWithdrawal(transaction, {
         bookId: command.scope.bookId,
         observationId: command.id,
@@ -444,6 +502,7 @@ export const withdrawExchangeRate = Effect.fn("exchangeRates.withdraw")(function
         principal.actorId,
         payload,
       );
+
       return body;
     },
     "update",
@@ -458,11 +517,14 @@ export const getExchangeRate = Effect.fn("exchangeRates.get")(function* (
     yield* requireRateAccess(transaction, false);
     yield* lockBookForShare(transaction, input.scope);
     const rows = yield* RateDb.readRevisions(transaction, input.scope.bookId, input.id);
+
     if (rows.length === 0) return yield* failure("NotFound");
     const revisions = yield* Effect.forEach(rows, (row) => decode(RevisionSchema, row.body));
     const current = revisions.at(-1);
+
     if (!current) return yield* failure("NotFound");
     const usability = yield* readUsability(transaction, input.scope.bookId, input.id);
+
     return yield* decode(ViewSchema, { current, revisions, usability });
   });
 });
@@ -475,14 +537,17 @@ export const listExchangeRates = Effect.fn("exchangeRates.list")(function* (
     yield* requireRateAccess(transaction, false);
     yield* lockBookForShare(transaction, input.scope);
     const observations = yield* RateDb.readObservations(transaction, input.scope.bookId);
+
     const items = yield* Effect.forEach(observations, (observation) =>
       readCurrent(transaction, input.scope.bookId, observation.id),
     );
+
     const statuses = yield* Effect.forEach(observations, (observation) =>
       readUsability(transaction, input.scope.bookId, observation.id).pipe(
         Effect.map((usability) => ({ observationId: observation.id, usability })),
       ),
     );
+
     return yield* decode(ListSchema, { scope: input.scope, items, statuses });
   });
 });
@@ -490,11 +555,14 @@ export const listExchangeRates = Effect.fn("exchangeRates.list")(function* (
 function convert(input: CaptureInput, bookScale: number, rate: RevisionBody) {
   const numerator =
     BigInt(input.originalMinor) * BigInt(rate.terms.rateNumerator) * 10n ** BigInt(bookScale);
+
   const denominator = BigInt(rate.terms.rateDenominator) * 10n ** BigInt(input.sourceScale);
   const quotient = numerator / denominator;
   const remainder = numerator % denominator;
   const rounded = quotient + (2n * remainder >= denominator ? 1n : 0n);
+
   if (rounded >= minorUnitBound) return failure("InvalidJournal");
+
   return Effect.succeed({
     exactNumerator: numerator.toString(),
     exactDenominator: denominator.toString(),
@@ -516,6 +584,7 @@ export const captureConversionReview = Effect.fn("exchangeRates.captureConversio
     false,
     function* (transaction, principal) {
       const payload = yield* toJsonObject(command.input);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -525,6 +594,7 @@ export const captureConversionReview = Effect.fn("exchangeRates.captureConversio
         payload,
         ReviewSchema,
       );
+
       if (request.previous) return request.previous;
       yield* requireRateAccess(transaction, true);
       yield* lockBookForUpdate(transaction, command.scope);
@@ -532,13 +602,17 @@ export const captureConversionReview = Effect.fn("exchangeRates.captureConversio
       const book = yield* readNativeBook(transaction, command.scope.bookId);
       yield* requireTrimmable(command.input.sourceLocator);
       yield* requireTrimmable(command.input.rationale);
+
       const rate = yield* readCurrent(
         transaction,
         command.scope.bookId,
         command.input.observationId,
       );
+
       yield* requireActive(transaction, command.scope.bookId, command.input.observationId);
+
       if (rate.digest !== command.input.revisionDigest) return yield* failure("StaleDependency");
+
       if (
         command.input.conversionDate !== rate.terms.effectiveOn ||
         command.input.fromCurrency !== rate.terms.fromCurrency ||
@@ -546,18 +620,22 @@ export const captureConversionReview = Effect.fn("exchangeRates.captureConversio
       ) {
         return yield* failure("StaleDependency");
       }
+
       const sourceSha256 = yield* readEvidenceSha(
         transaction,
         command.scope.bookId,
         command.input.evidenceId,
       );
+
       const bound = yield* RateDb.countConversions(transaction, command.scope.bookId);
+
       if ((bound[0]?.total ?? 0) >= maximumConversions) return yield* unsupported();
       const calculation = yield* convert(command.input, book.currencyScale, rate);
       const now = yield* isoNow(transaction);
+
       const body = yield* decode(
         ReviewSchema,
-        yield* digestBody(transaction, {
+        yield* digestBody({
           id: newId("conversion"),
           scope: command.scope,
           kind: "synthetic_exchange_conversion_v1",
@@ -578,8 +656,10 @@ export const captureConversionReview = Effect.fn("exchangeRates.captureConversio
           ),
         }),
       );
+
       const content = yield* canonicalContent(yield* toJsonObject(body));
       const byteLength = new TextEncoder().encode(content).byteLength;
+
       if (byteLength > maximumArtifactBytes) return yield* unsupported();
       const sha256 = yield* sha256Hex(content);
       yield* RateDb.insertConversion(transaction, {
@@ -602,6 +682,7 @@ export const captureConversionReview = Effect.fn("exchangeRates.captureConversio
         principal.actorId,
         payload,
       );
+
       return body;
     },
     "update",
@@ -627,11 +708,13 @@ export const getConversionReview = Effect.fn("exchangeRates.getConversion")(func
     yield* requireRateAccess(transaction, false);
     yield* lockBookForShare(transaction, input.scope);
     const row = (yield* RateDb.readConversion(transaction, input.scope.bookId, input.id))[0];
+
     if (!row) return yield* failure("NotFound");
     const review = yield* decode(ReviewSchema, row.body);
     const rate = yield* readCurrent(transaction, input.scope.bookId, row.observationId);
     const book = yield* readBookBasis(transaction, input.scope.bookId);
     const rateUsability = yield* readUsability(transaction, input.scope.bookId, row.observationId);
+
     return yield* decode(ReviewViewSchema, {
       review,
       rateUsability,
@@ -657,6 +740,7 @@ export const listConversionReviews = Effect.fn("exchangeRates.listConversions")(
     yield* requireRateAccess(transaction, false);
     yield* lockBookForShare(transaction, input.scope);
     const rows = yield* RateDb.listConversions(transaction, input.scope.bookId);
+
     const items = yield* Effect.forEach(rows, (row) =>
       decode(ReviewSchema, row.body).pipe(
         Effect.map((review) => ({
@@ -675,6 +759,7 @@ export const listConversionReviews = Effect.fn("exchangeRates.listConversions")(
         })),
       ),
     );
+
     return yield* decode(ReviewListSchema, { scope: input.scope, items });
   });
 });

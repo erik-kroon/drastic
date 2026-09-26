@@ -25,6 +25,7 @@ export function BankReport({
   expected?: { accountId: string; startsOn: string; endsOn: string };
 }) {
   const copy = accountingCopy(locale);
+
   const report = useQuery({
     queryKey: [...bookKey(book), "bank-reconciliation", id, expected],
     queryFn: async ({ signal }) => {
@@ -33,12 +34,14 @@ export function BankReport({
         Bank.BankReconciliationView,
         { signal },
       );
+
       if (
         view.report.id !== id ||
         view.report.scope.entityId !== book.entityId ||
         view.report.scope.bookId !== book.id
       )
         throw new Error("Report scope mismatch");
+
       if (
         expected &&
         (view.report.accountId !== expected.accountId ||
@@ -46,12 +49,15 @@ export function BankReport({
           view.report.endsOn !== expected.endsOn)
       )
         throw new Error("Report account or period mismatch");
+
       return view;
     },
     retry: false,
   });
-  const scopeMismatch = report.error instanceof Error &&
-    report.error.message === "Report account or period mismatch";
+
+  const scopeMismatch =
+    report.error instanceof Error && report.error.message === "Report account or period mismatch";
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.bank_report}</Heading>
@@ -67,12 +73,18 @@ export function BankReport({
           {copy.journal_refresh}
         </Button>
       </Box>
-      <AccountingStatus locale={locale} pending={report.isPending} error={scopeMismatch ? null : report.error} />
-      {scopeMismatch ? <Text role="alert">
-        {locale === "sv"
-          ? "Rapporten hör till ett annat konto eller en annan period. Välj den ursprungliga perioden eller spara en ny rapport här."
-          : "This report belongs to another account or period. Select its original period or save a new report here."}
-      </Text> : null}
+      <AccountingStatus
+        locale={locale}
+        pending={report.isPending}
+        error={scopeMismatch ? null : report.error}
+      />
+      {scopeMismatch ? (
+        <Text role="alert">
+          {locale === "sv"
+            ? "Rapporten hör till ett annat konto eller en annan period. Välj den ursprungliga perioden eller spara en ny rapport här."
+            : "This report belongs to another account or period. Select its original period or save a new report here."}
+        </Text>
+      ) : null}
       {report.isSuccess ? (
         <>
           <Text tone="muted">
@@ -103,21 +115,27 @@ function ReportDetails({
 }) {
   const copy = accountingCopy(locale);
   const metadata = useQuery(workQueryOptions(book, {}));
+
   const setup = useQuery({
     queryKey: [...bookKey(book), "setup"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
     retry: false,
   });
+
   const scale = metadata.data?.currencyScale;
+
   const amount = (value: string | null) =>
     value === null || scale === undefined ? "—" : formatMinorAmount(value, scale, locale);
+
   const report = view.report;
+
   const status = {
     complete: copy.bank_complete,
     balanced_but_incomplete: copy.bank_incomplete,
     differences: copy.bank_differences,
   };
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <RecordHeading
@@ -307,6 +325,7 @@ function SourceRows({
   locale: Locale;
 }) {
   const copy = accountingCopy(locale);
+
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <DataTable
@@ -347,6 +366,7 @@ function LedgerLines({
   locale: Locale;
 }) {
   const copy = accountingCopy(locale);
+
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <DataTable

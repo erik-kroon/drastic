@@ -43,21 +43,26 @@ export const readCaptureProviders = Effect.fn("accountantReview.captureProviders
 ) {
   const owners = yield* OwnerDb.listOwners(transaction, scope.bookId, "", 101);
   const expenses = yield* ExpenseDb.readCurrentInventory(transaction, scope.bookId);
+
   if (owners.length > 100 || expenses.length > 200) return yield* failure("UnsupportedProfile");
+
   const ownerControls = yield* Effect.forEach(owners, (owner) =>
     controlBody(transaction, scope, owner.id, startsOn, endsOn).pipe(
       Effect.map((body) => ({ ...body, section: "owner_controls" })),
     ),
   );
+
   const expenseTax = yield* Effect.forEach(expenses, (row) =>
     Effect.gen(function* () {
       const source = yield* object(row.item.current);
       const review = row.item.latestReview === null ? null : yield* object(row.item.latestReview);
+
       const assessment = yield* assessSource(transaction, scope, source, review, {
         mode: "actual_review",
         startsOn,
         endsOn,
       });
+
       return {
         section: "expense_tax",
         assessmentMode: "actual_review",
@@ -67,5 +72,6 @@ export const readCaptureProviders = Effect.fn("accountantReview.captureProviders
       };
     }),
   );
+
   return { ownerControls, expenseTax } satisfies CaptureProviderRows;
 });

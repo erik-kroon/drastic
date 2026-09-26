@@ -36,6 +36,7 @@ export function PrepareSourceVoucher({
   const sv = locale === "sv";
   const keys = useRef(new Map<string, string>());
   const path = `${bookPath(book)}/sie-financial-runs/${encodeURIComponent(run.id)}/proposals`;
+
   const prepare = useMutation({
     mutationFn: (input: typeof Historical.PrepareSourceVoucher.Type) =>
       readAccounting(
@@ -48,8 +49,10 @@ export function PrepareSourceVoucher({
       await onPrepared();
     },
   });
+
   const uncertain = isUncertainWriteError(prepare.error);
   const disabled = prepare.isPending || uncertain;
+
   const form = useForm({
     defaultValues: { accountingPeriodId: "", series: "", rationale: "" },
     validators: { onSubmit: Schema.toStandardSchemaV1(inputSchema) },
@@ -64,6 +67,7 @@ export function PrepareSourceVoucher({
         .catch(() => undefined);
     },
   });
+
   return (
     <details open={!hasProposal}>
       <summary>
@@ -179,6 +183,7 @@ export function ReviewSourceVoucher({
   const sv = locale === "sv";
   const keys = useRef(new Map<string, string>());
   const approvalPath = `${bookPath(book)}/change-sets/${encodeURIComponent(proposal.id)}/approvals`;
+
   const approval = useMutation({
     mutationFn: () =>
       readAccounting(
@@ -191,7 +196,9 @@ export function ReviewSourceVoucher({
         ),
       ),
   });
+
   const postPath = `${bookPath(book)}/sie-financial-runs/${encodeURIComponent(run.id)}/chunks`;
+
   const post = useMutation({
     mutationFn: (input: {
       fence: string;
@@ -208,8 +215,10 @@ export function ReviewSourceVoucher({
       await onPosted();
     },
   });
+
   const uncertain = isUncertainWriteError(post.error);
   const disabled = book.role !== "operator" || approval.isPending || post.isPending;
+
   const form = useForm({
     defaultValues: { reviewed: false },
     validators: {
@@ -219,6 +228,7 @@ export function ReviewSourceVoucher({
       await approval.mutateAsync().catch(() => undefined);
     },
   });
+
   return (
     <Box display="grid" gap="md">
       {proposal.groups

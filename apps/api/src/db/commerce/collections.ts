@@ -293,3 +293,15 @@ export function insertStatement(
     "objects",
   );
 }
+
+export function insertStatementArtifact(
+  transaction: Transaction,
+  book: string,
+  id: string,
+  content: string,
+) {
+  return transaction.execute(
+    sql`insert into openerp.collection_statement_artifacts(book_id,statement_id,content) values(${book},${id},${content})`,
+    "objects",
+  );
+}

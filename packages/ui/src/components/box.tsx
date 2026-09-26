@@ -50,9 +50,13 @@ const shadows = {
 } as const;
 
 type Space = keyof typeof spacing;
+
 type Background = keyof typeof colors;
+
 type Border = keyof typeof borders;
+
 type Radius = keyof typeof radii;
+
 type Shadow = keyof typeof shadows;
 
 const styles = stylex.create({
@@ -158,13 +162,16 @@ const displayStyles = {
 } as const;
 
 const directionStyles = { row: styles.directionRow, column: styles.directionColumn } as const;
+
 const wrapStyles = { wrap: styles.wrap, nowrap: styles.noWrap } as const;
+
 const alignStyles = {
   start: styles.alignStart,
   center: styles.alignCenter,
   end: styles.alignEnd,
   stretch: styles.alignStretch,
 } as const;
+
 const justifyStyles = {
   start: styles.justifyStart,
   center: styles.justifyCenter,
@@ -173,12 +180,14 @@ const justifyStyles = {
   around: styles.justifyAround,
   evenly: styles.justifyEvenly,
 } as const;
+
 const positionStyles = {
   relative: styles.positionRelative,
   absolute: styles.positionAbsolute,
   sticky: styles.positionSticky,
   fixed: styles.positionFixed,
 } as const;
+
 const overflowStyles = {
   visible: styles.overflowVisible,
   hidden: styles.overflowHidden,
@@ -186,32 +195,42 @@ const overflowStyles = {
   auto: styles.overflowAuto,
   scroll: styles.overflowScroll,
 } as const;
+
 const widthStyles = { auto: styles.widthAuto, full: styles.widthFull, fit: styles.widthFit };
+
 const maxWidthStyles = {
   full: styles.maxWidthFull,
   content: styles.maxWidthContent,
   wide: styles.maxWidthWide,
 };
+
 const minWidthStyles = { zero: styles.minWidthZero };
+
 const heightStyles = { auto: styles.heightAuto, full: styles.heightFull, fit: styles.heightFit };
+
 const minHeightStyles = { zero: styles.minHeightZero, screen: styles.minHeightScreen };
+
 const borderWidthStyles = { none: styles.borderNone, thin: styles.borderThin };
+
 const columnsStyles = {
   1: styles.columnsOne,
   2: styles.columnsTwo,
   3: styles.columnsThree,
   4: styles.columnsFour,
 };
+
 const responsiveSmColumnStyles = {
   2: styles.columnsTwoSm,
   3: styles.columnsThreeSm,
   4: styles.columnsFourSm,
 };
+
 const responsiveLgColumnStyles = {
   2: styles.columnsTwoLg,
   3: styles.columnsThreeLg,
   4: styles.columnsFourLg,
 };
+
 const columnStyles = { full: styles.columnFull };
 
 const boxElements = [

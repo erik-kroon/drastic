@@ -218,6 +218,14 @@ GRANT UPDATE (review_attempt_id) ON TABLE openerp.supplier_inbox TO openerp_runt
 GRANT SELECT (token) ON TABLE openerp_auth.session TO openerp_runtime;
 GRANT SELECT (user_id) ON TABLE openerp_auth.session TO openerp_runtime;
 
+-- Historical import records and progress belong to application transactions.
+GRANT SELECT, INSERT ON TABLE openerp.historical_bases, openerp.historical_item_admissions,
+  openerp.historical_items, openerp.historical_payments, openerp.historical_matches,
+  openerp.superseded_historical_openings, openerp.sie_financial_runs,
+  openerp.sie_financial_proposals, openerp.sie_financial_postings TO openerp_runtime;
+GRANT UPDATE (change_set_id, body, opening_voucher_id) ON TABLE openerp.historical_bases TO openerp_runtime;
+GRANT UPDATE (next_ordinal, fence, lease_until, status) ON TABLE openerp.sie_financial_runs TO openerp_runtime;
+
 -- effect-mq queue sequences.
 GRANT SELECT, USAGE ON SEQUENCE public.effect_mq_flow_outbox_id_seq, public.effect_mq_jobs_seq_seq TO openerp_runtime;
 
@@ -230,106 +238,37 @@ GRANT EXECUTE ON FUNCTION openerp.digest(value jsonb) TO openerp_runtime;
 -- function is opted out explicitly.
 REVOKE ALL ON FUNCTION openerp.ar_legal_freeze_draft() FROM PUBLIC;
 REVOKE ALL ON FUNCTION openerp.ar_legal_freeze_register() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.ar_legal_guard_source() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.bank_allocated_source(book text, statement text, ordinal integer) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.bank_date(value text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.bank_exact_match_capacity_guard() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.bank_guard_recurring_posting() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.bank_match_open_periods(p_book text, p_legs jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.bank_matching_admission_guard() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.bank_require_profile(book text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION openerp.book_versions() FROM PUBLIC;
 REVOKE ALL ON FUNCTION openerp.bump_version() FROM PUBLIC;
 REVOKE ALL ON FUNCTION openerp.canonical(value jsonb) FROM PUBLIC;
 REVOKE ALL ON FUNCTION openerp.check_calendar() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.check_identity_session() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.commerce_assert_allocation(p_book text, p_receipt text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.commerce_assert_unallocation() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.commerce_check_allocation() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.commerce_exact_object(p_input jsonb, p_keys text[]) FROM PUBLIC;
 REVOKE ALL ON FUNCTION openerp.commerce_freeze_identity() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.commerce_fx_correction_effect_guard() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.commerce_fx_guard_legacy_capacity() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.commerce_fx_guard_owned_posting() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.commerce_fx_settlement_effect_guard() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.commerce_fx_voucher_effect_guard() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.commerce_guard_bank_source() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.commerce_guard_control_account() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.commerce_guard_voucher_reversal() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.commerce_require_profile(p_book text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.commerce_voucher_current(p_book text, p_voucher text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.correction_impact_resources(p_book text, p_voucher text, p_date date) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.correction_impact_resources_before_impairment(p_book text, p_voucher text, p_date date) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.correction_owner_impact_resources(p_book text, p_voucher text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.correction_require_unbound(p_book text, p_voucher text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.correction_unsupported_reversal_guard() FROM PUBLIC;
 REVOKE ALL ON FUNCTION openerp.digest(value jsonb) FROM PUBLIC;
 REVOKE ALL ON FUNCTION openerp.dimension_identity_guard() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.expense_tax_shape(value jsonb, fields text[]) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.expense_tax_source_admission() FROM PUBLIC;
 REVOKE ALL ON FUNCTION openerp.fail(code text, message text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION openerp.freeze_preparation_inputs() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.guard_historical_basis() FROM PUBLIC;
 REVOKE ALL ON FUNCTION openerp.guard_journal_ordinal() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.guard_sie_financial_proposal() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.guard_superseded_historical_opening() FROM PUBLIC;
 REVOKE ALL ON FUNCTION openerp.immutable_row() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.inspect_action(book text, action jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.intake_require_unsuperseded_preview() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.invoice_cancellation_admits(p_book text, p_change text, p_original text, p_action jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.invoice_cancellation_proof() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.invoice_cancellation_resources(p_book text, p_voucher text, p_invoice text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION openerp.invoice_issue_guard_draft() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.invoice_issue_require_aggregate() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.owner_assert_allocation(p_book text, p_receipt text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.owner_check_allocation() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.owner_guard_account() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.owner_guard_capacity() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.owner_guard_kernel() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.owner_require_ready(p_book text, p_record text, p_review text, p_historical boolean) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.owner_validate_line(p_book text, p_ready jsonb, p_action jsonb, p_line text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION openerp.posting_guard_approval_consumption() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.posting_guard_saved_command_receipt() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.record_historical_opening() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.refuse_withdrawn_expense_vat_link() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.refuse_withdrawn_vat_fact_revision() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.require_complete_correction_bundle() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.retain_collection_statement_artifact() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_basis_kernel_guard() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_basis_matches_revision(p_basis jsonb, p_revision jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_basis_revision_guard() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_check_disposal(p_book text, p_change text, p_action jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_check_impairment(p_book text, p_change text, p_action jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_check_posting_basis(p_book text, p_change text, p_action jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_current(book text, schedule_id text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_disposal_aggregate_guard() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_disposal_basis(p_book text, p_input jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_disposal_basis_guard() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_disposal_revision_guard() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_estimate_current(p_book text, p_schedule jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_impairment_aggregate_guard() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_impairment_basis(p_book text, p_input jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_impairment_schedule_for_voucher(p_book text, p_voucher text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_occurrence_states(book text, schedule jsonb, through_date date) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.subledger_posting_basis(p_book text, p_schedule text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION openerp.supplier_acceptance_guard_draft() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.supplier_acceptance_require_aggregate() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.supplier_credit_conserve() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.supplier_credit_require_aggregate() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.supplier_credit_source_boundary() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.tax_account_capacity_admission() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.tax_account_capacity_conservation() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.tax_account_event_classification(p_book text, p_event text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.tax_account_guard_correction() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.tax_account_guard_other_capacity() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.tax_account_line_claimed(p_book text, p_voucher text, p_line text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.tax_account_match_basis(p_scope jsonb, p_input jsonb) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.tax_account_match_view(p_book text, p_id text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.tax_account_open_period(p_book text, p_date date) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.vat_control_assert_reclassification_effect(p_book text, p_effect text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.vat_control_reclassification_effect_guard() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.vat_control_reclassification_kernel_guard() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.vat_control_refuse_generic_correction() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.vat_control_refuse_taxable_source_voucher() FROM PUBLIC;
-REVOKE ALL ON FUNCTION openerp.vat_control_reserved_account_guard() FROM PUBLIC;
 REVOKE ALL ON FUNCTION openerp.voucher_expected_line_count() FROM PUBLIC;
+
+-- Application-owned asset reviews, approvals and immutable financial effects.
+GRANT SELECT, INSERT ON openerp.subledger_disposal_reviews,
+  openerp.subledger_disposal_approvals, openerp.subledger_disposals,
+  openerp.subledger_impairment_reviews, openerp.subledger_impairment_approvals,
+  openerp.subledger_impairments TO openerp_runtime;
+
+-- Completed application command owners; no feature function execution privileges.
+GRANT SELECT, INSERT ON openerp.ar_legal_accounting_profiles,
+  openerp.ar_legal_issue_reviews, openerp.ar_legal_issue_approvals, openerp.ar_legal_issues,
+  openerp.ar_legal_delivery_requests, openerp.ar_legal_delivery_approvals,
+  openerp.ar_legal_delivery_attempts, openerp.ar_legal_delivery_reconciliations,
+  openerp.ar_legal_issue_counters, openerp.invoice_cancellation_reviews,
+  openerp.invoice_cancellation_approvals, openerp.invoice_cancellation_executions,
+  openerp.invoice_cancellation_revocations, openerp.invoice_cancellations,
+  openerp.sales_documents, openerp.sales_document_revisions, openerp.sales_order_conversions
+  TO openerp_runtime;
+GRANT UPDATE (last_number) ON openerp.ar_legal_issue_counters TO openerp_runtime;
+GRANT UPDATE (current_revision) ON openerp.sales_documents TO openerp_runtime;

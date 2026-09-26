@@ -1,7 +1,24 @@
 import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
-import { captureSourceReview, getSourcePreview, getSourcePurchaseLinks, getSourceReviewArtifact, getSourceRevisionHistory, listSourceOccurrences, listSourceReviewArtifacts, previewSourceCsv, recoverSourceRetention, reparseSourceCsv } from "../evidence-work";
-import { exportSourceArchive, getSourceOccurrence, getSourceOccurrenceMetadata, retainSource, searchSourceArchive } from "../source-retention";
+import {
+  captureSourceReview,
+  getSourcePreview,
+  getSourcePurchaseLinks,
+  getSourceReviewArtifact,
+  getSourceRevisionHistory,
+  listSourceOccurrences,
+  listSourceReviewArtifacts,
+  previewSourceCsv,
+  recoverSourceRetention,
+  reparseSourceCsv,
+} from "../evidence-work";
+import {
+  exportSourceArchive,
+  getSourceOccurrence,
+  getSourceOccurrenceMetadata,
+  retainSource,
+  searchSourceArchive,
+} from "../source-retention";
 
 export const sourceIntakeCapabilities = {
   source_retain: effectCapability(Capabilities.source_retain, retainSource),

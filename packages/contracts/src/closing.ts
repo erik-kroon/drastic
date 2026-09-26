@@ -15,15 +15,18 @@ export const PeriodPath = Schema.Struct({
   ...Accounting.Scope.fields,
   periodId: Accounting.Identifier,
 });
+
 export const PrepareClosing = Schema.Struct({
   action: Schema.Literals(["close", "reopen"]),
   reason: Accounting.Description,
 });
+
 export const ClosingCheck = Schema.Struct({
   code: Schema.String,
   passed: Schema.Boolean,
   detail: Schema.String,
 });
+
 export const SubledgerControlDependencies = Schema.Struct({
   version: Schema.Literal("synthetic_subledger_controls_v1"),
   basisDigest: Accounting.Digest,
@@ -34,6 +37,7 @@ export const SubledgerControlDependencies = Schema.Struct({
   controlAccountReconciled: Schema.Literal(false),
   financialCloseReady: Schema.Literal(false),
 });
+
 export const ClosingDependencies = Schema.Struct({
   periodVersion: Accounting.MinorUnits,
   ledgerSequence: Accounting.MinorUnits,
@@ -51,6 +55,7 @@ export const ClosingDependencies = Schema.Struct({
   familyInventoryDigest: Schema.optional(Accounting.Digest),
   reportId: Schema.NullOr(Accounting.Identifier),
 });
+
 export const DeclareClosingInventory = Schema.Struct({
   evidenceId: Accounting.Identifier,
   bankAccountIds: Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(100)),
@@ -58,6 +63,7 @@ export const DeclareClosingInventory = Schema.Struct({
     Schema.Array(ClosingFamilyDeclaration).check(Schema.isMinLength(10), Schema.isMaxLength(10)),
   ),
 });
+
 export const ClosingInventory = Schema.Struct({
   ...DeclareClosingInventory.fields,
   families: Schema.optional(Schema.Array(RetainedClosingFamily)),
@@ -68,6 +74,7 @@ export const ClosingInventory = Schema.Struct({
   declaredAt: Schema.String,
   coverage: Schema.Literals(["synthetic_bank_sources_only", "synthetic_family_inventory_v1"]),
 });
+
 export const ClosingReadiness = Schema.Struct({
   scope: Accounting.Scope,
   periodId: Accounting.Identifier,
@@ -84,6 +91,7 @@ export const ClosingReadiness = Schema.Struct({
   statutoryReady: Schema.Literal(false),
   statutoryBlockers: Schema.Array(Schema.String),
 });
+
 export const ClosingProposal = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -95,7 +103,9 @@ export const ClosingProposal = Schema.Struct({
   proposedBy: Accounting.Identifier,
   createdAt: Schema.String,
 });
+
 export const ApproveClosing = Schema.Struct({ digest: Accounting.Digest });
+
 export const ClosingApproval = Schema.Struct({
   id: Accounting.Identifier,
   proposalId: Accounting.Identifier,
@@ -103,10 +113,12 @@ export const ClosingApproval = Schema.Struct({
   actorId: Accounting.Identifier,
   expiresAt: Schema.String,
 });
+
 export const ExecuteClosing = Schema.Struct({
   digest: Accounting.Digest,
   approvalId: Accounting.Identifier,
 });
+
 export const ClosingReceipt = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -124,6 +136,7 @@ export const ClosingReceipt = Schema.Struct({
   committedAt: Schema.String,
   statutoryReady: Schema.Literal(false),
 });
+
 export const ClosingCertificate = Schema.Struct({
   id: Accounting.Identifier,
   kind: Schema.Literal("synthetic_technical_period_lock_v1"),
@@ -132,26 +145,32 @@ export const ClosingCertificate = Schema.Struct({
   receipt: ClosingReceipt,
   effectiveDependencies: ClosingDependencies,
 });
+
 export const ClosingProposalView = Schema.Struct({
   proposal: ClosingProposal,
   dependenciesCurrent: Schema.Boolean,
   receipt: Schema.NullOr(ClosingReceipt),
 });
+
 export const ClosingCertificateView = Schema.Struct({
   certificate: ClosingCertificate,
   current: Schema.Boolean,
   invalidatedBy: Schema.NullOr(Accounting.Identifier),
 });
+
 export const ClosingHistory = Schema.Struct({
   items: Schema.Array(ClosingReceipt),
   next: Schema.NullOr(Accounting.MinorUnits),
 });
+
 export const ClosingProposalCursor = Schema.String.check(
   Schema.isPattern(/^[a-z][a-z0-9_-]{2,127}:[a-z][a-z0-9_-]{2,127}$/),
 );
+
 export const ClosingProposalQuery = Schema.Struct({
   after: Schema.optional(ClosingProposalCursor),
 });
+
 export const ClosingProposalSummary = Schema.Struct({
   id: Accounting.Identifier,
   periodId: Accounting.Identifier,
@@ -170,6 +189,7 @@ export const ClosingProposalSummary = Schema.Struct({
     }),
   ),
 });
+
 export const ClosingProposalList = Schema.Struct({
   scope: Accounting.Scope,
   periodId: Accounting.Identifier,
@@ -179,10 +199,15 @@ export const ClosingProposalList = Schema.Struct({
   liveReadinessChecked: Schema.Literal(false),
   approvalAuthority: Schema.Literal(false),
 });
+
 const period = { params: PeriodPath, error: accountingErrors };
+
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
+
 const keyed = { ...identified, headers: Accounting.IdempotencyHeaders };
+
 const path = "/v1/entities/:entityId/books/:bookId";
+
 export const ClosingApi = HttpApiGroup.make("closing").add(
   HttpApiEndpoint.get("listClosingProposals", `${path}/periods/:periodId/closing-proposals`, {
     ...period,
@@ -235,10 +260,12 @@ export const ClosingApi = HttpApiGroup.make("closing").add(
 );
 
 const scoped = { scope: Accounting.Scope };
+
 const mutation = {
   ...scoped,
   idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
 };
+
 export const ClosingCapabilities = {
   periods_list_closing_proposals: {
     description:

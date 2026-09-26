@@ -61,6 +61,7 @@ function RootComponent() {
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   const locale = usePageLocale();
+
   return (
     <html lang={locale}>
       <head>

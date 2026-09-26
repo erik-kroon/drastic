@@ -69,6 +69,7 @@ function CursorPagination({
   styleX,
 }: CursorPaginationProps) {
   if (!canPrevious && !canNext) return null;
+
   return (
     <nav aria-label={ariaLabel} {...stylexProps([styles.nav, styleX], className)}>
       <div {...stylex.props(styles.list)}>
@@ -110,6 +111,7 @@ function Pagination({
   styleX,
 }: PaginationProps) {
   const current = Math.min(Math.max(1, page), Math.max(1, pageCount));
+
   return (
     <nav aria-label={ariaLabel} {...stylexProps([styles.nav, styleX], className)}>
       <ol {...stylex.props(styles.list)}>
@@ -166,4 +168,5 @@ function Pagination({
 }
 
 export { CursorPagination, Pagination, getPaginationItems };
+
 export type { CursorPaginationProps, PaginationItem, PaginationProps };

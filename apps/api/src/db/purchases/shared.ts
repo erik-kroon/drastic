@@ -28,43 +28,7 @@ export type BookStateRow = {
   readonly committedSequence: string;
 };
 
-export const purchaseTables = [
-  "books",
-  "accounts",
-  "periods",
-  "evidence",
-  "events",
-  "vouchers",
-  "journal_lines",
-  "change_sets",
-  "command_receipts",
-  "commerce_counterparties",
-  "commerce_counterparty_revisions",
-  "commerce_control_accounts",
-  "commerce_invoices",
-  "commerce_invoice_revisions",
-  "commerce_active_allocation_legs",
-  "supplier_inbox",
-  "supplier_extraction_attempts",
-  "supplier_invoice_drafts",
-  "supplier_invoice_draft_revisions",
-  "supplier_acceptance_reviews",
-  "supplier_acceptance_approvals",
-  "supplier_acceptances",
-  "supplier_credit_reviews",
-  "supplier_credit_approvals",
-  "supplier_credits",
-  "supplier_payment_batch_previews",
-  "supplier_payment_batch_exports",
-  "supplier_payment_batch_items",
-  "supplier_payee_proposals",
-  "supplier_payee_verifications",
-  "supplier_payment_outcomes",
-  "intake_contents",
-  "intake_occurrences",
-] as const;
-
-export function readTableAccess(transaction: Transaction) {
+export function readTableAccess(transaction: Transaction, names: ReadonlyArray<string>) {
   return transaction.execute<TableAccess>(
     sql`
       select
@@ -73,7 +37,7 @@ export function readTableAccess(transaction: Transaction) {
           else has_table_privilege(current_user, 'openerp.' || access.table_name, 'select') end as "canSelect",
         case when to_regclass('openerp.' || access.table_name) is null then false
           else has_table_privilege(current_user, 'openerp.' || access.table_name, 'insert') end as "canInsert"
-      from unnest(${textArray(purchaseTables)}) as access(table_name)
+      from unnest(${textArray(names)}) as access(table_name)
     `,
     "objects",
   );

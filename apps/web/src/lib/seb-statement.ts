@@ -1,5 +1,7 @@
 export const statementByteLimit = 1_048_576;
+
 const rowLimit = 10_000;
+
 const headers = ["Bokförd", "Valutadatum", "Text", "Typ", "Insättningar/uttag", "Bokfört saldo"];
 
 export class StatementProblem extends Error {
@@ -57,8 +59,10 @@ function csvRecords(source: string): CsvRecord[] {
   let mode: "plain" | "quoted" | "closed" = "plain";
   let line = 1;
   let recordLine = 1;
+
   for (let index = 0; index < source.length; index++) {
     const char = source[index];
+
     if (mode === "quoted") {
       if (char === '"') {
         if (source[index + 1] === '"') {
@@ -67,10 +71,13 @@ function csvRecords(source: string): CsvRecord[] {
         } else mode = "closed";
       } else {
         field += char;
+
         if (char === "\n" || (char === "\r" && source[index + 1] !== "\n")) line++;
       }
+
       continue;
     }
+
     if (char === ",") {
       fields.push(field);
       field = "";
@@ -78,10 +85,12 @@ function csvRecords(source: string): CsvRecord[] {
     } else if (char === "\n" || char === "\r") {
       fields.push(field);
       records.push({ line: recordLine, fields });
+
       if (records.length > rowLimit + 1) throw new StatementProblem("rows", recordLine);
       fields = [];
       field = "";
       mode = "plain";
+
       if (char === "\r" && source[index + 1] === "\n") index++;
       line++;
       recordLine = line;
@@ -92,25 +101,32 @@ function csvRecords(source: string): CsvRecord[] {
       field += char;
     }
   }
+
   if (mode === "quoted") throw new StatementProblem("csv", recordLine);
+
   if (field !== "" || fields.length > 0 || mode === "closed") {
     fields.push(field);
     records.push({ line: recordLine, fields });
   }
+
   if (records.length > rowLimit + 1) throw new StatementProblem("rows", recordLine);
+
   return records;
 }
 
 function accountingDate(value: string, line: number) {
   if (!/^[1-9]\d{3}-\d{2}-\d{2}$/.test(value)) throw new StatementProblem("date", line);
   const parsed = new Date(`${value}T00:00:00.000Z`);
+
   if (!Number.isFinite(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== value)
     throw new StatementProblem("date", line);
+
   return value;
 }
 
 function exactMinor(value: string, line: number) {
   if (!/^-?(0|[1-9]\d{0,35})\.\d{2}$/.test(value)) throw new StatementProblem("amount", line);
+
   return BigInt(value.replace(".", "")).toString();
 }
 
@@ -118,6 +134,7 @@ function movement(record: CsvRecord, ordinal: number): StatementMovement {
   const [bookedOn, valuedOn, description, transactionType] = record.fields;
   const amount = record.fields[4];
   const balance = record.fields[5];
+
   if (
     record.fields.length !== 6 ||
     bookedOn === undefined ||
@@ -128,6 +145,7 @@ function movement(record: CsvRecord, ordinal: number): StatementMovement {
     balance === undefined
   )
     throw new StatementProblem("csv", record.line);
+
   return {
     ordinal,
     sourceLine: record.line,
@@ -144,13 +162,16 @@ export async function previewSebStatement(file: File): Promise<StatementPreview>
   if (file.size > statementByteLimit) throw new StatementProblem("size");
   const bytes = await file.arrayBuffer();
   let source: string;
+
   try {
     source = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
     throw new StatementProblem("encoding");
   }
+
   const records = csvRecords(source);
   const header = records[0];
+
   if (
     !header ||
     header.fields.length !== headers.length ||
@@ -160,22 +181,29 @@ export async function previewSebStatement(file: File): Promise<StatementPreview>
   const rows = records.slice(1).map((record, index) => movement(record, index + 1));
   const newest = rows[0];
   const oldest = rows.at(-1);
+
   if (!newest || !oldest) throw new StatementProblem("empty");
   let deposits = 0n;
   let withdrawals = 0n;
   const balanceDifferenceRows: number[] = [];
+
   for (const [index, row] of rows.entries()) {
     const amount = BigInt(row.amountMinor);
+
     if (amount > 0n) deposits += amount;
     else withdrawals -= amount;
     const previous = rows[index + 1];
+
     if (previous) {
       if (row.bookedOn < previous.bookedOn) throw new StatementProblem("order", row.sourceLine);
+
       if (BigInt(row.balanceMinor) !== BigInt(previous.balanceMinor) + amount)
         balanceDifferenceRows.push(row.ordinal);
     }
   }
+
   const digest = await crypto.subtle.digest("SHA-256", bytes);
+
   return {
     profile: "seb_six_column_csv_v1",
     source: {

@@ -1,8 +1,38 @@
 import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
-import { createEvidence, executeChange, getChange, getEvidence, getReceipt, getVoucher, ledgerSnapshot, listVouchers, prepareCorrection, prepareJournal, validateChange } from "../posting";
-import { executeCorrectionBundle, getCorrectionBundle, getCorrectionBundleForVoucher, getCorrectionChain, getCorrectionImpact, listCorrectionBundles, prepareCorrectionBundle, prepareCorrectionImpact, recoverCorrectionRequest } from "../posting-corrections";
-import { getPostingRecovery, getSavedPostingRequest, listPostingRecovery, listSavedPostingRequests, recoverPostingRequest, runPostingRequest, savePostingRequest } from "../posting-recovery";
+import {
+  createEvidence,
+  executeChange,
+  getChange,
+  getEvidence,
+  getReceipt,
+  getVoucher,
+  ledgerSnapshot,
+  listVouchers,
+  prepareCorrection,
+  prepareJournal,
+  validateChange,
+} from "../posting";
+import {
+  executeCorrectionBundle,
+  getCorrectionBundle,
+  getCorrectionBundleForVoucher,
+  getCorrectionChain,
+  getCorrectionImpact,
+  listCorrectionBundles,
+  prepareCorrectionBundle,
+  prepareCorrectionImpact,
+  recoverCorrectionRequest,
+} from "../posting-corrections";
+import {
+  getPostingRecovery,
+  getSavedPostingRequest,
+  listPostingRecovery,
+  listSavedPostingRequests,
+  recoverPostingRequest,
+  runPostingRequest,
+  savePostingRequest,
+} from "../posting-recovery";
 
 export const ledgerCapabilities = {
   posting_save_request: effectCapability(Capabilities.posting_save_request, savePostingRequest),

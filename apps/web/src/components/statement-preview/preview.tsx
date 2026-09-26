@@ -32,8 +32,10 @@ export function StatementFilePreview({ locale }: { locale: Locale }) {
   async function review(file: File) {
     const current = ++selection.current;
     setState({ status: "reading" });
+
     try {
       const statement = await previewSebStatement(file);
+
       if (current === selection.current) setState({ status: "ready", statement });
     } catch (error) {
       if (current !== selection.current) return;
@@ -56,6 +58,7 @@ export function StatementFilePreview({ locale }: { locale: Locale }) {
         onSubmit={(event) => {
           event.preventDefault();
           const file = fileInput.current?.files?.[0];
+
           if (file && currency === "SEK") void review(file);
         }}
       >
@@ -96,6 +99,7 @@ export function StatementFilePreview({ locale }: { locale: Locale }) {
             variant="outline"
             onClick={() => {
               clear();
+
               if (fileInput.current) fileInput.current.value = "";
               fileInput.current?.focus();
             }}
@@ -126,6 +130,7 @@ export function StatementFilePreview({ locale }: { locale: Locale }) {
 function money(minor: string, locale: Locale) {
   const value = BigInt(minor);
   const absolute = value < 0n ? -value : value;
+
   return `${value < 0n ? "−" : ""}${new Intl.NumberFormat(locale).format(absolute / 100n)}${locale === "sv" ? "," : "."}${String(absolute % 100n).padStart(2, "0")}`;
 }
 
@@ -135,6 +140,7 @@ function StatementDetails({ statement, locale }: { statement: StatementPreview; 
   const pageSize = 100;
   const start = page * pageSize;
   const end = Math.min(start + pageSize, statement.rows.length);
+
   const summary = [
     { id: "count", cells: [copy.count, String(statement.rows.length)] },
     {
@@ -157,6 +163,7 @@ function StatementDetails({ statement, locale }: { statement: StatementPreview; 
       ],
     },
   ];
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.controls}</Heading>

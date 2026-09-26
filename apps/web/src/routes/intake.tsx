@@ -13,6 +13,7 @@ export const Route = createFileRoute("/intake")({ component: IntakePage });
 function IntakePage() {
   const locale = usePageLocale();
   const copy = statementCopy(locale);
+
   return (
     <Box
       maxWidth="wide"

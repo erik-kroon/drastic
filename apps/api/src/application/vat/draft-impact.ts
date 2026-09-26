@@ -14,26 +14,36 @@ export type RetainedDraft = {
 };
 
 type Draft = typeof Vat.VatDraft.Type;
+
 type BoxName = "box05" | "box10" | "box48" | "box49";
+
 type ContributionKey = "box05Minor" | "box10Minor" | "box48Minor";
 
 const maximumDraftFacts = 200;
+
 const comparableEngines: ReadonlyArray<Draft["calculation"]["engine"]> = [
   "vat-return-draft-v1",
   "vat-return-draft-v2",
   "vat-return-draft-v3",
 ];
+
 const boxNames: ReadonlyArray<BoxName> = ["box05", "box10", "box48", "box49"];
+
 const contributionKeys: ReadonlyArray<ContributionKey> = ["box05Minor", "box10Minor", "box48Minor"];
 
 function sameJson(left: Schema.Json, right: Schema.Json) {
   const first = canonicalizeJson(left);
   const second = canonicalizeJson(right);
+
   if (Result.isFailure(first) || Result.isFailure(second)) return false;
+
   return first.success.json === second.success.json;
 }
 
-function contributionOf(assessment: Draft["calculation"]["assessments"][number] | undefined, key: ContributionKey) {
+function contributionOf(
+  assessment: Draft["calculation"]["assessments"][number] | undefined,
+  key: ContributionKey,
+) {
   return assessment?.contribution === null || assessment?.contribution === undefined
     ? 0n
     : BigInt(assessment.contribution[key]);
@@ -41,11 +51,13 @@ function contributionOf(assessment: Draft["calculation"]["assessments"][number] 
 
 function difference(left: string | null, right: string | null) {
   if (left === null || right === null) return null;
+
   return (BigInt(right) - BigInt(left)).toString();
 }
 
 function requireComparable(draft: Draft) {
   const boxes = draft.calculation.syntheticBoxes;
+
   if (
     draft.input.mode !== "synthetic_demonstration" ||
     draft.basis.bookProfile !== "synthetic-core-v1" ||
@@ -56,21 +68,31 @@ function requireComparable(draft: Draft) {
   ) {
     return unsupported();
   }
+
   const facts = draft.basis.facts;
+
   if (facts.length > maximumDraftFacts || facts.length !== draft.calculation.assessments.length) {
     return unsupported();
   }
+
   const factIds = new Set(facts.map((observation) => observation.fact.factId));
-  const assessmentIds = new Set(draft.calculation.assessments.map((assessment) => assessment.factId));
+
+  const assessmentIds = new Set(
+    draft.calculation.assessments.map((assessment) => assessment.factId),
+  );
+
   if (factIds.size !== facts.length || assessmentIds.size !== facts.length) return unsupported();
+
   for (const observation of facts) {
     const assessment = draft.calculation.assessments.find(
       (candidate) => candidate.factId === observation.fact.factId,
     );
+
     if (assessment === undefined || assessment.sourceDigest !== observation.fact.digest) {
       return unsupported();
     }
   }
+
   for (const assessment of draft.calculation.assessments) {
     if (
       (assessment.state === "excluded" && assessment.contribution !== null) ||
@@ -79,12 +101,16 @@ function requireComparable(draft: Draft) {
       return unsupported();
     }
   }
+
   for (const [index, name] of (["box05", "box10", "box48"] as const).entries()) {
     const key = contributionKeys[index] ?? "box05Minor";
     let sum = 0n;
+
     for (const assessment of draft.calculation.assessments) sum += contributionOf(assessment, key);
+
     if (BigInt(boxes[name].exactMinor) !== sum) return unsupported();
   }
+
   return Effect.void;
 }
 
@@ -105,10 +131,14 @@ function draftReference(draft: Draft) {
 }
 
 function factSides(draft: Draft) {
-  const facts = new Map(draft.basis.facts.map((observation) => [observation.fact.factId, observation.fact]));
+  const facts = new Map(
+    draft.basis.facts.map((observation) => [observation.fact.factId, observation.fact]),
+  );
+
   const assessments = new Map(
     draft.calculation.assessments.map((assessment) => [assessment.factId, assessment]),
   );
+
   return new Map(
     [...facts.keys()].map((factId) => [
       factId,
@@ -133,6 +163,7 @@ function factImpact(
           revision: value.fact.revision,
           assessment: value.assessment,
         };
+
   return {
     factId,
     original: side(original),
@@ -159,21 +190,19 @@ function factImpact(
   };
 }
 
-export function buildImpact(
-  transaction: Transaction,
-  original: RetainedDraft,
-  replacement: RetainedDraft,
-) {
+export function buildImpact(original: RetainedDraft, replacement: RetainedDraft) {
   return Effect.gen(function* () {
     if (original.draft.id === replacement.draft.id || original.ordinal >= replacement.ordinal) {
       return yield* failure("InvalidJournal");
     }
+
     if (
       original.draft.input.startsOn !== replacement.draft.input.startsOn ||
       original.draft.input.endsOn !== replacement.draft.input.endsOn
     ) {
       return yield* failure("InvalidJournal");
     }
+
     yield* requireComparable(original.draft);
     yield* requireComparable(replacement.draft);
     const originalSides = factSides(original.draft);
@@ -181,8 +210,10 @@ export function buildImpact(
     const factIds = [...new Set([...originalSides.keys(), ...replacementSides.keys()])].sort();
     const originalBoxes = original.draft.calculation.syntheticBoxes;
     const replacementBoxes = replacement.draft.calculation.syntheticBoxes;
+
     if (originalBoxes === null || replacementBoxes === null) return yield* unsupported();
-    const body = yield* digestBody(transaction, {
+
+    const body = yield* digestBody({
       version: "vat-draft-impact-v1",
       scope: original.draft.scope,
       original: draftReference(original.draft),
@@ -194,7 +225,10 @@ export function buildImpact(
         box,
         original: originalBoxes[box] ?? null,
         replacement: replacementBoxes[box] ?? null,
-        exactDeltaMinor: difference(originalBoxes[box]?.exactMinor ?? null, replacementBoxes[box]?.exactMinor ?? null),
+        exactDeltaMinor: difference(
+          originalBoxes[box]?.exactMinor ?? null,
+          replacementBoxes[box]?.exactMinor ?? null,
+        ),
         reportedDeltaKrona: difference(
           originalBoxes[box]?.reportedKrona ?? null,
           replacementBoxes[box]?.reportedKrona ?? null,
@@ -207,6 +241,7 @@ export function buildImpact(
       filingReady: false,
       externalState: "not_submitted",
     });
+
     return body;
   });
 }

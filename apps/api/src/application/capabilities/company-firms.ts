@@ -1,7 +1,14 @@
 import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
 import { createCompany, getCompanySetup, saveCompanySetup } from "../company-setup";
-import { createFirm, getFirm, listFirms, removeFirmClient, saveFirmClient, saveFirmMember } from "../firms";
+import {
+  createFirm,
+  getFirm,
+  listFirms,
+  removeFirmClient,
+  saveFirmClient,
+  saveFirmMember,
+} from "../firms";
 
 export const companyFirmCapabilities = {
   company_create: effectCapability(Capabilities.company_create, createCompany),

@@ -11,7 +11,13 @@ import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { PreparationSelection } from "@/components/preparation-selection";
 import { PreparationBackground } from "@/components/preparation-background";
-import { bookKey, bookPath, isUncertainWriteError, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import {
+  bookKey,
+  bookPath,
+  isUncertainWriteError,
+  mutationOptions,
+  readAccounting,
+} from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
 
@@ -27,6 +33,7 @@ export function PreparationRunPanel({
   onPrepared: (id: string) => void;
 }) {
   const copy = accountingCopy(locale);
+
   const run = useQuery({
     queryKey: [...bookKey(book), "preparation-run", id],
     queryFn: async ({ signal }) => {
@@ -35,12 +42,14 @@ export function PreparationRunPanel({
         Automation.PreparationRun,
         { signal },
       );
+
       if (
         result.id !== id ||
         result.scope.bookId !== book.id ||
         result.scope.entityId !== book.entityId
       )
         throw new Error("Preparation run scope mismatch");
+
       return result;
     },
     retry: false,
@@ -48,13 +57,16 @@ export function PreparationRunPanel({
     refetchOnMount: "always",
     refetchInterval: (query) => (query.state.data?.state === "ready" ? 3000 : false),
   });
+
   const state = {
     ready: copy.auto_ready,
     blocked: copy.auto_blocked,
     cancelled: copy.auto_cancelled,
     completed: copy.auto_completed,
   };
+
   const readReady = run.isSuccess && run.fetchStatus === "idle" && run.isFetchedAfterMount;
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.auto_run}</Heading>
@@ -168,9 +180,11 @@ function RunCommands({
   const keys = useRef(new Map<string, string>());
   const [batch, setBatch] = useState("20");
   const [inputError, setInputError] = useState("");
+
   const command = useMutation({
     mutationFn: (payload: typeof Automation.AdvancePreparationRun.Type) => {
       const path = `${bookPath(book)}/preparation-runs/${encodeURIComponent(run.id)}/advance`;
+
       return readAccounting(
         path,
         Automation.PreparationRun,
@@ -182,6 +196,7 @@ function RunCommands({
       keys.current.clear();
       const queryKey = [...bookKey(book), "preparation-run", run.id];
       await client.cancelQueries({ queryKey, exact: true });
+
       return client.invalidateQueries({ queryKey, exact: true });
     },
     onError: (error) => {
@@ -189,20 +204,26 @@ function RunCommands({
         void client.invalidateQueries({ queryKey: [...bookKey(book), "preparation-run", run.id] });
     },
   });
+
   function advance(action: (typeof Automation.AdvancePreparationRun.Type)["action"]) {
     const decoded = Schema.decodeOption(Automation.AdvancePreparationRun)({
       action,
       maxItems: action === "cancel" ? 1 : Number(batch),
     });
+
     if (decoded._tag === "None") {
       setInputError(copy.journal_invalid);
+
       return;
     }
+
     setInputError("");
     command.mutate(decoded.value);
   }
+
   const uncertain = command.isError && isUncertainWriteError(command.error);
   const disabled = !readReady || command.isPending || uncertain;
+
   return (
     <Box display="grid" gap="lg">
       <Text tone="muted">{copy.auto_cancel_help}</Text>
@@ -272,12 +293,14 @@ function RunResults({
   onPrepared: (id: string) => void;
 }) {
   const copy = accountingCopy(locale);
+
   const state = {
     prepared: copy.auto_prepared,
     recovered: copy.auto_recovered,
     already_posted: copy.auto_already_posted,
     skipped_matched: copy.auto_skipped,
   };
+
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <DataTable

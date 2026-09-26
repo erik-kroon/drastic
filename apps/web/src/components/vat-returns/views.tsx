@@ -24,6 +24,7 @@ import { vatCopy } from "./copy";
 import { vatBlocker } from "./blockers";
 
 type Common = { book: typeof Accounting.Book.Type; locale: Locale };
+
 export function VatFactSummary({
   fact,
   book,
@@ -33,12 +34,14 @@ export function VatFactSummary({
   const copy = vatCopy(locale);
   const input = fact.input;
   const sv = locale === "sv";
+
   const basis = useQuery({
     queryKey: [...bookKey(book), "vat-returns", "basis"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(book)}/vat-returns/facts`, Vat.VatBasis, { signal }),
     retry: false,
   });
+
   const labels = {
     unknown: copy.unknown,
     registered: copy.registered,
@@ -50,13 +53,16 @@ export function VatFactSummary({
     unsupported: copy.unsupported,
     confirmed: copy.confirmed,
   };
+
   const amount = (minor: string) =>
     basis.data
       ? `${formatMinorAmount(minor, basis.data.currencyScale, locale)} ${input.currency ?? ""}`
       : `${minor} ${sv ? "öre" : "minor units"}`;
+
   const evidence = [
     ...new Map(fact.evidenceRefs.map((reference) => [reference.evidenceId, reference])).values(),
   ];
+
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <RecordHeading title={input.description} subtitle={input.sourceLocator} action={action} />
@@ -134,6 +140,7 @@ export function VatFactSummary({
     </Box>
   );
 }
+
 export function VatDraftView({
   draft,
   basisCurrent,
@@ -144,6 +151,7 @@ export function VatDraftView({
   const boxes = draft.calculation.syntheticBoxes;
   const sv = locale === "sv";
   const [selectedFact, setSelectedFact] = useState<string | null>(null);
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <RecordHeading
@@ -156,6 +164,7 @@ export function VatDraftView({
               const url = URL.createObjectURL(
                 new Blob([JSON.stringify(draft, null, 2)], { type: "application/json" }),
               );
+
               const link = document.createElement("a");
               link.href = url;
               link.download = `${draft.id}.json`;
@@ -233,12 +242,15 @@ export function VatDraftView({
               const source = draft.basis.facts.find(
                 ({ fact }) => fact.factId === assessment.factId,
               );
+
               if (!source) return null;
+
               const boxes = assessment.contribution
                 ? (["box05", "box10", "box48"] as const)
                     .filter((box) => BigInt(assessment.contribution?.[`${box}Minor`] ?? "0") !== 0n)
                     .map((box) => box.slice(3))
                 : [];
+
               return (
                 <Box as="li" key={`${assessment.factId}:${code}`}>
                   <Button variant="ghost" onClick={() => setSelectedFact(assessment.factId)}>
@@ -292,6 +304,7 @@ export function VatDraftView({
           const assessment = draft.calculation.assessments.find(
             (row) => row.factId === observation.fact.factId,
           );
+
           return (
             <RecordSection key={observation.fact.factId} title={copy.facts}>
               <Box display="grid" gap="md" paddingBlock="lg" minWidth="zero">

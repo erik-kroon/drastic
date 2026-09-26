@@ -12,9 +12,13 @@ import {
 } from "./commerce";
 
 const Name = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200));
+
 const PositiveMinor = Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,37}$/));
+
 const Currency = Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/));
+
 export const DataNature = Schema.Literals(["company_record", "synthetic_example"]);
+
 export const Classification = Schema.Literals([
   "unknown",
   "owner_expense",
@@ -24,9 +28,13 @@ export const Classification = Schema.Literals([
   "conditional_contribution",
   "unconditional_contribution",
 ]);
+
 export const Origin = Schema.Literals(["unknown", "opening", "current"]);
+
 const metadata = { createdAt: Schema.String, receipt: CommandReceipt };
+
 const identity = { id: Accounting.Identifier, scope: Accounting.Scope };
+
 export const CreateOwner = Schema.Struct({
   sourceKey: Name,
   displayName: Name,
@@ -34,6 +42,7 @@ export const CreateOwner = Schema.Struct({
   evidenceId: Accounting.Identifier,
   reason: Accounting.Description,
 });
+
 export const Owner = Schema.Struct({
   ...CreateOwner.fields,
   ...identity,
@@ -41,6 +50,7 @@ export const Owner = Schema.Struct({
   evidence: EvidenceReference,
   legalIdentityVerified: Schema.Literal(false),
 });
+
 const sourceFields = {
   ownerId: Accounting.Identifier,
   dataNature: DataNature,
@@ -54,18 +64,22 @@ const sourceFields = {
   amountMinor: PositiveMinor,
   counterparty: Schema.NullOr(Schema.Struct({ sourceKey: Name, displayName: Name })),
 };
+
 const revisionFields = {
   description: Accounting.Description,
   classification: Classification,
   origin: Origin,
   reason: Accounting.Description,
 };
+
 export const CreateRecord = Schema.Struct({ ...sourceFields, ...revisionFields });
+
 export const ReviseRecord = Schema.Struct({
   ...revisionFields,
   expectedRevision: Version,
   evidenceId: Accounting.Identifier,
 });
+
 export const Source = Schema.Struct({
   ...sourceFields,
   ...identity,
@@ -73,6 +87,7 @@ export const Source = Schema.Struct({
   ownerName: Name,
   evidence: EvidenceReference,
 });
+
 export const Revision = Schema.Struct({
   ...identity,
   ...metadata,
@@ -81,6 +96,7 @@ export const Revision = Schema.Struct({
   evidence: EvidenceReference,
   digest: Accounting.Digest,
 });
+
 export const ReviewRecord = Schema.Struct({
   expectedRevision: Version,
   revisionDigest: Accounting.Digest,
@@ -89,6 +105,7 @@ export const ReviewRecord = Schema.Struct({
   evidenceId: Accounting.Identifier,
   reason: Accounting.Description,
 });
+
 export const Review = Schema.Struct({
   ...identity,
   ...metadata,
@@ -105,11 +122,13 @@ export const Review = Schema.Struct({
   profileVersion: Version,
   writerEpoch: Version,
 });
+
 export const AttachProposal = Schema.Struct({
   reviewId: Accounting.Identifier,
   changeSetId: Accounting.Identifier,
   lineId: Accounting.Identifier,
 });
+
 export const ProposalLink = Schema.Struct({
   ...AttachProposal.fields,
   ...identity,
@@ -119,11 +138,13 @@ export const ProposalLink = Schema.Struct({
   revisionDigest: Accounting.Digest,
   planDigest: Accounting.Digest,
 });
+
 export const AttachPostedLine = Schema.Struct({
   reviewId: Accounting.Identifier,
   voucherId: Accounting.Identifier,
   lineId: Accounting.Identifier,
 });
+
 export const PostedEffect = Schema.Struct({
   ...AttachPostedLine.fields,
   ...identity,
@@ -145,6 +166,7 @@ export const PostedEffect = Schema.Struct({
   currencyScale: Schema.Int,
   evidence: EvidenceReference,
 });
+
 export const RecordView = Schema.Struct({
   source: Source,
   currentRevision: Revision,
@@ -156,24 +178,29 @@ export const RecordView = Schema.Struct({
   sourceCoverage: Schema.Literal("unknown"),
   blockers: Schema.Array(Schema.String),
 });
+
 export const OwnerPage = Schema.Struct({
   items: Schema.Array(Owner),
   next: Schema.NullOr(Accounting.Identifier),
 });
+
 export const RecordPage = Schema.Struct({
   items: Schema.Array(RecordView),
   next: Schema.NullOr(Accounting.Identifier),
 });
+
 export const RecordHistory = Schema.Struct({
   items: Schema.Array(Schema.Struct({ revision: Revision, review: Schema.NullOr(Review) })),
   next: Schema.NullOr(Version),
 });
+
 export const Capacity = Schema.Struct({
   effect: PostedEffect,
   allocatedMinor: Accounting.MinorUnits,
   remainingMinor: Accounting.MinorUnits,
   capacityVersion: Accounting.MinorUnits,
 });
+
 export const PrepareAllocation = Schema.Struct({
   settlementId: Accounting.Identifier,
   evidenceId: Accounting.Identifier,
@@ -182,6 +209,7 @@ export const PrepareAllocation = Schema.Struct({
     Schema.Struct({ claimId: Accounting.Identifier, amountMinor: PositiveMinor }),
   ).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
 });
+
 export const AllocationPlan = Schema.Struct({
   ...identity,
   ...metadata,
@@ -204,7 +232,9 @@ export const AllocationPlan = Schema.Struct({
   accountVersion: Version,
   settlementPeriodVersion: Version,
 });
+
 export { ApproveAllocation, ApplyAllocation, AllocationApproval };
+
 export const AllocationReceipt = Schema.Struct({
   ...identity,
   planId: Accounting.Identifier,
@@ -215,17 +245,20 @@ export const AllocationReceipt = Schema.Struct({
   committedAt: Schema.String,
   receipt: CommandReceipt,
 });
+
 export const AllocationView = Schema.Struct({
   plan: AllocationPlan,
   dependenciesCurrent: Schema.Boolean,
   approval: Schema.NullOr(AllocationApproval),
   application: Schema.NullOr(AllocationReceipt),
 });
+
 export const PrepareControl = Schema.Struct({
   ownerId: Accounting.Identifier,
   startsOn: Accounting.AccountingDate,
   endsOn: Accounting.AccountingDate,
 });
+
 export const Control = Schema.Struct({
   ...identity,
   ...metadata,
@@ -286,6 +319,7 @@ export const Control = Schema.Struct({
   ),
   blockers: Schema.Array(Schema.String),
 });
+
 export const ControlView = Schema.Struct({ snapshot: Control, current: Schema.Boolean });
 
 export const CommandRecovery = Schema.Union([
@@ -308,12 +342,16 @@ export const CommandRecovery = Schema.Union([
 ]);
 
 const AfterQuery = Schema.Struct({ after: Schema.optional(Accounting.Identifier) });
+
 const HistoryQuery = Schema.Struct({ after: Schema.optional(Version) });
+
 const RecoveryPath = Schema.Struct({
   ...Accounting.Scope.fields,
   key: Accounting.IdempotencyHeaders.fields["idempotency-key"],
 });
+
 const path = "/v1/entities/:entityId/books/:bookId/owner-register";
+
 export const OwnerRegisterApi = HttpApiGroup.make("ownerRegister").add(
   HttpApiEndpoint.post("ownersCreateOwner", `${path}/owners`, {
     params: Accounting.Scope,

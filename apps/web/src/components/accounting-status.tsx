@@ -17,7 +17,9 @@ export function AccountingStatus({
   write?: boolean;
 }) {
   const copy = accountingCopy(locale);
+
   if (!pending && !error) return null;
+
   return (
     <Box role="status" aria-live="polite" display="grid" gap="sm">
       {pending ? <Text>{copy.journal_working}</Text> : null}

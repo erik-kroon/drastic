@@ -1,12 +1,34 @@
 import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
-import { getBankInventorySignoff, listBankInventorySignoffs, prepareBankInventorySignoff } from "../banking/inventory-signoffs";
+import {
+  getBankInventorySignoff,
+  listBankInventorySignoffs,
+  prepareBankInventorySignoff,
+} from "../banking/inventory-signoffs";
 import { getBankSignoff, listBankSignoffs, prepareBankSignoff } from "../banking/signoffs";
-import { createBankSourceCoverage, getBankSourceCoverage, listBankSourceCoverage } from "../banking/coverage";
+import {
+  createBankSourceCoverage,
+  getBankSourceCoverage,
+  listBankSourceCoverage,
+} from "../banking/coverage";
 import { discoverBankMatchCandidates } from "../banking/candidates";
-import { executeBankMatchReversal, getBankMatchReversal, listBankMatchReversals, prepareBankMatchReversal } from "../banking/match-reversals";
-import { executeBankAllocation, getBankAllocation, prepareBankAllocation } from "../banking/allocations";
-import { getBankCapacityReconciliation, getBankReconciliation, reconcileBank, reconcileBankCapacity } from "../banking/reconciliations";
+import {
+  executeBankMatchReversal,
+  getBankMatchReversal,
+  listBankMatchReversals,
+  prepareBankMatchReversal,
+} from "../banking/match-reversals";
+import {
+  executeBankAllocation,
+  getBankAllocation,
+  prepareBankAllocation,
+} from "../banking/allocations";
+import {
+  getBankCapacityReconciliation,
+  getBankReconciliation,
+  reconcileBank,
+  reconcileBankCapacity,
+} from "../banking/reconciliations";
 import { getBankStatement, importBankStatement } from "../banking/source-statement";
 import { matchBankObservation } from "../banking/matches";
 

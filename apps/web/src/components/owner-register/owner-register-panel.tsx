@@ -26,13 +26,19 @@ import {
 } from "@/components/commerce/shared";
 
 type Props = CommerceProps;
+
 const words = (locale: Props["locale"], en: string, sv: string) => (locale === "sv" ? sv : en);
+
 const ownerPath = (book: Props["book"]) => `${bookPath(book)}/owner-register`;
+
 const ownerKey = (book: Props["book"]) => [...bookKey(book), "owner-register"];
+
 const textValue = (fields: FormData, name: string) => {
   const value = fields.get(name);
+
   return typeof value === "string" ? value : "";
 };
+
 const revisionInput = (fields: FormData) => ({
   description: fields.get("description"),
   classification: fields.get("classification"),
@@ -45,6 +51,7 @@ function OwnerCommand<
   O extends Schema.Top & { readonly DecodingServices: never },
 >(props: Parameters<typeof CommandForm<S, O>>[0]) {
   const client = useQueryClient();
+
   return (
     <CommandForm
       {...props}
@@ -55,6 +62,7 @@ function OwnerCommand<
     />
   );
 }
+
 function useOwnerRead<S extends Schema.Top & { readonly DecodingServices: never }>(
   props: Props,
   suffix: string,
@@ -71,6 +79,7 @@ function useOwnerRead<S extends Schema.Top & { readonly DecodingServices: never 
     refetchOnMount: "always",
   });
 }
+
 function Nature({ locale }: Pick<Props, "locale">) {
   return (
     <ChoiceField
@@ -99,6 +108,7 @@ function Nature({ locale }: Pick<Props, "locale">) {
     />
   );
 }
+
 function RevisionFields({
   locale,
   value,
@@ -112,6 +122,7 @@ function RevisionFields({
     ["conditional_contribution", "Conditional contribution", "Villkorat aktieägartillskott"],
     ["unconditional_contribution", "Unconditional contribution", "Ovillkorat aktieägartillskott"],
   ] as const;
+
   return (
     <>
       <SelectField
@@ -151,6 +162,7 @@ function RevisionFields({
     </>
   );
 }
+
 function EvidenceField({ locale }: Pick<Props, "locale">) {
   return (
     <Field
@@ -160,6 +172,7 @@ function EvidenceField({ locale }: Pick<Props, "locale">) {
     />
   );
 }
+
 function Refresh({
   locale,
   pending,
@@ -173,11 +186,14 @@ function Refresh({
     </Box>
   );
 }
+
 export function OwnerRegisterPanel(props: Props) {
   return <OwnerWorkspace {...props} key={`${props.book.entityId}:${props.book.id}`} />;
 }
+
 function OwnerWorkspace(props: Props) {
   const { locale } = props;
+
   return (
     <Box as="section" display="grid" gap="xl" minWidth="zero">
       <Heading>
@@ -227,16 +243,20 @@ function OwnerWorkspace(props: Props) {
     </Box>
   );
 }
+
 function OwnerIdentities(props: Props) {
   const { book, locale } = props;
   const [after, setAfter] = useState("");
   const [id, setId] = useState("");
+
   const page = useOwnerRead(
     props,
     `/owners${after ? `?after=${encodeURIComponent(after)}` : ""}`,
     Owners.OwnerPage,
   );
+
   const detail = useOwnerRead(props, `/owners/${encodeURIComponent(id)}`, Owners.Owner, !!id);
+
   return (
     <Box display="grid" gap="lg">
       <OwnerCommand
@@ -298,6 +318,7 @@ function OwnerIdentities(props: Props) {
         pending={page.isFetching}
         onRefresh={() => {
           void page.refetch();
+
           if (id) void detail.refetch();
         }}
       />
@@ -313,15 +334,18 @@ function OwnerIdentities(props: Props) {
     </Box>
   );
 }
+
 function OwnerRecords(props: Props) {
   const { book, locale } = props;
   const [after, setAfter] = useState("");
   const [id, setId] = useState("");
+
   const page = useOwnerRead(
     props,
     `/records${after ? `?after=${encodeURIComponent(after)}` : ""}`,
     Owners.RecordPage,
   );
+
   return (
     <Box display="grid" gap="lg">
       <Details title={words(locale, "Retain a source", "Bevara ett underlag")}>
@@ -511,16 +535,20 @@ function OwnerRecords(props: Props) {
     </Box>
   );
 }
+
 function OwnerRecordDetail(props: Props & { id: string }) {
   const { locale, id } = props;
   const [after, setAfter] = useState("");
   const view = useOwnerRead(props, `/records/${encodeURIComponent(id)}`, Owners.RecordView);
+
   const history = useOwnerRead(
     props,
     `/records/${encodeURIComponent(id)}/revisions${after ? `?after=${encodeURIComponent(after)}` : ""}`,
     Owners.RecordHistory,
   );
+
   const ready = view.isSuccess && view.fetchStatus === "idle" && view.isFetchedAfterMount;
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{words(locale, "Source review", "Granskning av underlag")}</Heading>
@@ -621,6 +649,7 @@ function OwnerRecordDetail(props: Props & { id: string }) {
     </Box>
   );
 }
+
 function RecordActions(
   props: Props & { id: string; value: typeof Owners.RecordView.Type; ready: boolean },
 ) {
@@ -629,6 +658,7 @@ function RecordActions(
   const [baseline, setBaseline] = useState(value.currentRevision);
   const [reviewBaseline, setReviewBaseline] = useState(value.currentRevision);
   const base = `${ownerPath(book)}/records/${encodeURIComponent(id)}`;
+
   return (
     <>
       <Details
@@ -836,6 +866,7 @@ function OwnerAllocations(props: Props) {
   const [id, setId] = useState("");
   const [legs, setLegs] = useState([0]);
   const [nextLeg, setNextLeg] = useState(1);
+
   return (
     <Box display="grid" gap="lg">
       <Text>
@@ -943,19 +974,25 @@ function OwnerAllocations(props: Props) {
     </Box>
   );
 }
+
 function OwnerAllocationReview(props: Props & { id: string }) {
   const { book, locale, id } = props;
+
   const view = useOwnerRead(
     props,
     `/allocation-plans/${encodeURIComponent(id)}`,
     Owners.AllocationView,
   );
+
   const plan = view.data?.plan;
   const approval = view.data?.approval;
+
   const currentnessKnown =
     view.isSuccess && view.fetchStatus === "idle" && view.isFetchedAfterMount;
+
   const actionable =
     currentnessKnown && view.data?.dependenciesCurrent === true && !view.data.application;
+
   return (
     <Box display="grid" gap="lg">
       <Refresh
@@ -1108,13 +1145,16 @@ function OwnerAllocationReview(props: Props & { id: string }) {
     </Box>
   );
 }
+
 function OwnerControls(props: Props) {
   const { book, locale } = props;
   const [id, setId] = useState("");
   const view = useOwnerRead(props, `/controls/${encodeURIComponent(id)}`, Owners.ControlView, !!id);
   const snapshot = view.data?.snapshot;
+
   const currentnessKnown =
     view.isSuccess && view.fetchStatus === "idle" && view.isFetchedAfterMount;
+
   return (
     <Box display="grid" gap="lg">
       <Text>
@@ -1359,6 +1399,7 @@ function OwnerControls(props: Props) {
                 const url = URL.createObjectURL(
                   new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json" }),
                 );
+
                 const link = document.createElement("a");
                 link.href = url;
                 link.download = `owner-control-${snapshot.id}.json`;
@@ -1376,15 +1417,18 @@ function OwnerControls(props: Props) {
     </Box>
   );
 }
+
 function OwnerRecovery(props: Props) {
   const { locale } = props;
   const [key, setKey] = useState("");
+
   const result = useOwnerRead(
     props,
     `/commands/${encodeURIComponent(key)}`,
     Owners.CommandRecovery,
     !!key,
   );
+
   return (
     <Box display="grid" gap="lg">
       <Text>

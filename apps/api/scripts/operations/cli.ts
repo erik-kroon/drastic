@@ -12,20 +12,25 @@ const usage = `Local synthetic operations only. No production action exists.
 All paths must be absolute. Read docs/operations/local-recovery.md first.`;
 
 process.umask(0o077);
+
 const command = Effect.tryPromise({
   try: async () => {
     const action = process.argv[2];
     const args = process.argv.slice(3);
+
     if (action === "--help" && args.length === 0) {
       console.info(usage);
+
       return;
     }
+
     const first = args[0];
     const second = args[1];
     const third = args[2];
     const fourth = args[3];
     const fifth = args[4];
     const sixth = args[5];
+
     if (action === "capture-release" && args.length === 2 && first && second) {
       await captureRelease(first, second);
     } else if (action === "preflight" && args.length === 2 && first && second) {
@@ -42,6 +47,7 @@ const command = Effect.tryPromise({
     } else if (action === "inspect" && args.length === 2 && first && second) {
       const result = await inspectBundleResult(first, second);
       console.info(JSON.stringify(result, null, 2) + "\n");
+
       return;
     } else if (
       action === "restore" &&
@@ -67,6 +73,7 @@ const command = Effect.tryPromise({
             "Local operation failed. No success is claimed. Inspect the private target configuration and partial output; do not reuse an existing restore destination.",
         }),
 });
+
 await Effect.runPromise(
   command.pipe(
     Effect.catch((error) =>

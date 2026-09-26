@@ -57,6 +57,7 @@ export const english = {
   finish: "Open company",
   bankOptional: "Banking is optional during setup.",
 };
+
 export const swedish: typeof english = {
   title: "Ställ in ditt företag",
   intro: "Spara de uppgifter du har. Kom tillbaka när du kan fylla i resten.",

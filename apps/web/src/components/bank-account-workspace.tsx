@@ -59,7 +59,9 @@ export function bankWorkspaceOptions(book: typeof Accounting.Book.Type, query: U
         Bank.BankWorkspace,
         { signal },
       );
+
       checkScope(book, data.scope);
+
       return data;
     },
     retry: false,
@@ -70,6 +72,7 @@ export function bankWorkspaceParams(setup: typeof Accounting.BookSetup.Type, sea
   const period = setup.periods.at(-1);
   const from = search.from ?? period?.startsOn ?? new Date().toISOString().slice(0, 10);
   const to = search.to ?? period?.endsOn ?? from;
+
   const query = new URLSearchParams({
     startsOn: from,
     endsOn: to,
@@ -77,7 +80,9 @@ export function bankWorkspaceParams(setup: typeof Accounting.BookSetup.Type, sea
     page: search.page ?? "1",
     q: search.q ?? "",
   });
+
   if (search.account) query.set("accountId", search.account);
+
   return query;
 }
 
@@ -90,31 +95,48 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
   const from = search.from ?? period?.startsOn ?? new Date().toISOString().slice(0, 10);
   const to = search.to ?? period?.endsOn ?? from;
   const base = `${workspacePath(book)}/accounts`;
+
   const change = (next: BankSearch) =>
     void navigate({ to: base, search: next, resetScroll: false });
+
   const href = (next: BankSearch) => `${base}${defaultStringifySearch(next)}`;
   const query = bankWorkspaceParams(setup, search);
+
   const workspace = useQuery({
     ...bankWorkspaceOptions(book, query),
     enabled: search.view !== "imports",
   });
+
   const preloadBank = () => {
     if (search.view === "imports") void client.prefetchQuery(bankWorkspaceOptions(book, query));
   };
+
   const preloadStatements = () => {
     if (search.view !== "imports") void client.prefetchInfiniteQuery(statementImportsOptions(book));
   };
+
   const data = workspace.isSuccess ? workspace.data : undefined;
   const account = data?.accounts.find((item) => item.id === search.account);
+
   const money = (value: string | null) =>
     value === null || !data
       ? "—"
       : `${formatMinorAmount(value, data.currencyScale, locale)} ${data.currency}`;
+
   const date = (value: string) =>
     new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" }).format(
       new Date(value),
     );
-  const clearRecord = { ...search, statement: undefined, row: undefined, plan: undefined, undo: undefined, report: undefined };
+
+  const clearRecord = {
+    ...search,
+    statement: undefined,
+    row: undefined,
+    plan: undefined,
+    undo: undefined,
+    report: undefined,
+  };
+
   return (
     <>
       <WorkspaceHeader
@@ -253,9 +275,11 @@ type BankPresentation = {
   money: (value: string | null) => string;
   date: (value: string) => string;
 };
+
 function BankAccountList(props: BankPresentation & { from: string; to: string }) {
   const { data, sv, href, money } = props;
   const { from, to, date } = props;
+
   return (
     <>
       {data.accounts.length ? (
@@ -316,6 +340,7 @@ function BankAccountList(props: BankPresentation & { from: string; to: string })
     </>
   );
 }
+
 type ActivityProps = BankPresentation & {
   account: typeof Bank.BankWorkspaceAccount.Type;
   search: BankSearch;
@@ -323,10 +348,19 @@ type ActivityProps = BankPresentation & {
   change: (search: BankSearch) => void;
   bookBase: string;
 };
+
 function AccountActivity(props: ActivityProps) {
   const { data, account, sv, money } = props;
   const { date, to, href } = props;
-  const clearRecord = { ...props.search, statement: undefined, row: undefined, plan: undefined, undo: undefined };
+
+  const clearRecord = {
+    ...props.search,
+    statement: undefined,
+    row: undefined,
+    plan: undefined,
+    undo: undefined,
+  };
+
   return (
     <>
       <RecordSummary>
@@ -392,14 +426,25 @@ function AccountActivity(props: ActivityProps) {
     </>
   );
 }
+
 function AccountTransactions(props: ActivityProps) {
   const { data, search, sv, change } = props;
   const { money, date, href } = props;
   const tab = search.tab ?? "unmatched";
-  const clearRecord = { ...search, statement: undefined, row: undefined, plan: undefined, undo: undefined };
+
+  const clearRecord = {
+    ...search,
+    statement: undefined,
+    row: undefined,
+    plan: undefined,
+    undo: undefined,
+  };
+
   const [queryText, setQueryText] = useState({ applied: search.q ?? "", value: search.q ?? "" });
+
   if (queryText.applied !== (search.q ?? ""))
     setQueryText({ applied: search.q ?? "", value: search.q ?? "" });
+
   return (
     <>
       <Box display="flex" justifyContent="between" alignItems="center" gap="lg" flexWrap="wrap">
@@ -575,6 +620,7 @@ function BankScopeToolbar(props: {
   onPeriod: (from: string, to: string) => void;
 }) {
   const { sv, account, from, to } = props;
+
   return (
     <>
       {props.selected ? (
@@ -611,6 +657,7 @@ function BankScopeToolbar(props: {
           const fields = new FormData(event.currentTarget);
           const from = fields.get("from");
           const to = fields.get("to");
+
           if (typeof from === "string" && typeof to === "string") props.onPeriod(from, to);
         }}
       >
@@ -637,6 +684,7 @@ function BankScopeToolbar(props: {
     </>
   );
 }
+
 function AccountReport(props: {
   book: typeof Accounting.Book.Type;
   locale: "sv" | "en";
@@ -649,10 +697,12 @@ function AccountReport(props: {
   const { book, locale } = props;
   const sv = locale === "sv";
   const keys = useRef(new Map<string, string>());
+
   const create = useMutation({
     mutationFn: () => {
       const path = `${bookPath(book)}/bank-reconciliations`;
       const input = { accountId: props.account.id, startsOn: props.from, endsOn: props.to };
+
       return readAccounting(
         path,
         Reconciliation.BankReconciliation,
@@ -664,6 +714,7 @@ function AccountReport(props: {
       props.onReport(report.id);
     },
   });
+
   return (
     <Disclosure
       key={props.reportId ?? "new"}
@@ -681,8 +732,12 @@ function AccountReport(props: {
             onClick={() => create.mutate()}
           >
             {props.reportId
-              ? sv ? "Spara ny rapport" : "Save new report"
-              : sv ? "Spara rapport för perioden" : "Save report for this period"}
+              ? sv
+                ? "Spara ny rapport"
+                : "Save new report"
+              : sv
+                ? "Spara rapport för perioden"
+                : "Save report for this period"}
           </Button>
         </Box>
         <AccountingStatus locale={locale} pending={create.isPending} error={create.error} write />

@@ -34,6 +34,7 @@ export function DocumentInbox({
   const labels = sv ? swedish : english;
   const [filters, setFilters] = useState<typeof Sources.ArchiveFilters.Type>({});
   const [filterError, setFilterError] = useState<string | null>(null);
+
   const sources = useInfiniteQuery({
     queryKey: [...bookKey(book), "document-inbox", filters],
     initialPageParam: "",
@@ -43,28 +44,31 @@ export function DocumentInbox({
         Sources.ArchiveSearch,
         { signal },
       );
-       result.items.forEach((occurrence) => {
-         if (occurrence.scope.bookId !== book.id || occurrence.scope.entityId !== book.entityId)
-           throw new Error("Archive scope mismatch");
-       });
+
+      result.items.forEach((occurrence) => {
+        if (occurrence.scope.bookId !== book.id || occurrence.scope.entityId !== book.entityId)
+          throw new Error("Archive scope mismatch");
+      });
 
       return result;
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry: false,
   });
+
   const archiveExport = useMutation({
     mutationFn: async (applied: typeof Sources.ArchiveFilters.Type) => {
       const result = await readAccounting(
         archivePath(`${bookPath(book)}/source-archive/export`, applied),
         Sources.ArchiveExport,
       );
-       if (result.scope.bookId !== book.id || result.scope.entityId !== book.entityId)
-         throw new Error("Archive export scope mismatch");
-       result.items.forEach(({ occurrence }) => {
-         if (occurrence.scope.bookId !== book.id || occurrence.scope.entityId !== book.entityId)
-           throw new Error("Archive export item scope mismatch");
-       });
+
+      if (result.scope.bookId !== book.id || result.scope.entityId !== book.entityId)
+        throw new Error("Archive export scope mismatch");
+      result.items.forEach(({ occurrence }) => {
+        if (occurrence.scope.bookId !== book.id || occurrence.scope.entityId !== book.entityId)
+          throw new Error("Archive export item scope mismatch");
+      });
 
       return result;
     },
@@ -75,8 +79,10 @@ export function DocumentInbox({
       );
     },
   });
+
   const items = sources.data?.pages.flatMap((page) => page.items) ?? [];
   const hasFilters = Object.keys(filters).length > 0;
+
   if (recordId && recordId !== "new")
     return (
       <Box display="grid" gap="xl">
@@ -89,6 +95,7 @@ export function DocumentInbox({
         <DocumentDetail id={recordId} />
       </Box>
     );
+
   return (
     <Box display="grid" gap="xl">
       <RecordHeading
@@ -121,15 +128,19 @@ export function DocumentInbox({
         onSubmit={(event) => {
           event.preventDefault();
           const fields = new FormData(event.currentTarget);
+
           const submitter =
             event.nativeEvent instanceof SubmitEvent ? event.nativeEvent.submitter : null;
+
           const intent = submitter instanceof HTMLButtonElement ? submitter.value : null;
+
           const decoded = Schema.decodeUnknownOption(Sources.ArchiveFilters)({
             filename: fields.get("filename") || undefined,
             sourceSystem: fields.get("sourceSystem") || undefined,
             retainedFrom: fields.get("retainedFrom") || undefined,
             retainedTo: fields.get("retainedTo") || undefined,
           });
+
           if (
             decoded._tag === "None" ||
             (decoded.value.retainedFrom &&
@@ -137,10 +148,13 @@ export function DocumentInbox({
               decoded.value.retainedFrom > decoded.value.retainedTo)
           ) {
             setFilterError(labels.invalidArchiveFilters);
+
             return;
           }
+
           setFilterError(null);
           setFilters(decoded.value);
+
           if (intent === "export") archiveExport.mutate(decoded.value);
           else archiveExport.reset();
         }}
@@ -278,6 +292,7 @@ export function DocumentInbox({
     </Box>
   );
 }
+
 export function DocumentUpload({
   onSaved,
   statement = false,
@@ -295,6 +310,7 @@ export function DocumentUpload({
   const [occurrenceKey] = useState(() => crypto.randomUUID());
   const [fileError, setFileError] = useState<string | null>(null);
   const sizeLimit = sie ? 524288 : statement ? 65536 : Sources.maxSourceBytes;
+
   const fileHelp = sie
     ? sv
       ? "SIE 4, högst 512 KiB, 2 000 poster och 200 verifikationer."
@@ -304,13 +320,16 @@ export function DocumentUpload({
         ? "CSV i UTF-8, högst 64 kB och 200 rader."
         : "UTF-8 CSV, up to 64 KB and 200 rows."
       : labels.pdfImagesCsvTextJson;
+
   const upload = useMutation({
     mutationFn: async (file: File) => {
       if (file.size === 0 || file.size > sizeLimit) throw new Error(labels.chooseAFileBetween1);
       const bytes = new Uint8Array(await file.arrayBuffer());
       let binary = "";
+
       for (let offset = 0; offset < bytes.length; offset += 8192)
         binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+
       const input = Schema.decodeSync(Sources.RetainSource)({
         sourceSystem: "manual-upload",
         sourceAccountId: book.id,
@@ -324,7 +343,9 @@ export function DocumentUpload({
             : "application/octet-stream",
         contentBase64: btoa(binary),
       });
+
       const path = `${bookPath(book)}/source-occurrences`;
+
       return readAccounting(
         path,
         Sources.SourceOccurrence,
@@ -336,6 +357,7 @@ export function DocumentUpload({
       onSaved(source.id);
     },
   });
+
   return (
     <Box
       as="form"
@@ -344,7 +366,9 @@ export function DocumentUpload({
       onSubmit={(event) => {
         event.preventDefault();
         const file = new FormData(event.currentTarget).get("file");
+
         if (!(file instanceof File)) return;
+
         if (
           file.size === 0 ||
           file.size > sizeLimit ||
@@ -352,8 +376,10 @@ export function DocumentUpload({
           (statement && !file.name.toLowerCase().endsWith(".csv"))
         ) {
           setFileError(fileHelp);
+
           return;
         }
+
         setFileError(null);
         upload.mutate(file);
       }}
@@ -393,10 +419,12 @@ export function DocumentUpload({
     </Box>
   );
 }
+
 function DocumentDetail({ id }: { id: string }) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
+
   const document = useQuery({
     queryKey: [...bookKey(book), "source-occurrence", id],
     gcTime: 0,
@@ -406,16 +434,19 @@ function DocumentDetail({ id }: { id: string }) {
         Sources.SourceOccurrenceView,
         { signal },
       );
+
       if (
         result.occurrence.id !== id ||
         result.occurrence.scope.bookId !== book.id ||
         result.occurrence.scope.entityId !== book.entityId
       )
         throw new Error("Document scope mismatch");
+
       return result;
     },
     retry: false,
   });
+
   const purchases = useQuery({
     queryKey: [...bookKey(book), "source-purchase-links", id],
     queryFn: async ({ signal }) => {
@@ -424,17 +455,21 @@ function DocumentDetail({ id }: { id: string }) {
         Sources.SourcePurchaseLinks,
         { signal },
       );
+
       if (
         result.occurrenceId !== id ||
         result.scope.bookId !== book.id ||
         result.scope.entityId !== book.entityId
       )
         throw new Error("Purchase source scope mismatch");
+
       return result;
     },
     retry: false,
   });
+
   const source = document.isError ? undefined : document.data?.occurrence;
+
   return (
     <Box display="grid" gap="xl">
       <AccountingStatus locale={locale} pending={document.isPending} error={document.error} />
@@ -573,12 +608,18 @@ function DocumentDetail({ id }: { id: string }) {
 
 function archivePath(base: string, filters: typeof Sources.ArchiveFilters.Type, cursor = "") {
   const query = new URLSearchParams();
+
   if (filters.filename) query.set("filename", filters.filename);
+
   if (filters.sourceSystem) query.set("sourceSystem", filters.sourceSystem);
+
   if (filters.retainedFrom) query.set("retainedFrom", filters.retainedFrom);
+
   if (filters.retainedTo) query.set("retainedTo", filters.retainedTo);
+
   if (cursor) query.set("cursor", cursor);
   const search = query.toString();
+
   return search ? `${base}?${search}` : base;
 }
 
@@ -621,6 +662,7 @@ const english = {
   documentDetails: "Document details",
   theOriginalIsRetainedNo: "The original is retained. No posting was created by this upload.",
 };
+
 const swedish: typeof english = {
   allDocuments: "Alla dokument",
   documents: "Dokument",

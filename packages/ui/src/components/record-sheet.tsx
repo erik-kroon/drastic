@@ -90,8 +90,10 @@ export function RecordSheet({
       onOpenChange={(open, event) => {
         if (!dismissible && event.reason === "escape-key") {
           event.cancel();
+
           return;
         }
+
         if (!open) onClose();
       }}
     >

@@ -28,6 +28,7 @@ export function CaseSnapshots({
   const copy = accountingCopy(locale);
   const [snapshotId, setSnapshotId] = useState<string | null>(null);
   const [inputError, setInputError] = useState("");
+
   return (
     <details open={open} id="case-snapshots" tabIndex={-1}>
       <summary>{copy.case_title}</summary>
@@ -44,10 +45,13 @@ export function CaseSnapshots({
           onSubmit={(event) => {
             event.preventDefault();
             const id = new FormData(event.currentTarget).get("snapshotId");
+
             if (!Schema.is(Accounting.Identifier)(id)) {
               setInputError(copy.journal_invalid);
+
               return;
             }
+
             setInputError("");
             setSnapshotId(id);
           }}
@@ -91,9 +95,11 @@ function CaptureCases({
   const copy = accountingCopy(locale);
   const keys = useRef(new Map<string, string>());
   const [inputError, setInputError] = useState("");
+
   const capture = useMutation({
     mutationFn: (payload: typeof Cases.PrepareCaseSnapshot.Type) => {
       const path = `${bookPath(book)}/case-snapshots`;
+
       return readAccounting(
         path,
         Cases.CaseSnapshot,
@@ -102,6 +108,7 @@ function CaptureCases({
     },
     onSuccess: (snapshot) => onCaptured(snapshot.id),
   });
+
   return (
     <Box
       as="form"
@@ -110,13 +117,17 @@ function CaptureCases({
       onSubmit={(event) => {
         event.preventDefault();
         const caseId = new FormData(event.currentTarget).get("caseId");
+
         const decoded = Schema.decodeUnknownOption(Cases.PrepareCaseSnapshot)(
           caseId === "" ? {} : { caseId },
         );
+
         if (decoded._tag === "None") {
           setInputError(copy.journal_invalid);
+
           return;
         }
+
         setInputError("");
         capture.mutate(decoded.value);
       }}
@@ -175,6 +186,7 @@ function CapturedCases({
 }) {
   const copy = accountingCopy(locale);
   const [caseId, setCaseId] = useState<string | null>(null);
+
   const cases = useInfiniteQuery({
     queryKey: [...bookKey(book), "case-snapshot", snapshotId],
     initialPageParam: "",
@@ -184,24 +196,29 @@ function CapturedCases({
         Cases.CasePage,
         { signal },
       );
+
       if (
         page.snapshot.id !== snapshotId ||
         page.snapshot.scope.bookId !== book.id ||
         page.snapshot.scope.entityId !== book.entityId
       )
         throw new Error("Case snapshot scope mismatch");
+
       return page;
     },
     getNextPageParam: (page) => page.next,
     retry: false,
   });
+
   const first = cases.data?.pages[0];
   const loaded = cases.data?.pages.flatMap((page) => page.items) ?? [];
+
   const state = {
     proposed: copy.case_proposed,
     posted: copy.case_posted,
     reversed: copy.case_reversed,
   };
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.case_snapshot}</Heading>
@@ -307,6 +324,7 @@ function SnapshotFacts({
   locale: Locale;
 }) {
   const copy = accountingCopy(locale);
+
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <Text>

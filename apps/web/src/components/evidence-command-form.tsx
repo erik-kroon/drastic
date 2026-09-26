@@ -44,21 +44,26 @@ export function EvidenceCommandForm<
   const sv = locale === "sv";
   const errorId = useId();
   const [invalid, setInvalid] = useState(false);
+
   const [capturedCommand, setCapturedCommand] = useState<{ key: string; input: unknown } | null>(
     null,
   );
+
   const requests = useSavedPostingRequests(book);
   const client = useQueryClient();
+
   const save = useMutation({
     mutationFn: async (request: CapturedEntry) => {
       if (!requests.data || requests.isError)
         throw new Error(sv ? "Behörigheten kunde inte läsas." : "Your access could not be loaded.");
+
       const retained = await sendSavedPostingCommand({
         book,
         actorId: requests.data.actorId,
         command: { operation: "create_evidence", input: request.source },
         storageMessage: sv ? "Tillåt lokal lagring för att spara." : "Allow local storage to save.",
       });
+
       if (
         retained.outcome?.state !== "committed" ||
         !Schema.is(Accounting.Evidence)(retained.outcome.result)
@@ -68,9 +73,11 @@ export function EvidenceCommandForm<
             ? "Underlaget är inte bekräftat. Försök igen."
             : "The source is not confirmed. Retry the save.",
         );
+
       const parsed = Schema.decodeUnknownOption(props.schema)(
         request.build(retained.outcome.result),
       );
+
       if (parsed._tag === "None")
         throw new InvalidRecordInput(
           sv
@@ -78,13 +85,16 @@ export function EvidenceCommandForm<
             : "Check dates, amounts and required details.",
         );
       setCapturedCommand({ key: request.key, input: parsed.value });
+
       const result = await readAccounting(props.path, props.output, {
         method: "POST",
         body: JSON.stringify(parsed.value),
         headers: { "Idempotency-Key": request.key },
       });
+
       if (typeof result === "object" && result !== null && "scope" in result)
         checkScope(book, Schema.decodeUnknownSync(Accounting.Scope)(result.scope));
+
       return result;
     },
     retry: false,
@@ -93,11 +103,14 @@ export function EvidenceCommandForm<
       props.onSuccess(result);
     },
   });
+
   const correctable =
     save.error instanceof InvalidRecordInput ||
     (save.error instanceof Accounting.AccountingError &&
       ["InvalidJournal", "MissingEvidence"].includes(save.error.code));
+
   const locked = !!save.variables && !correctable;
+
   return (
     <Box
       as="form"
@@ -108,10 +121,12 @@ export function EvidenceCommandForm<
       onSubmit={(event) => {
         event.preventDefault();
         event.stopPropagation();
+
         if (locked || props.canSubmit === false || book.role !== "operator") return;
         const fields = new FormData(event.currentTarget);
         const source = Schema.decodeOption(Accounting.CreateEvidence)(props.source(fields));
         setInvalid(source._tag === "None");
+
         if (source._tag === "None") return;
         const build = props.input;
         save.mutate({
@@ -183,9 +198,11 @@ export function EvidenceCommandForm<
                   request: capturedCommand,
                   outcome: null,
                 };
+
                 const url = URL.createObjectURL(
                   new Blob([JSON.stringify(artifact, null, 2)], { type: "application/json" }),
                 );
+
                 const link = document.createElement("a");
                 link.href = url;
                 link.download = `request-${capturedCommand.key}.json`;

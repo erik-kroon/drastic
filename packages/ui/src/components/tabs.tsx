@@ -1,4 +1,5 @@
 "use client";
+
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";

@@ -6,34 +6,43 @@ import { amount, text, renderInvoiceReviewDocument } from "./invoice-document-re
 /** Versioned, self-contained historical invoice. The original renderer remains byte-stable. */
 export function renderInvoiceDocument(capture: typeof Documents.InvoiceDocumentCapture.Type) {
   const reviewBytes = renderInvoiceReviewDocument(capture);
+
   if (capture.generatorVersion === Documents.invoiceDocumentV1Generator) return reviewBytes;
   const { issue, review } = capture.source;
   const draft = review.draftSnapshot;
   const content = draft.content;
+
   const money = (value: string | null) => {
     const exact = amount(value, content.currencyScale);
     const [whole = "", fraction] = exact.split(".");
+
     return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, " ")}${fraction === undefined ? "" : `.${fraction}`}`;
   };
+
   const lines = content.lines
     .map((line, index) => {
       const calculated = draft.calculatedLines[index];
+
       if (!calculated)
         throw new Accounting.AccountingError({
           code: "UnsupportedProfile",
           message: "The complete captured invoice calculation is required.",
         });
+
       const adjustments = [
         line.discountMinor !== "0" ? `Discount ${money(line.discountMinor)}` : "",
         line.chargeMinor !== "0" ? `Charge ${money(line.chargeMinor)}` : "",
       ]
         .filter(Boolean)
         .join(" · ");
+
       return `<tr><td><strong>${text(line.description)}</strong>${line.taxDescription ? `<small>${text(line.taxDescription)}</small>` : ""}${adjustments ? `<small>${adjustments}</small>` : ""}</td><td class="number">${text(line.quantity)}</td><td class="number">${money(line.unitPriceMinor)}</td><td class="number">${money(calculated.netMinor)}</td></tr>`;
     })
     .join("\n");
+
   const retained = new TextDecoder().decode(reviewBytes);
   const audit = retained.slice(retained.indexOf("<main>") + 6, retained.indexOf("</main>"));
+
   const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -57,12 +66,15 @@ export function renderInvoiceDocument(capture: typeof Documents.InvoiceDocumentC
 </body>
 </html>
 `;
+
   const bytes = new TextEncoder().encode(html);
+
   if (bytes.length > Documents.invoiceDocumentMaxBytes)
     throw new Accounting.AccountingError({
       code: "UnsupportedProfile",
       message: "The complete invoice document exceeds 1 MiB. No truncated artifact is supported.",
     });
+
   return bytes;
 }
 

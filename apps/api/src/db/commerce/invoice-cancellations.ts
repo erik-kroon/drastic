@@ -219,3 +219,73 @@ export function readRecognitionSourcePeriod(
     "objects",
   );
 }
+
+export function readApprovalForRevocation(tx: Transaction, book: string, id: string) {
+  return tx.execute<{
+    readonly body: JsonObject;
+    readonly revoked: JsonObject | null;
+    readonly used: boolean;
+  }>(
+    sql`
+    select a.body,r.body as revoked,exists(select from openerp.invoice_cancellations c where c.book_id=a.book_id and c.approval_id=a.id) as used
+    from openerp.invoice_cancellation_approvals a left join openerp.invoice_cancellation_revocations r on r.book_id=a.book_id and r.approval_id=a.id
+    where a.book_id=${book} and a.id=${id}`,
+    "objects",
+  );
+}
+
+export function insertReview(
+  tx: Transaction,
+  book: string,
+  review: typeof import("@open-erp/contracts/invoice-cancellations").InvoiceCancellationReview.Type,
+  ordinal: number,
+) {
+  return tx.execute(
+    sql`insert into openerp.invoice_cancellation_reviews(book_id,id,issue_id,ordinal,change_set_id,body)
+    values(${book},${review.id},${review.input.issueId},${ordinal},${review.postingPlan.id},${JSON.stringify(review)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function insertApproval(
+  tx: Transaction,
+  book: string,
+  approval: typeof import("@open-erp/contracts/invoice-cancellations").InvoiceCancellationApproval.Type,
+  ordinal: number,
+) {
+  return tx.execute(
+    sql`insert into openerp.invoice_cancellation_approvals(book_id,id,review_id,ordinal,actor_id,digest,expires_at,body)
+    values(${book},${approval.id},${approval.reviewId},${ordinal},${approval.actorId},${approval.digest},${approval.expiresAt}::timestamptz,${JSON.stringify(approval)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function insertRevocation(
+  tx: Transaction,
+  book: string,
+  result: typeof import("@open-erp/contracts/invoice-cancellations").InvoiceCancellationRevocation.Type,
+) {
+  return tx.execute(
+    sql`insert into openerp.invoice_cancellation_revocations(book_id,approval_id,body)values(${book},${result.approvalId},${JSON.stringify(result)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function insertExecution(tx: Transaction, book: string, review: string, approval: string) {
+  return tx.execute(
+    sql`insert into openerp.invoice_cancellation_executions(book_id,review_id,approval_id)values(${book},${review},${approval})`,
+    "objects",
+  );
+}
+
+export function insertCancellation(
+  tx: Transaction,
+  book: string,
+  result: typeof import("@open-erp/contracts/invoice-cancellations").InvoiceCancellationReceipt.Type,
+) {
+  return tx.execute(
+    sql`insert into openerp.invoice_cancellations(book_id,id,review_id,approval_id,issue_id,register_invoice_id,original_voucher_id,reversal_voucher_id,posting_receipt_id,posting_date,body)
+    values(${book},${result.id},${result.reviewId},${result.approvalId},${result.issueId},${result.registerInvoiceId},${result.originalVoucherId},${result.reversalVoucherId},${result.postingReceipt.id},${result.postingDate}::date,${JSON.stringify(result)}::jsonb)`,
+    "objects",
+  );
+}

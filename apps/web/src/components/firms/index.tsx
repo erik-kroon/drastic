@@ -40,6 +40,7 @@ export function FirmsWorkspace(props: {
   const { locale } = props;
   const sv = locale === "sv";
   const [creating, setCreating] = useState(false);
+
   const firms = useQuery({
     queryKey: ["accounting", "firms"],
     queryFn: ({ signal }) => readAccounting("/api/v1/firms", Firms.FirmList, { signal }),
@@ -49,8 +50,10 @@ export function FirmsWorkspace(props: {
     refetchOnWindowFocus: "always",
     gcTime: 0,
   });
+
   const current = props.firmId ?? firms.data?.[0]?.id;
   const listed = firms.data?.some((firm) => firm.id === current) ?? false;
+
   const workspace = useQuery({
     queryKey: ["accounting", "firms", current],
     enabled: Boolean(current) && listed && firms.isSuccess,
@@ -62,7 +65,9 @@ export function FirmsWorkspace(props: {
     refetchOnWindowFocus: "always",
     gcTime: 0,
   });
+
   const known = firms.isSuccess && firms.isFetchedAfterMount;
+
   const ready =
     known &&
     listed &&
@@ -71,6 +76,7 @@ export function FirmsWorkspace(props: {
     workspace.isFetchedAfterMount &&
     !workspace.isFetching &&
     workspace.data.firm.id === current;
+
   return (
     <Workspace
       pageKey="firms"
@@ -121,6 +127,7 @@ export function FirmsWorkspace(props: {
         canRetry={firms.isError || Boolean(current && workspace.isError)}
         onRetry={() => {
           void firms.refetch();
+
           if (current) void workspace.refetch();
         }}
       />
@@ -150,6 +157,7 @@ function FirmMain(
 ) {
   const sv = props.locale === "sv";
   const workspace = props.workspace;
+
   return (
     <PageContent>
       <AccountingStatus locale={props.locale} pending={props.pending} error={props.error} />
@@ -216,6 +224,7 @@ function FirmPicker(props: {
   onCreate: () => void;
 }) {
   const sv = props.locale === "sv";
+
   return (
     <Box display="flex" gap="md" alignItems="center" justifyContent="between">
       {props.firms.length > 1 ? (
@@ -236,12 +245,14 @@ function FirmPicker(props: {
     </Box>
   );
 }
+
 function CreateFirmDialog(props: {
   locale: Locale;
   onClose: () => void;
   onSaved: (firmId: string) => void;
 }) {
   const sv = props.locale === "sv";
+
   return (
     <FirmForm
       title={sv ? "Skapa byrå" : "Create firm"}

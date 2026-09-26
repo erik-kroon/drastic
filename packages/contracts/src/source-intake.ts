@@ -5,8 +5,11 @@ import * as Bank from "./reconciliation";
 import { accountingErrors } from "./accounting-errors";
 
 const Label = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200));
+
 const Amount = Bank.StatementSource.fields.openingMinor;
+
 export const maxSourceBytes = 5 * 1024 * 1024;
+
 export const SourceMediaType = Schema.Literals([
   "text/csv",
   "text/plain",
@@ -17,6 +20,7 @@ export const SourceMediaType = Schema.Literals([
   "image/png",
   "application/octet-stream",
 ]);
+
 export const RetainSource = Schema.Struct({
   sourceSystem: Label,
   sourceAccountId: Label,
@@ -30,6 +34,7 @@ export const RetainSource = Schema.Struct({
     Schema.isPattern(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/),
   ),
 });
+
 export const SourceOccurrence = Schema.Struct({
   id: A.Identifier,
   scope: A.Scope,
@@ -45,6 +50,7 @@ export const SourceOccurrence = Schema.Struct({
   retainedAt: Schema.String,
   receipt: Bank.CommandReceipt,
 });
+
 export const CsvMapping = Schema.Struct({
   profile: Schema.Literal("bank_csv_utf8_v1"),
   delimiter: Schema.Literals([",", ";", "\t"]),
@@ -65,6 +71,7 @@ export const CsvMapping = Schema.Struct({
   closingMinor: Amount,
   completeness: Bank.StatementSource.fields.completeness,
 });
+
 export const CsvDiagnostic = Schema.Struct({
   severity: Schema.Literals(["error", "warning"]),
   code: Schema.String,
@@ -73,6 +80,7 @@ export const CsvDiagnostic = Schema.Struct({
   byteOffset: Schema.NullOr(Schema.Int),
   message: Schema.String,
 });
+
 export const CsvRecord = Schema.Struct({
   recordOrdinal: Schema.Int,
   lineStart: Schema.Int,
@@ -81,12 +89,14 @@ export const CsvRecord = Schema.Struct({
   byteEnd: Schema.Int,
   fields: Schema.Array(Schema.String),
 });
+
 export const IntakeDependencies = Schema.Struct({
   profileVersion: Schema.String,
   writerEpoch: Schema.String,
   accountVersion: Schema.NullOr(Schema.String),
   sourceRevision: Schema.String,
 });
+
 export const SourcePreview = Schema.Struct({
   id: A.Identifier,
   occurrenceId: A.Identifier,
@@ -108,11 +118,13 @@ export const SourcePreview = Schema.Struct({
   digest: A.Digest,
   receipt: Bank.CommandReceipt,
 });
+
 export const ApproveSourcePreview = Schema.Struct({
   digest: A.Digest,
   version: Schema.Literal(1),
   rationale: A.Description,
 });
+
 export const SourceApproval = Schema.Struct({
   ...ApproveSourcePreview.fields,
   id: A.Identifier,
@@ -121,11 +133,13 @@ export const SourceApproval = Schema.Struct({
   expiresAt: Schema.String,
   receipt: Bank.CommandReceipt,
 });
+
 export const AdmitSourcePreview = Schema.Struct({
   digest: A.Digest,
   version: Schema.Literal(1),
   approvalId: A.Identifier,
 });
+
 export const SourceAdmission = Schema.Struct({
   occurrenceId: A.Identifier,
   previewId: A.Identifier,
@@ -135,12 +149,14 @@ export const SourceAdmission = Schema.Struct({
   imported: Bank.StatementImportReceipt,
   receipt: Bank.CommandReceipt,
 });
+
 export const ReparseSourceCsv = Schema.Struct({
   digest: A.Digest,
   version: Schema.Literal(1),
   rationale: A.Description,
   mapping: CsvMapping,
 });
+
 export const SourceSupersession = Schema.Struct({
   occurrenceId: A.Identifier,
   previousPreviewId: A.Identifier,
@@ -152,10 +168,12 @@ export const SourceSupersession = Schema.Struct({
   createdAt: Schema.String,
   receipt: Bank.CommandReceipt,
 });
+
 export const SourceReparse = Schema.Struct({
   preview: SourcePreview,
   supersession: SourceSupersession,
 });
+
 export const SourceRevisionHistory = Schema.Struct({
   occurrenceId: A.Identifier,
   previews: Schema.Array(
@@ -174,6 +192,7 @@ export const SourceRevisionHistory = Schema.Struct({
   ownApprovals: Schema.Array(SourceApproval),
   admission: Schema.NullOr(SourceAdmission),
 });
+
 export const SourcePreviewView = Schema.Struct({
   supersededByPreviewId: Schema.optional(Schema.NullOr(A.Identifier)),
   preview: SourcePreview,
@@ -181,20 +200,24 @@ export const SourcePreviewView = Schema.Struct({
   admission: Schema.NullOr(SourceAdmission),
   dependenciesCurrent: Schema.Boolean,
 });
+
 export const OccurrenceSummary = Schema.Struct({
   occurrence: SourceOccurrence,
   latestPreviewId: Schema.NullOr(A.Identifier),
   admission: Schema.NullOr(SourceAdmission),
 });
+
 export const SourceOccurrenceView = Schema.Struct({
   ...OccurrenceSummary.fields,
   contentBase64: Schema.String,
   previewIds: Schema.Array(A.Identifier),
 });
+
 export const SourceInventory = Schema.Struct({
   items: Schema.Array(OccurrenceSummary),
   nextCursor: Schema.NullOr(A.Identifier),
 });
+
 export const ArchiveFilters = Schema.Struct({
   cursor: Schema.optional(A.Identifier),
   sourceSystem: Schema.optional(Label),
@@ -202,13 +225,23 @@ export const ArchiveFilters = Schema.Struct({
   retainedFrom: Schema.optional(A.AccountingDate),
   retainedTo: Schema.optional(A.AccountingDate),
 });
-export const ArchiveSearch = Schema.Struct({ items: Schema.Array(SourceOccurrence), nextCursor: Schema.NullOr(A.Identifier) });
-export const ArchiveOriginal = Schema.Struct({ occurrence: SourceOccurrence, contentBase64: Schema.String });
+
+export const ArchiveSearch = Schema.Struct({
+  items: Schema.Array(SourceOccurrence),
+  nextCursor: Schema.NullOr(A.Identifier),
+});
+
+export const ArchiveOriginal = Schema.Struct({
+  occurrence: SourceOccurrence,
+  contentBase64: Schema.String,
+});
+
 export const ArchiveExport = Schema.Struct({
   scope: A.Scope,
   items: Schema.Array(ArchiveOriginal),
   nextCursor: Schema.NullOr(A.Identifier),
 });
+
 export const SourcePurchaseLinks = Schema.Struct({
   scope: A.Scope,
   occurrenceId: A.Identifier,
@@ -230,13 +263,16 @@ export const SourcePurchaseLinks = Schema.Struct({
     }),
   ).check(Schema.isMaxLength(200)),
 });
+
 export const CaptureSourceReview = Schema.Struct({ digest: A.Digest });
+
 export const SourceReviewApprovalSummary = Schema.Struct({
   actorId: A.Identifier,
   rationale: A.Description,
   expiresAt: Schema.String,
   expiredAtCapture: Schema.Boolean,
 });
+
 export const SourceReviewAdmissionSummary = Schema.Struct({
   previewId: A.Identifier,
   digest: A.Digest,
@@ -246,6 +282,7 @@ export const SourceReviewAdmissionSummary = Schema.Struct({
   evidenceId: A.Identifier,
   checkpoint: Bank.Checkpoint,
 });
+
 export const SourceOccurrenceMetadata = Schema.Struct({
   occurrence: SourceOccurrence,
   latestPreviewId: OccurrenceSummary.fields.latestPreviewId,
@@ -253,6 +290,7 @@ export const SourceOccurrenceMetadata = Schema.Struct({
   admission: Schema.NullOr(SourceReviewAdmissionSummary),
   originalAvailability: Schema.Literal("not_checked"),
 });
+
 export const SourceReviewCaptureIdentity = Schema.Struct({
   id: A.Identifier,
   kind: Schema.Literal("source_review_artifact_v1"),
@@ -267,6 +305,7 @@ export const SourceReviewCaptureIdentity = Schema.Struct({
   postingAuthority: Schema.Literal(false),
   approvalAuthority: Schema.Literal(false),
 });
+
 export const SourceReviewSnapshot = Schema.Struct({
   ...SourceReviewCaptureIdentity.fields,
   occurrence: SourceOccurrence,
@@ -297,6 +336,7 @@ export const SourceReviewSnapshot = Schema.Struct({
     }),
   ).check(Schema.isMaxLength(49)),
 });
+
 export const SourceReviewCapture = Schema.Struct({
   ...SourceReviewCaptureIdentity.fields,
   sha256: Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/)),
@@ -304,20 +344,28 @@ export const SourceReviewCapture = Schema.Struct({
   mediaType: Schema.Literal("application/json"),
   receipt: Bank.CommandReceipt,
 });
+
 export const SourceReviewArtifact = Schema.Struct({
   capture: SourceReviewCapture,
   snapshot: SourceReviewSnapshot,
   content: Schema.String,
 });
+
 export const SourceReviewArtifactList = Schema.Struct({
   scope: A.Scope,
   items: Schema.Array(SourceReviewCapture).check(Schema.isMaxLength(200)),
 });
+
 const base = "/v1/entities/:entityId/books/:bookId";
+
 const scoped = { params: A.Scope, error: accountingErrors };
+
 const identified = { params: A.ChangePath, error: accountingErrors };
+
 const mutation = { ...scoped, headers: A.IdempotencyHeaders };
+
 const identifiedMutation = { ...identified, headers: A.IdempotencyHeaders };
+
 export const SourceIntakeApi = HttpApiGroup.make("sourceIntake").add(
   HttpApiEndpoint.get("recoverSourceRetention", `${base}/source-retention-requests/:key`, {
     params: Schema.Struct({
@@ -456,13 +504,15 @@ export const SourceIntakeCapabilities = {
     readOnly: true,
   },
   source_search_archive: {
-    description: "Search retained originals within one authorized book using immutable occurrence metadata.",
+    description:
+      "Search retained originals within one authorized book using immutable occurrence metadata.",
     input: Schema.Struct({ scope: A.Scope, filters: ArchiveFilters }),
     output: ArchiveSearch,
     readOnly: true,
   },
   source_export_archive: {
-    description: "Export a bounded manifest and verified original bytes; missing originals fail the entire page.",
+    description:
+      "Export a bounded manifest and verified original bytes; missing originals fail the entire page.",
     input: Schema.Struct({ scope: A.Scope, filters: ArchiveFilters }),
     output: ArchiveExport,
     readOnly: true,

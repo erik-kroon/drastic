@@ -11,8 +11,10 @@ import {
 const unsupported = (message: string): never => {
   throw new Accounting.AccountingError({ code: "UnsupportedProfile", message });
 };
+
 const fontBytes = (source: string) =>
   Uint8Array.from(atob(source), (character) => character.charCodeAt(0));
+
 const fonts = [
   {
     name: "Plex Latin 400",
@@ -43,6 +45,7 @@ const fonts = [
     data: fontBytes(plexExtended600),
   },
 ];
+
 const css = `
 * { box-sizing:border-box; }
 html,body { margin:0; padding:0; }
@@ -83,6 +86,7 @@ function text(value: string) {
     !value.isWellFormed() ||
     Array.from(value).some((character) => {
       const code = character.codePointAt(0) ?? 0;
+
       return (
         code !== 9 &&
         code !== 10 &&
@@ -99,6 +103,7 @@ function text(value: string) {
       "Legal invoice contains characters outside the bundled font coverage. No text was replaced.",
     );
   }
+
   return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -109,15 +114,19 @@ function text(value: string) {
     .replaceAll("\r", "\n")
     .replaceAll("\n", "<br>");
 }
+
 function money(minor: string) {
   if (!/^(0|[1-9][0-9]{0,37})$/.test(minor))
     unsupported("Legal invoice amount is not an exact minor-unit string.");
   const padded = minor.padStart(3, "0");
   const major = padded.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+
   return `${major},${padded.slice(-2)} kr`;
 }
+
 function required(value: string | null, field: string): string {
   if (value === null || value === "") return unsupported(`Legal invoice is missing ${field}.`);
+
   return value;
 }
 
@@ -128,6 +137,7 @@ export async function renderLegalInvoicePdf(capture: typeof Pdf.LegalInvoicePdfC
   const policy = issue.policySnapshot;
   const content = draft.content;
   const seller = policy.candidate.input.sellerIdentity;
+
   if (
     capture.input.rendererVersion !== "openerp-se-invoice-takumi-v1" ||
     issue.policyId !== policy.id ||
@@ -149,9 +159,11 @@ export async function renderLegalInvoicePdf(capture: typeof Pdf.LegalInvoicePdfC
       "The legal PDF source does not match its approved seller, version or exact invoice amounts.",
     );
   }
+
   const rows = issue.lines
     .map((line, index) => {
       const asserted = content.lines[index];
+
       if (
         !asserted ||
         asserted.id !== line.id ||
@@ -162,6 +174,7 @@ export async function renderLegalInvoicePdf(capture: typeof Pdf.LegalInvoicePdfC
       ) {
         unsupported("A legal invoice line is not the exact approved issued line.");
       }
+
       return (
         `<tr><td>${text(line.description)}<div class="line-note">Netto ${money(line.netMinor)} · moms 25 % ${money(line.taxMinor)}<br>` +
         `Rabatt ${money(line.discountMinor)} · tillägg ${money(line.chargeMinor)}</div></td>` +
@@ -170,7 +183,9 @@ export async function renderLegalInvoicePdf(capture: typeof Pdf.LegalInvoicePdfC
       );
     })
     .join("");
+
   const number = text(issue.legalDocumentNumber);
+
   const html =
     `<main lang="sv-SE"><section class="meta"><span>Fakturanr: ${number}</span>` +
     `<span>Fakturadatum: ${text(issue.issuedOn)}</span>` +
@@ -192,6 +207,7 @@ export async function renderLegalInvoicePdf(capture: typeof Pdf.LegalInvoicePdfC
     `${text(required(content.paymentTerms, "payment terms"))}<div>Ange fakturanummer ${number} vid betalning.</div></section>` +
     `<section><h2>Information</h2><div>Fakturan avser en svensk försäljning med 25 % moms.</div>` +
     `<div>Valuta: SEK · Leveransdatum: ${text(required(content.supplyDate, "supply date"))}</div></section></section></main>`;
+
   const bytes = await render(html, {
     size: "a4",
     margin: { top: 40, right: 32, bottom: 45, left: 32 },
@@ -208,6 +224,7 @@ export async function renderLegalInvoicePdf(capture: typeof Pdf.LegalInvoicePdfC
       creationDate: `${issue.issuedOn}T00:00:00`,
     },
   });
+
   if (
     bytes.length < 8 ||
     bytes.length > 2097152 ||
@@ -215,5 +232,6 @@ export async function renderLegalInvoicePdf(capture: typeof Pdf.LegalInvoicePdfC
   ) {
     unsupported("Legal invoice PDF could not be rendered within the 2 MiB artifact limit.");
   }
+
   return bytes;
 }

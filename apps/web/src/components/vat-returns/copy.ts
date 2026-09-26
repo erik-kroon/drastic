@@ -1,7 +1,9 @@
 import type { Locale } from "@/paraglide/runtime";
+
 export function vatCopy(locale: Locale) {
   return locale === "sv" ? sv : en;
 }
+
 const en = {
   title: "VAT return drafts",
   boundary:
@@ -102,6 +104,7 @@ const en = {
   history: "Source history",
   optional: "Blank optional evidence/date fields remain unknown.",
 };
+
 const sv: typeof en = {
   ...en,
   title: "Utkast till momsdeklaration",

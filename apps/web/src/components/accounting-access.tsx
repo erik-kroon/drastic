@@ -23,9 +23,11 @@ export function AccountingAccess({
   const hydrated = useHydrated();
   const client = useQueryClient();
   const copy = accountingCopy(locale);
+
   const [accessBlocked, setAccessBlocked] = useState(
     () => client.getQueryState(booksKey)?.status === "error",
   );
+
   const books = useQuery<typeof Books.Type | null>({
     queryKey: booksKey,
     enabled: hydrated && client.getQueryData(booksKey) !== null,
@@ -33,13 +35,16 @@ export function AccountingAccess({
     staleTime: 0,
     queryFn: ({ signal }) => readAccounting("/api/v1/books", Books, { signal }),
   });
+
   const accessDenied =
     books.error instanceof Accounting.AccountingError &&
     ["Unauthorized", "Forbidden", "NotFound"].includes(books.error.code);
+
   if ((accessDenied || books.data === null) && !accessBlocked) setAccessBlocked(true);
   else if (accessBlocked && books.data && books.isSuccess && books.fetchStatus === "idle") {
     setAccessBlocked(false);
   }
+
   if (books.data && !accessBlocked && !accessDenied)
     return (
       <>
@@ -62,6 +67,7 @@ export function AccountingAccess({
         {children(books.data)}
       </>
     );
+
   return (
     <Box maxWidth="content" centered padding="lg" paddingBlock="2xl" display="grid" gap="xl">
       <Text>OpenERP</Text>
@@ -84,6 +90,7 @@ export function AccountingAccess({
 
 function Login({ locale }: { locale: Locale }) {
   const sv = locale === "sv";
+
   const configuration = useQuery({
     queryKey: ["sign-in-configuration"],
     queryFn: ({ signal }) =>
@@ -92,14 +99,17 @@ function Login({ locale }: { locale: Locale }) {
     staleTime: 0,
     gcTime: 0,
   });
+
   const sso = useMutation({
     mutationFn: async () => {
       if (!configuration.data?.providerId) throw new Error("Sign-in is not configured.");
+
       const result = await authClient.signIn.social({
         provider: configuration.data.providerId,
         callbackURL: window.location.origin + window.location.pathname,
         errorCallbackURL: "/companies?authError=1",
       });
+
       if (result.error)
         throw new Error(
           sv
@@ -108,8 +118,10 @@ function Login({ locale }: { locale: Locale }) {
         );
     },
   });
+
   if (configuration.isSuccess && configuration.data.method === "password")
     return <PasswordLogin locale={locale} />;
+
   return (
     <Box display="grid" gap="lg">
       <Heading level={1}>{sv ? "Logga in på OpenERP" : "Sign in to OpenERP"}</Heading>
@@ -161,16 +173,21 @@ function PasswordLogin({ locale }: { locale: Locale }) {
   const email = useRef<HTMLInputElement>(null);
   const password = useRef<HTMLInputElement>(null);
   const client = useQueryClient();
+
   const login = useMutation({
     mutationFn: async () => {
       const gate = client.getQueryCache().find({ queryKey: booksKey, exact: true });
       const value = password.current?.value ?? "";
+
       if (password.current) password.current.value = "";
+
       const result = await authClient.signIn.email({
         email: email.current?.value.trim() ?? "",
         password: value,
       });
+
       if (result.error) throw new Error(result.error.message ?? "Sign-in failed.");
+
       return gate;
     },
     onSuccess: async (gate) => {
@@ -181,6 +198,7 @@ function PasswordLogin({ locale }: { locale: Locale }) {
       )
         return;
       await client.cancelQueries();
+
       if (
         gate.state.data !== null ||
         !Object.is(client.getQueryCache().find({ queryKey: booksKey, exact: true }), gate)
@@ -189,6 +207,7 @@ function PasswordLogin({ locale }: { locale: Locale }) {
       await client.resetQueries();
     },
   });
+
   return (
     <Box
       as="form"
@@ -235,11 +254,14 @@ function PasswordLogin({ locale }: { locale: Locale }) {
 export function SignOut({ locale }: { locale: Locale }) {
   const client = useQueryClient();
   const copy = accountingCopy(locale);
+
   const logout = useMutation({
     mutationFn: async () => {
       const gate = client.getQueryCache().find({ queryKey: booksKey, exact: true });
       const result = await authClient.signOut();
+
       if (result.error) throw new Error(result.error.message ?? "Sign-out failed.");
+
       return gate;
     },
     onSuccess: async (gate) => {
@@ -249,6 +271,7 @@ export function SignOut({ locale }: { locale: Locale }) {
       )
         return;
       await client.cancelQueries();
+
       if (!Object.is(client.getQueryCache().find({ queryKey: booksKey, exact: true }), gate))
         return;
       // Notify the mounted gate before retiring it, then seed the replacement.
@@ -257,6 +280,7 @@ export function SignOut({ locale }: { locale: Locale }) {
       client.setQueryData(booksKey, null);
     },
   });
+
   return (
     <Box display="grid" gap="sm">
       <Button

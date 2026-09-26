@@ -7,6 +7,7 @@ import { closingCopy } from "./copy";
 
 export function FamilyInventoryFields({ locale, disabled }: { locale: Locale; disabled: boolean }) {
   const copy = closingCopy(locale);
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Text>{copy.familyHelp}</Text>

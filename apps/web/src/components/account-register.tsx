@@ -17,6 +17,7 @@ export function ChartOfAccounts() {
   const copy = accountingCopy(locale);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("active");
+
   const matching = setup.accounts.filter(
     (account) =>
       (status === "all" || (status === "active") === account.active) &&
@@ -24,6 +25,7 @@ export function ChartOfAccounts() {
         .toLocaleLowerCase(locale)
         .includes(search.toLocaleLowerCase(locale)),
   );
+
   return (
     <Box display="grid" gap="lg">
       <RecordHeading

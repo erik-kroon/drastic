@@ -26,9 +26,11 @@ export function JournalDraft({
   const copy = accountingCopy(locale);
   const keys = useRef(new Map<string, string>());
   const [inputError, setInputError] = useState("");
+
   const evidence = useMutation({
     mutationFn: (payload: typeof Accounting.CreateEvidence.Type) => {
       const path = `${bookPath(book)}/evidence`;
+
       return readAccounting(
         path,
         Accounting.Evidence,
@@ -36,6 +38,7 @@ export function JournalDraft({
       );
     },
   });
+
   return (
     <Box id="journal-draft" tabIndex={-1} display="grid" gap="2xl">
       <Box
@@ -45,16 +48,20 @@ export function JournalDraft({
         onSubmit={(event) => {
           event.preventDefault();
           const fields = new FormData(event.currentTarget);
+
           const decoded = Schema.decodeUnknownOption(Accounting.CreateEvidence)({
             title: fields.get("title"),
             content: fields.get("content"),
             origin: fields.get("origin"),
             mediaType: "text/plain",
           });
+
           if (decoded._tag === "None") {
             setInputError(copy.journal_invalid);
+
             return;
           }
+
           setInputError("");
           evidence.mutate(decoded.value);
         }}
@@ -143,9 +150,11 @@ function JournalForm(props: {
   const nextLine = useRef(3);
   const [lines, setLines] = useState([1, 2]);
   const [inputError, setInputError] = useState("");
+
   const prepare = useMutation({
     mutationFn: (payload: typeof Accounting.PrepareJournal.Type) => {
       const path = `${bookPath(book)}/change-sets`;
+
       return readAccounting(
         path,
         Accounting.ChangeSet,
@@ -157,8 +166,10 @@ function JournalForm(props: {
       onPrepared(plan.id);
     },
   });
+
   function submit(form: HTMLFormElement) {
     const fields = new FormData(form);
+
     const decoded = Schema.decodeUnknownOption(Accounting.PrepareJournal)({
       kind: "manual_journal",
       evidenceId: props.evidenceId,
@@ -176,13 +187,17 @@ function JournalForm(props: {
         description: fields.get(`description-${id}`),
       })),
     });
+
     if (decoded._tag === "None") {
       setInputError(copy.journal_invalid);
+
       return;
     }
+
     const journal = decoded.value;
     const debit = journal.lines.reduce((total, line) => total + BigInt(line.debitMinor), 0n);
     const credit = journal.lines.reduce((total, line) => total + BigInt(line.creditMinor), 0n);
+
     if (
       debit === 0n ||
       debit !== credit ||
@@ -191,11 +206,14 @@ function JournalForm(props: {
       )
     ) {
       setInputError(copy.journal_balance_error);
+
       return;
     }
+
     setInputError("");
     prepare.mutate(journal);
   }
+
   return (
     <Box
       as="form"

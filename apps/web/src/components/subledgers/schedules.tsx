@@ -10,7 +10,12 @@ import { DataTable } from "@open-erp/ui/components/data-table";
 import { Text } from "@open-erp/ui/components/typography";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { ArrowLeft } from "lucide-react";
-import { RecordHeading, RecordSummary, RecordFact, RecordSection } from "@open-erp/ui/components/record-layout";
+import {
+  RecordHeading,
+  RecordSummary,
+  RecordFact,
+  RecordSection,
+} from "@open-erp/ui/components/record-layout";
 import { PageCaption, PageEmpty, RecordOpen } from "@open-erp/ui/components/accounting-page";
 import { Disclosure, WorkflowSteps } from "@open-erp/ui/components/workflow";
 import { InputField, SelectField, TextareaField } from "@open-erp/ui/components/field";
@@ -32,8 +37,10 @@ type Props = {
   recordId?: string;
   onOpen?: (id: string) => void;
 };
+
 export function SubledgersPanel(props: Props) {
   if (props.open) return <ScheduleWorkspace {...props} />;
+
   return (
     <details id="subledgers" tabIndex={-1}>
       <summary>{subledgerCopy(props.locale).title}</summary>
@@ -41,19 +48,23 @@ export function SubledgersPanel(props: Props) {
     </details>
   );
 }
+
 function ScheduleWorkspace(props: Props) {
   const { book, setup, locale } = props;
   const copy = subledgerCopy(locale);
   const client = useQueryClient();
   const [localRecord, setLocalRecord] = useState<string | null>(null);
   const selected = props.recordId ?? localRecord;
+
   const setSelected = (id: string | null) => {
     setLocalRecord(id);
     props.onOpen?.(id ?? "");
   };
+
   const [after, setAfter] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
   const [creating, setCreating] = useState(false);
+
   const schedules = useQuery({
     queryKey: [...bookKey(book), "schedules", after],
     queryFn: ({ signal }) =>
@@ -64,12 +75,14 @@ function ScheduleWorkspace(props: Props) {
       ),
     retry: false,
   });
+
   const saved = (id: string) => {
     setSelected(id);
     setCreating(false);
     void client.invalidateQueries({ queryKey: [...bookKey(book), "schedules"] });
     void client.invalidateQueries({ queryKey: [...bookKey(book), "schedule", id] });
   };
+
   if (selected)
     return (
       <Box display="grid" gap="xl">
@@ -82,6 +95,7 @@ function ScheduleWorkspace(props: Props) {
         <ScheduleDetail key={selected} {...props} id={selected} onSaved={saved} />
       </Box>
     );
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <RecordHeading
@@ -172,10 +186,13 @@ function ScheduleWorkspace(props: Props) {
             onSubmit={(event) => {
               event.preventDefault();
               const id = new FormData(event.currentTarget).get("scheduleId");
+
               if (!Schema.is(Accounting.Identifier)(id)) {
                 setInvalid(true);
+
                 return;
               }
+
               setInvalid(false);
               setSelected(id);
             }}
@@ -205,6 +222,7 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
   const copy = subledgerCopy(locale);
   const [editing, setEditing] = useState(false);
   const keys = useRef(new Map<string, string>());
+
   const schedule = useQuery({
     queryKey: [...bookKey(book), "schedule", id],
     queryFn: async ({ signal }) => {
@@ -213,6 +231,7 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
         Subledgers.ScheduleView,
         { signal },
       );
+
       if (
         [result.current, ...result.revisions].some(
           (revision) =>
@@ -223,18 +242,22 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
       ) {
         throw new Error("Schedule response identity or scope mismatch");
       }
+
       return result;
     },
     retry: false,
   });
+
   const prepare = useMutation({
     mutationFn: async (input: typeof Subledgers.PrepareScheduleOccurrence.Type) => {
       const path = `${bookPath(book)}/schedules/${id}/prepare`;
+
       const result = await readAccounting(
         path,
         Subledgers.SchedulePreparation,
         mutationOptions(path, JSON.stringify(input), keys.current),
       );
+
       if (
         result.scheduleId !== id ||
         result.revisionDigest !== input.expectedDigest ||
@@ -242,6 +265,7 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
       ) {
         throw new Error("Schedule preparation identity mismatch");
       }
+
       return result;
     },
     onSuccess: (_result, input) => {
@@ -250,7 +274,9 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
       void schedule.refetch();
     },
   });
+
   const view = schedule.data;
+
   const stateLabels = {
     unprepared: copy.unprepared,
     prepared: copy.preparedState,
@@ -258,6 +284,7 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
     reversed: copy.reversed,
     conflicted: copy.conflicted,
   };
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <AccountingStatus locale={locale} pending={schedule.isPending} error={schedule.error} />
@@ -315,12 +342,7 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
           </RecordSummary>
           <PageCaption>{view.current.terms.rationale}</PageCaption>
           <ScheduleBasisNotice basis={view.postingBasis} locale={locale} />
-          <AssetImpairmentPanel
-            book={book}
-            setup={setup}
-            locale={locale}
-            schedule={view}
-          />
+          <AssetImpairmentPanel book={book} setup={setup} locale={locale} schedule={view} />
           {view.impairments.length ? (
             <DataTable
               title={copy.impairmentHistory}
@@ -335,11 +357,7 @@ function ScheduleDetail(props: Props & { id: string; onSaved: (id: string) => vo
                 id: impairment.id,
                 cells: [
                   impairment.postingDate,
-                  formatMinorAmount(
-                    impairment.impairmentMinor,
-                    view.current.currencyScale,
-                    locale,
-                  ),
+                  formatMinorAmount(impairment.impairmentMinor, view.current.currencyScale, locale),
                   formatMinorAmount(
                     impairment.postImpairmentCarryingMinor,
                     view.current.currencyScale,
@@ -526,8 +544,10 @@ function AssetImpairmentPanel(props: {
   schedule: typeof Subledgers.ScheduleView.Type;
 }) {
   const copy = subledgerCopy(props.locale);
+
   if (props.book.role !== "operator")
     return <PageCaption>{copy.impairmentOperatorOnly}</PageCaption>;
+
   return <OperatorAssetImpairmentPanel {...props} />;
 }
 
@@ -542,10 +562,12 @@ function OperatorAssetImpairmentPanel(props: {
   const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
   const basisEnabled = schedule.postingBasis?.mode === "linked_basis";
   const basisPath = `${bookPath(book)}/subledger-controls/bases/${encodeURIComponent(schedule.current.scheduleId)}`;
+
   const basis = useQuery({
     queryKey: [...bookKey(book), "subledger-controls", "basis", schedule.current.scheduleId],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(basisPath, Controls.SubledgerBasis, { signal });
+
       if (
         result.scope.bookId !== book.id ||
         result.scope.entityId !== book.entityId ||
@@ -554,19 +576,27 @@ function OperatorAssetImpairmentPanel(props: {
       ) {
         throw new Error("Impairment carrying basis identity mismatch");
       }
+
       return result;
     },
     enabled: basisEnabled,
     retry: false,
   });
+
   const reviews = useQuery({
-    queryKey: [...bookKey(book), "subledger-controls", "impairment-reviews", schedule.current.scheduleId],
+    queryKey: [
+      ...bookKey(book),
+      "subledger-controls",
+      "impairment-reviews",
+      schedule.current.scheduleId,
+    ],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
         `${bookPath(book)}/subledger-controls/impairments/for-schedule/${encodeURIComponent(schedule.current.scheduleId)}`,
         Controls.AssetImpairmentReviewList,
         { signal },
       );
+
       if (
         result.scope.bookId !== book.id ||
         result.scope.entityId !== book.entityId ||
@@ -575,18 +605,23 @@ function OperatorAssetImpairmentPanel(props: {
       ) {
         throw new Error("Impairment review list identity mismatch");
       }
+
       return result;
     },
     retry: false,
   });
+
   const suffix = completeImpairmentSuffix(schedule);
   const expectedBasisDigest = schedule.postingBasis?.basisDigest ?? null;
+
   const basisReady =
     basis.data !== undefined &&
     expectedBasisDigest !== null &&
     basis.data.digest === expectedBasisDigest &&
     schedule.postingBasis?.supported === true;
+
   let blocker: string | undefined;
+
   if (schedule.current.terms.kind !== "asset") blocker = copy.impairmentAssetOnly;
   else if (schedule.disposal) blocker = copy.impairmentDisposed;
   else if (schedule.postingBasis?.mode !== "linked_basis") blocker = copy.impairmentBasisRequired;
@@ -594,20 +629,15 @@ function OperatorAssetImpairmentPanel(props: {
   else if (!basisReady) blocker = copy.impairmentBasisUnavailable;
   else if (!suffix.complete) blocker = copy.impairmentSuffixRequired;
   else if (props.setup === undefined) blocker = copy.impairmentSetupUnavailable;
-  else if (
-    schedule.carryingMinor === null ||
-    BigInt(schedule.carryingMinor) <= 0n
-  ) {
+  else if (schedule.carryingMinor === null || BigInt(schedule.carryingMinor) <= 0n) {
     blocker = copy.impairmentCarryingUnavailable;
   }
+
   return (
     <Disclosure title={copy.impairmentWorkflow}>
       <Box display="grid" gap="lg" minWidth="zero">
         <PageCaption>{copy.impairmentWorkflowHelp}</PageCaption>
-        <AssetImpairmentReviewLookup
-          locale={locale}
-          onOpen={(id) => setSelectedReviewId(id)}
-        />
+        <AssetImpairmentReviewLookup locale={locale} onOpen={(id) => setSelectedReviewId(id)} />
         {selectedReviewId ? (
           <AssetImpairmentReviewDetail
             key={selectedReviewId}
@@ -665,6 +695,7 @@ function OperatorAssetImpairmentPanel(props: {
 function AssetImpairmentReviewLookup(props: { locale: Locale; onOpen: (id: string) => void }) {
   const copy = subledgerCopy(props.locale);
   const [invalid, setInvalid] = useState(false);
+
   return (
     <Box
       as="form"
@@ -673,10 +704,13 @@ function AssetImpairmentReviewLookup(props: { locale: Locale; onOpen: (id: strin
       onSubmit={(event) => {
         event.preventDefault();
         const id = new FormData(event.currentTarget).get("impairmentReviewId");
+
         if (!Schema.is(Accounting.Identifier)(id)) {
           setInvalid(true);
+
           return;
         }
+
         setInvalid(false);
         props.onOpen(id);
       }}
@@ -704,6 +738,7 @@ function AssetImpairmentReviewList(props: {
 }) {
   const copy = subledgerCopy(props.locale);
   const executed = new Set(props.reviews.impairments.map((effect) => effect.reviewId));
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       {props.reviews.items.length ? (
@@ -747,7 +782,9 @@ function completeImpairmentSuffix(schedule: typeof Subledgers.ScheduleView.Type)
   const start = schedule.occurrences.findIndex(
     (occurrence) => occurrence.state === "unprepared" || occurrence.state === "prepared",
   );
+
   const occurrences = start < 0 ? [] : schedule.occurrences.slice(start);
+
   return {
     start,
     occurrences,
@@ -777,44 +814,52 @@ function AssetImpairmentPrepareForm(props: {
   const [decisionKey, setDecisionKey] = useState(`impair_${crypto.randomUUID()}`);
   const [count, setCount] = useState(initialCount);
   const [impairmentText, setImpairmentText] = useState("");
+
   const [residualText, setResidualText] = useState(
     minorToDecimal(current.terms.residualMinor, current.currencyScale),
   );
+
   const [installmentAmounts, setInstallmentAmounts] = useState(() =>
     Array.from({ length: initialCount }, (_, index) =>
-      props.suffix[index] ? minorToDecimal(props.suffix[index].amountMinor, current.currencyScale) : "",
+      props.suffix[index]
+        ? minorToDecimal(props.suffix[index].amountMinor, current.currencyScale)
+        : "",
     ),
   );
+
   const futureMinor = impairmentFutureMinor(
     schedule.carryingMinor,
     impairmentText,
     residualText,
     current.currencyScale,
   );
+
   const installmentTotal = sumPositiveMinor(installmentAmounts, current.currencyScale);
+
   const ordinaryAccountIds = new Set([
     current.terms.debitAccountId,
     current.terms.creditAccountId,
     ...props.basis.lines.map((line) => line.accountId),
   ]);
+
   const priorContraAccounts = new Set(
     schedule.impairments.map((effect) => effect.accumulatedImpairmentAccountId),
   );
+
   const retainedContraAccount = schedule.impairments.at(-1)?.accumulatedImpairmentAccountId;
+
   const accountOptions = (include: (accountId: string) => boolean) => [
     { value: "", label: copy.impairmentChooseAccount },
     ...props.setup.accounts
       .filter(
-        (account) =>
-          account.active &&
-          !ordinaryAccountIds.has(account.id) &&
-          include(account.id),
+        (account) => account.active && !ordinaryAccountIds.has(account.id) && include(account.id),
       )
       .map((account) => ({
         value: account.id,
         label: `${account.code} · ${account.name}`,
       })),
   ];
+
   const periodOptions = [
     { value: "", label: copy.impairmentChoosePeriod },
     ...props.setup.periods.map((period) => ({
@@ -823,16 +868,17 @@ function AssetImpairmentPrepareForm(props: {
       disabled: period.locked,
     })),
   ];
+
   const money = (amount: string) =>
     `${formatMinorAmount(amount, current.currencyScale, locale)} ${current.currency}`;
+
   return (
     <CommandForm
       book={book}
       locale={locale}
       path={`${bookPath(book)}/subledger-controls/impairments/prepare`}
       schema={Subledgers.PrepareAssetImpairment}
-      output={Controls.AssetImpairmentReview
-      }
+      output={Controls.AssetImpairmentReview}
       label={copy.impairmentPrepare}
       recoveryId={`${current.scheduleId}:impairment:prepare`}
       input={(fields) => ({
@@ -931,18 +977,14 @@ function AssetImpairmentPrepareForm(props: {
             name="accumulatedImpairmentAccountId"
             defaultValue={retainedContraAccount ?? ""}
             options={accountOptions(
-              (accountId) => !priorContraAccounts.has(accountId) || accountId === retainedContraAccount,
+              (accountId) =>
+                !priorContraAccounts.has(accountId) || accountId === retainedContraAccount,
             )}
             required
           />
         </Box>
         <Box display="grid" columns={1} columnsAtLg={3} gap="lg">
-          <InputField
-            label={copy.impairmentPostingDate}
-            name="postingDate"
-            type="date"
-            required
-          />
+          <InputField label={copy.impairmentPostingDate} name="postingDate" type="date" required />
           <SelectField
             label={copy.impairmentPostingPeriod}
             name="accountingPeriodId"
@@ -961,6 +1003,7 @@ function AssetImpairmentPrepareForm(props: {
           <Text>{copy.impairmentFutureSuffix}</Text>
           {Array.from({ length: count }, (_, index) => {
             const occurrence = props.suffix[index];
+
             return (
               <Box
                 key={index}
@@ -975,7 +1018,9 @@ function AssetImpairmentPrepareForm(props: {
                 borderColor="default"
                 borderRadius="control"
               >
-                <legend>{copy.impairmentInstallment} {props.suffixStart + index + 1}</legend>
+                <legend>
+                  {copy.impairmentInstallment} {props.suffixStart + index + 1}
+                </legend>
                 <InputField
                   label={copy.date}
                   name={`impairmentDate_${index}`}
@@ -1090,24 +1135,26 @@ function impairmentFutureMinor(
   if (carryingMinor === null) return null;
   const impairmentMinor = decimalInputMinor(impairmentText, scale);
   const residualMinor = decimalInputMinor(residualText, scale);
-  if (
-    impairmentMinor === null ||
-    residualMinor === null ||
-    BigInt(impairmentMinor) <= 0n
-  ) {
+
+  if (impairmentMinor === null || residualMinor === null || BigInt(impairmentMinor) <= 0n) {
     return null;
   }
+
   const future = BigInt(carryingMinor) - BigInt(impairmentMinor) - BigInt(residualMinor);
+
   return future > 0n ? future.toString() : null;
 }
 
 function sumPositiveMinor(values: readonly string[], scale: number) {
   let total = 0n;
+
   for (const value of values) {
     const minor = decimalInputMinor(value, scale);
+
     if (minor === null || BigInt(minor) <= 0n) return null;
     total += BigInt(minor);
   }
+
   return total.toString();
 }
 
@@ -1122,11 +1169,13 @@ function AssetImpairmentReviewDetail(props: {
   const { book, locale, id, schedule } = props;
   const copy = subledgerCopy(locale);
   const path = `${bookPath(book)}/subledger-controls/impairments/${encodeURIComponent(id)}`;
+
   const review = useQuery({
     queryKey: [...bookKey(book), "subledger-controls", "impairment-review", id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(path, Controls.AssetImpairmentReviewView, { signal });
       const retained = result.impairment;
+
       if (
         result.review.id !== id ||
         result.review.scope.bookId !== book.id ||
@@ -1149,15 +1198,18 @@ function AssetImpairmentReviewDetail(props: {
       ) {
         throw new Error("Impairment review identity mismatch");
       }
+
       return result;
     },
     staleTime: 0,
     refetchOnMount: "always",
     retry: false,
   });
+
   const data = review.data;
   const approval = data?.approvals.at(-1);
   const approvalCurrent = approval !== undefined && Date.parse(approval.expiresAt) > Date.now();
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Box display="flex" gap="md" flexWrap="wrap">
@@ -1194,7 +1246,9 @@ function AssetImpairmentReviewDetail(props: {
                   ? copy.impairmentApproved
                   : copy.impairmentPrepared}
             </RecordFact>
-            <RecordFact label={copy.basisDigest}>{data.review.basis.carryingBasis.digest}</RecordFact>
+            <RecordFact label={copy.basisDigest}>
+              {data.review.basis.carryingBasis.digest}
+            </RecordFact>
             <RecordFact label={copy.impairmentCurrentCarrying}>
               {formatMinorAmount(
                 data.review.basis.currentCarryingMinor,
@@ -1251,8 +1305,10 @@ function AssetImpairmentReviewFacts(props: {
   const { book, locale, review } = props;
   const copy = subledgerCopy(locale);
   const scale = review.proposedRevision.currencyScale;
+
   const money = (amount: string) =>
     `${formatMinorAmount(amount, scale, locale)} ${review.proposedRevision.currency}`;
+
   const lines = review.postingPlan.groups.flatMap((group) =>
     group.actions.flatMap((action) =>
       action.lines.map((line) => ({
@@ -1261,6 +1317,7 @@ function AssetImpairmentReviewFacts(props: {
       })),
     ),
   );
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <RecordSection title={copy.impairmentBasis}>
@@ -1322,7 +1379,12 @@ function AssetImpairmentReviewFacts(props: {
           ]}
           rows={lines.map(({ action, line }) => ({
             id: `${action.eventId}:${line.lineId}`,
-            cells: [line.accountId, money(line.debitMinor), money(line.creditMinor), line.description],
+            cells: [
+              line.accountId,
+              money(line.debitMinor),
+              money(line.creditMinor),
+              line.description,
+            ],
           }))}
         />
       </RecordSection>
@@ -1337,7 +1399,11 @@ function AssetImpairmentReviewFacts(props: {
           ]}
           rows={review.input.installments.map((installment, index) => ({
             id: String(index + 1),
-            cells: [installment.postingDate, installment.accountingPeriodId, money(installment.amountMinor)],
+            cells: [
+              installment.postingDate,
+              installment.accountingPeriodId,
+              money(installment.amountMinor),
+            ],
           }))}
         />
         <Text>
@@ -1354,6 +1420,7 @@ function AssetImpairmentApprovalHistory(props: {
   effect: typeof Controls.AssetImpairment.Type | null;
 }) {
   const copy = subledgerCopy(props.locale);
+
   return (
     <RecordSection title={copy.impairmentApprovals}>
       {props.approvals.length ? (
@@ -1402,6 +1469,7 @@ function AssetImpairmentReviewActions(props: {
   const { book, locale, review } = props;
   const copy = subledgerCopy(locale);
   const path = `${bookPath(book)}/subledger-controls/impairments/${encodeURIComponent(props.id)}`;
+
   return (
     <RecordSection title={copy.impairmentActions}>
       <Text>{copy.impairmentApprovalHelp}</Text>
@@ -1411,10 +1479,8 @@ function AssetImpairmentReviewActions(props: {
           book={book}
           locale={locale}
           path={`${path}/approve`}
-          schema={Controls.ApproveAssetImpairment
-          }
-          output={Controls.AssetImpairmentApproval
-          }
+          schema={Controls.ApproveAssetImpairment}
+          output={Controls.AssetImpairmentApproval}
           label={copy.impairmentApprove}
           recoveryId={`${props.id}:impairment:approve`}
           allowed={book.role === "operator" && !props.busy}
@@ -1442,10 +1508,8 @@ function AssetImpairmentReviewActions(props: {
           book={book}
           locale={locale}
           path={`${path}/execute`}
-          schema={Controls.ExecuteAssetImpairment
-          }
-          output={Controls.AssetImpairment
-          }
+          schema={Controls.ExecuteAssetImpairment}
+          output={Controls.AssetImpairment}
           label={copy.impairmentExecute}
           recoveryId={`${props.id}:impairment:execute`}
           allowed={book.role === "operator" && !props.busy}
@@ -1486,10 +1550,12 @@ function AssetImpairmentConsequences(props: {
   const scale = review.proposedRevision.currencyScale;
   const currency = review.proposedRevision.currency;
   const money = (amount: string) => `${formatMinorAmount(amount, scale, locale)} ${currency}`;
+
   const ordinaryAccumulated = addMinorStrings(
     effect?.openingAccumulatedMinor ?? "0",
     effect?.recognizedMinor ?? "0",
   );
+
   const grossRows = effect
     ? review.basis.carryingBasis.lines
         .filter((line) => BigInt(line.debitMinor) > 0n)
@@ -1498,6 +1564,7 @@ function AssetImpairmentConsequences(props: {
           cells: [copy.impairmentGrossCredit, line.accountId, money(line.debitMinor)],
         }))
     : [];
+
   const disposalRows = effect
     ? [
         ...grossRows,
@@ -1527,6 +1594,7 @@ function AssetImpairmentConsequences(props: {
         },
       ]
     : [];
+
   return (
     <>
       <RecordSection title={copy.impairmentControl}>
@@ -1537,9 +1605,7 @@ function AssetImpairmentConsequences(props: {
               <RecordFact label={copy.impairmentContraAccount}>
                 {effect.accumulatedImpairmentAccountId}
               </RecordFact>
-              <RecordFact label={copy.impairment}>
-                {money(effect.netImpairmentMinor)}
-              </RecordFact>
+              <RecordFact label={copy.impairment}>{money(effect.netImpairmentMinor)}</RecordFact>
               <RecordFact label={copy.carrying}>
                 {money(effect.postImpairmentCarryingMinor)}
               </RecordFact>
@@ -1606,20 +1672,25 @@ function ScheduleAmendmentPanel(props: {
   const copy = subledgerCopy(locale);
   const current = props.view.current;
   const occurrences = props.view.occurrences;
+
   const suffixStart = occurrences.findIndex(
     (occurrence) => occurrence.state === "unprepared" || occurrence.state === "prepared",
   );
+
   const suffix = suffixStart < 0 ? [] : occurrences.slice(suffixStart);
   const prefix = suffixStart < 0 ? [] : occurrences.slice(0, suffixStart);
+
   const hasCompleteSuffix =
     suffixStart >= 0 &&
     suffix.length > 0 &&
     suffix.every(
       (occurrence) => occurrence.state === "unprepared" || occurrence.state === "prepared",
     );
+
   const hasPrefixConflict = prefix.some((occurrence) => occurrence.state === "conflicted");
   const hasReversedPrefix = prefix.some((occurrence) => occurrence.state === "reversed");
   const linkedBasis = props.view.postingBasis?.mode === "linked_basis";
+
   const commonAvailable =
     linkedBasis &&
     props.view.postingBasis?.supported === true &&
@@ -1627,13 +1698,16 @@ function ScheduleAmendmentPanel(props: {
     hasCompleteSuffix &&
     !hasPrefixConflict &&
     props.setup !== undefined;
+
   const dateAvailable = commonAvailable && !hasReversedPrefix;
   const [estimateCount, setEstimateCount] = useState(Math.max(1, suffix.length));
+
   const periodOptions = (props.setup?.periods ?? []).map((period) => ({
     value: period.id,
     label: `${period.startsOn} – ${period.endsOn}`,
     disabled: period.locked,
   }));
+
   const path = `${bookPath(book)}/schedules/${encodeURIComponent(current.scheduleId)}`;
 
   if (book.role !== "operator") return <PageCaption>{copy.amendmentOnlyOperator}</PageCaption>;
@@ -1693,11 +1767,15 @@ function amendmentKindLabel(
   none: string,
 ) {
   if (kind === "future_dates_v1") return locale === "sv" ? "Framtida datum" : "Future dates";
+
   if (kind === "remaining_estimate_v1")
     return locale === "sv" ? "Återstående uppskattning" : "Remaining estimate";
+
   if (kind === "remaining_lifetime_v1")
     return locale === "sv" ? "Återstående livslängd" : "Remaining lifetime";
+
   if (kind === "impairment_v1") return locale === "sv" ? "Nedskrivning" : "Impairment";
+
   return none;
 }
 
@@ -1707,10 +1785,14 @@ function amendmentBlockerMessage(
 ) {
   if (!basis || basis.supported) return undefined;
   const copy = subledgerCopy(locale);
+
   if (basis.blocker === "basis_reversed_or_corrected" || basis.blocker === "basis_mismatch")
     return copy.amendmentBlockerBasis;
+
   if (basis.blocker === "estimate_history_changed") return copy.amendmentBlockerEstimate;
+
   if (basis.blocker === "disposed") return copy.amendmentBlockerDisposed;
+
   return copy.amendmentBlockerUnknown;
 }
 
@@ -1728,19 +1810,24 @@ function ScheduleAmendmentReadout(props: {
   const kind = amendment?.kind;
   const kindLabel = amendmentKindLabel(kind, locale, copy.amendmentNone);
   const basisDigest = view.postingBasis?.basisDigest ?? amendment?.basisDigest;
+
   const futureMinor =
     amendment && "remainingMinor" in amendment.input
       ? amendment.input.remainingMinor
       : amendment?.kind === "impairment_v1"
         ? amendment.input.futureMinor
         : undefined;
+
   const reversedMinor =
     amendment && "reversedMinor" in amendment ? amendment.reversedMinor : undefined;
+
   const blockerMessage = amendmentBlockerMessage(view.postingBasis, locale);
+
   const conflictLabel = view.occurrences
     .filter((occurrence) => occurrence.state === "conflicted")
     .map((occurrence) => occurrence.ordinal)
     .join(", ");
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Text>{copy.amendmentNotice}</Text>
@@ -1800,10 +1887,12 @@ function ScheduleDateAmendmentForm(props: {
   const { book, locale } = props;
   const copy = subledgerCopy(locale);
   const current = props.schedule.current;
+
   const futureMinor =
     current.amendment && "remainingMinor" in current.amendment.input
       ? current.amendment.input.remainingMinor
       : undefined;
+
   return (
     <CommandForm
       book={book}
@@ -1914,14 +2003,17 @@ function ScheduleEstimateAmendmentForm(props: {
   const { book, locale } = props;
   const copy = subledgerCopy(locale);
   const current = props.schedule.current;
+
   const futureMinor =
     current.amendment && "remainingMinor" in current.amendment.input
       ? current.amendment.input.remainingMinor
       : undefined;
+
   const residualMinor =
     current.amendment && current.amendment.kind !== "future_dates_v1"
       ? current.amendment.input.residualMinor
       : current.terms.residualMinor;
+
   return (
     <CommandForm
       book={book}
@@ -1988,6 +2080,7 @@ function ScheduleEstimateAmendmentForm(props: {
           <Text>{copy.amendmentInstallments}</Text>
           {Array.from({ length: props.estimateCount }, (_, index) => {
             const occurrence = props.suffix[index];
+
             return (
               <Box
                 key={index}
@@ -2071,11 +2164,14 @@ function ScheduleBasisNotice({
 }) {
   const copy = subledgerCopy(locale);
   let message = copy.basisUnknown;
+
   if (basis) {
     message = copy.basisStandalone;
+
     if (!basis.supported) message = copy.basisBlocked;
     else if (basis.mode === "linked_basis") message = copy.basisLinked;
   }
+
   return (
     <Box role="status" display="grid" gap="sm">
       <Text>{message}</Text>
@@ -2095,6 +2191,7 @@ function ScheduleBasisNotice({
 
 function fieldText(fields: FormData, name: string) {
   const value = fields.get(name);
+
   return typeof value === "string" ? value : "";
 }
 
@@ -2104,6 +2201,7 @@ function periodName(
   locale: Locale,
 ) {
   const period = setup?.periods.find((item) => item.id === id);
+
   return period
     ? `${period.startsOn} – ${period.endsOn}`
     : locale === "sv"

@@ -34,13 +34,17 @@ export function CompanyDirectory({ books, locale }: { books: typeof Books.Type; 
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
+
   const filtered = books.filter((book) =>
     book.name.toLocaleLowerCase(locale).includes(search.toLocaleLowerCase(locale)),
   );
+
   const visible = filtered.slice(page * 10, (page + 1) * 10);
+
   const work = useQueries({
     queries: visible.map((book) => attentionQueryOptions(book, { status: "open" })),
   });
+
   const setups = useQueries({
     queries: visible.map((book) => ({
       queryKey: [...bookKey(book), "setup"],
@@ -49,6 +53,7 @@ export function CompanyDirectory({ books, locale }: { books: typeof Books.Type; 
       retry: false,
     })),
   });
+
   return (
     <Workspace
       pageKey="companies"
@@ -108,6 +113,7 @@ export function CompanyDirectory({ books, locale }: { books: typeof Books.Type; 
               const tasks = work[index];
               const setup = setups[index];
               const period = setup?.isSuccess ? setup.data.periods.at(-1) : undefined;
+
               return {
                 id: `${book.entityId}/${book.id}`,
                 cells: [
@@ -180,6 +186,7 @@ export function CompanyDirectory({ books, locale }: { books: typeof Books.Type; 
     </Workspace>
   );
 }
+
 const english = {
   companies: "Companies",
   yourCompanies: "Your companies",
@@ -203,6 +210,7 @@ const english = {
   coverage:
     "Only companies you can access are shown. Work counts cover journal proposals, invoice drafts and expense reviews; they do not measure every outstanding task.",
 };
+
 const swedish: typeof english = {
   companies: "Företag",
   yourCompanies: "Dina företag",

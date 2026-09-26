@@ -84,6 +84,7 @@ function hashToken(token: string) {
   return Effect.tryPromise({
     try: async () => {
       const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+
       return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(
         "",
       );
@@ -141,6 +142,7 @@ function lockBook(
     .select({ id: books.id, entityId: books.entityId })
     .from(books)
     .where(and(eq(books.id, scope.bookId), eq(books.entityId, scope.entityId)));
+
   return lockMode === "update" ? query.for("update") : query.for("share");
 }
 
@@ -153,6 +155,7 @@ function readDatabaseTime(transaction: Transaction) {
 function expiryIsCurrent(expiresAt: string, now: string) {
   const expiry = Date.parse(expiresAt);
   const current = Date.parse(now);
+
   return Number.isFinite(expiry) && Number.isFinite(current) && expiry > current;
 }
 
@@ -165,24 +168,30 @@ function verifyAuthority(
 ) {
   return Effect.gen(function* () {
     const admissionRows = yield* lockAdmission(transaction, authority.actorId);
+
     const admission = admissionRows[0]
       ? yield* decodeOne(IdentityRow, admissionRows[0])
       : undefined;
+
     if (admission?.enabled === false) return yield* failure("Unauthorized");
 
     const membershipRows = yield* lockMembership(transaction, authority.actorId, scope.bookId);
+
     const membership = membershipRows[0]
       ? yield* decodeOne(MembershipRow, membershipRows[0])
       : undefined;
+
     if (!membership || (requirement.operatorOnly && membership.role !== "operator")) {
       return yield* failure("Forbidden");
     }
 
     const bookRows = yield* lockBook(transaction, scope, lockMode);
+
     if (!bookRows[0]) return yield* failure("Forbidden");
     yield* decodeOne(BookRow, bookRows[0]);
 
     const databaseTime = yield* readDatabaseTime(transaction);
+
     if (authority.revokedAt !== null || !expiryIsCurrent(authority.expiresAt, databaseTime.now)) {
       return yield* failure("Unauthorized");
     }
@@ -194,6 +203,7 @@ function verifyAuthority(
         credentialHash: authority.credentialHash,
       } satisfies VerifiedPrincipal;
     }
+
     return {
       actorId: authority.actorId,
       kind: authority.kind,
@@ -213,11 +223,14 @@ export function admitPrincipal(
     if (access.token.length < 32 || access.token.length > 512) {
       return yield* failure("Unauthorized");
     }
+
     const credentialHash = yield* hashToken(access.token);
     const credentialRows = yield* lockCredential(transaction, credentialHash);
+
     if (credentialRows[0]) {
       const credential = yield* decodeOne(CredentialRow, credentialRows[0]);
       const credentialTime = yield* readDatabaseTime(transaction);
+
       if (expiryIsCurrent(credential.expiresAt, credentialTime.now)) {
         return yield* verifyAuthority(
           {
@@ -236,12 +249,15 @@ export function admitPrincipal(
     }
 
     const sessionRows = yield* lockSession(transaction, access.token);
+
     if (!sessionRows[0]) return yield* failure("Unauthorized");
     const browserSession = yield* decodeOne(SessionRow, sessionRows[0]);
     const sessionTime = yield* readDatabaseTime(transaction);
+
     if (!expiryIsCurrent(browserSession.expiresAt, sessionTime.now)) {
       return yield* failure("Unauthorized");
     }
+
     return yield* verifyAuthority(
       {
         actorId: browserSession.userId,
@@ -268,9 +284,12 @@ export function recheckPrincipal(
   return Effect.gen(function* () {
     if (principal.kind === "apiCredential") {
       const rows = yield* lockCredential(transaction, principal.credentialHash);
+
       if (!rows[0]) return yield* failure("Unauthorized");
       const credential = yield* decodeOne(CredentialRow, rows[0]);
+
       if (credential.actorId !== principal.actorId) return yield* failure("Unauthorized");
+
       return yield* verifyAuthority(
         {
           actorId: credential.actorId,
@@ -295,8 +314,10 @@ export function recheckPrincipal(
       .from(session)
       .where(and(eq(session.id, principal.sessionId), eq(session.userId, principal.actorId)))
       .for("share");
+
     if (!rows[0]) return yield* failure("Unauthorized");
     const browserSession = yield* decodeOne(SessionRow, rows[0]);
+
     return yield* verifyAuthority(
       {
         actorId: browserSession.userId,

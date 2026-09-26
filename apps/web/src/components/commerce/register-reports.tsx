@@ -37,23 +37,28 @@ export function RegisterReports(
   const [local, setLocal] = useState("");
   const selected = props.recordId ?? local;
   const setSelected = props.onOpen ?? setLocal;
+
   const page = useQuery({
     queryKey: [...commerceKey(book), "register-reports", inventoryVersion, after],
     queryFn: async ({ signal }) => {
       const cursor =
         after ||
         (firstCursor.current.version === inventoryVersion ? firstCursor.current.value : "");
+
       const result = await readAccounting(
         `${commercePath(book)}/register-snapshots${cursor ? `?after=${encodeURIComponent(cursor)}` : ""}`,
         Reports.RegisterReportPage,
         { signal },
       );
+
       checkScope(book, result.scope);
       result.items.forEach((report) => checkScope(book, report.scope));
+
       // Keep first-page retries/invalidation in the same inventory, too.
       if (firstCursor.current.version === inventoryVersion && !firstCursor.current.value) {
         firstCursor.current.value = result.first;
       }
+
       return result;
     },
     retry: false,
@@ -62,6 +67,7 @@ export function RegisterReports(
     refetchOnReconnect: false,
     refetchOnMount: false,
   });
+
   if (selected && selected !== "new")
     return (
       <Box display="grid" gap="xl">
@@ -74,6 +80,7 @@ export function RegisterReports(
         <SavedRegisterReport {...props} key={selected} id={selected} />
       </Box>
     );
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <RecordHeading
@@ -188,6 +195,7 @@ export function RegisterReports(
 function SavedRegisterReport(props: CommerceProps & { id: string }) {
   const { book, locale, id } = props;
   const copy = commerceCopy(locale);
+
   const report = useQuery({
     queryKey: [...commerceKey(book), "register-report", id],
     queryFn: async ({ signal }) => {
@@ -196,12 +204,16 @@ function SavedRegisterReport(props: CommerceProps & { id: string }) {
         Reports.RegisterReport,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       if (result.id !== id) throw new Error("Register snapshot identity mismatch");
+
       return result;
     },
     retry: false,
   });
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <RecordHeading
@@ -232,11 +244,13 @@ function ReportContents({
 }: CommerceProps & { report: typeof Reports.RegisterReport.Type }) {
   const copy = commerceCopy(locale);
   const amount = (value: string) => formatMinorAmount(value, report.currencyScale, locale);
+
   const statuses = {
     balanced: copy.registerBalanced,
     differences: copy.registerDifferences,
     no_declared_accounts: copy.registerNoAccounts,
   };
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <RecordSummary>
@@ -261,6 +275,7 @@ function ReportContents({
             const url = URL.createObjectURL(
               new Blob([JSON.stringify(report, null, 2)], { type: "application/json" }),
             );
+
             const link = document.createElement("a");
             link.href = url;
             link.download = `${report.id}.json`;
@@ -429,6 +444,7 @@ function ReportTable(
   const copy = commerceCopy(props.locale);
   const rows = props.rows;
   const [page, setPage] = useState(0);
+
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <DataTable

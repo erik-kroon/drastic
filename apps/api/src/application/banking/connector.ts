@@ -9,15 +9,23 @@ import * as BankDb from "../../db/banking/shared";
 import * as Shared from "./shared";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type Transaction = import("../../db/transaction").Transaction;
+
 type JsonObject = Schema.JsonObject;
 
 const ConsentSchema = Connector.ConnectorConsent;
+
 const ConsentStateSchema = Connector.ConnectorConsentState;
+
 const BatchSchema = Connector.ConnectorBatch;
+
 const RevocationSchema = Connector.ConnectorRevocation;
+
 const ConsentInventorySchema = Connector.ConnectorInventory;
+
 const BatchInventorySchema = Connector.ConnectorBatchInventory;
+
 const FeedInventorySchema = Connector.ConnectorFeedInventory;
 
 const connectorTables = [
@@ -31,6 +39,7 @@ const connectorTables = [
   "intake_occurrences",
   "command_receipts",
 ];
+
 const connectorInserts = [
   "bank_connector_consents",
   "bank_connector_batches",
@@ -39,10 +48,15 @@ const connectorInserts = [
   "intake_occurrences",
   "command_receipts",
 ];
+
 const providerIdPattern = /^[a-z][a-z0-9_-]{1,63}$/;
+
 const recoveryKeyPattern = /^[a-zA-Z0-9_-]{8,128}$/;
+
 const maximumRawBytes = 65536;
+
 const maximumPageRecords = 20;
+
 const maximumInputBytes = 262144;
 
 function consentState(consent: ConnectorDb.ConsentRow) {
@@ -60,6 +74,7 @@ function readConsent(
   return ConnectorDb.readConsent(transaction, bookId, consentId).pipe(
     Effect.flatMap((rows) => {
       const consent = rows[0];
+
       return consent ? Effect.succeed(consent) : failure("NotFound");
     }),
   );
@@ -69,6 +84,7 @@ function lockBook(transaction: import("../../db/transaction").Transaction, bookI
   return BankDb.lockBook(transaction, bookId, "update").pipe(
     Effect.flatMap((rows) => {
       const book = rows[0];
+
       return book ? Effect.succeed(book) : failure("Forbidden");
     }),
   );
@@ -82,13 +98,16 @@ function mappingIsCurrent(
 ) {
   return Effect.gen(function* () {
     const account = (yield* BankDb.readAccount(transaction, bookId, accountId))[0];
+
     if (!account?.active) return false;
+
     const conflicts = yield* ConnectorDb.readSourceMappingConflicts(
       transaction,
       bookId,
       sourceAccountId,
       accountId,
     );
+
     return conflicts[0]?.present !== true;
   });
 }
@@ -105,7 +124,9 @@ export const saveConnectorConsent = Effect.fn("banking.connector.saveConsent")(f
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, connectorTables, connectorInserts);
       const book = yield* lockBook(transaction, command.scope.bookId);
+
       if (!book) return yield* failure("Forbidden");
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -115,16 +136,21 @@ export const saveConnectorConsent = Effect.fn("banking.connector.saveConsent")(f
         yield* Shared.toJsonObject(command.input),
         ConsentSchema,
       );
+
       if (request.previous) return request.previous;
 
       const { providerId, sourceAccountId, accountId, externalAccountId } = command.input;
+
       if (!providerIdPattern.test(providerId)) return yield* failure("InvalidJournal");
+
       if (
         !(yield* mappingIsCurrent(transaction, command.scope.bookId, sourceAccountId, accountId))
       ) {
         return yield* failure("StaleDependency");
       }
+
       const retained = yield* ConnectorDb.readConsentIdentities(transaction, command.scope.bookId);
+
       if (
         retained.some(
           (row) => row.sourceAccountId === sourceAccountId || row.accountId === accountId,
@@ -132,6 +158,7 @@ export const saveConnectorConsent = Effect.fn("banking.connector.saveConsent")(f
       ) {
         return yield* failure("StaleDependency");
       }
+
       if (
         (yield* ConnectorDb.readProviderAccountDuplicate(
           transaction,
@@ -158,7 +185,9 @@ export const saveConnectorConsent = Effect.fn("banking.connector.saveConsent")(f
           ),
         }),
       );
+
       const id = Shared.textField(body, "id");
+
       if (id === undefined) return yield* failure("InternalError");
       yield* ConnectorDb.insertConsent(transaction, {
         bookId: command.scope.bookId,
@@ -179,6 +208,7 @@ export const saveConnectorConsent = Effect.fn("banking.connector.saveConsent")(f
         principal.actorId,
         yield* Shared.toJsonObject(consent),
       );
+
       return consent;
     }),
   );
@@ -192,8 +222,10 @@ export const getConnectorConsent = Effect.fn("banking.connector.getConsent")(fun
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, connectorTables);
       const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
       if (!book) return yield* failure("Forbidden");
       const consent = yield* readConsent(transaction, command.scope.bookId, command.consentId);
+
       return yield* Shared.decode(ConsentStateSchema, consentState(consent));
     }),
   );
@@ -217,7 +249,9 @@ export const revokeConnectorConsent = Effect.fn("banking.connector.revokeConsent
         ["bank_connector_consents"],
       );
       const book = yield* lockBook(transaction, command.scope.bookId);
+
       if (!book) return yield* failure("Forbidden");
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -230,14 +264,19 @@ export const revokeConnectorConsent = Effect.fn("banking.connector.revokeConsent
         } satisfies JsonObject,
         RevocationSchema,
       );
+
       if (request.previous) return request.previous;
+
       const consent = (yield* ConnectorDb.readConsentForUpdate(
         transaction,
         command.scope.bookId,
         command.consentId,
       ))[0];
+
       if (!consent) return yield* failure("NotFound");
+
       if (consent.revokedAt !== null) return yield* failure("IdempotencyConflict");
+
       const body = yield* Shared.toJsonObject(
         Object.assign(
           {},
@@ -254,6 +293,7 @@ export const revokeConnectorConsent = Effect.fn("banking.connector.revokeConsent
           },
         ),
       );
+
       yield* ConnectorDb.revokeConsent(transaction, command.scope.bookId, command.consentId);
       const revocation = yield* Shared.decode(RevocationSchema, body);
       yield* saveCommand(
@@ -265,6 +305,7 @@ export const revokeConnectorConsent = Effect.fn("banking.connector.revokeConsent
         principal.actorId,
         yield* Shared.toJsonObject(revocation),
       );
+
       return revocation;
     }),
   );
@@ -278,13 +319,17 @@ export const getConnectorBatch = Effect.fn("banking.connector.getBatch")(functio
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, connectorTables);
       const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
       if (!book) return yield* failure("Forbidden");
+
       const batch = (yield* ConnectorDb.readBatch(
         transaction,
         command.scope.bookId,
         command.batchId,
       ))[0];
+
       if (!batch) return yield* failure("NotFound");
+
       return yield* Shared.decode(BatchSchema, batch.body);
     }),
   );
@@ -298,8 +343,11 @@ export const recoverConnectorBatch = Effect.fn("banking.connector.recoverBatch")
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, connectorTables);
       const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
       if (!book) return yield* failure("Forbidden");
+
       if (!recoveryKeyPattern.test(command.key)) return yield* failure("InvalidJournal");
+
       const receipt = (yield* BankDb.readCommandReceipt(
         transaction,
         command.scope.bookId,
@@ -307,7 +355,9 @@ export const recoverConnectorBatch = Effect.fn("banking.connector.recoverBatch")
         "ingest_bank_connector_batch",
         principal.actorId,
       ))[0];
+
       if (!receipt) return yield* failure("NotFound");
+
       return yield* Shared.decode(BatchSchema, receipt.result);
     }),
   );
@@ -321,17 +371,22 @@ export const listConnectorConsents = Effect.fn("banking.connector.listConsents")
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, connectorTables);
       const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
       if (!book) return yield* failure("Forbidden");
       const after = command.cursor ?? "";
+
       if (after !== "" && !Shared.identifierPattern.test(after)) {
         return yield* failure("InvalidJournal");
       }
+
       const rows = yield* ConnectorDb.readConsentInventory(
         transaction,
         command.scope.bookId,
         after,
       );
+
       const visible = rows.slice(0, 50);
+
       return yield* Shared.decode(ConsentInventorySchema, {
         scope: command.scope,
         items: visible.map(consentState),
@@ -349,21 +404,26 @@ export const listConnectorBatches = Effect.fn("banking.connector.listBatches")(f
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, connectorTables);
       const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
       if (!book) return yield* failure("Forbidden");
       yield* readConsent(transaction, command.scope.bookId, command.consentId);
       const cursor = command.cursor ?? "";
       let cursorTime = "";
+
       if (cursor !== "") {
         if (!Shared.identifierPattern.test(cursor)) return yield* failure("InvalidJournal");
+
         const anchor = (yield* ConnectorDb.readBatchAnchor(
           transaction,
           command.scope.bookId,
           command.consentId,
           cursor,
         ))[0];
+
         if (!anchor) return yield* failure("NotFound");
         cursorTime = anchor.receivedAt;
       }
+
       const rows = yield* ConnectorDb.readBatchPage(
         transaction,
         command.scope.bookId,
@@ -371,7 +431,9 @@ export const listConnectorBatches = Effect.fn("banking.connector.listBatches")(f
         cursor,
         cursorTime,
       );
+
       const visible = rows.slice(0, 50);
+
       return yield* Shared.decode(BatchInventorySchema, {
         scope: command.scope,
         consentId: command.consentId,
@@ -390,18 +452,24 @@ export const listConnectorFeeds = Effect.fn("banking.connector.listFeeds")(funct
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, connectorTables);
       const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
       if (!book) return yield* failure("Forbidden");
       const cursor = command.cursor ?? "";
       const consentId = command.consentId ?? "";
+
       if (cursor !== "" && !Shared.identifierPattern.test(cursor)) {
         return yield* failure("InvalidJournal");
       }
+
       if (consentId !== "") {
         if (!Shared.identifierPattern.test(consentId)) return yield* failure("InvalidJournal");
         yield* readConsent(transaction, command.scope.bookId, consentId);
       }
+
       const readAt = (yield* ConnectorDb.readStatementTime(transaction))[0]?.now;
+
       if (readAt === undefined) return yield* failure("InternalError");
+
       const page = (yield* ConnectorDb.readFeedInventory(
         transaction,
         command.scope.bookId,
@@ -410,6 +478,7 @@ export const listConnectorFeeds = Effect.fn("banking.connector.listFeeds")(funct
         readAt,
         JSON.stringify(command.scope),
       ))[0];
+
       return yield* Shared.decode(FeedInventorySchema, {
         scope: command.scope,
         items: page?.items ?? [],
@@ -443,15 +512,20 @@ function ingestRecords(
 
     for (const record of records) {
       const rawBytes = Shared.byteLength(record.raw);
+
       if (rawBytes < 1 || rawBytes > maximumRawBytes) return yield* failure("InvalidJournal");
       const revision = record.revision ?? input.sourceRevision;
+
       if (consent.providerId === "plaid" && record.revision !== undefined) {
         const digest = yield* sha256Hex(record.raw);
+
         if (!/^[a-f0-9]{64}$/.test(record.revision) || digest !== record.revision) {
           return yield* failure("InvalidJournal");
         }
       }
+
       const sha256 = `sha256:${yield* sha256Hex(record.raw)}`;
+
       const retained = (yield* ConnectorDb.readConnectorRecord(
         transaction,
         scope.bookId,
@@ -459,6 +533,7 @@ function ingestRecords(
         record.externalId,
         revision,
       ))[0];
+
       if (retained) {
         if (retained.sha256 !== sha256) return yield* failure("IdempotencyConflict");
         overlapCount += 1;
@@ -470,7 +545,9 @@ function ingestRecords(
         });
         continue;
       }
+
       const sourceSystem = `connector:${consent.providerId}`;
+
       if (
         (yield* ConnectorDb.readSourceIdentityConflict(
           transaction,
@@ -483,6 +560,7 @@ function ingestRecords(
       ) {
         return yield* failure("IdempotencyConflict");
       }
+
       const occurrenceId = newId("source");
       yield* ConnectorDb.insertIntakeContent(transaction, {
         bookId: scope.bookId,
@@ -526,6 +604,7 @@ function ingestRecords(
         sha256,
       });
       recordCount += 1;
+
       const superseded =
         (yield* ConnectorDb.readOtherRevisions(
           transaction,
@@ -534,6 +613,7 @@ function ingestRecords(
           record.externalId,
           revision,
         ))[0]?.present === true;
+
       items.push({
         externalId: record.externalId,
         revision,
@@ -574,10 +654,13 @@ function retainedProviderPage(
 ) {
   return Effect.gen(function* () {
     const page = (yield* ConnectorDb.readRetainedPage(transaction, bookId, occurrenceId))[0];
+
     if (!page) return false;
+
     const expectedOccurrenceKey = `plaidraw_${(yield* sha256Hex(
       `${bookId}:${consent.id}:${previousCursor}`,
     )).slice(0, 48)}`;
+
     return !(
       page.sourceSystem !== `connector-raw:${consent.providerId}` ||
       page.sourceAccountId !== consent.sourceAccountId ||
@@ -604,7 +687,9 @@ export const ingestConnectorBatch = Effect.fn("banking.connector.ingestBatch")(f
         "bank_connector_consents",
       ]);
       const book = yield* lockBook(transaction, command.scope.bookId);
+
       if (!book) return yield* failure("Forbidden");
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -617,6 +702,7 @@ export const ingestConnectorBatch = Effect.fn("banking.connector.ingestBatch")(f
         } satisfies JsonObject,
         BatchSchema,
       );
+
       if (request.previous) return request.previous;
 
       const consent = (yield* ConnectorDb.readConsentForUpdate(
@@ -624,8 +710,11 @@ export const ingestConnectorBatch = Effect.fn("banking.connector.ingestBatch")(f
         command.scope.bookId,
         command.consentId,
       ))[0];
+
       if (!consent) return yield* failure("NotFound");
+
       if (consent.revokedAt !== null) return yield* failure("ApprovalRequired");
+
       if (
         !(yield* mappingIsCurrent(
           transaction,
@@ -642,14 +731,17 @@ export const ingestConnectorBatch = Effect.fn("banking.connector.ingestBatch")(f
       const previousCursor = command.input.previousCursor;
       const nextCursor = command.input.nextCursor;
       const hasRevisions = records.some((record) => record.revision !== undefined);
+
       if (!pageIsAdmissible(consent, command.input, previousCursor, nextCursor)) {
         return yield* failure("InvalidJournal");
       }
+
       if (consent.providerId === "plaid" && hasRevisions) {
         if (command.input.sourceOccurrenceId === undefined) {
           return yield* failure("MissingEvidence");
         }
       }
+
       if (command.input.sourceOccurrenceId !== undefined) {
         const retained = yield* retainedProviderPage(
           transaction,
@@ -659,16 +751,19 @@ export const ingestConnectorBatch = Effect.fn("banking.connector.ingestBatch")(f
           previousCursor,
           hasRevisions,
         );
+
         if (!retained) return yield* failure("MissingEvidence");
       }
 
       const receivedAt = yield* isoNow(transaction);
       const batchId = newId("connectorbatch");
+
       const batchReceipt = Shared.receipt(
         command.idempotencyKey,
         "ingest_bank_connector_batch",
         principal.actorId,
       );
+
       const ingested = yield* ingestRecords(
         transaction,
         consent,
@@ -680,6 +775,7 @@ export const ingestConnectorBatch = Effect.fn("banking.connector.ingestBatch")(f
         receivedAt,
         principal.actorId,
       );
+
       const body: JsonObject = {
         id: batchId,
         scope: command.scope,
@@ -697,16 +793,19 @@ export const ingestConnectorBatch = Effect.fn("banking.connector.ingestBatch")(f
         receivedBy: principal.actorId,
         receipt: batchReceipt,
       };
+
       const bodyWithSource: JsonObject =
         command.input.sourceOccurrenceId === undefined
           ? body
           : Object.assign({}, body, { sourceOccurrenceId: command.input.sourceOccurrenceId });
+
       yield* ConnectorDb.insertBatch(transaction, {
         bookId: command.scope.bookId,
         id: batchId,
         consentId: command.consentId,
         body: yield* Shared.toJsonObject(bodyWithSource),
       });
+
       if (outcome === "delivered") {
         yield* ConnectorDb.advanceConsentCursor(
           transaction,
@@ -715,6 +814,7 @@ export const ingestConnectorBatch = Effect.fn("banking.connector.ingestBatch")(f
           nextCursor,
         );
       }
+
       const batch = yield* Shared.decode(BatchSchema, yield* Shared.toJsonObject(bodyWithSource));
       yield* saveCommand(
         transaction,
@@ -725,6 +825,7 @@ export const ingestConnectorBatch = Effect.fn("banking.connector.ingestBatch")(f
         principal.actorId,
         yield* Shared.toJsonObject(batch),
       );
+
       return batch;
     }),
   );

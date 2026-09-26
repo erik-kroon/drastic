@@ -175,13 +175,17 @@ function boundaryResponse(error: unknown) {
   ) {
     return Response.json({ message: error.message }, { status: error.status });
   }
+
   const safe = databaseFailure(error);
+
   return Response.json({ message: safe.message }, { status: AccountingErrorStatus[safe.code] });
 }
 
 function withRequestDatabase<A, E, R>(bindings: Bindings, effect: Effect.Effect<A, E, R>) {
   const connectionString = bindings.HYPERDRIVE?.connectionString || bindings.DATABASE_URL;
+
   if (!connectionString) return Effect.fail(failure("Unavailable"));
+
   return effect.pipe(
     Effect.provide(
       databaseLayer({
@@ -208,6 +212,7 @@ export default {
                   bindings,
                   Effect.gen(function* () {
                     const db = yield* Database;
+
                     return yield* Effect.tryPromise({
                       try: () =>
                         handler(
@@ -224,7 +229,9 @@ export default {
         }),
       ),
     );
+
     response.headers.set("cache-control", "no-store");
+
     return response;
   },
 };

@@ -19,6 +19,7 @@ export function ClosingFacts({
   locale: Locale;
 }) {
   const copy = closingCopy(locale);
+
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <Text>{basis.inventoryScope ? copy.familyScope : copy.bankOnlyFamilyScope}</Text>
@@ -179,6 +180,7 @@ export function ClosingReview({
   const keys = useRef(new Map<string, string>());
   const queryClient = useQueryClient();
   const path = `${bookPath(book)}/closing-proposals/${encodeURIComponent(id)}`;
+
   const view = useQuery({
     queryKey: [...bookKey(book), "closing-proposal", id],
     retry: false,
@@ -186,18 +188,22 @@ export function ClosingReview({
     refetchOnMount: "always",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(path, Closing.ClosingProposalView, { signal });
+
       if (
         result.proposal.id !== id ||
         result.proposal.scope.bookId !== book.id ||
         result.proposal.scope.entityId !== book.entityId
       )
         throw new Error("Closing proposal scope mismatch");
+
       return result;
     },
   });
+
   const approve = useMutation({
     mutationFn: (digest: string) => {
       const endpoint = `${path}/approvals`;
+
       return readAccounting(
         endpoint,
         Closing.ClosingApproval,
@@ -205,9 +211,11 @@ export function ClosingReview({
       );
     },
   });
+
   const execute = useMutation({
     mutationFn: (input: typeof Closing.ExecuteClosing.Type) => {
       const endpoint = `${path}/executions`;
+
       return readAccounting(
         endpoint,
         Closing.ClosingReceipt,
@@ -216,18 +224,24 @@ export function ClosingReview({
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: bookKey(book) }),
   });
+
   const busy = approve.isPending || execute.isPending;
   const proposal = view.data?.proposal;
   const receipt = view.data?.receipt ?? execute.data;
+
   const currentnessKnown =
     view.isSuccess && view.fetchStatus === "idle" && view.isFetchedAfterMount;
+
   const ready = currentnessKnown && view.data?.dependenciesCurrent && !receipt;
   const approvalRetry = approve.isError ? approve.variables : undefined;
   const executionRetry = execute.isError ? execute.variables : undefined;
   const approvalRequired = closingApprovalRequired(execute.error);
+
   const canApprove =
     (ready || approvalRetry !== undefined) && (!execute.isError || approvalRequired);
+
   const approvalDisabled = !canApprove || busy;
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.review}</Heading>
@@ -261,11 +275,14 @@ export function ClosingReview({
               gap="md"
               onSubmit={(event) => {
                 event.preventDefault();
+
                 if (canApprove && !approve.isPending && !execute.isPending) {
                   if (approvalRetry !== undefined) {
                     approve.mutate(approvalRetry);
+
                     return;
                   }
+
                   // A definitive rejection permits a new approval; uncertain writes keep their key.
                   if (approvalRequired) {
                     keys.current.delete(
@@ -273,6 +290,7 @@ export function ClosingReview({
                     );
                     execute.reset();
                   }
+
                   approve.mutate(proposal.digest);
                 }
               }}
@@ -304,6 +322,7 @@ export function ClosingReview({
                   disabled={(!ready && !executionRetry) || busy}
                   onClick={() => {
                     if (execute.isPending || approve.isPending) return;
+
                     if (executionRetry) execute.mutate(executionRetry);
                     else if (ready && approve.data)
                       execute.mutate({ digest: proposal.digest, approvalId: approve.data.id });
@@ -338,6 +357,7 @@ function ClosingReceiptView({
 }) {
   const copy = closingCopy(locale);
   const [certificateId, setCertificateId] = useState("");
+
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <Text>
@@ -380,6 +400,7 @@ function CertificateView({
   locale: Locale;
 }) {
   const copy = closingCopy(locale);
+
   const certificate = useQuery({
     queryKey: [...bookKey(book), "closing-certificate", id],
     retry: false,
@@ -391,15 +412,18 @@ function CertificateView({
         Closing.ClosingCertificateView,
         { signal },
       );
+
       if (
         result.certificate.id !== id ||
         result.certificate.proposal.scope.bookId !== book.id ||
         result.certificate.proposal.scope.entityId !== book.entityId
       )
         throw new Error("Certificate scope mismatch");
+
       return result;
     },
   });
+
   return (
     <Box display="grid" gap="sm">
       <Text>
@@ -440,6 +464,7 @@ export function ClosingHistoryPanel({
 }) {
   const copy = closingCopy(locale);
   const [after, setAfter] = useState("");
+
   const history = useQuery({
     queryKey: [...bookKey(book), "closing-history", periodId, after],
     retry: false,
@@ -449,6 +474,7 @@ export function ClosingHistoryPanel({
         Closing.ClosingHistory,
         { signal },
       );
+
       if (
         result.items.some(
           (receipt) =>
@@ -458,9 +484,11 @@ export function ClosingHistoryPanel({
         )
       )
         throw new Error("Closing history scope mismatch");
+
       return result;
     },
   });
+
   return (
     <details>
       <summary>{copy.history}</summary>
@@ -504,7 +532,9 @@ function ClosingCurrentness({
   completed: boolean;
 }) {
   const copy = closingCopy(locale);
+
   if (completed) return null;
+
   return <Text>{!known ? copy.currentnessUnknown : current ? copy.current : copy.stale}</Text>;
 }
 
@@ -520,6 +550,7 @@ function ClosingProposalDetails({
   locale: Locale;
 }) {
   const copy = closingCopy(locale);
+
   return (
     <>
       <Text>

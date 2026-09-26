@@ -41,17 +41,22 @@ import {
 } from "./shared";
 
 type Draft = typeof Suppliers.SupplierInvoiceDraftRevision.Type;
+
 function draftStage(accepted: boolean, reviewCount: number) {
   if (accepted) return 2;
+
   if (reviewCount > 0) return 1;
+
   return 0;
 }
+
 export function SupplierInvoiceDrafts(
   props: CommerceProps & { recordId?: string; onOpen: (id: string) => void },
 ) {
   const sv = props.locale === "sv";
   const [search, setSearch] = useState("");
   const creating = props.recordId === "new" || props.recordId?.startsWith("new:");
+
   const list = useQuery({
     queryKey: [...commerceKey(props.book), "supplier-invoice-drafts"],
     queryFn: async ({ signal }) => {
@@ -60,11 +65,14 @@ export function SupplierInvoiceDrafts(
         Suppliers.SupplierInvoiceDraftList,
         { signal },
       );
+
       checkScope(props.book, result.scope);
+
       return result;
     },
     retry: false,
   });
+
   if (props.recordId && !creating)
     return (
       <Box display="grid" gap="xl">
@@ -77,12 +85,14 @@ export function SupplierInvoiceDrafts(
         <SupplierDraftDetail {...props} key={props.recordId} id={props.recordId} />
       </Box>
     );
+
   const matches =
     list.data?.items.filter((record) =>
       `${record.title} ${record.supplierName} ${record.supplierDocumentNumber ?? ""}`
         .toLocaleLowerCase(props.locale)
         .includes(search.toLocaleLowerCase(props.locale)),
     ) ?? [];
+
   return (
     <Box display="grid" gap="xl">
       <RecordHeading
@@ -99,7 +109,9 @@ export function SupplierInvoiceDrafts(
           </Button>
         }
       />
-      {!props.recordId ? <SupplierInbox book={props.book} locale={props.locale} onDraft={props.onOpen} /> : null}
+      {!props.recordId ? (
+        <SupplierInbox book={props.book} locale={props.locale} onDraft={props.onOpen} />
+      ) : null}
       <RegisterSearch
         aria-label={sv ? "Sök fakturautkast" : "Search invoice drafts"}
         placeholder={
@@ -149,6 +161,7 @@ export function SupplierInvoiceDrafts(
     </Box>
   );
 }
+
 function SupplierDraftResults(
   props: CommerceProps & {
     matches: readonly (typeof Suppliers.SupplierInvoiceDraftSummary.Type)[];
@@ -157,6 +170,7 @@ function SupplierDraftResults(
   },
 ) {
   const sv = props.locale === "sv";
+
   if (!props.matches.length)
     return (
       <PageEmpty
@@ -176,6 +190,7 @@ function SupplierDraftResults(
         }
       />
     );
+
   return (
     <DataTable
       title={sv ? "Leverantörsfakturautkast" : "Supplier invoice drafts"}
@@ -207,10 +222,12 @@ function SupplierDraftResults(
     />
   );
 }
+
 function SupplierDraftDetail(props: CommerceProps & { id: string }) {
   const sv = props.locale === "sv";
   const [revision, setRevision] = useState("");
   const [editing, setEditing] = useState<Draft | null>(null);
+
   const draft = useQuery({
     queryKey: [...commerceKey(props.book), "supplier-invoice-draft", props.id, revision],
     queryFn: async ({ signal }) => {
@@ -219,15 +236,20 @@ function SupplierDraftDetail(props: CommerceProps & { id: string }) {
         Suppliers.SupplierInvoiceDraftView,
         { signal },
       );
+
       checkScope(props.book, result.record.scope);
+
       if (result.record.id !== props.id || (revision && result.record.revision !== revision))
         throw new Error("Supplier draft identity mismatch");
+
       return result;
     },
     retry: false,
   });
+
   const record = draft.isError ? undefined : draft.data?.record;
   const current = record?.revision === draft.data?.currentRevision;
+
   return (
     <Box display="grid" gap="xl">
       <AccountingStatus locale={props.locale} pending={draft.isPending} error={draft.error} />
@@ -272,6 +294,7 @@ function SupplierDraftDetail(props: CommerceProps & { id: string }) {
     </Box>
   );
 }
+
 function SupplierDraftRecord(
   props: CommerceProps & {
     record: Draft;
@@ -285,6 +308,7 @@ function SupplierDraftRecord(
   const current = props.current;
   const acceptance = useSupplierAcceptanceHistory(props.book, record.id);
   const accepted = acceptance.data?.items.some((item) => item.acceptanceId !== null) ?? false;
+
   return (
     <>
       <RecordHeading
@@ -368,9 +392,11 @@ function SupplierDraftRecord(
     </>
   );
 }
+
 function SupplierDraftEvidenceAndFacts(props: CommerceProps & { record: Draft }) {
   const sv = props.locale === "sv";
   const record = props.record;
+
   return (
     <RecordColumns>
       <RecordSection title={sv ? "Originalfaktura" : "Original invoice"} sticky>
@@ -414,6 +440,7 @@ function SupplierDraftEvidenceAndFacts(props: CommerceProps & { record: Draft })
     </RecordColumns>
   );
 }
+
 function money(
   value: string | null,
   scale: number,
@@ -422,11 +449,14 @@ function money(
 ) {
   return value === null ? "—" : `${formatMinorAmount(value, scale, locale)} ${currency}`;
 }
+
 function SupplierDraftLines(props: CommerceProps & { record: Draft }) {
   const sv = props.locale === "sv";
   const content = props.record.content;
+
   const display = (value: string | null) =>
     money(value, content.currencyScale, content.currency, props.locale);
+
   return (
     <DataTable
       title={sv ? "Fakturarader" : "Invoice lines"}
@@ -440,6 +470,7 @@ function SupplierDraftLines(props: CommerceProps & { record: Draft }) {
       ]}
       rows={content.lines.map((line) => {
         const calculated = props.record.calculatedLines.find((item) => item.id === line.id);
+
         return {
           id: line.id,
           cells: [
@@ -454,15 +485,18 @@ function SupplierDraftLines(props: CommerceProps & { record: Draft }) {
     />
   );
 }
+
 const platformBlockers = new Set([
   "acceptance_not_implemented",
   "recognition_not_implemented",
   "legal_identity_not_verified",
   "tax_profile_not_activated",
 ]);
+
 function SupplierDraftChecks(props: CommerceProps & { record: Draft }) {
   const sv = props.locale === "sv";
   const blockers = props.record.blockers.filter((blocker) => !platformBlockers.has(blocker.code));
+
   return (
     <RecordSection title={sv ? "Att granska" : "Review details"}>
       {props.record.totals.sourceTotalMatches !== null ? (
@@ -478,6 +512,7 @@ function SupplierDraftChecks(props: CommerceProps & { record: Draft }) {
       ) : null}
       {blockers.map((blocker, index) => {
         const line = props.record.content.lines.findIndex((item) => item.id === blocker.lineId);
+
         return (
           <Text key={`${blocker.code}:${index}`}>
             {line >= 0 ? `${sv ? "Rad" : "Line"} ${line + 1}: ` : ""}
@@ -500,28 +535,36 @@ function SupplierDraftChecks(props: CommerceProps & { record: Draft }) {
     </RecordSection>
   );
 }
+
 function supplierBlocker(code: string, locale: CommerceProps["locale"]) {
   const sv = locale === "sv";
+
   if (code === "supplier_document_number_missing")
     return sv ? "Lägg till leverantörens fakturanummer." : "Add the supplier invoice number.";
+
   if (code === "supplier_identity_fields_missing")
     return sv
       ? "Komplettera leverantörens organisationsnummer, adress och land."
       : "Complete the supplier registration number, address and country.";
+
   if (code === "buyer_identity_fields_missing")
     return sv
       ? "Komplettera fakturamottagarens organisationsnummer, adress och land."
       : "Complete the buyer registration number, address and country.";
+
   if (code === "dates_or_terms_missing")
     return sv
       ? "Komplettera fakturadatum, leveransdatum, förfallodatum och betalningsvillkor."
       : "Complete the invoice, supply and due dates and payment terms.";
+
   return invoiceDraftBlocker(code, locale);
 }
+
 function SupplierDraftHistory(
   props: CommerceProps & { id: string; selected: string; onSelect: (revision: string) => void },
 ) {
   const sv = props.locale === "sv";
+
   const history = useQuery({
     queryKey: [...commerceKey(props.book), "supplier-invoice-draft-history", props.id],
     queryFn: async ({ signal }) => {
@@ -530,12 +573,16 @@ function SupplierDraftHistory(
         Suppliers.SupplierInvoiceDraftHistory,
         { signal },
       );
+
       checkScope(props.book, result.scope);
+
       if (result.id !== props.id) throw new Error("Supplier draft history mismatch");
+
       return result;
     },
     retry: false,
   });
+
   return (
     <Box display="grid" gap="md">
       <AccountingStatus locale={props.locale} pending={history.isPending} error={history.error} />

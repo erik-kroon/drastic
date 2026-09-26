@@ -28,11 +28,13 @@ export function WorkList(props: {
   const copy = accountingCopy(locale);
   const work = useQuery(workQueryOptions(book, props.filters));
   const page = work.isError ? undefined : work.data;
+
   const states = {
     unposted: copy.workspace_unposted,
     posted: copy.workspace_posted,
     posted_elsewhere: copy.workspace_posted_elsewhere,
   };
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Box display="flex" flexWrap="wrap" gap="lg" alignItems="center" justifyContent="between">

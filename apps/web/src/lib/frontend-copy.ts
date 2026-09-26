@@ -61,6 +61,7 @@ const en = {
   settingsDetail: "Manage the book’s periods, accounts and language.",
   returnVouchers: "Back to vouchers",
 };
+
 const sv: typeof en = {
   company: "Bolaget",
   todo: "Att göra",
@@ -121,6 +122,7 @@ const sv: typeof en = {
   settingsDetail: "Hantera perioder, konton och språk för bokföringen.",
   returnVouchers: "Tillbaka till verifikat",
 };
+
 export function frontendCopy(locale: Locale) {
   return locale === "sv" ? sv : en;
 }

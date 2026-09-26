@@ -25,6 +25,7 @@ export function EvidenceInspector(props: {
   const [open, setOpen] = useState(props.expanded ?? false);
   const panelId = useId();
   const contentId = `${panelId}-content`;
+
   const evidence = useQuery({
     queryKey: [...bookKey(book), "evidence", reference.evidenceId],
     queryFn: async ({ signal }) => {
@@ -33,17 +34,21 @@ export function EvidenceInspector(props: {
         Accounting.EvidenceContent,
         { signal },
       );
+
       if (result.id !== reference.evidenceId || result.sha256 !== reference.sha256)
         throw new Error("Evidence reference mismatch");
+
       return result;
     },
     enabled: open,
     retry: false,
   });
+
   const original =
     evidence.data?.mediaType === "application/json"
       ? enteredExpenseSource(evidence.data.content)
       : null;
+
   return (
     <Box display="grid" gap="md" minWidth="zero">
       {!props.expanded ? (

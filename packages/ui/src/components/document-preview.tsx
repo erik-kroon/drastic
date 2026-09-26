@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
+
 const styles = stylex.create({
   frame: {
     width: "100%",
@@ -28,6 +29,7 @@ const styles = stylex.create({
     borderRadius: tokens.radiusMd,
   },
 });
+
 export function DocumentPreview({
   content,
   mediaType,
@@ -42,22 +44,29 @@ export function DocumentPreview({
     const bytes = Uint8Array.from(atob(content), (char) => char.charCodeAt(0));
     const next = URL.createObjectURL(new Blob([bytes], { type: mediaType }));
     setUrl(next);
+
     return () => URL.revokeObjectURL(next);
   }, [content, mediaType]);
+
   if (!url) return null;
+
   if (mediaType === "application/pdf")
     return <iframe title={filename} src={url} {...stylex.props(styles.frame)} />;
+
   if (mediaType === "image/png" || mediaType === "image/jpeg")
     return <img src={url} alt={filename} {...stylex.props(styles.image)} />;
+
   if (
     !mediaType.startsWith("text/") &&
     mediaType !== "application/json" &&
     mediaType !== "application/xml"
   )
     return null;
+
   const text = new TextDecoder().decode(
     Uint8Array.from(atob(content), (char) => char.charCodeAt(0)),
   );
+
   return <pre {...stylex.props(styles.text)}>{text}</pre>;
 }
 

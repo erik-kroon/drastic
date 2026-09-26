@@ -231,6 +231,7 @@ export function readPeriods(
   periodIds: ReadonlyArray<string>,
 ) {
   if (periodIds.length === 0) return Effect.succeed([]);
+
   return transaction.execute<{
     readonly id: string;
     readonly fiscalYearId: string;
@@ -458,6 +459,7 @@ export function readEventIdsForKeys(
       sql`select ''::text as id where false`,
       "objects",
     );
+
   return transaction.execute<{ readonly id: string }>(
     sql`
       select e.id
@@ -685,6 +687,7 @@ export function readLedgerContributions(
   limit: number,
 ) {
   if (accountIds.length === 0) return Effect.succeed([]);
+
   return transaction.execute<LedgerContributionRow>(
     sql`
       select v.id as "voucherId", l.id as "lineId", l.ordinal, v.sequence::text as sequence,

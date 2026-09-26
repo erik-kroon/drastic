@@ -30,6 +30,7 @@ export function CommerceAllocationReversals(props: CommerceProps & { receiptId?:
     />
   );
 }
+
 function ReversalWorkspace(props: CommerceProps & { receiptId?: string }) {
   const { book, locale } = props;
   const copy = allocationReversalCopy(locale);
@@ -37,6 +38,7 @@ function ReversalWorkspace(props: CommerceProps & { receiptId?: string }) {
   const [planId, setPlanId] = useState("");
   const [reportId, setReportId] = useState("");
   const [after, setAfter] = useState("");
+
   const history = useQuery({
     queryKey: [...commerceKey(book), "unallocation-history", after],
     queryFn: ({ signal }) =>
@@ -47,6 +49,7 @@ function ReversalWorkspace(props: CommerceProps & { receiptId?: string }) {
       ),
     retry: false,
   });
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.title}</Heading>
@@ -115,11 +118,13 @@ function ReversalWorkspace(props: CommerceProps & { receiptId?: string }) {
     </Box>
   );
 }
+
 export function AllocationReleaseStatus(
   props: CommerceProps & { id: string; onOpen?: (id: string) => void },
 ) {
   const { book, locale, id } = props;
   const copy = allocationReversalCopy(locale);
+
   const status = useQuery({
     queryKey: [...commerceKey(book), "allocation-release-status", id],
     staleTime: 0,
@@ -130,17 +135,24 @@ export function AllocationReleaseStatus(
         Reversal.CommerceAllocationStatus,
         { signal },
       );
+
       checkScope(book, result.original.scope);
+
       if (result.original.id !== id) throw new Error("Allocation receipt identity mismatch");
+
       if (result.reversal) {
         checkScope(book, result.reversal.scope);
+
         if (result.reversal.receiptId !== id) throw new Error("Unallocation target mismatch");
       }
+
       return result;
     },
     retry: false,
   });
+
   const ready = status.isSuccess && status.isFetchedAfterMount && status.fetchStatus === "idle";
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>
@@ -204,9 +216,11 @@ export function AllocationReleaseStatus(
     </Box>
   );
 }
+
 export function CommerceRegisterAllocationStatus(props: CommerceProps & { id: string }) {
   const { book, locale, id } = props;
   const copy = allocationReversalCopy(locale);
+
   const status = useQuery({
     queryKey: [...commerceKey(book), "register-allocation-status", id],
     staleTime: 0,
@@ -217,11 +231,14 @@ export function CommerceRegisterAllocationStatus(props: CommerceProps & { id: st
         Reversal.CommerceRegisterAllocationStatus,
         { signal },
       );
+
       if (result.reportId !== id) throw new Error("Register report identity mismatch");
+
       return result;
     },
     retry: false,
   });
+
   return (
     <Box display="grid" gap="md">
       <Box>

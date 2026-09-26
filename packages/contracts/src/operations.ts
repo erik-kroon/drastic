@@ -1,7 +1,9 @@
 import * as Schema from "effect/Schema";
 
 const Digest = Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/));
+
 const Count = Schema.String.check(Schema.isPattern(/^[0-9]+$/));
+
 const Name = Schema.String.check(Schema.isPattern(/^[a-z][a-z0-9_]{0,62}$/));
 
 export const LocalTarget = Schema.Struct({
@@ -22,12 +24,14 @@ export const TableFingerprint = Schema.Struct({
   rows: Count,
   sha256: Digest,
 });
+
 export const BookBoundary = Schema.Struct({
   id: Schema.String,
   authority: Schema.Literal("native"),
   writerEpoch: Count,
   committedSequence: Count,
 });
+
 export const LocalPreflight = Schema.Struct({
   version: Schema.Literal(1),
   checkedAt: Schema.String,
@@ -43,21 +47,25 @@ export const LocalPreflight = Schema.Struct({
   productionAction: Schema.Literal("disabled"),
   blockers: Schema.Array(Schema.String),
 });
+
 export const BackupFile = Schema.Struct({
   path: Schema.String,
   bytes: Count,
   sha256: Digest,
 });
+
 export const RecoveryArtifact = Schema.Struct({
   ...BackupFile.fields,
   kind: Schema.Literals(["evidence", "rule", "filing", "configuration", "key-recovery"]),
   referenceId: Schema.String.check(Schema.isMinLength(1)),
 });
+
 export const ConfigurationCustody = Schema.Struct({
   name: Schema.Literals(["DATABASE_URL", "BETTER_AUTH_SECRET", "BETTER_AUTH_URL"]),
   custodyReference: Schema.String.check(Schema.isMinLength(1)),
   procedurePath: Schema.String.check(Schema.isMinLength(1)),
 });
+
 export const RecoveryPlan = Schema.Struct({
   version: Schema.Literal(1),
   operatorId: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
@@ -67,6 +75,7 @@ export const RecoveryPlan = Schema.Struct({
   configuration: Schema.Array(ConfigurationCustody),
   workRecoveryProcedurePath: Schema.optional(Schema.String.check(Schema.isMinLength(1))),
 }).annotate({ parseOptions: { onExcessProperty: "error" } });
+
 export const ReleaseManifest = Schema.Struct({
   version: Schema.Literal(1),
   kind: Schema.Literal("openerp-source-release"),
@@ -76,6 +85,7 @@ export const ReleaseManifest = Schema.Struct({
   browserAuthentication: Schema.Literal("better-auth"),
   runtimeVerification: Schema.Literal("not-run"),
 });
+
 export const RoleInventory = Schema.Struct({
   name: Schema.String,
   superuser: Schema.Boolean,
@@ -97,6 +107,7 @@ export const RoleInventory = Schema.Struct({
     }),
   ),
 });
+
 export const DatabaseInventory = Schema.Struct({
   owner: Schema.String,
   encoding: Schema.String,
@@ -108,11 +119,13 @@ export const DatabaseInventory = Schema.Struct({
   migrations: Schema.Array(Schema.Struct({ name: Schema.String, sha256: Digest })),
   roles: Schema.Array(RoleInventory),
 });
+
 export const RetainedObjectReference = Schema.Struct({
   objectKey: Schema.String.check(Schema.isPattern(/^v1\/[a-z][a-z0-9_-]{2,127}\/[a-f0-9]{64}$/)),
   sha256: Schema.String.check(Schema.isPattern(/^sha256:[a-f0-9]{64}$/)),
   byteLength: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 5242880 })),
 });
+
 export const ObjectInventory = Schema.Struct({
   version: Schema.Literal(1),
   owner: Schema.Literal("openerp.intake_contents.object_key"),
@@ -122,6 +135,7 @@ export const ObjectInventory = Schema.Struct({
   unsupportedObjectTypes: Schema.Literal("none"),
   content: Schema.Literal("matched"),
 });
+
 export const EvidenceInventory = Schema.Struct({
   version: Schema.Literal(1),
   table: TableFingerprint,
@@ -131,11 +145,13 @@ export const EvidenceInventory = Schema.Struct({
   integrity: Schema.Literal("matched"),
   references: Schema.Literal("matched"),
 });
+
 export const ReceiptInventory = Schema.Struct({
   version: Schema.Literal(1),
   tables: Schema.Array(TableFingerprint),
   content: Schema.Literal("matched"),
 });
+
 export const RecoveryClosure = Schema.Struct({
   version: Schema.Literal(1),
   database: Schema.Literal("matched"),
@@ -144,6 +160,7 @@ export const RecoveryClosure = Schema.Struct({
   receipts: ReceiptInventory,
   durableWork: Schema.Literal("matched"),
 });
+
 export const RecoveryControls = Schema.Struct({
   evidenceCount: Count,
   evidenceBytes: Count,
@@ -159,6 +176,7 @@ export const RecoveryControls = Schema.Struct({
   historicalReportControls: Schema.Literal("matched"),
   externalObjects: Schema.Literals(["unsupported-pointers-refused", "retained-originals-matched"]),
 });
+
 export const RecoveryWorkSummary = Schema.Struct({
   outboxRows: Count,
   undeliveredOutbox: Count,
@@ -172,6 +190,7 @@ export const RecoveryWorkSummary = Schema.Struct({
   savedRequests: Count,
   requestsWithoutOutcome: Count,
 });
+
 export const RecoveryWorkInventory = Schema.Struct({
   version: Schema.Literal(1),
   kind: Schema.Literal("openerp-durable-work-inventory"),
@@ -237,12 +256,14 @@ export const RecoveryWorkInventory = Schema.Struct({
   remoteWorkflowState: Schema.Literal("not-inspected"),
   resumptionAuthority: Schema.Literal("not-granted"),
 }).annotate({ parseOptions: { onExcessProperty: "error" } });
+
 export const BackupWorkInventory = Schema.Struct({
   version: Schema.Literal(1),
   file: BackupFile,
   summary: RecoveryWorkSummary,
   recoveryProcedurePath: Schema.NullOr(Schema.String),
 });
+
 export const RestoreSuspensionReport = Schema.Struct({
   version: Schema.Literal(1),
   kind: Schema.Literal("openerp-restore-suspension"),
@@ -264,6 +285,7 @@ export const RestoreSuspensionReport = Schema.Struct({
   providerOutcomes: Schema.Literal("not-reconciled"),
   resumeAllowed: Schema.Literal(false),
 });
+
 export const BackupManifest = Schema.Struct({
   version: Schema.Literal(2),
   kind: Schema.Literal("openerp-local-backup"),
@@ -287,6 +309,7 @@ export const BackupManifest = Schema.Struct({
   restoreStatus: Schema.Literal("not-exercised"),
   productionAction: Schema.Literal("disabled"),
 }).annotate({ parseOptions: { onExcessProperty: "error" } });
+
 export const RestoreReceipt = Schema.Struct({
   version: Schema.Literal(2),
   kind: Schema.Literal("openerp-local-restore"),
@@ -316,6 +339,7 @@ export const RestoreReceipt = Schema.Struct({
   archiveCompliance: Schema.Literal("not-established"),
   productionAction: Schema.Literal("disabled"),
 });
+
 export const OperationDiagnostic = Schema.Struct({
   version: Schema.Literal(1),
   stage: Schema.String,
@@ -323,6 +347,7 @@ export const OperationDiagnostic = Schema.Struct({
   status: Schema.Literals(["started", "passed", "failed", "not-confirmed"]),
   message: Schema.String,
 });
+
 export const BundleInspection = Schema.Struct({
   version: Schema.Literal(1),
   kind: Schema.Literal("openerp-local-bundle-inspection"),

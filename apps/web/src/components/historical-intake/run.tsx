@@ -25,16 +25,20 @@ export function SieStagingRun({ id, plan }: { id: string; plan: typeof Sie.SiePl
   const path = `${bookPath(book)}/sie-runs/${encodeURIComponent(id)}`;
   const queryKey = [...bookKey(book), "sie-run", id];
   const refresh = () => cache.invalidateQueries({ queryKey });
+
   const run = useQuery({
     queryKey,
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(path, Sie.SieRun, { signal });
+
       if (result.id !== id || result.planId !== plan.id || result.planDigest !== plan.digest)
         throw new Error("SIE run identity mismatch");
+
       return result;
     },
   });
+
   const admission = useQuery({
     queryKey: [...bookKey(book), "historical-items-plan", plan.id],
     retry: false,
@@ -44,11 +48,14 @@ export function SieStagingRun({ id, plan }: { id: string; plan: typeof Sie.SiePl
         Historical.PlanItemAdmission,
         { signal },
       );
+
       if (result && (result.sourcePlanId !== plan.id || result.planDigest !== plan.digest))
         throw new Error("Historical admission identity mismatch");
+
       return result;
     },
   });
+
   const advance = useMutation({
     mutationFn: (input: { fence: string; planDigest: string; firstOrdinal: number }) =>
       readAccounting(
@@ -58,6 +65,7 @@ export function SieStagingRun({ id, plan }: { id: string; plan: typeof Sie.SiePl
       ),
     onSuccess: refresh,
   });
+
   const lease = useMutation({
     mutationFn: (action: "pause" | "resume") =>
       readAccounting(
@@ -70,9 +78,11 @@ export function SieStagingRun({ id, plan }: { id: string; plan: typeof Sie.SiePl
       await refresh();
     },
   });
+
   const uncertain = isUncertainWriteError(advance.error);
   const leaseUncertain = isUncertainWriteError(lease.error);
   const disabled = book.role !== "operator" || advance.isPending || lease.isPending;
+
   return (
     <Box display="grid" gap="md">
       <AccountingStatus locale={locale} pending={run.isPending} error={run.error} />
@@ -174,6 +184,7 @@ function AdmissionStatus({
         {sv ? "Historiskt register har inte sparats." : "Historical register has not been saved."}
       </Text>
     );
+
   return (
     <Box display="grid" gap="sm">
       <Text>{`${sv ? "Historiskt register sparat" : "Historical register saved"}: ${admission.openItems.length}. ${sv ? "Ingen bokföringseffekt." : "No financial posting effect."}`}</Text>

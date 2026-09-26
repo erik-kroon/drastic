@@ -5,12 +5,14 @@ import { textArray } from "../sql-values";
 import type { Transaction } from "../transaction";
 
 type JsonObject = Schema.JsonObject;
+
 type Source = typeof Bank.StatementSource.Type;
 
 export function readConflicts(transaction: Transaction, bookId: string, source: Source) {
   const providerIds = source.rows.flatMap((row) =>
     row.providerId === null ? [] : [row.providerId],
   );
+
   return transaction.execute<{
     readonly mapping: boolean;
     readonly overlap: boolean;

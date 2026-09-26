@@ -40,6 +40,7 @@ export function AccountantReviewPanel(props: {
   const [local, setLocal] = useState("");
   const selected = props.recordId ?? local;
   const select = props.onOpen ?? setLocal;
+
   if (selected && selected !== "new")
     return (
       <Box display="grid" gap="xl">
@@ -57,6 +58,7 @@ export function AccountantReviewPanel(props: {
         />
       </Box>
     );
+
   return (
     <Box display="grid" gap="xl">
       <RecordHeading
@@ -94,19 +96,23 @@ function PreparePack({
   onCreated: (id: string) => void;
 }) {
   const copy = reviewCopy(locale);
+
   const setup = useQuery({
     queryKey: [...bookKey(book), "setup"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
     retry: false,
   });
+
   const period = setup.data?.periods.at(-1);
   const keys = useRef(new Map<string, string>());
   const queryClient = useQueryClient();
   const [error, setError] = useState("");
+
   const prepare = useMutation({
     mutationFn: async (draft: typeof Draft.Type) => {
       const reportPath = `${bookPath(book)}/report-snapshots`;
+
       const report = await readAccounting(
         reportPath,
         Reports.ReportSnapshot,
@@ -120,6 +126,7 @@ function PreparePack({
           keys.current,
         ),
       );
+
       if (
         report.scope.bookId !== book.id ||
         report.scope.entityId !== book.entityId ||
@@ -128,6 +135,7 @@ function PreparePack({
       )
         throw new Error("Report scope mismatch");
       const path = `${bookPath(book)}/accountant-review-packs`;
+
       const input: typeof Review.PrepareReviewPack.Type = {
         reportId: report.id,
         openingExplanation: draft.openingExplanation,
@@ -135,17 +143,20 @@ function PreparePack({
         accountantNotes: draft.accountantNotes,
         excludedSources: draft.excludedSources,
       };
+
       const result = await readAccounting(
         path,
         Review.ReviewPackView,
         mutationOptions(path, JSON.stringify(input), keys.current),
       );
+
       if (
         result.pack.scope.bookId !== book.id ||
         result.pack.scope.entityId !== book.entityId ||
         result.pack.report.id !== report.id
       )
         throw new Error("Review pack scope mismatch");
+
       return result.pack.id;
     },
     onSuccess: async (id) => {
@@ -156,6 +167,7 @@ function PreparePack({
       ]);
     },
   });
+
   return (
     <Box
       as="form"
@@ -167,6 +179,7 @@ function PreparePack({
         const evidence = fields.get("openingEvidenceIds");
         const source = fields.get("excludedName");
         const reason = fields.get("excludedReason");
+
         const decoded = Schema.decodeUnknownOption(Draft)({
           startsOn: fields.get("startsOn"),
           endsOn: fields.get("endsOn"),
@@ -178,10 +191,13 @@ function PreparePack({
               : [],
           excludedSources: source || reason ? [{ name: source, reason }] : [],
         });
+
         if (decoded._tag === "None" || decoded.value.startsOn > decoded.value.endsOn) {
           setError(copy.invalid);
+
           return;
         }
+
         setError("");
         prepare.mutate(decoded.value);
       }}
@@ -287,6 +303,7 @@ function RetainedPacks({
   onSelected: (id: string) => void;
 }) {
   const copy = reviewCopy(locale);
+
   const list = useInfiniteQuery({
     queryKey: [...bookKey(book), "accountant-review-list"],
     initialPageParam: "",
@@ -299,7 +316,9 @@ function RetainedPacks({
       ),
     getNextPageParam: (last) => last.next ?? undefined,
   });
+
   const packs = list.data?.pages.flatMap((page) => page.items) ?? [];
+
   return (
     <Box display="grid" gap="md">
       <AccountingStatus locale={locale} pending={list.isPending} error={list.error} />

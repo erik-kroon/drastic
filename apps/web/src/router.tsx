@@ -17,6 +17,7 @@ export function getRouter() {
     queryClient.getMutationCache().clear();
     queryClient.setQueryData(booksKey, null);
   };
+
   const queryClient: QueryClient = new QueryClient({
     queryCache: new QueryCache({
       onError: (error, query) => {
@@ -27,13 +28,19 @@ export function getRouter() {
     }),
     mutationCache: new MutationCache({
       onError: (error, _variables, _context, mutation) => {
-        if (queryClient.getMutationCache().getAll().some((entry) => Object.is(entry, mutation))) {
+        if (
+          queryClient
+            .getMutationCache()
+            .getAll()
+            .some((entry) => Object.is(entry, mutation))
+        ) {
           loseAccountingSession(error);
         }
       },
     }),
     defaultOptions: { queries: { staleTime: 30_000 } },
   });
+
   const router = createRouter({
     routeTree,
     context: { queryClient },
@@ -41,7 +48,9 @@ export function getRouter() {
     defaultPreloadStaleTime: 0,
     scrollRestoration: true,
   });
+
   setupRouterSsrQueryIntegration({ router, queryClient });
+
   return router;
 }
 

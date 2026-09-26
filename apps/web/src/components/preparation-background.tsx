@@ -18,19 +18,28 @@ export function PreparationBackground(props: {
   const client = useQueryClient();
   const path = `${bookPath(props.book)}/preparation-runs/${encodeURIComponent(props.runId)}/background`;
   const queryKey = [...bookKey(props.book), "preparation-background", props.runId];
+
   const job = useQuery({
     queryKey,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(path, Schema.NullOr(PreparationJob), { signal });
-      if (result && (result.scope.entityId !== props.book.entityId || result.scope.bookId !== props.book.id || result.runId !== props.runId)) {
+
+      if (
+        result &&
+        (result.scope.entityId !== props.book.entityId ||
+          result.scope.bookId !== props.book.id ||
+          result.runId !== props.runId)
+      ) {
         throw new Error("Background job scope or run mismatch");
       }
+
       return result;
     },
     retry: false,
     refetchOnMount: "always",
     refetchInterval: (query) => (query.state.data?.state === "ready" ? 3000 : false),
   });
+
   const start = useMutation({
     mutationFn: async (request: {
       path: string;
@@ -43,9 +52,15 @@ export function PreparationBackground(props: {
         body: "{}",
         headers: { "Idempotency-Key": request.key },
       });
-      if (result.scope.entityId !== request.scope.entityId || result.scope.bookId !== request.scope.bookId || result.runId !== request.runId) {
+
+      if (
+        result.scope.entityId !== request.scope.entityId ||
+        result.scope.bookId !== request.scope.bookId ||
+        result.runId !== request.runId
+      ) {
         throw new Error("Background job response scope or run mismatch");
       }
+
       return result;
     },
     retry: false,
@@ -61,19 +76,23 @@ export function PreparationBackground(props: {
       void client.invalidateQueries({ queryKey: runKey, exact: true });
     },
   });
+
   const captured = start.variables;
   const jobCurrent = job.isSuccess && job.isFetchedAfterMount && job.fetchStatus === "idle";
   const ready = props.ready && jobCurrent;
+
   const copy =
     props.locale === "sv"
       ? {
           start: "Fortsätt i bakgrunden",
           replace: "Begär ett ersättningsjobb",
-          replacementHelp: "Servern avgör om behörighet eller körningens historik har ändrats så att jobbet får ersättas. Ett oförändrat aktivt jobb kan inte ersättas. Väntan i sig betyder inte att jobbet är inaktuellt.",
+          replacementHelp:
+            "Servern avgör om behörighet eller körningens historik har ändrats så att jobbet får ersättas. Ett oförändrat aktivt jobb kan inte ersättas. Väntan i sig betyder inte att jobbet är inaktuellt.",
           retry: "Försök igen med samma begäran",
           discard: "Kasta sparad begäran (avbryter inte serverjobbet)",
           refresh: "Uppdatera jobbstatus",
-          unknown: "Aktuell jobbstatus är inte bekräftad. Uppdatera innan du startar en ny begäran.",
+          unknown:
+            "Aktuell jobbstatus är inte bekräftad. Uppdatera innan du startar en ny begäran.",
           lastRead: "Senast lästa jobbstatus (inte bekräftad som aktuell)",
           help: "Jobbet fortsätter medan du lämnar sidan. Manuell ändring, avbrutet jobb eller utgången behörighet stoppar jobbet. Bokföring kräver ett separat godkännande.",
           ready: "Väntar eller körs",
@@ -84,7 +103,8 @@ export function PreparationBackground(props: {
       : {
           start: "Continue in background",
           replace: "Request replacement job",
-          replacementHelp: "The server decides whether changed authority or run history permits replacement. An unchanged active job cannot be replaced. Waiting alone does not mean the job is obsolete.",
+          replacementHelp:
+            "The server decides whether changed authority or run history permits replacement. An unchanged active job cannot be replaced. Waiting alone does not mean the job is obsolete.",
           retry: "Retry the same request",
           discard: "Discard saved request (does not cancel the server job)",
           refresh: "Refresh job status",
@@ -96,6 +116,7 @@ export function PreparationBackground(props: {
           blocked: "Blocked",
           stopped: "Stopped",
         };
+
   return (
     <Box display="grid" gap="md">
       <Text>{copy.help}</Text>
@@ -119,19 +140,48 @@ export function PreparationBackground(props: {
       </Box>
       {job.data?.state === "ready" ? <Text>{copy.replacementHelp}</Text> : null}
       <Box>
-        <Button type="button" variant="outline" disabled={job.isFetching} onClick={() => { void job.refetch(); }}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={job.isFetching}
+          onClick={() => {
+            void job.refetch();
+          }}
+        >
           {copy.refresh}
         </Button>
       </Box>
-      {captured ? <Box display="grid" gap="md">
-        <Text>{captured.runId} · {captured.key}</Text>
-        <Box display="flex" flexWrap="wrap" gap="md">
-          {start.isError ? <Button type="button" variant="outline" disabled={start.isPending}
-            onClick={() => { if (!start.isPending) start.mutate(captured); }}>{copy.retry}</Button> : null}
-          <Button type="button" variant="outline" disabled={start.isPending}
-            onClick={() => { if (!start.isPending) start.reset(); }}>{copy.discard}</Button>
+      {captured ? (
+        <Box display="grid" gap="md">
+          <Text>
+            {captured.runId} · {captured.key}
+          </Text>
+          <Box display="flex" flexWrap="wrap" gap="md">
+            {start.isError ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={start.isPending}
+                onClick={() => {
+                  if (!start.isPending) start.mutate(captured);
+                }}
+              >
+                {copy.retry}
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={start.isPending}
+              onClick={() => {
+                if (!start.isPending) start.reset();
+              }}
+            >
+              {copy.discard}
+            </Button>
+          </Box>
         </Box>
-      </Box> : null}
+      ) : null}
       <AccountingStatus
         locale={props.locale}
         pending={start.isPending}
@@ -140,7 +190,8 @@ export function PreparationBackground(props: {
       {!jobCurrent ? <Text role="status">{copy.unknown}</Text> : null}
       {job.data ? (
         <Text role="status">
-          {!jobCurrent ? `${copy.lastRead}: ` : ""}{copy[job.data.state]} · {job.data.id}
+          {!jobCurrent ? `${copy.lastRead}: ` : ""}
+          {copy[job.data.state]} · {job.data.id}
           {job.data.reason ? ` · ${job.data.reason}` : ""}
         </Text>
       ) : null}

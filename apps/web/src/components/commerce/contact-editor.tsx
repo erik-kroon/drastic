@@ -15,12 +15,14 @@ import { readAccounting } from "@/lib/accounting-api";
 import { checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
 
 type Party = typeof Commerce.CounterpartyRevision.Type;
+
 const ContactInput = Schema.Struct({
   displayName: Commerce.CreateCounterparty.fields.displayName,
   externalKey: Commerce.CreateCounterparty.fields.externalKey,
   role: Commerce.CreateCounterparty.fields.role,
   reason: Commerce.CreateCounterparty.fields.reason,
 });
+
 export function ContactEditor(
   props: CommerceProps & {
     baseline?: Party;
@@ -35,10 +37,12 @@ export function ContactEditor(
   const requests = useSavedPostingRequests(book);
   const [key] = useState(() => crypto.randomUUID());
   const [invalid, setInvalid] = useState(false);
+
   const save = useMutation({
     mutationFn: async (input: typeof ContactInput.Type) => {
       if (!requests.data || requests.isError)
         throw new Error(sv ? "Behörigheten kunde inte läsas." : "Your access could not be loaded.");
+
       const source = await sendSavedPostingCommand({
         book,
         actorId: requests.data.actorId,
@@ -55,6 +59,7 @@ export function ContactEditor(
           ? "Tillåt lokal lagring för att spara kontakten."
           : "Allow local storage to save the contact.",
       });
+
       if (
         source.outcome?.state !== "committed" ||
         !Schema.is(Accounting.Evidence)(source.outcome.result)
@@ -65,6 +70,7 @@ export function ContactEditor(
             : "The source is not confirmed. Retry the save.",
         );
       const evidenceId = source.outcome.result.id;
+
       const payload = baseline
         ? Schema.decodeSync(Commerce.ReviseCounterparty)({
             expectedRevision: baseline.revision,
@@ -77,13 +83,17 @@ export function ContactEditor(
             ...input,
             evidenceId,
           });
+
       const path = `${commercePath(book)}/counterparties${baseline ? `/${encodeURIComponent(baseline.id)}/revisions` : ""}`;
+
       const result = await readAccounting(path, Commerce.CounterpartyRevision, {
         method: "POST",
         body: JSON.stringify(payload),
         headers: { "Idempotency-Key": key },
       });
+
       checkScope(book, result.scope);
+
       return result;
     },
     onSuccess: (party) => {
@@ -92,6 +102,7 @@ export function ContactEditor(
     },
     retry: false,
   });
+
   return (
     <Box
       as="form"
@@ -100,15 +111,19 @@ export function ContactEditor(
       onSubmit={(event) => {
         event.preventDefault();
         event.stopPropagation();
+
         if (save.variables || book.role !== "operator") return;
         const fields = new FormData(event.currentTarget);
+
         const parsed = Schema.decodeUnknownOption(ContactInput)({
           displayName: fields.get("displayName"),
           externalKey: baseline?.externalKey ?? (fields.get("externalKey") || `contact_${key}`),
           role: baseline?.role ?? (props.customerOnly ? "customer" : fields.get("role")),
           reason: fields.get("reason") || (sv ? "Kontakt tillagd" : "Contact added"),
         });
+
         setInvalid(parsed._tag === "None");
+
         if (parsed._tag === "Some") save.mutate(parsed.value);
       }}
     >

@@ -185,6 +185,7 @@ function workCursor(
   anchor: { readonly createdAt: string; readonly id: string } | null,
 ) {
   if (anchor === null) return sql`true`;
+
   return sql`
     (${sort} = 'newest'
         and (created_text, id collate "C") < (${anchor.createdAt}, ${anchor.id} collate "C"))
@@ -364,6 +365,7 @@ export function readWorkItem(
       : kind === "invoice"
         ? sql`select 1 from openerp.invoice_drafts d where d.book_id = ${bookId} and d.id = ${recordId}`
         : sql`select 1 from openerp.expense_tax_sources s where s.book_id = ${bookId} and s.id = ${recordId}`;
+
   return transaction.execute<{ readonly present: boolean }>(
     sql`select exists (${exists}) as present`,
     "objects",
@@ -528,6 +530,7 @@ function attentionScoped(filters: AttentionFilters, starts: string | null, ends:
 function attentionOrder(sort: string, source: "observed" | "candidates" = "observed") {
   const updated = source === "observed" ? sql`updated::timestamptz` : sql`c.updated::timestamptz`;
   const key = source === "observed" ? sql`key` : sql`c.key`;
+
   return sql`
     order by case when ${sort} = 'newest' then ${updated} end desc,
       case when ${sort} = 'newest' then ${key} end collate "C" desc,

@@ -10,13 +10,23 @@ export const CreateBankSourceCoverage = Schema.Struct({
   startsOn: Accounting.AccountingDate,
   endsOn: Accounting.AccountingDate,
 });
+
 export const BankSourceCoverageDiagnostic = Schema.Literals([
-  "no_declared_accounts", "mapped_account_not_declared", "source_mapping_missing", "statements_missing",
-  "statement_declared_incomplete", "statement_crosses_boundary", "source_identity_or_currency_mismatch",
-  "statement_balance_difference", "statement_row_count_difference",
-  "opening_checkpoint_unavailable", "closing_checkpoint_unavailable",
+  "no_declared_accounts",
+  "mapped_account_not_declared",
+  "source_mapping_missing",
+  "statements_missing",
+  "statement_declared_incomplete",
+  "statement_crosses_boundary",
+  "source_identity_or_currency_mismatch",
+  "statement_balance_difference",
+  "statement_row_count_difference",
+  "opening_checkpoint_unavailable",
+  "closing_checkpoint_unavailable",
 ]);
+
 const interval = { startsOn: Accounting.AccountingDate, endsOn: Accounting.AccountingDate };
+
 export const BankCoverageStatement = Schema.Struct({
   statement: BankStatement,
   movementMinor: Accounting.SignedMinorUnits,
@@ -25,6 +35,7 @@ export const BankCoverageStatement = Schema.Struct({
   cutsRequestedBoundary: Schema.Boolean,
   diagnostics: Schema.Array(BankSourceCoverageDiagnostic),
 });
+
 export const BankCoverageAccount = Schema.Struct({
   accountId: Accounting.Identifier,
   code: Schema.String,
@@ -36,21 +47,28 @@ export const BankCoverageAccount = Schema.Struct({
   sourceRevision: Schema.NullOr(Accounting.MinorUnits),
   statements: Schema.Array(BankCoverageStatement),
   gaps: Schema.Array(Schema.Struct(interval)),
-  overlaps: Schema.Array(Schema.Struct({
-    leftStatementId: Accounting.Identifier, rightStatementId: Accounting.Identifier, ...interval,
-  })),
-  adjacentBalances: Schema.Array(Schema.Struct({
-    leftStatementId: Accounting.Identifier,
-    rightStatementId: Accounting.Identifier,
-    leftClosingMinor: Accounting.SignedMinorUnits,
-    rightOpeningMinor: Accounting.SignedMinorUnits,
-    differenceMinor: Accounting.SignedMinorUnits,
-  })),
+  overlaps: Schema.Array(
+    Schema.Struct({
+      leftStatementId: Accounting.Identifier,
+      rightStatementId: Accounting.Identifier,
+      ...interval,
+    }),
+  ),
+  adjacentBalances: Schema.Array(
+    Schema.Struct({
+      leftStatementId: Accounting.Identifier,
+      rightStatementId: Accounting.Identifier,
+      leftClosingMinor: Accounting.SignedMinorUnits,
+      rightOpeningMinor: Accounting.SignedMinorUnits,
+      differenceMinor: Accounting.SignedMinorUnits,
+    }),
+  ),
   openingMinor: Schema.NullOr(Accounting.SignedMinorUnits),
   closingMinor: Schema.NullOr(Accounting.SignedMinorUnits),
   diagnostics: Schema.Array(BankSourceCoverageDiagnostic),
   hasReviewGaps: Schema.Boolean,
 });
+
 export const BankSourceCoverageReport = Schema.Struct({
   id: Accounting.Identifier,
   kind: Schema.Literal("synthetic_bank_source_coverage_v1"),
@@ -58,7 +76,10 @@ export const BankSourceCoverageReport = Schema.Struct({
   input: CreateBankSourceCoverage,
   inventory: ClosingInventory,
   period: Schema.Struct({
-    id: Accounting.Identifier, version: Accounting.MinorUnits, ...interval, locked: Schema.Boolean,
+    id: Accounting.Identifier,
+    version: Accounting.MinorUnits,
+    ...interval,
+    locked: Schema.Boolean,
   }),
   currency: Schema.String,
   currencyScale: Schema.Int,
@@ -74,6 +95,7 @@ export const BankSourceCoverageReport = Schema.Struct({
   receipt: CommandReceipt,
   digest: Accounting.Digest,
 });
+
 export const BankSourceCoverageView = Schema.Struct({
   report: BankSourceCoverageReport,
   dependenciesCurrent: Schema.Boolean,
@@ -84,48 +106,67 @@ export const BankSourceCoverageView = Schema.Struct({
     mediaType: Schema.Literal("application/json"),
   }),
 });
+
 export const BankSourceCoverageList = Schema.Struct({
   scope: Accounting.Scope,
-  items: Schema.Array(Schema.Struct({
-    id: Accounting.Identifier,
-    inventoryId: Accounting.Identifier,
-    ...interval,
-    createdAt: Schema.String,
-    sequence: Accounting.MinorUnits,
-    hasReviewGaps: Schema.Boolean,
-    digest: Accounting.Digest,
-  })).check(Schema.isMaxLength(200)),
+  items: Schema.Array(
+    Schema.Struct({
+      id: Accounting.Identifier,
+      inventoryId: Accounting.Identifier,
+      ...interval,
+      createdAt: Schema.String,
+      sequence: Accounting.MinorUnits,
+      hasReviewGaps: Schema.Boolean,
+      digest: Accounting.Digest,
+    }),
+  ).check(Schema.isMaxLength(200)),
   coverage: Schema.Literal("not_established"),
 });
+
 const path = "/v1/entities/:entityId/books/:bookId/bank-source-coverage";
+
 export const BankSourceCoverageApi = HttpApiGroup.make("bankSourceCoverage").add(
   HttpApiEndpoint.post("createBankSourceCoverage", path, {
-    params: Accounting.Scope, headers: Accounting.IdempotencyHeaders,
+    params: Accounting.Scope,
+    headers: Accounting.IdempotencyHeaders,
     payload: CreateBankSourceCoverage.annotate({ parseOptions: { onExcessProperty: "error" } }),
-    success: BankSourceCoverageReport, error: accountingErrors,
+    success: BankSourceCoverageReport,
+    error: accountingErrors,
   }),
   HttpApiEndpoint.get("listBankSourceCoverage", path, {
-    params: Accounting.Scope, success: BankSourceCoverageList, error: accountingErrors,
+    params: Accounting.Scope,
+    success: BankSourceCoverageList,
+    error: accountingErrors,
   }),
   HttpApiEndpoint.get("getBankSourceCoverage", `${path}/:id`, {
-    params: Accounting.ChangePath, success: BankSourceCoverageView, error: accountingErrors,
+    params: Accounting.ChangePath,
+    success: BankSourceCoverageView,
+    error: accountingErrors,
   }),
 );
+
 export const BankSourceCoverageCapabilities = {
   bank_create_source_coverage: {
-    description: "Capture retained statement interval coverage for an existing reviewed closing inventory. Preserve gaps, overlaps, unavailable boundaries and independent balance diagnostics. Does not certify full-company coverage or close readiness.",
-    input: Schema.Struct({ scope: Accounting.Scope, idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"], input: CreateBankSourceCoverage }),
+    description:
+      "Capture retained statement interval coverage for an existing reviewed closing inventory. Preserve gaps, overlaps, unavailable boundaries and independent balance diagnostics. Does not certify full-company coverage or close readiness.",
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
+      input: CreateBankSourceCoverage,
+    }),
     output: BankSourceCoverageReport,
     readOnly: false,
   },
   bank_get_source_coverage: {
-    description: "Read immutable source coverage JSON bytes and separate currentness. Never recompute a historical report or treat unknown sources as zero.",
+    description:
+      "Read immutable source coverage JSON bytes and separate currentness. Never recompute a historical report or treat unknown sources as zero.",
     input: Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier }),
     output: BankSourceCoverageView,
     readOnly: true,
   },
   bank_list_source_coverage: {
-    description: "Discover all bounded saved source coverage reports in this book. This is report history, not a complete provider source inventory.",
+    description:
+      "Discover all bounded saved source coverage reports in this book. This is report history, not a complete provider source inventory.",
     input: Schema.Struct({ scope: Accounting.Scope }),
     output: BankSourceCoverageList,
     readOnly: true,

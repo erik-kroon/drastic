@@ -92,6 +92,7 @@ const en = {
   emptySection:
     "This captured section contains no rows. That does not establish that the obligation is absent.",
 };
+
 const sv: typeof en = {
   title: "Granskningspaket för redovisning",
   owner_sources: "Ägarkällor och granskningar",
@@ -184,4 +185,5 @@ const sv: typeof en = {
   notesTitle: "Frågor till redovisaren",
   emptySection: "Det sparade avsnittet har inga rader. Det bevisar inte att skyldigheten saknas.",
 };
+
 export const reviewCopy = (locale: string) => (locale === "sv" ? sv : en);

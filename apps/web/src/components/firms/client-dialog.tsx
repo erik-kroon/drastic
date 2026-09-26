@@ -17,11 +17,14 @@ export function ClientDialog(props: {
   const { workspace, client, locale } = props;
   const sv = locale === "sv";
   const [removing, setRemoving] = useState(false);
+
   const available = props.books.filter(
     (book) =>
       book.role === "operator" && !workspace.clients.some((item) => item.book.id === book.id),
   );
+
   const base = `/api/v1/firms/${workspace.firm.id}/clients`;
+
   if (removing && client)
     return (
       <FirmForm
@@ -43,6 +46,7 @@ export function ClientDialog(props: {
         </PageCaption>
       </FirmForm>
     );
+
   return (
     <FirmForm
       title={client ? client.book.name : sv ? "Lägg till klient" : "Add client"}
@@ -55,6 +59,7 @@ export function ClientDialog(props: {
       onClose={props.onClose}
       input={(fields) => {
         const book = client?.book ?? available.find((item) => item.id === fields.get("book"));
+
         return {
           scope: { entityId: book?.entityId, bookId: book?.id },
           leadId: fields.get("lead") || null,
@@ -119,6 +124,7 @@ function ClientLeadFields({
   locale: Locale;
 }) {
   const sv = locale === "sv";
+
   return (
     <>
       <SelectField

@@ -37,29 +37,35 @@ const BankSourceCoveragePanel = lazy(() =>
     default: module.BankSourceCoveragePanel,
   })),
 );
+
 const BankMatchingWorkspace = lazy(() =>
   import("@/components/bank-match-candidates/workspace").then((module) => ({
     default: module.BankMatchingWorkspace,
   })),
 );
+
 const SubledgersPanel = lazy(() =>
   import("@/components/subledgers/schedules").then((module) => ({
     default: module.SubledgersPanel,
   })),
 );
+
 const ExchangeRateReviewsPanel = lazy(() =>
   import("@/components/exchange-rates/panel").then((module) => ({
     default: module.ExchangeRateReviewsPanel,
   })),
 );
+
 const SubledgerControlsPanel = lazy(() =>
   import("@/components/subledger-controls/panel").then((module) => ({
     default: module.SubledgerControlsPanel,
   })),
 );
+
 const ClosingPanel = lazy(() =>
   import("@/components/closing/panel").then((module) => ({ default: module.ClosingPanel })),
 );
+
 const CommercePanel = lazy(() =>
   import("@/components/commerce/commerce-panel").then((module) => ({
     default: module.CommercePanel,
@@ -101,12 +107,14 @@ export function AccountingWorkspace({
   const [planId, setPlanId] = useState<string | null>(null);
   const [draftNumber, setDraftNumber] = useState(0);
   const [inputError, setInputError] = useState("");
+
   const setup = useQuery({
     queryKey: [...bookKey(book), "setup"],
     queryFn: ({ signal }) =>
       readAccounting(`${bookPath(book)}/setup`, Accounting.BookSetup, { signal }),
     retry: false,
   });
+
   return (
     <Box display="grid" gap="2xl" minWidth="zero">
       <Box display="grid" gap="sm">
@@ -222,10 +230,13 @@ export function AccountingWorkspace({
         onSubmit={(event) => {
           event.preventDefault();
           const id = new FormData(event.currentTarget).get("planId");
+
           if (!Schema.is(Accounting.Identifier)(id)) {
             setInputError(copy.journal_invalid);
+
             return;
           }
+
           setInputError("");
           setPlanId(id);
         }}
@@ -283,7 +294,11 @@ export function AccountingWorkspace({
       {setup.data ? <BankReconciliation book={book} setup={setup.data} locale={locale} /> : null}
       {setup.data ? (
         <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
-          <BankSourceCoveragePanel key={`coverage:${JSON.stringify(bookKey(book))}`} book={book} locale={locale} />
+          <BankSourceCoveragePanel
+            key={`coverage:${JSON.stringify(bookKey(book))}`}
+            book={book}
+            locale={locale}
+          />
           <BankMatchingWorkspace
             key={`matching:${JSON.stringify(bookKey(book))}`}
             book={book}
@@ -313,7 +328,12 @@ export function AccountingWorkspace({
       {setup.data ? (
         <Suspense fallback={<AccountingStatus locale={locale} pending={true} error={null} />}>
           <SubledgersPanel book={book} setup={setup.data} locale={locale} onPrepared={setPlanId} />
-          <SubledgerControlsPanel key={JSON.stringify(bookKey(book))} book={book} setup={setup.data} locale={locale} />
+          <SubledgerControlsPanel
+            key={JSON.stringify(bookKey(book))}
+            book={book}
+            setup={setup.data}
+            locale={locale}
+          />
           <ExchangeRateReviewsPanel book={book} locale={locale} />
         </Suspense>
       ) : null}
@@ -348,6 +368,7 @@ function WorkspaceSections({
   locale: Locale;
 }) {
   const copy = accountingCopy(locale);
+
   const sections = [
     { id: "journal-draft", label: copy.section_journal, disabled: !journalAvailable },
     { id: "posting-recovery-section", label: postingCopy(locale).title, disabled: false },
@@ -372,6 +393,7 @@ function WorkspaceSections({
     { id: "technical-closing", label: closingCopy(locale).title, disabled: !bankAvailable },
     { id: "book-readiness", label: copy.section_readiness, disabled: false },
   ];
+
   return (
     <Box as="nav" aria-label={copy.workspace_sections} display="flex" flexWrap="wrap" gap="sm">
       {sections.map((section) => (
@@ -382,6 +404,7 @@ function WorkspaceSections({
           disabled={section.disabled}
           onClick={() => {
             const target = document.getElementById(section.id);
+
             if (target instanceof HTMLDetailsElement) target.open = true;
             target?.focus();
           }}

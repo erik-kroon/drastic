@@ -28,6 +28,7 @@ export function readArticlePointer(
   lock: "share" | "update",
 ) {
   const lockClause = lock === "update" ? sql`for update` : sql`for share`;
+
   return transaction.execute<ArticlePointerRow>(
     sql`
       select code, current_revision as "currentRevision"

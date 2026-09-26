@@ -16,10 +16,12 @@ function ScopedWorkspace() {
   const { entityId, bookId } = Route.useParams();
   const locale = usePageLocale();
   const copy = accountingCopy(locale);
+
   return (
     <AccountingAccess key={`${entityId}/${bookId}`} locale={locale}>
       {(books) => {
         const book = books.find((item) => item.entityId === entityId && item.id === bookId);
+
         if (!book)
           return (
             <Box
@@ -34,6 +36,7 @@ function ScopedWorkspace() {
               <Link href="/">{copy.workspace_switch}</Link>
             </Box>
           );
+
         return (
           <BookWorkspace key={`${entityId}/${bookId}`} book={book} books={books} locale={locale}>
             <Outlet />

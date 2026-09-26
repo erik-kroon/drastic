@@ -29,6 +29,7 @@ export function PostingRecoveryReview(props: {
   const { book, id, locale, accounts } = props;
   const copy = postingCopy(locale);
   const [after, setAfter] = useState<string | null>(null);
+
   const recovery = useQuery({
     queryKey: [...bookKey(book), "posting-recovery", "detail", id, after],
     queryFn: async ({ signal }) => {
@@ -37,16 +38,19 @@ export function PostingRecoveryReview(props: {
         Recovery.PostingRecovery,
         { signal },
       );
+
       if (
         result.plan.id !== id ||
         result.scope.bookId !== book.id ||
         result.scope.entityId !== book.entityId
       )
         throw new Error("Response scope mismatch");
+
       return result;
     },
     retry: false,
   });
+
   return (
     <Box as="section" id="journal-review" tabIndex={-1} display="grid" gap="lg" minWidth="zero">
       <Box display="flex" flexWrap="wrap" justifyContent="between" alignItems="center" gap="md">
@@ -138,11 +142,13 @@ function RecoveryDetail(props: {
   const copy = postingCopy(locale);
   const client = useQueryClient();
   const [reviewed, setReviewed] = useState(false);
+
   const refresh = () => {
     void client.invalidateQueries({ queryKey: bookKey(book) });
     void client.invalidateQueries({ queryKey: booksKey });
     setReviewed(false);
   };
+
   const approve = useMutation({
     mutationFn: () =>
       sendSavedPostingCommand({
@@ -158,9 +164,11 @@ function RecoveryDetail(props: {
       }),
     onSettled: refresh,
   });
+
   const execute = useMutation({
     mutationFn: () => {
       if (!current.availableApproval) throw new Error(copy.operatorOnly);
+
       return sendSavedPostingCommand({
         book,
         actorId: current.actorId,
@@ -178,9 +186,11 @@ function RecoveryDetail(props: {
     },
     onSettled: refresh,
   });
+
   const revoke = useMutation({
     mutationFn: (reason: string) => {
       if (!current.availableApproval) throw new Error(copy.operatorOnly);
+
       return sendSavedPostingCommand({
         book,
         actorId: current.actorId,
@@ -194,10 +204,12 @@ function RecoveryDetail(props: {
     },
     onSettled: refresh,
   });
+
   const busy = props.refreshing || approve.isPending || execute.isPending || revoke.isPending;
   const unposted = current.summary.postingStatus === "unposted_at_check";
   const actionable = unposted && current.validation.status === "current" && reviewed && !busy;
   const receipt = current.summary.executionReceipt;
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       {current.plan.groups.map((group) => (
@@ -302,6 +314,7 @@ function RecoveryDetail(props: {
                 onSubmit={(event) => {
                   event.preventDefault();
                   const reason = new FormData(event.currentTarget).get("reason");
+
                   if (typeof reason === "string" && reason.trim()) revoke.mutate(reason);
                 }}
               >
@@ -350,6 +363,7 @@ function RequestHistory({
   locale: Locale;
 }) {
   const copy = postingCopy(locale);
+
   return (
     <Box display="grid" gap="md" minWidth="zero">
       <Text>{copy.historyHelp}</Text>
@@ -388,5 +402,6 @@ function CommandOutcome({
   locale: Locale;
 }) {
   if (!saved || saved.outcome?.state === "committed") return null;
+
   return <SavedPostingOutcome saved={saved} locale={locale} />;
 }

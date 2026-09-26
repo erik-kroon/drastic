@@ -17,6 +17,7 @@ function Review() {
   const { planId, revision } = Route.useParams();
   const { book, setup, locale } = useBookWorkspace();
   const copy = accountingCopy(locale);
+
   return (
     <Box display="grid" gap="xl" minWidth="zero">
       <WorkspaceHeader

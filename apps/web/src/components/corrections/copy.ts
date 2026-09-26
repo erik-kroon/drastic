@@ -83,6 +83,7 @@ const en = {
   version: "Version",
   reason: "Reason",
 };
+
 const sv: typeof en = {
   impact: "Granskning av rättelsens följder",
   prepareImpact: "Granska den föreslagna rättelsens följder",
@@ -170,6 +171,7 @@ const sv: typeof en = {
   version: "Version",
   reason: "Motivering",
 };
+
 export function correctionCopy(locale: Locale) {
   return locale === "sv" ? sv : en;
 }

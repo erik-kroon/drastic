@@ -17,6 +17,7 @@ export function ClosingComparison({
 }) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
+
   const comparison = useQuery({
     queryKey: [...bookKey(book), "sie-closing", sourceRunId],
     retry: false,
@@ -26,12 +27,16 @@ export function ClosingComparison({
         Historical.ClosingComparison,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       if (result.sourceRunId !== sourceRunId || result.sourcePlanId !== planId)
         throw new Error("Closing comparison identity mismatch");
+
       return result;
     },
   });
+
   return (
     <Box display="grid" gap="sm">
       <Text>

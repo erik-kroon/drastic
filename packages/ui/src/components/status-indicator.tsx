@@ -21,18 +21,22 @@ const styles = stylex.create({
     lineHeight: tokens.lineHeightBodyCompact,
   },
 });
+
 type StatusIndicatorTone = "positive" | "warning" | "negative" | "neutral";
+
 type StatusIndicatorProps = WithStyleX<React.ComponentProps<"span">> & {
   label: React.ReactNode;
   styleX?: StyleXStyles;
   tone?: StatusIndicatorTone;
 };
+
 const tones = {
   positive: styles.positive,
   warning: styles.warning,
   negative: styles.negative,
   neutral: styles.neutral,
 } as const;
+
 function StatusIndicator({
   className,
   label,
@@ -52,5 +56,7 @@ function StatusIndicator({
     </span>
   );
 }
+
 export { StatusIndicator };
+
 export type { StatusIndicatorProps, StatusIndicatorTone };

@@ -31,6 +31,7 @@ export function Allocations(props: CommerceProps) {
   const [payment, setPayment] = useState<typeof Commerce.PaymentReference.Type | null>(null);
   const [planId, setPlanId] = useState("");
   const [invalid, setInvalid] = useState(false);
+
   return (
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.allocations}</Heading>
@@ -42,11 +43,14 @@ export function Allocations(props: CommerceProps) {
         onSubmit={(event) => {
           event.preventDefault();
           const fields = new FormData(event.currentTarget);
+
           const parsed = Schema.decodeUnknownOption(Commerce.PaymentReference)({
             voucherId: fields.get("voucherId"),
             lineId: fields.get("lineId"),
           });
+
           setInvalid(parsed._tag === "None");
+
           if (parsed._tag === "Some") setPayment(parsed.value);
         }}
       >
@@ -74,6 +78,7 @@ export function Allocations(props: CommerceProps) {
     </Box>
   );
 }
+
 function PaymentAllocation(
   props: CommerceProps & {
     payment: typeof Commerce.PaymentReference.Type;
@@ -82,6 +87,7 @@ function PaymentAllocation(
 ) {
   const { book, locale, payment, onPrepared } = props;
   const copy = commerceCopy(locale);
+
   const capacity = useQuery({
     queryKey: [...commerceKey(book), "payment", payment.voucherId, payment.lineId],
     staleTime: 0,
@@ -92,20 +98,27 @@ function PaymentAllocation(
         Commerce.PaymentCapacity,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       if (
         result.voucherId !== payment.voucherId ||
         result.lineId !== payment.lineId ||
         result.currency !== book.currency
       )
         throw new Error("Payment capacity mismatch");
+
       return result;
     },
     retry: false,
   });
+
   const [legs, setLegs] = useState([0]);
   const [nextLeg, setNextLeg] = useState(1);
-  const ready = capacity.isSuccess && capacity.isFetchedAfterMount && capacity.fetchStatus === "idle";
+
+  const ready =
+    capacity.isSuccess && capacity.isFetchedAfterMount && capacity.fetchStatus === "idle";
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.capacity}</Heading>
@@ -211,9 +224,11 @@ function PaymentAllocation(
     </Box>
   );
 }
+
 function AllocationReview(props: CommerceProps & { id: string }) {
   const { book, locale, id } = props;
   const copy = commerceCopy(locale);
+
   const view = useQuery({
     queryKey: [...commerceKey(book), "allocation", id],
     staleTime: 0,
@@ -224,8 +239,10 @@ function AllocationReview(props: CommerceProps & { id: string }) {
         Commerce.AllocationView,
         { signal },
       );
+
       checkScope(book, result.plan.scope);
       checkScope(book, result.plan.payment.scope);
+
       if (
         result.plan.id !== id ||
         (result.approval &&
@@ -235,16 +252,20 @@ function AllocationReview(props: CommerceProps & { id: string }) {
             result.application.planDigest !== result.plan.digest))
       )
         throw new Error("Allocation review binding mismatch");
+
       if (result.application) checkScope(book, result.application.scope);
+
       return result;
     },
     retry: false,
   });
+
   const ready = view.isSuccess && view.isFetchedAfterMount && view.fetchStatus === "idle";
   const plan = view.data?.plan;
   const approval = view.data?.approval;
   const actionable = ready && view.data?.dependenciesCurrent === true && !view.data.application;
   const approvalCurrent = !!approval && Date.parse(approval.expiresAt) > Date.now();
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{copy.review}</Heading>
@@ -313,8 +334,12 @@ function AllocationReview(props: CommerceProps & { id: string }) {
           {view.data?.application ? (
             <Box display="grid" gap="md">
               <AllocationReleaseStatus book={book} locale={locale} id={view.data.application.id} />
-              <PageAction href={`${workspacePath(book)}/accounts?view=payments&record=${encodeURIComponent(view.data.application.id)}`}>
-                {locale === "sv" ? "Granska återföring av fördelningen" : "Review payment unallocation"}
+              <PageAction
+                href={`${workspacePath(book)}/accounts?view=payments&record=${encodeURIComponent(view.data.application.id)}`}
+              >
+                {locale === "sv"
+                  ? "Granska återföring av fördelningen"
+                  : "Review payment unallocation"}
               </PageAction>
               <Facts title={copy.facts} value={view.data.application} />
             </Box>

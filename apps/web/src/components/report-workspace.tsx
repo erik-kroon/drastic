@@ -44,6 +44,7 @@ export function ReportLibrary() {
   const labels = sv ? swedish : english;
   const base = `${workspacePath(book)}/reports`;
   const [search, setSearch] = useState("");
+
   const sections = [
     {
       title: labels.accounting,
@@ -133,6 +134,7 @@ export function ReportLibrary() {
       ),
     }))
     .filter((section) => section.items.length);
+
   return (
     <Box display="grid" gap="xl">
       <RecordHeading title={labels.reports} subtitle={labels.fromTheNumbersToThe} />
@@ -169,6 +171,7 @@ export function ReportLibrary() {
     </Box>
   );
 }
+
 export function TrialBalanceWorkspace(props: {
   recordId?: string;
   onOpen: (id: string) => void;
@@ -184,6 +187,7 @@ export function TrialBalanceWorkspace(props: {
   const keys = useRef(new Map<string, string>());
   const period = setup.periods.at(-1);
   const client = useQueryClient();
+
   const saved = useInfiniteQuery({
     queryKey: [...bookKey(book), "report-snapshots"],
     initialPageParam: "",
@@ -196,9 +200,11 @@ export function TrialBalanceWorkspace(props: {
     getNextPageParam: (page) => page.next ?? undefined,
     retry: false,
   });
+
   const prepare = useMutation({
     mutationFn: (input: typeof Reports.PrepareReport.Type) => {
       const path = `${bookPath(book)}/report-snapshots`;
+
       return readAccounting(
         path,
         Reports.ReportSnapshot,
@@ -210,6 +216,7 @@ export function TrialBalanceWorkspace(props: {
       onOpen(report.id);
     },
   });
+
   if (recordId && recordId !== "new")
     return (
       <Box display="grid" gap="xl">
@@ -229,6 +236,7 @@ export function TrialBalanceWorkspace(props: {
         />
       </Box>
     );
+
   return (
     <Box display="grid" gap="xl">
       <RecordHeading
@@ -362,6 +370,7 @@ export function ReportFamilyWorkspace(props: {
   const keys = useRef(new Map<string, string>());
   const [inputError, setInputError] = useState("");
   const [accountId, setAccountId] = useState("");
+
   const saved = useQuery({
     queryKey: [...bookKey(book), "report-family", props.recordId],
     enabled: Boolean(props.recordId && props.recordId !== "new"),
@@ -371,13 +380,16 @@ export function ReportFamilyWorkspace(props: {
         Reports.ReportFamilySnapshot,
         { signal },
       );
+
       if (snapshot.report.id !== props.recordId || snapshot.family !== props.family) {
         throw new Error("Report family scope mismatch");
       }
+
       return snapshot;
     },
     retry: false,
   });
+
   const prepare = useMutation({
     mutationFn: (input: typeof Reports.PrepareReportFamily.Type) =>
       readAccounting(
@@ -391,7 +403,9 @@ export function ReportFamilyWorkspace(props: {
       ),
     onSuccess: (snapshot) => props.onOpen(snapshot.report.id),
   });
+
   const title = labels[props.family];
+
   if (props.recordId && props.recordId !== "new") {
     return (
       <Box display="grid" gap="xl">
@@ -412,6 +426,7 @@ export function ReportFamilyWorkspace(props: {
       </Box>
     );
   }
+
   return (
     <Box display="grid" gap="xl">
       <RecordHeading
@@ -438,34 +453,43 @@ export function ReportFamilyWorkspace(props: {
           event.preventDefault();
           const fields = new FormData(event.currentTarget);
           const mappingValue = fields.get("mapping");
+
           if (typeof mappingValue !== "string") {
             setInputError(
               sv ? "Kopplingsrollerna måste vara giltig JSON." : "The mapping must be valid JSON.",
             );
+
             return;
           }
+
           let mapping: unknown;
+
           try {
             mapping = JSON.parse(mappingValue);
           } catch {
             setInputError(
               sv ? "Kopplingsrollerna måste vara giltig JSON." : "The mapping must be valid JSON.",
             );
+
             return;
           }
+
           const decoded = Schema.decodeUnknownOption(Reports.PrepareReportFamily)({
             kind: props.family,
             sourceReportId: fields.get("sourceReportId"),
             mapping,
           });
+
           if (decoded._tag === "None") {
             setInputError(
               sv
                 ? "Ange en fullständig granskad konto- till rollmappning."
                 : "Provide a complete reviewed account-role mapping.",
             );
+
             return;
           }
+
           setInputError("");
           prepare.mutate(decoded.value);
         }}
@@ -512,10 +536,12 @@ function SavedReportFamily(props: {
   const sv = locale === "sv";
   const labels = sv ? familySwedish : familyEnglish;
   const scale = snapshot.report.currencyScale;
+
   const amount = (value: string) =>
     scale === undefined
       ? "—"
       : `${formatMinorAmount(value, scale, locale)} ${snapshot.report.currency}`;
+
   return (
     <Box display="grid" gap="xl">
       <RecordHeading
@@ -613,6 +639,7 @@ const familyEnglish = {
   line: "Line",
   accounts: "Contributing accounts",
 };
+
 const familySwedish: typeof familyEnglish = {
   profit_and_loss: "Resultaträkning",
   balance_sheet: "Balansräkning",
@@ -659,6 +686,7 @@ const english = {
   to: "To",
   generateReport: "Generate report",
 };
+
 const swedish: typeof english = {
   reports: "Rapporter",
   fromTheNumbersToThe: "Från sammanställning till verifikat och originalunderlag.",

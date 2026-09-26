@@ -15,6 +15,7 @@ export function OriginalDocument(props: CommerceProps & { id: string; sha256?: s
   const source = query.data;
   const mismatch = source && props.sha256 && source.occurrence.sha256 !== props.sha256;
   const sv = props.locale === "sv";
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <AccountingStatus

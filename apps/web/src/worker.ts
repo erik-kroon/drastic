@@ -7,6 +7,7 @@ interface WebEnv {
 export default {
   fetch(request: Request, env: WebEnv): Promise<Response> | Response {
     if (new URL(request.url).pathname.startsWith("/api/")) return env.API.fetch(request);
+
     return start.fetch(request);
   },
 };

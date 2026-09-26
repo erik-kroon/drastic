@@ -5,7 +5,9 @@ export const SignInConfiguration = Schema.Struct({
   method: Schema.Literals(["password", "oidc"]),
   providerId: Schema.NullOr(Schema.String),
 });
+
 const BookRole = Schema.NullOr(Schema.Literals(["operator", "agent"]));
+
 export const IdentityProvisioning = Schema.Struct({
   requestId: Accounting.IdempotencyHeaders.fields["idempotency-key"],
   actorId: Accounting.Identifier,

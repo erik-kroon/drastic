@@ -4,6 +4,7 @@ import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 
 export const DeliveryChannel = Schema.Literals(["email", "peppol", "local_simulation"]);
+
 export const PrepareInvoiceDelivery = Schema.Struct({
   pdfCaptureId: Accounting.Identifier,
   captureDigest: Accounting.Digest,
@@ -13,6 +14,7 @@ export const PrepareInvoiceDelivery = Schema.Struct({
   reason: Accounting.Description,
   acknowledgeNoTransmission: Schema.Literal(true),
 });
+
 export const InvoiceDeliveryRequest = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -26,11 +28,13 @@ export const InvoiceDeliveryRequest = Schema.Struct({
   sendAuthorized: Schema.Literal(false),
   digest: Accounting.Digest,
 });
+
 export const ApproveInvoiceDelivery = Schema.Struct({
   requestDigest: Accounting.Digest,
   reason: Accounting.Description,
   acknowledgeNoTransmission: Schema.Literal(true),
 });
+
 export const InvoiceDeliveryApproval = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -42,11 +46,13 @@ export const InvoiceDeliveryApproval = Schema.Struct({
   simulationAuthorized: Schema.Boolean,
   digest: Accounting.Digest,
 });
+
 export const StartInvoiceDeliverySimulation = Schema.Struct({
   requestDigest: Accounting.Digest,
   approvalId: Accounting.Identifier,
   acknowledgeNoExternalCall: Schema.Literal(true),
 });
+
 export const InvoiceDeliveryAttempt = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -61,11 +67,13 @@ export const InvoiceDeliveryAttempt = Schema.Struct({
   providerRequestId: Schema.Null,
   digest: Accounting.Digest,
 });
+
 export const ResolveInvoiceDeliverySimulation = Schema.Struct({
   attemptDigest: Accounting.Digest,
   reason: Accounting.Description,
   assertNoExternalCall: Schema.Literal(true),
 });
+
 export const InvoiceDeliveryResolution = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -77,6 +85,7 @@ export const InvoiceDeliveryResolution = Schema.Struct({
   resolvedAt: Schema.String,
   digest: Accounting.Digest,
 });
+
 export const InvoiceDeliveryView = Schema.Struct({
   request: InvoiceDeliveryRequest,
   approval: Schema.NullOr(InvoiceDeliveryApproval),
@@ -96,15 +105,20 @@ export const InvoiceDeliveryView = Schema.Struct({
   sendAuthorized: Schema.Literal(false),
   complete: Schema.Literal(true),
 });
+
 export const InvoiceDeliveryHistory = Schema.Struct({
   scope: Accounting.Scope,
   pdfCaptureId: Accounting.Identifier,
   complete: Schema.Literal(true),
   items: Schema.Array(InvoiceDeliveryView).check(Schema.isMaxLength(50)),
 });
+
 const base = "/v1/entities/:entityId/books/:bookId/commerce";
+
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
+
 const mutation = { ...identified, headers: Accounting.IdempotencyHeaders };
+
 export const InvoiceDeliveryApi = HttpApiGroup.make("invoiceDeliveries").add(
   HttpApiEndpoint.post("prepareInvoiceDelivery", `${base}/invoice-deliveries`, {
     params: Accounting.Scope,
@@ -149,6 +163,7 @@ export const InvoiceDeliveryApi = HttpApiGroup.make("invoiceDeliveries").add(
     success: InvoiceDeliveryHistory,
   }),
 );
+
 export const InvoiceDeliveryCapabilities = {
   commerce_get_invoice_delivery: {
     description:

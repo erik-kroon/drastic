@@ -9,6 +9,7 @@ export const BankWorkspaceQuery = Schema.Struct({
   q: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
   page: Schema.optional(Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,5}$/))),
 });
+
 export const BankWorkspaceAccount = Schema.Struct({
   id: Accounting.Identifier,
   code: Schema.String,
@@ -24,6 +25,7 @@ export const BankWorkspaceAccount = Schema.Struct({
   unmatchedCount: Schema.Int,
   unmatchedLedgerCount: Schema.Int,
 });
+
 export const BankWorkspaceRow = Schema.Struct({
   id: Schema.String,
   date: Accounting.AccountingDate,
@@ -36,6 +38,7 @@ export const BankWorkspaceRow = Schema.Struct({
   voucherId: Schema.NullOr(Accounting.Identifier),
   lineId: Schema.NullOr(Accounting.Identifier),
 });
+
 export const BankWorkspace = Schema.Struct({
   scope: Accounting.Scope,
   currency: Schema.String,

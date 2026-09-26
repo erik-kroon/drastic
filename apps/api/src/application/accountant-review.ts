@@ -13,22 +13,30 @@ import { databaseFailure, type Transaction } from "../db/transaction";
 import { readBasisDependencies, readCaptureProviders } from "./accountant-review-providers";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type Json = Schema.Json;
+
 type JsonObject = Schema.JsonObject;
+
 type Principal = VerifiedPrincipal;
+
 type PrepareCommand = {
   readonly scope: Scope;
   readonly idempotencyKey: string;
   readonly input: typeof Review.PrepareReviewPack.Type;
 };
+
 type ListCommand = { readonly scope: Scope; readonly after?: string };
+
 type GetCommand = { readonly scope: Scope; readonly packId: string };
+
 type RowsCommand = {
   readonly scope: Scope;
   readonly packId: string;
   readonly section: typeof Review.ReviewSection.Type;
   readonly after?: string;
 };
+
 type ArtifactCommand = {
   readonly scope: Scope;
   readonly packId: string;
@@ -43,10 +51,15 @@ type Section =
   | "owner_sources"
   | "owner_controls"
   | "expense_tax";
+
 type CoverageStatus = "observed" | "missing" | "unavailable" | "unverified" | "excluded";
+
 type StoredRow = { readonly section: Section; readonly ordinal: string; readonly body: JsonObject };
+
 type Counts = (typeof Review.ReviewPack.Type)["counts"];
+
 type CsvFields = Readonly<Record<string, ReadonlyArray<string>>>;
+
 type CsvRows = {
   readonly balances: ReadonlyArray<JsonObject>;
   readonly journal: ReadonlyArray<JsonObject>;
@@ -58,12 +71,19 @@ type CsvRows = {
 };
 
 const PackSchema = Review.ReviewPack;
+
 const PackViewSchema = Review.ReviewPackView;
+
 const PackListSchema = Review.ReviewPackList;
+
 const PageSchema = Review.ReviewPage;
+
 const ArtifactSchema = Review.ReviewArtifact;
+
 const RowSchema = Review.ReviewRow;
+
 const DescriptorSchema = Review.ReviewArtifactDescriptor;
+
 const ReportSchema = Reports.ReportSnapshot;
 
 function decode<A>(schema: Schema.Decoder<A>, value: unknown) {
@@ -96,16 +116,19 @@ function objectArray(value: Json) {
 
 function objectField(value: JsonObject, field: string) {
   const candidate = value[field];
+
   return isJsonObject(candidate) ? candidate : undefined;
 }
 
 function arrayField(value: JsonObject, field: string) {
   const candidate = value[field];
+
   return Array.isArray(candidate) ? candidate.filter(isJsonObject) : [];
 }
 
 function stringArrayField(value: JsonObject, field: string) {
   const candidate = value[field];
+
   return Array.isArray(candidate)
     ? candidate.filter((item): item is string => typeof item === "string")
     : [];
@@ -113,21 +136,27 @@ function stringArrayField(value: JsonObject, field: string) {
 
 function stringField(value: JsonObject, field: string) {
   const candidate = value[field];
+
   return typeof candidate === "string" ? candidate : "";
 }
 
 function countField(value: JsonObject | undefined, field: string) {
   if (!value) return 0;
   const candidate = value[field];
+
   if (typeof candidate === "number") return candidate;
+
   if (typeof candidate !== "string") return 0;
   const parsed = Number(candidate);
+
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
 }
 
 function hasUnexplainedDifference(value: JsonObject) {
   const candidate = value.unexplainedMinor;
+
   if (typeof candidate !== "string") return false;
+
   try {
     return BigInt(candidate) !== 0n;
   } catch {
@@ -161,8 +190,11 @@ function rowCount(rows: ReadonlyArray<JsonObject>) {
 
 function csvCell(value: JsonObject, field: string) {
   const candidate = value[field];
+
   if (candidate === undefined || candidate === null) return "";
+
   if (typeof candidate === "string") return candidate;
+
   return JSON.stringify(candidate) ?? "";
 }
 
@@ -191,15 +223,19 @@ function csvArtifact(
     "generatorVersion",
     ...fields,
   ];
+
   const manifest = Object.assign({}, context, { recordType: "manifest" });
+
   const body = [
     manifest,
     ...rows.map((row) => Object.assign({}, row, { recordType: stringField(row, "section") })),
   ];
+
   const lines = [
     headers.map(quoteCsv).join(","),
     ...body.map((row) => headers.map((field) => quoteCsv(`'${csvCell(row, field)}`)).join(",")),
   ];
+
   return `${lines.join("\r\n")}\r\n`;
 }
 
@@ -211,6 +247,7 @@ function toJsonObject<A>(value: A) {
 
 function canonicalJson(value: JsonObject) {
   const result = canonicalizeJson(value);
+
   return Result.isFailure(result)
     ? Effect.fail(failure("InternalError"))
     : Effect.succeed(result.success.json);
@@ -269,6 +306,7 @@ function buildCoverage(
   const missingBases = countField(subledger, "missingBasisCount");
   const basisCount = countField(subledger, "basisCount");
   const snapshotCount = countField(subledger, "snapshotCount");
+
   const noPosting = objectArray(capture.evidence).filter(
     (row) => stringField(row, "disposition") === "no_included_posting",
   ).length;
@@ -352,6 +390,7 @@ function buildCoverage(
   );
 
   appendProviderCoverage(coverage, basis, capture, excludedSources);
+
   return coverage;
 }
 
@@ -363,6 +402,7 @@ function appendProviderCoverage(
 ) {
   const bank = objectField(basis, "bank");
   const declared = arrayField(basis, "declaredBankInventories");
+
   if (declared.length === 0) {
     coverage.push(
       coverageRow(
@@ -372,9 +412,11 @@ function appendProviderCoverage(
       ),
     );
   }
+
   for (const inventory of declared) {
     const periodId = stringField(inventory, "periodId");
     const inventoryId = stringField(inventory, "inventoryId");
+
     if (inventoryId.length === 0) {
       coverage.push(
         coverageRow(
@@ -385,13 +427,18 @@ function appendProviderCoverage(
       );
       continue;
     }
+
     const expected = inventory.expectedAccountIds;
+
     if (!Array.isArray(expected)) continue;
+
     for (const accountId of expected) {
       if (typeof accountId !== "string") continue;
+
       const source = arrayField(bank ?? {}, "sources").find(
         (candidate) => stringField(candidate, "accountId") === accountId,
       );
+
       coverage.push(
         coverageRow(
           `expected_bank_${periodId}_${accountId}`,
@@ -405,6 +452,7 @@ function appendProviderCoverage(
       );
     }
   }
+
   for (const source of objectArray(capture.owner_sources)) {
     if (stringField(source, "disposition") !== "excluded_after_end") continue;
     const sourceId = stringField(objectField(source, "source") ?? {}, "id");
@@ -416,8 +464,10 @@ function appendProviderCoverage(
       ),
     );
   }
+
   for (const control of objectArray(capture.owner_controls)) {
     const owner = objectField(control, "owner") ?? {};
+
     for (const accountControl of arrayField(control, "accountControls")) {
       if (!hasUnexplainedDifference(accountControl)) continue;
       coverage.push(
@@ -429,9 +479,11 @@ function appendProviderCoverage(
       );
     }
   }
+
   for (const expense of objectArray(capture.expense_tax)) {
     const source = objectField(expense, "source") ?? {};
     const assessment = objectField(expense, "assessment") ?? {};
+
     for (const blocker of stringArrayField(assessment, "blockers")) {
       const code = blocker;
       coverage.push(
@@ -443,6 +495,7 @@ function appendProviderCoverage(
       );
     }
   }
+
   for (const source of excludedSources) {
     coverage.push(
       coverageRow(
@@ -478,23 +531,29 @@ function rowsForFormat(rowsBySection: CsvRows, format: string) {
 function providerBasis(basis: JsonObject) {
   const owners = objectField(basis, "owners") ?? {};
   const expenseTax = objectField(basis, "expenseTax") ?? {};
+
   const base = {
     ownerSourceDigest: stringField(owners, "sourceDigest"),
     expenseTaxBasisDigest: stringField(expenseTax, "basisDigest"),
     ownerInventoryDigest: stringField(basis, "ownerInventoryDigest"),
   } satisfies JsonObject;
+
   const withVat =
     basis.vatReturns === undefined
       ? base
       : Object.assign({}, base, { vatReturns: basis.vatReturns });
+
   if (basis.subledgerControls === undefined) return withVat;
+
   return Object.assign({}, withVat, { subledgerControls: basis.subledgerControls });
 }
 
 function currentBasis(transaction: Transaction, scope: Scope, pack: typeof Review.ReviewPack.Type) {
   return Effect.gen(function* () {
     const bounds = yield* Db.readProviderBounds(transaction, scope.bookId);
+
     if (bounds[0]?.bounded !== true) return false;
+
     const basis = yield* Db.readBasis(
       transaction,
       scope.bookId,
@@ -502,8 +561,11 @@ function currentBasis(transaction: Transaction, scope: Scope, pack: typeof Revie
       pack.report.endsOn,
       yield* readBasisDependencies(transaction, scope, pack.report.startsOn, pack.report.endsOn),
     );
+
     const row = basis[0];
+
     if (!row) return false;
+
     return (yield* digest(row.basis)) === pack.basisDigest;
   });
 }
@@ -517,7 +579,9 @@ function packView(
   return Effect.gen(function* () {
     const rows = yield* Db.readArtifactDescriptors(transaction, scope.bookId, pack.id);
     const descriptors: JsonObject[] = [];
+
     for (const row of rows) descriptors.push(yield* decode(DescriptorSchema, row.descriptor));
+
     return yield* decode(PackViewSchema, {
       pack,
       artifacts: descriptors,
@@ -530,13 +594,16 @@ function readPack(transaction: Transaction, scope: Scope, packId: string) {
   return Effect.gen(function* () {
     const rows = yield* Db.readPack(transaction, scope.bookId, packId);
     const row = rows[0];
+
     if (!row) return yield* failure("NotFound");
+
     return { row, pack: yield* decode(PackSchema, row.body) };
   });
 }
 
 function captureSections(capture: Db.CaptureRows) {
   const emptyCoverage: JsonObject[] = [];
+
   return {
     balances: capture.balances,
     journal: capture.journal,
@@ -551,6 +618,7 @@ function captureSections(capture: Db.CaptureRows) {
 function buildRows(capture: Db.CaptureRows, coverage: ReadonlyArray<JsonObject>) {
   const sections = captureSections(capture);
   sections.coverage = [...coverage];
+
   const stored: StoredRow[] = [
     ...sectionRows("balances", objectArray(capture.balances)),
     ...sectionRows("journal", objectArray(capture.journal)),
@@ -560,27 +628,35 @@ function buildRows(capture: Db.CaptureRows, coverage: ReadonlyArray<JsonObject>)
     ...sectionRows("owner_controls", objectArray(capture.owner_controls)),
     ...sectionRows("expense_tax", objectArray(capture.expense_tax)),
   ];
+
   return { sections, stored };
 }
 
 function parseRowCursor(after: string | undefined, packId: string, section: Section) {
   if (after === undefined) return Effect.succeed("0");
+
   const match =
     /^([a-z][a-z0-9_-]{2,127}):(balances|journal|evidence|coverage|owner_sources|owner_controls|expense_tax):([1-9][0-9]{0,18})$/.exec(
       after,
     );
+
   if (!match || match[1] !== packId || match[2] !== section) {
     return Effect.fail(failure("InvalidJournal"));
   }
+
   const positionText = match[3];
+
   if (positionText === undefined) return Effect.fail(failure("InvalidJournal"));
   let position: bigint;
+
   try {
     position = BigInt(positionText);
   } catch {
     return Effect.fail(failure("InvalidJournal"));
   }
+
   if (position > 9223372036854775807n) return Effect.fail(failure("InvalidJournal"));
+
   return Effect.succeed(position.toString());
 }
 
@@ -628,11 +704,14 @@ function loadCaptureContext(
   return Effect.gen(function* () {
     const bookRows = yield* Db.readBookState(transaction, scope.bookId);
     const book = bookRows[0];
+
     if (!book) return yield* failure("Forbidden");
     const reportRows = yield* Db.readReport(transaction, scope.bookId, input.reportId);
     const report = reportRows[0];
+
     if (!report) return yield* failure("NotFound");
     const reportSnapshot = yield* decode(ReportSchema, report.body);
+
     if (
       report.invalidated ||
       report.sequence !== book.committedSequence ||
@@ -640,11 +719,15 @@ function loadCaptureContext(
     ) {
       return yield* failure("StaleDependency");
     }
+
     const bounds = yield* Db.readProviderBounds(transaction, scope.bookId);
+
     if (bounds[0]?.bounded !== true) return yield* failure("InvalidJournal");
     const summaryRows = yield* Db.readCaptureSummary(transaction, scope.bookId, report);
     const summary = summaryRows[0];
+
     if (!summary) return yield* failure("InternalError");
+
     if (
       BigInt(summary.voucherCount) > 1000n ||
       BigInt(summary.journalLineCount) > 5000n ||
@@ -654,15 +737,19 @@ function loadCaptureContext(
     ) {
       return yield* failure("InvalidJournal");
     }
+
     const evidenceRows = yield* Db.readEvidencePresence(
       transaction,
       scope.bookId,
       input.openingEvidenceIds,
     );
+
     if (evidenceRows.length !== input.openingEvidenceIds.length) {
       return yield* failure("MissingEvidence");
     }
+
     const accounts = yield* Db.readAccounts(transaction, scope.bookId);
+
     const captureRows = yield* Db.readCaptureRows(
       transaction,
       scope.bookId,
@@ -670,14 +757,19 @@ function loadCaptureContext(
       input.openingEvidenceIds,
       yield* readCaptureProviders(transaction, scope, report.startsOn, report.endsOn),
     );
+
     const capture = captureRows[0];
+
     if (!capture) return yield* failure("InternalError");
     const balances = objectArray(capture.balances);
     const journal = objectArray(capture.journal);
+
     if (balances.length !== accounts.length) return yield* failure("StaleDependency");
     const accountById = new Map(accounts.map((account) => [account.id, account]));
+
     for (const balance of balances) {
       const account = accountById.get(stringField(balance, "accountId"));
+
       if (
         !account ||
         account.code !== stringField(balance, "code") ||
@@ -686,13 +778,17 @@ function loadCaptureContext(
         return yield* failure("StaleDependency");
       }
     }
+
     if (BigInt(summary.journalLineCount) !== BigInt(journal.length)) {
       return yield* failure("InvalidJournal");
     }
+
     const totals = yield* Db.readBalanceTotals(transaction, scope.bookId, report);
     const totalById = new Map(totals.map((total) => [total.accountId, total]));
+
     for (const balance of balances) {
       const total = totalById.get(stringField(balance, "accountId"));
+
       if (
         !total ||
         !sameMinor(stringField(balance, "recordedOpeningMinor"), total.openingMinor) ||
@@ -703,6 +799,7 @@ function loadCaptureContext(
         return yield* failure("InvalidJournal");
       }
     }
+
     const basisRows = yield* Db.readBasis(
       transaction,
       scope.bookId,
@@ -710,8 +807,11 @@ function loadCaptureContext(
       report.endsOn,
       yield* readBasisDependencies(transaction, scope, report.startsOn, report.endsOn),
     );
+
     const basis = basisRows[0]?.basis;
+
     if (!basis) return yield* failure("InternalError");
+
     return { book, report, reportSnapshot, summary, capture, basis };
   });
 }
@@ -723,6 +823,7 @@ export const prepareReviewPack = Effect.fn("accountantReview.prepare")(function*
   return yield* withBook(token, command.scope, "update", (transaction, principal) =>
     Effect.gen(function* () {
       const input = yield* toJsonObject(command.input);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -732,18 +833,21 @@ export const prepareReviewPack = Effect.fn("accountantReview.prepare")(function*
         input,
         PackViewSchema,
       );
+
       if (request.previous) return request.previous;
 
       const captureContext = yield* loadCaptureContext(transaction, command.scope, command.input);
       const { capture, basis, report, summary } = captureContext;
       const book = captureContext.book;
       const reportSnapshot = captureContext.reportSnapshot;
+
       const coverage = buildCoverage(
         basis,
         capture,
         command.input.excludedSources,
         Number(summary.excludedVoucherCount),
       );
+
       const { sections, stored } = buildRows(capture, coverage);
       yield* validateRows(stored.map((row) => row.body));
 
@@ -751,6 +855,7 @@ export const prepareReviewPack = Effect.fn("accountantReview.prepare")(function*
       const createdAt = yield* isoNow(transaction);
       const basisDigestValue = yield* digest(basis);
       const rowsDigestValue = yield* digest(sections);
+
       const counts = {
         balances: rowCount(objectArray(capture.balances)),
         journal: rowCount(objectArray(capture.journal)),
@@ -760,6 +865,7 @@ export const prepareReviewPack = Effect.fn("accountantReview.prepare")(function*
         owner_controls: rowCount(objectArray(capture.owner_controls)),
         expense_tax: rowCount(objectArray(capture.expense_tax)),
       } satisfies Counts;
+
       const bodyWithoutId = buildPackBody(
         command.scope,
         principal.actorId,
@@ -771,13 +877,16 @@ export const prepareReviewPack = Effect.fn("accountantReview.prepare")(function*
         counts,
         rowsDigestValue,
       );
+
       const bodyWithoutDigest = Object.assign({}, bodyWithoutId, {
         id: packId,
         basisDigest: basisDigestValue,
       });
+
       const packBody = Object.assign({}, bodyWithoutDigest, {
         digest: yield* digest(bodyWithoutDigest),
       }) satisfies JsonObject;
+
       yield* Db.insertPack(transaction, {
         bookId: command.scope.bookId,
         id: packId,
@@ -789,6 +898,7 @@ export const prepareReviewPack = Effect.fn("accountantReview.prepare")(function*
       yield* Db.insertRows(transaction, command.scope.bookId, packId, stored);
 
       const jsonContent = yield* canonicalJson({ pack: packBody, sections });
+
       const context: JsonObject = {
         packId,
         packDigest: stringField(packBody, "digest"),
@@ -803,6 +913,7 @@ export const prepareReviewPack = Effect.fn("accountantReview.prepare")(function*
         providerBasis: providerBasis(basis),
         generatorVersion: "accountant-review-v3",
       };
+
       const csvFields = {
         balances_csv: [
           "accountId",
@@ -872,6 +983,7 @@ export const prepareReviewPack = Effect.fn("accountantReview.prepare")(function*
         ],
         expense_tax_csv: ["assessmentMode", "source", "review", "assessment"],
       } satisfies CsvFields;
+
       const rowsBySection = {
         balances: objectArray(capture.balances),
         journal: objectArray(capture.journal),
@@ -881,20 +993,25 @@ export const prepareReviewPack = Effect.fn("accountantReview.prepare")(function*
         owner_controls: objectArray(capture.owner_controls),
         expense_tax: objectArray(capture.expense_tax),
       } satisfies CsvRows;
+
       const artifacts: JsonObject[] = [
         artifactRow(packId, "json", jsonContent, yield* sha256Hex(jsonContent)),
       ];
+
       for (const [format, fields] of Object.entries(csvFields)) {
         const content = csvArtifact(context, fields, rowsForFormat(rowsBySection, format));
         artifacts.push(artifactRow(packId, format, content, yield* sha256Hex(content)));
       }
+
       yield* Db.insertArtifacts(transaction, command.scope.bookId, packId, artifacts);
+
       const view = yield* packView(
         transaction,
         command.scope,
         yield* decode(PackSchema, packBody),
         true,
       );
+
       yield* saveCommand(
         transaction,
         command.scope,
@@ -904,6 +1021,7 @@ export const prepareReviewPack = Effect.fn("accountantReview.prepare")(function*
         principal.actorId,
         yield* toJsonObject(view),
       );
+
       return view;
     }),
   );
@@ -921,6 +1039,7 @@ export const listReviewPacks = Effect.fn("accountantReview.list")(function* (
         command.after ?? "0",
         26,
       );
+
       const items = rows.slice(0, 25).map((row) => ({
         id: row.id,
         digest: row.digest,
@@ -930,7 +1049,9 @@ export const listReviewPacks = Effect.fn("accountantReview.list")(function* (
         sequence: row.sequence,
         createdAt: row.createdAt,
       }));
+
       const next = rows.length > 25 ? (rows[24]?.ordinal ?? null) : null;
+
       return yield* decode(PackListSchema, { items, next });
     }),
   );
@@ -944,6 +1065,7 @@ export const getReviewPack = Effect.fn("accountantReview.get")(function* (
     Effect.gen(function* () {
       const { pack } = yield* readPack(transaction, command.scope, command.packId);
       const dependenciesCurrent = yield* currentBasis(transaction, command.scope, pack);
+
       return yield* packView(transaction, command.scope, pack, dependenciesCurrent);
     }),
   );
@@ -957,6 +1079,7 @@ export const reviewPackRows = Effect.fn("accountantReview.rows")(function* (
     Effect.gen(function* () {
       const { pack } = yield* readPack(transaction, command.scope, command.packId);
       const after = yield* parseRowCursor(command.after, command.packId, command.section);
+
       if (command.after !== undefined) {
         const anchor = yield* Db.readRowAnchor(
           transaction,
@@ -965,8 +1088,10 @@ export const reviewPackRows = Effect.fn("accountantReview.rows")(function* (
           command.section,
           after,
         );
+
         if (anchor[0]?.present !== true) return yield* failure("InvalidJournal");
       }
+
       const rows = yield* Db.readStoredRows(
         transaction,
         command.scope.bookId,
@@ -975,10 +1100,14 @@ export const reviewPackRows = Effect.fn("accountantReview.rows")(function* (
         after,
         26,
       );
+
       const items = [];
+
       for (const row of rows.slice(0, 25)) items.push(yield* decode(RowSchema, row.body));
+
       const next =
         rows.length > 25 ? `${command.packId}:${command.section}:${rows[24]?.ordinal ?? ""}` : null;
+
       return yield* decode(PageSchema, {
         packId: command.packId,
         packDigest: pack.digest,
@@ -998,14 +1127,18 @@ export const reviewPackArtifact = Effect.fn("accountantReview.artifact")(functio
   return yield* withBook(token, command.scope, "share", (transaction) =>
     Effect.gen(function* () {
       const { pack } = yield* readPack(transaction, command.scope, command.packId);
+
       const rows = yield* Db.readArtifact(
         transaction,
         command.scope.bookId,
         command.packId,
         command.format,
       );
+
       const row = rows[0];
+
       if (!row) return yield* failure("NotFound");
+
       return yield* decode(ArtifactSchema, {
         packId: command.packId,
         packDigest: pack.digest,

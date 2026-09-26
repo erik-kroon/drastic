@@ -39,6 +39,7 @@ export function BookWorkspace({
   const pathname = useLocation({ select: (location) => location.pathname });
   const base = workspacePath(book);
   const [scopeBlocked, setScopeBlocked] = useState(true);
+
   const setup = useQuery({
     queryKey: [...bookKey(book), "setup"],
     queryFn: ({ signal }) =>
@@ -47,9 +48,11 @@ export function BookWorkspace({
     staleTime: 0,
     refetchOnMount: "always",
   });
+
   const scopeUnavailable =
     setup.error instanceof Accounting.AccountingError &&
     ["Unauthorized", "Forbidden", "NotFound"].includes(setup.error.code);
+
   // A later transient error cannot undo an explicit denial or confirm a new mount.
   if (scopeUnavailable && !scopeBlocked) setScopeBlocked(true);
   else if (
@@ -60,7 +63,9 @@ export function BookWorkspace({
   ) {
     setScopeBlocked(false);
   }
+
   const labels = frontendCopy(locale);
+
   const navigation = (
     <BookNavigation
       base={base}
@@ -70,6 +75,7 @@ export function BookWorkspace({
       setup={setup.data && !scopeBlocked && !scopeUnavailable ? setup.data : undefined}
     />
   );
+
   const account = (
     <WorkspaceAccount
       name={book.name}
@@ -85,6 +91,7 @@ export function BookWorkspace({
           }))}
           onValueChange={(value) => {
             const selected = books.find((item) => `${item.entityId}/${item.id}` === value);
+
             if (selected) void navigate({ to: `${workspacePath(selected)}/` });
           }}
         />
@@ -96,6 +103,7 @@ export function BookWorkspace({
         onClick={(event) => {
           if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
           const destination = portfolioReturn(book);
+
           if (!destination) return;
           event.preventDefault();
           void navigate({ to: destination });
@@ -107,6 +115,7 @@ export function BookWorkspace({
       <SignOut locale={locale} />
     </WorkspaceAccount>
   );
+
   return (
     <Workspace
       pageKey={pathname}
@@ -177,6 +186,7 @@ export function BookWorkspace({
 
 export function LanguagePreference({ locale }: { locale: Locale }) {
   const copy = accountingCopy(locale);
+
   return (
     <ChoiceField
       label={copy.language_label}

@@ -22,18 +22,24 @@ export type Transaction = Parameters<DatabaseClient["transaction"]>[0] extends (
 
 export function databaseFailure(error: unknown): Accounting.AccountingError {
   if (error instanceof Accounting.AccountingError) return error;
+
   if (SqlError.isSqlError(error)) return failure("Unavailable");
+
   if (!(error instanceof EffectDrizzleQueryError)) return failure("InternalError");
 
   const nested = Cause.isCause(error.cause) ? Cause.findErrorOption(error.cause) : Option.none();
+
   if (Option.isNone(nested) || !SqlError.isSqlError(nested.value)) {
     return failure("InternalError");
   }
+
   const cause = nested.value.reason.cause;
+
   if (Schema.is(PostgresFailure)(cause)) {
     if (cause.code === "P0001" && Schema.is(Accounting.FailureCode)(cause.detail)) {
       return failure(cause.detail);
     }
+
     if (
       ["ECONNRESET", "EPIPE", "ETIMEDOUT", "40P01", "40001", "55P03"].includes(cause.code) ||
       cause.code.startsWith("08") ||
@@ -49,8 +55,10 @@ export function databaseFailure(error: unknown): Accounting.AccountingError {
     ) {
       return failure("Unavailable");
     }
+
     return failure("InternalError");
   }
+
   return failure("Unavailable");
 }
 
@@ -59,6 +67,7 @@ export function withTransaction<A, R>(
 ): Effect.Effect<A, Accounting.AccountingError, R | Database> {
   return Effect.gen(function* () {
     const db = yield* Database;
+
     return yield* db
       .transaction((transaction) => use(transaction))
       .pipe(
@@ -69,6 +78,7 @@ export function withTransaction<A, R>(
               Cause.fromReasons<never>(cause.reasons.filter(Cause.isInterruptReason)),
             );
           }
+
           return Effect.fail(databaseFailure(Cause.squash(cause)));
         }),
       );

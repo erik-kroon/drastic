@@ -65,11 +65,13 @@ const styles = stylex.create({
 function Empty({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"div">>) {
   return <div data-slot="empty" {...stylexProps([styles.root, styleX], className)} {...props} />;
 }
+
 function EmptyHeader({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"div">>) {
   return (
     <div data-slot="empty-header" {...stylexProps([styles.header, styleX], className)} {...props} />
   );
 }
+
 function EmptyMedia({
   className,
   variant = "default",
@@ -88,11 +90,13 @@ function EmptyMedia({
     />
   );
 }
+
 function EmptyTitle({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"div">>) {
   return (
     <div data-slot="empty-title" {...stylexProps([styles.title, styleX], className)} {...props} />
   );
 }
+
 function EmptyDescription({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"p">>) {
   return (
     <p
@@ -102,6 +106,7 @@ function EmptyDescription({ className, styleX, ...props }: WithStyleX<React.Comp
     />
   );
 }
+
 function EmptyContent({ className, styleX, ...props }: WithStyleX<React.ComponentProps<"div">>) {
   return (
     <div

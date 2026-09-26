@@ -12,11 +12,7 @@ import {
   reportGeneralLedger,
   reportLines,
 } from "../reports";
-import {
-  createRegisterReport,
-  getRegisterReport,
-  listRegisterReports,
-} from "../register-reports";
+import { createRegisterReport, getRegisterReport, listRegisterReports } from "../register-reports";
 
 export const reportCapabilities = {
   commerce_create_register_report: effectCapability(
@@ -33,13 +29,19 @@ export const reportCapabilities = {
   ),
   book_get_status: effectCapability(Capabilities.book_get_status, bookStatus),
   reports_prepare: effectCapability(Capabilities.reports_prepare, prepareReport),
-  reports_prepare_family: effectCapability(Capabilities.reports_prepare_family, prepareReportFamily),
+  reports_prepare_family: effectCapability(
+    Capabilities.reports_prepare_family,
+    prepareReportFamily,
+  ),
   reports_get_family: effectCapability(Capabilities.reports_get_family, getReportFamily),
   reports_list: effectCapability(Capabilities.reports_list, listReports),
   reports_get: effectCapability(Capabilities.reports_get, getReport),
   reports_lines: effectCapability(Capabilities.reports_lines, reportLines),
   reports_compare: effectCapability(Capabilities.reports_compare, compareReports),
-  reports_general_ledger: effectCapability(Capabilities.reports_general_ledger, reportGeneralLedger),
+  reports_general_ledger: effectCapability(
+    Capabilities.reports_general_ledger,
+    reportGeneralLedger,
+  ),
   reports_explain: effectCapability(Capabilities.reports_explain, reportExplanation),
   book_list: effectCapability(Capabilities.book_list, listBooks),
   book_get_setup: effectCapability(Capabilities.book_get_setup, bookSetup),

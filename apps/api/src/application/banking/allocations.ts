@@ -1,3 +1,4 @@
+import { admitBankMatch } from "../resource-admission";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Settlement from "@open-erp/contracts/settlements";
 import * as Effect from "effect/Effect";
@@ -11,11 +12,15 @@ import type { Transaction } from "../../db/transaction";
 import * as Shared from "./shared";
 
 type Scope = typeof Accounting.Scope.Type;
+
 type JsonObject = Schema.JsonObject;
 
 const PlanSchema = Settlement.BankAllocationPlan;
+
 const ApprovalSchema = Settlement.BankAllocationApproval;
+
 const ExecutionSchema = Settlement.BankAllocationExecution;
+
 const ViewSchema = Settlement.BankAllocationView;
 
 const allocationTables = [
@@ -36,14 +41,18 @@ const allocationTables = [
   "vouchers",
   "command_receipts",
 ];
+
 const approvalWindowMs = 60 * 60 * 1000;
+
 const maximumLegs = 100;
+
 const maximumCandidateLines = 1000;
 
 function lockBook(transaction: Transaction, bookId: string) {
   return BankDb.lockBook(transaction, bookId, "update").pipe(
     Effect.flatMap((rows) => {
       const book = rows[0];
+
       return book ? Effect.succeed(book) : failure("Forbidden");
     }),
   );
@@ -61,12 +70,17 @@ function groupCapacity(
   const existing = groups.get(key);
   const capacity = Shared.absolute(total);
   const used = Shared.absolute(allocated);
+
   if (existing === undefined) {
     groups.set(key, { requested: amount, capacity, used });
+
     return;
   }
+
   existing.requested += amount;
+
   if (capacity > existing.capacity) existing.capacity = capacity;
+
   if (used > existing.used) existing.used = used;
 }
 
@@ -86,9 +100,12 @@ function allocationSnapshot(
 ) {
   return Effect.gen(function* () {
     const account = (yield* BankDb.readAccount(transaction, bookId, input.accountId))[0];
+
     if (!account?.active) return yield* failure("StaleDependency");
+
     const versions = (yield* BankDb.readVersions(transaction, bookId, input.accountId))[0]
       ?.versions;
+
     if (versions === undefined) return yield* failure("StaleDependency");
 
     const capacities: JsonObject[] = [];
@@ -98,6 +115,7 @@ function allocationSnapshot(
 
     for (const leg of input.legs) {
       const pair = `${leg.statementId}:${leg.rowOrdinal}:${leg.voucherId}:${leg.lineId}`;
+
       if (pairs.has(pair)) return yield* failure("InvalidJournal");
       pairs.add(pair);
 
@@ -107,13 +125,16 @@ function allocationSnapshot(
         leg.statementId,
         leg.rowOrdinal,
       ))[0];
+
       if (!observation) return yield* failure("NotFound");
       const line = (yield* StatementDb.readLine(transaction, bookId, leg.voucherId, leg.lineId))[0];
+
       if (!line) return yield* failure("NotFound");
 
       const amount = Shared.minor(leg.amountMinor);
       const sourceAmount = Shared.minor(observation.amountMinor);
       const lineAmount = Shared.minor(line.amountMinor);
+
       if (
         amount === undefined ||
         amount === 0n ||
@@ -122,6 +143,7 @@ function allocationSnapshot(
       ) {
         return yield* failure("InvalidJournal");
       }
+
       if (
         observation.accountId !== input.accountId ||
         line.accountId !== observation.accountId ||
@@ -141,10 +163,12 @@ function allocationSnapshot(
           leg.rowOrdinal,
         ))[0]?.allocated,
       );
+
       const lineAllocated = Shared.minor(
         (yield* AllocationDb.readAllocatedLine(transaction, bookId, leg.voucherId, leg.lineId))[0]
           ?.allocated,
       );
+
       if (sourceAllocated === undefined || lineAllocated === undefined) {
         return yield* failure("InternalError");
       }
@@ -157,7 +181,9 @@ function allocationSnapshot(
         observation.endsOn,
         Shared.signOf(sourceAmount),
       ))[0]?.total;
+
       if (candidates === undefined) return yield* failure("InternalError");
+
       if (candidates > maximumCandidateLines) return yield* failure("InvalidJournal");
 
       groupCapacity(
@@ -198,6 +224,7 @@ function allocationSnapshot(
     if (!withinCapacity(sourceGroups) || !withinCapacity(lineGroups)) {
       return yield* failure("InvalidJournal");
     }
+
     return { versions, capacities };
   });
 }
@@ -218,6 +245,7 @@ export const prepareBankAllocation = Effect.fn("banking.allocation.prepare")(fun
       ]);
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = yield* lockBook(transaction, command.scope.bookId);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -227,13 +255,16 @@ export const prepareBankAllocation = Effect.fn("banking.allocation.prepare")(fun
         yield* Shared.toJsonObject(command.input),
         PlanSchema,
       );
+
       if (request.previous) return request.previous;
       yield* Shared.requireNativeBankProfile(book.profile, book.authority);
+
       if (command.input.legs.length < 1 || command.input.legs.length > maximumLegs) {
         return yield* failure("InvalidJournal");
       }
 
       const snapshot = yield* allocationSnapshot(transaction, command.scope.bookId, command.input);
+
       const body = Object.assign({}, {
         id: newId("bankplan"),
         version: 1,
@@ -245,6 +276,7 @@ export const prepareBankAllocation = Effect.fn("banking.allocation.prepare")(fun
         createdBy: principal.actorId,
         createdAt: yield* isoNow(transaction),
       } satisfies JsonObject);
+
       const sealed = Object.assign({}, body, { digest: yield* digest(body) });
       const plan = yield* Shared.decode(PlanSchema, sealed);
       yield* AllocationDb.insertAllocationPlan(transaction, {
@@ -263,6 +295,7 @@ export const prepareBankAllocation = Effect.fn("banking.allocation.prepare")(fun
         principal.actorId,
         yield* Shared.toJsonObject(plan),
       );
+
       return plan;
     }),
   );
@@ -290,6 +323,7 @@ export const approveBankAllocation = Effect.fn("banking.allocation.approve")(fun
         planId: command.planId,
         input: yield* Shared.toJsonObject(command.input),
       } satisfies JsonObject;
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -299,6 +333,7 @@ export const approveBankAllocation = Effect.fn("banking.allocation.approve")(fun
         payload,
         ApprovalSchema,
       );
+
       if (request.previous) return request.previous;
 
       const plan = (yield* AllocationDb.readAllocationPlan(
@@ -306,10 +341,13 @@ export const approveBankAllocation = Effect.fn("banking.allocation.approve")(fun
         command.scope.bookId,
         command.planId,
       ))[0];
+
       if (!plan) return yield* failure("NotFound");
+
       if (command.input.digest !== Shared.textField(plan.body, "digest")) {
         return yield* failure("StaleDependency");
       }
+
       yield* Shared.requireNativeBankProfile(book.profile, book.authority);
 
       const versions = (yield* BankDb.readVersions(
@@ -317,7 +355,9 @@ export const approveBankAllocation = Effect.fn("banking.allocation.approve")(fun
         command.scope.bookId,
         plan.accountId,
       ))[0];
+
       if (!versions) return yield* failure("StaleDependency");
+
       if (
         !(yield* Shared.sameCanonical(
           versions.versions,
@@ -328,7 +368,9 @@ export const approveBankAllocation = Effect.fn("banking.allocation.approve")(fun
       }
 
       const now = (yield* AllocationDb.readDatabaseTime(transaction))[0]?.now;
+
       if (now === undefined) return yield* failure("InternalError");
+
       const body = yield* Shared.toJsonObject(
         Object.assign({}, command.input, {
           id: newId("bankapproval"),
@@ -342,11 +384,14 @@ export const approveBankAllocation = Effect.fn("banking.allocation.approve")(fun
           ),
         }),
       );
+
       const expiresAt = Shared.textField(body, "expiresAt");
       const approvalId = Shared.textField(body, "id");
+
       if (expiresAt === undefined || approvalId === undefined) {
         return yield* failure("InternalError");
       }
+
       yield* AllocationDb.insertAllocationApproval(transaction, {
         bookId: command.scope.bookId,
         id: approvalId,
@@ -365,6 +410,7 @@ export const approveBankAllocation = Effect.fn("banking.allocation.approve")(fun
         principal.actorId,
         yield* Shared.toJsonObject(approval),
       );
+
       return approval;
     }),
   );
@@ -389,6 +435,7 @@ export const executeBankAllocation = Effect.fn("banking.allocation.execute")(fun
       );
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = yield* lockBook(transaction, command.scope.bookId);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -401,6 +448,7 @@ export const executeBankAllocation = Effect.fn("banking.allocation.execute")(fun
         } satisfies JsonObject,
         ExecutionSchema,
       );
+
       if (request.previous) return request.previous;
 
       if (
@@ -412,15 +460,19 @@ export const executeBankAllocation = Effect.fn("banking.allocation.execute")(fun
       ) {
         return yield* failure("IdempotencyConflict");
       }
+
       const plan = (yield* AllocationDb.readAllocationPlan(
         transaction,
         command.scope.bookId,
         command.planId,
       ))[0];
+
       if (!plan) return yield* failure("NotFound");
+
       if (command.input.digest !== Shared.textField(plan.body, "digest")) {
         return yield* failure("StaleDependency");
       }
+
       yield* Shared.requireNativeBankProfile(book.profile, book.authority);
 
       const versions = (yield* BankDb.readVersions(
@@ -428,6 +480,7 @@ export const executeBankAllocation = Effect.fn("banking.allocation.execute")(fun
         command.scope.bookId,
         plan.accountId,
       ))[0];
+
       if (
         !versions ||
         !(yield* Shared.sameCanonical(
@@ -439,13 +492,16 @@ export const executeBankAllocation = Effect.fn("banking.allocation.execute")(fun
       }
 
       const now = (yield* AllocationDb.readDatabaseTime(transaction))[0]?.now;
+
       if (now === undefined) return yield* failure("InternalError");
+
       const approval = (yield* AllocationDb.readApprovalForExecution(
         transaction,
         command.scope.bookId,
         command.planId,
         command.input.approvalId,
       ))[0];
+
       if (
         !approval ||
         Date.parse(approval.expiresAt) <= Date.parse(now) ||
@@ -460,6 +516,7 @@ export const executeBankAllocation = Effect.fn("banking.allocation.execute")(fun
 
       const stored = yield* Shared.decode(PlanSchema, plan.body);
       const snapshot = yield* allocationSnapshot(transaction, command.scope.bookId, stored.input);
+
       if (
         !(yield* Shared.sameCanonical(
           yield* Shared.toJsonObject(snapshot),
@@ -469,9 +526,13 @@ export const executeBankAllocation = Effect.fn("banking.allocation.execute")(fun
         return yield* failure("StaleDependency");
       }
 
+      for (const leg of stored.input.legs)
+        yield* admitBankMatch(transaction, command.scope.bookId, leg);
+
       const legs = yield* Effect.forEach(stored.input.legs, (leg, index) =>
         Shared.toJsonObject(Object.assign({}, leg, { planId: command.planId, ordinal: index + 1 })),
       );
+
       const body = yield* Shared.toJsonObject({
         planId: command.planId,
         digest: command.input.digest,
@@ -489,6 +550,7 @@ export const executeBankAllocation = Effect.fn("banking.allocation.execute")(fun
           principal.actorId,
         ),
       } satisfies JsonObject);
+
       yield* AllocationDb.insertAllocationExecution(transaction, {
         bookId: command.scope.bookId,
         planId: command.planId,
@@ -512,6 +574,7 @@ export const executeBankAllocation = Effect.fn("banking.allocation.execute")(fun
         principal.actorId,
         body,
       );
+
       return execution;
     }),
   );
@@ -526,33 +589,41 @@ export const getBankAllocation = Effect.fn("banking.allocation.get")(function* (
       yield* Shared.requireTables(transaction, allocationTables);
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = (yield* BankDb.lockBook(transaction, command.scope.bookId, "share"))[0];
+
       if (!book) return yield* failure("Forbidden");
+
       const plan = (yield* AllocationDb.readAllocationPlan(
         transaction,
         command.scope.bookId,
         command.planId,
       ))[0];
+
       if (!plan) return yield* failure("NotFound");
+
       const approval = (yield* AllocationDb.readCurrentApproval(
         transaction,
         command.scope.bookId,
         command.planId,
       ))[0];
+
       const execution = (yield* AllocationDb.readAllocationExecution(
         transaction,
         command.scope.bookId,
         command.planId,
       ))[0];
+
       const versions = (yield* BankDb.readVersions(
         transaction,
         command.scope.bookId,
         plan.accountId,
       ))[0]?.versions;
+
       const unmatch = (yield* AllocationDb.readReversedAllocation(
         transaction,
         command.scope.bookId,
         command.planId,
       ))[0];
+
       return yield* Shared.decode(ViewSchema, {
         plan: yield* Shared.decode(PlanSchema, plan.body),
         approval: approval ? yield* Shared.decode(ApprovalSchema, approval.body) : null,

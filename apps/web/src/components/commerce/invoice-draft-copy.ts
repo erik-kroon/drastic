@@ -71,6 +71,7 @@ const en = {
   editing:
     "Editing this retained revision; later refreshes do not replace its expected digest or unsaved fields.",
 };
+
 const sv = {
   title: "Kundfakturautkast",
   boundary:
@@ -141,6 +142,7 @@ const sv = {
   editing:
     "Redigerar denna bevarade revision; senare uppdateringar ersätter inte dess förväntade digest eller osparade fält.",
 } satisfies Record<keyof typeof en, string>;
+
 const blockers = {
   issuance_not_implemented: {
     en: "This draft does not itself activate legal invoice issuance.",
@@ -187,10 +189,13 @@ const blockers = {
     sv: "Beräknat dokumentbrutto skiljer sig från källtotalen.",
   },
 };
+
 export function invoiceDraftCopy(locale: Locale) {
   return locale === "sv" ? sv : en;
 }
+
 export function invoiceDraftBlocker(code: string, locale: Locale) {
   const message = Object.entries(blockers).find(([key]) => key === code)?.[1];
+
   return message?.[locale === "sv" ? "sv" : "en"] ?? code;
 }

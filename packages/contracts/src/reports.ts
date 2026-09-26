@@ -4,6 +4,7 @@ import * as Accounting from "./accounting";
 import { accountingErrors as errors } from "./accounting-errors";
 
 export const ReportFamily = Schema.Literals(["profit_and_loss", "balance_sheet", "cash_flow"]);
+
 export const ReportRole = Schema.Literals([
   "excluded",
   "revenue",
@@ -33,6 +34,7 @@ export const ReportRole = Schema.Literals([
   "financing_cash_outflow",
   "excluded",
 ]);
+
 export const ReportMapping = Schema.Struct({
   version: Schema.Literal("synthetic_report_mapping_v1"),
   reviewed: Schema.Literal(true),
@@ -43,27 +45,32 @@ export const ReportMapping = Schema.Struct({
     }),
   ).check(Schema.isMinLength(1), Schema.isMaxLength(500)),
 });
+
 export const PrepareReport = Schema.Struct({
   kind: Schema.Literal("trial_balance_v1"),
   startsOn: Accounting.AccountingDate,
   endsOn: Accounting.AccountingDate,
 });
+
 export const PrepareReportFamily = Schema.Struct({
   kind: ReportFamily,
   sourceReportId: Accounting.Identifier,
   mapping: ReportMapping,
 });
+
 export const ReportKind = Schema.Literals([
   "trial_balance_v1",
   "profit_and_loss",
   "balance_sheet",
   "cash_flow",
 ]);
+
 export const ReportCutoff = Schema.Struct({
   sequence: Accounting.MinorUnits,
   startsOn: Accounting.AccountingDate,
   endsOn: Accounting.AccountingDate,
 });
+
 export const ReportSnapshot = Schema.Struct({
   kind: ReportKind,
   startsOn: Accounting.AccountingDate,
@@ -90,6 +97,7 @@ export const ReportSnapshot = Schema.Struct({
   statutory: Schema.optional(Schema.Literal(false)),
   financialClose: Schema.optional(Schema.Literal(false)),
 });
+
 export const ReportFamilyLine = Schema.Struct({
   id: Accounting.Identifier,
   label: Schema.String,
@@ -99,12 +107,14 @@ export const ReportFamilyLine = Schema.Struct({
   closingMinor: Accounting.SignedMinorUnits,
   amountMinor: Accounting.SignedMinorUnits,
 });
+
 export const ReportFamilyTotals = Schema.Struct({
   openingMinor: Accounting.SignedMinorUnits,
   movementMinor: Accounting.SignedMinorUnits,
   closingMinor: Accounting.SignedMinorUnits,
   amountMinor: Accounting.SignedMinorUnits,
 });
+
 export const ReportFamilySnapshot = Schema.Struct({
   report: ReportSnapshot,
   family: ReportFamily,
@@ -121,10 +131,12 @@ export const ReportFamilySnapshot = Schema.Struct({
   financialClose: Schema.Literal(false),
   warnings: Schema.Array(Schema.String),
 });
+
 export const ReportSnapshotPage = Schema.Struct({
   items: Schema.Array(ReportSnapshot).check(Schema.isMaxLength(50)),
   next: Schema.NullOr(Accounting.Identifier),
 });
+
 export const ReportLine = Schema.Struct({
   accountId: Accounting.Identifier,
   code: Schema.String,
@@ -134,12 +146,14 @@ export const ReportLine = Schema.Struct({
   creditMinor: Accounting.AggregateMinorUnits,
   closingMinor: Accounting.SignedMinorUnits,
 });
+
 export const ReportLines = Schema.Struct({
   reportId: Accounting.Identifier,
   total: Schema.Int,
   items: Schema.Array(ReportLine),
   next: Schema.NullOr(Accounting.Identifier),
 });
+
 export const Contribution = Schema.Struct({
   voucherId: Accounting.Identifier,
   lineId: Accounting.Identifier,
@@ -152,6 +166,7 @@ export const Contribution = Schema.Struct({
   creditMinor: Accounting.MinorUnits,
   evidenceRefs: Accounting.PostingAction.fields.evidenceRefs,
 });
+
 export const ExplanationCursor = Schema.String.check(
   Schema.isPattern(
     /^[a-z][a-z0-9_-]{2,127}:[a-z][a-z0-9_-]{2,127}:[1-9][0-9]{0,18}:[1-9][0-9]{0,9}$/,
@@ -161,6 +176,7 @@ export const ExplanationCursor = Schema.String.check(
     },
   ),
 );
+
 export const ReportExplanation = Schema.Struct({
   report: ReportSnapshot,
   line: ReportLine,
@@ -169,12 +185,15 @@ export const ReportExplanation = Schema.Struct({
   items: Schema.Array(Contribution),
   next: Schema.NullOr(ExplanationCursor),
 });
+
 export const GeneralLedgerCursor = Schema.String.check(
   Schema.isPattern(
     /^[a-z][a-z0-9_-]{2,127}:[a-z][a-z0-9_-]{2,127}:[1-9][0-9]{0,18}:[1-9][0-9]{0,9}$/,
   ),
 );
+
 export const GeneralLedgerQuery = Schema.Struct({ after: Schema.optional(GeneralLedgerCursor) });
+
 export const GeneralLedgerEntry = Schema.Struct({
   ...Contribution.fields,
   part: Schema.Literal("movement"),
@@ -184,6 +203,7 @@ export const GeneralLedgerEntry = Schema.Struct({
   correctsVoucherId: Schema.NullOr(Accounting.Identifier),
   runningBalanceMinor: Accounting.SignedMinorUnits,
 });
+
 export const GeneralLedgerPage = Schema.Struct({
   report: ReportSnapshot,
   line: ReportLine,
@@ -195,24 +215,31 @@ export const GeneralLedgerPage = Schema.Struct({
   items: Schema.Array(GeneralLedgerEntry).check(Schema.isMaxLength(100)),
   next: Schema.NullOr(GeneralLedgerCursor),
 });
+
 export const LinesQuery = Schema.Struct({ after: Schema.optional(Accounting.Identifier) });
+
 export const ExplanationQuery = Schema.Struct({
   after: Schema.optional(ExplanationCursor),
 });
+
 export const ExplanationPath = Schema.Struct({
   ...Accounting.ChangePath.fields,
   lineId: Accounting.Identifier,
 });
+
 export const ReportComparisonCursor = Schema.String.check(
   Schema.isPattern(/^[a-z][a-z0-9_-]{2,127}:[a-z][a-z0-9_-]{2,127}:[a-z][a-z0-9_-]{2,127}$/),
 );
+
 export const ReportComparisonQuery = Schema.Struct({
   after: Schema.optional(ReportComparisonCursor),
 });
+
 export const ReportComparisonPath = Schema.Struct({
   ...Accounting.ChangePath.fields,
   otherId: Accounting.Identifier,
 });
+
 const ComparisonAmounts = Schema.Struct({
   openingMinor: Accounting.SignedMinorUnits,
   debitMinor: Accounting.SignedMinorUnits,
@@ -220,15 +247,18 @@ const ComparisonAmounts = Schema.Struct({
   movementMinor: Accounting.SignedMinorUnits,
   closingMinor: Accounting.SignedMinorUnits,
 });
+
 const ComparisonSource = Schema.Struct({
   report: ReportSnapshot,
   digest: Accounting.Digest,
   digestScope: Schema.Literal("saved_header_and_account_lines"),
 });
+
 const ComparisonLine = Schema.Struct({
   ...ReportLine.fields,
   movementMinor: Accounting.SignedMinorUnits,
 });
+
 export const ReportComparisonPage = Schema.Struct({
   left: ComparisonSource,
   right: ComparisonSource,
@@ -267,6 +297,7 @@ export const ReportComparisonPage = Schema.Struct({
   financialCloseReady: Schema.Literal(false),
   warnings: Schema.Array(Schema.String),
 });
+
 export const ReportFamilyCapabilities = {
   reports_prepare_family: {
     description:
@@ -287,6 +318,7 @@ export const ReportFamilyCapabilities = {
     readOnly: true,
   },
 };
+
 // Kept local to report ownership; root composes this read-only capability into the registry.
 export const ReportComparisonCapabilities = {
   reports_compare: {
@@ -302,9 +334,13 @@ export const ReportComparisonCapabilities = {
       "Compare two immutable saved synthetic report snapshots with exact right-minus-left signed differences, frozen account labels and explicit missing sides. Stable paged union with full-source totals; never reviewed opening, statutory comparability or financial close readiness.",
   },
 };
+
 const scoped = { params: Accounting.Scope, error: errors };
+
 const identified = { params: Accounting.ChangePath, error: errors };
+
 const familyPath = "/v1/entities/:entityId/books/:bookId/report-family-snapshots";
+
 export const ReportApi = HttpApiGroup.make("reports").add(
   HttpApiEndpoint.post("prepareReportFamily", familyPath, {
     ...scoped,

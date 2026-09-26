@@ -20,16 +20,20 @@ import type { Locale } from "@/paraglide/runtime";
 import { vatCopy } from "./copy";
 
 type Common = { book: typeof Accounting.Book.Type; locale: Locale };
+
 function nullable(fields: FormData, name: string) {
   const value = fields.get(name);
+
   return typeof value === "string" && value !== "" ? value : null;
 }
+
 export function VatFactForm(
   props: Common & { current?: typeof Vat.VatFact.Type; onSaved: (id: string) => void },
 ) {
   const { book, locale, current } = props;
   const copy = vatCopy(locale);
   const [expenseId, setExpenseId] = useState("");
+
   const expenses = useQuery({
     queryKey: [...bookKey(book), "expense-tax", "inventory"],
     queryFn: ({ signal }) =>
@@ -37,12 +41,15 @@ export function VatFactForm(
     retry: false,
     enabled: !current,
   });
+
   const importable =
     expenses.data?.sources.filter(
       (row) => row.reviewCurrent && row.latestReview?.facts.treatment === "domestic_purchase",
     ) ?? [];
+
   const source = importable.find((row) => row.current.sourceId === expenseId && row.reviewCurrent);
   const review = source?.latestReview;
+
   const imported: Partial<typeof Vat.VatFactInput.Type> | undefined =
     source && review
       ? {
@@ -76,6 +83,7 @@ export function VatFactForm(
           },
         }
       : undefined;
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       {!current ? (
@@ -105,6 +113,7 @@ export function VatFactForm(
     </Box>
   );
 }
+
 export function VatDraftForm({
   book,
   locale,
@@ -115,9 +124,11 @@ export function VatDraftForm({
   const [mode, setMode] = useState<(typeof Vat.PrepareVatDraft.Type)["mode"]>("actual_review");
   const [invalid, setInvalid] = useState(false);
   const keys = useRef(new Map<string, string>());
+
   const prepare = useMutation({
     mutationFn: (input: typeof Vat.PrepareVatDraft.Type) => {
       const path = `${bookPath(book)}/vat-returns/drafts`;
+
       return readAccounting(
         path,
         Vat.VatDraft,
@@ -129,6 +140,7 @@ export function VatDraftForm({
       onSaved(draft.id);
     },
   });
+
   return (
     <Box
       as="form"
@@ -138,6 +150,7 @@ export function VatDraftForm({
       onSubmit={(event) => {
         event.preventDefault();
         const fields = new FormData(event.currentTarget);
+
         const decoded = Schema.decodeUnknownOption(Vat.PrepareVatDraft)({
           mode,
           startsOn: fields.get("startsOn"),
@@ -145,7 +158,9 @@ export function VatDraftForm({
           periodEvidenceId: nullable(fields, "periodEvidenceId"),
           otherBoxes: mode === "actual_review" ? "unknown" : fields.get("otherBoxes"),
         });
+
         setInvalid(decoded._tag === "None");
+
         if (decoded._tag === "Some") prepare.mutate(decoded.value);
       }}
     >

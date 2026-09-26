@@ -120,6 +120,7 @@ export function readFamilyEvidence(
   evidenceIds: string[],
 ) {
   if (evidenceIds.length === 0) return Effect.succeed<ReadonlyArray<FamilyEvidenceRow>>([]);
+
   return transaction.execute<FamilyEvidenceRow>(
     sql`
       select id, sha256 from openerp.evidence
@@ -135,6 +136,7 @@ export function readExistingAccountIds(
   accountIds: string[],
 ) {
   if (accountIds.length === 0) return Effect.succeed<ReadonlyArray<AccountRow>>([]);
+
   return transaction.execute<AccountRow>(
     sql`
       select id from openerp.accounts
@@ -317,7 +319,9 @@ export function readClosingBasis(
 ) {
   return Effect.gen(function* () {
     const period = (yield* readPeriod(transaction, bookId, periodId))[0];
+
     if (period === undefined) return yield* Effect.succeed<ReadonlyArray<BasisRow>>([]);
+
     return yield* transaction.execute<BasisRow>(
       sql`
       with book as (

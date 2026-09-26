@@ -13,6 +13,7 @@ export const OwnerPeriodStatus = Schema.Struct({
   sourceDigest: Accounting.Digest,
   blockers: Schema.Array(Schema.String),
 });
+
 export const ExpenseTaxDependencies = Schema.Struct({
   basisDigest: Accounting.Digest,
   sourceCount: Schema.Int,
@@ -24,6 +25,7 @@ export const ExpenseTaxDependencies = Schema.Struct({
   vatReturnReady: Schema.Literal(false),
   postingEnabled: Schema.Literal(false),
 });
+
 export const VatReturnDependencies = Schema.Struct({
   basisDigest: Accounting.Digest,
   sourceCount: Schema.Int,
@@ -69,6 +71,7 @@ export const VatReturnDependencies = Schema.Struct({
   legalProfileActive: Schema.Literal(false),
   filingReady: Schema.Literal(false),
 });
+
 export const OwnerTaxStatus = Schema.Struct({
   owners: OwnerPeriodStatus,
   expenseTax: ExpenseTaxDependencies,
@@ -88,12 +91,14 @@ export const ClosingFamily = Schema.Literals([
   "external_schedules",
   "disclosures",
 ]);
+
 export const ClosingFamilyStatus = Schema.Literals([
   "required",
   "not_applicable",
   "unsupported",
   "unknown",
 ]);
+
 export const ClosingFamilyDeclaration = Schema.Struct({
   family: ClosingFamily,
   status: ClosingFamilyStatus,
@@ -101,15 +106,18 @@ export const ClosingFamilyDeclaration = Schema.Struct({
   evidenceId: Accounting.Identifier,
   rationale: Accounting.Description,
 });
+
 export const RetainedClosingFamily = Schema.Struct({
   ...ClosingFamilyDeclaration.fields,
   evidenceSha256: Schema.String,
 });
+
 export const ClosingFamilyCheck = Schema.Struct({
   code: Schema.String,
   status: Schema.Literals(["passed", "failed", "unavailable"]),
   detail: Schema.String,
 });
+
 export const ClosingFamilyReadiness = Schema.Struct({
   family: ClosingFamily,
   declaration: Schema.NullOr(RetainedClosingFamily),

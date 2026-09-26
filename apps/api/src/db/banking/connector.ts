@@ -3,6 +3,7 @@ import type * as Schema from "effect/Schema";
 import type { Transaction } from "../transaction";
 
 type Json = Schema.Json;
+
 type JsonObject = Schema.JsonObject;
 
 export type ConsentRow = {

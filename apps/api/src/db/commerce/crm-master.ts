@@ -40,6 +40,7 @@ export function readDirectoryPage(
   limit: number,
 ) {
   const bound = limit + 1;
+
   return transaction.execute<PartyRow>(
     sql`
       select page.id, page.total > ${limit} as "hasMore", page.revision,

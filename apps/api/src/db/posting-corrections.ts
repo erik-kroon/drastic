@@ -95,6 +95,7 @@ export function listBundles(
   after: string | undefined,
 ) {
   const afterId = after ?? "";
+
   return transaction
     .select({
       id: correctionBundles.id,
@@ -304,6 +305,7 @@ export function readVouchersByIds(transaction: Transaction, bookId: string, ids:
       .select()
       .from(vouchers)
       .where(sql`false`);
+
   return transaction
     .select({
       id: vouchers.id,
@@ -323,6 +325,7 @@ export function readChainLines(transaction: Transaction, bookId: string, voucher
       .select()
       .from(journalLines)
       .where(sql`false`);
+
   return transaction
     .select({
       voucherId: journalLines.voucherId,
@@ -345,6 +348,7 @@ export function readBundleReceiptsForVouchers(
       .from(correctionBundleReceipts)
       .where(sql`false`);
   }
+
   return transaction
     .select({ body: correctionBundleReceipts.body })
     .from(correctionBundleReceipts)
@@ -370,18 +374,18 @@ export function readImpactResources(
     select resource from (
       select jsonb_build_object(
         'kind', 'bank_match', 'id', source.statement_id,
-        'detail', 'Retained bank match: row ' || source.row_ordinal::text || ', line ' || source.line_id || '. Match supersession is unavailable.',
+        'detail', 'Retained bank match: row ' || source.row_ordinal::text || ', line ' || source.line_id || '. Unmatch the active relationship before correcting.',
         'path', '/bank-statements/' || source.statement_id, 'blocks', true
       ) as resource
-      from openerp.bank_matches source
+      from openerp.bank_active_matches source
       where source.book_id = ${bookId} and source.voucher_id = ${voucherId}
       union all
       select jsonb_build_object(
         'kind', 'bank_allocation', 'id', source.plan_id,
-        'detail', 'Applied bank allocation: row ' || source.row_ordinal::text || ', line ' || source.line_id || '. Compensation is unavailable.',
+        'detail', 'Applied bank allocation: row ' || source.row_ordinal::text || ', line ' || source.line_id || '. Unmatch the active allocation before correcting.',
         'path', '/bank-allocation-plans/' || source.plan_id, 'blocks', true
       )
-      from openerp.bank_allocation_legs source
+      from openerp.bank_active_allocation_legs source
       where source.book_id = ${bookId} and source.voucher_id = ${voucherId}
       union all
       select jsonb_build_object(
@@ -410,10 +414,10 @@ export function readImpactResources(
       union all
       select jsonb_build_object(
         'kind', 'payment_allocation', 'id', source.receipt_id,
-        'detail', 'Applied invoice payment, invoice ' || source.invoice_id || ', line ' || source.payment_line_id || '. Allocation compensation is unavailable.',
+        'detail', 'Applied invoice payment, invoice ' || source.invoice_id || ', line ' || source.payment_line_id || '. Unallocate the active payment before correcting.',
         'path', '/commerce/invoices/' || source.invoice_id, 'blocks', true
       )
-      from openerp.commerce_allocation_legs source
+      from openerp.commerce_active_allocation_legs source
       where source.book_id = ${bookId} and source.payment_voucher_id = ${voucherId}
       union all
       select jsonb_build_object(
@@ -456,6 +460,40 @@ export function readImpactResources(
       )
       from openerp.closing_certificates source
       where source.book_id = ${bookId}
+      union all
+      select jsonb_build_object('kind','owner_record','id',r.id,'detail','An owner source or retained effect owns this voucher. Generic correction is unsupported.',
+        'path','/owner-register/records/'||r.id,'blocks',true,'dependencyDigest',openerp.digest(jsonb_build_object('source',r.body,'revision',r.current_revision)))
+      from openerp.owner_records r where r.book_id=${bookId} and (
+        exists(select from openerp.owner_effects e where e.book_id=r.book_id and e.record_id=r.id and e.voucher_id=${voucherId}) or
+        exists(select from openerp.events e join openerp.vouchers v on(v.book_id,v.event_id)=(e.book_id,e.id)
+          where e.book_id=r.book_id and e.evidence_id=r.evidence_id and e.event_key=r.locator and v.id=${voucherId}) or
+        exists(select from openerp.owner_proposal_links l join openerp.vouchers v on(v.book_id,v.change_set_id)=(l.book_id,l.change_set_id)
+          where l.book_id=r.book_id and l.record_id=r.id and v.id=${voucherId}))
+      union all
+      select jsonb_build_object('kind','tax_account_match','id',m.id,'detail','Unmatch the active tax-account relation before correcting.',
+        'path','/tax-account/matches/'||m.id,'blocks',true,'dependencyDigest',openerp.digest(jsonb_build_object('match',m.body,'capacity',to_jsonb(c))))
+      from openerp.tax_account_match_capacity c join openerp.tax_account_matches m on(m.book_id,m.id)=(c.book_id,c.match_id)
+      where c.book_id=${bookId} and c.voucher_id=${voucherId}
+      union all
+      select jsonb_build_object('kind','schedule','id',d.schedule_id,'detail','A terminal disposal owns the asset and its represented history. Generic correction is unsupported.',
+        'path','/schedules/'||d.schedule_id,'blocks',true,'dependencyDigest',d.body->>'digest')
+      from openerp.subledger_disposals d join openerp.subledger_disposal_reviews r on(r.book_id,r.id)=(d.book_id,d.review_id)
+      join openerp.execution_receipts e on(e.book_id,e.id)=(d.book_id,d.posting_receipt_id)
+      where d.book_id=${bookId} and (e.voucher_id=${voucherId} or r.body->'basis'->'carryingBasis'->'input'->>'voucherId'=${voucherId}
+        or exists(select from jsonb_array_elements(r.body->'basis'->'occurrences') o where ${voucherId} in(o->>'voucherId',o->>'reversalVoucherId')))
+      union all
+      select jsonb_build_object('kind','schedule','id',i.schedule_id,'detail','An impairment owns this voucher or its carrying-basis history. Generic correction is unsupported.',
+        'path','/schedules/'||i.schedule_id,'blocks',true,'dependencyDigest',i.body->>'digest')
+      from openerp.subledger_impairments i where i.book_id=${bookId} and (i.voucher_id=${voucherId}
+        or exists(select from openerp.subledger_bases b where (b.book_id,b.schedule_id)=(i.book_id,i.schedule_id) and b.voucher_id=${voucherId})
+        or exists(select from openerp.subledger_schedule_revisions r join openerp.events e on e.book_id=r.book_id and e.evidence_id=r.evidence_id
+          join openerp.vouchers v on(v.book_id,v.event_id)=(e.book_id,e.id) where (r.book_id,r.schedule_id)=(i.book_id,i.schedule_id) and v.id=${voucherId}
+          and exists(select from jsonb_array_elements(r.body->'occurrences') o where o->>'eventKey'=e.event_key)))
+      union all
+      select jsonb_build_object('kind','vat_control_reclassification','id',e.id,'detail','VAT reclassification owns this voucher or its source contribution. Generic correction is unsupported.',
+        'path','/vat-returns/reclassifications/'||e.review_id,'blocks',true,'dependencyDigest',e.body->>'digest')
+      from openerp.vat_control_reclassification_effects e where e.book_id=${bookId} and (e.voucher_id=${voucherId}
+        or exists(select from openerp.vat_control_reclassification_contributions c where(c.book_id,c.effect_id)=(e.book_id,e.id) and c.voucher_id=${voucherId}))
     ) resources
     order by resource->>'kind', resource->>'id', resource->>'detail'
     limit 1001

@@ -27,10 +27,12 @@ export function ExpenseEditor(
   const [baseline] = useState(props.baseline);
   const [units, setUnits] = useState<{ currency: string; scale: number } | null>(null);
   const [documentId, setDocumentId] = useState(props.sourceId ?? "");
+
   const document = useQuery({
     ...sourceDocumentOptions(props.book, documentId),
     enabled: !!documentId,
   });
+
   const documents = useInfiniteQuery({
     queryKey: [...bookKey(props.book), "document-inbox"],
     initialPageParam: "",
@@ -40,25 +42,33 @@ export function ExpenseEditor(
         Sources.SourceInventory,
         { signal },
       );
+
       page.items.forEach((item) => checkScope(props.book, item.occurrence.scope));
+
       return page;
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry: false,
   });
+
   const source = document.isError ? undefined : document.data?.occurrence;
+
   const originals =
     documents.data?.pages.flatMap((page) => page.items.map((item) => item.occurrence)) ?? [];
+
   const choices =
     source && !originals.some((item) => item.id === source.id) ? [source, ...originals] : originals;
+
   const [sourceKey] = useState(() => `expense_${crypto.randomUUID().replaceAll("-", "")}`);
   const metadata = useQuery(workQueryOptions(props.book, {}));
+
   const { currency, scale } = expenseCurrency(
     baseline?.facts,
     units,
     props.book.currency,
     metadata.data?.currencyScale,
   );
+
   if (baseline && (scale == null || currency == null))
     return (
       <EstablishExpenseCurrency
@@ -67,10 +77,12 @@ export function ExpenseEditor(
         onSave={setUnits}
       />
     );
+
   if (scale == null || currency == null)
     return (
       <AccountingStatus locale={props.locale} pending={metadata.isPending} error={metadata.error} />
     );
+
   return (
     <EvidenceCommandForm
       {...props}
@@ -173,6 +185,7 @@ export function ExpenseEditor(
     </EvidenceCommandForm>
   );
 }
+
 function ExpenseFields(
   props: CommerceProps & {
     description?: string;
@@ -183,6 +196,7 @@ function ExpenseFields(
 ) {
   const sv = props.locale === "sv";
   const facts = props.baseline?.facts;
+
   return (
     <RecordSection title={sv ? "Utgiftsuppgifter" : "Expense details"}>
       <InputField
@@ -255,24 +269,31 @@ function ExpenseFields(
     </RecordSection>
   );
 }
+
 function fieldText(fields: FormData, name: string) {
   const value = fields.get(name);
+
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function nullable(fields: FormData, name: string) {
   const value = fields.get(name);
+
   return value === "" ? null : value;
 }
+
 function expenseAmount(fields: FormData, name: string, scale: number) {
   const value = fields.get(name);
+
   if (value === "" || value === null) return null;
+
   return typeof value === "string" ? (decimalToMinor(value, scale) ?? "invalid") : "invalid";
 }
 
 function editableAmount(value: string | null | undefined, scale: number) {
   return value == null ? "" : minorToDecimal(value, scale);
 }
+
 export function ExpenseRevisionEditor(
   props: CommerceProps & {
     baseline: typeof Tax.TaxSourceRevision.Type;
@@ -287,19 +308,23 @@ export function ExpenseRevisionEditor(
         Accounting.EvidenceContent,
         { signal },
       );
+
       if (
         result.id !== props.baseline.facts.evidenceId ||
         result.sha256 !== props.baseline.evidenceSha256
       )
         throw new Error("Expense source mismatch");
+
       return result;
     },
     retry: false,
   });
+
   if (!evidence.isSuccess)
     return (
       <AccountingStatus locale={props.locale} pending={evidence.isPending} error={evidence.error} />
     );
+
   return (
     <ExpenseEditor
       {...props}
@@ -315,6 +340,7 @@ function ExpenseAmounts(props: {
   locale: CommerceProps["locale"];
 }) {
   const sv = props.locale === "sv";
+
   return (
     <Box display="grid" columns={3} gap="lg">
       <InputField
@@ -345,6 +371,7 @@ function ExpenseDates(props: {
 }) {
   const sv = props.locale === "sv";
   const facts = props.facts;
+
   return (
     <Box display="grid" columns={2} gap="lg">
       <InputField
@@ -369,6 +396,7 @@ function EstablishExpenseCurrency(props: {
   onSave: (units: { currency: string; scale: number }) => void;
 }) {
   const sv = props.locale === "sv";
+
   return (
     <Box
       as="form"
@@ -379,6 +407,7 @@ function EstablishExpenseCurrency(props: {
         const fields = new FormData(event.currentTarget);
         const currency = fields.get("currency");
         const scale = fields.get("scale");
+
         if (
           typeof currency === "string" &&
           /^[A-Z]{3}$/.test(currency) &&
@@ -428,6 +457,7 @@ function expenseCurrency(
   bookScale: number | undefined,
 ) {
   if (!facts) return { currency: bookCurrency, scale: bookScale };
+
   return {
     currency: facts.currency ?? units?.currency,
     scale: facts.currencyScale ?? units?.scale,

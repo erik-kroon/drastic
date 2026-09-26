@@ -1,15 +1,32 @@
 import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
 import { getArticle, listArticles } from "../commerce/catalog";
-import { getCandidate as getInvoicePolicyCandidate, readHistory as readInvoicePolicyHistory } from "../commerce/invoice-policy";
+import {
+  getCandidate as getInvoicePolicyCandidate,
+  readHistory as readInvoicePolicyHistory,
+} from "../commerce/invoice-policy";
 import { getDelivery, readDeliveryHistory } from "../commerce/invoice-delivery";
-import { getInvoiceDocument, invoiceDocumentHistory, prepareInvoiceDocument, resumeInvoiceDocument } from "../invoice-documents";
+import {
+  getInvoiceDocument,
+  invoiceDocumentHistory,
+  prepareInvoiceDocument,
+  resumeInvoiceDocument,
+} from "../invoice-documents";
 import { getInvoicePdf, invoicePdfHistory } from "../commerce/documents";
 import { getSupplierAcceptanceReview, supplierAcceptanceHistory } from "../purchases/acceptance";
 import { getSupplierCreditReview, supplierCreditHistory } from "../purchases/credits";
 import { getSupplierInbox, listSupplierInboxes } from "../purchases/inbox";
-import { getSupplierInvoiceDraft, listSupplierInvoiceDrafts, supplierInvoiceDraftDuplicates, supplierInvoiceDraftHistory } from "../purchases/drafts";
-import { getSupplierPayee, getSupplierPaymentBatch, listSupplierPaymentEligibility } from "../purchases/payments";
+import {
+  getSupplierInvoiceDraft,
+  listSupplierInvoiceDrafts,
+  supplierInvoiceDraftDuplicates,
+  supplierInvoiceDraftHistory,
+} from "../purchases/drafts";
+import {
+  getSupplierPayee,
+  getSupplierPaymentBatch,
+  listSupplierPaymentEligibility,
+} from "../purchases/payments";
 import { listDimensions } from "../dimensions";
 import { readDirectory, readDirectoryExport } from "../commerce/crm-master";
 import {
@@ -264,11 +281,11 @@ export const commerceInvoiceCapabilities = {
   ),
   commerce_invoice_history: effectCapability(
     Capabilities.commerce_invoice_history,
-    (token, input) => invoiceHistory(token, { scope: input.scope, id: input.id, after: input.after ?? "" }),
+    (token, input) =>
+      invoiceHistory(token, { scope: input.scope, id: input.id, after: input.after ?? "" }),
   ),
-  commerce_list_invoices: effectCapability(
-    Capabilities.commerce_list_invoices,
-    (token, input) => listInvoices(token, { scope: input.scope, after: input.after ?? "" }),
+  commerce_list_invoices: effectCapability(Capabilities.commerce_list_invoices, (token, input) =>
+    listInvoices(token, { scope: input.scope, after: input.after ?? "" }),
   ),
   commerce_get_payment_capacity: effectCapability(
     Capabilities.commerce_get_payment_capacity,
@@ -284,5 +301,8 @@ export const commerceInvoiceCapabilities = {
     prepareAllocation,
   ),
   commerce_get_allocation: effectCapability(Capabilities.commerce_get_allocation, getAllocation),
-  commerce_apply_allocation: effectCapability(Capabilities.commerce_apply_allocation, applyAllocation),
+  commerce_apply_allocation: effectCapability(
+    Capabilities.commerce_apply_allocation,
+    applyAllocation,
+  ),
 };

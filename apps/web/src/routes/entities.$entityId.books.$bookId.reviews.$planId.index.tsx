@@ -21,6 +21,7 @@ function ResolveReview() {
   const { planId } = Route.useParams();
   const { book, locale } = useBookWorkspace();
   const copy = accountingCopy(locale);
+
   const recovery = useQuery({
     queryKey: [...bookKey(book), "posting-recovery", "detail", planId, null],
     queryFn: async ({ signal }) => {
@@ -29,16 +30,19 @@ function ResolveReview() {
         Recovery.PostingRecovery,
         { signal },
       );
+
       if (
         result.plan.id !== planId ||
         result.scope.entityId !== book.entityId ||
         result.scope.bookId !== book.id
       )
         throw new Error("Response scope mismatch");
+
       return result;
     },
     retry: false,
   });
+
   if (recovery.data && !recovery.isError)
     return (
       <Navigate
@@ -47,6 +51,7 @@ function ResolveReview() {
         replace
       />
     );
+
   return (
     <Box display="grid" gap="lg">
       <Link href={`${workspacePath(book)}/work${defaultStringifySearch(filters)}`}>

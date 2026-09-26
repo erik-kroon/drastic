@@ -26,19 +26,23 @@ export function InvoiceDraftIssueOverlay(props: Props) {
     />
   );
 }
+
 function DraftIssueWorkspace(props: Props) {
   const [local, setLocal] = useState("");
   const recordId = props.recordId ?? local;
   const onOpen = props.onOpen ?? setLocal;
+
   if (recordId && recordId !== "new") {
     return <SelectedDraftIssue {...props} key={recordId} recordId={recordId} onOpen={onOpen} />;
   }
+
   return <InvoiceDrafts {...props} recordId={recordId} onOpen={onOpen} />;
 }
 
 function SelectedDraftIssue(props: Props & { recordId: string; onOpen: (id: string) => void }) {
   const { book, locale, recordId, onOpen } = props;
   const sv = locale === "sv";
+
   const history = useQuery({
     queryKey: [...commerceKey(book), "invoice-issue-history", recordId],
     queryFn: async ({ signal }) => {
@@ -47,17 +51,22 @@ function SelectedDraftIssue(props: Props & { recordId: string; onOpen: (id: stri
         Issuance.InvoiceIssueHistory,
         { signal },
       );
+
       checkScope(book, result.scope);
+
       if (result.draftId !== recordId) throw new Error("Issue overlay draft mismatch");
+
       return result;
     },
     staleTime: 0,
     refetchOnMount: "always",
     retry: false,
   });
+
   const issued = history.data?.items.find((item) => item.issueId !== null);
   // Do not expose the draft editor from an unchecked cache or failed live issue lookup.
   const checked = history.isFetchedAfterMount && history.isSuccess;
+
   if (checked && !issued)
     return (
       <InvoiceDrafts
@@ -96,6 +105,7 @@ function SelectedDraftIssue(props: Props & { recordId: string; onOpen: (id: stri
         }
       />
     );
+
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       <Box display="flex" gap="md">

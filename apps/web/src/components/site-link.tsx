@@ -4,10 +4,13 @@ import { Link, useRouter } from "@tanstack/react-router";
 export function SiteLink(props: ComponentProps<"a">) {
   const router = useRouter();
   const href = props.href;
+
   if (!href?.startsWith("/") || href.startsWith("//") || props.download) {
     return <a {...props} />;
   }
+
   const target = new URL(href, "http://openerp.invalid");
+
   return (
     <Link
       {...props}

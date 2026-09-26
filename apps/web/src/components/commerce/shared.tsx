@@ -21,8 +21,11 @@ import { commerceCopy } from "./copy";
 import { useCommerceCommandRecovery } from "./command-recovery";
 
 export type CommerceProps = { book: typeof Accounting.Book.Type; locale: Locale };
+
 export const commercePath = (book: CommerceProps["book"]) => `${bookPath(book)}/commerce`;
+
 export const commerceKey = (book: CommerceProps["book"]) => [...bookKey(book), "commerce"];
+
 export function Details({
   title,
   children,
@@ -40,6 +43,7 @@ export function Details({
     </Disclosure>
   );
 }
+
 export function Facts({ title, value }: { title: string; value: unknown }) {
   return (
     <Details title={title}>
@@ -49,6 +53,7 @@ export function Facts({ title, value }: { title: string; value: unknown }) {
     </Details>
   );
 }
+
 export function Evidence({
   book,
   locale,
@@ -64,10 +69,12 @@ export function Evidence({
     />
   );
 }
+
 export function checkScope(book: CommerceProps["book"], scope: typeof Accounting.Scope.Type) {
   if (scope.bookId !== book.id || scope.entityId !== book.entityId)
     throw new Error("Commerce response scope mismatch");
 }
+
 export function Field(props: {
   name: string;
   label: string;
@@ -87,6 +94,7 @@ export function Field(props: {
     />
   );
 }
+
 export function Lookup({ label, onOpen }: { label: string; onOpen: (id: string) => void }) {
   return (
     <Box
@@ -98,6 +106,7 @@ export function Lookup({ label, onOpen }: { label: string; onOpen: (id: string) 
       onSubmit={(event) => {
         event.preventDefault();
         const id = new FormData(event.currentTarget).get("id");
+
         if (typeof id === "string") onOpen(id.trim());
       }}
     >
@@ -115,6 +124,7 @@ export function Lookup({ label, onOpen }: { label: string; onOpen: (id: string) 
     </Box>
   );
 }
+
 export function Pager({
   locale,
   next,
@@ -127,7 +137,9 @@ export function Pager({
   onPage: (after: string) => void;
 }) {
   const copy = commerceCopy(locale);
+
   if (first && !next) return null;
+
   return (
     <Box display="grid" gap="md">
       <Box display="flex" flexWrap="wrap" gap="md">
@@ -148,6 +160,7 @@ export function Pager({
     </Box>
   );
 }
+
 export function CommandForm<
   S extends Schema.Top & { readonly DecodingServices: never },
   O extends Schema.Top & { readonly DecodingServices: never },
@@ -179,42 +192,53 @@ export function CommandForm<
   const [formVersion, setFormVersion] = useState(0);
   const [cleanupFailed, setCleanupFailed] = useState(false);
   const recovery = useCommerceCommandRecovery({ book, path, id: props.recoveryId, schema });
+
   const command = useMutation({
     mutationFn: async (request: { key: string; input: S["Type"] }) => {
       recovery.retain(request);
+
       const result = await readAccounting(path, props.output, {
         method: "POST",
         body: JSON.stringify(request.input),
         headers: { "Idempotency-Key": request.key },
       });
+
       if (typeof result === "object" && result !== null && "scope" in result)
         checkScope(book, Schema.decodeUnknownSync(Accounting.Scope)(result.scope));
       props.validate?.(result, request.input);
+
       return result;
     },
     onSuccess: (result, request) => {
       props.onSuccess?.(result);
+
       try {
         recovery.clear(request.key);
       } catch {
         setCleanupFailed(true);
       }
+
       void client.invalidateQueries({ queryKey: bookKey(book) });
     },
     retry: false,
   });
+
   const captured = command.variables ?? recovery.saved;
   const restored = command.isIdle && !!recovery.saved;
+
   const canReplace =
     command.isSuccess || (command.isError && !isUncertainWriteError(command.error));
+
   // Compact task actions disappear only when no request is in flight or its result is known.
   if (props.compact && !allowed && (!captured || command.isSuccess)) return null;
+
   const artifact = {
     scope: { entityId: book.entityId, bookId: book.id },
     path,
     request: captured,
     outcome: command.data ?? null,
   };
+
   return (
     <Box
       as="form"
@@ -224,6 +248,7 @@ export function CommandForm<
       aria-describedby={errorId}
       onSubmit={(event) => {
         event.preventDefault();
+
         if (
           !allowed ||
           !recovery.ready ||
@@ -232,19 +257,25 @@ export function CommandForm<
           captured
         )
           return;
+
         const parsed = Schema.decodeUnknownOption(schema)(
           props.input(new FormData(event.currentTarget)),
         );
+
         if (parsed._tag === "None") {
           setInvalid(true);
+
           return;
         }
+
         setInvalid(false);
+
         const requestKey = props.keys
           ? new Headers(
               mutationOptions(path, JSON.stringify(parsed.value), props.keys).headers,
             ).get("Idempotency-Key")
           : null;
+
         command.mutate({ key: requestKey ?? crypto.randomUUID(), input: parsed.value });
       }}
     >
@@ -308,6 +339,7 @@ export function CommandForm<
                 const url = URL.createObjectURL(
                   new Blob([JSON.stringify(artifact, null, 2)], { type: "application/json" }),
                 );
+
                 const link = document.createElement("a");
                 link.href = url;
                 link.download = `commerce-${captured.key}.json`;
@@ -334,9 +366,11 @@ export function CommandForm<
                   recovery.clear(captured.key);
                 } catch {
                   setCleanupFailed(true);
+
                   return;
                 }
               }
+
               setCleanupFailed(false);
               command.reset();
               setInvalid(false);

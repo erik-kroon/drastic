@@ -19,6 +19,7 @@ type EligibleInvoice = (typeof Payments.PaymentEligibility.Type)["items"][number
 
 function field(fields: FormData, name: string) {
   const value = fields.get(name);
+
   return typeof value === "string" ? value.trim() : "";
 }
 
@@ -31,6 +32,7 @@ export function SupplierPaymentFiles(props: CommerceProps & { recordId?: string 
   const [batchId, setBatchId] = useState(props.recordId ?? "");
   const [payee, setPayee] = useState<EligibleInvoice | null>(null);
   const [payeeId, setPayeeId] = useState("");
+
   const eligibility = useInfiniteQuery({
     queryKey: [...commerceKey(props.book), "supplier-payment-eligibility"],
     initialPageParam: "",
@@ -40,12 +42,15 @@ export function SupplierPaymentFiles(props: CommerceProps & { recordId?: string 
         Payments.PaymentEligibility,
         { signal },
       );
+
       checkScope(props.book, result.scope);
+
       return result;
     },
     getNextPageParam: (page) => page.next ?? undefined,
     retry: false,
   });
+
   const invoices = eligibility.data?.pages.flatMap((page) => page.items) ?? [];
   const ready = invoices.filter((invoice) => invoice.eligible && invoice.payeeVerification);
 
@@ -190,7 +195,9 @@ function PaymentPreparationSection(
           : "This payment file requires a SEK book with two decimal places."}
       </PageCaption>
     );
+
   if (!props.invoices.length) return null;
+
   return <PaymentPreparation {...props} />;
 }
 
@@ -202,6 +209,7 @@ function PayeeSetup(
   },
 ) {
   const sv = props.locale === "sv";
+
   const review = useQuery({
     queryKey: [...commerceKey(props.book), "supplier-payee", props.payeeId],
     enabled: !!props.payeeId,
@@ -211,13 +219,17 @@ function PayeeSetup(
         Payments.PayeeReview,
         { signal },
       );
+
       checkScope(props.book, result.proposal.scope);
+
       if (result.proposal.counterpartyId !== props.invoice.counterpartyId)
         throw new Error("Supplier payee proposal does not match this invoice");
+
       return result;
     },
     retry: false,
   });
+
   return (
     <Box display="grid" gap="lg">
       <PageCaption>
@@ -343,6 +355,7 @@ function PaymentPreparation(
   const sv = props.locale === "sv";
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const selectedCount = props.invoices.filter((invoice) => selected.has(invoice.invoiceId)).length;
+
   return (
     <RecordSection title={sv ? "Förbered betalningsfil" : "Prepare payment file"}>
       <CommandForm
@@ -394,6 +407,7 @@ function PaymentPreparation(
                   disabled={!selected.has(invoice.invoiceId) && selectedCount >= 20}
                   onChange={(event) => {
                     const next = new Set(selected);
+
                     if (event.target.checked) next.add(invoice.invoiceId);
                     else next.delete(invoice.invoiceId);
                     setSelected(next);
@@ -443,6 +457,7 @@ function PaymentPreparation(
 
 function PaymentBatchDetail(props: CommerceProps & { id: string }) {
   const sv = props.locale === "sv";
+
   const batch = useQuery({
     queryKey: [...commerceKey(props.book), "supplier-payment-batch", props.id],
     queryFn: async ({ signal }) => {
@@ -451,13 +466,17 @@ function PaymentBatchDetail(props: CommerceProps & { id: string }) {
         Payments.SupplierPaymentBatchView,
         { signal },
       );
+
       checkScope(props.book, result.preview.scope);
+
       return result;
     },
     retry: false,
   });
+
   const view = batch.data;
   const exported = view?.export;
+
   return (
     <RecordSection title={sv ? "Förhandsgranskning och export" : "Preview and export"}>
       <AccountingStatus locale={props.locale} pending={batch.isPending} error={batch.error} />

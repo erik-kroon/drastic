@@ -7,6 +7,7 @@ export type SieDiagnostic = {
   byteOffset: number;
   message: string;
 };
+
 export type SieRecord = {
   ordinal: number;
   line: number;
@@ -17,6 +18,7 @@ export type SieRecord = {
   fields: string[];
   voucherOrdinal: number | null;
 };
+
 export type SieVoucher = {
   ordinal: number;
   series: string;
@@ -34,6 +36,7 @@ export type SieVoucher = {
 };
 
 type AppendDiagnostic = (code: string, line: number, byteOffset: number, message: string) => void;
+
 type SieControl = {
   kind: "IB" | "UB" | "RES";
   year: string;
@@ -52,10 +55,12 @@ type SieEncoding = "utf-8" | "windows-1252" | "ibm437";
 
 function decodePc8(bytes: Uint8Array) {
   const characters: string[] = [];
+
   for (let i = 0; i < bytes.length; i++) {
     const byte = bytes[i] ?? 0;
     characters.push(byte < 128 ? String.fromCharCode(byte) : (pc8High[byte - 128] ?? ""));
   }
+
   return characters.join("");
 }
 
@@ -65,8 +70,10 @@ function scanSieFields(body: string) {
   let quoted = false;
   let brace = 0;
   let active = false;
+
   for (let pos = 0; pos < body.length; pos++) {
     const ch = body[pos] ?? "";
+
     if (quoted && ch === "\\" && body[pos + 1] === '"') {
       token += '"';
       pos++;
@@ -96,11 +103,14 @@ function scanSieFields(body: string) {
       active = true;
     }
   }
+
   if (active) fields.push(token);
+
   return { fields, complete: !quoted && brace === 0 };
 }
 
 const exactAmount = /^-?(?:0|[1-9][0-9]{0,35})(?:\.[0-9]{1,2})?$/;
+
 function validTransaction(fields: string[]) {
   return (
     fields.length >= 3 &&
@@ -109,6 +119,7 @@ function validTransaction(fields: string[]) {
     exactAmount.test(fields[2] ?? "")
   );
 }
+
 function validControl(fields: string[]) {
   return (
     fields.length >= 3 &&
@@ -127,6 +138,7 @@ function recordSieFact(
   append: AppendDiagnostic,
 ): SieVoucher | null {
   const { tag, fields, line, byteStart } = record;
+
   if (tag === "VER") {
     if (depth !== 0 || fields.length < 3 || !/^[0-9]{8}$/.test(fields[2] ?? ""))
       append("voucher", line, byteStart, "Voucher identity or date is invalid.");
@@ -175,6 +187,7 @@ function recordSieFact(
       byteStart,
       "Unexpected record inside voucher; retained but not admitted.",
     );
+
   return current;
 }
 
@@ -184,9 +197,12 @@ export function parseSie(bytes: Uint8Array, encoding: SieEncoding) {
   const records: SieRecord[] = [];
   const vouchers: SieVoucher[] = [];
   const controls: SieControl[] = [];
+
   const append: AppendDiagnostic = (code, line, byteOffset, message) =>
     diagnostics.push({ code, severity: "error", line, byteOffset, message });
+
   let text: string;
+
   try {
     text =
       encoding === "ibm437"
@@ -194,18 +210,23 @@ export function parseSie(bytes: Uint8Array, encoding: SieEncoding) {
         : new TextDecoder(encoding, { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
     append("encoding", 1, 0, `Bytes cannot be decoded as ${encoding}.`);
+
     return { records, vouchers, controls, diagnostics, ready: false };
   }
+
   if (text.includes("\0")) append("nul", 1, 0, "NUL bytes are not supported.");
+
   const bom =
     encoding === "utf-8" &&
     bytes.length >= 3 &&
     bytes[0] === 0xef &&
     bytes[1] === 0xbb &&
     bytes[2] === 0xbf;
+
   if (bom && text.startsWith("\ufeff")) text = text.slice(1);
   const depth = scanSieLines(text, encoding, bom ? 3 : 0, records, vouchers, controls, append);
   validateSieProfile(depth, bytes.length, records, vouchers, encoding, append);
+
   return { records, vouchers, controls, diagnostics, ready: diagnostics.length === 0 };
 }
 
@@ -221,6 +242,7 @@ function scanSieLines(
   let offset = startOffset;
   let current: SieVoucher | null = null;
   let depth = 0;
+
   const supported = new Set([
     "FLAGGA",
     "PROGRAM",
@@ -251,36 +273,48 @@ function scanSieLines(
     "BKOD",
     "PROSA",
   ]);
+
   const lines = text.split(/(?<=\n)/);
+
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i] ?? "";
     const byteStart = offset;
     offset += encoding !== "utf-8" ? raw.length : Buffer.byteLength(raw, "utf8");
     const line = raw.replace(/\r?\n$/, "");
+
     if (line.trim() === "") continue;
+
     if (line === "{") {
       depth++;
+
       if (depth !== 1 || current === null)
         append("brace", i + 1, byteStart, "Unexpected opening brace.");
       continue;
     }
+
     if (line === "}") {
       depth--;
+
       if (depth !== 0 || current === null)
         append("brace", i + 1, byteStart, "Unexpected closing brace.");
       current = null;
       continue;
     }
+
     const match = /^[ \t]*#([A-Z][A-Z0-9]*)\s*(.*)$/.exec(line);
+
     if (!match) {
       append("syntax", i + 1, byteStart, "Unsupported record syntax.");
       continue;
     }
+
     const tag = match[1] ?? "";
     const body = match[2] ?? "";
     const { fields, complete } = scanSieFields(body);
+
     if (!complete)
       append("field_syntax", i + 1, byteStart, "Unclosed quoted field or dimension group.");
+
     const record: SieRecord = {
       ordinal: records.length + 1,
       line: i + 1,
@@ -291,11 +325,14 @@ function scanSieLines(
       fields,
       voucherOrdinal: current?.ordinal ?? null,
     };
+
     records.push(record);
+
     if (!supported.has(tag))
       append("unsupported_record", i + 1, byteStart, `Unsupported #${tag} record is retained.`);
     current = recordSieFact(record, current, depth, vouchers, controls, append);
   }
+
   return depth;
 }
 
@@ -311,8 +348,10 @@ function validateSieProfile(
     append("brace", records.at(-1)?.line ?? 1, byteLength, "Voucher block was not closed.");
   const formats = records.filter((record) => record.tag === "FORMAT");
   const types = records.filter((record) => record.tag === "SIETYP");
+
   if (formats.length !== 1 || types.length !== 1 || types[0]?.fields[0] !== "4")
     append("profile", 1, 0, "Only an explicitly declared SIE type 4 profile is supported.");
+
   if (
     formats[0]?.fields[0] !==
     (encoding === "utf-8" ? "UTF8" : encoding === "ibm437" ? "PC8" : "WIN1252")
@@ -323,11 +362,13 @@ function validateSieProfile(
       formats[0]?.byteStart ?? 0,
       "Declared #FORMAT does not match the selected byte encoding.",
     );
+
   for (const voucher of vouchers) {
     const year = Number(voucher.date.slice(0, 4));
     const month = Number(voucher.date.slice(4, 6));
     const day = Number(voucher.date.slice(6, 8));
     const date = new Date(Date.UTC(year, month - 1, day));
+
     if (
       !Number.isFinite(date.getTime()) ||
       date.getUTCFullYear() !== year ||
@@ -341,5 +382,6 @@ function validateSieProfile(
         "Voucher date is not a calendar date.",
       );
   }
+
   if (vouchers.length === 0) append("empty", 1, 0, "No historical vouchers were found.");
 }

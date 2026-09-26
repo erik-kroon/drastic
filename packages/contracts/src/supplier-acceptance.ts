@@ -15,16 +15,19 @@ const SharedSupplierAcceptanceFields = {
   reason: Accounting.Description,
   acknowledgeSyntheticOnly: Schema.Literal(true),
 };
+
 export const SupplierLineAssignment = Schema.Struct({
   lineId: Accounting.Identifier,
   expenseAccountId: Accounting.Identifier,
   vatRatePercent: Schema.Literals([0, 6, 12, 25]),
 });
+
 export const PrepareSyntheticSupplierAcceptance = Schema.Struct({
   profile: Schema.Literals(["synthetic-manual-supplier-v1", "synthetic-gross-cost-supplier-v1"]),
   ...SharedSupplierAcceptanceFields,
   debitAccountId: Accounting.Identifier,
 });
+
 export const PrepareSwedishSupplierAcceptance = Schema.Struct({
   profile: Schema.Literal("swedish-purchase-v1"),
   ...SharedSupplierAcceptanceFields,
@@ -33,19 +36,23 @@ export const PrepareSwedishSupplierAcceptance = Schema.Struct({
     Schema.isMaxLength(50),
   ),
 });
+
 export const PrepareSupplierAcceptance = Schema.Union([
   PrepareSyntheticSupplierAcceptance,
   PrepareSwedishSupplierAcceptance,
 ]);
+
 export const ApproveSupplierAcceptance = Schema.Struct({
   version: Schema.Literal(1),
   digest: Accounting.Digest,
   acknowledgeSyntheticOnly: Schema.Literal(true),
 });
+
 export const ExecuteSupplierAcceptance = Schema.Struct({
   ...ApproveSupplierAcceptance.fields,
   approvalId: Accounting.Identifier,
 });
+
 export const SupplierAcceptanceReview = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -60,11 +67,24 @@ export const SupplierAcceptanceReview = Schema.Struct({
   draftSnapshot: Drafts.SupplierInvoiceDraftRevision,
   postingPlan: Accounting.ChangeSet,
   evidence: Commerce.EvidenceReference,
+  originalLines: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        lineId: Accounting.Identifier,
+        expenseAccountId: Accounting.Identifier,
+        netMinor: Accounting.MinorUnits,
+        taxMinor: Accounting.MinorUnits,
+        vatRatePercent: Schema.Literals([0, 6, 12, 25]),
+      }),
+    ),
+  ),
+  inputVatAccountId: Schema.optional(Accounting.Identifier),
   legalBlockers: Schema.Array(Schema.String),
   createdAt: Schema.String,
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
 });
+
 export const SupplierAcceptanceApproval = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -77,6 +97,7 @@ export const SupplierAcceptanceApproval = Schema.Struct({
   createdAt: Schema.String,
   receipt: Commerce.CommandReceipt,
 });
+
 export const SupplierAcceptanceReceipt = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -102,6 +123,7 @@ export const SupplierAcceptanceReceipt = Schema.Struct({
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
 });
+
 export const SupplierAcceptanceView = Schema.Struct({
   plan: SupplierAcceptanceReview,
   approval: Schema.NullOr(SupplierAcceptanceApproval),
@@ -110,6 +132,7 @@ export const SupplierAcceptanceView = Schema.Struct({
   dependenciesCurrent: Schema.Boolean,
   approvalUsable: Schema.Boolean,
 });
+
 export const SupplierAcceptanceHistory = Schema.Struct({
   scope: Accounting.Scope,
   draftId: Accounting.Identifier,
@@ -127,12 +150,15 @@ export const SupplierAcceptanceHistory = Schema.Struct({
     }),
   ).check(Schema.isMaxLength(50)),
 });
+
 const path = "/v1/entities/:entityId/books/:bookId/commerce";
+
 const mutation = {
   params: Accounting.ChangePath,
   headers: Accounting.IdempotencyHeaders,
   error: accountingErrors,
 };
+
 export const SupplierAcceptanceApi = HttpApiGroup.make("supplierAcceptance").add(
   HttpApiEndpoint.post("prepareSupplierAcceptance", `${path}/supplier-acceptance-reviews`, {
     params: Accounting.Scope,
@@ -174,6 +200,7 @@ export const SupplierAcceptanceApi = HttpApiGroup.make("supplierAcceptance").add
     },
   ),
 );
+
 // All issue/recognition mutations are operator-only. Ordinary MCP exposes recovery reads only.
 export const SupplierAcceptanceCapabilities = {
   commerce_get_supplier_acceptance_review: {
