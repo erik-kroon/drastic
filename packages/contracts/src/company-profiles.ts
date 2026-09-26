@@ -5,6 +5,7 @@ import { accountingErrors } from "./accounting-errors";
 import { CommandReceipt, EvidenceReference } from "./commerce";
 import { PayrollRuleRelease } from "./payroll-calculations";
 import { RoleKind } from "./roles";
+import { VatFilingRuleRelease } from "./vat-filing-release";
 
 export { RoleKind };
 
@@ -437,6 +438,9 @@ export const RuleRelease = Schema.Struct({
   // record. The payroll family's tables, decisions, contribution bands and
   // holiday policy live here, so there is exactly one rule-release authority.
   payroll: Schema.optional(PayrollRuleRelease),
+  // The VAT family's qualified rates, report boxes, mapping rules, filing unit
+  // and required source families live here for the same reason.
+  vat: Schema.optional(VatFilingRuleRelease),
 }).check(
   Schema.makeFilter(
     (release) =>

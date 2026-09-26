@@ -747,6 +747,103 @@ export const customerCreditReviews = openerp.table("customer_credit_reviews", {
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });
 
+// NEXT-04 actual domestic VAT return. A sealed calculation artifact: the
+// application owns the release selection, the capture, the arithmetic and the
+// control rollforward, and the retained rows keep a captured meaning.
+export const vatActualReturns = openerp.table("vat_actual_returns", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  ordinal: integer().notNull(),
+  startsOn: date("starts_on", { mode: "string" }).notNull(),
+  endsOn: date("ends_on", { mode: "string" }).notNull(),
+  basisDigest: text("basis_digest").notNull(),
+  basisEngine: text("basis_engine").notNull(),
+  ruleReleaseId: text("rule_release_id").notNull(),
+  ruleReleaseChecksum: text("rule_release_checksum").notNull(),
+  periodFactRevisionId: text("period_fact_revision_id").notNull(),
+  filingReady: boolean().notNull(),
+  controlsReconciled: boolean().notNull(),
+  coverageComplete: boolean().notNull(),
+  calculationSupported: boolean().notNull(),
+  exactNetMinor: numeric("exact_net_minor", { mode: "string" }).notNull(),
+  reportedNetMinor: numeric("reported_net_minor", { mode: "string" }).notNull(),
+  residualNetMinor: numeric("residual_net_minor", { mode: "string" }).notNull(),
+  ledgerBoundary: bigint("ledger_boundary", { mode: "bigint" }).notNull(),
+  digest: text().notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const vatActualReturnBoxes = openerp.table("vat_actual_return_boxes", {
+  bookId: text("book_id").notNull(),
+  returnId: text("return_id").notNull(),
+  box: text().notNull(),
+  kind: text().notNull(),
+  exactMinor: numeric("exact_minor", { mode: "string" }).notNull(),
+  reportedMinor: numeric("reported_minor", { mode: "string" }).notNull(),
+  residualMinor: numeric("residual_minor", { mode: "string" }).notNull(),
+});
+
+export const vatActualReturnContributions = openerp.table("vat_actual_return_contributions", {
+  bookId: text("book_id").notNull(),
+  returnId: text("return_id").notNull(),
+  ordinal: integer().notNull(),
+  factId: text("fact_id").notNull(),
+  origin: text().notNull(),
+  mappingRuleId: text("mapping_rule_id").notNull(),
+  rateId: text("rate_id").notNull(),
+  box: text().notNull(),
+  signedMinor: numeric("signed_minor", { mode: "string" }).notNull(),
+  basisMinor: numeric("basis_minor", { mode: "string" }).notNull(),
+  taxMinor: numeric("tax_minor", { mode: "string" }).notNull(),
+  revisionId: text("revision_id").notNull(),
+  factDigest: text("fact_digest").notNull(),
+});
+
+export const vatActualReturnExclusions = openerp.table("vat_actual_return_exclusions", {
+  bookId: text("book_id").notNull(),
+  returnId: text("return_id").notNull(),
+  ordinal: integer().notNull(),
+  factId: text("fact_id").notNull(),
+  origin: text().notNull(),
+  revisionId: text("revision_id").notNull(),
+  reason: text().notNull(),
+  detail: text().notNull(),
+});
+
+export const vatActualReturnControls = openerp.table("vat_actual_return_controls", {
+  bookId: text("book_id").notNull(),
+  returnId: text("return_id").notNull(),
+  accountId: text("account_id").notNull(),
+  role: text().notNull(),
+  reviewedOpeningMinor: numeric("reviewed_opening_minor", { mode: "string" }).notNull(),
+  expectedClosingMinor: numeric("expected_closing_minor", { mode: "string" }).notNull(),
+  frozenGlClosingMinor: numeric("frozen_gl_closing_minor", { mode: "string" }).notNull(),
+  differenceMinor: numeric("difference_minor", { mode: "string" }).notNull(),
+  reconciled: boolean().notNull(),
+});
+
+export const vatActualReturnControlRows = openerp.table("vat_actual_return_control_rows", {
+  bookId: text("book_id").notNull(),
+  returnId: text("return_id").notNull(),
+  accountId: text("account_id").notNull(),
+  ordinal: integer().notNull(),
+  state: text().notNull(),
+  voucherId: text("voucher_id").notNull(),
+  lineId: text("line_id").notNull(),
+  postingDate: date("posting_date", { mode: "string" }).notNull(),
+  signedMinor: numeric("signed_minor", { mode: "string" }).notNull(),
+});
+
+export const vatActualReturnCoverage = openerp.table("vat_actual_return_coverage", {
+  bookId: text("book_id").notNull(),
+  returnId: text("return_id").notNull(),
+  family: text().notNull(),
+  state: text().notNull(),
+  evidenceId: text("evidence_id"),
+  evidenceSha256: text("evidence_sha256"),
+});
+
 export const customerCreditApprovals = openerp.table("customer_credit_approvals", {
   bookId: text("book_id").notNull(),
   id: text("id").notNull(),
