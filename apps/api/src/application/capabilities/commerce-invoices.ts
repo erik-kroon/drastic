@@ -31,7 +31,7 @@ import {
   getSupplierPaymentBatch,
   listSupplierPaymentEligibility,
 } from "../purchases/payments";
-import { listDimensions } from "../dimensions";
+import { listDimensions } from "../dimensions/registry";
 import { readDirectory, readDirectoryExport } from "../commerce/crm-master";
 import {
   applyAllocation,

@@ -2,7 +2,7 @@
 
 ## Current ownership
 
-Application operations live in [application/sie/import.ts](../src/application/sie/import.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+Application operations live in [application/sie/import.ts](../src/application/sie/import.ts), with shared dispatch in [capabilities](../src/application/capabilities/).
 
 ## Historical implementation notes
 
@@ -73,7 +73,7 @@ actual company profile and legal review remain separate gates.
 ### Source implementation and integration
 
 Implemented source: `1100-sie-transaction-artifacts.sql`, `packages/contracts/src/sie.ts`,
-`jurisdictions/se/src/sie/encoder.ts`, `src/application/sie.ts`, `src/db/statements/sie.ts`, and accountant-review
+`jurisdictions/se/src/sie/encoder.ts`, `src/application/sie/book-export.ts`, `src/db/statements/sie.ts`, and accountant-review
 `sie-panel.tsx`/`sie-copy.ts`. The existing pack inspector mounts the new local panel;
 raw pack tables, rows, contracts and JSON/CSV generators are unchanged.
 

@@ -2,7 +2,7 @@
 
 ## Current ownership
 
-Application operations live in [application/subledger/schedules.ts](../src/application/subledger/schedules.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+Application operations live in [application/subledger/schedules.ts](../src/application/subledger/schedules.ts), with shared dispatch in [capabilities](../src/application/capabilities/).
 
 ## Historical implementation notes
 

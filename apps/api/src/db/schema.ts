@@ -866,6 +866,7 @@ export const ownerOperationReceipts = openerp.table("owner_operation_receipts", 
   invoiceId: text("invoice_id"),
   amountMinor: numeric("amount_minor", { mode: "string" }).notNull(),
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
   committedAt: timestamp("committed_at", { withTimezone: true, mode: "string" }).notNull(),
 });
 

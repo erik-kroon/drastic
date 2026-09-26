@@ -4,10 +4,17 @@ node_modules
 .pnp.js
 
 # Build outputs
+# These paths are load-bearing, not cosmetic: infra/alchemy deploys the web Worker
+# from apps/web and apps/api/scripts/self-host.ts serves apps/web/dist/client.
+# Move them only together with those two readers.
 dist
 build
 /output/
+test-results
 *.tsbuildinfo
+apps/web/.tanstack/
+apps/api/.wrangler/
+apps/web/.wrangler/
 
 # Generated files
 apps/web/src/routeTree.gen.ts

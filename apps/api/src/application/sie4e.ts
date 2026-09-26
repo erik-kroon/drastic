@@ -31,7 +31,7 @@ import { objectMapSource } from "./dimensions/assignments";
 import { canonicalText, digest } from "./json";
 import { failure } from "./failures";
 import { isoNow, newId, replay, saveCommand } from "./posting";
-import { base64, sha256HexOf } from "./sie";
+import { base64, sha256HexOf } from "./bytes";
 import { parseSie } from "./sie-import-parser";
 
 // NEXT-11: complete selected-book SIE4E export.

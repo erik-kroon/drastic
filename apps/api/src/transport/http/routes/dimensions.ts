@@ -3,7 +3,7 @@ import { Api } from "@open-erp/contracts/api";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { listDimensions, saveDimension, saveDimensionValue } from "../../../application/dimensions";
+import { listDimensions, saveDimension, saveDimensionValue } from "../../../application/dimensions/registry";
 import { dimensionAssignmentReport } from "../../../application/dimensions/assignments";
 
 export const DimensionHandlers = HttpApiBuilder.group(Api, "dimensions", (handlers) =>
