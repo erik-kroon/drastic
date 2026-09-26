@@ -256,53 +256,79 @@ function monthStep(anchor: CalendarDate, months: bigint, anchorPolicy: MonthAnch
   );
 }
 
-function dayStep(anchor: CalendarDate, days: bigint) {
-  let year = anchor.year;
-  let monthIndex = anchor.monthIndex;
-  let day = anchor.day;
-  let remaining = days;
+function daysBeforeYear(year: bigint) {
+  const previous = year - 1n;
 
-  while (remaining < 0n) {
-    if (monthIndex === 0n) {
-      monthIndex = 11n;
-      year -= 1n;
-    } else {
-      monthIndex -= 1n;
-    }
+  return 365n * previous + previous / 4n - previous / 100n + previous / 400n;
+}
 
-    const monthEnd = monthLength(year, monthIndex);
+function daysBeforeMonth(year: bigint, monthIndex: bigint) {
+  let total = 0n;
 
-    if (monthEnd === null) {
-      return fail("CycleOutsideCalendar", "The cycle falls outside the supported calendar.");
-    }
+  for (let index = 0n; index < monthIndex; index += 1n) {
+    const length = monthLength(year, index);
 
-    day = monthEnd;
-    remaining += monthEnd;
+    if (length === null) return null;
+
+    total += length;
   }
 
-  while (true) {
-    const monthEnd = monthLength(year, monthIndex);
+  return total;
+}
 
-    if (monthEnd === null) {
-      return fail("CycleOutsideCalendar", "The cycle falls outside the supported calendar.");
-    }
-
-    if (remaining < monthEnd) break;
-
-    remaining -= monthEnd;
-    monthIndex += 1n;
-
-    if (monthIndex === 12n) {
-      monthIndex = 0n;
-      year += 1n;
-    }
+// A fixed day interval is counted on whole local calendar days, so the anchor is
+// projected to an absolute day count and decomposed again. Accumulating months
+// from a clamped anchor day instead would drift a 31st anchor into an invalid
+// day.
+function calendarFromAbsolute(days: bigint): Checked<CalendarDate> {
+  if (days < 0n) {
+    return fail("CycleOutsideCalendar", "The cycle falls outside the supported calendar.");
   }
+
+  let year = (days * 10000n) / 3652425n + 1n;
+
+  while (year > firstCalendarYear && daysBeforeYear(year) > days) year -= 1n;
+
+  while (year < lastCalendarYear && daysBeforeYear(year + 1n) <= days) year += 1n;
 
   if (!inCalendar(year)) {
     return fail("CycleOutsideCalendar", "The cycle falls outside the supported calendar.");
   }
 
-  return Result.succeed(localDate(year, monthIndex, day + remaining));
+  let remaining = days - daysBeforeYear(year);
+  let monthIndex = 0n;
+
+  while (true) {
+    const length = monthLength(year, monthIndex);
+
+    if (length === null) {
+      return fail("CycleOutsideCalendar", "The cycle falls outside the supported calendar.");
+    }
+
+    if (remaining < length) break;
+
+    remaining -= length;
+    monthIndex += 1n;
+  }
+
+  return Result.succeed({ year, monthIndex, day: remaining + 1n });
+}
+
+function dayStep(anchor: CalendarDate, days: bigint): Checked<string> {
+  const beforeMonth = daysBeforeMonth(anchor.year, anchor.monthIndex);
+
+  if (beforeMonth === null) {
+    return fail("CycleOutsideCalendar", "The cycle falls outside the supported calendar.");
+  }
+
+  const absolute = daysBeforeYear(anchor.year) + beforeMonth + (anchor.day - 1n) + days;
+  const calendar = calendarFromAbsolute(absolute);
+
+  if (Result.isFailure(calendar)) return Result.fail(calendar.failure);
+
+  return Result.succeed(
+    localDate(calendar.success.year, calendar.success.monthIndex, calendar.success.day),
+  );
 }
 
 function declaredInterval(
