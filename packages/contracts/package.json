@@ -65,6 +65,7 @@
     "./accountant-review": "./src/accountant-review.ts",
     "./source-intake": "./src/source-intake.ts",
     "./supplier-inbox": "./src/supplier-inbox.ts",
+    "./supplier-extraction": "./src/supplier-extraction.ts",
     "./deadlines": "./src/deadlines.ts",
     "./rule-impact": "./src/rule-impact.ts",
     "./collections": "./src/collections.ts",

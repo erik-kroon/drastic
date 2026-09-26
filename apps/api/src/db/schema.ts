@@ -657,3 +657,44 @@ export const purchaseLineCapacities = openerp.table("purchase_line_capacities", 
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull(),
 });
+
+export const supplierExtractionRequests = openerp.table("supplier_extraction_requests", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  occurrenceId: text("occurrence_id").notNull(),
+  generation: integer("generation").notNull(),
+  originalHash: text("original_hash").notNull(),
+  originalBytes: bigint("original_bytes", { mode: "bigint" }).notNull(),
+  engineRelease: text("engine_release").notNull(),
+  attemptIdentity: text("attempt_identity").notNull(),
+  requestedBy: text("requested_by").notNull(),
+  requestedAt: timestamp("requested_at", { withTimezone: true, mode: "string" }).notNull(),
+  digest: text().notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const supplierExtractionRequestStates = openerp.table("supplier_extraction_request_states", {
+  bookId: text("book_id").notNull(),
+  requestId: text("request_id").notNull(),
+  state: text().notNull(),
+  cancelVersion: integer("cancel_version").notNull(),
+  attemptsMade: integer("attempts_made").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const supplierFieldDecisions = openerp.table("supplier_field_decisions", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  occurrenceId: text("occurrence_id").notNull(),
+  requestId: text("request_id").notNull(),
+  attemptId: text("attempt_id").notNull(),
+  draftId: text("draft_id").notNull(),
+  draftRevision: bigint("draft_revision", { mode: "bigint" }).notNull(),
+  lineOrdinal: integer("line_ordinal").notNull(),
+  fieldKey: text("field_key").notNull(),
+  decisionKind: text("decision_kind").notNull(),
+  reviewer: text("reviewer").notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+  digest: text().notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});

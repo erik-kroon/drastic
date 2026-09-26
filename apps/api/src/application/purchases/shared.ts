@@ -37,6 +37,10 @@ export const accountColumns = [
 const mutableColumns = new Map([
   ["supplier_invoice_drafts", ["current_revision"]],
   ["supplier_inbox", ["draft_id", "review_reason", "review_attempt_id"]],
+  [
+    "supplier_extraction_request_states",
+    ["state", "cancel_version", "attempts_made", "updated_at"],
+  ],
 ]);
 
 export const draftKeyPattern = /^[a-z][a-z0-9_-]{2,127}$/;

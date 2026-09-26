@@ -235,117 +235,136 @@ export const reviseSupplierInvoiceDraft = Effect.fn("purchases.draft.revise")(fu
   },
 ) {
   return yield* Shared.withBook(token, command.scope, true, "update", (transaction, principal) =>
-    Effect.gen(function* () {
-      yield* Shared.requireTables(transaction, draftTables, draftInserts, revisionUpdates);
-      yield* Shared.requireColumns(transaction, Shared.accountColumns);
-      const book = yield* Shared.readBook(transaction, command.scope.bookId);
-
-      if (Shared.byteLength(JSON.stringify(command.input)) > maximumInputBytes) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const request = yield* replay(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        "revise_supplier_invoice_draft",
-        principal.actorId,
-        {
-          id: command.draftId,
-          input: yield* Shared.toJsonObject(command.input),
-        } satisfies JsonObject,
-        RevisionSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
-
-      const draft = yield* storedDraft(transaction, command.scope.bookId, command.draftId);
-
-      const head = (yield* DraftDb.readHeadRevision(
-        transaction,
-        command.scope.bookId,
-        command.draftId,
-        draft.currentRevision,
-      ))[0];
-
-      if (!head) return yield* failure("NotFound");
-
-      if (
-        (yield* readSealedDraft(transaction, command.scope.bookId, command.draftId, "supplier"))
-          .length
-      )
-        return yield* failure("Forbidden");
-
-      if (
-        command.input.expectedRevision !== draft.currentRevision ||
-        command.input.expectedDigest !== Shared.textField(head.body, "digest")
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      if (Number(draft.currentRevision) >= maximumRevisions) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const content = yield* Shared.toJsonObject(command.input.content);
-
-      const calculation = yield* calculateSupplierDraft(
-        transaction,
-        command.scope.bookId,
-        book,
-        content,
-      );
-
-      const nextRevision = (BigInt(draft.currentRevision) + 1n).toString();
-
-      const body = Object.assign({}, calculation, {
-        id: command.draftId,
-        scope: command.scope,
-        draftKey: draft.draftKey,
-        revision: nextRevision,
-        status: "draft",
-        acceptanceSupported: false,
-        recognitionSupported: false,
-        recognitionAssessment: "not_assessed",
-        calculationBasis: "explicit_line_amounts_v1",
-        content: command.input.content,
-        reason: command.input.reason,
-        createdAt: yield* isoNow(transaction),
-        receipt: Shared.receipt(
-          command.idempotencyKey,
-          "revise_supplier_invoice_draft",
-          principal.actorId,
-        ),
-      }) satisfies JsonObject;
-
-      const sealed = Object.assign({}, body, { digest: yield* digest(body) });
-
-      if (Shared.byteLength(JSON.stringify(sealed)) > maximumRevisionBodyBytes) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const revision = yield* Shared.decode(RevisionSchema, sealed);
-      yield* DraftDb.insertDraftRevision(transaction, {
-        bookId: command.scope.bookId,
-        draftId: command.draftId,
-        revision: nextRevision,
-        body: sealed,
-      });
-      yield* DraftDb.advanceDraftRevision(transaction, command.scope.bookId, command.draftId);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "revise_supplier_invoice_draft",
-        principal.actorId,
-        yield* Shared.toJsonObject(revision),
-      );
-
-      return revision;
-    }),
+    reviseSupplierInvoiceDraftInTransaction(transaction, principal, command),
   );
+});
+
+// The internal revision. It takes the caller's transaction and the caller's
+// command identity, so a reviewed merge that revises a draft inside its own
+// financial group commits the revision and its decisions together instead of
+// opening a second transaction from inside a lock.
+export const reviseSupplierInvoiceDraftInTransaction = Effect.fn(
+  "purchases.draft.reviseInTransaction",
+)(function* (
+  transaction: import("../../db/transaction").Transaction,
+  principal: Shared.Principal,
+  command: {
+    readonly scope: Scope;
+    readonly draftId: string;
+    readonly idempotencyKey: string;
+    readonly input: typeof Drafts.ReviseSupplierInvoiceDraft.Type;
+  },
+) {
+  return yield* Effect.gen(function* () {
+    yield* Shared.requireTables(transaction, draftTables, draftInserts, revisionUpdates);
+    yield* Shared.requireColumns(transaction, Shared.accountColumns);
+    const book = yield* Shared.readBook(transaction, command.scope.bookId);
+
+    if (Shared.byteLength(JSON.stringify(command.input)) > maximumInputBytes) {
+      return yield* failure("InvalidJournal");
+    }
+
+    const request = yield* replay(
+      transaction,
+      command.scope,
+      command.idempotencyKey,
+      "revise_supplier_invoice_draft",
+      principal.actorId,
+      {
+        id: command.draftId,
+        input: yield* Shared.toJsonObject(command.input),
+      } satisfies JsonObject,
+      RevisionSchema,
+    );
+
+    if (request.previous) return request.previous;
+    yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
+
+    const draft = yield* storedDraft(transaction, command.scope.bookId, command.draftId);
+
+    const head = (yield* DraftDb.readHeadRevision(
+      transaction,
+      command.scope.bookId,
+      command.draftId,
+      draft.currentRevision,
+    ))[0];
+
+    if (!head) return yield* failure("NotFound");
+
+    if (
+      (yield* readSealedDraft(transaction, command.scope.bookId, command.draftId, "supplier"))
+        .length
+    )
+      return yield* failure("Forbidden");
+
+    if (
+      command.input.expectedRevision !== draft.currentRevision ||
+      command.input.expectedDigest !== Shared.textField(head.body, "digest")
+    ) {
+      return yield* failure("StaleDependency");
+    }
+
+    if (Number(draft.currentRevision) >= maximumRevisions) {
+      return yield* failure("InvalidJournal");
+    }
+
+    const content = yield* Shared.toJsonObject(command.input.content);
+
+    const calculation = yield* calculateSupplierDraft(
+      transaction,
+      command.scope.bookId,
+      book,
+      content,
+    );
+
+    const nextRevision = (BigInt(draft.currentRevision) + 1n).toString();
+
+    const body = Object.assign({}, calculation, {
+      id: command.draftId,
+      scope: command.scope,
+      draftKey: draft.draftKey,
+      revision: nextRevision,
+      status: "draft",
+      acceptanceSupported: false,
+      recognitionSupported: false,
+      recognitionAssessment: "not_assessed",
+      calculationBasis: "explicit_line_amounts_v1",
+      content: command.input.content,
+      reason: command.input.reason,
+      createdAt: yield* isoNow(transaction),
+      receipt: Shared.receipt(
+        command.idempotencyKey,
+        "revise_supplier_invoice_draft",
+        principal.actorId,
+      ),
+    }) satisfies JsonObject;
+
+    const sealed = Object.assign({}, body, { digest: yield* digest(body) });
+
+    if (Shared.byteLength(JSON.stringify(sealed)) > maximumRevisionBodyBytes) {
+      return yield* failure("InvalidJournal");
+    }
+
+    const revision = yield* Shared.decode(RevisionSchema, sealed);
+    yield* DraftDb.insertDraftRevision(transaction, {
+      bookId: command.scope.bookId,
+      draftId: command.draftId,
+      revision: nextRevision,
+      body: sealed,
+    });
+    yield* DraftDb.advanceDraftRevision(transaction, command.scope.bookId, command.draftId);
+    yield* saveCommand(
+      transaction,
+      command.scope,
+      command.idempotencyKey,
+      request.expected,
+      "revise_supplier_invoice_draft",
+      principal.actorId,
+      yield* Shared.toJsonObject(revision),
+    );
+
+    return revision;
+  });
 });
 
 export const getSupplierInvoiceDraft = Effect.fn("purchases.draft.get")(function* (

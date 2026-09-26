@@ -1227,7 +1227,7 @@ export const executePreparationJob = Effect.fn("Preparation.executeJob")(functio
   );
 });
 
-function admitRunnerActor(transaction: Transaction, token: string) {
+export function admitRunnerActor(transaction: Transaction, token: string) {
   return Effect.gen(function* () {
     if (token.length < 32 || token.length > 512) return yield* failure("Unauthorized");
     const credential = (yield* JobDb.readLiveCredential(transaction, yield* hashToken(token)))[0];

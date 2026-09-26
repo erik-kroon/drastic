@@ -59,6 +59,7 @@ import { DeadlinesCapabilities } from "./deadlines";
 import { RuleImpactCapabilities } from "./rule-impact";
 import { SupplierInboxCapabilities } from "./supplier-inbox";
 import { PayrollCalculationCapabilities } from "./payroll-calculations";
+import { SupplierExtractionCapabilities } from "./supplier-extraction";
 
 const scoped = { scope: Accounting.Scope };
 
@@ -128,6 +129,7 @@ export const Capabilities = {
   ...DeadlinesCapabilities,
   ...RuleImpactCapabilities,
   ...SupplierInboxCapabilities,
+  ...SupplierExtractionCapabilities,
   ...ClosingCapabilities,
   ...Automation.PreparationJobStopCapabilities,
   ...SubledgerCapabilities,
