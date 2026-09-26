@@ -757,22 +757,49 @@ const attachSie4E = Effect.fn("sie4e.attach")(function* (
   token: string,
   input: { scope: Scope; id: string },
 ) {
-  const retained = yield* withBook(token, input.scope, false, function* (transaction) {
+  const recovered = yield* withBook(token, input.scope, false, function* (transaction, principal) {
     yield* requireSieBookAccess(transaction, false);
 
     const row = (yield* SieDb.readSieBookExport(transaction, input.scope.bookId, input.id))[0];
 
     if (row === undefined) return yield* failure("NotFound");
 
+    if (row.actorId !== principal.actorId) return yield* failure("Forbidden");
+
+    // A retained artifact is recovered under current access before anything is
+    // rendered. Its bytes were verified when they were produced, so retrieving
+    // them must not depend on today's renderer reproducing them byte for byte,
+    // nor on evidence still being eligible to back a new artifact.
+    const existing = (yield* SieDb.readSieBookArtifact(
+      transaction,
+      input.scope.bookId,
+      input.id,
+    ))[0];
+
+    if (existing !== undefined) {
+      return {
+        recovered: true as const,
+        view: yield* readView(transaction, input.scope.bookId, input.id),
+      };
+    }
+
     const capture = yield* decode(CaptureSchema, row.body);
     const stored = yield* SieDb.readSieBookAllRows(transaction, input.scope.bookId, input.id);
 
     return {
-      capture,
-      rows: yield* Effect.forEach(stored, (entry) => decode(RowSchema, entry.body)),
-    } satisfies Retained;
+      recovered: false as const,
+      retained: {
+        capture,
+        rows: yield* Effect.forEach(stored, (entry) => decode(RowSchema, entry.body)),
+      } satisfies Retained,
+    };
   });
 
+  // A new artifact is a new render: it is verified against the frozen capture and
+  // re-proves the legal identity before it is retained.
+  if (recovered.recovered) return recovered.view;
+
+  const retained = recovered.retained;
   const rendered = yield* renderSie4EExport(retained);
 
   return yield* withBook(
@@ -815,13 +842,10 @@ const attachSie4E = Effect.fn("sie4e.attach")(function* (
         input.id,
       ))[0];
 
+      // Another writer retained the artifact between the recovery read and this
+      // transaction. Its bytes were verified when they were produced, so they are
+      // returned rather than re-rendered and compared.
       if (existing !== undefined) {
-        const same =
-          existing.content.length === rendered.bytes.length &&
-          existing.content.every((byte, position) => byte === rendered.bytes[position]);
-
-        if (!same) return yield* failure("IdempotencyConflict");
-
         return yield* readView(transaction, input.scope.bookId, input.id);
       }
 
