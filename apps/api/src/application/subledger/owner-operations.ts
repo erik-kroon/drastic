@@ -538,6 +538,10 @@ function wirePlan(
       sourceLineId: fact.sourceLineId,
       componentRole: fact.componentRole,
       taxComponentId: fact.taxComponentId,
+      // The identity the component is persisted and referenced under. A later
+      // credit's adjustment names it, so it must survive the restatement into the
+      // wire vocabulary rather than being dropped.
+      taxFactId: fact.taxFactId,
       signedBaseMinor: fact.signedBaseMinor,
       signedOutputTaxMinor: fact.signedOutputTaxMinor,
       signedDeductibleTaxMinor: fact.signedDeductibleTaxMinor,
