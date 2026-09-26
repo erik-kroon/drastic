@@ -34,6 +34,7 @@
     "alchemy:deploy": "bun alchemy deploy --config infra/alchemy/alchemy.run.ts",
     "alchemy:destroy": "bun alchemy destroy --config infra/alchemy/alchemy.run.ts",
     "check:changed": "bun scripts/check-changed.ts",
+    "check:changed:full": "bun scripts/check-changed.ts --type-aware",
     "check:infra": "tsc --project infra/alchemy/tsconfig.json --noEmit",
     "check-types": "vp run --filter api --filter web --filter @open-erp/ui --filter @open-erp/contracts --filter @open-erp/domain --filter @open-erp/jurisdiction-se check-types && bun run check:infra && bun run check:tests && tsc --project scripts/tsconfig.json --noEmit",
     "check": "oxlint apps/api/src apps/api/scripts apps/api/tests apps/web/src infra/alchemy packages/contracts/src packages/domain/src jurisdictions/se/src packages/ui/src config/oxlint scripts && oxfmt --write apps/api apps/web/src infra/alchemy packages/contracts packages/domain jurisdictions/se packages/ui/src packages/config scripts apps/web/vite.config.ts vite.config.ts",
