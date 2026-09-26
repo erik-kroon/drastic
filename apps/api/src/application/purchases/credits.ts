@@ -434,18 +434,28 @@ export const executeSupplierCredit = Effect.fn("purchases.credits.execute")(func
 
       if (invoice.outstandingMinor === null) return yield* failure("StaleDependency");
 
+      const creditRecognitionId =
+        invoice.counterpartyId === null
+          ? null
+          : yield* Recognition.creditRecognitionId(
+              Recognition.creditEconomicKey(
+                invoice.counterpartyId,
+                review.input.supplierCreditNumber,
+              ),
+            );
+
       const owned =
         review.snapshot.recognitionId === undefined ||
         review.snapshot.lineReleases === undefined ||
         review.snapshot.taxAdjustments === undefined ||
-        invoice.counterpartyId === null
+        creditRecognitionId === null
           ? null
           : yield* Recognition.recordCreditRecognitionInTransaction(tx, {
               scope,
               bookId: scope.bookId,
               actorId: principal.actorId,
               receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-              recognitionId: review.snapshot.recognitionId,
+              recognitionId: creditRecognitionId,
               originalRecognitionId: review.snapshot.recognitionId,
               invoiceId: invoice.id,
               supplierCreditNumber: review.input.supplierCreditNumber,
@@ -459,6 +469,8 @@ export const executeSupplierCredit = Effect.fn("purchases.credits.execute")(func
                 taxPointOn: review.input.creditDate,
                 basis: "document_date",
               },
+              currency: invoice.currency,
+              currencyScale: invoice.currencyScale,
               creditGrossMinor: review.input.amountMinor,
               releasedDeductionMinor: review.snapshot.lineReleases
                 .reduce((sum, release) => sum + BigInt(release.releasedDeductionMinor), 0n)

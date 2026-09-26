@@ -91,6 +91,7 @@ export const RecognitionPlan = Schema.Struct({
       sourceLineId: Accounting.Identifier,
       componentRole: Schema.Literal("input_tax"),
       taxComponentId: Accounting.Identifier,
+      taxFactId: Accounting.Identifier,
       signedBaseMinor: Accounting.SignedMinorUnits,
       signedOutputTaxMinor: Accounting.SignedMinorUnits,
       signedDeductibleTaxMinor: Accounting.SignedMinorUnits,
@@ -153,6 +154,7 @@ export const LineCapacity = Schema.Struct({
   remainingSourceTaxMinor: Accounting.MinorUnits,
   remainingDeductionMinor: Accounting.MinorUnits,
   treatment: ReviewedTreatment,
+  taxComponentId: Accounting.Identifier,
   taxFactId: Accounting.Identifier,
   version: Accounting.MinorUnits,
   updatedAt: Schema.String,
@@ -176,8 +178,10 @@ const recognitionCommon = {
 };
 
 const commonRecognitionFields = {
-  currency: Schema.String,
-  currencyScale: Schema.Int,
+  // A recognition's own amounts are unreadable without the currency and scale
+  // they were recognized in, so neither owner may record an empty one.
+  currency: Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/)),
+  currencyScale: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0), Schema.isLessThanOrEqualTo(6)),
   recognitionDate: Accounting.AccountingDate,
   taxPoint: TaxPointDate,
   profileWitness: Schema.NullOr(Profiles.ProfileWitness),

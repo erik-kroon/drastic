@@ -37,7 +37,6 @@ CREATE TABLE openerp.purchase_recognitions (
   CONSTRAINT purchase_recognitions_pkey PRIMARY KEY (book_id, id),
   CONSTRAINT purchase_recognitions_economic_key_key UNIQUE (book_id, economic_key),
   CONSTRAINT purchase_recognitions_book_id_voucher_id_key UNIQUE (book_id, voucher_id),
-  CONSTRAINT purchase_recognitions_book_id_payable_id_key UNIQUE (book_id, payable_id, event_owner),
   CONSTRAINT purchase_recognitions_book_id_change_set_id_key UNIQUE (book_id, change_set_id),
   CONSTRAINT purchase_recognitions_book_id_approval_id_key UNIQUE (book_id, approval_id),
   CONSTRAINT purchase_recognitions_event_owner_check CHECK (event_owner = ANY (ARRAY['supplier_purchase'::text, 'supplier_credit'::text])),
@@ -56,8 +55,21 @@ CREATE TABLE openerp.purchase_recognitions (
   CONSTRAINT purchase_recognitions_identity_check CHECK (NOT body ->> 'id'::text IS DISTINCT FROM id),
   CONSTRAINT purchase_recognitions_scope_check CHECK (NOT body -> 'scope'::text ->> 'bookId'::text IS DISTINCT FROM book_id),
   CONSTRAINT purchase_recognitions_owner_check CHECK (NOT body ->> 'eventOwner'::text IS DISTINCT FROM event_owner),
-  CONSTRAINT purchase_recognitions_gross_body_check CHECK (NOT body ->> 'payableMinor'::text IS DISTINCT FROM gross_minor::text),
-  CONSTRAINT purchase_recognitions_deductible_body_check CHECK (NOT body ->> 'totalDeductibleTaxMinor'::text IS DISTINCT FROM deductible_tax_minor::text),
+  -- Each owner states its gross and its deductible total in its own body shape: a
+  -- purchase carries the sealed compiler plan, a credit carries its own released
+  -- totals. Both are still compared against the stored numeric columns.
+  CONSTRAINT purchase_recognitions_gross_body_check CHECK (
+    CASE event_owner
+      WHEN 'supplier_purchase'::text THEN NOT body #>> '{plan,payableMinor}'::text[] IS DISTINCT FROM gross_minor::text
+      WHEN 'supplier_credit'::text THEN NOT body ->> 'creditGrossMinor'::text IS DISTINCT FROM gross_minor::text
+    END
+  ),
+  CONSTRAINT purchase_recognitions_deductible_body_check CHECK (
+    CASE event_owner
+      WHEN 'supplier_purchase'::text THEN NOT body #>> '{plan,totalDeductibleTaxMinor}'::text[] IS DISTINCT FROM deductible_tax_minor::text
+      WHEN 'supplier_credit'::text THEN NOT body ->> 'releasedDeductionMinor'::text IS DISTINCT FROM deductible_tax_minor::text
+    END
+  ),
   CONSTRAINT purchase_recognitions_original_recognition_id_fkey FOREIGN KEY (book_id, original_recognition_id) REFERENCES openerp.purchase_recognitions(book_id, id),
   CONSTRAINT purchase_recognitions_book_id_voucher_id_fkey FOREIGN KEY (book_id, voucher_id) REFERENCES openerp.vouchers(book_id, id),
   CONSTRAINT purchase_recognitions_book_id_payable_id_fkey FOREIGN KEY (book_id, payable_id) REFERENCES openerp.commerce_invoices(book_id, id),
@@ -101,7 +113,11 @@ CREATE TABLE openerp.purchase_tax_facts (
   CONSTRAINT purchase_tax_facts_recognition_check CHECK (NOT body ->> 'recognitionId'::text IS DISTINCT FROM recognition_id),
   CONSTRAINT purchase_tax_facts_line_check CHECK (NOT body ->> 'sourceLineId'::text IS DISTINCT FROM source_line_id),
   CONSTRAINT purchase_tax_facts_book_id_recognition_id_fkey FOREIGN KEY (book_id, recognition_id) REFERENCES openerp.purchase_recognitions(book_id, id),
-  CONSTRAINT purchase_tax_facts_book_id_voucher_id_fkey FOREIGN KEY (book_id, voucher_id) REFERENCES openerp.vouchers(book_id, id)
+  CONSTRAINT purchase_tax_facts_book_id_voucher_id_fkey FOREIGN KEY (book_id, voucher_id) REFERENCES openerp.vouchers(book_id, id),
+  -- An adjustment names the exact original fact it corrects. The reference is
+  -- structural, not a second calculation: it can only be null or an existing
+  -- fact in the same book.
+  CONSTRAINT purchase_tax_facts_book_id_adjusts_tax_fact_id_fkey FOREIGN KEY (book_id, adjusts_tax_fact_id) REFERENCES openerp.purchase_tax_facts(book_id, id)
 );
 
 CREATE TABLE openerp.purchase_line_capacities (
@@ -133,6 +149,14 @@ CREATE TABLE openerp.purchase_line_capacities (
 CREATE INDEX purchase_recognitions_draft ON openerp.purchase_recognitions (book_id, draft_id);
 CREATE INDEX purchase_recognitions_counterparty ON openerp.purchase_recognitions (book_id, counterparty_id, document_number);
 CREATE INDEX purchase_recognitions_tax_point ON openerp.purchase_recognitions (book_id, tax_point_on);
+
+-- One recognized purchase per purchase payable, and many separately identified
+-- supplier credits against that same payable. A credit's own identity is the
+-- credit document the supplier issued, which purchase_recognitions_economic_key_key
+-- already holds as UNIQUE (book_id, economic_key); a second recognition of one
+-- credit document is refused by that key, not by a per-payable count.
+CREATE UNIQUE INDEX purchase_recognitions_purchase_payable_key
+  ON openerp.purchase_recognitions (book_id, payable_id) WHERE event_owner = 'supplier_purchase';
 CREATE INDEX purchase_tax_facts_recognition ON openerp.purchase_tax_facts (book_id, recognition_id);
 CREATE INDEX purchase_tax_facts_voucher ON openerp.purchase_tax_facts (book_id, voucher_id);
 CREATE INDEX purchase_tax_facts_adjusts ON openerp.purchase_tax_facts (book_id, adjusts_tax_fact_id);

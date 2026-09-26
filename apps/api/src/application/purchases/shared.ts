@@ -73,6 +73,15 @@ export function toJsonObject<A>(value: A) {
   );
 }
 
+// A retained gap list is an array. Encoding it as an object would change what
+// the stored document means, so JSON-capable values use the JSON contract and
+// only genuine objects use the object-only one.
+export function toJson<A>(value: A) {
+  return Schema.encodeUnknownEffect(Schema.Json)(value).pipe(
+    Effect.mapError(() => failure("InternalError")),
+  );
+}
+
 export function withBook<A>(
   token: string,
   scope: Scope,

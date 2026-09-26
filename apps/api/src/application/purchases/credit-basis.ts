@@ -284,7 +284,12 @@ const purchaseCreditPlan = Effect.fn("purchases.credits.purchaseCreditPlan")(fun
     },
     reportingObligationId: null,
     ruleReleaseId: recognition.profileWitness?.ruleReleaseId ?? null,
-    taxComponentPrefix: `supplier_credit_${review.id}`,
+    // The credit's components are namespaced by the credit document's own
+    // recognition identity, so re-reviewing one supplier credit document
+    // resolves to the same components instead of forking new ones.
+    taxComponentPrefix: yield* Recognition.creditRecognitionId(
+      Recognition.creditEconomicKey(counterparty, input.supplierCreditNumber),
+    ),
     creditEvidence: {
       evidenceId: input.creditEvidenceId,
       sourceKey: `supplier_credit:${input.supplierCreditNumber}`,
@@ -440,7 +445,7 @@ const purchaseCreditSnapshot = Effect.fn("purchases.credits.purchaseSnapshot")(f
         creditedNetMinor: capacity.creditedNetMinor,
         creditedSourceTaxMinor: capacity.creditedSourceTaxMinor,
         releasedDeductionMinor: capacity.releasedDeductionMinor,
-        taxComponentId: `purchase_recognition_${capacity.sourceLineId}`,
+        taxComponentId: capacity.taxComponentId,
         taxFactId: capacity.taxFactId,
       })),
       inputVatAccountId: review.inputVatAccountId,
@@ -461,6 +466,7 @@ const purchaseCreditSnapshot = Effect.fn("purchases.credits.purchaseSnapshot")(f
         sourceLineId: adjustment.sourceLineId,
         componentRole: adjustment.componentRole,
         taxComponentId: adjustment.taxComponentId,
+        taxFactId: adjustment.taxFactId,
         signedBaseMinor: adjustment.signedBaseMinor,
         signedOutputTaxMinor: adjustment.signedOutputTaxMinor,
         signedDeductibleTaxMinor: adjustment.signedDeductibleTaxMinor,

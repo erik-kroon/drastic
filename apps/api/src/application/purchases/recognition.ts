@@ -10,7 +10,7 @@ import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import type * as Schema from "effect/Schema";
 import { failure } from "../failures";
-import { digest, isoNow, newId } from "../posting";
+import { digest, isoNow, sha256Hex } from "../posting";
 import { resolveCompanyProfileInTransaction } from "../company-profiles";
 import * as Db from "../../db/purchases/recognition";
 import type { Transaction } from "../../db/transaction";
@@ -42,10 +42,6 @@ const CapacitySchema = Recognition.LineCapacity;
 
 const TreatmentSchema = Recognition.ReviewedTreatment;
 
-export const recognitionTaxComponentPrefix = "purchase_recognition";
-
-export const creditTaxComponentPrefix = "purchase_credit";
-
 // Each basis code allows exactly one deduction fraction. A treatment that
 // disagrees with its own basis is refused instead of being rounded into meaning.
 const basisFractions = new Map<typeof Recognition.DeductionBasis.Type, string>([
@@ -63,12 +59,33 @@ const unsupportedFailures = new Set<PurchaseFailureCode>([
   "DuplicateCreditLine",
 ]);
 
+// One recognized economic event has one identity, derived from the reviewed
+// supplier identity rather than drawn at write time. Prepare, approval and
+// execution therefore agree on it, and every tax component and fact is
+// namespaced by it, so a second invoice's local line ids cannot collide with the
+// first invoice's. The suffix is bounded: 24 hex characters keep every derived
+// identifier inside the identifier contract's length.
+function derivedId(prefix: string, economicKey: string) {
+  return Effect.map(sha256Hex(economicKey), (hash) => `${prefix}_${hash.slice(0, 24)}`);
+}
+
 export function economicKey(counterpartyId: string, documentNumber: string) {
   return `supplier_purchase:${counterpartyId}:${documentNumber}`;
 }
 
-export function creditEconomicKey(recognitionId: string, reviewId: string) {
-  return `supplier_credit:${recognitionId}:${reviewId}`;
+// A supplier credit is identified by the credit document the supplier actually
+// issued, not by the review that happened to recognize it, so re-reviewing one
+// credit document resolves to the same recognition identity.
+export function creditEconomicKey(counterpartyId: string, supplierCreditNumber: string) {
+  return `supplier_credit:${counterpartyId}:${supplierCreditNumber}`;
+}
+
+export function purchaseRecognitionId(key: string) {
+  return derivedId("purchase_recognition", key);
+}
+
+export function creditRecognitionId(key: string) {
+  return derivedId("purchase_credit_recognition", key);
 }
 
 export function refusalFor(code: PurchaseFailureCode) {
@@ -170,6 +187,7 @@ export type PurchaseLineSelection = {
 
 export type CompiledPurchase = {
   readonly plan: Plan;
+  readonly recognitionId: string;
   readonly witness: Json;
   readonly gaps: Json;
   readonly selections: ReadonlyArray<PurchaseLineSelection>;
@@ -180,6 +198,7 @@ export const compilePurchasePlan = Effect.fn("purchases.recognition.compile")(fu
   transaction: Transaction,
   scope: Scope,
   command: {
+    readonly recognitionId: string;
     readonly book: { readonly currency: string; readonly currencyScale: number };
     readonly content: JsonObject;
     readonly draftLines: ReadonlyArray<Json>;
@@ -223,7 +242,7 @@ export const compilePurchasePlan = Effect.fn("purchases.recognition.compile")(fu
       netMinor: amounts.net,
       sourceTaxMinor: amounts.tax,
       sourceGrossMinor: (BigInt(amounts.net) + BigInt(amounts.tax)).toString(),
-      taxComponentId: `${recognitionTaxComponentPrefix}_${lineId}`,
+      taxComponentId: `${command.recognitionId}_${lineId}`,
       treatment: assignment.treatment,
     });
   }
@@ -255,7 +274,10 @@ export const compilePurchasePlan = Effect.fn("purchases.recognition.compile")(fu
         Shared.isJsonObject(witness.witness) ? witness.witness : {},
         "ruleReleaseId",
       ) ?? null,
-    taxComponentPrefix: recognitionTaxComponentPrefix,
+    // Every tax component of this recognition is namespaced by the recognition's
+    // own preallocated identity, so two invoices that both number their local
+    // first line `line_1` still publish distinct components.
+    taxComponentPrefix: command.recognitionId,
     lines: selections.map((selection) => ({
       sourceLineId: selection.lineId,
       expenseAccountId: selection.expenseAccountId,
@@ -273,8 +295,9 @@ export const compilePurchasePlan = Effect.fn("purchases.recognition.compile")(fu
 
   return {
     plan: wirePlan(result.success, selections),
+    recognitionId: command.recognitionId,
     witness: yield* jsonOrNull(witness.witness),
-    gaps: yield* Shared.toJsonObject(witness.gaps),
+    gaps: yield* Shared.toJson(witness.gaps),
     selections,
     inputVatAccountId: command.inputVatAccountId,
   } satisfies CompiledPurchase;
@@ -315,6 +338,7 @@ function wirePlan(plan: PurchaseRecognitionPlan, selections: ReadonlyArray<Purch
       sourceLineId: fact.sourceLineId,
       componentRole: fact.componentRole,
       taxComponentId: fact.taxComponentId,
+      taxFactId: fact.taxFactId,
       signedBaseMinor: fact.signedBaseMinor,
       signedOutputTaxMinor: fact.signedOutputTaxMinor,
       signedDeductibleTaxMinor: fact.signedDeductibleTaxMinor,
@@ -331,13 +355,14 @@ function wirePlan(plan: PurchaseRecognitionPlan, selections: ReadonlyArray<Purch
 
 function sealedFact(
   fact: Plan["taxFacts"][number],
+  factId: string,
   recognitionId: string,
   voucherId: string,
   recordedAt: string,
   ruleReleaseId: string | null,
 ) {
   return {
-    id: fact.taxComponentId,
+    id: factId,
     recognitionId,
     sourceLineId: fact.sourceLineId,
     componentRole: fact.componentRole,
@@ -362,6 +387,7 @@ function writeTaxFact(
   transaction: Transaction,
   row: {
     readonly bookId: string;
+    readonly factId: string;
     readonly recognitionId: string;
     readonly voucherId: string;
     readonly fact: Plan["taxFacts"][number];
@@ -371,7 +397,14 @@ function writeTaxFact(
 ) {
   return Effect.gen(function* () {
     const body = yield* Shared.toJsonObject(
-      sealedFact(row.fact, row.recognitionId, row.voucherId, row.recordedAt, row.ruleReleaseId),
+      sealedFact(
+        row.fact,
+        row.factId,
+        row.recognitionId,
+        row.voucherId,
+        row.recordedAt,
+        row.ruleReleaseId,
+      ),
     );
 
     const sealed = yield* Shared.decode(TaxFactSchema, { ...body, digest: yield* digest(body) });
@@ -404,6 +437,7 @@ export type RecognitionWrite = {
   readonly bookId: string;
   readonly actorId: string;
   readonly receipt: JsonObject;
+  readonly recognitionId: string;
   readonly economicKey: string;
   readonly draftId: string;
   readonly draftRevision: string;
@@ -432,7 +466,7 @@ export const recordRecognitionInTransaction = Effect.fn(
   "purchases.recognition.recordInTransaction",
 )(function* (transaction: Transaction, command: RecognitionWrite) {
   const recordedAt = yield* isoNow(transaction);
-  const recognitionId = newId("purchase_recognition");
+  const recognitionId = command.recognitionId;
 
   const ruleReleaseId =
     Shared.textField(
@@ -464,21 +498,13 @@ export const recordRecognitionInTransaction = Effect.fn(
     changeSetId: command.changeSetId,
     voucherId: command.voucherId,
     payableId: command.payableId,
-    taxFactIds: command.plan.taxFacts.map((fact) => fact.taxComponentId),
+    taxFactIds: command.plan.taxFacts.map((fact) => fact.taxFactId),
     recordedBy: command.actorId,
     recordedAt,
     receipt: command.receipt,
   });
 
   const sealed = yield* Shared.decode(RecognitionSchema, { ...body, digest: yield* digest(body) });
-
-  const totals = command.plan.lines.reduce(
-    (sum, line) => ({
-      gross: sum.gross + BigInt(line.netMinor) + BigInt(line.sourceTaxMinor),
-      deductible: sum.deductible + BigInt(line.deductibleTaxMinor),
-    }),
-    { gross: 0n, deductible: 0n },
-  );
 
   yield* Db.insertRecognition(transaction, command.bookId, {
     eventOwner: "supplier_purchase",
@@ -495,8 +521,10 @@ export const recordRecognitionInTransaction = Effect.fn(
     approvalId: sealed.approvalId,
     recognitionDate: sealed.recognitionDate,
     taxPointOn: command.taxPoint.taxPointOn,
-    grossMinor: totals.gross.toString(),
-    deductibleTaxMinor: totals.deductible.toString(),
+    // The stored columns are the sealed plan's own totals, so the body, the
+    // numeric columns and the stored digest cannot disagree about the gross.
+    grossMinor: sealed.plan.payableMinor,
+    deductibleTaxMinor: sealed.plan.totalDeductibleTaxMinor,
     body: yield* Shared.toJsonObject(sealed),
     digest: sealed.digest,
     recordedAt,
@@ -505,6 +533,7 @@ export const recordRecognitionInTransaction = Effect.fn(
   for (const fact of command.plan.taxFacts) {
     yield* writeTaxFact(transaction, {
       bookId: command.bookId,
+      factId: fact.taxFactId,
       recognitionId,
       voucherId: command.voucherId,
       fact,
@@ -533,6 +562,7 @@ export const recordRecognitionInTransaction = Effect.fn(
       remainingSourceTaxMinor: line.sourceTaxMinor,
       remainingDeductionMinor: line.deductibleTaxMinor,
       treatment: selection.treatment,
+      taxComponentId: line.taxComponentId,
       taxFactId: line.taxFactId,
       version: "1",
       updatedAt: recordedAt,
@@ -570,6 +600,8 @@ export type CreditRecognitionWrite = {
   readonly counterpartyId: string;
   readonly creditDate: string;
   readonly taxPoint: DraftTaxPoint;
+  readonly currency: string;
+  readonly currencyScale: number;
   readonly creditGrossMinor: string;
   readonly releasedDeductionMinor: string;
   readonly lineReleases: ReadonlyArray<CreditLineRelease>;
@@ -586,7 +618,8 @@ export const recordCreditRecognitionInTransaction = Effect.fn(
   "purchases.recognition.recordCreditInTransaction",
 )(function* (transaction: Transaction, command: CreditRecognitionWrite) {
   const recordedAt = yield* isoNow(transaction);
-  const recognitionId = newId("purchase_credit_recognition");
+  const recognitionId = command.recognitionId;
+  const economicKey = creditEconomicKey(command.counterpartyId, command.supplierCreditNumber);
 
   const ruleReleaseId =
     Shared.textField(
@@ -599,7 +632,7 @@ export const recordCreditRecognitionInTransaction = Effect.fn(
     scope: command.scope,
     version: 1,
     eventOwner: "supplier_credit",
-    economicKey: creditEconomicKey(command.originalRecognitionId, command.reviewId),
+    economicKey,
     originalRecognitionId: command.originalRecognitionId,
     invoiceId: command.invoiceId,
     supplierCreditNumber: command.supplierCreditNumber,
@@ -610,8 +643,10 @@ export const recordCreditRecognitionInTransaction = Effect.fn(
     lineReleases: command.lineReleases,
     creditDate: command.creditDate,
     creditEvidence: command.creditEvidence,
-    currency: "",
-    currencyScale: 0,
+    // A credit carries the original recognition's currency and scale. An empty
+    // currency and scale 0 would make the credit's own amounts unreadable.
+    currency: command.currency,
+    currencyScale: command.currencyScale,
     recognitionDate: command.creditDate,
     taxPoint: command.taxPoint,
     profileWitness: command.witness,
@@ -620,7 +655,7 @@ export const recordCreditRecognitionInTransaction = Effect.fn(
     approvalId: command.approvalId,
     voucherId: command.voucherId,
     payableId: command.invoiceId,
-    taxFactIds: command.taxAdjustments.map((fact) => fact.taxComponentId),
+    taxFactIds: command.taxAdjustments.map((adjustment) => adjustment.taxFactId),
     recordedBy: command.actorId,
     recordedAt,
     receipt: command.receipt,
@@ -656,6 +691,7 @@ export const recordCreditRecognitionInTransaction = Effect.fn(
   for (const adjustment of command.taxAdjustments) {
     yield* writeTaxFact(transaction, {
       bookId: command.bookId,
+      factId: adjustment.taxFactId,
       recognitionId,
       voucherId: command.voucherId,
       fact: adjustment,
@@ -748,6 +784,7 @@ export const capacityFor = Effect.fn("purchases.recognition.capacityFor")(functi
     creditedSourceTaxMinor: row.creditedSourceTaxMinor,
     releasedDeductionMinor: row.releasedDeductionMinor,
     treatment: compilerTreatment(treatment),
+    taxComponentId: Shared.textField(row.body, "taxComponentId") ?? row.sourceLineId,
     taxFactId: Shared.textField(row.body, "taxFactId") ?? row.sourceLineId,
   } satisfies OriginalLineCapacity;
 });

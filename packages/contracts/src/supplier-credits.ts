@@ -76,6 +76,7 @@ export const CreditTaxAdjustment = Schema.Struct({
   sourceLineId: Accounting.Identifier,
   componentRole: Schema.Literal("input_tax"),
   taxComponentId: Accounting.Identifier,
+  taxFactId: Accounting.Identifier,
   signedBaseMinor: Accounting.SignedMinorUnits,
   signedOutputTaxMinor: Accounting.SignedMinorUnits,
   signedDeductibleTaxMinor: Accounting.SignedMinorUnits,

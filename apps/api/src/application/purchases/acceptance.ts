@@ -225,8 +225,14 @@ function purchaseRecognition(
     const content = Shared.objectField(draft, "content");
     const draftLines = Shared.arrayField(content, "lines");
     const documentDate = Shared.textField(content, "documentDate");
+    const counterpartyId = Shared.textField(content, "counterpartyId");
+    const supplierDocumentNumber = Shared.textField(content, "supplierDocumentNumber");
 
     if (documentDate === undefined || input.taxPoint.taxPointOn > documentDate) {
+      return yield* failure("InvalidJournal");
+    }
+
+    if (counterpartyId === undefined || supplierDocumentNumber === undefined) {
       return yield* failure("InvalidJournal");
     }
 
@@ -238,7 +244,15 @@ function purchaseRecognition(
       vat,
     );
 
+    // The recognition's identity is fixed here, from the reviewed supplier
+    // identity, so the plan the approval seals already carries the exact
+    // recognition, component and fact identities that execution will persist.
+    const recognitionId = yield* Recognition.purchaseRecognitionId(
+      Recognition.economicKey(counterpartyId, supplierDocumentNumber),
+    );
+
     const compiled = yield* Recognition.compilePurchasePlan(transaction, scope, {
+      recognitionId,
       book,
       content,
       draftLines,
@@ -511,7 +525,7 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
       }
 
       if (profileGaps !== undefined) {
-        extras.push({ profileGaps: yield* Shared.toJsonObject(profileGaps) });
+        extras.push({ profileGaps: yield* Shared.toJson(profileGaps) });
       }
 
       if (inputVatAccountId !== undefined) extras.push({ inputVatAccountId });
@@ -834,6 +848,7 @@ const writeOwnedRecognition = Effect.fn("purchases.acceptance.writeRecognition")
     bookId: command.scope.bookId,
     actorId: command.principal.actorId,
     receipt: command.receipt,
+    recognitionId: yield* Recognition.purchaseRecognitionId(command.key),
     economicKey: command.key,
     draftId: draft.id,
     draftRevision: draft.revision,

@@ -107,6 +107,9 @@ export const PurchaseTaxFact = Schema.Struct({
   sourceLineId: Identifier,
   componentRole: TaxComponentRole,
   taxComponentId: Identifier,
+  // The identity this component is persisted and referenced under. A later
+  // credit's adjustment names it here, so the reference always resolves.
+  taxFactId: Identifier,
   signedBaseMinor: SignedMinorUnits,
   signedOutputTaxMinor: SignedMinorUnits,
   signedDeductibleTaxMinor: SignedMinorUnits,
@@ -177,6 +180,7 @@ export const OriginalLineCapacity = Schema.Struct({
   creditedSourceTaxMinor: MinorUnits,
   releasedDeductionMinor: MinorUnits,
   treatment: PurchaseTreatment,
+  taxComponentId: Identifier,
   taxFactId: Identifier,
 });
 
@@ -296,8 +300,12 @@ function roundingStep(
   doubledRemainder: bigint,
   remainder: bigint,
   oddQuotient: boolean,
+  negative: boolean,
 ) {
-  if (mode === "floor") return remainder === 0n ? 0n : 1n;
+  // The quotient is a magnitude. Floor rounds toward negative infinity, so only a
+  // negative value moves away from zero; a positive magnitude is already its
+  // own floor.
+  if (mode === "floor") return remainder === 0n || !negative ? 0n : 1n;
 
   if (mode === "half_up") return doubledRemainder >= denominator ? 1n : 0n;
 
@@ -335,7 +343,7 @@ export function roundRational(
   const remainder = magnitude % denominator;
   const doubled = remainder * 2n;
 
-  const step = roundingStep(mode, denominator, doubled, remainder, quotient % 2n === 1n);
+  const step = roundingStep(mode, denominator, doubled, remainder, quotient % 2n === 1n, negative);
 
   const result = quotient + step;
 
@@ -517,6 +525,12 @@ function taxComponent(prefix: string, sourceLineId: string) {
   return `${prefix}_${sourceLineId}`;
 }
 
+// One component has one persisted fact identity, derived with it and never
+// reconstructed by a consumer.
+function taxFactId(component: string) {
+  return `${component}_fact`;
+}
+
 export const PurchaseRecognitionInput = Schema.Struct({
   currencyScale: CurrencyScale,
   recognitionDate: AccountingDate,
@@ -573,7 +587,7 @@ function recognizeLine(
 
   const nonDeductible = amounts.success.tax - deductible.success;
   const component = taxComponent(input.taxComponentPrefix, line.sourceLineId);
-  const fact = `${component}_fact`;
+  const fact = taxFactId(component);
 
   return Result.succeed({
     recognition: {
@@ -595,6 +609,7 @@ function recognizeLine(
       sourceLineId: line.sourceLineId,
       componentRole: "input_tax",
       taxComponentId: component,
+      taxFactId: fact,
       signedBaseMinor: amount(amounts.success.net),
       signedOutputTaxMinor: "0",
       signedDeductibleTaxMinor: amount(deductible.success),
@@ -807,6 +822,7 @@ function creditLineRelease(
       sourceLineId: request.sourceLineId,
       componentRole: "input_tax",
       taxComponentId: component,
+      taxFactId: taxFactId(component),
       signedBaseMinor: amount(-net),
       signedOutputTaxMinor: "0",
       signedDeductibleTaxMinor: amount(-released.success),
