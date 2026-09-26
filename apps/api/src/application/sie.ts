@@ -88,7 +88,8 @@ function requireSieAccess(transaction: Transaction, write: boolean) {
   );
 }
 
-function base64(bytes: Uint8Array) {
+// Shared with the separate complete-book SIE4E artifact owner.
+export function base64(bytes: Uint8Array) {
   let binary = "";
 
   for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -114,7 +115,7 @@ function decodeBase64(value: string) {
   );
 }
 
-function sha256HexOf(bytes: Uint8Array) {
+export function sha256HexOf(bytes: Uint8Array) {
   const copy = new Uint8Array(bytes.byteLength);
   copy.set(bytes);
 

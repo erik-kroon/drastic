@@ -16,6 +16,7 @@ import { sourceIntakeCapabilities } from "./source-intake";
 import { fxCapabilities } from "./fx";
 import { reviewCapabilities } from "./review";
 import { sieCapabilities } from "./sie";
+import { sie4ECapabilities } from "./sie4e";
 import { ledgerCapabilities } from "./ledger";
 import { Capabilities } from "@open-erp/contracts/capabilities";
 
@@ -38,5 +39,6 @@ export const capabilities = {
   ...fxCapabilities,
   ...reviewCapabilities,
   ...sieCapabilities,
+  ...sie4ECapabilities,
   ...ledgerCapabilities,
 } satisfies Record<keyof typeof Capabilities, { readonly readOnly: boolean }>;

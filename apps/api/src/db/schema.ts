@@ -418,6 +418,27 @@ export const reportStatementContributions = openerp.table("report_statement_cont
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });
 
+export const sieBookExports = openerp.table("sie_book_exports", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  ordinal: bigint("ordinal", { mode: "bigint" }).notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  asOf: date("as_of", { mode: "string" }).notNull(),
+  sequence: bigint("sequence", { mode: "bigint" }).notNull(),
+  evidenceId: text("evidence_id").notNull(),
+  actorId: text("actor_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
+export const sieBookExportRows = openerp.table("sie_book_export_rows", {
+  bookId: text("book_id").notNull(),
+  exportId: text("export_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  rowId: text("row_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
 export const correctionBundleReceipts = openerp.table("correction_bundle_receipts", {
   bookId: text("book_id").notNull(),
   bundleId: text("bundle_id").notNull(),

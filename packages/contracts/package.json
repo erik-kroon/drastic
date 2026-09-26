@@ -38,6 +38,7 @@
     "./register-reports": "./src/register-reports.ts",
     "./vat-returns": "./src/vat-returns.ts",
     "./sie": "./src/sie.ts",
+    "./sie4e": "./src/sie4e.ts",
     "./sales-orders": "./src/sales-orders.ts",
     "./invoice-drafts": "./src/invoice-drafts.ts",
     "./supplier-invoice-drafts": "./src/supplier-invoice-drafts.ts",
