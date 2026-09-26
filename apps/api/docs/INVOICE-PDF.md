@@ -2,7 +2,7 @@
 
 ## Current ownership
 
-Application operations live in [application/invoice-pdf.ts](../src/application/invoice-pdf.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql).
+Application operations live in [application/commerce/documents.ts](../src/application/commerce/documents.ts), with shared dispatch in [capabilities](../src/application/capabilities/).
 
 ## Historical implementation notes
 
@@ -135,13 +135,13 @@ widgets. The attached reference is `/tmp/midday-invoice-pdf-reference.jpg`.
 | Icons       | No logo or payment QR in tenant input                                        | Omitted rather than inventing assets.                                                                                                            |
 | Performance | Local subset fonts and sample PDF bytes                                      | 10 KiB single-page sample; 50-line visual stress rendered in five pages, including a trailing footer-only page. Worker limits remain unverified. |
 
-| Severity    | Location                                              | Before                                                                                        | After                                                                                                                  | Why                                                                                            |
-| ----------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| HIGH        | `src/application/legal-invoice-pdf-renderer.ts` table | Six numeric columns collided in the 595px PDF.                                                | Four aligned columns; explicit net/tax/discount facts stay beneath each line.                                          | Prevents overlapping legal amounts.                                                            |
-| MEDIUM      | Same renderer, layout                                 | Blue header and shaded terms diverged from reference.                                         | Sparse monochrome mono typography, restrained invoice/date row, seller/customer columns, right total and bottom terms. | Preserves clear reading order without copying branding.                                        |
-| MEDIUM      | Same renderer, grand total                            | The sample clipped the trailing `kr` from the amount.                                         | Wider total block and a 21px amount; the 595×842 re-render shows the full currency.                                    | Keeps the legally relevant total legible.                                                      |
-| LOW         | Same renderer, number cells                           | Uneven numeric alignment.                                                                     | Tabular numerals and right alignment.                                                                                  | Makes amount columns scannable.                                                                |
-| HIGH — OPEN | Takumi 0.11.3 multi-page table                        | A 50-line stress sample splits a row's detail across pages and adds a footer-only final page. | Not resolved by `break-inside: avoid`, grouped `<tbody>`, removing the footer, or reducing section spacing.            | Long-document visual acceptance is blocked; do not infer it from the clean single-page sample. |
+| Severity    | Location                                                                 | Before                                                                                        | After                                                                                                                  | Why                                                                                            |
+| ----------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| HIGH        | `src/application/commerce/legal-invoice-pdf-renderer-takumi-v1.ts` table | Six numeric columns collided in the 595px PDF.                                                | Four aligned columns; explicit net/tax/discount facts stay beneath each line.                                          | Prevents overlapping legal amounts.                                                            |
+| MEDIUM      | Same renderer, layout                                                    | Blue header and shaded terms diverged from reference.                                         | Sparse monochrome mono typography, restrained invoice/date row, seller/customer columns, right total and bottom terms. | Preserves clear reading order without copying branding.                                        |
+| MEDIUM      | Same renderer, grand total                                               | The sample clipped the trailing `kr` from the amount.                                         | Wider total block and a 21px amount; the 595×842 re-render shows the full currency.                                    | Keeps the legally relevant total legible.                                                      |
+| LOW         | Same renderer, number cells                                              | Uneven numeric alignment.                                                                     | Tabular numerals and right alignment.                                                                                  | Makes amount columns scannable.                                                                |
+| HIGH — OPEN | Takumi 0.11.3 multi-page table                                           | A 50-line stress sample splits a row's detail across pages and adds a footer-only final page. | Not resolved by `break-inside: avoid`, grouped `<tbody>`, removing the footer, or reducing section spacing.            | Long-document visual acceptance is blocked; do not infer it from the clean single-page sample. |
 
 Rejected: fake tenant logo, bank account and QR code; these have no reviewed tenant
 input. Rejected: float money formatting from the supplied sales-order template; the
@@ -169,7 +169,7 @@ These are local synthetic renderer artifacts, not a captured issue or an
 authenticated Worker run. The existing immutable real-Worker v1 artifact
 remains unchanged.
 
-The isolated `src/application/legal-invoice-pdf-renderer-v2.ts` requires a
+The isolated `src/application/commerce/legal-invoice-pdf-renderer-takumi-v2.ts` requires a
 **different** renderer ID, `openerp-se-invoice-takumi-v2`. It replaces the
 fragmented multi-page `<table>` rows with flex-aligned, `break-inside:avoid`
 row blocks and keeps the total and terms in a single break-inside group. The

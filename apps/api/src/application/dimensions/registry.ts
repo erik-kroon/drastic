@@ -1,11 +1,11 @@
 import * as Dimensions from "@open-erp/contracts/dimensions";
 import * as Effect from "effect/Effect";
-import { failure } from "./failures";
-import { lockBookForShare, lockBookForUpdate } from "../db/posting";
-import * as Catalogue from "../db/dimensions";
-import type { Transaction } from "../db/transaction";
-import { replay, saveCommand } from "./posting";
-import { decode, toJsonObject, unsupported, withBook, type Scope } from "./commerce/support";
+import { failure } from "../failures";
+import { lockBookForShare, lockBookForUpdate } from "../../db/posting";
+import * as Catalogue from "../../db/dimensions";
+import type { Transaction } from "../../db/transaction";
+import { replay, saveCommand } from "../posting";
+import { decode, toJsonObject, unsupported, withBook, type Scope } from "../commerce/support";
 
 type SaveDimensionInput = typeof Dimensions.SaveDimension.Type;
 

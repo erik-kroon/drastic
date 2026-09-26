@@ -15,8 +15,8 @@ import { liveInvoice } from "../commerce/register";
 import { digest } from "../json";
 import { admitAccountRole, admitLineOwner } from "../resource-admission";
 import * as AcceptanceDb from "../../db/purchases/acceptance";
-import * as OperationDb from "../../db/owner-register/operations";
-import * as OwnerDb from "../../db/owner-register/register";
+import * as OperationDb from "../../db/subledger/owner-operations";
+import * as OwnerDb from "../../db/subledger/owners";
 import * as RecognitionDb from "../../db/purchases/recognition";
 import * as Db from "../../db/posting";
 import { databaseFailure, type Transaction } from "../../db/transaction";
@@ -1423,6 +1423,7 @@ const commitOwnerGroup = Effect.fn("owner.operations.commit")(function* (
     invoiceId: result.dischargedInvoiceId,
     amountMinor: result.ownerClaimMinor,
     body: sealed,
+    digest: PurchaseShared.textField(sealed, "digest") ?? "",
     committedAt: result.committedAt,
   });
 

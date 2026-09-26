@@ -3,7 +3,7 @@ import { Api } from "@open-erp/contracts/api";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import * as CommerceFx from "../../../application/commerce-fx";
+import * as CommerceFx from "../../../application/commerce/fx";
 
 export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handlers) =>
   handlers

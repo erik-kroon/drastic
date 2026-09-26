@@ -11,7 +11,7 @@ import {
   invoiceDocumentHistory,
   prepareInvoiceDocument,
   resumeInvoiceDocument,
-} from "../invoice-documents";
+} from "../commerce/invoice-documents";
 import { getInvoicePdf, invoicePdfHistory } from "../commerce/documents";
 import { getSupplierAcceptanceReview, supplierAcceptanceHistory } from "../purchases/acceptance";
 import { getSupplierCreditReview, supplierCreditHistory } from "../purchases/credits";
@@ -31,7 +31,7 @@ import {
   getSupplierPaymentBatch,
   listSupplierPaymentEligibility,
 } from "../purchases/payments";
-import { listDimensions } from "../dimensions";
+import { listDimensions } from "../dimensions/registry";
 import { readDirectory, readDirectoryExport } from "../commerce/crm-master";
 import {
   applyAllocation,

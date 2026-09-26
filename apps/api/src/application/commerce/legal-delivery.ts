@@ -18,7 +18,8 @@ import {
   type Scope,
 } from "./support";
 
-import { decodeBase64, sha256HexOf } from "./documents";
+import { sha256HexOf } from "../bytes";
+import { decodeBase64 } from "./documents";
 
 const DeliveryRequestSchema = Delivery.LegalDeliveryRequest;
 

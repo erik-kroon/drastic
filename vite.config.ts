@@ -18,7 +18,9 @@ const agentToolingIgnorePatterns = [
 
 export default defineConfig({
   test: {
-    include: ["apps/api/tests/**/*.e2e.test.ts", "apps/web/tests/**/*.e2e.test.ts"],
+    // Only apps/api/tests exists. Add an apps/web/tests entry here when a browser
+    // suite lands; the global setup boots workerd and PostgreSQL, not a web server.
+    include: ["apps/api/tests/**/*.e2e.test.ts"],
     globalSetup: ["./apps/api/tests/support/global-setup.ts"],
     environment: "node",
     fileParallelism: false,

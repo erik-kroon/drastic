@@ -92,6 +92,7 @@ CREATE TABLE openerp.owner_operation_receipts (
   invoice_id text,
   amount_minor openerp.minor_units NOT NULL,
   body jsonb NOT NULL,
+  digest text NOT NULL,
   committed_at timestamptz NOT NULL,
   CONSTRAINT owner_operation_receipts_pkey PRIMARY KEY (book_id, id),
   -- One receipt per review, per consumed approval and per posted control line.

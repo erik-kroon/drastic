@@ -50,8 +50,11 @@ This repository is the starting point for the OpenERP product.
 
 ## Commands
 
+Run `bun run check:changed` after every edit. It lints, formats and type-checks only the files that changed, so it is the default verification gate while you work. Do not run the full `check`, `lint` or `check-types` scans to validate your own edits; they type-check and lint every workspace and are for the final pre-handoff pass.
+
 ```bash
 bun run dev
+bun run check:changed
 bun run check
 bun run lint
 bun run check-types

@@ -501,6 +501,9 @@ export const CompanyProfileCapabilities = {
     }),
     output: CompanyActivationPlan,
     readOnly: false,
+    // Company activation is the statutory admission every family resolution
+    // depends on. It is an operator surface, not an agent-callable one.
+    agentCallable: false,
   },
   company_approve_activation: {
     description:
@@ -513,6 +516,9 @@ export const CompanyProfileCapabilities = {
     }),
     output: CompanyActivationApproval,
     readOnly: false,
+    // Company activation is the statutory admission every family resolution
+    // depends on. It is an operator surface, not an agent-callable one.
+    agentCallable: false,
   },
   company_execute_activation: {
     description:
@@ -525,6 +531,9 @@ export const CompanyProfileCapabilities = {
     }),
     output: CompanyActivationReceipt,
     readOnly: false,
+    // Company activation is the statutory admission every family resolution
+    // depends on. It is an operator surface, not an agent-callable one.
+    agentCallable: false,
   },
   company_get_activation: {
     description:
@@ -532,6 +541,9 @@ export const CompanyProfileCapabilities = {
     input: Schema.Struct({ scope: Accounting.Scope, activationId: Accounting.Identifier }),
     output: CompanyActivation,
     readOnly: true,
+    // Company activation is the statutory admission every family resolution
+    // depends on. It is an operator surface, not an agent-callable one.
+    agentCallable: false,
   },
 };
 

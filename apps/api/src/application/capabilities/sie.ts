@@ -1,6 +1,6 @@
 import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
-import { getSie, listSie, prepareSie, resumeSie } from "../sie";
+import { getSie, listSie, prepareSie, resumeSie } from "../sie/book-export";
 
 export const sieCapabilities = {
   sie_prepare: effectCapability(Capabilities.sie_prepare, prepareSie),
