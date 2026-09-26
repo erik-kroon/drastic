@@ -116,10 +116,23 @@ export const LegalCustomerCreditPostingAction = Schema.Struct({
   occurrenceKey: Schema.String.check(Schema.isPattern(/^legal_credit_review_[a-f0-9]{32}$/)),
   currency: Schema.Literal("SEK"),
   taxAssessment: Schema.Literal("se-domestic-standard-25-v1"),
-  lines: Schema.Array(Schema.Struct({ ...JournalLine.fields, lineId: Identifier })).check(
-    Schema.isMinLength(3),
-    Schema.isMaxLength(101),
-  ),
+  // NEXT-14 integration. A legal credit note is a posting action, so its lines
+  // carry the optional original dimension assignment exactly as PrepareJournal's
+  // assignable line does. The field is optional so a credit prepared before this
+  // owner keeps exactly the shape it had; a line that carries none is a line whose
+  // source recorded no dimension evidence, and the assignment owner records that
+  // as an explicit state rather than inferring one later. A book with a dimension
+  // effective on the posting date and no reviewed requirement for it still refuses
+  // incomplete_policy.
+  lines: Schema.Array(
+    Schema.Struct({
+      ...JournalLine.fields,
+      lineId: Identifier,
+      originalDimensions: Schema.optional(
+        Schema.Array(OriginalDimensionAssignment).check(Schema.isMaxLength(64)),
+      ),
+    }),
+  ).check(Schema.isMinLength(3), Schema.isMaxLength(101)),
   legalCredit: Schema.Struct({
     profile: Schema.Literal("se-domestic-b2b-sek-25-accrual-credit-v1"),
     // The legal credit number is a document identity, not a journal field: it is
