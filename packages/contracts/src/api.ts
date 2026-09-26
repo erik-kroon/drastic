@@ -57,6 +57,7 @@ import { BankConnectorApi } from "./bank-connector";
 import { SieImportApi } from "./sie-import";
 import { HistoricalMigrationApi } from "./historical-migration";
 import { ArLegalIssueApi } from "./ar-legal-issue";
+import { CustomerCreditNotesApi } from "./customer-credit-notes";
 import { LegalSalesPolicyApi } from "./legal-sales-policy";
 import { LegalInvoicePdfApi } from "./legal-invoice-pdf";
 import { LegalDeliveryApi } from "./legal-delivery";
@@ -206,6 +207,7 @@ export class Api extends HttpApi.make("open-erp")
     SieImportApi,
     HistoricalMigrationApi,
     ArLegalIssueApi,
+    CustomerCreditNotesApi,
     LegalSalesPolicyApi,
     LegalInvoicePdfApi,
     LegalDeliveryApi,

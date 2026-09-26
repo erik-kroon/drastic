@@ -2,6 +2,12 @@ import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
 import { getLegalInvoicePdf, legalInvoicePdfHistory } from "../commerce/documents";
 import {
+  customerCreditHistory,
+  getCustomerCredit,
+  getCustomerCreditCapacity,
+  getCustomerCreditReview,
+} from "../commerce/credit-notes";
+import {
   arLegalIssueHistory,
   getArLegalAccountingProfile,
   getArLegalIssue,
@@ -62,5 +68,21 @@ export const commerceLegalCapabilities = {
   commerce_ar_legal_issue_history: effectCapability(
     Capabilities.commerce_ar_legal_issue_history,
     arLegalIssueHistory,
+  ),
+  commerce_get_customer_credit_capacity: effectCapability(
+    Capabilities.commerce_get_customer_credit_capacity,
+    getCustomerCreditCapacity,
+  ),
+  commerce_get_customer_credit_review: effectCapability(
+    Capabilities.commerce_get_customer_credit_review,
+    getCustomerCreditReview,
+  ),
+  commerce_get_customer_credit: effectCapability(
+    Capabilities.commerce_get_customer_credit,
+    getCustomerCredit,
+  ),
+  commerce_customer_credit_history: effectCapability(
+    Capabilities.commerce_customer_credit_history,
+    customerCreditHistory,
   ),
 };

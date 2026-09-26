@@ -154,6 +154,25 @@ export function readArLegalIssueForReview(
   );
 }
 
+export type ArLegalIssueRow = {
+  readonly id: string;
+  readonly legalNumber: string;
+  readonly registerInvoiceId: string;
+  readonly body: JsonObject;
+};
+
+export function readArLegalIssueById(transaction: Transaction, bookId: string, id: string) {
+  return transaction.execute<ArLegalIssueRow>(
+    sql`
+      select i.id, i.legal_number as "legalNumber",
+        i.register_invoice_id as "registerInvoiceId", i.body
+      from openerp.ar_legal_issues i
+      where i.book_id = ${bookId} and i.id = ${id}
+    `,
+    "objects",
+  );
+}
+
 export function readArLegalIssueForDraft(
   transaction: Transaction,
   bookId: string,

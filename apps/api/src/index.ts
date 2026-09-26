@@ -71,6 +71,7 @@ import { BankConnectorHandlers } from "./transport/http/routes/bank-connector";
 import { SieImportHandlers } from "./transport/http/routes/sie-import";
 import { HistoricalMigrationHandlers } from "./transport/http/routes/historical-migration";
 import { ArLegalIssueHandlers } from "./transport/http/routes/ar-legal-issue";
+import { CustomerCreditHandlers } from "./transport/http/routes/customer-credit-notes";
 import { LegalSalesPolicyHandlers } from "./transport/http/routes/legal-sales-policy";
 import { LegalInvoicePdfHandlers } from "./transport/http/routes/legal-invoice-pdf";
 import { LegalDeliveryHandlers } from "./transport/http/routes/legal-delivery";
@@ -144,6 +145,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     SieImportHandlers,
     HistoricalMigrationHandlers,
     ArLegalIssueHandlers,
+    CustomerCreditHandlers,
     LegalSalesPolicyHandlers,
     LegalInvoicePdfHandlers,
     LegalDeliveryHandlers,

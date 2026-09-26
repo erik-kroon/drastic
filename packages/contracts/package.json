@@ -57,6 +57,7 @@
     "./sie-import": "./src/sie-import.ts",
     "./historical-migration": "./src/historical-migration.ts",
     "./ar-legal-issue": "./src/ar-legal-issue.ts",
+    "./customer-credit-notes": "./src/customer-credit-notes.ts",
     "./legal-sales-policy": "./src/legal-sales-policy.ts",
     "./legal-invoice-pdf": "./src/legal-invoice-pdf.ts",
     "./legal-delivery": "./src/legal-delivery.ts",

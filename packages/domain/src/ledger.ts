@@ -87,12 +87,48 @@ export const LegalArPostingAction = Schema.Struct({
   }),
 });
 
+// Read-only legal customer credit variant. It reverses already recognized
+// revenue and output VAT against the same receivable control and never opens a
+// second AR recognition, so it is not an adjustment and not a reversal.
+export const LegalCustomerCreditPostingAction = Schema.Struct({
+  ...PostingAction.fields,
+  correctsVoucherId: Schema.Null,
+  postingPurpose: Schema.Literal("legal_customer_credit_v1"),
+  occurrenceKey: Schema.String.check(Schema.isPattern(/^legal_credit_review_[a-f0-9]{32}$/)),
+  currency: Schema.Literal("SEK"),
+  taxAssessment: Schema.Literal("se-domestic-standard-25-v1"),
+  lines: Schema.Array(Schema.Struct({ ...JournalLine.fields, lineId: Identifier })).check(
+    Schema.isMinLength(3),
+    Schema.isMaxLength(101),
+  ),
+  legalCredit: Schema.Struct({
+    profile: Schema.Literal("se-domestic-b2b-sek-25-accrual-credit-v1"),
+    // The legal credit number is a document identity, not a journal field: it is
+    // allocated from the reviewed policy's own counter inside the issuing transaction
+    // and is never part of a plan digest that must be fixed before approval.
+    policyId: Identifier,
+    reviewId: Identifier,
+    originalIssueId: Identifier,
+    originalDocumentNumber: Schema.String.check(
+      Schema.isPattern(/^[A-Z][A-Z0-9-]{0,11}-[1-9][0-9]{0,17}$/),
+    ),
+    creditedLineCount: Schema.Int,
+    netMinor: MinorUnits,
+    taxMinor: MinorUnits,
+  }),
+});
+
 const SyntheticVoucherAction = Schema.Struct({
   ...PostingAction.fields,
   legalIssue: Schema.optional(Schema.Null),
+  legalCredit: Schema.optional(Schema.Null),
 });
 
-export const VoucherPostingAction = Schema.Union([SyntheticVoucherAction, LegalArPostingAction]);
+export const VoucherPostingAction = Schema.Union([
+  SyntheticVoucherAction,
+  LegalArPostingAction,
+  LegalCustomerCreditPostingAction,
+]);
 
 export const ChangeSet = Schema.Struct({
   schemaVersion: Schema.Literal("1"),
