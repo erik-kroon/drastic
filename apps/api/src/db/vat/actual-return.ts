@@ -444,7 +444,10 @@ export type ContributionWrite = {
   readonly factDigest: string;
 };
 
-export function insertContributions(transaction: Transaction, rows: ReadonlyArray<ContributionWrite>) {
+export function insertContributions(
+  transaction: Transaction,
+  rows: ReadonlyArray<ContributionWrite>,
+) {
   return insertMany(
     transaction,
     "openerp.vat_actual_return_contributions",

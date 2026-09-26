@@ -69,7 +69,10 @@ function releaseIssues(release: {
 
   for (const [index, rule] of release.mappingRules.entries()) {
     if (!rateIds.has(rule.rateId)) {
-      issues.push({ path: ["mappingRules", index], issue: "A mapping rule must name a declared rate." });
+      issues.push({
+        path: ["mappingRules", index],
+        issue: "A mapping rule must name a declared rate.",
+      });
     }
 
     if (mapped.has(rule.treatment)) {
@@ -79,19 +82,31 @@ function releaseIssues(release: {
     mapped.add(rule.treatment);
 
     if (rule.treatment === "domestic_sale" && rule.basisBox !== "05") {
-      issues.push({ path: ["mappingRules", index], issue: "A domestic sale declares the 05 basis box." });
+      issues.push({
+        path: ["mappingRules", index],
+        issue: "A domestic sale declares the 05 basis box.",
+      });
     }
 
     if (rule.treatment === "domestic_purchase" && rule.basisBox !== null) {
-      issues.push({ path: ["mappingRules", index], issue: "A purchase deduction declares no basis box." });
+      issues.push({
+        path: ["mappingRules", index],
+        issue: "A purchase deduction declares no basis box.",
+      });
     }
 
     if (rule.treatment === "domestic_purchase" && rule.inputBox !== "48") {
-      issues.push({ path: ["mappingRules", index], issue: "A purchase deduction lands in box 48." });
+      issues.push({
+        path: ["mappingRules", index],
+        issue: "A purchase deduction lands in box 48.",
+      });
     }
 
     if (rule.treatment === "domestic_sale" && rule.inputBox !== null) {
-      issues.push({ path: ["mappingRules", index], issue: "A domestic sale declares no deduction box." });
+      issues.push({
+        path: ["mappingRules", index],
+        issue: "A domestic sale declares no deduction box.",
+      });
     }
   }
 
@@ -112,7 +127,10 @@ export const VatFilingRuleRelease = Schema.Struct({
   filingUnitScale: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 6 })),
   rounding: Schema.Literals(["half_up", "half_even", "toward_zero", "floor"]),
   rates: Schema.Array(VatQualifiedRate).check(Schema.isMinLength(1), Schema.isMaxLength(20)),
-  mappingRules: Schema.Array(VatFactMappingRule).check(Schema.isMinLength(1), Schema.isMaxLength(40)),
+  mappingRules: Schema.Array(VatFactMappingRule).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(40),
+  ),
   supportedTreatments: Schema.Array(treatments).check(Schema.isMinLength(1), Schema.isMaxLength(2)),
   requiredSourceFamilies: Schema.Array(VatSourceFamily).check(Schema.isMaxLength(4)),
   sourceManifest: A.Description,

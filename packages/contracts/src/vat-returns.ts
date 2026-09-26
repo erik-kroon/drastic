@@ -817,7 +817,10 @@ export const VatActualCalculation = Schema.Struct({
   boxes: Schema.Array(VatActualBox).check(Schema.isMaxLength(8)),
   contributions: Schema.Array(VatActualContribution).check(Schema.isMaxLength(1000)),
   exclusions: Schema.Array(VatActualExclusion).check(Schema.isMaxLength(1000)),
-  controls: Schema.Array(VatControlReconciliation).check(Schema.isMinLength(1), Schema.isMaxLength(8)),
+  controls: Schema.Array(VatControlReconciliation).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(8),
+  ),
   timingBridge: Schema.Array(VatTimingBridgeRow).check(Schema.isMaxLength(1000)),
   sourceCoverage: Schema.Array(VatSourceCoverageState).check(Schema.isMaxLength(20)),
   blockers: Schema.Array(VatActualBlocker).check(Schema.isMaxLength(20)),

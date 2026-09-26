@@ -30,7 +30,7 @@ type Rule = typeof Release.VatFactMappingRule.Type;
 
 type Rate = typeof Release.VatQualifiedRate.Type;
 
-type Rounding = typeof Release.VatFilingRuleRelease.Type["rounding"];
+type Rounding = (typeof Release.VatFilingRuleRelease.Type)["rounding"];
 
 type Selected = typeof Vat.VatSelectedFact.Type;
 
@@ -409,7 +409,12 @@ function boxRows(
 // still block: their zero net cannot conceal them.
 function reconcile(
   basis: Basis,
-  expectedFor: (accountId: string) => ReadonlyArray<{ readonly voucherId: string; readonly lineId: string; readonly postingDate: string; readonly signedMinor: string }>,
+  expectedFor: (accountId: string) => ReadonlyArray<{
+    readonly voucherId: string;
+    readonly lineId: string;
+    readonly postingDate: string;
+    readonly signedMinor: string;
+  }>,
 ) {
   const controls: Array<Reconciliation> = [];
   const timingBridge: Array<BridgeRow> = [];
@@ -417,9 +422,11 @@ function reconcile(
   for (const snapshot of basis.controls) {
     const expected = expectedFor(snapshot.accountId);
     const expectedKeys = new Set(expected.map((entry) => rowKey(entry.voucherId, entry.lineId)));
+
     const actualKeys = new Set(
       snapshot.movements.map((entry) => rowKey(entry.voucherId, entry.lineId)),
     );
+
     const unexplainedRows: Array<ControlRow> = [];
     const missingRows: Array<ControlRow> = [];
     let expectedClosing = BigInt(snapshot.reviewedOpeningMinor);
@@ -499,6 +506,7 @@ function coverageState(basis: Basis) {
     const entry = stated.get(family);
 
     if (entry === undefined || entry.state === "unknown") blockers.push("source_coverage_unknown");
+
     if (entry?.state === "unavailable") blockers.push("source_coverage_unavailable");
   }
 
@@ -516,13 +524,16 @@ function coverageState(basis: Basis) {
 // state, and it never asserts a statutory position.
 export function calculateActualVat(basis: Basis): Calculation {
   const release = basis.mappingRelease.vat;
+
   const assessed = assess(
     basis.facts,
     release,
     basis.mappingRelease.releaseId,
     voucherCounts(basis.facts),
   );
+
   const coverage = coverageState(basis);
+
   const rolled = reconcile(basis, (accountId) => [
     ...basis.facts.flatMap((fact) =>
       fact.controlComponents.filter(
@@ -535,6 +546,7 @@ export function calculateActualVat(basis: Basis): Calculation {
       ),
     ),
   ]);
+
   // Every fact in the captured population was assessed, so an unclassified fact
   // means the population is not the whole one and nothing may be declared from
   // it.
@@ -548,7 +560,9 @@ export function calculateActualVat(basis: Basis): Calculation {
 
   for (const control of rolled.controls) {
     if (control.unexplainedRows.length > 0) blockers.push("control_unexplained_rows");
+
     if (control.missingRows.length > 0) blockers.push("control_missing_rows");
+
     if (control.differenceMinor !== "0") blockers.push("control_opening_difference");
   }
 

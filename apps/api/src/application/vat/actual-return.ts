@@ -25,7 +25,7 @@ type Input = typeof Vat.PrepareActualVatReturn.Type;
 
 type Basis = typeof Vat.VatActualBasis.Type;
 
-type Witness = typeof Vat.VatActualBasis.Type["profileWitness"];
+type Witness = (typeof Vat.VatActualBasis.Type)["profileWitness"];
 
 type Binding = typeof Vat.VatControlAccountRoleBinding.Type;
 
@@ -47,7 +47,7 @@ const roleOrder: ReadonlyArray<Role> = [
   "vat_settlement_control",
 ];
 
-const treatments: ReadonlyArray<NonNullable<typeof Vat.VatSelectedFact.Type["treatment"]>> = [
+const treatments: ReadonlyArray<NonNullable<(typeof Vat.VatSelectedFact.Type)["treatment"]>> = [
   "domestic_sale",
   "domestic_purchase",
 ];
@@ -93,6 +93,7 @@ function readQualifiedRelease(transaction: Transaction, scope: Scope, input: Inp
       "actual_company",
       { postingOn: null, taxPointOn: input.endsOn, paymentOn: null, reportOn: null },
     );
+
     const witness = resolved.families.find((entry) => entry.family === "vat")?.witness ?? null;
 
     if (witness === null) return yield* unsupported();
@@ -100,8 +101,10 @@ function readQualifiedRelease(transaction: Transaction, scope: Scope, input: Inp
 
     if (!book) return yield* failure("Forbidden");
     const releases = yield* CompanyDb.readRuleReleases(transaction, "vat");
+
     const row = releases.find(
-      (entry) => entry.id === witness.ruleReleaseId && entry.checksum === witness.ruleReleaseChecksum,
+      (entry) =>
+        entry.id === witness.ruleReleaseId && entry.checksum === witness.ruleReleaseChecksum,
     );
 
     if (row === undefined) return yield* unsupported();
@@ -136,6 +139,7 @@ function readRegisteredPeriod(
       input.startsOn,
       input.endsOn,
     );
+
     const revision = revisions.find(
       (row) => row.factKind === "vat_period" && witness.factRevisionIds.includes(row.id),
     );
@@ -149,8 +153,11 @@ function readRegisteredPeriod(
       return yield* unsupported();
     }
 
-    const sha256 = (yield* Ledger.readEvidence(transaction, scope.bookId, input.periodEvidenceId))[0]
-      ?.sha256;
+    const sha256 = (yield* Ledger.readEvidence(
+      transaction,
+      scope.bookId,
+      input.periodEvidenceId,
+    ))[0]?.sha256;
 
     if (sha256 === undefined) return yield* failure("MissingEvidence");
 
@@ -187,7 +194,8 @@ function readControlBindings(transaction: Transaction, scope: Scope) {
         continue;
       }
 
-      if (new Set(roles.map((row) => row.accountId)).size !== roles.length) return yield* unsupported();
+      if (new Set(roles.map((row) => row.accountId)).size !== roles.length)
+        return yield* unsupported();
       const bindings: Array<Binding> = [];
 
       for (const row of roles) {
@@ -212,6 +220,7 @@ function readControlBindings(transaction: Transaction, scope: Scope) {
     const bindings = complete[0] ?? [];
 
     if (bindings.length === 0) return yield* unsupported();
+
     const accounts = yield* Ledger.readAccounts(
       transaction,
       scope.bookId,
@@ -254,10 +263,12 @@ function readCoverage(
   transaction: Transaction,
   scope: Scope,
   input: Input,
-  filing: typeof Vat.VatActualBasis.Type["mappingRelease"]["vat"],
+  filing: (typeof Vat.VatActualBasis.Type)["mappingRelease"]["vat"],
 ) {
   return Effect.gen(function* () {
-    if (new Set(input.sourceCoverage.map((row) => row.family)).size !== input.sourceCoverage.length) {
+    if (
+      new Set(input.sourceCoverage.map((row) => row.family)).size !== input.sourceCoverage.length
+    ) {
       return yield* failure("InvalidJournal");
     }
 
@@ -317,18 +328,18 @@ function readControlSnapshot(
     );
 
     if ((bound[0]?.total ?? 0) > controlMovementBound) return yield* unsupported();
-    const totals = (
-      yield* TaxAccountDb.readLedgerTotals(
-        transaction,
-        scope.bookId,
-        binding.accountId,
-        startsOn,
-        endsOn,
-        ledgerBoundary,
-      )
-    )[0];
+
+    const totals = (yield* TaxAccountDb.readLedgerTotals(
+      transaction,
+      scope.bookId,
+      binding.accountId,
+      startsOn,
+      endsOn,
+      ledgerBoundary,
+    ))[0];
 
     if (totals === undefined) return yield* failure("StaleDependency");
+
     const rows = yield* TaxAccountDb.readLedgerLines(
       transaction,
       scope.bookId,
@@ -337,6 +348,7 @@ function readControlSnapshot(
       endsOn,
       ledgerBoundary,
     );
+
     const movements: Array<typeof Vat.VatControlMovementRow.Type> = [];
 
     for (const row of rows) {
@@ -405,7 +417,7 @@ function controlComponents(
   return components;
 }
 
-function treatmentOf(value: string): typeof Vat.VatSelectedFact.Type["treatment"] {
+function treatmentOf(value: string): (typeof Vat.VatSelectedFact.Type)["treatment"] {
   return treatments.find((treatment) => treatment === value) ?? null;
 }
 
@@ -422,9 +434,12 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
     const bindings = yield* readControlBindings(transaction, scope);
     const openings = yield* readReviewedOpenings(input, bindings);
     const coverage = yield* readCoverage(transaction, scope, input, qualified.filing);
-    const openingSha256 = (
-      yield* Ledger.readEvidence(transaction, scope.bookId, input.openingEvidenceId)
-    )[0]?.sha256;
+
+    const openingSha256 = (yield* Ledger.readEvidence(
+      transaction,
+      scope.bookId,
+      input.openingEvidenceId,
+    ))[0]?.sha256;
 
     if (openingSha256 === undefined) return yield* failure("MissingEvidence");
     const roles = new Map(bindings.map((binding) => [binding.accountId, binding.role]));
@@ -451,6 +466,7 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
       input.startsOn,
       input.endsOn,
     );
+
     const purchased = yield* Db.readPurchaseComponents(
       transaction,
       scope.bookId,
@@ -459,6 +475,7 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
     );
 
     if (admitted.length + purchased.length > factInventoryBound) return yield* unsupported();
+
     const effects = yield* Db.readControlEffectsInInterval(
       transaction,
       scope.bookId,
@@ -473,12 +490,14 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
     const population = (yield* Db.readPopulation(transaction, scope.bookId))[0];
 
     if (population === undefined) return yield* failure("InternalError");
+
     const membership = yield* CompanyDb.readFamilyMembership(
       transaction,
       scope.bookId,
       "vat",
       "share",
     );
+
     const voucherIds = [
       ...new Set([
         ...admitted.flatMap((row) => (row.voucherId === null ? [] : [row.voucherId])),
@@ -486,6 +505,7 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
         ...effects.flatMap((row) => (row.voucherId === null ? [] : [row.voucherId])),
       ]),
     ];
+
     const lines = yield* Db.readVoucherControlLines(
       transaction,
       scope.bookId,
@@ -664,11 +684,7 @@ function toJsonObjectSync(value: unknown) {
 // Currentness is a live read of the retained identities. It never recalculates
 // and never refuses: an old return still shows its saved calculation and its
 // own separate currentness.
-function currentnessReasons(
-  transaction: Transaction,
-  scope: Scope,
-  saved: ReturnRecord,
-) {
+function currentnessReasons(transaction: Transaction, scope: Scope, saved: ReturnRecord) {
   return Effect.gen(function* () {
     const reasons: Array<string> = [];
     const period = saved.basis.registeredPeriod;
@@ -687,7 +703,9 @@ function currentnessReasons(
       "share",
     );
 
-    if ((membership[0]?.membershipEpoch.toString() ?? "0") !== saved.basis.population.membershipEpoch) {
+    if (
+      (membership[0]?.membershipEpoch.toString() ?? "0") !== saved.basis.population.membershipEpoch
+    ) {
       reasons.push("vat_family_membership_changed");
     }
 
@@ -709,7 +727,13 @@ function currentnessReasons(
       reasons.push("purchase_component_population_changed");
     }
 
-    const facts = yield* Db.readAdmittedFacts(transaction, scope.bookId, period.startsOn, period.endsOn);
+    const facts = yield* Db.readAdmittedFacts(
+      transaction,
+      scope.bookId,
+      period.startsOn,
+      period.endsOn,
+    );
+
     const purchased = yield* Db.readPurchaseComponents(
       transaction,
       scope.bookId,
@@ -726,6 +750,7 @@ function currentnessReasons(
     }
 
     const selected = new Map(saved.basis.facts.map((fact) => [fact.factId, fact.digest]));
+
     const live: Array<{ readonly factId: string; readonly digest: string }> = [
       ...facts.map((row) => ({ factId: row.factId, digest: row.digest })),
       ...purchased.map((row) => ({ factId: row.id, digest: row.digest })),
@@ -753,6 +778,7 @@ function currentnessReasons(
 
     if (effects.length !== saved.basis.ownedEffects.length) reasons.push("control_effects_changed");
     const amendments = yield* Db.readAmendmentInventory(transaction, scope.bookId);
+
     const retainedAmendments = saved.basis.ownerPorts.find(
       (port) => port.owner === "vat_draft_amendment",
     );
@@ -770,6 +796,7 @@ export const prepareActualReturn = Effect.fn("vat.prepareActualReturn")(function
   command: { scope: Scope; idempotencyKey: string; input: Input },
 ) {
   const payload = yield* toJsonObject(command.input);
+
   const captured = yield* withBook(token, command.scope, true, function* (transaction, principal) {
     const request = yield* replay(
       transaction,
@@ -833,6 +860,7 @@ export const prepareActualReturn = Effect.fn("vat.prepareActualReturn")(function
       if (ordinal === undefined) return yield* failure("InternalError");
       const id = newId("vatactual");
       const recordedAt = yield* isoNow(transaction);
+
       const body = yield* digestBody(
         yield* toJsonObject({
           id,
@@ -852,6 +880,7 @@ export const prepareActualReturn = Effect.fn("vat.prepareActualReturn")(function
           paymentState: "not_paid",
         }),
       );
+
       const result = yield* decode(ReturnSchema, body);
       const net = calculation.boxes.find((row) => row.box === "49");
 
