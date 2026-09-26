@@ -15,8 +15,8 @@ import type { Transaction } from "../../db/transaction";
 import { isoNow, newId, replay, saveCommand } from "../posting";
 import { base64, bytesEqual, sha256HexOf } from "../bytes";
 import { failure } from "../failures";
-import { renderInvoiceDocument } from "../invoice-document-renderer";
-import { renderInvoicePdf } from "../invoice-pdf-renderer";
+import { renderInvoiceDocument } from "./invoice-document-renderer";
+import { renderInvoicePdf } from "./invoice-pdf-renderer";
 import { renderLegalInvoicePdf } from "./legal-invoice-pdf-renderer-takumi-v1";
 import { renderLegalInvoicePdfV2 } from "./legal-invoice-pdf-renderer-takumi-v2";
 import {

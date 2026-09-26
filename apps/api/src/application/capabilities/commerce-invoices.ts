@@ -11,7 +11,7 @@ import {
   invoiceDocumentHistory,
   prepareInvoiceDocument,
   resumeInvoiceDocument,
-} from "../invoice-documents";
+} from "../commerce/invoice-documents";
 import { getInvoicePdf, invoicePdfHistory } from "../commerce/documents";
 import { getSupplierAcceptanceReview, supplierAcceptanceHistory } from "../purchases/acceptance";
 import { getSupplierCreditReview, supplierCreditHistory } from "../purchases/credits";

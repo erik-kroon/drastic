@@ -68,7 +68,9 @@ playwright-report
 tmp
 temp
 
-# Agent work packs contain coordination text, not raw execution artifacts.
+# Agent work packs keep machine-checkable evidence: manifests, check results and
+# captured source hashes stay tracked so a completed wave can be re-verified.
+# Only bulky or per-attempt execution output is dropped, never the results.
 .agents/work/**/*.exit
 .agents/work/**/*.patch
 .agents/work/**/*.pid
