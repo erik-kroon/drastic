@@ -474,7 +474,16 @@ function readItemState(transaction: Transaction, scope: Scope, itemId: string) {
     }
 
     if (fees.length > 0) {
-      Object.assign(itemValue, { feeSettlements: fees.map((row) => row.body) });
+      Object.assign(itemValue, {
+        feeSettlements: fees.map((row) => row.body),
+        // A reversed explicit-fee settlement still appears in feeSettlements, so its
+        // correction is what tells a reader the fee and cash source rights are
+        // available again.
+        feeCorrections: fees
+          .filter((row) => correctionsBySettlement.has(row.id))
+          .map((row) => correctionsBySettlement.get(row.id)?.body)
+          .filter((body): body is JsonObject => body !== undefined),
+      });
     }
 
     const item = yield* decode(ItemSchema, itemValue);

@@ -501,6 +501,10 @@ export const MonetaryItem = Schema.Struct({
   partialSettlements: Schema.optional(Schema.Array(PartialSettlementReceipt)),
   partialCorrections: Schema.optional(Schema.Array(CorrectionReceipt)),
   feeSettlements: Schema.optional(Schema.Array(FeeSettlementReceipt)),
+  // The corrections of explicit-fee settlements. Without them a reader cannot see
+  // that a settlement in `feeSettlements` was reversed, and therefore cannot tell
+  // that its fee and cash source rights are consumable again.
+  feeCorrections: Schema.optional(Schema.Array(CorrectionReceipt)),
   receipt: CommandReceipt,
   digest: Accounting.Digest,
 });
