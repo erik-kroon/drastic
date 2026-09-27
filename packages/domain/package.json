@@ -17,7 +17,7 @@
     "./purchasing": "./src/purchasing.ts",
     "./owner-funding": "./src/owner-funding.ts",
     "./exchange-rates": "./src/exchange-rates.ts",
-    "./period-work": "./src/period-work.ts"
+    "./period-work": "./src/period-work.ts",
     "./recurrence": "./src/recurrence.ts"
   },
   "scripts": {

@@ -13,6 +13,7 @@ import {
   claimPendingSupplierExtractions,
   runSupplierExtraction,
 } from "../application/purchases/extraction";
+import { advancePeriodWork, claimOpenPeriodWorkRuns } from "../application/period-work";
 import { failure } from "../application/failures";
 import { Database } from "../db/connection";
 import { jobAttempts, jobs } from "../db/schema";
@@ -57,6 +58,34 @@ type ExtractionPayload = {
 
 function extractionKey(payload: ExtractionPayload) {
   return `${payload.scope.bookId}/${payload.requestId}`;
+}
+
+// Period-work advance reuses the same selected effect-mq runner and the same
+// queue. effect-mq owns the claim, the retry and the lease; the child revision
+// fence in the application owns the domain result, so a redelivered handler
+// cannot publish twice.
+export class PeriodWorkQueue extends Job.make("period-work", {
+  payload: {
+    manifestId: Accounting.Identifier,
+    scope: Accounting.Scope,
+    boundedCount: Schema.Int,
+  },
+  success: Schema.String,
+  error: Accounting.AccountingError,
+  queue: "preparation",
+  idempotencyKey: periodWorkKey,
+  metadata: ({ scope }) => ({ bookId: scope.bookId }),
+  defaults: { attempts: 5, backoff: { type: "exponential", delay: "10 seconds" } },
+}) {}
+
+type PeriodWorkPayload = {
+  readonly manifestId: string;
+  readonly scope: typeof Accounting.Scope.Type;
+  readonly boundedCount: number;
+};
+
+function periodWorkKey(payload: PeriodWorkPayload) {
+  return `${payload.scope.bookId}/${payload.manifestId}/${payload.boundedCount}`;
 }
 
 type PreparationPayload = {
@@ -216,6 +245,42 @@ export const handleExtraction = Effect.fn("Extraction.handleQueueJob")(function*
   return yield* runSupplierExtraction(payload.scope, payload.requestId);
 });
 
+const periodWorkRunBound = 20;
+
+// The bounded count one queued pass visits. It bounds work per turn; it is never
+// the size of a manifest.
+const periodWorkBoundedCount = 20;
+
+export const dispatchPendingPeriodWork = Effect.fn("PeriodWork.dispatchPending")(function* () {
+  const { bindings } = yield* RequestEnvironment;
+
+  if (!bindings.OPENERP_PREPARATION_TOKEN) return yield* failure("Unavailable");
+
+  const pending = yield* claimOpenPeriodWorkRuns(
+    bindings.OPENERP_PREPARATION_TOKEN,
+    periodWorkRunBound,
+    periodWorkBoundedCount,
+  );
+
+  yield* Effect.forEach(
+    pending,
+    (run) =>
+      PeriodWorkQueue.enqueue({
+        manifestId: run.manifestId,
+        scope: { entityId: run.entityId, bookId: run.bookId },
+        boundedCount: run.boundedCount,
+      }).pipe(
+        // The store is reached through the defect channel, so one unreachable
+        // queue row must not end the polling fiber. The child fence keeps the
+        // next poll from double-publishing either way.
+        Effect.catchDefect(() =>
+          Effect.logWarning("Period work enqueue failed; the run stays open."),
+        ),
+      ),
+    { concurrency: 5, discard: true },
+  );
+});
+
 export const handlePreparation = Effect.fn("Preparation.handleQueueJob")(function* (payload: {
   jobId: string;
   scope: typeof Accounting.Scope.Type;
@@ -231,4 +296,30 @@ export const handlePreparation = Effect.fn("Preparation.handleQueueJob")(functio
   }
 
   return "ready";
+});
+
+/**
+ * The period-work handler.
+ *
+ * It calls one bounded advance with the runner's own token and reports what is
+ * left, so the queue's retry and the application's child fence each do their own
+ * job. The result is the honest progress projection: it never claims the period
+ * is reconciled, because only the separate source and control inventory can.
+ */
+export const handlePeriodWork = Effect.fn("PeriodWork.handleQueueJob")(function* (payload: {
+  manifestId: string;
+  scope: typeof Accounting.Scope.Type;
+  boundedCount: number;
+}) {
+  const { bindings } = yield* RequestEnvironment;
+
+  if (!bindings.OPENERP_PREPARATION_TOKEN) return yield* failure("Unavailable");
+
+  const progress = yield* advancePeriodWork(bindings.OPENERP_PREPARATION_TOKEN, {
+    scope: { entityId: payload.scope.entityId, bookId: payload.scope.bookId },
+    manifestId: payload.manifestId,
+    boundedCount: payload.boundedCount,
+  });
+
+  return progress.counts.pending === 0 ? "settled" : "ready";
 });

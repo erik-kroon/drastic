@@ -20,10 +20,13 @@ import {
 import { RequestEnvironment, type Bindings } from "../src/runtime/environment";
 import {
   dispatchPendingExtractions,
+  dispatchPendingPeriodWork,
   dispatchPendingPreparations,
   ExtractionQueue,
   handleExtraction,
+  handlePeriodWork,
   handlePreparation,
+  PeriodWorkQueue,
   PreparationQueue,
 } from "../src/runtime/preparation-queue";
 
@@ -87,6 +90,7 @@ const services = Layer.mergeAll(
 const worker = Layer.mergeAll(
   PreparationQueue.toLayer(handlePreparation, { concurrency: 2 }),
   ExtractionQueue.toLayer(handleExtraction, { concurrency: 2 }),
+  PeriodWorkQueue.toLayer(handlePeriodWork, { concurrency: 2 }),
 ).pipe(Layer.provideMerge(Worker.layer({ concurrency: 2 })), Layer.provideMerge(services));
 
 const dispatchExtractions = Effect.forever(
@@ -99,6 +103,18 @@ const dispatchExtractions = Effect.forever(
     Effect.catchDefect(() =>
       Effect.logWarning("Extraction queue dispatch defect; admission remains durable."),
     ),
+    Effect.andThen(Effect.sleep("30 seconds")),
+  ),
+);
+
+const dispatchPeriodWork = Effect.forever(
+  dispatchPendingPeriodWork().pipe(
+    Effect.catch(() =>
+      Effect.logWarning("Period work dispatch failed; the run stays open and is retried."),
+    ),
+    // A defect reaching the poll boundary must not end this fiber: the children
+    // stay open and the next poll picks the same manifests up again.
+    Effect.catchDefect(() => Effect.logWarning("Period work dispatch defect; the run stays open.")),
     Effect.andThen(Effect.sleep("30 seconds")),
   ),
 );
@@ -117,10 +133,9 @@ const dispatch = Effect.forever(
   ),
 );
 
-const main = Effect.all([dispatch, dispatchExtractions], { concurrency: 2 }).pipe(
-  Effect.provide(worker),
-  Effect.scoped,
-);
+const main = Effect.all([dispatch, dispatchExtractions, dispatchPeriodWork], {
+  concurrency: 3,
+}).pipe(Effect.provide(worker), Effect.scoped);
 
 runMain(main.pipe(Effect.tapCause(() => Effect.logError("Preparation runner stopped."))), {
   disableErrorReporting: true,

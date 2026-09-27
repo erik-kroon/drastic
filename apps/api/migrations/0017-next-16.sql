@@ -87,12 +87,24 @@ CREATE TABLE openerp.period_work_children (
   -- The batch this child was approved under, so a read can prove which gesture
   -- covered it.
   batch_id text,
+  -- The owning operation routing resolved to when this child was advanced, and
+  -- the sealed plan and review that operation produced. Every value is a real
+  -- named operation. A child that is waiting, needs review or refused has no
+  -- owner, because nothing was dispatched.
+  routed_owner text,
+  owner_review_id text,
+  owner_review_digest text,
   recorded_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT period_work_children_pkey PRIMARY KEY (book_id, work_identity),
   CONSTRAINT period_work_children_state_check CHECK (state = ANY (ARRAY['pending'::text, 'waiting_predecessor'::text, 'needs_review'::text, 'prepared'::text, 'recovered'::text, 'committed'::text, 'refused'::text])),
   CONSTRAINT period_work_children_revision_check CHECK (revision >= 1 AND revision < 1000000000),
   CONSTRAINT period_work_children_cancel_version_check CHECK (cancel_version >= 0 AND cancel_version < 1000000000),
+  CONSTRAINT period_work_children_routed_owner_check CHECK (routed_owner IS NULL OR routed_owner = ANY (ARRAY['purchases.recognition'::text, 'purchases.credits'::text, 'owner.operations'::text, 'commerce.invoice'::text])),
+  -- A child names its routed owner and that owner's review together or names
+  -- none of the three. A batch member is proved from the child, never from the
+  -- batch's own claim about it.
+  CONSTRAINT period_work_children_owner_shape_check CHECK ((routed_owner IS NULL) = (owner_review_id IS NULL) AND (owner_review_id IS NULL) = (owner_review_digest IS NULL)),
   -- A prepared child names its plan and its digest together or names neither.
   -- A committed or recovered child names a receipt.
   CONSTRAINT period_work_children_plan_shape_check CHECK ((plan_id IS NULL) = (plan_digest IS NULL)),
@@ -152,16 +164,57 @@ CREATE TABLE openerp.period_work_batch_members (
   plan_digest text NOT NULL,
   input_identity text NOT NULL,
   work_identity text NOT NULL,
+  -- The owning operation's own review and review digest. The batch approval is a
+  -- human gesture over these exact members; each member's own approval stays
+  -- with its owner and is what that owner's execute consumes.
+  owner_review_id text NOT NULL,
+  owner_review_digest text NOT NULL,
   CONSTRAINT period_work_batch_members_pkey PRIMARY KEY (book_id, batch_id, ordinal),
-  CONSTRAINT period_work_batch_members_ordinal_check CHECK (ordinal >= 0 AND ordinal < 200),
+  CONSTRAINT period_work_batch_members_ordinal_check CHECK (ordinal >= 1 AND ordinal <= 200),
   CONSTRAINT period_work_batch_members_owner_check CHECK (owner = ANY (ARRAY['purchases.recognition'::text, 'purchases.credits'::text, 'owner.operations'::text, 'commerce.invoice'::text])),
   CONSTRAINT period_work_batch_members_batch_fkey FOREIGN KEY (book_id, batch_id) REFERENCES openerp.period_work_batches(book_id, id),
   CONSTRAINT period_work_batch_members_plan_fkey FOREIGN KEY (book_id, plan_id) REFERENCES openerp.change_sets(book_id, id),
   -- A member names a child of a manifest. The same child cannot be a member of
   -- two batches, which is what stops one gesture covering a duplicate
-  -- economic effect.
+  -- economic effect. The owner, plan and review are the ones the child itself
+  -- recorded when it was advanced, so a batch cannot claim a different owner for
+  -- a child than the one that actually prepared the plan.
   CONSTRAINT period_work_batch_members_work_fkey FOREIGN KEY (book_id, work_identity) REFERENCES openerp.period_work_children(book_id, work_identity)
 );
+
+-- The batch's own claim about a member must agree with the child's own record.
+-- This is a calendar-relationship guard in the same shape as the reviewed
+-- 0002 helpers: it never computes anything, it only refuses a claim the child
+-- row does not support. It is not runtime-callable.
+CREATE FUNCTION openerp.period_work_batch_member_agrees() RETURNS trigger
+  SECURITY DEFINER
+  LANGUAGE plpgsql
+  VOLATILE
+  PARALLEL UNSAFE
+  SET search_path TO pg_catalog, openerp, pg_temp
+AS $guard$
+
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM openerp.period_work_children c
+     WHERE c.book_id = NEW.book_id
+       AND c.work_identity = NEW.work_identity
+       AND c.routed_owner = NEW.owner
+       AND c.plan_id = NEW.plan_id
+       AND c.plan_digest = NEW.plan_digest
+       AND c.owner_review_id = NEW.owner_review_id
+       AND c.owner_review_digest = NEW.owner_review_digest
+  ) THEN
+    PERFORM openerp.fail('Forbidden', 'The batch member does not match the child that was advanced.');
+    RETURN NULL;
+  END IF;
+
+  RETURN NEW;
+END $guard$;
+
+CREATE TRIGGER period_work_batch_member_agrees
+  BEFORE INSERT ON openerp.period_work_batch_members
+  FOR EACH ROW EXECUTE FUNCTION openerp.period_work_batch_member_agrees();
 
 CREATE UNIQUE INDEX period_work_batch_members_work_uniq
   ON openerp.period_work_batch_members (book_id, work_identity);
@@ -172,10 +225,21 @@ CREATE UNIQUE INDEX period_work_batch_members_work_uniq
 CREATE TABLE openerp.period_work_batch_approvals (
   book_id text NOT NULL,
   batch_id text NOT NULL,
+  -- One shared posting-kernel approval per member plan, minted by the released
+  -- approve-within-transaction operation during the approving transaction. The
+  -- gesture therefore approves the exact plan digests it lists.
   approval_id text NOT NULL,
+  -- The ordinal of the member this approval covers, so a batch of N members is
+  -- provably covered by N approvals rather than by one.
+  member_ordinal integer NOT NULL,
+  -- The plan digest this approval was minted against. Retained so a later read
+  -- can show what each gesture covered without re-deriving it.
+  plan_digest text NOT NULL,
   approver_id text NOT NULL,
   recorded_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT period_work_batch_approvals_pkey PRIMARY KEY (book_id, batch_id),
+  CONSTRAINT period_work_batch_approvals_pkey PRIMARY KEY (book_id, batch_id, member_ordinal),
+  CONSTRAINT period_work_batch_approvals_ordinal_check CHECK (member_ordinal >= 1 AND member_ordinal <= 200),
+  CONSTRAINT period_work_batch_approvals_member_fkey FOREIGN KEY (book_id, batch_id, member_ordinal) REFERENCES openerp.period_work_batch_members(book_id, batch_id, ordinal),
   CONSTRAINT period_work_batch_approvals_batch_fkey FOREIGN KEY (book_id, batch_id) REFERENCES openerp.period_work_batches(book_id, id),
   CONSTRAINT period_work_batch_approvals_approval_fkey FOREIGN KEY (book_id, approval_id) REFERENCES openerp.approvals(book_id, id)
 );
@@ -205,5 +269,5 @@ GRANT SELECT, INSERT ON TABLE openerp.period_work_manifests, openerp.period_work
 -- Child progress is a checkpoint, not history. Only the advance columns are
 -- writable, and revision and cancel_version move together with the state they
 -- fence, so a stale handler cannot advance a child it did not observe.
-GRANT UPDATE (state, revision, cancel_version, plan_id, plan_digest, receipt_id, missing_facts, refusal_reason, batch_id, updated_at)
+GRANT UPDATE (state, revision, cancel_version, plan_id, plan_digest, receipt_id, missing_facts, refusal_reason, batch_id, routed_owner, owner_review_id, owner_review_digest, updated_at)
   ON TABLE openerp.period_work_children TO openerp_runtime;

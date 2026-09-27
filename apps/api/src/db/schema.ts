@@ -1053,6 +1053,11 @@ export const periodWorkChildren = openerp.table("period_work_children", {
   missingFacts: jsonb("missing_facts").$type<Schema.JsonObject>(),
   refusalReason: text("refusal_reason"),
   batchId: text("batch_id"),
+  // The owning operation routing resolved to, and the sealed plan and review
+  // that operation produced. All three move together or none of them does.
+  routedOwner: text("routed_owner"),
+  ownerReviewId: text("owner_review_id"),
+  ownerReviewDigest: text("owner_review_digest"),
   recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull(),
 });
@@ -1082,6 +1087,8 @@ export const periodWorkBatchMembers = openerp.table("period_work_batch_members",
   planDigest: text("plan_digest").notNull(),
   inputIdentity: text("input_identity").notNull(),
   workIdentity: text("work_identity").notNull(),
+  ownerReviewId: text("owner_review_id").notNull(),
+  ownerReviewDigest: text("owner_review_digest").notNull(),
 });
 
 // Which exact approval covered which exact batch. The approval itself stays with
@@ -1089,7 +1096,9 @@ export const periodWorkBatchMembers = openerp.table("period_work_batch_members",
 export const periodWorkBatchApprovals = openerp.table("period_work_batch_approvals", {
   bookId: text("book_id").notNull(),
   batchId: text("batch_id").notNull(),
+  memberOrdinal: integer("member_ordinal").notNull(),
   approvalId: text("approval_id").notNull(),
+  planDigest: text("plan_digest").notNull(),
   approverId: text("approver_id").notNull(),
   recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
 });

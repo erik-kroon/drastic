@@ -89,6 +89,41 @@ Released databases take forward migrations in filename order. [0004-next-02.sql]
 
 [0007-next-11.sql](migrations/0007-next-11.sql) adds the complete-book SIE4E export: the sealed capture header, the retained account/balance/journal-line membership, and the verified object bytes with their manifest. The application owns the raw balance arithmetic, the type-4 record encoding and the independent semantic comparison; the migration declares no function, no policy and no SIE calculation, and grants only `SELECT, INSERT`. `application/sie4e.ts` owns the capture, `db/sie4e.ts` the tx-passing reads and DML, and `jurisdictions/se/src/sie/sie4e.ts` the pure balances, renderer and comparison. A dimension-bearing book refuses with `UnsupportedProfile` because no reviewed dimension-assignment owner exists, and a reviewed account classification is a required input. See [SIE.md](docs/SIE.md). The migration sequence has a deliberate gap: `0006` is reserved for an in-flight packet. It too has never been applied by PostgreSQL.
 
+[0017-next-16.sql](migrations/0017-next-16.sql) adds evidence-aware period
+preparation: the frozen manifest for one requested interval, the mutable child
+checkpoint, the sealed approval batch, its members and the batch-to-approval
+membership. It declares one private guard function, the
+`period_work_batch_member_agrees` trigger, in the same shape as the reviewed
+`0002` calendar-relationship helpers: it computes nothing and refuses only a
+batch member whose owner, plan, plan digest or owning review disagree with the
+child row that actually prepared the plan. Every function it adds is private and
+not runtime-callable.
+
+`application/period-work.ts` owns the routing, the advance and the batch; the
+pure decision layer is `@open-erp/domain/period-work`; `db/period-work.ts` holds
+the tx-passing reads and DML. The advance calls the **owning** operation's public
+prepare and execute, and it holds no transaction while it does: each child is
+claimed in one short transaction, the owner's prepare runs, and the plan
+reference is checkpointed in a second. Nesting an owner operation inside a held
+transaction would open a second financial transaction, which ADR 0010 forbids.
+The child `revision` and `cancel_version` are compared in the `UPDATE`'s `WHERE`
+clause, so a redelivered handler updates zero rows rather than publishing twice,
+and a cancellation that lands mid-prepare keeps the prepared plan as retained
+evidence. `period_work_children` carries a column-limited `UPDATE` grant and the
+other four tables are append-only to the runtime role.
+
+The dispatch set is exactly the four operations that exist:
+`purchases.recognition`, `purchases.credits`, `owner.operations` and
+`commerce.invoice`. There is **no** company-bank supplier-payment owner in this
+repository, so `purchases.settlement` and `banking.settlement` are absent from the
+router's vocabulary, the database refuses them as a routed owner, and a child that
+needs one becomes a review case naming
+`company_bank_settlement_owner_not_released`. Nothing here posts; a batch approval
+is an operator-only human gesture over exact sealed members, it never covers a
+later arrival, and it does not mint each owner's own approval — that stays with
+the owner, and is what the owner's execute consumes. `reconciled` is always
+`false`: a run whose children were all visited is still not a reconciled period.
+
 [0006-next-03.sql](migrations/0006-next-03.sql) adds the owned source-line purchase
 recognition: the immutable recognition with its unique economic key, the immutable
 signed purchase tax components, and the mutable original-line capacities a later

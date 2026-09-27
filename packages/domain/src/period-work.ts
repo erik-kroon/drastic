@@ -19,6 +19,18 @@ import { MinorUnits, SignedMinorUnits } from "./money";
 // never derived from a queue claim, an attempt counter or a wall clock.
 export const WorkIdentity = Schema.String.check(Schema.isPattern(/^period_work_[0-9a-f]{32}$/));
 
+// The bounds this owner enforces. They are declared before every schema that
+// reads one, so a bound cannot drift out of reach of the contract it limits.
+export const periodWorkBoundary = {
+  maximumChildren: 500,
+  maximumExcluded: 200,
+  maximumRules: 64,
+  maximumMatchesPerChild: 32,
+  maximumDependencies: 16,
+  maximumMissingFacts: 32,
+  maximumMembers: 200,
+} as const;
+
 export const WorkIdentityDigest = Digest;
 
 // A reviewed relationship between this child and an economic event some other
@@ -106,6 +118,8 @@ export const RouteTarget = Schema.Literals([
   "ReviewCase",
 ]);
 
+export type RouteTarget = typeof RouteTarget.Type;
+
 export const RouteFailure = Schema.Literals([
   "ambiguous_rule",
   "unknown_entity",
@@ -114,15 +128,26 @@ export const RouteFailure = Schema.Literals([
   "missing_evidence",
   "rule_changed_since_selection",
   "unmatched_source",
+  // The child needs a settlement that no released owner performs. It stays a
+  // review case naming the gap; it is never dispatched to a name that has no
+  // implementation.
+  "settlement_owner_not_released",
 ]);
+
+// The released settlement owners, narrowed to the ones that actually exist.
+// `purchases.settlement` and `banking.settlement` are named in the packet's
+// vocabulary but no operation in this repository posts a company-bank payment
+// against a recognized supplier obligation, so neither is listed here. A child
+// that needs one is a review case, not a dispatch to an absent owner.
+export const SettlementOwner = Schema.Literal("owner.operations");
+
+export type SettlementOwner = typeof SettlementOwner.Type;
 
 export const RouteDecision = Schema.Struct({
   target: RouteTarget,
   // Present only for existing_obligation_settlement. The owning settlement
   // operation is dispatched to; this router never posts a settlement itself.
-  settlementOwner: Schema.optional(
-    Schema.Literals(["purchases.settlement", "banking.settlement", "owner.operations"]),
-  ),
+  settlementOwner: Schema.optional(SettlementOwner),
   existingRecognitionId: Schema.optional(Identifier),
   ruleId: Schema.optional(Identifier),
   ruleVersion: Schema.optional(Schema.Int),
@@ -132,6 +157,18 @@ export const RouteDecision = Schema.Struct({
 });
 
 export type RouteDecision = typeof RouteDecision.Type;
+
+// The owning operation a routed child is dispatched to. Every value here is a
+// real named operation in this repository. A route that cannot be dispatched is
+// a review case and never appears in this list.
+export const BatchOwner = Schema.Literals([
+  "purchases.recognition",
+  "purchases.credits",
+  "owner.operations",
+  "commerce.invoice",
+]);
+
+export type BatchOwner = typeof BatchOwner.Type;
 
 // One child of the manifest. Frozen membership: a source that arrives after the
 // manifest was sealed is not in it, and a new manifest is required to select
@@ -161,11 +198,23 @@ export const WorkChild = Schema.Struct({
   // A child whose financial effect depends on an earlier child. A dependent
   // child cannot enter a preapproved batch before its predecessor commits.
   dependsOn: Schema.Array(WorkIdentity),
+  // The operation this child is intended for, reviewed when the manifest was
+  // sealed. It is a declared expectation, not a dispatch: routing may still send
+  // the child to review, and a child whose intended owner disagrees with the
+  // routed owner is a review case rather than a silent substitution.
+  intendedOwner: Schema.optional(BatchOwner),
+  // The exact, reviewed command the owning prepare operation is called with.
+  //
+  // A child carries no financial inputs of its own, so this is the only way a
+  // period run can call a real owner operation without inventing a fact. It is
+  // absent whenever the reviewed inputs are not yet available, and the run then
+  // records a precise case naming exactly which inputs are missing rather than
+  // fabricating a command. An absent input is never treated as a zero, a default
+  // or an AI-supplied guess.
+  prepareInput: Schema.optional(Schema.JsonObject),
 });
 
 export type WorkChild = typeof WorkChild.Type;
-
-export type SourceCoverage = typeof SourceCoverage.Type;
 
 export const SourceCoverage = Schema.Struct({
   // The exact population the manifest was cut from, and whether that population
@@ -195,23 +244,26 @@ export type PeriodWorkManifest = typeof PeriodWorkManifest.Type;
 // The explicit fixed manifest a human approves. It is a list of already sealed
 // member plans, never a rule that admits a future arrival.
 export const BatchMember = Schema.Struct({
-  owner: Schema.Literals([
-    "purchases.recognition",
-    "purchases.credits",
-    "owner.operations",
-    "commerce.invoice",
-  ]),
+  owner: BatchOwner,
   planId: Identifier,
   planDigest: Digest,
   inputIdentity: Schema.String,
   workIdentity: WorkIdentity,
+  // The owning operation's own review and approval identities. The batch approval
+  // is a human gesture over the exact members; each member's own approval stays
+  // with its owner and is what that owner's execute consumes.
+  ownerReviewId: Identifier,
+  ownerReviewDigest: Digest,
 });
 
 export type BatchMember = typeof BatchMember.Type;
 
 export const ApprovalBatch = Schema.Struct({
   scope: Scope,
-  members: Schema.Array(BatchMember).check(Schema.isMinLength(1), Schema.isMaxLength(200)),
+  members: Schema.Array(BatchMember).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(periodWorkBoundary.maximumMembers),
+  ),
   // Informational only. The combined total is shown for the human and is never
   // a journal line and never a balancing figure.
   combinedInformationalMinor: SignedMinorUnits,
@@ -220,16 +272,52 @@ export const ApprovalBatch = Schema.Struct({
 
 export type ApprovalBatch = typeof ApprovalBatch.Type;
 
-export const periodWorkBoundary = {
-  maximumChildren: 500,
-  maximumExcluded: 200,
-  maximumRules: 64,
-  maximumMatchesPerChild: 32,
-  maximumDependencies: 16,
-} as const;
-
 const code = (left: string, right: string): 0 | 1 | -1 =>
   left < right ? -1 : left > right ? 1 : 0;
+
+/**
+ * The owning operation a routed child is dispatched to.
+ *
+ * Only a route that a released operation can actually perform resolves to an
+ * owner. `OwnedCorrectionReview` and `ReviewCase` resolve to nothing, because
+ * naming an owner for them would be a claim that this run can post a correction
+ * or a review, which it cannot: it routes and records, and the owning
+ * operation posts.
+ */
+export function ownerForTarget(target: RouteTarget): BatchOwner | undefined {
+  switch (target) {
+    case "existing_obligation_settlement":
+      return "owner.operations";
+    case "OwnerPaidPurchase":
+      return "owner.operations";
+    case "SupplierRecognition":
+      return "purchases.recognition";
+    case "OwnedCorrectionReview":
+    case "ReviewCase":
+      return undefined;
+  }
+}
+
+/**
+ * The stable command identity for one child of one run.
+ *
+ * It is derived from the run, the child and the exact source revision the child
+ * was frozen at, never from a queue claim, an attempt counter or a wall clock.
+ * A redelivered handler therefore recovers the same command rather than minting
+ * a second one, and a changed source revision is a different command and
+ * therefore a new preparation rather than a silent reuse of an approved plan.
+ */
+export function childCommandKey(manifestId: string, child: WorkChild): string {
+  return `pw_${manifestId}_${child.workIdentity}_${child.sourceRevision}`;
+}
+
+/**
+ * The exact missing facts a child must be told about, bounded and sorted. A
+ * child with more facts than this is not a review case a human can act on.
+ */
+export function boundedMissingFacts(facts: ReadonlyArray<string>): ReadonlyArray<string> {
+  return [...new Set(facts)].sort(code).slice(0, periodWorkBoundary.maximumMissingFacts);
+}
 
 /**
  * Deterministic evidence-aware routing for one child.
@@ -255,24 +343,42 @@ export function routeWork(
   if (child.isPaymentObservation) {
     const recognition = child.existingRecognition;
 
-    if (recognition === undefined || !reviewedInput.committedPurchaseExists) {
+    if (recognition === undefined) {
       return {
         target: "ReviewCase",
-        missingFacts: [
-          recognition === undefined
-            ? "payment_observation_without_matching_recognition"
-            : "payment_observation_without_committed_purchase",
-        ],
+        missingFacts: ["payment_observation_without_matching_recognition"],
         failure: "unmatched_source",
       };
     }
 
+    if (!reviewedInput.committedPurchaseExists) {
+      return {
+        target: "ReviewCase",
+        existingRecognitionId: recognition.recognitionId,
+        missingFacts: ["payment_observation_without_committed_purchase"],
+        failure: "unmatched_source",
+      };
+    }
+
+    // The owner-paid route has a released owner: NEXT-06 discharges a recognized
+    // supplier payable against the owner's own private liability. A company-bank
+    // payment against a recognized supplier obligation has no released owner in
+    // this repository, so the obligation stays open and the case names the gap
+    // rather than dispatching to a name with no implementation.
+    if (recognition.owner === "owner.operations") {
+      return {
+        target: "existing_obligation_settlement",
+        settlementOwner: "owner.operations",
+        existingRecognitionId: recognition.recognitionId,
+        missingFacts: [],
+      };
+    }
+
     return {
-      target: "existing_obligation_settlement",
-      settlementOwner:
-        recognition.owner === "owner.operations" ? "owner.operations" : "purchases.settlement",
+      target: "ReviewCase",
       existingRecognitionId: recognition.recognitionId,
-      missingFacts: [],
+      missingFacts: ["company_bank_settlement_owner_not_released"],
+      failure: "settlement_owner_not_released",
     };
   }
 
