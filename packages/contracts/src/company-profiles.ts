@@ -3,16 +3,23 @@ import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 import { CommandReceipt, EvidenceReference } from "./commerce";
+import { CorporateTaxRuleRelease } from "./corporate-tax";
 import { PayrollRuleRelease } from "./payroll-calculations";
 import { RoleKind } from "./roles";
 
 export { RoleKind };
 
-// Capability-specific company admission. The four families below are the ones this
+// Capability-specific company admission. The five families below are the ones this
 // owner admits. The legal_ar family is activated by commerce.legalProfile.activate,
 // so it is reported as owner-bound and never activated here.
 
-export const Family = Schema.Literals(["posting_eligibility", "vat", "payroll", "statements"]);
+export const Family = Schema.Literals([
+  "posting_eligibility",
+  "vat",
+  "payroll",
+  "statements",
+  "corporate_tax",
+]);
 
 export const FactKind = Schema.Literals([
   "jurisdiction",
@@ -252,6 +259,9 @@ export const ProfileDates = Schema.Struct({
   taxPointOn: Schema.NullOr(Accounting.AccountingDate),
   paymentOn: Schema.NullOr(Accounting.AccountingDate),
   reportOn: Schema.NullOr(Accounting.AccountingDate),
+  // The pre-close corporate-tax family selects its reviewed release on the fiscal
+  // period end it reports on, never on today's date.
+  taxPeriodOn: Schema.NullOr(Accounting.AccountingDate),
 });
 
 export const ProfileWitness = Schema.Struct({
@@ -437,6 +447,10 @@ export const RuleRelease = Schema.Struct({
   // record. The payroll family's tables, decisions, contribution bands and
   // holiday policy live here, so there is exactly one rule-release authority.
   payroll: Schema.optional(PayrollRuleRelease),
+  // NEXT-22. The corporate-tax family's exact rate, rounding policies, loss
+  // profile, journal series, declaration field map and SRU grammar live here too.
+  // There is no second tax release table and no inferred rate or reporting box.
+  corporateTax: Schema.optional(CorporateTaxRuleRelease),
 }).check(
   Schema.makeFilter(
     (release) =>

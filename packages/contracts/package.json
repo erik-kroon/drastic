@@ -76,6 +76,7 @@
     "./payroll-foundation": "./src/payroll-foundation.ts",
     "./roles": "./src/roles.ts",
     "./payroll-calculations": "./src/payroll-calculations.ts",
+    "./corporate-tax": "./src/corporate-tax.ts",
     "./expense-tax": "./src/expense-tax.ts",
     "./owner-register": "./src/owner-register.ts",
     "./owner-operations": "./src/owner-operations.ts"

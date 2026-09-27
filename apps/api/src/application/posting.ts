@@ -627,7 +627,13 @@ export const bookStatus = Effect.fn("posting.bookStatus")(function* (
         transaction,
         command.scope,
         "actual_company",
-        { postingOn: today, taxPointOn: today, paymentOn: today, reportOn: today },
+        {
+          postingOn: today,
+          taxPointOn: today,
+          paymentOn: today,
+          reportOn: today,
+          taxPeriodOn: today,
+        },
       );
 
       return yield* decode(BookStatusSchema, {

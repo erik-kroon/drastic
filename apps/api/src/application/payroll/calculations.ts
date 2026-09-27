@@ -88,7 +88,7 @@ function requirePayrollGrant(transaction: Transaction, scope: Scope, actorId: st
 // The payroll family selects its reviewed configuration on the planned payment
 // date, never on today's date.
 function profileDates(paymentOn: string): Dates {
-  return { postingOn: null, taxPointOn: null, paymentOn, reportOn: null };
+  return { postingOn: null, taxPointOn: null, paymentOn, reportOn: null, taxPeriodOn: null };
 }
 
 // A monthly pay event covers one whole calendar month. The last day is derived
