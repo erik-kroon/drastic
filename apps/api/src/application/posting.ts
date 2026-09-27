@@ -606,8 +606,8 @@ export const bookSetup = Effect.fn("posting.bookSetup")(function* (
             ? []
             : ["The book profile or writer authority is not supported."],
         warnings: [
-          "Only the synthetic-core-v1 manual journal profile is implemented. This book is not verified for production accounting or Swedish compliance.",
-          "Tax treatment, source completeness, external archive and statutory reporting are not implemented.",
+          "Manual journal entry is limited to the synthetic-core-v1 profile. Other operations have their own company-profile requirements.",
+          "This book has not been verified for live company accounting. Source completeness, archive recovery and statutory outcomes require separate evidence.",
         ],
       });
     }),
