@@ -61,6 +61,16 @@ Effect owns scoped orchestration, domain preparation, authorization and applicat
 
 These are ownership boundaries, not independent deployments or tables to generate in advance.
 
+## Book Zero and read-only Cash
+
+[Book Zero](plans/15-book-zero-workflow-cash.md) extends these owners. The existing [company-work composition](../apps/web/src/lib/company-work.ts) and [workspace application](../apps/api/src/application/workspace.ts) are starting points for the daily-work projection; the projection cannot acquire its own invoice states or financial balances. Company profile, bank, commerce, tax, payroll, reporting and recovery operations keep their present authority.
+
+Cash consumes versioned observations and remaining obligations from those owners. Application operations own scoped basis capture, permission checks, snapshot persistence and orchestration; pure exact calculations belong in `packages/domain` when concrete consumers are added. `packages/contracts` owns shared wire schemas and errors, `apps/web` owns views, and `jurisdictions/se` retains qualified Swedish calculations consumed by Cash. A forecast owner may own assumptions, inclusion decisions and saved results; it cannot become another bank, subledger or tax engine. The [Cash contract](plans/15-book-zero-workflow-cash.md#cash-basis-and-payment-identity) describes semantics, not a set of existing endpoints or tables.
+
+Capture a consistent ledger/knowledge boundary and versioned inputs, calculate outside long financial locks, then recheck material dependencies before sealing a current snapshot. Keep historical snapshots readable as historical; recompute or mark stale if the basis changes. Projection watermarks prevent an older job from replacing a newer current result. Reuse the application outbox and effect-mq Bun process for bounded work. UI, REST and exposed MCP reads share semantics, with current access checked again on snapshot opening and export.
+
+This addition does not select a new runtime, financial calculation authority, styling system or deployment. In particular, source references to Bend do not change its existing ownership or prove company correctness. NEXT-45 retains historical cash-flow reporting; Cash owns prospective scenarios only.
+
 ## Runtime and resource constraints
 
 Retain the installed Effect `4.0.0-rc.112` and its v4 API family. Retain Bun, Vite+, TanStack, StyleX, Paraglide and Alchemy. A framework upgrade is separate work. Bun is not the deployed Worker runtime; exercise the chosen database driver in local workerd before relying on it ([D-02](open-decisions.md)).

@@ -6,6 +6,16 @@ OpenERP should turn retained evidence into explicit accounting decisions, approv
 
 The initial candidate profile is one Swedish AB. Its actual legal form, accounting method, financial year, registrations, reporting framework and obligations must be established from records ([D-04](open-decisions.md)). “Swedish AB,” “K2,” calendar-year accounting and payroll are not defaults to invent.
 
+## Book Zero product priority
+
+The [Book Zero plan](plans/15-book-zero-workflow-cash.md) organizes the first delivery around Drastic AB: independently review a real historical period, finish routine work through the ordinary interface, and explain future payments through read-only Drastic Cash. Extend acceptance to the first financial year, a new real period and a separately approved single-writer transition. Work belongs in this delivery when the actual company, a priority journey or correct Cash coverage needs it.
+
+The source reports SEB and a first financial year of 2025-05-17–2026-04-30; these remain [company inputs to qualify](open-decisions.md#book-zero-company-and-review-inputs). Reconstruction from raw evidence and migration of old accounting are separate trials. A successful migration cannot by itself prove new accounting treatment.
+
+Cash uses qualified opening observations and remaining payment obligations to show daily balances, the minimum and its date, and headroom after an explicit buffer. It supports 30 days, 90 days and 13 weeks (91 days), with frozen scenarios, contribution drilldown and visible missing/stale data. It neither owns ledger balances nor initiates payments. It is separate from NEXT-45's historical cash-flow statement.
+
+Lending, factoring, cards, credit decisions and the broader financial platform are outside this first delivery. Native annual filing is not required to accept the first period, but full P6/P7 requirements stay open and any external year-end handoff must work in practice. The source's L/G identifiers organize delivery and evidence without replacing R-01–R-12 or existing packet counts.
+
 ## Users and outcomes
 
 | User                | Outcome                                                                                                                              |

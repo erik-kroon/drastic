@@ -67,6 +67,16 @@ An owner-paid expense and company reimbursement are separate events: recognition
 
 Use stable source IDs when available. Otherwise retain file identity and row occurrence, and resolve overlaps explicitly. Equal date, description and amount cannot be a destructive deduplication key: two legitimate payments may be identical.
 
+## Forecasts and knowledge boundaries
+
+The [Cash requirements](plans/15-book-zero-workflow-cash.md#cash-basis-and-payment-identity) extend the read model without changing I-01–I-12. A forecast binds an authorized entity/book, reviewed account set, common economic `asOf`, knowledge `recordedCutoff`, source revisions and explicit assumptions. Later evidence cannot rewrite an older forecast. A period assessment likewise binds its ledger and source coverage; a technical lock alone does not prove completeness.
+
+One economic payment can have invoice, instruction, bank, allocation and voucher evidence. Remaining amounts come from the owning register; opening inclusion and supersession/settlement relations decide whether a contribution belongs in the future. Equal amounts/dates cannot prove identity. A reservation, recurring estimate, payroll cost or tax declaration must not repeat the same cash effect through another representation.
+
+Cash calculates exact daily balances and the minimum including the opening, then subtracts the selected buffer once. Negative headroom remains negative. Unknown amounts, dates, rates, unbridged observations and failed reads cannot become zero. Separate coverage, freshness, reconciliation and uncertainty, and preserve original currency plus any qualified conversion basis. Scenario edits change assumptions, never legal due dates or financial records.
+
+Civil accounting and due dates remain dates. When a timestamp must become a date for the Swedish view, use explicit Europe/Stockholm semantics; do not shift an already established civil date through UTC conversion. Saved results and exports carry their source boundaries, included/excluded contributions, quality and calculation/scenario versions.
+
 ## Posting and corrections
 
 For one atomic group: establish trusted scope, acquire the book mutation barrier, recover/check idempotency, load the exact plan and approval, check authority and dependencies, enforce period/accounts/semantic identities, allocate transactional series and commit counters, write effects/receipt/outbox, then commit. All writers that can invalidate these checks must obey the [shared lock order](plans/00-shared-contracts.md#runtime-and-transaction-ownership); integration must verify existing mutation paths against it.

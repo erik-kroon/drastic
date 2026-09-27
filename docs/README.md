@@ -4,6 +4,8 @@ OpenERP turns retained evidence into reviewed accounting decisions, approved pos
 
 The repository contains a synthetic accounting implementation and ongoing domain work. Implementation, observed behavior, company readiness and external acceptance are separate claims. The [roadmap](roadmap.md) records progress and evidence; the [delivery plan](plans/README.md) specifies the remaining work.
 
+The current first-company product direction is [Book Zero, daily work and Drastic Cash](plans/15-book-zero-workflow-cash.md): an independently reviewed Drastic period, a usable daily review journey and a read-only payment forecast. It maps the supplied openERP-specific PRD to existing owners and gates. The wider Drastic Financial Platform PRD is not adopted as implementation scope by this update.
+
 ## Reading order
 
 The [open-accounting decision](adr/0005-open-accounting-and-managed-services.md), [application-owned replacement](adr/0010-application-owned-accounting-replacement.md), [architecture follow-up](architecture-followup.md), [licensing policy](../LICENSING.md) and [self-host setup](../infra/self-host/README.md) describe the open-source distribution and the latest design reconciliation.
@@ -12,6 +14,7 @@ The [open-accounting decision](adr/0005-open-accounting-and-managed-services.md)
 
 | Document                                               | Question it answers                                                                                      |
 | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| [Book Zero delivery](plans/15-book-zero-workflow-cash.md) | How do the Drastic period, daily work and Cash requirements fit the existing plan? |
 | [Product scope](product.md)                            | Who is the product for, and what must it do?                                                             |
 | [Local development](local-development.md)              | How do I run the source against an isolated PostgreSQL database?                                         |
 | [Customer frontend plan](frontend.md)                  | How should founders, finance teams and accountants navigate, review and finish work?                     |

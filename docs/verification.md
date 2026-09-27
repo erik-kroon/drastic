@@ -39,6 +39,44 @@ The [verification strategy](verification-strategy.md) defines runner ownership, 
 | E-20 | Worker/Bun success, connection failure, cancellation and restart; the clean baseline is rerun, a recorded checksum drifts, or an old installation is presented. | Consistent operation semantics, scoped cleanup, honest commit uncertainty, effective grants, safe clean-baseline rerun and refusal of the old installation without modification. | R-12; I-07, I-08             |
 | E-21 | Restore database and evidence archive; old writer wakes after cutover.                                                     | Original links, balances, approvals, rules and receipts reconstruct; obsolete writer is refused.                                         | R-01, R-12; I-01, I-10, I-12 |
 
+## Book Zero acceptance
+
+The [Book Zero plan](plans/15-book-zero-workflow-cash.md) adds the source PRD's AT-01–AT-45 as unexecuted acceptance obligations. These identifiers refer to the [preserved Book Zero source, section 14](specs/book-zero-v1/PRD_openERP_Book_Zero_Workflow_Drastic_Cash_v1.md); they are not the broader platform's ES-AT cases. The source retains each setup, independent expectation and requirement reference. Its inline requirement acceptance and priority journeys also apply; importing the list does not execute it or change E-01–E-21 status.
+
+| Book Zero cases | Real boundary and decisive result | Existing owner/scenarios |
+| --- | --- | --- |
+| AT-01–AT-06 | Reimport, overlap, missing period, raw reconstruction and migrated opening: preserve source occurrences and links, expose coverage gaps, recognize history once, use independent expectations. | IMP/COM; E-05/E-12/E-14/E-15 |
+| AT-07–AT-09 | Owner expense and reimbursement, owner transfer, partial invoice payment: one cost/transfer, correct remaining capacity; 10,000 less 4,000 leaves 6,000 SEK. | COM; E-13 |
+| AT-10–AT-15 | Agent self-approval, stale input, concurrent execute, lost response, partial batch and revocation: refusal or one durable effect, ordinary UI recovery, honest per-group results. | FND/PST/FE; E-01/E-04/E-06/E-08/E-11/E-17 |
+| AT-16, AT-17 | Two issues on one case stay one principal task; failed work-list read is an error, not zero remaining work. | Workspace/FE-02 |
+| AT-18–AT-20 | Reviewer imports the complete SIE and follows original evidence; isolated restore stays quarantined; an applicable unsupported family blocks its company outcome. | END/OPS/profile owners; E-18/E-20/E-21; D-04/D-08 |
+| AT-21–AT-24 | Opening inclusion and owned payment identity: 50,000 invoiced less 20,000 already in bank leaves 30,000 future inflow; verified internal transfer nets to zero; unrelated equal/opposite payments remain separate. | Cash with IMP/COM |
+| AT-25–AT-28 | Tax-account funding, multiple representations, amendments and salary: 30,000 tax-account funds against 50,000 debits needs 20,000 bank funding; net pay 40,000 plus tax positions 25,000 does not add gross pay again. | Cash with VAT/PAY |
+| AT-29–AT-33 | Noncash depreciation, owner reimbursement, recurring estimate replacement, undated overdue AR and unsupported FX: no invented payment, duplicate occurrence, lost amount or default conversion. | Cash with COM/AST/FX |
+| AT-34–AT-37 | Mismatched opening dates, same-day included payment, reservation semantics and later knowledge: qualify bridge/inclusion or mark incomplete; preserve the original snapshot. | Cash with bank/source owners |
+| AT-38–AT-42 | Delayed-customer scenario, negative minimum despite positive close, zero denominator, finite horizon and missing future salary/tax: honest exact results, unchanged books and visible gaps. | Cash application/domain and UI |
+| AT-43–AT-45 | Older job finishing last, cross-company snapshot export and repeated identical inputs: no stale overwrite or data leak; reproducible exact contributions and totals. | Cash/PST/FND |
+
+### Independent Cash example
+
+The source's 30-day example is synthetic, not Drastic's balance or a qualified tax rule. Assume common opening bank 100,000 SEK, separate tax account 30,000 SEK, 50,000 SEK tax debits, buffer 10,000 SEK and no other payments. Day 11 funding is a supplied date in this example, not a universal bank-day rule. Cash receives only the extra 20,000 SEK bank outflow; the day 12 tax debit does not deduct bank cash again.
+
+| Day | Bank contribution, SEK | Base end-of-day bank, SEK | Customer A delayed to day 22, SEK |
+| --- | ---: | ---: | ---: |
+| 0 | Opening 100,000 | 100,000 | 100,000 |
+| 5 | Supplier −40,000 | 60,000 | 60,000 |
+| 8 | Customer A +30,000 in base only | 90,000 | 60,000 |
+| 10 | Net payroll −40,000 | 50,000 | 20,000 |
+| 11 | Additional tax-account funding −20,000 | 30,000 | 0 |
+| 12 | Tax-account debit; no bank contribution | 30,000 | 0 |
+| 20 | Customer B +60,000 | 90,000 | 60,000 |
+| 22 | Customer A +30,000 in delayed case only | 90,000 | 90,000 |
+| 30 | No further payment | 90,000 | 90,000 |
+
+Both scenarios close at 90,000 SEK. The base minimum is 30,000 and headroom is 20,000; the delayed minimum is zero and headroom is **−10,000**. These expected values are fixed before implementation; they must not be recomputed by the production calculator as their own oracle. The documentation's arithmetic check does not prove the application.
+
+G1/G4 require a named independent reviewer and actual sources; G2/G3 require the applicable public runtime and browser journeys; G5 requires a real new period; G6 requires restore and the authorized single writer. Reuse existing E2E infrastructure within the implementing task's authority, define failure cases before implementation and leave a verifiable, repeatable artifact. Include exact revision/dirty state, migration and rule versions, environment, permitted input/source hashes, replay steps, independent expected/observed results, receipts, reviewer and limitations. Do not add unit tests after code or mark company/provider gates passed from synthetic checks.
+
 ## Evidence artifact for every E2E run
 
 Record scenario IDs, independently specified expected outcomes, code/schema/rule versions, runtime/database versions, fixture source and synthetic/real-copy status. Include exact launch/drive/cleanup commands, assertions observed at the public boundary, persisted receipts and relevant database observations. Capture only non-sensitive screenshots or logs. Report failures and checks not run beside the result.
