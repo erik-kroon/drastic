@@ -335,6 +335,35 @@ export const proposeRecurringTemplateRevision = Effect.fn(
       const components = Recurrence.assertUniqueChargeComponents(input.chargeComponentKeys);
 
       if (Result.isFailure(components)) return yield* refuseCycle(components);
+
+      // An amendment names the first affected cycle, and that cycle must still be
+      // unissued. A boundary at or behind the last materialised cycle would
+      // re-identify a cycle that already owns an occurrence, which is exactly
+      // what occurrence identity exists to prevent. The materialised boundary is
+      // the agreement's billing boundary: past it, a correction is a draft
+      // revision and a new human review, not a new template.
+      const materialised = (yield* RecurrenceDb.readMaterialisedThrough(
+        transaction,
+        command.scope.bookId,
+        command.agreementId,
+      ))[0]?.cycleOrdinal;
+
+      if (materialised !== undefined && BigInt(input.effectiveFromCycle) <= BigInt(materialised)) {
+        return yield* failure("StaleDependency");
+      }
+
+      const existing = yield* RecurrenceDb.readTemplateRevisions(
+        transaction,
+        command.scope.bookId,
+        command.agreementId,
+      );
+
+      if (
+        existing.some((row) => BigInt(row.effectiveFromCycle) === BigInt(input.effectiveFromCycle))
+      ) {
+        return yield* failure("StaleDependency");
+      }
+
       const book = (yield* DraftDb.readBookCurrency(transaction, command.scope.bookId))[0];
 
       if (!book) return yield* failure("Forbidden");
@@ -896,8 +925,11 @@ export const listRecurringOccurrences = Effect.fn("commerce.recurring.listOccurr
           status: record.status,
           occurrenceId: record.id,
           draftId: record.draftId,
-          issued: row.documentNumber !== null,
+          issued: row.issued,
+          prepared: row.prepared,
+          approved: row.approved,
           documentNumber: row.documentNumber,
+          postingReceiptId: row.postingReceiptId,
         };
       }),
     );

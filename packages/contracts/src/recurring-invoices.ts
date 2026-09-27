@@ -234,6 +234,10 @@ export const RecurringCoverage = Schema.Struct({
   serviceInterval: ServiceInterval,
 });
 
+// Materialized, prepared, approved and issued are reported independently: a
+// schedule that ends does not withdraw them, and none of them implies delivery.
+// Delivery state stays with the delivery owner, which is the only place a send
+// outcome is produced.
 const occurrenceSummary = Schema.Struct({
   cycleOrdinal: CycleOrdinal,
   cycleDate: Accounting.AccountingDate,
@@ -242,8 +246,11 @@ const occurrenceSummary = Schema.Struct({
   status: OccurrenceStatus,
   occurrenceId: Accounting.Identifier,
   draftId: Accounting.Identifier,
+  prepared: Schema.Boolean,
+  approved: Schema.Boolean,
   issued: Schema.Boolean,
   documentNumber: Schema.NullOr(Schema.String),
+  postingReceiptId: Schema.NullOr(Accounting.Identifier),
 });
 
 export const RecurringOccurrenceList = Schema.Struct({
@@ -400,7 +407,7 @@ export const RecurringInvoiceCapabilities = {
   },
   commerce_list_recurring_occurrences: {
     description:
-      "Read the bounded materialised occurrence history of one recurring agreement with per-cycle issued status. Coverage, draft and document number are reported independently.",
+      "Read the bounded materialised occurrence history of one recurring agreement, reporting materialised, prepared, approved and issued per cycle independently with the legal document number and ledger receipt. Delivery state is not reported here; read it from the delivery owner.",
     input: Schema.Struct({
       scope: Accounting.Scope,
       agreementId: Accounting.Identifier,

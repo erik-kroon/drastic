@@ -49,6 +49,35 @@ The application owns accounting policy, authorization, calculations, workflow de
 
 Fresh databases use [0001-schema.sql](migrations/0001-schema.sql), [0002-integrity.sql](migrations/0002-integrity.sql) and [0003-roles.sql](migrations/0003-roles.sql). The superseded 198-file chain has been removed. The migrator refuses old migration receipts and changed checksums; recreate an explicitly disposable development database instead of upgrading the old schema. The baseline retains 17 functions for canonical hashes, immutable records, balanced vouchers, calendar relationships and version maintenance. Only `canonical` and `digest` are runtime-callable. Private integrity helpers have fixed search paths and no public execution grant. [Completion evidence](../../docs/plans/evidence/application-owned-replacement-complete.md) records the final allowlist, grants, runtime journeys and restore checks.
 
+[0018-next-29.sql](migrations/0018-next-29.sql) adds recurring invoice occurrences: the
+immutable agreement, its immutable template revision boundaries, its immutable
+pause, resume and end events, the immutable occurrence, and the append-only
+per-component billing coverage consumption. Occurrence identity is
+`UNIQUE (book_id, agreement_id, cycle_ordinal)` and contains no template
+revision, and the invoice draft key is derived from that pair alone, so amending
+a template cannot re-identify a cycle that is already issued. Coverage is unique
+per occurrence and charge component and retains the legal document number and the
+ledger receipt. It declares no function; it reuses the baseline `immutable_row`
+guard and the `digest` check helper, and carries its own runtime grants. Like the
+forward migrations above, it has never been applied by PostgreSQL.
+
+`application/commerce/recurring-invoices.ts` owns the agreement, template
+revision, event, plan, materialization and read operations.
+`db/commerce/recurring-invoices.ts` owns the tx-passing reads and DML, and its
+write access check asks for `INSERT` on exactly the four tables it writes into.
+`application/commerce/recurring-coverage.ts` is the single issuance-admission
+authority: both invoice issue owners ask it whether a draft's occurrence is still
+unbilled and still due before anything issues, and it appends the coverage
+consumption in the same financial transaction that issues the invoice. A pause or
+an end that wins before issue admission blocks the invoice; a pause recorded after
+a committed issue cannot undo the invoice. The pure cycle calculation is
+`@open-erp/domain/recurrence`. Delivery state is not reported by this owner: the
+delivery owner is the only place a send outcome is produced.
+
+The automation `recurring-rules.ts` owner is unrelated. It models bank-observation
+matching rules on the `synthetic-core-v1` profile, not commercial invoice
+recurrence, and the two share no table, identity or policy.
+
 Released databases take forward migrations in filename order. [0004-next-02.sql](migrations/0004-next-02.sql) adds the capability-specific company admission record model: rule releases, reviewed company fact revisions and their reviews, reviewed account role bindings, per-family admission epochs, activations and the activation impacts a retroactive fact correction records. It declares no function: it reuses the baseline `immutable_row` guard and the `digest` check helper, and it carries its own runtime grants rather than editing the reviewed baseline. A sealed activation proposal, its approval and its no-journal receipt reuse the existing `change_sets`, `approvals` and `posting_group_receipts` identity instead of a parallel set of tables. [0005-next-13.sql](migrations/0005-next-13.sql) adds the immutable statement-snapshot header, row and contribution membership. Both migrations were written against the 0001-0003 baseline but **neither has ever been applied by PostgreSQL**; see [the NEXT packet progress note](../../docs/plans/next-packet-progress.md) for the full unverified surface.
 
 [0007-next-11.sql](migrations/0007-next-11.sql) adds the complete-book SIE4E export: the sealed capture header, the retained account/balance/journal-line membership, and the verified object bytes with their manifest. The application owns the raw balance arithmetic, the type-4 record encoding and the independent semantic comparison; the migration declares no function, no policy and no SIE calculation, and grants only `SELECT, INSERT`. `application/sie4e.ts` owns the capture, `db/sie4e.ts` the tx-passing reads and DML, and `jurisdictions/se/src/sie/sie4e.ts` the pure balances, renderer and comparison. A dimension-bearing book refuses with `UnsupportedProfile` because no reviewed dimension-assignment owner exists, and a reviewed account classification is a required input. See [SIE.md](docs/SIE.md). The migration sequence has a deliberate gap: `0006` is reserved for an in-flight packet. It too has never been applied by PostgreSQL.

@@ -58,7 +58,13 @@ export type OccurrenceIssueRow = {
   readonly body: JsonObject;
 };
 
-export type OccurrenceSummaryRow = OccurrenceRow & { readonly documentNumber: string | null };
+export type OccurrenceSummaryRow = OccurrenceRow & {
+  readonly documentNumber: string | null;
+  readonly postingReceiptId: string | null;
+  readonly prepared: boolean;
+  readonly approved: boolean;
+  readonly issued: boolean;
+};
 
 export type CountRow = { readonly count: number };
 
@@ -281,6 +287,9 @@ export function readMaterialisedThrough(
   );
 }
 
+// One row per occurrence. The coverage join is aggregated so the per-component
+// coverage rows cannot multiply an occurrence, and prepared, approved and issued
+// are separate flags because they are separate decisions by separate owners.
 export function readOccurrencePage(
   transaction: Transaction,
   bookId: string,
@@ -289,14 +298,41 @@ export function readOccurrencePage(
 ) {
   return transaction.execute<OccurrenceSummaryRow>(
     sql`
-      select ${occurrenceColumns}, i.document_number as "documentNumber"
-      from openerp.recurring_invoice_occurrences o
-      left join openerp.recurring_invoice_occurrence_issues i
-        on i.book_id = o.book_id and i.occurrence_id = o.id
-      where o.book_id = ${bookId} and o.agreement_id = ${agreementId}
-        and (${after}::text::bigint is null or o.cycle_ordinal > ${after}::text::bigint)
-      order by o.cycle_ordinal
-      limit 201
+      with paged as (
+        select id, book_id, agreement_id, cycle_ordinal, cycle_date, service_starts_on,
+          service_ends_on, selected_template_revision, selected_template_digest, draft_id, body
+        from openerp.recurring_invoice_occurrences
+        where book_id = ${bookId} and agreement_id = ${agreementId}
+          and (${after}::text::bigint is null or cycle_ordinal > ${after}::text::bigint)
+        order by cycle_ordinal
+        limit 201
+      ), coverage as (
+        select occurrence_id, min(document_number) as document_number,
+          min(invoice_issue_id) as invoice_issue_id, min(posting_receipt_id) as posting_receipt_id
+        from openerp.recurring_invoice_occurrence_issues
+        where book_id = ${bookId}
+        group by occurrence_id
+      )
+      select p.id, p.agreement_id as "agreementId", p.cycle_ordinal::text as "cycleOrdinal",
+        p.cycle_date::text as "cycleDate", p.service_starts_on::text as "serviceStartsOn",
+        p.service_ends_on::text as "serviceEndsOn",
+        p.selected_template_revision::text as "selectedTemplateRevision",
+        p.selected_template_digest as "selectedTemplateDigest", p.draft_id as "draftId", p.body,
+        c.document_number as "documentNumber", c.posting_receipt_id as "postingReceiptId",
+        (c.invoice_issue_id is not null) as "issued",
+        exists (
+          select 1 from openerp.invoice_issue_reviews r
+          where r.book_id = p.book_id and r.draft_id = p.draft_id
+        ) as "prepared",
+        exists (
+          select 1 from openerp.invoice_issue_reviews r
+          join openerp.invoice_issue_approvals a
+            on a.book_id = r.book_id and a.review_id = r.id
+          where r.book_id = p.book_id and r.draft_id = p.draft_id
+        ) as "approved"
+      from paged p
+      left join coverage c on c.book_id = p.book_id and c.occurrence_id = p.id
+      order by p.cycle_ordinal
     `,
     "objects",
   );
