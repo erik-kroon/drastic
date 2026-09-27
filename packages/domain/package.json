@@ -34,6 +34,7 @@
     "./vat-assessment": "./src/vat-assessment.ts",
     "./employee-claims": "./src/employee-claims.ts",
     "./variable-pay": "./src/variable-pay.ts",
+    "./cash-flow-statement": "./src/cash-flow-statement.ts",
     "./historical-adoptions": "./src/historical-adoptions.ts",
     "./asset-disposals": "./src/asset-disposals.ts",
     "./financial-close": "./src/financial-close.ts",
