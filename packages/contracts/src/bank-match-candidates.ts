@@ -2,7 +2,7 @@ import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
-import { RowOrdinal } from "./reconciliation";
+import { RowOrdinal, StatementPaymentReference } from "./reconciliation";
 
 export const BankCandidateSource = Schema.Struct({
   statementId: Accounting.Identifier,
@@ -37,7 +37,22 @@ export const BankCandidateReason = Schema.Literals([
   "equal_remaining_amount",
   "amount_proximity_heuristic",
   "date_proximity_heuristic",
+  "retained_invoice_reference",
 ]);
+
+export const BankCandidateReference = Schema.Struct({
+  kind: Schema.Literal("invoice_document_number"),
+  issuerNamespace: Schema.Literal("entity"),
+  issuerId: Accounting.Identifier,
+  value: Schema.String,
+  invoiceId: Accounting.Identifier,
+  documentId: Accounting.Identifier,
+  documentRevision: Accounting.MinorUnits,
+  documentDigest: Accounting.Digest,
+  allocationReceiptId: Accounting.Identifier,
+  allocationOrdinal: Schema.Int,
+  basis: Schema.Literal("payment_voucher_allocation"),
+});
 
 export const BankMatchCandidate = Schema.Struct({
   voucherId: Accounting.Identifier,
@@ -60,6 +75,8 @@ export const BankMatchCandidate = Schema.Struct({
   amountDistanceMinor: Accounting.AggregateMinorUnits,
   dayDistance: Schema.Int,
   rankingReasons: Schema.Array(BankCandidateReason),
+  referenceComparison: Schema.Literals(["match", "mismatch", "unavailable"]),
+  referenceEvidence: Schema.Array(BankCandidateReference).check(Schema.isMaxLength(50)),
 });
 
 export const BankMatchCandidates = Schema.Struct({
@@ -95,14 +112,15 @@ export const BankMatchCandidates = Schema.Struct({
     remainingMinor: Accounting.SignedMinorUnits,
     eligible: Schema.Boolean,
     blockedReasons: Schema.Array(BankCandidateBlock),
+    paymentReference: Schema.NullOr(StatementPaymentReference),
   }),
   candidates: Schema.Array(BankMatchCandidate).check(Schema.isMaxLength(1000)),
   eligibleCount: Schema.Int,
   equalAmountEligibleCount: Schema.Int,
   multipleEligibleCandidates: Schema.Boolean,
   identityEstablished: Schema.Literal(false),
-  providerReferenceComparison: Schema.Literal("unavailable"),
-  rankingPolicy: Schema.Literal("retained_then_amount_date_v1"),
+  providerReferenceComparison: Schema.Literals(["unavailable", "invoice_document_number_v1"]),
+  rankingPolicy: Schema.Literal("retained_then_reference_amount_date_v2"),
   coverage: Schema.Literal("not_established"),
   digest: Accounting.Digest,
   previousDigestMatches: Schema.NullOr(Schema.Boolean),

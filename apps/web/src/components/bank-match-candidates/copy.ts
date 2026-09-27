@@ -39,6 +39,8 @@ const swedishBlocks = {
 } satisfies Record<typeof Candidates.BankCandidateBlock.Type, string>;
 
 const englishReasons = {
+  retained_invoice_reference:
+    "The dedicated reference matches an issued invoice linked to this payment voucher. Review the allocation; this does not prove identity.",
   retained_relationship_history:
     "An exact source/line relationship exists in retained history. It may have been undone because it was wrong.",
   statement_evidence_cited:
@@ -50,6 +52,8 @@ const englishReasons = {
 } satisfies Record<typeof Candidates.BankCandidateReason.Type, string>;
 
 const swedishReasons = {
+  retained_invoice_reference:
+    "Referensfältet matchar en utfärdad faktura som är kopplad till betalningsverifikationen. Granska fördelningen; detta bevisar inte samma transaktion.",
   retained_relationship_history:
     "En exakt koppling mellan källa och bokföringsrad finns i historiken. Den kan ha ångrats för att den var fel.",
   statement_evidence_cited:
@@ -95,9 +99,17 @@ export function bankCandidateCopy(locale: Locale) {
         noIdentity:
           "Inte heller en ensam rad bevisar samma transaktion. Källtäckning är inte fastställd.",
         ranking:
-          "Ordning: möjliga rader, sparad kopplingshistorik, hänvisning till kontoutdrag, lika återstående belopp, beloppsavstånd, datumavstånd och stabila ID:n. Inga dolda belopps- eller datumgränser används.",
+          "Ordning: möjliga rader, sparad kopplingshistorik, fakturareferens, hänvisning till kontoutdrag, lika återstående belopp, beloppsavstånd, datumavstånd och stabila ID:n. Rangordningen är ett granskningsförslag.",
         provider:
-          "Leverantörens källreferens kan inte jämföras med bokföringen: ett motsvarande strukturerat fält saknas.",
+          "Endast ett särskilt fakturareferensfält med rätt utfärdare jämförs med sparade fakturanummer. Fritext, OCR och leverantörens transaktions-ID används inte som fakturareferenser. Högst 50 fördelningsreferenser per bokföringsrad stöds.",
+        paymentReference: "Betalningsreferens",
+        referenceEvidence: "Sparad fakturareferens / utfärdare / dokumentrevision",
+        documentDigest: "Dokumentets kontrollsumma",
+        referenceStates: {
+          match: "Fakturareferensen matchar.",
+          mismatch: "Fakturareferensen skiljer sig.",
+          unavailable: "Ingen jämförbar fakturareferens.",
+        },
         empty: "Inga bokföringsrader finns för kontot i intervallet.",
         details: "Granskningsunderlag",
         voucher: "Verifikations-ID",
@@ -112,7 +124,7 @@ export function bankCandidateCopy(locale: Locale) {
           "Använd dessa identifierare i den granskade bankfördelningen. Ange belopp och skäl där, bekräfta osäkerheten och begär mänskligt godkännande. Detta betalar ingen faktura.",
         evidence: "Källunderlag",
         sourceAccount: "Källans bankkonto",
-        providerReference: "Sparad leverantörsreferens",
+        providerReference: "Leverantörens transaktions-ID",
         unavailable: "Saknas",
         sameAccount: "Samma konto",
         sameCurrency: "Samma valuta",
@@ -167,9 +179,17 @@ export function bankCandidateCopy(locale: Locale) {
         noIdentity:
           "Even one eligible line does not prove identity. Source coverage is not established.",
         ranking:
-          "Order: eligible lines, retained relationship history, statement evidence citation, equal remaining amount, amount distance, date distance and stable IDs. There are no hidden amount or date thresholds.",
+          "Order: eligible lines, retained relationship history, invoice reference, statement evidence citation, equal remaining amount, amount distance, date distance and stable IDs. Ranking is a review heuristic.",
         provider:
-          "The source provider reference cannot be compared with posted lines: no corresponding structured field is retained.",
+          "Only a dedicated invoice-reference field with the same issuer is compared with retained invoice numbers. Free text, OCR and provider transaction IDs are not invoice references. At most 50 allocation references per posted line are supported.",
+        paymentReference: "Payment reference",
+        referenceEvidence: "Retained invoice reference / issuer / document revision",
+        documentDigest: "Document digest",
+        referenceStates: {
+          match: "The invoice reference matches.",
+          mismatch: "The invoice reference differs.",
+          unavailable: "No comparable invoice reference.",
+        },
         empty: "There are no posted lines for this account in the interval.",
         details: "Review details",
         voucher: "Voucher ID",
@@ -184,7 +204,7 @@ export function bankCandidateCopy(locale: Locale) {
           "Use these identifiers in reviewed bank allocation. Enter the amount and reason there, acknowledge ambiguity and request human approval. This does not pay an invoice.",
         evidence: "Source evidence",
         sourceAccount: "Source bank account",
-        providerReference: "Retained provider reference",
+        providerReference: "Provider transaction ID",
         unavailable: "Not retained",
         sameAccount: "Same account",
         sameCurrency: "Same currency",

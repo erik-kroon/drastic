@@ -66,7 +66,9 @@ export async function deleteSession(id: string) {
   }
 }
 
-export async function fixture() {
+export async function fixture(
+  extraAccounts: ReadonlyArray<{ id: string; code: string; name: string }> = [],
+) {
   const id = randomBytes(8).toString("hex");
   const token = randomBytes(32).toString("hex");
   const agentToken = randomBytes(32).toString("hex");
@@ -89,6 +91,7 @@ export async function fixture() {
     accounts: [
       { id: "account_bank", code: "1930", name: "Bank" },
       { id: "account_clearing", code: "2999", name: "Clearing" },
+      ...extraAccounts,
     ],
   };
 

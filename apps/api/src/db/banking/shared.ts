@@ -77,6 +77,9 @@ export const coverageTables = [
   "bank_match_reversal_revocations",
   "bank_match_reversals",
   "bank_reconciliations",
+  "commerce_active_allocation_legs",
+  "commerce_invoices",
+  "invoice_issues",
   "tax_account_match_capacity",
   "memberships",
   "vouchers",
@@ -201,30 +204,38 @@ export function readAccounts(
 
 // Effective matching capacity always reads the active projections, so a reversed
 // match or allocation releases its source and posted-line capacity immediately.
+// Internal aliases must not shadow aliases in the caller's SQL expressions.
 export function allocatedSourceSql(bookId: SQL, statement: SQL, ordinal: SQL) {
   return sql`
     coalesce((
-      select o.amount_minor
-      from openerp.bank_active_matches m
-      join openerp.bank_observations o
-        on (o.book_id, o.statement_id, o.row_ordinal) = (m.book_id, m.statement_id, m.row_ordinal)
-      where m.book_id = ${bookId} and m.statement_id = ${statement} and m.row_ordinal = ${ordinal}
+      select capacity_source.amount_minor
+      from openerp.bank_active_matches capacity_match
+      join openerp.bank_observations capacity_source
+        on (capacity_source.book_id, capacity_source.statement_id, capacity_source.row_ordinal) =
+          (capacity_match.book_id, capacity_match.statement_id, capacity_match.row_ordinal)
+      where capacity_match.book_id = ${bookId} and capacity_match.statement_id = ${statement}
+        and capacity_match.row_ordinal = ${ordinal}
     ), 0) + coalesce((
-      select sum(a.amount_minor) from openerp.bank_active_allocation_legs a
-      where a.book_id = ${bookId} and a.statement_id = ${statement} and a.row_ordinal = ${ordinal}
+      select sum(capacity_allocation.amount_minor) from openerp.bank_active_allocation_legs capacity_allocation
+      where capacity_allocation.book_id = ${bookId} and capacity_allocation.statement_id = ${statement}
+        and capacity_allocation.row_ordinal = ${ordinal}
     ), 0)`;
 }
 
 export function allocatedLineSql(bookId: SQL, voucher: SQL, line: SQL) {
   return sql`
     coalesce((
-      select l.debit_minor - l.credit_minor
-      from openerp.bank_active_matches m
-      join openerp.journal_lines l on (l.book_id, l.voucher_id, l.id) = (m.book_id, m.voucher_id, m.line_id)
-      where m.book_id = ${bookId} and m.voucher_id = ${voucher} and m.line_id = ${line}
+      select capacity_line.debit_minor - capacity_line.credit_minor
+      from openerp.bank_active_matches capacity_match
+      join openerp.journal_lines capacity_line
+        on (capacity_line.book_id, capacity_line.voucher_id, capacity_line.id) =
+          (capacity_match.book_id, capacity_match.voucher_id, capacity_match.line_id)
+      where capacity_match.book_id = ${bookId} and capacity_match.voucher_id = ${voucher}
+        and capacity_match.line_id = ${line}
     ), 0) + coalesce((
-      select sum(a.amount_minor) from openerp.bank_active_allocation_legs a
-      where a.book_id = ${bookId} and a.voucher_id = ${voucher} and a.line_id = ${line}
+      select sum(capacity_allocation.amount_minor) from openerp.bank_active_allocation_legs capacity_allocation
+      where capacity_allocation.book_id = ${bookId} and capacity_allocation.voucher_id = ${voucher}
+        and capacity_allocation.line_id = ${line}
     ), 0)`;
 }
 

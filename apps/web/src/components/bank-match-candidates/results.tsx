@@ -285,6 +285,24 @@ export function BankCandidateResults({
                   {candidate.rankingReasons.map((reason) => (
                     <Text key={reason}>{copy.reasons[reason]}</Text>
                   ))}
+                  <Text>{copy.referenceStates[candidate.referenceComparison]}</Text>
+                  {candidate.referenceEvidence.map((reference) => (
+                    <Box
+                      key={`${reference.allocationReceiptId}:${reference.allocationOrdinal}`}
+                      display="grid"
+                      gap="sm"
+                    >
+                      <Text>
+                        {copy.referenceEvidence}: {reference.value} · {reference.issuerNamespace}/
+                        {reference.issuerId} · {reference.documentId}/{reference.documentRevision}
+                      </Text>
+                      <InputField
+                        label={copy.documentDigest}
+                        value={reference.documentDigest}
+                        readOnly
+                      />
+                    </Box>
+                  ))}
                   {candidate.blockedReasons.map((reason) => (
                     <Text key={reason}>{copy.blocks[reason]}</Text>
                   ))}
@@ -338,6 +356,9 @@ export function BankCandidateResults({
             </Text>
             <Text>
               {copy.providerReference}: {result.source.providerId ?? copy.unavailable}
+            </Text>
+            <Text>
+              {copy.paymentReference}: {result.source.paymentReference?.value ?? copy.unavailable}
             </Text>
             <Text>
               {copy.cutoff}: {result.cutoff.committedSequence} · {copy.revision}:{" "}

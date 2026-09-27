@@ -451,7 +451,7 @@ export const approveAllocation = Effect.fn("commerce.allocation.approve")(functi
       yield* requireTableAccess(transaction, AllocationDb.allocationTables, false);
       yield* requireInsertAccess(transaction, ["commerce_allocation_approvals"]);
       yield* lockBookForUpdate(transaction, command.scope);
-      yield* exactKeys(yield* toJsonObject(command.input), approveFields);
+      yield* exactKeys(yield* toJsonObject(command.input), ["planDigest", "version"]);
       const input = yield* decode(ApproveAllocationInputSchema, command.input);
 
       const plans = yield* AllocationDb.readPlanForReceipt(

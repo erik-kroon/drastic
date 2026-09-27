@@ -22,6 +22,7 @@ export type CandidateSourceRow = {
   readonly accountVersion: string;
   readonly accountActive: boolean;
   readonly sourceRevision: string;
+  readonly paymentReference: Json | null;
 };
 
 export type CandidatePeriodsRow = {
@@ -45,6 +46,8 @@ export function readCandidateSource(
       select s.id as "statementId", o.row_ordinal as "rowOrdinal", o.provider_id as "providerId",
         o.source_bank_account_id as "sourceBankAccountId", o.observed_on::text as "observedOn",
         o.description, o.amount_minor::text as "amountMinor",
+        (select row->'paymentReference' from jsonb_array_elements(s.source->'rows') row
+          where (row->>'rowOrdinal')::integer = o.row_ordinal) as "paymentReference",
         (${allocatedSourceSql(sql`${bookId}`, sql`o.statement_id`, sql`o.row_ordinal`)})::text
           as "allocatedMinor",
         s.account_id as "accountId", s.evidence_id as "evidenceId", e.sha256 as "evidenceSha256",
@@ -91,7 +94,8 @@ export function readCandidatePeriods(transaction: Transaction, bookId: string) {
           select jsonb_agg(jsonb_build_object('id', p.id, 'version', p.version::text,
             'startsOn', p.starts_on::text, 'endsOn', p.ends_on::text, 'locked', p.locked)
             order by p.id collate "C")
-          from (select 1 from openerp.periods p where p.book_id = ${bookId} order by p.id for share) p
+          from (select id, version, starts_on, ends_on, locked from openerp.periods p
+            where p.book_id = ${bookId} order by p.id for share) p
         ), '[]'::jsonb) as periods
     `,
     "objects",
@@ -128,6 +132,29 @@ export function readCandidateLines(
               'voucherId', l.voucher_id, 'lineId', l.id, 'accountId', l.account_id,
               'postedOn', v.posting_date::text, 'sequence', v.sequence::text,
               'description', l.description,
+              'referenceEvidence', coalesce((
+                select jsonb_agg(ref.body order by ref.receipt_id, ref.ordinal)
+                from (
+                  select a.receipt_id, a.ordinal, jsonb_build_object(
+                    'kind', 'invoice_document_number', 'issuerNamespace', 'entity',
+                    'issuerId', b.entity_id, 'value', issue.body->>'internalDocumentNumber',
+                    'invoiceId', i.id, 'documentId', issue.id,
+                    'documentRevision', issue.body->>'draftRevision',
+                    'documentDigest', issue.body->>'digest',
+                    'allocationReceiptId', a.receipt_id, 'allocationOrdinal', a.ordinal,
+                    'basis', 'payment_voucher_allocation'
+                  ) as body
+                  from openerp.commerce_active_allocation_legs a
+                  join openerp.commerce_invoices i on (i.book_id, i.id) = (a.book_id, a.invoice_id)
+                  join openerp.invoice_issues issue
+                    on (issue.book_id, issue.register_invoice_id) = (i.book_id, i.id)
+                  join openerp.books b on b.id = a.book_id
+                  where a.book_id = l.book_id and a.payment_voucher_id = l.voucher_id
+                    and i.direction = 'customer'
+                    and i.document_number = issue.body->>'internalDocumentNumber'
+                  order by a.receipt_id, a.ordinal limit 51
+                ) ref
+              ), '[]'::jsonb),
               'amountMinor', (l.debit_minor - l.credit_minor)::text,
               'allocatedMinor', (${allocatedLineSql(book, sql`l.voucher_id`, sql`l.id`)})::text,
               'sameCurrency', v.action->>'currency' is not distinct from ${bookCurrency}::text,

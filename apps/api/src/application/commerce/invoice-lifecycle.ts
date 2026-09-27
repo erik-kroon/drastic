@@ -251,7 +251,10 @@ export const createInvoiceDraftInTransaction = Effect.fn("commerce.drafts.create
 
     if (!book) return yield* failure("Forbidden");
     yield* requireNativeWriter(book.authority);
-    yield* exactKeys(yield* toJsonObject(command.input), createFields);
+    yield* exactKeys(
+      yield* toJsonObject(command.input),
+      command.input.occurrence === undefined ? ["content", "draftKey"] : createFields,
+    );
 
     if (JSON.stringify(command.input).length > draftBounds.inputBytes) {
       return yield* failure("InvalidJournal");

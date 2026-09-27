@@ -10,12 +10,21 @@ const SignedAmount = Schema.String.check(Schema.isPattern(/^(0|-?[1-9][0-9]{0,37
 
 export const RowOrdinal = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 10000 }));
 
+export const StatementPaymentReference = Schema.Struct({
+  kind: Schema.Literals(["invoice_document_number", "ocr"]),
+  issuerNamespace: Schema.Literals(["entity", "counterparty"]),
+  issuerId: Accounting.Identifier,
+  value: SourceKey,
+  sourceField: Schema.Literals(["dedicated_reference", "free_text"]),
+});
+
 export const BankRow = Schema.Struct({
   rowOrdinal: RowOrdinal,
   providerId: Schema.NullOr(SourceKey),
   date: Accounting.AccountingDate,
   description: Accounting.Description,
   amountMinor: SignedAmount,
+  paymentReference: Schema.optional(StatementPaymentReference),
 });
 
 export const ExistingBankMatch = Schema.Struct({

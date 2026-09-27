@@ -1,7 +1,8 @@
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Candidates from "@open-erp/contracts/bank-match-candidates";
+import { StatementPaymentReference } from "@open-erp/contracts/reconciliation";
 import * as Effect from "effect/Effect";
-import type * as Schema from "effect/Schema";
+import * as Schema from "effect/Schema";
 import { failure } from "../failures";
 import { digest } from "../posting";
 import * as CandidateDb from "../../db/banking/candidates";
@@ -30,6 +31,9 @@ const candidateTables = [
   "vouchers",
   "evidence",
   "tax_account_match_capacity",
+  "commerce_active_allocation_legs",
+  "commerce_invoices",
+  "invoice_issues",
 ];
 
 const maximumPeriods = 1000;
@@ -108,6 +112,17 @@ export const discoverBankMatchCandidates = Effect.fn("banking.candidates.discove
       ))[0];
 
       if (!source) return yield* failure("NotFound");
+
+      const sourceReference = yield* Schema.decodeUnknownEffect(
+        Schema.NullOr(StatementPaymentReference),
+      )(source.paymentReference).pipe(Effect.mapError(() => failure("UnsupportedProfile")));
+
+      const referenceComparable =
+        sourceReference !== null &&
+        sourceReference.kind === "invoice_document_number" &&
+        sourceReference.sourceField === "dedicated_reference" &&
+        sourceReference.issuerNamespace === "entity" &&
+        sourceReference.issuerId === book.entityId;
 
       const captured = (yield* CandidateDb.readCandidatePeriods(
         transaction,
@@ -206,8 +221,28 @@ export const discoverBankMatchCandidates = Effect.fn("banking.candidates.discove
           const cited = Shared.booleanField(line, "evidenceCited") === true;
           const equal = sourceRemaining !== 0n && remaining === sourceRemaining;
 
+          const referenceEvidence = yield* Schema.decodeUnknownEffect(
+            Schema.Array(Candidates.BankCandidateReference).check(Schema.isMaxLength(50)),
+          )(line["referenceEvidence"] ?? []).pipe(
+            Effect.mapError(() => failure("UnsupportedProfile")),
+          );
+
+          // Compare the exact issued number. Removing punctuation or leading zeros
+          // would merge distinct documents. Provider IDs and free text are not references.
+          const referenceComparison =
+            !referenceComparable || referenceEvidence.length === 0
+              ? "unavailable"
+              : referenceEvidence.some(
+                    (reference) =>
+                      reference.value === sourceReference?.value &&
+                      reference.issuerId === sourceReference.issuerId,
+                  )
+                ? "match"
+                : "mismatch";
+
           const reasons = [
             ...(retained ? ["retained_relationship_history"] : []),
+            ...(referenceComparison === "match" ? ["retained_invoice_reference"] : []),
             ...(cited ? ["statement_evidence_cited"] : []),
             ...(equal ? ["equal_remaining_amount"] : []),
             "amount_proximity_heuristic",
@@ -225,6 +260,7 @@ export const discoverBankMatchCandidates = Effect.fn("banking.candidates.discove
           return {
             eligible: blocks.length === 0,
             retained,
+            referenceMatched: referenceComparison === "match",
             cited,
             equal,
             amountDistance,
@@ -252,6 +288,8 @@ export const discoverBankMatchCandidates = Effect.fn("banking.candidates.discove
                 amountDistanceMinor: Shared.signedText(amountDistance),
                 dayDistance: days,
                 rankingReasons: reasons,
+                referenceComparison,
+                referenceEvidence,
               },
             ) satisfies JsonObject,
           };
@@ -262,6 +300,8 @@ export const discoverBankMatchCandidates = Effect.fn("banking.candidates.discove
         if (left.eligible !== right.eligible) return left.eligible ? -1 : 1;
 
         if (left.retained !== right.retained) return left.retained ? -1 : 1;
+
+        if (left.referenceMatched !== right.referenceMatched) return left.referenceMatched ? -1 : 1;
 
         if (left.cited !== right.cited) return left.cited ? -1 : 1;
 
@@ -320,14 +360,17 @@ export const discoverBankMatchCandidates = Effect.fn("banking.candidates.discove
           remainingMinor: Shared.signedText(sourceRemaining),
           eligible: sourceBlocks.length === 0,
           blockedReasons: sourceBlocks,
+          paymentReference: sourceReference,
         },
         candidates: candidates.map((candidate) => candidate.body),
         eligibleCount: eligible.length,
         equalAmountEligibleCount: eligible.filter((candidate) => candidate.equal).length,
         multipleEligibleCandidates: eligible.length > 1,
         identityEstablished: false,
-        providerReferenceComparison: "unavailable",
-        rankingPolicy: "retained_then_amount_date_v1",
+        providerReferenceComparison: referenceComparable
+          ? "invoice_document_number_v1"
+          : "unavailable",
+        rankingPolicy: "retained_then_reference_amount_date_v2",
         coverage: "not_established",
       } satisfies JsonObject);
 
