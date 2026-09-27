@@ -47,6 +47,7 @@ This repository is the starting point for the OpenERP product.
 - Do not add dependencies when the platform or existing UI package solves the need.
 - Do not add tests unless the user explicitly approves the test change.
 - Never weaken lint or type rules to make a check pass.
+- When dependency manifests change, update and commit `bun.lock` with them and verify `bun install --frozen-lockfile` before handoff. CI must keep frozen installs enabled.
 
 ## Commands
 

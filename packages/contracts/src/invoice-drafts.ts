@@ -3,7 +3,7 @@ import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import * as Accounting from "./accounting";
 import * as Commerce from "./commerce";
 import { accountingErrors } from "./accounting-errors";
-import { OccurrenceReference } from "./recurring-invoices";
+import { OccurrenceReference } from "@open-erp/domain/recurrence";
 import { SalesQuery, SalesPage } from "./sales-register";
 
 const Name = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200));

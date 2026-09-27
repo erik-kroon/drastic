@@ -48,8 +48,8 @@ CREATE TABLE openerp.vat_actual_returns (
   CONSTRAINT vat_actual_returns_identity_check CHECK (NOT body ->> 'id'::text IS DISTINCT FROM id),
   CONSTRAINT vat_actual_returns_scope_check CHECK (NOT body -> 'scope'::text ->> 'bookId'::text IS DISTINCT FROM book_id),
   CONSTRAINT vat_actual_returns_period_body_check CHECK (
-    NOT body -> 'input'::jsonb ->> 'startsOn'::text IS DISTINCT FROM starts_on::text
-    AND NOT body -> 'input'::jsonb ->> 'endsOn'::text IS DISTINCT FROM ends_on::text),
+    NOT body -> 'input'::text ->> 'startsOn'::text IS DISTINCT FROM starts_on::text
+    AND NOT body -> 'input'::text ->> 'endsOn'::text IS DISTINCT FROM ends_on::text),
   -- A calculation artifact never carries a filing outcome. Only a released
   -- filing owner may write one, and it is not this packet.
   CONSTRAINT vat_actual_returns_external_state_check CHECK (

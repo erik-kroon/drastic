@@ -22,6 +22,7 @@ export {
   CycleOrdinal,
   CyclePlan,
   MonthAnchorPolicy,
+  OccurrenceReference,
   RecurrenceCadence,
   RecurrenceFailure,
   RecurrenceFailureCode,
@@ -30,17 +31,6 @@ export {
   SkippedCycleReason,
   TimeZone,
 } from "@open-erp/domain/recurrence";
-
-// A recurring occurrence is identified by its agreement and cycle ordinal alone.
-// The selected template revision travels with the occurrence as the frozen fact
-// it was drafted from and is deliberately absent from this identity, so amending
-// a template cannot re-identify an already issued cycle.
-export const OccurrenceReference = Schema.Struct({
-  agreementId: Accounting.Identifier,
-  cycleOrdinal: CycleOrdinal,
-});
-
-export type OccurrenceReference = typeof OccurrenceReference.Type;
 
 const ChargeComponentKey = Schema.String.check(
   Schema.isPattern(/^[a-z][a-z0-9_-]{2,63}$/),

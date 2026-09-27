@@ -1,6 +1,6 @@
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
-import { AccountingDate, Description } from "./values";
+import { AccountingDate, Description, Identifier } from "./values";
 
 // Pure recurring-agreement cycle identity. A cycle is named by its ordinal
 // against the original anchor, never by a template revision, so amending a
@@ -41,6 +41,14 @@ export type Checked<A> = Result.Result<A, RecurrenceFailure>;
 export const CycleOrdinal = Schema.String.check(Schema.isPattern(/^(?:0|[1-9][0-9]{0,17})$/));
 
 export type CycleOrdinal = typeof CycleOrdinal.Type;
+
+// Template revisions do not change the identity of an already billed cycle.
+export const OccurrenceReference = Schema.Struct({
+  agreementId: Identifier,
+  cycleOrdinal: CycleOrdinal,
+});
+
+export type OccurrenceReference = typeof OccurrenceReference.Type;
 
 export const CadenceKind = Schema.Literals(["monthly", "fixed_day_interval"]);
 
