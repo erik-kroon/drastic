@@ -283,7 +283,7 @@ export const compileSelectedCredit = Effect.fn("commerce.customerCredit.selected
       creditedGrossMinor: (creditedNet + creditedTax).toString(),
       finalLineCredit: final,
       revenueLineId: ids.revenueLineId,
-      outputVatLineId: ids.outputVatLineId,
+      outputVatLineId: creditedTax === 0n ? null : ids.outputVatLineId,
     });
 
     netTotal += creditedNet;

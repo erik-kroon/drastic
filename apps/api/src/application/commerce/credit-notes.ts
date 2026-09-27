@@ -439,22 +439,29 @@ export const prepareCustomerCredit = Effect.fn("commerce.customerCredit.prepare"
 
       const actionLines = [
         controlLine,
-        ...selected.lines.flatMap((line) => [
-          {
-            lineId: line.revenueLineId,
-            accountId: profile.input.revenueAccountId,
-            debitMinor: line.creditedNetMinor,
-            creditMinor: "0",
-            description: `Return domestic sales ${original.legalDocumentNumber}`,
-          },
-          {
-            lineId: line.outputVatLineId,
-            accountId: profile.input.outputVatAccountId,
-            debitMinor: line.creditedTaxMinor,
-            creditMinor: "0",
-            description: `Return domestic output VAT ${original.legalDocumentNumber}`,
-          },
-        ]),
+        ...selected.lines.flatMap((line) => {
+          const lines = [
+            {
+              lineId: line.revenueLineId,
+              accountId: profile.input.revenueAccountId,
+              debitMinor: line.creditedNetMinor,
+              creditMinor: "0",
+              description: `Return domestic sales ${original.legalDocumentNumber}`,
+            },
+          ];
+
+          if (line.outputVatLineId !== null) {
+            lines.push({
+              lineId: line.outputVatLineId,
+              accountId: profile.input.outputVatAccountId,
+              debitMinor: line.creditedTaxMinor,
+              creditMinor: "0",
+              description: `Return domestic output VAT ${original.legalDocumentNumber}`,
+            });
+          }
+
+          return lines;
+        }),
       ];
 
       for (const line of actionLines)

@@ -919,7 +919,7 @@ export const customerCreditTaxCorrections = openerp.table("customer_credit_tax_c
   outputTaxMinor: numeric("output_tax_minor", { mode: "string" }).notNull(),
   creditVoucherId: text("credit_voucher_id").notNull(),
   revenueLineId: text("revenue_line_id").notNull(),
-  outputVatLineId: text("output_vat_line_id").notNull(),
+  outputVatLineId: text("output_vat_line_id"),
   controlLineId: text("control_line_id").notNull(),
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });
