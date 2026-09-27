@@ -171,7 +171,7 @@ const incomeTaxAccounts = Effect.fn("corporateTax.incomeTaxAccounts")(function* 
   if (expense === undefined || liability === undefined) return null;
 
   const selected: Array<
-    [typeof Tax.IncomeTaxRoleKind.Type, typeof Tax.IncomeTaxRole.Type, ProfileDb.RoleBindingRow]
+    [Tax.IncomeTaxRoleKind, typeof Tax.IncomeTaxRole.Type, ProfileDb.RoleBindingRow]
   > = [
     ["corporate_tax_expense", "current_expense", expense],
     ["corporate_tax_liability", "current_liability", liability],

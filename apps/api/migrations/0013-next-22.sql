@@ -225,7 +225,7 @@ CREATE TABLE openerp.corporate_tax_declarations (
   CONSTRAINT corporate_tax_declarations_body_bridge_check CHECK (
     NOT body ->> 'bridgeId'::text IS DISTINCT FROM bridge_id
     AND NOT body ->> 'statementSnapshotId'::text IS DISTINCT FROM statement_snapshot_id
-    AND NOT body ->> 'fiscalYear'::text ->> 'id'::text IS DISTINCT FROM fiscal_year_id
+    AND NOT body -> 'fiscalYear'::text ->> 'id'::text IS DISTINCT FROM fiscal_year_id
   ),
   CONSTRAINT corporate_tax_declarations_body_counts_check CHECK (
     NOT body ->> 'blocked'::text IS DISTINCT FROM blocked::text
