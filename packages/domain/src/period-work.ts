@@ -165,6 +165,8 @@ export const WorkChild = Schema.Struct({
 
 export type WorkChild = typeof WorkChild.Type;
 
+export type SourceCoverage = typeof SourceCoverage.Type;
+
 export const SourceCoverage = Schema.Struct({
   // The exact population the manifest was cut from, and whether that population
   // was complete. A run with every child visited is not a reconciled period.
@@ -173,6 +175,8 @@ export const SourceCoverage = Schema.Struct({
   // Sources deliberately excluded from this manifest, each with its reason.
   excluded: Schema.Array(Schema.Struct({ sourceId: Schema.String, reason: Schema.String })),
 });
+
+export type SourceCoverage = typeof SourceCoverage.Type;
 
 export const PeriodWorkManifest = Schema.Struct({
   scope: Scope,
