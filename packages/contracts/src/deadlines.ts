@@ -163,6 +163,8 @@ export const FulfillmentLink = Schema.Struct({
   outcomeKind: OutcomeKind,
   reference: FulfillmentReference,
   referenceDigest: Digest,
+  verificationOrdinal: Schema.optional(Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,18}$/))),
+  evidenceDigest: Schema.optional(Digest),
   environment: FulfillmentEnvironment,
   verification: FulfillmentVerification,
   recordedBy: Identifier,
@@ -229,6 +231,12 @@ export const Deadline = Schema.Struct({
 export const FulfillmentResult = Schema.Struct({
   fulfillment: FulfillmentLink,
   obligation: Deadline,
+});
+
+export const ReverifyFulfillment = Schema.Struct({
+  reference: FulfillmentReference,
+  expectedObligationRevision: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
+  expectedFulfillmentDigest: Digest,
 });
 
 export const DeadlineList = Schema.Array(Deadline);
@@ -308,6 +316,15 @@ export const DeadlinesApi = HttpApiGroup.make("deadlines")
       params: ChangePath,
       headers: IdempotencyHeaders,
       payload: Schema.Struct({ reference: FulfillmentReference }),
+      success: FulfillmentResult,
+      error: accountingErrors,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post("reverifyDeadlineFulfillment", `${base}/:id/fulfillments/reverify`, {
+      params: ChangePath,
+      headers: IdempotencyHeaders,
+      payload: ReverifyFulfillment,
       success: FulfillmentResult,
       error: accountingErrors,
     }),

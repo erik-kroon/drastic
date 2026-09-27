@@ -154,9 +154,7 @@ export function readDeliveryAttempt(transaction: Transaction, bookId: string, at
   );
 }
 
-// The observation recorded for one reference under one obligation revision. A
-// later revision gets its own observation of the same reference, so an outcome
-// that arrives after the first attempt is recorded rather than hidden behind it.
+// The latest immutable observation, not a cache of the source owner's current state.
 export function readFulfillmentByReference(
   transaction: Transaction,
   bookId: string,
@@ -170,6 +168,8 @@ export function readFulfillmentByReference(
       where book_id = ${bookId} and obligation_id = ${obligationId}
         and obligation_revision = ${obligationRevision}::bigint
         and reference_digest = ${referenceDigest}
+      order by verification_ordinal desc
+      limit 1
       for share
     `,
     "objects",
@@ -196,6 +196,8 @@ export function insertFulfillment(
     readonly obligationId: string;
     readonly obligationRevision: string;
     readonly referenceDigest: string;
+    readonly verificationOrdinal: string;
+    readonly evidenceDigest: string;
     readonly outcomeKind: string;
     readonly referenceKind: string;
     readonly reference: JsonObject;
@@ -216,6 +218,8 @@ export function insertFulfillment(
       obligationId: row.obligationId,
       obligationRevision: BigInt(row.obligationRevision),
       referenceDigest: row.referenceDigest,
+      verificationOrdinal: BigInt(row.verificationOrdinal),
+      evidenceDigest: row.evidenceDigest,
       outcomeKind: row.outcomeKind,
       referenceKind: row.referenceKind,
       reference: row.reference,

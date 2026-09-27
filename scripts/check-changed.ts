@@ -13,6 +13,8 @@ const binDirectory = path.join(repoRoot, "node_modules", ".bin");
 
 const temporaryConfigName = "tsconfig.changed.json";
 
+const toolThreads = "2";
+
 const timeoutSeconds = Number(process.env.CHECK_CHANGED_TIMEOUT_SECONDS ?? "60");
 
 if (!Number.isInteger(timeoutSeconds) || timeoutSeconds <= 0 || timeoutSeconds > 2_147_483) {
@@ -128,6 +130,7 @@ const run = async (label: string, tool: string, args: Array<string>) => {
 
   const child = Bun.spawn([process.execPath, path.join(binDirectory, tool), ...args], {
     cwd: repoRoot,
+    env: { ...process.env, GOMAXPROCS: toolThreads },
     detached: true,
     stdout: "inherit",
     stderr: "inherit",
@@ -176,6 +179,8 @@ const typeCheckProject = async (projectConfig: string, files: Array<string>) => 
   try {
     await run(`tsc --noEmit (${projectConfig})`, "tsc", [
       "--noEmit",
+      "--checkers",
+      toolThreads,
       "--incremental",
       "--tsBuildInfoFile",
       path.join(projectDirectory, "tsconfig.changed.tsbuildinfo"),
@@ -188,17 +193,20 @@ const typeCheckProject = async (projectConfig: string, files: Array<string>) => 
   }
 };
 
-// Finish writes before readers start, then run the independent checks together.
-await run("oxfmt --write", "oxfmt", ["--write", ...toolFiles]);
+// Bound both tool overlap and native worker pools so agents can share the machine.
+await run("oxfmt --write", "oxfmt", ["--threads", toolThreads, "--write", ...toolFiles]);
 
-await Promise.all([
-  run(typeAware ? "oxlint (type-aware)" : "oxlint", "oxlint", [
-    "--config",
-    typeAware ? ".oxlintrc.type-aware.json" : ".oxlintrc.json",
-    ...toolFiles,
-  ]),
-  ...[...typeCheckGroups].map(([projectConfig, files]) => typeCheckProject(projectConfig, files)),
+await run(typeAware ? "oxlint (type-aware)" : "oxlint", "oxlint", [
+  "--threads",
+  toolThreads,
+  "--config",
+  typeAware ? ".oxlintrc.type-aware.json" : ".oxlintrc.json",
+  ...toolFiles,
 ]);
+
+for (const [projectConfig, files] of typeCheckGroups) {
+  await typeCheckProject(projectConfig, files);
+}
 
 if (filesWithoutProject.length > 0) {
   console.log(

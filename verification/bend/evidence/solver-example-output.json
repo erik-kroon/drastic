@@ -1,0 +1,46 @@
+{
+  "engine": "bend-cover-v1",
+  "authority": "development-adaptation",
+  "inputFingerprint": "verification-sha256:a1ec38645615fc083a10fe87febed4f0ed61e3fad53c6d2dd22edbe70192818f",
+  "scope": {
+    "entityId": "demo-entity",
+    "bookId": "demo-book",
+    "snapshotId": "snapshot-1"
+  },
+  "currency": "SEK",
+  "scale": 2,
+  "direction": "inflow",
+  "targetMinor": "10000",
+  "mayExecute": false,
+  "requiresRevalidation": true,
+  "coverage": {
+    "poolCompleteDeclared": true,
+    "candidateCount": 3,
+    "maxCardinality": 3,
+    "nodeBudget": 100,
+    "visitedNodes": 10,
+    "searchExhausted": false
+  },
+  "status": "ambiguous",
+  "witnesses": [
+    [
+      {
+        "id": "line-0",
+        "revision": "1",
+        "amountMinor": "4000"
+      },
+      {
+        "id": "line-1",
+        "revision": "1",
+        "amountMinor": "6000"
+      }
+    ],
+    [
+      {
+        "id": "line-2",
+        "revision": "1",
+        "amountMinor": "10000"
+      }
+    ]
+  ]
+}

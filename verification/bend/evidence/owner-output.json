@@ -1,0 +1,13 @@
+{
+  "status": "owner-monetary-differential-passed",
+  "comparisons": 1302,
+  "checker": "development-adaptation",
+  "sourceHashes": {
+    "jurisdictions/se/src/vat/actual.ts": "b7b1f2bcabb4eec4fe864a8af8b1b14c5ce2aa8f42eb6f7a5a457694533edc60",
+    "packages/domain/src/purchasing.ts": "bbf04d5c7955e51f8fcc7d9ba8c7f14a94b1165d8763cfec05fe0bd2867b9726",
+    "packages/domain/src/values.ts": "5020591e4775df25473a0cfb73da0e9b7aa9d01f8fbc1d42dcffd8ce665fe87b",
+    "packages/domain/src/money.ts": "aabf2ae4c656ace129c822e81e194da592bd3b46f97a197f6565e8c845c36663",
+    "bun.lock": "8f4054e2651d96dcfb32552bb95b533b0c40964fe3085e74668328aa07f1470f"
+  },
+  "fullEligibilityOrFilingVerified": false
+}
