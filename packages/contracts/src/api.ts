@@ -36,6 +36,7 @@ import { ClosingApi } from "./closing";
 
 import { CommerceApi } from "./commerce";
 import { CommerceFxApi } from "./commerce-fx";
+import { PeriodWorkApi } from "./period-work";
 import { RegisterReportsApi } from "./register-reports";
 import { VatReturnsApi } from "./vat-returns";
 import { SieApi } from "./sie";
@@ -189,6 +190,7 @@ export class Api extends HttpApi.make("open-erp")
     TaxAccountApi,
     CommerceApi,
     CommerceFxApi,
+    PeriodWorkApi,
     RegisterReportsApi,
     VatReturnsApi,
     SieApi,

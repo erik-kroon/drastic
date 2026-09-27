@@ -1094,6 +1094,109 @@ const reviewBlockers = Effect.fn("owner.operations.blockers")(function* (
   return blockers;
 });
 
+/**
+ * The owner approval as a transaction-passing port.
+ *
+ * It performs the owner's own approval rules — exact review digest, an
+ * independent reviewer who is not the preparer, and no outstanding blocker — and
+ * writes the owner's own approval row. It opens no transaction of its own, so a
+ * caller that already holds a book-scoped transaction can approve inside it
+ * without nesting a second financial transaction.
+ *
+ * `NEXT-16` uses this to approve exact sealed batch members under each owner's
+ * rules. An owner that has not released such a port has no batch approval, and
+ * this is the only shape that counts as one.
+ */
+export const approveOwnerOperationInTransaction = Effect.fn(
+  "owner.operations.approveInTransaction",
+)(function* (
+  transaction: Transaction,
+  principal: Principal,
+  command: {
+    readonly scope: Scope;
+    readonly id: string;
+    readonly idempotencyKey: string;
+    readonly input: typeof Operation.ApproveOwnerOperation.Type;
+  },
+) {
+  const request = yield* replay(
+    transaction,
+    command.scope,
+    command.idempotencyKey,
+    approveOperation,
+    principal.actorId,
+    { id: command.id, input: command.input },
+    ApprovalSchema,
+  );
+
+  if (request.previous) return request.previous;
+
+  yield* requireOperationAccess(transaction, true);
+  yield* requireOwnerWriteColumns(transaction);
+  yield* Db.lockBookForUpdate(transaction, command.scope);
+
+  const row = (yield* OperationDb.readReview(transaction, command.scope.bookId, command.id))[0];
+
+  if (row === undefined) return yield* failure("NotFound");
+
+  const review = yield* PurchaseShared.decode(ReviewSchema, row.body);
+
+  if (command.input.version !== 1 || command.input.digest !== review.digest) {
+    return yield* failure("StaleDependency");
+  }
+
+  // The reviewer is the preparer's own decision, so an independent operator
+  // reviews it. Approval never executes and never mints a receipt.
+  if (review.receipt.actorId === principal.actorId) return yield* failure("ApprovalRequired");
+
+  if ((yield* reviewBlockers(transaction, command.scope, review)).length > 0) {
+    return yield* failure("StaleDependency");
+  }
+
+  const now = yield* isoNow(transaction);
+
+  const body = yield* PurchaseShared.toJsonObject({
+    id: newId("owner_operation_approval"),
+    scope: command.scope,
+    version: 1,
+    reviewId: review.id,
+    reviewDigest: review.digest,
+    actorId: principal.actorId,
+    expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
+    createdAt: now,
+    receipt: {
+      key: command.idempotencyKey,
+      operation: approveOperation,
+      actorId: principal.actorId,
+    },
+  });
+
+  const approval = yield* PurchaseShared.decode(ApprovalSchema, body);
+  const sealed = { ...body, digest: yield* digest(body) };
+
+  yield* OperationDb.insertApproval(transaction, {
+    bookId: command.scope.bookId,
+    id: approval.id,
+    reviewId: approval.reviewId,
+    actorId: approval.actorId,
+    digest: approval.reviewDigest,
+    expiresAt: approval.expiresAt,
+    body: yield* PurchaseShared.toJsonObject(sealed),
+    createdAt: approval.createdAt,
+  });
+  yield* saveCommand(
+    transaction,
+    command.scope,
+    command.idempotencyKey,
+    request.expected,
+    approveOperation,
+    principal.actorId,
+    yield* PurchaseShared.toJsonObject(approval),
+  );
+
+  return approval;
+});
+
 export const approveOwnerOperation = Effect.fn("owner.operations.approve")(function* (
   token: string,
   command: {
@@ -1107,88 +1210,7 @@ export const approveOwnerOperation = Effect.fn("owner.operations.approve")(funct
     token,
     command.scope,
     true,
-    (transaction, principal) =>
-      Effect.gen(function* () {
-        const request = yield* replay(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          approveOperation,
-          principal.actorId,
-          { id: command.id, input: command.input },
-          ApprovalSchema,
-        );
-
-        if (request.previous) return request.previous;
-        yield* requireOperationAccess(transaction, true);
-        yield* requireOwnerWriteColumns(transaction);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
-
-        const row = (yield* OperationDb.readReview(
-          transaction,
-          command.scope.bookId,
-          command.id,
-        ))[0];
-
-        if (row === undefined) return yield* failure("NotFound");
-
-        const review = yield* PurchaseShared.decode(ReviewSchema, row.body);
-
-        if (command.input.version !== 1 || command.input.digest !== review.digest) {
-          return yield* failure("StaleDependency");
-        }
-
-        // The reviewer is the preparer's own decision, so an independent
-        // operator reviews it. Approval never executes and never mints a receipt.
-        if (review.receipt.actorId === principal.actorId) return yield* failure("ApprovalRequired");
-
-        if ((yield* reviewBlockers(transaction, command.scope, review)).length > 0) {
-          return yield* failure("StaleDependency");
-        }
-
-        const now = yield* isoNow(transaction);
-
-        const body = yield* PurchaseShared.toJsonObject({
-          id: newId("owner_operation_approval"),
-          scope: command.scope,
-          version: 1,
-          reviewId: review.id,
-          reviewDigest: review.digest,
-          actorId: principal.actorId,
-          expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
-          createdAt: now,
-          receipt: {
-            key: command.idempotencyKey,
-            operation: approveOperation,
-            actorId: principal.actorId,
-          },
-        });
-
-        const approval = yield* PurchaseShared.decode(ApprovalSchema, body);
-        const sealed = { ...body, digest: yield* digest(body) };
-
-        yield* OperationDb.insertApproval(transaction, {
-          bookId: command.scope.bookId,
-          id: approval.id,
-          reviewId: approval.reviewId,
-          actorId: approval.actorId,
-          digest: approval.reviewDigest,
-          expiresAt: approval.expiresAt,
-          body: yield* PurchaseShared.toJsonObject(sealed),
-          createdAt: approval.createdAt,
-        });
-        yield* saveCommand(
-          transaction,
-          command.scope,
-          command.idempotencyKey,
-          request.expected,
-          approveOperation,
-          principal.actorId,
-          yield* PurchaseShared.toJsonObject(approval),
-        );
-
-        return approval;
-      }),
+    (transaction, principal) => approveOwnerOperationInTransaction(transaction, principal, command),
     "update",
   );
 });

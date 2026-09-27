@@ -219,29 +219,36 @@ CREATE TRIGGER period_work_batch_member_agrees
 CREATE UNIQUE INDEX period_work_batch_members_work_uniq
   ON openerp.period_work_batch_members (book_id, work_identity);
 
--- Which exact approval covered which exact batch. A batch approval is a member
--- of the existing approvals identity, so approval-use uniqueness and the
--- approval lifecycle stay with their existing owner.
+-- Which exact gesture covered which exact batch member.
+--
+-- There is deliberately no foreign key to a shared approvals table. Each owner
+-- keeps its own approval authority in its own table, and a batch member of one
+-- owner is not an approval in another's. The owning operation mints the
+-- approval this row names, through that owner's own rules and inside the
+-- approving transaction; this table records the gesture and the reference, and
+-- the authority itself stays where the owner put it.
 CREATE TABLE openerp.period_work_batch_approvals (
   book_id text NOT NULL,
   batch_id text NOT NULL,
-  -- One shared posting-kernel approval per member plan, minted by the released
-  -- approve-within-transaction operation during the approving transaction. The
-  -- gesture therefore approves the exact plan digests it lists.
-  approval_id text NOT NULL,
-  -- The ordinal of the member this approval covers, so a batch of N members is
-  -- provably covered by N approvals rather than by one.
+  -- One row per member, so a batch of N members is provably covered by N
+  -- approvals rather than by one.
   member_ordinal integer NOT NULL,
-  -- The plan digest this approval was minted against. Retained so a later read
-  -- can show what each gesture covered without re-deriving it.
+  -- The owner whose rules approved this member.
+  owner text NOT NULL,
+  -- The owner's own approval for this member's plan. It is a reference, not an
+  -- authority: nothing here decides whether it is current, unconsumed or
+  -- unexpired, because only the owner may decide that.
+  owner_approval_id text NOT NULL,
+  -- The plan digest the owner's approval was minted against, retained so a later
+  -- read can show what the gesture covered without re-deriving it.
   plan_digest text NOT NULL,
   approver_id text NOT NULL,
   recorded_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT period_work_batch_approvals_pkey PRIMARY KEY (book_id, batch_id, member_ordinal),
   CONSTRAINT period_work_batch_approvals_ordinal_check CHECK (member_ordinal >= 1 AND member_ordinal <= 200),
+  CONSTRAINT period_work_batch_approvals_owner_check CHECK (owner = ANY (ARRAY['purchases.recognition'::text, 'purchases.credits'::text, 'owner.operations'::text, 'commerce.invoice'::text])),
   CONSTRAINT period_work_batch_approvals_member_fkey FOREIGN KEY (book_id, batch_id, member_ordinal) REFERENCES openerp.period_work_batch_members(book_id, batch_id, ordinal),
-  CONSTRAINT period_work_batch_approvals_batch_fkey FOREIGN KEY (book_id, batch_id) REFERENCES openerp.period_work_batches(book_id, id),
-  CONSTRAINT period_work_batch_approvals_approval_fkey FOREIGN KEY (book_id, approval_id) REFERENCES openerp.approvals(book_id, id)
+  CONSTRAINT period_work_batch_approvals_batch_fkey FOREIGN KEY (book_id, batch_id) REFERENCES openerp.period_work_batches(book_id, id)
 );
 
 -- A sealed manifest is the frozen selection. A new selection is a new manifest.

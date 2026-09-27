@@ -23,22 +23,34 @@
 //     evidence but prevents the stale handler publishing new work.
 
 import * as Effect from "effect/Effect";
+import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
+import { decodeUnknownEffect } from "effect/Schema";
 
+import * as Accounting from "@open-erp/contracts/accounting";
 import * as PeriodWork from "@open-erp/domain/period-work";
+import type { Database } from "../db/connection";
+import type { RequestEnvironment } from "../runtime/environment";
 import { Digest, Identifier } from "@open-erp/contracts/accounting";
+import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
+import * as Credits from "@open-erp/contracts/supplier-credits";
+import * as Issuance from "@open-erp/contracts/invoice-issuance";
+import * as Operation from "@open-erp/contracts/owner-operations";
 
 import type { Transaction } from "../db/connection";
 import * as Db from "../db/period-work";
 import { databaseFailure, withTransaction } from "../db/transaction";
 import { failure } from "./failures";
 import { admitRunnerActor } from "./preparation-jobs";
-import { approveChangeInTransaction, digest, replay, saveCommand } from "./posting";
-import { prepareInvoiceIssue } from "./commerce/invoice-lifecycle";
-import { executeInvoiceIssue } from "./commerce/invoice-lifecycle";
-import { prepareSupplierAcceptance, executeSupplierAcceptance } from "./purchases/acceptance";
-import { prepareSupplierCredit, executeSupplierCredit } from "./purchases/credits";
-import { prepareOwnerOperation, executeOwnerOperation } from "./subledger/owner-operations";
+import { digest, replay, saveCommand } from "./posting";
+import { executeInvoiceIssue, prepareInvoiceIssue } from "./commerce/invoice-lifecycle";
+import { executeSupplierAcceptance, prepareSupplierAcceptance } from "./purchases/acceptance";
+import { executeSupplierCredit, prepareSupplierCredit } from "./purchases/credits";
+import {
+  approveOwnerOperationInTransaction,
+  executeOwnerOperation,
+  prepareOwnerOperation,
+} from "./subledger/owner-operations";
 import {
   decode,
   toJsonObject,
@@ -47,6 +59,23 @@ import {
   type JsonObject,
   type Scope as BookScope,
 } from "./commerce/support";
+
+/**
+ * The released owning operations this run may dispatch to. Every value here is a
+ * real named operation in this repository. A route with no released owner
+ * becomes a review case and is never dispatched.
+ */
+export const ownerNames = [
+  "purchases.recognition",
+  "purchases.credits",
+  "owner.operations",
+  "commerce.invoice",
+] as const;
+
+type OwnerName = (typeof ownerNames)[number];
+
+const isOwnerName = (value: string): value is OwnerName =>
+  ownerNames.some((name) => name === value);
 
 const operationFor = {
   prepare: "prepare_period_work_manifest",
@@ -63,33 +92,6 @@ const maximumMembers = PeriodWork.periodWorkBoundary.maximumMembers;
 const maximumBoundedCount = 50;
 
 const minorCeiling = 10n ** 38n;
-
-/**
- * The released operations this run may dispatch to. Every entry is a real named
- * operation in this repository; a route with no entry becomes a review case
- * naming the gap rather than a dispatch to an absent owner.
- *
- * A period child carries no financial inputs, so the exact reviewed command is
- * sealed in the manifest as `prepareInput` and passed through untouched. Nothing
- * here fills in an account, a date, a rate or an amount.
- */
-const prepareOwners = {
-  "purchases.recognition": prepareSupplierAcceptance,
-  "purchases.credits": prepareSupplierCredit,
-  "owner.operations": prepareOwnerOperation,
-  "commerce.invoice": prepareInvoiceIssue,
-} as const;
-
-const executeOwners = {
-  "purchases.recognition": executeSupplierAcceptance,
-  "purchases.credits": executeSupplierCredit,
-  "owner.operations": executeOwnerOperation,
-  "commerce.invoice": executeInvoiceIssue,
-} as const;
-
-type OwnerName = keyof typeof prepareOwners;
-
-const isOwnerName = (value: string): value is OwnerName => value in prepareOwners;
 
 const compare = (left: string, right: string) => (left < right ? -1 : left > right ? 1 : 0);
 
@@ -194,6 +196,210 @@ function readMissingFacts(value: JsonObject | null): ReadonlyArray<string> | und
  * snapshots. Membership is frozen here: a source that arrives after this returns
  * is not in it, and selecting it needs a new manifest.
  */
+
+/**
+ * The plan identity a prepared member contributes: the sealed plan, and the owning
+ * review that produced it.
+ */
+type PreparedPlanIdentity = {
+  readonly id: string;
+  readonly digest: string;
+  readonly reviewId: string;
+  readonly reviewDigest: string;
+};
+
+/** The single shape both dispatchers return, so no caller ever sees a union of
+ * four owner signatures. Each branch maps its own owner's result into it. */
+type OwnerPrepareResult = Effect.Effect<
+  PreparedPlanIdentity,
+  Accounting.AccountingError,
+  RequestEnvironment | Database
+>;
+
+type OwnerExecuteResult = Effect.Effect<
+  string,
+  Accounting.AccountingError,
+  RequestEnvironment | Database
+>;
+
+/**
+ * Prepare one child through the owner that actually owns its effect.
+ *
+ * The dispatch is one branch per owner. Each branch decodes the sealed command
+ * against that owner's own input schema and calls that owner's own operation, so
+ * the four owners' genuinely different input shapes are each stated exactly —
+ * there is no shared payload, no cast, and no union call signature. Every branch
+ * maps its result to one common plan identity, which is what keeps the caller's
+ * type a single `Effect` instead of a four-way union.
+ */
+function prepareForOwner(
+  owner: OwnerName,
+  token: string,
+  command: { readonly scope: BookScope; readonly idempotencyKey: string },
+  raw: Schema.Json,
+): OwnerPrepareResult {
+  switch (owner) {
+    case "purchases.recognition":
+      return decodeUnknownEffect(Acceptance.PrepareSupplierAcceptance)(raw).pipe(
+        Effect.flatMap((input) => prepareSupplierAcceptance(token, { ...command, input })),
+        Effect.flatMap(planIdentityOf),
+      );
+    case "purchases.credits":
+      return decodeUnknownEffect(Credits.PrepareSupplierCredit)(raw).pipe(
+        Effect.flatMap((input) => prepareSupplierCredit(token, { ...command, input })),
+        Effect.flatMap(planIdentityOf),
+      );
+    case "owner.operations":
+      return decodeUnknownEffect(Operation.PrepareOwnerOperation)(raw).pipe(
+        Effect.flatMap((input) => prepareOwnerOperation(token, { ...command, input })),
+        Effect.flatMap(planIdentityOf),
+      );
+    case "commerce.invoice":
+      return decodeUnknownEffect(Issuance.PrepareInvoiceIssue)(raw).pipe(
+        Effect.flatMap((input) => prepareInvoiceIssue(token, { ...command, input })),
+        Effect.flatMap(planIdentityOf),
+      );
+  }
+}
+
+/**
+ * Execute one sealed member through its own owner, returning that owner's own
+ * receipt identity.
+ *
+ * The four owners' approve-and-execute inputs are not the same shape: one omits
+ * `version`, one omits `acknowledgeSyntheticOnly`. Each branch therefore builds
+ * its owner's own input from that owner's own contract, and each maps the result
+ * to the one receipt identity the child records. Parsing the receipt happens
+ * inside the branch, so nothing is left un-yielded at the call site.
+ */
+function executeForOwner(
+  owner: OwnerName,
+  token: string,
+  command: {
+    readonly scope: BookScope;
+    readonly idempotencyKey: string;
+    readonly ownerReviewId: string;
+    readonly ownerReviewDigest: string;
+    readonly ownerApprovalId: string;
+  },
+): OwnerExecuteResult {
+  switch (owner) {
+    case "purchases.recognition":
+      return executeSupplierAcceptance(token, {
+        ...command,
+        reviewId: command.ownerReviewId,
+        input: {
+          version: 1,
+          digest: command.ownerReviewDigest,
+          acknowledgeSyntheticOnly: true,
+          approvalId: command.ownerApprovalId,
+        },
+      }).pipe(Effect.flatMap(receiptIdentityOf));
+    case "purchases.credits":
+      return executeSupplierCredit(token, {
+        ...command,
+        reviewId: command.ownerReviewId,
+        input: {
+          digest: command.ownerReviewDigest,
+          acknowledgeSyntheticOnly: true,
+          approvalId: command.ownerApprovalId,
+        },
+      }).pipe(Effect.flatMap(receiptIdentityOf));
+    case "owner.operations":
+      return executeOwnerOperation(token, {
+        ...command,
+        id: command.ownerReviewId,
+        input: {
+          version: 1,
+          digest: command.ownerReviewDigest,
+          approvalId: command.ownerApprovalId,
+        },
+      }).pipe(Effect.flatMap(receiptIdentityOf));
+    case "commerce.invoice":
+      return executeInvoiceIssue(token, {
+        ...command,
+        id: command.ownerReviewId,
+        input: {
+          version: 1,
+          digest: command.ownerReviewDigest,
+          acknowledgeSyntheticOnly: true,
+          approvalId: command.ownerApprovalId,
+        },
+      }).pipe(Effect.flatMap(receiptIdentityOf));
+  }
+}
+
+/**
+ * The owners that have released an approve-within-transaction port, and the
+ * member approval each one mints under its own rules.
+ *
+ * Only `owner.operations` has released one. The other three owners expose
+ * approval as a public operation that opens its own transaction, so calling one
+ * from inside the approving transaction would nest a second financial
+ * transaction. A member of one of those owners is refused with its owner named,
+ * not approved with a stand-in.
+ */
+const ownersWithoutApprovalPort = [
+  "purchases.recognition",
+  "purchases.credits",
+  "commerce.invoice",
+] as const;
+
+function approveMemberInTransaction(
+  transaction: Transaction,
+  principal: Parameters<typeof approveOwnerOperationInTransaction>[1],
+  scope: BookScope,
+  idempotencyKey: string,
+  member: {
+    readonly owner: string;
+    readonly ownerReviewId: string;
+    readonly ownerReviewDigest: string;
+  },
+) {
+  if (ownersWithoutApprovalPort.some((name) => name === member.owner)) {
+    return Effect.fail(failure("UnsupportedProfile"));
+  }
+
+  if (!isOwnerName(member.owner)) return Effect.fail(failure("StaleDependency"));
+
+  switch (member.owner) {
+    case "owner.operations":
+      return Effect.map(
+        approveOwnerOperationInTransaction(transaction, principal, {
+          scope,
+          id: member.ownerReviewId,
+          idempotencyKey,
+          input: { version: 1, digest: member.ownerReviewDigest },
+        }),
+        (approval) => approval.id,
+      );
+    case "purchases.recognition":
+    case "purchases.credits":
+    case "commerce.invoice":
+      return Effect.fail(failure("UnsupportedProfile"));
+  }
+}
+
+/**
+ * Approve the exact sealed members, under each owner's own rules.
+ *
+ * One human gesture covers exactly the members in the sealed batch, in one
+ * transaction, so a batch is either wholly approved or not approved at all. The
+ * operation is operator-only, so an ordinary agent or API credential cannot reach
+ * it.
+ *
+ * The approval each member receives is minted by ITS OWN owner, through that
+ * owner's own approve-within-transaction port and that owner's own rules —
+ * exact review digest, an independent reviewer who is not the preparer, and no
+ * outstanding blocker. A shared posting-kernel approval is deliberately NOT used:
+ * no owner consumes one, so minting them here would have produced approvals that
+ * looked like authority and were never checked by anything.
+ *
+ * A member whose owner has not released such a port cannot be approved, and the
+ * whole batch is refused naming that owner. Approval is not silently skipped for
+ * it, because a batch that approved some members and not others would be a
+ * gesture the human did not actually make.
+ */
 export const preparePeriodWorkManifest = Effect.fn("periodWork.prepareManifest")(function* (
   token: string,
   command: {
@@ -207,9 +413,14 @@ export const preparePeriodWorkManifest = Effect.fn("periodWork.prepareManifest")
       rules: ReadonlyArray<PeriodWork.PreparationRule>;
       populationComplete: boolean;
       excluded: ReadonlyArray<{ sourceId: string; reason: string }>;
+      // A caller acknowledges that a completed run is not a reconciled period.
+      // The schema makes it a literal, and the sealed manifest says so too.
+      acknowledgeNotReconciled: true;
     };
   },
 ) {
+  if (command.input.acknowledgeNotReconciled !== true) return yield* failure("InvalidJournal");
+
   if (command.input.startsOn > command.input.endsOn) return yield* failure("InvalidJournal");
   // The cutoff is when the selection was captured, so it cannot precede the
   // interval the work covers. A cutoff inside the interval is a different
@@ -382,16 +593,19 @@ export const preparePeriodWorkManifest = Effect.fn("periodWork.prepareManifest")
  * A crash between 2 and 3 is repaired by the stable command key: the next pass
  * calls the same command and recovers the same review instead of minting a
  * second one.
- */
+
 export const advancePeriodWork = Effect.fn("periodWork.advance")(function* (
   token: string,
-  command: { scope: BookScope; manifestId: string; boundedCount: number },
+  command: {
+    scope: BookScope;
+    manifestId: string;
+    idempotencyKey: string;
+    input: { boundedCount: number };
+  },
 ) {
-  if (
-    !Number.isInteger(command.boundedCount) ||
-    command.boundedCount < 1 ||
-    command.boundedCount > maximumBoundedCount
-  ) {
+  const boundedCount = command.input.boundedCount;
+
+  if (!Number.isInteger(boundedCount) || boundedCount < 1 || boundedCount > maximumBoundedCount) {
     return yield* failure("InvalidJournal");
   }
 
@@ -437,7 +651,7 @@ export const advancePeriodWork = Effect.fn("periodWork.advance")(function* (
 
       const recognized = new Map(obligations.map((row) => [row.economicIdentity, row]));
 
-      for (const row of children.slice(0, command.boundedCount)) {
+      for (const row of children.slice(0, boundedCount)) {
         const child = frozen.get(row.workIdentity);
 
         if (child === undefined) return yield* failure("StaleDependency");
@@ -486,12 +700,11 @@ export const advancePeriodWork = Effect.fn("periodWork.advance")(function* (
   // The owning prepare operation runs here, with no transaction held by this
   // owner. It opens its own.
   for (const item of queue) {
-    const plan = planIdentityOf(
-      yield* prepareOwners[item.owner](token, {
-        scope: command.scope,
-        idempotencyKey: item.key,
-        input: item.input,
-      }),
+    const plan = yield* prepareForOwner(
+      item.owner,
+      token,
+      { scope: command.scope, idempotencyKey: item.key },
+      item.input,
     );
 
     yield* withBook(
@@ -535,15 +748,11 @@ export const advancePeriodWork = Effect.fn("periodWork.advance")(function* (
     );
   }
 
-  return yield* readPeriodWorkProgress(token, command.scope, command.manifestId);
+  return yield* readPeriodWorkProgress(token, {
+    scope: command.scope,
+    manifestId: command.manifestId,
+  });
 });
-
-type Claim = {
-  readonly state: PeriodWork.WorkChildState;
-  readonly missingFacts: ReadonlyArray<string>;
-  readonly refusalReason?: string;
-  readonly dispatch?: { readonly owner: OwnerName; readonly input: JsonObject };
-};
 
 /**
  * The decision for one child, from the current state rather than from the frozen
@@ -643,6 +852,20 @@ function decideChild(
 }
 
 /** The plan identity and the owning review a prepare operation returned. */
+
+type Claim = {
+  readonly state: PeriodWork.WorkChildState;
+  readonly missingFacts: ReadonlyArray<string>;
+  readonly refusalReason?: string;
+  readonly dispatch?: { readonly owner: OwnerName; readonly input: JsonObject };
+};
+
+/**
+ * The decision for one child, from the current state rather than from the frozen
+ * selection alone. The order of the tests is the packet's order and is
+ * load-bearing: a payment observation is resolved against an existing
+ * obligation before anything else is considered.
+
 function planIdentityOf(prepared: Schema.Json) {
   return Schema.decodeUnknownEffect(PreparedReview)(prepared).pipe(
     Effect.map((review) => ({
@@ -661,7 +884,7 @@ function planIdentityOf(prepared: Schema.Json) {
  * Only children that already carry a sealed plan, a routed owner and the owning
  * review that produced it can be members. A child still waiting on a predecessor
  * is refused here rather than smuggled into the batch.
- */
+
 export const preparePeriodWorkBatch = Effect.fn("periodWork.prepareBatch")(function* (
   token: string,
   command: {
@@ -842,7 +1065,7 @@ export const preparePeriodWorkBatch = Effect.fn("periodWork.prepareBatch")(funct
  * bytes the approval will cover. It is informational. It is never posted and
  * never balanced against, and a plan whose line shape cannot be read refuses
  * rather than contributing a guess.
- */
+
 function planDebitTotal(plan: JsonObject) {
   let total = 0n;
 
@@ -894,7 +1117,7 @@ function planDebitTotal(plan: JsonObject) {
  * calling one from inside this transaction would nest a second financial
  * transaction. Each member's own approval therefore stays with its owner, and it
  * is what that owner's execute consumes.
- */
+
 export const approvePeriodWorkBatch = Effect.fn("periodWork.approveBatch")(function* (
   token: string,
   command: { scope: BookScope; batchId: string; expectedDigest: string; idempotencyKey: string },
@@ -955,22 +1178,24 @@ export const approvePeriodWorkBatch = Effect.fn("periodWork.approveBatch")(funct
           return yield* failure("StaleDependency");
         }
 
-        // The released approval owner mints the approval for this exact plan
-        // digest, inside this transaction, opening none of its own. Its
-        // idempotency key is derived from the member, so a retry recovers the
-        // same approval instead of minting a second one.
-        const approval = yield* approveChangeInTransaction(transaction, principal, {
-          scope: command.scope,
-          changeSetId: member.planId,
-          idempotencyKey: `pw_ap_${command.batchId}_${member.ordinal}`,
-          input: { version: 1, planDigest: member.planDigest },
-        });
+        const approvalId = yield* approveMemberInTransaction(
+          transaction,
+          principal,
+          command.scope,
+          `pw_ap_${command.batchId}_${member.ordinal}`,
+          {
+            owner: member.owner,
+            ownerReviewId: member.ownerReviewId,
+            ownerReviewDigest: member.ownerReviewDigest,
+          },
+        );
 
         yield* Db.insertBatchApproval(transaction, {
           bookId: command.scope.bookId,
           batchId: command.batchId,
           memberOrdinal: Number(member.ordinal),
-          approvalId: approval.id,
+          owner: member.owner,
+          ownerApprovalId: approvalId,
           planDigest: member.planDigest,
           approverId: principal.actorId,
         });
@@ -1120,34 +1345,66 @@ export const executePeriodWorkBatch = Effect.fn("periodWork.executeBatch")(funct
       continue;
     }
 
-    const result = yield* Effect.either(
-      executeOwners[member.owner](token, {
+    // The fence is rechecked immediately before the owner is asked to post. A
+    // cancellation that landed after the batch was read, or a child another
+    // handler moved on, must stop this execution rather than post behind a stale
+    // decision. Nothing is dispatched until the child is still the one this batch
+    // named and it is still prepared.
+    const fence = yield* withBook(token, command.scope, false, function* (transaction) {
+      const row = (yield* Db.readChild(transaction, command.scope.bookId, member.workIdentity))[0];
+
+      return {
+        state: row?.state ?? "absent",
+        revision: row?.revision ?? "",
+        planId: row?.planId ?? null,
+        planDigest: row?.planDigest ?? null,
+        ownerReviewId: row?.ownerReviewId ?? null,
+      };
+    });
+
+    if (fence.state !== "prepared") {
+      refused.push({
+        workIdentity: member.workIdentity,
+        reason: `child_not_prepared:${fence.state}`,
+      });
+      continue;
+    }
+
+    if (
+      fence.planId !== member.planId ||
+      fence.planDigest !== member.planDigest ||
+      fence.ownerReviewId !== member.ownerReviewId
+    ) {
+      refused.push({
+        workIdentity: member.workIdentity,
+        reason: "child_moved_since_batch_was_sealed",
+      });
+      continue;
+    }
+
+    const result = yield* Effect.result(
+      executeForOwner(member.owner, token, {
         scope: command.scope,
         // The key is derived from the batch and the member, never from an
         // attempt counter, so a lost response recovers the same member.
         idempotencyKey: `pw_ex_${command.batchId}_${member.ordinal}`,
-        ...(member.owner === "owner.operations" || member.owner === "commerce.invoice"
-          ? { id: member.ownerReviewId }
-          : { reviewId: member.ownerReviewId }),
-        input: {
-          version: 1,
-          digest: member.ownerReviewDigest,
-          approvalId: ownerApprovalId,
-        },
+        ownerReviewId: member.ownerReviewId,
+        ownerReviewDigest: member.ownerReviewDigest,
+        ownerApprovalId,
       }),
     );
 
-    if (result._tag === "Left") {
+    if (Result.isFailure(result)) {
       // A stale member is marked as needing a new review and the remaining
       // independent members stay runnable. It is never retried under a new key.
-      refused.push({ workIdentity: member.workIdentity, reason: result.left.code });
+      refused.push({ workIdentity: member.workIdentity, reason: result.failure.code });
       yield* markForReview(token, command.scope, member.workIdentity, [
-        `owner_execution_refused:${result.left.code}`,
+        `owner_execution_refused:${result.failure.code}`,
       ]);
       continue;
     }
 
-    const receiptId = receiptIdentityOf(result.right);
+    const receiptId = result.success;
     committed.push({ workIdentity: member.workIdentity, receiptId });
 
     yield* withBook(
@@ -1192,7 +1449,10 @@ export const executePeriodWorkBatch = Effect.fn("periodWork.executeBatch")(funct
     );
   }
 
-  const progress = yield* readPeriodWorkProgress(token, command.scope, plan.manifestId);
+  const progress = yield* readPeriodWorkProgress(token, {
+    scope: command.scope,
+    manifestId: plan.manifestId,
+  });
 
   return {
     batchId: command.batchId,
@@ -1320,9 +1580,10 @@ export const claimOpenPeriodWorkRuns = Effect.fn("periodWork.claimOpenRuns")(fun
  */
 export const readPeriodWorkProgress = Effect.fn("periodWork.readProgress")(function* (
   token: string,
-  scope: BookScope,
-  manifestId: string,
+  command: { scope: BookScope; manifestId: string },
 ) {
+  const { scope, manifestId } = command;
+
   return yield* withBook(token, scope, false, function* (transaction) {
     yield* requireAccess(transaction, false);
 

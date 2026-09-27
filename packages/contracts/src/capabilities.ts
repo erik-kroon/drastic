@@ -10,6 +10,8 @@ import { StatementCapabilities } from "./report-statements";
 import * as Reconciliation from "./reconciliation";
 import { CaseCapabilities } from "./cases";
 import * as Automation from "./automation";
+import * as PeriodWork from "./period-work";
+import * as PeriodWorkDomain from "@open-erp/domain/period-work";
 import { PostingRecoveryCapabilities } from "./posting-recovery";
 import { CorrectionCapabilities } from "./corrections";
 import { SettlementCapabilities } from "./settlements";
@@ -201,6 +203,56 @@ export const Capabilities = {
     }),
     output: Automation.PreparationRun,
     readOnly: false,
+  },
+  period_work_prepare_manifest: {
+    description:
+      "Freeze a period-work selection and the rules in force at its cutoff, from one consistent capture. A source arriving later needs a new manifest. Nothing is posted.",
+    input: Schema.Struct({ ...mutation, input: PeriodWork.PreparePeriodWorkManifest }),
+    output: PeriodWorkDomain.PeriodWorkManifest,
+    readOnly: false,
+  },
+  period_work_get_progress: {
+    description:
+      "Read one run's per-child progress, its fences and its state counts. Reconciled is always false: a fully visited run is not a reconciled period.",
+    input: Schema.Struct({ ...scoped, manifestId: Accounting.Identifier }),
+    output: PeriodWork.PeriodWorkRunProgress,
+    readOnly: true,
+  },
+  period_work_advance: {
+    description:
+      "Visit a bounded number of children, route each to the operation that already owns its effect, and record the decision. The owning prepare runs between transactions, never inside one.",
+    input: Schema.Struct({
+      ...mutation,
+      manifestId: Accounting.Identifier,
+      input: Schema.Struct({ boundedCount: Schema.Int }),
+    }),
+    output: PeriodWork.PeriodWorkRunProgress,
+    readOnly: false,
+  },
+  period_work_prepare_batch: {
+    description:
+      "Seal the exact prepared children a human gesture will cover, with each child's own routed owner and plan. A child waiting on a predecessor is refused.",
+    input: Schema.Struct({ ...mutation, input: PeriodWork.PreparePeriodWorkBatch }),
+    output: PeriodWorkDomain.ApprovalBatch,
+    readOnly: false,
+  },
+  period_work_approve_batch: {
+    description:
+      "Approve the exact sealed members, each under its own owner's rules. A member whose owner has released no approve-within-transaction port is refused by name.",
+    input: Schema.Struct({ ...mutation, input: PeriodWork.ApprovePeriodWorkBatch }),
+    output: PeriodWorkDomain.ApprovalBatch,
+    readOnly: false,
+    // The human gesture. An agent must not be able to make it.
+    agentCallable: false,
+  },
+  period_work_execute_batch: {
+    description:
+      "Execute the approved members through their own owning operations, one member per receipt, keeping independent members runnable when one goes stale.",
+    input: Schema.Struct({ ...mutation, input: PeriodWork.ExecutePeriodWorkBatch }),
+    output: PeriodWork.PeriodWorkExecutionResult,
+    readOnly: false,
+    // It posts.
+    agentCallable: false,
   },
   ...CaseCapabilities,
   book_get_status: {

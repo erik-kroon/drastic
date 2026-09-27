@@ -11,6 +11,7 @@ import { commerceInvoiceCapabilities } from "./commerce-invoices";
 import { purchaseRecognitionCapabilities } from "./purchase-recognition";
 import { vatCapabilities } from "./vat";
 import { runCaseCapabilities } from "./runs-cases";
+import { periodWorkCapabilities } from "./period-work";
 import { reportCapabilities } from "./reports";
 import { reportStatementCapabilities } from "./report-statements";
 import { sourceIntakeCapabilities } from "./source-intake";
@@ -37,6 +38,7 @@ export const capabilities = {
   ...purchaseRecognitionCapabilities,
   ...vatCapabilities,
   ...runCaseCapabilities,
+  ...periodWorkCapabilities,
   ...reportCapabilities,
   ...reportStatementCapabilities,
   ...sourceIntakeCapabilities,

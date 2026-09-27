@@ -318,7 +318,11 @@ export const handlePeriodWork = Effect.fn("PeriodWork.handleQueueJob")(function*
   const progress = yield* advancePeriodWork(bindings.OPENERP_PREPARATION_TOKEN, {
     scope: { entityId: payload.scope.entityId, bookId: payload.scope.bookId },
     manifestId: payload.manifestId,
-    boundedCount: payload.boundedCount,
+    // The queue's own identity is the stable key here: the same manifest at the
+    // same bounded count is the same command, so a redelivery recovers rather
+    // than re-deciding.
+    idempotencyKey: periodWorkKey(payload),
+    input: { boundedCount: payload.boundedCount },
   });
 
   return progress.counts.pending === 0 ? "settled" : "ready";

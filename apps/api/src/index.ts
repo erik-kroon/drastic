@@ -30,6 +30,7 @@ import { ReportStatementHandlers } from "./transport/http/routes/report-statemen
 import { PurchaseRecognitionHandlers } from "./transport/http/routes/purchase-recognition";
 import { CaseHandlers } from "./transport/http/routes/cases";
 import { AutomationHandlers } from "./transport/http/routes/automation";
+import { PeriodWorkHandlers } from "./transport/http/routes/period-work";
 import { PostingRecoveryHandlers } from "./transport/http/routes/posting-recovery";
 import { CorrectionHandlers } from "./transport/http/routes/corrections";
 import { SettlementHandlers } from "./transport/http/routes/settlements";
@@ -117,6 +118,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     ReconciliationHandlers,
     CaseHandlers,
     AutomationHandlers,
+    PeriodWorkHandlers,
     PostingRecoveryHandlers,
     CorrectionHandlers,
     SettlementHandlers,
