@@ -19,6 +19,11 @@ import {
 } from "../src/db/schema";
 import { RequestEnvironment, type Bindings } from "../src/runtime/environment";
 import {
+  CreditDocumentQueue,
+  dispatchCreditDocuments,
+  handleCreditDocument,
+} from "../src/runtime/credit-document-queue";
+import {
   dispatchPendingExtractions,
   dispatchPendingPeriodWork,
   dispatchPendingPreparations,
@@ -91,6 +96,7 @@ const worker = Layer.mergeAll(
   PreparationQueue.toLayer(handlePreparation, { concurrency: 2 }),
   ExtractionQueue.toLayer(handleExtraction, { concurrency: 2 }),
   PeriodWorkQueue.toLayer(handlePeriodWork, { concurrency: 2 }),
+  CreditDocumentQueue.toLayer(handleCreditDocument, { concurrency: 2 }),
 ).pipe(Layer.provideMerge(Worker.layer({ concurrency: 2 })), Layer.provideMerge(services));
 
 const dispatchExtractions = Effect.forever(
@@ -133,8 +139,20 @@ const dispatch = Effect.forever(
   ),
 );
 
-const main = Effect.all([dispatch, dispatchExtractions, dispatchPeriodWork], {
-  concurrency: 3,
+const dispatchCredits = Effect.forever(
+  dispatchCreditDocuments().pipe(
+    Effect.catch(() =>
+      Effect.logWarning("Credit document dispatch failed; outbox intent remains pending."),
+    ),
+    Effect.catchDefect(() =>
+      Effect.logWarning("Credit document dispatch defect; outbox intent remains pending."),
+    ),
+    Effect.andThen(Effect.sleep("30 seconds")),
+  ),
+);
+
+const main = Effect.all([dispatch, dispatchExtractions, dispatchPeriodWork, dispatchCredits], {
+  concurrency: 4,
 }).pipe(Effect.provide(worker), Effect.scoped);
 
 runMain(main.pipe(Effect.tapCause(() => Effect.logError("Preparation runner stopped."))), {

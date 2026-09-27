@@ -946,6 +946,7 @@ export const approveChangeInTransaction = Effect.fn("posting.approveChangeInTran
       changeSetId: string;
       idempotencyKey: string;
       input: typeof Accounting.ApproveChange.Type;
+      owner?: PostingOwner;
     },
   ) {
     return yield* Effect.gen(function* () {
@@ -966,7 +967,20 @@ export const approveChangeInTransaction = Effect.fn("posting.approveChangeInTran
         return yield* failure("StaleDependency");
       }
 
-      yield* validatePlan(transaction, command.scope, plan);
+      yield* validatePlan(
+        transaction,
+        command.scope,
+        plan,
+        command.owner?.kind === "legal_issue" || command.owner?.kind === "legal_credit",
+      );
+
+      if (command.owner !== undefined) {
+        for (const group of plan.groups) {
+          for (const action of group.actions) {
+            yield* admitPosting(transaction, command.scope, plan.id, action, command.owner);
+          }
+        }
+      }
 
       if (
         (yield* Db.readVoucherByChangeSet(transaction, command.scope.bookId, plan.id)).length > 0

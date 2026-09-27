@@ -904,6 +904,29 @@ export const customerCreditDocuments = openerp.table("customer_credit_documents"
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });
 
+export const customerCreditArtifacts = openerp.table("customer_credit_artifacts", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  documentId: text("document_id").notNull(),
+  documentRevision: bigint("document_revision", { mode: "bigint" }).notNull(),
+  documentDigest: text("document_digest").notNull(),
+  rendererVersion: text("renderer_version").notNull(),
+  outboxId: text("outbox_id").notNull(),
+  descriptor: jsonb().$type<Schema.JsonObject>().notNull(),
+  contentBase64: text("content_base64").notNull(),
+});
+
+export const customerCreditRenderFailures = openerp.table("customer_credit_render_failures", {
+  bookId: text("book_id").notNull(),
+  documentId: text("document_id").notNull(),
+  documentRevision: bigint("document_revision", { mode: "bigint" }).notNull(),
+  documentDigest: text("document_digest").notNull(),
+  rendererVersion: text("renderer_version").notNull(),
+  ordinal: integer().notNull(),
+  code: text().notNull(),
+  failedAt: timestamp("failed_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
 // The exact negative tax effect of the credit, bound to the original recognition
 // component and the qualified tax period. No return effect is computed or claimed.
 export const customerCreditTaxCorrections = openerp.table("customer_credit_tax_corrections", {

@@ -413,7 +413,7 @@ export const freezeCreditDocument = Effect.fn("commerce.customerCredit.document"
     currency: input.currency,
     currencyScale: input.currencyScale,
     reason: input.reason,
-    evidence: input.evidence,
+    evidence: { evidenceId: input.evidence.evidenceId, sha256: input.evidence.sha256 },
     seller: input.seller,
     customer: input.customer,
     lines: input.lines,

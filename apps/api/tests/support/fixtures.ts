@@ -152,9 +152,21 @@ export async function decoded<S extends Schema.Top & { readonly DecodingServices
   schema: S,
 ): Promise<S["Type"]> {
   const body = await response.text();
-  expect(response.status, body).toBe(200);
+  expect(response.status, `${response.url}: ${body}`).toBe(200);
 
   return Schema.decodeSync(Schema.fromJsonString(schema))(body);
+}
+
+export async function post<S extends Schema.Top & { readonly DecodingServices: never }>(
+  book: BookFixture,
+  path: string,
+  input: unknown,
+  schema: S,
+): Promise<S["Type"]> {
+  return decoded(
+    await request(book, path, { method: "POST", body: JSON.stringify(input) }),
+    schema,
+  );
 }
 
 export async function failure(

@@ -81,6 +81,20 @@ export const admitPosting = Effect.fn("posting.admitOwnedSources")(function* (
   }
 });
 
+function matchesCreditedOriginal(
+  source: { readonly kind: string; readonly id: string; readonly body: JsonObject },
+  original: JsonObject | null,
+  action: JsonObject,
+) {
+  return (
+    source.kind === "legal_issue" &&
+    original !== null &&
+    source.id === textField(original, "reviewId") &&
+    textField(source.body, "digest") === textField(original, "reviewDigest") &&
+    textField(objectField(action, "legalCredit"), "originalIssueId") === textField(original, "id")
+  );
+}
+
 const admitSources = Effect.fn("posting.admitSources")(function* (
   tx: Transaction,
   scope: Scope,
@@ -102,13 +116,22 @@ const admitSources = Effect.fn("posting.admitSources")(function* (
 
   if (ownership.length > 1000) return yield* failure("UnsupportedProfile");
 
+  const retained = ownership.find((r) => r.kind === owner?.kind && r.id === owner?.id);
+
+  const creditOriginal =
+    owner?.kind === "legal_credit" && retained
+      ? objectField(retained.body, "originalSnapshot")
+      : null;
+
   for (const source of ownership) {
     if (source.kind === "invoice_issue" && owner?.kind === "invoice_cancellation") continue;
 
+    // A credit must cite its own original issue. This exception binds the exact
+    // reviewed original; it does not admit unrelated issue evidence or a new sale.
+    if (matchesCreditedOriginal(source, creditOriginal, action)) continue;
+
     if (source.kind !== owner?.kind) return yield* failure("ApprovalRequired");
   }
-
-  const retained = ownership.find((r) => r.kind === owner?.kind && r.id === owner?.id);
 
   if (ownership.length && owner?.kind !== "invoice_cancellation") {
     if (!retained) return yield* failure("StaleDependency");

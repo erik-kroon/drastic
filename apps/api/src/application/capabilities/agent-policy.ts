@@ -65,6 +65,7 @@ const writeClasses = {
   subledger_create_control: "prepare",
   fx_capture_conversion: "prepare",
   commerce_prepare_invoice_document: "prepare",
+  commerce_render_customer_credit_artifact: "prepare",
   commerce_resume_invoice_document: "prepare",
   commerce_prepare_allocation_reversal: "prepare",
   commerce_execute_allocation_reversal: "execute_approved",

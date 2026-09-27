@@ -46,6 +46,9 @@ const fonts = [
   },
 ];
 
+// Credit rendering reuses this version's exact font coverage and display rules.
+export { fonts as legalDocumentFonts, text as legalDocumentText, money as legalDocumentMoney };
+
 const css = `
 * { box-sizing:border-box; }
 html,body { margin:0; padding:0; }
@@ -104,7 +107,7 @@ function text(value: string) {
     })
   ) {
     unsupported(
-      "Legal invoice contains characters outside the bundled font coverage. No text was replaced.",
+      "The document contains characters outside the bundled font coverage. No text was replaced.",
     );
   }
 
@@ -121,7 +124,7 @@ function text(value: string) {
 
 function money(minor: string) {
   if (!/^(0|[1-9][0-9]{0,37})$/.test(minor))
-    unsupported("Legal invoice amount is not an exact minor-unit string.");
+    unsupported("The document amount is not an exact minor-unit string.");
   const padded = minor.padStart(3, "0");
   const major = padded.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 

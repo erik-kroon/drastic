@@ -52,7 +52,7 @@ const approvalWindow = 3600000;
 // The renderer release a credit-note artifact must declare. No credit-note renderer is
 // released, so the outbox intent below records this as the required release and nothing
 // consumes it yet. The retained semantic revision is what a future renderer reads.
-const requiredRendererVersion = "openerp-se-credit-note-v1";
+const requiredRendererVersion = Credits.customerCreditRendererVersion;
 
 const receivableFailures: ReadonlyArray<string> = [
   "NotFound",
@@ -782,6 +782,7 @@ export const executeCustomerCredit = Effect.fn("commerce.customerCredit.execute"
         changeSetId: plan.id,
         idempotencyKey: newId("customer_credit_approve"),
         input: { version: 1, planDigest: plan.planDigest },
+        owner: { kind: "legal_credit", id: review.id },
       });
 
       const postingReceipt = yield* executeChangeInTransaction(tx, principal, {
@@ -942,7 +943,7 @@ export const executeCustomerCredit = Effect.fn("commerce.customerCredit.execute"
         bookId: scope.bookId,
         id: newId("outbox"),
         receiptId: postingReceipt.id,
-        kind: "customer_credit.render_requested.v1",
+        kind: Credits.customerCreditRenderEvent,
         payload: {
           creditId,
           documentId,

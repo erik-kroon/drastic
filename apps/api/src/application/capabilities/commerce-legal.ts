@@ -1,5 +1,10 @@
 import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
+import {
+  getCustomerCreditArtifactState,
+  getCustomerCreditArtifact,
+  renderCustomerCreditArtifact,
+} from "../commerce/credit-documents";
 import { getLegalInvoicePdf, legalInvoicePdfHistory } from "../commerce/documents";
 import {
   customerCreditHistory,
@@ -21,6 +26,18 @@ import {
 } from "../commerce/legal";
 
 export const commerceLegalCapabilities = {
+  commerce_get_customer_credit_artifact_state: effectCapability(
+    Capabilities.commerce_get_customer_credit_artifact_state,
+    getCustomerCreditArtifactState,
+  ),
+  commerce_get_customer_credit_artifact: effectCapability(
+    Capabilities.commerce_get_customer_credit_artifact,
+    getCustomerCreditArtifact,
+  ),
+  commerce_render_customer_credit_artifact: effectCapability(
+    Capabilities.commerce_render_customer_credit_artifact,
+    renderCustomerCreditArtifact,
+  ),
   commerce_get_invoice_cancellation: effectCapability(
     Capabilities.commerce_get_invoice_cancellation,
     getInvoiceCancellation,

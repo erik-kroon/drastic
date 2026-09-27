@@ -122,12 +122,12 @@ for MCP. Discovery and `tools/call` use the same filtered set. A hidden name ret
 review, role binding, firm administration, company setup and period-work mutations
 remain outside MCP. Use their authorized HTTP/UI operations.
 
-| Caller | Admission and authority |
-| --- | --- |
-| Web and REST | Validated contracts call their named application owner. Human-only workflows check the current operator or browser identity. |
-| MCP | PostgreSQL checks the credential before dispatch. The filtered catalog limits exposure; the owner still checks book, role, profile, approval and current dependencies. |
+| Caller               | Admission and authority                                                                                                                                                                   |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web and REST         | Validated contracts call their named application owner. Human-only workflows check the current operator or browser identity.                                                              |
+| MCP                  | PostgreSQL checks the credential before dispatch. The filtered catalog limits exposure; the owner still checks book, role, profile, approval and current dependencies.                    |
 | Bun preparation jobs | The runner admits its service credential. Preparation, extraction and period-work owners recheck their scoped state and cancellation rules. A queued payload cannot grant human approval. |
-| Operator scripts | Provisioning, migration and recovery use their explicit maintenance/runtime boundaries. They do not receive authority from MCP metadata. |
+| Operator scripts     | Provisioning, migration and recovery use their explicit maintenance/runtime boundaries. They do not receive authority from MCP metadata.                                                  |
 
 `PostingOwner` remains an internal application argument. Generic transport schemas
 do not accept it. Posting admission requires the real owner for protected invoice,

@@ -4,12 +4,12 @@
 
 The [application owner](../src/application/banking/candidates.ts) reads a bank row and its possible posted-line matches. [Database queries](../src/db/banking/candidates.ts) run in the caller's transaction. PostgreSQL does not own the discovery workflow.
 
-| Surface | Contract |
-| --- | --- |
-| REST | `POST /api/v1/entities/:entityId/books/:bookId/bank-match-candidates` |
-| MCP | `bank_discover_match_candidates`, with `{scope, input}` |
-| Input | `statementId`, `rowOrdinal`, optional `previousDigest` |
-| Output | `BankMatchCandidates` from `packages/contracts/src/bank-match-candidates.ts` |
+| Surface | Contract                                                                     |
+| ------- | ---------------------------------------------------------------------------- |
+| REST    | `POST /api/v1/entities/:entityId/books/:bookId/bank-match-candidates`        |
+| MCP     | `bank_discover_match_candidates`, with `{scope, input}`                      |
+| Input   | `statementId`, `rowOrdinal`, optional `previousDigest`                       |
+| Output  | `BankMatchCandidates` from `packages/contracts/src/bank-match-candidates.ts` |
 
 This POST is read-only. It creates no plan, match, approval, receipt or posting. Scope admission happens before source lookup. The released profile is `synthetic-core-v1` with native writer authority.
 

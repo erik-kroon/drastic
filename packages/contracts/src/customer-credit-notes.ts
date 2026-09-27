@@ -19,6 +19,10 @@ const Totals = Schema.Struct({
   grossMinor: Accounting.MinorUnits,
 });
 
+export const customerCreditRendererVersion = "openerp-se-credit-note-v1";
+
+export const customerCreditRenderEvent = "customer_credit.render_requested.v1";
+
 export const SelectedCreditLine = Schema.Struct({
   originalLineId: Accounting.Identifier,
   creditedNetMinor: Accounting.MinorUnits,
@@ -135,8 +139,7 @@ export const CustomerCreditTaxWitness = Schema.Struct({
   originalControlLineId: Accounting.Identifier,
   originalPostingDate: Accounting.AccountingDate,
   originalTaxPeriod: CustomerCreditTaxPeriod,
-  // No VAT-return amendment or reclassification owner is released, so no return
-  // consequence is computed, claimed or implied here.
+  // This credit workflow has not yet published or verified its VAT-return consequence.
   vatReturnOwner: Schema.Literal("not_released"),
   vatReturnConsequence: Schema.Literal("unobserved_pending_next_04"),
 });
@@ -249,6 +252,48 @@ export const CustomerCreditSemanticDocument = Schema.Struct({
   taxWitness: CustomerCreditTaxWitness,
   createdAt: Schema.String,
   digest: Accounting.Digest,
+});
+
+export const RenderCustomerCreditArtifact = Schema.Struct({
+  expectedDocumentDigest: Accounting.Digest,
+  rendererVersion: Schema.Literal(customerCreditRendererVersion),
+});
+
+export const CustomerCreditArtifactDescriptor = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  creditId: Accounting.Identifier,
+  documentId: Accounting.Identifier,
+  documentRevision: Commerce.Version,
+  documentDigest: Accounting.Digest,
+  rendererVersion: Schema.Literal(customerCreditRendererVersion),
+  mediaType: Schema.Literal("application/pdf"),
+  filename: Schema.String,
+  sha256: Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/)),
+  byteLength: Schema.Int.check(Schema.isBetween({ minimum: 8, maximum: 2097152 })),
+  createdAt: Schema.String,
+  createdBy: Accounting.Identifier,
+  delivered: Schema.Literal(false),
+});
+
+export const CustomerCreditArtifact = Schema.Struct({
+  ...CustomerCreditArtifactDescriptor.fields,
+  contentBase64: Schema.String.check(Schema.isMaxLength(2796204)),
+});
+
+export const CustomerCreditRenderFailure = Schema.Struct({
+  ordinal: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 20 })),
+  code: Schema.Literals(["UnsupportedProfile", "Unavailable", "InternalError"]),
+  failedAt: Schema.String,
+});
+
+export const CustomerCreditArtifactView = Schema.Struct({
+  scope: Accounting.Scope,
+  creditId: Accounting.Identifier,
+  document: CustomerCreditSemanticDocument,
+  state: Schema.Literals(["pending", "rendering_failed", "available"]),
+  artifact: Schema.NullOr(CustomerCreditArtifactDescriptor),
+  lastFailure: Schema.NullOr(CustomerCreditRenderFailure),
 });
 
 export const CustomerCreditReview = Schema.Struct({
@@ -378,6 +423,31 @@ const mutation = {
 };
 
 export const CustomerCreditNotesApi = HttpApiGroup.make("customerCreditNotes").add(
+  HttpApiEndpoint.get(
+    "getCustomerCreditArtifactState",
+    `${path}/customer-credit-notes/:id/artifact`,
+    {
+      params: Accounting.ChangePath,
+      success: CustomerCreditArtifactView,
+      error: accountingErrors,
+    },
+  ),
+  HttpApiEndpoint.post(
+    "renderCustomerCreditArtifact",
+    `${path}/customer-credit-notes/:id/artifact`,
+    {
+      ...mutation,
+      payload: RenderCustomerCreditArtifact.annotate({
+        parseOptions: { onExcessProperty: "error" },
+      }),
+      success: CustomerCreditArtifactDescriptor,
+    },
+  ),
+  HttpApiEndpoint.get("getCustomerCreditArtifact", `${path}/customer-credit-artifacts/:id`, {
+    params: Accounting.ChangePath,
+    success: CustomerCreditArtifact,
+    error: accountingErrors,
+  }),
   HttpApiEndpoint.post("prepareCustomerCredit", `${path}/customer-credit-reviews`, {
     params: Accounting.Scope,
     headers: Accounting.IdempotencyHeaders,
@@ -419,6 +489,32 @@ export const CustomerCreditNotesApi = HttpApiGroup.make("customerCreditNotes").a
 );
 
 export const CustomerCreditCapabilities = {
+  commerce_get_customer_credit_artifact_state: {
+    description:
+      "Read the frozen credit document and current render state separately from its immutable financial receipt. No delivery, refund or VAT-return claim.",
+    input: Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier }),
+    output: CustomerCreditArtifactView,
+    readOnly: true,
+  },
+  commerce_render_customer_credit_artifact: {
+    description:
+      "Render the exact retained credit revision and recover its immutable PDF artifact. Does not issue, number, post, refund or deliver a credit.",
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      id: Accounting.Identifier,
+      idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
+      input: RenderCustomerCreditArtifact,
+    }),
+    output: CustomerCreditArtifactDescriptor,
+    readOnly: false,
+  },
+  commerce_get_customer_credit_artifact: {
+    description:
+      "Read scoped retained credit PDF bytes with their document revision, renderer version and content hash.",
+    input: Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier }),
+    output: CustomerCreditArtifact,
+    readOnly: true,
+  },
   commerce_get_customer_credit_capacity: {
     description:
       "Read the exact remaining per-line credit capacity of one issued legal customer invoice, its current unpaid receivable and its bound original recognition component.",

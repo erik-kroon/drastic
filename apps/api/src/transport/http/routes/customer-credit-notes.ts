@@ -4,6 +4,11 @@ import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
 import {
+  getCustomerCreditArtifactState,
+  getCustomerCreditArtifact,
+  renderCustomerCreditArtifact,
+} from "../../../application/commerce/credit-documents";
+import {
   approveCustomerCredit,
   customerCreditHistory,
   executeCustomerCredit,
@@ -15,6 +20,26 @@ import {
 
 export const CustomerCreditHandlers = HttpApiBuilder.group(Api, "customerCreditNotes", (handlers) =>
   handlers
+    .handle("getCustomerCreditArtifactState", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        getCustomerCreditArtifactState(token, { scope: scopeFromPath(params), id: params.id }),
+      ),
+    )
+    .handle("getCustomerCreditArtifact", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        getCustomerCreditArtifact(token, { scope: scopeFromPath(params), id: params.id }),
+      ),
+    )
+    .handle("renderCustomerCreditArtifact", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        renderCustomerCreditArtifact(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
     .handle("prepareCustomerCredit", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         prepareCustomerCredit(token, {
