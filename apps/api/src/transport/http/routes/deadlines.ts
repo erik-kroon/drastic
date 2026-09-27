@@ -4,7 +4,11 @@ import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
 import * as Deadlines from "../../../application/closing/deadlines";
-import { linkFulfillment, listFulfillments } from "../../../application/closing/fulfillment";
+import {
+  linkFulfillment,
+  listFulfillments,
+  reverifyFulfillment,
+} from "../../../application/closing/fulfillment";
 
 export const DeadlineHandlers = HttpApiBuilder.group(Api, "deadlines", (handlers) =>
   handlers
@@ -52,6 +56,16 @@ export const DeadlineHandlers = HttpApiBuilder.group(Api, "deadlines", (handlers
     .handle("createDeadlineFeed", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
         Deadlines.createFeed(token, { scope: scopeFromPath(params), id: params.id }),
+      ),
+    )
+    .handle("reverifyDeadlineFulfillment", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        reverifyFulfillment(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
       ),
     )
     .handle("revokeDeadlineFeed", ({ params, headers }) =>

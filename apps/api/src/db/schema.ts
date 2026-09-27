@@ -263,6 +263,8 @@ export const deadlineFulfillments = openerp.table("deadline_fulfillments", {
   obligationId: text("obligation_id").notNull(),
   obligationRevision: bigint("obligation_revision", { mode: "bigint" }).notNull(),
   referenceDigest: text("reference_digest").notNull(),
+  verificationOrdinal: bigint("verification_ordinal", { mode: "bigint" }).notNull().default(1n),
+  evidenceDigest: text("evidence_digest"),
   outcomeKind: text("outcome_kind").notNull(),
   referenceKind: text("reference_kind").notNull(),
   reference: jsonb("reference").$type<Schema.JsonObject>().notNull(),

@@ -297,22 +297,30 @@ export const listFulfillments = Effect.fn("deadlines.listFulfillments")(function
   });
 });
 
-export const linkFulfillment = Effect.fn("deadlines.linkFulfillment")(function* (
+const recordFulfillment = Effect.fn("deadlines.recordFulfillment")(function* (
   token: string,
   command: { scope: Scope; id: string; idempotencyKey: string; reference: Reference },
+  reverification: typeof Deadlines.ReverifyFulfillment.Type | null,
 ) {
+  const operation =
+    reverification === null ? "deadline_fulfillment_link" : "deadline_fulfillment_reverify";
+
   return yield* withBook(
     token,
     command.scope,
     true,
     function* (transaction, principal) {
-      const payload = yield* toJsonObject({ id: command.id, reference: command.reference });
+      const payload = yield* toJsonObject(
+        reverification === null
+          ? { id: command.id, reference: command.reference }
+          : { id: command.id, input: reverification },
+      );
 
       const request = yield* replay(
         transaction,
         command.scope,
         command.idempotencyKey,
-        "deadline_fulfillment_link",
+        operation,
         principal.actorId,
         payload,
         ResultSchema,
@@ -334,6 +342,13 @@ export const linkFulfillment = Effect.fn("deadlines.linkFulfillment")(function* 
       const obligation = yield* decode(DeadlineSchema, (yield* current())[0]!.body);
       const requiredEnvironment = obligation.required_environment;
 
+      if (
+        reverification !== null &&
+        reverification.expectedObligationRevision !== obligation.revision
+      ) {
+        return yield* failure("StaleDependency");
+      }
+
       if (requiredEnvironment === null || obligation.statutory_basis === null) {
         return yield* failure("MissingEvidence");
       }
@@ -351,16 +366,43 @@ export const linkFulfillment = Effect.fn("deadlines.linkFulfillment")(function* 
         referenceDigest,
       ))[0];
 
-      // The same reference already observed under this revision is the same
-      // evidence, not a new claim.
-      if (existing) {
-        return yield* decode(ResultSchema, {
+      // Linking recovers a retained observation. Only explicit reverification
+      // reads the owner's evolving evidence again under an unchanged obligation.
+      if (existing && reverification === null) {
+        const result = yield* decode(ResultSchema, {
           fulfillment: existing.body,
           obligation: (yield* current())[0]!.body,
         });
+
+        yield* saveCommand(
+          transaction,
+          command.scope,
+          command.idempotencyKey,
+          request.expected,
+          operation,
+          principal.actorId,
+          result,
+        );
+
+        return result;
       }
 
+      const previous =
+        existing === undefined ? null : yield* decode(FulfillmentSchema, existing.body);
+
+      if (
+        reverification !== null &&
+        previous?.digest !== reverification.expectedFulfillmentDigest
+      ) {
+        return yield* failure("StaleDependency");
+      }
+
+      const ordinal = previous === null ? 1n : BigInt(previous.verificationOrdinal ?? "1") + 1n;
+
+      if (ordinal > 9223372036854775807n) return yield* unsupported();
+
       const resolved = (yield* readResolved(transaction, command.scope.bookId, reference))[0];
+      const evidenceDigest = yield* digest(yield* toJsonObject({ ownerState: resolved ?? null }));
 
       const verification = verifyReference({
         obligation,
@@ -380,6 +422,8 @@ export const linkFulfillment = Effect.fn("deadlines.linkFulfillment")(function* 
         outcomeKind: obligation.outcome_kind,
         reference,
         referenceDigest,
+        verificationOrdinal: ordinal.toString(),
+        evidenceDigest,
         environment: reference.environment,
         verification,
         recordedBy: principal.actorId,
@@ -399,6 +443,8 @@ export const linkFulfillment = Effect.fn("deadlines.linkFulfillment")(function* 
         obligationId: command.id,
         obligationRevision: String(obligation.revision),
         referenceDigest,
+        verificationOrdinal: ordinal.toString(),
+        evidenceDigest,
         outcomeKind: obligation.outcome_kind,
         referenceKind: reference.kind,
         reference: yield* toJsonObject(reference),
@@ -442,7 +488,7 @@ export const linkFulfillment = Effect.fn("deadlines.linkFulfillment")(function* 
         command.scope,
         command.idempotencyKey,
         request.expected,
-        "deadline_fulfillment_link",
+        operation,
         principal.actorId,
         result,
       );
@@ -452,3 +498,31 @@ export const linkFulfillment = Effect.fn("deadlines.linkFulfillment")(function* 
     "update",
   );
 });
+
+export function linkFulfillment(
+  token: string,
+  command: { scope: Scope; id: string; idempotencyKey: string; reference: Reference },
+) {
+  return recordFulfillment(token, command, null);
+}
+
+export function reverifyFulfillment(
+  token: string,
+  command: {
+    scope: Scope;
+    id: string;
+    idempotencyKey: string;
+    input: typeof Deadlines.ReverifyFulfillment.Type;
+  },
+) {
+  return recordFulfillment(
+    token,
+    {
+      scope: command.scope,
+      id: command.id,
+      idempotencyKey: command.idempotencyKey,
+      reference: command.input.reference,
+    },
+    command.input,
+  );
+}
