@@ -1,4 +1,5 @@
 import type * as Schema from "effect/Schema";
+import type { SourceLocator } from "@open-erp/contracts/supplier-extraction";
 
 import { equalJson } from "@open-erp/domain/canonicalization";
 
@@ -27,7 +28,7 @@ export type MergeSuggestion = {
   readonly candidateLineId: string | null;
   readonly fieldKey: string;
   readonly proposedValue: Json;
-  readonly sourceLocators: ReadonlyArray<string>;
+  readonly sourceLocators: ReadonlyArray<typeof SourceLocator.Type>;
 };
 
 export type MergeLineMapping = {
@@ -51,7 +52,7 @@ export type MergeField = {
   readonly current: Json;
   readonly suggestion: Json;
   readonly selected: Json;
-  readonly evidenceLocators: ReadonlyArray<string>;
+  readonly evidenceLocators: ReadonlyArray<typeof SourceLocator.Type>;
   readonly detail: string;
 };
 
@@ -59,7 +60,7 @@ export type MergeLine = {
   readonly candidateLineId: string;
   readonly targetLineId: string | null;
   readonly disposition: "unmapped" | "map_to_line";
-  readonly sourceLocators: ReadonlyArray<string>;
+  readonly sourceLocators: ReadonlyArray<typeof SourceLocator.Type>;
   readonly state: MergeState;
   readonly detail: string;
 };
@@ -138,7 +139,7 @@ export function mergeField(
   base: Json,
   current: Json,
   suggestion: Json | undefined,
-  sourceLocators: ReadonlyArray<string>,
+  sourceLocators: ReadonlyArray<typeof SourceLocator.Type>,
   confirmed: boolean,
 ): MergeField {
   const merged: MergeField = {

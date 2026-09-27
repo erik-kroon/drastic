@@ -18,7 +18,7 @@ const ByteOffset = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: maxS
 
 // A reviewed engine release, not a caller-chosen string. Adding a document
 // vocabulary or a provider is a new release literal in a reviewed change.
-export const ExtractionEngineRelease = Schema.Literal("native-text-v1");
+export const ExtractionEngineRelease = Schema.Literals(["native-text-v1", "azure-invoice-v1"]);
 
 export const ExtractionDataUsePolicy = Schema.Literals(["retain_diagnostics", "retain_output"]);
 
@@ -54,7 +54,31 @@ export const ExtractionDiagnostic = Schema.Struct({
   detail: Schema.String.check(Schema.isMaxLength(120)),
 });
 
-export const SourceLocator = Schema.String.check(Schema.isPattern(/^span:[0-9]{1,8}-[0-9]{1,8}$/));
+export const DocumentSourceLocator = Schema.Struct({
+  kind: Schema.Literal("document_quote"),
+  page: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 20 })),
+  quote: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(1000)),
+  // UTF-16 offsets address the retained reader transcript, never original PDF bytes.
+  textOffset: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 1000000 })),
+  textLength: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 1000 })),
+});
+
+export const SourceLocator = Schema.Union([
+  Schema.String.check(Schema.isPattern(/^span:[0-9]{1,8}-[0-9]{1,8}$/)),
+  DocumentSourceLocator,
+]);
+
+export const DocumentReadingEvidence = Schema.Struct({
+  physicalPages: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 20 })),
+  readPages: Schema.Array(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 20 }))).check(
+    Schema.isMaxLength(20),
+  ),
+  coverage: Schema.Literals(["complete", "partial"]),
+  apiVersion: Schema.Literal("2024-11-30"),
+  modelId: Schema.Literal("prebuilt-invoice"),
+  amountProfile: Schema.Literal("sv-SE-SEK"),
+  transcript: Schema.String.check(Schema.isMaxLength(16000)),
+});
 
 export const ExtractedField = Schema.Struct({
   // 0 addresses a header field; 1..50 addresses a draft line position.
@@ -68,7 +92,8 @@ export const ExtractedLine = Schema.Struct({
   candidateLineId: Accounting.Identifier,
   sourceLocators: Schema.Array(SourceLocator).check(Schema.isMaxLength(8)),
   fields: Schema.Array(ExtractedField).check(Schema.isMaxLength(16)),
-  content: Drafts.DraftLine,
+  // Legacy native rows retain their shape. Document candidates carry sparse fields.
+  content: Schema.optional(Drafts.DraftLine),
 });
 
 // The retained engine interpretation. Money is an exact source assertion: a
@@ -86,6 +111,7 @@ export const SupplierExtractionAttempt = Schema.Struct({
   fields: Schema.Array(ExtractedField).check(Schema.isMaxLength(64)),
   candidateLines: Schema.Array(ExtractedLine).check(Schema.isMaxLength(50)),
   diagnostics: Schema.Array(ExtractionDiagnostic).check(Schema.isMaxLength(64)),
+  document: Schema.optional(DocumentReadingEvidence),
   createdAt: Schema.String,
 });
 
@@ -105,11 +131,23 @@ export const SupplierExtractionRequest = Schema.Struct({
   digest: Accounting.Digest,
 });
 
-export const RequestSupplierExtraction = Schema.Struct({
-  engineRelease: ExtractionEngineRelease,
+const RequestNativeExtraction = Schema.Struct({
+  engineRelease: Schema.Literal("native-text-v1"),
   selectedPages: Schema.Array(ExtractionPage).check(Schema.isMinLength(1), Schema.isMaxLength(200)),
   dataUsePolicy: ExtractionDataUsePolicy,
 });
+
+export const RequestDocumentExtraction = Schema.Struct({
+  engineRelease: Schema.Literal("azure-invoice-v1"),
+  pageSelection: Schema.Literal("all"),
+  amountProfile: Schema.Literal("sv-SE-SEK"),
+  dataUsePolicy: Schema.Literal("retain_output"),
+});
+
+export const RequestSupplierExtraction = Schema.Union([
+  RequestNativeExtraction,
+  RequestDocumentExtraction,
+]);
 
 export const CancelSupplierExtraction = Schema.Struct({
   requestId: Accounting.Identifier,
@@ -205,6 +243,7 @@ export const SupplierFieldDecisionRecord = Schema.Struct({
 // list; it writes nothing. A proposed total mismatch or a tax input the reviewer
 // has not supplied is a blocker here, not a posting.
 export const SupplierExtractionReviewPreparation = Schema.Struct({
+  currencyScale: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 6 })),
   scope: Accounting.Scope,
   occurrenceId: Accounting.Identifier,
   request: SupplierExtractionRequest,
@@ -250,6 +289,8 @@ export const SupplierExtractionReview = Schema.Struct({
 });
 
 export const SupplierExtractionState = Schema.Struct({
+  currencyScale: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 6 })),
+  documentReaderAvailable: Schema.Boolean,
   scope: Accounting.Scope,
   occurrenceId: Accounting.Identifier,
   requests: Schema.Array(SupplierExtractionRequest).check(Schema.isMaxLength(20)),

@@ -12,6 +12,7 @@ import {
 import {
   claimPendingSupplierExtractions,
   runSupplierExtraction,
+  stopFailedSupplierExtraction,
 } from "../application/purchases/extraction";
 import { advancePeriodWork, claimOpenPeriodWorkRuns } from "../application/period-work";
 import { failure } from "../application/failures";
@@ -222,20 +223,40 @@ export const dispatchPendingExtractions = Effect.fn("Extraction.dispatchPending"
   if (!bindings.OPENERP_PREPARATION_TOKEN) return yield* failure("Unavailable");
   const pending = yield* claimPendingSupplierExtractions(bindings.OPENERP_PREPARATION_TOKEN);
 
+  if (pending.length === 0) return;
+
+  const snapshot = yield* readQueueSnapshot(
+    pending.map((request) =>
+      JobStore.JobId(`supplier-extraction/${request.bookId}/${request.requestId}`),
+    ),
+  );
+
   yield* Effect.forEach(
     pending,
     (request) =>
-      ExtractionQueue.enqueue({
-        requestId: request.requestId,
-        scope: { entityId: request.entityId, bookId: request.bookId },
-      }).pipe(
-        // The store is reached through the defect channel, so one unreachable queue
-        // row must not end the polling fiber. The admission stays durable either
-        // way and the next poll picks the same request up again.
-        Effect.catchDefect(() =>
-          Effect.logWarning("Extraction enqueue failed; admission remains durable."),
-        ),
-      ),
+      Effect.gen(function* () {
+        const scope = { entityId: request.entityId, bookId: request.bookId };
+
+        const record = snapshot.records.get(
+          JobStore.JobId(
+            `supplier-extraction/${extractionKey({ scope, requestId: request.requestId })}`,
+          ),
+        );
+
+        if (
+          record?.state === "cancelled" ||
+          record?.state === "completed" ||
+          (record?.state === "failed" && record.attemptsMade >= record.attemptsMax)
+        )
+          return yield* stopFailedSupplierExtraction(scope, request.requestId);
+
+        return yield* ExtractionQueue.enqueue({ requestId: request.requestId, scope }).pipe(
+          Effect.asVoid,
+          Effect.catchDefect(() =>
+            Effect.logWarning("Extraction enqueue failed; admission remains durable."),
+          ),
+        );
+      }),
     { concurrency: 5, discard: true },
   );
 });
@@ -244,7 +265,13 @@ export const handleExtraction = Effect.fn("Extraction.handleQueueJob")(function*
   requestId: string;
   scope: typeof Accounting.Scope.Type;
 }) {
-  return yield* runSupplierExtraction(payload.scope, payload.requestId);
+  const result = yield* runSupplierExtraction(payload.scope, payload.requestId);
+
+  // Pending provider operations must use the queue's backoff, not become a
+  // completed deterministic job that can never be enqueued again.
+  if (result === "ready") return yield* failure("Unavailable");
+
+  return result;
 });
 
 const periodWorkRunBound = 20;

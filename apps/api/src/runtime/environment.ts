@@ -2,7 +2,10 @@ import type { R2Bucket } from "@cloudflare/workers-types";
 import * as Context from "effect/Context";
 import type { RetainedObjectStore } from "../adapters/storage/retained-objects";
 
+import type { DocumentReader } from "../adapters/document-reading/azure";
+
 export interface Bindings {
+  readonly DOCUMENT_READER?: DocumentReader;
   readonly OPENERP_PREPARATION_TOKEN?: string;
   readonly EVIDENCE_BUCKET?: R2Bucket;
   readonly EVIDENCE_STORE?: RetainedObjectStore;

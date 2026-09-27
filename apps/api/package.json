@@ -24,6 +24,7 @@
     "drizzle-orm": "1.0.0-rc.5-169397b",
     "effect": "4.0.0-rc.112",
     "effect-mq": "0.7.0",
+    "pdf-lib": "1.17.1",
     "pg": "^8.23.0",
     "takumi-pdf": "0.11.3"
   },

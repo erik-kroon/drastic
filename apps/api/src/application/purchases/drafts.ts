@@ -76,7 +76,7 @@ export function draftSummary(body: JsonObject) {
       sourceEvidence: Shared.objectField(body, "sourceEvidence"),
       currency: content.currency ?? "",
       currencyScale: content.currencyScale ?? 0,
-      grossMinor: Shared.objectField(Shared.objectField(body, "totals"), "grossMinor") ?? null,
+      grossMinor: Shared.objectField(body, "totals")["grossMinor"] ?? null,
       blockerCount: Shared.arrayField(body, "blockers").length,
       createdAt: body.createdAt ?? "",
       digest: body.digest ?? "",

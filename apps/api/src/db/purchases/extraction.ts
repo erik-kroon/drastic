@@ -49,13 +49,15 @@ export function readExtractionRequestForUpdate(
 ) {
   return transaction.execute<ExtractionRequestRow>(
     sql`
-      select id, occurrence_id as "occurrenceId", generation,
-        original_hash as "originalHash", original_bytes::text as "originalBytes",
-        engine_release as "engineRelease", attempt_identity as "attemptIdentity",
-        requested_by as "requestedBy", requested_at as "requestedAt", body
-      from openerp.supplier_extraction_requests
-      where book_id = ${bookId} and id = ${requestId}
-      for update
+      select r.id, r.occurrence_id as "occurrenceId", r.generation,
+        r.original_hash as "originalHash", r.original_bytes::text as "originalBytes",
+        r.engine_release as "engineRelease", r.attempt_identity as "attemptIdentity",
+        r.requested_by as "requestedBy", r.requested_at as "requestedAt", r.body
+      from openerp.supplier_extraction_requests r
+      join openerp.supplier_extraction_request_states s
+        on s.book_id = r.book_id and s.request_id = r.id
+      where r.book_id = ${bookId} and r.id = ${requestId}
+      for update of s
     `,
     "objects",
   );
@@ -335,6 +337,51 @@ export function insertFieldDecision(
         ${row.decisionKind}, ${row.reviewer}, clock_timestamp(), ${row.digest},
         ${JSON.stringify(row.body)}::jsonb)
     `,
+    "objects",
+  );
+}
+
+export function claimDocumentOperation(
+  transaction: Transaction,
+  bookId: string,
+  requestId: string,
+  readerIdentity: string,
+) {
+  return transaction.execute<{ readonly requestId: string }>(
+    sql`
+    insert into openerp.supplier_document_operations (book_id, request_id, reader_identity)
+    values (${bookId}, ${requestId}, ${readerIdentity})
+    on conflict do nothing returning request_id as "requestId"
+  `,
+    "objects",
+  );
+}
+
+export function readDocumentOperation(transaction: Transaction, bookId: string, requestId: string) {
+  return transaction.execute<{
+    readonly readerIdentity: string;
+    readonly operationUrl: string | null;
+    readonly dispatchExpired: boolean;
+  }>(
+    sql`
+    select reader_identity as "readerIdentity", operation_url as "operationUrl", started_at < clock_timestamp() - interval '30 seconds' as "dispatchExpired"
+    from openerp.supplier_document_operations where book_id = ${bookId} and request_id = ${requestId}
+  `,
+    "objects",
+  );
+}
+
+export function saveDocumentOperation(
+  transaction: Transaction,
+  bookId: string,
+  requestId: string,
+  operationUrl: string,
+) {
+  return transaction.execute(
+    sql`
+    update openerp.supplier_document_operations set operation_url = ${operationUrl}
+    where book_id = ${bookId} and request_id = ${requestId} and operation_url is null
+  `,
     "objects",
   );
 }
