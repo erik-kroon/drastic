@@ -29,6 +29,7 @@ export type ApprovalRow = {
   readonly reviewId: string;
   readonly actorId: string;
   readonly digest: string;
+  readonly reviewDigest: string;
   readonly expiresAt: string;
   readonly body: JsonObject;
 };
@@ -140,6 +141,7 @@ export function readApproval(transaction: Transaction, bookId: string, approvalI
   return transaction.execute<ApprovalRow>(
     sql`
       select a.id, a.review_id as "reviewId", a.actor_id as "actorId", a.digest,
+        a.review_digest as "reviewDigest",
         to_char(a.expires_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as "expiresAt",
         a.body
       from openerp.owner_operation_approvals a
@@ -153,6 +155,7 @@ export function lockApproval(transaction: Transaction, bookId: string, approvalI
   return transaction.execute<ApprovalRow>(
     sql`
       select a.id, a.review_id as "reviewId", a.actor_id as "actorId", a.digest,
+        a.review_digest as "reviewDigest",
         to_char(a.expires_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as "expiresAt",
         a.body
       from openerp.owner_operation_approvals a
@@ -167,6 +170,7 @@ export function readApprovalByReview(transaction: Transaction, bookId: string, r
   return transaction.execute<ApprovalRow>(
     sql`
       select a.id, a.review_id as "reviewId", a.actor_id as "actorId", a.digest,
+        a.review_digest as "reviewDigest",
         to_char(a.expires_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as "expiresAt",
         a.body
       from openerp.owner_operation_approvals a

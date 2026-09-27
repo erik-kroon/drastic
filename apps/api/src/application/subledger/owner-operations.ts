@@ -1172,7 +1172,7 @@ export const approveOwnerOperation = Effect.fn("owner.operations.approve")(funct
           id: approval.id,
           reviewId: approval.reviewId,
           actorId: approval.actorId,
-          digest: approval.reviewDigest,
+          digest: sealed.digest,
           expiresAt: approval.expiresAt,
           body: yield* PurchaseShared.toJsonObject(sealed),
           createdAt: approval.createdAt,
@@ -1207,7 +1207,7 @@ const requireApproval = Effect.fn("owner.operations.approval")(function* (
   if (
     approval === undefined ||
     approval.reviewId !== review.id ||
-    approval.digest !== review.digest ||
+    approval.reviewDigest !== review.digest ||
     approval.actorId === review.receipt.actorId
   ) {
     return yield* failure("ApprovalRequired");
@@ -1712,7 +1712,7 @@ export const getOwnerOperation = Effect.fn("owner.operations.get")(function* (
           dependenciesCurrent: blockers.length === 0,
           approvalUsable:
             approval !== undefined &&
-            approval.digest === review.digest &&
+            approval.reviewDigest === review.digest &&
             approval.actorId !== review.receipt.actorId &&
             Date.parse(approval.expiresAt) > Date.parse(now) &&
             committed === undefined &&

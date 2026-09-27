@@ -2,6 +2,7 @@ import type { OriginalDimensionStatus } from "@open-erp/domain/dimensions";
 import type { IdentityProvisioning } from "@open-erp/contracts/identity";
 import type * as Recovery from "@open-erp/contracts/posting-recovery";
 import type * as Schema from "effect/Schema";
+import { sql } from "drizzle-orm";
 import {
   mqDedupe,
   mqFlowChildren,
@@ -943,6 +944,9 @@ export const ownerOperationApprovals = openerp.table("owner_operation_approvals"
   reviewId: text("review_id").notNull(),
   actorId: text("actor_id").notNull(),
   digest: text().notNull(),
+  reviewDigest: text("review_digest")
+    .notNull()
+    .generatedAlwaysAs(sql`body ->> 'reviewDigest'::text`),
   expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),

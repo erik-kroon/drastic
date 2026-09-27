@@ -919,9 +919,8 @@ export const materializeRecurringOccurrence = Effect.fn("commerce.recurring.mate
 
         if (selected === undefined) return yield* failure("StaleDependency");
 
-        const selectedDigest = textField(selected.body, "digest");
-
-        if (selectedDigest === undefined) return yield* failure("InternalError");
+        const selectedTemplate = yield* decode(TemplateSchema, selected.body);
+        const selectedDigest = selectedTemplate.digest;
 
         const counterparty = (yield* DraftDb.readCustomerCounterparty(
           transaction,
@@ -965,7 +964,7 @@ export const materializeRecurringOccurrence = Effect.fn("commerce.recurring.mate
           cycleOrdinal: input.cycleOrdinal,
           cycleDate: planned.cycleDate,
           serviceInterval: yield* toJsonObject(planned.serviceInterval),
-          chargeComponentKeys: objectField(selected.body, "chargeComponentKeys"),
+          chargeComponentKeys: selectedTemplate.chargeComponentKeys,
           selectedTemplateRevision: planned.selectedTemplateRevision,
           selectedTemplateDigest: selectedDigest,
           selectedScheduleRevision: scheduleRevision.success,
@@ -1068,6 +1067,8 @@ export const getRecurringAgreement = Effect.fn("commerce.recurring.getAgreement"
       input.agreementId,
     );
 
+    const templates = yield* Effect.forEach(revisions, (row) => decode(TemplateSchema, row.body));
+
     return yield* decode(AgreementViewSchema, {
       agreement: yield* toJsonObject(current.agreement),
       schedules: schedules.flatMap((row) => {
@@ -1088,21 +1089,13 @@ export const getRecurringAgreement = Effect.fn("commerce.recurring.getAgreement"
           },
         ];
       }),
-      revisions: revisions.flatMap((row) => {
-        const digestValue = textField(row.body, "digest");
-
-        if (digestValue === undefined) return [];
-
-        return [
-          {
-            revision: row.revision,
-            effectiveFromCycle: row.effectiveFromCycle,
-            chargeComponentKeys: objectField(row.body, "chargeComponentKeys"),
-            digest: digestValue,
-            createdAt: textField(row.body, "createdAt") ?? "",
-          },
-        ];
-      }),
+      revisions: templates.map((template) => ({
+        revision: template.revision,
+        effectiveFromCycle: template.effectiveFromCycle,
+        chargeComponentKeys: template.chargeComponentKeys,
+        digest: template.digest,
+        createdAt: template.createdAt,
+      })),
       events: events.flatMap((row) => {
         const digestValue = textField(row.body, "digest");
 
