@@ -21,10 +21,13 @@
     "./fx-remeasurement": "./src/fx-remeasurement.ts",
     "./customer-credits": "./src/customer-credits.ts",
     "./cash-method": "./src/cash-method.ts",
+    "./dimension-restatement": "./src/dimension-restatement.ts",
+    "./historical-adoptions": "./src/historical-adoptions.ts",
     "./owner-funding": "./src/owner-funding.ts",
     "./exchange-rates": "./src/exchange-rates.ts",
     "./period-work": "./src/period-work.ts",
-    "./recurrence": "./src/recurrence.ts"
+    "./recurrence": "./src/recurrence.ts",
+    "./service-purchases": "./src/service-purchases.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"
