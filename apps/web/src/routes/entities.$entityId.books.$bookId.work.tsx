@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
-import { WorkQueueQuery } from "@/lib/work-return";
+import { WorkQueueQuery, workReturnHref } from "@/lib/work-return";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
@@ -37,7 +37,7 @@ function Work() {
       <WorkspaceHeader
         title={frontendCopy(locale).todo}
         action={
-          <PageAction href={`${workspacePath(book)}/books?view=journal`}>
+          <PageAction href={workReturnHref(`${workspacePath(book)}/books`, "journal", filters)}>
             {copy.workspace_new_journal}
           </PageAction>
         }
@@ -144,7 +144,19 @@ function Work() {
             void navigate({ search: (previous) => ({ ...previous, after }) });
           }}
         />
-        <Disclosure title={periodWork.title}>
+        {filters.period ? (
+          <Box display="flex" flexWrap="wrap" gap="md">
+            <PageAction
+              quiet
+              href={workReturnHref(`${workspacePath(book)}/tax`, "actual-vat", filters)}
+            >
+              {locale === "sv"
+                ? "Granska periodens moms och avstämning"
+                : "Review period VAT and reconciliation"}
+            </PageAction>
+          </Box>
+        ) : null}
+        <Disclosure title={periodWork.title} defaultOpen={Boolean(filters.manifest)}>
           <Box paddingBlock="lg" display="grid" gap="lg">
             <PeriodWorkPanel
               locale={locale}

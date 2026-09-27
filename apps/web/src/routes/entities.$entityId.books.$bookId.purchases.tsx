@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Identifier } from "@open-erp/contracts/accounting";
 import * as Schema from "effect/Schema";
 import { FinanceArea } from "@/components/finance-area";
 import { WorkReturnSearch } from "@/lib/work-return";
@@ -9,6 +10,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/purchase
       view: Schema.optional(Schema.String),
       record: Schema.optional(Schema.String),
       work: WorkReturnSearch,
+      review: Schema.optional(Identifier),
     }),
   ),
   component: Page,

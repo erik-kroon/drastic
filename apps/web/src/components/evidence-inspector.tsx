@@ -94,7 +94,7 @@ export function EvidenceInspector(props: {
             </Button>
           </Box>
         ) : null}
-        {evidence.data ? (
+        {evidence.data && !evidence.isError ? (
           <>
             {!props.compact ? (
               <>

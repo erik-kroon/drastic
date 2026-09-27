@@ -55,7 +55,11 @@ export function SupplierInvoiceDrafts(
 ) {
   const sv = props.locale === "sv";
   const [search, setSearch] = useState("");
-  const creating = props.recordId === "new" || props.recordId?.startsWith("new:");
+
+  const creating =
+    props.recordId === "new" ||
+    props.recordId?.startsWith("new:") ||
+    props.recordId?.startsWith("inbox:");
 
   const list = useQuery({
     queryKey: [...commerceKey(props.book), "supplier-invoice-drafts"],
@@ -152,8 +156,14 @@ export function SupplierInvoiceDrafts(
         >
           <SupplierInvoiceEditor
             {...props}
-            sourceId={props.recordId?.startsWith("new:") ? props.recordId.slice(4) : undefined}
-            inboxId={props.recordId?.startsWith("new:") ? props.recordId.slice(4) : undefined}
+            sourceId={
+              props.recordId?.startsWith("new:")
+                ? props.recordId.slice(4)
+                : props.recordId?.startsWith("inbox:")
+                  ? props.recordId.slice(6)
+                  : undefined
+            }
+            inboxId={props.recordId?.startsWith("inbox:") ? props.recordId.slice(6) : undefined}
             onSaved={props.onOpen}
           />
         </FormDialog>

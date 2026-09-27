@@ -53,6 +53,9 @@ export function attentionPath(
   item: typeof Workspace.AttentionItem.Type,
   work: WorkReturn,
 ) {
+  if (item.supplierReview)
+    return `${workReturnHref(`${workspacePath(book)}/purchases`, "supplier-drafts", work)}&record=${encodeURIComponent(item.supplierReview.draftId)}&review=${encodeURIComponent(item.supplierReview.reviewId)}`;
+
   if (item.kind === "journal")
     return `${reviewPath(book, item.id, item.revision)}${defaultStringifySearch(work)}`;
 
@@ -63,8 +66,7 @@ export function attentionPath(
 }
 
 // The work filters a reviewer chose survive the round trip through a record.
-// The queue cursor is not carried: it points at one page, and the record
-// returns to the first page of the same filtered list.
+// Preserve the cursor as well as filters, including across reloads.
 export function attentionWork(filters: WorkReturn): WorkReturn {
   return {
     period: filters.period,
@@ -73,6 +75,7 @@ export function attentionWork(filters: WorkReturn): WorkReturn {
     q: filters.q,
     kind: filters.kind,
     manifest: filters.manifest,
+    after: filters.after,
   };
 }
 
@@ -94,6 +97,8 @@ const english = {
   expense_reviewed: "Tax review saved",
   coverage:
     "Journal proposals, invoice drafts and expense reviews. Other period checks are available in Year-end.",
+  emptyPage: "No work on this page",
+  emptyPageDetail: "The list may have changed. Return to the first page of this view.",
   empty: "Nothing in this view",
   emptyDetail: "Try another filter, or prepare your next invoice or expense.",
   open: "Open work",
@@ -126,6 +131,8 @@ const swedish: typeof english = {
   expense_reviewed: "Momsgranskning sparad",
   coverage:
     "Bokföringsförslag, fakturautkast och utgiftsgranskningar. Övriga periodkontroller finns under Årsavslut.",
+  emptyPage: "Inget arbete på den här sidan",
+  emptyPageDetail: "Listan kan ha ändrats. Gå tillbaka till första sidan i den här vyn.",
   empty: "Inget i den här vyn",
   emptyDetail: "Prova ett annat filter, eller förbered nästa faktura eller utgift.",
   open: "Att göra",

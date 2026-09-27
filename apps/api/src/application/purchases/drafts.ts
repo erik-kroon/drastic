@@ -76,7 +76,7 @@ export function draftSummary(body: JsonObject) {
       sourceEvidence: Shared.objectField(body, "sourceEvidence"),
       currency: content.currency ?? "",
       currencyScale: content.currencyScale ?? 0,
-      grossMinor: Shared.objectField(Shared.objectField(body, "totals"), "grossMinor") ?? null,
+      grossMinor: Shared.objectField(body, "totals").grossMinor ?? null,
       blockerCount: Shared.arrayField(body, "blockers").length,
       createdAt: body.createdAt ?? "",
       digest: body.digest ?? "",
@@ -398,12 +398,6 @@ export const getSupplierInvoiceDraft = Effect.fn("purchases.draft.get")(function
       ))[0];
 
       if (!head) return yield* failure("NotFound");
-
-      if (
-        (yield* readSealedDraft(transaction, command.scope.bookId, command.draftId, "supplier"))
-          .length
-      )
-        return yield* failure("Forbidden");
 
       const stored = (yield* DraftDb.readRevision(
         transaction,

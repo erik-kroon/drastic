@@ -8,9 +8,11 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { downloadIntake } from "@/components/source-intake/download";
 import { sourceDocumentOptions } from "@/lib/source-documents";
 import type { CommerceProps } from "@/components/commerce/shared";
+import { useWorkReturn, workReturnHref } from "@/lib/work-return";
 import { workspacePath } from "@/lib/book-context";
 
 export function OriginalDocument(props: CommerceProps & { id: string; sha256?: string }) {
+  const work = useWorkReturn();
   const query = useQuery(sourceDocumentOptions(props.book, props.id));
   const source = query.data;
   const mismatch = source && props.sha256 && source.occurrence.sha256 !== props.sha256;
@@ -31,6 +33,18 @@ export function OriginalDocument(props: CommerceProps & { id: string; sha256?: s
             : query.error
         }
       />
+      {query.isError ? (
+        <Box>
+          <Button
+            static
+            variant="outline"
+            disabled={query.isFetching}
+            onClick={() => void query.refetch()}
+          >
+            {sv ? "Försök läsa originalet igen" : "Retry original"}
+          </Button>
+        </Box>
+      ) : null}
       {source && !query.isError && !mismatch ? (
         <>
           <DocumentPreview
@@ -58,7 +72,7 @@ export function OriginalDocument(props: CommerceProps & { id: string; sha256?: s
           <PageCaption>{source.occurrence.filename}</PageCaption>
           <PageAction
             quiet
-            href={`${workspacePath(props.book)}/purchases?view=documents&record=${encodeURIComponent(source.occurrence.id)}`}
+            href={`${workReturnHref(`${workspacePath(props.book)}/purchases`, "documents", work)}&record=${encodeURIComponent(source.occurrence.id)}`}
           >
             {sv ? "Öppna originalets ärenden" : "Open work linked to original"}
           </PageAction>

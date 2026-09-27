@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { AttentionQuery } from "@open-erp/contracts/workspace";
+import { WorkQueueQuery } from "@/lib/work-return";
 import { createFileRoute, defaultStringifySearch } from "@tanstack/react-router";
 import { Box } from "@open-erp/ui/components/box";
 import { Link } from "@open-erp/ui/components/link";
@@ -9,7 +9,7 @@ import { PostingRecoveryReview } from "@/components/posting-recovery/review";
 import { accountingCopy } from "@/lib/accounting-copy";
 
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/reviews/$planId/$revision")(
-  { component: Review, validateSearch: Schema.decodeUnknownSync(AttentionQuery) },
+  { component: Review, validateSearch: Schema.decodeUnknownSync(WorkQueueQuery) },
 );
 
 function Review() {

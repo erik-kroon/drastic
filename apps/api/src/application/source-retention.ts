@@ -51,14 +51,6 @@ const SourceUpload = Schema.Struct({
   completed: Schema.optional(OccurrenceSchema),
 });
 
-const archiveFilterKeys = [
-  "cursor",
-  "sourceSystem",
-  "filename",
-  "retainedFrom",
-  "retainedTo",
-] as const;
-
 const uploadMetadataKeys = [
   "sourceSystem",
   "sourceAccountId",
@@ -630,7 +622,9 @@ export const searchSourceArchive = Effect.fn("Source.searchArchive")(function* (
 
 function readArchive(transaction: Transaction, scope: Scope, filters: Filters) {
   return Effect.gen(function* () {
-    yield* exactKeys(yield* toJsonObject(filters), archiveFilterKeys);
+    yield* Schema.decodeUnknownEffect(Intake.ArchiveFilters)(filters, {
+      onExcessProperty: "error",
+    }).pipe(Effect.mapError(() => failure("InvalidJournal")));
 
     const rows = yield* Retention.listArchive(transaction, scope.bookId, {
       cursor: filters.cursor ?? null,

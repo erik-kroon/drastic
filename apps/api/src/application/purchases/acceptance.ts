@@ -513,14 +513,14 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
       const extras: JsonObject[] = [];
 
       if (originalLines !== undefined) {
-        extras.push({ originalLines: yield* Shared.toJsonObject(originalLines) });
+        extras.push({ originalLines: yield* Shared.toJson(originalLines) });
       }
 
       if (recognition !== undefined) {
         extras.push({ recognition: yield* Shared.toJsonObject(recognition) });
       }
 
-      if (profileWitness !== undefined) {
+      if (profileWitness !== undefined && profileWitness !== null) {
         extras.push({ profileWitness: yield* Shared.toJsonObject(profileWitness) });
       }
 

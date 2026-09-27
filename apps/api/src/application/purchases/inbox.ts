@@ -184,10 +184,7 @@ export const listSupplierInboxes = Effect.fn("purchases.inbox.list")(function* (
 
       return yield* Shared.decode(PageSchema, {
         items,
-        nextCursor:
-          page.length > 20 && anchor
-            ? (Shared.objectField(anchor.body, "occurrence").id ?? null)
-            : null,
+        nextCursor: page.length > 20 && anchor ? anchor.occurrenceId : null,
       });
     }),
   );

@@ -87,9 +87,9 @@ export function readOccurrencePage(
   bookId: string,
   cursor: string | null,
 ) {
-  return transaction.execute<{ readonly occurrenceId: string; readonly body: JsonObject }>(
+  return transaction.execute<{ readonly occurrenceId: string }>(
     sql`
-      select i.occurrence_id as "occurrenceId", i.body
+      select i.occurrence_id as "occurrenceId"
       from openerp.supplier_inbox i
       join openerp.intake_occurrences o on o.book_id = i.book_id and o.id = i.occurrence_id
       where i.book_id = ${bookId} and (${cursor}::text is null or i.occurrence_id > ${cursor}::text)

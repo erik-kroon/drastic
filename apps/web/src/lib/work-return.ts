@@ -1,7 +1,13 @@
+import type {} from "@/router";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { AttentionQuery } from "@open-erp/contracts/workspace";
-import { defaultParseSearch, defaultStringifySearch } from "@tanstack/react-router";
+import {
+  defaultParseSearch,
+  defaultStringifySearch,
+  useParams,
+  useSearch,
+} from "@tanstack/react-router";
 
 // A record page opened from the work queue carries the queue's own search, so
 // returning lands on the same filtered list instead of an unfiltered one.
@@ -13,7 +19,7 @@ import { defaultParseSearch, defaultStringifySearch } from "@tanstack/react-rout
 // so a hand-edited parameter is dropped rather than echoed into a link, and the
 // queue still decides what that link means.
 export const WorkReturnSearch = Schema.optional(
-  Schema.String.check(Schema.isPattern(/^\?/), Schema.isMaxLength(400)),
+  Schema.String.check(Schema.isPattern(/^\?/), Schema.isMaxLength(8192)),
 );
 
 // The queue's own search plus the prepared selection this page is about. The
@@ -35,9 +41,9 @@ export function decodeWorkReturn(search: string | undefined) {
 }
 
 export function encodeWorkReturn(work: WorkReturn | undefined) {
-  const search = defaultStringifySearch(work ?? {});
+  if (!work) return undefined;
 
-  return search ? encodeURIComponent(search) : undefined;
+  return encodeURIComponent(defaultStringifySearch(work) || "?");
 }
 
 export function workReturnHref(base: string, view: string, work: WorkReturn | undefined) {
@@ -48,4 +54,14 @@ export function workReturnHref(base: string, view: string, work: WorkReturn | un
 
 export function workQueueHref(base: string, work: WorkReturn | undefined) {
   return `${base}/work${defaultStringifySearch(work ?? {})}`;
+}
+
+// Record areas carry an opaque queue search; journal reviews use its fields directly.
+export function useWorkReturn() {
+  const search = useSearch({ strict: false });
+  const params = useParams({ strict: false });
+
+  return params.planId
+    ? Schema.decodeUnknownSync(WorkQueueQuery)(search)
+    : decodeWorkReturn(search.work);
 }

@@ -20,6 +20,7 @@ import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
+import { useWorkReturn, workReturnHref } from "@/lib/work-return";
 import { downloadIntake } from "@/components/source-intake/download";
 
 export function DocumentInbox({
@@ -421,6 +422,7 @@ export function DocumentUpload({
 }
 
 function DocumentDetail({ id }: { id: string }) {
+  const work = useWorkReturn();
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
@@ -473,6 +475,18 @@ function DocumentDetail({ id }: { id: string }) {
   return (
     <Box display="grid" gap="xl">
       <AccountingStatus locale={locale} pending={document.isPending} error={document.error} />
+      {document.isError ? (
+        <Box>
+          <Button
+            static
+            variant="outline"
+            disabled={document.isFetching}
+            onClick={() => void document.refetch()}
+          >
+            {sv ? "Försök läsa originalet igen" : "Retry original"}
+          </Button>
+        </Box>
+      ) : null}
       {source ? (
         <>
           <RecordHeading
@@ -516,14 +530,14 @@ function DocumentDetail({ id }: { id: string }) {
                   <PageCaption>{labels.theOriginalIsRetainedNo}</PageCaption>
                   {book.role === "operator" ? (
                     <PageAction
-                      href={`${workspacePath(book)}/purchases?view=supplier-drafts&record=${encodeURIComponent(`new:${source.id}`)}`}
+                      href={`${workReturnHref(`${workspacePath(book)}/purchases`, "supplier-drafts", work)}&record=${encodeURIComponent(`new:${source.id}`)}`}
                     >
                       {sv ? "Förbered leverantörsfaktura" : "Prepare supplier invoice"}
                     </PageAction>
                   ) : null}
                   {book.role === "operator" && !document.data?.admission ? (
                     <PageAction
-                      href={`${workspacePath(book)}/purchases?view=expenses&record=${encodeURIComponent(`new:${source.id}`)}`}
+                      href={`${workReturnHref(`${workspacePath(book)}/purchases`, "expenses", work)}&record=${encodeURIComponent(`new:${source.id}`)}`}
                     >
                       {sv ? "Förbered utgift" : "Prepare expense"}
                     </PageAction>
@@ -540,25 +554,27 @@ function DocumentDetail({ id }: { id: string }) {
                       {sv ? "Försök igen" : "Retry"}
                     </Button>
                   ) : null}
-                  {purchases.data?.supplierDrafts.map((draft) => (
-                    <PageAction
-                      key={draft.id}
-                      href={`${workspacePath(book)}/purchases?view=supplier-drafts&record=${encodeURIComponent(draft.id)}`}
-                    >
-                      {sv ? "Fakturautkast" : "Invoice draft"}: {draft.title} ·{" "}
-                      {draft.currentSource
-                        ? sv
-                          ? "Aktuellt underlag"
-                          : "Current source"
-                        : sv
-                          ? "Tidigare underlag"
-                          : "Earlier source"}
-                    </PageAction>
-                  ))}
-                  {purchases.data?.expenses.map((expense) => (
+                  {(!purchases.isError ? purchases.data?.supplierDrafts : undefined)?.map(
+                    (draft) => (
+                      <PageAction
+                        key={draft.id}
+                        href={`${workReturnHref(`${workspacePath(book)}/purchases`, "supplier-drafts", work)}&record=${encodeURIComponent(draft.id)}`}
+                      >
+                        {sv ? "Fakturautkast" : "Invoice draft"}: {draft.title} ·{" "}
+                        {draft.currentSource
+                          ? sv
+                            ? "Aktuellt underlag"
+                            : "Current source"
+                          : sv
+                            ? "Tidigare underlag"
+                            : "Earlier source"}
+                      </PageAction>
+                    ),
+                  )}
+                  {(!purchases.isError ? purchases.data?.expenses : undefined)?.map((expense) => (
                     <PageAction
                       key={expense.id}
-                      href={`${workspacePath(book)}/purchases?view=expenses&record=${encodeURIComponent(expense.id)}`}
+                      href={`${workReturnHref(`${workspacePath(book)}/purchases`, "expenses", work)}&record=${encodeURIComponent(expense.id)}`}
                     >
                       {sv ? "Utgift" : "Expense"}: {expense.description} ·{" "}
                       {!expense.currentSource
