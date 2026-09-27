@@ -11,6 +11,9 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/purchase
       record: Schema.optional(Schema.String),
       work: WorkReturnSearch,
       review: Schema.optional(Identifier),
+      // The open supplier occurrence, addressed separately from `record`, which the
+      // supplier draft panel owns.
+      occurrence: Schema.optional(Identifier),
     }),
   ),
   component: Page,
@@ -20,6 +23,12 @@ function Page() {
   const search = Route.useSearch();
 
   return (
-    <FinanceArea area="purchases" view={search.view} record={search.record} work={search.work} />
+    <FinanceArea
+      area="purchases"
+      view={search.view}
+      record={search.record}
+      work={search.work}
+      occurrence={search.occurrence}
+    />
   );
 }
