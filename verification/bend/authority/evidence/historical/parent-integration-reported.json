@@ -1,0 +1,18 @@
+{
+  "status": "reported-by-user-not-independently-rerun",
+  "destination": "verification/bend/",
+  "changes": "uncommitted",
+  "assertionsReported": 11244,
+  "lawProofPairsReported": 20,
+  "currentOwnerComparisonsReported": 1302,
+  "parentCommand": "npm --prefix verification/bend run verify:local",
+  "parentEvidence": "verification/bend/evidence/local-verification.json",
+  "reportedFixes": [
+    "temporary path portability",
+    "VAT scaling",
+    "current shared rounding owner comparisons",
+    "hash-verified original compiler and excerpt archives"
+  ],
+  "reportedOfficialValidation": "open: missing pinned upstream source",
+  "overwriteParent": false
+}

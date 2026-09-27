@@ -1,0 +1,11 @@
+{
+  "officialSourceMaterialized": false,
+  "officialCompilerExecuted": false,
+  "officialSafeKernelExecuted": false,
+  "generatedJsArtifactExecuted": false,
+  "BunExecuted": false,
+  "WorkerdExecuted": false,
+  "networkAttempt": "Raw GitHub source download failed in the container with DNS resolution error",
+  "pinnedCommitActionsLookup": "GitHub connector returned zero workflow runs for the pinned Bend commit",
+  "uncommittedWorktreeAvailable": false
+}

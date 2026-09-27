@@ -813,9 +813,18 @@ export const VatActualBlocker = Schema.Literals([
   "control_component_conflict",
 ]);
 
+export const VatMonetaryRelease = Schema.Struct({
+  releaseId: A.Identifier,
+  manifestDigest: A.Digest,
+  artifactDigest: A.Digest,
+  sourceTreeDigest: A.Digest,
+  runtimeId: Schema.String,
+});
+
 export const VatActualCalculation = Schema.Struct({
   engine: Schema.Literal("vat-actual-return-v1"),
   basisDigest: A.Digest,
+  monetaryRelease: Schema.optional(VatMonetaryRelease),
   // A population the release could not map declares no box at all. An absent net
   // box is the honest result; a zero net over a partial population is not.
   boxes: Schema.Array(VatActualBox).check(Schema.isMaxLength(8)),

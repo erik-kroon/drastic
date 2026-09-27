@@ -154,6 +154,17 @@ already published.
 
 [ADR 0009](../../docs/adr/0009-effect-mq-background-jobs.md) selects effect-mq on a separate persistent Bun worker for durable delivery. Its session-preserving listener is not part of API or financial transaction scope.
 
+## VAT monetary qualification
+
+The actual VAT return workflow accepts an internal `ActualVatCalculator` dependency
+between capture and sealing. `makeActualVatCalculator` runs the jurisdiction's
+public monetary port and maps calculator failures to `Unavailable`, with no
+fallback. TypeScript remains the default and still owns qualification and
+readiness. An injected kernel's identity is sealed in the return's optional
+`monetaryRelease` field. [Bend qualification](../../verification/bend/authority/docs/QUALIFICATION.md)
+records the direct owner comparison and disposable PostgreSQL/Bun/workerd host
+observations; deployment trust is reviewed separately.
+
 ## Query failures
 
 `db/transaction.ts` sanitizes query and commit failures into `AccountingError`. It also translates allowlisted `P0001` refusals from the private integrity layer. Business refusals originate in application Effects. Availability errors map to `Unavailable`; unexpected query failures remain `InternalError`.

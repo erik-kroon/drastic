@@ -1,0 +1,7 @@
+{
+  "numerator": "-100",
+  "denominator": "100",
+  "mode": "floor",
+  "upstreamObserved": "-2",
+  "expected": "-1"
+}

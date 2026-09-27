@@ -1,0 +1,198 @@
+{
+  "schema": "openerp-bend-compiler-verification/v1",
+  "generatedAt": "2026-09-27T11:04:33.311Z",
+  "status": "failed",
+  "compilerCommit": "af569d4826913b2ce3557e9829ccad31fcf86f94",
+  "runtimeId": "node:v26.4.0:darwin:arm64",
+  "productionReady": false,
+  "completedStages": [
+    "reproducible-build",
+    "compiled-tests",
+    "compiled-receipts"
+  ],
+  "runs": [
+    {
+      "stage": "reproducible-build",
+      "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node",
+      "args": [
+        "--experimental-strip-types",
+        "scripts/reproducible-build.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "Built official JS artifact sha256:a3a98acbd3ff360958057fc0404e09552f982b7e12f2fa14f773270b3d45801b. It is NOT yet approved for authoritative use.\nBuilt official JS artifact sha256:a3a98acbd3ff360958057fc0404e09552f982b7e12f2fa14f773270b3d45801b. It is NOT yet approved for authoritative use.\n",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    },
+    {
+      "stage": "compiled-tests",
+      "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node",
+      "args": [
+        "--experimental-strip-types",
+        "scripts/verify-local.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "BigNat arithmetic and bounds: 2852 assertions\nBigInt sign and division: 4327 assertions\nReduced rationals and rounding: 2319 assertions\nDecimal conversion: 177 assertions\nLedger and allocation invariants: 485 assertions\nVAT source differential checks: 685 assertions\nPRY-33 exhaustive differential and scope: 319 assertions\nNegative proof and checker controls: 9 assertions\nPASS: 11173 assertions; 35 law/proof pairs under official-js-artifact. Runtime qualification is a separate gate.\nOperation kernels and boundary oracles { assertions: 798, ms: 26 }\nIndependent certificate checks reject plausible wrong results { assertions: 1061, ms: 3 }\nExact immutable envelopes and failure behavior { assertions: 24, ms: 12 }\nPer-operation release qualification, not self-approval { assertions: 7, ms: 4 }\nUpstream ABI adapter unit controls { assertions: 18, ms: 0 }\nRefinement proofs reject binary arithmetic mutations { assertions: 4, ms: 223 }\nBounded worker cancellation { assertions: 3, ms: 65 }\nPASS 1915 authority assertions under official-js-artifact\nPASS 378 extension assertions under official-js-artifact\n{\n  \"authority\": \"pinned-upstream-source\",\n  \"voucher\": {\n    \"accepted\": true,\n    \"debitMinor\": \"125000\",\n    \"creditMinor\": \"125000\",\n    \"scopeChecked\": false,\n    \"postingAuthorized\": false\n  },\n  \"allocation\": {\n    \"status\": \"allocated-arithmetic\",\n    \"amountMinor\": \"60000\",\n    \"sourceAfterMinor\": \"40000\",\n    \"targetAfterMinor\": \"30000\",\n    \"restoredSourceMinor\": \"100000\",\n    \"restoredTargetMinor\": \"90000\",\n    \"mayExecute\": false\n  },\n  \"vat\": [\n    {\n      \"box\": \"10\",\n      \"kind\": \"primitive\",\n      \"exactMinor\": \"199\",\n      \"reportedMinor\": \"1\",\n      \"residualMinor\": \"99\"\n    },\n    {\n      \"box\": \"48\",\n      \"kind\": \"primitive\",\n      \"exactMinor\": \"101\",\n      \"reportedMinor\": \"1\",\n      \"residualMinor\": \"1\"\n    },\n    {\n      \"box\": \"49\",\n      \"kind\": \"net\",\n      \"exactMinor\": \"98\",\n      \"reportedMinor\": \"0\",\n      \"residualMinor\": \"98\"\n    }\n  ],\n  \"cover\": {\n    \"engine\": \"bend-cover-v1\",\n    \"authority\": \"pinned-upstream-source\",\n    \"inputFingerprint\": \"verification-sha256:aead2803a3802b51a233e659c9f7f5a365feba6ff6ca39ece2f3b7cb7a86e9ea\",\n    \"scope\": {\n      \"entityId\": \"demo-company\",\n      \"bookId\": \"demo-book\",\n      \"snapshotId\": \"immutable-snapshot-1\"\n    },\n    \"currency\": \"SEK\",\n    \"scale\": 2,\n    \"direction\": \"inflow\",\n    \"targetMinor\": \"10000\",\n    \"mayExecute\": false,\n    \"requiresRevalidation\": true,\n    \"coverage\": {\n      \"poolCompleteDeclared\": true,\n      \"candidateCount\": 3,\n      \"maxCardinality\": 3,\n      \"nodeBudget\": 100,\n      \"visitedNodes\": 10,\n      \"searchExhausted\": false\n    },\n    \"status\": \"ambiguous\",\n    \"witnesses\": [\n      [\n        {\n          \"id\": \"line-0\",\n          \"revision\": \"1\",\n          \"amountMinor\": \"4000\"\n        },\n        {\n          \"id\": \"line-1\",\n          \"revision\": \"1\",\n          \"amountMinor\": \"6000\"\n        }\n      ],\n      [\n        {\n          \"id\": \"line-2\",\n          \"revision\": \"1\",\n          \"amountMinor\": \"10000\"\n        }\n      ]\n    ]\n  }\n}\n{\n  \"engine\": \"bend-cover-v1\",\n  \"authority\": \"pinned-upstream-source\",\n  \"inputFingerprint\": \"verification-sha256:a1ec38645615fc083a10fe87febed4f0ed61e3fad53c6d2dd22edbe70192818f\",\n  \"scope\": {\n    \"entityId\": \"demo-entity\",\n    \"bookId\": \"demo-book\",\n    \"snapshotId\": \"snapshot-1\"\n  },\n  \"currency\": \"SEK\",\n  \"scale\": 2,\n  \"direction\": \"inflow\",\n  \"targetMinor\": \"10000\",\n  \"mayExecute\": false,\n  \"requiresRevalidation\": true,\n  \"coverage\": {\n    \"poolCompleteDeclared\": true,\n    \"candidateCount\": 3,\n    \"maxCardinality\": 3,\n    \"nodeBudget\": 100,\n    \"visitedNodes\": 10,\n    \"searchExhausted\": false\n  },\n  \"status\": \"ambiguous\",\n  \"witnesses\": [\n    [\n      {\n        \"id\": \"line-0\",\n        \"revision\": \"1\",\n        \"amountMinor\": \"4000\"\n      },\n      {\n        \"id\": \"line-1\",\n        \"revision\": \"1\",\n        \"amountMinor\": \"6000\"\n      }\n    ],\n    [\n      {\n        \"id\": \"line-2\",\n        \"revision\": \"1\",\n        \"amountMinor\": \"10000\"\n      }\n    ]\n  ]\n}\n{\n  \"status\": \"passed\",\n  \"assertions\": 13466,\n  \"lawProofPairs\": 35,\n  \"productionReady\": false\n}\n",
+      "stderr": "(node:20604) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
+      "error": null,
+      "passed": true
+    },
+    {
+      "stage": "compiled-receipts",
+      "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node",
+      "args": [
+        "--experimental-strip-types",
+        "scripts/compiled-receipts.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    },
+    {
+      "stage": "safe-kernel",
+      "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node",
+      "args": [
+        "--experimental-strip-types",
+        "scripts/safe-official.mjs"
+      ],
+      "status": 1,
+      "signal": null,
+      "stdout": "",
+      "stderr": "file:///Users/admin/openERP/verification/bend/authority/scripts/safe-official.mjs:54\n      throw Error(\"This upstream pin requires Lean 4.34.0\");\n            ^\n\nError: This upstream pin requires Lean 4.34.0\n    at file:///Users/admin/openERP/verification/bend/authority/scripts/safe-official.mjs:54:13\n\nNode.js v26.4.0\n",
+      "error": null,
+      "passed": false
+    }
+  ],
+  "sourceTreeDigest": "sha256:a949008c177116a4a7e5b87ee601dcae07574a69a5d2e2d52624ef6abfae01f5",
+  "sourceFiles": {
+    "bend/Allocation.bend": "sha256:ae75c3ec9ec4d1fa7fa944347a9312e72effb3d82c9ec01bf85fa905e2ec5e53",
+    "bend/BigInt.bend": "sha256:c5a2e3d868798a4724eb6dbc5fbddc675aaf2a47fe276381d606cae0a2a1ccc7",
+    "bend/BigNat.bend": "sha256:cbf553dc7f4cdad54d93f9f891ce4edbe90ddf0ef44153eea692bae4e99d283b",
+    "bend/Cover.bend": "sha256:bcdea652f0bee9c7a1daedc9978ac0acbd03eaa13ccf063422b10d5fbfee5375",
+    "bend/Decimal.bend": "sha256:a72a30b25b9f6684f40dbba292af7da77095fdc7d8a32183c94af9760e5d1f0b",
+    "bend/Foundation.bend": "sha256:fcb7329fb17fa339ccb001f8c9c80d3ca9a7e279c42332c6791e53fc49c0a50b",
+    "bend/Fx.bend": "sha256:3721b823f2b1c1b4718f3891715230f2c8732d1c1d5745aa5c8d6983ec887cda",
+    "bend/Kernel.bend": "sha256:8846631272906900c286bafddc99d75bf041ff96ae2d424ce5257226ee3c967b",
+    "bend/LAWS.bend": "sha256:0eb57acbb3056b3e077aced6303bc95954e119c0cef159b588b59f7d14517a57",
+    "bend/Ledger.bend": "sha256:90dc70c9937579769319a3d1f3108044c8446ed487f7eeb3a872c5d976a3762c",
+    "bend/Meaning.bend": "sha256:e744b099e4a5a8aa1f23ecee18701d1ca8dc2667e0b99e85e0e6cd5ebe1aface",
+    "bend/PROOF.bend": "sha256:74ddb7f732b1e21826e98fb38adbdf26fdfe1a5b563aa41902fe5a4d1eb33116",
+    "bend/Rational.bend": "sha256:939d7c7f05befdd516434a818695635bea97fbe275382a24c73326a585ad913c",
+    "bend/RefinementLaws.bend": "sha256:d4df60e26f47b12c786bae2dd539c30eb31d17b655a5561870382469ec492fa5",
+    "bend/RefinementProof.bend": "sha256:9a4bfc692a418f64f6022c67fab9ef08c89a2912173d22fb3a5a64c4c9a1e410",
+    "bend/Runtime.bend": "sha256:12ea91e3aa5016120d596459888be2916b84b55bd1f44b1fcd6959517a3ce83b",
+    "bend/Schedule.bend": "sha256:c5fc29af0d1a95ac09884c35693f1e097d9da461a48b33c31016f93eef4fb83a",
+    "bend/Vat.bend": "sha256:bd48274074b4663fcfc474ec1d2fd96658947b9cd35ddcfffec4bbe09858ec9f",
+    "src/compiled-engine.mjs": "sha256:cc921f027b3b9616447c5e3e79fbc4ca524f3d1dfc7cf2381abb7e15bc262b38",
+    "src/contracts.mjs": "sha256:6e7564e108118ce8947055fcb4fb6a01e719f7f77303ba043c1659f12d7a8795",
+    "src/index.d.mts": "sha256:727c74b25be5fe744d0253a313820176a142a611a4087e9dc258ec997fa56b5d",
+    "src/index.mjs": "sha256:661475a3fb9d6d939f422bc7331317ab70d784923c036490f83e510183b55e5a",
+    "src/node-authority.mjs": "sha256:233cc26d756288e39977f36b961d0725242e2e822d6631be0306979b0a932a3c",
+    "src/node-isolation.mjs": "sha256:ead114675efe642de5965845f6465bd3416a5c5df122e6721392dabac82fd726",
+    "src/operations.mjs": "sha256:2381c839d431d89f30b65bf90492ec188afe904093677c886f1922da2ce7d8dc",
+    "src/pure.d.mts": "sha256:457c9d6f3f6c5554b56c06c62d837f32da08d907edaf217ea16acd6d26ef602c",
+    "src/pure.mjs": "sha256:2498f6e0815aec4a74253fed27863fa5c588f9deb55cef1d7f07af11a9365a40",
+    "src/release.mjs": "sha256:7a1faa6af26432c0fc516c2a3414d3db303b2ac30f2f4a0c74765bb2a1a74ad5",
+    "src/research.d.mts": "sha256:c64d2ac29705eb625383cbc29a2f597ae6b78263a3ad8c9e7ec632aa773b40cf",
+    "src/research.mjs": "sha256:c793dac80ca3d2445ad63f07ad14c1298edc8be1a2e8221f2783c1e1d0549d72",
+    "src/runtime-id.mjs": "sha256:ada0062a2832c1e54ca41b581dc2fc2bba6c6b94cd50f59a725ba09325516766",
+    "src/semantics.mjs": "sha256:6585c9dd8e38fc8e2f3a94edc154867e8d5ee37bfe4819fb06cc4562f2a730f4",
+    "src/service.mjs": "sha256:c1b4a4d1509f9ed3066e31de71abb5a24b2ab773baf9c76b6d0623ed3b94e365",
+    "src/vat-port.mjs": "sha256:164b06fa8ba5885abb94ea6b0156a0accf55f2f818c597464544304648a55d8c",
+    "lib/accounting.mjs": "sha256:f6e508f1e2324dda79174f7c056d8cd711b2726158eb44b8195f9c34843f1d6d",
+    "lib/cover.mjs": "sha256:3a0eb8636cd77460406851f7cd423dd834649f3fe0a18aacfa2ccebaf8f07a2a",
+    "lib/engine.mjs": "sha256:940367f6ba260f3d85597aa053d6c78efb01740a7ee6717e0a6c4d5918fad5de",
+    "lib/index.d.mts": "sha256:20c16989075cae0d840c84aef97e88fa786289d9b1939616dc477dde3301e7ad",
+    "lib/index.mjs": "sha256:3b974dc1260d567953cf6813d156f48d9200509e6f3bb8b1c70157e5c155c286",
+    "lib/money.mjs": "sha256:cfdd38ab34349356b1eeaa161527a8925ba0e1ef9eabf8f091c4a46a915831e7",
+    "lib/owner.mjs": "sha256:27889dfeed89069be8281f2366a0e4bac0805e7d7224f2c65975ea609dfcd224",
+    "lib/vat.mjs": "sha256:af4bf276581c503b0e50737503099474f167074282c372e5cc528fa03aaceb61",
+    "scripts/bootstrap-upstream.mjs": "sha256:d8d490f067156b13c45c1d6e4cd2f7b3aa3c31fc1f25390c193d639f4f77b325",
+    "scripts/build-official.mjs": "sha256:397472856a07795ff11eb62f50e3839e822c7b0f311e810bd5bc77603ef67e41",
+    "scripts/check-proofs.mjs": "sha256:0e62941af45b02855718b454e3134c23cc0beab0e0571dcdd13e81400d201d89",
+    "scripts/compare-parent.mjs": "sha256:75426b06b1b5fb8df0353d6dcec92bdcdf9d9d7f31e3cc460fef95c54bb076fb",
+    "scripts/compiled-receipts.mjs": "sha256:ebbba0eecb41f0551cc81de7e62d7fd479c177e22dffcaccd69d45b5b5e58240",
+    "scripts/demo.mjs": "sha256:f2084a31f745442be6363082911d5a9749ff1b08124f821ca4f17c8ea05ec477",
+    "scripts/isolated-worker.mjs": "sha256:7d652e82af981cdd25176d48497db83f608a7caca1e1104af050a18a24476698",
+    "scripts/owner-adapter.mjs": "sha256:71540aff7f24060220d8947b5bad9c8358dfea9e7d35344b907d83bf6c56ff5c",
+    "scripts/process.mjs": "sha256:23734211a700204f9ba2edf5ea35823d8fca54857d673c7c3e9994e831ba3bab",
+    "scripts/reproducible-build.mjs": "sha256:e868fe3cd3c8f0b79b896acefacff74a54bb7f059066434d0903bc29903607c3",
+    "scripts/safe-official.mjs": "sha256:7ae7a016493a8e77e49ae2664ce77baee5779e94deb87a370ac1cd87a42d76bc",
+    "scripts/solve.mjs": "sha256:3f1aa3d1a8f6970c723cb492c4ae2c9f5db7beb97ec4cbb3c53f87ed628bce97",
+    "scripts/stage-release.mjs": "sha256:33a5cc53618005fa21644e8b925b2816bed422e563363b6eb71d90cf1b0c5021",
+    "scripts/verify-compiler.mjs": "sha256:06c9c1d4f3d43f8b5ecbb2f2c9211d3ded2bbda3b8f108beeb76f6c261649e8b",
+    "scripts/verify-host.mjs": "sha256:39f8d9d746ef809d5d4245939763ef01d3975a48304536f45f278d93237a7728",
+    "scripts/verify-local.mjs": "sha256:859d9aa676d354e00cb31564780893794d7cf933700d95daa44e2f7aeac562e0",
+    "scripts/verify-owner.mjs": "sha256:dc7fda1ba7acb18bb2bd4329d92e7f9e1eedb0a19eb6109021c2ceb93bed9a38",
+    "scripts/verify-release.mjs": "sha256:0c34de616d15fcdf445cbab72c8cc344f1d26027e61cf8566f07e25a49b0f7ec",
+    "tests/authority/run.mjs": "sha256:cfd9e62a29c3127e9a5c8c37c3dca07249d36ec548c2979b02971413e25d0822",
+    "tests/extension.mjs": "sha256:24d3441bb7fe279c30edd8a06647b482d0c7e5be4ff3ca421d94920c088f38bf",
+    "tests/owner-cases.mjs": "sha256:cabca4b4a02a76ef9ba206dea287275a9fb3dff4009c6828b954a8a90a8b852f",
+    "tests/run.mjs": "sha256:6783f8f4863c9b03958d1588df619c8ebd909a76ac63629debc68726d37f49ea",
+    "tests/test-engine.mjs": "sha256:6c30b46ab5b140d559893104f0928bbadd2841fdda802265263eb74a93c68ee6",
+    "tests/types.mts": "sha256:bcb01860e76f87a0163d3ddb10607fff06137c21728a2df68d5a310a48e92d78",
+    "package.json": "sha256:9118cea80289b4432663c3703552e7e0de61508366ea6ddcbf6f0a6da69991f9",
+    "tsconfig.json": "sha256:6ba44648ebd5c5b1fd30e86eb521187cfaddcd8c5fc63d7b457dfcaad8225db2",
+    "tsconfig.types.json": "sha256:c955ef18c58c398616e1246be30235e70b92a5ed5968595beb4574bc77788f6a",
+    "../lib/engine.mjs": "sha256:107a7a0b9fb79a34fbe21108a6498de3ca355adcd44836ce3bcf1c2010d9a433",
+    "../lib/archived-source.mjs": "sha256:3b80a78d6c68e793cbd45989fdd31e3df2479f87fb012faf88fc488ca3d62dd4",
+    "../lib/owner.mjs": "sha256:5d6bef04cc6528645f3313c8c9ca48a75c54eaeee68f8a9410657e9ee8dbffd7",
+    "../tooling/dev-checker.ts.gz": "sha256:a47c71ad0bc420131338347b3dba88a1b3d45b8636cf912534aa3402ea3cc03f",
+    "../tooling/base.bend": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "../upstream/vat-monetary-slice.ts.gz": "sha256:fc561cda2e4e39fd61efde87cddbfebbbc42ee1f26b8c26e6c21386ded49ec1e"
+  },
+  "artifactDigest": "sha256:a3a98acbd3ff360958057fc0404e09552f982b7e12f2fa14f773270b3d45801b",
+  "sourceChecks": [
+    {
+      "entry": "Kernel.bend",
+      "definitions": 227,
+      "openObligations": 0
+    },
+    {
+      "entry": "Runtime.bend",
+      "definitions": 187,
+      "openObligations": 0
+    }
+  ],
+  "compiledReceipt": {
+    "schema": "openerp-bend-receipt/v1",
+    "status": "passed",
+    "compilerCommit": "af569d4826913b2ce3557e9829ccad31fcf86f94",
+    "artifactDigest": "sha256:a3a98acbd3ff360958057fc0404e09552f982b7e12f2fa14f773270b3d45801b",
+    "sourceTreeDigest": "sha256:a949008c177116a4a7e5b87ee601dcae07574a69a5d2e2d52624ef6abfae01f5",
+    "runtimeId": "node:v26.4.0:darwin:arm64",
+    "operations": [
+      "money.round.v1",
+      "vat.project.v1",
+      "schedule.equal.v1",
+      "settlement.allocate.v1",
+      "fx.convert.v1",
+      "ledger.reverse.v1"
+    ],
+    "assertions": 13466,
+    "suites": [
+      {
+        "suite": "arithmetic",
+        "assertions": 11173,
+        "elapsedMs": 628
+      },
+      {
+        "suite": "authority-boundaries",
+        "assertions": 1915,
+        "elapsedMs": 337
+      },
+      {
+        "suite": "authority-extension",
+        "assertions": 378,
+        "elapsedMs": 283
+      }
+    ],
+    "kind": "compiled-differentials"
+  },
+  "error": "Required compiler stage failed: safe-kernel"
+}

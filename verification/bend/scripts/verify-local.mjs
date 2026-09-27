@@ -13,6 +13,8 @@ async function inputHashes(directory = "") {
   for (const entry of (await readdir(resolve(ROOT, directory), { withFileTypes: true })).sort(
     (a, b) => a.name.localeCompare(b.name),
   )) {
+    if (directory === "" && entry.name === "authority") continue;
+
     if (
       entry.name.startsWith(".") ||
       entry.name === "evidence" ||

@@ -1,0 +1,39 @@
+{
+  "status": "passed",
+  "kind": "reproducible-build",
+  "artifactDigest": "sha256:e83aac2d7b5b4da88fee48f112c0065d32aeddb5a5075de53804e987b34f548c",
+  "sourceTreeDigest": "sha256:07f8423ba6371826f2822fb45b329c29b0b67d07949dc003a9da3d6e45c208cc",
+  "compilerCommit": "af569d4826913b2ce3557e9829ccad31fcf86f94",
+  "runs": [
+    {
+      "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node",
+      "args": [
+        "--experimental-strip-types",
+        "scripts/build-official.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "Built official JS artifact sha256:e83aac2d7b5b4da88fee48f112c0065d32aeddb5a5075de53804e987b34f548c. It is NOT yet approved for authoritative use.\n",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    },
+    {
+      "command": "/Users/admin/.nvm/versions/node/v26.4.0/bin/node",
+      "args": [
+        "--experimental-strip-types",
+        "scripts/build-official.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "Built official JS artifact sha256:e83aac2d7b5b4da88fee48f112c0065d32aeddb5a5075de53804e987b34f548c. It is NOT yet approved for authoritative use.\n",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    }
+  ],
+  "hashes": [
+    "sha256:e83aac2d7b5b4da88fee48f112c0065d32aeddb5a5075de53804e987b34f548c",
+    "sha256:e83aac2d7b5b4da88fee48f112c0065d32aeddb5a5075de53804e987b34f548c"
+  ]
+}

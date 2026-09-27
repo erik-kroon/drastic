@@ -1,0 +1,1020 @@
+{
+  "status": "passed",
+  "assertions": 21,
+  "checks": [
+    {
+      "name": "current-owner-call-path",
+      "status": "passed"
+    },
+    {
+      "name": "immutable-capture",
+      "status": "passed"
+    },
+    {
+      "name": "no-typescript-fallback",
+      "status": "passed"
+    },
+    {
+      "name": "changed-basis-refuses",
+      "status": "passed"
+    },
+    {
+      "name": "approved-output-not-recomputed",
+      "status": "passed"
+    }
+  ],
+  "operations": [
+    "money.round.v1",
+    "vat.project.v1"
+  ],
+  "hostRuntimeId": "bun:1.4.0:darwin:arm64",
+  "runtimeBoundary": "Bun Effect workflow and real PostgreSQL; HTTP posting in workerd",
+  "artifactDigest": "sha256:e83aac2d7b5b4da88fee48f112c0065d32aeddb5a5075de53804e987b34f548c",
+  "sourceTreeDigest": "sha256:07f8423ba6371826f2822fb45b329c29b0b67d07949dc003a9da3d6e45c208cc",
+  "saved": {
+    "id": "vatactual_dd49e4fd84164f05a872b8f34a4207da",
+    "digest": "sha256:43365351956db1595a3702c7bad19ce16ec1191b89123dd08401b81e1c6297a3",
+    "scope": {
+      "entityId": "entity_67e79b228d9efaa0",
+      "bookId": "book_67e79b228d9efaa0"
+    },
+    "version": 1,
+    "input": {
+      "startsOn": "2026-09-01",
+      "endsOn": "2026-09-30",
+      "periodEvidenceId": "evidence_9104241bb3cd4ec0ad1dec5d11bba42e",
+      "openingEvidenceId": "evidence_9104241bb3cd4ec0ad1dec5d11bba42e",
+      "controlOpenings": [
+        {
+          "accountId": "vat_output",
+          "signedMinor": "0"
+        },
+        {
+          "accountId": "vat_input",
+          "signedMinor": "0"
+        },
+        {
+          "accountId": "vat_settlement",
+          "signedMinor": "0"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "family": "sales_ledger",
+          "state": "current",
+          "evidenceId": "evidence_9104241bb3cd4ec0ad1dec5d11bba42e"
+        },
+        {
+          "family": "purchase_ledger",
+          "state": "current",
+          "evidenceId": "evidence_9104241bb3cd4ec0ad1dec5d11bba42e"
+        }
+      ],
+      "rationale": "Synthetic qualification; no statutory filing"
+    },
+    "basis": {
+      "digest": "sha256:332c9c4170ce972684325b239e2740ce021e27f972457500d847280420fb2d4c",
+      "scope": {
+        "entityId": "entity_67e79b228d9efaa0",
+        "bookId": "book_67e79b228d9efaa0"
+      },
+      "engine": "vat-actual-return-v1",
+      "bookProfile": "synthetic-core-v1",
+      "currency": "SEK",
+      "currencyScale": 2,
+      "ledgerBoundary": "2",
+      "recordedCutoff": "2026-09-27T11:44:14.753Z",
+      "registeredPeriod": {
+        "factRevisionId": "vat_period_book_67e79b228d9efaa0",
+        "factRevisionDigest": "sha256:83c107561370d35e7ff06e748e128e5ddd762bc67a62b5cda4db4c5c92c9d1b6",
+        "startsOn": "2026-09-01",
+        "endsOn": "2026-09-30",
+        "periodEvidenceId": "evidence_9104241bb3cd4ec0ad1dec5d11bba42e",
+        "periodEvidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+      },
+      "profileWitness": {
+        "family": "vat",
+        "recordClass": "actual_company",
+        "dates": {
+          "postingOn": null,
+          "taxPointOn": "2026-09-30",
+          "paymentOn": null,
+          "reportOn": null
+        },
+        "selectorDate": "2026-09-30",
+        "jurisdiction": "SE",
+        "ruleReleaseId": "release_book_67e79b228d9efaa0",
+        "ruleReleaseChecksum": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "factRevisionIds": [
+          "jurisdiction_book_67e79b228d9efaa0",
+          "vat_period_book_67e79b228d9efaa0"
+        ],
+        "factReviewIds": [
+          "jurisdiction_book_67e79b228d9efaa0",
+          "vat_period_book_67e79b228d9efaa0"
+        ],
+        "roleBindingIds": [],
+        "activationId": "activation"
+      },
+      "mappingRelease": {
+        "releaseId": "release_book_67e79b228d9efaa0",
+        "checksum": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "vat": {
+          "currency": "SEK",
+          "calculatorVersion": "vat-filing-actual-v1",
+          "filingUnitScale": 0,
+          "rounding": "toward_zero",
+          "rates": [
+            {
+              "rateId": "rate",
+              "numerator": "1",
+              "denominator": "4",
+              "salesBox": "10"
+            }
+          ],
+          "mappingRules": [
+            {
+              "mappingRuleId": "sale",
+              "treatment": "domestic_sale",
+              "rateId": "rate",
+              "basisBox": "05",
+              "inputBox": null
+            },
+            {
+              "mappingRuleId": "purchase",
+              "treatment": "domestic_purchase",
+              "rateId": "rate",
+              "basisBox": null,
+              "inputBox": "48"
+            }
+          ],
+          "supportedTreatments": [
+            "domestic_sale",
+            "domestic_purchase"
+          ],
+          "requiredSourceFamilies": [
+            "sales_ledger",
+            "purchase_ledger"
+          ],
+          "sourceManifest": "Synthetic host qualification vector"
+        }
+      },
+      "accountRoles": [
+        {
+          "role": "output_vat_control",
+          "accountId": "vat_output",
+          "accountVersion": "1",
+          "code": "2611",
+          "name": "vat_output",
+          "active": true
+        },
+        {
+          "role": "input_vat_control",
+          "accountId": "vat_input",
+          "accountVersion": "1",
+          "code": "2641",
+          "name": "vat_input",
+          "active": true
+        },
+        {
+          "role": "vat_settlement_control",
+          "accountId": "vat_settlement",
+          "accountVersion": "1",
+          "code": "2650",
+          "name": "vat_settlement",
+          "active": true
+        }
+      ],
+      "population": {
+        "bookAdmittedFactCount": 2,
+        "bookPurchaseComponentCount": 0,
+        "selectedAdmittedFactCount": 2,
+        "selectedPurchaseComponentCount": 0,
+        "withoutTaxPoint": 0,
+        "membershipEpoch": "0"
+      },
+      "recognitions": [],
+      "facts": [
+        {
+          "factId": "fact_0",
+          "origin": "manual_admission",
+          "revisionId": "fact_0",
+          "digest": "sha256:13080eae446c7a3463e789a7d344c531be51800efc5990a340a1d79fbd79e543",
+          "treatment": "domestic_sale",
+          "taxPointOn": "2026-09-22",
+          "voucherId": "voucher_d908e347937249199b86411703e5d8e5",
+          "basisMinor": "796",
+          "taxMinor": "199",
+          "sourceTaxMinor": "199",
+          "adjustsFactId": null,
+          "ruleReleaseId": null,
+          "observation": {
+            "recordClass": "actual_company",
+            "treatment": "domestic_sale",
+            "withdrawn": false,
+            "voucherReversed": false,
+            "withinLedgerBoundary": true
+          },
+          "controlComponents": [
+            {
+              "voucherId": "voucher_d908e347937249199b86411703e5d8e5",
+              "lineId": "line_bdab892884d6469f9a32fafecd436be9",
+              "accountId": "vat_output",
+              "role": "output_vat_control",
+              "signedMinor": "-199",
+              "postingDate": "2026-09-22",
+              "withinControlInterval": true
+            }
+          ]
+        },
+        {
+          "factId": "fact_1",
+          "origin": "manual_admission",
+          "revisionId": "fact_1",
+          "digest": "sha256:e9ff0bdad275fb542d2f56f85bf4b572ef6ea999200ada73a8381bb1e3e4cf5e",
+          "treatment": "domestic_purchase",
+          "taxPointOn": "2026-09-22",
+          "voucherId": "voucher_25f7f399cf51488697635bf8ea85a774",
+          "basisMinor": "404",
+          "taxMinor": "101",
+          "sourceTaxMinor": "101",
+          "adjustsFactId": null,
+          "ruleReleaseId": null,
+          "observation": {
+            "recordClass": "actual_company",
+            "treatment": "domestic_purchase",
+            "withdrawn": false,
+            "voucherReversed": false,
+            "withinLedgerBoundary": true
+          },
+          "controlComponents": [
+            {
+              "voucherId": "voucher_25f7f399cf51488697635bf8ea85a774",
+              "lineId": "line_ed3a46728d524e41941b5830d51fdb0d",
+              "accountId": "vat_input",
+              "role": "input_vat_control",
+              "signedMinor": "101",
+              "postingDate": "2026-09-22",
+              "withinControlInterval": true
+            }
+          ]
+        }
+      ],
+      "controls": [
+        {
+          "role": "output_vat_control",
+          "accountId": "vat_output",
+          "reviewedOpeningMinor": "0",
+          "frozenGlOpeningMinor": "0",
+          "frozenGlMovementMinor": "-199",
+          "frozenGlClosingMinor": "-199",
+          "movements": [
+            {
+              "voucherId": "voucher_d908e347937249199b86411703e5d8e5",
+              "lineId": "line_bdab892884d6469f9a32fafecd436be9",
+              "postingDate": "2026-09-22",
+              "signedMinor": "-199",
+              "postingPurpose": "adjustment"
+            }
+          ]
+        },
+        {
+          "role": "input_vat_control",
+          "accountId": "vat_input",
+          "reviewedOpeningMinor": "0",
+          "frozenGlOpeningMinor": "0",
+          "frozenGlMovementMinor": "101",
+          "frozenGlClosingMinor": "101",
+          "movements": [
+            {
+              "voucherId": "voucher_25f7f399cf51488697635bf8ea85a774",
+              "lineId": "line_ed3a46728d524e41941b5830d51fdb0d",
+              "postingDate": "2026-09-22",
+              "signedMinor": "101",
+              "postingPurpose": "adjustment"
+            }
+          ]
+        },
+        {
+          "role": "vat_settlement_control",
+          "accountId": "vat_settlement",
+          "reviewedOpeningMinor": "0",
+          "frozenGlOpeningMinor": "0",
+          "frozenGlMovementMinor": "0",
+          "frozenGlClosingMinor": "0",
+          "movements": []
+        }
+      ],
+      "ownedEffects": [],
+      "sourceCoverage": [
+        {
+          "family": "sales_ledger",
+          "state": "current",
+          "evidenceId": "evidence_9104241bb3cd4ec0ad1dec5d11bba42e",
+          "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+        },
+        {
+          "family": "purchase_ledger",
+          "state": "current",
+          "evidenceId": "evidence_9104241bb3cd4ec0ad1dec5d11bba42e",
+          "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+        }
+      ],
+      "ownerPorts": [
+        {
+          "owner": "vat_control_reclassification",
+          "state": "read_committed_records",
+          "recordCount": 0,
+          "recordDigests": []
+        },
+        {
+          "owner": "vat_draft_amendment",
+          "state": "no_committed_financial_effect",
+          "recordCount": 0,
+          "recordDigests": []
+        }
+      ],
+      "openingEvidenceId": "evidence_9104241bb3cd4ec0ad1dec5d11bba42e",
+      "openingEvidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+    },
+    "calculation": {
+      "engine": "vat-actual-return-v1",
+      "basisDigest": "sha256:332c9c4170ce972684325b239e2740ce021e27f972457500d847280420fb2d4c",
+      "monetaryRelease": {
+        "releaseId": "bend-host-test-only",
+        "manifestDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "artifactDigest": "sha256:e83aac2d7b5b4da88fee48f112c0065d32aeddb5a5075de53804e987b34f548c",
+        "sourceTreeDigest": "sha256:07f8423ba6371826f2822fb45b329c29b0b67d07949dc003a9da3d6e45c208cc",
+        "runtimeId": "bun:1.4.0:darwin:arm64"
+      },
+      "boxes": [
+        {
+          "box": "05",
+          "kind": "primitive",
+          "exactMinor": "796",
+          "reportedMinor": "7",
+          "residualMinor": "96"
+        },
+        {
+          "box": "10",
+          "kind": "primitive",
+          "exactMinor": "199",
+          "reportedMinor": "1",
+          "residualMinor": "99"
+        },
+        {
+          "box": "48",
+          "kind": "primitive",
+          "exactMinor": "101",
+          "reportedMinor": "1",
+          "residualMinor": "1"
+        },
+        {
+          "box": "49",
+          "kind": "net",
+          "exactMinor": "98",
+          "reportedMinor": "0",
+          "residualMinor": "98"
+        }
+      ],
+      "contributions": [
+        {
+          "ordinal": 1,
+          "factId": "fact_0",
+          "origin": "manual_admission",
+          "mappingRuleId": "sale",
+          "rateId": "rate",
+          "box": "05",
+          "signedMinor": "796",
+          "basisMinor": "796",
+          "taxMinor": "199",
+          "revisionId": "fact_0",
+          "digest": "sha256:13080eae446c7a3463e789a7d344c531be51800efc5990a340a1d79fbd79e543"
+        },
+        {
+          "ordinal": 2,
+          "factId": "fact_0",
+          "origin": "manual_admission",
+          "mappingRuleId": "sale",
+          "rateId": "rate",
+          "box": "10",
+          "signedMinor": "199",
+          "basisMinor": "796",
+          "taxMinor": "199",
+          "revisionId": "fact_0",
+          "digest": "sha256:13080eae446c7a3463e789a7d344c531be51800efc5990a340a1d79fbd79e543"
+        },
+        {
+          "ordinal": 3,
+          "factId": "fact_1",
+          "origin": "manual_admission",
+          "mappingRuleId": "purchase",
+          "rateId": "rate",
+          "box": "48",
+          "signedMinor": "101",
+          "basisMinor": "404",
+          "taxMinor": "101",
+          "revisionId": "fact_1",
+          "digest": "sha256:e9ff0bdad275fb542d2f56f85bf4b572ef6ea999200ada73a8381bb1e3e4cf5e"
+        }
+      ],
+      "exclusions": [],
+      "controls": [
+        {
+          "role": "output_vat_control",
+          "accountId": "vat_output",
+          "reviewedOpeningMinor": "0",
+          "expectedClosingMinor": "-199",
+          "frozenGlClosingMinor": "-199",
+          "differenceMinor": "0",
+          "unexplainedRows": [],
+          "missingRows": [],
+          "reconciled": true
+        },
+        {
+          "role": "input_vat_control",
+          "accountId": "vat_input",
+          "reviewedOpeningMinor": "0",
+          "expectedClosingMinor": "101",
+          "frozenGlClosingMinor": "101",
+          "differenceMinor": "0",
+          "unexplainedRows": [],
+          "missingRows": [],
+          "reconciled": true
+        },
+        {
+          "role": "vat_settlement_control",
+          "accountId": "vat_settlement",
+          "reviewedOpeningMinor": "0",
+          "expectedClosingMinor": "0",
+          "frozenGlClosingMinor": "0",
+          "differenceMinor": "0",
+          "unexplainedRows": [],
+          "missingRows": [],
+          "reconciled": true
+        }
+      ],
+      "timingBridge": [],
+      "sourceCoverage": [
+        {
+          "family": "sales_ledger",
+          "state": "current",
+          "evidenceId": "evidence_9104241bb3cd4ec0ad1dec5d11bba42e",
+          "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+        },
+        {
+          "family": "purchase_ledger",
+          "state": "current",
+          "evidenceId": "evidence_9104241bb3cd4ec0ad1dec5d11bba42e",
+          "evidenceSha256": "38cde3cfc1172b9b798efc93763f61363e1747d5b02ccee07e71be7c0d9edb0b"
+        }
+      ],
+      "blockers": [],
+      "assessedCount": 2,
+      "includedCount": 2,
+      "excludedCount": 0,
+      "calculationSupported": true,
+      "coverageComplete": true,
+      "controlsReconciled": true,
+      "periodVerified": true,
+      "filingReady": true
+    },
+    "recordedAt": "2026-09-27T11:44:14.799Z",
+    "receipt": {
+      "key": "host-capture",
+      "operation": "prepare_actual_vat_return",
+      "actorId": "operator_67e79b228d9efaa0"
+    },
+    "externalState": "not_submitted",
+    "assessedMinor": null,
+    "paymentState": "not_paid"
+  },
+  "approvedJournal": {
+    "planId": "change_a8bc691a2eb04dfa804bfe16f2136124",
+    "planDigest": "sha256:92ba0e8897cb468b38f2132245e7e457c0896727f126d8d3e6b1db3a88d64eda",
+    "voucherId": "voucher_20b53e63fec84e7c91606b7cb0b7e866",
+    "amountMinor": "1"
+  },
+  "e2eManifest": {
+    "startedAt": "2026-09-27T11:44:13.369Z",
+    "revision": "09fdb19837bb1535b1b4c060e68a0b237858b0a5",
+    "worktreeDiffSha256": "e37c4f1dcb60913de37e6bf4ccd2e5e56f0aba990ce2e0a934f8c8db51a904fd",
+    "lockSha256": "8f4054e2651d96dcfb32552bb95b533b0c40964fe3085e74668328aa07f1470f",
+    "node": "v26.4.0",
+    "postgres": "postgres (PostgreSQL) 17.11 (Homebrew)",
+    "runner": "Vitest 4.1.10",
+    "runtime": "local workerd; real PostgreSQL; restricted runtime role",
+    "migrations": [
+      {
+        "name": "0001-schema.sql",
+        "sha256": "5dcc8f6673f11a14046c9694a8d60a24cf7b2f895ca856501cb3b5793c0c1bd2"
+      },
+      {
+        "name": "0002-integrity.sql",
+        "sha256": "420a345ae723cc66e24e8d771778e13508debf1338c14f164dbf81cf64c32e79"
+      },
+      {
+        "name": "0003-roles.sql",
+        "sha256": "8a89d39f6baad6862143c7c13de1199f3cc8900ab7ec68375c7e0c175d45cef7"
+      },
+      {
+        "name": "0004-next-02.sql",
+        "sha256": "d01a698b55ecd054c0285b9fbcdd4e31479c422dd7d6e93bf6bc3a1fdd87eca7"
+      },
+      {
+        "name": "0005-next-13.sql",
+        "sha256": "eb52687994bb9c2a2c25ef4ce40f0871881e7de3b24bd2cbfdea4a905beb86d6"
+      },
+      {
+        "name": "0006-next-03.sql",
+        "sha256": "1ee09458a915fb5ed1cd5dad5c1492a7893fb615d9de766bfe07c588d8def4bd"
+      },
+      {
+        "name": "0007-next-11.sql",
+        "sha256": "f78ee53cf90022cc24fec1f366d7d3be0395203106809ef17769a70e888c43a3"
+      },
+      {
+        "name": "0008-next-20.sql",
+        "sha256": "63933cd39a60e70494e67388dc72f86481453ffd75178f72b1937650997b94ec"
+      },
+      {
+        "name": "0009-next-26.sql",
+        "sha256": "633f3c6b99f112be70131b9d50fd3842959b50eaa53533b4a24d5a8cc1f7af92"
+      },
+      {
+        "name": "0010-next-49.sql",
+        "sha256": "230e096994513912fd97bd58489827a5f766d23e2485cccd02fc78ca867ba468"
+      },
+      {
+        "name": "0011-next-15.sql",
+        "sha256": "0a66cb23b675206b37c836ed045064c4ec8387ca733aeab225b1a723f1b59ce8"
+      },
+      {
+        "name": "0012-next-17.sql",
+        "sha256": "a9a0212b7fd8466cd283222f18cca4c644e6f497a2b7d8c346f7c75803168afa"
+      },
+      {
+        "name": "0013-next-22.sql",
+        "sha256": "10a34fb932eeb070e54cd171a11aa38253579d950d2af53fc30247ab4c6d240b"
+      },
+      {
+        "name": "0014-next-14.sql",
+        "sha256": "39f1357383efb044c0dcc9111fc1d6d8f26a293623cdc7a5f74d69277d7ad8e5"
+      },
+      {
+        "name": "0015-next-04.sql",
+        "sha256": "46a44ef61e6712f7b42338849282a81e53aed6518ac82f644f676cb30e8806f0"
+      },
+      {
+        "name": "0016-next-06.sql",
+        "sha256": "0ce1653c4206320848eba8cbe89789c52d525f033a157b39c34cea393fececd0"
+      },
+      {
+        "name": "0018-next-29.sql",
+        "sha256": "c1c6e8500c90e60196b8ac991eb8ae81d9756bcaeb83cd1eda40d8b9dc09cce7"
+      },
+      {
+        "name": "0019-owner-approval-digests.sql",
+        "sha256": "3f195f2ca9afec8a62bd8197b4d2229e30790fe11524e53ab2813d0d03a529d3"
+      },
+      {
+        "name": "0020-zero-tax-credit-lines.sql",
+        "sha256": "f6601a3bd6c9225ce69cfaa187855e91368a7ee60e4824b01707ac7b4b9ea042"
+      },
+      {
+        "name": "0021-fulfillment-reverification.sql",
+        "sha256": "0294a51e331a06446acafe8de63c9aa030f55491f01270323933ec63707cb4fd"
+      }
+    ]
+  },
+  "harnessSourceHashes": {
+    "apps/api/tests/bend-vat.qualification.test.ts": "a0e5381d4f2a87bc527819069511b7db9a8e12bd5a81ea721a8d591df5633707",
+    "apps/api/tests/support/bend-vat-host.mjs": "7cd4f38dafcfbb842b08d59a17eb1bdade0691ae3396916406ded30b9253298e",
+    "apps/api/tests/support/global-setup.ts": "63751a4fbbba07c9af99ef4e696d6f84baa4f2d93cd0602dabf0131a6437f7f8",
+    "apps/api/tests/support/fixtures.ts": "61dc0a06bf97cfa10532627cf3d1a290d72c6113b0bdf941732aa0cb7414570b",
+    "verification/bend/authority/vite.host.config.mts": "236bf512215f944389297a2d49f2d086dcc88e448389f388073522a66022ab2c",
+    "bun.lock": "8f4054e2651d96dcfb32552bb95b533b0c40964fe3085e74668328aa07f1470f"
+  },
+  "kind": "host-integration",
+  "compilerCommit": "af569d4826913b2ce3557e9829ccad31fcf86f94",
+  "files": {
+    "apps/api/src/adapters/auth/better-auth.ts": "sha256:ff356f8e838acdfdd1befb8df386c0a865876e8674cc4bd2af876d0630fafcbf",
+    "apps/api/src/adapters/auth/configuration.ts": "sha256:c42239630f10ee09fcbe2075ffecfe789e10daf7a54d719a46946e5b9bf753fd",
+    "apps/api/src/adapters/auth/oidc.ts": "sha256:f9b970c47f3f13bceb4493ed052aa45aabdd4aca9d490a65d7c6ed3e90adb375",
+    "apps/api/src/adapters/storage/filesystem-objects.ts": "sha256:0d020965d6b25449800a0d137d057dd97b142a46e51ef6d036f705d61775cd45",
+    "apps/api/src/adapters/storage/retained-objects.ts": "sha256:b10ce4f7f6b51207ebe54779cf5b39c6fc2c750af0df46357535bf9aa4039eb9",
+    "apps/api/src/application/accountant-review-providers.ts": "sha256:4344402d077b33ce18df439c75c9cb105831ed7ac5f6494680d25b9b004b23c5",
+    "apps/api/src/application/accountant-review.ts": "sha256:6560e124fb41407eadd0f8b5b9a18442c06e8f7a11a0e529ed657290402056c7",
+    "apps/api/src/application/banking/allocations.ts": "sha256:d22d5f711b1cda54399d384f83eef429ea9293c384814ab6937c124704632f08",
+    "apps/api/src/application/banking/candidates.ts": "sha256:fd94c21569759a40bc95e3565d6dc2f3537eeb9af8a551474717355d588db9c5",
+    "apps/api/src/application/banking/connector.ts": "sha256:085a4988a6279a4ddd23b6da3746c1d54c4c30d25119ee6caf34503f31ff0f69",
+    "apps/api/src/application/banking/coverage.ts": "sha256:90600bd345d8262c4dcf4dac99a4a972765dec6cabea485bf43de36db5cfe8c5",
+    "apps/api/src/application/banking/inventory-signoffs.ts": "sha256:f590f4301f26fcd4eb4400f90975a2e37d0b0c236a14a719c5c126ea3308385b",
+    "apps/api/src/application/banking/match-reversals.ts": "sha256:00404ea585e02d72aa030e576131c719f67ca0cb0b0799ac13d86b1cef8ce981",
+    "apps/api/src/application/banking/matches.ts": "sha256:e94e86605a1c2c079396afcbeac40a5afb2ae236b799d8cc25de5bd331e85b2c",
+    "apps/api/src/application/banking/reconciliations.ts": "sha256:202a71d3a7c6ef8373bbf93fe9cff10be10d8b0dc57ac3878632425af407e697",
+    "apps/api/src/application/banking/shared.ts": "sha256:6bf27a4d0d76523a580b8579ea59c6ff070128c30b007debabaf371586071c28",
+    "apps/api/src/application/banking/signoffs.ts": "sha256:81a8fc93ae3460b136db936ce091c95e7890d4d56ecbb6300a50eeddca15ff7d",
+    "apps/api/src/application/banking/source-statement.ts": "sha256:2d961f8330b44ba24e6a7500b94661f32646d47ac6c78524c341fb18c6631d3c",
+    "apps/api/src/application/banking/workspace.ts": "sha256:e73c0c446a4700125d86705e751b8de3812cc4cd3f7db8c75f15147d946e7649",
+    "apps/api/src/application/bytes.ts": "sha256:d6a40056130ae25287dee40088d78fb29f76b5990263c520aa72f32a5408374b",
+    "apps/api/src/application/capabilities/banking.ts": "sha256:9ec4cd7bc3792890671202c3a7bb994b767982e4585f0b85f49a253ec6196304",
+    "apps/api/src/application/capabilities/closing.ts": "sha256:0da9be2ccb60305d404c39eca786184899fe68cdacf7a84c6aa013a0d6311bfd",
+    "apps/api/src/application/capabilities/collections.ts": "sha256:af3f86141131535ddb393f19f317c2dfcb44d07986f5d035bd8887b684fc402c",
+    "apps/api/src/application/capabilities/commerce-invoices.ts": "sha256:9765780cf37d32c00967976c70127107dc165570ca11b648a05d14d9eeab50cd",
+    "apps/api/src/application/capabilities/commerce-legal.ts": "sha256:5274c4a57985610066d9d45361c1955a1461ddf5fce0078eb675be5d74d729c7",
+    "apps/api/src/application/capabilities/company-firms.ts": "sha256:b431586f9ae79a10fc58d22857d6b245c5a80e83cebecb87f04d0cf2fa7571da",
+    "apps/api/src/application/capabilities/company-profiles.ts": "sha256:892a2123eeb38df3444f952ea7be422afd6e0e00ffab254816dd4fd68f3fea5e",
+    "apps/api/src/application/capabilities/corporate-tax.ts": "sha256:783f93b804492b85f50222673d0826711eb97b21b267fc037e598ab14c19afc9",
+    "apps/api/src/application/capabilities/dimensions.ts": "sha256:1679fd40424f9801c4de168836cf4ecce4ebe65c747c8a67904904ebbd0d1ee1",
+    "apps/api/src/application/capabilities/fx.ts": "sha256:f8fa77a06f65661e8c05db2fa237cc1a5df35413c0b243d962e0402cbd4077bb",
+    "apps/api/src/application/capabilities/index.ts": "sha256:661696438bbce1a7d4971db9ef3d0b2e8cb2e141a1ca7ddfc2edf2748a0d3d32",
+    "apps/api/src/application/capabilities/ledger.ts": "sha256:a4cbe7fd5a536d5c116964557111c9e7e00957d27c17883761f232d677735d88",
+    "apps/api/src/application/capabilities/payroll-calculations.ts": "sha256:ad2cb11b754052d5f6b7f5ee11e753961cbbe4333f4442ff85ab8a66ad0bdcff",
+    "apps/api/src/application/capabilities/purchase-recognition.ts": "sha256:3212b286741e05ec0681c0c2b83123c3771be4d8a7df7cb0f5c798f2db265693",
+    "apps/api/src/application/capabilities/report-statements.ts": "sha256:67a25f95b6e8e4d727db7bffc91956d457f9ddbae7c1530dc25b668d881320eb",
+    "apps/api/src/application/capabilities/reports.ts": "sha256:93a51bb7974fc1792089d90088f823431f7bc52a05a13ba63000b30a9c5bfa0e",
+    "apps/api/src/application/capabilities/review.ts": "sha256:d5f8c509bb05e7b2fea25fcbe7e9b050401ac955de331e77efce4094a27d4547",
+    "apps/api/src/application/capabilities/runs-cases.ts": "sha256:5010fa43ba5186e6e3c041d3d2cdb0a3fee173d2aa27856e5b8b8a79a6785e31",
+    "apps/api/src/application/capabilities/shared.ts": "sha256:a03f3ee6286f6e306a2175cad7af5e91b3db5eb77da9937e68defa47bd491170",
+    "apps/api/src/application/capabilities/sie.ts": "sha256:61c3d218d10052509abc6cbc5ea9fcaec9640e72deb7837bdc6bd85b482b6ec1",
+    "apps/api/src/application/capabilities/sie4e.ts": "sha256:f5cea5d21996e3e3732507c7123b6f5701edc434d956b49b55f5f979bbb407af",
+    "apps/api/src/application/capabilities/source-intake.ts": "sha256:0e580e16974c9dd617acf03f69943319846c50ceb43b6c4705ec9761cc47bdef",
+    "apps/api/src/application/capabilities/subledger-owners.ts": "sha256:dd4e5418daddd82247aca1ad2c86112e194bf83331eacad3cb5592540c253b50",
+    "apps/api/src/application/capabilities/tax-account.ts": "sha256:41a9c45754cd49ad88c08b8fdf61c3236a9cd6db8b7d3920cb6c71f9873b710b",
+    "apps/api/src/application/capabilities/vat.ts": "sha256:fbaf5996141d24e3c48ea53e108be8b699a01cf7ba11644153602f1a8e237501",
+    "apps/api/src/application/capabilities/workspace.ts": "sha256:07481c81809d23753ea0d3af99345e17e7f374a32f314070a46e871407161022",
+    "apps/api/src/application/cases.ts": "sha256:1bf903801f93e480677c5a36c5bc9603633bafe24dd6c0386d5dabfab28e98cd",
+    "apps/api/src/application/closing/deadlines.ts": "sha256:e4050457611dd47778c3cd8b04871adf294fb42f7d44f8c54851dc2c206f3399",
+    "apps/api/src/application/closing/dependencies.ts": "sha256:f6245b7a391914c6a12ba8f8cb5886ed46b8f74f1ff12d5aef0461cf7ebbc4c8",
+    "apps/api/src/application/closing/fulfillment-basis.ts": "sha256:314a80a590bde1c8455884bfbb3de2e62eaefc53f1a20c3f368618c84cf118d0",
+    "apps/api/src/application/closing/fulfillment.ts": "sha256:126923807c1e698f2d35b07ad35a1de16cc4120d936cce03dab0d702a2776cb3",
+    "apps/api/src/application/closing/inventories.ts": "sha256:6946f959bac96b62241624b6a8c34345ee31b4948166a37a56949fcca664213b",
+    "apps/api/src/application/closing/proposals.ts": "sha256:32ab8541ff1c94297b0d982f992d675b6630ec47acf750783dbcb36cc534f193",
+    "apps/api/src/application/closing/rule-impact.ts": "sha256:24cc63055df48d7457baa549418e01c3130f0353430ed09346f840389dcb5909",
+    "apps/api/src/application/commerce/allocation-reversals.ts": "sha256:c3c3160f9fcb47da5f0204198a1b95700cf26198d7a5c46f6540865f0ca76ec9",
+    "apps/api/src/application/commerce/approval.ts": "sha256:d9cb1d99e695eaa7fedbf6fa1fc3c738cdc25b8571684824f1b747f4e3c7c538",
+    "apps/api/src/application/commerce/cancellations.ts": "sha256:0b9a88e648f8c8dda1eb64c57bf7d5a6a8b1c291b44898be3b3fc6131e3a36f3",
+    "apps/api/src/application/commerce/catalog.ts": "sha256:b62f66ed64245daf482d25d6d8fb8753cd5c5134eea97564a0d221a287bb5594",
+    "apps/api/src/application/commerce/collections.ts": "sha256:51122185a76e3d58b6749ed891b112a5cb0271d133e5c62f4dc55bdf86393662",
+    "apps/api/src/application/commerce/credit-note-basis.ts": "sha256:dae6bfaaa95a14e3aa34dedf9260a076e56152ce3ed4d00ab222ef7674301787",
+    "apps/api/src/application/commerce/credit-notes.ts": "sha256:d9138fbe0121c11560a0469f5f1795026a43985c52fb9e4f374a8de62725e85c",
+    "apps/api/src/application/commerce/crm-master.ts": "sha256:ecb947db1e9d179bdefe034bd4c3ff627867d2667d3e94111ea0cbcda2c92597",
+    "apps/api/src/application/commerce/documents.ts": "sha256:2e9ba6357b6d37bfc093093f6a76e4f25e10557588ab1b26f6dfb2d07ef16694",
+    "apps/api/src/application/commerce/draft-calculation.ts": "sha256:5d2388db00b7969dcdd81ba2f09e1c69b3671d32d709eb79582b1c487efd84db",
+    "apps/api/src/application/commerce/fx.ts": "sha256:3dc9f1bab604db8f9388fd918f7e91b05b8f20b8bd23bdbfd670f6a9e9d126ed",
+    "apps/api/src/application/commerce/invoice-delivery.ts": "sha256:3aa1587f083c5c95c5fd28a46e3c861fd751416238bf7f646b0ed0686d996568",
+    "apps/api/src/application/commerce/invoice-document-renderer.ts": "sha256:b34704aa9e9dddc4e29c2d0700220cee13ef91b8aa474006d32c5bb27aaa103d",
+    "apps/api/src/application/commerce/invoice-document-review-renderer.ts": "sha256:3b6c6aa6bc788d0ff3b35e5e8ded0b70235ad7b6a34536b8edaaf1d655bae819",
+    "apps/api/src/application/commerce/invoice-documents.ts": "sha256:940b87049f574b0665e43b6c1aab1043abbe3c0965f330fc1f1bc0086c0d3cb1",
+    "apps/api/src/application/commerce/invoice-lifecycle.ts": "sha256:14dc5d6413b92277f8f6e45700486d2000ed4c67a1c5fd6e6d35cc5a1d0aff62",
+    "apps/api/src/application/commerce/invoice-pdf-renderer.ts": "sha256:c0f401d555e63b53cd7285441e58aa2d2bd3271e9fe2e53fcfef18fa0b00ebf7",
+    "apps/api/src/application/commerce/invoice-policy.ts": "sha256:d800d4fde26f43f01cfaad8c4e386249c003f1364774c8110828701dde4ac3d4",
+    "apps/api/src/application/commerce/legal-delivery.ts": "sha256:8fe7e7e21345d2339cbb439b2a50e51307b1f7cfafe2fab2d9523ca4ee7a0be8",
+    "apps/api/src/application/commerce/legal-invoice-pdf-renderer-takumi-v1.ts": "sha256:7444b567d64dd5a4eeaa0c73933a3b0ac1fe25d2f8ce05eb93d5400e39df8b79",
+    "apps/api/src/application/commerce/legal-invoice-pdf-renderer-takumi-v2.ts": "sha256:1b7997bc104d0b7f53fb46fa2c64d99542854d880b47029df7809f2976fc0b62",
+    "apps/api/src/application/commerce/legal-issuance.ts": "sha256:f329d78e019a5078901c9e5935599d4fa2b4757851582f9ed4935146b44bf390",
+    "apps/api/src/application/commerce/legal-issue-basis.ts": "sha256:a8f063fc9d6831a801309557e1b4d063dd30f9cf25a066171da096e99280e264",
+    "apps/api/src/application/commerce/legal.ts": "sha256:7749ccd4fc6c515b110e5d58bc654ff791c12793a0c1e7bc3ddd5dce12ccf9c5",
+    "apps/api/src/application/commerce/recurring-coverage.ts": "sha256:bf590647b66da6a6b044d68347e498ffeb8253e9a315a9691af8cccb5dd2ded7",
+    "apps/api/src/application/commerce/recurring-invoices.ts": "sha256:8b6e79cb037141e8d3218742e67de85441439504cdecb53d10feb1df7d0f4f33",
+    "apps/api/src/application/commerce/register.ts": "sha256:6dcf0c78a8d9b5ed1e6393e711a803ec7a6cf0ab4889bd5b9b65920d0bd30322",
+    "apps/api/src/application/commerce/sales-orders.ts": "sha256:76d3df5c2fb8f5e6bc3354fb715586a3dec63814010e5849569636adc3403d8c",
+    "apps/api/src/application/commerce/support.ts": "sha256:5ec5c5970880cd49d9f63bc7fce9b88e21fa84a48f6ea0eebad063ef68b87521",
+    "apps/api/src/application/company-profile-basis.ts": "sha256:041bbfba7a63ebc859b61cec7a52a0c62908c482251a5da244f3cd276aac3301",
+    "apps/api/src/application/company-profiles.ts": "sha256:7b27c1cd28e75f5d68aecaf92b8c7564476f19c9cd6783b68aa90889923adac1",
+    "apps/api/src/application/company-setup.ts": "sha256:bba8febf353c6a1a2cd48c1a47978c8e2e7e43db904be0f0b64394e03650f022",
+    "apps/api/src/application/deadline-calendar.ts": "sha256:915ef3c730bd8dfa67f727a85aaea64d627e494af2e2f8416c00f27fc9bff7f4",
+    "apps/api/src/application/dimensions/assignments.ts": "sha256:447ffe6e5c4c3935f7f5abaeac47aa88dcee32d21c80385c947aadf10d1e0df8",
+    "apps/api/src/application/dimensions/registry.ts": "sha256:cda4a367aee197131d986259951f20fdb9808abca70a9347c5b090d5db752b56",
+    "apps/api/src/application/evidence-work.ts": "sha256:1084ac7f65ffd73af0d8352b3d32b399c12652ec1d1a174e2c51e87f591c697e",
+    "apps/api/src/application/exchange-rates.ts": "sha256:56a8f87249b3bf85d5213cc6cd6c75af989c80ef69d26d478565c59e556c8a7d",
+    "apps/api/src/application/failures.ts": "sha256:560eaf33cf1f5464dcb473d206af7d46e0d031b036a425cfa40475dbf6951b68",
+    "apps/api/src/application/firms.ts": "sha256:6bbd3892d1c7529223ec93c1dcdabb4af5d6a2b63882b14a9eaca6bd16225912",
+    "apps/api/src/application/fonts/plex-mono-embedded.ts": "sha256:0f555051aea641dd7618960ace025994ddcaa6ea231a43900d6e09a08588234d",
+    "apps/api/src/application/identity.ts": "sha256:541512fae555883242d36a7e385b36db6d5c843603314310b8741f7de69f7a61",
+    "apps/api/src/application/json.ts": "sha256:c1ecfdb1382a1882a9ea090b3a252514fbf961ddad4d64160d62e907d03e4671",
+    "apps/api/src/application/payroll-foundation.ts": "sha256:165de52f86a410822455b12e681da3aaea18f798cd03131306ec908b6e853ed2",
+    "apps/api/src/application/payroll/calculation-basis.ts": "sha256:35dd873738a9560aa6d3f7fb3976cf0fba2a3cbf67acae63925b761821ddaed7",
+    "apps/api/src/application/payroll/calculations.ts": "sha256:8ca6e7d3f997c7caac6aebff56b4474e7500d2a7c3e8b8c110731d848c589646",
+    "apps/api/src/application/posting-admission.ts": "sha256:c02d94426c207a99c206e1945b19fffd12c173d50bb8ad0dcc4cee12fb93c477",
+    "apps/api/src/application/posting-corrections.ts": "sha256:c7b0a78c992913610040e668fb696047abbfc88aa1919037f85b17111a5739a0",
+    "apps/api/src/application/posting-recovery.ts": "sha256:67facad4daab0479e8aa46b7cd3e810750d097950b08458e642171349f5e11fe",
+    "apps/api/src/application/posting.ts": "sha256:05392c32d61a89b374e5acc1cb396d4166f7c9ae6360b470910e7fc124097857",
+    "apps/api/src/application/preparation-jobs.ts": "sha256:6421219345d4ad41b3c04ccaba4c805a0d82f7e4f7c3fd1be7a9bd442785e616",
+    "apps/api/src/application/purchases/acceptance.ts": "sha256:01e6f4887d6679ddcb1aef1ae4ad1731597b810fcdc1f763e1347de6331b3be1",
+    "apps/api/src/application/purchases/credit-basis.ts": "sha256:26c306a64b3f1fabcea6d3c47ca20d8b1fc59b4fd4d91f2cf2b503c33ef177c6",
+    "apps/api/src/application/purchases/credits.ts": "sha256:c702b6ca1cbe8add87faa7d9583ff1709a98412eedd7fc552b914c726229b28d",
+    "apps/api/src/application/purchases/draft-calculation.ts": "sha256:856a66474d71ab5e3e11f0ec93af2b943b385dca239f0aefa6bd71abba234118",
+    "apps/api/src/application/purchases/drafts.ts": "sha256:a7cd2e878c66cc1ce28278eab2357a2119a812d1a712c9c569b57b8a85f58eb1",
+    "apps/api/src/application/purchases/extraction-engine.ts": "sha256:4fb8606554a965a11d2dff8dc2336e72465f63775c5d61683de8fd9105113083",
+    "apps/api/src/application/purchases/extraction-merge.ts": "sha256:b43726adfa13c2baf00890fd00666fc43c7a056c7bbcec512cc1700f76d47891",
+    "apps/api/src/application/purchases/extraction.ts": "sha256:99e7b2409172f06506e27aa6f61bfe74ece9bd3e9c2dc71785d59c1f2965c1f0",
+    "apps/api/src/application/purchases/inbox.ts": "sha256:ad1046962549ebf29240ac1dce920892768cc271a2b22206122ac4b0c5885e44",
+    "apps/api/src/application/purchases/payment-document.ts": "sha256:3b75b161bd26978b83becc70b6112ad3f339e3635577f2dbf0c8b6392bafbd27",
+    "apps/api/src/application/purchases/payments.ts": "sha256:cbf52e08d1cd4e09053e689bff6a14fa0d28c55709fa365a9821a5ac9043aa9b",
+    "apps/api/src/application/purchases/recognition.ts": "sha256:a5bf6c2c38678ca5dbcbe1d2aadb7fec3f07fe376b5c2b575cf1c7ba29f9ae54",
+    "apps/api/src/application/purchases/shared.ts": "sha256:200775f9c2563f21e38d233627d5099a9233f397cfa0c346a43f10d39e8dc700",
+    "apps/api/src/application/recurring-rules.ts": "sha256:766b4f35122ae5f6dc053695f0044a2618086d8b61d1542daba0d5d24d678bcb",
+    "apps/api/src/application/register-reports.ts": "sha256:d4398095598b81262a4d03e6e3765d3f911db2d410830c1e53fdb51bd5cad918",
+    "apps/api/src/application/report-statements.ts": "sha256:07d31f969cac9db08e1c6b6c786be73aa91b5bdc3e1c6b893f31fdb3702e9822",
+    "apps/api/src/application/reports.ts": "sha256:9b64df7a7845b6b8faa8dcf282d29f55ce0407b95b3faecf829feb06e02c8b55",
+    "apps/api/src/application/resource-admission.ts": "sha256:1614d0af888fa458ad2b3896787766c38d0f2188a441315b681592790bb2d35c",
+    "apps/api/src/application/sie-import-parser.ts": "sha256:7f9adadf42221df83103545a877270e84723cbd573654a9a0310a1dbbd537936",
+    "apps/api/src/application/sie/book-export.ts": "sha256:8c0b691e4d4ec96e98d49761296712e385fc00f859701f9d49068953d0274547",
+    "apps/api/src/application/sie/historical-basis.ts": "sha256:3345c525748354e256acfa53ad57bf488f7c58f6cd2993b38fc584ece40ec830",
+    "apps/api/src/application/sie/historical-financial.ts": "sha256:a4e865f4f4748a7abad5e57a44848bed53a80bdbd22332c90fd242fd65950305",
+    "apps/api/src/application/sie/historical-items.ts": "sha256:766ed6658af2b9a36e1d53acfc6391060b8baf004b2347426e199cf7f13a87cf",
+    "apps/api/src/application/sie/historical-shared.ts": "sha256:39928ad5308b2fddd29a4238dea179a18aa61aeea531151c6c9949b8cc67c770",
+    "apps/api/src/application/sie/historical.ts": "sha256:1464365c857bd92f5203ac4c21ac24ee0ec50f2245f75a0122982498a6a21d6b",
+    "apps/api/src/application/sie/import.ts": "sha256:7eb74ac00d2f264a55fe2187c8476f436a5beb86b7384fe518e0f969b6328c27",
+    "apps/api/src/application/sie/source-controls.ts": "sha256:51cf05a3b98b6315cba1b95bc731978d20480e05b397e84ea45f304beeaaa182",
+    "apps/api/src/application/sie4e.ts": "sha256:64b30636ccf5416914f29bbd30047919f65f95c76bb4babd8ff3a7964906cd89",
+    "apps/api/src/application/source-retention.ts": "sha256:e46d669444707b03867271b6bc4397004d000e9bfa362ad28519a2d269bf522b",
+    "apps/api/src/application/subledger/asset-basis.ts": "sha256:ab5e2f576e346b78ed53ffbfccb748eff817e360076e6710e612929ee7fe826f",
+    "apps/api/src/application/subledger/asset-execution.ts": "sha256:e3da9db613cec28774f2c559f803a409cd820d31dd8725f1f6d719d7918be294",
+    "apps/api/src/application/subledger/asset-reads.ts": "sha256:d78013f5c0ad77dbed4c10edefe5d2db625b08efae0efbadac501735ac141a39",
+    "apps/api/src/application/subledger/asset-reviews.ts": "sha256:f6ff7b6c751c23912575040b5a3e50d0f858a5daf8aaaaa1583b7a689f8f4445",
+    "apps/api/src/application/subledger/basis.ts": "sha256:d56dffc8062362e6078715fcb5f8733d4ca32993ad73c9a92bbf31278f839268",
+    "apps/api/src/application/subledger/controls.ts": "sha256:efc63f6b8e02ce00bead45f6f415a704fd101690f47ab4d455af9890908b93ad",
+    "apps/api/src/application/subledger/owner-operations.ts": "sha256:df5d07cc787e7757227f2c1bddc5ddd5244f9eb6959f1e2d20ae5463a4c2ca74",
+    "apps/api/src/application/subledger/owners.ts": "sha256:49c2e471ab641417d3c39c3077f28b26e3010abccc3b602a15acc890ae5b7bc0",
+    "apps/api/src/application/subledger/schedules.ts": "sha256:66e3477f7653bcac76271159dccfda4cf74b22cdc920e0d621e2cdd34463f964",
+    "apps/api/src/application/tax/corporate-basis.ts": "sha256:4f45cb268dd7c589409a0ba6303b445f39fe3ad3a84539ff395f9f4e027db196",
+    "apps/api/src/application/tax/corporate.ts": "sha256:6bc0796df9d52b6cc0e293e5cb483a3ff3c842e165dccf25e95a8e65e7fc9f80",
+    "apps/api/src/application/vat-returns.ts": "sha256:5251f3ddd9f91c227c5f29a47a6adf1c368740eaa5e77e738b77174c35a7a686",
+    "apps/api/src/application/vat/actual-return.ts": "sha256:bbefe2d2c0d8e259db38718f38f62d6c88372222ba08f22e4ee09c273dfd7fb2",
+    "apps/api/src/application/vat/basis.ts": "sha256:51ccd1d0ad98361d69a854dfa0a478dc23f89eeeaef1b697b28cf6d586c0a612",
+    "apps/api/src/application/vat/draft-impact.ts": "sha256:4e7f6bbb98ee5ba28bc9ade5514703d81e5af03344301de0640508c9cb63e3c1",
+    "apps/api/src/application/vat/expense-tax.ts": "sha256:3a420f92bb0446763e64644c4cb5b67a2f8cde5878b767f7327568d72f7cf1df",
+    "apps/api/src/application/vat/reclassification.ts": "sha256:479e4a1172a2dec09251f50f9d00406b27c5c5c41ad343799fee38430052e555",
+    "apps/api/src/application/vat/returns.ts": "sha256:d10a3d93b6a11f2791360ed87f880ae5a91b86bc945206cfff568c5fe1da988f",
+    "apps/api/src/application/vat/tax-account.ts": "sha256:bd23d0c58491afcce4d8c368724c74c6eeaf3cc5f9348da47d39f28f1adf5f62",
+    "apps/api/src/application/workspace.ts": "sha256:709ee17dddc94e50534b45d67455fe057e6136fe148324c8ccd9dd7d982222fc",
+    "apps/api/src/db/accountant-review.ts": "sha256:5328578cffa72ea18dc35128e70acc728ecae614dd844114a5c35b287ec76add",
+    "apps/api/src/db/auth-schema.ts": "sha256:eb773eb9684ffff40b35ddb8fa5a460669e128d1c7ea6fe21b0f4112e97243ff",
+    "apps/api/src/db/banking/allocations.ts": "sha256:c67151a355d8d21eee73b0b733f0a9b96cf2990272c6f833c8379070ac5df026",
+    "apps/api/src/db/banking/candidates.ts": "sha256:7c3f2d958a63d80cae3461da6ea8558f0463f842873520db8520205a176fbe6f",
+    "apps/api/src/db/banking/connector.ts": "sha256:d1fbabdcfd4b2edc5c5a5824940860eb14888eb80933dc5d0692620357c798c4",
+    "apps/api/src/db/banking/coverage.ts": "sha256:f14735070e8176aaeaf240e927ac60e1885f00ea28b9d376fc12fcaba5892894",
+    "apps/api/src/db/banking/match-reversals.ts": "sha256:9454ec87990f0b342045352f8e0dc69d5e08684573d201e47cd48d72312b424d",
+    "apps/api/src/db/banking/reports.ts": "sha256:8ebfcb27243decfa6df560c4252182a02b3490463536c97ac84a8c5d9eaecf1f",
+    "apps/api/src/db/banking/shared.ts": "sha256:bd95febd5d2792c35c4591767a11d735bc4ceba6ae9494fe652138becaf58e38",
+    "apps/api/src/db/banking/signoffs.ts": "sha256:8e449e357280649210833122a9294ef5804721747e178cbd6b14e40ae7de1264",
+    "apps/api/src/db/banking/source-statement.ts": "sha256:547e60f5f6b8dc5cc810652a890524f23606bf42318818156dfcad39ffb8dd36",
+    "apps/api/src/db/banking/statements.ts": "sha256:fc6589d045626a99fbb70acd6eebbb87d1031bb8ac6e612747684e41688de1f3",
+    "apps/api/src/db/banking/workspace.ts": "sha256:958a1ba62859d7c54ecb9559b9491814a269372b79edbd1fd91ba6f05ba644c8",
+    "apps/api/src/db/cases.ts": "sha256:c8f438210331c91954e8388ddae7da114cdc60ea347840100b764be4223d6a94",
+    "apps/api/src/db/closing/dependencies.ts": "sha256:dd2cc6ccdda8f2ead26de2fe7ebc7a26745b3a6cb40e1b0eceaf53bc50590cf6",
+    "apps/api/src/db/closing/inventories.ts": "sha256:ca1aeb722319415c9a3ebc2440bfb8e4e07fd52a7c37652ef361f0deee60ae9f",
+    "apps/api/src/db/closing/proposals.ts": "sha256:59d38c07d9a3455355f33ac56f0fcbb4c8a8d6cec3629e4cf97dac6e9e0db30a",
+    "apps/api/src/db/commerce/access.ts": "sha256:0f56febd10decdffd0feb375a97ee085299aa8f7909691d3b4c4ea2b11200f38",
+    "apps/api/src/db/commerce/allocations.ts": "sha256:fd82d6df6efa6f637708c4731daec21d9989a384c2e8b260b1e599f218ed8a55",
+    "apps/api/src/db/commerce/ar-legal.ts": "sha256:af0233f2aecf412e01e04c34396dfa48a3f3e93c83c7df1c31f5142908daeecb",
+    "apps/api/src/db/commerce/catalog.ts": "sha256:5d5c478fe9745a4ee2722b783efec3f3a0177f5f9f83fb72b9d054e964614250",
+    "apps/api/src/db/commerce/collections.ts": "sha256:62da680f5825b8ac78c4f392efc7bf16b4fbfdd1f55fb0b827b4525107cb188d",
+    "apps/api/src/db/commerce/credit-notes.ts": "sha256:aa8a42331ae11923e6154c1698b75c0b69377ff1c471a48bc4a04e323cc5b68c",
+    "apps/api/src/db/commerce/crm-master.ts": "sha256:1b938330e189a69d30a425eac4f7637d7f5f16b7ba9fbc951c97a1e61e345947",
+    "apps/api/src/db/commerce/documents.ts": "sha256:18fb9ec06b860786b43db666ccab2b7c1c548519e8a1a8b91115e33a2ebad81c",
+    "apps/api/src/db/commerce/fx.ts": "sha256:d7222a0d22fd380abd9913fc058706096ff9b5f0073ad1f92bcc49acaa839e00",
+    "apps/api/src/db/commerce/invoice-cancellations.ts": "sha256:e26a5965fbf4d256a4a8218573b08a371040ac42f42df117e48296b051fa25df",
+    "apps/api/src/db/commerce/invoice-delivery.ts": "sha256:835d8ff98db637e99fd78fd28d759aa1d67b8918c12e5393c045975e39522d1c",
+    "apps/api/src/db/commerce/invoice-lifecycle.ts": "sha256:d03466e7399042f53f1fdd947fc71af476bbcdacd28dbb9e4c596278386ceb91",
+    "apps/api/src/db/commerce/invoice-policy.ts": "sha256:df821fd43c9a318eb2edff29153bdbab2276e793869882b64596756ef8b07662",
+    "apps/api/src/db/commerce/invoices.ts": "sha256:9e618b86ee804c5e18c0300905d811f3a0c6d17facad03859358753f9dc7168a",
+    "apps/api/src/db/commerce/legal-policies.ts": "sha256:761d46805b35dc3428bc506da074cd24baa9fc9ab8ff8598929773b4cb0e329d",
+    "apps/api/src/db/commerce/recurring-invoices.ts": "sha256:b107888d580019feb40dafe5d29cc875b7cd69040d99218b4fc5ce4e8a88ad03",
+    "apps/api/src/db/commerce/sales-orders.ts": "sha256:df856bdc576febd6d3dc9706c6c28dd713b368f109f9f6f854c6dcd0445e5165",
+    "apps/api/src/db/company-profiles.ts": "sha256:3ca5ab31f0ad2de3abc283e8e420e27ab1af49fa8887576de366e77a94d6970a",
+    "apps/api/src/db/company-setup.ts": "sha256:af16a90ec6642a7fca8836e600f53d910cc3b00dfad8e7d7f80e049d03e8b0a4",
+    "apps/api/src/db/connection.ts": "sha256:9a10352e3d47437b5084d25f806e80ae06a01767e0d38d07db5fa57af0dc118a",
+    "apps/api/src/db/deadlines.ts": "sha256:675119d66ff3bfbd0ab9c40a9547614eda1c10a28371c315560aa9debedacb94",
+    "apps/api/src/db/dimensions.ts": "sha256:cdabe2c33da6740fc8f46156a1e44a28a33a9d73f765ad5a086ee83fdd17f862",
+    "apps/api/src/db/evidence-work.ts": "sha256:0fa2dd0390fac94caac31a9b009d44695f83adc3ddd5b878ef9543b761e7dfcc",
+    "apps/api/src/db/exchange-rates.ts": "sha256:80883f4e7f679f66e52a9cb9d7fb4cd0732cf37d57b398dd9a2c352b0466d69f",
+    "apps/api/src/db/firms.ts": "sha256:026755a80f3a0358b1f7be9fdd842cd7fc7ffc75fa60e92eadd2002e9b77628b",
+    "apps/api/src/db/fulfillment.ts": "sha256:d929501cd14fb889a05a6a7ba33524f1ec971b994febeeb662f242b4a6aa79c8",
+    "apps/api/src/db/historical.ts": "sha256:84e9571c2895941850892510f38bc50a35fca1ba6fa5bc8addd010b830a18740",
+    "apps/api/src/db/human-actor.ts": "sha256:8a9523b8f998d7c20238bb4cf2005c17e61919a77745eff2819b4fa954ba4091",
+    "apps/api/src/db/identity.ts": "sha256:b3b80eb60098fc2f1da659e01d51f11c650afe411eeb0aeedd02af84f49eee0b",
+    "apps/api/src/db/payroll-foundation.ts": "sha256:4f730fcc7a383dd8673a004e74b5f6e4e7a0911ec09e10c48f2c7146019495d9",
+    "apps/api/src/db/payroll/calculations.ts": "sha256:f7e2e5f8046b5a2545aaf6e1918489f1fdaf7002390c1e44f5256355e1e42950",
+    "apps/api/src/db/posting-admission.ts": "sha256:f6965e408c123e582e4a73facc6de9ec58a69a6e278affc6ac47b047499a6e89",
+    "apps/api/src/db/posting-corrections.ts": "sha256:f952b833aeb68548b1e995d8cc3d7f9b2e41c6bf224c71306599fbebedb01563",
+    "apps/api/src/db/posting-recovery.ts": "sha256:1fabb9d5859ac5edbf32b27eacdedea455cfceb7105ba005c16e66a4381ba6d1",
+    "apps/api/src/db/posting.ts": "sha256:a4fe23948c8f94e069f3303d2567b0b7e6858a1bcd95b90e7f183ea32114a979",
+    "apps/api/src/db/preparation-jobs.ts": "sha256:030e82be7b6bb16763ba7a825919dd7c707de645a2f813c60c0555d8b7c584a1",
+    "apps/api/src/db/purchases/acceptance.ts": "sha256:a6a8cabf2f167fdef88dea4cdbf78eb43929a515695b2f26b34244fa22d86df4",
+    "apps/api/src/db/purchases/credits.ts": "sha256:bdd1f29d1a1a21802eb6e39f34eceb47362731fb414d4eca41766f1818b875aa",
+    "apps/api/src/db/purchases/drafts.ts": "sha256:1c862dcd711458934a31c94d90c9890118fa191bf4287c4d2857d9d90dde12c8",
+    "apps/api/src/db/purchases/extraction.ts": "sha256:02346d1babf931cf307f5f2a23fce27561e1b98ba28bd12726db3783160916bc",
+    "apps/api/src/db/purchases/inbox.ts": "sha256:8b341535722e11d2a5e1104d06ab3e7cdfa4943fda18ebd01f694260c6d1995b",
+    "apps/api/src/db/purchases/payments.ts": "sha256:5693f8fc5ebcd6591bcfb34ea0f7a80483429d3e412aad4d135c0bb87985d4ff",
+    "apps/api/src/db/purchases/recognition.ts": "sha256:62de9d40659c171c7768b6916ab436ca40b2f178e489dbabc4a6ddbab77153cf",
+    "apps/api/src/db/purchases/shared.ts": "sha256:c719a62683329611824b04b7def2c670119cb91b9d35defb87332cdaeec2e80d",
+    "apps/api/src/db/recurring-rules.ts": "sha256:3a932d1269e7470edd7bd81809ffc2138f104a2f4e54d3f34128e7540521657a",
+    "apps/api/src/db/register-reports.ts": "sha256:b7ede546ca66039dfb5cc3bb34ff69a7015cc74db7bfd2b08faf9a4ba5dc91ef",
+    "apps/api/src/db/report-statements.ts": "sha256:528e990495273f2aea3f4765ee5ee133847dcd0141d414fc19172df6b2a4c4ec",
+    "apps/api/src/db/reports.ts": "sha256:8182854345b66699186963dcb62a51be2c46732607ff3f66f490bfe77438b9f1",
+    "apps/api/src/db/rule-impact.ts": "sha256:ddab4ff3edd1fb6058ead9dcfba2fc8a2c6e8bed50687e18d9c7b22553ae558b",
+    "apps/api/src/db/schema.ts": "sha256:34d0128a7a382de342469178fb3edcf72adf1992a9caaa2bd4a515f5e981987c",
+    "apps/api/src/db/sie-import.ts": "sha256:273b08d5b097587749188bd8eef2d3b7862b4b22e2ba1a3e3486d09bb0e0068c",
+    "apps/api/src/db/sie-transactions.ts": "sha256:278cd290fa9c88a2d6d918c82650956b884264e05e85f27510704c9e42e6ab36",
+    "apps/api/src/db/sie4e.ts": "sha256:bd1d7fe20fb53dd98c3c221c9a78507a8766145040db2d3c356d5a43e7e89e21",
+    "apps/api/src/db/source-retention.ts": "sha256:feb946cd9434fdb7c29ae1b5d6c3fb486f3d661e2e5a97a38c0abb7d7ad2db7e",
+    "apps/api/src/db/sql-values.ts": "sha256:6552c4759c6080a740b1944302fad4820435ef49650a08517227a9fc8ff0ccaf",
+    "apps/api/src/db/subledger/assets.ts": "sha256:eea28edc4f87ecda1495a2dbe58c3eb51353c14ad49a1f3beaee6d9422db95bf",
+    "apps/api/src/db/subledger/control-body.ts": "sha256:04056e0bb78a1b6cad7f2c7c031a4fe5fac69dc52faab1540bc99c10f9135aad",
+    "apps/api/src/db/subledger/controls.ts": "sha256:ec66357e88ec8dc2639079a21e6d81f843d0e161d7db003c0c0818f16bf97f7f",
+    "apps/api/src/db/subledger/owner-operations.ts": "sha256:fe991528242ea8a70c6edc93db9b2f6a8f1db07421db4e731c9edc0c7e55bb67",
+    "apps/api/src/db/subledger/owners.ts": "sha256:5b59443b3d37c663cffb41270ce99aecb853b5254bebae26f194d7d3362d37b0",
+    "apps/api/src/db/subledger/schedules.ts": "sha256:f0fbbd616109e3102b8ea96f9c6302d03d79151843986e1305de8c39ecd6b370",
+    "apps/api/src/db/tax/corporate.ts": "sha256:9517fad8d877099725edc16cc6f8bae8cb2f1d6060d81a3d8eb7767fa426f756",
+    "apps/api/src/db/transaction.ts": "sha256:a57c4269bee534c0fdda06edb5f226147a22fe479558556ff363e34810d11fed",
+    "apps/api/src/db/vat-return-drafts.ts": "sha256:2e2ca9d8024d8e325ec4114345ae12f4a07d2ce69133c973d26302ea2ea863e6",
+    "apps/api/src/db/vat/actual-return.ts": "sha256:510f0224f719292f824dfd7f8b2a43a97ecdbb00f701ef1dbaa6bd4e3ee1fc31",
+    "apps/api/src/db/vat/expense-tax-assessment.ts": "sha256:370464e384840a5b75c514e620e32a073a9bbc17b1044ccbccf785905483a56e",
+    "apps/api/src/db/vat/expense-tax.ts": "sha256:48ce9b77bc616ce6e1ede08d84424964d6781ba0d2ec18405918631719a35bb4",
+    "apps/api/src/db/vat/reclassification.ts": "sha256:41fd797dc6f7f4c20456f7499e1c556717e203d429655701f80f219379d60fb6",
+    "apps/api/src/db/vat/returns.ts": "sha256:cb8a2d6f7ea5deb188da776cbc215c5355f94dd4a6ab6b46a9ae5d514e15c17f",
+    "apps/api/src/db/vat/tax-account.ts": "sha256:58f79bc10c9a69703d04ad96ca1bdb45d5e71fe853782335bdebb638d3ec31e0",
+    "apps/api/src/db/workspace.ts": "sha256:44cba5800ede985c94bcf058a6db51648042a148d58b62d4e7de4756462fd364",
+    "apps/api/src/index.ts": "sha256:00831194bc17c709ec629d0ae10e40c7aad59b7eb26f09de0c1b58b11ef199d0",
+    "apps/api/src/runtime/cloudflare.ts": "sha256:2ffcc21b251add5a8019389416ef92ee8d8fc1f33dd87907dc5f8148f2190ca8",
+    "apps/api/src/runtime/environment.ts": "sha256:7501b2572a10062fadbfede0ce67e096f7b395856a6e3a9067f68d5c245c1d2e",
+    "apps/api/src/runtime/preparation-queue.ts": "sha256:e9e022cedb9bb1787ac5f27df9dcc72dcc7e4e066b0c6ada03275d63faf3da06",
+    "apps/api/src/transport/http/auth.ts": "sha256:b5309ab01576f8813c95471e6a7f2f9dce3c2132b3730fadc69dc756d2ce04f8",
+    "apps/api/src/transport/http/body.ts": "sha256:a013064ac308b373d638a69562b6511a631998d8277f531092ca10bb1036caee",
+    "apps/api/src/transport/http/routes/accountant-review.ts": "sha256:58920fbf1332ffba22cc2431b3ba20c70be2baad1a7417aa338ad55dcb1209d1",
+    "apps/api/src/transport/http/routes/accounting.ts": "sha256:72a07096edb3cf61ecd5e4effea9817bcb498d7706dd664eed482e4fcbfaf5a9",
+    "apps/api/src/transport/http/routes/ar-legal-issue.ts": "sha256:c8105f8bd02901e757cb64c6ca866c8979c60b08ced86c05efb68a8f5fb4ed33",
+    "apps/api/src/transport/http/routes/automation.ts": "sha256:3bad0d5f4d8da8972407314b843864c69a1921119d3b82552035d1ac72cc2e35",
+    "apps/api/src/transport/http/routes/bank-connector.ts": "sha256:83d5b48fc655fc23fe39877d08f4c7f3bb391c698de30e7331ea110a2a002f08",
+    "apps/api/src/transport/http/routes/bank-inventory-signoffs.ts": "sha256:8051de23d3084ba63bfb6545c1366b02ecc8016b6a32038dac079a402a3358a3",
+    "apps/api/src/transport/http/routes/bank-match-candidates.ts": "sha256:c49d19d44cc83a6d2524bbfd95389b1fad6e4f4efd641fb06b9018b63f260430",
+    "apps/api/src/transport/http/routes/bank-match-reversals.ts": "sha256:849f4f027a74e910a639fb13f7f0be143fcba5396eb956faa768bfe9b9ff084e",
+    "apps/api/src/transport/http/routes/bank-signoffs.ts": "sha256:b7f1001fad9b0c3989957277f56e4e9d96939e81fb52444a42f710374772910c",
+    "apps/api/src/transport/http/routes/bank-source-coverage.ts": "sha256:38e22465313dccb48f6866650160fd32c3f7986e55452b7eaf80ab10f76fc1dc",
+    "apps/api/src/transport/http/routes/cases.ts": "sha256:c7a2363c42c7bc0b934a5229605df45426def8996f5fc3202c275f032b8b2c1b",
+    "apps/api/src/transport/http/routes/catalog.ts": "sha256:8b63f7351a0672425d9e7c76d180e44b970c6158fdc639a4e1e6305be802f511",
+    "apps/api/src/transport/http/routes/closing.ts": "sha256:142b530f8fc931c89acd9e485f470cea4754029f02a3a268afaa0c927e24b1d6",
+    "apps/api/src/transport/http/routes/collections.ts": "sha256:d6b4ff2295cb8e5408e41a4a27a98e170bed69d587cd48487c716506addfb482",
+    "apps/api/src/transport/http/routes/commerce-allocation-reversals.ts": "sha256:69d5ef8239a4151fa979df43ecf25577899e52660d3897cfda13990929890c09",
+    "apps/api/src/transport/http/routes/commerce-fx.ts": "sha256:55bc7eed74aa1eb727c41f1eb3788fab058f32e2418c22ec1490aef1701e09c6",
+    "apps/api/src/transport/http/routes/commerce.ts": "sha256:8d589553a0e1ae1a8910c7ef53df75abc228a362560648cd5ed73b27d5097c5c",
+    "apps/api/src/transport/http/routes/company-profile.ts": "sha256:0991aa3d8a6b5f9d7270749c4bc92af547b6eaa4ab0dbd7690548cf3ed6e33f6",
+    "apps/api/src/transport/http/routes/company-setup.ts": "sha256:31080adb4b424aad3199fb41ef12f1afa8c61780221d7bf3785b49fd4ecaf0b9",
+    "apps/api/src/transport/http/routes/corporate-tax.ts": "sha256:4bf8e47b974bfbb954406e7c3958fd2da4aa77ec41732dc2311c38f3d04ca92d",
+    "apps/api/src/transport/http/routes/corrections.ts": "sha256:07d4824a2d8be95e3f34f63f5ccbb962a5ad2cc57da0411b20bdf40bb557b04f",
+    "apps/api/src/transport/http/routes/crm-master.ts": "sha256:1714ef818bad5b72a6402153ea1f176aa4225ce343da22597794725f4b1d8226",
+    "apps/api/src/transport/http/routes/customer-credit-notes.ts": "sha256:08f291acf7e7a7434f90c5ccec26b4f9530c662add59818ea8fbc22a7e86c6de",
+    "apps/api/src/transport/http/routes/deadline-feed.ts": "sha256:6378b75fced3cb3c530a6592048d0f29633c84d04d58cfd2f09fa1f95a24387a",
+    "apps/api/src/transport/http/routes/deadlines.ts": "sha256:5e7aad39bcc950b27fd952958ca74063ab631ed97e41d29d88f4074f3cb37202",
+    "apps/api/src/transport/http/routes/dimensions.ts": "sha256:b290e8d478ceb3bb72ed17ea0864fb2046ddcb23273605111f108e4db3c6ee32",
+    "apps/api/src/transport/http/routes/exchange-rates.ts": "sha256:ebfee07eba9b5f7cedc17a57f50ffb736bba7c89c00c8958da89551c480bb989",
+    "apps/api/src/transport/http/routes/expense-tax.ts": "sha256:ea5aaf3197f97cac1ba8ee2077f853af4d6305c83b271fc6cec05a3902dc9080",
+    "apps/api/src/transport/http/routes/firms.ts": "sha256:a3a1db0ad6444b9d8a89f37dcae78a5cc27170103320336490ed1914d3cfc772",
+    "apps/api/src/transport/http/routes/historical-migration.ts": "sha256:29ef024949162c03d158b2e154c8c4c0024bccc4040025e69d172d1716a09257",
+    "apps/api/src/transport/http/routes/invoice-cancellations.ts": "sha256:4f29b9ae959b6b9d9f8c77ca02a9e5de65c1c8131b9380b9f79f512862fd28ea",
+    "apps/api/src/transport/http/routes/invoice-delivery.ts": "sha256:40a8e72c659a0055c9a0ec1964e34eed1c40a1e3fe6e858ba61aacbf63e6aad5",
+    "apps/api/src/transport/http/routes/invoice-documents.ts": "sha256:04a31c52b7fa33ee8a7b745b9363d5da0466329278e4c52ea145a5c0282f7b44",
+    "apps/api/src/transport/http/routes/invoice-drafts.ts": "sha256:57722561de3c25fcbc4a751809b1bb14217e01cb2000d99f247b88d84dad2d7b",
+    "apps/api/src/transport/http/routes/invoice-issuance.ts": "sha256:f6f9fb847155794fb5f90959261502961be462318eee475d4c9b5586d9f0a1dd",
+    "apps/api/src/transport/http/routes/invoice-pdf.ts": "sha256:33eded278ad0c98a9c2efc570c8a2a74e487ab01a92b7214f86d54667670def6",
+    "apps/api/src/transport/http/routes/invoice-policy.ts": "sha256:7250d453e451f9a56cc793ca5e889482635339ac8b9bfb67ac67111733988f45",
+    "apps/api/src/transport/http/routes/legal-delivery.ts": "sha256:e9623fdf3d592efa7988ccd0abc6f44e114a2b0f86b0ffd2809e44f8c17cd23d",
+    "apps/api/src/transport/http/routes/legal-invoice-pdf.ts": "sha256:90f9dccdd8fea71b1dbe642f10caf34d548edccd2755007e96fdc31363f0afea",
+    "apps/api/src/transport/http/routes/legal-sales-policy.ts": "sha256:ec787b5aefc938ed2db2e9b9ff60938fdc80f3fc399cb0e22c6d7b743510e82f",
+    "apps/api/src/transport/http/routes/owner-operations.ts": "sha256:f74eb083bec33b013a0bb6ff66cd863bb472d5c8a77e81dbd24f24e63771b0ae",
+    "apps/api/src/transport/http/routes/owner-register.ts": "sha256:298e00fef97847bad6f4272255b437050cae3042ff05b079f526418e89717a63",
+    "apps/api/src/transport/http/routes/payroll-calculations.ts": "sha256:9a0ac6f9bc0782fdb2ca4eb2664ff3b037a50207ec9fec3df8acb6165b2f7635",
+    "apps/api/src/transport/http/routes/payroll-foundation.ts": "sha256:f3e00dfbef535c204438a9f9b48c6d9d2f7ad1402ea2241cc1dd7b9bee338855",
+    "apps/api/src/transport/http/routes/posting-recovery.ts": "sha256:0faa1bfe66aa5fc012fb50aee1efd3af9c663c2ff959abdf36f3f5eef198f2c0",
+    "apps/api/src/transport/http/routes/purchase-recognition.ts": "sha256:21cebbc7c18f83a49bb3f0bdb87122e987c4691bbe3e8ec1a6fcd669c197da67",
+    "apps/api/src/transport/http/routes/reconciliation.ts": "sha256:cb77914be694dbd02a7c05f87a3645cd56b8a0ab6c4bd2fd63534dd63739a656",
+    "apps/api/src/transport/http/routes/recurring-invoices.ts": "sha256:11585162601acfb64af3285e26beffb59acfd118452de643c4d4d4f70f6af434",
+    "apps/api/src/transport/http/routes/register-reports.ts": "sha256:108204715e9d8ec6466b969fd32ca08a5c57961365f9740fc52ded3837820558",
+    "apps/api/src/transport/http/routes/report-statements.ts": "sha256:004dd35049d9a071c075d007d177771e776e4fd0a5b85c327d2ede69557b6f95",
+    "apps/api/src/transport/http/routes/reports.ts": "sha256:fd420619d56a6e3cb290ceeb2b3aea0774207c791eb7f2383459d27b07e3bc4a",
+    "apps/api/src/transport/http/routes/rule-impact.ts": "sha256:13460eb90f418b1173f05363d3077a20cd10c1cd21a9326c05ecdee56c72b9e9",
+    "apps/api/src/transport/http/routes/sales-orders.ts": "sha256:470bc16022f7e67a8ec37dd802ceb8e89abcc61d8d0ac459c0de58fc067a7d8d",
+    "apps/api/src/transport/http/routes/settlements.ts": "sha256:167e1cb70bbb2c3b9525bc8ced6ec65a6eb0b0a921bc83f7704cd7e4b9fb8541",
+    "apps/api/src/transport/http/routes/sie-import.ts": "sha256:048ea74b55a5f2dd48f3e884c8dd410aa967ec267d580d7f2a4031b42f9e2668",
+    "apps/api/src/transport/http/routes/sie.ts": "sha256:b8053c033e18c6e326546ba55f6539f6cca85cc86ce5c61781c6888eb5d44a80",
+    "apps/api/src/transport/http/routes/sie4e.ts": "sha256:b93f55e7864092c10a2f261e88957d5f05d64e2620acd133de0d8e3a8e7af0d8",
+    "apps/api/src/transport/http/routes/source-intake.ts": "sha256:c267d5c701c250bb36e0dc3eb4a559e23c7e523e74338bb50f3e4799b9cdb2bb",
+    "apps/api/src/transport/http/routes/subledger-controls.ts": "sha256:1776d19f7aa68b49e2be3d631d236777493e7f4c8b46f975886b278559584975",
+    "apps/api/src/transport/http/routes/subledgers.ts": "sha256:3fa8bd3ed892ebaf3857f1efbcda6433c03dfc8ac0ab3a747b90a415fe6cfb42",
+    "apps/api/src/transport/http/routes/supplier-acceptance.ts": "sha256:32585b5727c181950a375563c82c8492d191be7b0284f0928c42461aa6e9c186",
+    "apps/api/src/transport/http/routes/supplier-credits.ts": "sha256:70cd5a29dd99935a9b225674bc76bd165f096aa96337240ba14d1737824953e8",
+    "apps/api/src/transport/http/routes/supplier-extraction.ts": "sha256:48e1aa66d7a280174a7e55c0e34b89c44c4fcfdb3f4a556e3c64b1912e4979ec",
+    "apps/api/src/transport/http/routes/supplier-inbox.ts": "sha256:569407341d3d5c06d84d9c0a422aff3ded7122f568ff036e6af68bcf33aced2d",
+    "apps/api/src/transport/http/routes/supplier-invoice-drafts.ts": "sha256:2f0d250787123c17e43938a51af1e25322736212b91679d67bed9eaa7df4ae28",
+    "apps/api/src/transport/http/routes/supplier-payment-batches.ts": "sha256:6ac4b2c618163257cb2ca5506061dbb02217480717be8304e08a868b5fc867d0",
+    "apps/api/src/transport/http/routes/tax-account.ts": "sha256:78794f8bb22bc5127a98282d3366c0b7f07ac724a2086a5ffd4bf79393a070e1",
+    "apps/api/src/transport/http/routes/vat-returns.ts": "sha256:5ede7002ffd9066be17c06673ae19ab034e667b6a84fa6db9cef3faa13dc2978",
+    "apps/api/src/transport/http/routes/workspace.ts": "sha256:bbddecdb62f16a49af144d334aae4267223b18f27093f871eb396806d9b0d155",
+    "apps/api/src/transport/http/scope.ts": "sha256:e262b8500a19fe52ac6ec56e5502522b0cb4b73e4d293771a10d5a20ec51909a",
+    "apps/api/src/transport/mcp.ts": "sha256:202ba2c6c33377a9d2a87f4896ffe05175e0307f61b80549098e3eafc954b1b0",
+    "jurisdictions/se/src/sie/encoder.ts": "sha256:4513811a6ff6e37b94918518d3563707c64593a1623e19637275a6e393f2f78c",
+    "jurisdictions/se/src/sie/sie4e.ts": "sha256:81dae6b6aa84b35875946a633a70faf86484cf5288a485e256a009b3d39fa3b3",
+    "jurisdictions/se/src/vat/actual.ts": "sha256:3f3dc6fcbc8c7d7fae59a7b3e802c701d6c8e789f16e71da66dca54b082ea8b6",
+    "jurisdictions/se/src/vat/calculation.ts": "sha256:52e6a6c08264e11c1af0035a6693abbc4c3c50c60c1b059804f90774412d6afc",
+    "packages/contracts/src/accountant-review.ts": "sha256:30db14d20b6cc1af47eddb4d4f84e9c0e2462772092db0e5d6a6e17cc16498e6",
+    "packages/contracts/src/accounting-errors.ts": "sha256:e5f7b95fe930ebf3a05e174bd384ffc110214dd3cd7ebd636ae470b472036087",
+    "packages/contracts/src/accounting.ts": "sha256:157b666834b6149fa9561f4395dbea0578e41d1d8b56b53c66b823979c4de9c2",
+    "packages/contracts/src/api.ts": "sha256:51c8afa11fb1ad4af78372a2744733ebc2173de699d5be246167e4eec2dfadab",
+    "packages/contracts/src/ar-legal-issue.ts": "sha256:5e24687f21c9d783eba61112775f072a5da299ba0a1bc34261f92727cb7bc4cf",
+    "packages/contracts/src/automation.ts": "sha256:4532c4597f9011dc65199f1863bf6dc6ea544f5ed47f5c8bb68efd86189b922b",
+    "packages/contracts/src/bank-connector.ts": "sha256:60c0e7b46b7d922e8a4ec89e0b63d6ed4cbd8c9ff3f997084d3f8aa5a80ebe5d",
+    "packages/contracts/src/bank-inventory-signoffs.ts": "sha256:ed8b8dca2042b81d7ab818ebf40cbc04cadc23832bf0ad39a989627a57cf0c0d",
+    "packages/contracts/src/bank-match-candidates.ts": "sha256:f84ae7af7ebc52e630bcfc58bf3b0e093aee378a057ad2bc66febcfdc541311a",
+    "packages/contracts/src/bank-match-reversals.ts": "sha256:ccfd99d5016816f0349dc470e8eebec499c5b36e4085b63adccc08719e49f682",
+    "packages/contracts/src/bank-signoffs.ts": "sha256:1eda66c50c18d87dce67a672dd988cfd5fdc6305ba8bd63c7a902292d88ce0c3",
+    "packages/contracts/src/bank-source-coverage.ts": "sha256:e5ee76d70c28e856a7580ae84792a7221a2a6faacb0109d289eaaebfc72d67dc",
+    "packages/contracts/src/bank-workspace.ts": "sha256:d5ec107cac3f1b55be12b48faa9ab4eca42e3671ba6c27337dd43092843204c4",
+    "packages/contracts/src/capabilities.ts": "sha256:1aa2185a206a46b847df9b26004f2452778bf3362a26cb6eedf11713b97d2528",
+    "packages/contracts/src/cases.ts": "sha256:dc80e63ac9e121705fdc003eabb7014335033a1b1112a7974cd1ebd8baf05cf1",
+    "packages/contracts/src/catalog.ts": "sha256:2f7e46c561b7bfcbbeb0ef0704ae5f4eea00e97a0baf4ddeff00ef8cd8d295a9",
+    "packages/contracts/src/closing-providers.ts": "sha256:49fc16d052f4f82b1f7b64a24fd878268ba3d85269ae989a4d422eb5050e9ab2",
+    "packages/contracts/src/closing.ts": "sha256:7d339c84759a59009f09d833c7fc8cdabfb58af124af866337d4cf46986517b2",
+    "packages/contracts/src/collections.ts": "sha256:c0eb22f2ff3f62f5761a47c59c96b6a76435ec8955474f98cc89a619533cb5d5",
+    "packages/contracts/src/commerce-allocation-reversals.ts": "sha256:c1791cdb916dda5e110781e99a10693825585153e84960492104dc132f8f6ce6",
+    "packages/contracts/src/commerce-fx.ts": "sha256:3210327f645495d7bfaee868cafb443a201156a755c1f5f5b11634c8b0186aeb",
+    "packages/contracts/src/commerce.ts": "sha256:fd2a86a8add6380686ed966b55cc106ec437a3fb9278c849cc8ae438285a72a0",
+    "packages/contracts/src/company-profiles.ts": "sha256:21c13bf9cdad11ad2e6b7d43e10e64ea97aa1f9b6a20c6653c2b52a2374ac4f6",
+    "packages/contracts/src/company-setup.ts": "sha256:0a6649f154e15cbe3c559ea11a69f360581a9c91676705810d08147383844f13",
+    "packages/contracts/src/corporate-tax.ts": "sha256:0616162a1af6b565c7ebc74e713fa440905494eb0d279c422e88ae4c277b0ae2",
+    "packages/contracts/src/corrections.ts": "sha256:34a9950d8a773913755f186da86b72175208b1df80e62da2c3c6c4bdcd929158",
+    "packages/contracts/src/crm-master.ts": "sha256:db6d6158150ca153c4d72521ecc4240c046ff3335c929bdcfbc1a3bd5235d0c2",
+    "packages/contracts/src/customer-credit-notes.ts": "sha256:aad9b6c663857c05266d0c3f210869add96e0d74da0e695b9e0dbe7a599ff524",
+    "packages/contracts/src/deadlines.ts": "sha256:6be332d5dcf010e3d9919cedc3db154d38ce74383da205dcf40106038cdc29dc",
+    "packages/contracts/src/dimensions.ts": "sha256:7d7323dfc2756a235b928c8bb0bec47180e8dcbaae229349dcbf791932e716e2",
+    "packages/contracts/src/exchange-rates.ts": "sha256:9dd9533d05143d6ed33927540c2d25b5ab73ad8203438b6cdfb4ec86fdf9a746",
+    "packages/contracts/src/expense-tax.ts": "sha256:ffb9d5dc744e7c464815f949bf3c3ee22aa6eea0899d336d12a28f1403b06341",
+    "packages/contracts/src/firms.ts": "sha256:19bf4331141228dc94a5ebba1d16caaeea2e52259571061bde436566b6f5c1ae",
+    "packages/contracts/src/historical-migration.ts": "sha256:fbc3ebe494f1d0c6f9e48a740d19d19a7d39dbdb63dfd50157537ddc07387799",
+    "packages/contracts/src/identity.ts": "sha256:516b40d548d15e7a6380690f882052e6b2285ae8aeb4760ad74e6a6b37758911",
+    "packages/contracts/src/invoice-cancellations.ts": "sha256:b4bad7bb36d1fb58969d23f3efb26e6309a1958c8449eb7ce0e018de60705fb4",
+    "packages/contracts/src/invoice-delivery.ts": "sha256:df91193e27455bae7b0fe943eca8a59d97d1f1f3c7adf4aa64ee499d3f896354",
+    "packages/contracts/src/invoice-documents.ts": "sha256:35783f91fabafe0fc36965ae3ec3c8f3764abef1a1a692320ac5bc46445a6fd5",
+    "packages/contracts/src/invoice-drafts.ts": "sha256:d68c893f3975df75b7f64c9413f8b15af611cde9cfe807c1e398168605d658bc",
+    "packages/contracts/src/invoice-issuance.ts": "sha256:e0a0aca9e94b67fe303baec1fcc532b20ef4438e6d4716fadc059cfe0170b84e",
+    "packages/contracts/src/invoice-pdf.ts": "sha256:1d15cfd9202030243b242cdff58b99c85d9e2845be38f36715a9576edf61acca",
+    "packages/contracts/src/invoice-policy.ts": "sha256:40fc98b859b28766834ea6e7a489898364bc0a3493622d0d17c81813d696f9e9",
+    "packages/contracts/src/legal-delivery.ts": "sha256:8b088d026b7c04c76e16920451c36a9c76db9547c41b0735e4bb05b738525f3c",
+    "packages/contracts/src/legal-invoice-pdf.ts": "sha256:57907f904116ecf5e1259785fce37a4d9e038d8700af7676b4e6adbb03a10b65",
+    "packages/contracts/src/legal-sales-policy.ts": "sha256:7d8e79f80bcd4770233b11b6eac34048b54209e8c983eacae291cbf2b0f6408f",
+    "packages/contracts/src/operations.ts": "sha256:430b388f1a41708a72c54a9a6affb8202234dca4fe03e5da932e04d2d0ba39fe",
+    "packages/contracts/src/owner-operations.ts": "sha256:dffe2ee7c552b9b2d3f8ddcccad8408abdf71fcf8e90b5f19f1b047163499021",
+    "packages/contracts/src/owner-register.ts": "sha256:14fa708ebace93be9f6289119487a4936ed7584bf29448493417d64f63aac14e",
+    "packages/contracts/src/payroll-calculations.ts": "sha256:d065dcc7d5ec7d44d045083f353685e46384145639ea675a739595a64d42e2c9",
+    "packages/contracts/src/payroll-foundation.ts": "sha256:0c41e7a72ce07de1b7782558f786ee18a0102847c5bb9044d0d2def1ce4743d3",
+    "packages/contracts/src/posting-recovery.ts": "sha256:d5d48bac4c58c47c2e116eb08707b6d2cdb6e7a2914179795a3716d5a75e88a4",
+    "packages/contracts/src/reconciliation.ts": "sha256:84d69e68701504106d24d96abb8649f8fe3e7695887bb75858563aee4ae99d14",
+    "packages/contracts/src/recurring-invoices.ts": "sha256:4223bd7578aee1ab51ce6aca794e02ced35cefbba1f3cccba52af7b7e29aa302",
+    "packages/contracts/src/register-reports.ts": "sha256:cf2d8b4cf20c11b31ad01bc87a7fb061fe47116f9e475dae59beb6b7384a0ae2",
+    "packages/contracts/src/report-statements.ts": "sha256:97c6229ac082e44c74d07cdeec34123184ef98fe83d4924a498b7078709d709f",
+    "packages/contracts/src/reports.ts": "sha256:fbf71d2e6f476881a2d61177ea81dcc09d75f3419118f00c9d4b1d927b47f34b",
+    "packages/contracts/src/roles.ts": "sha256:72faeeffc8c8dd17aa7dede077a7eb3100282f7516e533e9dfb124313f98e56e",
+    "packages/contracts/src/rule-impact.ts": "sha256:ca1c3be1290ac8c353c9620c750cda2475b474f7bbae9633de9d5c60f3b6879a",
+    "packages/contracts/src/sales-orders.ts": "sha256:089b7fea81bcc71d03d9d1aa01e7e2aee3c5f4b67cd4b1f0394471199564d212",
+    "packages/contracts/src/sales-register.ts": "sha256:3b04b9c84db949099c1d77f9d0786ab21075427b1adb74ee5a036b6d085da858",
+    "packages/contracts/src/settlements.ts": "sha256:1f4141bfa35386a831d402a8849cdcc98228a81b14fd4d2c96f17434316d01ac",
+    "packages/contracts/src/sie-import.ts": "sha256:bf230a819dac4e3465ea0e10e45ead0cf4034e99657222ba4091a7fc15390e72",
+    "packages/contracts/src/sie.ts": "sha256:29ac669384e3904c62b19709fb87d5bd715373260851988f4fc6f850920f1817",
+    "packages/contracts/src/sie4e.ts": "sha256:f0ea5e188a5a57d567e0b634f6a6a36aab3dccbaa1ce4576ed51c4ab1e71ca03",
+    "packages/contracts/src/source-intake.ts": "sha256:8f0c6061aca3d2fdd2606f71810b88f8d94c47258438e86c0a925c8bcce3c217",
+    "packages/contracts/src/subledger-controls.ts": "sha256:248782a0d9723fc635a3b8b36238930334552cbbbe99f1082c7829296ef2b46c",
+    "packages/contracts/src/subledgers.ts": "sha256:98cf3d2b89776e90dcebcd8558eea1298882fcaebc7581be362f48c4887350fb",
+    "packages/contracts/src/supplier-acceptance.ts": "sha256:8366ecbdbae3682b8cc881827d25d71b9451c5c0155db5f4a93c2deec19b702b",
+    "packages/contracts/src/supplier-credits.ts": "sha256:20ccd8b77b37504f165fe34bc3835070a40322eed6f415a749c0f00d95c4305e",
+    "packages/contracts/src/supplier-extraction.ts": "sha256:3c59be44dfcc07210e391084c5d22f6ff2e3c0f333e5a3e75fe2a2bef087ce24",
+    "packages/contracts/src/supplier-inbox.ts": "sha256:fa486436e6c026384a62d2b7db9edcb0cb213859bc2bfbfa2f2138552de3c6a5",
+    "packages/contracts/src/supplier-invoice-drafts.ts": "sha256:e12e3eb65f52b5c3c6f9ae5208d6560cfcb0be128128662a5503f44e3b8f3353",
+    "packages/contracts/src/supplier-payment-batches.ts": "sha256:38c2c44f59396893eec2baf10ec2cfde31d3aa5c10b6e2cdfc3c5650f8d0dab4",
+    "packages/contracts/src/supplier-recognition.ts": "sha256:d9d2f7641323f169e16bccd464ea3f3bcba6e8ee29a0be2bc056ba29c56b00f7",
+    "packages/contracts/src/system.ts": "sha256:cdc489e89937a30607186b6477c11d17c81c7dd5f2f8a1ad4d157ec6b2385f36",
+    "packages/contracts/src/tax-account.ts": "sha256:9017bd37dbe80af0b66b421f1fb9767967161e174318c46c8fc21698239fa606",
+    "packages/contracts/src/vat-filing-release.ts": "sha256:2b0d158f8bbe299350232e617f2489eb70b55ef193ab561fba4e4a4062fd1239",
+    "packages/contracts/src/vat-returns.ts": "sha256:eef6414e0c3100d88cf1e58dfd93c9222c182650d164bc8dbe71bacb5d2af5cb",
+    "packages/contracts/src/workspace.ts": "sha256:ca12de75d9ee73e9d6a9e23c92a7e8d2bacc0290ff09331aa70e277948131936",
+    "packages/domain/src/books.ts": "sha256:bb695f149b149ea9a394eeffe72b0c4f00a1d4f29cdc227b9aeb108e3fa9e36b",
+    "packages/domain/src/canonicalization.ts": "sha256:537a76a6c7e325d14d58e11724753ee8ca7cfa4601c735cb1797e40f1b0cfbb8",
+    "packages/domain/src/dimensions.ts": "sha256:c00e0771c070e12e48bed75e17b4fc49a98ea8dc350f861efd1023d6f3fc3114",
+    "packages/domain/src/errors.ts": "sha256:16fb45a9ece6cbf975534e2d4bae9468ce10e2e5783bbcfdb788a41728219355",
+    "packages/domain/src/exchange-rates.ts": "sha256:ea9e67fe8bf5cd1beb1a0d25af8155a59e7d6f3ae0077deea86e45e37902a0b3",
+    "packages/domain/src/ledger.ts": "sha256:a978136e96e57ddc9d63539e2b68b3dce7e41b113e138424e365e0151abffb7b",
+    "packages/domain/src/money.ts": "sha256:aabf2ae4c656ace129c822e81e194da592bd3b46f97a197f6565e8c845c36663",
+    "packages/domain/src/owner-funding.ts": "sha256:093a88b8ddbce55cb5b34bf8edcee561c6744f4e0b8202d4717204d59acfc82f",
+    "packages/domain/src/posting.ts": "sha256:37b2fda1b877c71dfa7d6bf6bcc61795dce13f716cd3c0ef3a48b8e6ba281b6a",
+    "packages/domain/src/purchasing.ts": "sha256:bbf04d5c7955e51f8fcc7d9ba8c7f14a94b1165d8763cfec05fe0bd2867b9726",
+    "packages/domain/src/recurrence.ts": "sha256:da5df1e060c9fa4fcefd8e22546332eb24723d02b099235ee6c84e397b7afc8d",
+    "packages/domain/src/statements.ts": "sha256:66775d182d2c5ac799c3dbd3bcb19f7f326efdc7d8ce9d77af88de3b595880fb",
+    "packages/domain/src/values.ts": "sha256:5020591e4775df25473a0cfb73da0e9b7aa9d01f8fbc1d42dcffd8ce665fe87b",
+    "verification/bend/current-owner-authority.mjs": "sha256:9700802b0826548210d09f7e67da4e49c71285bc5769669472516c51ce63ba8c"
+  },
+  "ownerTreeDigest": "sha256:ad42bc4b564f2319d41dd2e1e0ca07edadf13b021ad3961e56c43f9b238bf3d3",
+  "runtimeId": "node:v26.4.0:darwin:arm64",
+  "currentWorktree": true
+}

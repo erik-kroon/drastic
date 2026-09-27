@@ -1,6 +1,11 @@
 import * as Vat from "@open-erp/contracts/vat-returns";
 import { SupportedCalculatorVersion } from "@open-erp/contracts/vat-filing-release";
-import { calculateActualVat } from "@open-erp/jurisdiction-se/vat-actual";
+import {
+  actualVatMonetary,
+  calculateActualVat,
+  type VatMonetary,
+} from "@open-erp/jurisdiction-se/vat-actual";
+import type { AccountingError } from "@open-erp/contracts/accounting";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as CompanyDb from "../../db/company-profiles";
@@ -24,6 +29,20 @@ import { digestBody } from "./basis";
 type Input = typeof Vat.PrepareActualVatReturn.Type;
 
 type Basis = typeof Vat.VatActualBasis.Type;
+
+type Calculation = typeof Vat.VatActualCalculation.Type;
+
+export type ActualVatCalculator = (basis: Basis) => Effect.Effect<Calculation, AccountingError>;
+
+export function makeActualVatCalculator(monetary: VatMonetary): ActualVatCalculator {
+  return (basis) =>
+    Effect.try({
+      try: () => calculateActualVat(basis, monetary),
+      catch: () => failure("Unavailable"),
+    });
+}
+
+const defaultCalculator = makeActualVatCalculator(actualVatMonetary);
 
 type Witness = (typeof Vat.VatActualBasis.Type)["profileWitness"];
 
@@ -828,6 +847,7 @@ function currentnessReasons(transaction: Transaction, scope: Scope, saved: Retur
 export const prepareActualReturn = Effect.fn("vat.prepareActualReturn")(function* (
   token: string,
   command: { scope: Scope; idempotencyKey: string; input: Input },
+  calculate: ActualVatCalculator = defaultCalculator,
 ) {
   const payload = yield* toJsonObject(command.input);
 
@@ -858,8 +878,8 @@ export const prepareActualReturn = Effect.fn("vat.prepareActualReturn")(function
 
   if (basis === null) return yield* failure("InternalError");
 
-  // Pure. No database, no network and no held financial lock.
-  const calculation = calculateActualVat(basis);
+  // The selected calculator runs after capture closes, with no financial lock held.
+  const calculation = yield* calculate(basis);
   const dependencies = yield* captureDependencies(basis);
 
   return yield* withBook(

@@ -37,6 +37,26 @@ type Selected = typeof Vat.VatSelectedFact.Type;
 
 type Box = typeof Release.VatReportBox.Type;
 
+export interface VatMonetaryInput {
+  readonly currency: string;
+  readonly scale: number;
+  readonly reportingUnitMinor: string;
+  readonly rounding: Rounding;
+  readonly declareNet: boolean;
+  readonly contributions: ReadonlyArray<{
+    readonly id: string;
+    readonly box: Box;
+    readonly signedMinor: string;
+    readonly included: boolean;
+  }>;
+}
+
+export interface VatMonetary {
+  readonly release?: typeof Vat.VatMonetaryRelease.Type;
+  readonly round: (numerator: bigint, denominator: bigint, mode: Rounding) => bigint | null;
+  readonly project: (input: VatMonetaryInput) => ReadonlyArray<typeof Vat.VatActualBox.Type>;
+}
+
 const netBox = "49";
 
 const basisBox: Box = "05";
@@ -55,8 +75,8 @@ function round(numerator: bigint, denominator: bigint, mode: Rounding) {
   return result._tag === "Success" ? result.success : null;
 }
 
-function taxed(basisMinor: bigint, rate: Rate, mode: Rounding) {
-  return round(basisMinor * BigInt(rate.numerator), BigInt(rate.denominator), mode);
+function taxed(basisMinor: bigint, rate: Rate, mode: Rounding, roundAmount = round) {
+  return roundAmount(basisMinor * BigInt(rate.numerator), BigInt(rate.denominator), mode);
 }
 
 // A box is reported in the release's filing unit. The residual is retained, so
@@ -84,13 +104,13 @@ function rowKey(voucherId: string, lineId: string) {
   return JSON.stringify([voucherId, lineId]);
 }
 
-function taxAmountsAgree(fact: Selected, rate: Rate, mode: Rounding) {
+function taxAmountsAgree(fact: Selected, rate: Rate, mode: Rounding, monetary: VatMonetary) {
   if (fact.sourceTaxMinor === undefined) return false;
 
   const sourceTax = BigInt(fact.sourceTaxMinor);
   const tax = BigInt(fact.taxMinor);
 
-  if (taxed(BigInt(fact.basisMinor), rate, mode) !== sourceTax) return false;
+  if (taxed(BigInt(fact.basisMinor), rate, mode, monetary.round) !== sourceTax) return false;
 
   if (fact.treatment === "domestic_sale") return tax === sourceTax;
 
@@ -142,6 +162,7 @@ function assess(
   release: typeof Release.VatFilingRuleRelease.Type,
   releaseId: string,
   repeats: Map<string, number>,
+  monetary: VatMonetary,
 ) {
   const contributions: Array<Contribution> = [];
   const exclusions: Array<Exclusion> = [];
@@ -307,7 +328,7 @@ function assess(
     const basisMinor = BigInt(fact.basisMinor);
     const taxMinor = BigInt(fact.taxMinor);
 
-    if (!taxAmountsAgree(fact, rate, release.rounding)) {
+    if (!taxAmountsAgree(fact, rate, release.rounding, monetary)) {
       exclude(
         fact,
         "published_tax_not_the_qualified_rate",
@@ -341,8 +362,8 @@ function assess(
 }
 
 function boxRows(
-  release: typeof Release.VatFilingRuleRelease.Type,
-  contributions: ReadonlyArray<Contribution>,
+  release: Pick<typeof Release.VatFilingRuleRelease.Type, "filingUnitScale" | "rounding">,
+  contributions: ReadonlyArray<Pick<Contribution, "box" | "signedMinor">>,
   declareNet: boolean,
   currencyScale: number,
 ) {
@@ -415,6 +436,26 @@ function boxRows(
 
   return rows;
 }
+
+function projectMonetary(input: VatMonetaryInput) {
+  if (!/^10*$/.test(input.reportingUnitMinor))
+    throw new RangeError("VAT requires a decimal reporting unit");
+
+  const exponent = input.reportingUnitMinor.length - 1;
+
+  if (!Number.isInteger(input.scale) || input.scale < exponent || input.scale > 6) {
+    throw new RangeError("VAT reporting unit is outside the book scale");
+  }
+
+  return boxRows(
+    { filingUnitScale: input.scale - exponent, rounding: input.rounding },
+    input.contributions.filter((contribution) => contribution.included),
+    input.declareNet,
+    input.scale,
+  );
+}
+
+export const actualVatMonetary: VatMonetary = Object.freeze({ round, project: projectMonetary });
 
 // Every VAT control rolls forward independently over its own general ledger
 // interval, from its reviewed opening balance. Two opposite unexplained rows
@@ -566,7 +607,10 @@ function coverageState(basis: Basis) {
 // The single monetary owner. It returns exact, reported and residual amounts and
 // the retained readiness reasons. It never returns a submitted, assessed or paid
 // state, and it never asserts a statutory position.
-export function calculateActualVat(basis: Basis): Calculation {
+export function calculateActualVat(
+  basis: Basis,
+  monetary: VatMonetary = actualVatMonetary,
+): Calculation {
   const release = basis.mappingRelease.vat;
 
   const assessed = assess(
@@ -574,6 +618,7 @@ export function calculateActualVat(basis: Basis): Calculation {
     release,
     basis.mappingRelease.releaseId,
     voucherCounts(basis.facts),
+    monetary,
   );
 
   const coverage = coverageState(basis);
@@ -597,7 +642,25 @@ export function calculateActualVat(basis: Basis): Calculation {
   const populationComplete = basis.population.withoutTaxPoint === 0;
   const filingUnitSupported = release.filingUnitScale <= basis.currencyScale;
   const supported = populationComplete && assessed.blockers.length === 0 && filingUnitSupported;
-  const rows = boxRows(release, assessed.contributions, supported, basis.currencyScale);
+
+  const rows = filingUnitSupported
+    ? monetary.project({
+        currency: basis.currency,
+        scale: basis.currencyScale,
+        reportingUnitMinor: (
+          10n ** BigInt(basis.currencyScale - release.filingUnitScale)
+        ).toString(),
+        rounding: release.rounding,
+        declareNet: supported,
+        contributions: assessed.contributions.map((contribution) => ({
+          id: contribution.ordinal.toString(),
+          box: contribution.box,
+          signedMinor: contribution.signedMinor,
+          included: true,
+        })),
+      })
+    : [];
+
   const reconciled = rolled.controls.every((control) => control.reconciled);
   const blockers: Array<Blocker> = [...assessed.blockers];
 
@@ -620,7 +683,7 @@ export function calculateActualVat(basis: Basis): Calculation {
   const unique = [...new Set(blockers)].sort();
   const verified = periodVerified(basis);
 
-  return {
+  const result: Calculation = {
     engine: "vat-actual-return-v1",
     basisDigest: basis.digest,
     boxes: rows,
@@ -638,5 +701,18 @@ export function calculateActualVat(basis: Basis): Calculation {
     controlsReconciled: reconciled,
     periodVerified: verified,
     filingReady: supported && coverage.complete && reconciled && verified && unique.length === 0,
+  };
+
+  if (monetary.release === undefined) return result;
+
+  return {
+    ...result,
+    monetaryRelease: {
+      releaseId: monetary.release.releaseId,
+      manifestDigest: monetary.release.manifestDigest,
+      artifactDigest: monetary.release.artifactDigest,
+      sourceTreeDigest: monetary.release.sourceTreeDigest,
+      runtimeId: monetary.release.runtimeId,
+    },
   };
 }

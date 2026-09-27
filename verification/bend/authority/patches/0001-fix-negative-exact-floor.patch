@@ -1,0 +1,12 @@
+diff --git a/jurisdictions/se/src/vat/actual.ts b/jurisdictions/se/src/vat/actual.ts
+--- a/jurisdictions/se/src/vat/actual.ts
++++ b/jurisdictions/se/src/vat/actual.ts
+@@ -60,7 +60,7 @@
+     mode === "toward_zero"
+       ? quotient
+       : mode === "floor"
+-        ? negative
++        ? negative && remainder !== 0n
+           ? quotient + 1n
+           : quotient
+         : mode === "half_even"
