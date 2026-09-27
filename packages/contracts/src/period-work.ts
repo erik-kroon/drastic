@@ -77,6 +77,17 @@ export const PreparePeriodWorkBatch = Schema.Struct({
   ),
 });
 
+// The sealed batch itself. The two endpoints below return this shape, so a client
+// that shows an operator what is about to be approved has to be able to read it
+// back rather than trust the members it asked for.
+
+export const ApprovalBatch = PeriodWorkDomain.ApprovalBatch;
+
+// The boundary the owning operation enforces, restated so a client can bound a
+// selection before the operation refuses it. It is the same number, not a second
+// one.
+export const maximumBatchMembers = PeriodWorkDomain.periodWorkBoundary.maximumMembers;
+
 export const ApprovePeriodWorkBatch = Schema.Struct({
   // The digest the operator was shown. A batch whose digest has moved is refused
   // rather than approved on a different set than the one displayed.
