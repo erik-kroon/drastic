@@ -2,22 +2,22 @@
 
 ## Current ownership
 
-| Responsibility | Owner |
-|---|---|
-| Named Effect operations | [application/tax/corporate.ts](../src/application/tax/corporate.ts) |
-| Pure calculation, INK2 field mapping, SRU writer and re-parse | [application/tax/corporate-basis.ts](../src/application/tax/corporate-basis.ts) |
-| Tx-passing reads and DML | [db/tax/corporate.ts](../src/db/tax/corporate.ts) |
-| Shared contracts, capabilities and HTTP group | [contracts/corporate-tax.ts](../../../packages/contracts/src/corporate-tax.ts), [capabilities/corporate-tax.ts](../src/application/capabilities/corporate-tax.ts), [routes/corporate-tax.ts](../src/transport/http/routes/corporate-tax.ts) |
-| Typed tables, constraints and grants | [migrations/0013-next-22.sql](../../migrations/0013-next-22.sql), [db/schema.ts](../src/db/schema.ts) |
-| Company admission family | [company-profile-basis.ts](../src/application/company-profile-basis.ts), `corporate_tax` family on the `taxPeriodOn` selector date |
+| Responsibility                                                | Owner                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Named Effect operations                                       | [application/tax/corporate.ts](../src/application/tax/corporate.ts)                                                                                                                                                                         |
+| Pure calculation, INK2 field mapping, SRU writer and re-parse | [application/tax/corporate-basis.ts](../src/application/tax/corporate-basis.ts)                                                                                                                                                             |
+| Tx-passing reads and DML                                      | [db/tax/corporate.ts](../src/db/tax/corporate.ts)                                                                                                                                                                                           |
+| Shared contracts, capabilities and HTTP group                 | [contracts/corporate-tax.ts](../../../packages/contracts/src/corporate-tax.ts), [capabilities/corporate-tax.ts](../src/application/capabilities/corporate-tax.ts), [routes/corporate-tax.ts](../src/transport/http/routes/corporate-tax.ts) |
+| Typed tables, constraints and grants                          | [migrations/0013-next-22.sql](../../migrations/0013-next-22.sql), [db/schema.ts](../src/db/schema.ts)                                                                                                                                       |
+| Company admission family                                      | [company-profile-basis.ts](../src/application/company-profile-basis.ts), `corporate_tax` family on the `taxPeriodOn` selector date                                                                                                          |
 
 ## Three deliverables, three records, three transactions
 
-| Deliverable | Capability | Financial effect |
-|---|---|---|
-| Sealed pre-close bridge | `tax_prepare_bridge` | none — posts nothing, adopts no loss right |
-| Approved current-tax effect | `tax_execute_effect` | **the only one** — posts the remaining delta |
-| INK2/SRU declaration lineage | `tax_prepare_declaration` | none — a report artifact |
+| Deliverable                  | Capability                | Financial effect                             |
+| ---------------------------- | ------------------------- | -------------------------------------------- |
+| Sealed pre-close bridge      | `tax_prepare_bridge`      | none — posts nothing, adopts no loss right   |
+| Approved current-tax effect  | `tax_execute_effect`      | **the only one** — posts the remaining delta |
+| INK2/SRU declaration lineage | `tax_prepare_declaration` | none — a report artifact                     |
 
 The bridge, the effect and the declaration never share a transaction or a table.
 
@@ -78,9 +78,9 @@ against the same approval.
 requires the declared taxable basis to reconcile to `bridge.taxableIncome`. Which current-tax
 figure the form adds back depends on where its declared accounting result came from:
 
-| Declared result | Add-back source | Why |
-|---|---|---|
-| `projected_bridge_result` | `current_tax` | the projected after-tax result already has the calculated current tax deducted |
+| Declared result           | Add-back source              | Why                                                                                                 |
+| ------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------- |
+| `projected_bridge_result` | `current_tax`                | the projected after-tax result already has the calculated current tax deducted                      |
 | `ledger_statement_result` | `income_tax_expense_addback` | the retained ledger result only has the tax actually booked inside the retained population deducted |
 
 A missing required reconciliation source blocks the declaration. A blocked lineage renders
@@ -138,7 +138,7 @@ fields.
 Reason: the render is pure, bounded, in-memory work over at most 2000 mapped fields, with no
 I/O, so it adds no meaningful lock duration. Rendering inline gives a stronger invariant —
 the semantic fields and the exact verified bytes commit together, so a retained declaration
-can never exist without its files. The alternative needs a *pending* state that the
+can never exist without its files. The alternative needs a _pending_ state that the
 migration deliberately does not have (`corporate_tax_declarations_blocked_check` requires
 `blocked -> file_count = 0` and there is no third status), and it makes the field lineage and
 the file lineage disagreeable. Adopting the packet's shape would need an outbox record, a
