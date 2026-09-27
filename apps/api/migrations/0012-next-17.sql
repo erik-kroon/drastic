@@ -95,9 +95,12 @@ ALTER TABLE openerp.commerce_fx_settlements
     AND fee_total_minor IS NOT NULL
     AND fee_total_minor::numeric > 0::numeric
     AND cash_source_minor IS NOT NULL
-    AND cash_source_minor::numeric = CASE
-      WHEN direction = 'customer'::text THEN gross_book_minor::numeric - fee_total_minor::numeric
-      ELSE gross_book_minor::numeric + fee_total_minor::numeric
+    -- The signed cash is a receipt net of the withheld fee and a payment gross of
+    -- the separately debited fee, so the supplier side carries the sign of the
+    -- settlement's own cash equation rather than the unsigned fee convention.
+    AND cash_source_minor::numeric = gross_book_minor::numeric + CASE
+      WHEN direction = 'customer'::text THEN -fee_total_minor::numeric
+      ELSE fee_total_minor::numeric
     END
     AND body ->> 'profile'::text = profile
     AND body -> 'calculation'::text ->> 'direction'::text = direction
@@ -111,6 +114,7 @@ ALTER TABLE openerp.commerce_fx_settlements
     AND body -> 'calculation'::text ->> 'grossBookMinor'::text = gross_book_minor::text
     AND body -> 'calculation'::text ->> 'feeTotalMinor'::text = fee_total_minor::text
     AND body -> 'calculation'::text ->> 'signedCashMinor'::text = cash_source_minor::text
+    AND body -> 'calculation'::text ->> 'finalLeg'::text = final_leg::text
   ) IS TRUE);
 
 ALTER TABLE openerp.commerce_fx_settlements
@@ -140,7 +144,7 @@ ALTER TABLE openerp.commerce_fx_settlements
       AND body ->> 'realizedGainMinor'::text = realized_gain_minor::text
       OR profile = 'synthetic_partial_book_currency_settlement_v1'::text
       OR profile = 'synthetic_book_currency_settlement_with_fees_v1'::text
-        AND body -> 'calculation'::text ->> 'considerationMinor'::text = consideration_minor::text
+        AND body -> 'calculation'::text ->> 'grossBookMinor'::text = consideration_minor::text
         AND body -> 'calculation'::text ->> 'realizedGainMinor'::text = realized_gain_minor::text
     )
     AND body ->> 'digest'::text = openerp.digest(body - 'digest'::text)

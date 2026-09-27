@@ -738,6 +738,13 @@ function settlementSnapshot(
     const remainingOriginal = BigInt(String(item.remainingOriginalMinor));
     const remainingCarrying = BigInt(String(item.remainingCarryingMinor));
 
+    // The two released settlement profiles post a customer receipt: their signed
+    // cash is a receipt and their realized amount is consideration minus the
+    // carrying release. A supplier obligation carries the opposite sign and is
+    // settled only through the explicit-fee profile, so it is refused here as an
+    // unsupported profile rather than at the settlement row's structural rules.
+    if (item.direction === "supplier") return yield* unsupported();
+
     if (remainingOriginal <= 0n || remainingCarrying < 0n) return yield* failure("StaleDependency");
 
     if (
@@ -986,11 +993,14 @@ function feeSettlementSnapshot(
 
     // K is the evidenced gross settlement consideration, never the current rate
     // quote multiplied by principal. F is the sum of the explicit book-currency fees.
+    // K must be a positive evidenced amount: a zero consideration is not a
+    // settlement, and the retained settlement row's consideration is structurally
+    // positive, so it is refused here rather than at the boundary.
     const gross = BigInt(input.grossBookMinor);
     const fees = input.fees.map((fee) => BigInt(fee.bookMinor));
     const feeTotal = fees.reduce((total, amount) => total + amount, 0n);
 
-    if (feeTotal <= 0n || feeTotal >= minorCeiling || gross >= minorCeiling) {
+    if (gross <= 0n || gross >= minorCeiling || feeTotal <= 0n || feeTotal >= minorCeiling) {
       return yield* failure("InvalidJournal");
     }
 

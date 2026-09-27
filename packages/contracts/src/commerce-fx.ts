@@ -170,14 +170,17 @@ export const PrepareFeeSettlement = Schema.Struct({
   settlementDate: Accounting.AccountingDate,
   accountingPeriodId: Accounting.Identifier,
   // K. The evidenced gross settlement consideration in book minor units. It is
-  // never the current exchange-rate quote multiplied by principal.
-  grossBookMinor: Accounting.MinorUnits,
+  // never the current exchange-rate quote multiplied by principal, and a zero
+  // consideration is not a settlement.
+  grossBookMinor: PositiveMinor,
   feeExpenseAccountId: Accounting.Identifier,
   feeAccountRoleEvidence: EvidenceReference,
   fees: Schema.Array(SettlementFee).check(Schema.isMinLength(1), Schema.isMaxLength(20)),
+  // At least one leg is required: a settlement whose signed cash equation is
+  // nonzero always has at least one actual cash observation behind it.
   actualCashSources: Schema.Array(SettlementCashSource).check(
+    Schema.isMinLength(1),
     Schema.isMaxLength(20),
-    Schema.isMinLength(0),
   ),
   evidenceId: Accounting.Identifier,
   eventKey: Schema.String.check(Schema.isPattern(/^[a-zA-Z0-9_-]{1,128}$/)),
@@ -365,6 +368,7 @@ const SettlementItemSnapshot = Schema.Struct({
 // from the retained history rather than from a mutable flag.
 export const SettlementSource = Schema.Struct({
   id: Accounting.Identifier,
+  scope: Accounting.Scope,
   settlementId: Accounting.Identifier,
   ordinal: Schema.Int.check(Schema.isGreaterThan(0)),
   kind: Schema.Literals(["fee", "cash_source"]),
