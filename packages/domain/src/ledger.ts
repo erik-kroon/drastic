@@ -124,6 +124,8 @@ export const LegalCustomerCreditPostingAction = Schema.Struct({
   // as an explicit state rather than inferring one later. A book with a dimension
   // effective on the posting date and no reviewed requirement for it still refuses
   // incomplete_policy.
+  // Zero-tax credits need only revenue and receivable lines, not a fabricated
+  // zero-value VAT line.
   lines: Schema.Array(
     Schema.Struct({
       ...JournalLine.fields,
@@ -132,7 +134,7 @@ export const LegalCustomerCreditPostingAction = Schema.Struct({
         Schema.Array(OriginalDimensionAssignment).check(Schema.isMaxLength(64)),
       ),
     }),
-  ).check(Schema.isMinLength(3), Schema.isMaxLength(101)),
+  ).check(Schema.isMinLength(2), Schema.isMaxLength(101)),
   legalCredit: Schema.Struct({
     profile: Schema.Literal("se-domestic-b2b-sek-25-accrual-credit-v1"),
     // The legal credit number is a document identity, not a journal field: it is

@@ -583,6 +583,10 @@ export const listAttention = Effect.fn("workspace.listAttention")(function* (
       counts: { open: counts.open, completed: counts.completed },
       total: counts.total,
       items: page.map((row) => ({
+        supplierReview:
+          row.supplierReviewId && row.supplierDraftId
+            ? { draftId: row.supplierDraftId, reviewId: row.supplierReviewId }
+            : null,
         key: row.key,
         assignment:
           row.assignmentKind === null

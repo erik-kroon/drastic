@@ -294,7 +294,7 @@ export function readVoucherEvidenceRefs(
 ) {
   return transaction.execute<VoucherRow>(
     sql`
-      select body->'evidenceRefs' as "evidenceRefs" from openerp.vouchers
+      select action->'evidenceRefs' as "evidenceRefs" from openerp.vouchers
       where book_id = ${bookId} and id = ${voucherId}
     `,
     "objects",

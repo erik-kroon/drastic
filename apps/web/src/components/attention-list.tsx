@@ -1,6 +1,6 @@
 import { WorkHandoff } from "./work-handoff";
 import { useQuery } from "@tanstack/react-query";
-import type * as Workspace from "@open-erp/contracts/workspace";
+import type { WorkReturn } from "@/lib/work-return";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
@@ -19,7 +19,7 @@ import {
 } from "@/lib/attention";
 
 export function AttentionList(props: {
-  filters: typeof Workspace.AttentionQuery.Type;
+  filters: WorkReturn;
   onPage: (after: string | undefined) => void;
 }) {
   const { book, locale } = useBookWorkspace();
@@ -32,7 +32,7 @@ export function AttentionList(props: {
 
   return (
     <Box display="grid" gap="lg">
-      <Box display="flex" justifyContent="between" alignItems="center">
+      <Box display="flex" flexWrap="wrap" gap="md" justifyContent="between" alignItems="center">
         <Box display="grid" gap="xs">
           <Text role="status" tone="muted">
             {page ? `${copy.total}: ${page.total}` : copy.all}
@@ -91,7 +91,10 @@ export function AttentionList(props: {
               }))}
             />
           ) : (
-            <PageEmpty title={copy.empty} detail={copy.emptyDetail} />
+            <PageEmpty
+              title={props.filters.after ? copy.emptyPage : copy.empty}
+              detail={props.filters.after ? copy.emptyPageDetail : copy.emptyDetail}
+            />
           )}
           <PageCaption>{copy.coverage}</PageCaption>
           {shown !== null && shown !== page.total ? (

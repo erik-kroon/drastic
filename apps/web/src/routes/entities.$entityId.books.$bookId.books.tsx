@@ -1,4 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Identifier, Digest } from "@open-erp/contracts/accounting";
+import { WorkReturnSearch, decodeWorkReturn, workReturnHref } from "@/lib/work-return";
+import { WorkReturnAction } from "@/components/work-return-action";
 import * as Schema from "effect/Schema";
 import { Plus } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
@@ -17,6 +20,12 @@ import { frontendCopy } from "@/lib/frontend-copy";
 const search = Schema.Struct({
   view: Schema.optional(Schema.Literals(["journal", "vouchers", "accounts"])),
   record: Schema.optional(Schema.String),
+  work: WorkReturnSearch,
+  returnPlan: Schema.optional(Identifier),
+  returnRevision: Schema.optional(Digest),
+  returnVat: Schema.optional(Identifier),
+  returnSupplier: Schema.optional(Identifier),
+  returnSupplierReview: Schema.optional(Identifier),
   returnReport: Schema.optional(Schema.String),
   returnAccount: Schema.optional(Schema.String),
   returnView: Schema.optional(Schema.Literals(["trial", "ledger"])),
@@ -35,10 +44,11 @@ function Books() {
   const { view = "vouchers", record, returnReport, returnAccount } = query;
   const navigate = useNavigate();
   const copy = frontendCopy(locale);
+  const work = decodeWorkReturn(query.work);
   const base = `${workspacePath(book)}/books`;
 
   const onPrepared = (id: string) => {
-    void navigate({ to: reviewPath(book, id) });
+    void navigate({ to: reviewPath(book, id), search: work ?? {} });
   };
 
   return (
@@ -46,18 +56,21 @@ function Books() {
       <WorkspaceHeader
         title={copy.bookkeeping}
         action={
-          <PageAction href={`${base}?view=journal`}>
-            <Plus size={14} aria-hidden="true" />
-            {copy.newEntry}
-          </PageAction>
+          <Box display="flex" flexWrap="wrap" alignItems="center" gap="md">
+            <WorkReturnAction work={work} />
+            <PageAction href={workReturnHref(base, "journal", work)}>
+              <Plus size={14} aria-hidden="true" />
+              {copy.newEntry}
+            </PageAction>
+          </Box>
         }
       />
       <PageContent>
         <PageTabs label={copy.bookkeeping}>
-          <PageTab href={base} active={view !== "accounts"}>
+          <PageTab href={workReturnHref(base, "vouchers", work)} active={view !== "accounts"}>
             {copy.vouchers}
           </PageTab>
-          <PageTab href={`${base}?view=accounts`} active={view === "accounts"}>
+          <PageTab href={workReturnHref(base, "accounts", work)} active={view === "accounts"}>
             {copy.chart}
           </PageTab>
         </PageTabs>
@@ -92,29 +105,61 @@ function Books() {
           <RecordSheet
             title={copy.voucher}
             closeLabel={
-              returnReport
+              query.returnPlan || query.returnSupplier || query.returnVat
                 ? locale === "sv"
-                  ? "Tillbaka till rapporten"
-                  : "Back to report"
-                : copy.returnVouchers
+                  ? "Tillbaka till granskningen"
+                  : "Back to review"
+                : returnReport
+                  ? locale === "sv"
+                    ? "Tillbaka till rapporten"
+                    : "Back to report"
+                  : copy.returnVouchers
             }
             onClose={() =>
               void navigate(
-                returnReport
+                query.returnPlan
                   ? {
-                      to: `${workspacePath(book)}/reports`,
-                      search: {
-                        view: query.returnView ?? "trial",
-                        record: returnReport,
-                        account: returnAccount,
-                      },
+                      to: reviewPath(book, query.returnPlan, query.returnRevision),
+                      search: work ?? {},
                       resetScroll: false,
                     }
-                  : {
-                      to: base,
-                      search: { view: "vouchers", q: query.q, period: query.period },
-                      resetScroll: false,
-                    },
+                  : query.returnSupplier
+                    ? {
+                        to: `${workspacePath(book)}/purchases`,
+                        search: {
+                          view: "supplier-drafts",
+                          record: query.returnSupplier,
+                          review: query.returnSupplierReview,
+                          work: query.work,
+                        },
+                        resetScroll: false,
+                      }
+                    : query.returnVat
+                      ? {
+                          to: `${workspacePath(book)}/tax`,
+                          search: { view: "actual-vat", record: query.returnVat, work: query.work },
+                          resetScroll: false,
+                        }
+                      : returnReport
+                        ? {
+                            to: `${workspacePath(book)}/reports`,
+                            search: {
+                              view: query.returnView ?? "trial",
+                              record: returnReport,
+                              account: returnAccount,
+                            },
+                            resetScroll: false,
+                          }
+                        : {
+                            to: base,
+                            search: {
+                              view: "vouchers",
+                              q: query.q,
+                              period: query.period,
+                              work: query.work,
+                            },
+                            resetScroll: false,
+                          },
               )
             }
           >
@@ -132,7 +177,7 @@ function Books() {
             title={copy.newEntry}
             closeLabel={copy.returnVouchers}
             onClose={() => {
-              void navigate({ to: base, search: { view: "vouchers" } });
+              void navigate({ to: base, search: { view: "vouchers", work: query.work } });
             }}
           >
             <Box display="grid" gap="lg" minWidth="zero">

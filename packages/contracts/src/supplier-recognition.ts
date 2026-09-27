@@ -23,6 +23,11 @@ import {
 
 export { AcceptancePolicy, Rational, RoundingMode, SourceReference, TaxPointDate, TaxPointBasis };
 
+// Preserve the supplier's document number verbatim; this is not a lowercase ID.
+export const EconomicDocumentKey = Schema.String.check(
+  Schema.isPattern(/^supplier_(purchase|credit):[a-z][a-z0-9_-]{2,127}:[\s\S]{1,200}$/u),
+);
+
 export const DeductionBasis = Schema.Literals([
   "full_deduction",
   "half_deduction",
@@ -164,7 +169,7 @@ const recognitionCommon = {
   id: Accounting.Identifier,
   scope: Accounting.Scope,
   version: Schema.Literal(1),
-  economicKey: Schema.String.check(Schema.isPattern(/^[a-z0-9][a-z0-9._:-]{2,190}$/)),
+  economicKey: EconomicDocumentKey,
   voucherId: Accounting.Identifier,
   payableId: Accounting.Identifier,
   taxFactIds: Schema.Array(Accounting.Identifier).check(
@@ -196,6 +201,9 @@ const commonRecognitionFields = {
 export const PurchaseRecognition = Schema.Struct({
   ...recognitionCommon,
   eventOwner: Schema.Literal("supplier_purchase"),
+  // Earlier captures may omit the review link; new recognitions retain it in
+  // the sealed body so decoding cannot change the persisted digest.
+  reviewId: Schema.optional(Accounting.Identifier),
   draftId: Accounting.Identifier,
   draftRevision: Commerce.Version,
   draftDigest: Accounting.Digest,

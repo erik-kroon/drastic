@@ -1,179 +1,84 @@
-# Synthetic SIE 4I transaction artifacts
+# SIE exports
 
-## Current ownership
+OpenERP has separate synthetic SIE4I transaction-transfer and SIE4E selected-book exports. Both retain exact CP437 bytes. Neither establishes company qualification, SIE certification or recipient acceptance.
 
-Application operations live in [application/sie/import.ts](../src/application/sie/import.ts), with shared dispatch in [capabilities](../src/application/capabilities/).
+The [source review](../../../docs/sources/sie-4c-review.md) pins SIE 4C, edition 2025-08-06, SHA-256 `96fcd3f7931b2aa22d18fbd518a33f863b57edd5562a78af195251e2bf38bac1`. It covers types 1–4, not SIE 5.
 
-## Historical implementation notes
+## Owners
 
-The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.
+| Responsibility                             | Source                                                                                |
+| ------------------------------------------ | ------------------------------------------------------------------------------------- |
+| SIE4I workflow                             | [application/sie/book-export.ts](../src/application/sie/book-export.ts)               |
+| SIE4I persistence                          | [db/sie-transactions.ts](../src/db/sie-transactions.ts)                               |
+| SIE4E capture, render and attachment       | [application/sie4e.ts](../src/application/sie4e.ts)                                   |
+| SIE4E scoped reads and writes              | [db/sie4e.ts](../src/db/sie4e.ts)                                                     |
+| SIE4E arithmetic, rendering and comparison | [jurisdictions/se/src/sie/sie4e.ts](../../../jurisdictions/se/src/sie/sie4e.ts)       |
+| Independent inbound parser                 | [application/sie-import-parser.ts](../src/application/sie-import-parser.ts)           |
+| Original dimension assignments             | [application/dimensions/assignments.ts](../src/application/dimensions/assignments.ts) |
 
-### Scope and acceptance recorded before implementation
+Application workflows own capture and sealing. PostgreSQL provides scoped persistence, grants and immutable records. The old procedural SQL implementation and its installation instructions are superseded; their historical account remains in this file's history through `d7d5ec5`.
 
-This slice transfers every complete `movement` voucher from one immutable accountant-review
-pack into an explicitly synthetic SIE 4I `.SI` artifact. It is not SIE 4E, a complete-book
-export, an opening balance, SIE 5, an import, statutory acceptance or certified compatibility.
-No upload, signature, external import or delivery is performed. Existing pack JSON/CSV
-contracts and bytes remain unchanged.
+## SIE4I transaction transfer
 
-Source: `docs/sources/sie-4c-review.md` and the locally retained official SIE 4C edition
-2025-08-06 PDF (SHA256 `96fcd3f7931b2aa22d18fbd518a33f863b57edd5562a78af195251e2bf38bac1`).
-The source requires real CP437 bytes, mandatory identification records, balanced complete
-vouchers and numeric voucher order within each series. Account declarations are recommended.
-Literal backslashes are refused in this bounded encoder; embedded quotes are escaped.
+`openerp-sie4i-v1` transfers all complete movement vouchers from one immutable accountant-review pack. It excludes opening and after-period rows. It emits identification, account, voucher and transaction records, without balance records. It is not a full-book export.
 
-Proposed path:
+The scoped `/sie-transfers` API prepares and lists captures. `GET /:id` reads a capture and its nullable artifact; `POST /:id/render` resumes rendering. The capture binds the pack, selection, identity evidence, generation date and renderer. Downloads use retained base64 bytes, not text re-encoding. The review UI verifies the hash and length before offering the `.SI` download.
+
+The retained profile supports native synthetic SEK books at scale two. Complete voucher membership, exact amounts, representable text and current authority remain required. The FWD-09 observations below do not verify the separate 4I UI or transfer journey.
+
+## SIE4E selected-book export
 
 ```text
-explicit pack digest + all-movement selection + legal name + retained identity evidence
-  -> immutable scoped capture and receipt (short database transaction)
-  -> exact deterministic CP437 rendering in the owning Effect workflow
-  -> scoped seal checks capture digest, byte hash/length and size (separate transaction)
-  -> immutable retained artifact, list/read/download; explicit retry resumes captured work
+Public prepare request
+  → scoped transaction: freeze year, opening, accounts, lines and original assignments
+  → outside transaction: render CP437 bytes, parse independently, compare retained facts
+  → scoped transaction: recheck authority and evidence, attach immutable bytes and manifest
 ```
 
-Required failure/acceptance cases:
+The scoped `/sie-book-exports` API provides:
 
-- Wrong-book pack/evidence/capture cannot be exported, resumed or read. Source-backed legal
-  name is supplied explicitly, never inferred from a book label; evidence does not establish
-  real-company applicability. Only native synthetic SEK packs with currency scale 2 are supported;
-  this narrow release does not infer ISO currency validity from three arbitrary letters.
-- Same actor/scope/key/input returns the same capture and sealed bytes. Changed input conflicts.
-  A render failure leaves the capture available for diagnosis, not a false ready artifact.
-  A lost seal response is recovered by immutable capture identity; another seal cannot replace
-  bytes. A different actor cannot seal the original actor's capture.
-- Empty movement sets, incomplete/gapped voucher ordinals, mixed voucher metadata, duplicate
-  fiscal-year/series/number collisions, duplicate account codes and unbalanced amounts refuse.
-  Line identity is `(voucherId, lineId)` within the scoped book: reuse across different vouchers
-  is accepted; duplicates within one voucher refuse.
-  Opening and excluded-after-end rows are never exported. No live voucher read during render.
-- Capture binds pack digest, retained source rows/accounts digest, legal-name evidence hash,
-  explicit selection, generated-on date and generator/specification versions. Later posting,
-  account edits or reopen cannot change captured rows or artifacts. Historical pack selection
-  is allowed and is visibly not a current-book completeness assertion.
-- Input text must be exactly representable in CP437. Refuse control characters, unsupported
-  Unicode and literal backslashes rather than replacement/transliteration. Preserve Swedish
-  letters, quoted text, negative/zero values and exact amounts beyond JS safe integers.
-- Render records in group order, voucher numbers numerically within series, lines by retained
-  ordinal, with CRLF and no BOM. Include mandatory4I headers, explicit currency and #KONTO;
-  emit no balance records. Reject nonnumeric account codes and unsupported series.
-- Capture is bounded by existing pack limits (1000 vouchers/5000 lines/1000 accounts) and an
-  8 MiB source limit; binary artifacts are limited to8 MiB. Sealing validates canonical base64,
-  exact SHA256/byte length and immutable capture digest. It does not claim independent format
-  validation or destination acceptance. Runtime cannot write ledger tables.
-- Saved list pagination pins a high-water ordinal. Each full read provides exact manifest and
-  base64; browser verifies scope, bytes/hash/size before offering a binary Blob download. The
-  warning explains that importing can create duplicate transactions in another system.
+- `POST /`: prepare with an idempotency key, fiscal year, as-of date, legal identity evidence and account classifications.
+- `GET /`: list captures at a pinned ordinal boundary.
+- `GET /:id`: read the capture and nullable artifact.
+- `GET /:id/rows`: page immutable account, balance and line membership.
+- `POST /:id/render`: resume attachment as the capture's author.
 
-No test/fixture additions, database/server execution or external validation are authorized
-for this owner. Static checks cannot prove any runtime or accounting acceptance case above.
-Root owns integration and allowed native/API/browser evidence; independent consumer acceptance,
-actual company profile and legal review remain separate gates.
+The capture covers the selected book through `asOf`. Earlier-than-year-end selections disclose year-to-date scope. It includes inactive accounts, raw opening and closing balances, raw nominal movements and complete native vouchers. Rendering never queries current account names, catalogue heads or live ledger rows. Repeating the same actor/scope/key/input recovers the same capture; changed input conflicts. Export does not post or consume an approval.
 
-### Source implementation and integration
+### Original transaction dimensions
 
-Implemented source: `1100-sie-transaction-artifacts.sql`, `packages/contracts/src/sie.ts`,
-`jurisdictions/se/src/sie/encoder.ts`, `src/application/sie/book-export.ts`, `src/db/statements/sie.ts`, and accountant-review
-`sie-panel.tsx`/`sie-copy.ts`. The existing pack inspector mounts the new local panel;
-raw pack tables, rows, contracts and JSON/CSV generators are unchanged.
+New captures use `openerp-sie4e-v2`. Retained v1 captures keep their version and interpretation. The existing capture kind and persistence tables remain in use.
 
-`PrepareSie` requires `packId`, `packDigest`, `selection: all_pack_movement_vouchers`,
-`legalName` and `legalNameEvidenceId`. Dates and source scope come from that exact immutable
-pack. The capture author and UTC capture date are server-owned. `#GEN` uses this pinned date;
-an unsealed capture cannot first seal on a later UTC date. Create a separate capture/key in
-that case. An already sealed artifact remains readable and replayable on later dates.
+The v2 profile freezes a map from native dimension codes, ordered by C collation, to SIE dimension numbers starting at **20**. Numbers below 20 have reserved meanings under section 8.17 and cannot be assigned by catalogue position. Native object codes remain quoted strings: `0012` does not become `12`, and case does not change.
 
-The encoder emits mandatory4I identification, `#VALUTA SEK`, a synthetic-only `#PROSA` warning, selected `#KONTO` declarations,
-`#VER` and `#TRANS` only. Voucher text is omitted because the pack retains transaction text,
-not an authoritative voucher-header text. Transaction dates and descriptions are retained.
-Optional trailing fields are omitted, not shifted. Account codes are bounded to eight
-positive decimal digits without leading zeros; other code shapes refuse rather than change.
-Literal source backslashes refuse. The generated escape before an embedded quote is deliberate.
-CP437 mapping is an explicit byte table; output is not a UTF-8 string mislabeled as PC8.
+The renderer emits `#DIM`, `#OBJEKT` and each line's original object group. Declarations use retained dimension revisions and captured object labels, including archived values. Conflicting retained labels for the same code refuse; the exporter does not choose a newer name or create a replacement code. Original revisions, source codes, exemptions and the distinct non-value states remain in each retained line's `originalDimensions`.
 
-The captured data is immutable. Rendering occurs after capture transaction release and before
-seal transaction acquisition. Seal checks pack/evidence/source/capture digests, generator,
-canonical base64, SHA256, length, bounds and framing. It does not independently prove semantic
-format validity; only the owning backend renderer supplies seal input through public routes.
-The raw seal function is not a REST or MCP capability. A scoped runtime database client can
-call the granted function, which remains a preparation-only, non-ledger trust boundary.
-Captured-but-unrenderable work remains discoverable; no ready artifact is fabricated.
+The independent comparison checks declaration numbers, codes and labels, plus every ordered transaction assignment, account, amount, date and description. Missing, changed or duplicate assignments refuse attachment. It also checks account opening-plus-movement equals closing.
 
-#### Root-owned shared map
+Section 6 makes object and period balances optional for 4E. This profile does not emit `#OIB`, `#OUB` or `#PSALDO`. It refuses explicit dimension assignments in the opening basis, including prior native history, rather than lose their representation. It does not claim a complete dimensional-opening profile or recipient import.
 
-1. Export `"./sie": "./src/sie.ts"` from `packages/contracts/package.json`.
-2. Add `SieApi` to shared `Api`; spread `SieCapabilities` into shared contracts capabilities.
-3. Spread `sieStatements` from `src/db/statements/sie.ts` into database `statements`.
-4. Register `SieHandlers` in API composition.
-5. In backend `capabilities`, bind `sie_prepare`, `sie_get`, `sie_list`, `sie_resume` to the
-   exported `prepareSie`, `getSie`, `listSie`, `resumeSie` Effect functions, respectively.
-   Use `{...Capabilities.sie_prepare, execute: prepareSie}` (and equivalents), NOT a generic
-   one-query binding for prepare/resume: capture/render/seal is an owning Effect workflow.
-6. Apply1100 after0810 and current forward migrations. No direct table grants are added.
+### Refusals and bounds
 
-| Internal database key   | SQL function              | Parameters including token                                    |
-| ----------------------- | ------------------------- | ------------------------------------------------------------- |
-| `captureSieTransaction` | `capture_sie_transaction` | token, scope JSON, command key, input JSON                    |
-| `getSieTransaction`     | `get_sie_transaction`     | token, scope JSON, capture ID                                 |
-| `sealSieTransaction`    | `seal_sie_transaction`    | token, scope JSON, capture ID, private byte/hash payload JSON |
-| `listSieTransactions`   | `list_sie_transactions`   | token, scope JSON, cursor or empty string                     |
+- Unsupported book profile, currency or scale.
+- No established opening set or prior native history. Absence of history is not a reviewed zero opening.
+- Missing account classification, non-four-digit account codes or nominal accounts with nonzero openings.
+- Incomplete or inconsistent voucher membership, unbalanced amounts or dates outside the selection.
+- Missing dimension revisions, conflicting labels or dimensional openings.
+- Text outside CP437, control characters or literal backslashes. Embedded quotes are escaped; no text is replaced or transliterated.
+- More than 500 accounts, 2,000 vouchers, 20,000 journal lines or 20,000 retained assignments. Assignment reads fetch one extra row to detect overflow.
 
-Public paths: scoped `/api/v1/entities/:entityId/books/:bookId/sie-transfers`: POST prepares
-with the stable Idempotency-Key; GET lists; GET `/:id` reads capture plus nullable artifact;
-POST `/:id/render` resumes the author-owned immutable capture. GET includes canonical base64
-binary bytes, manifest, capture and source digests; the UI verifies and creates a binary
-`application/octet-stream` Blob with `.SI` filename. There is no text re-encoding on download.
-List cursors use the opaque `si1_` envelope over version, normalized entity/book scope,
-cutoff and after ordinal. SQL rejects wrong-scope, malformed, out-of-range, missing-ordinal
-and incomplete-page cursors. Responses include scope, cutoff, total, first and next. Membership
-summaries contain only immutable capture identities and creation metadata; they do not return
-mutable sealed state. Read a capture separately for its current nullable artifact. This list
-never asserts that all company transactions were transferred.
+The database also bounds capture bodies to 1 MiB, row bodies to 64 KiB and artifact bytes to 8 MiB. A failed render leaves the immutable capture discoverable with no attached artifact. Editing current labels cannot repair its frozen text; a different supported basis needs a new capture. Current access is required for recovery and reads.
 
-The UI retains the first cutoff across First, retries, cached-page reuse and query invalidation.
-Only explicit Refresh resets inventory membership. Creation can open its new capture directly
-without silently widening an already reviewed list. The refresh label also explains how to
-rediscover a newly saved capture after a render failure.
+## Verification
 
-#### Verification status
+The focused native test is [sie-dimensions.e2e.test.ts](../tests/sie-dimensions.e2e.test.ts):
 
-Source reviewed only. The official cached PDF hash was checked before implementation; its
-format passages were read. No tests, fixtures, dependency installs, database/server runs,
-formatter/lint/type/build or other validation runs were performed for this slice. The user's
-later instruction explicitly stopped validation. Root must not infer executable or independent
-format acceptance from source delivery. D-04/D-08 and any external upload authority remain open.
+```bash
+bun run test:e2e apps/api/tests/sie-dimensions.e2e.test.ts
+```
 
-## Complete-book SIE4E export (NEXT-11)
+It creates original postings and catalogue revisions through the real workerd API against disposable PostgreSQL. It checks exact codes and labels, account controls, unchanged ledger state, saved-byte recovery, archive changes, wrong-book reads, changed-key input, semantic mutations, conflicting labels, dimensional-opening refusal and CP437 failure recovery.
 
-Owned by `application/sie4e.ts` with `db/sie4e.ts` and the pure
-`jurisdictions/se/src/sie/sie4e.ts`. This is a separate complete-book export,
-not a second movement-transfer path: the retained `openerp-sie4i-v1` transfer
-is unchanged.
+The runner retains `test-results/e2e/sie-dimensions.SE`, `sie-dimensions-journey.json`, the source manifest, integrity result and suite reports. Prior runs move to `test-results/e2e-history/`. See the [FWD-09 execution record](../../../docs/plans/16-comparison-reconciliation.md#fwd-09--failure-contract-before-implementation) for the current evidence.
 
-Capture is one book-scoped transaction. Exact bytes are rendered and re-parsed
-by the existing inbound SIE parser **outside** every transaction, and the
-verified manifest is bound to the exact model and renderer in a short second
-transaction. Unreferenced bytes after a failed attachment do not imply a
-completed artifact.
-
-Refusals are deliberate, not gaps to fill:
-
-- A book that declares any dimension effective as-of the capture refuses with
-  `UnsupportedProfile` naming the dimension and the missing assignment owner.
-  A dimension-free book emits `#TRANS … {}` and carries a `no_object_owner`
-  limitation stating that emptiness means nothing is assigned, not that an
-  assignment was reviewed.
-- No 4E record matrix was invented. The retained source is the SIE 4C edition
-  2025-08-06, whose own review distinguishes 4E without qualifying it. That
-  edition checksum is pinned on the capture and only the record families that
-  can be stated are emitted, declared in `emittedRecords.recordProfile`.
-- A reviewed account classification is a required input. Account codes are
-  bounded to exactly four digits; other shapes refuse rather than pad or
-  remap, and unrepresentable text refuses.
-- A nominal account with a non-zero captured opening refuses, because `#RES`
-  carries the raw nominal balance and that opening would be lost silently.
-- A first fiscal year with no prior vouchers and no opening set refuses. A
-  first-year zero opening is never inferred.
-
-**No destination or statutory acceptance is established.** No database, renderer
-run, re-parse, HTTP call or browser session has exercised this export.
+These are local synthetic observations. Actual-company source completeness, recipient import, browser behavior, dimensional opening balances, prior-year record coverage and statutory acceptance remain open.

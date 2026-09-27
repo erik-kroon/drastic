@@ -125,7 +125,11 @@ export function PeriodWorkPanel({
           {copy.refresh}
         </Button>
       </Box>
-      <AccountingStatus locale={locale} pending={progress.isPending} error={progress.error} />
+      <AccountingStatus
+        locale={locale}
+        pending={selected && progress.isPending}
+        error={progress.error}
+      />
       {progress.isError && selected ? <Text role="alert">{errorText(progress.error)}</Text> : null}
       {view ? (
         <Box display="grid" gap="lg" minWidth="zero">

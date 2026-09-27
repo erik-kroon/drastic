@@ -149,6 +149,40 @@ export function cancelChildren(transaction: Transaction, bookId: string, manifes
   `);
 }
 
+/**
+ * A run whose delivery is exhausted becomes a review case, one child at a time.
+ *
+ * Only the children the claim query treats as open are moved, so a child that is
+ * already prepared, committed, recovered or refused is never touched here. The
+ * child names the fact a human must resolve, which is the delivery itself and not
+ * a domain block, so it lands in `needs_review` rather than `refused` and keeps
+ * the ordinary review path. `cancel_version` is deliberately not advanced: that
+ * column is the cancellation fence, and no cancellation happened.
+ *
+ * This is a plain statement rather than the observed-pair `advanceChild` fence
+ * because it is a whole-run decision taken under the book lock, not a claim about
+ * one child's current progress. Its effect is the same as a fence: a handler
+ * holding an older revision updates zero rows.
+ */
+export function settleExhaustedPeriodWorkDelivery(
+  transaction: Transaction,
+  bookId: string,
+  manifestId: string,
+) {
+  return transaction.execute<{ readonly workIdentity: string }>(
+    sql`
+      update openerp.period_work_children
+      set state = 'needs_review',
+        missing_facts = jsonb_build_object('facts', array['delivery_exhausted']::text[]),
+        batch_id = null, revision = revision + 1, updated_at = clock_timestamp()
+      where book_id = ${bookId} and manifest_id = ${manifestId}
+        and state in ('pending', 'waiting_predecessor')
+      returning work_identity as "workIdentity"
+    `,
+    "objects",
+  );
+}
+
 // The state column carries a CHECK constraint that admits exactly the seven
 // period-work states, so the narrowed type is the database's own guarantee and
 // not an assertion at the call site.

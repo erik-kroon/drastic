@@ -101,6 +101,12 @@ const VatReturnsPanel = lazy(() =>
   import("@/components/vat-returns/panel").then((module) => ({ default: module.VatReturnsPanel })),
 );
 
+const ActualVatReturnsPanel = lazy(() =>
+  import("@/components/vat-returns/actual-panel").then((module) => ({
+    default: module.ActualVatReturnsPanel,
+  })),
+);
+
 const VatControlReclassificationPanel = lazy(() =>
   import("@/components/vat-returns/reclassification-panel").then((module) => ({
     default: module.VatControlReclassificationPanel,
@@ -137,10 +143,7 @@ const ExchangeRateReviewsPanel = lazy(() =>
   })),
 );
 
-// Only these two areas are ever opened from the work queue, and only their
-// route search schemas declare the carried queue search. Carrying it anywhere
-// else would write a parameter the destination silently drops.
-const workReturnAreas = new Set(["sales", "purchases"]);
+const workReturnAreas = new Set(["sales", "purchases", "tax"]);
 
 const trialBalanceModes = new Set(["trial", "ledger"]);
 
@@ -169,7 +172,7 @@ export function FinanceArea(props: {
   const work = workReturnAreas.has(area) ? decodeWorkReturn(props.work) : undefined;
 
   const onPrepared = (id: string) => {
-    void navigate({ to: reviewPath(book, id) });
+    void navigate({ to: reviewPath(book, id), search: work ?? {} });
   };
 
   const onOpen = (id: string) => {
@@ -314,6 +317,9 @@ export function FinanceArea(props: {
           {selected === "vat" ? (
             <VatReturnsPanel book={book} locale={locale} recordId={recordId} onOpen={onOpen} open />
           ) : null}
+          {selected === "actual-vat" ? (
+            <ActualVatReturnsPanel recordId={recordId} onOpen={onOpen} />
+          ) : null}
           {selected === "reclassify" ? (
             <VatControlReclassificationPanel
               book={book}
@@ -455,6 +461,7 @@ function areaTabs(
       { key: "export", label: sv ? "Granskningspaket" : "Review pack" },
     ],
     tax: [
+      { key: "actual-vat", label: sv ? "Periodens moms" : "Period VAT" },
       { key: "vat", label: sv ? "Momsdeklarationer" : "VAT returns" },
       { key: "reclassify", label: sv ? "Momsomklassning" : "VAT reclassification" },
       { key: "expenses", label: sv ? "Momsgranskning" : "Expense tax review" },

@@ -120,6 +120,11 @@ export const DeletedView = Schema.Struct({ scope: Accounting.Scope, id: Accounti
 export const AssignmentResult = Schema.Struct({ scope: Accounting.Scope, assignment: Assignment });
 
 export const AttentionItem = Schema.Struct({
+  supplierReview: Schema.optional(
+    Schema.NullOr(
+      Schema.Struct({ draftId: Accounting.Identifier, reviewId: Accounting.Identifier }),
+    ),
+  ),
   key: Schema.String,
   assignment: Schema.NullOr(Assignment),
   kind: Schema.Literals(["journal", "invoice", "expense"]),

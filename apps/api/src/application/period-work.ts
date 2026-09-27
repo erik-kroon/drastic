@@ -31,7 +31,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as PeriodWork from "@open-erp/domain/period-work";
 import * as Contracts from "@open-erp/contracts/period-work";
 import type { Database } from "../db/connection";
-import type { RequestEnvironment } from "../runtime/environment";
+import { RequestEnvironment } from "../runtime/environment";
 import { Digest, Identifier } from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
 import * as Credits from "@open-erp/contracts/supplier-credits";
@@ -1773,6 +1773,39 @@ export const claimOpenPeriodWorkRuns = Effect.fn("periodWork.claimOpenRuns")(fun
     }).pipe(Effect.mapError(databaseFailure)),
   );
 });
+
+/**
+ * A run whose delivery is exhausted stops being claimed.
+ *
+ * The runner could not deliver a pass, so the still-open children of this run
+ * become review cases naming the delivery as the unresolved fact. That is not a
+ * domain refusal and not a cancellation: no owner refused the work, and nothing
+ * was cancelled, so the children keep the ordinary review path and the
+ * cancellation fence is untouched.
+ *
+ * A child that is already prepared, committed, recovered or refused is left alone,
+ * so an exhausted pass cannot discard a prepared plan or a committed receipt.
+ */
+export const stopFailedPeriodWorkDelivery = Effect.fn("periodWork.stopFailedDelivery")(
+  function* (payload: { manifestId: string; scope: BookScope }) {
+    const { bindings } = yield* RequestEnvironment;
+    const token = bindings.OPENERP_PREPARATION_TOKEN;
+
+    if (!token) return yield* failure("Unavailable");
+
+    return yield* withTransaction((transaction) =>
+      Effect.gen(function* () {
+        yield* admitRunnerActor(transaction, token);
+
+        yield* Db.settleExhaustedPeriodWorkDelivery(
+          transaction,
+          payload.scope.bookId,
+          payload.manifestId,
+        );
+      }).pipe(Effect.mapError(databaseFailure)),
+    );
+  },
+);
 
 /**
  * Read the current progress projection.

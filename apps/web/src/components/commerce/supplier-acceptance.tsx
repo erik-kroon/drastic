@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useWorkReturn, workReturnHref } from "@/lib/work-return";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
@@ -125,10 +126,18 @@ export function useSupplierAcceptanceHistory(book: CommerceProps["book"], draftI
 }
 
 export function SupplierAcceptancePanel(props: CommerceProps & { draft: Draft; current: boolean }) {
-  const [reviewId, setReviewId] = useState("");
+  const search = useSearch({ from: "/entities/$entityId/books/$bookId/purchases" });
+  const navigate = useNavigate({ from: "/entities/$entityId/books/$bookId/purchases" });
+
+  const setReviewId = (review: string) => {
+    void navigate({ search: { ...search, review: review || undefined }, resetScroll: false });
+  };
+
   const sv = props.locale === "sv";
   const history = useSupplierAcceptanceHistory(props.book, props.draft.id);
-  const accepted = history.data?.items.some((item) => item.acceptanceId !== null) ?? false;
+  const acceptedReview = history.data?.items.find((item) => item.acceptanceId !== null);
+  const accepted = acceptedReview !== undefined;
+  const reviewId = search.review ?? acceptedReview?.id;
 
   return (
     <RecordSection title={sv ? "Granska och bokför" : "Review and post"}>
@@ -157,6 +166,13 @@ export function SupplierAcceptancePanel(props: CommerceProps & { draft: Draft; c
             </Box>
           ) : null}
           {reviewId ? <SupplierAcceptanceReview {...props} id={reviewId} /> : null}
+          {reviewId && !accepted && props.current && props.book.role === "operator" ? (
+            <Box>
+              <Button static variant="outline" onClick={() => setReviewId("")}>
+                {sv ? "Förbered ny granskning" : "Prepare a new review"}
+              </Button>
+            </Box>
+          ) : null}
           {!reviewId && !accepted && props.current && props.book.role === "operator" ? (
             <SupplierAcceptancePreparation {...props} onPrepared={setReviewId} />
           ) : null}
@@ -379,9 +395,15 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
 
   return (
     <Box display="grid" gap="lg">
-      <Button variant="outline" disabled={review.isFetching} onClick={() => void review.refetch()}>
-        {sv ? "Uppdatera granskning" : "Refresh review"}
-      </Button>
+      <Box>
+        <Button
+          variant="outline"
+          disabled={review.isFetching}
+          onClick={() => void review.refetch()}
+        >
+          {sv ? "Uppdatera granskning" : "Refresh review"}
+        </Button>
+      </Box>
       <AccountingStatus locale={props.locale} pending={review.isPending} error={review.error} />
       <AccountingStatus locale={props.locale} pending={setup.isPending} error={setup.error} />
       {view ? (
@@ -425,21 +447,17 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
               ),
             )}
           />
-          {view.blockers.map((blocker) => (
-            <Text key={blocker}>{blocker}</Text>
-          ))}
+          {!view.acceptance
+            ? view.blockers.map((blocker) => <Text key={blocker}>{blocker}</Text>)
+            : null}
           {view.acceptance ? (
-            <Box display="grid" gap="md">
-              <Text role="status">{sv ? "Bokförd" : "Posted"}</Text>
-              <Text>
-                {sv ? "Verifikation" : "Voucher"}: {view.acceptance.postingReceipt.voucherId}
-              </Text>
-              <PageAction
-                href={`${workspacePath(props.book)}/purchases?view=invoices&record=${encodeURIComponent(view.acceptance.registerInvoiceId)}`}
-              >
-                {sv ? "Öppna registrerad faktura" : "Open registered invoice"}
-              </PageAction>
-            </Box>
+            <SupplierAcceptanceResult
+              book={props.book}
+              locale={props.locale}
+              receipt={view.acceptance}
+              draftId={props.draft.id}
+              reviewId={props.id}
+            />
           ) : null}
           {!view.acceptance ? (
             <>
@@ -482,6 +500,7 @@ function SupplierAcceptanceReview(props: CommerceProps & { id: string; draft: Dr
                     review.isFetchedAfterMount &&
                     review.fetchStatus === "idle" &&
                     view.blockers.length === 0 &&
+                    view.dependenciesCurrent &&
                     props.book.role === "operator"
                   }
                   input={(fields) => ({
@@ -702,5 +721,45 @@ function SupplierReviewedLines(props: {
         };
       })}
     />
+  );
+}
+
+function SupplierAcceptanceResult(
+  props: CommerceProps & {
+    receipt: typeof Acceptance.SupplierAcceptanceReceipt.Type;
+    draftId: string;
+    reviewId: string;
+  },
+) {
+  const { receipt } = props;
+  const sv = props.locale === "sv";
+  const work = useWorkReturn();
+
+  return (
+    <Box display="grid" gap="md">
+      <Text role="status">{sv ? "Bokförd" : "Posted"}</Text>
+      <Text>
+        {sv ? "Verifikation" : "Voucher"}: {receipt.postingReceipt.voucherNumber}
+      </Text>
+      <Text tone="muted">
+        {new Intl.DateTimeFormat(props.locale, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(new Date(receipt.postingReceipt.committedAt))}
+      </Text>
+      <Box display="flex" flexWrap="wrap" gap="md">
+        <PageAction
+          quiet
+          href={`${workReturnHref(`${workspacePath(props.book)}/books`, "vouchers", work)}&record=${encodeURIComponent(receipt.postingReceipt.voucherId)}&returnSupplier=${encodeURIComponent(props.draftId)}&returnSupplierReview=${encodeURIComponent(props.reviewId)}`}
+        >
+          {sv ? "Visa verifikation" : "View voucher"}
+        </PageAction>
+        <PageAction
+          href={`${workReturnHref(`${workspacePath(props.book)}/purchases`, "invoices", work)}&record=${encodeURIComponent(receipt.registerInvoiceId)}`}
+        >
+          {sv ? "Öppna registrerad faktura" : "Open registered invoice"}
+        </PageAction>
+      </Box>
+    </Box>
   );
 }

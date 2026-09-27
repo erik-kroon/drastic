@@ -22,6 +22,7 @@ import * as RetentionDb from "../../db/source-retention";
 import { databaseFailure, withTransaction, type Transaction } from "../../db/transaction";
 import { failure } from "../failures";
 import { admitRunnerActor } from "../preparation-jobs";
+import { RequestEnvironment } from "../../runtime/environment";
 import { digest, isoNow, newId, replay, saveCommand, sha256Hex } from "../posting";
 import { calculateSupplierDraft } from "./draft-calculation";
 import {
@@ -1763,210 +1764,39 @@ export const claimPendingSupplierExtractions = Effect.fn("purchases.extraction.c
   },
 );
 
-function runDocumentReader(
-  scope: Scope,
-  request: ExtractionDb.ExtractionRequestRow,
-  content: RetentionDb.ContentRow,
-  mediaType: string,
-) {
-  return Effect.gen(function* () {
-    const reader = (yield* RequestEnvironment).bindings.DOCUMENT_READER;
+/**
+ * A request whose delivery is exhausted stops being claimed.
+ *
+ * The runner could not determine the outcome, so the request settles to
+ * `unknown`: an existing reviewed state that means exactly that, and not
+ * `completed`, which would claim a reading nobody observed. Settling removes the
+ * row from the `ready` predicate its claim query selects, which also stops the
+ * dispatch counter that would otherwise grow into its ceiling and stop the claim
+ * transaction for every other request in the installation.
+ *
+ * The state row is only moved out of `ready`, so a handler that is still working
+ * on this request cannot be overwritten here, and a request that already reached a
+ * terminal state is left alone.
+ */
+export const stopFailedExtractionDelivery = Effect.fn("purchases.extraction.stopFailedDelivery")(
+  function* (payload: { requestId: string; scope: Scope }) {
+    const { bindings } = yield* RequestEnvironment;
+    const token = bindings.OPENERP_PREPARATION_TOKEN;
 
-    if (!reader)
-      return failedReading("document_reader_disabled", "Document reading is not enabled.");
+    if (!token) return yield* failure("Unavailable");
 
-    const bytes = yield* readOriginalBytes(
-      content,
-      request.originalHash,
-      Number(request.originalBytes),
-    );
-
-    const physicalPages = yield* Effect.tryPromise({
-      try: () => physicalPageCount(bytes, mediaType),
-      catch: () =>
-        new Accounting.AccountingError({
-          code: "InvalidJournal",
-          message: "Original is outside the document profile.",
-        }),
-    });
-
-    const claimed = yield* withTransaction((transaction) =>
+    return yield* withTransaction((transaction) =>
       Effect.gen(function* () {
-        const book = yield* Shared.readBook(transaction, scope.bookId);
-        yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
+        yield* admitRunnerActor(transaction, token);
+        yield* requireExtractionAccess(transaction);
 
-        const state = (yield* ExtractionDb.readExtractionState(
+        yield* ExtractionDb.completeExtractionRequest(
           transaction,
-          scope.bookId,
-          request.id,
-        ))[0];
-
-        const latest = (yield* ExtractionDb.readLatestExtractionRequest(
-          transaction,
-          scope.bookId,
-          request.occurrenceId,
-        ))[0];
-
-        if (state?.state !== "ready" || latest?.id !== request.id) return null;
-
-        return yield* ExtractionDb.claimDocumentOperation(
-          transaction,
-          scope.bookId,
-          request.id,
-          reader.identity,
+          payload.scope.bookId,
+          payload.requestId,
+          "unknown",
         );
       }).pipe(Effect.mapError(databaseFailure)),
     );
-
-    if (claimed === null) return null;
-
-    let operation: string;
-
-    if (claimed.length > 0) {
-      const submitted = yield* Effect.tryPromise(() => reader.submit(bytes)).pipe(Effect.option);
-
-      if (Option.isNone(submitted))
-        return {
-          ...failedReading(
-            "submission_unknown",
-            "The reader may have received the document. This request will not be sent again.",
-          ),
-          result: "unknown" as const,
-        };
-      operation = submitted.value;
-      yield* withTransaction((transaction) =>
-        ExtractionDb.saveDocumentOperation(transaction, scope.bookId, request.id, operation).pipe(
-          Effect.mapError(databaseFailure),
-        ),
-      );
-    } else {
-      const stored = yield* withTransaction((transaction) =>
-        ExtractionDb.readDocumentOperation(transaction, scope.bookId, request.id).pipe(
-          Effect.mapError(databaseFailure),
-        ),
-      );
-
-      const previous = stored[0];
-
-      // A concurrent submit or a crash after disclosure is never a reason to POST again.
-      if (!previous?.operationUrl) {
-        return previous?.dispatchExpired
-          ? {
-              ...failedReading(
-                "submission_unknown",
-                "No operation receipt was retained. This request will not be sent again.",
-              ),
-              result: "unknown" as const,
-            }
-          : null;
-      }
-
-      if (previous.readerIdentity !== reader.identity)
-        return failedReading(
-          "reader_configuration_changed",
-          "The original reader configuration is required to resume.",
-        );
-      operation = previous.operationUrl;
-    }
-
-    const polled = yield* Effect.tryPromise({
-      try: () => reader.poll(operation),
-      catch: (error) =>
-        error instanceof DocumentOutputError
-          ? ("invalid_output" as const)
-          : ("poll_unavailable" as const),
-    }).pipe(Effect.result);
-
-    if (polled._tag === "Failure")
-      return polled.failure === "invalid_output"
-        ? {
-            ...failedReading(
-              "reader_output_rejected",
-              "The response was not bounded, unambiguous JSON.",
-            ),
-            result: "rejected_output" as const,
-          }
-        : null;
-
-    const status = Schema.decodeUnknownOption(Schema.Struct({ status: Schema.String }))(
-      polled.success,
-    );
-
-    if (Option.isSome(status) && ["running", "notStarted"].includes(status.value.status))
-      return null;
-
-    if (Option.isSome(status) && status.value.status === "failed")
-      return failedReading(
-        "provider_failed",
-        "The document reader reported a failure. The original remains available.",
-      );
-
-    return yield* Effect.try({
-      try: () => {
-        const parsed = interpretDocument(polled.success, physicalPages);
-
-        if (Shared.byteLength(JSON.stringify(parsed)) > 48000)
-          throw new Error("reader_retained_size");
-
-        return parsed;
-      },
-      catch: () =>
-        new Accounting.AccountingError({
-          code: "InvalidJournal",
-          message: "Reader output rejected.",
-        }),
-    }).pipe(
-      Effect.flatMap((parsed) =>
-        Effect.gen(function* () {
-          return {
-            result: "succeeded" as const,
-            textDigest: `sha256:${yield* sha256Hex(parsed.document.transcript)}`,
-            textByteLength: new TextEncoder().encode(parsed.document.transcript).length,
-            fields: yield* Schema.encodeEffect(Schema.Array(Extraction.ExtractedField))(
-              parsed.fields,
-            ).pipe(
-              Effect.flatMap(Shared.toJson),
-              Effect.map((values) =>
-                Array.isArray(values) ? values.filter(Shared.isJsonObject) : [],
-              ),
-            ),
-            candidateLines: yield* Schema.encodeEffect(Schema.Array(Extraction.ExtractedLine))(
-              parsed.candidateLines,
-            ).pipe(
-              Effect.flatMap(Shared.toJson),
-              Effect.map((values) =>
-                Array.isArray(values) ? values.filter(Shared.isJsonObject) : [],
-              ),
-            ),
-            diagnostics: parsed.diagnostics,
-            document: parsed.document,
-          } satisfies ExtractedReading;
-        }),
-      ),
-      Effect.catch(() =>
-        Effect.succeed({
-          ...failedReading(
-            "reader_output_rejected",
-            "The response could not be matched to bounded page evidence.",
-          ),
-          result: "rejected_output" as const,
-        }),
-      ),
-    );
-  }).pipe(
-    Effect.catch(() =>
-      Effect.succeed(
-        failedReading(
-          "document_reading_failed",
-          "The retained original could not be read within this document profile.",
-        ),
-      ),
-    ),
-  );
-}
-
-// A queue that exhausted its bounded retry budget must not leave a request
-// looking dispatchable forever. The operation receipt remains retained.
-export function stopFailedSupplierExtraction(scope: Scope, requestId: string) {
-  return settleRequest(scope.bookId, requestId, "unknown");
-}
+  },
+);

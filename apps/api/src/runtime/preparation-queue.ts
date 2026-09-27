@@ -1,6 +1,5 @@
 import * as Accounting from "@open-erp/contracts/accounting";
 import { PreparationJob } from "@open-erp/contracts/automation";
-import { inArray, sql } from "drizzle-orm";
 import { Job, JobStore } from "effect-mq";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
@@ -12,13 +11,21 @@ import {
 import {
   claimPendingSupplierExtractions,
   runSupplierExtraction,
-  stopFailedSupplierExtraction,
+  stopFailedExtractionDelivery,
 } from "../application/purchases/extraction";
-import { advancePeriodWork, claimOpenPeriodWorkRuns } from "../application/period-work";
+import {
+  advancePeriodWork,
+  claimOpenPeriodWorkRuns,
+  stopFailedPeriodWorkDelivery,
+} from "../application/period-work";
 import { failure } from "../application/failures";
-import { Database } from "../db/connection";
-import { jobAttempts, jobs } from "../db/schema";
-import { databaseFailure } from "../db/transaction";
+import {
+  deliveryDispatch,
+  ignoreUnrearmable,
+  isTerminalDeliveryFailure,
+  readQueueSnapshot,
+  type QueueSnapshot,
+} from "./delivery-dispatch";
 import { RequestEnvironment } from "./environment";
 
 export class PreparationQueue extends Job.make("preparation", {
@@ -31,6 +38,7 @@ export class PreparationQueue extends Job.make("preparation", {
   error: Accounting.AccountingError,
   queue: "preparation",
   idempotencyKey: preparationKey,
+  retryable: isTerminalDeliveryFailure,
   metadata: ({ scope }) => ({ bookId: scope.bookId }),
   defaults: { attempts: 5, backoff: { type: "exponential", delay: "10 seconds" } },
 }) {}
@@ -48,6 +56,7 @@ export class ExtractionQueue extends Job.make("supplier-extraction", {
   error: Accounting.AccountingError,
   queue: "preparation",
   idempotencyKey: extractionKey,
+  retryable: isTerminalDeliveryFailure,
   metadata: ({ scope }) => ({ bookId: scope.bookId }),
   defaults: { attempts: 5, backoff: { type: "exponential", delay: "10 seconds" } },
 }) {}
@@ -76,6 +85,7 @@ export class PeriodWorkQueue extends Job.make("period-work", {
   error: Accounting.AccountingError,
   queue: "preparation",
   idempotencyKey: periodWorkKey,
+  retryable: isTerminalDeliveryFailure,
   metadata: ({ scope }) => ({ bookId: scope.bookId }),
   defaults: { attempts: 5, backoff: { type: "exponential", delay: "10 seconds" } },
 }) {}
@@ -106,83 +116,24 @@ function preparationRecordId(payload: PreparationPayload) {
   return `${PreparationQueue._tag}/${preparationKey(payload)}`;
 }
 
-// Attempt history survives retries and bounds automatic rearming.
-const rearmGenerations = 2;
-
-type QueueRecord = {
-  readonly state: string;
-  readonly attemptsMade: number;
-  readonly attemptsMax: number;
-};
-
-type QueueSnapshot = {
-  readonly records: ReadonlyMap<JobStore.JobId, QueueRecord>;
-  readonly recorded: ReadonlyMap<JobStore.JobId, number>;
-};
-
-function readQueueSnapshot(ids: ReadonlyArray<JobStore.JobId>) {
-  return Effect.gen(function* () {
-    const db = yield* Database;
-
-    const records = yield* db
-      .select({
-        id: jobs.id,
-        state: jobs.state,
-        attemptsMade: jobs.attemptsMade,
-        attemptsMax: jobs.attemptsMax,
-      })
-      .from(jobs)
-      .where(inArray(jobs.id, [...ids]))
-      .pipe(Effect.mapError(databaseFailure));
-
-    const recorded = yield* db
-      .select({ id: jobAttempts.jobId, total: sql<number>`count(*)::integer` })
-      .from(jobAttempts)
-      .where(inArray(jobAttempts.jobId, [...ids]))
-      .groupBy(jobAttempts.jobId)
-      .pipe(Effect.mapError(databaseFailure));
-
-    return {
-      records: new Map(records.map((row) => [row.id, row])),
-      recorded: new Map(recorded.map((row) => [row.id, row.total])),
-    };
-  });
+function extractionRecordId(payload: ExtractionPayload) {
+  return `${ExtractionQueue._tag}/${extractionKey(payload)}`;
 }
 
-function dispatchPreparation(
-  job: typeof PreparationJob.Type,
-  snapshot: QueueSnapshot,
-): Effect.Effect<
-  unknown,
-  Accounting.AccountingError,
-  Database | RequestEnvironment | JobStore.JobStore
-> {
+function periodWorkRecordId(payload: PeriodWorkPayload) {
+  return `${PeriodWorkQueue._tag}/${periodWorkKey(payload)}`;
+}
+
+function dispatchPreparation(job: typeof PreparationJob.Type, snapshot: QueueSnapshot) {
   const payload = { jobId: job.id, scope: job.scope, checkpoint: job.checkpoint };
   const id = JobStore.JobId(preparationRecordId(payload));
-  const record = snapshot.records.get(id);
 
-  if (record?.state === "cancelled") return stopFailedPreparationDelivery(payload);
-
-  if (
-    record === undefined ||
-    record.state !== "failed" ||
-    record.attemptsMade < record.attemptsMax
-  ) {
-    return PreparationQueue.enqueue(payload).pipe(Effect.asVoid);
-  }
-
-  const recorded = snapshot.recorded.get(id) ?? 0;
-
-  if (recorded >= record.attemptsMax * (1 + rearmGenerations)) {
-    return stopFailedPreparationDelivery(payload);
-  }
-
-  // Retrying preserves the checkpoint; application receipts prevent duplicate work.
-  return PreparationQueue.retry(id).pipe(
-    Effect.catchTags({
-      JobNotFoundError: () => Effect.void,
-      JobNotRetryableError: () => Effect.void,
-    }),
+  return deliveryDispatch(
+    id,
+    snapshot,
+    PreparationQueue.enqueue(payload),
+    ignoreUnrearmable(PreparationQueue.retry(id)),
+    stopFailedPreparationDelivery(payload),
   );
 }
 
@@ -221,42 +172,40 @@ export const dispatchPendingExtractions = Effect.fn("Extraction.dispatchPending"
   const { bindings } = yield* RequestEnvironment;
 
   if (!bindings.OPENERP_PREPARATION_TOKEN) return yield* failure("Unavailable");
+
   const pending = yield* claimPendingSupplierExtractions(bindings.OPENERP_PREPARATION_TOKEN);
 
   if (pending.length === 0) return;
 
+  const payloads = pending.map((request) => ({
+    requestId: request.requestId,
+    scope: { entityId: request.entityId, bookId: request.bookId },
+  })) satisfies ReadonlyArray<ExtractionPayload>;
+
   const snapshot = yield* readQueueSnapshot(
-    pending.map((request) =>
-      JobStore.JobId(`supplier-extraction/${request.bookId}/${request.requestId}`),
-    ),
+    payloads.map((payload) => JobStore.JobId(extractionRecordId(payload))),
   );
 
   yield* Effect.forEach(
-    pending,
-    (request) =>
-      Effect.gen(function* () {
-        const scope = { entityId: request.entityId, bookId: request.bookId };
+    payloads,
+    (payload) => {
+      const id = JobStore.JobId(extractionRecordId(payload));
 
-        const record = snapshot.records.get(
-          JobStore.JobId(
-            `supplier-extraction/${extractionKey({ scope, requestId: request.requestId })}`,
-          ),
-        );
-
-        if (
-          record?.state === "cancelled" ||
-          record?.state === "completed" ||
-          (record?.state === "failed" && record.attemptsMade >= record.attemptsMax)
-        )
-          return yield* stopFailedSupplierExtraction(scope, request.requestId);
-
-        return yield* ExtractionQueue.enqueue({ requestId: request.requestId, scope }).pipe(
-          Effect.asVoid,
-          Effect.catchDefect(() =>
-            Effect.logWarning("Extraction enqueue failed; admission remains durable."),
-          ),
-        );
-      }),
+      return deliveryDispatch(
+        id,
+        snapshot,
+        ExtractionQueue.enqueue(payload),
+        ignoreUnrearmable(ExtractionQueue.retry(id)),
+        stopFailedExtractionDelivery(payload),
+      ).pipe(
+        // The store is reached through the defect channel, so one unreachable queue
+        // row must not end the polling fiber. The admission stays durable either
+        // way and the next poll picks the same request up again.
+        Effect.catchDefect(() =>
+          Effect.logWarning("Extraction enqueue failed; admission remains durable."),
+        ),
+      );
+    },
     { concurrency: 5, discard: true },
   );
 });
@@ -291,22 +240,39 @@ export const dispatchPendingPeriodWork = Effect.fn("PeriodWork.dispatchPending")
     periodWorkBoundedCount,
   );
 
+  if (pending.length === 0) return;
+
+  const payloads = pending.map((run) => ({
+    manifestId: run.manifestId,
+    scope: { entityId: run.entityId, bookId: run.bookId },
+    boundedCount: run.boundedCount,
+    checkpoint: run.checkpoint,
+  })) satisfies ReadonlyArray<PeriodWorkPayload>;
+
+  const snapshot = yield* readQueueSnapshot(
+    payloads.map((payload) => JobStore.JobId(periodWorkRecordId(payload))),
+  );
+
   yield* Effect.forEach(
-    pending,
-    (run) =>
-      PeriodWorkQueue.enqueue({
-        manifestId: run.manifestId,
-        scope: { entityId: run.entityId, bookId: run.bookId },
-        boundedCount: run.boundedCount,
-        checkpoint: run.checkpoint,
-      }).pipe(
-        // The store is reached through the defect channel, so one unreachable
-        // queue row must not end the polling fiber. The child fence keeps the
+    payloads,
+    (payload) => {
+      const id = JobStore.JobId(periodWorkRecordId(payload));
+
+      return deliveryDispatch(
+        id,
+        snapshot,
+        PeriodWorkQueue.enqueue(payload),
+        ignoreUnrearmable(PeriodWorkQueue.retry(id)),
+        stopFailedPeriodWorkDelivery(payload),
+      ).pipe(
+        // The store is reached through the defect channel, so one unreachable queue
+        // row must not end the polling fiber. The child fence keeps the
         // next poll from double-publishing either way.
         Effect.catchDefect(() =>
           Effect.logWarning("Period work enqueue failed; the run stays open."),
         ),
-      ),
+      );
+    },
     { concurrency: 5, discard: true },
   );
 });

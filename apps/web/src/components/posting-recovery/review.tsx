@@ -16,6 +16,7 @@ import { SavedPostingOutcome } from "./saved-requests";
 import { InputField } from "@open-erp/ui/components/field";
 import { Link } from "@open-erp/ui/components/link";
 import { reviewPath, workspacePath } from "@/lib/book-context";
+import { decodeWorkReturn, workReturnHref } from "@/lib/work-return";
 import { accountingCopy } from "@/lib/accounting-copy";
 
 export function PostingRecoveryReview(props: {
@@ -105,6 +106,7 @@ export function PostingRecoveryReview(props: {
             locale={locale}
             accounts={accounts}
             refreshing={recovery.isFetching}
+            returnSearch={props.returnSearch}
           />
           <Disclosure title={copy.history}>
             <RequestHistory current={recovery.data} locale={locale} />
@@ -137,6 +139,7 @@ function RecoveryDetail(props: {
   locale: Locale;
   accounts: typeof Accounting.BookSetup.Type.accounts;
   refreshing: boolean;
+  returnSearch?: string;
 }) {
   const { book, current, locale, accounts } = props;
   const copy = postingCopy(locale);
@@ -208,7 +211,6 @@ function RecoveryDetail(props: {
   const busy = props.refreshing || approve.isPending || execute.isPending || revoke.isPending;
   const unposted = current.summary.postingStatus === "unposted_at_check";
   const actionable = unposted && current.validation.status === "current" && reviewed && !busy;
-  const receipt = current.summary.executionReceipt;
 
   return (
     <Box display="grid" gap="lg" minWidth="zero">
@@ -225,35 +227,12 @@ function RecoveryDetail(props: {
           ))}
         </Box>
       ))}
-      {receipt ? (
-        <WorkflowSurface>
-          <Heading>
-            {accountingCopy(locale).workspace_posted_receipt} {receipt.voucherNumber}
-          </Heading>
-          <Text>
-            {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
-              new Date(receipt.committedAt),
-            )}
-          </Text>
-          <Link href={`${workspacePath(book)}/books?view=vouchers`}>
-            {accountingCopy(locale).workspace_view_vouchers}
-          </Link>
-          <Disclosure title={copy.receipt}>
-            <Text tone="muted">
-              {receipt.id} · {receipt.committedAt}
-            </Text>
-            <Text tone="muted">
-              {copy.voucher}: {receipt.voucherId} · {receipt.voucherNumber}
-            </Text>
-            <Text tone="muted">
-              {copy.sequence}: {receipt.sequence}
-            </Text>
-            <Text tone="muted">
-              {copy.digest}: {receipt.planDigest}
-            </Text>
-          </Disclosure>
-        </WorkflowSurface>
-      ) : null}
+      <RecoveryReceipt
+        book={book}
+        current={current}
+        locale={locale}
+        returnSearch={props.returnSearch}
+      />
       <CommandOutcome saved={approve.data} locale={locale} />
       <CommandOutcome saved={execute.data} locale={locale} />
       <CommandOutcome saved={revoke.data} locale={locale} />
@@ -352,6 +331,51 @@ function RecoveryDetail(props: {
         </Text>
       </Disclosure>
     </Box>
+  );
+}
+
+function RecoveryReceipt(props: {
+  book: typeof Accounting.Book.Type;
+  current: typeof Recovery.PostingRecovery.Type;
+  locale: Locale;
+  returnSearch?: string;
+}) {
+  const { book, current, locale } = props;
+  const copy = postingCopy(locale);
+  const receipt = current.summary.executionReceipt;
+
+  if (!receipt) return null;
+
+  return (
+    <WorkflowSurface>
+      <Heading>
+        {accountingCopy(locale).workspace_posted_receipt} {receipt.voucherNumber}
+      </Heading>
+      <Text>
+        {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
+          new Date(receipt.committedAt),
+        )}
+      </Text>
+      <Link
+        href={`${workReturnHref(`${workspacePath(book)}/books`, "vouchers", decodeWorkReturn(props.returnSearch))}&record=${encodeURIComponent(receipt.voucherId)}&returnPlan=${encodeURIComponent(current.plan.id)}&returnRevision=${encodeURIComponent(current.plan.planDigest)}`}
+      >
+        {locale === "sv" ? "Visa verifikation" : "View voucher"}
+      </Link>
+      <Disclosure title={copy.receipt}>
+        <Text tone="muted">
+          {receipt.id} · {receipt.committedAt}
+        </Text>
+        <Text tone="muted">
+          {copy.voucher}: {receipt.voucherId} · {receipt.voucherNumber}
+        </Text>
+        <Text tone="muted">
+          {copy.sequence}: {receipt.sequence}
+        </Text>
+        <Text tone="muted">
+          {copy.digest}: {receipt.planDigest}
+        </Text>
+      </Disclosure>
+    </WorkflowSurface>
   );
 }
 

@@ -27,6 +27,8 @@ import {
   workspacePath,
   type ReviewTarget,
 } from "@/lib/book-context";
+import { WorkReturnAction } from "@/components/work-return-action";
+import { WorkReturnSearch, decodeWorkReturn, workReturnHref } from "@/lib/work-return";
 import { frontendCopy } from "@/lib/frontend-copy";
 
 const Owners = lazy(() =>
@@ -76,6 +78,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/tools")(
         ]),
       ),
       bundle: Schema.optional(Accounting.Identifier),
+      work: WorkReturnSearch,
     }),
   ),
   component: Tools,
@@ -83,22 +86,30 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/tools")(
 
 function Tools() {
   const { book, setup, locale } = useBookWorkspace();
-  const { view, bundle } = Route.useSearch();
+  const { view, bundle, work: returnSearch } = Route.useSearch();
+  const work = decodeWorkReturn(returnSearch);
   const navigate = useNavigate();
   const base = `${workspacePath(book)}/tools`;
   const sv = locale === "sv";
 
-  const onPrepared = (id: string) => void navigate({ to: reviewPath(book, id) });
+  const onPrepared = (id: string) =>
+    void navigate({ to: reviewPath(book, id), search: work ?? {} });
 
   const onReview = (target: ReviewTarget) => void navigate({ to: reviewTargetPath(book, target) });
 
   return (
     <>
-      <WorkspaceHeader title={frontendCopy(locale).tools} />
+      <WorkspaceHeader
+        title={frontendCopy(locale).tools}
+        action={<WorkReturnAction work={work} />}
+      />
       <PageContent>
         {view ? (
           <Box>
-            <PageAction quiet href={base}>
+            <PageAction
+              quiet
+              href={`${base}${returnSearch ? `?work=${encodeURIComponent(returnSearch)}` : ""}`}
+            >
               <ArrowLeft size={14} />
               {sv ? "Alla verktyg" : "All tools"}
             </PageAction>
@@ -107,7 +118,7 @@ function Tools() {
           <>
             <TaskSection title={sv ? "Bokföringsarbete" : "Accounting work"}>
               <TaskRow
-                href={`${base}?view=owners`}
+                href={workReturnHref(base, "owners", work)}
                 icon={<Users size={16} />}
                 title={sv ? "Ägarutlägg och finansiering" : "Owner expenses and funding"}
                 detail={
@@ -117,7 +128,7 @@ function Tools() {
                 }
               />
               <TaskRow
-                href={`${base}?view=recurring`}
+                href={workReturnHref(base, "recurring", work)}
                 icon={<CalendarClock size={16} />}
                 title={sv ? "Återkommande bokningar" : "Recurring entries"}
                 detail={
@@ -127,7 +138,7 @@ function Tools() {
                 }
               />
               <TaskRow
-                href={`${base}?view=corrections`}
+                href={workReturnHref(base, "corrections", work)}
                 icon={<History size={16} />}
                 title={sv ? "Rättelser" : "Corrections"}
                 detail={
@@ -139,7 +150,7 @@ function Tools() {
             </TaskSection>
             <TaskSection title={sv ? "Granskning och återställning" : "Review and recovery"}>
               <TaskRow
-                href={`${base}?view=snapshots`}
+                href={workReturnHref(base, "snapshots", work)}
                 icon={<BookOpen size={16} />}
                 title={sv ? "Sparade arbetsunderlag" : "Saved work snapshots"}
                 detail={
@@ -149,7 +160,7 @@ function Tools() {
                 }
               />
               <TaskRow
-                href={`${base}?view=recovery`}
+                href={workReturnHref(base, "recovery", work)}
                 icon={<History size={16} />}
                 title={sv ? "Återställ påbörjat arbete" : "Recover unfinished work"}
                 detail={
@@ -159,7 +170,7 @@ function Tools() {
                 }
               />
               <TaskRow
-                href={`${base}?view=readiness`}
+                href={workReturnHref(base, "readiness", work)}
                 icon={<ListChecks size={16} />}
                 title={sv ? "Arbetsytans funktioner" : "Workspace capabilities"}
                 detail={
@@ -169,7 +180,7 @@ function Tools() {
                 }
               />
               <TaskRow
-                href={`${base}?view=technical`}
+                href={workReturnHref(base, "technical", work)}
                 icon={<Wrench size={16} />}
                 title={sv ? "Teknisk arbetsyta" : "Technical workspace"}
                 detail={

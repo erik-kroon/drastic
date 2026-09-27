@@ -157,7 +157,7 @@ function SupplierInboxEntry(props: {
               maxLength={200}
             />
           </CommandForm>
-          <Button type="button" onClick={() => props.commerceProps.onDraft(`new:${props.id}`)}>
+          <Button type="button" onClick={() => props.commerceProps.onDraft(`inbox:${props.id}`)}>
             {sv ? "Granska och fyll i faktura" : "Review and complete invoice"}
           </Button>
         </>

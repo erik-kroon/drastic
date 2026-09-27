@@ -583,7 +583,12 @@ export const VatControlReclassificationRecovery = Schema.Struct({
 // amounts and reconciles every VAT control. It never carries a submitted,
 // assessed or paid state.
 
-export const VatFactOrigin = Schema.Literals(["manual_admission", "owned_purchase_recognition"]);
+export const VatFactOrigin = Schema.Literals([
+  "manual_admission",
+  "owned_purchase_recognition",
+  "owned_owner_purchase",
+  "owned_customer_credit",
+]);
 
 export const VatRegisteredPeriod = Schema.Struct({
   factRevisionId: A.Identifier,
@@ -672,6 +677,11 @@ export const VatActualPopulation = Schema.Struct({
   bookPurchaseComponentCount: Schema.Int,
   selectedAdmittedFactCount: Schema.Int,
   selectedPurchaseComponentCount: Schema.Int,
+  // Optional for saved captures that predate these native producers.
+  bookOwnerPurchaseComponentCount: Schema.optional(Schema.Int),
+  selectedOwnerPurchaseComponentCount: Schema.optional(Schema.Int),
+  bookCustomerCreditComponentCount: Schema.optional(Schema.Int),
+  selectedCustomerCreditComponentCount: Schema.optional(Schema.Int),
   // A manually admitted fact with no tax point belongs to no period at all, so
   // the population is not completely classified until it is resolved.
   withoutTaxPoint: Schema.Int,
@@ -683,7 +693,12 @@ export const VatActualPopulation = Schema.Struct({
 // per-account vector to read, which is a retained fact and never a computed
 // zero over a port this packet could not see.
 export const VatOwnerPortState = Schema.Struct({
-  owner: Schema.Literals(["vat_control_reclassification", "vat_draft_amendment"]),
+  owner: Schema.Literals([
+    "vat_control_reclassification",
+    "vat_draft_amendment",
+    "owner_paid_purchase",
+    "customer_credit",
+  ]),
   state: Schema.Literals(["read_committed_records", "no_committed_financial_effect"]),
   recordCount: Schema.Int,
   recordDigests: Schema.Array(A.Digest).check(Schema.isMaxLength(500)),

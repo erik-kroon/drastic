@@ -23,6 +23,12 @@ export const actualReturnTables = [
   "vat_fact_withdrawals",
   "purchase_tax_facts",
   "purchase_recognitions",
+  "owner_purchase_tax_facts",
+  "owner_purchase_recognitions",
+  "customer_credit_tax_corrections",
+  "customer_credit_notes",
+  "ar_legal_issues",
+  "fiscal_years",
   "vat_control_profiles",
   "vat_control_account_roles",
   "vat_control_reclassification_effects",
@@ -156,6 +162,7 @@ export function readAdmittedFacts(
 }
 
 export type PurchaseComponentRow = {
+  readonly origin: "owned_purchase_recognition" | "owned_owner_purchase";
   readonly id: string;
   readonly recognitionId: string;
   readonly sourceLineId: string;
@@ -183,7 +190,18 @@ export function readPurchaseComponents(
 ) {
   return transaction.execute<PurchaseComponentRow>(
     sql`
-      select p.id, p.recognition_id as "recognitionId", p.source_line_id as "sourceLineId",
+      with published as (
+        select 'owned_purchase_recognition'::text as origin, id, recognition_id, source_line_id,
+          voucher_id, source_tax_minor, signed_base_minor, signed_deductible_tax_minor,
+          tax_point_on, adjusts_tax_fact_id, digest, body
+        from openerp.purchase_tax_facts where book_id = ${bookId}
+        union all
+        select 'owned_owner_purchase', id, recognition_id, source_line_id,
+          voucher_id, source_tax_minor, signed_base_minor, signed_deductible_tax_minor,
+          tax_point_on, adjusts_tax_fact_id, digest, body
+        from openerp.owner_purchase_tax_facts where book_id = ${bookId}
+      )
+      select p.origin, p.id, p.recognition_id as "recognitionId", p.source_line_id as "sourceLineId",
         p.voucher_id as "voucherId", p.source_tax_minor::text as "sourceTaxMinor",
         p.signed_base_minor::text as "signedBaseMinor",
         p.signed_deductible_tax_minor::text as "signedDeductibleTaxMinor",
@@ -196,11 +214,11 @@ export function readPurchaseComponents(
           where x.book_id = ${bookId} and x.corrects_voucher_id = p.voucher_id
             and x.posting_purpose = 'reversal'
         )) as "voucherReversed"
-      from openerp.purchase_tax_facts p
+      from published p
       left join openerp.vouchers v on v.book_id = ${bookId} and v.id = p.voucher_id
-      where p.book_id = ${bookId}
-        and p.tax_point_on >= ${startsOn} and p.tax_point_on <= ${endsOn}
+      where p.tax_point_on >= ${startsOn} and p.tax_point_on <= ${endsOn}
       order by p.tax_point_on, p.id collate "C"
+      limit 501
     `,
     "objects",
   );
@@ -210,6 +228,8 @@ export type PopulationRow = {
   readonly admittedFacts: number;
   readonly admittedWithoutTaxPoint: number;
   readonly purchaseComponents: number;
+  readonly ownerPurchaseComponents: number;
+  readonly customerCreditComponents: number;
 };
 
 // A complete population includes the zero-count case, so both populations are
@@ -232,7 +252,11 @@ export function readPopulation(transaction: Transaction, bookId: string) {
           ) r on true
           where c.book_id = ${bookId} and r.point is null) as "admittedWithoutTaxPoint",
         (select count(*)::integer from openerp.purchase_tax_facts
-          where book_id = ${bookId}) as "purchaseComponents"
+          where book_id = ${bookId}) as "purchaseComponents",
+        (select count(*)::integer from openerp.owner_purchase_tax_facts
+          where book_id = ${bookId}) as "ownerPurchaseComponents",
+        (select count(*)::integer from openerp.customer_credit_tax_corrections
+          where book_id = ${bookId}) as "customerCreditComponents"
     `,
     "objects",
   );
@@ -320,6 +344,9 @@ export function readPurchaseControlLinks(
       with selected as (
         select id, event_owner, body from openerp.purchase_recognitions
         where book_id = ${bookId} and id = any(${idArray(recognitionIds)})
+        union all
+        select id, 'owner_paid_purchase'::text, body from openerp.owner_purchase_recognitions
+        where book_id = ${bookId} and id = any(${idArray(recognitionIds)})
       ), credit_lines as (
         select r.id, line.value,
           (1 + sum(1 + case when (line.value ->> 'releasedDeductionMinor')::numeric > 0
@@ -335,7 +362,7 @@ export function readPurchaseControlLinks(
       from selected r
       cross join lateral jsonb_array_elements(r.body -> 'plan' -> 'journal')
         with ordinality line(value, ordinal)
-      where r.event_owner = 'supplier_purchase' and line.value ->> 'sourceLineId' is not null
+      where r.event_owner in ('supplier_purchase', 'owner_paid_purchase') and line.value ->> 'sourceLineId' is not null
       union all
       select id, value ->> 'sourceLineId', journal_ordinal from credit_lines
       where (value ->> 'releasedDeductionMinor')::numeric > 0

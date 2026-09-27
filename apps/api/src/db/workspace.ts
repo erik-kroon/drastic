@@ -14,6 +14,7 @@ export const workspaceTables = [
   "change_sets",
   "vouchers",
   "execution_receipts",
+  "supplier_acceptance_reviews",
   "invoice_drafts",
   "invoice_draft_revisions",
   "invoice_issues",
@@ -73,6 +74,8 @@ export type WorkCountsRow = {
 };
 
 export type AttentionItemRow = {
+  readonly supplierDraftId: string | null;
+  readonly supplierReviewId: string | null;
   readonly key: string;
   readonly kind: string;
   readonly id: string;
@@ -567,6 +570,7 @@ export function listAttentionItems(
         limit 51
       )
       select c.key, c.kind, c.id, c.revision, c.title, c.date, c.updated as "updatedAt",
+        supplier.draft_id as "supplierDraftId", supplier.id as "supplierReviewId",
         c.amount as "amountMinor", c.currency, c.scale as "currencyScale", c.state, c.reason,
         a.kind as "assignmentKind", a.record_id as "assignmentRecordId",
         a.assignee_id as "assignmentAssigneeId", a.due_on::text as "assignmentDueOn",
@@ -575,6 +579,8 @@ export function listAttentionItems(
           as "assignmentUpdatedAt",
         a.updated_by as "assignmentUpdatedBy"
       from candidates c
+      left join openerp.supplier_acceptance_reviews supplier
+        on supplier.book_id = ${bookId} and supplier.change_set_id = c.id and c.kind = 'journal'
       left join lateral (
         select latest.* from openerp.workspace_assignments latest
         where latest.book_id = ${bookId} and latest.kind = c.kind and latest.record_id = c.id
