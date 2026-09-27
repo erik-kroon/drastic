@@ -410,14 +410,17 @@ const captureBasis = Effect.fn("corporateTax.captureBasis")(function* (
       currencyScale: snapshot.currencyScale,
       retainedContributionCount: snapshot.contributionCount,
       factRevisions: snapshot.factRevisions,
+      // The canonical form digests an object, never a bare array, so the retained
+      // membership is enveloped under its own key. The envelope is part of the
+      // digest, so this exact set cannot be re-spelled into a different value.
       incomeTaxContributionDigest: yield* versionedDigest(
-        yield* toJsonObject(
-          components.map((entry) => ({
+        yield* toJsonObject({
+          components: components.map((entry) => ({
             componentId: entry.componentId,
             accountId: entry.accountId,
             signedMinor: entry.signedMinor,
           })),
-        ),
+        }),
         "StaleDependency",
       ),
       retainedStatementResultMinor: snapshot.balance.virtualUntransferredResultMinor,

@@ -927,6 +927,37 @@ function emittableValue(value: string, maximum: number): Result.Result<string, R
   return Result.succeed(value);
 }
 
+// A marker is written directly in front of a separator, so a marker that itself
+// holds a separator or a line ending would make the record impossible to split back
+// apart. That conflict spans two reviewed fields, so it is checked here where both
+// are known rather than expressed in the contract. A real reviewed marker such as a
+// hash-led uppercase name passes; only a self-contradictory bundle is refused.
+function usableMarker(
+  marker: string,
+  bundle: Bundle,
+  name: string,
+): Result.Result<string, Refusal> {
+  const newline = bundle.lineEnding === "crlf" ? "\r\n" : "\n";
+
+  if (!emittable.test(marker))
+    return fail("UnsafeValue", `The reviewed ${name} marker holds an unsupported character.`);
+
+  for (const separator of [bundle.recordNameValueSeparator, bundle.fieldValueSeparator]) {
+    if (marker.includes(separator)) {
+      return fail(
+        "UnsafeValue",
+        `The reviewed ${name} marker contains a separator it is written next to.`,
+      );
+    }
+  }
+
+  if (marker.includes("\n") || marker.includes("\r") || marker.includes(newline)) {
+    return fail("UnsafeValue", `The reviewed ${name} marker contains a line break.`);
+  }
+
+  return Result.succeed(marker);
+}
+
 /**
  * renderSru(fields, bundle)
  *
@@ -941,6 +972,18 @@ export function renderSru(
   bundle: Bundle,
 ): Result.Result<RenderedSru, Refusal> {
   const newline = bundle.lineEnding === "crlf" ? "\r\n" : "\n";
+
+  // Every marker is checked before anything is emitted, so a bundle that cannot be
+  // written unambiguously produces no file at all.
+  for (const [marker, name] of [
+    [bundle.blankLetterRecord, "blank-letter record"],
+    [bundle.uppgiftRecord, "field record"],
+    [bundle.infoRecordPrefix, "info record prefix"],
+  ] as const) {
+    const usable = usableMarker(marker, bundle, name);
+
+    if (Result.isFailure(usable)) return fail(usable.failure.code, usable.failure.message);
+  }
 
   const present = new Map(
     fields.map((entry) => [`${entry.formId}/${entry.fieldCode}`, entry] as const),

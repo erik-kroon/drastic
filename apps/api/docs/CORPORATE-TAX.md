@@ -109,6 +109,13 @@ inside the one existing `openerp.rule_releases` record. A release that declares 
 `corporateTax` section, or without the role bindings the bridge needs, is an explicit
 refusal.
 
+A record marker is bound to the writer's own emittable character set without the space, so a
+marker the contract accepts is always one the writer can put on a line and read back. The
+markers the file-transfer contract actually uses are hash-led uppercase names, and they are
+admitted. Whether a marker is usable _alongside_ a bundle's own separators is a property of
+two reviewed fields together, so `renderSru` refuses a self-contradictory bundle before
+emitting anything rather than the contract excluding reviewed markers.
+
 ## Honest external gates
 
 These are **not** satisfied by this work and nothing here should be read as satisfying them:
@@ -154,3 +161,9 @@ the exported pure functions and every obligation held — pre-tax 1000000, befor
 negative taxable result producing zero current tax rather than a negative receivable. That
 is **arithmetic evidence only**: no database, no transaction, no HTTP call, no Worker
 invocation and no rendered file has been observed. It is not retained as a test.
+
+That vector fixture bypassed the contract schemas: it called the pure functions with
+plain objects. It therefore did **not** exercise contract decoding, and it missed two
+defects that decoding would have caught — the digest envelope and the record-marker
+pattern, both fixed in the follow-up commit. Vector evidence must not be read as evidence
+that a wire shape decodes.

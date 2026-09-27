@@ -495,6 +495,16 @@ export const SruRecord = Schema.Struct({
   value: Schema.String.check(Schema.isMaxLength(2000)),
 });
 
+// A record marker the writer can place at the head of an emitted line. The bound is
+// the writer's own emittable character set without the space, so a marker this
+// contract accepts is always one the writer can put on a line and read back. It
+// admits the hash-led uppercase markers the file-transfer contract uses.
+const SruRecordMarker = Schema.String.check(
+  Schema.isMinLength(1),
+  Schema.isMaxLength(32),
+  Schema.isPattern(/^[0-9A-Za-z.,:;_+@\-/()'*#%]+$/u),
+);
+
 export const SruForm = Schema.Struct({
   formId: Schema.String.check(Schema.isPattern(/^[A-Za-z0-9]{1,32}$/u)),
   fieldCodes: Schema.Array(Schema.String.check(Schema.isPattern(/^[A-Za-z0-9]{1,32}$/u))).check(
@@ -512,11 +522,13 @@ export const SruFormatBundle = Schema.Struct({
   recordNameValueSeparator: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(8)),
   fieldValueSeparator: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(8)),
   // The record markers are release grammar like every other name, separator and
-  // terminator, so no record name is a literal in this contract. A release whose
-  // markers do not satisfy the shape is refused rather than reinterpreted.
-  blankLetterRecord: Schema.String.check(Schema.isPattern(/^[^0-9A-Za-z\s]{1,32}$/u)),
-  uppgiftRecord: Schema.String.check(Schema.isPattern(/^[^0-9A-Za-z\s]{1,32}$/u)),
-  infoRecordPrefix: Schema.String.check(Schema.isPattern(/^[^0-9A-Za-z\s]{1,32}$/u)),
+  // terminator, so no record name is a literal in this contract. Whether a marker is
+  // usable alongside the bundle's own separators is a property of two reviewed
+  // fields together, so the writer refuses that at render time rather than
+  // excluding reviewed markers here.
+  blankLetterRecord: SruRecordMarker,
+  uppgiftRecord: SruRecordMarker,
+  infoRecordPrefix: SruRecordMarker,
   infoFile: Schema.Struct({
     filename: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
     records: Schema.Array(SruRecord).check(Schema.isMinLength(1), Schema.isMaxLength(40)),
