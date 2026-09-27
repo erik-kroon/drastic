@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import * as Suppliers from "@open-erp/contracts/supplier-invoice-drafts";
 import { ArrowLeft, Plus, Pencil } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
@@ -42,12 +42,6 @@ import {
 
 type Draft = typeof Suppliers.SupplierInvoiceDraftRevision.Type;
 
-function moreDraftsLabel(sv: boolean, loading: boolean) {
-  if (loading) return sv ? "Laddar…" : "Loading…";
-
-  return sv ? "Visa fler utkast" : "Load more drafts";
-}
-
 function draftStage(accepted: boolean, reviewCount: number) {
   if (accepted) return 2;
 
@@ -74,16 +68,11 @@ export function SupplierInvoiceDrafts(
     props.recordId?.startsWith("new:") ||
     props.recordId?.startsWith("inbox:");
 
-  const list = useInfiniteQuery({
-    queryKey: [...commerceKey(props.book), "supplier-invoice-drafts", search],
-    initialPageParam: "",
-    queryFn: async ({ signal, pageParam }) => {
-      const query = new URLSearchParams({ q: search });
-
-      if (pageParam !== "") query.set("after", pageParam);
-
+  const list = useQuery({
+    queryKey: [...commerceKey(props.book), "supplier-invoice-drafts"],
+    queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${commercePath(props.book)}/supplier-invoice-drafts?${query}`,
+        `${commercePath(props.book)}/supplier-invoice-drafts`,
         Suppliers.SupplierInvoiceDraftList,
         { signal },
       );
@@ -92,7 +81,6 @@ export function SupplierInvoiceDrafts(
 
       return result;
     },
-    getNextPageParam: (page) => page.next ?? undefined,
     retry: false,
   });
 
@@ -109,7 +97,12 @@ export function SupplierInvoiceDrafts(
       </Box>
     );
 
-  const matches = list.data?.pages.flatMap((page) => page.items) ?? [];
+  const matches =
+    list.data?.items.filter((record) =>
+      `${record.title} ${record.supplierName} ${record.supplierDocumentNumber ?? ""}`
+        .toLocaleLowerCase(props.locale)
+        .includes(search.toLocaleLowerCase(props.locale)),
+    ) ?? [];
 
   return (
     <Box display="grid" gap="xl">
@@ -162,19 +155,6 @@ export function SupplierInvoiceDrafts(
       ) : null}
       {list.isSuccess ? (
         <SupplierDraftResults {...props} matches={matches} search={search} />
-      ) : null}
-      {list.hasNextPage ? (
-        <Box>
-          <Button
-            variant="outline"
-            disabled={list.isFetching}
-            onClick={() => {
-              void list.fetchNextPage();
-            }}
-          >
-            {moreDraftsLabel(sv, list.isFetchingNextPage)}
-          </Button>
-        </Box>
       ) : null}
       <PageCaption>
         {sv
