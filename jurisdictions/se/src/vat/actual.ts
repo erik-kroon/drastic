@@ -1,5 +1,6 @@
 import type * as Release from "@open-erp/contracts/vat-filing-release";
 import type * as Vat from "@open-erp/contracts/vat-returns";
+import { roundRational } from "@open-erp/domain/purchasing";
 
 // The pure owner of the actual domestic VAT calculation. It reads retained
 // values, applies the reviewed rule release and returns exact, reported and
@@ -49,30 +50,9 @@ const saleOutputBoxes: ReadonlyArray<Box> = ["10", "11", "12"];
 // Exact rational rounding over bigint. The release owns the mode, a tie is never
 // truncated silently, and an amount never becomes a JavaScript number.
 function round(numerator: bigint, denominator: bigint, mode: Rounding) {
-  if (denominator <= 0n) return null;
+  const result = roundRational(numerator, denominator, mode);
 
-  const negative = numerator < 0n;
-  const magnitude = negative ? -numerator : numerator;
-  const quotient = magnitude / denominator;
-  const remainder = magnitude % denominator;
-  const doubled = remainder * 2n;
-
-  const rounded =
-    mode === "toward_zero"
-      ? quotient
-      : mode === "floor"
-        ? negative
-          ? quotient + 1n
-          : quotient
-        : mode === "half_even"
-          ? doubled > denominator || (doubled === denominator && quotient % 2n === 1n)
-            ? quotient + 1n
-            : quotient
-          : doubled >= denominator
-            ? quotient + 1n
-            : quotient;
-
-  return negative ? -rounded : rounded;
+  return result._tag === "Success" ? result.success : null;
 }
 
 function taxed(basisMinor: bigint, rate: Rate, mode: Rounding) {

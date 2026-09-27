@@ -58,6 +58,8 @@ jobs:
   e2e:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    env:
+      PG_BINDIR: /usr/lib/postgresql/17/bin
 
     steps:
       - uses: actions/checkout@v7
@@ -72,17 +74,20 @@ jobs:
         timeout-minutes: 5
         run: bun install --frozen-lockfile
 
-      - name: Install PostgreSQL
+      - name: Install PostgreSQL 17
         timeout-minutes: 5
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends postgresql
+          sudo apt-get install -y --no-install-recommends postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-17 postgresql-client-17
 
       - name: Verify PostgreSQL server binaries
         run: |
           set -euo pipefail
-          bindir="$(pg_config --bindir)"
-          echo "pg_config --bindir: ${bindir}"
+          bindir="${PG_BINDIR}"
+          echo "PostgreSQL server binaries: ${bindir}"
           for binary in initdb pg_ctl postgres; do
             test -x "${bindir}/${binary}" || {
               echo "::error::${bindir}/${binary} is missing; the E2E harness cannot start a cluster"

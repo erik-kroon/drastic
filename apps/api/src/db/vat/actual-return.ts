@@ -124,11 +124,11 @@ export function readAdmittedFacts(
   return transaction.execute<AdmittedFactRow>(
     sql`
       select c.id as "factId", r.id as "revisionId", r.body ->> 'digest'::text as digest,
-        c.record_class as "recordClass", r.body -> 'input'::jsonb ->> 'treatment'::text as treatment,
-        r.body -> 'input'::jsonb ->> 'taxPointOn'::text as "taxPointOn",
+        c.record_class as "recordClass", r.body -> 'input'::text ->> 'treatment'::text as treatment,
+        r.body -> 'input'::text ->> 'taxPointOn'::text as "taxPointOn",
         r.voucher_id as "voucherId",
-        r.body -> 'input'::jsonb ->> 'netMinor'::text as "netMinor",
-        r.body -> 'input'::jsonb ->> 'vatMinor'::text as "vatMinor",
+        r.body -> 'input'::text ->> 'netMinor'::text as "netMinor",
+        r.body -> 'input'::text ->> 'vatMinor'::text as "vatMinor",
         (w.book_id is not null) as withdrawn,
         v.sequence::text as "voucherSequence",
         (coalesce(v.posting_purpose = 'reversal', false) or exists (
@@ -146,8 +146,8 @@ export function readAdmittedFacts(
         on w.book_id = ${bookId} and w.fact_id = c.id
       left join openerp.vouchers v on v.book_id = ${bookId} and v.id = r.voucher_id
       where c.book_id = ${bookId}
-        and r.body -> 'input'::jsonb ->> 'taxPointOn'::text >= ${startsOn}
-        and r.body -> 'input'::jsonb ->> 'taxPointOn'::text <= ${endsOn}
+        and r.body -> 'input'::text ->> 'taxPointOn'::text >= ${startsOn}
+        and r.body -> 'input'::text ->> 'taxPointOn'::text <= ${endsOn}
       order by c.id collate "C"
     `,
     "objects",
@@ -221,7 +221,7 @@ export function readPopulation(transaction: Transaction, bookId: string) {
           where book_id = ${bookId}) as "admittedFacts",
         (select count(*)::integer from openerp.vat_fact_components c
           join lateral (
-            select x.body -> 'input'::jsonb ->> 'taxPointOn'::text as point
+            select x.body -> 'input'::text ->> 'taxPointOn'::text as point
             from openerp.vat_fact_revisions x
             where x.book_id = ${bookId} and x.fact_id = c.id
             order by x.revision desc limit 1

@@ -237,7 +237,9 @@ function readControlBindings(transaction: Transaction, scope: Scope) {
       }
     }
 
-    return yield* decode(BasisSchema.fields.accountRoles, yield* toJsonObject(bindings));
+    return yield* Schema.decodeEffect(BasisSchema.fields.accountRoles)(bindings).pipe(
+      Effect.mapError(() => failure("InternalError")),
+    );
   });
 }
 
@@ -305,7 +307,9 @@ function readCoverage(
       });
     }
 
-    return yield* decode(BasisSchema.fields.sourceCoverage, yield* toJsonObject(members));
+    return yield* Schema.decodeEffect(BasisSchema.fields.sourceCoverage)(members).pipe(
+      Effect.mapError(() => failure("InternalError")),
+    );
   });
 }
 
