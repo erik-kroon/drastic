@@ -8,6 +8,7 @@ import * as Tool from "effect/unstable/ai/Tool";
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http";
 import { authenticate, sameOrigin } from "./http/auth";
 import { capabilities } from "../application/capabilities";
+import { capabilityAgentPolicy } from "../application/capabilities/agent-policy";
 import { failure } from "../application/failures";
 import { RequestEnvironment } from "../runtime/environment";
 import type { Database } from "../db/connection";
@@ -28,12 +29,10 @@ const CallTool = Schema.Struct({
   arguments: Schema.optional(Schema.JsonObject),
 });
 
-// The agent catalogue. A capability whose owner declares it is not agent-callable
-// carries approval or statutory activation authority and is withheld here; the
-// ordinary HTTP surface is unaffected. The marker is default-open, so a capability
-// added to an authority-bearing family must declare it.
+// Discovery and invocation share this filtered set. Unknown writes are withheld;
+// owner-declared exclusions also apply to reads and cannot be overridden here.
 const tools = Object.entries(capabilities)
-  .filter(([, capability]) => capability.agentCallable !== false)
+  .filter(([name, capability]) => capabilityAgentPolicy(name, capability).exposed)
   .map(([name, capability]) => ({ name, capability }));
 
 const catalog = tools.map(({ name, capability }) => ({

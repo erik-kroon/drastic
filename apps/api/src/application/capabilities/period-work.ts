@@ -9,10 +9,9 @@ import {
   readPeriodWorkProgress,
 } from "../period-work";
 
-// NEXT-16. Preparation, review and progress are agent-reachable: they propose and
-// record, and a prepared plan is still not a posted journal. The batch approval is
-// not, because it is the human gesture, and a batch execution is not, because it
-// posts.
+// Period-work mutations currently require an operator at the owning boundary.
+// The MCP policy exposes progress reads; REST and the Bun runner use these same
+// operations with their current admission checks.
 export const periodWorkCapabilities = {
   period_work_prepare_manifest: effectCapability(
     Capabilities.period_work_prepare_manifest,

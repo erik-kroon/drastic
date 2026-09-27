@@ -2,9 +2,9 @@
 
 Endpoint: `POST /api/mcp`.
 
-This is a stateless, JSON-only MCP endpoint for the `synthetic-core-v1` manual
-journal profile. It is not verified for production accounting, tax, source
-completeness or Swedish compliance.
+This is a stateless, JSON-only endpoint for the shared accounting operations.
+Each operation retains its profile and authority requirements. Catalog presence
+does not establish company readiness, source completeness or statutory acceptance.
 
 ## Authentication and transport
 
@@ -19,7 +19,8 @@ completeness or Swedish compliance.
   `2025-11-25`. Stop if your client does not support the returned version.
 - Send the negotiated version as `MCP-Protocol-Version` on later requests.
 - Send one JSON-RPC message per POST. Batches, GET streams, subscriptions,
-  server notifications, the MCP background-task protocol and session persistence are not supported. Domain preparation runs advance synchronously through explicit commands.
+  server notifications, the MCP background-task protocol and session persistence
+  are not supported. Explicit domain job commands use the separate Bun runner.
 - Accepted `notifications/initialized` messages return HTTP 202 with no body.
   Other HTTP methods return 405 after authentication.
 - API request bodies have an 8 MiB byte limit and a 15-second read timeout.
@@ -102,8 +103,48 @@ Every mutating tool requires an `idempotencyKey`. Scoped tools require
 `ledger_prepare_correction` to create a linked reversal proposal; they do not
 edit or delete a posted voucher.
 
-REST and MCP use the same capability dispatcher, accounting schemas and
-parameterized PostgreSQL functions. MCP adds no bookkeeping rules. The runtime
-catalog must bind every capability declared in the shared contract catalog;
-TypeScript rejects missing or extra bindings. Operator-only REST operations are
-not added to that catalog merely to make the transports look alike.
+REST and MCP use the same accounting schemas and named Effect operations.
+Application workflows own scoped database writes. MCP adds no bookkeeping rules.
+The runtime must bind every declared capability; operator-only REST operations
+need not become agent tools.
+
+## Exposure policy and callers
+
+[The application policy](../src/application/capabilities/agent-policy.ts) classifies
+every declared write as record, preparation, approved execution, human review,
+administration, statutory activation or operator-only work. Reads already declare
+`readOnly` in their contracts. A write without a classification is withheld.
+An owner's `agentCallable: false` also withholds a capability, including reads.
+
+Only reads and classified record/preparation/approved-execution tools are eligible
+for MCP. Discovery and `tools/call` use the same filtered set. A hidden name returns
+`Unknown tool` even when the bearer belongs to an operator. Human company fact
+review, role binding, firm administration, company setup and period-work mutations
+remain outside MCP. Use their authorized HTTP/UI operations.
+
+| Caller | Admission and authority |
+| --- | --- |
+| Web and REST | Validated contracts call their named application owner. Human-only workflows check the current operator or browser identity. |
+| MCP | PostgreSQL checks the credential before dispatch. The filtered catalog limits exposure; the owner still checks book, role, profile, approval and current dependencies. |
+| Bun preparation jobs | The runner admits its service credential. Preparation, extraction and period-work owners recheck their scoped state and cancellation rules. A queued payload cannot grant human approval. |
+| Operator scripts | Provisioning, migration and recovery use their explicit maintenance/runtime boundaries. They do not receive authority from MCP metadata. |
+
+`PostingOwner` remains an internal application argument. Generic transport schemas
+do not accept it. Posting admission requires the real owner for protected invoice,
+credit, tax and other owned actions. Catalog classification is not financial
+authorization; a listed tool can still refuse a caller who lacks the required
+current role or profile.
+
+## Verification
+
+`apps/api/tests/mcp-authority.e2e.test.ts` exercises the real MCP endpoint. It checks
+complete catalog classification, hidden-name invocation, forged owner fields,
+cross-book refusal, approved agent execution, exact-key replay, changed-input
+conflict and credential revocation. A currently authorized operator can still
+recover the original committed receipt after the agent credential is revoked.
+
+Run `bun run test:e2e`. The suite retains the complete classified catalog and
+observed receipts in `test-results/e2e/mcp-authority-journey.json`, beside the source
+manifest and results. Existing HTTP tests cover human approval, membership/session
+revocation and posting rollback. These checks do not qualify every financial
+family, background-job race or external provider.
