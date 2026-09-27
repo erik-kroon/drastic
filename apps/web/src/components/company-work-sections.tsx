@@ -15,6 +15,7 @@ import {
 import { RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
 import { AccountingStatus } from "./accounting-status";
 import { attentionPath, attentionCopy } from "@/lib/attention";
+import { workQueueHref, type WorkReturn } from "@/lib/work-return";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import type { CompanyWork } from "@/lib/company-work";
 import type { Locale } from "@/paraglide/runtime";
@@ -150,6 +151,9 @@ function ReviewTasks({ work, kind }: { work: CompanyWork; kind: "journal" | "exp
   const sv = work.locale === "sv";
   const query = kind === "journal" ? work.journals : work.expenses;
   const page = query.isSuccess ? query.data : undefined;
+  // Every row and the "view all" link return to this same queue, so the band
+  // and the queue it lists never disagree.
+  const search: WorkReturn = { status: "open", kind };
 
   return (
     <>
@@ -166,11 +170,11 @@ function ReviewTasks({ work, kind }: { work: CompanyWork; kind: "journal" | "exp
                 : "Expenses to review"}
           </TaskBand>
           {page.items.slice(0, 3).map((item) => (
-            <AttentionRow key={item.key} work={work} item={item} />
+            <AttentionRow key={item.key} work={work} item={item} search={search} />
           ))}
           {BigInt(page.total) > 3n ? (
             <Box paddingBlock="sm">
-              <PageAction quiet href={`${work.base}/work?status=open&kind=${kind}`}>
+              <PageAction quiet href={workQueueHref(work.base, search)}>
                 {sv ? "Visa alla" : "View all"} ({page.total})
               </PageAction>
             </Box>
@@ -184,16 +188,18 @@ function ReviewTasks({ work, kind }: { work: CompanyWork; kind: "journal" | "exp
 function AttentionRow({
   work,
   item,
+  search,
 }: {
   work: CompanyWork;
   item: typeof Workspace.AttentionItem.Type;
+  search: WorkReturn;
 }) {
   const Icon =
     item.kind === "journal" ? BookOpen : item.kind === "expense" ? ReceiptText : FileText;
 
   return (
     <TaskRow
-      href={attentionPath(work.book, item)}
+      href={attentionPath(work.book, item, search)}
       icon={<Icon size={16} strokeWidth={1.5} />}
       title={item.title}
       detail={`${attentionCopy(work.locale)[item.reason]} · ${date(item.updatedAt, work.locale)}`}
@@ -222,7 +228,12 @@ export function ResumeInvoices({ work }: { work: CompanyWork }) {
     >
       <ReadState work={work} query={work.drafts} />
       {page?.items.slice(0, 4).map((item) => (
-        <AttentionRow key={item.key} work={work} item={item} />
+        <AttentionRow
+          key={item.key}
+          work={work}
+          item={item}
+          search={{ status: "open", kind: "invoice" }}
+        />
       ))}
       {page?.items.length === 0 ? (
         <PageEmpty

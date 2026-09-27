@@ -6,6 +6,7 @@ import { CollectionsWorkspace } from "@/components/commerce/collections";
 import { SalesOrders } from "@/components/commerce/sales-orders";
 import { CatalogArticles } from "@/components/commerce/catalog-articles";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
+import { WorkReturnSearch } from "@/lib/work-return";
 import { Link } from "@open-erp/ui/components/link";
 import { PageContent } from "@open-erp/ui/components/accounting-page";
 
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/sales")(
       ),
       view: Schema.optional(Schema.String),
       record: Schema.optional(Schema.String),
+      work: WorkReturnSearch,
       kind: Schema.optional(Schema.Literals(["draft", "invoice"])),
       stage: Schema.optional(Schema.Literals(["review", "payments"])),
       review: Schema.optional(Schema.String),
@@ -60,6 +62,7 @@ function Page() {
         paymentPage: search.paymentPage === undefined ? undefined : String(search.paymentPage),
         paymentHistoryPage:
           search.paymentHistoryPage === undefined ? undefined : String(search.paymentHistoryPage),
+        work: search.work,
       }}
     />
   );

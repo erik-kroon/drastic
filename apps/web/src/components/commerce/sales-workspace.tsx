@@ -26,6 +26,8 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { readAccounting } from "@/lib/accounting-api";
+import { decodeWorkReturn, encodeWorkReturn, workReturnHref } from "@/lib/work-return";
+import { WorkReturnAction } from "@/components/work-return-action";
 import { commerceKey, commercePath, checkScope } from "./shared";
 import { InvoiceDraftIssueOverlay } from "./invoice-draft-issue-overlay";
 import { NewInvoiceDraft } from "./invoice-drafts";
@@ -43,6 +45,7 @@ export type SalesSearch = typeof Sales.SalesQuery.Type & {
   release?: string;
   paymentPage?: string;
   paymentHistoryPage?: string;
+  work?: string;
 };
 
 export function salesRegisterOptions(book: typeof Accounting.Book.Type, query: URLSearchParams) {
@@ -70,6 +73,9 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
   const base = `${workspacePath(book)}/sales`;
+  // The work queue this register was opened from, carried through the tabs and
+  // the record so returning lands on the same filtered list.
+  const work = decodeWorkReturn(search.work);
   const contacts = search.view === "parties";
   const status = search.status ?? (search.view === "drafts" && !search.record ? "draft" : "all");
   const sort = search.sort ?? "newest";
@@ -139,8 +145,11 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
       q: search.q || undefined,
       record: row.id,
       kind: row.kind,
+      work: encodeWorkReturn(work),
     })}`;
   };
+
+  const tabHref = (view: string) => workReturnHref(base, view, work);
 
   const statuses: Array<{ value: typeof Sales.SalesStatus.Type; label: string }> = [
     { value: "all", label: labels.all },
@@ -166,12 +175,15 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
       <WorkspaceHeader
         title={labels.invoicing}
         action={
-          !contacts ? (
-            <Button disabled={book.role !== "operator"} onClick={() => open("new", "draft")}>
-              <Plus size={14} />
-              {labels.newInvoice}
-            </Button>
-          ) : undefined
+          <Box display="flex" alignItems="center" gap="lg" flexWrap="wrap">
+            <WorkReturnAction work={work} />
+            {!contacts ? (
+              <Button disabled={book.role !== "operator"} onClick={() => open("new", "draft")}>
+                <Plus size={14} />
+                {labels.newInvoice}
+              </Button>
+            ) : null}
+          </Box>
         }
       />
       <PageContent>
@@ -185,20 +197,20 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
             {labels.invoices}
           </PageTab>
           <PageTab
-            href={`${base}?view=parties`}
+            href={tabHref("parties")}
             active={contacts}
             onPointerEnter={preloadCustomers}
             onFocus={preloadCustomers}
           >
             {labels.customers}
           </PageTab>
-          <PageTab href={`${base}?view=collections`} active={search.view === "collections"}>
+          <PageTab href={tabHref("collections")} active={search.view === "collections"}>
             {sv ? "Krav" : "Collections"}
           </PageTab>
-          <PageTab href={`${base}?view=orders`} active={search.view === "orders"}>
+          <PageTab href={tabHref("orders")} active={search.view === "orders"}>
             {sv ? "Offerter och order" : "Quotes and orders"}
           </PageTab>
-          <PageTab href={`${base}?view=articles`} active={search.view === "articles"}>
+          <PageTab href={tabHref("articles")} active={search.view === "articles"}>
             {labels.articleCatalog}
           </PageTab>
         </PageTabs>
@@ -208,7 +220,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
             book={book}
             locale={locale}
             recordId={search.record ?? ""}
-            onOpen={(id) => change({ view: "parties", record: id || undefined })}
+            onOpen={(id) => change({ ...search, view: "parties", record: id || undefined })}
           />
         ) : (
           <>

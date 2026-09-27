@@ -1,11 +1,14 @@
 import { lazy, Suspense, type ComponentProps } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
+import { Box } from "@open-erp/ui/components/box";
 import { PageAction, PageContent } from "@open-erp/ui/components/accounting-page";
 import { ArrowLeft } from "lucide-react";
 import { PageTabs, PageTab } from "@open-erp/ui/components/workflow";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath, reviewPath } from "@/lib/book-context";
+import { decodeWorkReturn, workReturnHref, type WorkReturn } from "@/lib/work-return";
+import { WorkReturnAction } from "@/components/work-return-action";
 import { frontendCopy } from "@/lib/frontend-copy";
 
 const DocumentInbox = lazy(() =>
@@ -134,23 +137,25 @@ const ExchangeRateReviewsPanel = lazy(() =>
   })),
 );
 
+// Only these two areas are ever opened from the work queue, and only their
+// route search schemas declare the carried queue search. Carrying it anywhere
+// else would write a parameter the destination silently drops.
+const workReturnAreas = new Set(["sales", "purchases"]);
+
 const trialBalanceModes = new Set(["trial", "ledger"]);
 
 function isTrialBalanceMode(value: string | undefined): value is "trial" | "ledger" {
   return value !== undefined && trialBalanceModes.has(value);
 }
 
-export function FinanceArea({
-  area,
-  view,
-  record,
-  account,
-}: {
+export function FinanceArea(props: {
   area: "accounts" | "sales" | "purchases" | "reports" | "tax" | "closing";
   view?: string;
   record?: string;
   account?: string;
+  work?: string;
 }) {
+  const { area, view, record, account } = props;
   const { book, setup, locale } = useBookWorkspace();
   const navigate = useNavigate();
   const copy = frontendCopy(locale);
@@ -159,13 +164,19 @@ export function FinanceArea({
   const selected = tabs.find((tab) => tab.key === view)?.key ?? tabs[0]?.key;
   const recordId = record ?? "";
   const base = `${workspacePath(book)}/${area}`;
+  // The work queue this area was opened from. It rides along with every record
+  // and tab so the queue is still reachable after browsing inside the area.
+  const work = workReturnAreas.has(area) ? decodeWorkReturn(props.work) : undefined;
 
   const onPrepared = (id: string) => {
     void navigate({ to: reviewPath(book, id) });
   };
 
   const onOpen = (id: string) => {
-    void navigate({ to: base, search: { view: selected, record: id || undefined } });
+    void navigate({
+      to: base,
+      search: { view: selected, record: id || undefined, work: props.work },
+    });
   };
 
   return (
@@ -173,16 +184,17 @@ export function FinanceArea({
       <WorkspaceHeader
         title={copy[area]}
         action={
-          area === "reports" && selected !== "library" ? (
-            <PageAction quiet href={base}>
-              <ArrowLeft size={14} />
-              {locale === "sv" ? "Alla rapporter" : "All reports"}
-            </PageAction>
-          ) : undefined
+          <AreaActions area={area} base={base} selected={selected} locale={locale} work={work} />
         }
       />
       <PageContent>
-        <FinanceNavigation area={area} selected={selected} base={base} locale={locale} />
+        <FinanceNavigation
+          area={area}
+          selected={selected}
+          base={base}
+          locale={locale}
+          work={work}
+        />
         <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
           {selected === "documents" ? <DocumentInbox recordId={record} onOpen={onOpen} /> : null}
           {selected === "bank" ? <BankingWorkspace recordId={record} onOpen={onOpen} /> : null}
@@ -349,11 +361,36 @@ function SupplierPaymentFileArea(
   return <SupplierPaymentFiles book={props.book} locale={props.locale} recordId={props.recordId} />;
 }
 
+function AreaActions(props: {
+  area: "accounts" | "sales" | "purchases" | "reports" | "tax" | "closing";
+  base: string;
+  selected: string | undefined;
+  locale: "en" | "sv";
+  work: WorkReturn | undefined;
+}) {
+  const reportsRoot = props.area === "reports" && props.selected !== "library";
+
+  if (!reportsRoot && !props.work) return null;
+
+  return (
+    <Box display="flex" alignItems="center" gap="lg" flexWrap="wrap">
+      {reportsRoot ? (
+        <PageAction quiet href={props.base}>
+          <ArrowLeft size={14} />
+          {props.locale === "sv" ? "Alla rapporter" : "All reports"}
+        </PageAction>
+      ) : null}
+      <WorkReturnAction work={props.work} />
+    </Box>
+  );
+}
+
 function FinanceNavigation(props: {
   area: "accounts" | "sales" | "purchases" | "reports" | "tax" | "closing";
   selected: string | undefined;
   base: string;
   locale: "en" | "sv";
+  work: WorkReturn | undefined;
 }) {
   if (props.area === "reports") return null;
   const tabs = areaTabs(props.area, props.locale);
@@ -365,7 +402,7 @@ function FinanceNavigation(props: {
       {tabs.map((tab) => (
         <PageTab
           key={tab.key}
-          href={`${props.base}?view=${tab.key}`}
+          href={workReturnHref(props.base, tab.key, props.work)}
           active={props.selected === tab.key}
         >
           {tab.label}

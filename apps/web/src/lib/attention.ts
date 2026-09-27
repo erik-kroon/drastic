@@ -4,6 +4,7 @@ import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Workspace from "@open-erp/contracts/workspace";
 import { bookKey, bookPath, readAccounting } from "./accounting-api";
 import { reviewPath, workspacePath } from "./book-context";
+import { workReturnHref, type WorkReturn } from "./work-return";
 import type { Locale } from "@/paraglide/runtime";
 
 export function attentionQueryOptions(
@@ -33,26 +34,35 @@ export function attentionQueryOptions(
   });
 }
 
+// A record is opened in its own area, so the queue's own search travels as one
+// `work` parameter and comes back only when the record is left. The journal
+// review route takes the same search directly, because it is the queue's own
+// schema rather than a record area's.
 export function attentionPath(
   book: typeof Accounting.Book.Type,
   item: typeof Workspace.AttentionItem.Type,
+  work: WorkReturn,
 ) {
-  if (item.kind === "journal") return reviewPath(book, item.id, item.revision);
+  if (item.kind === "journal")
+    return `${reviewPath(book, item.id, item.revision)}${defaultStringifySearch(work)}`;
 
-  return `${workspacePath(book)}/${item.kind === "invoice" ? "sales?view=drafts" : "purchases?view=expenses"}&record=${encodeURIComponent(item.id)}`;
+  const base = `${workspacePath(book)}/${item.kind === "invoice" ? "sales" : "purchases"}`;
+  const area = workReturnHref(base, item.kind === "invoice" ? "drafts" : "expenses", work);
+
+  return `${area}&record=${encodeURIComponent(item.id)}`;
 }
 
-// The review routes return to the queue with the same search, so the work
-// filters a reviewer chose survive the round trip. `kind` is part of it: the
-// queue is the same queue whichever type filter produced the list.
-export function attentionWorkSearch(filters: typeof Workspace.AttentionQuery.Type) {
-  return defaultStringifySearch({
+// The work filters a reviewer chose survive the round trip through a record.
+// The queue cursor is not carried: it points at one page, and the record
+// returns to the first page of the same filtered list.
+export function attentionWork(filters: typeof Workspace.AttentionQuery.Type): WorkReturn {
+  return {
     period: filters.period,
     status: filters.status,
     sort: filters.sort,
     q: filters.q,
     kind: filters.kind,
-  });
+  };
 }
 
 export function attentionCopy(locale: Locale) {

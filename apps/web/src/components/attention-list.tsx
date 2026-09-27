@@ -14,7 +14,7 @@ import { formatMinorAmount } from "@/lib/workspace-api";
 import {
   attentionQueryOptions,
   attentionPath,
-  attentionWorkSearch,
+  attentionWork,
   attentionCopy,
 } from "@/lib/attention";
 
@@ -26,7 +26,7 @@ export function AttentionList(props: {
   const query = useQuery(attentionQueryOptions(book, props.filters));
   const page = query.isError ? undefined : query.data;
   const copy = attentionCopy(locale);
-  const workSearch = attentionWorkSearch(props.filters);
+  const work = attentionWork(props.filters);
   const kind = props.filters.kind ?? "all";
   const shown = page ? String(page.items.length) : null;
 
@@ -73,10 +73,7 @@ export function AttentionList(props: {
               rows={page.items.map((item) => ({
                 id: item.key,
                 cells: [
-                  <Link
-                    key="open"
-                    href={`${attentionPath(book, item)}${item.kind === "journal" ? workSearch : ""}`}
-                  >
+                  <Link key="open" href={attentionPath(book, item, work)}>
                     {item.title}
                   </Link>,
                   copy[item.kind],
