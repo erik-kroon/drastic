@@ -158,10 +158,13 @@ export default async function setup(project: TestProject) {
           ),
         );
 
-        if (!stable)
+        if (!stable) {
+          // Vitest reports teardown errors separately from test assertions.
+          process.exitCode = 1;
           throw new Error(
             "Source inputs changed during the E2E run; its results are not fixed-revision evidence.",
           );
+        }
       }
     } finally {
       try {

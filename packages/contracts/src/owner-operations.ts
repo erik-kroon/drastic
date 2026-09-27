@@ -149,7 +149,7 @@ export const OwnerOperationReview = Schema.Struct({
   // move a liability or a funding leg and never create a tax fact.
   recognition: Schema.NullOr(
     Schema.Struct({
-      economicKey: Schema.String.check(Schema.isPattern(/^[a-z0-9][a-z0-9._:-]{2,190}$/)),
+      economicKey: Recognition.EconomicDocumentKey,
       counterpartyId: Accounting.Identifier,
       supplierDocumentNumber: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(128)),
       recognitionDate: Accounting.AccountingDate,
@@ -238,7 +238,7 @@ export const OwnerPurchaseRecognition = Schema.Struct({
   scope: Accounting.Scope,
   version: Schema.Literal(1),
   eventOwner: Schema.Literal("owner_paid_purchase"),
-  economicKey: Schema.String.check(Schema.isPattern(/^[a-z0-9][a-z0-9._:-]{2,190}$/)),
+  economicKey: Recognition.EconomicDocumentKey,
   ownerId: Accounting.Identifier,
   ownerRecordId: Accounting.Identifier,
   ownerEffectId: Accounting.Identifier,

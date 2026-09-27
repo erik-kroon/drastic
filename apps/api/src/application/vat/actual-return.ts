@@ -1,4 +1,5 @@
 import * as Vat from "@open-erp/contracts/vat-returns";
+import { equalJson } from "@open-erp/domain/canonicalization";
 import { SupportedCalculatorVersion } from "@open-erp/contracts/vat-filing-release";
 import {
   actualVatMonetary,
@@ -11,6 +12,7 @@ import * as Schema from "effect/Schema";
 import * as CompanyDb from "../../db/company-profiles";
 import * as Ledger from "../../db/posting";
 import * as Db from "../../db/vat/actual-return";
+import * as CreditDb from "../../db/vat/credit-components";
 import * as TaxAccountDb from "../../db/vat/tax-account";
 import type { Transaction } from "../../db/transaction";
 import { decodeRelease } from "../company-profile-basis";
@@ -51,6 +53,24 @@ type Binding = typeof Vat.VatControlAccountRoleBinding.Type;
 type Role = typeof Vat.VatControlAccountRole.Type;
 
 type ReturnRecord = typeof Vat.ActualVatReturn.Type;
+
+const PeriodFact = Schema.Struct({
+  value: Schema.Struct({
+    state: Schema.Literal("known"),
+    value: Schema.Literals(["monthly", "quarterly", "yearly"]),
+  }),
+});
+
+function calendarWindow(startsOn: string, endsOn: string, months: 1 | 3) {
+  const start = new Date(`${startsOn}T00:00:00Z`);
+
+  if (start.getUTCDate() !== 1 || (months === 3 && start.getUTCMonth() % 3 !== 0)) return false;
+
+  start.setUTCMonth(start.getUTCMonth() + months);
+  start.setUTCDate(0);
+
+  return start.toISOString().slice(0, 10) === endsOn;
+}
 
 const ReturnSchema = Vat.ActualVatReturn;
 
@@ -171,6 +191,24 @@ function readRegisteredPeriod(
     );
 
     if (revision === undefined) return yield* unsupported();
+
+    const periodFact = yield* Schema.decodeUnknownEffect(PeriodFact)(revision.body).pipe(
+      Effect.mapError(() => failure("UnsupportedProfile")),
+    );
+
+    const cadence = periodFact.value.value;
+
+    const windowMatches =
+      cadence === "yearly"
+        ? (yield* CreditDb.readExactFiscalYear(
+            transaction,
+            scope.bookId,
+            input.startsOn,
+            input.endsOn,
+          ))[0]?.present === true
+        : calendarWindow(input.startsOn, input.endsOn, cadence === "monthly" ? 1 : 3);
+
+    if (!windowMatches) return yield* unsupported();
 
     if (
       revision.effectiveFrom > input.startsOn ||
@@ -510,7 +548,15 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
       input.endsOn,
     );
 
-    if (admitted.length + purchased.length > factInventoryBound) return yield* unsupported();
+    const credited = yield* CreditDb.readCreditComponents(
+      transaction,
+      scope.bookId,
+      input.startsOn,
+      input.endsOn,
+    );
+
+    if (admitted.length + purchased.length + credited.length > factInventoryBound)
+      return yield* unsupported();
 
     const effects = yield* Db.readControlEffectsInInterval(
       transaction,
@@ -538,6 +584,7 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
       ...new Set([
         ...admitted.flatMap((row) => (row.voucherId === null ? [] : [row.voucherId])),
         ...purchased.map((row) => row.voucherId),
+        ...credited.map((row) => row.voucherId),
         ...effects.flatMap((row) => (row.voucherId === null ? [] : [row.voucherId])),
       ]),
     ];
@@ -632,7 +679,7 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
 
       facts.push({
         factId: row.id,
-        origin: "owned_purchase_recognition",
+        origin: row.origin,
         revisionId: row.id,
         digest: row.digest,
         treatment: "domestic_purchase",
@@ -660,6 +707,15 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
       });
     }
 
+    facts.push(
+      ...(yield* captureCreditFacts(credited, {
+        byVoucher,
+        roles,
+        input,
+        ledgerBoundary,
+      })),
+    );
+
     return yield* decode(
       BasisSchema,
       yield* digestBody(
@@ -682,8 +738,16 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
           population: {
             bookAdmittedFactCount: population.admittedFacts,
             bookPurchaseComponentCount: population.purchaseComponents,
+            bookOwnerPurchaseComponentCount: population.ownerPurchaseComponents,
+            bookCustomerCreditComponentCount: population.customerCreditComponents,
             selectedAdmittedFactCount: admitted.length,
-            selectedPurchaseComponentCount: purchased.length,
+            selectedPurchaseComponentCount: purchased.filter(
+              (row) => row.origin === "owned_purchase_recognition",
+            ).length,
+            selectedOwnerPurchaseComponentCount: purchased.filter(
+              (row) => row.origin === "owned_owner_purchase",
+            ).length,
+            selectedCustomerCreditComponentCount: credited.length,
             withoutTaxPoint: population.admittedWithoutTaxPoint,
             membershipEpoch: membership[0]?.membershipEpoch.toString() ?? "0",
           },
@@ -693,6 +757,21 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
           ownedEffects,
           sourceCoverage: coverage,
           ownerPorts: [
+            {
+              owner: "owner_paid_purchase",
+              state: "read_committed_records",
+              recordCount: purchased.filter((row) => row.origin === "owned_owner_purchase").length,
+              recordDigests: purchased
+                .filter((row) => row.origin === "owned_owner_purchase")
+                .map((row) => row.digest)
+                .sort(),
+            },
+            {
+              owner: "customer_credit",
+              state: "read_committed_records",
+              recordCount: credited.length,
+              recordDigests: credited.map((row) => row.digest).sort(),
+            },
             {
               owner: "vat_control_reclassification",
               state: "read_committed_records",
@@ -715,6 +794,74 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
       ),
     );
   });
+}
+
+const captureCreditFacts = Effect.fn("vat.captureCreditFacts")(function* (
+  rows: ReadonlyArray<CreditDb.CreditComponent>,
+  basis: {
+    byVoucher: ReadonlyMap<string, ReadonlyArray<Db.ControlLineRow>>;
+    roles: ReadonlyMap<string, Role>;
+    input: Input;
+    ledgerBoundary: string;
+  },
+) {
+  const facts: Array<typeof Vat.VatSelectedFact.Type> = [];
+
+  for (const row of rows) {
+    const original = yield* originalCreditFact(row);
+
+    facts.push({
+      factId: row.id,
+      origin: "owned_customer_credit",
+      revisionId: row.id,
+      digest: row.digest,
+      treatment: "domestic_sale",
+      taxPointOn: row.taxPointOn,
+      voucherId: row.voucherId,
+      basisMinor: row.basisMinor,
+      taxMinor: row.taxMinor,
+      sourceTaxMinor: row.taxMinor,
+      adjustsFactId: original.factId,
+      ruleReleaseId: null,
+      observation: {
+        recordClass: "actual_company",
+        treatment: "domestic_sale",
+        withdrawn: false,
+        voucherReversed: row.voucherReversed,
+        withinLedgerBoundary: BigInt(row.voucherSequence) <= BigInt(basis.ledgerBoundary),
+      },
+      controlComponents: controlComponents(
+        (basis.byVoucher.get(row.voucherId) ?? []).filter(
+          (line) => line.lineId === row.outputVatLineId,
+        ),
+        basis.roles,
+        basis.input.startsOn,
+        basis.input.endsOn,
+      ),
+    });
+  }
+
+  return facts;
+});
+
+// A credit may belong to a later period than its original sale. The database
+// reads that original independently; only the signed credit enters this period.
+function originalCreditFact(credit: CreditDb.CreditComponent) {
+  if (
+    credit.originalFactCount !== 1 ||
+    credit.originalFactId === null ||
+    credit.originalTaxPointOn === null ||
+    credit.originalTaxPointOn > credit.taxPointOn
+  )
+    return failure("UnsupportedProfile");
+
+  if (
+    credit.admittedNetMinor !== credit.originalNetMinor ||
+    credit.admittedTaxMinor !== credit.originalTaxMinor
+  )
+    return failure("StaleDependency");
+
+  return Effect.succeed({ factId: credit.originalFactId });
 }
 
 // The comparison between the first and the sealing capture ignores when each read
@@ -749,6 +896,24 @@ function currentnessReasons(transaction: Transaction, scope: Scope, saved: Retur
       reasons.push("ledger_boundary_moved");
     }
 
+    const admission = yield* resolveCompanyProfileInTransaction(
+      transaction,
+      scope,
+      "actual_company",
+      {
+        postingOn: null,
+        taxPointOn: period.endsOn,
+        paymentOn: null,
+        reportOn: null,
+      },
+    );
+
+    const witness = admission.families.find((family) => family.family === "vat")?.witness ?? null;
+
+    if (!equalJson(witness, saved.basis.profileWitness)) {
+      reasons.push("vat_profile_basis_changed");
+    }
+
     const membership = yield* CompanyDb.readFamilyMembership(
       transaction,
       scope.bookId,
@@ -780,6 +945,20 @@ function currentnessReasons(transaction: Transaction, scope: Scope, saved: Retur
       reasons.push("purchase_component_population_changed");
     }
 
+    if (
+      population.ownerPurchaseComponents !==
+      (saved.basis.population.bookOwnerPurchaseComponentCount ?? 0)
+    ) {
+      reasons.push("owner_purchase_component_population_changed");
+    }
+
+    if (
+      population.customerCreditComponents !==
+      (saved.basis.population.bookCustomerCreditComponentCount ?? 0)
+    ) {
+      reasons.push("customer_credit_component_population_changed");
+    }
+
     const facts = yield* Db.readAdmittedFacts(
       transaction,
       scope.bookId,
@@ -798,8 +977,29 @@ function currentnessReasons(transaction: Transaction, scope: Scope, saved: Retur
       reasons.push("admitted_fact_membership_changed");
     }
 
-    if (purchased.length !== saved.basis.population.selectedPurchaseComponentCount) {
+    if (
+      purchased.filter((row) => row.origin === "owned_purchase_recognition").length !==
+      saved.basis.population.selectedPurchaseComponentCount
+    ) {
       reasons.push("purchase_component_membership_changed");
+    }
+
+    if (
+      purchased.filter((row) => row.origin === "owned_owner_purchase").length !==
+      (saved.basis.population.selectedOwnerPurchaseComponentCount ?? 0)
+    ) {
+      reasons.push("owner_purchase_component_membership_changed");
+    }
+
+    const credited = yield* CreditDb.readCreditComponents(
+      transaction,
+      scope.bookId,
+      period.startsOn,
+      period.endsOn,
+    );
+
+    if (credited.length !== (saved.basis.population.selectedCustomerCreditComponentCount ?? 0)) {
+      reasons.push("customer_credit_component_membership_changed");
     }
 
     const selected = new Map(saved.basis.facts.map((fact) => [fact.factId, fact.digest]));
@@ -807,6 +1007,7 @@ function currentnessReasons(transaction: Transaction, scope: Scope, saved: Retur
     const live: Array<{ readonly factId: string; readonly digest: string }> = [
       ...facts.map((row) => ({ factId: row.factId, digest: row.digest })),
       ...purchased.map((row) => ({ factId: row.id, digest: row.digest })),
+      ...credited.map((row) => ({ factId: row.id, digest: row.digest })),
     ];
 
     for (const row of live) {
@@ -814,6 +1015,16 @@ function currentnessReasons(transaction: Transaction, scope: Scope, saved: Retur
         reasons.push("selected_component_changed");
         break;
       }
+    }
+
+    if (
+      facts.some((row) => {
+        const prior = saved.basis.facts.find((fact) => fact.factId === row.factId);
+
+        return prior !== undefined && prior.observation.withdrawn !== row.withdrawn;
+      })
+    ) {
+      reasons.push("admitted_fact_withdrawal_changed");
     }
 
     const recognitions = [...new Set(purchased.map((row) => row.recognitionId))].sort();
