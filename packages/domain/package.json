@@ -18,6 +18,7 @@
     "./supplier-refunds": "./src/supplier-refunds.ts",
     "./payment-resolutions": "./src/payment-resolutions.ts",
     "./bank-sync-windows": "./src/bank-sync-windows.ts",
+    "./bank-source-revisions": "./src/bank-source-revisions.ts",
     "./fx-remeasurement": "./src/fx-remeasurement.ts",
     "./customer-credits": "./src/customer-credits.ts",
     "./cash-method": "./src/cash-method.ts",
