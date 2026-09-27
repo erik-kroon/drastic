@@ -193,27 +193,30 @@ export const RecurringOccurrence = Schema.Struct({
 
 export type RecurringOccurrence = typeof RecurringOccurrence.Type;
 
-// The append-only consumption of one occurrence's billing coverage. The invoice
-// issue owner writes it in the same financial transaction that issues the
-// invoice, so a second issue of the same occurrence cannot commit.
-export const RecurringOccurrenceIssue = Schema.Struct({
+// The append-only consumption of one occurrence's billing coverage for one
+// charge component. An invoice issue owner writes one row per component in the
+// same financial transaction that issues the invoice, so a second billing of the
+// same component cannot commit.
+export const RecurringCoverageConsumption = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
   occurrenceId: Accounting.Identifier,
   occurrenceDigest: Accounting.Digest,
   agreementId: Accounting.Identifier,
   cycleOrdinal: CycleOrdinal,
+  chargeComponentKey: ChargeComponentKey,
   serviceInterval: ServiceInterval,
   draftId: Accounting.Identifier,
   invoiceIssueId: Accounting.Identifier,
   registerInvoiceId: Accounting.Identifier,
   documentNumber: Schema.String,
+  postingReceiptId: Accounting.Identifier,
   createdAt: Schema.String,
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
 });
 
-export type RecurringOccurrenceIssue = typeof RecurringOccurrenceIssue.Type;
+export type RecurringCoverageConsumption = typeof RecurringCoverageConsumption.Type;
 
 export const MaterializeRecurringOccurrence = Schema.Struct({
   cycleOrdinal: CycleOrdinal,
@@ -282,7 +285,7 @@ export type RecurringAgreementView = typeof RecurringAgreementView.Type;
 // itself stays with the invoice draft owner, which remains its single authority.
 export const RecurringOccurrenceView = Schema.Struct({
   occurrence: RecurringOccurrence,
-  issue: Schema.NullOr(RecurringOccurrenceIssue),
+  coverage: Schema.Array(RecurringCoverageConsumption).check(Schema.isMaxLength(50)),
 });
 
 export type RecurringOccurrenceView = typeof RecurringOccurrenceView.Type;
@@ -408,7 +411,7 @@ export const RecurringInvoiceCapabilities = {
   },
   commerce_get_recurring_occurrence: {
     description:
-      "Read one materialised occurrence of a recurring agreement with its billing coverage consumption. Read the customer draft through the invoice draft owner; this is not legal issuance or delivery authority.",
+      "Read one materialised occurrence of a recurring agreement with the per-component billing coverage it consumed, each naming its own legal document number and ledger receipt. Read the customer draft through the invoice draft owner; this is not legal issuance or delivery authority.",
     input: Schema.Struct({
       scope: Accounting.Scope,
       agreementId: Accounting.Identifier,

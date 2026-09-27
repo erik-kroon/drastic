@@ -507,6 +507,24 @@ function orderedEvents(events: ReadonlyArray<AgreementEventBoundary>) {
   );
 }
 
+// The lifecycle state of one cycle at a point in time. Issue admission asks this
+// so a pause that wins before issuance blocks the invoice, while a pause recorded
+// after a committed issue cannot undo the invoice that already exists.
+export function eventDisposition(
+  events: ReadonlyArray<AgreementEventBoundary>,
+  cycleOrdinal: string,
+): Checked<"due" | "paused" | "ended"> {
+  const cycle = ordinal(cycleOrdinal);
+
+  if (cycle === null) return fail("InvalidCycleOrdinal", "The cycle ordinal is not an integer.");
+
+  const state = eventState(events, cycle);
+
+  if (Result.isFailure(state)) return Result.fail(state.failure);
+
+  return Result.succeed(state.success.kind === "skipped" ? state.success.reason : "due");
+}
+
 function eventState(
   events: ReadonlyArray<AgreementEventBoundary>,
   cycle: bigint,

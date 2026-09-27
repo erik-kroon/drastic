@@ -157,21 +157,25 @@ CREATE TABLE openerp.recurring_invoice_occurrence_issues (
   occurrence_id text NOT NULL,
   agreement_id text NOT NULL,
   cycle_ordinal bigint NOT NULL,
+  charge_component_key text COLLATE "C" NOT NULL,
   draft_id text NOT NULL,
   invoice_issue_id text NOT NULL,
   register_invoice_id text NOT NULL,
   document_number text COLLATE "C" NOT NULL,
+  posting_receipt_id text NOT NULL,
   body jsonb NOT NULL,
   digest text NOT NULL,
   created_at timestamptz NOT NULL,
   CONSTRAINT recurring_invoice_occurrence_issues_pkey PRIMARY KEY (book_id, id),
-  -- Approved billing coverage is unique per occurrence, per cycle, per issued
-  -- invoice and per occurrence record. A second billing of the same occurrence
-  -- is refused by the database, not merged into the first one.
-  CONSTRAINT recurring_invoice_occurrence_issues_occurrence_key UNIQUE (book_id, occurrence_id),
-  CONSTRAINT recurring_invoice_occurrence_issues_cycle_key UNIQUE (book_id, agreement_id, cycle_ordinal),
-  CONSTRAINT recurring_invoice_occurrence_issues_invoice_issue_key UNIQUE (book_id, invoice_issue_id),
-  CONSTRAINT recurring_invoice_occurrence_issues_register_key UNIQUE (book_id, register_invoice_id),
+  -- Approved billing coverage is unique per occurrence component, per cycle and
+  -- charge component, per issued invoice, per registered invoice and per ledger
+  -- receipt. A second billing of the same coverage is refused by the database,
+  -- not merged into the first one.
+  CONSTRAINT recurring_invoice_occurrence_issues_component_key UNIQUE (book_id, occurrence_id, charge_component_key),
+  CONSTRAINT recurring_invoice_occurrence_issues_cycle_key UNIQUE (book_id, agreement_id, cycle_ordinal, charge_component_key),
+  CONSTRAINT recurring_invoice_occurrence_issues_invoice_issue_key UNIQUE (book_id, invoice_issue_id, charge_component_key),
+  CONSTRAINT recurring_invoice_occurrence_issues_register_key UNIQUE (book_id, register_invoice_id, charge_component_key),
+  CONSTRAINT recurring_invoice_occurrence_issues_posting_key UNIQUE (book_id, posting_receipt_id, charge_component_key),
   CONSTRAINT recurring_invoice_occurrence_issues_cycle_check CHECK (cycle_ordinal >= 0 AND cycle_ordinal < 1000000000000000000::bigint),
   CONSTRAINT recurring_invoice_occurrence_issues_body_check CHECK (octet_length(body::text) <= 262144),
   CONSTRAINT recurring_invoice_occurrence_issues_digest_check CHECK (digest = openerp.digest(body - 'digest'::text)),
@@ -180,13 +184,17 @@ CREATE TABLE openerp.recurring_invoice_occurrence_issues (
   CONSTRAINT recurring_invoice_occurrence_issues_occurrence_check CHECK (NOT body ->> 'occurrenceId'::text IS DISTINCT FROM occurrence_id),
   CONSTRAINT recurring_invoice_occurrence_issues_agreement_check CHECK (NOT body ->> 'agreementId'::text IS DISTINCT FROM agreement_id),
   CONSTRAINT recurring_invoice_occurrence_issues_cycle_body_check CHECK (NOT body ->> 'cycleOrdinal'::text IS DISTINCT FROM cycle_ordinal::text),
+  CONSTRAINT recurring_invoice_occurrence_issues_component_body_check CHECK (NOT body ->> 'chargeComponentKey'::text IS DISTINCT FROM charge_component_key),
   CONSTRAINT recurring_invoice_occurrence_issues_draft_body_check CHECK (NOT body ->> 'draftId'::text IS DISTINCT FROM draft_id),
   CONSTRAINT recurring_invoice_occurrence_issues_document_body_check CHECK (NOT body ->> 'documentNumber'::text IS DISTINCT FROM document_number),
+  CONSTRAINT recurring_invoice_occurrence_issues_posting_body_check CHECK (NOT body ->> 'postingReceiptId'::text IS DISTINCT FROM posting_receipt_id),
+  CONSTRAINT recurring_invoice_occurrence_issues_key_check CHECK (charge_component_key ~ '^[a-z][a-z0-9_-]{2,63}$'::text),
   CONSTRAINT recurring_invoice_occurrence_issues_book_id_fkey FOREIGN KEY (book_id) REFERENCES openerp.books(id),
   CONSTRAINT recurring_invoice_occurrence_issues_occurrence_fkey FOREIGN KEY (book_id, occurrence_id) REFERENCES openerp.recurring_invoice_occurrences(book_id, id),
   CONSTRAINT recurring_invoice_occurrence_issues_draft_fkey FOREIGN KEY (book_id, draft_id) REFERENCES openerp.invoice_drafts(book_id, id),
   CONSTRAINT recurring_invoice_occurrence_issues_invoice_issue_fkey FOREIGN KEY (book_id, invoice_issue_id) REFERENCES openerp.invoice_issues(book_id, id),
-  CONSTRAINT recurring_invoice_occurrence_issues_register_fkey FOREIGN KEY (book_id, register_invoice_id) REFERENCES openerp.commerce_invoices(book_id, id)
+  CONSTRAINT recurring_invoice_occurrence_issues_register_fkey FOREIGN KEY (book_id, register_invoice_id) REFERENCES openerp.commerce_invoices(book_id, id),
+  CONSTRAINT recurring_invoice_occurrence_issues_posting_fkey FOREIGN KEY (book_id, posting_receipt_id) REFERENCES openerp.execution_receipts(book_id, id)
 );
 
 CREATE INDEX recurring_invoice_template_revisions_agreement ON openerp.recurring_invoice_template_revisions (book_id, agreement_id, effective_from_cycle);

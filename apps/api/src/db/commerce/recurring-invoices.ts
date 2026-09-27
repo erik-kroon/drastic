@@ -49,10 +49,12 @@ export type OccurrenceIssueRow = {
   readonly occurrenceId: string;
   readonly agreementId: string;
   readonly cycleOrdinal: string;
+  readonly chargeComponentKey: string;
   readonly draftId: string;
   readonly invoiceIssueId: string;
   readonly registerInvoiceId: string;
   readonly documentNumber: string;
+  readonly postingReceiptId: string;
   readonly body: JsonObject;
 };
 
@@ -158,6 +160,24 @@ export function readEvents(transaction: Transaction, bookId: string, agreementId
   );
 }
 
+// Issue admission reads the retained lifecycle events of the agreement the draft
+// came from, so a pause that wins before issuance blocks the invoice.
+export function readAgreementLifecycle(
+  transaction: Transaction,
+  bookId: string,
+  agreementId: string,
+) {
+  return transaction.execute<{ readonly kind: string; readonly effectiveCycle: string }>(
+    sql`
+      select kind, effective_cycle::text as "effectiveCycle"
+      from openerp.recurring_invoice_agreement_events
+      where book_id = ${bookId} and agreement_id = ${agreementId}
+      order by ordinal
+    `,
+    "objects",
+  );
+}
+
 export function readEventCount(transaction: Transaction, bookId: string, agreementId: string) {
   return transaction.execute<EventCountRow>(
     sql`
@@ -216,11 +236,13 @@ export function readOccurrenceIssue(
   return transaction.execute<OccurrenceIssueRow>(
     sql`
       select id, occurrence_id as "occurrenceId", agreement_id as "agreementId",
-        cycle_ordinal::text as "cycleOrdinal", draft_id as "draftId",
-        invoice_issue_id as "invoiceIssueId", register_invoice_id as "registerInvoiceId",
-        document_number as "documentNumber", body
+        cycle_ordinal::text as "cycleOrdinal", charge_component_key as "chargeComponentKey",
+        draft_id as "draftId", invoice_issue_id as "invoiceIssueId",
+        register_invoice_id as "registerInvoiceId", document_number as "documentNumber",
+        posting_receipt_id as "postingReceiptId", body
       from openerp.recurring_invoice_occurrence_issues
       where book_id = ${bookId} and agreement_id = ${agreementId} and cycle_ordinal = ${cycleOrdinal}::bigint
+      order by charge_component_key
     `,
     "objects",
   );
@@ -363,6 +385,26 @@ export function insertEvent(
   );
 }
 
+export function readOccurrenceComponents(
+  transaction: Transaction,
+  bookId: string,
+  agreementId: string,
+  cycleOrdinal: string,
+) {
+  return transaction.execute<{ readonly chargeComponentKey: string }>(
+    sql`
+      select component.value as "chargeComponentKey"
+      from openerp.recurring_invoice_occurrences o
+      cross join lateral jsonb_array_elements_text(
+        o.body -> 'chargeComponentKeys'::text) as component(value)
+      where o.book_id = ${bookId} and o.agreement_id = ${agreementId}
+        and o.cycle_ordinal = ${cycleOrdinal}::bigint
+      order by component.value
+    `,
+    "objects",
+  );
+}
+
 export function insertOccurrence(
   transaction: Transaction,
   row: {
@@ -397,6 +439,10 @@ export function insertOccurrence(
 
 // The invoice issue owner writes the coverage consumption inside the same
 // financial transaction that issues the invoice.
+// One coverage consumption per charge component of the occurrence. The unique
+// component key is what makes a second billing of the same component refuse
+// rather than merge, and the ledger receipt is retained so every issued cycle
+// links to its own posting receipt.
 export function insertOccurrenceIssue(
   transaction: Transaction,
   row: {
@@ -405,10 +451,12 @@ export function insertOccurrenceIssue(
     readonly occurrenceId: string;
     readonly agreementId: string;
     readonly cycleOrdinal: string;
+    readonly chargeComponentKey: string;
     readonly draftId: string;
     readonly invoiceIssueId: string;
     readonly registerInvoiceId: string;
     readonly documentNumber: string;
+    readonly postingReceiptId: string;
     readonly body: JsonObject;
     readonly digest: string;
     readonly createdAt: string;
@@ -417,11 +465,13 @@ export function insertOccurrenceIssue(
   return transaction.execute(
     sql`
       insert into openerp.recurring_invoice_occurrence_issues
-        (book_id, id, occurrence_id, agreement_id, cycle_ordinal, draft_id, invoice_issue_id,
-          register_invoice_id, document_number, body, digest, created_at)
+        (book_id, id, occurrence_id, agreement_id, cycle_ordinal, charge_component_key, draft_id,
+          invoice_issue_id, register_invoice_id, document_number, posting_receipt_id, body, digest,
+          created_at)
       values (${row.bookId}, ${row.id}, ${row.occurrenceId}, ${row.agreementId},
-        ${row.cycleOrdinal}::bigint, ${row.draftId}, ${row.invoiceIssueId}, ${row.registerInvoiceId},
-        ${row.documentNumber}, ${JSON.stringify(row.body)}::jsonb, ${row.digest}, ${row.createdAt})
+        ${row.cycleOrdinal}::bigint, ${row.chargeComponentKey}, ${row.draftId}, ${row.invoiceIssueId},
+        ${row.registerInvoiceId}, ${row.documentNumber}, ${row.postingReceiptId},
+        ${JSON.stringify(row.body)}::jsonb, ${row.digest}, ${row.createdAt})
     `,
     "objects",
   );

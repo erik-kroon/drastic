@@ -929,16 +929,16 @@ export const getRecurringOccurrence = Effect.fn("commerce.recurring.getOccurrenc
 
     if (!row) return yield* failure("NotFound");
 
-    const issued = (yield* RecurrenceDb.readOccurrenceIssue(
+    const coverage = yield* RecurrenceDb.readOccurrenceIssue(
       transaction,
       input.scope.bookId,
       input.agreementId,
       input.cycleOrdinal,
-    ))[0];
+    );
 
     return yield* decode(OccurrenceViewSchema, {
       occurrence: row.body,
-      issue: issued === undefined ? null : issued.body,
+      coverage: coverage.map((entry) => entry.body),
     });
   });
 });
