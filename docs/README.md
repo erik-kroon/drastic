@@ -24,6 +24,7 @@ The [open-accounting decision](adr/0005-open-accounting-and-managed-services.md)
 | [Compliance and interoperability](compliance.md)       | Which capabilities need dated rules, formats and external acceptance?                                    |
 | [Roadmap](roadmap.md)                                  | What has been observed, and what proves each phase complete?                                             |
 | [Accounting delivery plan](plans/README.md)            | What remains across posting, corrections, imports, commerce, accounting depth, year-end and operations?  |
+| [Accounted comparison reconciliation](plans/16-comparison-reconciliation.md) | Which FWD proposals still apply, and which existing owners deliver them? |
 | [Reference parity backlog](plans/11-parity-backlog.md)  | What does the reference implementation still owe us, as work packets and preserved rule logic?             |
 | [Reference parity ledger](plans/14-parity-ledger.md) | Which parts of the reference are we at parity with, better than, or short — and which shortfalls have no owner? |
 | [Reference-derived defects](plans/13-reference-derived-defects.md) | What is already shipped that is wrong, and how is it fixed without editing the reviewed baseline? |
