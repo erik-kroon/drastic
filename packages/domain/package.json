@@ -26,6 +26,7 @@
     "./cash-method": "./src/cash-method.ts",
     "./dimension-restatement": "./src/dimension-restatement.ts",
     "./prepayments": "./src/prepayments.ts",
+    "./vat-assessment": "./src/vat-assessment.ts",
     "./historical-adoptions": "./src/historical-adoptions.ts",
     "./asset-disposals": "./src/asset-disposals.ts",
     "./owner-funding": "./src/owner-funding.ts",
