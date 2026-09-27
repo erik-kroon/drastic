@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -13,6 +13,73 @@ import type { E2EEnvironment } from "./environment";
 const run = promisify(execFile);
 
 const root = resolve(import.meta.dirname, "../../../..");
+
+const sourceRoots = [
+  "apps/api",
+  "packages/contracts",
+  "packages/domain",
+  "jurisdictions/se",
+  "packages/config",
+  "config",
+  "package.json",
+  "bun.lock",
+  "vite.config.ts",
+  "tsconfig.json",
+];
+
+type SourceFile = {
+  readonly path: string;
+  readonly sha256: string | null;
+  readonly tracked: boolean;
+};
+
+function missingFile(error: unknown) {
+  return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
+
+async function sourceInventory(): Promise<ReadonlyArray<SourceFile>> {
+  const tracked = await run("git", ["ls-files", "-z", "--cached", "--", ...sourceRoots], {
+    cwd: root,
+  });
+
+  const untracked = await run(
+    "git",
+    ["ls-files", "-z", "--others", "--exclude-standard", "--", ...sourceRoots],
+    { cwd: root },
+  );
+
+  const trackedPaths = new Set(tracked.stdout.split("\0").filter(Boolean));
+
+  const paths = [
+    ...new Set([...trackedPaths, ...untracked.stdout.split("\0").filter(Boolean)]),
+  ].sort();
+
+  const files: SourceFile[] = [];
+
+  for (const path of paths) {
+    try {
+      const absolute = join(root, path);
+      const stat = await lstat(absolute);
+
+      if (!stat.isFile() || stat.isSymbolicLink())
+        throw new Error(`Source input is not a regular file: ${path}`);
+
+      files.push({
+        path,
+        sha256: createHash("sha256")
+          .update(await readFile(absolute))
+          .digest("hex"),
+        tracked: trackedPaths.has(path),
+      });
+    } catch (error) {
+      if (!missingFile(error) || !trackedPaths.has(path)) throw error;
+
+      files.push({ path, sha256: null, tracked: true });
+    }
+  }
+
+  return files;
+}
 
 async function unusedPort() {
   const server = createServer();
@@ -32,7 +99,21 @@ async function unusedPort() {
 
 export default async function setup(project: TestProject) {
   const artifacts = join(root, "test-results/e2e");
-  await rm(artifacts, { recursive: true, force: true });
+  const history = join(root, "test-results/e2e-history");
+  await mkdir(history, { recursive: true, mode: 0o700 });
+
+  try {
+    await rename(
+      artifacts,
+      join(
+        history,
+        `${new Date().toISOString().replaceAll(":", "-")}-${randomBytes(4).toString("hex")}`,
+      ),
+    );
+  } catch (error) {
+    if (!missingFile(error)) throw error;
+  }
+
   await mkdir(artifacts, { recursive: true });
   const scratch = await mkdtemp(join(tmpdir(), "openerp-e2e-"));
   const pgBin = process.env.PG_BINDIR ?? (await run("pg_config", ["--bindir"])).stdout.trim();
@@ -50,10 +131,38 @@ export default async function setup(project: TestProject) {
   });
 
   let started = false;
+  let sourceFiles: ReadonlyArray<SourceFile> | undefined;
 
   async function cleanup() {
     try {
       await writeFile(join(artifacts, "worker.json"), JSON.stringify(server.getLogs(), null, 2));
+
+      if (sourceFiles !== undefined) {
+        const finalSources = await sourceInventory();
+        const stable = JSON.stringify(finalSources) === JSON.stringify(sourceFiles);
+        await writeFile(
+          join(artifacts, "source-integrity.json"),
+          JSON.stringify(
+            {
+              status: stable ? "stable" : "changed_during_run",
+              sourceInventorySha256: createHash("sha256")
+                .update(JSON.stringify(sourceFiles))
+                .digest("hex"),
+              finalSourceInventorySha256: createHash("sha256")
+                .update(JSON.stringify(finalSources))
+                .digest("hex"),
+              checkedAt: new Date().toISOString(),
+            },
+            null,
+            2,
+          ),
+        );
+
+        if (!stable)
+          throw new Error(
+            "Source inputs changed during the E2E run; its results are not fixed-revision evidence.",
+          );
+      }
     } finally {
       try {
         await server.close();
@@ -66,6 +175,8 @@ export default async function setup(project: TestProject) {
   }
 
   try {
+    sourceFiles = await sourceInventory();
+
     await run(join(pgBin, "initdb"), [
       "-D",
       data,
@@ -152,6 +263,11 @@ export default async function setup(project: TestProject) {
           postgres: (await run(join(pgBin, "postgres"), ["--version"])).stdout.trim(),
           runner: "Vitest 4.1.10",
           runtime: "local workerd; real PostgreSQL; restricted runtime role",
+          sourceRoots,
+          sourceFiles,
+          sourceInventorySha256: createHash("sha256")
+            .update(JSON.stringify(sourceFiles))
+            .digest("hex"),
           migrations,
         },
         null,

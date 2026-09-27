@@ -64,6 +64,6 @@ The authorized E2E journey in `apps/api/tests/bank-references.e2e.test.ts` uses 
 
 It checks equal amounts with different references; free text/provider-ID confusion; issuer/type mismatches; punctuation and leading zeros; unsupported currency; opposite direction; cross-book refusal; read-only discovery; capacity after matching; concurrent replay; changed-input conflict; and duplicate use of a bank line.
 
-Run `bun run test:e2e`. Inspect `test-results/e2e/bank-reference-journey.json` with `manifest.json` and `results.json`. The journey artifact retains the rendered document, issue/allocation receipts, source import, comparisons and match receipts. Each run replaces these local artifacts.
+Run `bun run test:e2e`. Inspect `test-results/e2e/bank-reference-journey.json` with `manifest.json`, `source-integrity.json` and `results.json`. The journey artifact retains the rendered document, issue/allocation receipts, source import, comparisons and match receipts. The runner preserves prior local runs under `test-results/e2e-history`.
 
 The observed scope is synthetic HTTP behavior. Browser interaction, a live bank feed, OCR and actual-company acceptance remain separate qualification work. The old SQL dispatcher and migration-1600 instructions are superseded; Git history retains them.
