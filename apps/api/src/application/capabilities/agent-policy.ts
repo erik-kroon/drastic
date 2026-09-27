@@ -100,6 +100,11 @@ const writeClasses = {
   period_work_prepare_manifest: "operator_preparation",
   period_work_advance: "operator_preparation",
   period_work_prepare_batch: "operator_preparation",
+  // Run control, like the rest of this family. It drives a selection and produces
+  // no economic effect, so it is not execution; it makes no approval either, so it
+  // is not the human gesture. Withheld here, which is the family's existing
+  // posture: no period-work write is an agent tool.
+  period_work_cancel: "operator_preparation",
   period_work_approve_batch: "human_review",
   period_work_execute_batch: "operator_execution",
   cases_prepare_snapshot: "prepare",

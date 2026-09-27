@@ -43,6 +43,41 @@ const english = {
   none: "None recorded",
   identityMismatch: "The response did not belong to this book and this run.",
   empty: "This selection has no children.",
+
+  batchTitle: "Approval batch",
+  batchHelp:
+    "A batch is a fixed list of already sealed plans that one human gesture covers. It is not a rule that admits a later arrival: a child added after the batch was sealed is not in it, and a child whose plan moved since is refused rather than approved on a different set.",
+  batchSelect: "Select prepared work",
+  batchSelectHelp:
+    "Only a prepared child with a sealed plan and its owning review can be a member. A child waiting on an earlier child cannot be until that child commits.",
+  batchNotWaiting: "Waiting on an earlier child",
+  batchNotPrepared: "No sealed plan yet",
+  batchNoOwner: "No owning review yet",
+  batchSelected: "selected",
+  batchMaximum: (n: number) => `at most ${n} per batch`,
+  batchSeal: "Seal this batch",
+  batchSealed: "Sealed batch",
+  batchCombined: "Combined effect, informational",
+  batchCombinedNote:
+    "The combined figure is shown for the reviewer. It is never a journal line and never a balancing figure.",
+  batchDigest: "Sealed digest",
+  batchMembers: "Members",
+  review: "Owning review",
+  receipt: "Receipt",
+  batchApprove: "Approve this batch",
+  batchApproved:
+    "This batch is approved. Its members can now be executed through their own owners.",
+  batchAlreadyApproved: "This batch was already approved.",
+  batchExecute: "Execute the next members",
+  batchExecuted: "What this pass did",
+  batchCommitted: "Committed",
+  batchRefused: "Refused",
+  batchNextPage: "Continue from the next member",
+  batchNoMembers: "No prepared work to select.",
+  batchOperatorOnly:
+    "Only an operator can approve or execute a batch. This is the sealed batch as an operator would see it.",
+  batchAcknowledge:
+    "I understand this approves and posts this exact set of synthetic-only effects, and that a member whose owner refuses is left for review rather than retried.",
 };
 
 const swedish: typeof english = {
@@ -86,6 +121,40 @@ const swedish: typeof english = {
   none: "Inget registrerat",
   identityMismatch: "Svaret hörde inte till den här boken och den här körningen.",
   empty: "Det här urvalet har inga poster.",
+
+  batchTitle: "Granskningspaket",
+  batchHelp:
+    "Ett paket är en fast lista över redan förseglade planer som en enda mänsklig gest täcker. Det är inte en regel som släpper in en senare ankomst: ett arbete som tillkommer efter att paketet förseglades ingår inte, och ett arbete vars plan flyttats avvisas i stället för att godkännas på en annan uppsättning.",
+  batchSelect: "Välj förberett arbete",
+  batchSelectHelp:
+    "Bara ett förberett arbete med en förseglad plan och sin ägarkontroll kan vara medlem. Ett arbete som väntar på ett tidigare arbete kan inte vara det förrän det arbetet bokförts.",
+  batchNotWaiting: "Väntar på ett tidigare arbete",
+  batchNotPrepared: "Ingen förseglad plan ännu",
+  batchNoOwner: "Ingen ägarkontroll ännu",
+  batchSelected: "valda",
+  batchMaximum: (n: number) => `högst ${n} per paket`,
+  batchSeal: "Försegla paketet",
+  batchSealed: "Förseglat paket",
+  batchCombined: "Sammanlagd effekt, informativt",
+  batchCombinedNote:
+    "Det sammanlagda beloppet visas för granskaren. Det är aldrig en verifikationsrad och aldrig en balanserande storhet.",
+  batchDigest: "Förseglad kontrollsumma",
+  batchMembers: "Medlemmar",
+  review: "Ägarkontroll",
+  receipt: "Kvitto",
+  batchApprove: "Godkänn paketet",
+  batchApproved: "Paketet är godkänt. Dess medlemmar kan nu köras via sina egna ägare.",
+  batchAlreadyApproved: "Paketet var redan godkänt.",
+  batchExecute: "Kör nästa medlemmar",
+  batchExecuted: "Vad den här omgången gjorde",
+  batchCommitted: "Bokförd",
+  batchRefused: "Avvisad",
+  batchNextPage: "Fortsätt från nästa medlem",
+  batchNoMembers: "Inget förberett arbete att välja.",
+  batchOperatorOnly:
+    "Endast en operatör kan godkänna eller köra ett paket. Så här ser det förseglade paketet ut för en operatör.",
+  batchAcknowledge:
+    "Jag förstår att detta godkänner och bokför exakt den här uppsättningen av syntetiska effekter, och att en medlem vars ägare avvisar lämnas till granskning i stället för att köras om.",
 };
 
 const stateWords = {

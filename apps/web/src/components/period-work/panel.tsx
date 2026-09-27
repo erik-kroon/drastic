@@ -13,10 +13,11 @@ import { readAccounting } from "@/lib/accounting-api";
 import {
   advancePeriodWork,
   cancelPeriodWork,
-  periodWorkPath,
   periodWorkQueryOptions,
+  type PeriodWorkCommand,
 } from "@/lib/period-work";
 import type { Locale } from "@/paraglide/runtime";
+import { PeriodWorkBatch } from "./batch";
 import { periodWorkCopy } from "./copy";
 
 function errorText(error: unknown) {
@@ -46,11 +47,11 @@ export function PeriodWorkPanel({
   // pass is displayed rather than waited for. The response is checked against
   // the book and the run it claims before it is stored.
   const run = useMutation({
-    mutationFn: async (input: { path: string; request: RequestInit }) => {
+    mutationFn: async (command: PeriodWorkCommand) => {
       const result = await readAccounting(
-        input.path,
+        command.path,
         PeriodWork.PeriodWorkRunProgress,
-        input.request,
+        command.request,
       );
 
       if (
@@ -205,10 +206,7 @@ export function PeriodWorkPanel({
               variant="outline"
               disabled={!view || !boundedValid || run.isPending}
               onClick={() => {
-                run.mutate({
-                  path: `${periodWorkPath(book, manifestId)}/advance`,
-                  request: advancePeriodWork(book, manifestId, boundedCount, advanceKeys.current),
-                });
+                run.mutate(advancePeriodWork(book, manifestId, boundedCount, advanceKeys.current));
               }}
             >
               {copy.advance}
@@ -219,10 +217,7 @@ export function PeriodWorkPanel({
               onClick={() => {
                 if (!view) return;
 
-                run.mutate({
-                  path: `${periodWorkPath(book, manifestId)}/cancel`,
-                  request: cancelPeriodWork(book, manifestId, view.digest, cancelKeys.current),
-                });
+                run.mutate(cancelPeriodWork(book, manifestId, view.digest, cancelKeys.current));
               }}
             >
               {copy.cancel}
@@ -231,6 +226,15 @@ export function PeriodWorkPanel({
           <PageCaption>{copy.advanceHelp}</PageCaption>
           <PageCaption>{copy.cancelHelp}</PageCaption>
           {run.isError ? <Text role="alert">{errorText(run.error)}</Text> : null}
+          <PeriodWorkBatch
+            locale={locale}
+            manifestId={manifestId}
+            children={view.children}
+            maximumMembers={PeriodWork.maximumBatchMembers}
+            onChanged={() => {
+              void progress.refetch();
+            }}
+          />
         </Box>
       ) : null}
     </Box>

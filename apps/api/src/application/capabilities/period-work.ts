@@ -3,6 +3,7 @@ import { effectCapability } from "./shared";
 import {
   advancePeriodWork,
   approvePeriodWorkBatch,
+  cancelPeriodWork,
   executePeriodWorkBatch,
   preparePeriodWorkBatch,
   preparePeriodWorkManifest,
@@ -22,6 +23,14 @@ export const periodWorkCapabilities = {
     readPeriodWorkProgress,
   ),
   period_work_advance: effectCapability(Capabilities.period_work_advance, advancePeriodWork),
+  period_work_cancel: effectCapability(Capabilities.period_work_cancel, (token, command) =>
+    cancelPeriodWork(token, {
+      scope: command.scope,
+      manifestId: command.manifestId,
+      idempotencyKey: command.idempotencyKey,
+      expectedDigest: command.input.expectedDigest,
+    }),
+  ),
   period_work_prepare_batch: effectCapability(
     Capabilities.period_work_prepare_batch,
     (token, command) =>
