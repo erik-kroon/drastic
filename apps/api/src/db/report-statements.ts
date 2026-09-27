@@ -539,7 +539,8 @@ export function readStatementLiveStatus(
           select 1 from openerp.closing_transitions t
           join openerp.periods p on p.book_id = t.book_id and p.id = t.period_id
           where t.book_id = ${bookId} and t.body->>'action' = 'reopen'
-            and t.committed_at > ${createdAt}::timestamptz and p.ends_on >= ${asOf}::date
+            and (t.body->>'committedAt')::timestamptz > ${createdAt}::timestamptz
+            and p.ends_on >= ${asOf}::date
         ) as "reopenedAfterCapture"
     `,
     "objects",

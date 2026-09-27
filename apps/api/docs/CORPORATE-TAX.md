@@ -21,6 +21,71 @@
 
 The bridge, the effect and the declaration never share a transaction or a table.
 
+## Currentness of the selected statement population
+
+An immutable snapshot proves its bytes did not change. It cannot prove the population behind
+them did not. A new or backdated non-tax posting after the snapshot leaves every retained byte
+identical, so re-reading the snapshot and its digest detects nothing — and the shared posting
+kernel will not catch it either, because a sealed plan records profile, writer epoch, period
+and account dependencies, not a committed-sequence boundary.
+
+So this owner asks the statement owner, using its own released read, at **capture and again at
+execution**:
+
+```text
+reopenedAfterCapture                                   -> stale
+postingsAfterCutoff - ownTaxPostingsAfterCutoff > 0    -> stale
+```
+
+`postingsAfterCutoff` is the statement owner's own count of vouchers committed after the
+snapshot's `ledgerBoundary`; `reopenedAfterCapture` is a reopen transition on a period
+covering the reported `asOf`, committed after the snapshot's `createdAt`. The global book
+sequence is not compared, because it moves for reasons that cannot touch a closed year's
+reported population.
+
+### The exact conservative boundary
+
+**Any** voucher committed after the snapshot's cutoff other than this owner's own
+current-income-tax effects makes the snapshot stale, and a reopen of a period covering the
+reported as-of date makes it stale even if the only later posting is this owner's.
+
+That is deliberately stricter than strictly necessary. It refuses a bridge when a later
+posting provably cannot touch the reported population. The trade is chosen on purpose: refusing
+a proposal costs a fresh snapshot, while posting a current-tax accrual derived from a
+population that has since moved is not recoverable by any later operation.
+
+### Why the own-tax exclusion exists and what it counts
+
+Recognising a tax effect is itself a voucher after the cutoff. Without an exclusion the first
+effect would make every later bridge over the same snapshot refuse, which would make the owner
+self-defeating.
+
+Ownership is proved by a **committed `corporate_tax_effect` row**, never by an event-key
+prefix. A key is a naming convention any posting path can choose, so a manual or generic
+posting that merely _named itself_ like tax would otherwise escape the pre-tax guard. A voucher
+is excluded only when all of these hold:
+
+- a `corporate_tax_effect` row for this book **and the reported fiscal year** points at it;
+- the effect is not the no-effect form, so it actually posted a journal;
+- the voucher's own `change_set_id` equals that effect's `change_set_id`, tying the voucher to
+  the tax effect's own sealed plan.
+
+The statement owner's count and this subtraction use the identical cutoff, so their difference
+is exactly the number of later postings that are not this owner's own committed tax effect. A
+negative difference would mean the two reads disagree about the same boundary and is treated
+as a defect, not as a stale population.
+
+Scoping the exclusion to the reported fiscal year is deliberately narrow. It means a tax effect
+belonging to a _later_ year still counts as a later posting and refuses this year's bridge,
+which is over-conservative. Over-conservative is the correct direction here.
+
+**Not executed.** An earlier revision of this exclusion used the event-key prefix and was
+exercised against a real PostgreSQL 17. This revision has not: it was written after that probe
+was ruled out, so its SQL is unverified by execution. Treat it as the one place in NEXT-22
+where a query has not run against a database. The reopen half of the guard was executed in all
+four cases (after capture and covering the as-of date fires; before capture, or a period ending
+before the as-of date, does not).
+
 ## The bridge excludes current income tax exactly once
 
 The retained statement result already contains the current income-tax expense that is
@@ -32,9 +97,12 @@ pretaxProfit = retainedStatementResult + incomeTaxExpenseEffect
 ```
 
 Posting a current-tax effect therefore cannot change the number the tax was calculated
-from. `retainedStatementResult` is the snapshot's own retained untransferred fiscal-year
-result line, not a reconstructed year-to-date profit: the statement snapshot does not
-retain the transferred movement, and no amount is invented for it.
+from.
+
+`retainedStatementResult` is `balance.virtualUntransferredResultMinor`: the statement retains
+its untransferred result line, not the transferred movement. It is reported under that name
+rather than as a reconstructed year-to-date profit, and no amount is invented for the
+transfer.
 
 ## Only the delta is posted
 

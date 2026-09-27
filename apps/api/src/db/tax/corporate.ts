@@ -48,6 +48,7 @@ export const corporateTaxReadTables = [
   "report_statement_snapshots",
   "report_statement_rows",
   "report_statement_contributions",
+  "closing_transitions",
   "command_receipts",
 ] as const;
 
@@ -349,9 +350,45 @@ export function readEffectsAfter(
     .limit(201);
 }
 
-// The posting-group receipt the shared journal primitive actually wrote for this
-// change set. The effect retains that exact identity, so it is read back rather
-// than invented; a plan with one group has exactly one such row.
+// How many vouchers after the snapshot cutoff are this owner's own committed
+// current-tax effects for the reported fiscal year. The currentness guard subtracts
+// exactly these from the statement owner's postings-after-cutoff count, so
+// recognising a tax effect does not invalidate the pre-tax population that effect
+// was calculated from.
+//
+// Ownership is proved by a committed corporate_tax_effect row, never by an event-key
+// prefix. A key is a naming convention any posting path can choose, so a manual or
+// generic posting that happened to name itself like tax would otherwise slip past
+// the pre-tax guard. A voucher qualifies only when an intact effect row for this book
+// and fiscal year points at it, the voucher's own change set is that effect's change
+// set, and the effect actually posted a journal. The no-effect form carries no
+// voucher, so the join drops it.
+//
+// This is this owner's own read, not a change to the statement owner's read: the
+// statement owner keeps its released count and the guard subtracts from it under the
+// identical cutoff.
+export function readOwnEffectPostingsAfter(
+  transaction: Transaction,
+  bookId: string,
+  fiscalYearId: string,
+  sequence: string,
+) {
+  return transaction.execute<{ readonly count: string }>(
+    sql`
+      select count(*)::text as count
+      from openerp.corporate_tax_effects e
+      join openerp.vouchers v
+        on v.book_id = e.book_id and v.id = e.voucher_id
+      where e.book_id = ${bookId}
+        and e.fiscal_year_id = ${fiscalYearId}
+        and not e.no_financial_effect
+        and v.sequence > ${sequence}::bigint
+        and v.change_set_id = e.change_set_id
+    `,
+    "objects",
+  );
+}
+
 // The sealed plan behind one change set, so a no-effect recognition can still
 // validate that plan's own dependencies. A nonzero recognition validates the same
 // plan inside the shared journal primitive instead.
@@ -363,6 +400,9 @@ export function readPlan(transaction: Transaction, bookId: string, changeSetId: 
     .for("share");
 }
 
+// The posting-group receipt the shared journal primitive actually wrote for this
+// change set. The effect retains that exact identity, so it is read back rather
+// than invented; a plan with one group has exactly one such row.
 export function readGroupReceiptsForChangeSet(
   transaction: Transaction,
   bookId: string,

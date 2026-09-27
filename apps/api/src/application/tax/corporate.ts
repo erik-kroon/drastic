@@ -270,6 +270,79 @@ const readRetainedStatement = Effect.fn("corporateTax.retainedStatement")(functi
   };
 });
 
+// The statement owner already publishes what "this snapshot still describes the
+// current ledger" means: a reopen covering the reported as-of date, and vouchers
+// committed after the snapshot's cutoff. Reusing that read is what keeps the tax
+// bridge from holding a second, weaker idea of currentness.
+//
+// The exact conservative boundary, stated once and applied identically at capture
+// and at execution:
+//
+//   reopenedAfterCapture                                       -> refuse
+//   postingsAfterCutoff - ownEffectPostingsAfter > 0            -> refuse
+//
+// That is deliberately stricter than strictly necessary. It refuses a bridge
+// whenever *any* voucher committed after the cutoff other than this owner's own
+// committed current-tax effect for the reported year exists, even one that
+// provably cannot touch the reported population. Refusing a proposal costs a fresh
+// snapshot; posting a current-tax accrual derived from a population that has since
+// moved is not recoverable by any later operation, so the boundary errs toward
+// refusal.
+//
+// The own-effect exclusion is what keeps the boundary from being self-defeating:
+// recognising a tax effect is itself a voucher after the cutoff, and without the
+// exclusion the first effect would make every later bridge over the same snapshot
+// refuse. It is deliberately narrow. It counts a voucher only when a committed
+// corporate_tax_effect row for this book and the reported fiscal year points at it,
+// that effect actually posted a journal, and the voucher's own change set is that
+// effect's change set. An event-key prefix is deliberately not used: a key is a
+// naming convention any posting path can choose, so a manual posting that merely
+// named itself like tax would then escape the guard.
+//
+// A reopened period is refused even if the only later posting is this owner's,
+// because a reopen means the reviewed population itself was re-opened for
+// correction, not merely appended to.
+//
+// It reports current rather than raising, because capture turns a stale population
+// into a refusal while execution turns the same condition into "this basis no
+// longer matches" and lets its caller decide.
+const statementIsCurrent = Effect.fn("corporateTax.statementIsCurrent")(function* (
+  transaction: Transaction,
+  bookId: string,
+  snapshot: typeof SnapshotSchema.Type,
+) {
+  const live = (yield* StatementDb.readStatementLiveStatus(
+    transaction,
+    bookId,
+    snapshot.ledgerBoundary,
+    snapshot.asOf,
+    snapshot.createdAt,
+  ))[0];
+
+  if (live === undefined) return yield* failure("InternalError");
+
+  if (live.reopenedAfterCapture) return false;
+
+  const own = (yield* Db.readOwnEffectPostingsAfter(
+    transaction,
+    bookId,
+    snapshot.fiscalYear.id,
+    snapshot.ledgerBoundary,
+  ))[0];
+
+  if (own === undefined) return yield* failure("InternalError");
+
+  // Both reads use the identical cutoff, so the difference is exactly the number of
+  // later postings that are not this owner's own committed tax effect for the reported
+  // year. A negative result would mean the two reads disagree about the same
+  // boundary, which is a defect rather than a stale population.
+  const foreign = BigInt(live.postingsAfterCutoff) - BigInt(own.count);
+
+  if (foreign < 0n) return yield* failure("InternalError");
+
+  return foreign === 0n;
+});
+
 const captureBasis = Effect.fn("corporateTax.captureBasis")(function* (
   transaction: Transaction,
   scope: Scope,
@@ -292,6 +365,12 @@ const captureBasis = Effect.fn("corporateTax.captureBasis")(function* (
   if (snapshot.scope.bookId !== scope.bookId) return yield* failure("StaleDependency");
 
   if (snapshot.fiscalYear.id !== fiscalYear.id) return yield* failure("StaleDependency");
+
+  // A bridge is only sealed over a population the statement owner still calls
+  // current. This runs before any figure is derived, so no stale proposal is sealed.
+  if (!(yield* statementIsCurrent(transaction, scope.bookId, snapshot))) {
+    return yield* failure("StaleDependency");
+  }
 
   if (snapshot.currency !== book.currency) return yield* failure("StaleDependency");
 
@@ -567,6 +646,10 @@ const sealEffectPlan = Effect.fn("corporateTax.sealEffectPlan")(function* (
     return yield* failure("MissingEvidence");
   }
 
+  // The event key is an idempotency key, not a claim of financial ownership. It makes
+  // a retried recognition of the same bridge resolve to the same event. Nothing
+  // infers ownership from it: the currentness guard proves ownership from a committed
+  // corporate_tax_effect row, because any posting path can choose a key.
   const eventKey = `corporate_income_tax_${input.bridgeId.slice("taxbridge_".length)}`;
   const existing = (yield* Ledger.readEvent(transaction, scope.bookId, evidenceId, eventKey))[0];
   const eventId = existing?.id ?? newId("event");
@@ -995,6 +1078,11 @@ const revalidateBasis = Effect.fn("corporateTax.revalidateBasis")(function* (
   const statement = yield* readRetainedStatement(transaction, scope, sealed.statementSnapshotId);
 
   if (statement.digest !== sealed.statementDigest) return null;
+
+  // The same currentness boundary as capture, re-evaluated inside the executing
+  // transaction. An immutable snapshot proves the bytes did not change; it cannot
+  // prove the population behind them did not.
+  if (!(yield* statementIsCurrent(transaction, scope.bookId, statement.snapshot))) return null;
 
   const bindings = yield* ProfileDb.readRoleBindings(
     transaction,
