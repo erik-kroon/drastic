@@ -22,6 +22,7 @@ export {
   CycleOrdinal,
   CyclePlan,
   MonthAnchorPolicy,
+  OccurrenceReference,
   RecurrenceCadence,
   RecurrenceFailure,
   RecurrenceFailureCode,
@@ -31,17 +32,6 @@ export {
   TimeZone,
 } from "@open-erp/domain/recurrence";
 
-// A recurring occurrence is identified by its agreement and cycle ordinal alone.
-// The selected template revision travels with the occurrence as the frozen fact
-// it was drafted from and is deliberately absent from this identity, so amending
-// a template cannot re-identify an already issued cycle.
-export const OccurrenceReference = Schema.Struct({
-  agreementId: Accounting.Identifier,
-  cycleOrdinal: CycleOrdinal,
-});
-
-export type OccurrenceReference = typeof OccurrenceReference.Type;
-
 const ChargeComponentKey = Schema.String.check(
   Schema.isPattern(/^[a-z][a-z0-9_-]{2,63}$/),
   Schema.isMaxLength(64),
@@ -50,6 +40,8 @@ const ChargeComponentKey = Schema.String.check(
 const Title = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200));
 
 const PaymentTerms = Schema.String.check(Schema.isMaxLength(1000));
+
+const DayOffset = Schema.String.check(Schema.isPattern(/^(?:0|[1-9][0-9]{0,4})$/));
 
 // The reviewed cadence of an agreement. `timeZone` names the reviewed local
 // calendar the cycle dates are expressed in; this owner never derives a due
@@ -90,6 +82,15 @@ export type RecurringAgreement = typeof RecurringAgreement.Type;
 // A template revision is a reviewed customer-invoice draft body plus the first
 // cycle it governs. It carries no tax rate: every amount, tax description and
 // tax evidence reference is a reviewed input of the author.
+// A reviewed day offset from the cycle date. Whole local calendar days only. An
+// absent offset leaves the draft's issue date unresolved, which the invoice draft
+// owner reports as a blocker rather than this owner guessing a term.
+export const RecurringDateOffsets = Schema.Struct({
+  issueDays: DayOffset,
+  supplyDays: DayOffset,
+  dueDays: DayOffset,
+});
+
 export const RecurringTemplateInput = Schema.Struct({
   title: Title,
   counterpartyId: Accounting.Identifier,
@@ -98,11 +99,41 @@ export const RecurringTemplateInput = Schema.Struct({
   currency: Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/)),
   currencyScale: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 6 })),
   paymentTerms: Schema.NullOr(PaymentTerms),
+  dateOffsets: Schema.NullOr(RecurringDateOffsets),
   sourceTotalMinor: Schema.NullOr(Accounting.MinorUnits),
   lines: Schema.Array(Drafts.DraftLine).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
 });
 
 export type RecurringTemplateInput = typeof RecurringTemplateInput.Type;
+
+// A schedule amendment is a reviewed cadence or anchor change that names the
+// first cycle it governs. The cycle identity is unaffected: the schedule revision
+// travels with the occurrence as the frozen fact it resolved under.
+export const AmendRecurringSchedule = Schema.Struct({
+  expectedAgreementRevision: Commerce.Version,
+  expectedAgreementDigest: Accounting.Digest,
+  effectiveFromCycle: CycleOrdinal,
+  schedule: RecurringScheduleInput,
+  reason: Accounting.Description,
+});
+
+export type AmendRecurringSchedule = typeof AmendRecurringSchedule.Type;
+
+export const RecurringScheduleRevision = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  agreementId: Accounting.Identifier,
+  agreementDigest: Accounting.Digest,
+  revision: Commerce.Version,
+  effectiveFromCycle: CycleOrdinal,
+  schedule: RecurringScheduleInput,
+  reason: Accounting.Description,
+  createdAt: Schema.String,
+  receipt: Commerce.CommandReceipt,
+  digest: Accounting.Digest,
+});
+
+export type RecurringScheduleRevision = typeof RecurringScheduleRevision.Type;
 
 export const ProposeRecurringTemplateRevision = Schema.Struct({
   expectedAgreementRevision: Commerce.Version,
@@ -172,6 +203,7 @@ export const RecurringOccurrence = Schema.Struct({
   chargeComponentKeys: Schema.Array(ChargeComponentKey),
   selectedTemplateRevision: Commerce.Version,
   selectedTemplateDigest: Accounting.Digest,
+  selectedScheduleRevision: Commerce.Version,
   status: OccurrenceStatus,
   draftId: Accounting.Identifier,
   createdAt: Schema.String,
@@ -181,27 +213,30 @@ export const RecurringOccurrence = Schema.Struct({
 
 export type RecurringOccurrence = typeof RecurringOccurrence.Type;
 
-// The append-only consumption of one occurrence's billing coverage. The invoice
-// issue owner writes it in the same financial transaction that issues the
-// invoice, so a second issue of the same occurrence cannot commit.
-export const RecurringOccurrenceIssue = Schema.Struct({
+// The append-only consumption of one occurrence's billing coverage for one
+// charge component. An invoice issue owner writes one row per component in the
+// same financial transaction that issues the invoice, so a second billing of the
+// same component cannot commit.
+export const RecurringCoverageConsumption = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
   occurrenceId: Accounting.Identifier,
   occurrenceDigest: Accounting.Digest,
   agreementId: Accounting.Identifier,
   cycleOrdinal: CycleOrdinal,
+  chargeComponentKey: ChargeComponentKey,
   serviceInterval: ServiceInterval,
   draftId: Accounting.Identifier,
   invoiceIssueId: Accounting.Identifier,
   registerInvoiceId: Accounting.Identifier,
   documentNumber: Schema.String,
+  postingReceiptId: Accounting.Identifier,
   createdAt: Schema.String,
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
 });
 
-export type RecurringOccurrenceIssue = typeof RecurringOccurrenceIssue.Type;
+export type RecurringCoverageConsumption = typeof RecurringCoverageConsumption.Type;
 
 export const MaterializeRecurringOccurrence = Schema.Struct({
   cycleOrdinal: CycleOrdinal,
@@ -219,6 +254,10 @@ export const RecurringCoverage = Schema.Struct({
   serviceInterval: ServiceInterval,
 });
 
+// Materialized, prepared, approved and issued are reported independently: a
+// schedule that ends does not withdraw them, and none of them implies delivery.
+// Delivery state stays with the delivery owner, which is the only place a send
+// outcome is produced.
 const occurrenceSummary = Schema.Struct({
   cycleOrdinal: CycleOrdinal,
   cycleDate: Accounting.AccountingDate,
@@ -227,8 +266,11 @@ const occurrenceSummary = Schema.Struct({
   status: OccurrenceStatus,
   occurrenceId: Accounting.Identifier,
   draftId: Accounting.Identifier,
+  prepared: Schema.Boolean,
+  approved: Schema.Boolean,
   issued: Schema.Boolean,
   documentNumber: Schema.NullOr(Schema.String),
+  postingReceiptId: Schema.NullOr(Accounting.Identifier),
 });
 
 export const RecurringOccurrenceList = Schema.Struct({
@@ -244,6 +286,15 @@ export type RecurringOccurrenceList = typeof RecurringOccurrenceList.Type;
 
 export const RecurringAgreementView = Schema.Struct({
   agreement: RecurringAgreement,
+  schedules: Schema.Array(
+    Schema.Struct({
+      revision: Commerce.Version,
+      effectiveFromCycle: CycleOrdinal,
+      cadenceKind: Schema.Literals(["monthly", "fixed_day_interval"]),
+      digest: Accounting.Digest,
+      createdAt: Schema.String,
+    }),
+  ).check(Schema.isMaxLength(50)),
   revisions: Schema.Array(
     Schema.Struct({
       revision: Commerce.Version,
@@ -266,10 +317,11 @@ export const RecurringAgreementView = Schema.Struct({
 
 export type RecurringAgreementView = typeof RecurringAgreementView.Type;
 
+// The occurrence, its billing coverage consumption and nothing else. The draft
+// itself stays with the invoice draft owner, which remains its single authority.
 export const RecurringOccurrenceView = Schema.Struct({
   occurrence: RecurringOccurrence,
-  issue: Schema.NullOr(RecurringOccurrenceIssue),
-  draft: Schema.NullOr(Drafts.InvoiceDraftView),
+  coverage: Schema.Array(RecurringCoverageConsumption).check(Schema.isMaxLength(50)),
 });
 
 export type RecurringOccurrenceView = typeof RecurringOccurrenceView.Type;
@@ -312,6 +364,11 @@ export const RecurringInvoicesApi = HttpApiGroup.make("recurringInvoices").add(
     error: accountingErrors,
     payload: ProposeRecurringAgreement.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: RecurringAgreement,
+  }),
+  HttpApiEndpoint.post("amendRecurringSchedule", `${path}/:agreementId/schedules`, {
+    ...write,
+    payload: AmendRecurringSchedule.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: RecurringScheduleRevision,
   }),
   HttpApiEndpoint.post(
     "proposeRecurringTemplateRevision",
@@ -366,7 +423,7 @@ export const RecurringInvoicesApi = HttpApiGroup.make("recurringInvoices").add(
 export const RecurringInvoiceCapabilities = {
   commerce_get_recurring_agreement: {
     description:
-      "Read one recurring invoice agreement with its immutable template revision boundaries and its pause, resume and end events. Cycle identity is the anchor and cycle ordinal, never a template revision.",
+      "Read one recurring invoice agreement with its immutable schedule and template revision boundaries and its pause, resume and end events. Cycle identity is the anchor and cycle ordinal, never a schedule or template revision.",
     input: Schema.Struct({ scope: Accounting.Scope, agreementId: Accounting.Identifier }),
     output: RecurringAgreementView,
     readOnly: true,
@@ -384,7 +441,7 @@ export const RecurringInvoiceCapabilities = {
   },
   commerce_list_recurring_occurrences: {
     description:
-      "Read the bounded materialised occurrence history of one recurring agreement with per-cycle issued status. Coverage, draft and document number are reported independently.",
+      "Read the bounded materialised occurrence history of one recurring agreement, reporting materialised, prepared, approved and issued per cycle independently with the legal document number and ledger receipt. Delivery state is not reported here; read it from the delivery owner.",
     input: Schema.Struct({
       scope: Accounting.Scope,
       agreementId: Accounting.Identifier,
@@ -395,7 +452,7 @@ export const RecurringInvoiceCapabilities = {
   },
   commerce_get_recurring_occurrence: {
     description:
-      "Read one materialised occurrence of a recurring agreement with its billing coverage consumption and current customer draft. Not legal issuance or delivery authority.",
+      "Read one materialised occurrence of a recurring agreement with the per-component billing coverage it consumed, each naming its own legal document number and ledger receipt. Read the customer draft through the invoice draft owner; this is not legal issuance or delivery authority.",
     input: Schema.Struct({
       scope: Accounting.Scope,
       agreementId: Accounting.Identifier,

@@ -21,6 +21,7 @@ import {
 } from "../posting";
 import { decode, withBook, requireRetainedEvidence, toJsonObject, type Scope } from "./support";
 import { calculateLegalIssue, checkedLegalIssue, legalAccounts } from "./legal-issue-basis";
+import { consumeOccurrenceCoverage, occurrenceAtIssueAdmission } from "./recurring-coverage";
 
 export const activateArLegalAccountingProfile = Effect.fn("commerce.legalProfile.activate")(
   function* (
@@ -285,6 +286,11 @@ export const executeArLegalIssue = Effect.fn("commerce.legalIssue.execute")(func
       if (request.previous) return request.previous;
       const review = yield* checkedLegalIssue(tx, scope, id, input.digest);
 
+      // A recurring occurrence owns its cycle and its billing coverage. The legal
+      // issue path is the other place a customer invoice becomes legal, so it asks
+      // the same authority before it issues anything.
+      const occurrence = yield* occurrenceAtIssueAdmission(tx, scope, review.draftSnapshot);
+
       const row = (yield* Db.readIssueApprovals(tx, scope.bookId, id)).find(
         (row) => row.body.id === input.approvalId,
       );
@@ -516,6 +522,24 @@ export const executeArLegalIssue = Effect.fn("commerce.legalIssue.execute")(func
       if (new TextEncoder().encode(JSON.stringify(result)).length > 262144)
         return yield* failure("InvalidJournal");
       yield* Db.insertIssue(tx, scope.bookId, result);
+
+      if (occurrence !== null) {
+        yield* consumeOccurrenceCoverage(
+          tx,
+          scope,
+          occurrence,
+          {
+            id: result.id,
+            registerInvoiceId: result.registerInvoiceId,
+            documentNumber: result.legalDocumentNumber,
+            postingReceiptId: postingReceipt.id,
+          },
+          idempotencyKey,
+          principal.actorId,
+          operation,
+        );
+      }
+
       yield* saveCommand(
         tx,
         scope,

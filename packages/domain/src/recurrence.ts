@@ -1,6 +1,6 @@
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
-import { AccountingDate, Description } from "./values";
+import { AccountingDate, Description, Identifier } from "./values";
 
 // Pure recurring-agreement cycle identity. A cycle is named by its ordinal
 // against the original anchor, never by a template revision, so amending a
@@ -18,6 +18,8 @@ export const RecurrenceFailureCode = Schema.Literals([
   "CycleOutsideCalendar",
   "NoTemplateRevisionForCycle",
   "AmbiguousTemplateRevision",
+  "NoScheduleRevisionForCycle",
+  "AmbiguousScheduleRevision",
   "IncompleteEventHistory",
   "OverlappingBillingCoverage",
   "DuplicateChargeComponent",
@@ -39,6 +41,14 @@ export type Checked<A> = Result.Result<A, RecurrenceFailure>;
 export const CycleOrdinal = Schema.String.check(Schema.isPattern(/^(?:0|[1-9][0-9]{0,17})$/));
 
 export type CycleOrdinal = typeof CycleOrdinal.Type;
+
+// Template revisions do not change the identity of an already billed cycle.
+export const OccurrenceReference = Schema.Struct({
+  agreementId: Identifier,
+  cycleOrdinal: CycleOrdinal,
+});
+
+export type OccurrenceReference = typeof OccurrenceReference.Type;
 
 export const CadenceKind = Schema.Literals(["monthly", "fixed_day_interval"]);
 
@@ -83,6 +93,16 @@ export const ServiceInterval = Schema.Struct({
 });
 
 export type ServiceInterval = typeof ServiceInterval.Type;
+
+// A schedule is revised the same way a template is: each revision names the first
+// cycle it governs, and a cycle resolves to exactly one schedule.
+export const ScheduleBoundary = Schema.Struct({
+  revision: Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,17}$/)),
+  effectiveFromCycle: CycleOrdinal,
+  schedule: RecurrenceSchedule,
+});
+
+export type ScheduleBoundary = typeof ScheduleBoundary.Type;
 
 export const TemplateRevisionBoundary = Schema.Struct({
   revision: Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,17}$/)),
@@ -146,7 +166,7 @@ export const BilledCoverage = Schema.Struct({
 export type BilledCoverage = typeof BilledCoverage.Type;
 
 export const CyclePlanRequest = Schema.Struct({
-  schedule: RecurrenceSchedule,
+  schedules: Schema.Array(ScheduleBoundary).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
   events: Schema.Array(AgreementEventBoundary).check(Schema.isMaxLength(200)),
   revisions: Schema.Array(TemplateRevisionBoundary).check(Schema.isMaxLength(50)),
   billedCoverage: Schema.Array(BilledCoverage).check(Schema.isMaxLength(2000)),
@@ -452,35 +472,89 @@ export function cycleIdentity(
   });
 }
 
-function selectRevision(
-  revisions: ReadonlyArray<TemplateRevisionBoundary>,
+type Boundary = { readonly revision: string; readonly from: bigint };
+
+function effectiveBoundary(
+  boundaries: ReadonlyArray<{ revision: string; effectiveFromCycle: string }>,
   cycle: bigint,
-): Checked<string> {
-  const effective = revisions.map((candidate) => ({
+  missing: RecurrenceFailureCode,
+  ambiguous: RecurrenceFailureCode,
+  subject: string,
+): Checked<Boundary> {
+  const parsed = boundaries.map((candidate) => ({
     revision: candidate.revision,
     from: ordinal(candidate.effectiveFromCycle),
   }));
 
-  if (effective.some((candidate) => candidate.from === null)) {
-    return fail("InvalidCycleOrdinal", "A template revision boundary is not an integer.");
+  if (parsed.some((candidate) => candidate.from === null)) {
+    return fail("InvalidCycleOrdinal", `A ${subject} boundary is not an integer.`);
   }
 
-  const applicable = effective
-    .filter((candidate) => (candidate.from ?? 0n) <= cycle)
-    .sort((left, right) => Number((right.from ?? 0n) - (left.from ?? 0n)));
+  const sorted = parsed
+    .map((candidate) => ({ revision: candidate.revision, from: candidate.from ?? 0n }))
+    .sort((left, right) => Number(left.from - right.from))
+    .reverse();
 
+  const applicable = sorted.filter((candidate) => candidate.from <= cycle);
   const winner = applicable.at(0);
   const runnerUp = applicable.at(1);
 
-  if (winner === undefined) {
-    return fail("NoTemplateRevisionForCycle", "No template revision is effective on this cycle.");
-  }
+  if (winner === undefined) return fail(missing, `No ${subject} is effective on this cycle.`);
 
   if (runnerUp !== undefined && winner.from === runnerUp.from) {
-    return fail("AmbiguousTemplateRevision", "Two template revisions start on the same cycle.");
+    return fail(ambiguous, `Two ${subject} records start on the same cycle.`);
   }
 
-  return Result.succeed(winner.revision);
+  return Result.succeed(winner);
+}
+
+function selectRevision(
+  revisions: ReadonlyArray<TemplateRevisionBoundary>,
+  cycle: bigint,
+): Checked<string> {
+  return effectiveBoundary(
+    revisions,
+    cycle,
+    "NoTemplateRevisionForCycle",
+    "AmbiguousTemplateRevision",
+    "template revision",
+  ).pipe(Result.map((winner) => winner.revision));
+}
+
+// The schedule a cycle resolves to. Neither the schedule revision nor the
+// template revision is part of the cycle's identity: both are the frozen fact the
+// cycle was built from, which is what lets either be amended without re-identifying
+// a cycle that is already issued.
+export function selectScheduleRevision(
+  schedules: ReadonlyArray<ScheduleBoundary>,
+  cycleOrdinal: string,
+): Checked<string> {
+  const cycle = ordinal(cycleOrdinal);
+
+  if (cycle === null) return fail("InvalidCycleOrdinal", "The cycle ordinal is not an integer.");
+
+  return effectiveBoundary(
+    schedules,
+    cycle,
+    "NoScheduleRevisionForCycle",
+    "AmbiguousScheduleRevision",
+    "schedule revision",
+  ).pipe(Result.map((winner) => winner.revision));
+}
+
+export function selectSchedule(
+  schedules: ReadonlyArray<ScheduleBoundary>,
+  cycleOrdinal: string,
+): Checked<RecurrenceSchedule> {
+  return selectScheduleRevision(schedules, cycleOrdinal).pipe(
+    Result.flatMap((revision) => {
+      const match = schedules.find((candidate) => candidate.revision === revision);
+
+      return match === undefined
+        ? fail("NoScheduleRevisionForCycle", "No schedule revision is effective on this cycle.")
+        : Result.succeed(match.schedule);
+    }),
+  );
 }
 
 function orderedEvents(events: ReadonlyArray<AgreementEventBoundary>) {
@@ -505,6 +579,24 @@ function orderedEvents(events: ReadonlyArray<AgreementEventBoundary>) {
       return left.kind < right.kind ? -1 : 1;
     }),
   );
+}
+
+// The lifecycle state of one cycle at a point in time. Issue admission asks this
+// so a pause that wins before issuance blocks the invoice, while a pause recorded
+// after a committed issue cannot undo the invoice that already exists.
+export function eventDisposition(
+  events: ReadonlyArray<AgreementEventBoundary>,
+  cycleOrdinal: string,
+): Checked<"due" | "paused" | "ended"> {
+  const cycle = ordinal(cycleOrdinal);
+
+  if (cycle === null) return fail("InvalidCycleOrdinal", "The cycle ordinal is not an integer.");
+
+  const state = eventState(events, cycle);
+
+  if (Result.isFailure(state)) return Result.fail(state.failure);
+
+  return Result.succeed(state.success.kind === "skipped" ? state.success.reason : "due");
 }
 
 function eventState(
@@ -566,7 +658,7 @@ export function assertNoOverlappingCoverage(
 // A resume discloses the paused cycles as skipped; it never bills them late.
 export function planDueCycles(request: CyclePlanRequest): Checked<CyclePlan> {
   const through = ordinal(request.throughOrdinal);
-  const first = ordinal(request.schedule.firstCycleOrdinal);
+  const first = ordinal(request.schedules[0]?.schedule.firstCycleOrdinal ?? "");
   const materialised = ordinal(request.materialisedThroughOrdinal ?? "");
 
   if (through === null || first === null) {
@@ -597,37 +689,25 @@ export function planDueCycles(request: CyclePlanRequest): Checked<CyclePlan> {
       continue;
     }
 
-    const disposition = eventState(request.events, cycle);
+    const resolved = resolveCycle({ ...request, cycleOrdinal });
 
-    if (Result.isFailure(disposition)) return Result.fail(disposition.failure);
+    if (Result.isFailure(resolved)) return Result.fail(resolved.failure);
 
-    if (disposition.success.kind === "skipped") {
-      skipped.push({ cycleOrdinal, reason: disposition.success.reason });
+    if (resolved.success.disposition === "skipped" && resolved.success.reason !== null) {
+      skipped.push({ cycleOrdinal, reason: resolved.success.reason });
 
       continue;
     }
 
-    const identity = cycleIdentity(request.schedule, cycleOrdinal);
+    const planned = resolved.success.planned;
 
-    if (Result.isFailure(identity)) return Result.fail(identity.failure);
+    if (planned === null) {
+      skipped.push({ cycleOrdinal, reason: "already_materialized" });
 
-    const revision = selectRevision(request.revisions, cycle);
+      continue;
+    }
 
-    if (Result.isFailure(revision)) return Result.fail(revision.failure);
-
-    const coverage = assertNoOverlappingCoverage(
-      { cycleOrdinal, serviceInterval: identity.success.serviceInterval },
-      request.billedCoverage,
-    );
-
-    if (Result.isFailure(coverage)) return Result.fail(coverage.failure);
-
-    due.push({
-      cycleOrdinal,
-      cycleDate: identity.success.cycleDate,
-      serviceInterval: identity.success.serviceInterval,
-      selectedTemplateRevision: revision.success,
-    });
+    due.push(planned);
   }
 
   return Result.succeed({ due, skipped, continuationOrdinal: (through + 1n).toString() });
@@ -640,6 +720,153 @@ export function refuseDueInstant() {
     "DueInstantRequiresSchedulingOwner",
     "A due instant is an issue-plan input reviewed by the invoice draft owner.",
   );
+}
+
+export const CycleResolutionInput = Schema.Struct({
+  schedules: Schema.Array(ScheduleBoundary).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
+  events: Schema.Array(AgreementEventBoundary).check(Schema.isMaxLength(200)),
+  revisions: Schema.Array(TemplateRevisionBoundary).check(Schema.isMaxLength(50)),
+  billedCoverage: Schema.Array(BilledCoverage).check(Schema.isMaxLength(2000)),
+  cycleOrdinal: CycleOrdinal,
+});
+
+export type CycleResolutionInput = typeof CycleResolutionInput.Type;
+
+export const ResolvedCycle = Schema.Struct({
+  disposition: Schema.Literals(["due", "skipped"]),
+  planned: Schema.NullOr(PlannedCycle),
+  reason: Schema.NullOr(SkippedCycleReason),
+});
+
+export type ResolvedCycle = typeof ResolvedCycle.Type;
+
+// One cycle in isolation. A paused or ended cycle resolves as skipped so the
+// caller can disclose the gap; an unresolvable cycle, a cycle outside the agreed
+// horizon and a cycle that would rebill covered service are refusals.
+export function resolveCycle(input: CycleResolutionInput): Checked<ResolvedCycle> {
+  const cycle = ordinal(input.cycleOrdinal);
+
+  if (cycle === null) return fail("InvalidCycleOrdinal", "The cycle ordinal is not an integer.");
+
+  const schedule = selectSchedule(input.schedules, input.cycleOrdinal);
+
+  if (Result.isFailure(schedule)) return Result.fail(schedule.failure);
+
+  const first = ordinal(input.schedules[0]?.schedule.firstCycleOrdinal ?? "");
+
+  if (first === null) {
+    return fail("InvalidCycleOrdinal", "The first cycle ordinal is not an integer.");
+  }
+
+  if (cycle < first) {
+    return fail("InvalidCycleOrdinal", "The cycle precedes the first cycle of the agreement.");
+  }
+
+  const disposition = eventState(input.events, cycle);
+
+  if (Result.isFailure(disposition)) return Result.fail(disposition.failure);
+
+  if (disposition.success.kind === "skipped") {
+    return Result.succeed({
+      disposition: "skipped",
+      planned: null,
+      reason: disposition.success.reason,
+    });
+  }
+
+  const identity = cycleIdentity(schedule.success, input.cycleOrdinal);
+
+  if (Result.isFailure(identity)) return Result.fail(identity.failure);
+
+  const revision = selectRevision(input.revisions, cycle);
+
+  if (Result.isFailure(revision)) return Result.fail(revision.failure);
+
+  const coverage = assertNoOverlappingCoverage(
+    { cycleOrdinal: input.cycleOrdinal, serviceInterval: identity.success.serviceInterval },
+    input.billedCoverage,
+  );
+
+  if (Result.isFailure(coverage)) return Result.fail(coverage.failure);
+
+  return Result.succeed({
+    disposition: "due",
+    reason: null,
+    planned: {
+      cycleOrdinal: input.cycleOrdinal,
+      cycleDate: identity.success.cycleDate,
+      serviceInterval: identity.success.serviceInterval,
+      selectedTemplateRevision: revision.success,
+    },
+  });
+}
+
+// A reviewed day offset from the cycle date. It is whole local calendar days
+// only: no instant, no daylight-saving arithmetic and no inferred term.
+export function shiftLocalDate(date: string, days: string): Checked<string> {
+  const offset = ordinal(days);
+
+  if (offset === null) return fail("InvalidCycleOrdinal", "The day offset is not an integer.");
+
+  const anchor = parseLocalDate(date);
+
+  if (anchor === null)
+    return fail("InvalidAnchor", "The anchor local date is not a calendar date.");
+
+  return dayStep(anchor, offset);
+}
+
+export const FrozenCycle = Schema.Struct({
+  cycleOrdinal: CycleOrdinal,
+  cycleDate: AccountingDate,
+  serviceStartsOn: AccountingDate,
+});
+
+export type FrozenCycle = typeof FrozenCycle.Type;
+
+// A cadence or anchor amendment re-maps every later cycle, so a frequency change
+// can move a cycle that already owns an occurrence. Each already-materialised
+// cycle is therefore recomputed under the proposed schedule and must land on the
+// same date and the same service start it was frozen with. This is what makes a
+// monthly-to-quarterly change refuse rather than silently re-identify the cycles
+// between the old and the new frequency.
+export function assertUnchangedMaterialisedCycles(
+  schedule: RecurrenceSchedule,
+  cycles: ReadonlyArray<FrozenCycle>,
+) {
+  for (const frozen of cycles) {
+    const date = cycleDate(schedule, frozen.cycleOrdinal);
+
+    if (Result.isFailure(date)) return Result.fail(date.failure);
+
+    if (date.success !== frozen.cycleDate) {
+      return fail(
+        "OverlappingBillingCoverage",
+        "The proposed schedule moves a cycle that already owns an occurrence.",
+      );
+    }
+
+    const cycle = ordinal(frozen.cycleOrdinal);
+
+    if (cycle === null)
+      return fail("InvalidCycleOrdinal", "A frozen cycle ordinal is not an integer.");
+
+    const starts =
+      cycle === (ordinal(schedule.firstCycleOrdinal) ?? 0n)
+        ? Result.succeed(schedule.anchorLocalDate)
+        : cycleDate(schedule, (cycle - 1n).toString());
+
+    if (Result.isFailure(starts)) return Result.fail(starts.failure);
+
+    if (starts.success !== frozen.serviceStartsOn) {
+      return fail(
+        "OverlappingBillingCoverage",
+        "The proposed schedule moves the service start of a cycle that already owns an occurrence.",
+      );
+    }
+  }
+
+  return Result.void;
 }
 
 export function assertUniqueChargeComponents(keys: ReadonlyArray<string>) {

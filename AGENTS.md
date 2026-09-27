@@ -47,6 +47,7 @@ This repository is the starting point for the OpenERP product.
 - Do not add dependencies when the platform or existing UI package solves the need.
 - Do not add tests unless the user explicitly approves the test change.
 - Never weaken lint or type rules to make a check pass.
+- When dependency manifests change, update and commit `bun.lock` with them and verify `bun install --frozen-lockfile` before handoff. CI must keep frozen installs enabled.
 
 ## Commands
 
@@ -55,6 +56,15 @@ Run `bun run check:changed` after each coherent edit. This is the fast feedback 
 Run `bun run check:changed:full` before handoff and after changes involving async or Promise handling. It adds type-aware lint, including floating/misused Promise checks, which the fast gate does not run. A passing fast gate does not replace this fuller gate. Both commands compare against `HEAD` by default and accept a base ref, e.g. `bun run check:changed:full main` to cover committed branch changes too.
 
 Do not run full-workspace `check`, `lint` or `check-types` scans after every edit. Reserve them for final integration checks when shared configuration, dependencies or cross-workspace changes warrant broader coverage. The changed-file commands select source files, so configuration-only edits need the relevant broader check.
+
+### Check process ownership
+
+- Run one check at a time per worktree. Run it once and inspect that result; do not rerun just to count or filter errors. Do not pipe a running check through `head` or hide its progress behind `grep`. Capture output once if needed, retain the check's exit status, then inspect the saved output.
+- Let `check:changed` format its inputs. Do not pre-format or append whitespace just to make a file appear changed. Use a base ref to select committed work.
+- Each tool has a 60-second deadline. The runner kills that tool's process group on timeout and cleans up its children on SIGINT/SIGTERM or normal exit. A timeout is a failure, never a passing or completed verification. For a known legitimate longer check, set `CHECK_CHANGED_TIMEOUT_SECONDS` and give the outer shell timeout more time than the check; do not raise the limit blindly after a stall.
+- After cancellation or an outer timeout, inspect `ps -Ao pid,ppid,pgid,etime,pcpu,command` before retrying. Confirm ownership by exact worktree path and process ancestry; PPID 1 identifies an orphan but does not by itself authorize killing it. Stop only your task's abandoned check processes: send TERM to their exact PIDs, inspect again, then KILL those same verified processes if they remain. Never use broad `pkill node`, `pkill bun`, or `pkill tsc` commands.
+- SIGKILL cannot run cleanup handlers. If the runner was hard-killed, use the process inspection above to remove its surviving children. Confirm they are gone before starting one replacement check. If it stalls again, inspect the named stage rather than stacking more runs.
+- Existing worktrees may contain an older runner and older instructions. Inspect that worktree's `scripts/check-changed.ts` and `package.json` before assuming timeout, cleanup, or fast/full behavior is available.
 
 ```bash
 bun run dev
