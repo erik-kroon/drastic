@@ -116,6 +116,35 @@ export const RecurringTemplateInput = Schema.Struct({
 
 export type RecurringTemplateInput = typeof RecurringTemplateInput.Type;
 
+// A schedule amendment is a reviewed cadence or anchor change that names the
+// first cycle it governs. The cycle identity is unaffected: the schedule revision
+// travels with the occurrence as the frozen fact it resolved under.
+export const AmendRecurringSchedule = Schema.Struct({
+  expectedAgreementRevision: Commerce.Version,
+  expectedAgreementDigest: Accounting.Digest,
+  effectiveFromCycle: CycleOrdinal,
+  schedule: RecurringScheduleInput,
+  reason: Accounting.Description,
+});
+
+export type AmendRecurringSchedule = typeof AmendRecurringSchedule.Type;
+
+export const RecurringScheduleRevision = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  agreementId: Accounting.Identifier,
+  agreementDigest: Accounting.Digest,
+  revision: Commerce.Version,
+  effectiveFromCycle: CycleOrdinal,
+  schedule: RecurringScheduleInput,
+  reason: Accounting.Description,
+  createdAt: Schema.String,
+  receipt: Commerce.CommandReceipt,
+  digest: Accounting.Digest,
+});
+
+export type RecurringScheduleRevision = typeof RecurringScheduleRevision.Type;
+
 export const ProposeRecurringTemplateRevision = Schema.Struct({
   expectedAgreementRevision: Commerce.Version,
   expectedAgreementDigest: Accounting.Digest,
@@ -184,6 +213,7 @@ export const RecurringOccurrence = Schema.Struct({
   chargeComponentKeys: Schema.Array(ChargeComponentKey),
   selectedTemplateRevision: Commerce.Version,
   selectedTemplateDigest: Accounting.Digest,
+  selectedScheduleRevision: Commerce.Version,
   status: OccurrenceStatus,
   draftId: Accounting.Identifier,
   createdAt: Schema.String,
@@ -266,6 +296,15 @@ export type RecurringOccurrenceList = typeof RecurringOccurrenceList.Type;
 
 export const RecurringAgreementView = Schema.Struct({
   agreement: RecurringAgreement,
+  schedules: Schema.Array(
+    Schema.Struct({
+      revision: Commerce.Version,
+      effectiveFromCycle: CycleOrdinal,
+      cadenceKind: Schema.Literals(["monthly", "fixed_day_interval"]),
+      digest: Accounting.Digest,
+      createdAt: Schema.String,
+    }),
+  ).check(Schema.isMaxLength(50)),
   revisions: Schema.Array(
     Schema.Struct({
       revision: Commerce.Version,
@@ -336,6 +375,11 @@ export const RecurringInvoicesApi = HttpApiGroup.make("recurringInvoices").add(
     payload: ProposeRecurringAgreement.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: RecurringAgreement,
   }),
+  HttpApiEndpoint.post("amendRecurringSchedule", `${path}/:agreementId/schedules`, {
+    ...write,
+    payload: AmendRecurringSchedule.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: RecurringScheduleRevision,
+  }),
   HttpApiEndpoint.post(
     "proposeRecurringTemplateRevision",
     `${path}/:agreementId/template-revisions`,
@@ -389,7 +433,7 @@ export const RecurringInvoicesApi = HttpApiGroup.make("recurringInvoices").add(
 export const RecurringInvoiceCapabilities = {
   commerce_get_recurring_agreement: {
     description:
-      "Read one recurring invoice agreement with its immutable template revision boundaries and its pause, resume and end events. Cycle identity is the anchor and cycle ordinal, never a template revision.",
+      "Read one recurring invoice agreement with its immutable schedule and template revision boundaries and its pause, resume and end events. Cycle identity is the anchor and cycle ordinal, never a schedule or template revision.",
     input: Schema.Struct({ scope: Accounting.Scope, agreementId: Accounting.Identifier }),
     output: RecurringAgreementView,
     readOnly: true,

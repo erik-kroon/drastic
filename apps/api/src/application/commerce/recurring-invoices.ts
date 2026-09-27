@@ -34,6 +34,8 @@ type AgreementRow = {
 
 const AgreementSchema = Recurring.RecurringAgreement;
 
+const ScheduleRevisionSchema = Recurring.RecurringScheduleRevision;
+
 const TemplateSchema = Recurring.RecurringTemplateRevision;
 
 const EventSchema = Recurring.RecurringAgreementEvent;
@@ -51,6 +53,14 @@ const OccurrenceViewSchema = Recurring.RecurringOccurrenceView;
 const DraftContentSchema = Drafts.DraftContent;
 
 const proposeFields = ["customerId", "reason", "schedule", "title"] as const;
+
+const scheduleFields = [
+  "effectiveFromCycle",
+  "expectedAgreementDigest",
+  "expectedAgreementRevision",
+  "reason",
+  "schedule",
+] as const;
 
 const templateFields = [
   "chargeComponentKeys",
@@ -74,6 +84,8 @@ const materializeFields = ["cycleOrdinal", "reason"] as const;
 const maximumEvents = 200;
 
 const pageBound = 200;
+
+const frozenCycleBound = 240;
 
 // The occurrence's identity is the agreement and cycle ordinal. The invoice
 // draft key is derived from that pair alone, so amending a template can never
@@ -137,6 +149,21 @@ function eventKind(kind: string): AgreementEventKind | null {
   return kind === "pause" || kind === "resume" || kind === "end" ? kind : null;
 }
 
+// A stored schedule is re-validated rather than trusted. A row this owner wrote
+// and a later edit cannot make unreadable is an internal inconsistency, not a
+// reason to fall back to a default cadence.
+function scheduleBoundariesOf(rows: ReadonlyArray<RecurrenceDb.ScheduleBoundaryRow>) {
+  return Effect.forEach(rows, (row) =>
+    decode(Recurrence.RecurrenceSchedule, objectField(row.body, "schedule")).pipe(
+      Effect.map((schedule) => ({
+        revision: row.revision,
+        effectiveFromCycle: row.effectiveFromCycle,
+        schedule,
+      })),
+    ),
+  );
+}
+
 function eventsOf(rows: ReadonlyArray<RecurrenceDb.EventRow>) {
   return rows.flatMap((row) => {
     const kind = eventKind(row.kind);
@@ -163,12 +190,16 @@ function readCyclePlan(
     const events = yield* RecurrenceDb.readEvents(transaction, bookId, agreement.id);
     const billed = yield* RecurrenceDb.readBilledCoverage(transaction, bookId, agreement.id);
 
+    const schedules = yield* scheduleBoundariesOf(
+      yield* RecurrenceDb.readScheduleRevisions(transaction, bookId, agreement.id),
+    );
+
     const materialised =
       (yield* RecurrenceDb.readMaterialisedThrough(transaction, bookId, agreement.id))[0]
         ?.cycleOrdinal ?? "-1";
 
     const plan = Recurrence.planDueCycles({
-      schedule: scheduleOf(agreement.schedule),
+      schedules,
       events: eventsOf(events),
       revisions: boundariesOf(revisions),
       billedCoverage: coverageOf(billed),
@@ -178,7 +209,7 @@ function readCyclePlan(
 
     if (Result.isFailure(plan)) return yield* refuseCycle(plan);
 
-    return { plan: plan.success, billed, revisions, events };
+    return { plan: plan.success, billed, revisions, events, schedules };
   });
 }
 
@@ -279,6 +310,172 @@ export const proposeRecurringAgreement = Effect.fn("commerce.recurring.proposeAg
     );
   },
 );
+
+export const amendRecurringSchedule = Effect.fn("commerce.recurring.amendSchedule")(function* (
+  token: string,
+  command: {
+    scope: Scope;
+    agreementId: string;
+    idempotencyKey: string;
+    input: typeof Recurring.AmendRecurringSchedule.Type;
+  },
+) {
+  return yield* withBook(
+    token,
+    command.scope,
+    true,
+    function* (transaction, principal) {
+      const operation = "amend_recurring_schedule";
+
+      const replayInput = {
+        agreementId: command.agreementId,
+        input: command.input,
+      } satisfies JsonObject;
+
+      const request = yield* replay(
+        transaction,
+        command.scope,
+        command.idempotencyKey,
+        operation,
+        principal.actorId,
+        replayInput,
+        ScheduleRevisionSchema,
+      );
+
+      if (request.previous) return request.previous;
+      yield* requireRecurrenceAccess(transaction, true);
+      yield* exactKeys(yield* toJsonObject(command.input), scheduleFields);
+
+      const input = yield* decode(Recurring.AmendRecurringSchedule, command.input);
+
+      const current = yield* readAgreementRow(
+        transaction,
+        command.scope.bookId,
+        command.agreementId,
+      );
+
+      if (
+        input.expectedAgreementRevision !== current.agreement.revision ||
+        input.expectedAgreementDigest !== current.digest
+      ) {
+        return yield* failure("StaleDependency");
+      }
+
+      const probe = Recurrence.cycleDate(scheduleOf(input.schedule), input.effectiveFromCycle);
+
+      if (Result.isFailure(probe)) return yield* refuseCycle(probe);
+
+      // The boundary must be the first cycle the new schedule governs, which is
+      // also the first cycle that is still unissued. A cadence change therefore
+      // never reaches back over an occurrence that already exists.
+      const materialised = (yield* RecurrenceDb.readMaterialisedThrough(
+        transaction,
+        command.scope.bookId,
+        command.agreementId,
+      ))[0]?.cycleOrdinal;
+
+      if (materialised !== undefined && BigInt(input.effectiveFromCycle) <= BigInt(materialised)) {
+        return yield* failure("StaleDependency");
+      }
+
+      const existing = yield* RecurrenceDb.readScheduleRevisions(
+        transaction,
+        command.scope.bookId,
+        command.agreementId,
+      );
+
+      if (
+        existing.some((row) => BigInt(row.effectiveFromCycle) === BigInt(input.effectiveFromCycle))
+      ) {
+        return yield* failure("StaleDependency");
+      }
+
+      // A frequency change re-maps every later cycle, so each already
+      // materialised cycle is recomputed under the proposed schedule and must
+      // land on the date and service start it was frozen with. This is what
+      // refuses a monthly-to-quarterly change that would re-cover or silently
+      // skip service an earlier cycle already billed.
+      const frozen = yield* RecurrenceDb.readFrozenCycles(
+        transaction,
+        command.scope.bookId,
+        command.agreementId,
+        frozenCycleBound,
+      );
+
+      if (frozen.length > frozenCycleBound) {
+        return yield* failure("UnsupportedProfile");
+      }
+
+      const unchanged = Recurrence.assertUnchangedMaterialisedCycles(
+        scheduleOf(input.schedule),
+        frozen.map((row) => ({
+          cycleOrdinal: row.cycleOrdinal,
+          cycleDate: row.cycleDate,
+          serviceStartsOn: row.serviceStartsOn,
+        })),
+      );
+
+      if (Result.isFailure(unchanged)) return yield* refuseCycle(unchanged);
+
+      const counted = (yield* RecurrenceDb.readScheduleRevisionNumber(
+        transaction,
+        command.scope.bookId,
+        command.agreementId,
+      ))[0];
+
+      if (counted === undefined) return yield* failure("InternalError");
+
+      const revision = (BigInt(counted.revision) + 1n).toString();
+      const id = newId("recurring_schedule");
+      const createdAt = yield* isoNow(transaction);
+
+      const withoutDigest: JsonObject = {
+        id,
+        scope: command.scope,
+        agreementId: command.agreementId,
+        agreementDigest: current.digest,
+        revision,
+        effectiveFromCycle: input.effectiveFromCycle,
+        schedule: yield* toJsonObject(input.schedule),
+        reason: input.reason,
+        createdAt,
+        receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+      };
+
+      const body = yield* toJsonObject(
+        Object.assign({}, withoutDigest, { digest: yield* digest(withoutDigest) }),
+      );
+
+      const result = yield* decode(ScheduleRevisionSchema, body);
+      const scheduleDigest = textField(body, "digest");
+
+      if (scheduleDigest === undefined) return yield* failure("InternalError");
+
+      yield* RecurrenceDb.insertScheduleRevision(transaction, {
+        bookId: command.scope.bookId,
+        id,
+        agreementId: command.agreementId,
+        revision,
+        effectiveFromCycle: input.effectiveFromCycle,
+        body,
+        digest: scheduleDigest,
+        createdAt,
+      });
+      yield* saveCommand(
+        transaction,
+        command.scope,
+        command.idempotencyKey,
+        request.expected,
+        operation,
+        principal.actorId,
+        body,
+      );
+
+      return result;
+    },
+    "update",
+  );
+});
 
 export const proposeRecurringTemplateRevision = Effect.fn(
   "commerce.recurring.proposeTemplateRevision",
@@ -673,6 +870,14 @@ export const materializeRecurringOccurrence = Effect.fn("commerce.recurring.mate
           return yield* failure(issued === undefined ? "IdempotencyConflict" : "AlreadyPosted");
         }
 
+        const scheduleRows = yield* RecurrenceDb.readScheduleRevisions(
+          transaction,
+          command.scope.bookId,
+          command.agreementId,
+        );
+
+        const schedules = yield* scheduleBoundariesOf(scheduleRows);
+
         const revisions = yield* RecurrenceDb.readTemplateRevisions(
           transaction,
           command.scope.bookId,
@@ -692,7 +897,7 @@ export const materializeRecurringOccurrence = Effect.fn("commerce.recurring.mate
         );
 
         const resolved = Recurrence.resolveCycle({
-          schedule: scheduleOf(agreement.schedule),
+          schedules,
           events: eventsOf(events),
           revisions: boundariesOf(revisions),
           billedCoverage: coverageOf(billed),
@@ -706,6 +911,10 @@ export const materializeRecurringOccurrence = Effect.fn("commerce.recurring.mate
         }
 
         const planned = resolved.success.planned;
+        const scheduleRevision = Recurrence.selectScheduleRevision(schedules, input.cycleOrdinal);
+
+        if (Result.isFailure(scheduleRevision)) return yield* refuseCycle(scheduleRevision);
+
         const selected = revisions.find((row) => row.revision === planned.selectedTemplateRevision);
 
         if (selected === undefined) return yield* failure("StaleDependency");
@@ -759,6 +968,7 @@ export const materializeRecurringOccurrence = Effect.fn("commerce.recurring.mate
           chargeComponentKeys: objectField(selected.body, "chargeComponentKeys"),
           selectedTemplateRevision: planned.selectedTemplateRevision,
           selectedTemplateDigest: selectedDigest,
+          selectedScheduleRevision: scheduleRevision.success,
           status: "drafted",
           draftId: draft.id,
           createdAt,
@@ -784,6 +994,7 @@ export const materializeRecurringOccurrence = Effect.fn("commerce.recurring.mate
           serviceEndsOn: planned.serviceInterval.serviceEndsOn,
           selectedTemplateRevision: planned.selectedTemplateRevision,
           selectedTemplateDigest: selectedDigest,
+          selectedScheduleRevision: scheduleRevision.success,
           draftId: draft.id,
           body,
           digest: occurrenceDigest,
@@ -839,6 +1050,12 @@ export const getRecurringAgreement = Effect.fn("commerce.recurring.getAgreement"
 
     const current = yield* readAgreementRow(transaction, input.scope.bookId, input.agreementId);
 
+    const schedules = yield* RecurrenceDb.readScheduleRevisions(
+      transaction,
+      input.scope.bookId,
+      input.agreementId,
+    );
+
     const revisions = yield* RecurrenceDb.readTemplateRevisions(
       transaction,
       input.scope.bookId,
@@ -853,6 +1070,24 @@ export const getRecurringAgreement = Effect.fn("commerce.recurring.getAgreement"
 
     return yield* decode(AgreementViewSchema, {
       agreement: yield* toJsonObject(current.agreement),
+      schedules: schedules.flatMap((row) => {
+        const digestValue = textField(row.body, "digest");
+        const cadenceKind = objectField(objectField(row.body, "schedule"), "cadence").kind;
+
+        if (digestValue === undefined) return [];
+
+        if (cadenceKind !== "monthly" && cadenceKind !== "fixed_day_interval") return [];
+
+        return [
+          {
+            revision: row.revision,
+            effectiveFromCycle: row.effectiveFromCycle,
+            cadenceKind,
+            digest: digestValue,
+            createdAt: textField(row.body, "createdAt") ?? "",
+          },
+        ];
+      }),
       revisions: revisions.flatMap((row) => {
         const digestValue = textField(row.body, "digest");
 

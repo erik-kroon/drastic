@@ -61,8 +61,15 @@ ledger receipt. It declares no function; it reuses the baseline `immutable_row`
 guard and the `digest` check helper, and carries its own runtime grants. Like the
 forward migrations above, it has never been applied by PostgreSQL.
 
-`application/commerce/recurring-invoices.ts` owns the agreement, template
-revision, event, plan, materialization and read operations.
+A cadence or anchor amendment is a third immutable record family,
+`recurring_invoice_agreement_schedules`, with the same boundary discipline as a
+template revision. Before it is written, every already-materialised cycle is
+recomputed under the proposed schedule and must land on the date and service start
+it was frozen with, so a monthly-to-quarterly change refuses instead of re-mapping
+cycles that already own an occurrence.
+
+`application/commerce/recurring-invoices.ts` owns the agreement, schedule
+amendment, template revision, event, plan, materialization and read operations.
 `db/commerce/recurring-invoices.ts` owns the tx-passing reads and DML, and its
 write access check asks for `INSERT` on exactly the four tables it writes into.
 `application/commerce/recurring-coverage.ts` is the single issuance-admission

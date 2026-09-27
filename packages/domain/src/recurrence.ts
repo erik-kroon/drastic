@@ -18,6 +18,8 @@ export const RecurrenceFailureCode = Schema.Literals([
   "CycleOutsideCalendar",
   "NoTemplateRevisionForCycle",
   "AmbiguousTemplateRevision",
+  "NoScheduleRevisionForCycle",
+  "AmbiguousScheduleRevision",
   "IncompleteEventHistory",
   "OverlappingBillingCoverage",
   "DuplicateChargeComponent",
@@ -84,6 +86,16 @@ export const ServiceInterval = Schema.Struct({
 
 export type ServiceInterval = typeof ServiceInterval.Type;
 
+// A schedule is revised the same way a template is: each revision names the first
+// cycle it governs, and a cycle resolves to exactly one schedule.
+export const ScheduleBoundary = Schema.Struct({
+  revision: Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,17}$/)),
+  effectiveFromCycle: CycleOrdinal,
+  schedule: RecurrenceSchedule,
+});
+
+export type ScheduleBoundary = typeof ScheduleBoundary.Type;
+
 export const TemplateRevisionBoundary = Schema.Struct({
   revision: Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,17}$/)),
   effectiveFromCycle: CycleOrdinal,
@@ -146,7 +158,7 @@ export const BilledCoverage = Schema.Struct({
 export type BilledCoverage = typeof BilledCoverage.Type;
 
 export const CyclePlanRequest = Schema.Struct({
-  schedule: RecurrenceSchedule,
+  schedules: Schema.Array(ScheduleBoundary).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
   events: Schema.Array(AgreementEventBoundary).check(Schema.isMaxLength(200)),
   revisions: Schema.Array(TemplateRevisionBoundary).check(Schema.isMaxLength(50)),
   billedCoverage: Schema.Array(BilledCoverage).check(Schema.isMaxLength(2000)),
@@ -452,35 +464,89 @@ export function cycleIdentity(
   });
 }
 
-function selectRevision(
-  revisions: ReadonlyArray<TemplateRevisionBoundary>,
+type Boundary = { readonly revision: string; readonly from: bigint };
+
+function effectiveBoundary(
+  boundaries: ReadonlyArray<{ revision: string; effectiveFromCycle: string }>,
   cycle: bigint,
-): Checked<string> {
-  const effective = revisions.map((candidate) => ({
+  missing: RecurrenceFailureCode,
+  ambiguous: RecurrenceFailureCode,
+  subject: string,
+): Checked<Boundary> {
+  const parsed = boundaries.map((candidate) => ({
     revision: candidate.revision,
     from: ordinal(candidate.effectiveFromCycle),
   }));
 
-  if (effective.some((candidate) => candidate.from === null)) {
-    return fail("InvalidCycleOrdinal", "A template revision boundary is not an integer.");
+  if (parsed.some((candidate) => candidate.from === null)) {
+    return fail("InvalidCycleOrdinal", `A ${subject} boundary is not an integer.`);
   }
 
-  const applicable = effective
-    .filter((candidate) => (candidate.from ?? 0n) <= cycle)
-    .sort((left, right) => Number((right.from ?? 0n) - (left.from ?? 0n)));
+  const sorted = parsed
+    .map((candidate) => ({ revision: candidate.revision, from: candidate.from ?? 0n }))
+    .sort((left, right) => Number(left.from - right.from))
+    .reverse();
 
+  const applicable = sorted.filter((candidate) => candidate.from <= cycle);
   const winner = applicable.at(0);
   const runnerUp = applicable.at(1);
 
-  if (winner === undefined) {
-    return fail("NoTemplateRevisionForCycle", "No template revision is effective on this cycle.");
-  }
+  if (winner === undefined) return fail(missing, `No ${subject} is effective on this cycle.`);
 
   if (runnerUp !== undefined && winner.from === runnerUp.from) {
-    return fail("AmbiguousTemplateRevision", "Two template revisions start on the same cycle.");
+    return fail(ambiguous, `Two ${subject} records start on the same cycle.`);
   }
 
-  return Result.succeed(winner.revision);
+  return Result.succeed(winner);
+}
+
+function selectRevision(
+  revisions: ReadonlyArray<TemplateRevisionBoundary>,
+  cycle: bigint,
+): Checked<string> {
+  return effectiveBoundary(
+    revisions,
+    cycle,
+    "NoTemplateRevisionForCycle",
+    "AmbiguousTemplateRevision",
+    "template revision",
+  ).pipe(Result.map((winner) => winner.revision));
+}
+
+// The schedule a cycle resolves to. Neither the schedule revision nor the
+// template revision is part of the cycle's identity: both are the frozen fact the
+// cycle was built from, which is what lets either be amended without re-identifying
+// a cycle that is already issued.
+export function selectScheduleRevision(
+  schedules: ReadonlyArray<ScheduleBoundary>,
+  cycleOrdinal: string,
+): Checked<string> {
+  const cycle = ordinal(cycleOrdinal);
+
+  if (cycle === null) return fail("InvalidCycleOrdinal", "The cycle ordinal is not an integer.");
+
+  return effectiveBoundary(
+    schedules,
+    cycle,
+    "NoScheduleRevisionForCycle",
+    "AmbiguousScheduleRevision",
+    "schedule revision",
+  ).pipe(Result.map((winner) => winner.revision));
+}
+
+export function selectSchedule(
+  schedules: ReadonlyArray<ScheduleBoundary>,
+  cycleOrdinal: string,
+): Checked<RecurrenceSchedule> {
+  return selectScheduleRevision(schedules, cycleOrdinal).pipe(
+    Result.flatMap((revision) => {
+      const match = schedules.find((candidate) => candidate.revision === revision);
+
+      return match === undefined
+        ? fail("NoScheduleRevisionForCycle", "No schedule revision is effective on this cycle.")
+        : Result.succeed(match.schedule);
+    }),
+  );
 }
 
 function orderedEvents(events: ReadonlyArray<AgreementEventBoundary>) {
@@ -584,7 +650,7 @@ export function assertNoOverlappingCoverage(
 // A resume discloses the paused cycles as skipped; it never bills them late.
 export function planDueCycles(request: CyclePlanRequest): Checked<CyclePlan> {
   const through = ordinal(request.throughOrdinal);
-  const first = ordinal(request.schedule.firstCycleOrdinal);
+  const first = ordinal(request.schedules[0]?.schedule.firstCycleOrdinal ?? "");
   const materialised = ordinal(request.materialisedThroughOrdinal ?? "");
 
   if (through === null || first === null) {
@@ -649,7 +715,7 @@ export function refuseDueInstant() {
 }
 
 export const CycleResolutionInput = Schema.Struct({
-  schedule: RecurrenceSchedule,
+  schedules: Schema.Array(ScheduleBoundary).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
   events: Schema.Array(AgreementEventBoundary).check(Schema.isMaxLength(200)),
   revisions: Schema.Array(TemplateRevisionBoundary).check(Schema.isMaxLength(50)),
   billedCoverage: Schema.Array(BilledCoverage).check(Schema.isMaxLength(2000)),
@@ -674,7 +740,11 @@ export function resolveCycle(input: CycleResolutionInput): Checked<ResolvedCycle
 
   if (cycle === null) return fail("InvalidCycleOrdinal", "The cycle ordinal is not an integer.");
 
-  const first = ordinal(input.schedule.firstCycleOrdinal);
+  const schedule = selectSchedule(input.schedules, input.cycleOrdinal);
+
+  if (Result.isFailure(schedule)) return Result.fail(schedule.failure);
+
+  const first = ordinal(input.schedules[0]?.schedule.firstCycleOrdinal ?? "");
 
   if (first === null) {
     return fail("InvalidCycleOrdinal", "The first cycle ordinal is not an integer.");
@@ -696,7 +766,7 @@ export function resolveCycle(input: CycleResolutionInput): Checked<ResolvedCycle
     });
   }
 
-  const identity = cycleIdentity(input.schedule, input.cycleOrdinal);
+  const identity = cycleIdentity(schedule.success, input.cycleOrdinal);
 
   if (Result.isFailure(identity)) return Result.fail(identity.failure);
 
@@ -736,6 +806,59 @@ export function shiftLocalDate(date: string, days: string): Checked<string> {
     return fail("InvalidAnchor", "The anchor local date is not a calendar date.");
 
   return dayStep(anchor, offset);
+}
+
+export const FrozenCycle = Schema.Struct({
+  cycleOrdinal: CycleOrdinal,
+  cycleDate: AccountingDate,
+  serviceStartsOn: AccountingDate,
+});
+
+export type FrozenCycle = typeof FrozenCycle.Type;
+
+// A cadence or anchor amendment re-maps every later cycle, so a frequency change
+// can move a cycle that already owns an occurrence. Each already-materialised
+// cycle is therefore recomputed under the proposed schedule and must land on the
+// same date and the same service start it was frozen with. This is what makes a
+// monthly-to-quarterly change refuse rather than silently re-identify the cycles
+// between the old and the new frequency.
+export function assertUnchangedMaterialisedCycles(
+  schedule: RecurrenceSchedule,
+  cycles: ReadonlyArray<FrozenCycle>,
+) {
+  for (const frozen of cycles) {
+    const date = cycleDate(schedule, frozen.cycleOrdinal);
+
+    if (Result.isFailure(date)) return Result.fail(date.failure);
+
+    if (date.success !== frozen.cycleDate) {
+      return fail(
+        "OverlappingBillingCoverage",
+        "The proposed schedule moves a cycle that already owns an occurrence.",
+      );
+    }
+
+    const cycle = ordinal(frozen.cycleOrdinal);
+
+    if (cycle === null)
+      return fail("InvalidCycleOrdinal", "A frozen cycle ordinal is not an integer.");
+
+    const starts =
+      cycle === (ordinal(schedule.firstCycleOrdinal) ?? 0n)
+        ? Result.succeed(schedule.anchorLocalDate)
+        : cycleDate(schedule, (cycle - 1n).toString());
+
+    if (Result.isFailure(starts)) return Result.fail(starts.failure);
+
+    if (starts.success !== frozen.serviceStartsOn) {
+      return fail(
+        "OverlappingBillingCoverage",
+        "The proposed schedule moves the service start of a cycle that already owns an occurrence.",
+      );
+    }
+  }
+
+  return Result.void;
 }
 
 export function assertUniqueChargeComponents(keys: ReadonlyArray<string>) {

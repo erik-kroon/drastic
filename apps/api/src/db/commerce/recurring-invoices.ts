@@ -21,6 +21,19 @@ export type RevisionBoundaryRow = {
 
 export type RevisionNumberRow = { readonly revision: string };
 
+export type ScheduleBoundaryRow = {
+  readonly id: string;
+  readonly revision: string;
+  readonly effectiveFromCycle: string;
+  readonly body: JsonObject;
+};
+
+export type FrozenCycleRow = {
+  readonly cycleOrdinal: string;
+  readonly cycleDate: string;
+  readonly serviceStartsOn: string;
+};
+
 export type EventRow = {
   readonly id: string;
   readonly ordinal: number;
@@ -83,6 +96,7 @@ export type CoverageRow = {
 // this owner writes.
 export const recurringAgreementTables = [
   "recurring_invoice_agreements",
+  "recurring_invoice_agreement_schedules",
   "recurring_invoice_template_revisions",
   "recurring_invoice_agreement_events",
   "recurring_invoice_occurrences",
@@ -99,6 +113,7 @@ export const recurringAgreementTables = [
 
 export const recurringAgreementWriteTables = [
   "recurring_invoice_agreements",
+  "recurring_invoice_agreement_schedules",
   "recurring_invoice_template_revisions",
   "recurring_invoice_agreement_events",
   "recurring_invoice_occurrences",
@@ -125,6 +140,45 @@ export function readAgreement(transaction: Transaction, bookId: string, agreemen
   );
 }
 
+export function readScheduleRevisions(
+  transaction: Transaction,
+  bookId: string,
+  agreementId: string,
+) {
+  return transaction.execute<ScheduleBoundaryRow>(
+    sql`
+      select id, revision::text as revision, effective_from_cycle::text as "effectiveFromCycle", body
+      from openerp.recurring_invoice_agreement_schedules
+      where book_id = ${bookId} and agreement_id = ${agreementId}
+      order by effective_from_cycle, revision
+      for share
+    `,
+    "objects",
+  );
+}
+
+// The cycles that already own an occurrence, with the dates and service starts
+// they were frozen with. A proposed schedule is checked against exactly this set.
+export function readFrozenCycles(
+  transaction: Transaction,
+  bookId: string,
+  agreementId: string,
+  bound: number,
+) {
+  return transaction.execute<FrozenCycleRow>(
+    sql`
+      select cycle_ordinal::text as "cycleOrdinal", cycle_date::text as "cycleDate",
+        service_starts_on::text as "serviceStartsOn"
+      from openerp.recurring_invoice_occurrences
+      where book_id = ${bookId} and agreement_id = ${agreementId}
+      order by cycle_ordinal
+      limit ${bound + 1}
+      for share
+    `,
+    "objects",
+  );
+}
+
 export function readTemplateRevisions(
   transaction: Transaction,
   bookId: string,
@@ -137,6 +191,36 @@ export function readTemplateRevisions(
       where book_id = ${bookId} and agreement_id = ${agreementId}
       order by effective_from_cycle, revision
       for share
+    `,
+    "objects",
+  );
+}
+
+export function readTemplateRevisionNumber(
+  transaction: Transaction,
+  bookId: string,
+  agreementId: string,
+) {
+  return transaction.execute<RevisionNumberRow>(
+    sql`
+      select coalesce(max(revision), 0)::text as revision
+      from openerp.recurring_invoice_template_revisions
+      where book_id = ${bookId} and agreement_id = ${agreementId}
+    `,
+    "objects",
+  );
+}
+
+export function readScheduleRevisionNumber(
+  transaction: Transaction,
+  bookId: string,
+  agreementId: string,
+) {
+  return transaction.execute<RevisionNumberRow>(
+    sql`
+      select coalesce(max(revision), 0)::text as revision
+      from openerp.recurring_invoice_agreement_schedules
+      where book_id = ${bookId} and agreement_id = ${agreementId}
     `,
     "objects",
   );
@@ -200,7 +284,8 @@ const occurrenceColumns = sql`
   cycle_date::text as "cycleDate", service_starts_on::text as "serviceStartsOn",
   service_ends_on::text as "serviceEndsOn",
   selected_template_revision::text as "selectedTemplateRevision",
-  selected_template_digest as "selectedTemplateDigest", draft_id as "draftId", body
+  selected_template_digest as "selectedTemplateDigest",
+  selected_schedule_revision::text as "selectedScheduleRevision", draft_id as "draftId", body
 `;
 
 export function readOccurrence(
@@ -371,6 +456,31 @@ export function insertAgreement(
   );
 }
 
+export function insertScheduleRevision(
+  transaction: Transaction,
+  row: {
+    readonly bookId: string;
+    readonly id: string;
+    readonly agreementId: string;
+    readonly revision: string;
+    readonly effectiveFromCycle: string;
+    readonly body: JsonObject;
+    readonly digest: string;
+    readonly createdAt: string;
+  },
+) {
+  return transaction.execute(
+    sql`
+      insert into openerp.recurring_invoice_agreement_schedules
+        (book_id, id, agreement_id, revision, effective_from_cycle, body, digest, created_at)
+      values (${row.bookId}, ${row.id}, ${row.agreementId}, ${row.revision}::bigint,
+        ${row.effectiveFromCycle}::bigint, ${JSON.stringify(row.body)}::jsonb,
+        ${row.digest}, ${row.createdAt})
+    `,
+    "objects",
+  );
+}
+
 export function insertTemplateRevision(
   transaction: Transaction,
   row: {
@@ -453,6 +563,7 @@ export function insertOccurrence(
     readonly serviceEndsOn: string;
     readonly selectedTemplateRevision: string;
     readonly selectedTemplateDigest: string;
+    readonly selectedScheduleRevision: string;
     readonly draftId: string;
     readonly body: JsonObject;
     readonly digest: string;
@@ -463,10 +574,12 @@ export function insertOccurrence(
     sql`
       insert into openerp.recurring_invoice_occurrences
         (book_id, id, agreement_id, cycle_ordinal, cycle_date, service_starts_on, service_ends_on,
-          selected_template_revision, selected_template_digest, draft_id, body, digest, created_at)
+          selected_template_revision, selected_template_digest, selected_schedule_revision,
+          draft_id, body, digest, created_at)
       values (${row.bookId}, ${row.id}, ${row.agreementId}, ${row.cycleOrdinal}::bigint,
         ${row.cycleDate}::date, ${row.serviceStartsOn}::date, ${row.serviceEndsOn}::date,
-        ${row.selectedTemplateRevision}::bigint, ${row.selectedTemplateDigest}, ${row.draftId},
+        ${row.selectedTemplateRevision}::bigint, ${row.selectedTemplateDigest},
+        ${row.selectedScheduleRevision}::bigint, ${row.draftId},
         ${JSON.stringify(row.body)}::jsonb, ${row.digest}, ${row.createdAt})
     `,
     "objects",

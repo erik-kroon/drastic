@@ -17,6 +17,16 @@ export const RecurringInvoiceHandlers = HttpApiBuilder.group(Api, "recurringInvo
         }),
       ),
     )
+    .handle("amendRecurringSchedule", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Recurring.amendRecurringSchedule(token, {
+          scope: scopeFromPath(params),
+          agreementId: params.agreementId,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
     .handle("proposeRecurringTemplateRevision", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         Recurring.proposeRecurringTemplateRevision(token, {

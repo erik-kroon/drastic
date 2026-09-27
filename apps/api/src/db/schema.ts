@@ -1026,6 +1026,20 @@ export const recurringInvoiceAgreements = openerp.table("recurring_invoice_agree
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
 });
 
+export const recurringInvoiceAgreementSchedules = openerp.table(
+  "recurring_invoice_agreement_schedules",
+  {
+    bookId: text("book_id").notNull(),
+    id: text().notNull(),
+    agreementId: text("agreement_id").notNull(),
+    revision: bigint("revision", { mode: "bigint" }).notNull(),
+    effectiveFromCycle: bigint("effective_from_cycle", { mode: "bigint" }).notNull(),
+    body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+    digest: text().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+  },
+);
+
 export const recurringInvoiceTemplateRevisions = openerp.table(
   "recurring_invoice_template_revisions",
   {
@@ -1062,6 +1076,7 @@ export const recurringInvoiceOccurrences = openerp.table("recurring_invoice_occu
   serviceEndsOn: date("service_ends_on", { mode: "string" }).notNull(),
   selectedTemplateRevision: bigint("selected_template_revision", { mode: "bigint" }).notNull(),
   selectedTemplateDigest: text("selected_template_digest").notNull(),
+  selectedScheduleRevision: bigint("selected_schedule_revision", { mode: "bigint" }).notNull(),
   draftId: text("draft_id").notNull(),
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
   digest: text().notNull(),

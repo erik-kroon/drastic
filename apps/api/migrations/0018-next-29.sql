@@ -44,6 +44,38 @@ CREATE TABLE openerp.recurring_invoice_agreements (
   CONSTRAINT recurring_invoice_agreements_book_id_customer_id_fkey FOREIGN KEY (book_id, customer_id) REFERENCES openerp.commerce_counterparties(book_id, id)
 );
 
+-- A cadence or anchor amendment is its own immutable record with the same
+-- boundary discipline as a template revision, so one schedule governs a cycle.
+CREATE TABLE openerp.recurring_invoice_agreement_schedules (
+  book_id text NOT NULL,
+  id text NOT NULL,
+  agreement_id text NOT NULL,
+  revision bigint NOT NULL,
+  effective_from_cycle bigint NOT NULL,
+  body jsonb NOT NULL,
+  digest text NOT NULL,
+  created_at timestamptz NOT NULL,
+  CONSTRAINT recurring_invoice_agreement_schedules_pkey PRIMARY KEY (book_id, id),
+  CONSTRAINT recurring_invoice_agreement_schedules_revision_key UNIQUE (book_id, agreement_id, revision),
+  CONSTRAINT recurring_invoice_agreement_schedules_boundary_key UNIQUE (book_id, agreement_id, effective_from_cycle),
+  CONSTRAINT recurring_invoice_agreement_schedules_revision_check CHECK (revision > 0),
+  CONSTRAINT recurring_invoice_agreement_schedules_cycle_check CHECK (effective_from_cycle >= 0 AND effective_from_cycle < 1000000000000000000::bigint),
+  CONSTRAINT recurring_invoice_agreement_schedules_body_check CHECK (octet_length(body::text) <= 131072),
+  CONSTRAINT recurring_invoice_agreement_schedules_digest_check CHECK (digest = openerp.digest(body - 'digest'::text)),
+  CONSTRAINT recurring_invoice_agreement_schedules_identity_check CHECK (NOT body ->> 'id'::text IS DISTINCT FROM id),
+  CONSTRAINT recurring_invoice_agreement_schedules_scope_check CHECK (NOT body -> 'scope'::text ->> 'bookId'::text IS DISTINCT FROM book_id),
+  CONSTRAINT recurring_invoice_agreement_schedules_agreement_check CHECK (NOT body ->> 'agreementId'::text IS DISTINCT FROM agreement_id),
+  CONSTRAINT recurring_invoice_agreement_schedules_revision_body_check CHECK (NOT body ->> 'revision'::text IS DISTINCT FROM revision::text),
+  CONSTRAINT recurring_invoice_agreement_schedules_cycle_body_check CHECK (NOT body ->> 'effectiveFromCycle'::text IS DISTINCT FROM effective_from_cycle::text),
+  CONSTRAINT recurring_invoice_agreement_schedules_anchor_check CHECK (
+    (body -> 'schedule'::text ->> 'anchorLocalDate'::text) ~ '^\d{4}-\d{2}-\d{2}$'::text
+    AND (body -> 'schedule'::text ->> 'firstCycleOrdinal'::text) ~ '^(0|[1-9][0-9]{0,17})$'::text
+    AND jsonb_typeof(body -> 'schedule'::text -> 'cadence'::text) = 'object'::text
+  ),
+  CONSTRAINT recurring_invoice_agreement_schedules_book_id_fkey FOREIGN KEY (book_id) REFERENCES openerp.books(id),
+  CONSTRAINT recurring_invoice_agreement_schedules_agreement_fkey FOREIGN KEY (book_id, agreement_id) REFERENCES openerp.recurring_invoice_agreements(book_id, id)
+);
+
 CREATE TABLE openerp.recurring_invoice_template_revisions (
   book_id text NOT NULL,
   id text NOT NULL,
@@ -115,6 +147,7 @@ CREATE TABLE openerp.recurring_invoice_occurrences (
   service_ends_on date NOT NULL,
   selected_template_revision bigint NOT NULL,
   selected_template_digest text NOT NULL,
+  selected_schedule_revision bigint NOT NULL,
   draft_id text NOT NULL,
   body jsonb NOT NULL,
   digest text NOT NULL,
@@ -139,6 +172,7 @@ CREATE TABLE openerp.recurring_invoice_occurrences (
     AND NOT body -> 'serviceInterval'::text ->> 'serviceEndsOn'::text IS DISTINCT FROM service_ends_on::text
   ),
   CONSTRAINT recurring_invoice_occurrences_template_body_check CHECK (NOT body ->> 'selectedTemplateRevision'::text IS DISTINCT FROM selected_template_revision::text),
+  CONSTRAINT recurring_invoice_occurrences_schedule_body_check CHECK (NOT body ->> 'selectedScheduleRevision'::text IS DISTINCT FROM selected_schedule_revision::text),
   CONSTRAINT recurring_invoice_occurrences_template_digest_check CHECK (NOT body ->> 'selectedTemplateDigest'::text IS DISTINCT FROM selected_template_digest),
   CONSTRAINT recurring_invoice_occurrences_draft_body_check CHECK (NOT body ->> 'draftId'::text IS DISTINCT FROM draft_id),
   CONSTRAINT recurring_invoice_occurrences_components_check CHECK (
@@ -148,6 +182,7 @@ CREATE TABLE openerp.recurring_invoice_occurrences (
   CONSTRAINT recurring_invoice_occurrences_book_id_fkey FOREIGN KEY (book_id) REFERENCES openerp.books(id),
   CONSTRAINT recurring_invoice_occurrences_agreement_fkey FOREIGN KEY (book_id, agreement_id) REFERENCES openerp.recurring_invoice_agreements(book_id, id),
   CONSTRAINT recurring_invoice_occurrences_template_fkey FOREIGN KEY (book_id, agreement_id, selected_template_revision) REFERENCES openerp.recurring_invoice_template_revisions(book_id, agreement_id, revision),
+  CONSTRAINT recurring_invoice_occurrences_schedule_fkey FOREIGN KEY (book_id, agreement_id, selected_schedule_revision) REFERENCES openerp.recurring_invoice_agreement_schedules(book_id, agreement_id, revision),
   CONSTRAINT recurring_invoice_occurrences_draft_fkey FOREIGN KEY (book_id, draft_id) REFERENCES openerp.invoice_drafts(book_id, id)
 );
 
@@ -197,6 +232,7 @@ CREATE TABLE openerp.recurring_invoice_occurrence_issues (
   CONSTRAINT recurring_invoice_occurrence_issues_posting_fkey FOREIGN KEY (book_id, posting_receipt_id) REFERENCES openerp.execution_receipts(book_id, id)
 );
 
+CREATE INDEX recurring_invoice_agreement_schedules_agreement ON openerp.recurring_invoice_agreement_schedules (book_id, agreement_id, effective_from_cycle);
 CREATE INDEX recurring_invoice_template_revisions_agreement ON openerp.recurring_invoice_template_revisions (book_id, agreement_id, effective_from_cycle);
 CREATE INDEX recurring_invoice_agreement_events_agreement ON openerp.recurring_invoice_agreement_events (book_id, agreement_id, ordinal);
 CREATE INDEX recurring_invoice_occurrences_agreement ON openerp.recurring_invoice_occurrences (book_id, agreement_id, cycle_ordinal);
@@ -208,6 +244,9 @@ CREATE INDEX recurring_invoice_occurrence_issues_agreement ON openerp.recurring_
 -- runs through the invoice issue owner that wrote the consumption.
 CREATE TRIGGER immutable_recurring_invoice_agreement
   BEFORE DELETE OR UPDATE ON openerp.recurring_invoice_agreements
+  FOR EACH ROW EXECUTE FUNCTION openerp.immutable_row();
+CREATE TRIGGER immutable_recurring_invoice_agreement_schedule
+  BEFORE DELETE OR UPDATE ON openerp.recurring_invoice_agreement_schedules
   FOR EACH ROW EXECUTE FUNCTION openerp.immutable_row();
 CREATE TRIGGER immutable_recurring_invoice_template_revision
   BEFORE DELETE OR UPDATE ON openerp.recurring_invoice_template_revisions
@@ -224,6 +263,7 @@ CREATE TRIGGER immutable_recurring_invoice_occurrence_issue
 
 GRANT SELECT, INSERT ON TABLE
   openerp.recurring_invoice_agreements,
+  openerp.recurring_invoice_agreement_schedules,
   openerp.recurring_invoice_template_revisions,
   openerp.recurring_invoice_agreement_events,
   openerp.recurring_invoice_occurrences,
