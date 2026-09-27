@@ -140,7 +140,39 @@ pre-tax population, statement digest, rule release, admission witness, role bind
 recognised total refuses (`StaleDependency`) instead of re-deriving a different amount
 against the same approval.
 
-### Lock order
+## A tax plan cannot be posted around its owner
+
+`prepareBridge` seals an ordinary posting plan, so the bridge's change set is approvable
+through the shared approval endpoint. Without an ownership projection, the _generic_
+`changes_execute` could post that approved plan with no owner, write no
+`corporate_tax_effects` row, and leave the year target unrecorded — after which
+`tax_execute_effect` would still see an unrecognised target and recognise the same tax a
+second time. A generic reversal of the resulting voucher would likewise bypass the tax
+register entirely. Both are closed:
+
+- `readOwnedSources` projects `corporate_tax_bridges` as a `corporate_income_tax` source
+  keyed on the bridge's `change_set_id`. The projection deliberately carries a null
+  `evidence_id`, so it matches only when the change being executed **is** a tax bridge's
+  plan or a correction-bundle descendant of one. It matches on nothing else, so no other
+  owner's posting is affected. Generic execution passes no owner, so
+  `source.kind !== owner?.kind` refuses with `ApprovalRequired`; the tax owner passes the
+  `corporate_income_tax` kind and is admitted.
+- `readProtectedCorrections` reports `corporate_income_tax` for any voucher a
+  `corporate_tax_effects` row points at, so a generic reversal refuses with
+  `UnsupportedProfile`. No exception clause is needed because this packet implements no
+  tax reversal; a reversal of a recognised current-tax effect would need its own owner.
+
+Extending the `PostingOwner` union alone was not sufficient, because that type only records
+what a caller may _claim_; the projection is what makes the claim checkable.
+
+**The zero-delta path is not protected by pretending it posts.** A zero-delta bridge seals a
+plan with no group, so generic `changes_execute` refuses it earlier on the plan shape
+(`plan.groups.length !== 1`) and there is no voucher for a reversal to protect. Its only
+route to the year target is `tax_execute_effect`, which validates the plan, validates the
+approval, and writes the no-effect receipt. Nothing in this owner registers a voucher it did
+not post.
+
+## Lock order
 
 `withBook` in `"update"` mode already admits the credential and takes the `books` row
 `FOR UPDATE` inside `admitPrincipal`, so the book is held before this owner's code runs.

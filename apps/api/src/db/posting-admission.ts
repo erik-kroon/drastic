@@ -34,6 +34,7 @@ export function readOwnedSources(
       union all select 'legal_issue',id,null,body->'sourceEvidence'->>'evidenceId',body from openerp.ar_legal_issue_reviews where book_id=${book}
       union all select 'legal_credit',id,change_set_id,evidence_id,body from openerp.customer_credit_reviews where book_id=${book}
       union all select 'owner_operation',id,change_set_id,evidence_id,body from openerp.owner_operation_reviews where book_id=${book}
+      union all select 'corporate_income_tax',id,change_set_id,null::text,body from openerp.corporate_tax_bridges where book_id=${book}
     ) select kind,id,change_id as "changeId",body from reviews where change_id in(select change_id from origins) or evidence_id in(select id from evidence)
     order by kind,id limit 1001`,
     "objects",
@@ -162,6 +163,7 @@ export function readProtectedCorrections(tx: Transaction, book: string, voucher:
       join openerp.vouchers v on v.book_id=e.book_id and v.event_id=e.id and v.id=${voucher}
       where r.book_id=${book} and exists(select from jsonb_array_elements(r.body->'occurrences') o where o->>'eventKey'=e.event_key)
         and exists(select from openerp.subledger_impairments i where(i.book_id,i.schedule_id)=(r.book_id,r.schedule_id))
+    union all select 'corporate_income_tax' from openerp.corporate_tax_effects where book_id=${book} and voucher_id=${voucher}
     limit 1001`,
     "objects",
   );
