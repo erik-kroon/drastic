@@ -33,6 +33,7 @@
     "./vat-assessment": "./src/vat-assessment.ts",
     "./employee-claims": "./src/employee-claims.ts",
     "./variable-pay": "./src/variable-pay.ts",
+    "./reminder-dispatch": "./src/reminder-dispatch.ts",
     "./historical-adoptions": "./src/historical-adoptions.ts",
     "./asset-disposals": "./src/asset-disposals.ts",
     "./financial-close": "./src/financial-close.ts",
