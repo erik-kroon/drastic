@@ -28,6 +28,7 @@ export const familySelector = {
   vat: "taxPointOn",
   payroll: "paymentOn",
   statements: "reportOn",
+  corporate_tax: "taxPeriodOn",
 } as const;
 
 export const families: ReadonlyArray<Family> = [
@@ -35,6 +36,7 @@ export const families: ReadonlyArray<Family> = [
   "vat",
   "payroll",
   "statements",
+  "corporate_tax",
 ];
 
 // The legal AR family keeps its named activation owner. Reporting reads that
@@ -49,8 +51,8 @@ export const ownerBoundFamily = {
 // instead of a bare false.
 const factOperations = new Map<string, ReadonlyArray<Family>>([
   ["jurisdiction", families],
-  ["legal_form", ["posting_eligibility", "vat"]],
-  ["organization_number", ["posting_eligibility", "statements"]],
+  ["legal_form", ["posting_eligibility", "vat", "corporate_tax"]],
+  ["organization_number", ["posting_eligibility", "statements", "corporate_tax"]],
   ["accounting_method", ["posting_eligibility", "vat"]],
   ["vat_registration", ["vat"]],
   ["vat_period", ["vat"]],
@@ -58,8 +60,12 @@ const factOperations = new Map<string, ReadonlyArray<Family>>([
   ["payroll_registration", ["payroll"]],
 ]);
 
+// A family whose selector date was never supplied has no selector. Normalising a
+// missing date to null is what keeps the corporate_tax family unavailable to a
+// caller that named no fiscal tax period, while a family with a real selector date
+// still selects on that date and never on today's.
 export function selectorDate(family: Family, dates: Dates) {
-  return dates[familySelector[family]];
+  return dates[familySelector[family]] ?? null;
 }
 
 export function familyGap(

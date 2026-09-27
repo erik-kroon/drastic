@@ -91,7 +91,12 @@ function readQualifiedRelease(transaction: Transaction, scope: Scope, input: Inp
       transaction,
       scope,
       "actual_company",
-      { postingOn: null, taxPointOn: input.endsOn, paymentOn: null, reportOn: null },
+      {
+        postingOn: null,
+        taxPointOn: input.endsOn,
+        paymentOn: null,
+        reportOn: null,
+      },
     );
 
     const witness = resolved.families.find((entry) => entry.family === "vat")?.witness ?? null;

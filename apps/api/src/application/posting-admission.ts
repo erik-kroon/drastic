@@ -26,6 +26,7 @@ export type PostingOwner = {
     | "historical_import"
     | "commerce_fx"
     | "vat_reclassification"
+    | "corporate_income_tax"
     | "owner_operation";
   readonly id: string;
 };

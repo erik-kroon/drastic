@@ -1020,6 +1020,76 @@ export const ownerPurchaseTaxFacts = openerp.table("owner_purchase_tax_facts", {
   recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
 });
 
+export const corporateTaxBridges = openerp.table("corporate_tax_bridges", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  accountingPeriodId: text("accounting_period_id").notNull(),
+  statementSnapshotId: text("statement_snapshot_id").notNull(),
+  statementDigest: text("statement_digest").notNull(),
+  changeSetId: text("change_set_id").notNull(),
+  planDigest: text("plan_digest").notNull(),
+  ruleReleaseId: text("rule_release_id").notNull(),
+  ruleReleaseChecksum: text("rule_release_checksum").notNull(),
+  ruleReleaseVersion: integer("rule_release_version").notNull(),
+  overlayDigest: text("overlay_digest").notNull(),
+  currentTaxTargetMinor: numeric("current_tax_target_minor", { mode: "string" }).notNull(),
+  recognizedMinor: numeric("recognized_minor", { mode: "string" }).notNull(),
+  deltaMinor: numeric("delta_minor", { mode: "string" }).notNull(),
+  postsJournal: boolean("posts_journal").notNull(),
+  noFinancialEffect: boolean("no_financial_effect").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
+export const corporateTaxBridgeInputs = openerp.table("corporate_tax_bridge_inputs", {
+  bookId: text("book_id").notNull(),
+  bridgeId: text("bridge_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  kind: text("kind").notNull(),
+  resourceId: text("resource_id").notNull(),
+  version: text("version").notNull(),
+  reason: text("reason").notNull(),
+});
+
+export const corporateTaxEffects = openerp.table("corporate_tax_effects", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  bridgeId: text("bridge_id").notNull(),
+  changeSetId: text("change_set_id").notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  voucherId: text("voucher_id"),
+  approvalId: text("approval_id").notNull(),
+  yearTaxTargetMinor: numeric("year_tax_target_minor", { mode: "string" }).notNull(),
+  recognizedBeforeMinor: numeric("recognized_before_minor", { mode: "string" }).notNull(),
+  deltaMinor: numeric("delta_minor", { mode: "string" }).notNull(),
+  recognizedAfterMinor: numeric("recognized_after_minor", { mode: "string" }).notNull(),
+  noFinancialEffect: boolean("no_financial_effect").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  createdBy: text("created_by").notNull(),
+  committedAt: timestamp("committed_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const corporateTaxDeclarations = openerp.table("corporate_tax_declarations", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  ordinal: bigint("ordinal", { mode: "bigint" }).notNull(),
+  bridgeId: text("bridge_id").notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  statementSnapshotId: text("statement_snapshot_id").notNull(),
+  fieldCount: integer("field_count").notNull(),
+  fileCount: integer("file_count").notNull(),
+  blocked: boolean("blocked").notNull(),
+  noFinancialEffect: boolean("no_financial_effect").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
 export const recurringInvoiceAgreements = openerp.table("recurring_invoice_agreements", {
   bookId: text("book_id").notNull(),
   id: text().notNull(),

@@ -17,6 +17,7 @@ export const CompanyProfileHandlers = HttpApiBuilder.group(Api, "companyProfile"
             taxPointOn: query.taxPointOn,
             paymentOn: query.paymentOn,
             reportOn: query.reportOn,
+            taxPeriodOn: query.taxPeriodOn,
           },
         }),
       ),

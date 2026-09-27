@@ -5,6 +5,7 @@ import { PayrollFoundationHandlers } from "./transport/http/routes/payroll-found
 import { PayrollCalculationHandlers } from "./transport/http/routes/payroll-calculations";
 import { CrmMasterHandlers } from "./transport/http/routes/crm-master";
 import { CatalogHandlers } from "./transport/http/routes/catalog";
+import { CorporateTaxHandlers } from "./transport/http/routes/corporate-tax";
 import { CollectionsHandlers } from "./transport/http/routes/collections";
 import { DimensionHandlers } from "./transport/http/routes/dimensions";
 import { SupplierInboxHandlers } from "./transport/http/routes/supplier-inbox";
@@ -173,6 +174,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     OwnerOperationHandlers,
     ClosingHandlers,
     SubledgerHandlers,
+    CorporateTaxHandlers,
   ]),
   Layer.provide(HttpServer.layerServices),
 );
