@@ -29,6 +29,7 @@
     "./vat-assessment": "./src/vat-assessment.ts",
     "./historical-adoptions": "./src/historical-adoptions.ts",
     "./asset-disposals": "./src/asset-disposals.ts",
+    "./financial-close": "./src/financial-close.ts",
     "./owner-funding": "./src/owner-funding.ts",
     "./exchange-rates": "./src/exchange-rates.ts",
     "./period-work": "./src/period-work.ts",
