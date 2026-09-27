@@ -954,10 +954,13 @@ test("VAT capture includes owned credits and owner deductions once and retains e
     { box: "49", exact: "1875", reported: "19", residual: "-25" },
   ]);
   const ownerFacts = saved.basis.facts.filter((fact) => fact.origin === "owned_owner_purchase");
-  expect(ownerFacts.map((fact) => [fact.sourceTaxMinor, fact.taxMinor]).sort()).toEqual([
-    ["100", "0"],
-    ["250", "125"],
-  ]);
+  expect(ownerFacts).toHaveLength(2);
+  expect(ownerFacts.map((fact) => [fact.sourceTaxMinor, fact.taxMinor])).toEqual(
+    expect.arrayContaining([
+      ["100", "0"],
+      ["250", "125"],
+    ]),
+  );
   expect(ownerFacts.find((fact) => fact.taxMinor === "0")?.controlComponents).toEqual([]);
   const creditFact = saved.basis.facts.find((fact) => fact.origin === "owned_customer_credit");
   expect(creditFact?.adjustsFactId).toBe(originalFact.factId);
