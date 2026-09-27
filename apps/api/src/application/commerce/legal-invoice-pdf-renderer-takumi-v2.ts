@@ -6,7 +6,7 @@ import {
   plexLatin600,
   plexExtended400,
   plexExtended600,
-} from "./fonts/plex-mono-embedded";
+} from "../fonts/plex-mono-embedded";
 
 const unsupported = (message: string): never => {
   throw new Accounting.AccountingError({ code: "UnsupportedProfile", message });

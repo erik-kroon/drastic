@@ -244,6 +244,7 @@ export function insertReceipt(
     readonly invoiceId: string | null;
     readonly amountMinor: string;
     readonly body: JsonObject;
+    readonly digest: string;
     readonly committedAt: string;
   },
 ) {
@@ -251,11 +252,11 @@ export function insertReceipt(
     sql`
       insert into openerp.owner_operation_receipts
         (book_id, id, review_id, approval_id, mode, owner_id, owner_record_id, owner_effect_id, voucher_id,
-          control_line_id, recognition_id, invoice_id, amount_minor, body, committed_at)
+          control_line_id, recognition_id, invoice_id, amount_minor, body, digest, committed_at)
       values (${row.bookId}, ${row.id}, ${row.reviewId}, ${row.approvalId}, ${row.mode}, ${row.ownerId},
         ${row.ownerRecordId}, ${row.ownerEffectId}, ${row.voucherId}, ${row.controlLineId}, ${row.recognitionId},
         ${row.invoiceId}, ${row.amountMinor}::openerp.minor_units, ${JSON.stringify(row.body)}::jsonb,
-        ${row.committedAt}::timestamptz)
+        ${row.digest}, ${row.committedAt}::timestamptz)
     `,
     "objects",
   );

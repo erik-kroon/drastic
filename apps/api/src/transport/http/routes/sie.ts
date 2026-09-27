@@ -3,7 +3,7 @@ import { Api } from "@open-erp/contracts/api";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
-import { prepareSie, getSie, listSie, resumeSie } from "../../../application/sie";
+import { prepareSie, getSie, listSie, resumeSie } from "../../../application/sie/book-export";
 
 export const SieHandlers = HttpApiBuilder.group(Api, "sie", (handlers) =>
   handlers

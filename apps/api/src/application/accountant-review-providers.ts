@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import type { Transaction } from "../db/transaction";
 import type { BasisDependencies, CaptureProviderRows } from "../db/accountant-review";
-import * as OwnerDb from "../db/owner-register/register";
+import * as OwnerDb from "../db/subledger/owners";
 import * as ExpenseDb from "../db/vat/expense-tax";
 import * as Dependencies from "./closing/dependencies";
 import { controlBody } from "./subledger/owners";

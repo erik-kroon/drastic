@@ -10,6 +10,16 @@ function effectCapability<I, O extends Schema.Json>(
     readonly output: Schema.Decoder<O>;
     readonly description: string;
     readonly readOnly: boolean;
+    // Set to false by the capability's own owner when the capability carries
+    // approval or statutory activation authority. Such a capability stays out of
+    // the ordinary agent catalogue: an agent must not be able to grant, commit or
+    // inspect the authority that every other capability's family resolution
+    // depends on. Only an explicit false withholds a capability.
+    //
+    // This is default-open, because 294 capabilities would otherwise each have to
+    // declare their own agent visibility. A capability added to an
+    // authority-bearing family must set this itself.
+    readonly agentCallable?: boolean;
   },
   execute: (
     token: string,

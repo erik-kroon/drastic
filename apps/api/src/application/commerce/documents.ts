@@ -13,11 +13,12 @@ import * as CaptureDb from "../../db/commerce/documents";
 import { lockBookForUpdate } from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
 import { isoNow, newId, replay, saveCommand } from "../posting";
+import { base64, bytesEqual, sha256HexOf } from "../bytes";
 import { failure } from "../failures";
-import { renderInvoiceDocument } from "../invoice-document-renderer";
-import { renderInvoicePdf } from "../invoice-pdf-renderer";
-import { renderLegalInvoicePdf } from "../legal-invoice-pdf-renderer";
-import { renderLegalInvoicePdfV2 } from "../legal-invoice-pdf-renderer-v2";
+import { renderInvoiceDocument } from "./invoice-document-renderer";
+import { renderInvoicePdf } from "./invoice-pdf-renderer";
+import { renderLegalInvoicePdf } from "./legal-invoice-pdf-renderer-takumi-v1";
+import { renderLegalInvoicePdfV2 } from "./legal-invoice-pdf-renderer-takumi-v2";
 import {
   decode,
   objectField,
@@ -77,18 +78,6 @@ export type RenderedSeal = {
   readonly byteLength: number;
 };
 
-function base64(bytes: Uint8Array) {
-  let binary = "";
-
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-
-  return btoa(binary);
-}
-
-function bytesEqual(left: Uint8Array, right: Uint8Array) {
-  return left.length === right.length && left.every((byte, index) => byte === right[index]);
-}
-
 export function decodeBase64(value: string, maxBytes: number) {
   if (!canonicalBase64.test(value) || value.length < 4) return failure("InvalidJournal");
 
@@ -100,20 +89,6 @@ export function decodeBase64(value: string, maxBytes: number) {
       bytes.length < 1 || bytes.length > maxBytes
         ? failure("InvalidJournal")
         : Effect.succeed(bytes),
-    ),
-  );
-}
-
-export function sha256HexOf(bytes: Uint8Array) {
-  const copy = new Uint8Array(bytes.byteLength);
-  copy.set(bytes);
-
-  return Effect.tryPromise({
-    try: () => crypto.subtle.digest("SHA-256", copy),
-    catch: () => failure("InternalError"),
-  }).pipe(
-    Effect.map((hash) =>
-      Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, "0")).join(""),
     ),
   );
 }

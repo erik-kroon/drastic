@@ -28,7 +28,13 @@ const CallTool = Schema.Struct({
   arguments: Schema.optional(Schema.JsonObject),
 });
 
-const tools = Object.entries(capabilities).map(([name, capability]) => ({ name, capability }));
+// The agent catalogue. A capability whose owner declares it is not agent-callable
+// carries approval or statutory activation authority and is withheld here; the
+// ordinary HTTP surface is unaffected. The marker is default-open, so a capability
+// added to an authority-bearing family must declare it.
+const tools = Object.entries(capabilities)
+  .filter(([, capability]) => capability.agentCallable !== false)
+  .map(([name, capability]) => ({ name, capability }));
 
 const catalog = tools.map(({ name, capability }) => ({
   name,

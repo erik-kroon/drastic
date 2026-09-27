@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import * as Schema from "effect/Schema";
-import { textArray } from "./sql-values";
-import type { Transaction } from "./transaction";
+import { textArray } from "../sql-values";
+import type { Transaction } from "../transaction";
 
 type JsonObject = Schema.JsonObject;
 

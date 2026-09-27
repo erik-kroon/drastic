@@ -4,10 +4,19 @@ node_modules
 .pnp.js
 
 # Build outputs
+# These paths are load-bearing, not cosmetic: infra/alchemy deploys the web Worker
+# from apps/web and apps/api/scripts/self-host.ts serves apps/web/dist/client.
+# Move them only together with those two readers.
 dist
 build
 /output/
+test-results
 *.tsbuildinfo
+# Scoped type-check configs written and removed by `bun run check:changed`.
+tsconfig.changed.json
+apps/web/.tanstack/
+apps/api/.wrangler/
+apps/web/.wrangler/
 
 # Generated files
 apps/web/src/routeTree.gen.ts
@@ -61,7 +70,9 @@ playwright-report
 tmp
 temp
 
-# Agent work packs contain coordination text, not raw execution artifacts.
+# Agent work packs keep machine-checkable evidence: manifests, check results and
+# captured source hashes stay tracked so a completed wave can be re-verified.
+# Only bulky or per-attempt execution output is dropped, never the results.
 .agents/work/**/*.exit
 .agents/work/**/*.patch
 .agents/work/**/*.pid

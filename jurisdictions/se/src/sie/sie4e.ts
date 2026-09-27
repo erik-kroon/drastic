@@ -345,13 +345,18 @@ export function buildSie4EMembership(selection: Sie4ESelection): Sie4EMembership
       "The selected fiscal year has no established opening representation. A prior native balance or a reviewed opening set is required; a first-year zero opening is never inferred.",
     );
 
-  const nominalOpening = accounts
-    .filter((account) => account.accountClass === "nominal")
-    .reduce((total, account) => total + (opening.get(account.accountId) ?? 0n), 0n);
+  // The pinned record family carries each nominal account's raw result balance, so
+  // any non-zero nominal opening is unsupported. Summing them would let two
+  // opposite openings cancel in aggregate while each account's own result is
+  // still wrong, so every nominal account is checked on its own.
+  const nominalWithOpening = accounts.filter(
+    (account) =>
+      account.accountClass === "nominal" && (opening.get(account.accountId) ?? 0n) !== 0n,
+  );
 
-  if (nominalOpening !== 0n)
+  if (nominalWithOpening.length > 0)
     refuse(
-      "A nominal result account carries a non-zero captured opening balance. The pinned record family carries the raw result balance, so that opening would be lost.",
+      `Nominal result account ${nominalWithOpening[0]!.code} carries a non-zero captured opening balance. The pinned record family carries the raw result balance, so that opening would be lost.`,
     );
 
   let openingTotal = 0n;
@@ -559,6 +564,8 @@ export type Sie4EParsed = {
       readonly account: string;
       readonly dimensions: string;
       readonly amount: string;
+      readonly date: string;
+      readonly text: string;
     }>;
   }>;
   readonly controls: ReadonlyArray<{
@@ -812,13 +819,33 @@ function checkVoucherIdentities(
     voucher.lines.forEach((line, position) => {
       const transaction = actual.transactions[position];
 
+      if (transaction === undefined) {
+        note(
+          `Transaction ${position + 1} of voucher ${voucher.series}:${voucher.number} is missing.`,
+        );
+
+        return;
+      }
+
       if (
-        transaction === undefined ||
         transaction.account !== line.accountCode ||
         parseMinor(transaction.amount) !== BigInt(line.signedMinor)
       )
         note(
           `Transaction ${position + 1} of voucher ${voucher.series}:${voucher.number} is missing or changed.`,
+        );
+
+      // The export emits each line's own posting date and description, so both are
+      // compared. Comparing only account and amount would leave the declared
+      // description and date fidelity unchecked.
+      if (transaction.date !== line.postingDate.replaceAll("-", ""))
+        note(
+          `Transaction ${position + 1} of voucher ${voucher.series}:${voucher.number} carries date ${transaction.date || "(none)"} but the capture retains ${line.postingDate.replaceAll("-", "")}.`,
+        );
+
+      if (transaction.text !== line.description)
+        note(
+          `Transaction ${position + 1} of voucher ${voucher.series}:${voucher.number} does not carry the retained description.`,
         );
     });
   });

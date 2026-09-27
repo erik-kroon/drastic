@@ -1,4 +1,4 @@
-import { digest as digestNative } from "./json";
+import { digest as digestNative } from "../json";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Review from "@open-erp/contracts/accountant-review";
 import * as Sie from "@open-erp/contracts/sie";
@@ -6,12 +6,13 @@ import { canonicalizeJson } from "@open-erp/domain/canonicalization";
 import { renderSie } from "@open-erp/jurisdiction-se/sie";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
-import { failure } from "./failures";
+import { base64, bytesEqual, sha256HexOf } from "../bytes";
+import { failure } from "../failures";
 
-import { lockBookForShare, lockBookForUpdate } from "../db/posting";
-import * as SieDb from "../db/sie-transactions";
-import type { Transaction } from "../db/transaction";
-import { isoNow, newId, replay, saveCommand } from "./posting";
+import { lockBookForShare, lockBookForUpdate } from "../../db/posting";
+import * as SieDb from "../../db/sie-transactions";
+import type { Transaction } from "../../db/transaction";
+import { isoNow, newId, replay, saveCommand } from "../posting";
 import {
   decode,
   exactKeys,
@@ -20,7 +21,7 @@ import {
   withBook,
   type JsonObject,
   type Scope,
-} from "./commerce/support";
+} from "../commerce/support";
 
 type PrepareInput = typeof Sie.PrepareSie.Type;
 
@@ -88,19 +89,6 @@ function requireSieAccess(transaction: Transaction, write: boolean) {
   );
 }
 
-// Shared with the separate complete-book SIE4E artifact owner.
-export function base64(bytes: Uint8Array) {
-  let binary = "";
-
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-
-  return btoa(binary);
-}
-
-function bytesEqual(left: Uint8Array, right: Uint8Array) {
-  return left.length === right.length && left.every((byte, index) => byte === right[index]);
-}
-
 function decodeBase64(value: string) {
   if (!canonicalBase64.test(value) || value.length < 4) return failure("InvalidJournal");
 
@@ -111,20 +99,6 @@ function decodeBase64(value: string) {
     Effect.filterOrElse(
       (bytes) => bytes.length >= 1 && bytes.length <= maximumArtifactBytes,
       () => failure("InvalidJournal"),
-    ),
-  );
-}
-
-export function sha256HexOf(bytes: Uint8Array) {
-  const copy = new Uint8Array(bytes.byteLength);
-  copy.set(bytes);
-
-  return Effect.tryPromise({
-    try: () => crypto.subtle.digest("SHA-256", copy),
-    catch: () => failure("InternalError"),
-  }).pipe(
-    Effect.map((hash) =>
-      Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, "0")).join(""),
     ),
   );
 }

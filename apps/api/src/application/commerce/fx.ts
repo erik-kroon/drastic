@@ -1,12 +1,12 @@
-import { admitPosting } from "./posting-admission";
+import { admitPosting } from "../posting-admission";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as CommerceFx from "@open-erp/contracts/commerce-fx";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Rates from "@open-erp/contracts/exchange-rates";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
-import { failure } from "./failures";
-import { withAdmittedPrincipal, type VerifiedPrincipal } from "./identity";
+import { failure } from "../failures";
+import { withAdmittedPrincipal, type VerifiedPrincipal } from "../identity";
 import {
   digest,
   isoNow,
@@ -16,10 +16,10 @@ import {
   readVoucher,
   replay,
   saveCommand,
-} from "./posting";
-import * as Db from "../db/posting";
-import * as FxDb from "../db/commerce-fx";
-import { databaseFailure, type Transaction } from "../db/transaction";
+} from "../posting";
+import * as Db from "../../db/posting";
+import * as FxDb from "../../db/commerce/fx";
+import { databaseFailure, type Transaction } from "../../db/transaction";
 
 type Scope = typeof Accounting.Scope.Type;
 

@@ -2,6 +2,12 @@ import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
 import { getArticle, listArticles } from "../commerce/catalog";
 import {
+  getRecurringAgreement,
+  getRecurringOccurrence,
+  listRecurringOccurrences,
+  planRecurringOccurrences,
+} from "../commerce/recurring-invoices";
+import {
   getCandidate as getInvoicePolicyCandidate,
   readHistory as readInvoicePolicyHistory,
 } from "../commerce/invoice-policy";
@@ -11,7 +17,7 @@ import {
   invoiceDocumentHistory,
   prepareInvoiceDocument,
   resumeInvoiceDocument,
-} from "../invoice-documents";
+} from "../commerce/invoice-documents";
 import { getInvoicePdf, invoicePdfHistory } from "../commerce/documents";
 import { getSupplierAcceptanceReview, supplierAcceptanceHistory } from "../purchases/acceptance";
 import { getSupplierCreditReview, supplierCreditHistory } from "../purchases/credits";
@@ -31,7 +37,7 @@ import {
   getSupplierPaymentBatch,
   listSupplierPaymentEligibility,
 } from "../purchases/payments";
-import { listDimensions } from "../dimensions";
+import { listDimensions } from "../dimensions/registry";
 import { readDirectory, readDirectoryExport } from "../commerce/crm-master";
 import {
   applyAllocation,
@@ -316,5 +322,21 @@ export const commerceInvoiceCapabilities = {
   commerce_apply_allocation: effectCapability(
     Capabilities.commerce_apply_allocation,
     applyAllocation,
+  ),
+  commerce_get_recurring_agreement: effectCapability(
+    Capabilities.commerce_get_recurring_agreement,
+    getRecurringAgreement,
+  ),
+  commerce_plan_recurring_occurrences: effectCapability(
+    Capabilities.commerce_plan_recurring_occurrences,
+    planRecurringOccurrences,
+  ),
+  commerce_list_recurring_occurrences: effectCapability(
+    Capabilities.commerce_list_recurring_occurrences,
+    listRecurringOccurrences,
+  ),
+  commerce_get_recurring_occurrence: effectCapability(
+    Capabilities.commerce_get_recurring_occurrence,
+    getRecurringOccurrence,
   ),
 };

@@ -2,7 +2,9 @@ import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import * as A from "./accounting";
 import { accountingErrors } from "./accounting-errors";
+import { ProfileWitness } from "./company-profiles";
 import { CommandReceipt } from "./reconciliation";
+import { VatFilingRuleRelease, VatReportBox, VatSourceFamily } from "./vat-filing-release";
 
 const MaybeId = Schema.NullOr(A.Identifier);
 
@@ -577,6 +579,339 @@ export const VatControlReclassificationRecovery = Schema.Struct({
   result: VatControlReclassificationCommandResult,
 });
 
+// The actual domestic VAT return. It calculates exact, reported and residual
+// amounts and reconciles every VAT control. It never carries a submitted,
+// assessed or paid state.
+
+export const VatFactOrigin = Schema.Literals(["manual_admission", "owned_purchase_recognition"]);
+
+export const VatRegisteredPeriod = Schema.Struct({
+  factRevisionId: A.Identifier,
+  factRevisionDigest: A.Digest,
+  startsOn: A.AccountingDate,
+  endsOn: A.AccountingDate,
+  periodEvidenceId: A.Identifier,
+  periodEvidenceSha256: Schema.String,
+});
+
+export const VatFactControlComponent = Schema.Struct({
+  voucherId: A.Identifier,
+  lineId: A.Identifier,
+  accountId: A.Identifier,
+  role: VatControlAccountRole,
+  signedMinor: A.SignedMinorUnits,
+  postingDate: A.AccountingDate,
+  withinControlInterval: Schema.Boolean,
+});
+
+export const VatFactObservationState = Schema.Struct({
+  recordClass: Schema.Literals(["actual_company", "synthetic"]),
+  treatment: Schema.NullOr(Schema.Literals(["domestic_sale", "domestic_purchase"])),
+  withdrawn: Schema.Boolean,
+  voucherReversed: Schema.Boolean,
+  withinLedgerBoundary: Schema.Boolean,
+});
+
+export const VatSelectedFact = Schema.Struct({
+  factId: A.Identifier,
+  origin: VatFactOrigin,
+  revisionId: A.Identifier,
+  digest: A.Digest,
+  treatment: Schema.NullOr(Schema.Literals(["domestic_sale", "domestic_purchase"])),
+  taxPointOn: A.AccountingDate,
+  voucherId: A.Identifier,
+  basisMinor: A.SignedMinorUnits,
+  taxMinor: A.SignedMinorUnits,
+  adjustsFactId: Schema.NullOr(A.Identifier),
+  ruleReleaseId: Schema.NullOr(A.Identifier),
+  observation: VatFactObservationState,
+  controlComponents: Schema.Array(VatFactControlComponent).check(Schema.isMaxLength(20)),
+});
+
+export const VatControlMovementRow = Schema.Struct({
+  voucherId: A.Identifier,
+  lineId: A.Identifier,
+  postingDate: A.AccountingDate,
+  signedMinor: A.SignedMinorUnits,
+  postingPurpose: Schema.String,
+});
+
+export const VatControlSnapshot = Schema.Struct({
+  role: VatControlAccountRole,
+  accountId: A.Identifier,
+  reviewedOpeningMinor: A.SignedMinorUnits,
+  frozenGlOpeningMinor: A.SignedMinorUnits,
+  frozenGlMovementMinor: A.SignedMinorUnits,
+  frozenGlClosingMinor: A.SignedMinorUnits,
+  movements: Schema.Array(VatControlMovementRow).check(Schema.isMaxLength(500)),
+});
+
+// A released owner effect that moved a VAT control inside the control interval,
+// read through its own committed records. This packet never reclassifies.
+export const VatOwnedControlEffect = Schema.Struct({
+  owner: Schema.Literal("control_reclassification"),
+  effectId: A.Identifier,
+  obligationId: A.Identifier,
+  voucherId: A.Identifier,
+  postingDate: A.AccountingDate,
+  controlComponents: Schema.Array(VatFactControlComponent).check(Schema.isMaxLength(20)),
+});
+
+export const VatSourceCoverageState = Schema.Struct({
+  family: VatSourceFamily,
+  state: Schema.Literals(["current", "unavailable", "unknown"]),
+  evidenceId: Schema.NullOr(A.Identifier),
+  evidenceSha256: Schema.NullOr(Schema.String),
+});
+
+export const VatActualPopulation = Schema.Struct({
+  bookAdmittedFactCount: Schema.Int,
+  bookPurchaseComponentCount: Schema.Int,
+  selectedAdmittedFactCount: Schema.Int,
+  selectedPurchaseComponentCount: Schema.Int,
+  // A manually admitted fact with no tax point belongs to no period at all, so
+  // the population is not completely classified until it is resolved.
+  withoutTaxPoint: Schema.Int,
+  membershipEpoch: A.MinorUnits,
+});
+
+// A reserved owner's committed inventory, read through its own released
+// records. `no_committed_financial_effect` states that the owner exposes no
+// per-account vector to read, which is a retained fact and never a computed
+// zero over a port this packet could not see.
+export const VatOwnerPortState = Schema.Struct({
+  owner: Schema.Literals(["vat_control_reclassification", "vat_draft_amendment"]),
+  state: Schema.Literals(["read_committed_records", "no_committed_financial_effect"]),
+  recordCount: Schema.Int,
+  recordDigests: Schema.Array(A.Digest).check(Schema.isMaxLength(500)),
+});
+
+export const VatActualBasis = Schema.Struct({
+  digest: A.Digest,
+  scope: A.Scope,
+  engine: Schema.Literal("vat-actual-return-v1"),
+  bookProfile: Schema.String,
+  currency: Schema.String,
+  currencyScale: Schema.Int,
+  ledgerBoundary: A.MinorUnits,
+  recordedCutoff: Schema.String,
+  registeredPeriod: VatRegisteredPeriod,
+  profileWitness: ProfileWitness,
+  mappingRelease: Schema.Struct({
+    releaseId: A.Identifier,
+    checksum: A.Digest,
+    vat: VatFilingRuleRelease,
+  }),
+  accountRoles: Schema.Array(VatControlAccountRoleBinding).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(8),
+  ),
+  population: VatActualPopulation,
+  // The owned purchase recognitions that published a captured component. A
+  // later recognition is a new dependency, not an edit to this one.
+  recognitions: Schema.Array(A.Identifier).check(Schema.isMaxLength(500)),
+  facts: Schema.Array(VatSelectedFact).check(Schema.isMaxLength(500)),
+  controls: Schema.Array(VatControlSnapshot).check(Schema.isMinLength(1), Schema.isMaxLength(8)),
+  ownedEffects: Schema.Array(VatOwnedControlEffect).check(Schema.isMaxLength(200)),
+  sourceCoverage: Schema.Array(VatSourceCoverageState).check(Schema.isMaxLength(20)),
+  ownerPorts: Schema.Array(VatOwnerPortState).check(Schema.isMaxLength(8)),
+  openingEvidenceId: A.Identifier,
+  openingEvidenceSha256: Schema.String,
+});
+
+export const VatActualBox = Schema.Struct({
+  box: Schema.Literals(["05", "10", "11", "12", "48", "49"]),
+  kind: Schema.Literals(["primitive", "net"]),
+  exactMinor: A.SignedMinorUnits,
+  reportedMinor: A.SignedMinorUnits,
+  residualMinor: A.SignedMinorUnits,
+});
+
+export const VatActualContribution = Schema.Struct({
+  ordinal: Schema.Int,
+  factId: A.Identifier,
+  origin: VatFactOrigin,
+  mappingRuleId: A.Identifier,
+  rateId: A.Identifier,
+  box: VatReportBox,
+  signedMinor: A.SignedMinorUnits,
+  basisMinor: A.SignedMinorUnits,
+  taxMinor: A.SignedMinorUnits,
+  revisionId: A.Identifier,
+  digest: A.Digest,
+});
+
+export const VatActualExclusionReason = Schema.Literals([
+  "synthetic_record_class",
+  "unsupported_treatment",
+  "unmapped_treatment",
+  "rate_absent_from_release",
+  "published_tax_not_the_qualified_rate",
+  "basis_box_absent_from_release",
+  "withdrawn_fact",
+  "duplicate_source_component",
+  "unlinked_control_component",
+  "voucher_reversed",
+  "voucher_outside_ledger_boundary",
+  "rule_release_mismatch",
+]);
+
+export const VatActualExclusion = Schema.Struct({
+  ordinal: Schema.Int,
+  factId: A.Identifier,
+  origin: VatFactOrigin,
+  revisionId: A.Identifier,
+  reason: VatActualExclusionReason,
+  detail: A.Description,
+});
+
+export const VatControlRowDifference = Schema.Struct({
+  state: Schema.Literals(["unexplained", "missing"]),
+  voucherId: A.Identifier,
+  lineId: A.Identifier,
+  postingDate: A.AccountingDate,
+  signedMinor: A.SignedMinorUnits,
+});
+
+export const VatControlReconciliation = Schema.Struct({
+  role: VatControlAccountRole,
+  accountId: A.Identifier,
+  reviewedOpeningMinor: A.SignedMinorUnits,
+  expectedClosingMinor: A.SignedMinorUnits,
+  frozenGlClosingMinor: A.SignedMinorUnits,
+  differenceMinor: A.SignedMinorUnits,
+  unexplainedRows: Schema.Array(VatControlRowDifference).check(Schema.isMaxLength(500)),
+  missingRows: Schema.Array(VatControlRowDifference).check(Schema.isMaxLength(500)),
+  reconciled: Schema.Boolean,
+});
+
+export const VatTimingBridgeRow = Schema.Struct({
+  factId: A.Identifier,
+  origin: VatFactOrigin,
+  revisionId: A.Identifier,
+  taxPointOn: A.AccountingDate,
+  reason: Schema.Literals(["control_component_outside_interval", "opening_balance_component"]),
+  componentPostingDates: Schema.Array(A.AccountingDate).check(Schema.isMaxLength(20)),
+});
+
+// A readiness reason inside a retained calculation. A release that cannot apply
+// at all is a refusal at capture, not a blocker here.
+export const VatActualBlocker = Schema.Literals([
+  "no_supported_mapping_for_treatment",
+  "rate_absent_from_release",
+  "rule_release_mismatch",
+  "excluded_mandatory_fact",
+  "unclassified_fact_population",
+  "source_coverage_unavailable",
+  "source_coverage_unknown",
+  "control_unexplained_rows",
+  "control_missing_rows",
+  "control_opening_difference",
+]);
+
+export const VatActualCalculation = Schema.Struct({
+  engine: Schema.Literal("vat-actual-return-v1"),
+  basisDigest: A.Digest,
+  // A population the release could not map declares no box at all. An absent net
+  // box is the honest result; a zero net over a partial population is not.
+  boxes: Schema.Array(VatActualBox).check(Schema.isMaxLength(8)),
+  contributions: Schema.Array(VatActualContribution).check(Schema.isMaxLength(1000)),
+  exclusions: Schema.Array(VatActualExclusion).check(Schema.isMaxLength(1000)),
+  controls: Schema.Array(VatControlReconciliation).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(8),
+  ),
+  timingBridge: Schema.Array(VatTimingBridgeRow).check(Schema.isMaxLength(1000)),
+  sourceCoverage: Schema.Array(VatSourceCoverageState).check(Schema.isMaxLength(20)),
+  blockers: Schema.Array(VatActualBlocker).check(Schema.isMaxLength(20)),
+  // Facts assessed, facts declared and facts excluded are three different
+  // counts. A fact can be assessed and declared with no primitive row when its
+  // qualified amount is exactly zero.
+  assessedCount: Schema.Int,
+  includedCount: Schema.Int,
+  excludedCount: Schema.Int,
+  calculationSupported: Schema.Boolean,
+  coverageComplete: Schema.Boolean,
+  controlsReconciled: Schema.Boolean,
+  periodVerified: Schema.Boolean,
+  filingReady: Schema.Boolean,
+});
+
+// A reviewed opening balance per bound VAT control account, and the independent
+// coverage evidence per required source family. Both are qualified inputs the
+// caller must state; neither is ever defaulted here.
+export const VatControlOpeningInput = Schema.Struct({
+  accountId: A.Identifier,
+  signedMinor: A.SignedMinorUnits,
+});
+
+export const VatSourceCoverageInput = Schema.Struct({
+  family: VatSourceFamily,
+  state: Schema.Literals(["current", "unavailable", "unknown"]),
+  evidenceId: Schema.NullOr(A.Identifier),
+});
+
+export const PrepareActualVatReturn = Schema.Struct({
+  startsOn: A.AccountingDate,
+  endsOn: A.AccountingDate,
+  periodEvidenceId: A.Identifier,
+  openingEvidenceId: A.Identifier,
+  controlOpenings: Schema.Array(VatControlOpeningInput).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(8),
+  ),
+  sourceCoverage: Schema.Array(VatSourceCoverageInput).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(4),
+  ),
+  rationale: A.Description,
+});
+
+export const ActualVatReturn = Schema.Struct({
+  id: A.Identifier,
+  digest: A.Digest,
+  scope: A.Scope,
+  version: Schema.Literal(1),
+  input: PrepareActualVatReturn,
+  basis: VatActualBasis,
+  calculation: VatActualCalculation,
+  recordedAt: Schema.String,
+  receipt: CommandReceipt,
+  externalState: Schema.Literal("not_submitted"),
+  assessedMinor: Schema.Null,
+  paymentState: Schema.Literal("not_paid"),
+});
+
+export const ActualVatReturnView = Schema.Struct({
+  saved: ActualVatReturn,
+  currentness: Schema.Struct({
+    basisCurrent: Schema.Boolean,
+    checkedAt: Schema.String,
+    staleReasons: Schema.Array(Schema.String).check(Schema.isMaxLength(20)),
+  }),
+});
+
+export const ActualVatReturnList = Schema.Struct({
+  items: Schema.Array(
+    Schema.Struct({
+      id: A.Identifier,
+      digest: A.Digest,
+      startsOn: A.AccountingDate,
+      endsOn: A.AccountingDate,
+      filingReady: Schema.Boolean,
+      exactNetMinor: A.SignedMinorUnits,
+      reportedNetMinor: A.SignedMinorUnits,
+      recordedAt: Schema.String,
+    }),
+  ),
+});
+
+export const PrepareActualVatCommand = Schema.Struct({
+  scope: A.Scope,
+  idempotencyKey: A.IdempotencyHeaders.fields["idempotency-key"],
+  input: PrepareActualVatReturn,
+});
+
 const path = "/v1/entities/:entityId/books/:bookId/vat-returns";
 
 const scoped = { params: A.Scope, error: accountingErrors };
@@ -680,6 +1015,20 @@ export const VatReturnsApi = HttpApiGroup.make("vatReturns").add(
     success: VatDraftView,
   }),
   HttpApiEndpoint.get("listVatDrafts", `${path}/drafts`, { ...scoped, success: VatDraftList }),
+  HttpApiEndpoint.post("prepareActualVatReturn", `${path}/actuals`, {
+    ...scoped,
+    headers: A.IdempotencyHeaders,
+    payload: PrepareActualVatReturn.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: ActualVatReturn,
+  }),
+  HttpApiEndpoint.get("getActualVatReturn", `${path}/actuals/:id`, {
+    ...identified,
+    success: ActualVatReturnView,
+  }),
+  HttpApiEndpoint.get("listActualVatReturns", `${path}/actuals`, {
+    ...scoped,
+    success: ActualVatReturnList,
+  }),
 );
 
 const scope = { scope: A.Scope };
@@ -765,5 +1114,25 @@ export const VatReturnCapabilities = {
     output: VatDraftList,
     readOnly: true,
     description: "Rediscover the complete bounded saved VAT review draft inventory.",
+  },
+  vat_return_prepare_actual: {
+    input: PrepareActualVatCommand,
+    output: ActualVatReturn,
+    readOnly: false,
+    description:
+      "Seal an actual domestic VAT return calculation from the complete fact, purchase-component and VAT-control basis, using the reviewed vat rule release for every rate, box and filing unit. It records no submission, assessment or payment.",
+  },
+  vat_return_get_actual: {
+    input: Schema.Struct({ ...scope, returnId: A.Identifier }),
+    output: ActualVatReturnView,
+    readOnly: true,
+    description:
+      "Read one sealed actual VAT return with its exact, reported and residual boxes, its contributors, its exclusions and its unresolved control rows, plus separately computed currentness.",
+  },
+  vat_return_list_actuals: {
+    input: Schema.Struct(scope),
+    output: ActualVatReturnList,
+    readOnly: true,
+    description: "Rediscover the complete bounded sealed actual VAT return inventory.",
   },
 };
