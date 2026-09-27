@@ -8,7 +8,12 @@ import {
   renderCustomerCreditArtifact,
 } from "../application/commerce/credit-documents";
 import { failure } from "../application/failures";
-import { deliveryDispatch, ignoreUnrearmable, readQueueSnapshot } from "./delivery-dispatch";
+import {
+  deliveryDispatch,
+  ignoreUnrearmable,
+  isTerminalDeliveryFailure,
+  readQueueSnapshot,
+} from "./delivery-dispatch";
 import { RequestEnvironment } from "./environment";
 
 type Payload = {
@@ -33,6 +38,7 @@ export class CreditDocumentQueue extends Job.make("customer-credit-render", {
   error: Accounting.AccountingError,
   queue: "preparation",
   idempotencyKey: creditDocumentKey,
+  retryable: isTerminalDeliveryFailure,
   metadata: ({ scope }) => ({ bookId: scope.bookId }),
   defaults: { attempts: 5, backoff: { type: "exponential", delay: "10 seconds" } },
 }) {}

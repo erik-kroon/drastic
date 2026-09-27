@@ -108,6 +108,39 @@ export function ignoreUnrearmable(effect: Unrearmable) {
   );
 }
 
+/**
+ * The failure codes a retry provably cannot change.
+ *
+ * A job that is not retried still records its typed failure in its exit, so
+ * skipping the remaining attempts discards no evidence; it only stops the
+ * re-delivery of a request that will be refused the same way. Everything not
+ * named here is retried, because the default cost of a wrong classification is
+ * asymmetric: a needless retry costs a bounded wait, while a wrongly abandoned
+ * attempt loses work that a human or a later state could still have completed.
+ *
+ * `Unavailable` and `InternalError` are transient by construction. `NotFound` can
+ * be a claim race against a record that exists. `StaleDependency` and
+ * `PeriodLocked` resolve on their own. `MissingEvidence` and `ApprovalRequired`
+ * resolve when a human acts, and the same intent is still the right place to
+ * notice. `AlreadyPosted` means the effect exists, so a retry has nothing to do
+ * and is left to the budget rather than turned into a delivery failure.
+ */
+const terminalDeliveryFailures: ReadonlySet<Accounting.AccountingError["code"]> = new Set([
+  // The same credential is refused again.
+  "Unauthorized",
+  // The same actor's authority for the same book and operation is refused again.
+  "Forbidden",
+  // This key already carries a different body, so the work is not this job's.
+  "IdempotencyConflict",
+  // Nothing in this repository can release the missing profile or rule at retry
+  // time, so only a reviewed release can change the answer.
+  "UnsupportedProfile",
+]);
+
+export function isTerminalDeliveryFailure(error: Accounting.AccountingError) {
+  return terminalDeliveryFailures.has(error.code);
+}
+
 export function deliveryDispatch(
   recordId: JobStore.JobId,
   snapshot: QueueSnapshot,

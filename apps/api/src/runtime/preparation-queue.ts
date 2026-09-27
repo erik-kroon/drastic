@@ -22,6 +22,7 @@ import { failure } from "../application/failures";
 import {
   deliveryDispatch,
   ignoreUnrearmable,
+  isTerminalDeliveryFailure,
   readQueueSnapshot,
   type QueueSnapshot,
 } from "./delivery-dispatch";
@@ -37,6 +38,7 @@ export class PreparationQueue extends Job.make("preparation", {
   error: Accounting.AccountingError,
   queue: "preparation",
   idempotencyKey: preparationKey,
+  retryable: isTerminalDeliveryFailure,
   metadata: ({ scope }) => ({ bookId: scope.bookId }),
   defaults: { attempts: 5, backoff: { type: "exponential", delay: "10 seconds" } },
 }) {}
@@ -54,6 +56,7 @@ export class ExtractionQueue extends Job.make("supplier-extraction", {
   error: Accounting.AccountingError,
   queue: "preparation",
   idempotencyKey: extractionKey,
+  retryable: isTerminalDeliveryFailure,
   metadata: ({ scope }) => ({ bookId: scope.bookId }),
   defaults: { attempts: 5, backoff: { type: "exponential", delay: "10 seconds" } },
 }) {}
@@ -82,6 +85,7 @@ export class PeriodWorkQueue extends Job.make("period-work", {
   error: Accounting.AccountingError,
   queue: "preparation",
   idempotencyKey: periodWorkKey,
+  retryable: isTerminalDeliveryFailure,
   metadata: ({ scope }) => ({ bookId: scope.bookId }),
   defaults: { attempts: 5, backoff: { type: "exponential", delay: "10 seconds" } },
 }) {}
