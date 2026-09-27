@@ -39,6 +39,21 @@ function copy(locale: Locale) {
     diagnostics: sv ? "Diagnoser" : "Diagnostics",
     candidates: sv ? "Föreslagna rader" : "Proposed lines",
     noAttempt: sv ? "Inget tolkningsförsök är sparat." : "No extraction attempt is retained.",
+    requestState: (sv
+      ? {
+          ready: "redo",
+          completed: "klar",
+          unknown: "okänd",
+          superseded: "ersatt",
+          cancelled: "avbruten",
+        }
+      : {
+          ready: "ready",
+          completed: "completed",
+          unknown: "unknown",
+          superseded: "superseded",
+          cancelled: "cancelled",
+        }) satisfies Readonly<Record<State["requests"][number]["state"], string>>,
   };
 }
 
@@ -77,25 +92,43 @@ function mergeCopy(locale: Locale) {
       ? "Granskningen har inget granskat utkast att jämföra mot. Ange dessa grunduppgifter själv; extrahenteringen hittar dem inte och hittar inte på dem."
       : "This review has no reviewed draft to compare against. Supply these base facts yourself; extraction does not read them and will not invent them.",
     resolved: sv ? "Angett värde" : "Resolved value",
+    fieldState: (sv
+      ? {
+          unchanged: "oförändrad",
+          proposed_change: "föreslagen ändring",
+          convergent: "sammanfallande",
+          conflict: "konflikt",
+          retained_reviewed: "behållen efter granskning",
+          needs_review: "måste granskas",
+        }
+      : {
+          unchanged: "unchanged",
+          proposed_change: "proposed change",
+          convergent: "convergent",
+          conflict: "conflict",
+          retained_reviewed: "retained after review",
+          needs_review: "needs review",
+        }) satisfies Readonly<Record<MergedField["state"], string>>,
+    draftState: (sv
+      ? { absent: "saknas", open: "öppet", accepted: "accepterat" }
+      : { absent: "absent", open: "open", accepted: "accepted" }) satisfies Readonly<
+      Record<Preparation["draft"]["state"], string>
+    >,
+    attemptResult: (sv
+      ? {
+          succeeded: "lyckades",
+          rejected_output: "avvisad utdata",
+          failed: "misslyckades",
+          unknown: "okänt",
+        }
+      : {
+          succeeded: "succeeded",
+          rejected_output: "rejected output",
+          failed: "failed",
+          unknown: "unknown",
+        }) satisfies Readonly<Record<Preparation["attempt"]["result"], string>>,
   };
 }
-
-const stateWords = {
-  unchanged: "oförändrad",
-  proposed_change: "föreslagen ändring",
-  convergent: "sammanfallande",
-  conflict: "konflikt",
-  retained_reviewed: "behållen efter granskning",
-  needs_review: "måste granskas",
-} satisfies Readonly<Record<MergedField["state"], string>>;
-
-const stateLabel = {
-  ready: "ready",
-  completed: "completed",
-  unknown: "unknown",
-  superseded: "superseded",
-  cancelled: "cancelled",
-} satisfies Readonly<Record<State["requests"][number]["state"], string>>;
 
 function valueText(value: MergedField["base"]) {
   return value === null ? "—" : value;
@@ -165,7 +198,7 @@ function MergedFieldCard(props: {
     >
       <legend>{props.merged.lineOrdinal === 0 ? props.merged.fieldKey : label}</legend>
       <Text>
-        {props.text.state}: {stateWords[props.merged.state]}
+        {props.text.state}: {props.text.fieldState[props.merged.state]}
         {props.merged.detail ? ` · ${props.merged.detail}` : ""}
       </Text>
       <Box minWidth="zero" overflow="auto">
@@ -267,8 +300,9 @@ function ExtractionMerge(props: CommerceProps & { preparation: Preparation }) {
     <Box display="grid" gap="lg" minWidth="zero">
       <Heading>{text.review}</Heading>
       <Text>
-        {text.state}: {preparation.draft.state} · {preparation.draft.revision ?? "—"} ·{" "}
-        {preparation.attempt.result} · {preparation.attempt.engineRelease}
+        {text.state}: {text.draftState[preparation.draft.state]} ·{" "}
+        {preparation.draft.revision ?? "—"} · {text.attemptResult[preparation.attempt.result]} ·{" "}
+        {preparation.attempt.engineRelease}
       </Text>
       {preparation.draft.state === "accepted" ? <Text>{text.accepted}</Text> : null}
       {preparation.draft.state === "absent" ? <Text>{text.absent}</Text> : null}
@@ -287,7 +321,7 @@ function ExtractionMerge(props: CommerceProps & { preparation: Preparation }) {
               minWidth="zero"
             >
               <Text>
-                {line.candidateLineId} · {stateWords[line.state]} · {line.detail || "—"}
+                {line.candidateLineId} · {text.fieldState[line.state]} · {line.detail || "—"}
               </Text>
               <Text>
                 {text.locator}:{" "}
@@ -510,7 +544,7 @@ export function SupplierExtraction(
         <Box display="grid" gap="sm" minWidth="zero">
           {state.data.requests.map((request) => (
             <Text key={request.id}>
-              {request.generation} · {request.engineRelease} · {stateLabel[request.state]} ·{" "}
+              {request.generation} · {request.engineRelease} · {text.requestState[request.state]} ·{" "}
               {request.originalHash} · {request.requestedAt}
             </Text>
           ))}

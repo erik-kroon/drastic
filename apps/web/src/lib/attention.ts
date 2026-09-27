@@ -1,3 +1,4 @@
+import { defaultStringifySearch } from "@tanstack/react-router";
 import { queryOptions } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Workspace from "@open-erp/contracts/workspace";
@@ -41,6 +42,19 @@ export function attentionPath(
   return `${workspacePath(book)}/${item.kind === "invoice" ? "sales?view=drafts" : "purchases?view=expenses"}&record=${encodeURIComponent(item.id)}`;
 }
 
+// The review routes return to the queue with the same search, so the work
+// filters a reviewer chose survive the round trip. `kind` is part of it: the
+// queue is the same queue whichever type filter produced the list.
+export function attentionWorkSearch(filters: typeof Workspace.AttentionQuery.Type) {
+  return defaultStringifySearch({
+    period: filters.period,
+    status: filters.status,
+    sort: filters.sort,
+    q: filters.q,
+    kind: filters.kind,
+  });
+}
+
 export function attentionCopy(locale: Locale) {
   return locale === "sv" ? swedish : english;
 }
@@ -62,6 +76,11 @@ const english = {
   empty: "Nothing in this view",
   emptyDetail: "Try another filter, or prepare your next invoice or expense.",
   open: "Open work",
+  openCount: "Open",
+  completedCount: "Completed",
+  splitScope: "in this filter, all statuses",
+  showing: "Showing",
+  of: "of",
   total: "Results",
   updated: "Updated",
   action: "Next step",
@@ -89,6 +108,11 @@ const swedish: typeof english = {
   empty: "Inget i den här vyn",
   emptyDetail: "Prova ett annat filter, eller förbered nästa faktura eller utgift.",
   open: "Att göra",
+  openCount: "Öppna",
+  completedCount: "Avslutade",
+  splitScope: "i det här filtret, alla statusar",
+  showing: "Visar",
+  of: "av",
   total: "Träffar",
   updated: "Uppdaterat",
   action: "Nästa steg",

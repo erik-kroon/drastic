@@ -40,7 +40,7 @@ function Work() {
         }
       />
       <PageContent>
-        <Box display="grid" gap="lg">
+        <Box as="section" id="work" tabIndex={-1} display="grid" gap="lg" minWidth="zero">
           <Box display="flex" flexWrap="wrap" justifyContent="between" alignItems="center" gap="lg">
             <RegisterChoices
               label={copy.workspace_status}
@@ -154,6 +154,7 @@ function Work() {
                     status: filters.status,
                     sort: filters.sort,
                     q: filters.q,
+                    kind: filters.kind,
                   },
                 });
               }}

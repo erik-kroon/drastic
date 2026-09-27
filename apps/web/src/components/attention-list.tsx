@@ -1,5 +1,4 @@
 import { WorkHandoff } from "./work-handoff";
-import { defaultStringifySearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import type * as Workspace from "@open-erp/contracts/workspace";
 import { Box } from "@open-erp/ui/components/box";
@@ -8,10 +7,16 @@ import { DataTable } from "@open-erp/ui/components/data-table";
 import { Link } from "@open-erp/ui/components/link";
 import { Badge } from "@open-erp/ui/components/badge";
 import { PageEmpty, PageCaption } from "@open-erp/ui/components/accounting-page";
+import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
-import { attentionQueryOptions, attentionPath, attentionCopy } from "@/lib/attention";
+import {
+  attentionQueryOptions,
+  attentionPath,
+  attentionWorkSearch,
+  attentionCopy,
+} from "@/lib/attention";
 
 export function AttentionList(props: {
   filters: typeof Workspace.AttentionQuery.Type;
@@ -21,11 +26,24 @@ export function AttentionList(props: {
   const query = useQuery(attentionQueryOptions(book, props.filters));
   const page = query.isError ? undefined : query.data;
   const copy = attentionCopy(locale);
+  const workSearch = attentionWorkSearch(props.filters);
+  const kind = props.filters.kind ?? "all";
+  const shown = page ? String(page.items.length) : null;
 
   return (
     <Box display="grid" gap="lg">
       <Box display="flex" justifyContent="between" alignItems="center">
-        <PageCaption>{page ? `${copy.total}: ${page.total}` : copy.all}</PageCaption>
+        <Box display="grid" gap="xs">
+          <Text role="status" tone="muted">
+            {page ? `${copy.total}: ${page.total}` : copy.all}
+          </Text>
+          {page ? (
+            <PageCaption>
+              {copy.openCount}: {page.counts.open} · {copy.completedCount}: {page.counts.completed}{" "}
+              · {copy.splitScope}
+            </PageCaption>
+          ) : null}
+        </Box>
         <Button
           static
           variant="ghost"
@@ -42,7 +60,7 @@ export function AttentionList(props: {
         <>
           {page.items.length ? (
             <DataTable
-              title={copy.all}
+              title={kind === "all" ? copy.all : copy[kind]}
               narrow="stack"
               columns={[
                 { id: "record", label: copy.title },
@@ -57,7 +75,7 @@ export function AttentionList(props: {
                 cells: [
                   <Link
                     key="open"
-                    href={`${attentionPath(book, item)}${item.kind === "journal" ? defaultStringifySearch({ period: props.filters.period, status: props.filters.status, sort: props.filters.sort, q: props.filters.q }) : ""}`}
+                    href={`${attentionPath(book, item)}${item.kind === "journal" ? workSearch : ""}`}
                   >
                     {item.title}
                   </Link>,
@@ -79,6 +97,11 @@ export function AttentionList(props: {
             <PageEmpty title={copy.empty} detail={copy.emptyDetail} />
           )}
           <PageCaption>{copy.coverage}</PageCaption>
+          {shown !== null && shown !== page.total ? (
+            <PageCaption>
+              {copy.showing} {shown} {copy.of} {page.total}
+            </PageCaption>
+          ) : null}
           <PageCaption>
             {copy.updated}{" "}
             {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
