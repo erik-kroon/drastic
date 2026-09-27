@@ -4,7 +4,7 @@ import {
   invoiceDocumentHistory as readInvoiceDocumentHistory,
   prepareInvoiceDocument as prepareInvoiceDocumentOperation,
   resumeInvoiceDocument as resumeInvoiceDocumentOperation,
-} from "./commerce/documents";
+} from "./documents";
 
 export const getInvoiceDocument = (
   token: string,

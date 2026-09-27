@@ -2,7 +2,7 @@
 
 ## Current ownership
 
-Application operations live in [application/sie/historical.ts](../src/application/sie/historical.ts), with shared dispatch in [capabilities](../src/application/capabilities/). The maintained DDL is [0001-schema.sql](../migrations/0001-schema.sql), [0002-integrity.sql](../migrations/0002-integrity.sql) and [0003-roles.sql](../migrations/0003-roles.sql). Historical financial import operations still return unsupported placeholders; this note is not evidence of an implemented import path.
+Application operations live in [application/sie/historical.ts](../src/application/sie/historical.ts), with shared dispatch in [capabilities](../src/application/capabilities/). Historical financial import operations still return unsupported placeholders; this note is not evidence of an implemented import path.
 
 ## Historical implementation notes
 

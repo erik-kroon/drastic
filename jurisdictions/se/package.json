@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     "./vat": "./src/vat/calculation.ts",
+    "./vat-actual": "./src/vat/actual.ts",
     "./sie": "./src/sie/encoder.ts",
     "./sie4e": "./src/sie/sie4e.ts"
   },

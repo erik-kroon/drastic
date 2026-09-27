@@ -6,6 +6,7 @@ import { CommandReceipt, EvidenceReference } from "./commerce";
 import { CorporateTaxRuleRelease } from "./corporate-tax";
 import { PayrollRuleRelease } from "./payroll-calculations";
 import { RoleKind } from "./roles";
+import { VatFilingRuleRelease } from "./vat-filing-release";
 
 export { RoleKind };
 
@@ -447,6 +448,9 @@ export const RuleRelease = Schema.Struct({
   // record. The payroll family's tables, decisions, contribution bands and
   // holiday policy live here, so there is exactly one rule-release authority.
   payroll: Schema.optional(PayrollRuleRelease),
+  // The VAT family's qualified rates, report boxes, mapping rules, filing unit
+  // and required source families live here for the same reason.
+  vat: Schema.optional(VatFilingRuleRelease),
   // NEXT-22. The corporate-tax family's exact rate, rounding policies, loss
   // profile, journal series, declaration field map and SRU grammar live here too.
   // There is no second tax release table and no inferred rate or reporting box.
@@ -515,6 +519,9 @@ export const CompanyProfileCapabilities = {
     }),
     output: CompanyActivationPlan,
     readOnly: false,
+    // Company activation is the statutory admission every family resolution
+    // depends on. It is an operator surface, not an agent-callable one.
+    agentCallable: false,
   },
   company_approve_activation: {
     description:
@@ -527,6 +534,9 @@ export const CompanyProfileCapabilities = {
     }),
     output: CompanyActivationApproval,
     readOnly: false,
+    // Company activation is the statutory admission every family resolution
+    // depends on. It is an operator surface, not an agent-callable one.
+    agentCallable: false,
   },
   company_execute_activation: {
     description:
@@ -539,6 +549,9 @@ export const CompanyProfileCapabilities = {
     }),
     output: CompanyActivationReceipt,
     readOnly: false,
+    // Company activation is the statutory admission every family resolution
+    // depends on. It is an operator surface, not an agent-callable one.
+    agentCallable: false,
   },
   company_get_activation: {
     description:
@@ -546,6 +559,9 @@ export const CompanyProfileCapabilities = {
     input: Schema.Struct({ scope: Accounting.Scope, activationId: Accounting.Identifier }),
     output: CompanyActivation,
     readOnly: true,
+    // Company activation is the statutory admission every family resolution
+    // depends on. It is an operator surface, not an agent-callable one.
+    agentCallable: false,
   },
 };
 

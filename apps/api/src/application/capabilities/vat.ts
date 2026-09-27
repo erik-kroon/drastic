@@ -11,6 +11,7 @@ import {
   returnBasis,
 } from "../vat/returns";
 import { getReclassification, listReclassifications } from "../vat/reclassification";
+import { getActualReturn, listActualReturns, prepareActualReturn } from "../vat/actual-return";
 import { prepareVatDraft } from "../vat-returns";
 import {
   getSnapshot,
@@ -58,6 +59,17 @@ export const vatCapabilities = {
     getDraft(token, { scope: input.scope, id: input.draftId }),
   ),
   vat_return_list_drafts: effectCapability(Capabilities.vat_return_list_drafts, listDrafts),
+  vat_return_prepare_actual: effectCapability(
+    Capabilities.vat_return_prepare_actual,
+    prepareActualReturn,
+  ),
+  vat_return_get_actual: effectCapability(Capabilities.vat_return_get_actual, (token, input) =>
+    getActualReturn(token, { scope: input.scope, id: input.returnId }),
+  ),
+  vat_return_list_actuals: effectCapability(
+    Capabilities.vat_return_list_actuals,
+    listActualReturns,
+  ),
   expense_tax_record_source: effectCapability(Capabilities.expense_tax_record_source, recordSource),
   expense_tax_inventory: effectCapability(Capabilities.expense_tax_inventory, inventory),
   expense_tax_get_source: effectCapability(Capabilities.expense_tax_get_source, (token, input) =>

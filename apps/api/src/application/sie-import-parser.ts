@@ -32,6 +32,11 @@ export type SieVoucher = {
     account: string;
     dimensions: string;
     amount: string;
+    // The record's own posting date and text. Retained rather than dropped so a
+    // producer's fidelity claim about them can actually be compared; an inbound
+    // file that omits them still parses.
+    date: string;
+    text: string;
   }>;
 };
 
@@ -168,6 +173,8 @@ function recordSieFact(
         account: fields[0] ?? "",
         dimensions: fields[1] ?? "",
         amount: fields[2] ?? "",
+        date: fields[3] ?? "",
+        text: fields.slice(4).join(" "),
       });
   } else if (tag === "IB" || tag === "UB" || tag === "RES") {
     if (depth !== 0 || !validControl(fields))

@@ -42,6 +42,7 @@ import { VatReturnsApi } from "./vat-returns";
 import { SieApi } from "./sie";
 import { Sie4EApi } from "./sie4e";
 import { InvoiceDraftsApi } from "./invoice-drafts";
+import { RecurringInvoicesApi } from "./recurring-invoices";
 import { SalesOrdersApi } from "./sales-orders";
 import { SupplierInvoiceDraftsApi } from "./supplier-invoice-drafts";
 import { SupplierAcceptanceApi } from "./supplier-acceptance";
@@ -194,6 +195,7 @@ export class Api extends HttpApi.make("open-erp")
     SieApi,
     Sie4EApi,
     InvoiceDraftsApi,
+    RecurringInvoicesApi,
     SalesOrdersApi,
     SupplierInvoiceDraftsApi,
     SupplierAcceptanceApi,

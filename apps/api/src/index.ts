@@ -57,6 +57,7 @@ import { VatReturnsHandlers } from "./transport/http/routes/vat-returns";
 import { SieHandlers } from "./transport/http/routes/sie";
 import { Sie4EHandlers } from "./transport/http/routes/sie4e";
 import { InvoiceDraftHandlers } from "./transport/http/routes/invoice-drafts";
+import { RecurringInvoiceHandlers } from "./transport/http/routes/recurring-invoices";
 import { SalesOrderHandlers } from "./transport/http/routes/sales-orders";
 import { SupplierInvoiceDraftHandlers } from "./transport/http/routes/supplier-invoice-drafts";
 import { SupplierAcceptanceHandlers } from "./transport/http/routes/supplier-acceptance";
@@ -133,6 +134,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     SieHandlers,
     Sie4EHandlers,
     InvoiceDraftHandlers,
+    RecurringInvoiceHandlers,
     SalesOrderHandlers,
     SupplierInvoiceDraftHandlers,
     SupplierAcceptanceHandlers,
