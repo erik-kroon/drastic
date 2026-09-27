@@ -225,57 +225,49 @@ export type NormalizedObservation = typeof NormalizedObservation.Type;
 // One honest step of the provider state machine. Missing observations
 // stay unknown; only a receipt that actually means registration under the
 // selected obligation policy reaches `registered_if_required`.
+type TransitionTable = {
+  readonly [state in SubmissionState]?: {
+    readonly [observation in NormalizedObservation]?: SubmissionState;
+  };
+};
+
+const allowedTransitions: TransitionTable = {
+  prepared: { local_invalid: "validation_blocked", local_authorized: "authorized" },
+  validation_blocked: { local_authorized: "authorized" },
+  authorized: { upload_accepted: "upload_admitted" },
+  upload_admitted: { upload_unknown: "upload_outcome_unknown", copy_reference: "copy_uploaded" },
+  upload_outcome_unknown: {
+    copy_reference: "copy_uploaded",
+    upload_unknown: "upload_outcome_unknown",
+  },
+  copy_uploaded: { certification_awaiting: "awaiting_authority_certification" },
+  awaiting_authority_certification: { submitted: "submitted_pending" },
+  submitted_pending: {
+    provider_received: "received",
+    provider_rejected: "rejected",
+    provider_unknown: "outcome_unknown",
+  },
+  outcome_unknown: {
+    provider_received: "received",
+    provider_rejected: "rejected",
+    provider_registered: "registered_if_required",
+    provider_unknown: "outcome_unknown",
+  },
+  received: {
+    provider_registered: "registered_if_required",
+    correction_demanded: "correction_requested",
+  },
+  rejected: { correction_demanded: "correction_requested" },
+};
+
 export function advanceSubmissionState(
   current: SubmissionState,
   observation: NormalizedObservation,
 ): Checked<SubmissionState> {
-  switch (current) {
-    case "prepared":
-      if (observation === "local_invalid") return Result.succeed("validation_blocked");
-      if (observation === "local_authorized") return Result.succeed("authorized");
-      break;
-    case "validation_blocked":
-      if (observation === "local_authorized") return Result.succeed("authorized");
-      break;
-    case "authorized":
-      if (observation === "upload_accepted") return Result.succeed("upload_admitted");
-      break;
-    case "upload_admitted":
-      if (observation === "upload_unknown") return Result.succeed("upload_outcome_unknown");
-      if (observation === "copy_reference") return Result.succeed("copy_uploaded");
-      break;
-    case "upload_outcome_unknown":
-      if (observation === "copy_reference") return Result.succeed("copy_uploaded");
-      if (observation === "upload_unknown") return Result.succeed("upload_outcome_unknown");
-      break;
-    case "copy_uploaded":
-      if (observation === "certification_awaiting") {
-        return Result.succeed("awaiting_authority_certification");
-      }
-      break;
-    case "awaiting_authority_certification":
-      if (observation === "submitted") return Result.succeed("submitted_pending");
-      break;
-    case "submitted_pending":
-      if (observation === "provider_received") return Result.succeed("received");
-      if (observation === "provider_rejected") return Result.succeed("rejected");
-      if (observation === "provider_unknown") return Result.succeed("outcome_unknown");
-      break;
-    case "outcome_unknown":
-      if (observation === "provider_received") return Result.succeed("received");
-      if (observation === "provider_rejected") return Result.succeed("rejected");
-      if (observation === "provider_registered") return Result.succeed("registered_if_required");
-      if (observation === "provider_unknown") return Result.succeed("outcome_unknown");
-      break;
-    case "received":
-      if (observation === "provider_registered") return Result.succeed("registered_if_required");
-      if (observation === "correction_demanded") return Result.succeed("correction_requested");
-      break;
-    case "rejected":
-      if (observation === "correction_demanded") return Result.succeed("correction_requested");
-      break;
-    default:
-      break;
+  const next = allowedTransitions[current]?.[observation];
+
+  if (next !== undefined) {
+    return Result.succeed(next);
   }
 
   if (observation === "unmapped_status") {
