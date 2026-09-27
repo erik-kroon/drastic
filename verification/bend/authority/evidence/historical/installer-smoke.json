@@ -1,0 +1,53 @@
+{
+  "status": "passed",
+  "scope": "temporary fixture worktree only; not the user worktree",
+  "dryRunModifiedParent": false,
+  "overwrittenParentFiles": 0,
+  "repeatInstallRefused": true,
+  "relocatedLocalSuite": {
+    "status": "passed",
+    "assertions": 13466,
+    "lawProofPairs": 35,
+    "runtimeId": "node:v22.16.0:linux:x64"
+  },
+  "parentSentinelsPreserved": [
+    "README.md",
+    "package.json",
+    "evidence/local-verification.json",
+    "lib/owner.mjs"
+  ],
+  "installerRuns": [
+    {
+      "command": [
+        "node",
+        "install.mjs",
+        "/mnt/data/work/openerp installer with spaces vda95gzw/OpenERP worktree"
+      ],
+      "exitCode": 0,
+      "stdout": "{\n  \"mode\": \"dry-run\",\n  \"target\": \"/mnt/data/work/openerp installer with spaces vda95gzw/OpenERP worktree/verification/bend/authority\",\n  \"files\": 104,\n  \"parentFilesOverwritten\": 0,\n  \"productionApproved\": false\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "install.mjs",
+        "/mnt/data/work/openerp installer with spaces vda95gzw/OpenERP worktree",
+        "--apply"
+      ],
+      "exitCode": 0,
+      "stdout": "{\n  \"mode\": \"apply\",\n  \"target\": \"/mnt/data/work/openerp installer with spaces vda95gzw/OpenERP worktree/verification/bend/authority\",\n  \"files\": 104,\n  \"parentFilesOverwritten\": 0,\n  \"productionApproved\": false\n}\nInstalled the new child only. No existing code, trust entry, commit or deployment was changed.\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "install.mjs",
+        "/mnt/data/work/openerp installer with spaces vda95gzw/OpenERP worktree",
+        "--apply"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "file:///mnt/data/release/openerp-bend-authority-upgrade/install.mjs:16\nif (exists) throw Error('Refusing to overwrite an existing verification/bend/authority directory or link');\n                  ^\n\nError: Refusing to overwrite an existing verification/bend/authority directory or link\n    at file:///mnt/data/release/openerp-bend-authority-upgrade/install.mjs:16:19\n\nNode.js v22.16.0\n"
+    }
+  ]
+}

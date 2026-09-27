@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2023",
+    "skipLibCheck": false
+  },
+  "files": [
+    "tests/types.mts",
+    "src/index.d.mts"
+  ]
+}

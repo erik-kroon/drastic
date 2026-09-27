@@ -1,0 +1,57 @@
+{
+  "schema": "openerp-bend-release/v1",
+  "releaseId": "vat-monetary-2026-09-27",
+  "sourceTreeDigest": "sha256:07f8423ba6371826f2822fb45b329c29b0b67d07949dc003a9da3d6e45c208cc",
+  "artifactDigest": "sha256:e83aac2d7b5b4da88fee48f112c0065d32aeddb5a5075de53804e987b34f548c",
+  "compiler": {
+    "repository": "bendlang/bend",
+    "commit": "af569d4826913b2ce3557e9829ccad31fcf86f94",
+    "checkerBlob": "c38e9e203530568b500dfc34785372d427706a6c",
+    "compilerBlob": "12ffbef1837a184fb7c5a255c4847397b2eec75a"
+  },
+  "operations": [
+    "money.round.v1",
+    "vat.project.v1"
+  ],
+  "semantics": {
+    "money.round.v1": "signed-rational-round-output38-input160-v1",
+    "vat.project.v1": "qualified-contributions-explicit-minor-unit-primitive-net-v1"
+  },
+  "receipts": [
+    {
+      "kind": "source-check",
+      "path": "source-check.json",
+      "digest": "sha256:39c15c23d97e5f7cd0ff9907ea6ec73f4c237a2b0aebab1953178862e6d64f30"
+    },
+    {
+      "kind": "safe-kernel",
+      "path": "safe-kernel.json",
+      "digest": "sha256:48ed1d5a8dc147c7591caf8a553cd3ee1567494e3a355112cfb1cfb7c37b8649"
+    },
+    {
+      "kind": "reproducible-build",
+      "path": "reproducible-build.json",
+      "digest": "sha256:d4b4f97e7688151a955c4564bfd244440273238a3b796c359c7e8f396ac2818e"
+    },
+    {
+      "kind": "compiled-differentials",
+      "path": "compiled-differentials.json",
+      "digest": "sha256:76bc9988b9c77b85d456d61e8340a050f3dd3fdff99822e8e632f55a1c397f68"
+    },
+    {
+      "kind": "runtime-probe",
+      "path": "runtime-probe.json",
+      "digest": "sha256:e139e1136deaca33cfa8419417c26e00ee9e24337ef8e0c25be7bbadb836886b"
+    },
+    {
+      "kind": "host-integration",
+      "path": "host-integration.json",
+      "digest": "sha256:52d45248a9b21d9410b01ca1b9408daa2350f61b7bee5477a050627698c1ac0c"
+    },
+    {
+      "kind": "owner-parity",
+      "path": "owner-parity.json",
+      "digest": "sha256:b0e146d0728a7dade07fd79d574decf30ac16e1fb0d429e19e756c3137ea2e30"
+    }
+  ]
+}

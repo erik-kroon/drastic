@@ -92,3 +92,14 @@ See [integration](docs/INTEGRATION.md), [proof coverage](docs/PROOF-COVERAGE.md)
 The original archive manifest is retained as
 [`upstream/ORIGINAL-MANIFEST.json`](upstream/ORIGINAL-MANIFEST.json); its checksums
 describe the supplied archive, not the locally adapted files.
+
+## Authority candidate
+
+The additive [authority candidate](authority/README.md) has its own model snapshot,
+versioned interfaces, stronger arithmetic proofs and staged compiler/release
+checks. It reuses this kit's checked source loader. Run its independent lane with
+`npm --prefix verification/bend/authority run verify:local`.
+
+Its pinned-source JS build, safe kernel, compiled suites, direct current-owner
+adapter and real-host qualification are exercised in the authority release lane. This parent's evidence
+manifest excludes the child. Neither lane grants posting or deployment authority.

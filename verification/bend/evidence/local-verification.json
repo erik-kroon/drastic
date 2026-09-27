@@ -1,10 +1,10 @@
 {
   "status": "passed-local-verification",
-  "capturedAt": "2026-09-27T09:49:13.390Z",
+  "capturedAt": "2026-09-27T11:44:33.305Z",
   "node": "v26.4.0",
   "platform": "darwin",
   "arch": "arm64",
-  "repositoryRevision": "71a73eef8c9838b48c1780e56410bde10e83e515",
+  "repositoryRevision": "09fdb19837bb1535b1b4c060e68a0b237858b0a5",
   "sourceHashes": {
     "bend/Allocation.bend": "ae75c3ec9ec4d1fa7fa944347a9312e72effb3d82c9ec01bf85fa905e2ec5e53",
     "bend/BigInt.bend": "c5a2e3d868798a4724eb6dbc5fbddc675aaf2a47fe276381d606cae0a2a1ccc7",
@@ -18,6 +18,7 @@
     "bend/PROOF.bend": "926807cbf70d4c03082a1de9183bc3252a53af2eac4af3bb06a2bb0c3a022661",
     "bend/Rational.bend": "939d7c7f05befdd516434a818695635bea97fbe275382a24c73326a585ad913c",
     "bend/Vat.bend": "bd48274074b4663fcfc474ec1d2fd96658947b9cd35ddcfffec4bbe09858ec9f",
+    "current-owner-authority.mjs": "9700802b0826548210d09f7e67da4e49c71285bc5769669472516c51ce63ba8c",
     "docs/ARITHMETIC.md": "17bc00b3120097f9cf97a87db239307ef0496f147a0bd9cff93eeccf11b07e51",
     "docs/INTEGRATION.md": "4345dbb958952b7784952d25ee68c41f370f542e3a6067291b033ef14019e175",
     "docs/LOCAL-INTEGRATION.md": "10e242d919bac4644b53118ee55fce301b3b29b4cc162b113631313769ad7cde",
@@ -39,11 +40,11 @@
     "NOTICE": "81ec34f21491e16f151cf461c7f891e90c80bd0703ebd53de404d6b32d30abfd",
     "package.json": "3e8a1102edd66680848d98365767a7c13c2288e68075bcddf5e440aaa6f9a195",
     "patches/0001-fix-negative-exact-floor.patch": "eac1abbbd826b6b239c0969cdf1d3a5444d765cb3668741de3a43090eccb0dc0",
-    "README.md": "8516658c14b1abea69e147d96e8b6e5bfafe9bae9c2ba441a600a4fefb4fc4df",
+    "README.md": "a6827975c035f9e2c05c621737f2462b79b65d36926ec5bbb069341659a0ebcd",
     "scripts/check-proofs.mjs": "7affc6629375b0c91e53dec837d97e10e1712ca46d6be1319cc951eb29331632",
     "scripts/demo.mjs": "579ee790b199257c610348c57b5f5d549a3550bbd63bc537c856f567cfbafba3",
     "scripts/solve.mjs": "3f1aa3d1a8f6970c723cb492c4ae2c9f5db7beb97ec4cbb3c53f87ed628bce97",
-    "scripts/verify-local.mjs": "105af8fd56f8435d183061ce36fd965273c3f4182acbbd0db121e5208fd7c6c1",
+    "scripts/verify-local.mjs": "6f8f8d9f57756d2bde89592cf42b3500f72a5de33d9745452781e324e89f3328",
     "scripts/verify-owner.mjs": "0f6213cde917ec5a68f23d6933a633efc3e8a9ae73611f78c64ba7b2c5689dbe",
     "scripts/verify-release.mjs": "1c6e5fad792f121211ebf1439623ad10f880afb4e577647b5e5604f4330722c4",
     "tests/run.mjs": "70ec4f35786ac68554b902ee66288868e10e783dc3f0231f871ad13db32f7b5f",
@@ -57,7 +58,7 @@
   },
   "sourceStable": true,
   "ownerSourceHashes": {
-    "jurisdictions/se/src/vat/actual.ts": "b7b1f2bcabb4eec4fe864a8af8b1b14c5ce2aa8f42eb6f7a5a457694533edc60",
+    "jurisdictions/se/src/vat/actual.ts": "3f3dc6fcbc8c7d7fae59a7b3e802c701d6c8e789f16e71da66dca54b082ea8b6",
     "packages/domain/src/purchasing.ts": "bbf04d5c7955e51f8fcc7d9ba8c7f14a94b1165d8763cfec05fe0bd2867b9726",
     "packages/domain/src/values.ts": "5020591e4775df25473a0cfb73da0e9b7aa9d01f8fbc1d42dcffd8ce665fe87b",
     "packages/domain/src/money.ts": "aabf2ae4c656ace129c822e81e194da592bd3b46f97a197f6565e8c845c36663",
@@ -78,7 +79,7 @@
       ],
       "status": 0,
       "signal": null,
-      "stderr": "(node:96953) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
+      "stderr": "(node:46552) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
       "artifact": "test-output.txt"
     },
     {
@@ -100,7 +101,7 @@
       ],
       "status": 0,
       "signal": null,
-      "stderr": "(node:97011) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
+      "stderr": "(node:46570) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n",
       "artifact": "owner-output.json"
     },
     {

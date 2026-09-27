@@ -13,42 +13,42 @@
   "groups": {
     "BigNat arithmetic and bounds": {
       "assertions": 2852,
-      "ms": 1174
+      "ms": 351
     },
     "BigInt sign and division": {
       "assertions": 4327,
-      "ms": 152
+      "ms": 67
     },
     "Reduced rationals and rounding": {
       "assertions": 2319,
-      "ms": 317
+      "ms": 180
     },
     "Decimal conversion": {
       "assertions": 177,
-      "ms": 782
+      "ms": 246
     },
     "Ledger and allocation invariants": {
       "assertions": 485,
-      "ms": 123
+      "ms": 34
     },
     "Historical VAT excerpt differential checks": {
       "assertions": 685,
-      "ms": 218
+      "ms": 84
     },
     "VAT filing-unit scale contract": {
       "assertions": 71,
-      "ms": 19
+      "ms": 8
     },
     "PRY-33 exhaustive differential and scope": {
       "assertions": 319,
-      "ms": 122
+      "ms": 97
     },
     "Negative proof and checker controls": {
       "assertions": 9,
-      "ms": 502
+      "ms": 352
     }
   },
-  "elapsedMs": 3975,
+  "elapsedMs": 1530,
   "upstreamRoundingRegressions": [
     {
       "numerator": "-300",

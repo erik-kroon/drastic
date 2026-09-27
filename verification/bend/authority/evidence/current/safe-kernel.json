@@ -1,0 +1,71 @@
+{
+  "schema": "openerp-bend-receipt/v1",
+  "kind": "safe-kernel",
+  "status": "passed",
+  "official": true,
+  "compilerCommit": "af569d4826913b2ce3557e9829ccad31fcf86f94",
+  "sourceTreeDigest": "sha256:07f8423ba6371826f2822fb45b329c29b0b67d07949dc003a9da3d6e45c208cc",
+  "artifactDigest": "sha256:e83aac2d7b5b4da88fee48f112c0065d32aeddb5a5075de53804e987b34f548c",
+  "translationDigest": "sha256:34f2a9aefbd85dfb14d4874501dd4b0bc99e30b23339b78c98224a611207135e",
+  "kernelBinaryDigest": "sha256:b38c3a820d1230db7b564d9e5e581a2c7cec2e34851ff498b2e84058f97f724d",
+  "rootCount": 227,
+  "openObligations": 0,
+  "excludedDefinitions": [],
+  "runs": [
+    {
+      "command": "/var/folders/50/zdx6l4px2wg7wh8q7_78g2qr0000gn/T/opencode/lean-4.34.0-darwin_aarch64/bin/lean",
+      "args": [
+        "--version"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "Lean (version 4.34.0, arm64-apple-darwin24.6.0, commit 293d5d0c0c3f3dded4688b3ccd6a33939ac5102b, Release)\n",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    },
+    {
+      "command": "/var/folders/50/zdx6l4px2wg7wh8q7_78g2qr0000gn/T/opencode/lean-4.34.0-darwin_aarch64/bin/lean",
+      "args": [
+        "-c",
+        "bendtt.c",
+        "bendtt.lean"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    },
+    {
+      "command": "/var/folders/50/zdx6l4px2wg7wh8q7_78g2qr0000gn/T/opencode/lean-4.34.0-darwin_aarch64/bin/leanc",
+      "args": [
+        "-O3",
+        "-DNDEBUG",
+        "bendtt.c",
+        "-o",
+        "bendtt"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    },
+    {
+      "command": "/var/folders/50/zdx6l4px2wg7wh8q7_78g2qr0000gn/T/openerp-bendtt-F4hazk/bendtt",
+      "args": [
+        "/Users/admin/openERP/verification/bend/authority/dist/Kernel.bendtt"
+      ],
+      "status": 0,
+      "signal": null,
+      "stdout": "All terms check.\n",
+      "stderr": "",
+      "error": null,
+      "passed": true
+    }
+  ],
+  "caveat": "The upstream translation and JS code generator are not proved by this kernel check."
+}
