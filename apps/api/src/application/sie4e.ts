@@ -1,6 +1,5 @@
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Sie4E from "@open-erp/contracts/sie4e";
-import * as Dimensions from "@open-erp/domain/dimensions";
 import {
   buildSie4EMembership,
   compareSie4E,
@@ -10,7 +9,6 @@ import {
 } from "@open-erp/jurisdiction-se/sie4e";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { readEvidence, readTableAccess } from "../db/commerce/access";
 import * as Catalogue from "../db/dimensions";
@@ -27,7 +25,6 @@ import {
   type JsonObject,
   type Scope,
 } from "./commerce/support";
-import { objectMapSource } from "./dimensions/assignments";
 import { canonicalText, digest } from "./json";
 import { failure } from "./failures";
 import { isoNow, newId, replay, saveCommand } from "./posting";
@@ -94,52 +91,99 @@ function asDomainFailure(error: unknown) {
   return error instanceof Accounting.AccountingError ? error : failure("InternalError");
 }
 
-// NEXT-14 owns the original dimension assignment. The object map it freezes is
-// the only representation of those facts a type-4 export can carry, so this
-// export derives its dimension position from that owner instead of asserting
-// that no owner exists. The renderer release below still emits no object
-// records, so a non-empty map is a representation loss and the export refuses
-// rather than emitting an empty object group beside real assignments.
-function dimensionObjectMapInTransaction(
-  transaction: Transaction,
-  scope: Scope,
-  from: string,
-  to: string,
+const freezeDimensions = Effect.fn("sie4e.freezeDimensions")(function* (
+  retained: ReadonlyArray<SieDb.SieBookDimensionAssignment>,
 ) {
-  return Effect.gen(function* () {
-    const effective = yield* Catalogue.readEffectiveDimensions(transaction, scope.bookId, to);
-    const values = yield* Catalogue.readEffectiveDimensionValues(transaction, scope.bookId, to);
+  const dimensions = new Map<string, { number: number; code: string; name: string }>();
+  const objects = new Map<string, { dimensionNumber: number; code: string; name: string }>();
+  const assignments = new Map<string, Array<Accounting.OriginalDimensionAssignment>>();
 
-    const retained =
-      effective.length === 0
-        ? []
-        : yield* Catalogue.readOriginalAssignmentsInWindow(
-            transaction,
-            scope.bookId,
-            from,
-            to,
-            Catalogue.maximumAssignmentRows,
-          );
+  // The read orders native codes with the C collation. Neither current catalogue
+  // heads nor report restatements may replace the original revision's name.
+  for (const row of retained) {
+    if (row.dimensionName === null)
+      return yield* blocked(`Dimension ${row.dimensionCode} has no retained revision.`);
 
-    if (retained.length > Catalogue.maximumAssignmentRows) return yield* unsupported();
+    const dimension = dimensions.get(row.dimensionCode) ?? {
+      number: dimensions.size + 20,
+      code: row.dimensionCode,
+      name: row.dimensionName,
+    };
 
-    const frozen = Dimensions.freezeObjectMap({
-      dimensions: effective,
-      values,
-      ...objectMapSource(retained),
-    });
+    if (dimension.name !== row.dimensionName)
+      return yield* blocked(`Dimension ${row.dimensionCode} has conflicting retained labels.`);
 
-    if (Result.isFailure(frozen))
-      return yield* Effect.fail(
-        new Accounting.AccountingError({
-          code: "UnsupportedProfile",
-          message: frozen.failure.message,
-        }),
-      );
+    dimensions.set(row.dimensionCode, dimension);
 
-    return frozen.success;
-  });
-}
+    if (row.status === "explicit") {
+      if (row.valueCode === null || row.valueRevision === null)
+        return yield* blocked("An explicit dimension assignment has no retained value.");
+
+      const identity = `${dimension.number}:${row.valueCode}`;
+      const previous = objects.get(identity);
+
+      if (previous !== undefined && previous.name !== row.capturedLabel)
+        return yield* blocked(
+          `Object ${row.dimensionCode}:${row.valueCode} has conflicting retained labels.`,
+        );
+
+      objects.set(identity, {
+        dimensionNumber: dimension.number,
+        code: row.valueCode,
+        name: row.capturedLabel,
+      });
+    }
+
+    const identity = `${row.voucherId}:${row.lineId}`;
+    const group = assignments.get(identity) ?? [];
+    group.push(yield* decode(Accounting.OriginalDimensionAssignment, row));
+    assignments.set(identity, group);
+  }
+
+  return {
+    objectMap: yield* decode(Sie4E.Sie4EObjectMap, {
+      dimensions: [...dimensions.values()],
+      objects: [...objects.values()],
+    }),
+    assignments,
+  };
+});
+
+const captureDimensions = Effect.fn("sie4e.captureDimensions")(function* (
+  transaction: Transaction,
+  bookId: string,
+  startsOn: string,
+  asOf: string,
+  boundary: string,
+  openingVoucherId: string | null,
+) {
+  const opening = (yield* SieDb.readSieBookDimensionalOpening(
+    transaction,
+    bookId,
+    startsOn,
+    boundary,
+    openingVoucherId,
+  ))[0];
+
+  if (opening?.present)
+    return yield* blocked(
+      "The opening basis carries original dimension values. This transaction-object profile does not emit object opening balances, so this export would lose their representation.",
+    );
+
+  const rows = yield* SieDb.readSieBookDimensionAssignments(
+    transaction,
+    bookId,
+    startsOn,
+    asOf,
+    boundary,
+    openingVoucherId,
+    Catalogue.maximumAssignmentRows,
+  );
+
+  if (rows.length > Catalogue.maximumAssignmentRows) return yield* unsupported();
+
+  return yield* freezeDimensions(rows);
+});
 
 function requireSieBookAccess(transaction: Transaction, write: boolean) {
   const tables = [...SieDb.sieBookTables];
@@ -461,18 +505,6 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
 
       if (evidence === undefined) return yield* failure("MissingEvidence");
 
-      const objectMap = yield* dimensionObjectMapInTransaction(
-        transaction,
-        command.scope,
-        year.startsOn,
-        input.asOf,
-      );
-
-      if (objectMap.objects.length > 0)
-        return yield* blocked(
-          `NEXT-14 retains ${objectMap.usedAssignmentCount} original dimension assignment(s) over this window and freezes them into ${objectMap.objects.length} exported object(s) across ${objectMap.dimensions.length} dimension(s). Renderer release openerp-sie4e-v1 emits no object records, so emitting this file would drop a recorded assignment. The complete-book export is blocked for this book until a reviewed object-record profile exists in the renderer release.`,
-        );
-
       const boundary = book.committedSequence;
 
       const base = (yield* StatementDb.readStatementOpeningBase(
@@ -483,6 +515,15 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
 
       const openingVoucherId =
         base?.mode === "opening_set" ? (base.openingVoucherId ?? null) : null;
+
+      const { objectMap, assignments } = yield* captureDimensions(
+        transaction,
+        command.scope.bookId,
+        year.startsOn,
+        input.asOf,
+        boundary,
+        openingVoucherId,
+      );
 
       const prior = (yield* SieDb.readSieBookPriorVoucher(
         transaction,
@@ -523,6 +564,11 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
       );
 
       if (lines.length > maximumLines) return yield* unsupported();
+
+      const lineIdentities = new Set(lines.map((line) => `${line.voucherId}:${line.lineId}`));
+
+      if ([...assignments.keys()].some((identity) => !lineIdentities.has(identity)))
+        return yield* blocked("A retained dimension assignment has no selected journal line.");
 
       // A voucher dated inside the selected window but labelled with another
       // fiscal year is an inconsistent selection, never a silently dropped one.
@@ -571,11 +617,16 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
       // One membership position per retained row, and the persisted row body
       // carries that same position, so a page cursor and a retained row can
       // never disagree about the order.
-      const retained = [...membership.accounts, ...membership.balances, ...membership.lines].map(
+      const dimensionedLines = membership.lines.map((line) => ({
+        ...line,
+        originalDimensions: assignments.get(`${line.voucherId}:${line.lineId}`) ?? [],
+      }));
+
+      const retained = [...membership.accounts, ...membership.balances, ...dimensionedLines].map(
         (row, index) => Object.assign({}, row, { ordinal: index + 1 }),
       );
 
-      const sourceDigest = yield* digest(yield* toJsonObject({ rows: retained }));
+      const sourceDigest = yield* digest(yield* toJsonObject({ rows: retained, objectMap }));
       const cutoff = yield* isoNow(transaction);
 
       const body = yield* toJsonObject({
@@ -601,6 +652,7 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
           reviewed: false,
         },
         dimensions: objectMap.dimensions.map((dimension) => dimension.code),
+        objectMap,
         counts: {
           accounts: membership.accounts.length,
           balances: membership.balances.length,
@@ -612,7 +664,7 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
         closingControlTotalMinor: membership.controlTotals.closingMinor.toString(),
         sourceDigest,
         rendererRelease: {
-          version: "openerp-sie4e-v1",
+          version: "openerp-sie4e-v2",
           format: "SIE4E",
           specificationEdition: "4C-2025-08-06",
           specificationSha256: "96fcd3f7931b2aa22d18fbd518a33f863b57edd5562a78af195251e2bf38bac1",
@@ -630,13 +682,15 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
             "#VALUTA",
             "#PROSA",
             "#KONTO",
+            "#DIM",
+            "#OBJEKT",
             "#IB",
             "#UB",
             "#RES",
             "#VER",
             "#TRANS",
           ],
-          objectRecords: "absent",
+          objectRecords: "original_transaction_assignments",
           priorYearRecords: "absent",
         },
         coverageLimitations: [
@@ -650,8 +704,9 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
               ]
             : []),
           {
-            code: "no_object_owner" as const,
-            detail: `NEXT-14 is the owner of the original dimension assignment and freezes the object map for this selection: ${objectMap.dimensions.length} declared dimension(s), ${objectMap.objects.length} exported object(s), ${objectMap.usedAssignmentCount} used assignment(s). The object group is empty here because no posted line in this window carries an explicit dimension value, not because an assignment was reviewed away.`,
+            code: "original_assignment_states" as const,
+            detail:
+              "Original transaction values use retained dimension and object codes. Unassigned, historical-exemption and not-recorded states remain distinct in the retained membership; SIE has no separate object for these states. Object and period balances are absent. Dimensional openings are unsupported.",
           },
         ],
         createdBy: principal.actorId,

@@ -1,5 +1,6 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import type * as Schema from "effect/Schema";
+import type { OriginalDimensionAssignment } from "@open-erp/domain/dimensions";
 import { sieBookExportRows, sieBookExports } from "./schema";
 import type { Transaction } from "./transaction";
 
@@ -19,6 +20,8 @@ export const sieBookTables = [
   "journal_lines",
   "historical_bases",
   "dimensions",
+  "dimension_revisions",
+  "journal_line_dimensions",
   "evidence",
   "command_receipts",
 ] as const;
@@ -71,6 +74,63 @@ export type SieBookOrdinalRow = { readonly ordinal: string | null };
 export type SieBookTotalRow = { readonly total: number };
 
 export type SieBookPriorVoucherRow = { readonly present: boolean };
+
+export type SieBookDimensionAssignment = OriginalDimensionAssignment & {
+  readonly voucherId: string;
+  readonly lineId: string;
+  readonly dimensionName: string | null;
+};
+
+export function readSieBookDimensionalOpening(
+  transaction: Transaction,
+  bookId: string,
+  startsOn: string,
+  sequence: string,
+  openingVoucherId: string | null,
+) {
+  return transaction.execute<SieBookPriorVoucherRow>(
+    sql`
+    select exists (
+      select 1 from openerp.journal_line_dimensions d
+      join openerp.vouchers v on v.book_id = d.book_id and v.id = d.voucher_id
+      where d.book_id = ${bookId} and d.status = 'explicit'
+        and v.sequence <= ${sequence}::bigint
+        and (v.posting_date < ${startsOn}::date or v.id = ${openingVoucherId}::text)
+    ) as present
+  `,
+    "objects",
+  );
+}
+
+export function readSieBookDimensionAssignments(
+  transaction: Transaction,
+  bookId: string,
+  startsOn: string,
+  asOf: string,
+  sequence: string,
+  openingVoucherId: string | null,
+  limit: number,
+) {
+  return transaction.execute<SieBookDimensionAssignment>(
+    sql`
+    select d.voucher_id as "voucherId", d.line_id as "lineId",
+      d.dimension_code as "dimensionCode", d.dimension_revision as "dimensionRevision",
+      d.status, d.value_code as "valueCode", d.value_revision as "valueRevision",
+      d.captured_label as "capturedLabel", d.exemption_evidence_id as "exemptionEvidenceId",
+      d.source_value_code as "sourceValueCode", r.name as "dimensionName"
+    from openerp.journal_line_dimensions d
+    join openerp.vouchers v on v.book_id = d.book_id and v.id = d.voucher_id
+    left join openerp.dimension_revisions r on r.book_id = d.book_id
+      and r.code = d.dimension_code and r.revision = d.dimension_revision
+    where d.book_id = ${bookId} and v.sequence <= ${sequence}::bigint
+      and v.posting_date between ${startsOn}::date and ${asOf}::date
+      and v.id is distinct from ${openingVoucherId}::text
+    order by d.dimension_code collate "C", d.value_code collate "C", v.sequence, d.line_id collate "C"
+    limit ${limit + 1}
+  `,
+    "objects",
+  );
+}
 
 export function readSieBookBook(transaction: Transaction, bookId: string) {
   return transaction.execute<{

@@ -31,11 +31,9 @@ function requireCatalogueAccess(transaction: Transaction, write: boolean) {
       const denied = Catalogue.dimensionTables.some((name) => {
         const access = rows.find((row) => row.tableName === name);
 
-        return (
-          access === undefined ||
-          !access.canSelect ||
-          (write && (!access.canInsert || !access.canUpdate))
-        );
+        // Revisions and receipts are append-only. Catalogue heads use narrow
+        // column UPDATE grants, which PostgreSQL checks on the actual write.
+        return access === undefined || !access.canSelect || (write && !access.canInsert);
       });
 
       return denied ? unsupported() : Effect.void;

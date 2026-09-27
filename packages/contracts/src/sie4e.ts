@@ -2,6 +2,7 @@ import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import { accountingErrors as errors } from "./accounting-errors";
 import * as Accounting from "./accounting";
+import { DimensionCode, OriginalDimensionAssignment } from "@open-erp/domain/dimensions";
 
 // NEXT-11: a complete selected-book SIE4E export. This is a different export
 // purpose from the retained SIE4I transaction transfer: it carries the frozen
@@ -19,7 +20,7 @@ export const Sie4ESpecificationSha256 = Schema.Literal(
 
 export const Sie4ESpecificationEdition = Schema.Literal("4C-2025-08-06");
 
-export const Sie4ERendererVersion = Schema.Literal("openerp-sie4e-v1");
+export const Sie4ERendererVersion = Schema.Literals(["openerp-sie4e-v1", "openerp-sie4e-v2"]);
 
 // The specification permits the organisation number with or without its grouping
 // dash. Both are declared representations of the same field; this release does
@@ -49,6 +50,8 @@ export const Sie4ERecordProfile = Schema.Array(
     "#VALUTA",
     "#PROSA",
     "#KONTO",
+    "#DIM",
+    "#OBJEKT",
     "#IB",
     "#UB",
     "#RES",
@@ -61,7 +64,7 @@ export const Sie4ERecordProfile = Schema.Array(
 // exactly which type-4 records the file carries without inferring them.
 export const Sie4EEmittedRecords = Schema.Struct({
   recordProfile: Sie4ERecordProfile,
-  objectRecords: Schema.Literal("absent"),
+  objectRecords: Schema.Literals(["absent", "original_transaction_assignments"]),
   priorYearRecords: Schema.Literal("absent"),
 });
 
@@ -102,6 +105,7 @@ export const Sie4ELimitation = Schema.Struct({
     "no_reviewed_company_profile",
     "no_external_source_completeness",
     "no_object_owner",
+    "original_assignment_states",
     "unreviewed_account_classification",
     "not_a_statutory_archive",
     "no_destination_validation",
@@ -134,6 +138,25 @@ export const Sie4EReceipt = Schema.Struct({
   actorId: Schema.String,
 });
 
+// Native dimensions have no reviewed SIE standard meaning. Numbers 20 and above
+// are freely assignable under 4C section 8.17; object codes remain exact strings.
+export const Sie4EObjectMap = Schema.Struct({
+  dimensions: Schema.Array(
+    Schema.Struct({
+      number: Schema.Int.check(Schema.isGreaterThanOrEqualTo(20)),
+      code: DimensionCode,
+      name: Schema.String,
+    }),
+  ).check(Schema.isMaxLength(500)),
+  objects: Schema.Array(
+    Schema.Struct({
+      dimensionNumber: Schema.Int.check(Schema.isGreaterThanOrEqualTo(20)),
+      code: DimensionCode,
+      name: Schema.String,
+    }),
+  ).check(Schema.isMaxLength(20000)),
+});
+
 export const Sie4EExport = Schema.Struct({
   kind: Schema.Literal("complete_book_sie_v1"),
   id: Accounting.Identifier,
@@ -156,6 +179,9 @@ export const Sie4EExport = Schema.Struct({
     reviewed: Schema.Literal(false),
   }),
   dimensions: Schema.Array(Schema.String).check(Schema.isMaxLength(500)),
+  // Absent on retained v1 captures. The v2 renderer requires this map and each
+  // line's originalDimensions; missing data never defaults to an empty group.
+  objectMap: Schema.optional(Sie4EObjectMap),
   counts: Schema.Struct({
     accounts: Schema.Int,
     balances: Schema.Int,
@@ -222,6 +248,9 @@ export const Sie4ELineRow = Schema.Struct({
   creditMinor: Accounting.MinorUnits,
   signedMinor: Accounting.SignedMinorUnits,
   description: Schema.String,
+  originalDimensions: Schema.optional(
+    Schema.Array(OriginalDimensionAssignment).check(Schema.isMaxLength(64)),
+  ),
 });
 
 export const Sie4ERow = Schema.Union([Sie4EAccountRow, Sie4EBalanceRow, Sie4ELineRow]);
@@ -287,7 +316,7 @@ export const Sie4EList = Schema.Struct({
 export const Sie4ECapabilities = {
   sie4e_prepare: {
     description:
-      "Freeze a complete selected-book SIE4E export through asOf, render exact CP437 bytes outside the financial transaction and retain the independently checked bytes with their manifest. Requires a reviewed account classification, a retained legal-name and organisation-number evidence record and an established opening representation. A dimension-bearing book refuses; destination acceptance is never established.",
+      "Freeze a selected-book SIE4E export through asOf, render exact CP437 bytes outside the financial transaction and retain independently checked bytes. Requires account classification, retained legal-identity evidence and an established opening. Original transaction dimension codes and assignments are retained. Dimensional openings, conflicting retained labels and unrepresentable text refuse; destination acceptance is not established.",
     input: Schema.Struct({
       scope: Accounting.Scope,
       idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],

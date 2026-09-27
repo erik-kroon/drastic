@@ -436,6 +436,87 @@ function orderVouchers(lines: ReadonlyArray<LineRow>) {
     );
 }
 
+function originalObjects(capture: Capture, line: LineRow) {
+  if (capture.rendererRelease.version === "openerp-sie4e-v1") {
+    if (line.originalDimensions?.length)
+      refuse("The v1 renderer cannot represent original dimension assignments.");
+
+    return [];
+  }
+
+  if (capture.objectMap === undefined || line.originalDimensions === undefined)
+    refuse("The v2 capture is missing its object map or original line assignments.");
+
+  const seen = new Set<string>();
+  const objects: Array<{ dimensionNumber: number; code: string }> = [];
+
+  for (const assignment of line.originalDimensions) {
+    if (seen.has(assignment.dimensionCode)) refuse("A line repeats a dimension assignment.");
+    seen.add(assignment.dimensionCode);
+
+    const dimension = capture.objectMap.dimensions.find(
+      (entry) => entry.code === assignment.dimensionCode,
+    );
+
+    if (dimension === undefined) refuse("An original assignment has no dimension declaration.");
+
+    if (assignment.status !== "explicit") continue;
+
+    const object = capture.objectMap.objects.find(
+      (entry) => entry.dimensionNumber === dimension.number && entry.code === assignment.valueCode,
+    );
+
+    if (object === undefined || object.name !== assignment.capturedLabel)
+      refuse("An original assignment has no matching retained object declaration.");
+
+    objects.push({ dimensionNumber: dimension.number, code: object.code });
+  }
+
+  return objects.sort((left, right) => left.dimensionNumber - right.dimensionNumber);
+}
+
+function validateObjectProfile(capture: Capture) {
+  if (capture.rendererRelease.version === "openerp-sie4e-v1") {
+    if (capture.objectMap !== undefined || capture.emittedRecords.objectRecords !== "absent")
+      refuse("The v1 renderer does not emit object records.");
+
+    return;
+  }
+
+  const map = capture.objectMap;
+
+  if (
+    map === undefined ||
+    capture.emittedRecords.objectRecords !== "original_transaction_assignments"
+  )
+    refuse("The v2 renderer requires a frozen original-assignment object map.");
+
+  if (
+    JSON.stringify(capture.dimensions) !== JSON.stringify(map.dimensions.map((entry) => entry.code))
+  )
+    refuse("The captured dimension list disagrees with the object map.");
+
+  if (
+    new Set(map.dimensions.map((entry) => entry.code)).size !== map.dimensions.length ||
+    map.dimensions.some((entry, index) => entry.number !== index + 20)
+  )
+    refuse("Native dimensions require unique codes and consecutive SIE numbers starting at 20.");
+
+  const identities = new Set<string>();
+
+  for (const object of map.objects) {
+    const identity = `${object.dimensionNumber}:${object.code}`;
+
+    if (
+      identities.has(identity) ||
+      !map.dimensions.some((entry) => entry.number === object.dimensionNumber)
+    )
+      refuse("The object map repeats an object or references an undeclared dimension.");
+
+    identities.add(identity);
+  }
+}
+
 // Strict record writer for the pinned type-4 family. Text, quoting, line ending
 // and byte encoding are all fixed here; nothing is substituted afterwards.
 export function renderSie4E(
@@ -443,14 +524,10 @@ export function renderSie4E(
   rows: ReadonlyArray<Row>,
   limitations: ReadonlyArray<Limitation> = capture.coverageLimitations,
 ): Uint8Array<ArrayBuffer> {
-  if (
-    capture.currencyScale !== 2 ||
-    capture.emittedRecords.objectRecords !== "absent" ||
-    capture.emittedRecords.priorYearRecords !== "absent"
-  )
-    refuse(
-      "This SIE4E renderer supports only currency scale two and no object or prior-year records.",
-    );
+  if (capture.currencyScale !== 2 || capture.emittedRecords.priorYearRecords !== "absent")
+    refuse("This SIE4E renderer supports only currency scale two and no prior-year records.");
+
+  validateObjectProfile(capture);
 
   if (capture.kind !== "complete_book_sie_v1")
     refuse("A complete-book export requires a complete_book_sie_v1 capture.");
@@ -507,6 +584,12 @@ export function renderSie4E(
         .join(" ")}`,
     )}`,
     ...orderedAccounts.map((account) => `#KONTO ${account.code} ${quoted(account.name)}`),
+    ...(capture.objectMap?.dimensions ?? []).map(
+      (dimension) => `#DIM ${dimension.number} ${quoted(dimension.name)}`,
+    ),
+    ...(capture.objectMap?.objects ?? []).map(
+      (object) => `#OBJEKT ${object.dimensionNumber} ${quoted(object.code)} ${quoted(object.name)}`,
+    ),
     ...orderedBalances
       .filter((balance) => balance.accountClass === "balance_sheet")
       .map((balance) => `#IB 0 ${balance.code} ${amount(BigInt(balance.openingMinor))}`),
@@ -534,7 +617,11 @@ export function renderSie4E(
       "{",
       ...voucher.lines.map(
         (line) =>
-          `#TRANS ${line.accountCode} {} ${amount(BigInt(line.signedMinor))} ${date(line.postingDate)} ${quoted(line.description)}`,
+          `#TRANS ${line.accountCode} {${originalObjects(capture, line)
+            .map((object) => `${object.dimensionNumber} ${quoted(object.code)}`)
+            .join(
+              " ",
+            )}} ${amount(BigInt(line.signedMinor))} ${date(line.postingDate)} ${quoted(line.description)}`,
       ),
       "}",
     );
@@ -662,9 +749,36 @@ function checkHeader(capture: Capture, parsed: Sie4EParsed, note: Note) {
   if (currency?.fields[0] !== capture.currency) note("#VALUTA is not the captured currency.");
 
   if (singleRecord(parsed, "PROSA") === undefined) note("#PROSA is missing.");
+}
 
-  if (parsed.records.some((record) => record.tag === "DIM" || record.tag === "OBJEKT"))
-    note("Object records are present although the capture declares no dimension.");
+function checkObjectDeclarations(capture: Capture, parsed: Sie4EParsed, note: Note) {
+  const allowed = new Set<string>(capture.emittedRecords.recordProfile);
+
+  for (const record of parsed.records)
+    if (!allowed.has(`#${record.tag}`))
+      note(`Unexpected #${record.tag} record outside the captured profile.`);
+
+  const dimensions = parsed.records.filter((record) => record.tag === "DIM");
+  const objects = parsed.records.filter((record) => record.tag === "OBJEKT");
+
+  const expectedDimensions = (capture.objectMap?.dimensions ?? []).map((entry) => [
+    String(entry.number),
+    entry.name,
+  ]);
+
+  const expectedObjects = (capture.objectMap?.objects ?? []).map((entry) => [
+    String(entry.dimensionNumber),
+    entry.code,
+    entry.name,
+  ]);
+
+  if (
+    JSON.stringify(dimensions.map((entry) => entry.fields)) !== JSON.stringify(expectedDimensions)
+  )
+    note("Dimension declarations differ from the captured numbers and labels.");
+
+  if (JSON.stringify(objects.map((entry) => entry.fields)) !== JSON.stringify(expectedObjects))
+    note("Object declarations differ from the captured codes and labels.");
 }
 
 function checkAccountDeclarations(
@@ -752,11 +866,6 @@ function checkTransactions(parsed: Sie4EParsed, note: Note) {
 
       if (transaction.kind !== "TRANS")
         note(`Transaction ${voucher.series}:${voucher.number} is not a #TRANS record.`);
-
-      if (transaction.dimensions !== "{}")
-        note(
-          `Transaction ${voucher.series}:${voucher.number} carries an object group the capture does not hold.`,
-        );
 
       if (minor === null) {
         note(`Transaction ${voucher.series}:${voucher.number} has no exact two-decimal amount.`);
@@ -847,6 +956,16 @@ function checkVoucherIdentities(
         note(
           `Transaction ${position + 1} of voucher ${voucher.series}:${voucher.number} does not carry the retained description.`,
         );
+
+      const expectedObjects = originalObjects(capture, line);
+      const expectedGroup = `{${expectedObjects.map((object) => `${object.dimensionNumber} ${object.code}`).join(" ")}}`;
+
+      // Native object codes contain no whitespace or quotes. The independent
+      // parser removes field quotes, leaving exact codes, including leading zeroes.
+      if (transaction.dimensions !== expectedGroup)
+        note(
+          `Transaction ${position + 1} of voucher ${voucher.series}:${voucher.number} changed its original dimension assignments.`,
+        );
     });
   });
 
@@ -904,6 +1023,7 @@ export function compareSie4E(
   const lines = rows.filter((row): row is LineRow => row.kind === "line");
 
   checkHeader(capture, parsed, note);
+  checkObjectDeclarations(capture, parsed, note);
   checkAccountDeclarations(accounts, parsed, note);
 
   const controls = checkControls(balances, parsed, note);
