@@ -125,6 +125,7 @@ function SupplierInboxEntry(props: {
         </Box>
       ))}
       <SupplierExtraction
+        key={props.id}
         book={props.commerceProps.book}
         locale={props.commerceProps.locale}
         occurrenceId={props.id}

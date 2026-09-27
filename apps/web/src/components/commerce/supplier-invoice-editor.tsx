@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as Suppliers from "@open-erp/contracts/supplier-invoice-drafts";
 import * as Inbox from "@open-erp/contracts/supplier-inbox";
+import * as Extraction from "@open-erp/contracts/supplier-extraction";
 import * as Commerce from "@open-erp/contracts/commerce";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
@@ -78,6 +79,31 @@ export function SupplierInvoiceEditor(
   );
 }
 
+function invoiceHeaders(content: Draft["content"] | undefined, scale: number) {
+  return {
+    number: content?.supplierDocumentNumber ?? "",
+    sourceTotal:
+      content?.sourceTotalMinor == null ? "" : minorToDecimal(content.sourceTotalMinor, scale),
+    documentDate: content?.documentDate ?? "",
+    dueDate: content?.dueDate ?? "",
+  };
+}
+
+function initialLines(content: Draft["content"] | undefined, scale: number, fromInbox: boolean) {
+  return (
+    content?.lines.map((line) => editableInvoiceLine(scale, line)) ?? [
+      { ...editableInvoiceLine(scale), quantity: fromInbox ? "" : "1" },
+    ]
+  );
+}
+
+function inboxReviewAttempt(
+  inboxId: string | undefined,
+  inbox: typeof Inbox.SupplierInboxView.Type | undefined,
+) {
+  return inboxId ? (inbox?.attempts.at(-1)?.id ?? null) : null;
+}
+
 function SupplierEditorForm(
   props: CommerceProps & {
     baseline?: Draft;
@@ -93,22 +119,19 @@ function SupplierEditorForm(
   const sv = props.locale === "sv";
   const [baseline] = useState(props.baseline);
   const content = baseline?.content;
+  const [headers, setHeaders] = useState(() => invoiceHeaders(content, props.scale));
 
   const [party, setParty] = useState<typeof Commerce.CounterpartyRevision.Type | undefined>(
     baseline?.counterparty,
   );
 
-  const [lines, setLines] = useState(
-    () =>
-      content?.lines.map((line) => editableInvoiceLine(props.scale, line)) ?? [
-        editableInvoiceLine(props.scale),
-      ],
-  );
+  const [lines, setLines] = useState(() => initialLines(content, props.scale, !!props.inboxId));
 
   const [draftKey] = useState(() => `supplier_${crypto.randomUUID().replaceAll("-", "")}`);
   const { source, original } = useSupplierSource(props.book, props.documentId);
   const inbox = useSupplierInboxReview(props.book, props.inboxId);
-  const reviewAttemptId = props.inboxId ? (inbox.data?.attempts.at(-1)?.id ?? null) : null;
+  const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
+  const reviewAttemptId = selectedAttemptId ?? inboxReviewAttempt(props.inboxId, inbox.data);
   const currency = content?.currency ?? props.book.currency;
 
   return (
@@ -214,13 +237,24 @@ function SupplierEditorForm(
             source={source}
             original={original}
           />
-          <SupplierInvoiceFields
-            {...props}
-            content={content}
-            party={party}
-            onPartySelect={setParty}
-            currency={currency}
-          />
+          <Box display="grid" gap="lg">
+            <NewInvoiceSuggestions
+              {...props}
+              onUse={(name, value, attemptId) => {
+                setHeaders((current) => ({ ...current, [name]: value }));
+                setSelectedAttemptId(attemptId);
+              }}
+            />
+            <SupplierInvoiceFields
+              {...props}
+              headers={headers}
+              onHeader={(name, value) => setHeaders((current) => ({ ...current, [name]: value }))}
+              content={content}
+              party={party}
+              onPartySelect={setParty}
+              currency={currency}
+            />
+          </Box>
         </RecordColumns>
         <RecordSection title={`${sv ? "Fakturarader" : "Invoice lines"} · ${currency}`}>
           <InvoiceEditorLines
@@ -348,8 +382,130 @@ function SupplierOriginalDocument(
   );
 }
 
+type InvoiceHeaders = {
+  number: string;
+  sourceTotal: string;
+  documentDate: string;
+  dueDate: string;
+};
+
+function NewInvoiceSuggestions(
+  props: CommerceProps & {
+    inboxId?: string;
+    baseline?: Draft;
+    scale: number;
+    onUse: (name: keyof InvoiceHeaders, value: string, attemptId: string) => void;
+  },
+) {
+  return props.inboxId && !props.baseline ? (
+    <ReadingSuggestions {...props} inboxId={props.inboxId} />
+  ) : null;
+}
+
+function ReadingSuggestions(
+  props: CommerceProps & {
+    inboxId: string;
+    scale: number;
+    onUse: (name: keyof InvoiceHeaders, value: string, attemptId: string) => void;
+  },
+) {
+  const sv = props.locale === "sv";
+
+  const reading = useQuery<typeof Extraction.SupplierExtractionState.Type>({
+    queryKey: [...commerceKey(props.book), "supplier-inbox", props.inboxId, "extraction"],
+    queryFn: ({ signal }) =>
+      readAccounting(
+        `${commercePath(props.book)}/supplier-inbox/${encodeURIComponent(props.inboxId)}/extraction`,
+        Extraction.SupplierExtractionState,
+        { signal },
+      ),
+    retry: false,
+    refetchInterval: (query) => (query.state.data?.requests[0]?.state === "ready" ? 2000 : false),
+  });
+
+  const attempt = reading.data?.attempt;
+
+  const names = [
+    {
+      field: "supplierDocumentNumber",
+      name: "number",
+      label: sv ? "Fakturanummer" : "Invoice number",
+    },
+    {
+      field: "sourceTotalMinor",
+      name: "sourceTotal",
+      label: sv ? "Total enligt fakturan" : "Invoice total",
+    },
+    { field: "documentDate", name: "documentDate", label: sv ? "Fakturadatum" : "Invoice date" },
+    { field: "dueDate", name: "dueDate", label: sv ? "Förfallodatum" : "Due date" },
+  ] as const;
+
+  return (
+    <RecordSection title={sv ? "Förslag från originalet" : "Suggestions from the original"}>
+      <AccountingStatus locale={props.locale} pending={reading.isPending} error={reading.error} />
+      <Text>
+        {sv
+          ? "Kontrollera varje förslag mot originalet innan du använder det. Fyll i saknade uppgifter själv."
+          : "Check each suggestion against the original before using it. Complete missing details yourself."}
+      </Text>
+      {attempt?.document?.coverage === "partial" ? (
+        <Text>
+          {sv
+            ? "Sidor saknas i läsningen. Granska hela originalet."
+            : "Pages are missing from the reading. Review the whole original."}
+        </Text>
+      ) : null}
+      {attempt?.result === "succeeded" && reading.data?.requests[0]?.state === "completed" ? (
+        attempt.fields.map((field) => {
+          const name = names.find((item) => item.field === field.fieldKey);
+
+          if (!name || field.proposedValue === null) return null;
+
+          const value =
+            field.fieldKey === "sourceTotalMinor"
+              ? minorToDecimal(field.proposedValue, props.scale)
+              : field.proposedValue;
+
+          return (
+            <Box key={field.fieldKey} display="grid" gap="sm">
+              <Text>
+                {name.label}: {value}
+                {field.fieldKey === "sourceTotalMinor" ? ` ${props.book.currency}` : ""}
+              </Text>
+              <Text>
+                {field.sourceLocators
+                  .map((locator) =>
+                    typeof locator === "string"
+                      ? locator
+                      : `${sv ? "Sida" : "Page"} ${locator.page}: “${locator.quote}”`,
+                  )
+                  .join(" · ")}
+              </Text>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => props.onUse(name.name, value, attempt.attemptId)}
+              >
+                {sv ? "Använd" : "Use"} {name.label.toLocaleLowerCase(props.locale)}
+              </Button>
+            </Box>
+          );
+        })
+      ) : (
+        <Text>
+          {sv
+            ? "Inga färdiga förslag finns. Du kan fylla i utkastet manuellt."
+            : "No completed suggestions are available. You can complete the draft manually."}
+        </Text>
+      )}
+    </RecordSection>
+  );
+}
+
 function SupplierInvoiceFields(
   props: CommerceProps & {
+    headers: InvoiceHeaders;
+    onHeader: (name: keyof InvoiceHeaders, value: string) => void;
     content?: Draft["content"];
     party?: typeof Commerce.CounterpartyRevision.Type;
     onPartySelect: (party: typeof Commerce.CounterpartyRevision.Type) => void;
@@ -377,29 +533,29 @@ function SupplierInvoiceFields(
             name="number"
             label={sv ? "Leverantörens fakturanummer" : "Supplier invoice number"}
             maxLength={128}
-            defaultValue={props.content?.supplierDocumentNumber ?? ""}
+            value={props.headers.number}
+            onChange={(event) => props.onHeader("number", event.target.value)}
           />
           <InputField
             name="sourceTotal"
             label={`${sv ? "Total enligt fakturan" : "Total on invoice"} · ${currency}`}
             inputMode="decimal"
-            defaultValue={
-              props.content?.sourceTotalMinor == null
-                ? ""
-                : minorToDecimal(props.content.sourceTotalMinor, props.scale)
-            }
+            value={props.headers.sourceTotal}
+            onChange={(event) => props.onHeader("sourceTotal", event.target.value)}
           />
           <InputField
             name="documentDate"
             label={sv ? "Fakturadatum" : "Invoice date"}
             type="date"
-            defaultValue={props.content?.documentDate ?? ""}
+            value={props.headers.documentDate}
+            onChange={(event) => props.onHeader("documentDate", event.target.value)}
           />
           <InputField
             name="dueDate"
             label={sv ? "Förfallodatum" : "Due date"}
             type="date"
-            defaultValue={props.content?.dueDate ?? ""}
+            value={props.headers.dueDate}
+            onChange={(event) => props.onHeader("dueDate", event.target.value)}
           />
           <InputField
             name="supplyDate"

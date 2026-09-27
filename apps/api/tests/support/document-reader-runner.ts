@@ -20,7 +20,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import { databaseLayer } from "../../src/db/connection";
 import { runSupplierExtraction } from "../../src/application/purchases/extraction";
 import { RequestEnvironment, type Bindings } from "../../src/runtime/environment";
-import { azureInvoiceReader } from "../../src/adapters/document-reading/azure";
+import { configuredDocumentReader } from "../../src/runtime/document-reader";
 import { filesystemObjectStore } from "../../src/adapters/storage/filesystem-objects";
 import api from "../../src/index";
 
@@ -55,7 +55,10 @@ if (endpoint && new URL(endpoint).hostname !== "127.0.0.1")
 
 const bindings: Bindings = {
   DATABASE_URL: connectionString,
-  DOCUMENT_READER: endpoint ? azureInvoiceReader(endpoint, "synthetic-local-key") : undefined,
+  DOCUMENT_READER: configuredDocumentReader({
+    OPENERP_DOCUMENT_READER: endpoint ? "local-azure-fixture" : "disabled",
+    OPENERP_DOCUMENT_READER_ENDPOINT: endpoint,
+  }),
   EVIDENCE_STORE: process.env.EVIDENCE_STORE_ROOT
     ? filesystemObjectStore(process.env.EVIDENCE_STORE_ROOT)
     : undefined,

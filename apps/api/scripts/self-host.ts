@@ -1,5 +1,6 @@
 import { resolve, sep } from "node:path";
 import api from "../src/index";
+import { configuredDocumentReader } from "../src/runtime/document-reader";
 import type { Bindings } from "../src/runtime/environment";
 import { fileObjectStore } from "./file-object-store";
 
@@ -36,8 +37,14 @@ if (!(await Bun.file(resolve(assets, "_shell.html")).exists())) {
   throw new Error("Build the web application before starting: bun run --cwd apps/web build");
 }
 
+const documentReader = configuredDocumentReader(process.env);
+
+if (documentReader && !process.env.OPENERP_PREPARATION_TOKEN)
+  throw new Error("Document reading requires a configured preparation runner token.");
+
 const bindings: Bindings = {
   DATABASE_URL: databaseUrl,
+  DOCUMENT_READER: documentReader,
   OPENERP_PREPARATION_TOKEN: process.env.OPENERP_PREPARATION_TOKEN,
   BETTER_AUTH_SECRET: authSecret,
   BETTER_AUTH_URL: origin.origin,

@@ -586,10 +586,11 @@ export function SupplierExtraction(
 
   const base = `${commercePath(book)}/supplier-inbox/${encodeURIComponent(occurrenceId)}/extraction`;
 
-  const state = useQuery({
+  const state = useQuery<State>({
     queryKey: [...bookKey(book), "supplier-inbox", occurrenceId, "extraction"],
     enabled: occurrenceId !== "",
     retry: false,
+    refetchInterval: (query) => (query.state.data?.requests[0]?.state === "ready" ? 2000 : false),
     queryFn: async ({ signal }) =>
       readAccounting(base, Extraction.SupplierExtractionState, { signal }),
   });
@@ -681,13 +682,35 @@ export function SupplierExtraction(
       )}
       <AccountingStatus locale={locale} pending={state.isPending} error={state.error} />
       {state.data ? <ExtractionAttempts book={book} locale={locale} state={state.data} /> : null}
-      {current && latest ? (
+      {current?.state === "ready" && book.role === "operator" ? (
+        <CommandForm
+          book={book}
+          locale={locale}
+          path={`${base}/${encodeURIComponent(current.id)}/cancel`}
+          schema={Extraction.CancelSupplierExtraction}
+          output={Extraction.SupplierExtractionCancelResult}
+          label={locale === "sv" ? "Avbryt läsning" : "Cancel reading"}
+          input={() => ({ requestId: current.id })}
+          onSuccess={() => {
+            void state.refetch();
+            props.onRefresh();
+          }}
+        >
+          <Text>
+            {locale === "sv"
+              ? "Läsning pågår. Originalet finns kvar om du avbryter."
+              : "Reading is in progress. Cancelling keeps the original."}
+          </Text>
+        </CommandForm>
+      ) : null}
+      {current && latest && latest.result === "succeeded" && current.state === "completed" ? (
         <Box display="grid" gap="md">
           <Button
             type="button"
             variant="outline"
             onClick={() => {
               setReview(null);
+              void state.refetch();
               props.onRefresh();
             }}
           >

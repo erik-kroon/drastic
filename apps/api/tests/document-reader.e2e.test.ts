@@ -1,3 +1,4 @@
+import { documentSelfHost } from "./support/document-self-host";
 import { spawn } from "node:child_process";
 import { access } from "node:fs/promises";
 import * as Accounting from "@open-erp/contracts/accounting";
@@ -15,6 +16,7 @@ import * as Extraction from "@open-erp/contracts/supplier-extraction";
 import {
   apiDirectory,
   createSession,
+  database,
   decoded,
   environment,
   evidence,
@@ -283,6 +285,8 @@ async function documentFixture(
 
   return {
     book,
+    runnerToken: base.token,
+    bytes,
     source,
     apiCall,
     path,
@@ -836,4 +840,292 @@ test("the durable queue polls a pending operation without repeating disclosure",
   } finally {
     await local.close();
   }
+});
+
+test(
+  "normal self-host and preparation processes read retained originals end to end",
+  { timeout: 360000 },
+  async () => {
+    const local = await documentFixture();
+
+    const runtime = await documentSelfHost(
+      local.endpoint,
+      local.runnerToken,
+      join(environment().scratch, "self-host-objects"),
+    );
+
+    const call = (path: string, body?: Schema.JsonObject) =>
+      fetch(runtime.origin + local.book.path + path, {
+        method: body ? "POST" : "GET",
+        headers: {
+          authorization: `Bearer ${local.book.token}`,
+          "content-type": "application/json",
+          "idempotency-key": key(),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+    try {
+      const source = await decoded(
+        await call("/source-occurrences", {
+          sourceSystem: "self-host-document-e2e",
+          sourceAccountId: "synthetic",
+          occurrenceKey: key(),
+          sourceRevision: "1",
+          filename: "self-host-invoice.pdf",
+          mediaType: "application/pdf",
+          contentBase64: Buffer.from(local.bytes).toString("base64"),
+        }),
+        Source.SourceOccurrence,
+      );
+
+      await decoded(
+        await call("/commerce/supplier-inbox", {
+          occurrenceId: source.id,
+          channel: "upload",
+          messageIdentity: null,
+        }),
+        Inbox.SupplierInboxView,
+      );
+      const path = `/commerce/supplier-inbox/${source.id}/extraction`;
+      await decoded(
+        await call(path, {
+          engineRelease: "azure-invoice-v1",
+          pageSelection: "all",
+          amountProfile: "sv-SE-SEK",
+          dataUsePolicy: "retain_output",
+        }),
+        Extraction.SupplierExtractionRequestResult,
+      );
+      local.onPoll(() => {
+        if (local.counts().polls === 2) local.setResponse(invoiceResponse());
+
+        return Promise.resolve();
+      });
+      runtime.startWorker();
+      let state = await decoded(await call(path), Extraction.SupplierExtractionState);
+      const deadline = Date.now() + 60000;
+
+      while (state.requests[0]?.state === "ready" && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        state = await decoded(await call(path), Extraction.SupplierExtractionState);
+      }
+
+      expect(state.attempt?.result).toBe("succeeded");
+      expect(state.attempt?.document?.physicalPages).toBe(2);
+      expect(local.counts()).toEqual({ submissions: 1, polls: 2 });
+      await writeFile(
+        join(environment().artifacts, "document-reader-self-host.json"),
+        JSON.stringify({ synthetic: true, liveProvider: false, state, ...local.counts() }, null, 2),
+      );
+      const support = await evidence(local.book);
+
+      const counterparty = await decoded(
+        await call("/commerce/counterparties", {
+          kind: "synthetic_counterparty_v1",
+          externalKey: key(),
+          role: "supplier",
+          displayName: "Synthetic supplier",
+          evidenceId: support.id,
+          reason: "Self-host journey fixture",
+        }),
+        Commerce.CounterpartyRevision,
+      );
+
+      if (process.env.DOCUMENT_SELF_HOST_BROWSER === "1") {
+        const ready = join(environment().artifacts, "document-reader-self-host-browser.json");
+        const done = join(environment().artifacts, "document-reader-self-host-browser.done");
+
+        const child = spawn("bun", ["tests/support/document-reader-browser.ts"], {
+          cwd: apiDirectory,
+          stdio: "ignore",
+          env: {
+            ...process.env,
+            DATABASE_URL: environment().runtimeUrl,
+            FIXTURE_SESSION: local.book.token,
+            EVIDENCE_STORE_ROOT: join(environment().scratch, "self-host-objects"),
+            DOCUMENT_READER_FIXTURE: local.endpoint,
+            FIXTURE_READY: ready,
+            FIXTURE_DESTINATION: `${runtime.origin}/entities/${local.book.entityId}/books/${local.book.bookId}/purchases`,
+          },
+        });
+
+        try {
+          const until = Date.now() + 240000;
+          let observed = false;
+
+          while (Date.now() < until) {
+            observed = await access(done).then(
+              () => true,
+              () => false,
+            );
+
+            if (observed) break;
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+
+          expect(observed, "Retain the self-host browser observation receipt").toBe(true);
+        } finally {
+          child.kill("SIGTERM");
+        }
+      } else {
+        const originalEvidence = await decoded(
+          await call("/evidence", {
+            title: "Self-host original reference",
+            mediaType: "application/json",
+            origin: "Synthetic self-host review",
+            content: JSON.stringify({ source: { occurrenceId: source.id, sha256: source.sha256 } }),
+          }),
+          Accounting.Evidence,
+        );
+
+        const identity = {
+          legalName: "Synthetic identity",
+          registrationId: null,
+          taxId: null,
+          address: null,
+          countryCode: "SE",
+          evidenceId: support.id,
+        };
+
+        await decoded(
+          await call(`/commerce/supplier-inbox/${source.id}/review`, {
+            reviewAttemptId: state.attempt!.attemptId,
+            reviewReason: "Human checked source and completed missing facts",
+            draft: {
+              draftKey: `selfhost_${key().replaceAll("-", "")}`,
+              content: {
+                title: "Self-host reviewed invoice",
+                counterpartyId: counterparty.id,
+                counterpartyRevision: counterparty.revision,
+                supplier: identity,
+                buyer: identity,
+                sourceEvidenceId: originalEvidence.id,
+                supplierDocumentNumber: "SELF-HOST-REVIEWED",
+                currency: "SEK",
+                currencyScale: 2,
+                documentDate: null,
+                supplyDate: null,
+                dueDate: null,
+                paymentTerms: null,
+                sourceTotalMinor: "125000",
+                lines: [
+                  {
+                    id: "selfhost_line",
+                    description: "Manually reviewed item",
+                    quantity: "1",
+                    unitPriceMinor: "100000",
+                    baseMinor: "100000",
+                    discountMinor: "0",
+                    chargeMinor: "0",
+                    taxMinor: "25000",
+                    taxDescription: "Reviewed tax",
+                    taxEvidenceId: support.id,
+                    sourceGrossMinor: "125000",
+                  },
+                ],
+              },
+            },
+          }),
+          Inbox.SupplierInboxReview,
+        );
+      }
+
+      const inbox = await decoded(
+        await call(`/commerce/supplier-inbox/${source.id}`),
+        Inbox.SupplierInboxView,
+      );
+
+      expect(inbox.draftId).not.toBeNull();
+      expect(inbox.reviewAttemptId).toBe(state.attempt!.attemptId);
+
+      const view = await decoded(
+        await call(`/commerce/supplier-invoice-drafts/${inbox.draftId}`),
+        SupplierDrafts.SupplierInvoiceDraftView,
+      );
+
+      const draft = view.record;
+
+      expect(draft.content.supplierDocumentNumber).toBe("SELF-HOST-REVIEWED");
+      expect(draft.content.sourceTotalMinor).toBe("125000");
+      expect(draft.totals.grossMinor).toBe("125000");
+      await writeFile(
+        join(environment().artifacts, "document-reader-self-host-draft.json"),
+        JSON.stringify({ synthetic: true, inbox, draft }, null, 2),
+      );
+
+      const retryRequest = await decoded(
+        await call(path, {
+          engineRelease: "azure-invoice-v1",
+          pageSelection: "all",
+          amountProfile: "sv-SE-SEK",
+          dataUsePolicy: "retain_output",
+        }),
+        Extraction.SupplierExtractionRequestResult,
+      );
+
+      const admin = await database();
+
+      try {
+        await admin.query(
+          "UPDATE openerp.books SET profile = 'unreleased-document-profile' WHERE id = $1",
+          [local.book.bookId],
+        );
+        const until = Date.now() + 75000;
+        let stopped = false;
+
+        while (Date.now() < until) {
+          const observed = await admin.query<{ state: string }>(
+            "SELECT state FROM openerp.supplier_extraction_request_states WHERE book_id = $1 AND request_id = $2",
+            [local.book.bookId, retryRequest.request.id],
+          );
+
+          stopped = observed.rows[0]?.state === "unknown";
+
+          if (stopped) break;
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+
+        expect(stopped, "A non-retryable delivery must leave the dispatchable state").toBe(true);
+        expect(local.counts()).toEqual({ submissions: 1, polls: 2 });
+        await writeFile(
+          join(environment().artifacts, "document-reader-terminal.json"),
+          JSON.stringify(
+            {
+              synthetic: true,
+              requestId: retryRequest.request.id,
+              state: "unknown",
+              ...local.counts(),
+            },
+            null,
+            2,
+          ),
+        );
+      } finally {
+        await admin.query("UPDATE openerp.books SET profile = 'synthetic-core-v1' WHERE id = $1", [
+          local.book.bookId,
+        ]);
+        await admin.end();
+      }
+    } finally {
+      await runtime.close();
+      await local.close();
+    }
+  },
+);
+
+test("self-host rejects external endpoints in local fixture mode before serving", async () => {
+  await expect(
+    run("bun", ["scripts/self-host.ts"], {
+      cwd: apiDirectory,
+      env: {
+        ...process.env,
+        DATABASE_URL: environment().runtimeUrl,
+        BETTER_AUTH_SECRET: "synthetic-document-browser-proof-only-secret",
+        OPENERP_PUBLIC_URL: "http://127.0.0.1:3000",
+        OPENERP_DOCUMENT_READER: "local-azure-fixture",
+        OPENERP_DOCUMENT_READER_ENDPOINT: "https://example.invalid",
+      },
+    }),
+  ).rejects.toThrow("fixture must use HTTP on IPv4 loopback");
 });
