@@ -2,23 +2,24 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Profiles from "@open-erp/contracts/company-profiles";
 import * as Statements from "@open-erp/contracts/report-statements";
 import * as Tax from "@open-erp/contracts/corporate-tax";
+import { AccountingError } from "@open-erp/domain/errors";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
 import {
-  approveChangeInTransaction,
   executeChangeInTransaction,
   isoNow,
   newId,
+  readExecutionApprovalInTransaction,
   replay,
   saveCommand,
   sealActionInTransaction,
   versionedDigest,
 } from "../posting";
 import { resolveCompanyProfileInTransaction } from "../company-profiles";
-import { base64, sha256HexOf } from "../sie";
+import { base64, sha256HexOf } from "../bytes";
 import {
   commandReceipt,
   decode,
@@ -26,6 +27,7 @@ import {
   toJsonObject,
   withBook,
   type JsonObject,
+  type Principal,
   type Scope,
 } from "../commerce/support";
 import { readTableAccess } from "../../db/commerce/access";
@@ -39,6 +41,7 @@ import {
   prepareIncomeTaxFields,
   renderSru,
   reparseSru,
+  taxAddbackSource,
 } from "./corporate-basis";
 
 // NEXT-22: the pre-close corporate income-tax bridge, the one approved current-tax
@@ -66,42 +69,6 @@ import {
 // approval. The statement snapshot, its rows and its contributions are immutable,
 // so they are read rather than locked and later activity cannot change them.
 
-const readTables = [
-  ...Db.corporateTaxTables,
-  "change_sets",
-  "approvals",
-  "approval_consumptions",
-  "posting_group_receipts",
-  "execution_receipts",
-  "vouchers",
-  "journal_lines",
-  "events",
-  "evidence",
-  "accounts",
-  "periods",
-  "fiscal_years",
-  "rule_releases",
-  "company_role_bindings",
-  "company_family_memberships",
-  "report_statement_snapshots",
-  "report_statement_rows",
-  "report_statement_contributions",
-] as const;
-
-const writeTables = [
-  ...Db.corporateTaxTables,
-  "change_sets",
-  "approvals",
-  "approval_consumptions",
-  "posting_group_receipts",
-  "execution_receipts",
-  "vouchers",
-  "journal_lines",
-  "events",
-  "series_counters",
-  "outbox",
-] as const;
-
 const bridgeOperation = "prepare_corporate_tax_bridge";
 
 const effectOperation = "execute_corporate_tax_effect";
@@ -128,16 +95,20 @@ const DeclarationPageSchema = Tax.CorporateTaxDeclarationPage;
 
 const maximumIncomeTaxComponents = 2000;
 
+// One access check for both directions. A write path must be able to read every
+// table the operation derives its plan from, and to insert into every table it
+// retains a record in. A read path only has to read.
 function requireTableGrants(transaction: Transaction, write: boolean) {
-  const names = write ? [...writeTables] : [...readTables];
+  const tables = [...Db.corporateTaxReadTables];
+  const inserts: ReadonlyArray<string> = Db.corporateTaxWriteTables;
 
-  return readTableAccess(transaction, names).pipe(
+  return readTableAccess(transaction, tables).pipe(
     Effect.flatMap((rows) => {
-      if (rows.length !== names.length) return failure("UnsupportedProfile");
+      if (rows.length !== tables.length) return failure("UnsupportedProfile");
 
       if (rows.some((row) => !row.canSelect)) return failure("UnsupportedProfile");
 
-      return write && rows.some((row) => !row.canInsert)
+      return write && rows.some((row) => inserts.includes(row.tableName) && !row.canInsert)
         ? failure("UnsupportedProfile")
         : Effect.void;
     }),
@@ -152,9 +123,13 @@ function arrayOf(value: JsonObject, key: string) {
 
 // A refusal keeps its reviewed reason in the message and is reported through the
 // existing public error family. No refusal is a partial success and none produces a
-// fabricated figure, a default rate or a partial form.
-function refuse<A>(result: Result.Result<A, Tax.TaxRefusal>) {
-  return failure("UnsupportedProfile", result.failure.message);
+// fabricated figure, a default rate or a partial form. The refusal code travels in
+// the message so the operator sees which reviewed condition stopped the request.
+function refusal(reason: typeof Tax.TaxRefusal.Type) {
+  return new AccountingError({
+    code: "UnsupportedProfile",
+    message: `${reason.code}: ${reason.message}`,
+  });
 }
 
 function profileDates(taxPeriodOn: string): typeof Profiles.ProfileDates.Type {
@@ -195,7 +170,9 @@ const incomeTaxAccounts = Effect.fn("corporateTax.incomeTaxAccounts")(function* 
 
   if (expense === undefined || liability === undefined) return null;
 
-  const selected: Array<[Tax.IncomeTaxRoleKind, Tax.IncomeTaxRole, ProfileDb.RoleBindingRow]> = [
+  const selected: Array<
+    [typeof Tax.IncomeTaxRoleKind.Type, typeof Tax.IncomeTaxRole.Type, ProfileDb.RoleBindingRow]
+  > = [
     ["corporate_tax_expense", "current_expense", expense],
     ["corporate_tax_liability", "current_liability", liability],
   ];
@@ -204,7 +181,7 @@ const incomeTaxAccounts = Effect.fn("corporateTax.incomeTaxAccounts")(function* 
     selected.push(["corporate_tax_other_expense", "other_income_tax_expense", other]);
   }
 
-  const accounts: Array<Tax.IncomeTaxAccount> = [];
+  const accounts: Array<typeof Tax.IncomeTaxAccount.Type> = [];
   const evidence: Array<JsonObject> = [];
 
   for (const [roleKind, role, binding] of selected) {
@@ -226,7 +203,7 @@ const incomeTaxAccounts = Effect.fn("corporateTax.incomeTaxAccounts")(function* 
   return { accounts, evidence };
 });
 
-function accountFor(overlay: Tax.PreTaxOverlay, role: Tax.IncomeTaxRole) {
+function accountFor(overlay: typeof Tax.PreTaxOverlay.Type, role: typeof Tax.IncomeTaxRole.Type) {
   const found = overlay.incomeTaxAccounts.find((entry) => entry.role === role);
 
   return found === undefined ? null : found.accountId;
@@ -443,7 +420,7 @@ const captureBasis = Effect.fn("corporateTax.captureBasis")(function* (
         ),
         "StaleDependency",
       ),
-      ledgerFiscalYtdProfitMinor: snapshot.outcome.fiscalYtdProfitMinor,
+      retainedStatementResultMinor: snapshot.balance.virtualUntransferredResultMinor,
       incomeTaxAccounts: accounts.accounts,
       incomeTaxComponents: components,
       incomeTaxExpenseEffectMinor: currentExpense.toString(),
@@ -481,7 +458,7 @@ const captureBasis = Effect.fn("corporateTax.captureBasis")(function* (
 const bridgeView = Effect.fn("corporateTax.bridgeView")(function* (
   transaction: Transaction,
   scope: Scope,
-  bridge: Tax.TaxBridge,
+  bridge: typeof Tax.TaxBridge.Type,
   recognized: bigint,
 ) {
   const rows = yield* Db.readEffectsForBridges(transaction, scope.bookId, [bridge.id]);
@@ -507,7 +484,7 @@ const bridgeView = Effect.fn("corporateTax.bridgeView")(function* (
 // because an already recognised target posts nothing and consumes no voucher number.
 const sealEffectPlan = Effect.fn("corporateTax.sealEffectPlan")(function* (
   transaction: Transaction,
-  principal: { readonly actorId: string },
+  principal: Principal,
   scope: Scope,
   input: {
     readonly bridgeId: string;
@@ -691,12 +668,11 @@ export const prepareBridge = Effect.fn("corporateTax.prepareBridge")(function* (
         captured.release,
       );
 
-      if (Result.isFailure(calculated)) return yield* refuse(calculated);
+      if (Result.isFailure(calculated)) return yield* refusal(calculated.failure);
 
       const bridgeId = newId("taxbridge");
       const delta = calculated.success.currentTaxMinor - captured.recognized;
       const postsJournal = delta !== 0n;
-      const status = postsJournal ? "effect_pending" : "fully_recognized";
       const expenseAccountId = accountFor(captured.overlay, "current_expense");
       const liabilityAccountId = accountFor(captured.overlay, "current_liability");
 
@@ -728,6 +704,7 @@ export const prepareBridge = Effect.fn("corporateTax.prepareBridge")(function* (
         id: bridgeId,
         scope: command.scope,
         changeSetId: plan.id,
+        planDigest: plan.planDigest,
         fiscalYearId: captured.fiscalYear.id,
         accountingPeriodId: captured.period.id,
         overlayDigest: captured.overlayDigest,
@@ -763,8 +740,6 @@ export const prepareBridge = Effect.fn("corporateTax.prepareBridge")(function* (
           version: captured.releaseRow.version,
           calculatorVersion: captured.release.calculatorVersion,
         },
-        fieldLineage: [],
-        status,
         createdBy: principal.actorId,
         createdAt,
         noFinancialEffect: true,
@@ -791,7 +766,6 @@ export const prepareBridge = Effect.fn("corporateTax.prepareBridge")(function* (
         recognizedMinor: captured.recognized.toString(),
         deltaMinor: delta.toString(),
         postsJournal,
-        status,
         noFinancialEffect: true,
         body: yield* toJsonObject(bridge),
         digest,
@@ -971,7 +945,7 @@ export const listBridges = Effect.fn("corporateTax.listBridges")(function* (
 const revalidateBasis = Effect.fn("corporateTax.revalidateBasis")(function* (
   transaction: Transaction,
   scope: Scope,
-  bridge: Tax.TaxBridge,
+  bridge: typeof Tax.TaxBridge.Type,
   sealed: Db.BridgeRow,
 ) {
   const fiscalYear = (yield* Ledger.readFiscalYear(
@@ -996,6 +970,8 @@ const revalidateBasis = Effect.fn("corporateTax.revalidateBasis")(function* (
 
   if (
     witness === null ||
+    witness.jurisdiction !== admission.jurisdiction ||
+    witness.selectorDate !== admission.selectorDate ||
     witness.ruleReleaseId !== sealed.ruleReleaseId ||
     witness.ruleReleaseChecksum !== sealed.ruleReleaseChecksum ||
     witness.activationId !== admission.activationId ||
@@ -1118,14 +1094,16 @@ export const executeEffect = Effect.fn("corporateTax.executeEffect")(function* (
 
       const { recognized, target, delta } = current;
 
-      const approval = yield* approveChangeInTransaction(transaction, principal, {
-        scope: command.scope,
-        changeSetId: sealed.changeSetId,
-        idempotencyKey: newId("taxapprove"),
-        input: { version: 1, planDigest: sealed.planDigest },
-      });
-
-      if (approval.id !== command.input.approvalId) return yield* failure("ApprovalRequired");
+      // The approval is validated, never created here. A second operator approved
+      // this exact sealed plan digest through the shared approval endpoint, so the
+      // current-tax effect keeps its four-eyes separation and an agent credential
+      // cannot authorize its own accrual.
+      const approval = yield* readExecutionApprovalInTransaction(
+        transaction,
+        command.scope,
+        { id: sealed.changeSetId, planDigest: sealed.planDigest },
+        command.input.approvalId,
+      );
 
       if (approval.actorId === principal.actorId) return yield* failure("ApprovalRequired");
 
@@ -1296,8 +1274,8 @@ export const listEffects = Effect.fn("corporateTax.listEffects")(function* (
 // mapping, so the independent re-parse can recompute the form's own total from the
 // produced bytes instead of from the renderer's memory.
 const reconciliationField = (
-  fields: ReadonlyArray<Tax.PreparedIncomeTaxField>,
-  source: Tax.FieldSource,
+  fields: ReadonlyArray<typeof Tax.PreparedIncomeTaxField.Type>,
+  source: typeof Tax.FieldSource.Type,
 ) => fields.find((field) => field.source === source && field.required);
 
 export const prepareDeclaration = Effect.fn("corporateTax.prepareDeclaration")(function* (
@@ -1368,9 +1346,12 @@ export const prepareDeclaration = Effect.fn("corporateTax.prepareDeclaration")(f
 
       if (statement.digest !== sealed.statementDigest) return yield* failure("StaleDependency");
 
+      // The engine and the exported form start from one result. A ledger declaration
+      // uses the retained statement's own result; a projected declaration uses the
+      // bridge's projected after-tax result, and the mapping says which one it is.
       const declaredResult =
         prepared.declaredResultSource === "ledger_statement_result"
-          ? BigInt(statement.snapshot.outcome.fiscalYtdProfitMinor)
+          ? BigInt(bridge.overlay.retainedStatementResultMinor)
           : null;
 
       const preparedFields = prepareIncomeTaxFields(
@@ -1381,7 +1362,7 @@ export const prepareDeclaration = Effect.fn("corporateTax.prepareDeclaration")(f
         release,
       );
 
-      if (Result.isFailure(preparedFields)) return yield* refuse(preparedFields);
+      if (Result.isFailure(preparedFields)) return yield* refusal(preparedFields.failure);
 
       const blocked = preparedFields.success.blockReasons.length > 0;
 
@@ -1396,16 +1377,16 @@ export const prepareDeclaration = Effect.fn("corporateTax.prepareDeclaration")(f
 
       // A blocked lineage renders no file at all. The bytes are produced and
       // independently re-parsed, and only the exact verified bytes are retained.
-      const files: Array<Tax.SruFileManifest> = [];
+      const files: Array<typeof Tax.SruFileManifest.Type> = [];
 
       if (!blocked) {
         const rendered = renderSru(preparedFields.success.fields, release.sru);
 
-        if (Result.isFailure(rendered)) return yield* refuse(rendered);
+        if (Result.isFailure(rendered)) return yield* refusal(rendered.failure);
 
         const addback = reconciliationField(
           preparedFields.success.fields,
-          "income_tax_expense_addback",
+          taxAddbackSource(prepared.declaredResultSource),
         );
 
         const adjustment = reconciliationField(preparedFields.success.fields, "adjustment_total");
@@ -1447,10 +1428,10 @@ export const prepareDeclaration = Effect.fn("corporateTax.prepareDeclaration")(f
           const reparse = reparseSru(file, release.sru, expected);
 
           if (!reparse.lexicallyValid) {
-            return yield* failure(
-              "InternalError",
-              "The rendered SRU bytes failed an independent re-parse.",
-            );
+            return yield* refusal({
+              code: "UnreconciledDeclaration",
+              message: "The rendered SRU bytes failed an independent re-parse.",
+            });
           }
 
           files.push({

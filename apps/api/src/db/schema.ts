@@ -1033,7 +1033,6 @@ export const corporateTaxBridges = openerp.table("corporate_tax_bridges", {
   recognizedMinor: numeric("recognized_minor", { mode: "string" }).notNull(),
   deltaMinor: numeric("delta_minor", { mode: "string" }).notNull(),
   postsJournal: boolean("posts_journal").notNull(),
-  status: text("status").notNull(),
   noFinancialEffect: boolean("no_financial_effect").notNull(),
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
   digest: text().notNull(),
@@ -1173,4 +1172,3 @@ export const recurringInvoiceOccurrenceIssues = openerp.table(
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
   },
 );
-

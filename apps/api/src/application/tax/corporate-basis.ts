@@ -328,11 +328,11 @@ export function calculateCorporateTax(
       "The retained income-tax population holds a negative other income-tax expense, which an evidenced zero cannot cover.",
     );
 
-  // The pre-tax result is the retained ledger result with the whole current
+  // The pre-tax result is the retained statement result with the whole current
   // income-tax expense added back exactly once. Posting a current-tax effect
   // therefore cannot change the pre-tax figure the tax is calculated from.
-  const ledger = integer(overlay.ledgerFiscalYtdProfitMinor);
-  const pretax = ledger + effect.current;
+  const retained = integer(overlay.retainedStatementResultMinor);
+  const pretax = retained + effect.current;
   const other = effect.other;
 
   const duplicate = duplicateComponent(adjustments, release);
@@ -365,9 +365,9 @@ export function calculateCorporateTax(
 
   const formula: Array<Step> = [
     step(
-      "f_ledger_ytd",
-      "ledgerFiscalYtd = retained profit-and-loss signed contribution sum",
-      { n: ledger, d: 1n },
+      "f_retained_result",
+      "retainedStatementResult = the snapshot's retained untransferred fiscal-year result",
+      { n: retained, d: 1n },
       null,
     ),
     step(
@@ -378,7 +378,7 @@ export function calculateCorporateTax(
     ),
     step(
       "f_pretax",
-      "pretaxProfit = ledgerFiscalYtd + incomeTaxExpenseEffect",
+      "pretaxProfit = retainedStatementResult + incomeTaxExpenseEffect",
       { n: pretax, d: 1n },
       null,
     ),
@@ -397,9 +397,13 @@ export function calculateCorporateTax(
   ];
 
   const rows: Array<Row> = [
-    row("r_ledger_ytd", "ledger_fiscal_ytd_result", "Ledger fiscal year-to-date result", ledger, [
-      "f_ledger_ytd",
-    ]),
+    row(
+      "r_retained_result",
+      "retained_statement_result",
+      "Retained fiscal-year result after current income tax",
+      retained,
+      ["f_retained_result"],
+    ),
     row(
       "r_income_tax_effect",
       "income_tax_expense_addback",
@@ -651,8 +655,8 @@ function sourceKind(source: FieldSource): RowKind | null {
       return "projected_after_tax_result";
     case "recognized_current_tax":
       return "recognized_current_tax";
-    case "ledger_fiscal_ytd_result":
-      return "ledger_fiscal_ytd_result";
+    case "retained_statement_result":
+      return "retained_statement_result";
     case "statement_row":
       return null;
   }
@@ -694,16 +698,16 @@ function readField(
   return Result.succeed(integer(owner.valueMinor));
 }
 
+// A field's exact amount: the signed source value, rescaled once to the format the
+// reviewed mapping declares. This never fails, so it returns the amount directly.
 function fieldValue(bridge: Bridge, mapping: Mapping, signed: bigint) {
-  if (mapping.format.kind === "integer_minor") return Result.succeed(signed);
+  if (mapping.format.kind === "integer_minor") return signed;
 
-  return Result.succeed(
-    rescale(
-      { n: signed, d: 1n },
-      bridge.overlay.currencyScale,
-      mapping.format.scale,
-      mapping.format.rounding.mode,
-    ),
+  return rescale(
+    { n: signed, d: 1n },
+    bridge.overlay.currencyScale,
+    mapping.format.scale,
+    mapping.format.rounding.mode,
   );
 }
 
@@ -717,11 +721,22 @@ export type Declaration = {
 // are the bridge's addback, adjustment, before-loss, offset and taxable income.
 const reconciliationSources: ReadonlySet<FieldSource> = new Set([
   "income_tax_expense_addback",
+  "current_tax",
   "adjustment_total",
   "taxable_before_loss",
   "allowed_loss_offset",
   "taxable_income",
 ]);
+
+// Which current-tax figure the form has to add back depends on where its declared
+// accounting result came from. A projected after-tax result already has the whole
+// calculated current tax deducted from it, so the form adds that back. A retained
+// ledger result only has the tax actually booked inside the retained population
+// deducted from it, so the form adds that back instead. Using the wrong one would
+// silently reconcile a form against a different basis than the engine used.
+export function taxAddbackSource(source: typeof Tax.DeclaredResultSource.Type): FieldSource {
+  return source === "projected_bridge_result" ? "current_tax" : "income_tax_expense_addback";
+}
 
 /**
  * prepareIncomeTaxFields(bridge, declaredResultSource, declaredResult, statementRows, release)
@@ -773,6 +788,7 @@ export function prepareIncomeTaxFields(
   const blockReasons: Array<string> = [];
   const fields: Array<Field> = [];
   const declared = new Set<string>();
+  const addbackSource = taxAddbackSource(source);
 
   for (const mapping of declaration.fieldMap) {
     const key = `${mapping.formId}/${mapping.fieldCode}`;
@@ -817,12 +833,12 @@ export function prepareIncomeTaxFields(
       sign: mapping.sign,
       format: mapping.format,
       required: mapping.required,
-      valueMinor: value.success.toString(),
+      valueMinor: value.toString(),
       formulaIds: owner?.formulaIds ?? [],
     });
   }
 
-  for (const wanted of declaration.requiredReconciliationSources) {
+  for (const wanted of [addbackSource, ...declaration.requiredReconciliationSources]) {
     if (!fields.some((entry) => entry.required && entry.source === wanted)) {
       blockReasons.push(
         `The reviewed mapping carries no required reconciliation source for ${wanted}.`,
@@ -843,7 +859,7 @@ export function prepareIncomeTaxFields(
     }
   }
 
-  const addback = bridgeAmount(bridge, "income_tax_expense_addback");
+  const addback = bridgeAmount(bridge, sourceKind(taxAddbackSource(source)) ?? "current_tax");
   const adjustments = bridgeAmount(bridge, "adjustment_total");
   const offset = bridgeAmount(bridge, "allowed_loss_offset");
   const formBeforeLoss = start.success + addback + adjustments;
@@ -997,7 +1013,9 @@ export function renderSru(
 
     if (Result.isFailure(value)) return fail(value.failure.code, value.failure.message);
 
-    info.push(`#${entry.tag}${bundle.recordNameValueSeparator}${value.success}`);
+    info.push(
+      `${bundle.infoRecordPrefix}${entry.tag}${bundle.recordNameValueSeparator}${value.success}`,
+    );
   }
 
   const infoTerminator = emittableValue(bundle.infoFile.terminator, bundle.maximumFieldValueLength);
@@ -1107,6 +1125,12 @@ function scanRecords(file: RenderedFile, bundle: Bundle): Scan | null {
         )
       : new Map<string, true>();
 
+  const terminators = new Map(
+    file.kind === "blanket_letter"
+      ? bundle.blanketLetterFile.forms.map((form) => [form.formId, form.terminator] as const)
+      : [],
+  );
+
   const values = new Map<string, string>();
   let current = "";
   let fields = 0;
@@ -1115,20 +1139,39 @@ function scanRecords(file: RenderedFile, bundle: Bundle): Scan | null {
     if (line === "") return null;
 
     if (file.kind === "info") {
-      if (!line.startsWith("#") || !line.includes(bundle.recordNameValueSeparator)) return null;
+      if (
+        !line.startsWith(bundle.infoRecordPrefix) ||
+        !line.includes(bundle.recordNameValueSeparator)
+      ) {
+        return null;
+      }
 
       continue;
     }
 
     if (line.startsWith(`${bundle.blankLetterRecord}${bundle.recordNameValueSeparator}`)) {
+      if (current !== "") return null;
+
       current = line.slice(
         bundle.blankLetterRecord.length + bundle.recordNameValueSeparator.length,
       );
 
       if (current === "" || !emittable.test(current)) return null;
 
+      if (!terminators.has(current)) return null;
+
       continue;
     }
+
+    // The per-form terminator closes the form it follows. A field after it, or a
+    // field with no open form, is a broken record rather than a tolerated one.
+    if (current !== "" && line === terminators.get(current)) {
+      current = "";
+
+      continue;
+    }
+
+    if (current === "") return null;
 
     if (!line.startsWith(`${bundle.uppgiftRecord}${bundle.fieldValueSeparator}`)) return null;
 
@@ -1192,11 +1235,26 @@ function crossFieldTotal(values: ReadonlyMap<string, string>, expected: Expected
  * holds, and recomputes the declaration's own cross-field total from the recovered
  * values. It is a check of these exact bytes, never a destination acceptance and
  * never a filing.
+ *
+ * The info file carries no field values, so it gets the structural check only and
+ * reports zero compared values and totals rather than claiming a comparison it
+ * could not make.
  */
 export function reparseSru(file: RenderedFile, bundle: Bundle, expected: Expected): Reparse {
   const scan = scanRecords(file, bundle);
 
   if (scan === null) return invalid;
+
+  if (file.kind === "info") {
+    return {
+      lexicallyValid: true,
+      records: scan.records,
+      fields: 0,
+      types: 0,
+      crossFieldTotals: 0,
+      values: scan.values,
+    };
+  }
 
   // Every recovered value must equal the exact value its prepared field holds, so a
   // renderer that emitted a different figure cannot be retained as a file.

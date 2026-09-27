@@ -86,7 +86,7 @@ export const TaxFormulaStep = Schema.Struct({
 });
 
 export const TaxRowKind = Schema.Literals([
-  "ledger_fiscal_ytd_result",
+  "retained_statement_result",
   "pretax_profit",
   "adjustment_total",
   "taxable_before_loss",
@@ -208,7 +208,12 @@ export const PreTaxOverlay = Schema.Struct({
   retainedContributionCount: Schema.Int,
   factRevisions: StatementFactRevisions,
   incomeTaxContributionDigest: Accounting.Digest,
-  ledgerFiscalYtdProfitMinor: Accounting.SignedMinorUnits,
+  // The statement snapshot's own retained fiscal-year result, after the current
+  // income-tax expense that sits inside it. The snapshot does not retain the
+  // transferred year-to-date movement, so this is its untransferred result line and
+  // not a reconstructed year-to-date profit. The pre-tax figure adds the retained
+  // current-tax effect back exactly once.
+  retainedStatementResultMinor: Accounting.SignedMinorUnits,
   incomeTaxAccounts: Schema.Array(IncomeTaxAccount).check(
     Schema.isMinLength(2),
     Schema.isMaxLength(20),
@@ -299,16 +304,11 @@ export const OtherIncomeTaxExpenseSupport = Schema.Union([
   }),
 ]);
 
-export const TaxBridgeStatus = Schema.Literals([
-  "draft",
-  "effect_pending",
-  "fully_recognized",
-  "blocked",
-]);
-
 // The exact admission identity this bridge was sealed against, retained in the
 // bridge so execution can re-resolve the credential, session, membership, entity
-// and book and compare the whole witness rather than one cached permission.
+// and book and compare the whole witness rather than one cached permission. The
+// record class and the requested dates are re-supplied by the executing operation,
+// so only the resolved outputs are retained here.
 export const TaxAdmissionWitness = Schema.Struct({
   family: Schema.Literal("corporate_tax"),
   selectorDate: Accounting.AccountingDate,
@@ -326,6 +326,10 @@ export const TaxBridge = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
   changeSetId: Accounting.Identifier,
+  // The exact plan an operator approves before the delta can be recognised. The
+  // bridge is sealed with it, so the approval covers the same amount the bridge
+  // already states.
+  planDigest: Accounting.Digest,
   fiscalYearId: Accounting.Identifier,
   accountingPeriodId: Accounting.Identifier,
   overlayDigest: Accounting.Digest,
@@ -354,8 +358,6 @@ export const TaxBridge = Schema.Struct({
     version: Schema.Int,
     calculatorVersion: Schema.String,
   }),
-  fieldLineage: Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(200)),
-  status: TaxBridgeStatus,
   digest: Accounting.Digest,
   createdBy: Accounting.Identifier,
   createdAt: Schema.String,
@@ -418,8 +420,10 @@ export const PrepareTaxBridge = Schema.Struct({
   explanation: Accounting.Description,
 });
 
-// A current-tax effect is always approved: the year target and the exact delta
-// are sealed before execution, and a different key cannot authorize a second
+// A current-tax effect carries a separate operator's approval of this exact sealed
+// plan digest, obtained through the shared change-set approval endpoint. The
+// executing operator may not be the approver, and the year target plus the exact
+// delta are sealed before execution, so a different key cannot authorize a second
 // posting of the same economic event.
 export const ExecuteTaxEffect = Schema.Struct({
   bridgeDigest: Accounting.Digest,
@@ -444,7 +448,7 @@ export const FieldSource = Schema.Literals([
   "income_tax_expense_addback",
   "projected_after_tax_result",
   "recognized_current_tax",
-  "ledger_fiscal_ytd_result",
+  "retained_statement_result",
   "statement_row",
 ]);
 
@@ -507,8 +511,12 @@ export const SruFormatBundle = Schema.Struct({
   lineEnding: Schema.Literals(["crlf", "lf"]),
   recordNameValueSeparator: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(8)),
   fieldValueSeparator: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(8)),
-  blankLetterRecord: Schema.Literal("#BLANKETT"),
-  uppgiftRecord: Schema.Literal("#UPPGIFT"),
+  // The record markers are release grammar like every other name, separator and
+  // terminator, so no record name is a literal in this contract. A release whose
+  // markers do not satisfy the shape is refused rather than reinterpreted.
+  blankLetterRecord: Schema.String.check(Schema.isPattern(/^[^0-9A-Za-z\s]{1,32}$/u)),
+  uppgiftRecord: Schema.String.check(Schema.isPattern(/^[^0-9A-Za-z\s]{1,32}$/u)),
+  infoRecordPrefix: Schema.String.check(Schema.isPattern(/^[^0-9A-Za-z\s]{1,32}$/u)),
   infoFile: Schema.Struct({
     filename: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
     records: Schema.Array(SruRecord).check(Schema.isMinLength(1), Schema.isMaxLength(40)),
@@ -549,9 +557,12 @@ export const CorporateTaxRuleRelease = Schema.Struct({
       Schema.isMaxLength(40),
     ),
     fieldMap: Schema.Array(FieldMapping).check(Schema.isMinLength(1), Schema.isMaxLength(2000)),
-    // The sources a declaration must carry for its taxable basis to reconcile to
-    // the bridge. A missing one blocks the declaration instead of leaving a
-    // partial form.
+    // The sources a declaration must always carry for its taxable basis to
+    // reconcile to the bridge. The current-tax add-back is not listed here because
+    // which figure the form adds back depends on the declared accounting result: the
+    // calculated current tax for a projected result, the booked effect inside the
+    // retained population for a ledger result. A missing source blocks the
+    // declaration instead of leaving a partial form.
     requiredReconciliationSources: Schema.Array(FieldSource).check(
       Schema.isMinLength(1),
       Schema.isMaxLength(12),
@@ -725,7 +736,7 @@ export const CorporateTaxCapabilities = {
   },
   tax_execute_effect: {
     description:
-      "Recognise the remaining current income-tax delta for a sealed bridge in one book-scoped transaction that commits the journal, the sealed year target, the approval use, the receipt and the counter together. Only the delta is posted: an already recognised target posts nothing and returns a no-effect receipt. Preliminary tax paid to a tax account is never subtracted from the target, and a changed pre-tax population, loss fact or release since sealing refuses instead of re-deriving a different amount.",
+      "Recognise the remaining current income-tax delta for a sealed bridge in one book-scoped transaction that commits the journal, the sealed year target, the approval use, the receipt and the counter together. The approval must be a different operator's current approval of this bridge's sealed plan digest, made through the shared change-set approval endpoint; this operation validates that approval and never creates one. Only the delta is posted: an already recognised target posts nothing and returns a no-effect receipt. Preliminary tax paid to a tax account is never subtracted from the target, and a changed pre-tax population, loss fact or release since sealing refuses instead of re-deriving a different amount.",
     input: Schema.Struct({
       scope: Accounting.Scope,
       idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],

@@ -28,6 +28,7 @@ export const familySelector = {
   vat: "taxPointOn",
   payroll: "paymentOn",
   statements: "reportOn",
+  corporate_tax: "taxPeriodOn",
 } as const;
 
 export const families: ReadonlyArray<Family> = [
@@ -35,6 +36,7 @@ export const families: ReadonlyArray<Family> = [
   "vat",
   "payroll",
   "statements",
+  "corporate_tax",
 ];
 
 // The legal AR family keeps its named activation owner. Reporting reads that
@@ -49,8 +51,8 @@ export const ownerBoundFamily = {
 // instead of a bare false.
 const factOperations = new Map<string, ReadonlyArray<Family>>([
   ["jurisdiction", families],
-  ["legal_form", ["posting_eligibility", "vat"]],
-  ["organization_number", ["posting_eligibility", "statements"]],
+  ["legal_form", ["posting_eligibility", "vat", "corporate_tax"]],
+  ["organization_number", ["posting_eligibility", "statements", "corporate_tax"]],
   ["accounting_method", ["posting_eligibility", "vat"]],
   ["vat_registration", ["vat"]],
   ["vat_period", ["vat"]],

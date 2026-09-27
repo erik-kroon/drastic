@@ -45,7 +45,6 @@ CREATE TABLE openerp.corporate_tax_bridges (
   recognized_minor numeric NOT NULL,
   delta_minor numeric NOT NULL,
   posts_journal boolean NOT NULL,
-  status text NOT NULL,
   no_financial_effect boolean NOT NULL,
   body jsonb NOT NULL,
   digest text NOT NULL,
@@ -69,15 +68,13 @@ CREATE TABLE openerp.corporate_tax_bridges (
   CONSTRAINT corporate_tax_bridges_posts_journal_check CHECK (
     (posts_journal AND delta_minor <> 0) OR (NOT posts_journal AND delta_minor = 0)
   ),
-  CONSTRAINT corporate_tax_bridges_status_check CHECK (status = ANY (ARRAY[
-    'draft'::text, 'effect_pending'::text, 'fully_recognized'::text, 'blocked'::text
-  ])),
   CONSTRAINT corporate_tax_bridges_no_effect_check CHECK (no_financial_effect),
   CONSTRAINT corporate_tax_bridges_body_check CHECK (jsonb_typeof(body) = 'object'::text AND body <> '{}'::jsonb),
   CONSTRAINT corporate_tax_bridges_body_identity_check CHECK (NOT body ->> 'id'::text IS DISTINCT FROM id),
   CONSTRAINT corporate_tax_bridges_body_scope_check CHECK (NOT body -> 'scope'::text ->> 'bookId'::text IS DISTINCT FROM book_id),
   CONSTRAINT corporate_tax_bridges_body_kind_check CHECK (body ->> 'kind'::text = 'preclose_corporate_tax_bridge_v1'::text),
   CONSTRAINT corporate_tax_bridges_body_change_set_check CHECK (NOT body ->> 'changeSetId'::text IS DISTINCT FROM change_set_id),
+  CONSTRAINT corporate_tax_bridges_body_plan_digest_check CHECK (NOT body ->> 'planDigest'::text IS DISTINCT FROM plan_digest),
   CONSTRAINT corporate_tax_bridges_body_fiscal_year_check CHECK (NOT body ->> 'fiscalYearId'::text IS DISTINCT FROM fiscal_year_id),
   CONSTRAINT corporate_tax_bridges_body_period_check CHECK (NOT body ->> 'accountingPeriodId'::text IS DISTINCT FROM accounting_period_id),
   CONSTRAINT corporate_tax_bridges_body_statement_check CHECK (
@@ -90,7 +87,6 @@ CREATE TABLE openerp.corporate_tax_bridges (
   CONSTRAINT corporate_tax_bridges_body_posts_journal_check CHECK (
     (body ->> 'postsJournal'::text)::boolean IS NOT DISTINCT FROM posts_journal
   ),
-  CONSTRAINT corporate_tax_bridges_body_status_check CHECK (NOT body ->> 'status'::text IS DISTINCT FROM status),
   CONSTRAINT corporate_tax_bridges_body_no_effect_check CHECK (body ->> 'noFinancialEffect'::text = 'true'::text),
   CONSTRAINT corporate_tax_bridges_body_release_check CHECK (
     NOT body -> 'mappingRelease'::text ->> 'id'::text IS DISTINCT FROM rule_release_id

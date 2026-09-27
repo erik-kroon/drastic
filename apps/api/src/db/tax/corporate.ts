@@ -21,6 +21,49 @@ export const corporateTaxTables = [
   "corporate_tax_declarations",
 ] as const;
 
+// Every table this owner reads or writes, and the subset it must be able to insert
+// on a write path. The read list covers the tables the shared posting primitives
+// reach as well, so a write path is never admitted without the reads it needs.
+export const corporateTaxReadTables = [
+  ...corporateTaxTables,
+  "books",
+  "change_sets",
+  "approvals",
+  "approval_consumptions",
+  "posting_group_receipts",
+  "execution_receipts",
+  "vouchers",
+  "journal_lines",
+  "events",
+  "evidence",
+  "accounts",
+  "periods",
+  "fiscal_years",
+  "series_counters",
+  "rule_releases",
+  "company_role_bindings",
+  "company_family_memberships",
+  "report_statement_snapshots",
+  "report_statement_rows",
+  "report_statement_contributions",
+  "command_receipts",
+] as const;
+
+export const corporateTaxWriteTables = [
+  ...corporateTaxTables,
+  "change_sets",
+  "approvals",
+  "approval_consumptions",
+  "posting_group_receipts",
+  "execution_receipts",
+  "vouchers",
+  "journal_lines",
+  "events",
+  "series_counters",
+  "outbox",
+  "command_receipts",
+] as const;
+
 export type BridgeRow = {
   readonly id: string;
   readonly fiscalYearId: string;
@@ -37,7 +80,6 @@ export type BridgeRow = {
   readonly recognizedMinor: string;
   readonly deltaMinor: string;
   readonly postsJournal: boolean;
-  readonly status: string;
   readonly body: Schema.JsonObject;
   readonly digest: string;
   readonly createdBy: string;
@@ -114,7 +156,6 @@ const bridgeColumns = {
   recognizedMinor: corporateTaxBridges.recognizedMinor,
   deltaMinor: corporateTaxBridges.deltaMinor,
   postsJournal: corporateTaxBridges.postsJournal,
-  status: corporateTaxBridges.status,
   body: corporateTaxBridges.body,
   digest: corporateTaxBridges.digest,
   createdBy: corporateTaxBridges.createdBy,
@@ -230,7 +271,6 @@ export function insertBridge(
     readonly recognizedMinor: string;
     readonly deltaMinor: string;
     readonly postsJournal: boolean;
-    readonly status: string;
     readonly noFinancialEffect: boolean;
     readonly body: Schema.JsonObject;
     readonly digest: string;
@@ -453,7 +493,7 @@ export function readPeriodsForYear(transaction: Transaction, bookId: string, fis
       startsOn: periods.startsOn,
       endsOn: periods.endsOn,
       locked: periods.locked,
-      version: sql`${periods.version}::text`,
+      version: sql<string>`${periods.version}::text`,
     })
     .from(periods)
     .where(and(eq(periods.bookId, bookId), eq(periods.fiscalYearId, fiscalYearId)))
