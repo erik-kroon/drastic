@@ -238,6 +238,20 @@ export const Capabilities = {
     output: PeriodWorkDomain.ApprovalBatch,
     readOnly: false,
   },
+  period_work_cancel: {
+    description:
+      "Stop one prepared selection. A run whose digest has moved is refused. Every prepared plan is kept as retained evidence; nothing is reversed and no receipt is erased.",
+    input: Schema.Struct({
+      ...mutation,
+      manifestId: Accounting.Identifier,
+      input: PeriodWork.CancelPeriodWork,
+    }),
+    output: PeriodWork.PeriodWorkRunProgress,
+    readOnly: false,
+    // Operator-only, and withheld by its classification below. It is declared so the
+    // catalogue names every period-work write rather than omitting this one by
+    // accident, and so a future owner that reclassifies it has to do so on purpose.
+  },
   period_work_approve_batch: {
     description:
       "Approve the exact sealed members, each under its own owner's rules. A member whose owner has released no approve-within-transaction port is refused by name.",

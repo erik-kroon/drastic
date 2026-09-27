@@ -88,6 +88,10 @@ export const ApprovalBatch = PeriodWorkDomain.ApprovalBatch;
 // one.
 export const maximumBatchMembers = PeriodWorkDomain.periodWorkBoundary.maximumMembers;
 
+// The digest of the run the operator was shown. A run whose digest has moved is
+// refused rather than cancelled on a different selection than the one displayed.
+export const CancelPeriodWork = Schema.Struct({ expectedDigest: Accounting.Digest });
+
 export const ApprovePeriodWorkBatch = Schema.Struct({
   // The digest the operator was shown. A batch whose digest has moved is refused
   // rather than approved on a different set than the one displayed.
@@ -152,7 +156,7 @@ export const PeriodWorkApi = HttpApiGroup.make("periodWork").add(
   HttpApiEndpoint.post("cancelPeriodWork", `${path}/manifests/:manifestId/cancel`, {
     ...mutation,
     params: Schema.Struct({ ...Accounting.Scope.fields, manifestId: Accounting.Identifier }),
-    payload: Schema.Struct({ expectedDigest: Accounting.Digest }),
+    payload: CancelPeriodWork.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: PeriodWorkRunProgress,
   }),
   // Approval carries authority, so it stays out of the ordinary agent catalogue

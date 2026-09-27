@@ -3,7 +3,6 @@ import { HttpApiBuilder } from "effect/unstable/httpapi";
 
 import { Api } from "@open-erp/contracts/api";
 import { capabilities } from "../../../application/capabilities";
-import { cancelPeriodWork } from "../../../application/period-work";
 import { scopeFromPath } from "../scope";
 import { authenticate } from "../auth";
 
@@ -11,11 +10,11 @@ export const PeriodWorkHandlers = HttpApiBuilder.group(Api, "periodWork", (handl
   handlers
     .handle("cancelPeriodWork", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
-        cancelPeriodWork(token, {
+        capabilities.period_work_cancel.execute(token, {
           scope: scopeFromPath(params),
           manifestId: params.manifestId,
           idempotencyKey: headers["idempotency-key"],
-          expectedDigest: payload.expectedDigest,
+          input: { expectedDigest: payload.expectedDigest },
         }),
       ),
     )
