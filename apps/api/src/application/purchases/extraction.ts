@@ -17,6 +17,7 @@ import * as RetentionDb from "../../db/source-retention";
 import { databaseFailure, withTransaction, type Transaction } from "../../db/transaction";
 import { failure } from "../failures";
 import { admitRunnerActor } from "../preparation-jobs";
+import { RequestEnvironment } from "../../runtime/environment";
 import { digest, isoNow, newId, replay, saveCommand, sha256Hex } from "../posting";
 import { calculateSupplierDraft } from "./draft-calculation";
 import {
@@ -1675,6 +1676,43 @@ export const claimPendingSupplierExtractions = Effect.fn("purchases.extraction.c
         yield* requireExtractionAccess(transaction);
 
         return yield* ExtractionDb.claimReadyExtractionRequests(transaction);
+      }).pipe(Effect.mapError(databaseFailure)),
+    );
+  },
+);
+
+/**
+ * A request whose delivery is exhausted stops being claimed.
+ *
+ * The runner could not determine the outcome, so the request settles to
+ * `unknown`: an existing reviewed state that means exactly that, and not
+ * `completed`, which would claim a reading nobody observed. Settling removes the
+ * row from the `ready` predicate its claim query selects, which also stops the
+ * dispatch counter that would otherwise grow into its ceiling and stop the claim
+ * transaction for every other request in the installation.
+ *
+ * The state row is only moved out of `ready`, so a handler that is still working
+ * on this request cannot be overwritten here, and a request that already reached a
+ * terminal state is left alone.
+ */
+export const stopFailedExtractionDelivery = Effect.fn("purchases.extraction.stopFailedDelivery")(
+  function* (payload: { requestId: string; scope: Scope }) {
+    const { bindings } = yield* RequestEnvironment;
+    const token = bindings.OPENERP_PREPARATION_TOKEN;
+
+    if (!token) return yield* failure("Unavailable");
+
+    return yield* withTransaction((transaction) =>
+      Effect.gen(function* () {
+        yield* admitRunnerActor(transaction, token);
+        yield* requireExtractionAccess(transaction);
+
+        yield* ExtractionDb.completeExtractionRequest(
+          transaction,
+          payload.scope.bookId,
+          payload.requestId,
+          "unknown",
+        );
       }).pipe(Effect.mapError(databaseFailure)),
     );
   },
