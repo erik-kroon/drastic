@@ -96,6 +96,27 @@ supplier credit consumes. It declares no function; it reuses the baseline
 `immutable_row` guard and the `digest` check helper, and carries its own runtime
 grants. It too has never been applied by PostgreSQL.
 
+[0012-next-17.sql](migrations/0012-next-17.sql) extends the existing commerce FX
+owner with a supplier direction and an explicit-fee settlement profile. It adds a
+`direction` discriminator to `commerce_fx_items`, the `direction`,
+`gross_book_minor`, `fee_total_minor` and `cash_source_minor` columns to
+`commerce_fx_settlements`, and one table, `commerce_fx_settlement_sources`,
+holding the fee and cash legs a settlement actually posted. It declares no
+function and no second register: the original-unit and book-carrying release stays
+the released paired-release owner's, and remaining amounts are derived from the
+retained settlement rows of every profile. The signed cash carries the
+settlement's sign — a receipt is `K − F`, a payment is `−(K + F)` — and the
+retained `commerce_fx_settlements_profile_check` and
+`commerce_fx_settlements_body_check` are replaced with direction-aware equivalents
+that keep both released receivable profiles exact. A settlement source is
+immutable history; a correction releases the right by its own existence, so
+`db/commerce/fx.ts` derives an active consumption from the absence of a
+correction rather than from a mutable flag. The shared `readLineOwners`
+projection in `db/posting-admission.ts` reads the sources table, because a
+settlement posts up to twenty cash legs while its `cash_line_id` names only the
+first. `application/commerce/fx.ts` owns the compiler and the transaction;
+`db/commerce/fx.ts` the tx-passing reads and DML.
+
 [0009-next-26.sql](migrations/0009-next-26.sql) adds the bounded supplier extraction
 lifecycle: the append-only admitted request basis, its one mutable lifecycle row, and
 the immutable human field decisions. It declares no function, reuses the baseline

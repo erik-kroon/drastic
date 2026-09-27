@@ -374,6 +374,10 @@ export const SettlementSource = Schema.Struct({
   kind: Schema.Literals(["fee", "cash_source"]),
   sourceIdentity: SourceIdentity,
   accountId: Accounting.Identifier,
+  // The exact journal line this settlement created for the leg. A reversal posts
+  // new lines, so this stays the original line and the correction is what makes the
+  // source reusable.
+  journalLineId: Accounting.Identifier,
   signedBookMinor: Accounting.SignedMinorUnits,
   evidenceId: Accounting.Identifier,
   receipt: CommandReceipt,

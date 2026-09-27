@@ -1016,10 +1016,6 @@ export const ownerPurchaseTaxFacts = openerp.table("owner_purchase_tax_facts", {
   recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
 });
 
-  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
-  digest: text().notNull(),
-});
-
 // NEXT-17: the reviewed fee and cash source legs a foreign-currency settlement
 // actually posted. Versioned SQL migrations own the DDL; this is the typed mapping.
 export const commerceFxSettlementSources = openerp.table("commerce_fx_settlement_sources", {
