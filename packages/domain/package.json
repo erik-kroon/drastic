@@ -46,7 +46,8 @@
     "./recurrence": "./src/recurrence.ts",
     "./service-purchases": "./src/service-purchases.ts",
     "./sie-partitions": "./src/sie-partitions.ts",
-    "./collection-reminders": "./src/collection-reminders.ts"
+    "./collection-reminders": "./src/collection-reminders.ts",
+    "./filing-lifecycle": "./src/filing-lifecycle.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"
