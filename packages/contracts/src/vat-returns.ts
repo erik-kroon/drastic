@@ -622,6 +622,9 @@ export const VatSelectedFact = Schema.Struct({
   voucherId: A.Identifier,
   basisMinor: A.SignedMinorUnits,
   taxMinor: A.SignedMinorUnits,
+  // Optional only so earlier sealed captures remain readable; new captures retain
+  // signed source tax independently of the amount deductible in this return.
+  sourceTaxMinor: Schema.optional(A.SignedMinorUnits),
   adjustsFactId: Schema.NullOr(A.Identifier),
   ruleReleaseId: Schema.NullOr(A.Identifier),
   observation: VatFactObservationState,
@@ -807,6 +810,7 @@ export const VatActualBlocker = Schema.Literals([
   "control_unexplained_rows",
   "control_missing_rows",
   "control_opening_difference",
+  "control_component_conflict",
 ]);
 
 export const VatActualCalculation = Schema.Struct({

@@ -22,6 +22,7 @@ export const actualReturnTables = [
   "vat_fact_revisions",
   "vat_fact_withdrawals",
   "purchase_tax_facts",
+  "purchase_recognitions",
   "vat_control_profiles",
   "vat_control_account_roles",
   "vat_control_reclassification_effects",
@@ -157,8 +158,10 @@ export function readAdmittedFacts(
 export type PurchaseComponentRow = {
   readonly id: string;
   readonly recognitionId: string;
+  readonly sourceLineId: string;
   readonly voucherId: string;
   readonly signedBaseMinor: string;
+  readonly sourceTaxMinor: string;
   readonly signedDeductibleTaxMinor: string;
   readonly taxPointOn: string;
   readonly adjustsTaxFactId: string | null;
@@ -180,7 +183,8 @@ export function readPurchaseComponents(
 ) {
   return transaction.execute<PurchaseComponentRow>(
     sql`
-      select p.id, p.recognition_id as "recognitionId", p.voucher_id as "voucherId",
+      select p.id, p.recognition_id as "recognitionId", p.source_line_id as "sourceLineId",
+        p.voucher_id as "voucherId", p.source_tax_minor::text as "sourceTaxMinor",
         p.signed_base_minor::text as "signedBaseMinor",
         p.signed_deductible_tax_minor::text as "signedDeductibleTaxMinor",
         p.tax_point_on::text as "taxPointOn", p.adjusts_tax_fact_id as "adjustsTaxFactId",
@@ -265,6 +269,7 @@ function idArray(values: ReadonlyArray<string>) {
 export type ControlLineRow = {
   readonly voucherId: string;
   readonly lineId: string;
+  readonly ordinal: number;
   readonly accountId: string;
   readonly debitMinor: string;
   readonly creditMinor: string;
@@ -285,7 +290,7 @@ export function readVoucherControlLines(
 
   return transaction.execute<ControlLineRow>(
     sql`
-      select l.voucher_id as "voucherId", l.id as "lineId", l.account_id as "accountId",
+      select l.voucher_id as "voucherId", l.id as "lineId", l.ordinal, l.account_id as "accountId",
         l.debit_minor::text as "debitMinor", l.credit_minor::text as "creditMinor",
         v.posting_date::text as "postingDate"
       from openerp.journal_lines l
@@ -293,6 +298,48 @@ export function readVoucherControlLines(
       where l.book_id = ${bookId} and l.voucher_id = any(${idArray(voucherIds)})
         and l.account_id = any(${idArray(accountIds)})
       order by v.posting_date, l.voucher_id collate "C", l.ordinal
+    `,
+    "objects",
+  );
+}
+
+// The purchase owner retains the original journal order and the credit's ordered
+// line releases. Resolve that source-line relationship, never every VAT line of
+// the voucher for every source fact. Credit journals start with the payable line.
+export function readPurchaseControlLinks(
+  transaction: Transaction,
+  bookId: string,
+  recognitionIds: ReadonlyArray<string>,
+) {
+  return transaction.execute<{
+    readonly recognitionId: string;
+    readonly sourceLineId: string;
+    readonly journalOrdinal: number;
+  }>(
+    sql`
+      with selected as (
+        select id, event_owner, body from openerp.purchase_recognitions
+        where book_id = ${bookId} and id = any(${idArray(recognitionIds)})
+      ), credit_lines as (
+        select r.id, line.value,
+          (1 + sum(1 + case when (line.value ->> 'releasedDeductionMinor')::numeric > 0
+            and line.value ->> 'inputVatAccountId' is not null then 1 else 0 end)
+            over (partition by r.id order by line.ordinal))::integer as journal_ordinal
+        from selected r
+        cross join lateral jsonb_array_elements(r.body -> 'lineReleases')
+          with ordinality line(value, ordinal)
+        where r.event_owner = 'supplier_credit'
+      )
+      select r.id as "recognitionId", line.value ->> 'sourceLineId' as "sourceLineId",
+        line.ordinal::integer as "journalOrdinal"
+      from selected r
+      cross join lateral jsonb_array_elements(r.body -> 'plan' -> 'journal')
+        with ordinality line(value, ordinal)
+      where r.event_owner = 'supplier_purchase' and line.value ->> 'sourceLineId' is not null
+      union all
+      select id, value ->> 'sourceLineId', journal_ordinal from credit_lines
+      where (value ->> 'releasedDeductionMinor')::numeric > 0
+        and value ->> 'inputVatAccountId' is not null
     `,
     "objects",
   );
