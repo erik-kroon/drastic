@@ -59,7 +59,6 @@ function admissionQuery(today: string) {
     taxPointOn: today,
     paymentOn: today,
     reportOn: today,
-    taxPeriodOn: today,
   }).toString();
 }
 

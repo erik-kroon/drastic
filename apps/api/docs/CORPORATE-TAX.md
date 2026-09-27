@@ -72,6 +72,33 @@ pre-tax population, statement digest, rule release, admission witness, role bind
 recognised total refuses (`StaleDependency`) instead of re-deriving a different amount
 against the same approval.
 
+### Lock order
+
+`withBook` in `"update"` mode already admits the credential and takes the `books` row
+`FOR UPDATE` inside `admitPrincipal`, so the book is held before this owner's code runs.
+From there the order is period, the two income-tax accounts, the bridge, the approval, then
+the counters. The bridge is read unlocked only to learn which period and accounts to lock;
+the locked row is re-decoded and its digest compared, so the read-then-lock window cannot
+slip a different bridge through.
+
+The nonzero path deliberately does **not** lock the approval up front. The shared journal
+primitive takes the plan, then the approval, then the counters, so pre-locking the approval
+would invert domain-resources-before-approval. Four-eyes is checked from a shared read that
+takes only `actorId`, which is immutable — `approvals` is only ever updated for
+`consumedAt`. Revocation, expiry, consumption, operator membership and admission are all
+re-validated under the write lock by the shared primitive.
+
+A zero-delta recognition bypasses the shared primitive, so it validates its own sealed plan
+through the shared `validatePlan` first, asserts that plan carries no group, and only then
+writes its no-effect receipt.
+
+### The retained receipt identity is the written one
+
+`CorporateTaxEffect.groupReceiptId` is never a freshly minted identity. A nonzero
+recognition reads back the posting-group receipt the shared primitive committed for that
+change set, requires exactly one, and requires its plan digest to match the sealed plan. A
+zero-delta recognition writes its own approved no-effect group receipt and retains that id.
+
 ## The form and the engine start from one result
 
 `prepareIncomeTaxFields` derives the reviewed INK2 fields from the same sealed bridge and
@@ -115,6 +142,17 @@ markers the file-transfer contract actually uses are hash-led uppercase names, a
 admitted. Whether a marker is usable _alongside_ a bundle's own separators is a property of
 two reviewed fields together, so `renderSru` refuses a self-contradictory bundle before
 emitting anything rather than the contract excluding reviewed markers.
+
+## The corporate-tax family needs a fiscal tax period
+
+`ProfileDates.taxPeriodOn` is **optional**, because `ProfileDates` is embedded in every
+retained `ProfileWitness`. A witness sealed before this packet carries no such key and must
+still decode; making the field required would have made every retained VAT and purchase
+witness unreadable. `selectorDate` normalises a missing value to `null`, so an operation that
+names no fiscal tax period gets no corporate-tax family at all. `bookStatus`, payroll
+calculation, purchase recognition and the VAT return therefore do not supply it and cannot
+observe this family, which is the point: they have no fiscal tax period. Only the pre-close
+tax owner supplies `fiscalYear.endsOn`.
 
 ## Honest external gates
 

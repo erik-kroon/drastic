@@ -96,7 +96,6 @@ function readQualifiedRelease(transaction: Transaction, scope: Scope, input: Inp
         taxPointOn: input.endsOn,
         paymentOn: null,
         reportOn: null,
-        taxPeriodOn: null,
       },
     );
 

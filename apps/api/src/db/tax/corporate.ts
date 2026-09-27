@@ -1,11 +1,13 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type * as Schema from "effect/Schema";
 import {
+  changeSets,
   corporateTaxBridgeInputs,
   corporateTaxBridges,
   corporateTaxDeclarations,
   corporateTaxEffects,
   periods,
+  postingGroupReceipts,
 } from "../schema";
 import type { Transaction } from "../transaction";
 
@@ -345,6 +347,42 @@ export function readEffectsAfter(
     )
     .orderBy(sql`${corporateTaxEffects.id} collate "C"`)
     .limit(201);
+}
+
+// The posting-group receipt the shared journal primitive actually wrote for this
+// change set. The effect retains that exact identity, so it is read back rather
+// than invented; a plan with one group has exactly one such row.
+// The sealed plan behind one change set, so a no-effect recognition can still
+// validate that plan's own dependencies. A nonzero recognition validates the same
+// plan inside the shared journal primitive instead.
+export function readPlan(transaction: Transaction, bookId: string, changeSetId: string) {
+  return transaction
+    .select({ plan: changeSets.plan, digest: changeSets.digest })
+    .from(changeSets)
+    .where(and(eq(changeSets.bookId, bookId), eq(changeSets.id, changeSetId)))
+    .for("share");
+}
+
+export function readGroupReceiptsForChangeSet(
+  transaction: Transaction,
+  bookId: string,
+  changeSetId: string,
+) {
+  return transaction
+    .select({
+      id: postingGroupReceipts.id,
+      groupId: postingGroupReceipts.groupId,
+      planDigest: postingGroupReceipts.planDigest,
+      committedAt: postingGroupReceipts.committedAt,
+    })
+    .from(postingGroupReceipts)
+    .where(
+      and(
+        eq(postingGroupReceipts.bookId, bookId),
+        eq(postingGroupReceipts.changeSetId, changeSetId),
+      ),
+    )
+    .orderBy(asc(postingGroupReceipts.id));
 }
 
 export function readEffectByBridge(transaction: Transaction, bookId: string, bridgeId: string) {

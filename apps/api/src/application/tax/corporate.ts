@@ -16,6 +16,7 @@ import {
   replay,
   saveCommand,
   sealActionInTransaction,
+  validatePlan,
   versionedDigest,
 } from "../posting";
 import { resolveCompanyProfileInTransaction } from "../company-profiles";
@@ -1070,6 +1071,42 @@ export const executeEffect = Effect.fn("corporateTax.executeEffect")(function* (
 
       if (request.previous) return request.previous;
 
+      // Lock order. withBook already admitted the credential and took the book row
+      // for update, so the book is held before anything else here. Then the period
+      // and the two income-tax accounts, then this bridge, then the approval, then
+      // the counters. The bridge is read unlocked first only to learn which period
+      // and accounts to lock; the locked row is re-decoded and its digest compared,
+      // so the read-then-lock window cannot slip a different bridge through.
+      const read = (yield* Db.readBridge(transaction, command.scope.bookId, command.bridgeId))[0];
+
+      if (read === undefined) return yield* failure("NotFound");
+
+      const preview = yield* decode(BridgeSchema, read.body);
+
+      if (preview.digest !== command.input.bridgeDigest) return yield* failure("StaleDependency");
+
+      const period = (yield* Ledger.readPeriod(
+        transaction,
+        command.scope.bookId,
+        preview.accountingPeriodId,
+      ))[0];
+
+      if (period === undefined || period.locked) return yield* failure("PeriodLocked");
+
+      const expenseAccountId = accountFor(preview.overlay, "current_expense");
+      const liabilityAccountId = accountFor(preview.overlay, "current_liability");
+
+      if (expenseAccountId === null || liabilityAccountId === null) {
+        return yield* failure("UnsupportedProfile");
+      }
+
+      const accounts = yield* Ledger.readAccounts(transaction, command.scope.bookId, [
+        expenseAccountId,
+        liabilityAccountId,
+      ]);
+
+      if (accounts.length !== 2) return yield* failure("UnsupportedProfile");
+
       const sealed = (yield* Db.lockBridge(transaction, command.scope.bookId, command.bridgeId))[0];
 
       if (sealed === undefined) return yield* failure("NotFound");
@@ -1101,52 +1138,98 @@ export const executeEffect = Effect.fn("corporateTax.executeEffect")(function* (
       // this exact sealed plan digest through the shared approval endpoint, so the
       // current-tax effect keeps its four-eyes separation and an agent credential
       // cannot authorize its own accrual.
-      const approval = yield* readExecutionApprovalInTransaction(
+      //
+      // This read is a shared lock and takes only the approver. Locking the approval
+      // for update here would invert domain-resources-before-approval, because the
+      // shared journal primitive has not yet taken the plan. Nothing mutable is read
+      // outside the lock: `approvals` is only ever updated for `consumedAt`, so
+      // `actorId` is immutable, and each branch below performs the one authoritative
+      // validation and write lock in the reviewed order.
+      const approver = (yield* Ledger.readApproval(
         transaction,
-        command.scope,
-        { id: sealed.changeSetId, planDigest: sealed.planDigest },
+        command.scope.bookId,
         command.input.approvalId,
-      );
+      ))[0];
 
-      if (approval.actorId === principal.actorId) return yield* failure("ApprovalRequired");
+      if (approver === undefined || approver.changeSetId !== sealed.changeSetId) {
+        return yield* failure("ApprovalRequired");
+      }
+
+      if (approver.digest !== sealed.planDigest) return yield* failure("ApprovalRequired");
+
+      if (approver.actorId === principal.actorId) return yield* failure("ApprovalRequired");
 
       const posting = sealed.postsJournal
         ? yield* executeChangeInTransaction(transaction, principal, {
             scope: command.scope,
             changeSetId: sealed.changeSetId,
             idempotencyKey: newId("taxpost"),
-            input: { version: 1, planDigest: sealed.planDigest, approvalId: approval.id },
+            input: {
+              version: 1,
+              planDigest: sealed.planDigest,
+              approvalId: command.input.approvalId,
+            },
             owner: { kind: "corporate_income_tax", id: bridge.id },
           })
         : null;
 
       const committedAt = posting === null ? yield* isoNow(transaction) : posting.committedAt;
-      const groupReceiptId = newId("taxreceipt");
+
+      // The retained receipt identity is the one that was actually written, never a
+      // freshly minted one. A nonzero recognition reads back the group receipt the
+      // shared primitive committed; a zero-delta recognition writes its own
+      // approved no-effect receipt and retains that.
+      let groupReceiptId: string;
 
       if (posting === null) {
-        // A genuinely zero plan gets a no-effect receipt after its normal checks.
-        // It is not a fake zero voucher and it consumes no voucher number.
-        const groupId = newId("taxgroup");
+        // A genuinely zero plan still proves its own dependencies. It bypasses the
+        // shared journal primitive, so it validates the same sealed plan itself
+        // rather than trusting a plan nothing checked.
+        const planRow = (yield* Db.readPlan(
+          transaction,
+          command.scope.bookId,
+          sealed.changeSetId,
+        ))[0];
 
-        const receiptBody = yield* toJsonObject({
-          id: groupReceiptId,
-          changeSetId: sealed.changeSetId,
-          groupId,
-          planDigest: sealed.planDigest,
-          noFinancialEffect: true,
-          bridgeId: bridge.id,
-          approvalId: approval.id,
-          journalIds: [],
-          committedAt,
-        });
+        if (planRow === undefined) return yield* failure("StaleDependency");
+
+        const plan = yield* decode(Accounting.ChangeSet, planRow.plan);
+
+        if (plan.id !== sealed.changeSetId || plan.planDigest !== sealed.planDigest) {
+          return yield* failure("StaleDependency");
+        }
+
+        if (plan.groups.length !== 0) return yield* failure("StaleDependency");
+
+        yield* validatePlan(transaction, command.scope, plan);
+
+        const approval = yield* readExecutionApprovalInTransaction(
+          transaction,
+          command.scope,
+          { id: sealed.changeSetId, planDigest: sealed.planDigest },
+          command.input.approvalId,
+        );
+
+        const receipt = newId("taxreceipt");
+        const groupId = newId("taxgroup");
 
         yield* Ledger.insertGroupReceipt(transaction, {
           bookId: command.scope.bookId,
-          id: groupReceiptId,
+          id: receipt,
           changeSetId: sealed.changeSetId,
           groupId,
           planDigest: sealed.planDigest,
-          body: receiptBody,
+          body: yield* toJsonObject({
+            id: receipt,
+            changeSetId: sealed.changeSetId,
+            groupId,
+            planDigest: sealed.planDigest,
+            noFinancialEffect: true,
+            bridgeId: bridge.id,
+            approvalId: approval.id,
+            journalIds: [],
+            committedAt,
+          }),
           committedAt,
         });
 
@@ -1156,7 +1239,7 @@ export const executeEffect = Effect.fn("corporateTax.executeEffect")(function* (
           changeSetId: sealed.changeSetId,
           groupId,
           planDigest: sealed.planDigest,
-          receiptId: groupReceiptId,
+          receiptId: receipt,
           approverId: approval.actorId,
           consumedById: principal.actorId,
           consumedAt: committedAt,
@@ -1172,6 +1255,24 @@ export const executeEffect = Effect.fn("corporateTax.executeEffect")(function* (
         ) {
           return yield* failure("InternalError");
         }
+
+        groupReceiptId = receipt;
+      } else {
+        const receipts = yield* Db.readGroupReceiptsForChangeSet(
+          transaction,
+          command.scope.bookId,
+          sealed.changeSetId,
+        );
+
+        if (receipts.length !== 1) return yield* failure("InternalError");
+
+        const written = receipts[0];
+
+        if (written === undefined || written.planDigest !== sealed.planDigest) {
+          return yield* failure("InternalError");
+        }
+
+        groupReceiptId = written.id;
       }
 
       const body = yield* toJsonObject({
@@ -1192,7 +1293,7 @@ export const executeEffect = Effect.fn("corporateTax.executeEffect")(function* (
         recognizedAfterMinor: (recognized + delta).toString(),
         voucherId: posting === null ? null : posting.voucherId,
         postingReceipt: posting === null ? null : yield* toJsonObject(posting),
-        approvalId: approval.id,
+        approvalId: command.input.approvalId,
         groupReceiptId,
         noFinancialEffect: posting === null,
         economicIdentity: `corporate_income_tax:${sealed.fiscalYearId}`,
@@ -1211,7 +1312,7 @@ export const executeEffect = Effect.fn("corporateTax.executeEffect")(function* (
         changeSetId: sealed.changeSetId,
         fiscalYearId: sealed.fiscalYearId,
         voucherId: effect.voucherId,
-        approvalId: approval.id,
+        approvalId: command.input.approvalId,
         yearTaxTargetMinor: target.toString(),
         recognizedBeforeMinor: recognized.toString(),
         deltaMinor: delta.toString(),

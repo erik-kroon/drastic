@@ -261,8 +261,12 @@ export const ProfileDates = Schema.Struct({
   paymentOn: Schema.NullOr(Accounting.AccountingDate),
   reportOn: Schema.NullOr(Accounting.AccountingDate),
   // The pre-close corporate-tax family selects its reviewed release on the fiscal
-  // period end it reports on, never on today's date.
-  taxPeriodOn: Schema.NullOr(Accounting.AccountingDate),
+  // period end it reports on, never on today's date. This one is optional because
+  // ProfileDates is embedded in every retained ProfileWitness: a body sealed before
+  // the corporate-tax family existed carries no such key and must still decode. A
+  // caller that does not supply it gets no corporate-tax family, which is what
+  // keeps the family out of operations that have no fiscal tax period.
+  taxPeriodOn: Schema.optional(Schema.NullOr(Accounting.AccountingDate)),
 });
 
 export const ProfileWitness = Schema.Struct({

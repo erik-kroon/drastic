@@ -60,8 +60,12 @@ const factOperations = new Map<string, ReadonlyArray<Family>>([
   ["payroll_registration", ["payroll"]],
 ]);
 
+// A family whose selector date was never supplied has no selector. Normalising a
+// missing date to null is what keeps the corporate_tax family unavailable to a
+// caller that named no fiscal tax period, while a family with a real selector date
+// still selects on that date and never on today's.
 export function selectorDate(family: Family, dates: Dates) {
-  return dates[familySelector[family]];
+  return dates[familySelector[family]] ?? null;
 }
 
 export function familyGap(

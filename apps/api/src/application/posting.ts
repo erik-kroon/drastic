@@ -632,7 +632,6 @@ export const bookStatus = Effect.fn("posting.bookStatus")(function* (
           taxPointOn: today,
           paymentOn: today,
           reportOn: today,
-          taxPeriodOn: today,
         },
       );
 

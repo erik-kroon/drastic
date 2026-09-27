@@ -144,7 +144,6 @@ export const readVatWitness = Effect.fn("purchases.recognition.vatWitness")(func
     taxPointOn,
     paymentOn: null,
     reportOn: null,
-    taxPeriodOn: null,
   });
 
   const family = resolved.families.find((entry) => entry.family === "vat");
