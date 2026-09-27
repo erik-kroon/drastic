@@ -31,7 +31,6 @@
     "./prepayments": "./src/prepayments.ts",
     "./vat-assessment": "./src/vat-assessment.ts",
     "./employee-claims": "./src/employee-claims.ts",
-    "./mileage-awards": "./src/mileage-awards.ts",
     "./variable-pay": "./src/variable-pay.ts",
     "./historical-adoptions": "./src/historical-adoptions.ts",
     "./asset-disposals": "./src/asset-disposals.ts",
@@ -42,7 +41,8 @@
     "./period-work": "./src/period-work.ts",
     "./recurrence": "./src/recurrence.ts",
     "./service-purchases": "./src/service-purchases.ts",
-    "./sie-partitions": "./src/sie-partitions.ts"
+    "./sie-partitions": "./src/sie-partitions.ts",
+    "./collection-reminders": "./src/collection-reminders.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"
