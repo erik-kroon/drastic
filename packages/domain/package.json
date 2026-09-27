@@ -26,7 +26,6 @@
     "./peppol-exchange": "./src/peppol-exchange.ts",
     "./annual-report": "./src/annual-report.ts",
     "./document-signatures": "./src/document-signatures.ts",
-    "./authority-filing": "./src/authority-filing.ts",
     "./fx-remeasurement": "./src/fx-remeasurement.ts",
     "./customer-credits": "./src/customer-credits.ts",
     "./cash-method": "./src/cash-method.ts",
@@ -48,8 +47,7 @@
     "./recurrence": "./src/recurrence.ts",
     "./service-purchases": "./src/service-purchases.ts",
     "./sie-partitions": "./src/sie-partitions.ts",
-    "./collection-reminders": "./src/collection-reminders.ts",
-    "./filing-lifecycle": "./src/filing-lifecycle.ts"
+    "./collection-reminders": "./src/collection-reminders.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"
