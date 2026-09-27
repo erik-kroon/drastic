@@ -24,6 +24,7 @@
     "./processor-clearing": "./src/processor-clearing.ts",
     "./mileage-reimbursement": "./src/mileage-reimbursement.ts",
     "./peppol-exchange": "./src/peppol-exchange.ts",
+    "./annual-report": "./src/annual-report.ts",
     "./fx-remeasurement": "./src/fx-remeasurement.ts",
     "./customer-credits": "./src/customer-credits.ts",
     "./cash-method": "./src/cash-method.ts",
