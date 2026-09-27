@@ -178,7 +178,16 @@ function readArrays(
       sequence,
     ))[0]?.invalid;
 
-    if (recognised !== "0" || allocated !== "0") return yield* failure("InvalidJournal");
+    const discharged = (yield* Db.countInvalidOwnerDischarges(
+      transaction,
+      bookId,
+      asOfDate,
+      sequence,
+    ))[0]?.invalid;
+
+    if (recognised !== "0" || allocated !== "0" || discharged !== "0") {
+      return yield* failure("InvalidJournal");
+    }
 
     const allocations = (yield* Db.readAllocations(transaction, bookId, asOfDate, sequence))[0]
       ?.value;

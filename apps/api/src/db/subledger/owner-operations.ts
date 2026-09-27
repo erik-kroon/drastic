@@ -217,20 +217,6 @@ export function readReceiptForReview(transaction: Transaction, bookId: string, r
   );
 }
 
-// What the owner has already discharged of one recognized supplier payable. The
-// receipt ledger is immutable, so this is the only consumption authority for an
-// owner-paid discharge.
-export function readDischargedMinor(transaction: Transaction, bookId: string, invoiceId: string) {
-  return transaction.execute<{ readonly total: string }>(
-    sql`
-      select coalesce(sum(r.amount_minor), 0)::text as total
-      from openerp.owner_operation_receipts r
-      where r.book_id = ${bookId} and r.invoice_id = ${invoiceId} and r.mode = 'owner_pays_payable'
-    `,
-    "objects",
-  );
-}
-
 export function insertReceipt(
   transaction: Transaction,
   row: {

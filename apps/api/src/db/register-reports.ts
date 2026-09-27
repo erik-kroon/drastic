@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import * as Schema from "effect/Schema";
 import type { Transaction } from "./transaction";
+import { ownerDischargeSummary } from "./commerce/invoices";
 
 type JsonObject = Schema.JsonObject;
 
@@ -15,6 +16,7 @@ export const registerTables = [
   "commerce_allocation_reversals",
   "invoice_cancellations",
   "supplier_credits",
+  "owner_operation_receipts",
   "invoice_drafts",
   "journal_lines",
   "vouchers",
@@ -214,6 +216,24 @@ export function readAllocations(
   );
 }
 
+export function countInvalidOwnerDischarges(
+  transaction: Transaction,
+  bookId: string,
+  asOf: string,
+  sequence: string,
+) {
+  return transaction.execute<{ readonly invalid: string }>(
+    sql`
+      select count(*)::text as invalid
+      from openerp.commerce_invoices i
+      join openerp.vouchers v on v.book_id = i.book_id and v.id = i.recognition_voucher_id
+      cross join lateral (${ownerDischargeSummary(asOf, sequence)}) discharge
+      where i.book_id = ${bookId} and ${cutoff(bookId, asOf, sequence)} and discharge.invalid
+    `,
+    "objects",
+  );
+}
+
 export function readInvoices(
   transaction: Transaction,
   bookId: string,
@@ -230,7 +250,7 @@ export function readInvoices(
         'documentNumber', i.document_number, 'issuedOn', i.issued_on::text,
         'amountMinor', i.amount_minor::text, 'controlAccountId', i.control_account_id,
         'evidence', i.body->'evidence', 'recognition', i.body->'recognition',
-        'revision', r.body, 'allocatedMinor', paid.amount::text,
+         'revision', r.body, 'allocatedMinor', (paid.amount + owner_discharges.total)::text,
         'cancelledMinor', case when cancel.id is null then '0' else i.amount_minor::text end,
         'creditedMinor', credit.amount::text,
         'effectiveAmountMinor', ((case when cancel.id is null then i.amount_minor else 0 end)
@@ -241,7 +261,7 @@ export function readInvoices(
           'reversalVoucherId', cancel.body->>'reversalVoucherId',
           'postingDate', cancel.body->>'postingDate', 'committedAt', cancel.body->>'committedAt') end,
         'outstandingMinor', ((case when cancel.id is null then i.amount_minor else 0 end)
-          - paid.amount - credit.amount)::text,
+           - paid.amount - owner_discharges.total - credit.amount)::text,
         'daysOverdue', greatest(${asOf}::date - (r.body->>'dueOn')::date, 0),
         'ageBucket', case
           when ${asOf}::date <= (r.body->>'dueOn')::date then 'not_due'
@@ -268,7 +288,8 @@ export function readInvoices(
         select coalesce(sum((a->>'amountMinor')::numeric), 0) as amount
         from jsonb_array_elements(${JSON.stringify(allocations)}::jsonb) a
         where a->>'invoiceId' = i.id
-      ) paid
+       ) paid
+       cross join lateral (${ownerDischargeSummary(asOf, sequence)}) owner_discharges
       where i.book_id = ${bookId} and ${cutoff(bookId, asOf, sequence)}
     `,
     "objects",
@@ -290,22 +311,24 @@ export function readLines(
         'sequence', v.sequence::text, 'ordinal', l.ordinal,
         'postingDate', v.posting_date::text, 'debitMinor', l.debit_minor::text,
         'creditMinor', l.credit_minor::text,
-        'invoiceId', coalesce(invoice.value->>'id', cancelled.value->>'id', credit.invoice_id),
-        'allocatedMinor', paid.amount::text,
-        'cancellationId', cancelled.value->'cancellation'->>'id', 'creditId', credit.id,
+         'invoiceId', coalesce(invoice.value->>'id', cancelled.value->>'id', credit.invoice_id, owner_discharge.invoice_id),
+         'allocatedMinor', (paid.amount + coalesce(owner_discharge.amount_minor, 0))::text,
+         'cancellationId', cancelled.value->'cancellation'->>'id', 'creditId', credit.id,
+         'ownerDischargeId', owner_discharge.id,
         'registerContributionKind', case
           when invoice.value is not null then 'recognition'
           when cancelled.value is not null then 'cancellation'
-          when credit.id is not null then 'credit'
+           when credit.id is not null then 'credit'
+           when owner_discharge.id is not null then 'owner_discharge'
           when paid.amount > 0 then 'allocation' else 'unexplained' end,
         'registerEffectMinor', (coalesce((invoice.value->>'amountMinor')::numeric, 0)
           - coalesce((cancelled.value->>'cancelledMinor')::numeric, 0)
-          - coalesce(credit.amount_minor, 0) - paid.amount)::text,
+           - coalesce(credit.amount_minor, 0) - paid.amount - coalesce(owner_discharge.amount_minor, 0))::text,
         'unexplainedMinor', ((case when c.direction = 'customer'
             then l.debit_minor - l.credit_minor else l.credit_minor - l.debit_minor end)
           - coalesce((invoice.value->>'amountMinor')::numeric, 0)
           + coalesce((cancelled.value->>'cancelledMinor')::numeric, 0)
-          + coalesce(credit.amount_minor, 0) + paid.amount)::text
+           + coalesce(credit.amount_minor, 0) + paid.amount + coalesce(owner_discharge.amount_minor, 0))::text
       ) order by v.sequence, l.ordinal), '[]'::jsonb) as value
       from openerp.journal_lines l
       join openerp.vouchers v on v.book_id = l.book_id and v.id = l.voucher_id
@@ -319,8 +342,16 @@ export function readLines(
         select i as value from jsonb_array_elements(${JSON.stringify(invoices)}::jsonb) i
         where i->'cancellation'->>'reversalVoucherId' = v.id and i->'recognition'->>'lineId' = l.id
       ) cancelled on true
-      left join openerp.supplier_credits credit
-        on (credit.book_id, credit.voucher_id, credit.control_line_id) = (l.book_id, v.id, l.id)
+       left join openerp.supplier_credits credit
+         on (credit.book_id, credit.voucher_id, credit.control_line_id) = (l.book_id, v.id, l.id)
+       left join openerp.owner_operation_receipts owner_discharge
+         on owner_discharge.book_id = l.book_id and owner_discharge.voucher_id = v.id
+           and owner_discharge.mode = 'owner_pays_payable'
+           and exists (
+             select 1 from openerp.commerce_invoices payable
+             where payable.book_id = owner_discharge.book_id and payable.id = owner_discharge.invoice_id
+               and payable.control_account_id = l.account_id and payable.direction = 'supplier'
+           )
       cross join lateral (
         select coalesce(sum((a->>'amountMinor')::numeric), 0) as amount
         from jsonb_array_elements(${JSON.stringify(allocations)}::jsonb) a

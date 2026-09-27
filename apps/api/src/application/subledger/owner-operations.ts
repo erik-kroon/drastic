@@ -15,6 +15,7 @@ import { liveInvoice } from "../commerce/register";
 import { digest } from "../json";
 import { admitAccountRole, admitLineOwner } from "../resource-admission";
 import * as AcceptanceDb from "../../db/purchases/acceptance";
+import * as PaymentDb from "../../db/purchases/payments";
 import * as OperationDb from "../../db/subledger/owner-operations";
 import * as OwnerDb from "../../db/subledger/owners";
 import * as RecognitionDb from "../../db/purchases/recognition";
@@ -268,10 +269,8 @@ function compiled(input: Input, body: Omit<Compiled, "input">) {
   return { ...body, input } satisfies Compiled;
 }
 
-// What a recognized supplier payable still owes, after commerce settlements and
-// after any owner discharge this operation already committed. The live invoice
-// projection owns the commerce side; the immutable owner receipt ledger owns the
-// owner side, and the two together are the whole capacity.
+// The common invoice projection includes both commerce allocations and owner
+// discharges. Do not subtract the owner receipt a second time here.
 const readPayableCapacity = Effect.fn("owner.operations.payableCapacity")(function* (
   transaction: Transaction,
   scope: Scope,
@@ -298,11 +297,15 @@ const readPayableCapacity = Effect.fn("owner.operations.payableCapacity")(functi
 
   if (payable === undefined || !payable.active) return yield* failure("InvalidJournal");
 
-  const discharged = BigInt(
-    (yield* OperationDb.readDischargedMinor(transaction, scope.bookId, payableId))[0]?.total ?? "0",
-  );
+  const payment = (yield* PaymentDb.readInvoicePaymentFacts(
+    transaction,
+    scope.bookId,
+    payableId,
+  ))[0];
 
-  const remaining = BigInt(invoice.outstandingMinor) - discharged;
+  if (payment === undefined || payment.exported) return yield* failure("StaleDependency");
+
+  const remaining = BigInt(invoice.outstandingMinor);
 
   if (remaining <= 0n) return yield* failure("StaleDependency");
 
@@ -1038,20 +1041,21 @@ const reviewBlockers = Effect.fn("owner.operations.blockers")(function* (
   if (review.discharges !== null) {
     const invoice = yield* liveInvoice(transaction, scope.bookId, review.discharges.invoiceId);
 
-    const discharged = BigInt(
-      (yield* OperationDb.readDischargedMinor(
-        transaction,
-        scope.bookId,
-        review.discharges.invoiceId,
-      ))[0]?.total ?? "0",
-    );
+    const payment = (yield* PaymentDb.readInvoicePaymentFacts(
+      transaction,
+      scope.bookId,
+      review.discharges.invoiceId,
+    ))[0];
+
+    if (payment === undefined || payment.exported) {
+      blockers.push(
+        "The supplier payable has an exported payment instruction or unavailable payment state.",
+      );
+    }
 
     if (invoice.outstandingMinor === null || invoice.status === "cancelled") {
       blockers.push("The recognized supplier payable is no longer an open obligation.");
-    } else if (
-      discharged + BigInt(review.discharges.amountMinor) >
-      BigInt(invoice.outstandingMinor)
-    ) {
+    } else if (BigInt(review.discharges.amountMinor) > BigInt(invoice.outstandingMinor)) {
       blockers.push("The supplier payable no longer has this much unconsumed capacity.");
     }
   }
