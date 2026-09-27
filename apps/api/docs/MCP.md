@@ -122,6 +122,15 @@ for MCP. Discovery and `tools/call` use the same filtered set. A hidden name ret
 review, role binding, firm administration, company setup and period-work mutations
 remain outside MCP. Use their authorized HTTP/UI operations.
 
+The period-work family is the case where the distinction matters. All six of its
+writes are declared and classified, and the classification is what withholds them:
+preparing a manifest, advancing, sealing a batch and cancelling a run are
+operator-only preparation; approving a batch is the human gesture; executing a batch
+produces the economic effects. Declaring them means the catalogue names the whole
+surface and any reclassification has to be deliberate, and it widens nothing,
+because no operator-only class is eligible. The read stays exposed, so an agent can
+still see a run's progress without being able to drive it.
+
 | Caller               | Admission and authority                                                                                                                                                                   |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Web and REST         | Validated contracts call their named application owner. Human-only workflows check the current operator or browser identity.                                                              |

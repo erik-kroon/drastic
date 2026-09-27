@@ -157,6 +157,9 @@ export function FinanceArea(props: {
   record?: string;
   account?: string;
   work?: string;
+  // The open supplier occurrence. It is a separate address from `record`, which the
+  // supplier draft panel owns, so opening a draft does not displace the original.
+  occurrence?: string;
 }) {
   const { area, view, record, account } = props;
   const { book, setup, locale } = useBookWorkspace();
@@ -175,12 +178,17 @@ export function FinanceArea(props: {
     void navigate({ to: reviewPath(book, id), search: work ?? {} });
   };
 
-  const onOpen = (id: string) => {
-    void navigate({
-      to: base,
-      search: { view: selected, record: id || undefined, work: props.work },
-    });
+  // One place writes this area's search, so a selection cannot be dropped by a
+  // navigation that forgot it. An empty id clears its own selection only.
+  const navigateArea = (search: { record?: string; occurrence?: string }) => {
+    void navigate({ to: base, search: { view: selected, work: props.work, ...search } });
   };
+
+  const onOpen = (id: string) =>
+    navigateArea({ record: id || undefined, occurrence: props.occurrence });
+
+  const onOpenOccurrence = (id: string) =>
+    navigateArea({ record: record || undefined, occurrence: id || undefined });
 
   return (
     <>
@@ -238,7 +246,9 @@ export function FinanceArea(props: {
               book={book}
               locale={locale}
               recordId={recordId}
+              occurrenceId={props.occurrence}
               onOpen={onOpen}
+              onOpenOccurrence={onOpenOccurrence}
             />
           ) : null}
           <SupplierPaymentFileArea

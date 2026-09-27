@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Suppliers from "@open-erp/contracts/supplier-invoice-drafts";
 import { ArrowLeft, Plus, Pencil } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
@@ -42,6 +42,12 @@ import {
 
 type Draft = typeof Suppliers.SupplierInvoiceDraftRevision.Type;
 
+function moreDraftsLabel(sv: boolean, loading: boolean) {
+  if (loading) return sv ? "Laddar…" : "Loading…";
+
+  return sv ? "Visa fler utkast" : "Load more drafts";
+}
+
 function draftStage(accepted: boolean, reviewCount: number) {
   if (accepted) return 2;
 
@@ -51,7 +57,14 @@ function draftStage(accepted: boolean, reviewCount: number) {
 }
 
 export function SupplierInvoiceDrafts(
-  props: CommerceProps & { recordId?: string; onOpen: (id: string) => void },
+  props: CommerceProps & {
+    recordId?: string;
+    onOpen: (id: string) => void;
+    // The open supplier occurrence, addressed on its own so opening a draft does
+    // not displace the original it came from.
+    occurrenceId?: string;
+    onOpenOccurrence: (id: string) => void;
+  },
 ) {
   const sv = props.locale === "sv";
   const [search, setSearch] = useState("");
@@ -61,11 +74,16 @@ export function SupplierInvoiceDrafts(
     props.recordId?.startsWith("new:") ||
     props.recordId?.startsWith("inbox:");
 
-  const list = useQuery({
-    queryKey: [...commerceKey(props.book), "supplier-invoice-drafts"],
-    queryFn: async ({ signal }) => {
+  const list = useInfiniteQuery({
+    queryKey: [...commerceKey(props.book), "supplier-invoice-drafts", search],
+    initialPageParam: "",
+    queryFn: async ({ signal, pageParam }) => {
+      const query = new URLSearchParams({ q: search });
+
+      if (pageParam !== "") query.set("after", pageParam);
+
       const result = await readAccounting(
-        `${commercePath(props.book)}/supplier-invoice-drafts`,
+        `${commercePath(props.book)}/supplier-invoice-drafts?${query}`,
         Suppliers.SupplierInvoiceDraftList,
         { signal },
       );
@@ -74,6 +92,7 @@ export function SupplierInvoiceDrafts(
 
       return result;
     },
+    getNextPageParam: (page) => page.next ?? undefined,
     retry: false,
   });
 
@@ -90,12 +109,7 @@ export function SupplierInvoiceDrafts(
       </Box>
     );
 
-  const matches =
-    list.data?.items.filter((record) =>
-      `${record.title} ${record.supplierName} ${record.supplierDocumentNumber ?? ""}`
-        .toLocaleLowerCase(props.locale)
-        .includes(search.toLocaleLowerCase(props.locale)),
-    ) ?? [];
+  const matches = list.data?.pages.flatMap((page) => page.items) ?? [];
 
   return (
     <Box display="grid" gap="xl">
@@ -114,7 +128,13 @@ export function SupplierInvoiceDrafts(
         }
       />
       {!props.recordId ? (
-        <SupplierInbox book={props.book} locale={props.locale} onDraft={props.onOpen} />
+        <SupplierInbox
+          book={props.book}
+          locale={props.locale}
+          onDraft={props.onOpen}
+          occurrenceId={props.occurrenceId}
+          onOpenOccurrence={props.onOpenOccurrence}
+        />
       ) : null}
       <RegisterSearch
         aria-label={sv ? "Sök fakturautkast" : "Search invoice drafts"}
@@ -124,6 +144,7 @@ export function SupplierInvoiceDrafts(
             : "Search supplier, invoice number or description…"
         }
         value={search}
+        maxLength={200}
         onChange={(event) => setSearch(event.target.value)}
       />
       <AccountingStatus locale={props.locale} pending={list.isPending} error={list.error} />
@@ -141,6 +162,19 @@ export function SupplierInvoiceDrafts(
       ) : null}
       {list.isSuccess ? (
         <SupplierDraftResults {...props} matches={matches} search={search} />
+      ) : null}
+      {list.hasNextPage ? (
+        <Box>
+          <Button
+            variant="outline"
+            disabled={list.isFetching}
+            onClick={() => {
+              void list.fetchNextPage();
+            }}
+          >
+            {moreDraftsLabel(sv, list.isFetchingNextPage)}
+          </Button>
+        </Box>
       ) : null}
       <PageCaption>
         {sv

@@ -176,12 +176,18 @@ function SupplierInboxEntry(props: {
   );
 }
 
-export function SupplierInbox(props: CommerceProps & { onDraft: (id: string) => void }) {
+export function SupplierInbox(
+  props: CommerceProps & {
+    onDraft: (id: string) => void;
+    // The open occurrence is addressed, not held: a reload and a shared link find
+    // the same occurrence, switching replaces it, and closing clears it.
+    occurrenceId?: string;
+    onOpenOccurrence: (id: string) => void;
+  },
+) {
   const { book, locale } = props;
   const sv = locale === "sv";
-  const [id, setId] = useState("");
   const [upload, setUpload] = useState(false);
-  const [registered, setRegistered] = useState(false);
   const keys = useRef(new Map<string, string>());
   const client = useQueryClient();
   const path = `${commercePath(book)}/supplier-inbox`;
@@ -200,6 +206,11 @@ export function SupplierInbox(props: CommerceProps & { onDraft: (id: string) => 
   });
 
   const inboxItems = inbox.data?.pages.flatMap((page) => page.items) ?? [];
+  const id = props.occurrenceId ?? "";
+  // The inbox list is the fact about which occurrences exist, so this survives a
+  // reload without inventing a second record of it. An occurrence that is not in
+  // the list yet is simply not open: the register form below is how it gets there.
+  const registered = inboxItems.some((item) => item.occurrence.occurrence.id === id);
 
   const view = useQuery({
     queryKey: [...bookKey(book), "supplier-inbox", id],
@@ -241,8 +252,7 @@ export function SupplierInbox(props: CommerceProps & { onDraft: (id: string) => 
       return result;
     },
     onSuccess: (result) => {
-      setId(result.occurrence.occurrence.id);
-      setRegistered(true);
+      props.onOpenOccurrence(result.occurrence.occurrence.id);
       setUpload(false);
       void client.invalidateQueries({ queryKey: [...bookKey(book), "supplier-inbox"] });
     },
@@ -262,22 +272,26 @@ export function SupplierInbox(props: CommerceProps & { onDraft: (id: string) => 
         <Button type="button" variant="outline" onClick={() => setUpload(!upload)}>
           {sv ? "Ladda upp original" : "Upload original"}
         </Button>
-        {id && registered ? (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => void view.refetch()}
-            disabled={view.isFetching}
-          >
-            {sv ? "Uppdatera" : "Refresh"}
-          </Button>
+        {registered ? (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void view.refetch()}
+              disabled={view.isFetching}
+            >
+              {sv ? "Uppdatera" : "Refresh"}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => props.onOpenOccurrence("")}>
+              {sv ? "Stäng originalet" : "Close original"}
+            </Button>
+          </>
         ) : null}
       </Box>
       {upload ? (
         <DocumentUpload
           onSaved={(sourceId) => {
-            setId(sourceId);
-            setRegistered(false);
+            props.onOpenOccurrence(sourceId);
             register.mutate(sourceId);
           }}
         />
@@ -310,10 +324,7 @@ export function SupplierInbox(props: CommerceProps & { onDraft: (id: string) => 
         locale={locale}
         hasNextPage={inbox.hasNextPage}
         isFetching={inbox.isFetching}
-        onOpen={(occurrenceId) => {
-          setId(occurrenceId);
-          setRegistered(true);
-        }}
+        onOpen={(occurrenceId) => props.onOpenOccurrence(occurrenceId)}
         onLoadMore={() => void inbox.fetchNextPage()}
       />
       <AccountingStatus
@@ -329,6 +340,9 @@ export function SupplierInbox(props: CommerceProps & { onDraft: (id: string) => 
       ) : null}
       {entry ? (
         <SupplierInboxEntry
+          // A per-occurrence instance: switching must not carry one occurrence's
+          // review state or its idempotency keys into the next.
+          key={id}
           entry={entry}
           commerceProps={props}
           id={id}
