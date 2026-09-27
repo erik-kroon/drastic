@@ -7,13 +7,23 @@ import { reviewPath, workspacePath } from "./book-context";
 import { workReturnHref, type WorkReturn } from "./work-return";
 import type { Locale } from "@/paraglide/runtime";
 
-export function attentionQueryOptions(
-  book: typeof Accounting.Book.Type,
-  filters: typeof Workspace.AttentionQuery.Type,
-) {
+// Only the fields the attention read filters on. The carried selection is part
+// of where this page is, not a filter on the list it shows.
+export function attentionServerSearch(filters: WorkReturn) {
+  return {
+    period: filters.period,
+    status: filters.status,
+    sort: filters.sort,
+    q: filters.q,
+    kind: filters.kind,
+    after: filters.after,
+  };
+}
+
+export function attentionQueryOptions(book: typeof Accounting.Book.Type, filters: WorkReturn) {
   const search = new URLSearchParams();
 
-  for (const [key, value] of Object.entries(filters))
+  for (const [key, value] of Object.entries(attentionServerSearch(filters)))
     if (value !== undefined && value !== "") search.set(key, value);
 
   return queryOptions({
@@ -55,13 +65,14 @@ export function attentionPath(
 // The work filters a reviewer chose survive the round trip through a record.
 // The queue cursor is not carried: it points at one page, and the record
 // returns to the first page of the same filtered list.
-export function attentionWork(filters: typeof Workspace.AttentionQuery.Type): WorkReturn {
+export function attentionWork(filters: WorkReturn): WorkReturn {
   return {
     period: filters.period,
     status: filters.status,
     sort: filters.sort,
     q: filters.q,
     kind: filters.kind,
+    manifest: filters.manifest,
   };
 }
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
-import { AttentionQuery } from "@open-erp/contracts/workspace";
+import { WorkQueueQuery } from "@/lib/work-return";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField, SelectField } from "@open-erp/ui/components/field";
@@ -16,9 +16,11 @@ import { SavedWorkViews } from "@/components/saved-work-views";
 import { AttentionList } from "@/components/attention-list";
 import { attentionCopy } from "@/lib/attention";
 import { accountingCopy } from "@/lib/accounting-copy";
+import { PeriodWorkPanel } from "@/components/period-work/panel";
+import { periodWorkCopy } from "@/components/period-work/copy";
 
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/work")({
-  validateSearch: Schema.decodeUnknownSync(AttentionQuery),
+  validateSearch: Schema.decodeUnknownSync(WorkQueueQuery),
   component: Work,
 });
 
@@ -28,6 +30,7 @@ function Work() {
   const navigate = Route.useNavigate();
   const [error, setError] = useState("");
   const copy = accountingCopy(locale);
+  const periodWork = periodWorkCopy(locale);
 
   return (
     <>
@@ -82,12 +85,13 @@ function Work() {
               event.preventDefault();
               const fields = new FormData(event.currentTarget);
 
-              const parsed = Schema.decodeUnknownOption(AttentionQuery)({
+              const parsed = Schema.decodeUnknownOption(WorkQueueQuery)({
                 q: fields.get("q"),
                 kind: filters.kind ?? "all",
                 period: fields.get("period") || undefined,
                 status: filters.status ?? "open",
                 sort: fields.get("sort"),
+                manifest: filters.manifest,
               });
 
               if (parsed._tag === "None") {
@@ -140,6 +144,17 @@ function Work() {
             void navigate({ search: (previous) => ({ ...previous, after }) });
           }}
         />
+        <Disclosure title={periodWork.title}>
+          <Box paddingBlock="lg" display="grid" gap="lg">
+            <PeriodWorkPanel
+              locale={locale}
+              manifestId={filters.manifest ?? ""}
+              onOpen={(manifest) => {
+                void navigate({ search: { ...filters, manifest: manifest || undefined } });
+              }}
+            />
+          </Box>
+        </Disclosure>
         <Disclosure title={copy.workspace_recovery}>
           <Box paddingBlock="lg" display="grid" gap="lg">
             <Text tone="muted">{copy.workspace_recovery_help}</Text>
@@ -149,13 +164,7 @@ function Work() {
               onPrepared={(id) => {
                 void navigate({
                   to: reviewPath(book, id),
-                  search: {
-                    period: filters.period,
-                    status: filters.status,
-                    sort: filters.sort,
-                    q: filters.q,
-                    kind: filters.kind,
-                  },
+                  search: filters,
                 });
               }}
             />

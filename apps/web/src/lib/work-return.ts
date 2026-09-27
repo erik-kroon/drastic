@@ -1,4 +1,5 @@
 import * as Schema from "effect/Schema";
+import * as Accounting from "@open-erp/contracts/accounting";
 import { AttentionQuery } from "@open-erp/contracts/workspace";
 import { defaultParseSearch, defaultStringifySearch } from "@tanstack/react-router";
 
@@ -15,12 +16,20 @@ export const WorkReturnSearch = Schema.optional(
   Schema.String.check(Schema.isPattern(/^\?/), Schema.isMaxLength(400)),
 );
 
-export type WorkReturn = typeof AttentionQuery.Type;
+// The queue's own search plus the prepared selection this page is about. The
+// attention read is not given `manifest`: it filters a list, and the selection
+// is not a filter on that list.
+export const WorkQueueQuery = Schema.Struct({
+  ...AttentionQuery.fields,
+  manifest: Schema.optional(Accounting.Identifier),
+});
+
+export type WorkReturn = typeof WorkQueueQuery.Type;
 
 export function decodeWorkReturn(search: string | undefined) {
   if (!search) return undefined;
 
-  const decoded = Schema.decodeOption(AttentionQuery)(defaultParseSearch(search));
+  const decoded = Schema.decodeOption(WorkQueueQuery)(defaultParseSearch(search));
 
   return decoded._tag === "Some" ? decoded.value : undefined;
 }
