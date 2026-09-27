@@ -471,7 +471,7 @@ export const reviewSupplierInbox = Effect.fn("purchases.inbox.review")(function*
 
       const draft = yield* createSupplierInvoiceDraftInTransaction(transaction, principal, {
         scope: command.scope,
-        idempotencyKey: command.idempotencyKey,
+        idempotencyKey: newId("supplier_draft"),
         input: { draftKey, content: command.input.draft.content },
       });
 

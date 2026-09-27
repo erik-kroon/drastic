@@ -8,6 +8,7 @@ import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { accountingCopy } from "@/lib/accounting-copy";
+import { useBusinessDate } from "@/lib/use-business-date";
 import type { Locale } from "@/paraglide/runtime";
 
 export function BookReadiness({
@@ -21,9 +22,10 @@ export function BookReadiness({
 }) {
   const copy = accountingCopy(locale);
   const [open, setOpen] = useState(expanded);
+  const today = useBusinessDate();
 
   const status = useQuery({
-    queryKey: [...bookKey(book), "status"],
+    queryKey: [...bookKey(book), "status", today],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(`${bookPath(book)}/status`, Accounting.BookStatus, {
         signal,

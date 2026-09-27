@@ -23,6 +23,8 @@ type BalanceRow = typeof Sie4E.Sie4EBalanceRow.Type;
 
 type LineRow = typeof Sie4E.Sie4ELineRow.Type;
 
+type OpeningLineRow = typeof Sie4E.Sie4EOpeningLineRow.Type;
+
 type Limitation = typeof Sie4E.Sie4ELimitation.Type;
 
 export const maximumAccounts = 500;
@@ -436,7 +438,7 @@ function orderVouchers(lines: ReadonlyArray<LineRow>) {
     );
 }
 
-function originalObjects(capture: Capture, line: LineRow) {
+function originalObjects(capture: Capture, line: LineRow | OpeningLineRow) {
   if (capture.rendererRelease.version === "openerp-sie4e-v1") {
     if (line.originalDimensions?.length)
       refuse("The v1 renderer cannot represent original dimension assignments.");
@@ -445,7 +447,7 @@ function originalObjects(capture: Capture, line: LineRow) {
   }
 
   if (capture.objectMap === undefined || line.originalDimensions === undefined)
-    refuse("The v2 capture is missing its object map or original line assignments.");
+    refuse("The capture is missing its object map or original line assignments.");
 
   const seen = new Set<string>();
   const objects: Array<{ dimensionNumber: number; code: string }> = [];
@@ -487,9 +489,12 @@ function validateObjectProfile(capture: Capture) {
 
   if (
     map === undefined ||
-    capture.emittedRecords.objectRecords !== "original_transaction_assignments"
+    capture.emittedRecords.objectRecords !==
+      (capture.rendererRelease.version === "openerp-sie4e-v3"
+        ? "original_assignments_and_balances"
+        : "original_transaction_assignments")
   )
-    refuse("The v2 renderer requires a frozen original-assignment object map.");
+    refuse("The renderer requires its versioned original-assignment object profile.");
 
   if (
     JSON.stringify(capture.dimensions) !== JSON.stringify(map.dimensions.map((entry) => entry.code))
@@ -517,6 +522,107 @@ function validateObjectProfile(capture: Capture) {
   }
 }
 
+type ObjectBalance = {
+  accountCode: string;
+  dimensionNumber: number;
+  code: string;
+  openingMinor: bigint;
+  movementMinor: bigint;
+};
+
+function objectBalances(capture: Capture, rows: ReadonlyArray<Row>) {
+  const opening = rows.filter((row): row is OpeningLineRow => row.kind === "opening_line");
+
+  if (capture.rendererRelease.version !== "openerp-sie4e-v3") {
+    if (opening.length > 0) refuse("A legacy renderer cannot reinterpret opening-line membership.");
+
+    return [];
+  }
+
+  if (capture.counts.openingLines !== opening.length)
+    refuse("The retained opening membership does not match its captured count.");
+
+  const balances = new Map(
+    rows
+      .filter((row): row is BalanceRow => row.kind === "balance")
+      .map((row) => [row.accountId, row]),
+  );
+
+  const lines = rows.filter((row): row is LineRow => row.kind === "line");
+  const identities = new Set(lines.map((row) => `${row.voucherId}:${row.lineId}`));
+  const openingByAccount = new Map<string, bigint>();
+
+  for (const row of opening) {
+    const identity = `${row.voucherId}:${row.lineId}`;
+
+    const validBasis =
+      capture.openingBasis.representation === "opening_set_voucher"
+        ? row.voucherId === capture.openingBasis.openingVoucherId && row.postingDate <= capture.asOf
+        : row.postingDate < capture.fiscalYear.startsOn;
+
+    if (identities.has(identity) || !validBasis)
+      refuse("An opening line is duplicated, counted as movement or outside its selected basis.");
+
+    identities.add(identity);
+    openingByAccount.set(
+      row.accountId,
+      (openingByAccount.get(row.accountId) ?? 0n) + signed(row.debitMinor, row.creditMinor),
+    );
+  }
+
+  for (const balance of balances.values())
+    if ((openingByAccount.get(balance.accountId) ?? 0n) !== BigInt(balance.openingMinor))
+      refuse("Original opening contributions disagree with a captured account opening balance.");
+
+  const objects = new Map<string, ObjectBalance>();
+
+  for (const row of [...opening, ...lines]) {
+    const account = balances.get(row.accountId);
+
+    if (
+      account === undefined ||
+      account.code !== row.accountCode ||
+      signed(row.debitMinor, row.creditMinor) !== BigInt(row.signedMinor)
+    )
+      refuse("An object contribution has no matching account or exact signed amount.");
+
+    for (const object of originalObjects(capture, row)) {
+      const identity = `${row.accountCode}:${object.dimensionNumber}:${object.code}`;
+
+      const balance = objects.get(identity) ?? {
+        accountCode: row.accountCode,
+        dimensionNumber: object.dimensionNumber,
+        code: object.code,
+        openingMinor: 0n,
+        movementMinor: 0n,
+      };
+
+      if (row.kind === "opening_line") balance.openingMinor += BigInt(row.signedMinor);
+      else balance.movementMinor += BigInt(row.signedMinor);
+      objects.set(identity, balance);
+    }
+  }
+
+  const nominalCodes = new Set(
+    [...balances.values()].filter((row) => row.accountClass === "nominal").map((row) => row.code),
+  );
+
+  for (const balance of objects.values())
+    if (nominalCodes.has(balance.accountCode) && balance.openingMinor !== 0n)
+      refuse(
+        `Nominal account ${balance.accountCode} has a nonzero object opening that #RES cannot represent.`,
+      );
+
+  return [...objects.values()]
+    .filter((row) => !nominalCodes.has(row.accountCode))
+    .sort(
+      (left, right) =>
+        codeOrder(left.accountCode, right.accountCode) ||
+        left.dimensionNumber - right.dimensionNumber ||
+        codeOrder(left.code, right.code),
+    );
+}
+
 // Strict record writer for the pinned type-4 family. Text, quoting, line ending
 // and byte encoding are all fixed here; nothing is substituted afterwards.
 export function renderSie4E(
@@ -528,6 +634,8 @@ export function renderSie4E(
     refuse("This SIE4E renderer supports only currency scale two and no prior-year records.");
 
   validateObjectProfile(capture);
+
+  const objects = objectBalances(capture, rows);
 
   if (capture.kind !== "complete_book_sie_v1")
     refuse("A complete-book export requires a complete_book_sie_v1 capture.");
@@ -599,6 +707,14 @@ export function renderSie4E(
     ...orderedBalances
       .filter((balance) => balance.accountClass === "nominal")
       .map((balance) => `#RES 0 ${balance.code} ${amount(BigInt(balance.resultMinor))}`),
+    ...objects.map(
+      (balance) =>
+        `#OIB 0 ${balance.accountCode} {${balance.dimensionNumber} ${quoted(balance.code)}} ${amount(balance.openingMinor)}`,
+    ),
+    ...objects.map(
+      (balance) =>
+        `#OUB 0 ${balance.accountCode} {${balance.dimensionNumber} ${quoted(balance.code)}} ${amount(balance.openingMinor + balance.movementMinor)}`,
+    ),
   ];
 
   let emitted = 0;
@@ -854,6 +970,80 @@ function checkControls(balances: ReadonlyArray<BalanceRow>, parsed: Sie4EParsed,
   return actual;
 }
 
+function checkObjectControls(
+  capture: Capture,
+  rows: ReadonlyArray<Row>,
+  parsed: Sie4EParsed,
+  note: Note,
+) {
+  const balances = objectBalances(capture, rows);
+  const expected = new Map<string, bigint>();
+
+  for (const balance of balances) {
+    const key = `${balance.accountCode}:{${balance.dimensionNumber} ${balance.code}}`;
+    expected.set(`OIB:${key}`, balance.openingMinor);
+    expected.set(`OUB:${key}`, balance.openingMinor + balance.movementMinor);
+  }
+
+  const actual = new Map<string, bigint>();
+
+  for (const record of parsed.records.filter(
+    (entry) => entry.tag === "OIB" || entry.tag === "OUB",
+  )) {
+    const key = `${record.tag}:${record.fields[1]}:${record.fields[2]}`;
+    const minor = parseMinor(record.fields[3] ?? "");
+
+    if (
+      record.fields.length !== 4 ||
+      record.fields[0] !== "0" ||
+      minor === null ||
+      actual.has(key)
+    ) {
+      note(`Object control ${key} is malformed or duplicated.`);
+      continue;
+    }
+
+    actual.set(key, minor);
+  }
+
+  if (actual.size !== expected.size) note("The file carries a different set of object controls.");
+
+  for (const [key, minor] of expected)
+    if (actual.get(key) !== minor) note(`Object control ${key} is missing or changed.`);
+
+  const movements = new Map<string, bigint>();
+
+  for (const voucher of parsed.vouchers) {
+    for (const transaction of voucher.transactions) {
+      const minor = parseMinor(transaction.amount);
+
+      if (minor === null || transaction.dimensions === "{}") continue;
+
+      const fields = transaction.dimensions.slice(1, -1).split(" ");
+
+      for (let index = 0; index < fields.length; index += 2) {
+        const key = `${transaction.account}:{${fields[index]} ${fields[index + 1]}}`;
+        movements.set(key, (movements.get(key) ?? 0n) + minor);
+      }
+    }
+  }
+
+  for (const balance of balances) {
+    const key = `${balance.accountCode}:{${balance.dimensionNumber} ${balance.code}}`;
+    const opening = actual.get(`OIB:${key}`);
+    const closing = actual.get(`OUB:${key}`);
+
+    if (
+      opening === undefined ||
+      closing === undefined ||
+      opening + (movements.get(key) ?? 0n) !== closing
+    )
+      note(`Object ${key} does not satisfy opening plus movement equals closing in the file.`);
+  }
+
+  return actual.size;
+}
+
 // Movement recomputed from the parsed transactions only. Together with the parsed
 // #IB and #UB this is the independent opening plus movement equals closing
 // identity, derived from the file rather than from the capture.
@@ -1027,6 +1217,7 @@ export function compareSie4E(
   checkAccountDeclarations(accounts, parsed, note);
 
   const controls = checkControls(balances, parsed, note);
+  const objectControls = checkObjectControls(capture, rows, parsed, note);
   const movement = checkTransactions(parsed, note);
   const counted = checkVoucherIdentities(capture, lines, parsed, note);
 
@@ -1044,6 +1235,6 @@ export function compareSie4E(
     accounts: accounts.length,
     vouchers: parsed.vouchers.length,
     lines: counted,
-    controls: controls.size,
+    controls: controls.size + objectControls,
   };
 }

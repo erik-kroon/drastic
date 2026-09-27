@@ -82,13 +82,25 @@ export const SupplierInvoiceDraftSummary = Schema.Struct({
   digest: Accounting.Digest,
 });
 
+export const SupplierInvoiceDraftListCursor = Schema.String.check(
+  Schema.isMaxLength(198),
+  Schema.isPattern(/^sdl1:[a-f0-9]{64}:[a-z][a-z0-9_-]{2,127}$/),
+);
+
+export const SupplierInvoiceDraftListQuery = Schema.Struct({
+  after: Schema.optional(SupplierInvoiceDraftListCursor),
+  q: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
+});
+
 export const SupplierInvoiceDraftList = Schema.Struct({
   ...Drafts.InvoiceDraftList.fields,
+  complete: Schema.Boolean,
   items: Schema.Array(SupplierInvoiceDraftSummary).check(Schema.isMaxLength(200)),
+  next: Schema.NullOr(SupplierInvoiceDraftListCursor),
 });
 
 export const SupplierInvoiceDraftHistory = Schema.Struct({
-  ...SupplierInvoiceDraftList.fields,
+  ...Drafts.InvoiceDraftList.fields,
   id: Accounting.Identifier,
   currentRevision: Commerce.Version,
   items: Schema.Array(SupplierInvoiceDraftSummary).check(Schema.isMaxLength(50)),
@@ -184,6 +196,7 @@ export const SupplierInvoiceDraftsApi = HttpApiGroup.make("supplierInvoiceDrafts
   }),
   HttpApiEndpoint.get("listSupplierInvoiceDrafts", path, {
     params: Accounting.Scope,
+    query: SupplierInvoiceDraftListQuery.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: SupplierInvoiceDraftList,
     error: accountingErrors,
   }),
@@ -220,8 +233,8 @@ export const SupplierInvoiceDraftCapabilities = {
   },
   commerce_list_supplier_invoice_drafts: {
     description:
-      "Read the complete bounded current supplier-document draft list and source evidence references. Not an accepted or recognized supplier-invoice register.",
-    input: Schema.Struct({ scope: Accounting.Scope }),
+      "Read a live page of retained supplier-document draft heads and source evidence references. Count is this page's count; follow next for more. Complete is true only when the first page contains the whole matching collection. Search with q; restart to include newly added or edited matches. Not an accepted or recognized supplier-invoice register.",
+    input: Schema.Struct({ scope: Accounting.Scope, ...SupplierInvoiceDraftListQuery.fields }),
     output: SupplierInvoiceDraftList,
     readOnly: true,
   },

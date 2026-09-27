@@ -42,11 +42,8 @@ export type FieldDecisionRow = {
   readonly body: JsonObject;
 };
 
-export function readExtractionRequestForUpdate(
-  transaction: Transaction,
-  bookId: string,
-  requestId: string,
-) {
+// Immutable basis; callers serialize through the book and mutable lifecycle row.
+export function readExtractionRequest(transaction: Transaction, bookId: string, requestId: string) {
   return transaction.execute<ExtractionRequestRow>(
     sql`
       select id, occurrence_id as "occurrenceId", generation,
@@ -55,7 +52,6 @@ export function readExtractionRequestForUpdate(
         requested_by as "requestedBy", requested_at as "requestedAt", body
       from openerp.supplier_extraction_requests
       where book_id = ${bookId} and id = ${requestId}
-      for update
     `,
     "objects",
   );
@@ -245,12 +241,14 @@ export function readAttemptForRequest(transaction: Transaction, bookId: string, 
 
 // Bounded durable dispatch. SKIP LOCKED is dispatch work only: it never skips a
 // contended financial record, and a row it skips stays ready for the next poll.
-export function claimReadyExtractionRequests(transaction: Transaction) {
+export function claimReadyExtractionRequests(transaction: Transaction, actorId: string) {
   return transaction.execute<ExtractionClaimRow>(
     sql`
       with selected as (
         select s.book_id, s.request_id from openerp.supplier_extraction_request_states s
-        where s.state = 'ready'
+         where s.state = 'ready'
+           and exists (select 1 from openerp.memberships m
+             where m.book_id = s.book_id and m.actor_id = ${actorId})
         order by s.book_id, s.request_id
         limit 20
         for update of s skip locked

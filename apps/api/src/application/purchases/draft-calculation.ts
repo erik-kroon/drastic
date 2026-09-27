@@ -18,7 +18,7 @@ type CalculatedLine = {
   readonly id: string;
   readonly calculatedBaseMinor: string | null;
   readonly netMinor: string;
-  readonly grossMinor: string;
+  readonly grossMinor: string | null;
   readonly sourceGrossMatches: boolean | null;
   readonly taxEvidence: JsonObject | null;
 };
@@ -271,8 +271,8 @@ export const calculateSupplierDraft = Effect.fn("purchases.draft.calculate")(fun
           discountMinor: totals.discountTotal.toString(),
           chargeMinor: totals.chargeTotal.toString(),
           netMinor: netTotal.toString(),
-          taxMinor: effectiveTaxTotal === null ? "" : effectiveTaxTotal.toString(),
-          grossMinor: grossTotal === null ? "" : grossTotal.toString(),
+          taxMinor: effectiveTaxTotal === null ? null : effectiveTaxTotal.toString(),
+          grossMinor: grossTotal === null ? null : grossTotal.toString(),
           sourceTotalMatches: totalMatch,
         },
         calculatedLines: totals.calculated,
@@ -360,7 +360,7 @@ function calculateLines(
         id: lineId,
         calculatedBaseMinor: product === null ? null : product.toString(),
         netMinor: net.toString(),
-        grossMinor: gross === null ? "" : gross.toString(),
+        grossMinor: gross === null ? null : gross.toString(),
         sourceGrossMatches: lineMatch,
         taxEvidence,
       });

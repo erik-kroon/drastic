@@ -215,7 +215,9 @@ function attemptBody(
   return Object.assign({}, structured, {
     requestId,
     attemptId: attempt.id,
-    createdAt: Shared.textField(structured, "createdAt") ?? "",
+    createdAt: attempt.body.createdAt,
+    retainedOutputHash: attempt.body.retainedOutputHash,
+    diagnostics: Shared.arrayField(structured, "extractionDiagnostics"),
   });
 }
 
@@ -516,7 +518,7 @@ export const cancelSupplierExtraction = Effect.fn("purchases.extraction.cancel")
 
       if (!entry) return yield* failure("NotFound");
 
-      const target = (yield* ExtractionDb.readExtractionRequestForUpdate(
+      const target = (yield* ExtractionDb.readExtractionRequest(
         transaction,
         command.scope.bookId,
         command.requestId,
@@ -658,11 +660,7 @@ function readReviewBasis(
 
     if (!entry) return yield* failure("NotFound");
 
-    const request = (yield* ExtractionDb.readExtractionRequestForUpdate(
-      transaction,
-      bookId,
-      requestId,
-    ))[0];
+    const request = (yield* ExtractionDb.readExtractionRequest(transaction, bookId, requestId))[0];
 
     if (!request || request.occurrenceId !== occurrenceId) return yield* failure("NotFound");
 
@@ -847,7 +845,7 @@ export const prepareSupplierExtractionReview = Effect.fn("purchases.extraction.p
       const merge = proposalState(
         basis.base ?? {},
         currentContent,
-        basis.attempt.body,
+        attemptBody(basis.attempt, command.requestId),
         [],
         retained,
       );
@@ -1141,7 +1139,7 @@ export const commitSupplierExtractionReview = Effect.fn("purchases.extraction.re
       const merge = proposalState(
         basis.base,
         currentContent,
-        basis.attempt.body,
+        attemptBody(basis.attempt, command.requestId),
         command.input.lines.map((line) => ({
           candidateLineId: line.candidateLineId,
           targetLineId: line.targetLineId,
@@ -1167,7 +1165,7 @@ export const commitSupplierExtractionReview = Effect.fn("purchases.extraction.re
       const draft = yield* basis.current === null
         ? createSupplierInvoiceDraftInTransaction(transaction, principal, {
             scope: command.scope,
-            idempotencyKey: command.idempotencyKey,
+            idempotencyKey: newId("supplier_draft"),
             input: {
               draftKey: `ap_${(yield* sha256Hex(`${command.scope.bookId}:${command.occurrenceId}`)).slice(0, 60)}`,
               content: reviewed,
@@ -1178,7 +1176,7 @@ export const commitSupplierExtractionReview = Effect.fn("purchases.extraction.re
           : reviseSupplierInvoiceDraftInTransaction(transaction, principal, {
               scope: command.scope,
               draftId: basis.current.id,
-              idempotencyKey: command.idempotencyKey,
+              idempotencyKey: newId("supplier_revision"),
               input: {
                 expectedRevision: basis.current.revision,
                 expectedDigest: basis.current.digest,
@@ -1400,9 +1398,9 @@ function runNativeEngine(
   };
 }
 
-function settleRequest(bookId: string, requestId: string, state: string) {
-  return withTransaction((transaction) =>
-    ExtractionDb.completeExtractionRequest(transaction, bookId, requestId, state).pipe(
+function settleRequest(token: string, scope: Scope, requestId: string, state: string) {
+  return Shared.withBook(token, scope, false, "update", (transaction) =>
+    ExtractionDb.completeExtractionRequest(transaction, scope.bookId, requestId, state).pipe(
       Effect.asVoid,
       Effect.mapError(databaseFailure),
     ),
@@ -1432,11 +1430,18 @@ export const runSupplierExtraction = Effect.fn("purchases.extraction.run")(funct
   scope: Scope,
   requestId: string,
 ) {
-  const captured = yield* withTransaction((transaction) =>
-    Effect.gen(function* () {
-      yield* requireExtractionAccess(transaction);
+  const { bindings } = yield* RequestEnvironment;
+  const token = bindings.OPENERP_PREPARATION_TOKEN;
 
-      const request = (yield* ExtractionDb.readExtractionRequestForUpdate(
+  if (!token) return yield* failure("Unavailable");
+
+  const captured = yield* Shared.withBook(token, scope, false, "update", (transaction, principal) =>
+    Effect.gen(function* () {
+      if (principal.kind !== "apiCredential") return yield* failure("Forbidden");
+      yield* requireExtractionAccess(transaction);
+      const book = yield* Shared.readBook(transaction, scope.bookId);
+
+      const request = (yield* ExtractionDb.readExtractionRequest(
         transaction,
         scope.bookId,
         requestId,
@@ -1451,6 +1456,25 @@ export const runSupplierExtraction = Effect.fn("purchases.extraction.run")(funct
       ))[0];
 
       if (!state) return yield* failure("InternalError");
+
+      if (state.state !== "ready") return { terminal: state.state };
+
+      const existing = (yield* ExtractionDb.readAttemptForRequest(
+        transaction,
+        scope.bookId,
+        requestId,
+      ))[0];
+
+      if (existing) {
+        yield* ExtractionDb.completeExtractionRequest(
+          transaction,
+          scope.bookId,
+          requestId,
+          "completed",
+        );
+
+        return { terminal: "completed" };
+      }
 
       const occurrence = (yield* InboxDb.readOccurrence(
         transaction,
@@ -1469,43 +1493,27 @@ export const runSupplierExtraction = Effect.fn("purchases.extraction.run")(funct
       if (!content) return yield* failure("MissingEvidence");
 
       return {
+        terminal: null,
+        book,
         request,
         state,
         occurrence,
         content,
-        existing:
-          (yield* ExtractionDb.readAttemptForRequest(transaction, scope.bookId, requestId))[0] ??
-          null,
       };
     }).pipe(Effect.mapError(databaseFailure)),
   );
 
-  if (captured.existing !== null) {
-    yield* settleRequest(scope.bookId, requestId, "completed");
-
-    return "completed";
-  }
-
-  if (captured.state.state !== "ready") return captured.state.state;
+  if (captured.terminal !== null) return captured.terminal;
 
   const pages = requestPages(captured.request);
 
   if (pages === null) {
-    yield* settleRequest(scope.bookId, requestId, "unknown");
+    yield* settleRequest(token, scope, requestId, "unknown");
 
     return "unknown";
   }
 
   const byteLength = Number(captured.request.originalBytes);
-
-  const book = yield* withTransaction((transaction) =>
-    Shared.PurchaseDb.lockBook(transaction, scope.bookId, "share").pipe(
-      Effect.flatMap((rows) =>
-        rows[0] === undefined ? failure("Forbidden") : Effect.succeed(rows[0]!),
-      ),
-      Effect.mapError(databaseFailure),
-    ),
-  );
 
   const mediaType = Shared.textField(captured.occurrence.body, "mediaType") ?? "";
 
@@ -1514,24 +1522,28 @@ export const runSupplierExtraction = Effect.fn("purchases.extraction.run")(funct
     captured.request.originalHash,
     byteLength,
   ).pipe(
-    Effect.map((text) => runNativeEngine(text, mediaType, book.currencyScale, pages, byteLength)),
+    Effect.map((text) =>
+      runNativeEngine(text, mediaType, captured.book.currencyScale, pages, byteLength),
+    ),
     Effect.catch((error) => Effect.succeed(failedReading(readingFailureCode(error), ""))),
   );
 
-  return yield* publishExtraction(scope, requestId, captured.state.cancelVersion, outcome);
+  return yield* publishExtraction(token, scope, requestId, captured.state.cancelVersion, outcome);
 });
 
 function publishExtraction(
+  token: string,
   scope: Scope,
   requestId: string,
   cancelVersion: number,
   outcome: ExtractedReading,
 ) {
-  return withTransaction((transaction) =>
+  return Shared.withBook(token, scope, false, "update", (transaction, principal) =>
     Effect.gen(function* () {
+      if (principal.kind !== "apiCredential") return yield* failure("Forbidden");
       yield* requireExtractionAccess(transaction);
 
-      const request = (yield* ExtractionDb.readExtractionRequestForUpdate(
+      const request = (yield* ExtractionDb.readExtractionRequest(
         transaction,
         scope.bookId,
         requestId,
@@ -1602,7 +1614,7 @@ function publishExtraction(
         id: attemptId,
         occurrenceId: request.occurrenceId,
         ordinal,
-        createdBy: request.requestedBy,
+        createdBy: principal.actorId,
         createdAt,
         parserVersion: nativeTextEngine,
         status: outcome.result,
@@ -1637,6 +1649,11 @@ function publishExtraction(
 
       if (previous.previous) return "completed";
 
+      const result = yield* Shared.decode(
+        Extraction.SupplierExtractionAttempt,
+        attemptBody({ id: attemptId, ordinal, body }, requestId),
+      );
+
       yield* InboxDb.insertAttempt(transaction, {
         bookId: scope.bookId,
         id: attemptId,
@@ -1657,7 +1674,7 @@ function publishExtraction(
         previous.expected,
         "run_supplier_extraction",
         request.requestedBy,
-        yield* Shared.toJsonObject(attemptBody({ id: attemptId, ordinal, body }, requestId)),
+        yield* Shared.toJsonObject(result),
       );
 
       return "completed";
@@ -1672,10 +1689,10 @@ export const claimPendingSupplierExtractions = Effect.fn("purchases.extraction.c
   function* (token: string) {
     return yield* withTransaction((transaction) =>
       Effect.gen(function* () {
-        yield* admitRunnerActor(transaction, token);
+        const actorId = yield* admitRunnerActor(transaction, token);
         yield* requireExtractionAccess(transaction);
 
-        return yield* ExtractionDb.claimReadyExtractionRequests(transaction);
+        return yield* ExtractionDb.claimReadyExtractionRequests(transaction, actorId);
       }).pipe(Effect.mapError(databaseFailure)),
     );
   },
@@ -1702,9 +1719,9 @@ export const stopFailedExtractionDelivery = Effect.fn("purchases.extraction.stop
 
     if (!token) return yield* failure("Unavailable");
 
-    return yield* withTransaction((transaction) =>
+    return yield* Shared.withBook(token, payload.scope, false, "update", (transaction, principal) =>
       Effect.gen(function* () {
-        yield* admitRunnerActor(transaction, token);
+        if (principal.kind !== "apiCredential") return yield* failure("Forbidden");
         yield* requireExtractionAccess(transaction);
 
         yield* ExtractionDb.completeExtractionRequest(

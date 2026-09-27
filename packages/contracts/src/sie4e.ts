@@ -20,7 +20,11 @@ export const Sie4ESpecificationSha256 = Schema.Literal(
 
 export const Sie4ESpecificationEdition = Schema.Literal("4C-2025-08-06");
 
-export const Sie4ERendererVersion = Schema.Literals(["openerp-sie4e-v1", "openerp-sie4e-v2"]);
+export const Sie4ERendererVersion = Schema.Literals([
+  "openerp-sie4e-v1",
+  "openerp-sie4e-v2",
+  "openerp-sie4e-v3",
+]);
 
 // The specification permits the organisation number with or without its grouping
 // dash. Both are declared representations of the same field; this release does
@@ -52,6 +56,8 @@ export const Sie4ERecordProfile = Schema.Array(
     "#KONTO",
     "#DIM",
     "#OBJEKT",
+    "#OIB",
+    "#OUB",
     "#IB",
     "#UB",
     "#RES",
@@ -64,7 +70,11 @@ export const Sie4ERecordProfile = Schema.Array(
 // exactly which type-4 records the file carries without inferring them.
 export const Sie4EEmittedRecords = Schema.Struct({
   recordProfile: Sie4ERecordProfile,
-  objectRecords: Schema.Literals(["absent", "original_transaction_assignments"]),
+  objectRecords: Schema.Literals([
+    "absent",
+    "original_transaction_assignments",
+    "original_assignments_and_balances",
+  ]),
   priorYearRecords: Schema.Literal("absent"),
 });
 
@@ -179,7 +189,7 @@ export const Sie4EExport = Schema.Struct({
     reviewed: Schema.Literal(false),
   }),
   dimensions: Schema.Array(Schema.String).check(Schema.isMaxLength(500)),
-  // Absent on retained v1 captures. The v2 renderer requires this map and each
+  // Absent on retained v1 captures. Later renderers require this map and each
   // line's originalDimensions; missing data never defaults to an empty group.
   objectMap: Schema.optional(Sie4EObjectMap),
   counts: Schema.Struct({
@@ -187,6 +197,7 @@ export const Sie4EExport = Schema.Struct({
     balances: Schema.Int,
     vouchers: Schema.Int,
     lines: Schema.Int,
+    openingLines: Schema.optional(Schema.Int),
   }),
   openingControlTotalMinor: Accounting.SignedMinorUnits,
   movementControlTotalMinor: Accounting.SignedMinorUnits,
@@ -253,7 +264,18 @@ export const Sie4ELineRow = Schema.Struct({
   ),
 });
 
-export const Sie4ERow = Schema.Union([Sie4EAccountRow, Sie4EBalanceRow, Sie4ELineRow]);
+export const Sie4EOpeningLineRow = Schema.Struct({
+  ...Sie4ELineRow.fields,
+  kind: Schema.Literal("opening_line"),
+  originalDimensions: Schema.Array(OriginalDimensionAssignment).check(Schema.isMaxLength(64)),
+});
+
+export const Sie4ERow = Schema.Union([
+  Sie4EAccountRow,
+  Sie4EBalanceRow,
+  Sie4ELineRow,
+  Sie4EOpeningLineRow,
+]);
 
 export const Sie4EArtifact = Schema.Struct({
   exportId: Accounting.Identifier,
@@ -316,7 +338,7 @@ export const Sie4EList = Schema.Struct({
 export const Sie4ECapabilities = {
   sie4e_prepare: {
     description:
-      "Freeze a selected-book SIE4E export through asOf, render exact CP437 bytes outside the financial transaction and retain independently checked bytes. Requires account classification, retained legal-identity evidence and an established opening. Original transaction dimension codes and assignments are retained. Dimensional openings, conflicting retained labels and unrepresentable text refuse; destination acceptance is not established.",
+      "Freeze a selected-book SIE4E export through asOf, render exact CP437 bytes outside the financial transaction and retain independently checked bytes. Requires account classification, retained legal-identity evidence and an established opening. Original dimension codes, assignments and account/object opening and closing balances are retained. Conflicting retained labels, nominal-account openings and unrepresentable text refuse; destination acceptance is not established.",
     input: Schema.Struct({
       scope: Accounting.Scope,
       idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
@@ -334,7 +356,7 @@ export const Sie4ECapabilities = {
   },
   sie4e_rows: {
     description:
-      "Page the retained complete-book membership of one frozen export: account declarations, raw balances and complete journal lines. Follow next until null; this is history, not live ledger state.",
+      "Page the retained selected-book membership of one frozen export: account declarations, raw balances, original opening contributions and complete current journal lines. Follow next until null; this is history, not live ledger state.",
     input: Schema.Struct({
       scope: Accounting.Scope,
       id: Accounting.Identifier,

@@ -1,4 +1,5 @@
 import { equalJson } from "@open-erp/domain/canonicalization";
+import { swedishBusinessDate } from "@open-erp/domain/values";
 import { admitPosting, type PostingOwner } from "./posting-admission";
 import { recordHistoricalOpening, readReservedCommand } from "../db/posting-admission";
 import {
@@ -622,7 +623,7 @@ export const bookStatus = Effect.fn("posting.bookStatus")(function* (
     Effect.gen(function* () {
       yield* Db.lockBookForShare(transaction, command.scope);
       const book = yield* readBook(transaction, command.scope);
-      const today = (yield* isoNow(transaction)).slice(0, 10);
+      const today = swedishBusinessDate(new Date(yield* isoNow(transaction)));
 
       const admission = yield* resolveCompanyProfileInTransaction(
         transaction,

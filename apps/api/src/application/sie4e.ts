@@ -157,19 +157,6 @@ const captureDimensions = Effect.fn("sie4e.captureDimensions")(function* (
   boundary: string,
   openingVoucherId: string | null,
 ) {
-  const opening = (yield* SieDb.readSieBookDimensionalOpening(
-    transaction,
-    bookId,
-    startsOn,
-    boundary,
-    openingVoucherId,
-  ))[0];
-
-  if (opening?.present)
-    return yield* blocked(
-      "The opening basis carries original dimension values. This transaction-object profile does not emit object opening balances, so this export would lose their representation.",
-    );
-
   const rows = yield* SieDb.readSieBookDimensionAssignments(
     transaction,
     bookId,
@@ -542,16 +529,23 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
 
       if (accounts.length > SieDb.maximumSieBookAccounts) return yield* unsupported();
 
-      const opening = yield* StatementDb.readStatementOpeningLines(
+      const opening = yield* SieDb.readSieBookLines(
         transaction,
         command.scope.bookId,
         year.startsOn,
+        input.asOf,
         boundary,
         openingVoucherId,
-        SieDb.maximumSieBookAccounts,
+        maximumLines,
+        "opening",
       );
 
-      if (opening.length > SieDb.maximumSieBookAccounts) return yield* unsupported();
+      if (opening.length > maximumLines) return yield* unsupported();
+
+      if (opening.some((line) => line.postingDate > input.asOf))
+        return yield* blocked(
+          "The selected opening voucher is later than the requested as-of date.",
+        );
 
       const lines = yield* SieDb.readSieBookLines(
         transaction,
@@ -565,7 +559,9 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
 
       if (lines.length > maximumLines) return yield* unsupported();
 
-      const lineIdentities = new Set(lines.map((line) => `${line.voucherId}:${line.lineId}`));
+      const lineIdentities = new Set(
+        [...opening, ...lines].map((line) => `${line.voucherId}:${line.lineId}`),
+      );
 
       if ([...assignments.keys()].some((identity) => !lineIdentities.has(identity)))
         return yield* blocked("A retained dimension assignment has no selected journal line.");
@@ -588,7 +584,10 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
               version: account.version,
             })),
             classifications: input.accountClassifications,
-            opening: opening.map((entry) => ({ accountId: entry.accountId, minor: entry.minor })),
+            opening: opening.map((entry) => ({
+              accountId: entry.accountId,
+              minor: (BigInt(entry.debitMinor) - BigInt(entry.creditMinor)).toString(),
+            })),
             lines: lines.map((line) => ({
               voucherId: line.voucherId,
               lineId: line.lineId,
@@ -622,9 +621,22 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
         originalDimensions: assignments.get(`${line.voucherId}:${line.lineId}`) ?? [],
       }));
 
-      const retained = [...membership.accounts, ...membership.balances, ...dimensionedLines].map(
-        (row, index) => Object.assign({}, row, { ordinal: index + 1 }),
-      );
+      const openingLines = opening.map((line) => ({
+        ...line,
+        rowId: `OPENING:${line.voucherId}:${line.lineId}`,
+        ordinal: 0,
+        ordinalInVoucher: line.ordinal,
+        kind: "opening_line" as const,
+        signedMinor: (BigInt(line.debitMinor) - BigInt(line.creditMinor)).toString(),
+        originalDimensions: assignments.get(`${line.voucherId}:${line.lineId}`) ?? [],
+      }));
+
+      const retained = [
+        ...membership.accounts,
+        ...membership.balances,
+        ...openingLines,
+        ...dimensionedLines,
+      ].map((row, index) => Object.assign({}, row, { ordinal: index + 1 }));
 
       const sourceDigest = yield* digest(yield* toJsonObject({ rows: retained, objectMap }));
       const cutoff = yield* isoNow(transaction);
@@ -658,13 +670,14 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
           balances: membership.balances.length,
           vouchers: membership.vouchers,
           lines: membership.lines.length,
+          openingLines: openingLines.length,
         },
         openingControlTotalMinor: membership.controlTotals.openingMinor.toString(),
         movementControlTotalMinor: membership.controlTotals.movementMinor.toString(),
         closingControlTotalMinor: membership.controlTotals.closingMinor.toString(),
         sourceDigest,
         rendererRelease: {
-          version: "openerp-sie4e-v2",
+          version: "openerp-sie4e-v3",
           format: "SIE4E",
           specificationEdition: "4C-2025-08-06",
           specificationSha256: "96fcd3f7931b2aa22d18fbd518a33f863b57edd5562a78af195251e2bf38bac1",
@@ -687,10 +700,12 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
             "#IB",
             "#UB",
             "#RES",
+            "#OIB",
+            "#OUB",
             "#VER",
             "#TRANS",
           ],
-          objectRecords: "original_transaction_assignments",
+          objectRecords: "original_assignments_and_balances",
           priorYearRecords: "absent",
         },
         coverageLimitations: [
@@ -706,7 +721,7 @@ const captureSie4E = Effect.fn("sie4e.capture")(function* (
           {
             code: "original_assignment_states" as const,
             detail:
-              "Original transaction values use retained dimension and object codes. Unassigned, historical-exemption and not-recorded states remain distinct in the retained membership; SIE has no separate object for these states. Object and period balances are absent. Dimensional openings are unsupported.",
+              "Original opening and transaction values use retained dimension and object codes. Unassigned, historical-exemption and not-recorded states remain distinct in retained membership; SIE has no separate object for these states. Object balances partition each dimension independently. Period balances are absent.",
           },
         ],
         createdBy: principal.actorId,
@@ -783,7 +798,7 @@ const renderSie4EExport = Effect.fn("sie4e.render")(function* (retained: Retaine
     catch: asDomainFailure,
   });
 
-  const parsed = parseSie(bytes, "ibm437");
+  const parsed = parseSie(bytes, "ibm437", "export_validation");
   const compared = compareSie4E(retained.capture, retained.rows, parsed);
 
   if (!compared.matched)

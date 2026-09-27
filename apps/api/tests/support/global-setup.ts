@@ -16,6 +16,7 @@ const root = resolve(import.meta.dirname, "../../../..");
 
 const sourceRoots = [
   "apps/api",
+  "apps/web",
   "packages/contracts",
   "packages/domain",
   "jurisdictions/se",
@@ -127,7 +128,7 @@ export default async function setup(project: TestProject) {
 
   const server = createTestHarness({
     root: join(root, "apps/api"),
-    workers: [{ configPath: "wrangler.jsonc", secrets: { DATABASE_URL: runtimeUrl } }],
+    workers: [{ configPath: "wrangler.jsonc", env: "e2e", secrets: { DATABASE_URL: runtimeUrl } }],
   });
 
   let started = false;

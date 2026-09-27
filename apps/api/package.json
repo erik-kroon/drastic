@@ -31,6 +31,7 @@
     "@cloudflare/workers-types": "5.20260916.1",
     "@open-erp/config": "workspace:*",
     "@types/pg": "^8.23.1",
+    "playwright": "1.58.2",
     "typescript": "catalog:",
     "wrangler": "^4.105.0"
   }

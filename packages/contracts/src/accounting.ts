@@ -8,7 +8,14 @@ import {
   Voucher,
 } from "@open-erp/domain/ledger";
 
-export { Identifier, AccountingDate, Description, Digest, Scope } from "@open-erp/domain/values";
+export {
+  Identifier,
+  AccountingDate,
+  Description,
+  Digest,
+  Scope,
+  swedishBusinessDate,
+} from "@open-erp/domain/values";
 
 export { MinorUnits, SignedMinorUnits, AggregateMinorUnits } from "@open-erp/domain/money";
 

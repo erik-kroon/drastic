@@ -26,11 +26,12 @@ export type CounterpartyRow = {
 export type CountRow = { readonly total: number };
 
 export type DuplicateCandidateRow = {
-  readonly kind: string;
+  readonly kind: "d" | "r";
   readonly id: string;
   readonly revision: string;
   readonly sameNumber: boolean;
   readonly sameContent: boolean;
+  readonly body: JsonObject;
 };
 
 export type SuggestionRow = {
@@ -56,16 +57,6 @@ export function readDraftByKey(transaction: Transaction, bookId: string, draftKe
       select id, draft_key as "draftKey", current_revision::text as "currentRevision"
       from openerp.supplier_invoice_drafts
       where book_id = ${bookId} and draft_key = ${draftKey}
-    `,
-    "objects",
-  );
-}
-
-export function readDraftCount(transaction: Transaction, bookId: string) {
-  return transaction.execute<CountRow>(
-    sql`
-      select count(*)::integer as total
-      from (select 1 from openerp.supplier_invoice_drafts where book_id = ${bookId} limit 201) bounded
     `,
     "objects",
   );
@@ -114,7 +105,12 @@ export function readDraftRevisionCount(transaction: Transaction, bookId: string,
   );
 }
 
-export function listDraftHeads(transaction: Transaction, bookId: string) {
+export function listDraftHeads(
+  transaction: Transaction,
+  bookId: string,
+  after: string,
+  search: string,
+) {
   return transaction.execute<{ readonly body: JsonObject; readonly draftKey: string }>(
     sql`
       select r.body, d.draft_key as "draftKey"
@@ -122,7 +118,12 @@ export function listDraftHeads(transaction: Transaction, bookId: string) {
       join openerp.supplier_invoice_draft_revisions r
         on r.book_id = d.book_id and r.draft_id = d.id and r.revision = d.current_revision
       where d.book_id = ${bookId}
+        and d.draft_key collate "C" > ${after}::text collate "C"
+        and (${search} = '' or strpos(lower(concat_ws(' ',
+          r.body->'content'->>'title', r.body->'content'->'supplier'->>'legalName',
+          r.body->'content'->>'supplierDocumentNumber')), lower(${search})) > 0)
       order by d.draft_key collate "C"
+      limit 201
     `,
     "objects",
   );
@@ -212,10 +213,10 @@ export function readDuplicateCandidates(
 ) {
   return transaction.execute<DuplicateCandidateRow>(
     sql`
-      select candidate.kind, candidate.id, candidate.revision,
+      select candidate.kind, candidate.id, candidate.revision::text as revision, candidate.body,
         candidate.same_number as "sameNumber", candidate.same_content as "sameContent"
       from (
-        select 'd'::text as kind, d.id, r.revision,
+        select 'd'::text as kind, d.id, r.revision, r.body,
           (${documentNumber}::text is not null
             and r.body->'content'->>'supplierDocumentNumber' = ${documentNumber}::text collate "C")
             as same_number,
@@ -231,7 +232,7 @@ export function readDuplicateCandidates(
             or r.body->'sourceEvidence'->>'sha256' = ${evidenceSha256}::text
           )
         union all
-        select 'r'::text as kind, i.id, 0::bigint as revision,
+        select 'r'::text as kind, i.id, 0::bigint as revision, i.body,
           (${documentNumber}::text is not null and i.document_number = ${documentNumber}::text collate "C")
             as same_number,
           (e.sha256 = ${evidenceSha256}::text) as same_content
@@ -298,19 +299,6 @@ export function readDuplicateAnchorInvoice(
             or e.sha256 = ${evidenceSha256}::text
           )
       ) as present
-    `,
-    "objects",
-  );
-}
-
-export function readRegisteredInvoiceBody(
-  transaction: Transaction,
-  bookId: string,
-  invoiceId: string,
-) {
-  return transaction.execute<{ readonly body: JsonObject }>(
-    sql`
-      select body from openerp.commerce_invoices where book_id = ${bookId} and id = ${invoiceId}
     `,
     "objects",
   );

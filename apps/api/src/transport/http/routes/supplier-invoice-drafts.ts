@@ -63,9 +63,9 @@ export const SupplierInvoiceDraftHandlers = HttpApiBuilder.group(
           }),
         ),
       )
-      .handle("listSupplierInvoiceDrafts", ({ params }) =>
+      .handle("listSupplierInvoiceDrafts", ({ params, query }) =>
         Effect.flatMap(authenticate, (token) =>
-          listSupplierInvoiceDrafts(token, { scope: scopeFromPath(params) }),
+          listSupplierInvoiceDrafts(token, { scope: scopeFromPath(params), ...query }),
         ),
       )
       .handle("supplierInvoiceDraftHistory", ({ params }) =>

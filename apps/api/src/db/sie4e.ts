@@ -81,27 +81,6 @@ export type SieBookDimensionAssignment = OriginalDimensionAssignment & {
   readonly dimensionName: string | null;
 };
 
-export function readSieBookDimensionalOpening(
-  transaction: Transaction,
-  bookId: string,
-  startsOn: string,
-  sequence: string,
-  openingVoucherId: string | null,
-) {
-  return transaction.execute<SieBookPriorVoucherRow>(
-    sql`
-    select exists (
-      select 1 from openerp.journal_line_dimensions d
-      join openerp.vouchers v on v.book_id = d.book_id and v.id = d.voucher_id
-      where d.book_id = ${bookId} and d.status = 'explicit'
-        and v.sequence <= ${sequence}::bigint
-        and (v.posting_date < ${startsOn}::date or v.id = ${openingVoucherId}::text)
-    ) as present
-  `,
-    "objects",
-  );
-}
-
 export function readSieBookDimensionAssignments(
   transaction: Transaction,
   bookId: string,
@@ -123,8 +102,9 @@ export function readSieBookDimensionAssignments(
     left join openerp.dimension_revisions r on r.book_id = d.book_id
       and r.code = d.dimension_code and r.revision = d.dimension_revision
     where d.book_id = ${bookId} and v.sequence <= ${sequence}::bigint
-      and v.posting_date between ${startsOn}::date and ${asOf}::date
-      and v.id is distinct from ${openingVoucherId}::text
+      and v.posting_date <= ${asOf}::date
+      and (${openingVoucherId}::text is null or v.posting_date >= ${startsOn}::date
+        or v.id = ${openingVoucherId}::text)
     order by d.dimension_code collate "C", d.value_code collate "C", v.sequence, d.line_id collate "C"
     limit ${limit + 1}
   `,
@@ -219,7 +199,16 @@ export function readSieBookLines(
   sequence: string,
   openingVoucherId: string | null,
   limit: number,
+  part: "opening" | "movement" = "movement",
 ) {
+  const selection =
+    part === "movement"
+      ? sql`v.posting_date between ${startsOn}::date and ${asOf}::date
+        and v.id is distinct from ${openingVoucherId}::text`
+      : openingVoucherId === null
+        ? sql`v.posting_date < ${startsOn}::date`
+        : sql`v.id = ${openingVoucherId}::text`;
+
   return transaction.execute<{
     readonly voucherId: string;
     readonly lineId: string;
@@ -250,8 +239,7 @@ export function readSieBookLines(
       join openerp.vouchers v on v.book_id = l.book_id and v.id = l.voucher_id
       join openerp.accounts a on a.book_id = l.book_id and a.id = l.account_id
       where l.book_id = ${bookId} and v.sequence <= ${sequence}::bigint
-        and v.posting_date between ${startsOn}::date and ${asOf}::date
-        and (v.id is distinct from ${openingVoucherId === null ? sql`null::text` : sql`${openingVoucherId}::text`})
+        and (${selection})
       order by v.sequence, l.ordinal
       limit ${limit + 1}
     `,
@@ -348,7 +336,7 @@ export function readSieBookAllRows(transaction: Transaction, bookId: string, exp
     .from(sieBookExportRows)
     .where(and(eq(sieBookExportRows.bookId, bookId), eq(sieBookExportRows.exportId, exportId)))
     .orderBy(asc(sieBookExportRows.ordinal))
-    .limit(maximumSieBookLines * 2 + 1);
+    .limit(maximumSieBookLines * 2 + maximumSieBookAccounts * 2 + 1);
 }
 
 export function countSieBookRows(transaction: Transaction, bookId: string, exportId: string) {

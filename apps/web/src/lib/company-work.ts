@@ -4,12 +4,13 @@ import * as Sales from "@open-erp/contracts/sales-register";
 import { useBookWorkspace, workspacePath } from "./book-context";
 import { bookKey, bookPath, readAccounting } from "./accounting-api";
 import { attentionQueryOptions } from "./attention";
+import { useBusinessDate } from "./use-business-date";
 import { checkScope, commercePath, commerceKey } from "@/components/commerce/shared";
 
 /** Home combines the existing domain reads; each total retains its own coverage. */
 export function useCompanyWork() {
   const { book, setup, locale } = useBookWorkspace();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = useBusinessDate();
 
   const period =
     setup.periods.find((item) => item.startsOn <= today && item.endsOn >= today) ??

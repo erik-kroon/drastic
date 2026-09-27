@@ -6,6 +6,7 @@ import type * as Schema from "effect/Schema";
 import { failure } from "../failures";
 import { digest, isoNow, newId, replay, saveCommand } from "../posting";
 import * as DraftDb from "../../db/purchases/drafts";
+import * as InvoiceDb from "../../db/commerce/invoices";
 import * as Shared from "./shared";
 import { calculateSupplierDraft } from "./draft-calculation";
 
@@ -49,7 +50,7 @@ const draftInserts = [
 
 const revisionUpdates = ["supplier_invoice_drafts"];
 
-const maximumDrafts = 200;
+const draftPageSize = 200;
 
 const maximumRevisions = 50;
 
@@ -58,30 +59,30 @@ const maximumRevisionBodyBytes = 131072;
 const maximumInputBytes = 65536;
 
 const duplicateCursorPattern =
-  /^sid1:[a-f0-9]{64}:(d:[a-z][a-z0-9_-]{2,127}:([1-9]|[1-4][0-9]|50)|r:[a-z][a-z0-9_-]{2,127}:0)$/;
+  /^sid1:(?<context>[a-f0-9]{64}):(?<kind>d|r):(?<id>[a-z][a-z0-9_-]{2,127}):(?<revision>0|[1-9]|[1-4][0-9]|50)$/;
 
-export function draftSummary(body: JsonObject) {
-  const content = Shared.objectField(body, "content");
+export function draftSummary(body: typeof Drafts.SupplierInvoiceDraftRevision.Type) {
+  const content = body.content;
 
   return Object.assign(
     {},
     {
-      id: body.id ?? "",
-      draftKey: body.draftKey ?? "",
-      revision: body.revision ?? "",
-      title: content.title ?? null,
-      supplierName: Shared.objectField(content, "supplier").legalName ?? null,
-      supplierDocumentNumber: content.supplierDocumentNumber ?? null,
-      counterpartyId: content.counterpartyId ?? "",
-      sourceEvidence: Shared.objectField(body, "sourceEvidence"),
-      currency: content.currency ?? "",
-      currencyScale: content.currencyScale ?? 0,
-      grossMinor: Shared.objectField(body, "totals").grossMinor ?? null,
-      blockerCount: Shared.arrayField(body, "blockers").length,
-      createdAt: body.createdAt ?? "",
-      digest: body.digest ?? "",
+      id: body.id,
+      draftKey: body.draftKey,
+      revision: body.revision,
+      title: content.title,
+      supplierName: content.supplier.legalName,
+      supplierDocumentNumber: content.supplierDocumentNumber,
+      counterpartyId: content.counterpartyId,
+      sourceEvidence: body.sourceEvidence,
+      currency: content.currency,
+      currencyScale: content.currencyScale,
+      grossMinor: body.totals.grossMinor,
+      blockerCount: body.blockers.length,
+      createdAt: body.createdAt,
+      digest: body.digest,
     },
-  ) satisfies JsonObject;
+  ) satisfies typeof Drafts.SupplierInvoiceDraftSummary.Type;
 }
 
 function storedDraft(
@@ -139,12 +140,6 @@ export const createSupplierInvoiceDraftInTransaction = Effect.fn(
         .length > 0
     ) {
       return yield* failure("IdempotencyConflict");
-    }
-
-    if (
-      (yield* DraftDb.readDraftCount(transaction, command.scope.bookId))[0]!.total >= maximumDrafts
-    ) {
-      return yield* failure("InvalidJournal");
     }
 
     const content = yield* Shared.toJsonObject(command.input.content);
@@ -239,10 +234,8 @@ export const reviseSupplierInvoiceDraft = Effect.fn("purchases.draft.revise")(fu
   );
 });
 
-// The internal revision. It takes the caller's transaction and the caller's
-// command identity, so a reviewed merge that revises a draft inside its own
-// financial group commits the revision and its decisions together instead of
-// opening a second transaction from inside a lock.
+// Nested callers supply a distinct child command key in the same transaction.
+// The parent's receipt owns replay; child and parent receipts commit together.
 export const reviseSupplierInvoiceDraftInTransaction = Effect.fn(
   "purchases.draft.reviseInTransaction",
 )(function* (
@@ -419,7 +412,7 @@ export const getSupplierInvoiceDraft = Effect.fn("purchases.draft.get")(function
 
 export const listSupplierInvoiceDrafts = Effect.fn("purchases.draft.list")(function* (
   token: string,
-  command: { readonly scope: Scope },
+  command: { readonly scope: Scope; readonly after?: string; readonly q?: string },
 ) {
   return yield* Shared.withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
@@ -432,20 +425,39 @@ export const listSupplierInvoiceDrafts = Effect.fn("purchases.draft.list")(funct
       ))[0];
 
       if (!book) return yield* failure("Forbidden");
-      const count = (yield* DraftDb.readDraftCount(transaction, command.scope.bookId))[0]!.total;
+      const search = command.q ?? "";
 
-      if (count > maximumDrafts) return yield* failure("InvalidJournal");
-      const rows = yield* DraftDb.listDraftHeads(transaction, command.scope.bookId);
+      if (search.length > 200) return yield* failure("InvalidJournal");
 
-      if (rows.length !== count) return yield* failure("InvalidJournal");
+      const context = (yield* digest({ scope: command.scope, q: search })).slice(7);
+      let after = "";
+
+      if (command.after !== undefined) {
+        const match = /^sdl1:(?<context>[a-f0-9]{64}):(?<key>[a-z][a-z0-9_-]{2,127})$/.exec(
+          command.after,
+        )?.groups;
+
+        if (!match || match.context !== context) return yield* failure("InvalidJournal");
+        after = match.key ?? "";
+      }
+
+      const page = yield* DraftDb.listDraftHeads(transaction, command.scope.bookId, after, search);
+      const rows = page.slice(0, draftPageSize);
+
+      const items = yield* Effect.forEach(rows, (row) =>
+        Shared.decode(RevisionSchema, row.body).pipe(Effect.map(draftSummary)),
+      );
+
+      const anchor = rows.at(-1);
 
       const body = Object.assign(
         {},
         {
           scope: command.scope,
-          complete: true,
-          count,
-          items: rows.map((row) => draftSummary(row.body)),
+          complete: command.after === undefined && page.length <= draftPageSize,
+          count: items.length,
+          items,
+          next: page.length > draftPageSize && anchor ? `sdl1:${context}:${anchor.draftKey}` : null,
           capturedAt: yield* isoNow(transaction),
         },
       ) satisfies JsonObject;
@@ -496,7 +508,9 @@ export const supplierInvoiceDraftHistory = Effect.fn("purchases.draft.history")(
           currentRevision: draft.currentRevision,
           complete: true,
           count: Number(draft.currentRevision),
-          items: rows.map((row) => draftSummary(row.body)),
+          items: yield* Effect.forEach(rows, (row) =>
+            Shared.decode(RevisionSchema, row.body).pipe(Effect.map(draftSummary)),
+          ),
           capturedAt: yield* isoNow(transaction),
         },
       ) satisfies JsonObject;
@@ -519,7 +533,13 @@ export const supplierInvoiceDraftDuplicates = Effect.fn("purchases.draft.duplica
 ) {
   return yield* Shared.withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
-      yield* Shared.requireTables(transaction, draftTables);
+      yield* Shared.requireTables(transaction, [
+        ...draftTables,
+        ...InvoiceDb.commerceInvoiceTables,
+        "supplier_credits",
+        "customer_credit_notes",
+        "journal_lines",
+      ]);
 
       const book = (yield* Shared.PurchaseDb.lockBook(
         transaction,
@@ -544,18 +564,16 @@ export const supplierInvoiceDraftDuplicates = Effect.fn("purchases.draft.duplica
       )
         return yield* failure("Forbidden");
 
-      const content = Shared.objectField(head.body, "content");
-      const counterpartyId = Shared.textField(content, "counterpartyId") ?? "";
-      const documentNumber = Shared.textField(content, "supplierDocumentNumber") ?? null;
-
-      const evidenceSha256 =
-        Shared.textField(Shared.objectField(head.body, "sourceEvidence"), "sha256") ?? null;
+      const source = yield* Shared.decode(RevisionSchema, head.body);
+      const counterpartyId = source.content.counterpartyId;
+      const documentNumber = source.content.supplierDocumentNumber;
+      const evidenceSha256 = source.sourceEvidence.sha256;
 
       const context = (yield* digest({
         entityId: command.scope.entityId,
         bookId: command.scope.bookId,
         draftId: command.draftId,
-        draftDigest: Shared.textField(head.body, "digest") ?? "",
+        draftDigest: source.digest,
       })).slice(7);
 
       let afterKind = "";
@@ -563,15 +581,19 @@ export const supplierInvoiceDraftDuplicates = Effect.fn("purchases.draft.duplica
       let afterRevision = "0";
 
       if (command.after !== undefined) {
-        const match = duplicateCursorPattern.exec(command.after);
+        const match = duplicateCursorPattern.exec(command.after)?.groups;
 
-        if (match === null || match[1] !== context) {
+        if (
+          !match ||
+          match.context !== context ||
+          (match.kind === "r") !== (match.revision === "0")
+        ) {
           return yield* failure("InvalidJournal");
         }
 
-        afterKind = match[2] ?? "";
-        afterId = match[3] ?? "";
-        afterRevision = match[4] ?? "0";
+        afterKind = match.kind ?? "";
+        afterId = match.id ?? "";
+        afterRevision = match.revision ?? "0";
 
         if (afterKind === "d") {
           const anchor = yield* DraftDb.readDuplicateAnchorDraftRevision(
@@ -613,6 +635,17 @@ export const supplierInvoiceDraftDuplicates = Effect.fn("purchases.draft.duplica
       );
 
       const visible = page.slice(0, 50);
+
+      const invoiceIds = visible
+        .filter((candidate) => candidate.kind === "r")
+        .map((candidate) => candidate.id);
+
+      const invoices =
+        invoiceIds.length === 0
+          ? []
+          : yield* InvoiceDb.readLiveInvoicePage(transaction, command.scope.bookId, invoiceIds);
+
+      const invoicesById = new Map(invoices.map((invoice) => [invoice.id, invoice.body]));
       const items: JsonObject[] = [];
 
       for (const candidate of visible) {
@@ -623,37 +656,25 @@ export const supplierInvoiceDraftDuplicates = Effect.fn("purchases.draft.duplica
         if (candidate.sameContent) reasons.push("same_original_evidence_content");
 
         if (candidate.kind === "d") {
-          const row = (yield* DraftDb.readRevision(
-            transaction,
-            command.scope.bookId,
-            candidate.id,
-            candidate.revision,
-          ))[0];
-
-          if (!row) return yield* failure("InvalidJournal");
           items.push({
             kind: "draft",
-            draft: draftSummary(row.body),
+            draft: draftSummary(yield* Shared.decode(RevisionSchema, candidate.body)),
             reasons,
           });
           continue;
         }
 
-        const invoice = (yield* DraftDb.readRegisteredInvoiceBody(
-          transaction,
-          command.scope.bookId,
-          candidate.id,
-        ))[0];
+        const invoice = invoicesById.get(candidate.id);
 
-        if (!invoice) return yield* failure("InvalidJournal");
-        items.push({ kind: "registered", invoice: invoice.body, reasons });
+        if (!invoice) return yield* failure("InternalError");
+        items.push({ kind: "registered", invoice, reasons });
       }
 
       const anchor = visible[visible.length - 1];
 
       return yield* Shared.decode(DuplicatesSchema, {
         scope: command.scope,
-        source: draftSummary(head.body),
+        source: draftSummary(source),
         coverage: "current_supplier_drafts_and_registered_supplier_invoices",
         consistency: "live_candidates",
         items,

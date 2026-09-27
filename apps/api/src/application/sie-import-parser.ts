@@ -134,6 +134,14 @@ function validControl(fields: string[]) {
   );
 }
 
+function validObjectControl(fields: string[]) {
+  return (
+    fields.length >= 4 &&
+    /^\{.*\}$/.test(fields[2] ?? "") &&
+    validControl([fields[0] ?? "", fields[1] ?? "", fields[3] ?? ""])
+  );
+}
+
 function recordSieFact(
   record: SieRecord,
   current: SieVoucher | null,
@@ -198,8 +206,22 @@ function recordSieFact(
   return current;
 }
 
+function recordObjectControl(record: SieRecord, depth: number, append: AppendDiagnostic) {
+  if (depth !== 0 || !validObjectControl(record.fields))
+    append(
+      "object_control",
+      record.line,
+      record.byteStart,
+      "Object balance needs a year, account, object group and exact amount.",
+    );
+}
+
 // Explicit encoding is part of the interpretation. Original bytes remain in source intake.
-export function parseSie(bytes: Uint8Array, encoding: SieEncoding) {
+export function parseSie(
+  bytes: Uint8Array,
+  encoding: SieEncoding,
+  purpose: "historical_import" | "export_validation" = "historical_import",
+) {
   const diagnostics: SieDiagnostic[] = [];
   const records: SieRecord[] = [];
   const vouchers: SieVoucher[] = [];
@@ -233,6 +255,20 @@ export function parseSie(bytes: Uint8Array, encoding: SieEncoding) {
   if (bom && text.startsWith("\ufeff")) text = text.slice(1);
   const depth = scanSieLines(text, encoding, bom ? 3 : 0, records, vouchers, controls, append);
   validateSieProfile(depth, bytes.length, records, vouchers, encoding, append);
+
+  // Historical admission does not own object opening balances yet. Recognizing
+  // their grammar for independent export validation must not silently admit a
+  // financial import that would retain only the scalar account controls.
+  if (
+    purpose === "historical_import" &&
+    records.some((record) => record.tag === "OIB" || record.tag === "OUB")
+  )
+    append(
+      "unsupported_object_balances",
+      1,
+      0,
+      "Object balances are retained but not supported by historical financial admission.",
+    );
 
   return { records, vouchers, controls, diagnostics, ready: diagnostics.length === 0 };
 }
@@ -270,6 +306,8 @@ function scanSieLines(
     "IB",
     "UB",
     "RES",
+    "OIB",
+    "OUB",
     "VER",
     "TRANS",
     "RTRANS",
@@ -337,7 +375,9 @@ function scanSieLines(
 
     if (!supported.has(tag))
       append("unsupported_record", i + 1, byteStart, `Unsupported #${tag} record is retained.`);
-    current = recordSieFact(record, current, depth, vouchers, controls, append);
+
+    if (tag === "OIB" || tag === "OUB") recordObjectControl(record, depth, append);
+    else current = recordSieFact(record, current, depth, vouchers, controls, append);
   }
 
   return depth;
