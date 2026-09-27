@@ -32,6 +32,7 @@
     "./vat-assessment": "./src/vat-assessment.ts",
     "./employee-claims": "./src/employee-claims.ts",
     "./mileage-awards": "./src/mileage-awards.ts",
+    "./variable-pay": "./src/variable-pay.ts",
     "./historical-adoptions": "./src/historical-adoptions.ts",
     "./asset-disposals": "./src/asset-disposals.ts",
     "./financial-close": "./src/financial-close.ts",
