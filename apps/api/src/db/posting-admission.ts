@@ -198,7 +198,8 @@ export function readLineOwners(tx: Transaction, book: string, voucher: string, l
     union all select 'bank' from openerp.bank_active_allocation_legs where book_id=${book} and voucher_id=${voucher} and line_id=${line}
     union all select 'tax' from openerp.tax_account_match_capacity where book_id=${book} and voucher_id=${voucher} and line_id=${line}
     union all select 'fx' from openerp.commerce_fx_items where book_id=${book} and voucher_id=${voucher} and line_id=${line}
-    union all select 'fx' from openerp.commerce_fx_settlements where book_id=${book} and voucher_id=${voucher} and ${line} in(cash_line_id,control_line_id,realized_line_id)`,
+    union all select 'fx' from openerp.commerce_fx_settlements where book_id=${book} and voucher_id=${voucher} and ${line} in(cash_line_id,control_line_id,realized_line_id)
+    union all select 'fx' from openerp.commerce_fx_settlement_sources s join openerp.commerce_fx_settlements t on(t.book_id,t.id)=(s.book_id,s.settlement_id) where s.book_id=${book} and t.voucher_id=${voucher} and s.journal_line_id=${line}`,
     "objects",
   );
 }

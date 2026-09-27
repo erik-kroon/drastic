@@ -27,11 +27,13 @@ type Principal = VerifiedPrincipal;
 
 type JsonObject = Schema.JsonObject;
 
-type RecognitionInput = typeof CommerceFx.PrepareRecognition.Type;
+type RecognitionInput = typeof CommerceFx.PrepareRecognitionCommand.Type;
 
 type SettlementInput = typeof CommerceFx.PrepareSettlement.Type;
 
 type PartialSettlementInput = typeof CommerceFx.PreparePartialSettlement.Type;
+
+type FeeSettlementInput = typeof CommerceFx.PrepareFeeSettlement.Type;
 
 type CorrectionInput = typeof CommerceFx.PrepareSettlementCorrection.Type;
 
@@ -41,15 +43,38 @@ type SettlementReview = typeof CommerceFx.SettlementReview.Type;
 
 type PartialSettlementReview = typeof CommerceFx.PartialSettlementReview.Type;
 
+type FeeSettlementReview = typeof CommerceFx.FeeSettlementReview.Type;
+
 type CorrectionReview = typeof CommerceFx.SettlementCorrectionReview.Type;
 
-type AnyReview = Review | SettlementReview | PartialSettlementReview | CorrectionReview;
+type AnyReview =
+  | Review
+  | SettlementReview
+  | PartialSettlementReview
+  | FeeSettlementReview
+  | CorrectionReview;
+
+type AnyInput =
+  | RecognitionInput
+  | SettlementInput
+  | PartialSettlementInput
+  | FeeSettlementInput
+  | CorrectionInput;
+
+type ReviewKind =
+  | "recognition"
+  | "settlement"
+  | "partial_settlement"
+  | "fee_settlement"
+  | "correction";
 
 const RecognitionSchema = CommerceFx.RecognitionReview;
 
 const SettlementSchema = CommerceFx.SettlementReview;
 
 const PartialSettlementSchema = CommerceFx.PartialSettlementReview;
+
+const FeeSettlementSchema = CommerceFx.FeeSettlementReview;
 
 const CorrectionSchema = CommerceFx.SettlementCorrectionReview;
 
@@ -59,7 +84,22 @@ const FullSettlementReceiptSchema = CommerceFx.SettlementReceipt;
 
 const PartialSettlementReceiptSchema = CommerceFx.PartialSettlementReceipt;
 
+const FeeSettlementReceiptSchema = CommerceFx.FeeSettlementReceipt;
+
 const CorrectionReceiptSchema = CommerceFx.CorrectionReceipt;
+
+// NEXT-17. The exact release profiles this packet adds to the existing commerce FX
+// owner. The receivable recognition and the two released settlement profiles are
+// unchanged.
+const payableProfile = "synthetic_supplier_foreign_payable_v1";
+
+const feeSettlementProfile = "synthetic_book_currency_settlement_with_fees_v1";
+
+const partialSettlementProfile = "synthetic_partial_book_currency_settlement_v1";
+
+const fullSettlementProfile = "synthetic_full_book_currency_settlement_v1";
+
+const minorCeiling = 10n ** 38n;
 
 function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
   return Schema.decodeEffect(schema)(value).pipe(Effect.mapError(() => failure("InternalError")));
@@ -187,13 +227,22 @@ function accountBindings(
 ) {
   const values = new Map(accounts.map((account) => [account.id, account]));
 
-  const roles = [
-    ["control", input.controlAccountId],
-    ["revenue", input.revenueAccountId],
-    ["cash", input.cashAccountId],
-    ["realized_gain", input.realizedGainAccountId],
-    ["realized_loss", input.realizedLossAccountId],
-  ] as const;
+  const roles: ReadonlyArray<readonly [string, string]> =
+    input.profile === payableProfile
+      ? [
+          ["control", input.controlAccountId],
+          ["expense", input.expenseAccountId],
+          ["cash", input.cashAccountId],
+          ["realized_gain", input.realizedGainAccountId],
+          ["realized_loss", input.realizedLossAccountId],
+        ]
+      : [
+          ["control", input.controlAccountId],
+          ["revenue", input.revenueAccountId],
+          ["cash", input.cashAccountId],
+          ["realized_gain", input.realizedGainAccountId],
+          ["realized_loss", input.realizedLossAccountId],
+        ];
 
   return roles.map(([role, accountId]) => {
     const account = values.get(accountId);
@@ -213,7 +262,7 @@ function requireAccountRoles(
   return Effect.gen(function* () {
     const accountIds = [
       input.controlAccountId,
-      input.revenueAccountId,
+      input.profile === payableProfile ? input.expenseAccountId : input.revenueAccountId,
       input.cashAccountId,
       input.realizedGainAccountId,
       input.realizedLossAccountId,
@@ -258,6 +307,66 @@ function requireAccountRoles(
   });
 }
 
+// NEXT-17. A fee posts to one reviewed expense account. It may not be a bank
+// account, a retained control account, or any account the monetary item already
+// binds, so a fee can never quietly post to the payable control or the cash role.
+function requireFeeExpenseAccount(
+  transaction: Transaction,
+  scope: Scope,
+  input: FeeSettlementInput,
+  item: typeof ItemSchema.Type,
+) {
+  return Effect.gen(function* () {
+    const evidence = yield* readEvidenceOrFail(
+      transaction,
+      scope.bookId,
+      input.feeAccountRoleEvidence.evidenceId,
+    );
+
+    if (evidence.sha256 !== input.feeAccountRoleEvidence.sha256) {
+      return yield* failure("StaleDependency");
+    }
+
+    const accounts = yield* Db.readAccounts(transaction, scope.bookId, [input.feeExpenseAccountId]);
+    const account = accounts[0];
+
+    if (!account || !account.active) return yield* failure("InvalidJournal");
+
+    if (item.accountBindings.some((binding) => binding.accountId === input.feeExpenseAccountId)) {
+      return yield* failure("InvalidJournal");
+    }
+
+    if (
+      (yield* FxDb.readBankAccount(transaction, scope.bookId, input.feeExpenseAccountId)).length > 0
+    ) {
+      return yield* failure("InvalidJournal");
+    }
+
+    for (const table of [
+      "commerce_control_accounts",
+      "owner_control_accounts",
+      "vat_control_account_roles",
+    ] as const) {
+      if (
+        (yield* FxDb.readControlAccount(
+          transaction,
+          scope.bookId,
+          table,
+          input.feeExpenseAccountId,
+        )).length > 0
+      ) {
+        return yield* failure("InvalidJournal");
+      }
+    }
+
+    return {
+      role: "fee_expense" as const,
+      accountId: account.id,
+      version: account.version.toString(),
+    };
+  });
+}
+
 function bookBasis(book: {
   currency: string;
   currencyScale: number;
@@ -298,13 +407,14 @@ function readItemState(transaction: Transaction, scope: Scope, itemId: string) {
     const correctionRows = yield* FxDb.readCorrections(transaction, scope.bookId, itemId);
     const correctionsBySettlement = new Map(correctionRows.map((row) => [row.settlementId, row]));
 
-    const full = settlementRows.find(
-      (row) => row.profile === "synthetic_full_book_currency_settlement_v1",
-    );
+    const full = settlementRows.find((row) => row.profile === fullSettlementProfile);
 
-    const partials = settlementRows.filter(
-      (row) => row.profile === "synthetic_partial_book_currency_settlement_v1",
-    );
+    const partials = settlementRows.filter((row) => row.profile === partialSettlementProfile);
+
+    // NEXT-17. The explicit-fee legs share this item's single original-units and
+    // book-carrying capacity. They are not a second register: the remaining
+    // amounts above already include every active settlement row of any profile.
+    const fees = settlementRows.filter((row) => row.profile === feeSettlementProfile);
 
     const fullCorrection = full ? correctionsBySettlement.get(full.id) : undefined;
 
@@ -363,6 +473,19 @@ function readItemState(transaction: Transaction, scope: Scope, itemId: string) {
       });
     }
 
+    if (fees.length > 0) {
+      Object.assign(itemValue, {
+        feeSettlements: fees.map((row) => row.body),
+        // A reversed explicit-fee settlement still appears in feeSettlements, so its
+        // correction is what tells a reader the fee and cash source rights are
+        // available again.
+        feeCorrections: fees
+          .filter((row) => correctionsBySettlement.has(row.id))
+          .map((row) => correctionsBySettlement.get(row.id)?.body)
+          .filter((body): body is JsonObject => body !== undefined),
+      });
+    }
+
     const item = yield* decode(ItemSchema, itemValue);
 
     return { itemRow, item, settlementRows, correctionRows, full, fullCorrection };
@@ -371,7 +494,7 @@ function readItemState(transaction: Transaction, scope: Scope, itemId: string) {
 
 function readReview(
   transaction: Transaction,
-  kind: "recognition" | "settlement" | "correction",
+  kind: ReviewKind,
   scope: Scope,
   id: string,
   lock: "share" | "update" = "share",
@@ -380,16 +503,16 @@ function readReview(
     return FxDb.readRecognitionReview(transaction, scope.bookId, id, lock);
   }
 
-  if (kind === "settlement") {
-    return FxDb.readSettlementReview(transaction, scope.bookId, id, lock);
+  if (kind === "correction") {
+    return FxDb.readCorrectionReview(transaction, scope.bookId, id, lock);
   }
 
-  return FxDb.readCorrectionReview(transaction, scope.bookId, id, lock);
+  return FxDb.readSettlementReview(transaction, scope.bookId, id, lock);
 }
 
 function readApproval(
   transaction: Transaction,
-  kind: "recognition" | "settlement" | "correction",
+  kind: ReviewKind,
   scope: Scope,
   reviewId: string,
   approvalId: string,
@@ -399,16 +522,16 @@ function readApproval(
     return FxDb.readRecognitionApproval(transaction, scope.bookId, reviewId, approvalId, lock);
   }
 
-  if (kind === "settlement") {
-    return FxDb.readSettlementApproval(transaction, scope.bookId, reviewId, approvalId, lock);
+  if (kind === "correction") {
+    return FxDb.readCorrectionApproval(transaction, scope.bookId, reviewId, approvalId, lock);
   }
 
-  return FxDb.readCorrectionApproval(transaction, scope.bookId, reviewId, approvalId, lock);
+  return FxDb.readSettlementApproval(transaction, scope.bookId, reviewId, approvalId, lock);
 }
 
 function insertApproval(
   transaction: Transaction,
-  kind: "recognition" | "settlement" | "correction",
+  kind: ReviewKind,
   row: {
     bookId: string;
     id: string;
@@ -421,14 +544,14 @@ function insertApproval(
 ) {
   if (kind === "recognition") return FxDb.insertRecognitionApproval(transaction, row);
 
-  if (kind === "settlement") return FxDb.insertSettlementApproval(transaction, row);
+  if (kind === "correction") return FxDb.insertCorrectionApproval(transaction, row);
 
-  return FxDb.insertCorrectionApproval(transaction, row);
+  return FxDb.insertSettlementApproval(transaction, row);
 }
 
 function currentApproval(
   transaction: Transaction,
-  kind: "recognition" | "settlement" | "correction",
+  kind: ReviewKind,
   scope: Scope,
   reviewId: string,
   approvalId: string,
@@ -439,6 +562,11 @@ function currentApproval(
     const approval = rows[0];
 
     if (!approval || approval.digest !== reviewDigest) return yield* failure("ApprovalRequired");
+
+    // The approval names the exact operation it authorizes, so an approval minted
+    // for a partial or full settlement can never execute a fee settlement.
+    if (requiredText(approval.body.kind) !== kind) return yield* failure("ApprovalRequired");
+
     const now = yield* isoNow(transaction);
 
     if (Date.parse(approval.expiresAt) <= Date.parse(now))
@@ -519,7 +647,11 @@ function currentCounterparty(transaction: Transaction, scope: Scope, input: Reco
 
       if (!row) return Effect.fail(failure("NotFound"));
 
-      if (row.role !== "customer" && row.role !== "both")
+      // A payable binds a qualified supplier, a receivable a qualified customer.
+      // The "both" role is a reviewed single identity, not a merged balance.
+      const required = input.profile === payableProfile ? "supplier" : "customer";
+
+      if (row.role !== required && row.role !== "both")
         return Effect.fail(failure("StaleDependency"));
 
       if (row.currentRevision !== input.counterpartyRevision)
@@ -614,6 +746,13 @@ function settlementSnapshot(
     const item = itemState.item;
     const remainingOriginal = BigInt(String(item.remainingOriginalMinor));
     const remainingCarrying = BigInt(String(item.remainingCarryingMinor));
+
+    // The two released settlement profiles post a customer receipt: their signed
+    // cash is a receipt and their realized amount is consideration minus the
+    // carrying release. A supplier obligation carries the opposite sign and is
+    // settled only through the explicit-fee profile, so it is refused here as an
+    // unsupported profile rather than at the settlement row's structural rules.
+    if (item.direction === "supplier") return yield* unsupported();
 
     if (remainingOriginal <= 0n || remainingCarrying < 0n) return yield* failure("StaleDependency");
 
@@ -753,6 +892,186 @@ function settlementSnapshot(
   }).pipe(Effect.mapError(databaseFailure));
 }
 
+// NEXT-17. The payable/receivable signed consideration and fee compiler.
+//
+// The paired original-units and book-carrying release is the released WIP-FX02-P1
+// calculation, unchanged: the same numerator, denominator, half-up rule and residual
+// the partial settlement profile already uses. This compiler only adds K, F, the
+// signed cash equation and the fee and cash source legs around it.
+function feeSettlementSnapshot(
+  transaction: Transaction,
+  scope: Scope,
+  input: FeeSettlementInput,
+): Effect.Effect<JsonObject, Accounting.AccountingError> {
+  return Effect.gen(function* () {
+    const date = yield* dateValue(input.settlementDate);
+    const itemState = yield* readItemState(transaction, scope, input.itemId);
+    const item = itemState.item;
+    const remainingOriginal = BigInt(String(item.remainingOriginalMinor));
+    const remainingCarrying = BigInt(String(item.remainingCarryingMinor));
+
+    if (remainingOriginal <= 0n || remainingCarrying < 0n) return yield* failure("StaleDependency");
+
+    if (!["open", "partially_settled", "corrected"].includes(String(item.status))) {
+      return yield* failure("StaleDependency");
+    }
+
+    const releasedOriginal = BigInt(input.originalReleasedMinor);
+
+    if (releasedOriginal > remainingOriginal) return yield* failure("InvalidJournal");
+
+    if (date < String(item.source.recognitionDate)) return yield* failure("InvalidJournal");
+    const book = yield* readBook(transaction, scope);
+    yield* assertNative(book);
+    const period = yield* periodSelection(transaction, scope, input.accountingPeriodId, date);
+    const sourceEvidence = yield* readEvidenceOrFail(transaction, scope.bookId, input.evidenceId);
+
+    if (
+      (yield* Db.readEvent(transaction, scope.bookId, input.evidenceId, input.eventKey)).length > 0
+    ) {
+      return yield* failure("IdempotencyConflict");
+    }
+
+    const accounts = yield* Db.readAccounts(
+      transaction,
+      scope.bookId,
+      item.accountBindings.map((binding) => binding.accountId),
+    );
+
+    const accountsById = new Map(accounts.map((account) => [account.id, account]));
+
+    if (
+      item.accountBindings.some((binding) => {
+        const account = accountsById.get(binding.accountId);
+
+        return !account?.active || account.version.toString() !== binding.version;
+      })
+    ) {
+      return yield* failure("StaleDependency");
+    }
+
+    const cash = item.accountBindings.find((binding) => binding.role === "cash");
+
+    if (
+      !cash ||
+      (yield* FxDb.readBankAccount(transaction, scope.bookId, cash.accountId)).length === 0
+    ) {
+      return yield* failure("StaleDependency");
+    }
+
+    const feeExpenseAccount = yield* requireFeeExpenseAccount(transaction, scope, input, item);
+
+    for (const witness of [
+      input.feeAccountRoleEvidence,
+      ...input.fees.map((fee) => fee.treatmentWitness),
+      ...input.actualCashSources.map((source) => source.treatmentWitness),
+    ]) {
+      const evidence = yield* readEvidenceOrFail(transaction, scope.bookId, witness.evidenceId);
+
+      if (evidence.sha256 !== witness.sha256) return yield* failure("StaleDependency");
+    }
+
+    // One reviewed source identity is consumed by at most one financial operation,
+    // so no fee or bank observation is matched twice inside this settlement or by
+    // any other uncorrected one.
+    const identities = [
+      ...input.fees.map((fee) => fee.sourceIdentity),
+      ...input.actualCashSources.map((source) => source.sourceIdentity),
+    ];
+
+    if (new Set(identities).size !== identities.length) return yield* failure("InvalidJournal");
+
+    if (
+      (yield* FxDb.readActiveSourceIdentities(transaction, scope.bookId, identities)).length > 0
+    ) {
+      return yield* failure("AlreadyPosted");
+    }
+
+    const exact = exactHalfUp(remainingCarrying * releasedOriginal, remainingOriginal);
+    const afterOriginal = remainingOriginal - releasedOriginal;
+    const afterCarrying = remainingCarrying - exact.rounded;
+
+    if (
+      exact.rounded < 0n ||
+      exact.rounded >= minorCeiling ||
+      afterOriginal < 0n ||
+      afterCarrying < 0n
+    ) {
+      return yield* failure("InvalidJournal");
+    }
+
+    // K is the evidenced gross settlement consideration, never the current rate
+    // quote multiplied by principal. F is the sum of the explicit book-currency fees.
+    // K must be a positive evidenced amount: a zero consideration is not a
+    // settlement, and the retained settlement row's consideration is structurally
+    // positive, so it is refused here rather than at the boundary.
+    const gross = BigInt(input.grossBookMinor);
+    const fees = input.fees.map((fee) => BigInt(fee.bookMinor));
+    const feeTotal = fees.reduce((total, amount) => total + amount, 0n);
+
+    if (gross <= 0n || gross >= minorCeiling || feeTotal <= 0n || feeTotal >= minorCeiling) {
+      return yield* failure("InvalidJournal");
+    }
+
+    const direction = item.direction;
+    const signedCash = direction === "customer" ? gross - feeTotal : -(gross + feeTotal);
+
+    if (signedCash === 0n) return yield* failure("InvalidJournal");
+
+    if (direction === "customer" && signedCash < 0n) return yield* failure("InvalidJournal");
+
+    const cashTotal = input.actualCashSources.reduce(
+      (total, source) => total + BigInt(source.signedBookMinor),
+      0n,
+    );
+
+    if (cashTotal !== signedCash) return yield* failure("InvalidJournal");
+
+    const gain = direction === "customer" ? gross - exact.rounded : exact.rounded - gross;
+
+    if (gain >= minorCeiling || gain <= -minorCeiling) return yield* failure("InvalidJournal");
+    const nextOrdinal = Math.max(0, ...itemState.settlementRows.map((row) => row.legOrdinal)) + 1;
+
+    return yield* toJsonObject({
+      item: settlementItemSnapshot(item),
+      sourceEvidence: evidenceReference(sourceEvidence),
+      feeRoleEvidence: input.feeAccountRoleEvidence,
+      calculation: {
+        legOrdinal: nextOrdinal,
+        direction,
+        originalRemainingBeforeMinor: remainingOriginal.toString(),
+        originalReleasedMinor: releasedOriginal.toString(),
+        originalRemainingAfterMinor: afterOriginal.toString(),
+        carryingRemainingBeforeMinor: remainingCarrying.toString(),
+        carryingReleasedMinor: exact.rounded.toString(),
+        carryingRemainingAfterMinor: afterCarrying.toString(),
+        exactNumerator: exact.numerator.toString(),
+        exactDenominator: exact.denominator.toString(),
+        quotientMinor: exact.quotient.toString(),
+        remainderNumerator: exact.remainder.toString(),
+        residualNumerator: signedMinor(exact.residual),
+        residualDenominator: exact.denominator.toString(),
+        roundingPolicy: "synthetic_half_up_nonnegative_v1" as const,
+        finalLeg: afterOriginal === 0n,
+        grossBookMinor: gross.toString(),
+        feeTotalMinor: feeTotal.toString(),
+        signedCashMinor: signedMinor(signedCash),
+        realizedGainMinor: signedMinor(gain),
+        cashSourceCount: input.actualCashSources.length,
+        feeCount: input.fees.length,
+        formula:
+          "N = carryingRemainingBeforeMinor * originalReleasedMinor; D = originalRemainingBeforeMinor; rounded = div(N,D) + (2*mod(N,D) >= D ? 1 : 0); grossBookMinor = K is the evidenced gross settlement consideration; feeTotalMinor = F is the sum of the explicit fees; signedCashMinor = K - F for a customer receipt and -(K + F) for a supplier payment; realizedGainMinor = K - carryingReleasedMinor for a customer receipt and carryingReleasedMinor - K for a supplier payment; every actual cash leg is created by this operation on the item's bank account and their signed amounts total signedCashMinor exactly; a zero carrying release posts no control line",
+      },
+      fiscalYearId: period.fiscalYearId,
+      profileVersion: book.profileVersion.toString(),
+      writerEpoch: book.writerEpoch.toString(),
+      periodVersion: period.version.toString(),
+      accountBindings: item.accountBindings,
+      feeExpenseAccount,
+    });
+  }).pipe(Effect.mapError(databaseFailure));
+}
+
 function correctionSnapshot(
   transaction: Transaction,
   scope: Scope,
@@ -800,7 +1119,7 @@ function correctionSnapshot(
     const itemState = yield* readItemState(transaction, scope, settlementRow.itemId);
 
     if (
-      settlementRow.profile === "synthetic_full_book_currency_settlement_v1" &&
+      settlementRow.profile === fullSettlementProfile &&
       (itemState.item.status !== "settled" ||
         itemState.item.remainingOriginalMinor !== "0" ||
         itemState.item.remainingCarryingMinor !== "0")
@@ -809,7 +1128,8 @@ function correctionSnapshot(
     }
 
     if (
-      settlementRow.profile === "synthetic_partial_book_currency_settlement_v1" &&
+      (settlementRow.profile === partialSettlementProfile ||
+        settlementRow.profile === feeSettlementProfile) &&
       !["settled", "partially_settled"].includes(String(itemState.item.status))
     ) {
       return yield* failure("StaleDependency");
@@ -838,10 +1158,17 @@ function correctionSnapshot(
       return yield* failure("StaleDependency");
     }
 
+    // The reversed settlement's fee and cash source rights are released by this
+    // correction, so the count is part of the sealed correction and the capacity
+    // itself is re-derived from the retained settlement history.
+    const sources = yield* FxDb.readSettlementSources(transaction, scope.bookId, settlementRow.id);
+
     const settlement =
-      settlementRow.profile === "synthetic_partial_book_currency_settlement_v1"
+      settlementRow.profile === partialSettlementProfile
         ? yield* decode(PartialSettlementReceiptSchema, settlementRow.body)
-        : yield* decode(FullSettlementReceiptSchema, settlementRow.body);
+        : settlementRow.profile === feeSettlementProfile
+          ? yield* decode(FeeSettlementReceiptSchema, settlementRow.body)
+          : yield* decode(FullSettlementReceiptSchema, settlementRow.body);
 
     return yield* toJsonObject({
       item: itemState.item,
@@ -859,48 +1186,53 @@ function correctionSnapshot(
       writerEpoch: book.writerEpoch.toString(),
       periodVersion: period.version.toString(),
       accountBindings: itemState.item.accountBindings,
+      restoredSourceCount: sources.length,
     });
   }).pipe(Effect.mapError(databaseFailure));
 }
 
-function isRecognitionInput(
-  input: RecognitionInput | SettlementInput | PartialSettlementInput | CorrectionInput,
-): input is RecognitionInput {
-  return input.profile === "synthetic_customer_foreign_receivable_v1";
-}
-
-function isSettlementInput(
-  input: RecognitionInput | SettlementInput | PartialSettlementInput | CorrectionInput,
-): input is SettlementInput | PartialSettlementInput {
+function isRecognitionInput(input: AnyInput): input is RecognitionInput {
   return (
-    input.profile === "synthetic_full_book_currency_settlement_v1" ||
-    input.profile === "synthetic_partial_book_currency_settlement_v1"
+    input.profile === "synthetic_customer_foreign_receivable_v1" || input.profile === payableProfile
   );
 }
 
-function isCorrectionInput(
-  input: RecognitionInput | SettlementInput | PartialSettlementInput | CorrectionInput,
-): input is CorrectionInput {
+function isSettlementInput(input: AnyInput): input is SettlementInput | PartialSettlementInput {
+  return input.profile === fullSettlementProfile || input.profile === partialSettlementProfile;
+}
+
+function isFeeSettlementInput(input: AnyInput): input is FeeSettlementInput {
+  return input.profile === feeSettlementProfile;
+}
+
+function isCorrectionInput(input: AnyInput): input is CorrectionInput {
   return input.profile === "synthetic_latest_settlement_correction_v1";
 }
 
 function isRecognitionReview(review: AnyReview): review is Review {
-  return review.input.profile === "synthetic_customer_foreign_receivable_v1";
+  return (
+    review.input.profile === "synthetic_customer_foreign_receivable_v1" ||
+    review.input.profile === payableProfile
+  );
 }
 
 function isSettlementReview(
   review: AnyReview,
 ): review is SettlementReview | PartialSettlementReview {
   return (
-    review.input.profile === "synthetic_full_book_currency_settlement_v1" ||
-    review.input.profile === "synthetic_partial_book_currency_settlement_v1"
+    review.input.profile === fullSettlementProfile ||
+    review.input.profile === partialSettlementProfile
   );
 }
 
 function isPartialSettlementReview(
   review: SettlementReview | PartialSettlementReview,
 ): review is PartialSettlementReview {
-  return review.input.profile === "synthetic_partial_book_currency_settlement_v1";
+  return review.input.profile === partialSettlementProfile;
+}
+
+function isFeeSettlementReview(review: AnyReview): review is FeeSettlementReview {
+  return review.input.profile === feeSettlementProfile;
 }
 
 function isCorrectionReview(review: AnyReview): review is CorrectionReview {
@@ -909,9 +1241,9 @@ function isCorrectionReview(review: AnyReview): review is CorrectionReview {
 
 function currentSnapshot(
   transaction: Transaction,
-  kind: "recognition" | "settlement" | "partial_settlement" | "correction",
+  kind: ReviewKind,
   scope: Scope,
-  input: RecognitionInput | SettlementInput | PartialSettlementInput | CorrectionInput,
+  input: AnyInput,
 ): Effect.Effect<JsonObject, Accounting.AccountingError> {
   if (kind === "recognition" && isRecognitionInput(input)) {
     return recognitionSnapshot(transaction, scope, input);
@@ -925,12 +1257,16 @@ function currentSnapshot(
     return settlementSnapshot(transaction, scope, input);
   }
 
+  if (kind === "fee_settlement" && isFeeSettlementInput(input)) {
+    return feeSettlementSnapshot(transaction, scope, input);
+  }
+
   return Effect.fail(failure("InternalError"));
 }
 
 function readSavedReview(
   transaction: Transaction,
-  kind: "recognition" | "settlement" | "correction",
+  kind: ReviewKind,
   scope: Scope,
   id: string,
 ): Effect.Effect<AnyReview, Accounting.AccountingError> {
@@ -951,9 +1287,12 @@ function readSavedReview(
     if (input === undefined) return yield* failure("InternalError");
     const profile = isJsonObject(input) ? input.profile : undefined;
 
-    return profile === "synthetic_partial_book_currency_settlement_v1"
-      ? yield* decode(PartialSettlementSchema, row.body)
-      : yield* decode(SettlementSchema, row.body);
+    if (profile === partialSettlementProfile)
+      return yield* decode(PartialSettlementSchema, row.body);
+
+    if (profile === feeSettlementProfile) return yield* decode(FeeSettlementSchema, row.body);
+
+    return yield* decode(SettlementSchema, row.body);
   });
 }
 
@@ -965,9 +1304,19 @@ function readSavedSettlementReview(transaction: Transaction, scope: Scope, id: s
   );
 }
 
+function readSavedFeeSettlementReview(transaction: Transaction, scope: Scope, id: string) {
+  return readSavedReview(transaction, "fee_settlement", scope, id).pipe(
+    Effect.flatMap((review) =>
+      isFeeSettlementReview(review)
+        ? Effect.succeed(review)
+        : Effect.fail(failure("InternalError")),
+    ),
+  );
+}
+
 function assertReviewCurrent(
   transaction: Transaction,
-  kind: "recognition" | "settlement" | "partial_settlement" | "correction",
+  kind: ReviewKind,
   scope: Scope,
   review: AnyReview,
 ) {
@@ -1188,13 +1537,24 @@ function makePlanAndPost(
   });
 }
 
+// The counter account of a recognition: a payable owes the supplier, so its
+// counter side is the cost account; a receivable earns revenue.
+function recognitionCounterAccountId(input: RecognitionInput) {
+  if (input.profile === payableProfile) return input.expenseAccountId;
+
+  return input.revenueAccountId;
+}
+
 function recognitionAction(
   review: Review,
   eventId: string,
   lineId: string,
-  revenueLineId: string,
+  counterLineId: string,
   bookCurrency: string,
 ) {
+  const payable = review.input.profile === payableProfile;
+  const counterAccountId = recognitionCounterAccountId(review.input);
+
   return {
     kind: "post_voucher",
     correctsVoucherId: null,
@@ -1206,25 +1566,48 @@ function recognitionAction(
     postingDate: review.input.recognitionDate,
     series: review.input.series,
     currency: bookCurrency,
-    description: "Synthetic foreign customer receivable recognition",
+    description: payable
+      ? "Synthetic foreign supplier payable recognition"
+      : "Synthetic foreign customer receivable recognition",
     rationale: review.input.reason,
     taxAssessment: "not_applicable",
-    lines: [
-      {
-        lineId,
-        accountId: review.input.controlAccountId,
-        debitMinor: review.snapshot.calculation.carryingMinor,
-        creditMinor: "0",
-        description: "Foreign customer receivable recognition",
-      },
-      {
-        lineId: revenueLineId,
-        accountId: review.input.revenueAccountId,
-        debitMinor: "0",
-        creditMinor: review.snapshot.calculation.carryingMinor,
-        description: "Synthetic foreign-customer revenue recognition",
-      },
-    ],
+    // A payable recognition debits the cost account and credits the payable
+    // control; a receivable recognition is the mirror image. Neither relabels a
+    // retained book-currency number: both carry a qualified original-currency
+    // obligation and its reviewed rate.
+    lines: payable
+      ? [
+          {
+            lineId,
+            accountId: counterAccountId,
+            debitMinor: review.snapshot.calculation.carryingMinor,
+            creditMinor: "0",
+            description: "Foreign supplier obligation cost recognition",
+          },
+          {
+            lineId: counterLineId,
+            accountId: review.input.controlAccountId,
+            debitMinor: "0",
+            creditMinor: review.snapshot.calculation.carryingMinor,
+            description: "Foreign supplier payable carrying recognition",
+          },
+        ]
+      : [
+          {
+            lineId,
+            accountId: review.input.controlAccountId,
+            debitMinor: review.snapshot.calculation.carryingMinor,
+            creditMinor: "0",
+            description: "Foreign customer receivable recognition",
+          },
+          {
+            lineId: counterLineId,
+            accountId: counterAccountId,
+            debitMinor: "0",
+            creditMinor: review.snapshot.calculation.carryingMinor,
+            description: "Synthetic foreign-customer revenue recognition",
+          },
+        ],
     evidenceRefs: [
       {
         ...review.snapshot.sourceEvidence,
@@ -1232,12 +1615,125 @@ function recognitionAction(
       },
     ],
     foreignCurrency: {
-      kind: "recognition_v1",
+      kind: payable ? "payable_recognition_v1" : "recognition_v1",
       itemId: review.itemId,
       reviewId: review.id,
       reviewDigest: review.digest,
       sourceKey: review.input.sourceKey,
       sourceRevision: review.input.sourceRevision,
+    },
+  } satisfies JsonObject;
+}
+
+// NEXT-17. The one settlement journal. Every line is a nonzero signed amount, the
+// lines are never merged, and the total of the actual cash legs is the settlement's
+// own signed cash amount.
+function feeSettlementAction(
+  review: FeeSettlementReview,
+  eventId: string,
+  bookCurrency: string,
+  settlementDigest: string,
+  sourceLineIds: ReadonlyArray<string>,
+  controlLineId: string | null,
+  feeLineIds: ReadonlyArray<string>,
+  realizedLineId: string | null,
+) {
+  const calculation = review.snapshot.calculation;
+  const roles = review.snapshot.accountBindings;
+  const cash = roles.find((role) => role.role === "cash");
+  const control = roles.find((role) => role.role === "control");
+  const gainAccount = roles.find((role) => role.role === "realized_gain");
+  const lossAccount = roles.find((role) => role.role === "realized_loss");
+  const feeAccount = review.snapshot.feeExpenseAccount.accountId;
+
+  if (!cash || !control) throw new Error("Missing fee settlement account role");
+
+  if (review.input.fees.length !== feeLineIds.length) throw new Error("Missing fee lines");
+
+  if (review.input.actualCashSources.length !== sourceLineIds.length)
+    throw new Error("Missing cash source lines");
+
+  const receivable = calculation.direction === "customer";
+
+  const lines: JsonObject[] = review.input.actualCashSources.map((source, index) => {
+    const signed = BigInt(source.signedBookMinor);
+
+    return {
+      lineId: String(sourceLineIds[index]),
+      accountId: cash.accountId,
+      debitMinor: signed > 0n ? signed.toString() : "0",
+      creditMinor: signed < 0n ? absoluteMinor(signed) : "0",
+      description: "Actual book-currency cash leg created by this settlement",
+    };
+  });
+
+  if (controlLineId) {
+    lines.push({
+      lineId: controlLineId,
+      accountId: control.accountId,
+      debitMinor: receivable ? "0" : calculation.carryingReleasedMinor,
+      creditMinor: receivable ? calculation.carryingReleasedMinor : "0",
+      description: receivable
+        ? "Foreign customer receivable carrying release"
+        : "Foreign supplier payable carrying release",
+    });
+  }
+
+  for (const [index, fee] of review.input.fees.entries()) {
+    lines.push({
+      lineId: String(feeLineIds[index]),
+      accountId: feeAccount,
+      debitMinor: fee.bookMinor,
+      creditMinor: "0",
+      description: "Explicit book-currency settlement fee expense",
+    });
+  }
+
+  const gain = BigInt(calculation.realizedGainMinor);
+
+  if (gain > 0n) {
+    if (!gainAccount || !realizedLineId) throw new Error("Missing gain role");
+    lines.push({
+      lineId: realizedLineId,
+      accountId: gainAccount.accountId,
+      debitMinor: "0",
+      creditMinor: calculation.realizedGainMinor,
+      description: "Realized foreign-currency gain",
+    });
+  } else if (gain < 0n) {
+    if (!lossAccount || !realizedLineId) throw new Error("Missing loss role");
+    lines.push({
+      lineId: realizedLineId,
+      accountId: lossAccount.accountId,
+      debitMinor: absoluteMinor(gain),
+      creditMinor: "0",
+      description: "Realized foreign-currency loss",
+    });
+  }
+
+  return {
+    kind: "post_voucher",
+    correctsVoucherId: null,
+    eventId,
+    postingPurpose: "adjustment",
+    occurrenceKey: `commerce_fx_fee_settlement_${review.id}`,
+    fiscalYearId: review.snapshot.fiscalYearId,
+    accountingPeriodId: review.input.accountingPeriodId,
+    postingDate: review.input.settlementDate,
+    series: review.input.series,
+    currency: bookCurrency,
+    description: "Synthetic book-currency foreign settlement with explicit fees",
+    rationale: review.input.reason,
+    taxAssessment: "not_applicable",
+    lines,
+    evidenceRefs: [{ ...review.snapshot.sourceEvidence, locator: review.input.eventKey }],
+    foreignCurrency: {
+      kind: "fee_settlement_v1",
+      itemId: review.itemId,
+      reviewId: review.id,
+      reviewDigest: review.digest,
+      settlementDigest,
+      legOrdinal: calculation.legOrdinal,
     },
   } satisfies JsonObject;
 }
@@ -1445,11 +1941,200 @@ function settlementParts(
   return { kind: "full", review };
 }
 
+// NEXT-17. One book-scoped transaction writes the whole group: the journal, the
+// paired capacity consumption carried by the settlement row, every fee and cash
+// source right, the approval use, the receipt and the command identity. The
+// released WIP-FX02-P1 paired release is not recomputed here; the sealed plan's
+// carrying release is what the item's remaining capacity is reduced by.
+function postFeeSettlementGroup(
+  transaction: Transaction,
+  principal: Principal,
+  scope: Scope,
+  approval: FxDb.FxApprovalRow,
+  review: FeeSettlementReview,
+  idempotencyKey: string,
+) {
+  return Effect.gen(function* () {
+    const calculation = review.snapshot.calculation;
+    yield* assertNoSettlement(transaction, scope.bookId, review.id);
+
+    const eventId = yield* ensureEvent(
+      transaction,
+      scope,
+      review.snapshot.sourceEvidence.evidenceId,
+      review.input.eventKey,
+    );
+
+    // The capacity that ran at preparation is re-evaluated here, inside the
+    // transaction, before a single line is written.
+    const identities = [
+      ...review.input.fees.map((fee) => fee.sourceIdentity),
+      ...review.input.actualCashSources.map((source) => source.sourceIdentity),
+    ];
+
+    if (
+      (yield* FxDb.readActiveSourceIdentities(transaction, scope.bookId, identities)).length > 0
+    ) {
+      return yield* failure("AlreadyPosted");
+    }
+
+    const sourceLineIds = review.input.actualCashSources.map(() => newId("line"));
+    const feeLineIds = review.input.fees.map(() => newId("line"));
+    const controlLineId = calculation.carryingReleasedMinor === "0" ? null : newId("line");
+    const realizedLineId = calculation.realizedGainMinor === "0" ? null : newId("line");
+    const book = yield* readBook(transaction, scope);
+    const settlementDigest = yield* digest(yield* toJsonObject(calculation));
+
+    const action = feeSettlementAction(
+      review,
+      eventId,
+      book.currency,
+      settlementDigest,
+      sourceLineIds,
+      controlLineId,
+      feeLineIds,
+      realizedLineId,
+    );
+
+    const posted = yield* makePlanAndPost(transaction, scope, principal, approval, action);
+    const settlementId = newId("fx_fee_settlement");
+
+    const cashAccountId = requiredText(
+      review.snapshot.accountBindings.find((role) => role.role === "cash")?.accountId,
+    );
+
+    const sourcePlans = [
+      ...review.input.fees.map((fee, index) => ({
+        kind: "fee" as const,
+        sourceIdentity: fee.sourceIdentity,
+        accountId: review.snapshot.feeExpenseAccount.accountId,
+        lineId: String(feeLineIds[index]),
+        signedBookMinor: fee.bookMinor,
+        evidenceId: fee.treatmentWitness.evidenceId,
+      })),
+      ...review.input.actualCashSources.map((source, index) => ({
+        kind: "cash_source" as const,
+        sourceIdentity: source.sourceIdentity,
+        accountId: cashAccountId,
+        lineId: String(sourceLineIds[index]),
+        signedBookMinor: source.signedBookMinor,
+        evidenceId: source.treatmentWitness.evidenceId,
+      })),
+    ];
+
+    const sources: JsonObject[] = [];
+    const sourceRows: Array<FxDb.FxSettlementSourceRow> = [];
+
+    for (const [index, plan] of sourcePlans.entries()) {
+      const sourceId = newId("fx_settlement_source");
+
+      const sourceBody = {
+        id: sourceId,
+        scope,
+        settlementId,
+        ordinal: index + 1,
+        kind: plan.kind,
+        sourceIdentity: plan.sourceIdentity,
+        accountId: plan.accountId,
+        journalLineId: plan.lineId,
+        signedBookMinor: plan.signedBookMinor,
+        evidenceId: plan.evidenceId,
+        receipt: commandReceipt(
+          idempotencyKey,
+          "execute_commerce_fx_fee_settlement",
+          principal.actorId,
+        ),
+      } satisfies JsonObject;
+
+      const sourceJson = yield* toJsonObject(sourceBody);
+
+      const sourceDigest = yield* reviewDigest(sourceJson);
+      const stored: JsonObject = { ...sourceJson, digest: sourceDigest };
+
+      sources.push(stored);
+
+      sourceRows.push({
+        bookId: scope.bookId,
+        id: sourceId,
+        settlementId,
+        ordinal: index + 1,
+        sourceKind: plan.kind,
+        sourceIdentity: plan.sourceIdentity,
+        accountId: plan.accountId,
+        journalLineId: plan.lineId,
+        signedBookMinor: plan.signedBookMinor,
+        evidenceId: plan.evidenceId,
+        body: stored,
+      });
+    }
+
+    const bodyWithoutDigest = {
+      id: settlementId,
+      scope,
+      itemId: review.itemId,
+      profile: feeSettlementProfile,
+      legOrdinal: calculation.legOrdinal,
+      reviewId: review.id,
+      reviewDigest: review.digest,
+      approvalId: approval.id,
+      calculation,
+      sources,
+      postingReceipt: posted.receipt,
+      committedAt: posted.recordedAt,
+      receipt: commandReceipt(
+        idempotencyKey,
+        "execute_commerce_fx_fee_settlement",
+        principal.actorId,
+      ),
+    } satisfies JsonObject;
+
+    const bodyJson = yield* toJsonObject(bodyWithoutDigest);
+    const body: JsonObject = { ...bodyJson, digest: yield* reviewDigest(bodyJson) };
+
+    yield* FxDb.insertSettlement(transaction, {
+      bookId: scope.bookId,
+      id: settlementId,
+      itemId: review.itemId,
+      reviewId: review.id,
+      approvalId: approval.id,
+      postingReceiptId: posted.receipt.id,
+      eventId,
+      voucherId: posted.voucherId,
+      cashLineId: String(sourceLineIds[0]),
+      controlLineId,
+      realizedLineId,
+      originalReleasedMinor: calculation.originalReleasedMinor,
+      carryingReleasedMinor: calculation.carryingReleasedMinor,
+      considerationMinor: calculation.grossBookMinor,
+      realizedGainMinor: calculation.realizedGainMinor,
+      body,
+      profile: feeSettlementProfile,
+      direction: calculation.direction,
+      legOrdinal: calculation.legOrdinal,
+      finalLeg: calculation.finalLeg,
+      grossBookMinor: calculation.grossBookMinor,
+      feeTotalMinor: calculation.feeTotalMinor,
+      cashSourceMinor: calculation.signedCashMinor,
+      originalRemainingBeforeMinor: calculation.originalRemainingBeforeMinor,
+      originalRemainingAfterMinor: calculation.originalRemainingAfterMinor,
+      carryingRemainingBeforeMinor: calculation.carryingRemainingBeforeMinor,
+      carryingRemainingAfterMinor: calculation.carryingRemainingAfterMinor,
+    });
+
+    // The source rows reference this settlement through an immediate foreign key.
+    for (const source of sourceRows) {
+      yield* FxDb.insertSettlementSource(transaction, source);
+    }
+
+    return yield* decode(FeeSettlementReceiptSchema, body);
+  });
+}
+
 function executeReview(
   transaction: Transaction,
   principal: Principal,
   scope: Scope,
-  kind: "recognition" | "settlement" | "correction",
+  kind: ReviewKind,
   review: AnyReview,
   input: { approvalId: string },
   idempotencyKey: string,
@@ -1476,10 +2161,11 @@ function executeReview(
         recognition.input.eventKey,
       );
 
+      const payable = recognition.input.profile === payableProfile;
       const lineId = newId("line");
-      const revenueLineId = newId("line");
+      const counterLineId = newId("line");
       const book = yield* readBook(transaction, scope);
-      const action = recognitionAction(recognition, eventId, lineId, revenueLineId, book.currency);
+      const action = recognitionAction(recognition, eventId, lineId, counterLineId, book.currency);
       const posted = yield* makePlanAndPost(transaction, scope, principal, approval, action);
 
       const source = {
@@ -1505,7 +2191,7 @@ function executeReview(
         id: recognition.itemId,
         scope,
         kind: recognition.input.profile,
-        direction: "customer",
+        direction: payable ? "supplier" : "customer",
         source,
         rate,
         original: {
@@ -1552,6 +2238,7 @@ function executeReview(
         postingReceiptId: posted.receipt.id,
         counterpartyId: recognition.snapshot.counterpart.id,
         counterpartyRevision: recognition.snapshot.counterpart.revision,
+        direction: payable ? "supplier" : "customer",
         sourceKey: recognition.input.sourceKey,
         sourceRevision: recognition.input.sourceRevision,
         evidenceId: recognition.snapshot.sourceEvidence.evidenceId,
@@ -1575,7 +2262,7 @@ function executeReview(
       return result;
     }
 
-    if (kind === "settlement") {
+    if (kind === "settlement" || kind === "partial_settlement") {
       if (!isSettlementReview(review)) return yield* failure("InternalError");
       const settlement = review;
       const parts = settlementParts(settlement);
@@ -1679,8 +2366,12 @@ function executeReview(
         realizedGainMinor: calculation.realizedGainMinor,
         body,
         profile: parts.review.input.profile,
+        direction: "customer",
         legOrdinal: parts.kind === "partial" ? parts.review.snapshot.calculation.legOrdinal : 1,
         finalLeg: parts.kind === "partial" ? parts.review.snapshot.calculation.finalLeg : null,
+        grossBookMinor: null,
+        feeTotalMinor: null,
+        cashSourceMinor: null,
         originalRemainingBeforeMinor:
           parts.kind === "partial"
             ? parts.review.snapshot.calculation.originalRemainingBeforeMinor
@@ -1702,6 +2393,19 @@ function executeReview(
       return parts.kind === "partial"
         ? yield* decode(PartialSettlementReceiptSchema, body)
         : yield* decode(FullSettlementReceiptSchema, body);
+    }
+
+    if (kind === "fee_settlement") {
+      if (!isFeeSettlementReview(review)) return yield* failure("InternalError");
+
+      return yield* postFeeSettlementGroup(
+        transaction,
+        principal,
+        scope,
+        approval,
+        review,
+        idempotencyKey,
+      );
     }
 
     if (!isCorrectionReview(review)) return yield* failure("InternalError");
@@ -1742,6 +2446,7 @@ function executeReview(
       postingReceipt: posted.receipt,
       restoredOriginalMinor: settlement.originalReleasedMinor,
       restoredCarryingMinor: settlement.carryingReleasedMinor,
+      restoredSourceCount: correction.snapshot.restoredSourceCount,
       reason: correction.input.reason,
       committedAt: posted.recordedAt,
       receipt: commandReceipt(
@@ -1751,7 +2456,10 @@ function executeReview(
       ),
     };
 
-    if (settlement.profile === "synthetic_partial_book_currency_settlement_v1") {
+    if (
+      settlement.profile === partialSettlementProfile ||
+      settlement.profile === feeSettlementProfile
+    ) {
       Object.assign(bodyWithoutDigest, {
         settlementProfile: settlement.profile,
         legOrdinal: settlement.legOrdinal,
@@ -2093,15 +2801,13 @@ function approveSettlementLike(
   transaction: Transaction,
   principal: Principal,
   scope: Scope,
-  kind: "settlement" | "partial_settlement",
-  review: SettlementReview | PartialSettlementReview,
+  kind: "settlement" | "partial_settlement" | "fee_settlement",
+  review: SettlementReview | PartialSettlementReview | FeeSettlementReview,
   idempotencyKey: string,
   operation: string,
 ) {
   return Effect.gen(function* () {
-    const approvalId = newId(
-      kind === "settlement" ? "fx_settlement_approval" : "fx_partial_settlement_approval",
-    );
+    const approvalId = newId(`fx_${kind}_approval`);
 
     const expiresAt = new Date(
       Date.parse(yield* isoNow(transaction)) + 60 * 60 * 1000,
@@ -2257,17 +2963,13 @@ function executeSettlementLike(
   return Effect.gen(function* () {
     if (input.version !== 1 || input.digest !== review.digest)
       return yield* failure("StaleDependency");
-    yield* assertReviewCurrent(transaction, "settlement", scope, review);
 
-    return yield* executeReview(
-      transaction,
-      principal,
-      scope,
-      "settlement",
-      review,
-      input,
-      idempotencyKey,
-    );
+    // The approval names the exact settlement kind, so freshness and execution
+    // both run against the kind this review actually carries.
+    const kind = isPartialSettlementReview(review) ? "partial_settlement" : "settlement";
+    yield* assertReviewCurrent(transaction, kind, scope, review);
+
+    return yield* executeReview(transaction, principal, scope, kind, review, input, idempotencyKey);
   });
 }
 
@@ -2364,6 +3066,179 @@ export const executePartialSettlement = Effect.fn("commerceFx.executePartialSett
         command.idempotencyKey,
         request.expected,
         "execute_commerce_fx_partial_settlement",
+        principal.actorId,
+        receipt,
+      );
+
+      return receipt;
+    }),
+  );
+});
+
+export const prepareFeeSettlement = Effect.fn("commerceFx.prepareFeeSettlement")(function* (
+  token: string,
+  command: { scope: Scope; idempotencyKey: string; input: FeeSettlementInput },
+) {
+  return yield* withBook(token, command.scope, false, (transaction, principal) =>
+    Effect.gen(function* () {
+      const request = yield* replay(
+        transaction,
+        command.scope,
+        command.idempotencyKey,
+        "prepare_commerce_fx_fee_settlement",
+        principal.actorId,
+        command.input,
+        FeeSettlementSchema,
+      );
+
+      if (request.previous) return request.previous;
+      yield* requireDirectAccess(transaction, true);
+      yield* Db.lockBookForUpdate(transaction, command.scope);
+      const snapshot = yield* feeSettlementSnapshot(transaction, command.scope, command.input);
+
+      const bodyWithoutDigest = makeReviewBody(
+        command.scope,
+        newId("fx_fee_settlement_review"),
+        command.input,
+        snapshot,
+        principal,
+        command.idempotencyKey,
+        "prepare_commerce_fx_fee_settlement",
+        yield* isoNow(transaction),
+        { itemId: command.input.itemId },
+      );
+
+      const body: JsonObject = Object.assign({}, bodyWithoutDigest, {
+        digest: yield* reviewDigest(bodyWithoutDigest),
+      });
+
+      const result = yield* decode(FeeSettlementSchema, body);
+      yield* FxDb.insertSettlementReview(transaction, {
+        bookId: command.scope.bookId,
+        id: result.id,
+        itemId: result.itemId,
+        actorId: principal.actorId,
+        body,
+      });
+      yield* saveCommand(
+        transaction,
+        command.scope,
+        command.idempotencyKey,
+        request.expected,
+        "prepare_commerce_fx_fee_settlement",
+        principal.actorId,
+        result,
+      );
+
+      return result;
+    }),
+  );
+});
+
+export const approveFeeSettlement = Effect.fn("commerceFx.approveFeeSettlement")(function* (
+  token: string,
+  command: {
+    scope: Scope;
+    id: string;
+    idempotencyKey: string;
+    input: typeof CommerceFx.ApproveFx.Type;
+  },
+) {
+  return yield* withBook(token, command.scope, true, (transaction, principal) =>
+    Effect.gen(function* () {
+      const request = yield* replay(
+        transaction,
+        command.scope,
+        command.idempotencyKey,
+        "approve_commerce_fx_fee_settlement",
+        principal.actorId,
+        { id: command.id, input: command.input },
+        CommerceFx.FxApproval,
+      );
+
+      if (request.previous) return request.previous;
+      yield* requireDirectAccess(transaction, true);
+      yield* Db.lockBookForUpdate(transaction, command.scope);
+      const review = yield* readSavedFeeSettlementReview(transaction, command.scope, command.id);
+
+      if (command.input.version !== 1 || command.input.digest !== review.digest)
+        return yield* failure("StaleDependency");
+      yield* assertReviewCurrent(transaction, "fee_settlement", command.scope, review);
+
+      if (review.createdBy === principal.actorId) return yield* failure("ApprovalRequired");
+
+      const result = yield* approveSettlementLike(
+        transaction,
+        principal,
+        command.scope,
+        "fee_settlement",
+        review,
+        command.idempotencyKey,
+        "approve_commerce_fx_fee_settlement",
+      );
+
+      yield* saveCommand(
+        transaction,
+        command.scope,
+        command.idempotencyKey,
+        request.expected,
+        "approve_commerce_fx_fee_settlement",
+        principal.actorId,
+        result,
+      );
+
+      return result;
+    }),
+  );
+});
+
+export const executeFeeSettlement = Effect.fn("commerceFx.executeFeeSettlement")(function* (
+  token: string,
+  command: {
+    scope: Scope;
+    id: string;
+    idempotencyKey: string;
+    input: typeof CommerceFx.ExecuteFx.Type;
+  },
+) {
+  return yield* withBook(token, command.scope, true, (transaction, principal) =>
+    Effect.gen(function* () {
+      const request = yield* replay(
+        transaction,
+        command.scope,
+        command.idempotencyKey,
+        "execute_commerce_fx_fee_settlement",
+        principal.actorId,
+        { id: command.id, input: command.input },
+        FeeSettlementReceiptSchema,
+      );
+
+      if (request.previous) return request.previous;
+      yield* requireDirectAccess(transaction, true);
+      yield* Db.lockBookForUpdate(transaction, command.scope);
+      const review = yield* readSavedFeeSettlementReview(transaction, command.scope, command.id);
+
+      if (command.input.version !== 1 || command.input.digest !== review.digest)
+        return yield* failure("StaleDependency");
+      yield* assertReviewCurrent(transaction, "fee_settlement", command.scope, review);
+
+      const result = yield* executeReview(
+        transaction,
+        principal,
+        command.scope,
+        "fee_settlement",
+        review,
+        command.input,
+        command.idempotencyKey,
+      );
+
+      const receipt = yield* decode(FeeSettlementReceiptSchema, result);
+      yield* saveCommand(
+        transaction,
+        command.scope,
+        command.idempotencyKey,
+        request.expected,
+        "execute_commerce_fx_fee_settlement",
         principal.actorId,
         receipt,
       );
@@ -2602,6 +3477,9 @@ const recoveryOperations = new Set([
   "prepare_commerce_fx_partial_settlement",
   "approve_commerce_fx_partial_settlement",
   "execute_commerce_fx_partial_settlement",
+  "prepare_commerce_fx_fee_settlement",
+  "approve_commerce_fx_fee_settlement",
+  "execute_commerce_fx_fee_settlement",
   "prepare_commerce_fx_settlement_correction",
   "approve_commerce_fx_settlement_correction",
   "execute_commerce_fx_settlement_correction",
@@ -2615,6 +3493,8 @@ function decodeRecovery(operation: string, value: JsonObject) {
   if (operation === "prepare_commerce_fx_partial_settlement")
     return decode(PartialSettlementSchema, value);
 
+  if (operation === "prepare_commerce_fx_fee_settlement") return decode(FeeSettlementSchema, value);
+
   if (operation === "prepare_commerce_fx_settlement_correction")
     return decode(CorrectionSchema, value);
 
@@ -2625,6 +3505,9 @@ function decodeRecovery(operation: string, value: JsonObject) {
 
   if (operation === "execute_commerce_fx_partial_settlement")
     return decode(PartialSettlementReceiptSchema, value);
+
+  if (operation === "execute_commerce_fx_fee_settlement")
+    return decode(FeeSettlementReceiptSchema, value);
 
   if (operation === "execute_commerce_fx_settlement_correction")
     return decode(CorrectionReceiptSchema, value);

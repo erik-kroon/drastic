@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import * as Schema from "effect/Schema";
+import { textArray } from "../sql-values";
 import type { Transaction } from "../transaction";
 
 type JsonObject = Schema.JsonObject;
@@ -53,16 +54,34 @@ export type FxSettlementRow = {
   readonly controlLineId: string | null;
   readonly realizedLineId: string | null;
   readonly profile: string;
+  readonly direction: string;
   readonly legOrdinal: number;
   readonly finalLeg: boolean | null;
   readonly originalReleasedMinor: string;
   readonly carryingReleasedMinor: string;
   readonly considerationMinor: string;
   readonly realizedGainMinor: string;
+  readonly grossBookMinor: string | null;
+  readonly feeTotalMinor: string | null;
+  readonly cashSourceMinor: string | null;
   readonly originalRemainingBeforeMinor: string | null;
   readonly originalRemainingAfterMinor: string | null;
   readonly carryingRemainingBeforeMinor: string | null;
   readonly carryingRemainingAfterMinor: string | null;
+  readonly body: JsonObject;
+};
+
+export type FxSettlementSourceRow = {
+  readonly bookId: string;
+  readonly id: string;
+  readonly settlementId: string;
+  readonly ordinal: number;
+  readonly sourceKind: string;
+  readonly sourceIdentity: string;
+  readonly accountId: string;
+  readonly journalLineId: string;
+  readonly signedBookMinor: string;
+  readonly evidenceId: string;
   readonly body: JsonObject;
 };
 
@@ -106,6 +125,7 @@ export function readDirectTableAccess(transaction: Transaction) {
         'commerce_fx_settlement_reviews',
         'commerce_fx_settlement_approvals',
         'commerce_fx_settlements',
+        'commerce_fx_settlement_sources',
         'commerce_fx_settlement_correction_reviews',
         'commerce_fx_settlement_correction_approvals',
         'commerce_fx_settlement_corrections',
@@ -431,6 +451,7 @@ export function insertItem(
     postingReceiptId: string;
     counterpartyId: string;
     counterpartyRevision: string;
+    direction: string;
     sourceKey: string;
     sourceRevision: string;
     evidenceId: string;
@@ -453,11 +474,11 @@ export function insertItem(
     sql`
       insert into openerp.commerce_fx_items
         (book_id, id, review_id, approval_id, posting_receipt_id, counterparty_id,
-         counterparty_revision, source_key, source_revision, evidence_id, rate_observation_id,
+         counterparty_revision, direction, source_key, source_revision, evidence_id, rate_observation_id,
          rate_revision, rate_digest, event_id, voucher_id, line_id, original_currency,
          original_scale, original_minor, book_currency, book_scale, carrying_minor, body)
       values (${row.bookId}, ${row.id}, ${row.reviewId}, ${row.approvalId}, ${row.postingReceiptId},
-        ${row.counterpartyId}, ${row.counterpartyRevision}, ${row.sourceKey}, ${row.sourceRevision},
+        ${row.counterpartyId}, ${row.counterpartyRevision}, ${row.direction}, ${row.sourceKey}, ${row.sourceRevision},
         ${row.evidenceId}, ${row.rateObservationId}, ${row.rateRevision}, ${row.rateDigest}, ${row.eventId},
         ${row.voucherId}, ${row.lineId}, ${row.originalCurrency}, ${row.originalScale}, ${row.originalMinor},
         ${row.bookCurrency}, ${row.bookScale}, ${row.carryingMinor}, ${JSON.stringify(row.body)}::jsonb)
@@ -472,10 +493,12 @@ export function readSettlements(transaction: Transaction, bookId: string, itemId
       select book_id as "bookId", id, item_id as "itemId", review_id as "reviewId",
         approval_id as "approvalId", posting_receipt_id as "postingReceiptId", event_id as "eventId",
         voucher_id as "voucherId", cash_line_id as "cashLineId", control_line_id as "controlLineId",
-        realized_line_id as "realizedLineId", profile, leg_ordinal as "legOrdinal",
+        realized_line_id as "realizedLineId", profile, direction, leg_ordinal as "legOrdinal",
         final_leg as "finalLeg", original_released_minor as "originalReleasedMinor",
         carrying_released_minor as "carryingReleasedMinor", consideration_minor as "considerationMinor",
-        realized_gain_minor as "realizedGainMinor", original_remaining_before_minor as "originalRemainingBeforeMinor",
+        realized_gain_minor as "realizedGainMinor", gross_book_minor as "grossBookMinor",
+        fee_total_minor as "feeTotalMinor", cash_source_minor as "cashSourceMinor",
+        original_remaining_before_minor as "originalRemainingBeforeMinor",
         original_remaining_after_minor as "originalRemainingAfterMinor",
         carrying_remaining_before_minor as "carryingRemainingBeforeMinor",
         carrying_remaining_after_minor as "carryingRemainingAfterMinor", body
@@ -499,10 +522,12 @@ export function readSettlement(
       select book_id as "bookId", id, item_id as "itemId", review_id as "reviewId",
         approval_id as "approvalId", posting_receipt_id as "postingReceiptId", event_id as "eventId",
         voucher_id as "voucherId", cash_line_id as "cashLineId", control_line_id as "controlLineId",
-        realized_line_id as "realizedLineId", profile, leg_ordinal as "legOrdinal",
+        realized_line_id as "realizedLineId", profile, direction, leg_ordinal as "legOrdinal",
         final_leg as "finalLeg", original_released_minor as "originalReleasedMinor",
         carrying_released_minor as "carryingReleasedMinor", consideration_minor as "considerationMinor",
-        realized_gain_minor as "realizedGainMinor", original_remaining_before_minor as "originalRemainingBeforeMinor",
+        realized_gain_minor as "realizedGainMinor", gross_book_minor as "grossBookMinor",
+        fee_total_minor as "feeTotalMinor", cash_source_minor as "cashSourceMinor",
+        original_remaining_before_minor as "originalRemainingBeforeMinor",
         original_remaining_after_minor as "originalRemainingAfterMinor",
         carrying_remaining_before_minor as "carryingRemainingBeforeMinor",
         carrying_remaining_after_minor as "carryingRemainingAfterMinor", body
@@ -534,8 +559,12 @@ export function insertSettlement(
     realizedGainMinor: string;
     body: JsonObject;
     profile: string;
+    direction: string;
     legOrdinal: number;
     finalLeg: boolean | null;
+    grossBookMinor: string | null;
+    feeTotalMinor: string | null;
+    cashSourceMinor: string | null;
     originalRemainingBeforeMinor: string | null;
     originalRemainingAfterMinor: string | null;
     carryingRemainingBeforeMinor: string | null;
@@ -547,15 +576,90 @@ export function insertSettlement(
       insert into openerp.commerce_fx_settlements
         (book_id, id, item_id, review_id, approval_id, posting_receipt_id, event_id, voucher_id,
          cash_line_id, control_line_id, realized_line_id, original_released_minor, carrying_released_minor,
-         consideration_minor, realized_gain_minor, body, profile, leg_ordinal, final_leg,
+         consideration_minor, realized_gain_minor, body, profile, direction, leg_ordinal, final_leg,
+         gross_book_minor, fee_total_minor, cash_source_minor,
          original_remaining_before_minor, original_remaining_after_minor, carrying_remaining_before_minor,
          carrying_remaining_after_minor)
       values (${row.bookId}, ${row.id}, ${row.itemId}, ${row.reviewId}, ${row.approvalId},
         ${row.postingReceiptId}, ${row.eventId}, ${row.voucherId}, ${row.cashLineId}, ${row.controlLineId},
         ${row.realizedLineId}, ${row.originalReleasedMinor}, ${row.carryingReleasedMinor}, ${row.considerationMinor},
-        ${row.realizedGainMinor}, ${JSON.stringify(row.body)}::jsonb, ${row.profile}, ${row.legOrdinal},
-        ${row.finalLeg}, ${row.originalRemainingBeforeMinor}, ${row.originalRemainingAfterMinor},
+        ${row.realizedGainMinor}, ${JSON.stringify(row.body)}::jsonb, ${row.profile}, ${row.direction},
+        ${row.legOrdinal}, ${row.finalLeg}, ${row.grossBookMinor}, ${row.feeTotalMinor},
+        ${row.cashSourceMinor}, ${row.originalRemainingBeforeMinor}, ${row.originalRemainingAfterMinor},
         ${row.carryingRemainingBeforeMinor}, ${row.carryingRemainingAfterMinor})
+    `,
+    "objects",
+  );
+}
+
+// A settlement source is a reviewed fee or bank observation consumed by exactly one
+// settlement. A corrected settlement releases its sources without deleting them, so
+// an active consumption is one whose settlement has no correction.
+export function readSettlementSources(
+  transaction: Transaction,
+  bookId: string,
+  settlementId: string,
+) {
+  return transaction.execute<FxSettlementSourceRow>(
+    sql`
+      select book_id as "bookId", id, settlement_id as "settlementId", ordinal,
+        source_kind as "sourceKind", source_identity as "sourceIdentity", account_id as "accountId",
+        journal_line_id as "journalLineId", signed_book_minor as "signedBookMinor",
+        evidence_id as "evidenceId", body
+      from openerp.commerce_fx_settlement_sources
+      where book_id = ${bookId} and settlement_id = ${settlementId}
+      order by ordinal
+      for share
+    `,
+    "objects",
+  );
+}
+
+export function readActiveSourceIdentities(
+  transaction: Transaction,
+  bookId: string,
+  identities: ReadonlyArray<string>,
+) {
+  return transaction.execute<{ readonly sourceIdentity: string }>(
+    sql`
+      select s.source_identity as "sourceIdentity"
+      from openerp.commerce_fx_settlement_sources s
+      where s.book_id = ${bookId}
+        and s.source_identity = any(${textArray(identities)})
+        and not exists (
+          select 1 from openerp.commerce_fx_settlement_corrections c
+          where c.book_id = s.book_id and c.settlement_id = s.settlement_id
+        )
+      for share
+    `,
+    "objects",
+  );
+}
+
+export function insertSettlementSource(
+  transaction: Transaction,
+  row: {
+    bookId: string;
+    id: string;
+    settlementId: string;
+    ordinal: number;
+    sourceKind: string;
+    sourceIdentity: string;
+    accountId: string;
+    journalLineId: string;
+    signedBookMinor: string;
+    evidenceId: string;
+    body: JsonObject;
+  },
+) {
+  return transaction.execute(
+    sql`
+      insert into openerp.commerce_fx_settlement_sources
+        (book_id, id, settlement_id, ordinal, source_kind, source_identity, account_id,
+         journal_line_id, signed_book_minor, evidence_id, body)
+      values (${row.bookId}, ${row.id}, ${row.settlementId}, ${row.ordinal}, ${row.sourceKind},
+        ${row.sourceIdentity}, ${row.accountId}, ${row.journalLineId}, ${row.signedBookMinor},
+        ${row.evidenceId}, ${JSON.stringify(row.body)}::jsonb)
     `,
     "objects",
   );
