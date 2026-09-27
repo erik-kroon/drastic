@@ -1,7 +1,9 @@
 import type { OriginalDimensionStatus } from "@open-erp/domain/dimensions";
+import type { WorkChildState } from "@open-erp/domain/period-work";
 import type { IdentityProvisioning } from "@open-erp/contracts/identity";
 import type * as Recovery from "@open-erp/contracts/posting-recovery";
 import type * as Schema from "effect/Schema";
+import { sql } from "drizzle-orm";
 import {
   mqDedupe,
   mqFlowChildren,
@@ -262,6 +264,8 @@ export const deadlineFulfillments = openerp.table("deadline_fulfillments", {
   obligationId: text("obligation_id").notNull(),
   obligationRevision: bigint("obligation_revision", { mode: "bigint" }).notNull(),
   referenceDigest: text("reference_digest").notNull(),
+  verificationOrdinal: bigint("verification_ordinal", { mode: "bigint" }).notNull().default(1n),
+  evidenceDigest: text("evidence_digest"),
   outcomeKind: text("outcome_kind").notNull(),
   referenceKind: text("reference_kind").notNull(),
   reference: jsonb("reference").$type<Schema.JsonObject>().notNull(),
@@ -918,7 +922,7 @@ export const customerCreditTaxCorrections = openerp.table("customer_credit_tax_c
   outputTaxMinor: numeric("output_tax_minor", { mode: "string" }).notNull(),
   creditVoucherId: text("credit_voucher_id").notNull(),
   revenueLineId: text("revenue_line_id").notNull(),
-  outputVatLineId: text("output_vat_line_id").notNull(),
+  outputVatLineId: text("output_vat_line_id"),
   controlLineId: text("control_line_id").notNull(),
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });
@@ -943,6 +947,9 @@ export const ownerOperationApprovals = openerp.table("owner_operation_approvals"
   reviewId: text("review_id").notNull(),
   actorId: text("actor_id").notNull(),
   digest: text().notNull(),
+  reviewDigest: text("review_digest")
+    .notNull()
+    .generatedAlwaysAs(sql`body ->> 'reviewDigest'::text`),
   expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
@@ -1031,7 +1038,9 @@ export const periodWorkManifests = openerp.table("period_work_manifests", {
   selectedCount: integer("selected_count").notNull(),
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
   digest: text().notNull(),
-  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
 });
 
 // The mutable run-owned progress of one unit of work. `revision` fences a
@@ -1043,9 +1052,9 @@ export const periodWorkChildren = openerp.table("period_work_children", {
   manifestId: text("manifest_id").notNull(),
   economicIdentity: text("economic_identity").notNull(),
   sourceRevision: text("source_revision").notNull(),
-  state: text("state").notNull(),
-  revision: bigint("revision", { mode: "bigint" }).notNull(),
-  cancelVersion: bigint("cancel_version", { mode: "bigint" }).notNull(),
+  state: text("state").$type<WorkChildState>().notNull(),
+  revision: bigint("revision", { mode: "bigint" }).notNull().default(1n),
+  cancelVersion: bigint("cancel_version", { mode: "bigint" }).notNull().default(0n),
   planId: text("plan_id"),
   planDigest: text("plan_digest"),
   // A committed child keeps its receipt even if the plan later reads as stale.
@@ -1058,8 +1067,10 @@ export const periodWorkChildren = openerp.table("period_work_children", {
   routedOwner: text("routed_owner"),
   ownerReviewId: text("owner_review_id"),
   ownerReviewDigest: text("owner_review_digest"),
-  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
 });
 
 // The sealed fixed manifest a human approved. Immutable once written.
@@ -1073,7 +1084,9 @@ export const periodWorkBatches = openerp.table("period_work_batches", {
   combinedInformationalMinor: numeric("combined_informational_minor", { mode: "string" }).notNull(),
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
   digest: text().notNull(),
-  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
 });
 
 // One immutable, deterministic member of a sealed batch. The unique index on
@@ -1097,10 +1110,99 @@ export const periodWorkBatchApprovals = openerp.table("period_work_batch_approva
   bookId: text("book_id").notNull(),
   batchId: text("batch_id").notNull(),
   memberOrdinal: integer("member_ordinal").notNull(),
-  approvalId: text("approval_id").notNull(),
+  owner: text("owner").notNull(),
+  ownerApprovalId: text("owner_approval_id").notNull(),
   planDigest: text("plan_digest").notNull(),
   approverId: text("approver_id").notNull(),
-  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+});
+
+export const corporateTaxBridges = openerp.table("corporate_tax_bridges", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  accountingPeriodId: text("accounting_period_id").notNull(),
+  statementSnapshotId: text("statement_snapshot_id").notNull(),
+  statementDigest: text("statement_digest").notNull(),
+  changeSetId: text("change_set_id").notNull(),
+  planDigest: text("plan_digest").notNull(),
+  ruleReleaseId: text("rule_release_id").notNull(),
+  ruleReleaseChecksum: text("rule_release_checksum").notNull(),
+  ruleReleaseVersion: integer("rule_release_version").notNull(),
+  overlayDigest: text("overlay_digest").notNull(),
+  currentTaxTargetMinor: numeric("current_tax_target_minor", { mode: "string" }).notNull(),
+  recognizedMinor: numeric("recognized_minor", { mode: "string" }).notNull(),
+  deltaMinor: numeric("delta_minor", { mode: "string" }).notNull(),
+  postsJournal: boolean("posts_journal").notNull(),
+  noFinancialEffect: boolean("no_financial_effect").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
+export const corporateTaxBridgeInputs = openerp.table("corporate_tax_bridge_inputs", {
+  bookId: text("book_id").notNull(),
+  bridgeId: text("bridge_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  kind: text("kind").notNull(),
+  resourceId: text("resource_id").notNull(),
+  version: text("version").notNull(),
+  reason: text("reason").notNull(),
+});
+
+export const corporateTaxEffects = openerp.table("corporate_tax_effects", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  bridgeId: text("bridge_id").notNull(),
+  changeSetId: text("change_set_id").notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  voucherId: text("voucher_id"),
+  approvalId: text("approval_id").notNull(),
+  yearTaxTargetMinor: numeric("year_tax_target_minor", { mode: "string" }).notNull(),
+  recognizedBeforeMinor: numeric("recognized_before_minor", { mode: "string" }).notNull(),
+  deltaMinor: numeric("delta_minor", { mode: "string" }).notNull(),
+  recognizedAfterMinor: numeric("recognized_after_minor", { mode: "string" }).notNull(),
+  noFinancialEffect: boolean("no_financial_effect").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  createdBy: text("created_by").notNull(),
+  committedAt: timestamp("committed_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const corporateTaxDeclarations = openerp.table("corporate_tax_declarations", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  ordinal: bigint("ordinal", { mode: "bigint" }).notNull(),
+  bridgeId: text("bridge_id").notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  statementSnapshotId: text("statement_snapshot_id").notNull(),
+  fieldCount: integer("field_count").notNull(),
+  fileCount: integer("file_count").notNull(),
+  blocked: boolean("blocked").notNull(),
+  noFinancialEffect: boolean("no_financial_effect").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
+// NEXT-17: the reviewed fee and cash source legs a foreign-currency settlement
+// actually posted. Versioned SQL migrations own the DDL; this is the typed mapping.
+export const commerceFxSettlementSources = openerp.table("commerce_fx_settlement_sources", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  settlementId: text("settlement_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  sourceKind: text("source_kind").notNull(),
+  sourceIdentity: text("source_identity").notNull(),
+  accountId: text("account_id").notNull(),
+  journalLineId: text("journal_line_id").notNull(),
+  signedBookMinor: numeric("signed_book_minor", { mode: "string" }).notNull(),
+  evidenceId: text("evidence_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });
 
 export const recurringInvoiceAgreements = openerp.table("recurring_invoice_agreements", {

@@ -22,6 +22,7 @@ import { sie4ECapabilities } from "./sie4e";
 import { ledgerCapabilities } from "./ledger";
 import { payrollCalculationCapabilities } from "./payroll-calculations";
 import { dimensionCapabilities } from "./dimensions";
+import { corporateTaxCapabilities } from "./corporate-tax";
 import { Capabilities } from "@open-erp/contracts/capabilities";
 
 export const capabilities = {
@@ -49,4 +50,5 @@ export const capabilities = {
   ...ledgerCapabilities,
   ...payrollCalculationCapabilities,
   ...dimensionCapabilities,
+  ...corporateTaxCapabilities,
 } satisfies Record<keyof typeof Capabilities, { readonly readOnly: boolean }>;

@@ -8,6 +8,7 @@ export const commerceInvoiceTables = [
   "commerce_allocation_legs",
   "commerce_allocation_receipts",
   "commerce_allocation_reversals",
+  "owner_operation_receipts",
   "invoice_cancellations",
   "vouchers",
   "execution_receipts",
@@ -75,6 +76,31 @@ function activeLegs() {
 
 function activeLegTotal() {
   return sql`(select coalesce(sum(l.amount_minor), 0) from ${activeLegs()})`;
+}
+
+// Both the live register and fixed-cutoff reports use this receipt authority.
+// The surrounding query supplies invoice alias i; invalid postings block rather
+// than silently releasing capacity after an unsupported correction.
+export function ownerDischargeSummary(asOf: string | null, sequence: string | null) {
+  return sql`
+    select coalesce(sum(r.amount_minor), 0) as total, count(*) as total_count,
+      coalesce(bool_or(i.direction <> 'supplier' or r.mode <> 'owner_pays_payable'
+        or not (${voucherCurrent(sql`r.voucher_id`)})
+        or payable.line_count <> 1 or payable.debit_minor <> r.amount_minor
+        or payable.credit_minor <> 0), false) as invalid
+    from openerp.owner_operation_receipts r
+    join openerp.vouchers discharge on discharge.book_id = r.book_id and discharge.id = r.voucher_id
+    cross join lateral (
+      select count(*) as line_count, coalesce(sum(l.debit_minor), 0) as debit_minor,
+        coalesce(sum(l.credit_minor), 0) as credit_minor
+      from openerp.journal_lines l
+      where l.book_id = r.book_id and l.voucher_id = r.voucher_id
+        and l.account_id = i.control_account_id
+    ) payable
+    where r.book_id = i.book_id and r.invoice_id = i.id
+      and (${asOf}::date is null or discharge.posting_date <= ${asOf}::date)
+      and (${sequence}::bigint is null or discharge.sequence <= ${sequence}::bigint)
+  `;
 }
 
 function cancellationBody() {
@@ -150,14 +176,15 @@ function liveInvoice(bookId: string, identity: SQL | undefined) {
           (select r.body from openerp.commerce_invoice_revisions r
             where r.book_id = i.book_id and r.invoice_id = i.id and r.revision = i.current_revision
           ) as revision,
-          ${activeLegTotal()} as allocated,
+           ${activeLegTotal()} + owner_discharges.total as allocated,
           (select count(*) from openerp.commerce_allocation_legs l
             where l.book_id = i.book_id and l.invoice_id = i.id
           ) + (select count(*) from openerp.commerce_allocation_legs l
             join openerp.commerce_allocation_reversals rev
               on rev.book_id = l.book_id and rev.receipt_id = l.receipt_id
             where l.book_id = i.book_id and l.invoice_id = i.id
-          ) + case when ${cancellationBody()} is null then 0 else 1 end as allocation_count,
+           ) + owner_discharges.total_count
+             + case when ${cancellationBody()} is null then 0 else 1 end as allocation_count,
           ${cancellationBody()} as cancellation,
           case when ${cancellationBody()} is null then 0 else i.amount_minor end as cancelled,
           (case when ${cancellationBody()} is null then i.amount_minor else 0 end
@@ -174,8 +201,9 @@ function liveInvoice(bookId: string, identity: SQL | undefined) {
                 and not (${voucherCurrent(sql`l.payment_voucher_id`)})
               ) then 'A retained allocation payment voucher was corrected.'::text end,
               case when credits.invalid then 'A supplier credit posting or payable line is invalid.'::text end,
-              case when customer_credits.invalid then 'A customer credit posting or receivable line is invalid.'::text end,
-              case when credits.total + customer_credits.total + ${activeLegTotal()} > case when ${cancellationBody()} is null
+               case when customer_credits.invalid then 'A customer credit posting or receivable line is invalid.'::text end,
+               case when owner_discharges.invalid then 'An owner-paid supplier discharge posting or payable line is invalid.'::text end,
+               case when credits.total + customer_credits.total + ${activeLegTotal()} + owner_discharges.total > case when ${cancellationBody()} is null
                 then i.amount_minor else 0 end
                 then 'Recorded allocations exceed the invoice amount.'::text end
             ], null)) with ordinality as remaining(value, ordinal)
@@ -198,7 +226,8 @@ function liveInvoice(bookId: string, identity: SQL | undefined) {
           from openerp.customer_credit_notes c join openerp.journal_lines l
             on (l.book_id,l.voucher_id,l.id)=(c.book_id,c.voucher_id,c.control_line_id)
           where c.book_id=i.book_id and c.register_invoice_id=i.id
-        ) customer_credits
+         ) customer_credits
+         cross join lateral (${ownerDischargeSummary(null, null)}) owner_discharges
         where i.book_id = ${bookId} and ${identity === undefined ? sql`true` : identity}
       ) base
     ) live

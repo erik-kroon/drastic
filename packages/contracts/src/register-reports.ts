@@ -70,8 +70,16 @@ export const RegisterLedgerLine = Schema.Struct({
   invoiceId: Schema.NullOr(Accounting.Identifier),
   cancellationId: Schema.optional(Schema.NullOr(Accounting.Identifier)),
   creditId: Schema.optional(Schema.NullOr(Accounting.Identifier)),
+  ownerDischargeId: Schema.optional(Schema.NullOr(Accounting.Identifier)),
   registerContributionKind: Schema.optional(
-    Schema.Literals(["recognition", "cancellation", "credit", "allocation", "unexplained"]),
+    Schema.Literals([
+      "recognition",
+      "cancellation",
+      "credit",
+      "allocation",
+      "owner_discharge",
+      "unexplained",
+    ]),
   ),
   allocatedMinor: Accounting.AggregateMinorUnits,
   registerEffectMinor: Accounting.SignedMinorUnits,

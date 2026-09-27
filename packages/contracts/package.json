@@ -22,6 +22,7 @@
     "./report-statements": "./src/report-statements.ts",
     "./cases": "./src/cases.ts",
     "./automation": "./src/automation.ts",
+    "./period-work": "./src/period-work.ts",
     "./subledgers": "./src/subledgers.ts",
     "./closing": "./src/closing.ts",
     "./posting-recovery": "./src/posting-recovery.ts",
@@ -78,6 +79,7 @@
     "./payroll-foundation": "./src/payroll-foundation.ts",
     "./roles": "./src/roles.ts",
     "./payroll-calculations": "./src/payroll-calculations.ts",
+    "./corporate-tax": "./src/corporate-tax.ts",
     "./expense-tax": "./src/expense-tax.ts",
     "./owner-register": "./src/owner-register.ts",
     "./owner-operations": "./src/owner-operations.ts"

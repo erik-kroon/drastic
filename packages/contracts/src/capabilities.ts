@@ -64,6 +64,7 @@ import { DeadlinesCapabilities } from "./deadlines";
 import { RuleImpactCapabilities } from "./rule-impact";
 import { SupplierInboxCapabilities } from "./supplier-inbox";
 import { PayrollCalculationCapabilities } from "./payroll-calculations";
+import { CorporateTaxCapabilities } from "./corporate-tax";
 import { SupplierExtractionCapabilities } from "./supplier-extraction";
 
 const scoped = { scope: Accounting.Scope };
@@ -151,6 +152,7 @@ export const Capabilities = {
   ...BankInventorySignoffCapabilities,
   ...TaxAccountCapabilities,
   ...PayrollCalculationCapabilities,
+  ...CorporateTaxCapabilities,
   rules_propose: {
     description:
       "Propose an immutable synthetic exact-match recurring PREPARATION rule. It never grants posting authority.",
@@ -239,7 +241,11 @@ export const Capabilities = {
   period_work_approve_batch: {
     description:
       "Approve the exact sealed members, each under its own owner's rules. A member whose owner has released no approve-within-transaction port is refused by name.",
-    input: Schema.Struct({ ...mutation, input: PeriodWork.ApprovePeriodWorkBatch }),
+    input: Schema.Struct({
+      ...mutation,
+      batchId: Accounting.Identifier,
+      input: PeriodWork.ApprovePeriodWorkBatch,
+    }),
     output: PeriodWorkDomain.ApprovalBatch,
     readOnly: false,
     // The human gesture. An agent must not be able to make it.
@@ -248,7 +254,11 @@ export const Capabilities = {
   period_work_execute_batch: {
     description:
       "Execute the approved members through their own owning operations, one member per receipt, keeping independent members runnable when one goes stale.",
-    input: Schema.Struct({ ...mutation, input: PeriodWork.ExecutePeriodWorkBatch }),
+    input: Schema.Struct({
+      ...mutation,
+      batchId: Accounting.Identifier,
+      input: PeriodWork.ExecutePeriodWorkBatch,
+    }),
     output: PeriodWork.PeriodWorkExecutionResult,
     readOnly: false,
     // It posts.

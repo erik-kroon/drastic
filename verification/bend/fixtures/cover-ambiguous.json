@@ -1,0 +1,57 @@
+{
+  "scope": {
+    "entityId": "demo-entity",
+    "bookId": "demo-book",
+    "snapshotId": "snapshot-1"
+  },
+  "currency": "SEK",
+  "scale": 2,
+  "direction": "inflow",
+  "targetMinor": "10000",
+  "poolComplete": true,
+  "candidates": [
+    {
+      "id": "line-0",
+      "revision": "1",
+      "scope": {
+        "entityId": "demo-entity",
+        "bookId": "demo-book",
+        "snapshotId": "snapshot-1"
+      },
+      "currency": "SEK",
+      "scale": 2,
+      "direction": "inflow",
+      "remainingMinor": "4000"
+    },
+    {
+      "id": "line-1",
+      "revision": "1",
+      "scope": {
+        "entityId": "demo-entity",
+        "bookId": "demo-book",
+        "snapshotId": "snapshot-1"
+      },
+      "currency": "SEK",
+      "scale": 2,
+      "direction": "inflow",
+      "remainingMinor": "6000"
+    },
+    {
+      "id": "line-2",
+      "revision": "1",
+      "scope": {
+        "entityId": "demo-entity",
+        "bookId": "demo-book",
+        "snapshotId": "snapshot-1"
+      },
+      "currency": "SEK",
+      "scale": 2,
+      "direction": "inflow",
+      "remainingMinor": "10000"
+    }
+  ],
+  "limits": {
+    "maxCardinality": 3,
+    "nodeBudget": 100
+  }
+}

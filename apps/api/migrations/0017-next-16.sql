@@ -174,9 +174,7 @@ CREATE TABLE openerp.period_work_batch_members (
   CONSTRAINT period_work_batch_members_owner_check CHECK (owner = ANY (ARRAY['purchases.recognition'::text, 'purchases.credits'::text, 'owner.operations'::text, 'commerce.invoice'::text])),
   CONSTRAINT period_work_batch_members_batch_fkey FOREIGN KEY (book_id, batch_id) REFERENCES openerp.period_work_batches(book_id, id),
   CONSTRAINT period_work_batch_members_plan_fkey FOREIGN KEY (book_id, plan_id) REFERENCES openerp.change_sets(book_id, id),
-  -- A member names a child of a manifest. The same child cannot be a member of
-  -- two batches, which is what stops one gesture covering a duplicate
-  -- economic effect. The owner, plan and review are the ones the child itself
+  -- A member names a child of a manifest. The owner, plan and review are the ones the child itself
   -- recorded when it was advanced, so a batch cannot claim a different owner for
   -- a child than the one that actually prepared the plan.
   CONSTRAINT period_work_batch_members_work_fkey FOREIGN KEY (book_id, work_identity) REFERENCES openerp.period_work_children(book_id, work_identity)
@@ -217,7 +215,7 @@ CREATE TRIGGER period_work_batch_member_agrees
   FOR EACH ROW EXECUTE FUNCTION openerp.period_work_batch_member_agrees();
 
 CREATE UNIQUE INDEX period_work_batch_members_work_uniq
-  ON openerp.period_work_batch_members (book_id, work_identity);
+  ON openerp.period_work_batch_members (book_id, batch_id, work_identity);
 
 -- Which exact gesture covered which exact batch member.
 --

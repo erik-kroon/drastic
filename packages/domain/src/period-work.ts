@@ -69,7 +69,7 @@ export const ExistingMatch = Schema.Struct({
 export const PreparationRule = Schema.Struct({
   id: Identifier,
   version: Schema.Int,
-  legalSupplierIdentity: Schema.Boolean,
+  legalSupplierIdentity: Identifier,
   supportedDocumentClass: Schema.Literals([
     "domestic_invoice",
     "domestic_credit_note",
@@ -189,6 +189,9 @@ export const WorkChild = Schema.Struct({
     "owner_expense",
   ]),
   currency: Schema.String,
+  legalSupplierIdentity: Schema.optional(Identifier),
+  qualifiedTreatmentId: Schema.optional(Identifier),
+  evidenceIds: Schema.optional(Schema.Array(Identifier)),
   sourceMinor: MinorUnits,
   // True when the child came from a bank or owner payment rather than a
   // document. A bank row is never turned into a new purchase identity.
@@ -228,6 +231,7 @@ export const SourceCoverage = Schema.Struct({
 export type SourceCoverage = typeof SourceCoverage.Type;
 
 export const PeriodWorkManifest = Schema.Struct({
+  id: Identifier,
   scope: Scope,
   requestedInterval: Schema.Struct({
     startsOn: AccountingDate,
@@ -236,6 +240,7 @@ export const PeriodWorkManifest = Schema.Struct({
   cutoff: AccountingDate,
   sourceCoverage: SourceCoverage,
   children: Schema.Array(WorkChild),
+  rules: Schema.Array(PreparationRule),
   digest: Digest,
 });
 
@@ -259,6 +264,8 @@ export const BatchMember = Schema.Struct({
 export type BatchMember = typeof BatchMember.Type;
 
 export const ApprovalBatch = Schema.Struct({
+  id: Identifier,
+  manifestId: Identifier,
   scope: Scope,
   members: Schema.Array(BatchMember).check(
     Schema.isMinLength(1),
@@ -409,6 +416,14 @@ export function routeWork(
     };
   }
 
+  if (child.documentClass === "domestic_credit_note") {
+    const selected = selectRule(child, rules, "SupplierCredit");
+
+    return selected.failure === undefined
+      ? { ...selected, target: "OwnedCorrectionReview" }
+      : selected;
+  }
+
   const selected = selectRule(child, rules, "SupplierRecognition");
 
   if (selected.failure !== undefined) return selected;
@@ -439,7 +454,9 @@ export function selectRule(
     (rule) =>
       rule.operationFamily === operationFamily &&
       rule.supportedDocumentClass === child.documentClass &&
-      rule.currency === child.currency,
+      rule.currency === child.currency &&
+      rule.legalSupplierIdentity === child.legalSupplierIdentity &&
+      rule.qualifiedTreatmentId === child.qualifiedTreatmentId,
   );
 
   const distinct = new Map<string, PreparationRule>();
@@ -473,6 +490,13 @@ export function selectRule(
       failure: "ambiguous_rule",
     };
   }
+
+  const missing = rule.acceptedEvidenceRequirements.filter(
+    (id) => !child.evidenceIds?.includes(id),
+  );
+
+  if (missing.length > 0)
+    return { target: "ReviewCase", missingFacts: missing, failure: "missing_evidence" };
 
   return {
     target: "ReviewCase",

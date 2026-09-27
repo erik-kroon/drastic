@@ -183,7 +183,7 @@ export const CustomerCreditLine = Schema.Struct({
   // remaining tax rather than a freshly recomputed one.
   finalLineCredit: Schema.Boolean,
   revenueLineId: Accounting.Identifier,
-  outputVatLineId: Accounting.Identifier,
+  outputVatLineId: Schema.NullOr(Accounting.Identifier),
 });
 
 // The negative tax effect of the credit. It is an owned, exact correction bound to
@@ -204,7 +204,7 @@ export const CustomerCreditTaxCorrection = Schema.Struct({
   // the credit is committed inside the same transaction as this correction.
   creditVoucherId: Schema.NullOr(Accounting.Identifier),
   revenueLineId: Accounting.Identifier,
-  outputVatLineId: Accounting.Identifier,
+  outputVatLineId: Schema.NullOr(Accounting.Identifier),
   controlLineId: Schema.NullOr(Accounting.Identifier),
   vatReturnOwner: Schema.Literal("not_released"),
   vatReturnConsequence: Schema.Literal("unobserved_pending_next_04"),

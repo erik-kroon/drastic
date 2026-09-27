@@ -91,7 +91,12 @@ function readQualifiedRelease(transaction: Transaction, scope: Scope, input: Inp
       transaction,
       scope,
       "actual_company",
-      { postingOn: null, taxPointOn: input.endsOn, paymentOn: null, reportOn: null },
+      {
+        postingOn: null,
+        taxPointOn: input.endsOn,
+        paymentOn: null,
+        reportOn: null,
+      },
     );
 
     const witness = resolved.families.find((entry) => entry.family === "vat")?.witness ?? null;
@@ -117,6 +122,8 @@ function readQualifiedRelease(transaction: Transaction, scope: Scope, input: Inp
     if (filing.calculatorVersion !== SupportedCalculatorVersion) return yield* unsupported();
 
     if (filing.currency !== book.currency) return yield* unsupported();
+
+    if (filing.filingUnitScale > book.currencyScale) return yield* unsupported();
 
     return { book, witness, releaseId: row.id, checksum: row.checksum, filing };
   });
@@ -425,6 +432,12 @@ function treatmentOf(value: string): (typeof Vat.VatSelectedFact.Type)["treatmen
   return treatments.find((treatment) => treatment === value) ?? null;
 }
 
+function signedSourceTax(row: Db.PurchaseComponentRow) {
+  const amount = BigInt(row.sourceTaxMinor);
+
+  return (row.adjustsTaxFactId === null ? amount : -amount).toString();
+}
+
 // Capture is set-based over the selected tax points. It reads the manual VAT fact
 // admission and the owned purchase recognition components once, reads the
 // released reclassification effects for every obligation, and reads the released
@@ -524,6 +537,19 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
       byVoucher.set(line.voucherId, [...(byVoucher.get(line.voucherId) ?? []), line]);
     }
 
+    const links = yield* Db.readPurchaseControlLinks(transaction, scope.bookId, [
+      ...new Set(purchased.map((row) => row.recognitionId)),
+    ]);
+
+    const sourceOrdinals = new Map<string, Set<number>>();
+
+    for (const link of links) {
+      const key = JSON.stringify([link.recognitionId, link.sourceLineId]);
+      const ordinals = sourceOrdinals.get(key) ?? new Set<number>();
+      ordinals.add(link.journalOrdinal);
+      sourceOrdinals.set(key, ordinals);
+    }
+
     const ownedEffects: Array<typeof Vat.VatOwnedControlEffect.Type> = [];
 
     for (const row of effects) {
@@ -562,6 +588,7 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
         voucherId: row.voucherId,
         basisMinor: row.netMinor,
         taxMinor: row.vatMinor,
+        sourceTaxMinor: row.vatMinor,
         adjustsFactId: null,
         ruleReleaseId: null,
         observation: {
@@ -582,6 +609,8 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
     }
 
     for (const row of purchased) {
+      const ordinals = sourceOrdinals.get(JSON.stringify([row.recognitionId, row.sourceLineId]));
+
       facts.push({
         factId: row.id,
         origin: "owned_purchase_recognition",
@@ -592,6 +621,7 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
         voucherId: row.voucherId,
         basisMinor: row.signedBaseMinor,
         taxMinor: row.signedDeductibleTaxMinor,
+        sourceTaxMinor: signedSourceTax(row),
         adjustsFactId: row.adjustsTaxFactId,
         ruleReleaseId: row.ruleReleaseId,
         observation: {
@@ -603,7 +633,7 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
             row.voucherSequence !== null && BigInt(row.voucherSequence) <= BigInt(ledgerBoundary),
         },
         controlComponents: controlComponents(
-          byVoucher.get(row.voucherId) ?? [],
+          (byVoucher.get(row.voucherId) ?? []).filter((line) => ordinals?.has(line.ordinal)),
           roles,
           input.startsOn,
           input.endsOn,

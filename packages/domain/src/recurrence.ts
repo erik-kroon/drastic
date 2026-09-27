@@ -15,6 +15,7 @@ export const RecurrenceFailureCode = Schema.Literals([
   "UnsupportedCadence",
   "InvalidAnchor",
   "InvalidCycleOrdinal",
+  "InvalidServiceInterval",
   "CycleOutsideCalendar",
   "NoTemplateRevisionForCycle",
   "AmbiguousTemplateRevision",
@@ -87,6 +88,7 @@ export const RecurrenceSchedule = Schema.Struct({
 
 export type RecurrenceSchedule = typeof RecurrenceSchedule.Type;
 
+// Service coverage is half-open: the end date is the next interval's start.
 export const ServiceInterval = Schema.Struct({
   serviceStartsOn: AccountingDate,
   serviceEndsOn: AccountingDate,
@@ -433,6 +435,13 @@ function checkedCycle(schedule: RecurrenceSchedule, cycle: bigint): Checked<Comp
 
   if (Result.isFailure(previous)) return Result.fail(previous.failure);
 
+  if (previous.success >= date.success) {
+    return fail(
+      "InvalidServiceInterval",
+      "The supported arrears cycle must end after its service start; the anchor itself is not a billable cycle.",
+    );
+  }
+
   return Result.succeed({
     cycleDate: date.success,
     serviceInterval: { serviceStartsOn: previous.success, serviceEndsOn: date.success },
@@ -631,7 +640,7 @@ function eventState(
 }
 
 function coversSameService(left: ServiceInterval, right: ServiceInterval) {
-  return left.serviceStartsOn <= right.serviceEndsOn && right.serviceStartsOn <= left.serviceEndsOn;
+  return left.serviceStartsOn < right.serviceEndsOn && right.serviceStartsOn < left.serviceEndsOn;
 }
 
 // Billing coverage is its own conflict check: a cadence or anchor change whose
@@ -641,6 +650,18 @@ export function assertNoOverlappingCoverage(
   candidate: { readonly cycleOrdinal: string; readonly serviceInterval: ServiceInterval },
   billedCoverage: ReadonlyArray<BilledCoverage>,
 ) {
+  if (
+    candidate.serviceInterval.serviceStartsOn >= candidate.serviceInterval.serviceEndsOn ||
+    billedCoverage.some(
+      (billed) => billed.serviceInterval.serviceStartsOn >= billed.serviceInterval.serviceEndsOn,
+    )
+  ) {
+    return fail(
+      "InvalidServiceInterval",
+      "Billing requires a nonempty half-open service interval.",
+    );
+  }
+
   const conflicting = billedCoverage.filter(
     (billed) =>
       billed.cycleOrdinal !== candidate.cycleOrdinal &&

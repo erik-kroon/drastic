@@ -58,8 +58,9 @@ revision, and the invoice draft key is derived from that pair alone, so amending
 a template cannot re-identify a cycle that is already issued. Coverage is unique
 per occurrence and charge component and retains the legal document number and the
 ledger receipt. It declares no function; it reuses the baseline `immutable_row`
-guard and the `digest` check helper, and carries its own runtime grants. Like the
-forward migrations above, it has never been applied by PostgreSQL.
+guard and the `digest` check helper, and carries its own runtime grants. The
+existing E2E suite applies the checked-in migration chain to disposable PostgreSQL
+and verifies rerun/checksum behavior; this is not proof of every recurring-invoice journey.
 
 A cadence or anchor amendment is a third immutable record family,
 `recurring_invoice_agreement_schedules`, with the same boundary discipline as a
@@ -71,7 +72,7 @@ cycles that already own an occurrence.
 `application/commerce/recurring-invoices.ts` owns the agreement, schedule
 amendment, template revision, event, plan, materialization and read operations.
 `db/commerce/recurring-invoices.ts` owns the tx-passing reads and DML, and its
-write access check asks for `INSERT` on exactly the four tables it writes into.
+write access check asks for `INSERT` on its owned write tables.
 `application/commerce/recurring-coverage.ts` is the single issuance-admission
 authority: both invoice issue owners ask it whether a draft's occurrence is still
 unbilled and still due before anything issues, and it appends the coverage
@@ -85,9 +86,9 @@ The automation `recurring-rules.ts` owner is unrelated. It models bank-observati
 matching rules on the `synthetic-core-v1` profile, not commercial invoice
 recurrence, and the two share no table, identity or policy.
 
-Released databases take forward migrations in filename order. [0004-next-02.sql](migrations/0004-next-02.sql) adds the capability-specific company admission record model: rule releases, reviewed company fact revisions and their reviews, reviewed account role bindings, per-family admission epochs, activations and the activation impacts a retroactive fact correction records. It declares no function: it reuses the baseline `immutable_row` guard and the `digest` check helper, and it carries its own runtime grants rather than editing the reviewed baseline. A sealed activation proposal, its approval and its no-journal receipt reuse the existing `change_sets`, `approvals` and `posting_group_receipts` identity instead of a parallel set of tables. [0005-next-13.sql](migrations/0005-next-13.sql) adds the immutable statement-snapshot header, row and contribution membership. Both migrations were written against the 0001-0003 baseline but **neither has ever been applied by PostgreSQL**; see [the NEXT packet progress note](../../docs/plans/next-packet-progress.md) for the full unverified surface.
+Released databases take forward migrations in filename order. [0004-next-02.sql](migrations/0004-next-02.sql) adds the capability-specific company admission record model: rule releases, reviewed company fact revisions and their reviews, reviewed account role bindings, per-family admission epochs, activations and the activation impacts a retroactive fact correction records. It declares no function: it reuses the baseline `immutable_row` guard and the `digest` check helper, and it carries its own runtime grants rather than editing the reviewed baseline. A sealed activation proposal, its approval and its no-journal receipt reuse the existing `change_sets`, `approvals` and `posting_group_receipts` identity instead of a parallel set of tables. [0005-next-13.sql](migrations/0005-next-13.sql) adds the immutable statement-snapshot header, row and contribution membership. These migrations are included in the local fresh-database E2E run; see [the NEXT packet progress note](../../docs/plans/next-packet-progress.md) for the distinct, still-unverified feature paths.
 
-[0007-next-11.sql](migrations/0007-next-11.sql) adds the complete-book SIE4E export: the sealed capture header, the retained account/balance/journal-line membership, and the verified object bytes with their manifest. The application owns the raw balance arithmetic, the type-4 record encoding and the independent semantic comparison; the migration declares no function, no policy and no SIE calculation, and grants only `SELECT, INSERT`. `application/sie4e.ts` owns the capture, `db/sie4e.ts` the tx-passing reads and DML, and `jurisdictions/se/src/sie/sie4e.ts` the pure balances, renderer and comparison. A dimension-bearing book refuses with `UnsupportedProfile` because no reviewed dimension-assignment owner exists, and a reviewed account classification is a required input. See [SIE.md](docs/SIE.md). The migration sequence has a deliberate gap: `0006` is reserved for an in-flight packet. It too has never been applied by PostgreSQL.
+[0007-next-11.sql](migrations/0007-next-11.sql) adds the complete-book SIE4E export: the sealed capture header, the retained account/balance/journal-line membership, and the verified object bytes with their manifest. The application owns the raw balance arithmetic, the type-4 record encoding and the independent semantic comparison; the migration declares no function, no policy and no SIE calculation, and grants only `SELECT, INSERT`. `application/sie4e.ts` owns the capture, `db/sie4e.ts` the tx-passing reads and DML, and `jurisdictions/se/src/sie/sie4e.ts` the pure balances, renderer and comparison. A reviewed account classification and supported dimension treatment are required inputs. See [SIE.md](docs/SIE.md) for the released profile's limits; migration application alone does not establish complete export qualification.
 
 [0017-next-16.sql](migrations/0017-next-16.sql) adds evidence-aware period
 preparation: the frozen manifest for one requested interval, the mutable child
@@ -120,8 +121,12 @@ router's vocabulary, the database refuses them as a routed owner, and a child th
 needs one becomes a review case naming
 `company_bank_settlement_owner_not_released`. Nothing here posts; a batch approval
 is an operator-only human gesture over exact sealed members, it never covers a
-later arrival, and it does not mint each owner's own approval — that stays with
-the owner, and is what the owner's execute consumes. `reconciled` is always
+later arrival, and calls each owner's in-transaction approval port so that the
+whole gesture succeeds or rolls back together. Execution consumes those actual
+owner approvals. The HTTP surface includes cancellation and cursor-bounded batch
+execution; cancellation is checked inside the owning posting transaction, while
+an already committed receipt remains recoverable. Queue keys include the child
+checkpoint sum so bounded preparation can continue across deliveries. `reconciled` is always
 `false`: a run whose children were all visited is still not a reconciled period.
 
 [0006-next-03.sql](migrations/0006-next-03.sql) adds the owned source-line purchase
@@ -129,7 +134,34 @@ recognition: the immutable recognition with its unique economic key, the immutab
 signed purchase tax components, and the mutable original-line capacities a later
 supplier credit consumes. It declares no function; it reuses the baseline
 `immutable_row` guard and the `digest` check helper, and carries its own runtime
-grants. It too has never been applied by PostgreSQL.
+grants. Its migration is exercised by the existing suite; its full purchase journey
+has separate qualification and runtime-evidence requirements.
+
+[0012-next-17.sql](migrations/0012-next-17.sql) extends the existing commerce FX
+owner with a supplier direction and an explicit-fee settlement profile. It adds a
+`direction` discriminator to `commerce_fx_items`, the `direction`,
+`gross_book_minor`, `fee_total_minor` and `cash_source_minor` columns to
+`commerce_fx_settlements`, and one table, `commerce_fx_settlement_sources`,
+holding the fee and cash legs a settlement actually posted. It declares no
+function and no second register: the original-unit and book-carrying release stays
+the released paired-release owner's, and remaining amounts are derived from the
+retained settlement rows of every profile. The signed cash carries the
+settlement's sign — a receipt is `K − F`, a payment is `−(K + F)` — and the
+retained `commerce_fx_settlements_profile_check` and
+`commerce_fx_settlements_body_check` are replaced with direction-aware equivalents
+that keep both released receivable profiles exact. A settlement source is
+immutable history; a correction releases the right by its own existence, so
+`db/commerce/fx.ts` derives an active consumption from the absence of a
+correction rather than from a mutable flag. The shared `readLineOwners`
+projection in `db/posting-admission.ts` reads the sources table, because a
+settlement posts up to twenty cash legs while its `cash_line_id` names only the
+first. `application/commerce/fx.ts` owns the compiler and the transaction;
+`db/commerce/fx.ts` the tx-passing reads and DML.
+
+Integration writes the settlement header before its source rows, preserving the
+immediate source-to-settlement foreign key within one transaction. Fresh migration
+and the existing core E2E suite pass on the combined source; the new FX fee
+prepare/approve/execute journey remains unobserved under the existing-checks-only scope.
 
 [0009-next-26.sql](migrations/0009-next-26.sql) adds the bounded supplier extraction
 lifecycle: the append-only admitted request basis, its one mutable lifecycle row, and

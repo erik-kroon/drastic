@@ -25,14 +25,31 @@ export const periodWorkCapabilities = {
   period_work_advance: effectCapability(Capabilities.period_work_advance, advancePeriodWork),
   period_work_prepare_batch: effectCapability(
     Capabilities.period_work_prepare_batch,
-    preparePeriodWorkBatch,
+    (token, command) =>
+      preparePeriodWorkBatch(token, {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        ...command.input,
+      }),
   ),
   period_work_approve_batch: effectCapability(
     Capabilities.period_work_approve_batch,
-    approvePeriodWorkBatch,
+    (token, command) =>
+      approvePeriodWorkBatch(token, {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        batchId: command.batchId,
+        ...command.input,
+      }),
   ),
   period_work_execute_batch: effectCapability(
     Capabilities.period_work_execute_batch,
-    executePeriodWorkBatch,
+    (token, command) =>
+      executePeriodWorkBatch(token, {
+        scope: command.scope,
+        idempotencyKey: command.idempotencyKey,
+        batchId: command.batchId,
+        ...command.input,
+      }),
   ),
 };

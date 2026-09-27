@@ -78,21 +78,17 @@ export const PreparePeriodWorkBatch = Schema.Struct({
 });
 
 export const ApprovePeriodWorkBatch = Schema.Struct({
-  batchId: Accounting.Identifier,
   // The digest the operator was shown. A batch whose digest has moved is refused
   // rather than approved on a different set than the one displayed.
   expectedDigest: Accounting.Digest,
+  acknowledgeSyntheticOnly: Schema.Literal(true),
 });
 
 export const ExecutePeriodWorkBatch = Schema.Struct({
-  batchId: Accounting.Identifier,
   expectedDigest: Accounting.Digest,
-  boundedCount: Schema.Int,
-  // The owning operation's own approval for each member. The batch gesture is
-  // separate from it, and the owner refuses to execute without its own.
-  ownerApprovals: Schema.Array(
-    Schema.Struct({ workIdentity: Schema.String, approvalId: Accounting.Identifier }),
-  ),
+  boundedCount: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 200 })),
+  acknowledgeSyntheticOnly: Schema.Literal(true),
+  afterOrdinal: Schema.optional(Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 200 }))),
 });
 
 /** What one batch execution actually did. Never a claim beyond the receipts. */
@@ -103,6 +99,7 @@ export const PeriodWorkExecutionResult = Schema.Struct({
   refused: Schema.Array(Schema.Struct({ workIdentity: Schema.String, reason: Schema.String })),
   counts: PeriodWorkDomain.ChildStateCounts,
   reconciled: Schema.Literal(false),
+  nextOrdinal: Schema.NullOr(Schema.Int),
 });
 
 const path = "/v1/entities/:entityId/books/:bookId/period-work";
@@ -140,6 +137,12 @@ export const PeriodWorkApi = HttpApiGroup.make("periodWork").add(
     ...mutation,
     payload: PreparePeriodWorkBatch.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: PeriodWorkDomain.ApprovalBatch,
+  }),
+  HttpApiEndpoint.post("cancelPeriodWork", `${path}/manifests/:manifestId/cancel`, {
+    ...mutation,
+    params: Schema.Struct({ ...Accounting.Scope.fields, manifestId: Accounting.Identifier }),
+    payload: Schema.Struct({ expectedDigest: Accounting.Digest }),
+    success: PeriodWorkRunProgress,
   }),
   // Approval carries authority, so it stays out of the ordinary agent catalogue
   // and is reachable only by an operator.

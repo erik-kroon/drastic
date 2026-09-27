@@ -715,20 +715,18 @@ export const prepareInvoiceIssue = Effect.fn("commerce.issuance.prepare")(functi
   );
 });
 
-export const approveInvoiceIssue = Effect.fn("commerce.issuance.approve")(function* (
-  token: string,
-  command: {
-    scope: Scope;
-    id: string;
-    idempotencyKey: string;
-    input: typeof Issuance.ApproveInvoiceIssue.Type;
-  },
-) {
-  return yield* withBook(
-    token,
-    command.scope,
-    true,
-    function* (transaction, principal) {
+export const approveInvoiceIssueInTransaction = Effect.fn("commerce.issuance.approveInTransaction")(
+  function* (
+    transaction: Transaction,
+    principal: Principal,
+    command: {
+      scope: Scope;
+      id: string;
+      idempotencyKey: string;
+      input: typeof Issuance.ApproveInvoiceIssue.Type;
+    },
+  ) {
+    return yield* Effect.gen(function* () {
       const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
 
       const request = yield* replay(
@@ -795,6 +793,20 @@ export const approveInvoiceIssue = Effect.fn("commerce.issuance.approve")(functi
       );
 
       return result;
+    });
+  },
+);
+
+export const approveInvoiceIssue = Effect.fn("commerce.issuance.approve")(function* (
+  token: string,
+  command: Parameters<typeof approveInvoiceIssueInTransaction>[2],
+) {
+  return yield* withBook(
+    token,
+    command.scope,
+    true,
+    function* (transaction, principal) {
+      return yield* approveInvoiceIssueInTransaction(transaction, principal, command);
     },
     "update",
   );

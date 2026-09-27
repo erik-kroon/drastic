@@ -1,0 +1,25 @@
+{
+  "name": "@openerp/bend-verification-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.mjs"
+    }
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types tests/run.mjs",
+    "demo": "node --experimental-strip-types scripts/demo.mjs",
+    "check:proofs": "node --experimental-strip-types scripts/check-proofs.mjs",
+    "verify:owner": "node --experimental-strip-types scripts/verify-owner.mjs",
+    "verify:local": "node --experimental-strip-types scripts/verify-local.mjs",
+    "verify:release": "node --experimental-strip-types scripts/verify-release.mjs",
+    "solve": "node --experimental-strip-types scripts/solve.mjs"
+  }
+}

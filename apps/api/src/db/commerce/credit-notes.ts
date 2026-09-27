@@ -346,7 +346,7 @@ export function insertTaxCorrection(
         ${correction.qualifiedTaxPeriod.accountingPeriodId},
         ${correction.qualifiedTaxPeriod.qualifiedOn}, ${correction.baseMinor},
         ${correction.outputTaxMinor}, ${row.creditVoucherId}, ${correction.revenueLineId},
-        ${correction.outputVatLineId}, ${row.controlLineId}, ${JSON.stringify(correction)}::jsonb)
+        ${correction.outputVatLineId}, ${row.controlLineId}, ${JSON.stringify({ ...correction, creditId: row.creditId })}::jsonb)
     `,
     "objects",
   );

@@ -85,8 +85,23 @@ export type ExistsRow = { readonly present: boolean };
 
 const derivedOutcome = sql`
   case when o.outcome_reference is not null and exists (
-      select 1 from openerp.deadline_fulfillments f
-      where f.book_id = o.book_id and f.obligation_id = o.id and f.verification = 'satisfied'
+       select 1 from openerp.deadline_fulfillments f
+       where f.book_id = o.book_id and f.obligation_id = o.id and f.verification = 'satisfied'
+         and f.obligation_revision = o.revision and f.outcome_kind = o.outcome_kind
+         and f.environment = o.required_environment
+         and not exists (
+           select 1 from openerp.deadline_fulfillments newer
+           where newer.book_id = f.book_id and newer.obligation_id = f.obligation_id
+             and newer.obligation_revision = f.obligation_revision
+             and newer.reference_digest = f.reference_digest
+             and newer.verification_ordinal > f.verification_ordinal
+         )
+         and (case f.reference_kind
+           when 'local_prepared_artifact' then (f.reference->>'owner') || ':' || (f.reference->>'artifactId') || '@' || (f.reference->>'digest')
+           when 'submitted_attempt' then (f.reference->>'owner') || ':' || (f.reference->>'attemptId') || '@' || (f.reference->>'digest')
+           when 'authority_outcome' then 'authority_outcome:' || (f.reference->>'observationId') || '@' || (f.reference->>'receiptIdentity')
+           when 'reviewed_external_evidence' then 'reviewed_external_evidence:' || (f.reference->>'originalRef') || '@' || (f.reference->>'reviewer')
+         end) = o.outcome_reference
     ) then o.outcome_reference end
 `;
 
@@ -96,8 +111,16 @@ const latestFulfillment = sql`
       'id', f.id, 'outcomeKind', f.outcome_kind, 'referenceKind', f.reference_kind,
       'environment', f.environment, 'verification', f.verification, 'reason', f.reason,
       'recordedAt', f.recorded_at, 'recordedBy', f.recorded_by)
-    from openerp.deadline_fulfillments f
-    where f.book_id = o.book_id and f.obligation_id = o.id
+     from openerp.deadline_fulfillments f
+     where f.book_id = o.book_id and f.obligation_id = o.id
+       and f.obligation_revision = o.revision
+       and not exists (
+         select 1 from openerp.deadline_fulfillments newer
+         where newer.book_id = f.book_id and newer.obligation_id = f.obligation_id
+           and newer.obligation_revision = f.obligation_revision
+           and newer.reference_digest = f.reference_digest
+           and newer.verification_ordinal > f.verification_ordinal
+       )
     order by f.recorded_at desc, f.id desc
     limit 1
   )
@@ -129,11 +152,7 @@ export function readDeadlineAccess(transaction: Transaction) {
         requested.table_name as "tableName",
         case when to_regclass('openerp.' || requested.table_name) is null then false
           else has_table_privilege(current_user, 'openerp.' || requested.table_name, 'select') end as "canSelect",
-        case when requested.table_name = any(array[${sql.join(
-          deadlineInsertTables.map((name) => sql`${name}`),
-          sql`, `,
-        )}]::text[]) then false
-          when to_regclass('openerp.' || requested.table_name) is null then false
+        case when to_regclass('openerp.' || requested.table_name) is null then false
           else has_table_privilege(current_user, 'openerp.' || requested.table_name, 'insert') end as "canInsert"
       from unnest(array[${sql.join(
         deadlineReadTables.map((name) => sql`${name}`),

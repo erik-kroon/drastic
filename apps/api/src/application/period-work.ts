@@ -29,6 +29,7 @@ import { decodeUnknownEffect } from "effect/Schema";
 
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as PeriodWork from "@open-erp/domain/period-work";
+import * as Contracts from "@open-erp/contracts/period-work";
 import type { Database } from "../db/connection";
 import type { RequestEnvironment } from "../runtime/environment";
 import { Digest, Identifier } from "@open-erp/contracts/accounting";
@@ -37,15 +38,30 @@ import * as Credits from "@open-erp/contracts/supplier-credits";
 import * as Issuance from "@open-erp/contracts/invoice-issuance";
 import * as Operation from "@open-erp/contracts/owner-operations";
 
-import type { Transaction } from "../db/connection";
+import type { Transaction } from "../db/transaction";
 import * as Db from "../db/period-work";
 import { databaseFailure, withTransaction } from "../db/transaction";
 import { failure } from "./failures";
+import { sha256HexOf } from "./bytes";
+import { orderPostingGroups } from "@open-erp/domain/posting";
+import { PeriodWorkExecutionFence } from "./period-work-fence";
 import { admitRunnerActor } from "./preparation-jobs";
 import { digest, replay, saveCommand } from "./posting";
-import { executeInvoiceIssue, prepareInvoiceIssue } from "./commerce/invoice-lifecycle";
-import { executeSupplierAcceptance, prepareSupplierAcceptance } from "./purchases/acceptance";
-import { executeSupplierCredit, prepareSupplierCredit } from "./purchases/credits";
+import {
+  approveInvoiceIssueInTransaction,
+  executeInvoiceIssue,
+  prepareInvoiceIssue,
+} from "./commerce/invoice-lifecycle";
+import {
+  approveSupplierAcceptanceInTransaction,
+  executeSupplierAcceptance,
+  prepareSupplierAcceptance,
+} from "./purchases/acceptance";
+import {
+  approveSupplierCreditInTransaction,
+  executeSupplierCredit,
+  prepareSupplierCredit,
+} from "./purchases/credits";
 import {
   approveOwnerOperationInTransaction,
   executeOwnerOperation,
@@ -134,8 +150,8 @@ function requireAccess(transaction: Transaction, write: boolean) {
  * never from a clock or an attempt counter, so re-preparing the same request
  * lands on the same immutable manifest instead of forking a second one.
  */
-function manifestIdFor(bookId: string, startsOn: string, cutoff: string): string {
-  return derivedId("period_work_manifest", `${bookId}|${startsOn}|${cutoff}`);
+function manifestIdFor(bookId: string, inputDigest: string) {
+  return derivedId("period_work_manifest", JSON.stringify([bookId, inputDigest]));
 }
 
 /**
@@ -147,28 +163,19 @@ function batchIdFor(
   manifestId: string,
   members: ReadonlyArray<PeriodWork.BatchMember>,
 ) {
-  const key = members
-    .map((member) => `${member.workIdentity}:${member.owner}:${member.planId}`)
-    .join("|");
-
-  return derivedId("period_work_batch", `${bookId}|${manifestId}|${key}`);
+  return derivedId("period_work_batch", JSON.stringify([bookId, manifestId, members]));
 }
 
-function derivedId(prefix: string, key: string): string {
-  let hash = 2166136261;
-
-  for (const character of key) {
-    hash ^= character.codePointAt(0) ?? 0;
-    hash = Math.imul(hash, 16777619) >>> 0;
-  }
-
-  return `${prefix}_${hash.toString(16).padStart(8, "0").repeat(4)}`;
+function derivedId(prefix: string, key: string) {
+  return sha256HexOf(new TextEncoder().encode(key)).pipe(
+    Effect.map((hash) => `${prefix}_${hash.slice(0, 32)}`),
+  );
 }
 
 function nextRevision(revision: string) {
   const next = BigInt(revision) + 1n;
 
-  return next >= 1000000000n ? failure("UnsupportedProfile") : next.toString();
+  return next >= 1000000000n ? failure("UnsupportedProfile") : Effect.succeed(next.toString());
 }
 
 /** A review case records the exact facts a human must supply. It is never empty
@@ -241,21 +248,25 @@ function prepareForOwner(
   switch (owner) {
     case "purchases.recognition":
       return decodeUnknownEffect(Acceptance.PrepareSupplierAcceptance)(raw).pipe(
+        Effect.mapError(() => failure("InvalidJournal")),
         Effect.flatMap((input) => prepareSupplierAcceptance(token, { ...command, input })),
         Effect.flatMap(planIdentityOf),
       );
     case "purchases.credits":
       return decodeUnknownEffect(Credits.PrepareSupplierCredit)(raw).pipe(
+        Effect.mapError(() => failure("InvalidJournal")),
         Effect.flatMap((input) => prepareSupplierCredit(token, { ...command, input })),
         Effect.flatMap(planIdentityOf),
       );
     case "owner.operations":
       return decodeUnknownEffect(Operation.PrepareOwnerOperation)(raw).pipe(
+        Effect.mapError(() => failure("InvalidJournal")),
         Effect.flatMap((input) => prepareOwnerOperation(token, { ...command, input })),
         Effect.flatMap(planIdentityOf),
       );
     case "commerce.invoice":
       return decodeUnknownEffect(Issuance.PrepareInvoiceIssue)(raw).pipe(
+        Effect.mapError(() => failure("InvalidJournal")),
         Effect.flatMap((input) => prepareInvoiceIssue(token, { ...command, input })),
         Effect.flatMap(planIdentityOf),
       );
@@ -339,12 +350,6 @@ function executeForOwner(
  * transaction. A member of one of those owners is refused with its owner named,
  * not approved with a stand-in.
  */
-const ownersWithoutApprovalPort = [
-  "purchases.recognition",
-  "purchases.credits",
-  "commerce.invoice",
-] as const;
-
 function approveMemberInTransaction(
   transaction: Transaction,
   principal: Parameters<typeof approveOwnerOperationInTransaction>[1],
@@ -356,11 +361,7 @@ function approveMemberInTransaction(
     readonly ownerReviewDigest: string;
   },
 ) {
-  if (ownersWithoutApprovalPort.some((name) => name === member.owner)) {
-    return Effect.fail(failure("UnsupportedProfile"));
-  }
-
-  if (!isOwnerName(member.owner)) return Effect.fail(failure("StaleDependency"));
+  if (!isOwnerName(member.owner)) return failure("StaleDependency");
 
   switch (member.owner) {
     case "owner.operations":
@@ -374,9 +375,26 @@ function approveMemberInTransaction(
         (approval) => approval.id,
       );
     case "purchases.recognition":
+      return approveSupplierAcceptanceInTransaction(transaction, principal, {
+        scope,
+        reviewId: member.ownerReviewId,
+        idempotencyKey,
+        input: { version: 1, digest: member.ownerReviewDigest, acknowledgeSyntheticOnly: true },
+      }).pipe(Effect.map((approval) => approval.id));
     case "purchases.credits":
+      return approveSupplierCreditInTransaction(transaction, principal, {
+        scope,
+        reviewId: member.ownerReviewId,
+        idempotencyKey,
+        input: { digest: member.ownerReviewDigest, acknowledgeSyntheticOnly: true },
+      }).pipe(Effect.map((approval) => approval.id));
     case "commerce.invoice":
-      return Effect.fail(failure("UnsupportedProfile"));
+      return approveInvoiceIssueInTransaction(transaction, principal, {
+        scope,
+        id: member.ownerReviewId,
+        idempotencyKey,
+        input: { version: 1, digest: member.ownerReviewDigest, acknowledgeSyntheticOnly: true },
+      }).pipe(Effect.map((approval) => approval.id));
   }
 }
 
@@ -418,7 +436,7 @@ export const preparePeriodWorkManifest = Effect.fn("periodWork.prepareManifest")
       acknowledgeNotReconciled: true;
     };
   },
-) {
+): Effect.fn.Return<PeriodWork.PeriodWorkManifest, Accounting.AccountingError, Database> {
   if (command.input.acknowledgeNotReconciled !== true) return yield* failure("InvalidJournal");
 
   if (command.input.startsOn > command.input.endsOn) return yield* failure("InvalidJournal");
@@ -480,11 +498,15 @@ export const preparePeriodWorkManifest = Effect.fn("periodWork.prepareManifest")
     }
   }
 
-  const manifestId = manifestIdFor(
-    command.scope.bookId,
-    command.input.startsOn,
-    command.input.cutoff,
+  const payload = yield* toJsonObject(command.input);
+
+  const ordered = orderPostingGroups(
+    children.map((child) => ({ id: child.workIdentity, dependsOnGroupIds: child.dependsOn })),
   );
+
+  if (Result.isFailure(ordered)) return yield* failure("InvalidJournal");
+
+  const manifestId = yield* manifestIdFor(command.scope.bookId, yield* digest(payload));
 
   return yield* withBook(
     token,
@@ -497,13 +519,7 @@ export const preparePeriodWorkManifest = Effect.fn("periodWork.prepareManifest")
         command.idempotencyKey,
         operationFor.prepare,
         principal.actorId,
-        yield* toJsonObject({
-          startsOn: command.input.startsOn,
-          endsOn: command.input.endsOn,
-          cutoff: command.input.cutoff,
-          manifestId,
-          populationComplete: command.input.populationComplete,
-        }),
+        payload,
         PeriodWork.PeriodWorkManifest,
       );
 
@@ -511,7 +527,26 @@ export const preparePeriodWorkManifest = Effect.fn("periodWork.prepareManifest")
 
       yield* requireAccess(transaction, true);
 
+      const existing = (yield* Db.readManifest(transaction, command.scope.bookId, manifestId))[0];
+
+      if (existing !== undefined) {
+        const result = yield* decode(PeriodWork.PeriodWorkManifest, existing.body);
+
+        yield* saveCommand(
+          transaction,
+          command.scope,
+          command.idempotencyKey,
+          request.expected,
+          operationFor.prepare,
+          principal.actorId,
+          existing.body,
+        );
+
+        return result;
+      }
+
       const bodyJson = yield* toJsonObject({
+        id: manifestId,
         scope: command.scope,
         requestedInterval: {
           startsOn: command.input.startsOn,
@@ -593,6 +628,7 @@ export const preparePeriodWorkManifest = Effect.fn("periodWork.prepareManifest")
  * A crash between 2 and 3 is repaired by the stable command key: the next pass
  * calls the same command and recovers the same review instead of minting a
  * second one.
+ */
 
 export const advancePeriodWork = Effect.fn("periodWork.advance")(function* (
   token: string,
@@ -602,15 +638,25 @@ export const advancePeriodWork = Effect.fn("periodWork.advance")(function* (
     idempotencyKey: string;
     input: { boundedCount: number };
   },
-) {
+): Effect.fn.Return<
+  typeof Contracts.PeriodWorkRunProgress.Type,
+  Accounting.AccountingError,
+  Database | RequestEnvironment
+> {
   const boundedCount = command.input.boundedCount;
 
   if (!Number.isInteger(boundedCount) || boundedCount < 1 || boundedCount > maximumBoundedCount) {
     return yield* failure("InvalidJournal");
   }
 
-  const queue: Array<{ workIdentity: string; owner: OwnerName; input: JsonObject; key: string }> =
-    [];
+  const queue: Array<{
+    workIdentity: string;
+    owner: OwnerName;
+    input: JsonObject;
+    key: string;
+    revision: string;
+    cancelVersion: string;
+  }> = [];
 
   yield* withBook(
     token,
@@ -635,8 +681,6 @@ export const advancePeriodWork = Effect.fn("periodWork.advance")(function* (
         command.manifestId,
       );
 
-      if (children.length === 0) return yield* failure("NotFound");
-
       const frozen = new Map(manifestBody.children.map((child) => [child.workIdentity, child]));
       const rows = new Map(children.map((row) => [row.workIdentity, row]));
 
@@ -651,7 +695,18 @@ export const advancePeriodWork = Effect.fn("periodWork.advance")(function* (
 
       const recognized = new Map(obligations.map((row) => [row.economicIdentity, row]));
 
-      for (const row of children.slice(0, boundedCount)) {
+      for (const row of children
+        .filter(
+          (child) =>
+            child.state === "pending" ||
+            (child.state === "waiting_predecessor" &&
+              frozen.get(child.workIdentity)?.dependsOn.every((identity) => {
+                const predecessor = rows.get(identity);
+
+                return predecessor?.state === "committed" || predecessor?.state === "recovered";
+              })),
+        )
+        .slice(0, boundedCount)) {
         const child = frozen.get(row.workIdentity);
 
         if (child === undefined) return yield* failure("StaleDependency");
@@ -672,7 +727,7 @@ export const advancePeriodWork = Effect.fn("periodWork.advance")(function* (
               cancelVersion: row.cancelVersion,
               planId: row.planId,
               planDigest: row.planDigest,
-              receiptId: row.receiptId,
+              receiptId: claim.receiptId ?? row.receiptId,
               missingFacts: missingFactsOf(claim.missingFacts),
               refusalReason: claim.refusalReason ?? null,
               batchId: row.batchId,
@@ -690,7 +745,12 @@ export const advancePeriodWork = Effect.fn("periodWork.advance")(function* (
           workIdentity: row.workIdentity,
           owner: claim.dispatch.owner,
           input: claim.dispatch.input,
-          key: PeriodWork.childCommandKey(command.manifestId, child),
+          key: yield* derivedId(
+            "pw_prepare",
+            JSON.stringify([command.manifestId, child.workIdentity, child.sourceRevision]),
+          ),
+          revision: row.revision,
+          cancelVersion: row.cancelVersion,
         });
       }
     },
@@ -700,12 +760,27 @@ export const advancePeriodWork = Effect.fn("periodWork.advance")(function* (
   // The owning prepare operation runs here, with no transaction held by this
   // owner. It opens its own.
   for (const item of queue) {
-    const plan = yield* prepareForOwner(
-      item.owner,
-      token,
-      { scope: command.scope, idempotencyKey: item.key },
-      item.input,
+    const prepared = yield* Effect.result(
+      prepareForOwner(
+        item.owner,
+        token,
+        { scope: command.scope, idempotencyKey: item.key },
+        item.input,
+      ),
     );
+
+    if (Result.isFailure(prepared)) {
+      yield* markForReview(
+        token,
+        command.scope,
+        item.workIdentity,
+        [`owner_preparation_refused:${prepared.failure.code}`],
+        item,
+      );
+      continue;
+    }
+
+    const plan = prepared.success;
 
     yield* withBook(
       token,
@@ -717,6 +792,8 @@ export const advancePeriodWork = Effect.fn("periodWork.advance")(function* (
         const row = (yield* Db.readChild(transaction, command.scope.bookId, item.workIdentity))[0];
 
         if (row === undefined) return yield* failure("StaleDependency");
+
+        if (row.revision !== item.revision || row.cancelVersion !== item.cancelVersion) return;
 
         // Recheck the fence the claim observed. A cancellation that landed while
         // the owner was preparing keeps the prepared plan as retained evidence
@@ -739,7 +816,7 @@ export const advancePeriodWork = Effect.fn("periodWork.advance")(function* (
             ownerReviewId: plan.reviewId,
             ownerReviewDigest: plan.reviewDigest,
           },
-          { revision: row.revision, cancelVersion: row.cancelVersion },
+          { revision: item.revision, cancelVersion: item.cancelVersion },
         );
 
         if (applied.length === 0) return yield* failure("StaleDependency");
@@ -777,12 +854,26 @@ function decideChild(
 
   const obligation = recognized.get(child.economicIdentity);
 
+  if (
+    obligation !== undefined &&
+    !child.isPaymentObservation &&
+    child.documentClass !== "domestic_credit_note"
+  ) {
+    if (child.existingRecognition?.recognitionId !== obligation.recognitionId) {
+      return {
+        state: "needs_review",
+        missingFacts: ["review_existing_recognition_or_source_revision"],
+      };
+    }
+
+    return { state: "recovered", missingFacts: [], receiptId: obligation.recognitionId };
+  }
+
   const decision = PeriodWork.routeWork(child, rules, {
     ownerPaidExpenseIsUnrecognized:
       child.documentClass === "owner_expense" && obligation === undefined,
-    sourceRevisesRecognizedFacts:
-      obligation !== undefined && child.documentClass === "domestic_credit_note",
-    invoiceEntityIsKnown: true,
+    sourceRevisesRecognizedFacts: false,
+    invoiceEntityIsKnown: child.legalSupplierIdentity !== undefined,
     committedPurchaseExists: obligation !== undefined,
   });
 
@@ -817,7 +908,10 @@ function decideChild(
     };
   }
 
-  const owner = PeriodWork.ownerForTarget(decision.target);
+  const owner =
+    child.documentClass === "domestic_credit_note" && decision.ruleId !== undefined
+      ? "purchases.credits"
+      : PeriodWork.ownerForTarget(decision.target);
 
   if (owner === undefined) {
     return {
@@ -857,6 +951,7 @@ type Claim = {
   readonly state: PeriodWork.WorkChildState;
   readonly missingFacts: ReadonlyArray<string>;
   readonly refusalReason?: string;
+  readonly receiptId?: string;
   readonly dispatch?: { readonly owner: OwnerName; readonly input: JsonObject };
 };
 
@@ -865,6 +960,7 @@ type Claim = {
  * selection alone. The order of the tests is the packet's order and is
  * load-bearing: a payment observation is resolved against an existing
  * obligation before anything else is considered.
+ */
 
 function planIdentityOf(prepared: Schema.Json) {
   return Schema.decodeUnknownEffect(PreparedReview)(prepared).pipe(
@@ -884,6 +980,7 @@ function planIdentityOf(prepared: Schema.Json) {
  * Only children that already carry a sealed plan, a routed owner and the owning
  * review that produced it can be members. A child still waiting on a predecessor
  * is refused here rather than smuggled into the batch.
+ */
 
 export const preparePeriodWorkBatch = Effect.fn("periodWork.prepareBatch")(function* (
   token: string,
@@ -893,7 +990,7 @@ export const preparePeriodWorkBatch = Effect.fn("periodWork.prepareBatch")(funct
     manifestId: string;
     workIdentities: ReadonlyArray<string>;
   },
-) {
+): Effect.fn.Return<PeriodWork.ApprovalBatch, Accounting.AccountingError, Database> {
   if (command.workIdentities.length === 0) return yield* failure("InvalidJournal");
 
   if (command.workIdentities.length > maximumMembers) return yield* failure("UnsupportedProfile");
@@ -1005,9 +1102,10 @@ export const preparePeriodWorkBatch = Effect.fn("periodWork.prepareBatch")(funct
       // Informational only, and a sum of exact minor units. It is never a
       // journal line and never a balancing figure.
       const combined = PeriodWork.combinedInformationalMinor(amounts);
-      const batchId = batchIdFor(command.scope.bookId, command.manifestId, members);
+      const batchId = yield* batchIdFor(command.scope.bookId, command.manifestId, members);
 
       const bodyJson = yield* toJsonObject({
+        id: batchId,
         scope: command.scope,
         manifestId: command.manifestId,
         members,
@@ -1016,6 +1114,22 @@ export const preparePeriodWorkBatch = Effect.fn("periodWork.prepareBatch")(funct
 
       const batchJson = { ...bodyJson, digest: yield* digest(bodyJson) };
       const batch = yield* decode(PeriodWork.ApprovalBatch, batchJson);
+
+      const existing = (yield* Db.readBatch(transaction, command.scope.bookId, batchId))[0];
+
+      if (existing !== undefined) {
+        yield* saveCommand(
+          transaction,
+          command.scope,
+          command.idempotencyKey,
+          request.expected,
+          operationFor.seal,
+          principal.actorId,
+          existing.body,
+        );
+
+        return yield* decode(PeriodWork.ApprovalBatch, existing.body);
+      }
 
       yield* Db.insertBatch(transaction, {
         bookId: command.scope.bookId,
@@ -1065,23 +1179,24 @@ export const preparePeriodWorkBatch = Effect.fn("periodWork.prepareBatch")(funct
  * bytes the approval will cover. It is informational. It is never posted and
  * never balanced against, and a plan whose line shape cannot be read refuses
  * rather than contributing a guess.
+ */
 
 function planDebitTotal(plan: JsonObject) {
   let total = 0n;
 
-  for (const group of Schema.isArray(plan["groups"]) ? plan["groups"] : []) {
+  for (const group of Array.isArray(plan["groups"]) ? plan["groups"] : []) {
     if (!isJsonObject(group)) return failure("UnsupportedProfile");
 
     const actions = group["actions"];
 
-    if (!Schema.isArray(actions)) return failure("UnsupportedProfile");
+    if (!Array.isArray(actions)) return failure("UnsupportedProfile");
 
     for (const action of actions) {
       if (!isJsonObject(action)) return failure("UnsupportedProfile");
 
       const lines = action["lines"];
 
-      if (!Schema.isArray(lines)) return failure("UnsupportedProfile");
+      if (!Array.isArray(lines)) return failure("UnsupportedProfile");
 
       for (const line of lines) {
         if (!isJsonObject(line)) return failure("UnsupportedProfile");
@@ -1101,7 +1216,7 @@ function planDebitTotal(plan: JsonObject) {
     }
   }
 
-  return total.toString();
+  return Effect.succeed(total.toString());
 }
 
 /**
@@ -1112,17 +1227,22 @@ function planDebitTotal(plan: JsonObject) {
  * reach it, and every approval comes from the released approve-within-transaction
  * operation — never from a fabricated identifier.
  *
- * It deliberately does NOT mint each owner's own approval. Those owners expose
- * approval only as public operations that open their own transaction, and
- * calling one from inside this transaction would nest a second financial
- * transaction. Each member's own approval therefore stays with its owner, and it
- * is what that owner's execute consumes.
+ * Owner approval ports share this transaction, so a failed member rolls back
+ * the entire approval gesture.
+ */
 
 export const approvePeriodWorkBatch = Effect.fn("periodWork.approveBatch")(function* (
   token: string,
-  command: { scope: BookScope; batchId: string; expectedDigest: string; idempotencyKey: string },
-) {
-  if (command.expectedDigest.length === 0) return yield* failure("InvalidJournal");
+  command: {
+    scope: BookScope;
+    batchId: string;
+    expectedDigest: string;
+    idempotencyKey: string;
+    acknowledgeSyntheticOnly: true;
+  },
+): Effect.fn.Return<PeriodWork.ApprovalBatch, Accounting.AccountingError, Database> {
+  if (command.expectedDigest.length === 0 || command.acknowledgeSyntheticOnly !== true)
+    return yield* failure("InvalidJournal");
 
   return yield* withBook(
     token,
@@ -1172,6 +1292,23 @@ export const approvePeriodWorkBatch = Effect.fn("periodWork.approveBatch")(funct
       if (plans.length !== members.length) return yield* failure("StaleDependency");
 
       for (const member of members) {
+        const child = (yield* Db.readChild(
+          transaction,
+          command.scope.bookId,
+          member.workIdentity,
+        ))[0];
+
+        if (
+          !child ||
+          child.state !== "prepared" ||
+          child.planId !== member.planId ||
+          child.planDigest !== member.planDigest ||
+          child.ownerReviewId !== member.ownerReviewId ||
+          (child.batchId !== null && child.batchId !== command.batchId)
+        ) {
+          return yield* failure("StaleDependency");
+        }
+
         const plan = plans.find((row) => row.id === member.planId);
 
         if (plan === undefined || plan.digest !== member.planDigest) {
@@ -1202,14 +1339,6 @@ export const approvePeriodWorkBatch = Effect.fn("periodWork.approveBatch")(funct
 
         // The child records the batch that covered it, so a later read can prove
         // which gesture covered which child.
-        const child = (yield* Db.readChild(
-          transaction,
-          command.scope.bookId,
-          member.workIdentity,
-        ))[0];
-
-        if (child === undefined) return yield* failure("StaleDependency");
-
         const applied = yield* Db.advanceChild(
           transaction,
           {
@@ -1271,10 +1400,17 @@ export const executePeriodWorkBatch = Effect.fn("periodWork.executeBatch")(funct
     // The owning operation's own approval for each member. The batch approval is
     // a human gesture over the exact members; the owner approval is the owner's,
     // and the owner refuses to execute without it.
-    ownerApprovals: ReadonlyArray<{ workIdentity: string; approvalId: string }>;
+    idempotencyKey: string;
+    acknowledgeSyntheticOnly: true;
+    afterOrdinal?: number;
   },
-) {
-  if (command.expectedDigest.length === 0) return yield* failure("InvalidJournal");
+): Effect.fn.Return<
+  typeof Contracts.PeriodWorkExecutionResult.Type,
+  Accounting.AccountingError,
+  Database | RequestEnvironment
+> {
+  if (command.expectedDigest.length === 0 || command.acknowledgeSyntheticOnly !== true)
+    return yield* failure("InvalidJournal");
 
   if (
     !Number.isInteger(command.boundedCount) ||
@@ -1284,58 +1420,95 @@ export const executePeriodWorkBatch = Effect.fn("periodWork.executeBatch")(funct
     return yield* failure("InvalidJournal");
   }
 
-  const approvals = new Map(
-    command.ownerApprovals.map((entry) => [entry.workIdentity, entry.approvalId]),
-  );
-
-  const plan = yield* withBook(token, command.scope, false, function* (transaction) {
-    yield* requireAccess(transaction, false);
-
-    const batch = (yield* Db.readBatch(transaction, command.scope.bookId, command.batchId))[0];
-
-    if (batch === undefined) return yield* failure("NotFound");
-
-    if (batch.digest !== command.expectedDigest) return yield* failure("StaleDependency");
-
-    // Execution requires the human gesture. A batch that was never approved
-    // is not executed, whatever else the caller supplies.
-    const approved = yield* Db.readBatchApproval(
-      transaction,
-      command.scope.bookId,
-      command.batchId,
-    );
-
-    if (approved.length === 0) return yield* failure("ApprovalRequired");
-
-    const members = yield* Db.readBatchMembers(transaction, command.scope.bookId, command.batchId);
-
-    if (members.length === 0) return yield* failure("NotFound");
-
-    const selected = members.slice(0, command.boundedCount);
-
-    return {
-      manifestId: batch.manifestId,
-      members: selected.map((member) => ({
-        ordinal: Number(member.ordinal),
-        owner: member.owner,
-        workIdentity: member.workIdentity,
-        planId: member.planId,
-        planDigest: member.planDigest,
-        ownerReviewId: member.ownerReviewId,
-        ownerReviewDigest: member.ownerReviewDigest,
-        approvedBy:
-          approved.find((row) => row.memberOrdinal === member.ordinal)?.approvalId ?? null,
-      })),
-    };
+  const executionInput = yield* toJsonObject({
+    batchId: command.batchId,
+    expectedDigest: command.expectedDigest,
+    boundedCount: command.boundedCount,
+    afterOrdinal: command.afterOrdinal ?? 0,
   });
+
+  const plan = yield* withBook(
+    token,
+    command.scope,
+    true,
+    function* (transaction, principal) {
+      yield* requireAccess(transaction, true);
+
+      const request = yield* replay(
+        transaction,
+        command.scope,
+        command.idempotencyKey,
+        operationFor.execute,
+        principal.actorId,
+        executionInput,
+        Schema.Json,
+      );
+
+      const batch = (yield* Db.readBatch(transaction, command.scope.bookId, command.batchId))[0];
+
+      if (batch === undefined) return yield* failure("NotFound");
+
+      if (batch.digest !== command.expectedDigest) return yield* failure("StaleDependency");
+
+      // Execution requires the human gesture. A batch that was never approved
+      // is not executed, whatever else the caller supplies.
+      const approved = yield* Db.readBatchApproval(
+        transaction,
+        command.scope.bookId,
+        command.batchId,
+      );
+
+      if (approved.length === 0) return yield* failure("ApprovalRequired");
+
+      const members = yield* Db.readBatchMembers(
+        transaction,
+        command.scope.bookId,
+        command.batchId,
+      );
+
+      if (members.length === 0) return yield* failure("NotFound");
+
+      const remaining = members.filter((member) => member.ordinal > (command.afterOrdinal ?? 0));
+      const selected = remaining.slice(0, command.boundedCount);
+
+      if (!request.previous) {
+        yield* saveCommand(
+          transaction,
+          command.scope,
+          command.idempotencyKey,
+          request.expected,
+          operationFor.execute,
+          principal.actorId,
+          executionInput,
+        );
+      }
+
+      return {
+        manifestId: batch.manifestId,
+        nextOrdinal: remaining.length > selected.length ? (selected.at(-1)?.ordinal ?? null) : null,
+        members: selected.map((member) => ({
+          ordinal: Number(member.ordinal),
+          owner: member.owner,
+          workIdentity: member.workIdentity,
+          planId: member.planId,
+          planDigest: member.planDigest,
+          ownerReviewId: member.ownerReviewId,
+          ownerReviewDigest: member.ownerReviewDigest,
+          approvedBy:
+            approved.find((row) => row.memberOrdinal === member.ordinal)?.ownerApprovalId ?? null,
+        })),
+      };
+    },
+    "update",
+  );
 
   const committed: Array<{ workIdentity: string; receiptId: string }> = [];
   const refused: Array<{ workIdentity: string; reason: string }> = [];
 
   for (const member of plan.members) {
-    const ownerApprovalId = approvals.get(member.workIdentity);
+    const ownerApprovalId = member.approvedBy;
 
-    if (ownerApprovalId === undefined || member.approvedBy === null) {
+    if (ownerApprovalId === null) {
       refused.push({ workIdentity: member.workIdentity, reason: "owner_approval_required" });
       continue;
     }
@@ -1356,13 +1529,20 @@ export const executePeriodWorkBatch = Effect.fn("periodWork.executeBatch")(funct
       return {
         state: row?.state ?? "absent",
         revision: row?.revision ?? "",
+        cancelVersion: row?.cancelVersion ?? "",
         planId: row?.planId ?? null,
         planDigest: row?.planDigest ?? null,
         ownerReviewId: row?.ownerReviewId ?? null,
+        receiptId: row?.receiptId ?? null,
       };
     });
 
-    if (fence.state !== "prepared") {
+    if (fence.receiptId !== null && (fence.state === "committed" || fence.state === "recovered")) {
+      committed.push({ workIdentity: member.workIdentity, receiptId: fence.receiptId });
+      continue;
+    }
+
+    if (fence.state !== "prepared" && fence.state !== "refused") {
       refused.push({
         workIdentity: member.workIdentity,
         reason: `child_not_prepared:${fence.state}`,
@@ -1391,16 +1571,29 @@ export const executePeriodWorkBatch = Effect.fn("periodWork.executeBatch")(funct
         ownerReviewId: member.ownerReviewId,
         ownerReviewDigest: member.ownerReviewDigest,
         ownerApprovalId,
-      }),
+      }).pipe(
+        Effect.provideService(PeriodWorkExecutionFence, {
+          bookId: command.scope.bookId,
+          workIdentity: member.workIdentity,
+          batchId: command.batchId,
+          planId: member.planId,
+          revision: fence.revision,
+          cancelVersion: fence.cancelVersion,
+        }),
+      ),
     );
 
     if (Result.isFailure(result)) {
       // A stale member is marked as needing a new review and the remaining
       // independent members stay runnable. It is never retried under a new key.
       refused.push({ workIdentity: member.workIdentity, reason: result.failure.code });
-      yield* markForReview(token, command.scope, member.workIdentity, [
-        `owner_execution_refused:${result.failure.code}`,
-      ]);
+      yield* markForReview(
+        token,
+        command.scope,
+        member.workIdentity,
+        [`owner_execution_refused:${result.failure.code}`],
+        fence,
+      );
       continue;
     }
 
@@ -1427,7 +1620,7 @@ export const executePeriodWorkBatch = Effect.fn("periodWork.executeBatch")(funct
           {
             bookId: command.scope.bookId,
             workIdentity: member.workIdentity,
-            state: "committed",
+            state: row.cancelVersion === fence.cancelVersion ? "committed" : "recovered",
             revision: yield* nextRevision(row.revision),
             cancelVersion: row.cancelVersion,
             planId: member.planId,
@@ -1461,6 +1654,7 @@ export const executePeriodWorkBatch = Effect.fn("periodWork.executeBatch")(funct
     refused,
     counts: progress.counts,
     reconciled: false,
+    nextOrdinal: plan.nextOrdinal,
   };
 });
 
@@ -1477,6 +1671,7 @@ function markForReview(
   scope: BookScope,
   workIdentity: string,
   facts: ReadonlyArray<string>,
+  expected?: { readonly revision: string; readonly cancelVersion: string },
 ) {
   return withBook(
     token,
@@ -1488,6 +1683,14 @@ function markForReview(
       const row = (yield* Db.readChild(transaction, scope.bookId, workIdentity))[0];
 
       if (row === undefined) return yield* failure("StaleDependency");
+
+      if (
+        expected !== undefined &&
+        (expected.revision !== row.revision || expected.cancelVersion !== row.cancelVersion)
+      )
+        return;
+
+      if (row.state === "refused" || row.state === "committed" || row.state === "recovered") return;
 
       const applied = yield* Db.advanceChild(
         transaction,
@@ -1502,7 +1705,7 @@ function markForReview(
           receiptId: null,
           missingFacts: missingFactsOf(facts),
           refusalReason: null,
-          batchId: row.batchId,
+          batchId: null,
           routedOwner: null,
           ownerReviewId: null,
           ownerReviewDigest: null,
@@ -1549,6 +1752,7 @@ export const claimOpenPeriodWorkRuns = Effect.fn("periodWork.claimOpenRuns")(fun
         bookId: string;
         openCount: string;
         boundedCount: number;
+        checkpoint: string;
       }> = [];
 
       for (const book of books) {
@@ -1557,7 +1761,7 @@ export const claimOpenPeriodWorkRuns = Effect.fn("periodWork.claimOpenRuns")(fun
         for (const run of runs) {
           if (run.entityId === null) continue;
 
-          open.push({ ...run, entityId: run.entityId, boundedCount });
+          open.push({ ...run, entityId: run.entityId, bookId: book.id, boundedCount });
 
           if (open.length >= runBound) break;
         }
@@ -1581,7 +1785,11 @@ export const claimOpenPeriodWorkRuns = Effect.fn("periodWork.claimOpenRuns")(fun
 export const readPeriodWorkProgress = Effect.fn("periodWork.readProgress")(function* (
   token: string,
   command: { scope: BookScope; manifestId: string },
-) {
+): Effect.fn.Return<
+  typeof Contracts.PeriodWorkRunProgress.Type,
+  Accounting.AccountingError,
+  Database
+> {
   const { scope, manifestId } = command;
 
   return yield* withBook(token, scope, false, function* (transaction) {
@@ -1614,9 +1822,69 @@ export const readPeriodWorkProgress = Effect.fn("periodWork.readProgress")(funct
         cancelVersion: row.cancelVersion,
       })),
       counts,
-      reconciled: false,
+      reconciled: false as const,
     };
   });
+});
+
+export const cancelPeriodWork = Effect.fn("periodWork.cancel")(function* (
+  token: string,
+  command: {
+    scope: BookScope;
+    manifestId: string;
+    idempotencyKey: string;
+    expectedDigest: string;
+  },
+) {
+  yield* withBook(
+    token,
+    command.scope,
+    true,
+    function* (transaction, principal) {
+      yield* requireAccess(transaction, true);
+
+      const payload = yield* toJsonObject({
+        manifestId: command.manifestId,
+        expectedDigest: command.expectedDigest,
+      });
+
+      const request = yield* replay(
+        transaction,
+        command.scope,
+        command.idempotencyKey,
+        "cancel_period_work",
+        principal.actorId,
+        payload,
+        Schema.Json,
+      );
+
+      if (request.previous) return;
+
+      const manifest = (yield* Db.readManifest(
+        transaction,
+        command.scope.bookId,
+        command.manifestId,
+      ))[0];
+
+      if (manifest === undefined) return yield* failure("NotFound");
+
+      if (manifest.digest !== command.expectedDigest) return yield* failure("StaleDependency");
+
+      yield* Db.cancelChildren(transaction, command.scope.bookId, command.manifestId);
+      yield* saveCommand(
+        transaction,
+        command.scope,
+        command.idempotencyKey,
+        request.expected,
+        "cancel_period_work",
+        principal.actorId,
+        payload,
+      );
+    },
+    "update",
+  );
+
+  return yield* readPeriodWorkProgress(token, command);
 });
 
 export { Db as PeriodWorkDb };

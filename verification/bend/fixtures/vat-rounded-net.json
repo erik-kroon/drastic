@@ -1,0 +1,18 @@
+{
+  "contributions": [
+    {
+      "box": "10",
+      "signedMinor": "199",
+      "included": true
+    },
+    {
+      "box": "48",
+      "signedMinor": "101",
+      "included": true
+    }
+  ],
+  "currencyScale": 2,
+  "filingUnitScale": 0,
+  "rounding": "toward_zero",
+  "declareNet": true
+}

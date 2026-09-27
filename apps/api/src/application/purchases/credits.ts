@@ -316,8 +316,11 @@ export const prepareSupplierCredit = Effect.fn("purchases.credits.prepare")(func
   );
 });
 
-export const approveSupplierCredit = Effect.fn("purchases.credits.approve")(function* (
-  token: string,
+export const approveSupplierCreditInTransaction = Effect.fn(
+  "purchases.credits.approveInTransaction",
+)(function* (
+  tx: import("../../db/transaction").Transaction,
+  principal: Shared.Principal,
   command: {
     readonly scope: Scope;
     readonly reviewId: string;
@@ -325,52 +328,59 @@ export const approveSupplierCredit = Effect.fn("purchases.credits.approve")(func
     readonly input: typeof Credits.ApproveSupplierCredit.Type;
   },
 ) {
+  return yield* Effect.gen(function* () {
+    const { scope, reviewId, input, idempotencyKey } = command,
+      operation = "approve_supplier_credit";
+
+    const request = yield* replay(
+      tx,
+      scope,
+      idempotencyKey,
+      operation,
+      principal.actorId,
+      { reviewId, input },
+      Credits.SupplierCreditApproval,
+    );
+
+    if (request.previous) return request.previous;
+    const review = yield* checkedCredit(tx, scope, reviewId, input.digest);
+
+    if ((yield* CreditDb.readApprovals(tx, scope.bookId, reviewId)).length >= 50)
+      return yield* failure("InvalidJournal");
+    const now = yield* isoNow(tx);
+
+    const result = yield* Shared.decode(Credits.SupplierCreditApproval, {
+      id: newId("credit_approval"),
+      scope,
+      reviewId,
+      digest: review.digest,
+      actorId: principal.actorId,
+      expiresAt: new Date(Date.parse(now) + 3600000).toISOString(),
+      createdAt: now,
+      receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
+    });
+
+    yield* CreditDb.insertApproval(tx, scope.bookId, result);
+    yield* saveCommand(
+      tx,
+      scope,
+      idempotencyKey,
+      request.expected,
+      operation,
+      principal.actorId,
+      result,
+    );
+
+    return result;
+  });
+});
+
+export const approveSupplierCredit = Effect.fn("purchases.credits.approve")(function* (
+  token: string,
+  command: Parameters<typeof approveSupplierCreditInTransaction>[2],
+) {
   return yield* Shared.withBook(token, command.scope, true, "update", (tx, principal) =>
-    Effect.gen(function* () {
-      const { scope, reviewId, input, idempotencyKey } = command,
-        operation = "approve_supplier_credit";
-
-      const request = yield* replay(
-        tx,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { reviewId, input },
-        Credits.SupplierCreditApproval,
-      );
-
-      if (request.previous) return request.previous;
-      const review = yield* checkedCredit(tx, scope, reviewId, input.digest);
-
-      if ((yield* CreditDb.readApprovals(tx, scope.bookId, reviewId)).length >= 50)
-        return yield* failure("InvalidJournal");
-      const now = yield* isoNow(tx);
-
-      const result = yield* Shared.decode(Credits.SupplierCreditApproval, {
-        id: newId("credit_approval"),
-        scope,
-        reviewId,
-        digest: review.digest,
-        actorId: principal.actorId,
-        expiresAt: new Date(Date.parse(now) + 3600000).toISOString(),
-        createdAt: now,
-        receipt: Shared.receipt(idempotencyKey, operation, principal.actorId),
-      });
-
-      yield* CreditDb.insertApproval(tx, scope.bookId, result);
-      yield* saveCommand(
-        tx,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
-    }),
+    approveSupplierCreditInTransaction(tx, principal, command),
   );
 });
 

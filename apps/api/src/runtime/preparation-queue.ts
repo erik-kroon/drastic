@@ -69,6 +69,7 @@ export class PeriodWorkQueue extends Job.make("period-work", {
     manifestId: Accounting.Identifier,
     scope: Accounting.Scope,
     boundedCount: Schema.Int,
+    checkpoint: Accounting.MinorUnits,
   },
   success: Schema.String,
   error: Accounting.AccountingError,
@@ -82,10 +83,11 @@ type PeriodWorkPayload = {
   readonly manifestId: string;
   readonly scope: typeof Accounting.Scope.Type;
   readonly boundedCount: number;
+  readonly checkpoint: string;
 };
 
 function periodWorkKey(payload: PeriodWorkPayload) {
-  return `${payload.scope.bookId}/${payload.manifestId}/${payload.boundedCount}`;
+  return `${payload.scope.bookId}/${payload.manifestId}/${payload.checkpoint}`;
 }
 
 type PreparationPayload = {
@@ -269,6 +271,7 @@ export const dispatchPendingPeriodWork = Effect.fn("PeriodWork.dispatchPending")
         manifestId: run.manifestId,
         scope: { entityId: run.entityId, bookId: run.bookId },
         boundedCount: run.boundedCount,
+        checkpoint: run.checkpoint,
       }).pipe(
         // The store is reached through the defect channel, so one unreachable
         // queue row must not end the polling fiber. The child fence keeps the
@@ -310,6 +313,7 @@ export const handlePeriodWork = Effect.fn("PeriodWork.handleQueueJob")(function*
   manifestId: string;
   scope: typeof Accounting.Scope.Type;
   boundedCount: number;
+  checkpoint: string;
 }) {
   const { bindings } = yield* RequestEnvironment;
 

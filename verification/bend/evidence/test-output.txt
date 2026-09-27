@@ -1,0 +1,10 @@
+BigNat arithmetic and bounds: 2852 assertions
+BigInt sign and division: 4327 assertions
+Reduced rationals and rounding: 2319 assertions
+Decimal conversion: 177 assertions
+Ledger and allocation invariants: 485 assertions
+Historical VAT excerpt differential checks: 685 assertions
+VAT filing-unit scale contract: 71 assertions
+PRY-33 exhaustive differential and scope: 319 assertions
+Negative proof and checker controls: 9 assertions
+PASS: 11244 assertions; 20 law/proof pairs under development-adaptation. Official release gate NOT run.

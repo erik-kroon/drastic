@@ -678,8 +678,11 @@ function acceptanceBlockers(
   });
 }
 
-export const approveSupplierAcceptance = Effect.fn("purchases.acceptance.approve")(function* (
-  token: string,
+export const approveSupplierAcceptanceInTransaction = Effect.fn(
+  "purchases.acceptance.approveInTransaction",
+)(function* (
+  transaction: Transaction,
+  principal: Principal,
   command: {
     readonly scope: Scope;
     readonly reviewId: string;
@@ -687,93 +690,100 @@ export const approveSupplierAcceptance = Effect.fn("purchases.acceptance.approve
     readonly input: typeof Acceptance.ApproveSupplierAcceptance.Type;
   },
 ) {
-  return yield* Shared.withBook(token, command.scope, true, "update", (transaction, principal) =>
-    Effect.gen(function* () {
-      yield* Shared.requireTables(transaction, acceptanceTables, acceptanceInserts);
-      yield* Shared.requireColumns(transaction, Shared.accountColumns);
-      const book = yield* readBook(transaction, command.scope.bookId);
-      void book;
+  return yield* Effect.gen(function* () {
+    yield* Shared.requireTables(transaction, acceptanceTables, acceptanceInserts);
+    yield* Shared.requireColumns(transaction, Shared.accountColumns);
+    const book = yield* readBook(transaction, command.scope.bookId);
+    void book;
 
-      const request = yield* replay(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        "approve_supplier_acceptance",
-        principal.actorId,
-        {
-          reviewId: command.reviewId,
-          input: yield* Shared.toJsonObject(command.input),
-        } satisfies JsonObject,
-        ApprovalSchema,
-      );
-
-      if (request.previous) return request.previous;
-
-      const review = yield* readReview(transaction, command.scope.bookId, command.reviewId);
-
-      if (command.input.digest !== Shared.textField(review.body, "digest")) {
-        return yield* failure("StaleDependency");
-      }
-
-      const blockers = yield* acceptanceBlockers(transaction, command.scope, review);
-
-      if (blockers.length > 0) return yield* failure("StaleDependency");
-
-      const ordinal =
-        (yield* AcceptanceDb.readApprovalCount(
-          transaction,
-          command.scope.bookId,
-          command.reviewId,
-        ))[0]!.total + 1;
-
-      if (ordinal > maximumApprovals) return yield* failure("InvalidJournal");
-      const now = (yield* AcceptanceDb.readDatabaseTime(transaction))[0]?.now;
-
-      if (now === undefined) return yield* failure("InternalError");
-
-      const body = Object.assign(
-        {},
-        {
-          id: newId("supplier_approval"),
-          scope: command.scope,
-          reviewId: command.reviewId,
-          digest: Shared.textField(review.body, "digest") ?? "",
-          version: 1,
-          actorId: principal.actorId,
-          ordinal,
-          expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
-          createdAt: yield* isoNow(transaction),
-          receipt: Shared.receipt(
-            command.idempotencyKey,
-            "approve_supplier_acceptance",
-            principal.actorId,
-          ),
-        },
-      ) satisfies JsonObject;
-
-      const approval = yield* Shared.decode(ApprovalSchema, body);
-      yield* AcceptanceDb.insertApproval(transaction, {
-        bookId: command.scope.bookId,
-        id: Shared.textField(body, "id") ?? "",
+    const request = yield* replay(
+      transaction,
+      command.scope,
+      command.idempotencyKey,
+      "approve_supplier_acceptance",
+      principal.actorId,
+      {
         reviewId: command.reviewId,
-        ordinal,
-        actorId: principal.actorId,
-        digest: Shared.textField(body, "digest") ?? "",
-        expiresAt: Shared.textField(body, "expiresAt") ?? "",
-        body: yield* Shared.toJsonObject(body),
-      });
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "approve_supplier_acceptance",
-        principal.actorId,
-        yield* Shared.toJsonObject(approval),
-      );
+        input: yield* Shared.toJsonObject(command.input),
+      } satisfies JsonObject,
+      ApprovalSchema,
+    );
 
-      return approval;
-    }),
+    if (request.previous) return request.previous;
+
+    const review = yield* readReview(transaction, command.scope.bookId, command.reviewId);
+
+    if (command.input.digest !== Shared.textField(review.body, "digest")) {
+      return yield* failure("StaleDependency");
+    }
+
+    const blockers = yield* acceptanceBlockers(transaction, command.scope, review);
+
+    if (blockers.length > 0) return yield* failure("StaleDependency");
+
+    const ordinal =
+      (yield* AcceptanceDb.readApprovalCount(
+        transaction,
+        command.scope.bookId,
+        command.reviewId,
+      ))[0]!.total + 1;
+
+    if (ordinal > maximumApprovals) return yield* failure("InvalidJournal");
+    const now = (yield* AcceptanceDb.readDatabaseTime(transaction))[0]?.now;
+
+    if (now === undefined) return yield* failure("InternalError");
+
+    const body = Object.assign(
+      {},
+      {
+        id: newId("supplier_approval"),
+        scope: command.scope,
+        reviewId: command.reviewId,
+        digest: Shared.textField(review.body, "digest") ?? "",
+        version: 1,
+        actorId: principal.actorId,
+        ordinal,
+        expiresAt: new Date(Date.parse(now) + approvalWindowMs).toISOString(),
+        createdAt: yield* isoNow(transaction),
+        receipt: Shared.receipt(
+          command.idempotencyKey,
+          "approve_supplier_acceptance",
+          principal.actorId,
+        ),
+      },
+    ) satisfies JsonObject;
+
+    const approval = yield* Shared.decode(ApprovalSchema, body);
+    yield* AcceptanceDb.insertApproval(transaction, {
+      bookId: command.scope.bookId,
+      id: Shared.textField(body, "id") ?? "",
+      reviewId: command.reviewId,
+      ordinal,
+      actorId: principal.actorId,
+      digest: Shared.textField(body, "digest") ?? "",
+      expiresAt: Shared.textField(body, "expiresAt") ?? "",
+      body: yield* Shared.toJsonObject(body),
+    });
+    yield* saveCommand(
+      transaction,
+      command.scope,
+      command.idempotencyKey,
+      request.expected,
+      "approve_supplier_acceptance",
+      principal.actorId,
+      yield* Shared.toJsonObject(approval),
+    );
+
+    return approval;
+  });
+});
+
+export const approveSupplierAcceptance = Effect.fn("purchases.acceptance.approve")(function* (
+  token: string,
+  command: Parameters<typeof approveSupplierAcceptanceInTransaction>[2],
+) {
+  return yield* Shared.withBook(token, command.scope, true, "update", (transaction, principal) =>
+    approveSupplierAcceptanceInTransaction(transaction, principal, command),
   );
 });
 

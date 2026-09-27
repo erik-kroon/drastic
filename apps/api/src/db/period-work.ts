@@ -7,11 +7,12 @@
 
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type * as EffectSchema from "effect/Schema";
+import * as Effect from "effect/Effect";
 
-import type { Transaction } from "../connection";
-import * as Schema from "../schema";
-import { readTableAccess } from "../commerce/access";
-import { textArray } from "../sql-values";
+import type { Transaction } from "./transaction";
+import * as Schema from "./schema";
+import { readTableAccess } from "./commerce/access";
+import { textArray } from "./sql-values";
 import type { WorkChildState } from "@open-erp/domain/period-work";
 
 type JsonObject = EffectSchema.JsonObject;
@@ -96,9 +97,11 @@ export function insertManifest(
 export function readRunnerBooks(transaction: Transaction) {
   return transaction.execute<{ readonly id: string }>(
     sql`
-      select b.id
+       select distinct b.id
         from openerp.books b
-        join openerp.period_work_manifests m on m.book_id = b.id
+         join openerp.period_work_manifests m on m.book_id = b.id
+         join openerp.period_work_children c on c.book_id = m.book_id and c.manifest_id = m.id
+        where c.state in ('pending', 'waiting_predecessor')
        order by b.id
        limit 50
     `,
@@ -117,21 +120,33 @@ export function readOpenPeriodWorkRuns(transaction: Transaction, bookId: string,
     readonly manifestId: string;
     readonly entityId: string | null;
     readonly openCount: string;
+    readonly checkpoint: string;
   }>(
     sql`
-      select m.id as "manifestId", b.entity_id as "entityId", count(*)::text as "openCount"
+      select m.id as "manifestId", b.entity_id as "entityId",
+        count(*) filter (where c.state in ('pending', 'waiting_predecessor'))::text as "openCount",
+        sum(c.revision)::text as checkpoint
         from openerp.period_work_manifests m
         join openerp.books b on b.id = m.book_id
         join openerp.period_work_children c on c.book_id = m.book_id and c.manifest_id = m.id
        where m.book_id = ${bookId}
-         and c.state in ('pending'::text, 'waiting_predecessor'::text, 'needs_review'::text)
        group by m.id, b.entity_id
-       having count(*) > 0
+        having count(*) filter (where c.state in ('pending', 'waiting_predecessor')) > 0
        order by m.id
        limit ${bounded}
     `,
     "objects",
   );
+}
+
+export function cancelChildren(transaction: Transaction, bookId: string, manifestId: string) {
+  return transaction.execute(sql`
+    update openerp.period_work_children
+    set state = 'refused', refusal_reason = 'cancelled',
+      revision = revision + 1, cancel_version = cancel_version + 1, updated_at = clock_timestamp()
+    where book_id = ${bookId} and manifest_id = ${manifestId}
+      and state not in ('committed', 'recovered', 'refused')
+  `);
 }
 
 // The state column carries a CHECK constraint that admits exactly the seven
@@ -157,6 +172,26 @@ export type ChildRow = {
   readonly ownerReviewDigest: string | null;
 };
 
+const childColumns = {
+  bookId: Schema.periodWorkChildren.bookId,
+  workIdentity: Schema.periodWorkChildren.workIdentity,
+  manifestId: Schema.periodWorkChildren.manifestId,
+  economicIdentity: Schema.periodWorkChildren.economicIdentity,
+  sourceRevision: Schema.periodWorkChildren.sourceRevision,
+  state: Schema.periodWorkChildren.state,
+  revision: sql<string>`${Schema.periodWorkChildren.revision}::text`,
+  cancelVersion: sql<string>`${Schema.periodWorkChildren.cancelVersion}::text`,
+  planId: Schema.periodWorkChildren.planId,
+  planDigest: Schema.periodWorkChildren.planDigest,
+  receiptId: Schema.periodWorkChildren.receiptId,
+  missingFacts: Schema.periodWorkChildren.missingFacts,
+  refusalReason: Schema.periodWorkChildren.refusalReason,
+  batchId: Schema.periodWorkChildren.batchId,
+  routedOwner: Schema.periodWorkChildren.routedOwner,
+  ownerReviewId: Schema.periodWorkChildren.ownerReviewId,
+  ownerReviewDigest: Schema.periodWorkChildren.ownerReviewDigest,
+};
+
 export function insertChildren(
   transaction: Transaction,
   rows: ReadonlyArray<{
@@ -176,7 +211,7 @@ export function insertChildren(
 
 export function readChildren(transaction: Transaction, bookId: string, manifestId: string) {
   return transaction
-    .select()
+    .select(childColumns)
     .from(Schema.periodWorkChildren)
     .where(
       and(
@@ -189,7 +224,7 @@ export function readChildren(transaction: Transaction, bookId: string, manifestI
 
 export function readChild(transaction: Transaction, bookId: string, workIdentity: string) {
   return transaction
-    .select()
+    .select(childColumns)
     .from(Schema.periodWorkChildren)
     .where(
       and(
@@ -250,8 +285,8 @@ export function advanceChild(
     .update(Schema.periodWorkChildren)
     .set({
       state: advance.state,
-      revision: advance.revision,
-      cancelVersion: advance.cancelVersion,
+      revision: BigInt(advance.revision),
+      cancelVersion: BigInt(advance.cancelVersion),
       planId: advance.planId,
       planDigest: advance.planDigest,
       receiptId: advance.receiptId,
@@ -261,14 +296,14 @@ export function advanceChild(
       routedOwner: advance.routedOwner,
       ownerReviewId: advance.ownerReviewId,
       ownerReviewDigest: advance.ownerReviewDigest,
-      updatedAt: new Date(),
+      updatedAt: sql`clock_timestamp()`,
     })
     .where(
       and(
         eq(Schema.periodWorkChildren.bookId, advance.bookId),
         eq(Schema.periodWorkChildren.workIdentity, advance.workIdentity),
-        eq(Schema.periodWorkChildren.revision, observed.revision),
-        eq(Schema.periodWorkChildren.cancelVersion, observed.cancelVersion),
+        eq(Schema.periodWorkChildren.revision, BigInt(observed.revision)),
+        eq(Schema.periodWorkChildren.cancelVersion, BigInt(observed.cancelVersion)),
       ),
     )
     .returning({ workIdentity: Schema.periodWorkChildren.workIdentity });
@@ -366,7 +401,8 @@ export function insertBatchApproval(
     readonly bookId: string;
     readonly batchId: string;
     readonly memberOrdinal: number;
-    readonly approvalId: string;
+    readonly owner: string;
+    readonly ownerApprovalId: string;
     readonly planDigest: string;
     readonly approverId: string;
   },
@@ -389,7 +425,8 @@ export function readBatchApproval(transaction: Transaction, bookId: string, batc
       bookId: Schema.periodWorkBatchApprovals.bookId,
       batchId: Schema.periodWorkBatchApprovals.batchId,
       memberOrdinal: Schema.periodWorkBatchApprovals.memberOrdinal,
-      approvalId: Schema.periodWorkBatchApprovals.approvalId,
+      owner: Schema.periodWorkBatchApprovals.owner,
+      ownerApprovalId: Schema.periodWorkBatchApprovals.ownerApprovalId,
       planDigest: Schema.periodWorkBatchApprovals.planDigest,
       approverId: Schema.periodWorkBatchApprovals.approverId,
     })
@@ -428,7 +465,8 @@ export function readRecognizedObligations(
   bookId: string,
   economicIdentities: ReadonlyArray<string>,
 ) {
-  if (economicIdentities.length === 0) return transaction.execute(sql`select 1`, "objects");
+  if (economicIdentities.length === 0)
+    return Effect.succeed<ReadonlyArray<RecognizedObligation>>([]);
 
   return transaction.execute<RecognizedObligation>(
     sql`
@@ -441,7 +479,6 @@ export function readRecognizedObligations(
         voucher_id as "voucherId", id as "recognitionId"
         from openerp.owner_purchase_recognitions
         where book_id = ${bookId} and economic_key = any(${textArray(economicIdentities)})
-      for share
     `,
     "objects",
   );
@@ -484,5 +521,3 @@ export type PlanRow = {
   readonly plan: JsonObject;
   readonly digest: string;
 };
-
-export type { TableAccess };

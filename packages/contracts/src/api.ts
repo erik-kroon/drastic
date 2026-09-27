@@ -2,6 +2,7 @@ import { DeadlinesApi } from "./deadlines";
 import { RuleImpactApi } from "./rule-impact";
 import { PayrollFoundationApi } from "./payroll-foundation";
 import { PayrollCalculationApi } from "./payroll-calculations";
+import { CorporateTaxApi } from "./corporate-tax";
 import { CrmMasterApi } from "./crm-master";
 import { CatalogApi } from "./catalog";
 import { CollectionsApi } from "./collections";
@@ -229,6 +230,7 @@ export class Api extends HttpApi.make("open-erp")
     CatalogApi,
     PayrollFoundationApi,
     PayrollCalculationApi,
+    CorporateTaxApi,
     DeadlinesApi,
     RuleImpactApi,
     DimensionsApi,

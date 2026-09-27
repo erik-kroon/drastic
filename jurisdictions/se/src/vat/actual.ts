@@ -81,7 +81,37 @@ function rateFor(release: typeof Release.VatFilingRuleRelease.Type, rateId: stri
 }
 
 function rowKey(voucherId: string, lineId: string) {
-  return `${voucherId}:${lineId}`;
+  return JSON.stringify([voucherId, lineId]);
+}
+
+function taxAmountsAgree(fact: Selected, rate: Rate, mode: Rounding) {
+  if (fact.sourceTaxMinor === undefined) return false;
+
+  const sourceTax = BigInt(fact.sourceTaxMinor);
+  const tax = BigInt(fact.taxMinor);
+
+  if (taxed(BigInt(fact.basisMinor), rate, mode) !== sourceTax) return false;
+
+  if (fact.treatment === "domestic_sale") return tax === sourceTax;
+
+  return sourceTax < 0n ? tax <= 0n && tax >= sourceTax : tax >= 0n && tax <= sourceTax;
+}
+
+function controlAllocationAgrees(fact: Selected) {
+  const sale = fact.treatment === "domestic_sale";
+  const role = sale ? "output_vat_control" : "input_vat_control";
+
+  if (
+    fact.controlComponents.some(
+      (entry) => entry.voucherId !== fact.voucherId || entry.role !== role,
+    )
+  ) {
+    return false;
+  }
+
+  const posted = fact.controlComponents.reduce((sum, entry) => sum + BigInt(entry.signedMinor), 0n);
+
+  return posted === (sale ? -BigInt(fact.taxMinor) : BigInt(fact.taxMinor));
 }
 
 function voucherCounts(facts: ReadonlyArray<Selected>) {
@@ -230,11 +260,11 @@ function assess(
       continue;
     }
 
-    if (fact.controlComponents.length === 0) {
+    if (!controlAllocationAgrees(fact)) {
       exclude(
         fact,
         "unlinked_control_component",
-        "No VAT control account carries this fact, so no amount backs the declaration.",
+        "The fact's exact VAT component allocation does not agree with its retained tax amount.",
         "excluded_mandatory_fact",
       );
       continue;
@@ -276,13 +306,12 @@ function assess(
 
     const basisMinor = BigInt(fact.basisMinor);
     const taxMinor = BigInt(fact.taxMinor);
-    const exactTax = taxed(basisMinor, rate, release.rounding);
 
-    if (exactTax === null || exactTax !== taxMinor) {
+    if (!taxAmountsAgree(fact, rate, release.rounding)) {
       exclude(
         fact,
         "published_tax_not_the_qualified_rate",
-        "The published exact tax is not the qualified rate applied to the retained basis.",
+        "Source tax must match the qualified rate; the retained deduction must have the same sign and not exceed it.",
         "rate_absent_from_release",
       );
       continue;
@@ -315,8 +344,11 @@ function boxRows(
   release: typeof Release.VatFilingRuleRelease.Type,
   contributions: ReadonlyArray<Contribution>,
   declareNet: boolean,
+  currencyScale: number,
 ) {
-  const unit = 10n ** BigInt(release.filingUnitScale);
+  if (release.filingUnitScale > currencyScale) return [];
+
+  const unit = 10n ** BigInt(currencyScale - release.filingUnitScale);
   const totals = new Map<string, bigint>();
 
   for (const contribution of contributions) {
@@ -398,23 +430,50 @@ function reconcile(
 ) {
   const controls: Array<Reconciliation> = [];
   const timingBridge: Array<BridgeRow> = [];
+  let componentConflict = false;
 
   for (const snapshot of basis.controls) {
     const expected = expectedFor(snapshot.accountId);
-    const expectedKeys = new Set(expected.map((entry) => rowKey(entry.voucherId, entry.lineId)));
+    const expectedByKey = new Map<string, (typeof expected)[number]>();
+    let consistent = true;
 
-    const actualKeys = new Set(
-      snapshot.movements.map((entry) => rowKey(entry.voucherId, entry.lineId)),
+    for (const entry of expected) {
+      const key = rowKey(entry.voucherId, entry.lineId);
+      const previous = expectedByKey.get(key);
+
+      if (
+        previous !== undefined &&
+        (previous.signedMinor !== entry.signedMinor || previous.postingDate !== entry.postingDate)
+      ) {
+        consistent = false;
+      } else {
+        expectedByKey.set(key, entry);
+      }
+    }
+
+    const actualByKey = new Map(
+      snapshot.movements.map((entry) => [rowKey(entry.voucherId, entry.lineId), entry]),
     );
+
+    if (actualByKey.size !== snapshot.movements.length) consistent = false;
 
     const unexplainedRows: Array<ControlRow> = [];
     const missingRows: Array<ControlRow> = [];
     let expectedClosing = BigInt(snapshot.reviewedOpeningMinor);
 
-    for (const entry of expected) {
+    for (const entry of expectedByKey.values()) {
       expectedClosing += BigInt(entry.signedMinor);
 
-      if (actualKeys.has(rowKey(entry.voucherId, entry.lineId))) continue;
+      const actual = actualByKey.get(rowKey(entry.voucherId, entry.lineId));
+
+      if (actual !== undefined) {
+        if (actual.signedMinor !== entry.signedMinor || actual.postingDate !== entry.postingDate) {
+          consistent = false;
+        }
+
+        continue;
+      }
+
       missingRows.push({
         state: "missing",
         voucherId: entry.voucherId,
@@ -425,7 +484,7 @@ function reconcile(
     }
 
     for (const movement of snapshot.movements) {
-      if (expectedKeys.has(rowKey(movement.voucherId, movement.lineId))) continue;
+      if (expectedByKey.has(rowKey(movement.voucherId, movement.lineId))) continue;
       unexplainedRows.push({
         state: "unexplained",
         voucherId: movement.voucherId,
@@ -447,8 +506,11 @@ function reconcile(
       differenceMinor: difference.toString(),
       unexplainedRows,
       missingRows,
-      reconciled: unexplainedRows.length === 0 && missingRows.length === 0 && difference === 0n,
+      reconciled:
+        consistent && unexplainedRows.length === 0 && missingRows.length === 0 && difference === 0n,
     });
+
+    if (!consistent) componentConflict = true;
   }
 
   // A declaration fact whose control component sits in the opening balance or
@@ -456,6 +518,8 @@ function reconcile(
   // already carried, so its component is never added to the opening balance
   // again and it is never an unexplained or a missing row.
   for (const fact of basis.facts) {
+    if (fact.controlComponents.length === 0) continue;
+
     if (fact.controlComponents.some((component) => component.withinControlInterval)) continue;
 
     const before = fact.controlComponents.filter(
@@ -475,7 +539,7 @@ function reconcile(
     });
   }
 
-  return { controls, timingBridge };
+  return { controls, timingBridge, componentConflict };
 }
 
 function coverageState(basis: Basis) {
@@ -531,12 +595,17 @@ export function calculateActualVat(basis: Basis): Calculation {
   // means the population is not the whole one and nothing may be declared from
   // it.
   const populationComplete = basis.population.withoutTaxPoint === 0;
-  const supported = populationComplete && assessed.blockers.length === 0;
-  const rows = boxRows(release, assessed.contributions, supported);
+  const filingUnitSupported = release.filingUnitScale <= basis.currencyScale;
+  const supported = populationComplete && assessed.blockers.length === 0 && filingUnitSupported;
+  const rows = boxRows(release, assessed.contributions, supported, basis.currencyScale);
   const reconciled = rolled.controls.every((control) => control.reconciled);
   const blockers: Array<Blocker> = [...assessed.blockers];
 
   if (!populationComplete) blockers.push("unclassified_fact_population");
+
+  if (!filingUnitSupported) blockers.push("no_supported_mapping_for_treatment");
+
+  if (rolled.componentConflict) blockers.push("control_component_conflict");
 
   for (const control of rolled.controls) {
     if (control.unexplainedRows.length > 0) blockers.push("control_unexplained_rows");

@@ -1,0 +1,13 @@
+{
+  "source": "retained monetary excerpt in an isolated scratch directory, not a complete OpenERP checkout",
+  "unpatchedOwnerGate": "failed as expected",
+  "patchApplyCheck": "passed against excerpt context",
+  "patchedOwnerGate": "passed, 208 comparisons",
+  "missingOfficialToolchainGate": "failed as expected",
+  "javascriptSyntaxChecks": "passed",
+  "typescriptDeclarationCheck": "passed",
+  "officialBendBinary": "not run",
+  "independentSafeKernel": "not run",
+  "nativeGPUBackend": "not run",
+  "fullOpenERPApplication": "not run"
+}

@@ -13,6 +13,7 @@ export { digest, versionedDigest } from "./json";
 
 import { ExecutionReceipt as DomainExecutionReceipt } from "@open-erp/domain/ledger";
 import { orderPostingGroups, validatePostingLines } from "@open-erp/domain/posting";
+import { assertPeriodWorkFence } from "./period-work-fence";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
@@ -627,7 +628,12 @@ export const bookStatus = Effect.fn("posting.bookStatus")(function* (
         transaction,
         command.scope,
         "actual_company",
-        { postingOn: today, taxPointOn: today, paymentOn: today, reportOn: today },
+        {
+          postingOn: today,
+          taxPointOn: today,
+          paymentOn: today,
+          reportOn: today,
+        },
       );
 
       return yield* decode(BookStatusSchema, {
@@ -1125,6 +1131,8 @@ export const executeChangeInTransaction = Effect.fn("posting.execute")(function*
     );
 
     if (request.previous) return request.previous;
+
+    yield* assertPeriodWorkFence(transaction, command.scope.bookId, command.changeSetId);
 
     const plan = yield* lockPlan(transaction, command.scope, command.changeSetId);
 
