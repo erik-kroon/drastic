@@ -500,6 +500,32 @@ function signedSourceTax(row: Db.PurchaseComponentRow) {
 // released reclassification effects for every obligation, and reads the released
 // amendment owner's committed inventory. It selects and summarises; it never
 // chooses a treatment, activates a profile or computes an amount.
+function loadServiceSelection(transaction: Transaction, scope: Scope, input: Input) {
+  return Effect.gen(function* () {
+    const serviced = yield* Db.readServiceComponents(
+      transaction,
+      scope.bookId,
+      input.startsOn,
+      input.endsOn,
+    );
+
+    const serviceLinks = yield* Db.readServiceControlLinks(transaction, scope.bookId, [
+      ...new Set(serviced.map((row) => row.recognitionId)),
+    ]);
+
+    const serviceOrdinals = new Map<string, Set<number>>();
+
+    for (const link of serviceLinks) {
+      const key = JSON.stringify([link.recognitionId, link.sourceLineId]);
+      const ordinals = serviceOrdinals.get(key) ?? new Set<number>();
+      ordinals.add(link.journalOrdinal);
+      serviceOrdinals.set(key, ordinals);
+    }
+
+    return { serviced, serviceOrdinals };
+  });
+}
+
 function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
   return Effect.gen(function* () {
     if (input.startsOn > input.endsOn) return yield* failure("InvalidJournal");
@@ -555,7 +581,11 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
       input.endsOn,
     );
 
-    if (admitted.length + purchased.length + credited.length > factInventoryBound)
+    const serviceSelection = yield* loadServiceSelection(transaction, scope, input);
+    const serviced = serviceSelection.serviced;
+    const serviceOrdinals = serviceSelection.serviceOrdinals;
+
+    if (admitted.length + purchased.length + credited.length + serviced.length > factInventoryBound)
       return yield* unsupported();
 
     const effects = yield* Db.readControlEffectsInInterval(
@@ -585,6 +615,7 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
         ...admitted.flatMap((row) => (row.voucherId === null ? [] : [row.voucherId])),
         ...purchased.map((row) => row.voucherId),
         ...credited.map((row) => row.voucherId),
+        ...serviced.map((row) => row.voucherId),
         ...effects.flatMap((row) => (row.voucherId === null ? [] : [row.voucherId])),
       ]),
     ];
@@ -657,6 +688,7 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
         sourceTaxMinor: row.vatMinor,
         adjustsFactId: null,
         ruleReleaseId: null,
+        serviceDetail: null,
         observation: {
           recordClass: row.recordClass === "synthetic" ? "synthetic" : "actual_company",
           treatment,
@@ -690,6 +722,7 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
         sourceTaxMinor: signedSourceTax(row),
         adjustsFactId: row.adjustsTaxFactId,
         ruleReleaseId: row.ruleReleaseId,
+        serviceDetail: null,
         observation: {
           recordClass: "actual_company",
           treatment: "domestic_purchase",
@@ -716,6 +749,16 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
       })),
     );
 
+    facts.push(
+      ...captureServiceFacts(serviced, {
+        byVoucher,
+        serviceOrdinals,
+        roles,
+        input,
+        ledgerBoundary,
+      }),
+    );
+
     return yield* decode(
       BasisSchema,
       yield* digestBody(
@@ -740,6 +783,7 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
             bookPurchaseComponentCount: population.purchaseComponents,
             bookOwnerPurchaseComponentCount: population.ownerPurchaseComponents,
             bookCustomerCreditComponentCount: population.customerCreditComponents,
+            bookServiceComponentCount: population.serviceComponents,
             selectedAdmittedFactCount: admitted.length,
             selectedPurchaseComponentCount: purchased.filter(
               (row) => row.origin === "owned_purchase_recognition",
@@ -748,10 +792,16 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
               (row) => row.origin === "owned_owner_purchase",
             ).length,
             selectedCustomerCreditComponentCount: credited.length,
+            selectedServiceComponentCount: serviced.length,
             withoutTaxPoint: population.admittedWithoutTaxPoint,
             membershipEpoch: membership[0]?.membershipEpoch.toString() ?? "0",
           },
-          recognitions: [...new Set(purchased.map((row) => row.recognitionId))].sort(),
+          recognitions: [
+            ...new Set([
+              ...purchased.map((row) => row.recognitionId),
+              ...serviced.map((row) => row.recognitionId),
+            ]),
+          ].sort(),
           facts,
           controls,
           ownedEffects,
@@ -796,6 +846,72 @@ function captureBasis(transaction: Transaction, scope: Scope, input: Input) {
   });
 }
 
+// The service owner classified the cross-border supply, converted the
+// original liability and the SEK tax base, and published the reverse-charge
+// output and deductible input. This module only selects the published result;
+// it never re-derives the classification.
+function captureServiceFacts(
+  rows: ReadonlyArray<Db.ServiceComponentRow>,
+  basis: {
+    byVoucher: ReadonlyMap<string, ReadonlyArray<Db.ControlLineRow>>;
+    serviceOrdinals: ReadonlyMap<string, Set<number>>;
+    roles: ReadonlyMap<string, Role>;
+    input: Input;
+    ledgerBoundary: string;
+  },
+) {
+  const facts: Array<typeof Vat.VatSelectedFact.Type> = [];
+
+  for (const row of rows) {
+    const treatment =
+      row.jurisdictionClass === "EU_OTHER"
+        ? "service_reverse_charge_eu"
+        : "service_reverse_charge_non_eu";
+
+    facts.push({
+      factId: row.id,
+      origin: "owned_service_purchase",
+      revisionId: row.id,
+      digest: row.digest,
+      treatment,
+      taxPointOn: row.taxPointOn,
+      voucherId: row.voucherId,
+      basisMinor: row.signedBaseMinor,
+      taxMinor: row.signedOutputTaxMinor,
+      adjustsFactId: null,
+      ruleReleaseId: row.ruleReleaseId,
+      serviceDetail: {
+        rateId: row.rateId,
+        jurisdictionClass: row.jurisdictionClass === "NON_EU" ? "NON_EU" : "EU_OTHER",
+        basisBox: row.basisBox === "22" ? "22" : "21",
+        outputBox: row.outputBox === "31" ? "31" : row.outputBox === "32" ? "32" : "30",
+        deductibleMinor: row.signedDeductibleTaxMinor,
+      },
+      observation: {
+        recordClass: "actual_company",
+        treatment,
+        withdrawn: false,
+        voucherReversed: row.voucherReversed,
+        withinLedgerBoundary:
+          row.voucherSequence !== null &&
+          BigInt(row.voucherSequence) <= BigInt(basis.ledgerBoundary),
+      },
+      controlComponents: controlComponents(
+        (basis.byVoucher.get(row.voucherId) ?? []).filter((line) =>
+          basis.serviceOrdinals
+            .get(JSON.stringify([row.recognitionId, row.sourceLineId]))
+            ?.has(line.ordinal),
+        ),
+        basis.roles,
+        basis.input.startsOn,
+        basis.input.endsOn,
+      ),
+    });
+  }
+
+  return facts;
+}
+
 const captureCreditFacts = Effect.fn("vat.captureCreditFacts")(function* (
   rows: ReadonlyArray<CreditDb.CreditComponent>,
   basis: {
@@ -823,6 +939,7 @@ const captureCreditFacts = Effect.fn("vat.captureCreditFacts")(function* (
       sourceTaxMinor: row.taxMinor,
       adjustsFactId: original.factId,
       ruleReleaseId: null,
+      serviceDetail: null,
       observation: {
         recordClass: "actual_company",
         treatment: "domestic_sale",
@@ -884,6 +1001,73 @@ function toJsonObjectSync(value: unknown) {
 // Currentness is a live read of the retained identities. It never recalculates
 // and never refuses: an old return still shows its saved calculation and its
 // own separate currentness.
+function populationReasons(population: Db.PopulationRow, saved: ReturnRecord) {
+  const reasons: Array<string> = [];
+
+  if (population.admittedFacts !== saved.basis.population.bookAdmittedFactCount) {
+    reasons.push("admitted_fact_population_changed");
+  }
+
+  if (population.purchaseComponents !== saved.basis.population.bookPurchaseComponentCount) {
+    reasons.push("purchase_component_population_changed");
+  }
+
+  if (
+    population.ownerPurchaseComponents !==
+    (saved.basis.population.bookOwnerPurchaseComponentCount ?? 0)
+  ) {
+    reasons.push("owner_purchase_component_population_changed");
+  }
+
+  if (
+    population.customerCreditComponents !==
+    (saved.basis.population.bookCustomerCreditComponentCount ?? 0)
+  ) {
+    reasons.push("customer_credit_component_population_changed");
+  }
+
+  if (population.serviceComponents !== (saved.basis.population.bookServiceComponentCount ?? 0)) {
+    reasons.push("service_component_population_changed");
+  }
+
+  return reasons;
+}
+
+function membershipReasons(
+  counts: {
+    readonly admitted: number;
+    readonly purchase: number;
+    readonly ownerPurchase: number;
+    readonly credited: number;
+    readonly serviced: number;
+  },
+  saved: ReturnRecord,
+) {
+  const reasons: Array<string> = [];
+
+  if (counts.admitted !== saved.basis.population.selectedAdmittedFactCount) {
+    reasons.push("admitted_fact_membership_changed");
+  }
+
+  if (counts.purchase !== saved.basis.population.selectedPurchaseComponentCount) {
+    reasons.push("purchase_component_membership_changed");
+  }
+
+  if (counts.ownerPurchase !== (saved.basis.population.selectedOwnerPurchaseComponentCount ?? 0)) {
+    reasons.push("owner_purchase_component_membership_changed");
+  }
+
+  if (counts.credited !== (saved.basis.population.selectedCustomerCreditComponentCount ?? 0)) {
+    reasons.push("customer_credit_component_membership_changed");
+  }
+
+  if (counts.serviced !== (saved.basis.population.selectedServiceComponentCount ?? 0)) {
+    reasons.push("service_component_membership_changed");
+  }
+
+  return reasons;
+}
+
 function currentnessReasons(transaction: Transaction, scope: Scope, saved: ReturnRecord) {
   return Effect.gen(function* () {
     const reasons: Array<string> = [];
@@ -937,27 +1121,7 @@ function currentnessReasons(transaction: Transaction, scope: Scope, saved: Retur
 
     if (population === undefined) return yield* failure("InternalError");
 
-    if (population.admittedFacts !== saved.basis.population.bookAdmittedFactCount) {
-      reasons.push("admitted_fact_population_changed");
-    }
-
-    if (population.purchaseComponents !== saved.basis.population.bookPurchaseComponentCount) {
-      reasons.push("purchase_component_population_changed");
-    }
-
-    if (
-      population.ownerPurchaseComponents !==
-      (saved.basis.population.bookOwnerPurchaseComponentCount ?? 0)
-    ) {
-      reasons.push("owner_purchase_component_population_changed");
-    }
-
-    if (
-      population.customerCreditComponents !==
-      (saved.basis.population.bookCustomerCreditComponentCount ?? 0)
-    ) {
-      reasons.push("customer_credit_component_population_changed");
-    }
+    reasons.push(...populationReasons(population, saved));
 
     const facts = yield* Db.readAdmittedFacts(
       transaction,
@@ -973,24 +1137,6 @@ function currentnessReasons(transaction: Transaction, scope: Scope, saved: Retur
       period.endsOn,
     );
 
-    if (facts.length !== saved.basis.population.selectedAdmittedFactCount) {
-      reasons.push("admitted_fact_membership_changed");
-    }
-
-    if (
-      purchased.filter((row) => row.origin === "owned_purchase_recognition").length !==
-      saved.basis.population.selectedPurchaseComponentCount
-    ) {
-      reasons.push("purchase_component_membership_changed");
-    }
-
-    if (
-      purchased.filter((row) => row.origin === "owned_owner_purchase").length !==
-      (saved.basis.population.selectedOwnerPurchaseComponentCount ?? 0)
-    ) {
-      reasons.push("owner_purchase_component_membership_changed");
-    }
-
     const credited = yield* CreditDb.readCreditComponents(
       transaction,
       scope.bookId,
@@ -998,9 +1144,25 @@ function currentnessReasons(transaction: Transaction, scope: Scope, saved: Retur
       period.endsOn,
     );
 
-    if (credited.length !== (saved.basis.population.selectedCustomerCreditComponentCount ?? 0)) {
-      reasons.push("customer_credit_component_membership_changed");
-    }
+    const serviced = yield* Db.readServiceComponents(
+      transaction,
+      scope.bookId,
+      period.startsOn,
+      period.endsOn,
+    );
+
+    reasons.push(
+      ...membershipReasons(
+        {
+          admitted: facts.length,
+          purchase: purchased.filter((row) => row.origin === "owned_purchase_recognition").length,
+          ownerPurchase: purchased.filter((row) => row.origin === "owned_owner_purchase").length,
+          credited: credited.length,
+          serviced: serviced.length,
+        },
+        saved,
+      ),
+    );
 
     const selected = new Map(saved.basis.facts.map((fact) => [fact.factId, fact.digest]));
 
@@ -1008,6 +1170,7 @@ function currentnessReasons(transaction: Transaction, scope: Scope, saved: Retur
       ...facts.map((row) => ({ factId: row.factId, digest: row.digest })),
       ...purchased.map((row) => ({ factId: row.id, digest: row.digest })),
       ...credited.map((row) => ({ factId: row.id, digest: row.digest })),
+      ...serviced.map((row) => ({ factId: row.id, digest: row.digest })),
     ];
 
     for (const row of live) {
@@ -1027,7 +1190,12 @@ function currentnessReasons(transaction: Transaction, scope: Scope, saved: Retur
       reasons.push("admitted_fact_withdrawal_changed");
     }
 
-    const recognitions = [...new Set(purchased.map((row) => row.recognitionId))].sort();
+    const recognitions = [
+      ...new Set([
+        ...purchased.map((row) => row.recognitionId),
+        ...serviced.map((row) => row.recognitionId),
+      ]),
+    ].sort();
 
     if (recognitions.join("|") !== saved.basis.recognitions.join("|")) {
       reasons.push("purchase_recognition_changed");

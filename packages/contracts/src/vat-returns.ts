@@ -588,6 +588,7 @@ export const VatFactOrigin = Schema.Literals([
   "owned_purchase_recognition",
   "owned_owner_purchase",
   "owned_customer_credit",
+  "owned_service_purchase",
 ]);
 
 export const VatRegisteredPeriod = Schema.Struct({
@@ -609,12 +610,29 @@ export const VatFactControlComponent = Schema.Struct({
   withinControlInterval: Schema.Boolean,
 });
 
+export const VatTreatment = Schema.Literals([
+  "domestic_sale",
+  "domestic_purchase",
+  "service_reverse_charge_eu",
+  "service_reverse_charge_non_eu",
+]);
+
 export const VatFactObservationState = Schema.Struct({
   recordClass: Schema.Literals(["actual_company", "synthetic"]),
-  treatment: Schema.NullOr(Schema.Literals(["domestic_sale", "domestic_purchase"])),
+  treatment: Schema.NullOr(VatTreatment),
   withdrawn: Schema.Boolean,
   voucherReversed: Schema.Boolean,
   withinLedgerBoundary: Schema.Boolean,
+});
+
+// The reverse-charge detail a general-rule service selection carries. Null for
+// every domestic fact, so earlier sealed captures remain readable.
+export const ServiceReverseChargeDetail = Schema.Struct({
+  rateId: A.Identifier,
+  jurisdictionClass: Schema.Literals(["EU_OTHER", "NON_EU"]),
+  basisBox: Schema.Literals(["21", "22"]),
+  outputBox: Schema.Literals(["30", "31", "32"]),
+  deductibleMinor: A.SignedMinorUnits,
 });
 
 export const VatSelectedFact = Schema.Struct({
@@ -622,7 +640,7 @@ export const VatSelectedFact = Schema.Struct({
   origin: VatFactOrigin,
   revisionId: A.Identifier,
   digest: A.Digest,
-  treatment: Schema.NullOr(Schema.Literals(["domestic_sale", "domestic_purchase"])),
+  treatment: Schema.NullOr(VatTreatment),
   taxPointOn: A.AccountingDate,
   voucherId: A.Identifier,
   basisMinor: A.SignedMinorUnits,
@@ -632,6 +650,7 @@ export const VatSelectedFact = Schema.Struct({
   sourceTaxMinor: Schema.optional(A.SignedMinorUnits),
   adjustsFactId: Schema.NullOr(A.Identifier),
   ruleReleaseId: Schema.NullOr(A.Identifier),
+  serviceDetail: Schema.NullOr(ServiceReverseChargeDetail),
   observation: VatFactObservationState,
   controlComponents: Schema.Array(VatFactControlComponent).check(Schema.isMaxLength(20)),
 });
@@ -682,6 +701,9 @@ export const VatActualPopulation = Schema.Struct({
   selectedOwnerPurchaseComponentCount: Schema.optional(Schema.Int),
   bookCustomerCreditComponentCount: Schema.optional(Schema.Int),
   selectedCustomerCreditComponentCount: Schema.optional(Schema.Int),
+  // Optional for saved captures that predate the service-purchase owner.
+  bookServiceComponentCount: Schema.optional(Schema.Int),
+  selectedServiceComponentCount: Schema.optional(Schema.Int),
   // A manually admitted fact with no tax point belongs to no period at all, so
   // the population is not completely classified until it is resolved.
   withoutTaxPoint: Schema.Int,
@@ -738,7 +760,7 @@ export const VatActualBasis = Schema.Struct({
 });
 
 export const VatActualBox = Schema.Struct({
-  box: Schema.Literals(["05", "10", "11", "12", "48", "49"]),
+  box: Schema.Literals(["05", "10", "11", "12", "21", "22", "30", "31", "32", "48", "49"]),
   kind: Schema.Literals(["primitive", "net"]),
   exactMinor: A.SignedMinorUnits,
   reportedMinor: A.SignedMinorUnits,
@@ -842,7 +864,8 @@ export const VatActualCalculation = Schema.Struct({
   monetaryRelease: Schema.optional(VatMonetaryRelease),
   // A population the release could not map declares no box at all. An absent net
   // box is the honest result; a zero net over a partial population is not.
-  boxes: Schema.Array(VatActualBox).check(Schema.isMaxLength(8)),
+  // Ten primitive boxes plus the net is the bound once reverse charge joins.
+  boxes: Schema.Array(VatActualBox).check(Schema.isMaxLength(12)),
   contributions: Schema.Array(VatActualContribution).check(Schema.isMaxLength(1000)),
   exclusions: Schema.Array(VatActualExclusion).check(Schema.isMaxLength(1000)),
   controls: Schema.Array(VatControlReconciliation).check(

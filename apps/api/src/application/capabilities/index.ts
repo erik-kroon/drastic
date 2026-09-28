@@ -9,6 +9,7 @@ import { bankingCapabilities } from "./banking";
 import { subledgerOwnerCapabilities } from "./subledger-owners";
 import { commerceInvoiceCapabilities } from "./commerce-invoices";
 import { purchaseRecognitionCapabilities } from "./purchase-recognition";
+import { servicePurchaseCapabilities } from "./service-purchases";
 import { vatCapabilities } from "./vat";
 import { runCaseCapabilities } from "./runs-cases";
 import { periodWorkCapabilities } from "./period-work";
@@ -37,6 +38,7 @@ export const capabilities = {
   ...subledgerOwnerCapabilities,
   ...commerceInvoiceCapabilities,
   ...purchaseRecognitionCapabilities,
+  ...servicePurchaseCapabilities,
   ...vatCapabilities,
   ...runCaseCapabilities,
   ...periodWorkCapabilities,

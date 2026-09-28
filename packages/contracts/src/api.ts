@@ -47,6 +47,7 @@ import { RecurringInvoicesApi } from "./recurring-invoices";
 import { SalesOrdersApi } from "./sales-orders";
 import { SupplierInvoiceDraftsApi } from "./supplier-invoice-drafts";
 import { SupplierAcceptanceApi } from "./supplier-acceptance";
+import { ServicePurchaseApi } from "./service-purchases";
 import { PurchaseRecognitionApi } from "./supplier-recognition";
 import { SupplierPaymentBatchesApi } from "./supplier-payment-batches";
 import { SupplierCreditsApi } from "./supplier-credits";
@@ -201,6 +202,7 @@ export class Api extends HttpApi.make("open-erp")
     SalesOrdersApi,
     SupplierInvoiceDraftsApi,
     SupplierAcceptanceApi,
+    ServicePurchaseApi,
     PurchaseRecognitionApi,
     SupplierPaymentBatchesApi,
     SupplierCreditsApi,

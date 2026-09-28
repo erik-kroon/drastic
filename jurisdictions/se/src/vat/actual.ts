@@ -63,9 +63,24 @@ const basisBox: Box = "05";
 
 const inputBox: Box = "48";
 
-const primitiveBoxes: ReadonlyArray<Box> = ["05", "10", "11", "12", "48"];
+const primitiveBoxes: ReadonlyArray<Box> = [
+  "05",
+  "10",
+  "11",
+  "12",
+  "21",
+  "22",
+  "30",
+  "31",
+  "32",
+  "48",
+];
 
 const saleOutputBoxes: ReadonlyArray<Box> = ["10", "11", "12"];
+
+// Reverse-charge output tax is output tax: it joins the sale outputs in the
+// net payable. The 21/22 bases never enter the net, exactly like the 05 basis.
+const reverseChargeOutputBoxes: ReadonlyArray<Box> = ["30", "31", "32"];
 
 // Exact rational rounding over bigint. The release owns the mode, a tie is never
 // truncated silently, and an amount never becomes a JavaScript number.
@@ -118,6 +133,10 @@ function taxAmountsAgree(fact: Selected, rate: Rate, mode: Rounding, monetary: V
 }
 
 function controlAllocationAgrees(fact: Selected) {
+  if (serviceTreatmentClass(fact.treatment) !== null) {
+    return serviceControlAllocationAgrees(fact);
+  }
+
   const sale = fact.treatment === "domestic_sale";
   const role = sale ? "output_vat_control" : "input_vat_control";
 
@@ -132,6 +151,37 @@ function controlAllocationAgrees(fact: Selected) {
   const posted = fact.controlComponents.reduce((sum, entry) => sum + BigInt(entry.signedMinor), 0n);
 
   return posted === (sale ? -BigInt(fact.taxMinor) : BigInt(fact.taxMinor));
+}
+
+function serviceTreatmentClass(treatment: Selected["treatment"]): "EU_OTHER" | "NON_EU" | null {
+  if (treatment === "service_reverse_charge_eu") return "EU_OTHER";
+
+  if (treatment === "service_reverse_charge_non_eu") return "NON_EU";
+
+  return null;
+}
+
+// A reverse-charge selection carries both VAT legs: the output tax the buyer
+// declares and the deductible input it recovers. Each leg must agree with its
+// own control exactly; a zero leg posts no journal line and needs no control
+// component.
+function serviceControlAllocationAgrees(fact: Selected) {
+  if (fact.serviceDetail === null) return false;
+
+  const deductible = BigInt(fact.serviceDetail.deductibleMinor);
+  const output = BigInt(fact.taxMinor);
+  let inputSum = 0n;
+  let outputSum = 0n;
+
+  for (const entry of fact.controlComponents) {
+    if (entry.voucherId !== fact.voucherId) return false;
+
+    if (entry.role === "input_vat_control") inputSum += BigInt(entry.signedMinor);
+    else if (entry.role === "output_vat_control") outputSum += BigInt(entry.signedMinor);
+    else return false;
+  }
+
+  return inputSum === deductible && outputSum === -output;
 }
 
 function voucherCounts(facts: ReadonlyArray<Selected>) {
@@ -198,6 +248,131 @@ function assess(
       revisionId: fact.revisionId,
       digest: fact.digest,
     } satisfies Contribution;
+  }
+
+  // A reverse-charge contribution names the release section kind as its mapping
+  // rule and the exact qualified rate row that authorized its boxes. The
+  // release id and checksum on the return bind the section version.
+  function publishService(fact: Selected, box: Box, rateId: string, signedMinor: bigint) {
+    ordinal += 1;
+
+    return {
+      ordinal,
+      factId: fact.factId,
+      origin: fact.origin,
+      mappingRuleId: "general_rule_service_v1",
+      rateId,
+      box,
+      signedMinor: signedMinor.toString(),
+      basisMinor: fact.basisMinor,
+      taxMinor: fact.taxMinor,
+      revisionId: fact.revisionId,
+      digest: fact.digest,
+    } satisfies Contribution;
+  }
+
+  // A general-rule service selection declares its reverse-charge basis, output
+  // and deductible input through the release's qualified service section. The
+  // domestic mapping rules never see it; the section's own rate rows do.
+  function assessService(fact: Selected) {
+    const serviceClass = serviceTreatmentClass(fact.treatment);
+
+    if (serviceClass === null) return false;
+
+    const section = release.generalRuleServices;
+
+    if (section === undefined) {
+      exclude(
+        fact,
+        "unmapped_treatment",
+        "The release qualifies no general-rule service section.",
+        "no_supported_mapping_for_treatment",
+      );
+
+      return true;
+    }
+
+    const detail = fact.serviceDetail;
+
+    if (
+      detail === null ||
+      detail.jurisdictionClass !== serviceClass ||
+      detail.basisBox !== (serviceClass === "EU_OTHER" ? section.euBasisBox : section.nonEuBasisBox)
+    ) {
+      exclude(
+        fact,
+        "unsupported_treatment",
+        "The sealed reverse-charge boxes disagree with the qualified origin class.",
+        "no_supported_mapping_for_treatment",
+      );
+
+      return true;
+    }
+
+    const serviceRate = section.rates.find((rate) => rate.rateId === detail.rateId) ?? null;
+
+    if (serviceRate === null) {
+      exclude(
+        fact,
+        "rate_absent_from_release",
+        "The service selection names a rate the release does not declare.",
+        "rate_absent_from_release",
+      );
+
+      return true;
+    }
+
+    if (detail.outputBox !== serviceRate.outputBox) {
+      exclude(
+        fact,
+        "unsupported_treatment",
+        "The sealed output box disagrees with the qualified rate row.",
+        "no_supported_mapping_for_treatment",
+      );
+
+      return true;
+    }
+
+    const outputMinor = BigInt(fact.taxMinor);
+    const deductibleMinor = BigInt(detail.deductibleMinor);
+    const serviceBase = BigInt(fact.basisMinor);
+
+    if (
+      monetary.round(
+        serviceBase * BigInt(serviceRate.numerator),
+        BigInt(serviceRate.denominator),
+        section.taxRounding,
+      ) !== outputMinor ||
+      deductibleMinor < 0n ||
+      deductibleMinor > outputMinor
+    ) {
+      exclude(
+        fact,
+        "published_tax_not_the_qualified_rate",
+        "Reverse-charge output must match the qualified rate; the retained deduction must not exceed it.",
+        "rate_absent_from_release",
+      );
+
+      return true;
+    }
+
+    if (serviceBase !== 0n) {
+      contributions.push(publishService(fact, detail.basisBox, serviceRate.rateId, serviceBase));
+    }
+
+    if (outputMinor !== 0n) {
+      contributions.push(publishService(fact, detail.outputBox, serviceRate.rateId, outputMinor));
+    }
+
+    if (deductibleMinor !== 0n) {
+      contributions.push(
+        publishService(fact, section.inputBox, serviceRate.rateId, deductibleMinor),
+      );
+    }
+
+    declared.push(fact.factId);
+
+    return true;
   }
 
   for (const fact of facts) {
@@ -291,7 +466,11 @@ function assess(
       continue;
     }
 
-    if (!release.supportedTreatments.includes(fact.treatment)) {
+    if (assessService(fact)) continue;
+
+    // The service branch above continued, so only the domestic families reach
+    // the release's domestic mapping rules.
+    if (!release.supportedTreatments.some((supported) => supported === fact.treatment)) {
       exclude(
         fact,
         "unmapped_treatment",
@@ -405,7 +584,7 @@ function boxRows(
   let exactNet = 0n;
   let reportedNet = 0n;
 
-  for (const box of saleOutputBoxes) {
+  for (const box of [...saleOutputBoxes, ...reverseChargeOutputBoxes]) {
     if (!totals.has(box)) continue;
     const exact = totals.get(box) ?? 0n;
     const scaled = reportedIn(exact, unit, release.rounding);

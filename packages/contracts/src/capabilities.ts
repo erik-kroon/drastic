@@ -35,6 +35,7 @@ import { InvoiceDraftCapabilities } from "./invoice-drafts";
 import { RecurringInvoiceCapabilities } from "./recurring-invoices";
 import { SupplierInvoiceDraftCapabilities } from "./supplier-invoice-drafts";
 import { SupplierAcceptanceCapabilities } from "./supplier-acceptance";
+import { ServicePurchaseCapabilities } from "./service-purchases";
 import { PurchaseRecognitionCapabilities } from "./supplier-recognition";
 import { SupplierPaymentBatchCapabilities } from "./supplier-payment-batches";
 import { SupplierCreditCapabilities } from "./supplier-credits";
@@ -117,6 +118,7 @@ export const Capabilities = {
   ...RecurringInvoiceCapabilities,
   ...SupplierInvoiceDraftCapabilities,
   ...SupplierAcceptanceCapabilities,
+  ...ServicePurchaseCapabilities,
   ...PurchaseRecognitionCapabilities,
   ...SupplierPaymentBatchCapabilities,
   ...SupplierCreditCapabilities,

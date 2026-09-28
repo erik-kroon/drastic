@@ -23,6 +23,8 @@ export const actualReturnTables = [
   "vat_fact_withdrawals",
   "purchase_tax_facts",
   "purchase_recognitions",
+  "service_purchase_tax_facts",
+  "service_purchase_recognitions",
   "owner_purchase_tax_facts",
   "owner_purchase_recognitions",
   "customer_credit_tax_corrections",
@@ -230,6 +232,7 @@ export type PopulationRow = {
   readonly purchaseComponents: number;
   readonly ownerPurchaseComponents: number;
   readonly customerCreditComponents: number;
+  readonly serviceComponents: number;
 };
 
 // A complete population includes the zero-count case, so both populations are
@@ -256,7 +259,68 @@ export function readPopulation(transaction: Transaction, bookId: string) {
         (select count(*)::integer from openerp.owner_purchase_tax_facts
           where book_id = ${bookId}) as "ownerPurchaseComponents",
         (select count(*)::integer from openerp.customer_credit_tax_corrections
-          where book_id = ${bookId}) as "customerCreditComponents"
+          where book_id = ${bookId}) as "customerCreditComponents",
+        (select count(*)::integer from openerp.service_purchase_tax_facts
+          where book_id = ${bookId}) as "serviceComponents"
+    `,
+    "objects",
+  );
+}
+
+export type ServiceComponentRow = {
+  readonly id: string;
+  readonly recognitionId: string;
+  readonly sourceLineId: string;
+  readonly voucherId: string;
+  readonly signedBaseMinor: string;
+  readonly signedOutputTaxMinor: string;
+  readonly signedDeductibleTaxMinor: string;
+  readonly taxPointOn: string;
+  readonly digest: string;
+  readonly ruleReleaseId: string | null;
+  readonly serviceKind: string;
+  readonly jurisdictionClass: string;
+  readonly rateId: string;
+  readonly basisBox: string;
+  readonly outputBox: string;
+  readonly voucherSequence: string | null;
+  readonly voucherReversed: boolean;
+};
+
+// The service-purchase owner's published reverse-charge components. The
+// service owner decided classification, conversion and deduction; this module
+// only reads the published result.
+export function readServiceComponents(
+  transaction: Transaction,
+  bookId: string,
+  startsOn: string,
+  endsOn: string,
+) {
+  return transaction.execute<ServiceComponentRow>(
+    sql`
+      select p.id, p.recognition_id as "recognitionId", p.source_line_id as "sourceLineId",
+        p.voucher_id as "voucherId",
+        p.signed_base_minor::text as "signedBaseMinor",
+        p.signed_output_tax_minor::text as "signedOutputTaxMinor",
+        p.signed_deductible_tax_minor::text as "signedDeductibleTaxMinor",
+        p.tax_point_on::text as "taxPointOn",
+        p.digest, p.body ->> 'ruleReleaseId'::text as "ruleReleaseId",
+        p.body ->> 'serviceKind'::text as "serviceKind",
+        p.body ->> 'jurisdictionClass'::text as "jurisdictionClass",
+        p.body ->> 'rateId'::text as "rateId",
+        p.body ->> 'basisBox'::text as "basisBox",
+        p.body ->> 'outputBox'::text as "outputBox",
+        v.sequence::text as "voucherSequence",
+        (coalesce(v.posting_purpose = 'reversal', false) or exists (
+          select 1 from openerp.vouchers x
+          where x.book_id = ${bookId} and x.corrects_voucher_id = p.voucher_id
+            and x.posting_purpose = 'reversal'
+        )) as "voucherReversed"
+      from openerp.service_purchase_tax_facts p
+      left join openerp.vouchers v on v.book_id = ${bookId} and v.id = p.voucher_id
+      where p.book_id = ${bookId} and p.tax_point_on >= ${startsOn} and p.tax_point_on <= ${endsOn}
+      order by p.tax_point_on, p.id collate "C"
+      limit 501
     `,
     "objects",
   );
@@ -367,6 +431,32 @@ export function readPurchaseControlLinks(
       select id, value ->> 'sourceLineId', journal_ordinal from credit_lines
       where (value ->> 'releasedDeductionMinor')::numeric > 0
         and value ->> 'inputVatAccountId' is not null
+    `,
+    "objects",
+  );
+}
+
+// The service owner retains the original journal order per source line.
+// Resolve that source-line relationship, never every VAT line of the voucher
+// for every source fact.
+export function readServiceControlLinks(
+  transaction: Transaction,
+  bookId: string,
+  recognitionIds: ReadonlyArray<string>,
+) {
+  return transaction.execute<{
+    readonly recognitionId: string;
+    readonly sourceLineId: string;
+    readonly journalOrdinal: number;
+  }>(
+    sql`
+      select r.id as "recognitionId", line.value ->> 'sourceLineId' as "sourceLineId",
+        line.ordinal::integer as "journalOrdinal"
+      from openerp.service_purchase_recognitions r
+      cross join lateral jsonb_array_elements(r.body -> 'plan' -> 'journal')
+        with ordinality line(value, ordinal)
+      where r.book_id = ${bookId} and r.id = any(${idArray(recognitionIds)})
+        and line.value ->> 'sourceLineId' is not null
     `,
     "objects",
   );
