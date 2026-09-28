@@ -11,6 +11,7 @@
     "db:provision-identity": "bun scripts/provision-identity.ts",
     "db:provision": "bun scripts/provision.ts",
     "jobs:preparation": "bun scripts/preparation-runner.ts",
+    "openapi:export": "bun scripts/export-openapi.ts",
     "check-types": "tsc --noEmit && tsc --project scripts/tsconfig.json --noEmit",
     "dev": "wrangler dev src/index.ts --port 8788"
   },
