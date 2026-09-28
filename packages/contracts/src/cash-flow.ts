@@ -118,3 +118,21 @@ export const CashFlowApi = HttpApiGroup.make("cashFlow").add(
     error: errors,
   }),
 );
+
+// Agent surface. Read-only and deliberately narrow: an agent may ask what the
+// retained cash movements classify as, and may reach every line and its
+// evidence, but it may not name an account as cash, supply an amount, or assert
+// that the statement is complete. The report's own completeness flag is the
+// authority on that, and it is derived from retained data.
+export const CashFlowCapabilities = {
+  reports_cash_flow_statement: {
+    description:
+      "Classify retained posted cash movements into operating, investing and financing under one reviewed cash perimeter, and reconcile opening cash plus those flows plus exchange and perimeter bridges to actual closing cash. Opening and closing cash are derived from retained postings, never supplied. A row that cannot be resolved from the reviewed basis stays unclassified and makes complete false; read that flag rather than inferring completeness. Presentation and statutory applicability are not established by this result.",
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      input: PrepareCashFlowStatement,
+    }),
+    output: CashFlowStatementReport,
+    readOnly: true,
+  },
+};

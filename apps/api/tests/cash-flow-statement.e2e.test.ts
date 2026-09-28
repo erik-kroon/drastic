@@ -1,9 +1,11 @@
+import * as Schema from "effect/Schema";
 import { expect, test } from "vitest";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as CashFlow from "@open-erp/contracts/cash-flow";
 import {
   approve,
   decoded,
+  environment,
   execute,
   evidence,
   failure,
@@ -268,4 +270,95 @@ test("a mapping that names no retained account is refused rather than reported a
   });
 
   await failure(response, 422, "UnsupportedProfile");
+});
+
+const Envelope = Schema.Struct({
+  jsonrpc: Schema.Literal("2.0"),
+  id: Schema.Finite,
+  result: Schema.Unknown,
+});
+
+const Catalog = Schema.Struct({ tools: Schema.Array(Schema.Struct({ name: Schema.String })) });
+
+const CashFlowResult = Schema.Struct({
+  structuredContent: Schema.Struct({ result: CashFlow.CashFlowStatementReport }),
+});
+
+test("an agent reads the derived statement over MCP and is told when it is not complete", async () => {
+  const book = await fixture(accounts);
+
+  await post(
+    book,
+    entry("2026-03-01", "Customer receipt", [
+      { accountId: "account_bank", debit: "200000", credit: "0" },
+      { accountId: "account_revenue", debit: "0", credit: "200000" },
+    ]),
+  );
+
+  await post(
+    book,
+    entry("2026-04-01", "Ambiguous receipt", [
+      { accountId: "account_bank", debit: "500", credit: "0" },
+      { accountId: "account_ambiguous", debit: "0", credit: "500" },
+    ]),
+  );
+
+  const url = `${environment().baseUrl}/api/mcp`;
+
+  const headers = {
+    authorization: `Bearer ${book.agentToken}`,
+    "content-type": "application/json",
+    accept: "application/json",
+    "MCP-Protocol-Version": "2025-11-25",
+  };
+
+  const catalog = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+  });
+
+  expect(catalog.status).toBe(200);
+
+  const names = Schema.decodeUnknownSync(Catalog)(
+    Schema.decodeUnknownSync(Envelope)(await catalog.json()).result,
+  ).tools.map((tool) => tool.name);
+
+  // The report is an ordinary read tool. It is not an approval or activation
+  // tool, and it carries no payment or filing authority.
+  expect(names).toContain("reports_cash_flow_statement");
+  expect(names.filter((name) => /approv|activat/.test(name))).toEqual([]);
+
+  const call = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/call",
+      params: {
+        name: "reports_cash_flow_statement",
+        arguments: {
+          scope: { entityId: book.entityId, bookId: book.bookId },
+          input: { startsOn: "2026-02-01", endsOn: "2026-09-30", mapping },
+        },
+      },
+    }),
+  });
+
+  expect(call.status).toBe(200);
+
+  const result = Schema.decodeUnknownSync(CashFlowResult)(
+    Schema.decodeUnknownSync(Envelope)(await call.json()).result,
+  ).structuredContent.result;
+
+  // The agent receives the same honest state the operator does: the
+  // unclassifiable 500 keeps the report incomplete, and the 200000 receipt
+  // still classifies as operating.
+  expect(result.totals.operatingNetMinor).toBe("200000");
+  expect(result.unclassifiedRowIds).toHaveLength(1);
+  expect(result.complete).toBe(false);
+  expect(result.lines.find((line) => line.signedCashMinor === "500")?.reason).toContain(
+    "no reviewed activity role",
+  );
 });
