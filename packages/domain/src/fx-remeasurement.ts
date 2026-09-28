@@ -20,7 +20,7 @@ export const RemeasurementFailureCode = Schema.Literals([
   "DuplicateItem",
   "UnsupportedLaterConsumption",
   "UnsupportedRate",
-  "UnsupportedScale",
+  "AmountOutOfRange",
   "UnbalancedJournal",
   "StalePopulation",
 ]);
@@ -56,6 +56,7 @@ export const CapacityVersion = Schema.String.check(Schema.isMinLength(1), Schema
 export const ValuationItem = Schema.Struct({
   itemId: Identifier,
   direction: ValuationItemDirection,
+  controlAccountId: Identifier,
   remainingOriginalMinor: MinorUnits,
   originalScale: CurrencyScale,
   currentBookCarryingMinor: MinorUnits,
@@ -80,7 +81,6 @@ export const ValuationSelection = Schema.Struct({
   complete: Schema.Boolean,
   expectedItemCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   bookScale: CurrencyScale,
-  controlAccountId: Identifier,
   unrealizedGainAccountId: Identifier,
   unrealizedLossAccountId: Identifier,
   economicDecisionId: Identifier,
@@ -88,7 +88,7 @@ export const ValuationSelection = Schema.Struct({
   // named prior effect. The new target is still computed less CURRENT
   // carrying; the previous delta is never reapplied.
   supersedesEffectId: Schema.NullOr(Identifier),
-  items: Schema.Array(ValuationItem).check(Schema.isMinLength(1), Schema.isMaxLength(500)),
+  items: Schema.Array(ValuationItem).check(Schema.isMaxLength(500)),
 });
 
 export type ValuationSelection = typeof ValuationSelection.Type;
@@ -163,25 +163,18 @@ function addSigned(
 // Target carrying for one item: the remaining foreign quantity converted at
 // the selected reporting rate. The foreign quantity itself is unchanged.
 function targetCarrying(item: ValuationItem, bookScale: number): Checked<bigint> {
-  const scaleDifference = bookScale - item.originalScale;
-
-  if (scaleDifference < 0) {
-    return fail(
-      "UnsupportedScale",
-      `Book scale cannot be coarser than the original scale of ${item.itemId}.`,
-    );
-  }
-
-  const scaled = BigInt(item.remainingOriginalMinor) * 10n ** BigInt(scaleDifference);
-
   const converted = roundRational(
-    scaled * BigInt(item.rateNumerator),
-    BigInt(item.rateDenominator),
+    BigInt(item.remainingOriginalMinor) * BigInt(item.rateNumerator) * 10n ** BigInt(bookScale),
+    BigInt(item.rateDenominator) * 10n ** BigInt(item.originalScale),
     item.rounding,
   );
 
   if (Result.isFailure(converted)) {
     return fail("UnsupportedRate", converted.failure.message);
+  }
+
+  if (!Schema.is(MinorUnits)(amount(converted.success))) {
+    return fail("AmountOutOfRange", `Target carrying for ${item.itemId} exceeds the money codec.`);
   }
 
   return Result.succeed(converted.success);
@@ -221,12 +214,16 @@ export function prepareValuation(selection: ValuationSelection): Checked<Valuati
     const prior = BigInt(item.currentBookCarryingMinor);
     const delta = target.success - prior;
 
+    if (!Schema.is(MinorUnits)(amount(delta < 0n ? -delta : delta))) {
+      return fail("AmountOutOfRange", `Journal amount for ${item.itemId} exceeds the money codec.`);
+    }
+
     // Receivable appreciation debits the asset and credits a gain; payable
     // appreciation credits the liability and debits a loss.
     const controlSigned = item.direction === "receivable" ? delta : -delta;
 
     addSigned(journal, {
-      accountId: selection.controlAccountId,
+      accountId: item.controlAccountId,
       signedMinor: controlSigned,
       description: `FX valuation ${item.itemId}`,
     });
@@ -291,10 +288,19 @@ export function assertValuationMembership(
     plan.membership.map((member) => [member.itemId, member.capacityVersion]),
   );
 
+  if (versions.size !== plan.membership.length) {
+    return fail("StalePopulation", "The sealed population contains duplicate items.");
+  }
+
   for (const member of current) {
     if (versions.get(member.itemId) !== member.capacityVersion) {
-      return fail("StalePopulation", "An item version changed after the plan was sealed.");
+      return fail(
+        "StalePopulation",
+        "The current population contains a duplicate or changed item.",
+      );
     }
+
+    versions.delete(member.itemId);
   }
 
   return Result.succeed(current);
