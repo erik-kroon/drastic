@@ -298,7 +298,19 @@ function readControlAccounts(
   });
 }
 
-function readObligation(transaction: Transaction, scope: Scope, draft: Draft, create: boolean) {
+export function readReportingObligationInTransaction(
+  transaction: Transaction,
+  scope: Scope,
+  draft: {
+    readonly input: {
+      readonly startsOn: string;
+      readonly endsOn: string;
+      readonly periodEvidenceId: string | null;
+    };
+    readonly periodEvidenceSha256: string | null;
+  },
+  create: boolean,
+) {
   return Effect.gen(function* () {
     let periodEvidenceSha256: string | null = null;
 
@@ -981,7 +993,13 @@ export function readReclassificationBasis(
     }
 
     const control = yield* readControlAccounts(transaction, scope, input, create);
-    const obligation = yield* readObligation(transaction, scope, draft, create);
+
+    const obligation = yield* readReportingObligationInTransaction(
+      transaction,
+      scope,
+      draft,
+      create,
+    );
 
     if (
       (yield* VatDb.readEffectByObligation(transaction, scope.bookId, obligation.id))[0] !==

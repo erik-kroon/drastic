@@ -186,6 +186,7 @@ export type ClaimedRow = { readonly claimed: boolean };
 export function readClaimedLines(
   bookId: string,
   pairs: ReadonlyArray<{ readonly voucherId: string; readonly lineId: string }>,
+  excludingTaxMatchId: string | null = null,
 ) {
   if (pairs.length === 0) {
     return sql`select ''::text as "voucherId", ''::text as "lineId", false as claimed where false`;
@@ -194,7 +195,8 @@ export function readClaimedLines(
   return sql`
     select pair."voucherId", pair."lineId",
       exists(select from openerp.tax_account_match_capacity c
-        where c.book_id = ${bookId} and c.voucher_id = pair."voucherId" and c.line_id = pair."lineId")
+        where c.book_id = ${bookId} and c.voucher_id = pair."voucherId" and c.line_id = pair."lineId"
+          and c.match_id is distinct from ${excludingTaxMatchId}::text)
       or exists(select from openerp.subledger_basis_lines s
         where s.book_id = ${bookId} and s.voucher_id = pair."voucherId" and s.line_id = pair."lineId")
       or exists(select from openerp.bank_active_matches m
@@ -209,12 +211,12 @@ export function readClaimedLines(
       or exists(select from openerp.commerce_active_allocation_legs l
         where l.book_id = ${bookId} and l.payment_voucher_id = pair."voucherId"
           and l.payment_line_id = pair."lineId") as claimed
-    from unnest(array[
+    from (values
       ${sql.join(
-        pairs.map((pair) => sql`array[${pair.voucherId}, ${pair.lineId}]::text[]`),
+        pairs.map((pair) => sql`(${pair.voucherId}::text, ${pair.lineId}::text)`),
         sql`, `,
       )}
-    ]::text[][]) as pair("voucherId", "lineId")
+    ) as pair("voucherId", "lineId")
   `;
 }
 
@@ -228,8 +230,12 @@ export function readClaimedLineRows(
   transaction: Transaction,
   bookId: string,
   pairs: ReadonlyArray<{ readonly voucherId: string; readonly lineId: string }>,
+  excludingTaxMatchId: string | null = null,
 ) {
-  return transaction.execute<ClaimedPairRow>(readClaimedLines(bookId, pairs), "objects");
+  return transaction.execute<ClaimedPairRow>(
+    readClaimedLines(bookId, pairs, excludingTaxMatchId),
+    "objects",
+  );
 }
 
 export type RoleLedgerRow = { readonly item: JsonObject };

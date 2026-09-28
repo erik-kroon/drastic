@@ -170,6 +170,10 @@ export function readProtectedCorrections(tx: Transaction, book: string, voucher:
     select 'owner' as kind from openerp.owner_effects where book_id=${book} and voucher_id=${voucher}
     union all select 'financial_close' from openerp.financial_close_transfers where book_id=${book} and voucher_id=${voucher}
     union all select 'tax_account' from openerp.tax_account_match_capacity where book_id=${book} and voucher_id=${voucher}
+    union all select 'vat_assessment' from openerp.vat_assessment_receipts where book_id=${book} and voucher_id=${voucher}
+    union all select 'vat_bridge' from openerp.vat_bridge_receipts where book_id=${book} and voucher_id=${voucher}
+    union all select 'vat_assessment' from openerp.vat_assessment_receipts r join openerp.tax_account_matches m
+      on (m.book_id,m.id)=(r.book_id,r.match_ref) where r.book_id=${book} and m.voucher_id=${voucher}
     union all select 'supplier_credit' from openerp.supplier_credits where book_id=${book} and voucher_id=${voucher}
     union all select 'supplier_refund' from openerp.supplier_refunds where book_id=${book} and voucher_id=${voucher}
     union all select 'vat_reclassification' from openerp.vat_control_reclassification_effects where book_id=${book} and voucher_id=${voucher}
@@ -201,6 +205,24 @@ export function readAccountRoles(tx: Transaction, book: string, account: string)
     union all select 'owner' from openerp.owner_control_accounts where book_id=${book} and account_id=${account}
     union all select 'vat' from openerp.vat_control_account_roles where book_id=${book} and account_id=${account}
     union all select 'tax' from openerp.tax_account_sources where book_id=${book} and account_id=${account}`,
+    "objects",
+  );
+}
+
+export function readVatAssessmentPosting(tx: Transaction, book: string, eventId: string) {
+  return tx.execute<{
+    readonly body: JsonObject;
+    readonly eventKey: string;
+    readonly evidenceId: string;
+  }>(
+    sql`
+    select b.body, e.event_key as "eventKey", e.evidence_id as "evidenceId"
+    from (
+      select body, 'vat_bridge_' || id as event_key from openerp.vat_rounding_bridges
+         where book_id=${book}
+      union all select body, 'vat_assessment_' || id from openerp.vat_assessments
+         where book_id=${book}
+    ) b join openerp.events e on e.book_id=${book} and e.id=${eventId} and e.event_key=b.event_key`,
     "objects",
   );
 }

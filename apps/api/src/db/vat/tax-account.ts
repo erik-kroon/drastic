@@ -584,6 +584,18 @@ export function readMatchCapacity(transaction: Transaction, bookId: string, matc
   );
 }
 
+export function readAssessmentConsumption(
+  transaction: Transaction,
+  bookId: string,
+  matchId: string,
+) {
+  return transaction.execute<{ readonly id: string }>(
+    sql`
+    select id from openerp.vat_assessment_receipts where book_id=${bookId} and match_ref=${matchId}`,
+    "objects",
+  );
+}
+
 export function readMatchInventory(transaction: Transaction, bookId: string) {
   return transaction.execute<ItemRow>(
     sql`

@@ -1,6 +1,8 @@
 import * as Subledgers from "@open-erp/contracts/subledgers";
 import { equalJson } from "@open-erp/domain/canonicalization";
 import * as Effect from "effect/Effect";
+import * as Schema from "effect/Schema";
+import * as Accounting from "@open-erp/contracts/accounting";
 import * as Db from "../db/posting-admission";
 import * as Impact from "../db/posting-corrections";
 import * as Schedules from "../db/subledger/schedules";
@@ -73,6 +75,8 @@ export const admitPosting = Effect.fn("posting.admitOwnedSources")(function* (
   if (action.postingPurpose === "result_transfer_v1" && owner?.kind !== "financial_close")
     return yield* failure("UnsupportedProfile");
 
+  yield* admitVatAssessment(tx, scope, eventId, action, owner);
+
   if (
     action.postingPurpose === "adjustment" &&
     (yield* Db.readRecurringCapacity(tx, scope.bookId, eventId)).some(
@@ -92,6 +96,62 @@ export const admitPosting = Effect.fn("posting.admitOwnedSources")(function* (
     if (link.revisionDigest !== ready.digest) return yield* failure("StaleDependency");
     yield* validateOwnerLine(tx, scope, ready, action, link.lineId);
   }
+});
+
+const admitVatAssessment = Effect.fn("posting.admitVatAssessment")(function* (
+  tx: Transaction,
+  scope: Scope,
+  eventId: string,
+  action: JsonObject,
+  owner?: PostingOwner,
+) {
+  const rows = yield* Db.readVatAssessmentPosting(tx, scope.bookId, eventId);
+  const row = rows[0];
+
+  if (!row && owner?.kind !== "vat_assessment") return;
+
+  if (owner?.kind !== "vat_assessment") return yield* failure("ApprovalRequired");
+
+  if (!row || rows.length !== 1) return yield* failure("StaleDependency");
+
+  const retained = yield* decode(
+    Schema.Struct({
+      id: Accounting.Identifier,
+      evidence: Schema.Struct({ evidenceId: Accounting.Identifier }),
+      plan: Schema.Struct({
+        journal: Schema.Array(
+          Schema.Struct({
+            accountId: Accounting.Identifier,
+            debitMinor: Accounting.MinorUnits,
+            creditMinor: Accounting.MinorUnits,
+          }),
+        ),
+      }),
+    }),
+    row.body,
+  );
+
+  const proposed = yield* decode(
+    Schema.Struct({
+      lines: Schema.Array(
+        Schema.Struct({
+          accountId: Accounting.Identifier,
+          debitMinor: Accounting.MinorUnits,
+          creditMinor: Accounting.MinorUnits,
+        }),
+      ),
+    }),
+    action,
+  );
+
+  if (
+    action.postingPurpose !== "adjustment" ||
+    owner.id !== retained.id ||
+    row.evidenceId !== retained.evidence.evidenceId ||
+    ![`vat_bridge_${retained.id}`, `vat_assessment_${retained.id}`].includes(row.eventKey) ||
+    !equalJson(proposed.lines, retained.plan.journal)
+  )
+    return yield* failure("StaleDependency");
 });
 
 function matchesCreditedOriginal(

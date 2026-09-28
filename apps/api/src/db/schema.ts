@@ -1465,12 +1465,20 @@ export const vatAssessmentReceipts = openerp.table("vat_assessment_receipts", {
   bookId: text("book_id").notNull(),
   id: text().notNull(),
   assessmentId: text("assessment_id").notNull(),
+  assessmentIdentity: text("assessment_identity").notNull(),
+  eventId: text("event_id").notNull(),
   approvalId: text("approval_id").notNull(),
   voucherId: text("voucher_id"),
   matchRef: text("match_ref"),
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
   digest: text().notNull(),
   recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const vatAssessmentReturnBindings = openerp.table("vat_assessment_return_bindings", {
+  bookId: text("book_id").notNull(),
+  returnId: text("return_id").notNull(),
+  obligationId: text("obligation_id").notNull(),
 });
 
 export const recurringInvoiceAgreements = openerp.table("recurring_invoice_agreements", {

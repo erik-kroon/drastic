@@ -5,9 +5,9 @@ import * as Commerce from "./commerce";
 import { accountingErrors } from "./accounting-errors";
 
 // VAT assessment ownership and exact-to-assessed bridge (NEXT-37). One sealed
-// rounding bridge per actual return, one human approval each, one assessment
-// lifecycle per authority event with adoption of already-posted compatible
-// effects. The pure bridge, capture and settlement-control math lives in
+// rounding target per reporting obligation, one human approval each, one assessment
+// lifecycle per signed authority movement with adoption of already-posted compatible
+// effects or atomic posting and matching. The pure bridge, capture and settlement-control math lives in
 // @open-erp/domain/vat-assessment; this file is its wire shape.
 
 import {
@@ -48,6 +48,8 @@ export const VatRoundingBridge = Schema.Struct({
   lineageMinor: Accounting.SignedMinorUnits,
   priorMinor: Accounting.SignedMinorUnits,
   roundingReleaseId: Accounting.Identifier,
+  priorReceiptDigest: Schema.optional(Accounting.Digest),
+  postingDate: Schema.optional(Accounting.AccountingDate),
   plan: RoundingBridgePlan,
   settlementAccountId: Accounting.Identifier,
   gainAccountId: Accounting.Identifier,
@@ -88,7 +90,8 @@ export const PrepareAssessment = Schema.Struct({
   returnId: Accounting.Identifier,
   authorityPeriod: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
   assessedMinor: Accounting.SignedMinorUnits,
-  expectedRemainingMinor: Accounting.SignedMinorUnits,
+  // Retained for old clients; ignored as authority. The server derives this value.
+  expectedRemainingMinor: Schema.optional(Accounting.SignedMinorUnits),
   taxAccountEventId: Accounting.Identifier,
   settlementAccountId: Accounting.Identifier,
   taxAccountControlId: Accounting.Identifier,
@@ -109,6 +112,8 @@ export const ExecuteAssessment = Schema.Struct({
 });
 
 export const VatAssessment = Schema.Struct({
+  // Preparation identity: renewal uses a fresh ID/digest and approval while
+  // retaining the authority identity below. Only a successful receipt consumes it.
   id: Accounting.Identifier,
   scope: Accounting.Scope,
   version: Schema.Literal(1),
@@ -129,6 +134,9 @@ export const VatAssessment = Schema.Struct({
   createdAt: Schema.String,
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
+  movementMeaning: Schema.optional(Schema.Literal("signed_statement_movement")),
+  sourceDigest: Schema.optional(Accounting.Digest),
+  priorReceiptDigest: Schema.optional(Accounting.Digest),
 });
 
 export const AssessmentApproval = Schema.Struct({
@@ -142,6 +150,8 @@ export const AssessmentApproval = Schema.Struct({
   expiresAt: Schema.String,
   createdAt: Schema.String,
   receipt: Commerce.CommandReceipt,
+  sourceDigest: Schema.optional(Accounting.Digest),
+  priorReceiptDigest: Schema.optional(Accounting.Digest),
 });
 
 export const VatAssessmentStatus = Schema.Struct({
@@ -153,6 +163,8 @@ export const VatAssessmentStatus = Schema.Struct({
   bridgeDeltaTotalMinor: Accounting.SignedMinorUnits,
   assessedTotalMinor: Accounting.SignedMinorUnits,
   expectedSettlementMinor: Accounting.SignedMinorUnits,
+  // Unique captured signed movements minus this return's reported book-minor
+  // target, including pending movements. It is not a sum of successive residuals.
   pendingDifferenceTotalMinor: Accounting.SignedMinorUnits,
   discrepancy: Schema.Boolean,
   bridgeIds: Schema.Array(Accounting.Identifier),

@@ -613,7 +613,6 @@ export function recordTaxAccountMatch(
 ) {
   return Effect.gen(function* () {
     yield* requireTaxAccountAccess(transaction, true);
-    yield* Db.lockBookForUpdate(transaction, scope);
 
     const count = yield* TaxDb.readCount(transaction, "tax_account_matches", scope.bookId);
 
@@ -773,6 +772,13 @@ export const unmatchEvent = Effect.fn("taxAccount.unmatchEvent")(function* (
         }
 
         if (
+          (yield* TaxDb.readAssessmentConsumption(transaction, command.scope.bookId, match.id))
+            .length > 0
+        ) {
+          return yield* failure("StaleDependency");
+        }
+
+        if (
           (yield* TaxDb.readMatchCapacity(transaction, command.scope.bookId, match.id))[0]
             ?.reserved !== true
         ) {
@@ -857,9 +863,12 @@ function readMatchView(
       return yield* failure("InternalError");
     }
 
-    const claimed = (yield* ReclassDb.readClaimedLineRows(transaction, bookId, [
-      { voucherId: match.basis.line.voucherId, lineId: match.basis.line.lineId },
-    ])).some((claim) => claim.claimed);
+    const claimed = (yield* ReclassDb.readClaimedLineRows(
+      transaction,
+      bookId,
+      [{ voucherId: match.basis.line.voucherId, lineId: match.basis.line.lineId }],
+      match.id,
+    )).some((claim) => claim.claimed);
 
     const usable =
       active &&
@@ -885,6 +894,92 @@ function readMatchView(
     };
   });
 }
+
+// The caller holds the book writer lock. Assessment consumes a signed statement
+// movement, never a provider's unspecified full-replacement assessment amount.
+export const readAssessmentSourceInTransaction = Effect.fn("taxAccount.assessmentSource")(
+  function* (
+    transaction: Transaction,
+    scope: Scope,
+    eventId: string,
+    accountId: string,
+    assessedMinor: string,
+  ) {
+    yield* requireTaxAccountAccess(transaction, false);
+    yield* admitAccountRole(transaction, scope.bookId, accountId, "tax");
+    const book = yield* readBook(transaction, scope);
+    const event = (yield* TaxDb.readEvent(transaction, scope.bookId, eventId))[0];
+
+    if (!event) return yield* failure("NotFound");
+    const statement = (yield* TaxDb.readStatement(transaction, scope.bookId, event.statementId))[0];
+
+    if (!statement) return yield* failure("NotFound");
+    const source = yield* decode(StatementSchema, statement.body);
+    const row = source.events[event.ordinal - 1];
+    const classification = yield* readEventClassification(transaction, scope.bookId, eventId);
+    const account = (yield* Db.readAccounts(transaction, scope.bookId, [accountId]))[0];
+
+    if (
+      !row ||
+      !account?.active ||
+      row.id !== eventId ||
+      event.accountId !== accountId ||
+      source.input.accountId !== accountId ||
+      source.input.currency !== book.currency ||
+      source.input.currencyScale !== book.currencyScale ||
+      BigInt(row.input.amountMinor) !== -BigInt(assessedMinor) ||
+      !["tax_charge", "tax_credit"].includes(classification.effectiveClassification) ||
+      (BigInt(assessedMinor) > 0n && classification.effectiveClassification !== "tax_charge") ||
+      (BigInt(assessedMinor) < 0n && classification.effectiveClassification !== "tax_credit")
+    ) {
+      return yield* failure("InvalidJournal");
+    }
+
+    const sourceDigest = yield* digestValue({
+      statementDigest: source.digest,
+      event: row,
+      classification: classificationBody(classification),
+      accountVersion: account.version.toString(),
+      writerEpoch: book.writerEpoch.toString(),
+      profileVersion: book.profileVersion.toString(),
+    });
+
+    return { statementDigest: source.digest, sourceDigest, occurredOn: row.input.occurredOn };
+  },
+);
+
+export const readAssessmentMatchInTransaction = Effect.fn("taxAccount.assessmentMatch")(function* (
+  transaction: Transaction,
+  scope: Scope,
+  matchId: string,
+  eventId: string,
+  accountId: string,
+  assessedMinor: string,
+) {
+  const row = (yield* TaxDb.readMatch(transaction, scope.bookId, matchId))[0];
+
+  if (!row) return yield* failure("NotFound");
+  const match = yield* decode(MatchSchema, row.body);
+  const view = yield* readMatchView(transaction, scope.bookId, match);
+
+  if (
+    !view.active ||
+    !view.usable ||
+    view.unmatch !== null ||
+    match.basis.event.id !== eventId ||
+    match.basis.accountId !== accountId ||
+    match.basis.line.voucherId !== row.voucherId ||
+    match.basis.line.lineId !== row.lineId ||
+    BigInt(match.basis.line.debitMinor) - BigInt(match.basis.line.creditMinor) !==
+      -BigInt(assessedMinor)
+  ) {
+    return yield* failure("StaleDependency");
+  }
+
+  yield* readAssessmentSourceInTransaction(transaction, scope, eventId, accountId, assessedMinor);
+
+  return row;
+});
 
 export const getMatch = Effect.fn("taxAccount.getMatch")(function* (
   token: string,

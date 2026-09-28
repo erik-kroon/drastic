@@ -33,6 +33,7 @@ export const assessmentTables = [
   "vat_assessments",
   "vat_assessment_approvals",
   "vat_assessment_receipts",
+  "vat_assessment_return_bindings",
 ] as const;
 
 export const assessmentInserts = [
@@ -45,6 +46,7 @@ export const assessmentInserts = [
   "change_sets",
   "events",
   "command_receipts",
+  "vat_assessment_return_bindings",
 ] as const;
 
 export type BodyRow = {
@@ -61,12 +63,14 @@ export type ReturnBasisRow = {
   readonly reportedNetMinor: string;
   readonly residualNetMinor: string;
   readonly digest: string;
+  readonly qualified: boolean;
   readonly body: JsonObject;
 };
 
 export type BridgeRow = BodyRow & {
   readonly returnId: string;
   readonly deltaMinor: string;
+  readonly executed: boolean;
 };
 
 export type ApprovalRow = {
@@ -102,7 +106,7 @@ export function readReturnBasis(transaction: Transaction, bookId: string, return
         exact_net_minor::text as "exactNetMinor",
         reported_net_minor::text as "reportedNetMinor",
         residual_net_minor::text as "residualNetMinor",
-        digest, body
+        digest, body, calculation_supported as qualified
       from openerp.vat_actual_returns
       where book_id = ${bookId} and id = ${returnId}
     `,
@@ -113,10 +117,14 @@ export function readReturnBasis(transaction: Transaction, bookId: string, return
 export function readBridgesForReturn(transaction: Transaction, bookId: string, returnId: string) {
   return transaction.execute<BridgeRow>(
     sql`
-      select id, return_id as "returnId", delta_minor::text as "deltaMinor", body
-      from openerp.vat_rounding_bridges
-      where book_id = ${bookId} and return_id = ${returnId}
-      order by recorded_at, id collate "C"
+      select b.id, b.return_id as "returnId", b.delta_minor::text as "deltaMinor", b.body,
+        exists(select from openerp.vat_bridge_receipts x where (x.book_id,x.bridge_id)=(b.book_id,b.id)) as executed
+      from openerp.vat_rounding_bridges b
+      join openerp.vat_actual_returns r on (r.book_id,r.id)=(b.book_id,b.return_id)
+      join openerp.vat_actual_returns target on target.book_id=r.book_id and target.id=${returnId}
+        and (r.starts_on,r.ends_on)=(target.starts_on,target.ends_on)
+      where b.book_id = ${bookId}
+      order by b.recorded_at, b.id collate "C"
     `,
     "objects",
   );
@@ -125,7 +133,8 @@ export function readBridgesForReturn(transaction: Transaction, bookId: string, r
 export function readBridge(transaction: Transaction, bookId: string, bridgeId: string) {
   return transaction.execute<BridgeRow>(
     sql`
-      select id, return_id as "returnId", delta_minor::text as "deltaMinor", body
+      select id, return_id as "returnId", delta_minor::text as "deltaMinor", body,
+        exists(select from openerp.vat_bridge_receipts x where (x.book_id,x.bridge_id)=(vat_rounding_bridges.book_id,vat_rounding_bridges.id)) as executed
       from openerp.vat_rounding_bridges
       where book_id = ${bookId} and id = ${bridgeId}
     `,
@@ -275,27 +284,31 @@ export function readAssessmentsForReturn(
 ) {
   return transaction.execute<AssessmentRow>(
     sql`
-      select id, assessment_identity as "assessmentIdentity", return_id as "returnId",
-        event_id as "eventId", body
-      from openerp.vat_assessments
-      where book_id = ${bookId} and return_id = ${returnId}
-      order by recorded_at, id collate "C"
+      select a.id, a.assessment_identity as "assessmentIdentity", a.return_id as "returnId",
+        a.event_id as "eventId", a.body
+      from openerp.vat_assessments a
+      join openerp.vat_actual_returns r on (r.book_id,r.id)=(a.book_id,a.return_id)
+      join openerp.vat_actual_returns target on target.book_id=r.book_id and target.id=${returnId}
+        and (r.starts_on,r.ends_on)=(target.starts_on,target.ends_on)
+      where a.book_id = ${bookId}
+      order by a.recorded_at, a.id collate "C"
     `,
     "objects",
   );
 }
 
-export function readAssessmentByIdentity(
+export function readExecutedAssessmentByIdentity(
   transaction: Transaction,
   bookId: string,
   assessmentIdentity: string,
 ) {
   return transaction.execute<AssessmentRow>(
     sql`
-      select id, assessment_identity as "assessmentIdentity", return_id as "returnId",
-        event_id as "eventId", body
-      from openerp.vat_assessments
-      where book_id = ${bookId} and assessment_identity = ${assessmentIdentity}
+      select a.id, a.assessment_identity as "assessmentIdentity", a.return_id as "returnId",
+        a.event_id as "eventId", a.body
+      from openerp.vat_assessments a
+      join openerp.vat_assessment_receipts r on (r.book_id,r.assessment_id)=(a.book_id,a.id)
+      where a.book_id = ${bookId} and a.assessment_identity = ${assessmentIdentity}
     `,
     "objects",
   );
@@ -313,18 +326,16 @@ export function readAssessment(transaction: Transaction, bookId: string, assessm
   );
 }
 
-export function readAssessmentByMatch(
+export function readExecutedAssessmentByMatch(
   transaction: Transaction,
   bookId: string,
   matchRef: string,
-  excludingAssessmentId?: string,
 ) {
   return transaction.execute<{ readonly present: boolean }>(
     sql`
       select exists (
-        select 1 from openerp.vat_assessments
+        select 1 from openerp.vat_assessment_receipts
         where book_id = ${bookId} and match_ref = ${matchRef}
-          and (id is distinct from ${excludingAssessmentId ?? null}::text)
       ) as present
     `,
     "objects",
@@ -378,6 +389,8 @@ export function insertAssessmentReceipt(
     readonly bookId: string;
     readonly id: string;
     readonly assessmentId: string;
+    readonly eventId: string;
+    readonly assessmentIdentity: string;
     readonly approvalId: string;
     readonly voucherId: string | null;
     readonly matchRef: string | null;
@@ -389,8 +402,8 @@ export function insertAssessmentReceipt(
   return transaction.execute(
     sql`
       insert into openerp.vat_assessment_receipts
-        (book_id, id, assessment_id, approval_id, voucher_id, match_ref, body, digest, recorded_at)
-      values (${row.bookId}, ${row.id}, ${row.assessmentId}, ${row.approvalId}, ${row.voucherId},
+        (book_id, id, assessment_id, event_id, assessment_identity, approval_id, voucher_id, match_ref, body, digest, recorded_at)
+      values (${row.bookId}, ${row.id}, ${row.assessmentId}, ${row.eventId}, ${row.assessmentIdentity}, ${row.approvalId}, ${row.voucherId},
         ${row.matchRef}, ${JSON.stringify(row.body)}::jsonb, ${row.digest},
         ${row.recordedAt}::timestamptz)
     `,
@@ -509,6 +522,84 @@ export function readBankSourceConflict(
         where book_id = ${bookId} and account_id = any(${textArray(accountIds)})
       ) as present
     `,
+    "objects",
+  );
+}
+
+export function readReviewer(transaction: Transaction, bookId: string, approvalId: string) {
+  return transaction.execute<{ readonly actorId: string }>(
+    sql`
+    select actor_id as "actorId" from openerp.vat_bridge_approvals where book_id=${bookId} and id=${approvalId}
+    union select actor_id from openerp.vat_assessment_approvals where book_id=${bookId} and id=${approvalId}
+    order by "actorId"`,
+    "objects",
+  );
+}
+
+export function bindReturn(
+  transaction: Transaction,
+  bookId: string,
+  returnId: string,
+  obligationId: string,
+) {
+  return transaction.execute(
+    sql`
+    insert into openerp.vat_assessment_return_bindings(book_id,return_id,obligation_id)
+    values(${bookId},${returnId},${obligationId}) on conflict (book_id,return_id) do nothing`,
+    "objects",
+  );
+}
+
+export function readCurrentReturn(transaction: Transaction, bookId: string, returnId: string) {
+  return transaction.execute<{ readonly id: string }>(
+    sql`
+    select r.id from openerp.vat_actual_returns r join openerp.vat_actual_returns target
+      on (r.book_id,r.starts_on,r.ends_on)=(target.book_id,target.starts_on,target.ends_on)
+    where target.book_id=${bookId} and target.id=${returnId}
+    order by r.ordinal desc limit 1`,
+    "objects",
+  );
+}
+
+export function readEffectiveAssessments(
+  transaction: Transaction,
+  bookId: string,
+  returnId: string,
+) {
+  return transaction.execute<{
+    readonly id: string;
+    readonly amount: string;
+    readonly assessmentIdentity: string;
+  }>(
+    sql`
+    select a.id, a.body->>'assessedMinor' as amount, a.assessment_identity as "assessmentIdentity" from openerp.vat_assessments a
+    join openerp.vat_assessment_receipts e on (e.book_id,e.assessment_id)=(a.book_id,a.id)
+    join openerp.vat_actual_returns r on (r.book_id,r.id)=(a.book_id,a.return_id)
+    join openerp.vat_actual_returns target on (target.book_id,target.starts_on,target.ends_on)=(r.book_id,r.starts_on,r.ends_on)
+    where a.book_id=${bookId} and target.id=${returnId} order by a.id collate "C"`,
+    "objects",
+  );
+}
+
+export function readEventConsumption(transaction: Transaction, bookId: string, eventId: string) {
+  return transaction.execute<{ readonly id: string }>(
+    sql`
+    select a.id from openerp.vat_assessments a join openerp.vat_assessment_receipts r
+      on (r.book_id,r.assessment_id)=(a.book_id,a.id)
+    where a.book_id=${bookId} and a.event_id=${eventId}`,
+    "objects",
+  );
+}
+
+export function readObligationEffects(transaction: Transaction, bookId: string, returnId: string) {
+  return transaction.execute<{ readonly voucherId: string | null }>(
+    sql`
+    select e.voucher_id as "voucherId" from openerp.vat_control_reclassification_effects e
+    join openerp.vat_reporting_obligations o on (o.book_id,o.id)=(e.book_id,e.obligation_id)
+    join openerp.vat_actual_returns r on (r.book_id,r.starts_on,r.ends_on)=(o.book_id,o.starts_on,o.ends_on)
+    where r.book_id=${bookId} and r.id=${returnId} and e.outcome='posted'
+      and o.registration_namespace='synthetic' and o.registration_id='synthetic_registration'
+      and o.scheme='synthetic_output_input_v1' and o.jurisdiction='SE'`,
     "objects",
   );
 }
