@@ -3,9 +3,17 @@ import * as Statements from "@open-erp/contracts/report-statements";
 import * as CloseContract from "@open-erp/contracts/financial-close";
 import {
   assembleIxbrl,
+  bindStatementFacts,
+  checkDraftSemantics,
+  deriveComparativeSupport,
+  displayDecimals,
   finalizeSemanticReport,
   preparePresentation,
+  SupportedK2Releases,
+  type ComparativeBasis,
   type ReportFailure,
+  type SemanticFactRequest,
+  type StatementRowAmount,
 } from "@open-erp/domain/annual-report";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
@@ -47,6 +55,8 @@ const HistorySchema = Report.AnnualReportHistory;
 
 const SnapshotSchema = Statements.StatementSnapshot;
 
+const StatementRowSchema = Statements.StatementModelRow;
+
 const CloseCertificateSchema = CloseContract.FinancialCloseCertificate;
 
 type Draft = typeof Report.AnnualReportDraft.Type;
@@ -69,6 +79,31 @@ function reportAccess(transaction: Transaction, inserts: ReadonlyArray<string>) 
       return denied ? unsupported() : Effect.void;
     }),
   );
+}
+
+// A financial fact is only ever its retained statement row's own amount. The
+// client names the row; this owner reads the amount from the sealed row body.
+function readStatementRowAmount(
+  transaction: Transaction,
+  scope: Scope,
+  snapshotId: string,
+  rowId: string,
+) {
+  return Effect.gen(function* () {
+    const [row] = yield* StatementDb.readStatementRow(transaction, scope.bookId, snapshotId, rowId);
+
+    if (row === undefined) return yield* failure("NotFound");
+
+    const statementRow = yield* decode(StatementRowSchema, row.body);
+
+    if (statementRow.rowId !== rowId) return yield* failure("StaleDependency");
+
+    return {
+      snapshotId,
+      rowId,
+      amountMinor: statementRow.amountMinor,
+    } satisfies StatementRowAmount;
+  });
 }
 
 function refusalFor(reportFailure: ReportFailure) {
@@ -247,9 +282,56 @@ export const prepareAnnualReport = Effect.fn("reports.annual-report.prepare")(fu
       }
     }
 
-    const narrativesApproved = command.input.narratives.every(
-      (section) => section.approvedBy !== null,
+    // A financial fact is sealed from the retained statement rows it names,
+    // so a client can name a row and cite evidence but never state the amount.
+    const currentRows = yield* collectRowAmounts(
+      transaction,
+      command.scope,
+      command.input.facts,
+      command.input.statementSnapshotIds,
     );
+
+    const comparativeRows = yield* collectRowAmounts(
+      transaction,
+      command.scope,
+      command.input.comparativeFacts,
+      command.input.comparativeSnapshotIds,
+    );
+
+    const sealed = bindStatementFacts({ facts: command.input.facts, rows: currentRows });
+
+    if (Result.isFailure(sealed)) return yield* refusalFor(sealed.failure);
+
+    const sealedComparatives = bindStatementFacts({
+      facts: command.input.comparativeFacts,
+      rows: comparativeRows,
+    });
+
+    if (Result.isFailure(sealedComparatives)) return yield* refusalFor(sealedComparatives.failure);
+
+    const basis: Array<ComparativeBasis> = [];
+
+    for (const snapshotId of command.input.comparativeSnapshotIds) {
+      const snapshot = yield* readSnapshot(transaction, command.scope, snapshotId, null);
+
+      basis.push({ snapshotId, fiscalYear: snapshot.fiscalYear.id.slice(-4) });
+    }
+
+    const comparativeSupport = deriveComparativeSupport({
+      currentFiscalYear: year.endsOn.slice(0, 4),
+      currentSnapshotIds: command.input.statementSnapshotIds,
+      currentFacts: sealed.success,
+      comparatives: basis,
+      comparativeFacts: sealedComparatives.success,
+    });
+
+    if (Result.isFailure(comparativeSupport)) {
+      return yield* refusalFor(comparativeSupport.failure);
+    }
+
+    if (!SupportedK2Releases.includes(command.input.frameworkRelease)) {
+      return yield* unsupported();
+    }
 
     const draftId = newId("annual_draft");
     const fiscalYear = year.endsOn.slice(0, 4);
@@ -271,16 +353,11 @@ export const prepareAnnualReport = Effect.fn("reports.annual-report.prepare")(fu
         derivedMinor: requirement.derivedMinor,
         reviewedExplicitFact: requirement.reviewedExplicitFact,
       })),
-      facts: command.input.facts.map((fact) => ({
-        semanticId: fact.semanticId,
-        valueMinor: fact.valueMinor,
-        notApplicable: fact.notApplicable,
-        evidenceRefs: [...fact.evidenceRefs],
-        calculationRefs: [...fact.calculationRefs],
-      })),
-      narratives: command.input.narratives.map((section) => ({ ...section })),
-      narrativesApproved,
+      facts: sealed.success,
+      comparativeFacts: sealedComparatives.success,
       comparativeSupported: true,
+      narratives: command.input.narratives.map((section) => ({ ...section })),
+      narrativeApprovalRef: null,
       evidence,
       createdAt: yield* isoNow(transaction),
       receipt: commandReceipt(command.idempotencyKey, "prepare_annual_report", principal.actorId),
@@ -317,6 +394,30 @@ export const prepareAnnualReport = Effect.fn("reports.annual-report.prepare")(fu
   });
 });
 
+// Collects the retained row amounts the named row-bound facts resolve
+// against. A fact naming a snapshot outside the permitted set is a stale
+// dependency, not a silently ignored fact.
+function collectRowAmounts(
+  transaction: Transaction,
+  scope: Scope,
+  facts: ReadonlyArray<SemanticFactRequest>,
+  permitted: ReadonlyArray<string>,
+) {
+  return Effect.gen(function* () {
+    const amounts: Array<StatementRowAmount> = [];
+
+    for (const fact of facts) {
+      if (!("rowId" in fact)) continue;
+
+      if (!permitted.includes(fact.snapshotId)) return yield* failure("StaleDependency");
+
+      amounts.push(yield* readStatementRowAmount(transaction, scope, fact.snapshotId, fact.rowId));
+    }
+
+    return amounts;
+  });
+}
+
 function draftBlockers(transaction: Transaction, scope: Scope, draft: Draft) {
   return Effect.gen(function* () {
     const blockers: Array<string> = [];
@@ -331,29 +432,31 @@ function draftBlockers(transaction: Transaction, scope: Scope, draft: Draft) {
       blockers.push("The financial-close certificate is no longer active.");
     }
 
-    const finalized = finalizeSemanticReport(
-      {
-        draftId: draft.id,
-        fiscalYear: draft.fiscalYear,
-        frameworkRelease: draft.frameworkRelease,
-        frameworkSupported: true,
-        closeCertificateRef: draft.closeCertificateId,
-        statementSnapshotIds: draft.input.statementSnapshotIds,
-        requirements: draft.requirements,
-        facts: draft.facts,
-        narrativesApproved: draft.narrativesApproved,
-        comparativeSupported: draft.comparativeSupported,
-      },
-      draft.id,
-      draft.digest,
-    );
+    // Approval must not depend on the approval it creates, so the narrative
+    // approval gate is evaluated at finalization, not here.
+    const semantic = checkDraftSemantics(draftModel(draft));
 
-    if (Result.isFailure(finalized)) {
-      blockers.push(finalized.failure.code);
-    }
+    if (semantic !== null) blockers.push(semantic.code);
 
     return blockers;
   });
+}
+
+// The sealed model as the pure leaf sees it. Only the narrative approval
+// reference is left to the caller, because it is the approval being created.
+function draftModel(draft: Draft) {
+  return {
+    draftId: draft.id,
+    fiscalYear: draft.fiscalYear,
+    frameworkRelease: draft.frameworkRelease,
+    closeCertificateRef: draft.closeCertificateId,
+    statementSnapshotIds: draft.input.statementSnapshotIds,
+    requirements: draft.requirements,
+    facts: draft.facts,
+    narrativeApprovalRef: draft.narrativeApprovalRef,
+    comparativeSupported: draft.comparativeSupported,
+    comparativeSnapshotIds: draft.input.comparativeSnapshotIds,
+  };
 }
 
 export const approveAnnualReport = Effect.fn("reports.annual-report.approve")(function* (
@@ -512,19 +615,10 @@ export const finalizeAnnualReport = Effect.fn("reports.annual-report.finalize")(
 
     const reportId = newId("annual_report");
 
+    // The retained four-eyes approval is what approves the narrative content,
+    // because the approval digest covers the exact sealed draft body.
     const finalized = finalizeSemanticReport(
-      {
-        draftId: draft.id,
-        fiscalYear: draft.fiscalYear,
-        frameworkRelease: draft.frameworkRelease,
-        frameworkSupported: true,
-        closeCertificateRef: draft.closeCertificateId,
-        statementSnapshotIds: draft.input.statementSnapshotIds,
-        requirements: draft.requirements,
-        facts: draft.facts,
-        narrativesApproved: draft.narrativesApproved,
-        comparativeSupported: draft.comparativeSupported,
-      },
+      { ...draftModel(draft), narrativeApprovalRef: approval.id },
       reportId,
       draft.digest,
     );
@@ -628,31 +722,23 @@ export const prepareReportPresentation = Effect.fn("reports.annual-report.presen
     const draft = yield* decode(DraftSchema, draftRow.body);
     const sealedFacts = new Map(draft.facts.map((fact) => [fact.semanticId, fact]));
 
-    for (const presented of command.input.facts) {
-      const sealed = sealedFacts.get(presented.semanticId);
-
-      if (
-        sealed === undefined ||
-        sealed.valueMinor === null ||
-        sealed.valueMinor !== presented.sourceMinor
-      ) {
-        return yield* failure("InvalidJournal");
-      }
-    }
+    if (sealedFacts.size === 0) return yield* failure("InvalidJournal");
 
     const presentationId = newId("annual_presentation");
 
+    // Displayed values are derived here from the sealed facts, so a client
+    // cannot restate a financial fact in a presentation.
     const revision = preparePresentation({
       presentationId,
       report: final.summary,
-      facts: [...command.input.facts],
-      expectedTotalMinor: command.input.expectedTotalMinor,
-      presentationOnlyRows: [...command.input.presentationOnlyRows],
+      sealedFacts: draft.facts,
+      displayRule: command.input.displayRule,
+      totals: command.input.totals,
       presentationDigest: yield* digest({
         presentationId,
         finalId: final.id,
-        facts: command.input.facts,
-        rows: command.input.presentationOnlyRows,
+        displayRule: command.input.displayRule,
+        totals: command.input.totals,
       }),
     });
 
@@ -769,12 +855,15 @@ export const renderReportArtifact = Effect.fn("reports.annual-report.render")(fu
         continue;
       }
 
+      // The encoded value is the exact sealed source amount. Precision comes
+      // from the presentation's display rule, so the rendered number can never
+      // be a second, differently rounded value than the one displayed.
       mappedFacts.push({
         concept: mapping.concept,
         contextRef: mapping.contextRef,
         unitRef: mapping.unitRef,
-        valueMinor: presented.displayedMinor,
-        decimals: mapping.decimals,
+        valueMinor: presented.sourceMinor,
+        decimals: displayDecimals(presentation.revision.displayRule),
       });
     }
 
@@ -789,6 +878,7 @@ export const renderReportArtifact = Effect.fn("reports.annual-report.render")(fu
         dimensions: [...context.dimensions],
       })),
       units: [...command.input.units],
+      taxonomyRelease: command.input.taxonomyRelease,
       unmappedConcepts,
     });
 
@@ -809,6 +899,7 @@ export const renderReportArtifact = Effect.fn("reports.annual-report.render")(fu
       contentHash,
       mediaType: "application/xhtml+xml",
       sizeBytes,
+      taxonomyRelease: assembled.success.taxonomyRelease,
       factCount: assembled.success.factCount,
       contextCount: assembled.success.contextCount,
       unitCount: assembled.success.unitCount,

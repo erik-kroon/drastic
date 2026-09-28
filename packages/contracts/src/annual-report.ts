@@ -12,22 +12,28 @@ import { accountingErrors } from "./accounting-errors";
 
 import {
   DisclosureRequirement,
+  DisplayRule,
   FinalSemanticReport,
   IxbrlContext,
   IxbrlFact,
-  PresentedFact,
+  PresentedTotal,
   PresentationRevision,
   SemanticFact,
+  SemanticFactRequest,
+  SyntheticTaxonomyRelease,
 } from "@open-erp/domain/annual-report";
 
 export {
   DisclosureRequirement,
+  DisplayRule,
   FinalSemanticReport,
   IxbrlFact,
   IxbrlContext,
-  PresentedFact,
+  PresentedTotal,
   PresentationRevision,
   SemanticFact,
+  SemanticFactRequest,
+  SyntheticTaxonomyRelease,
 };
 
 // A reviewed disclosure requirement. An applicable requirement carries either
@@ -42,38 +48,29 @@ export const ReportDisclosureInput = Schema.Struct({
   evidenceId: Schema.NullOr(Accounting.Identifier),
 });
 
-// A reviewed semantic fact. Narratives, governance assertions and other
-// non-ledger facts arrive here as explicit reviewed values; the compiler
-// never derives them from ledger balances.
-export const ReportFactInput = Schema.Struct({
-  semanticId: Accounting.Identifier,
-  valueMinor: Schema.NullOr(Accounting.SignedMinorUnits),
-  notApplicable: Schema.Boolean,
-  evidenceRefs: Schema.Array(Accounting.Identifier).check(
-    Schema.isMinLength(1),
-    Schema.isMaxLength(20),
-  ),
-  calculationRefs: Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(20)),
-});
+// A reviewed semantic fact. A ledger fact names its retained statement row
+// and states no amount; a non-financial fact states an explicitly reviewed
+// amount with its evidence. The seal derives every ledger amount from the
+// retained row, so a client can never assert a financial fact's number.
+export const ReportFactInput = SemanticFactRequest;
 
-// A narrative section carries only approved content. An unapproved or draft
-// section keeps the whole report a draft; the human approval seals exactly
-// the content it reviewed.
+// A narrative section carries only approved content. Approval is the retained
+// draft approval, so no client names its own approver here: a preparer cannot
+// approve the narrative it just wrote by asserting an approver id.
 export const NarrativeSection = Schema.Struct({
   sectionId: Accounting.Identifier,
   title: Accounting.Description,
   approvedContent: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(65536)),
-  approvedBy: Schema.NullOr(Accounting.Identifier),
 });
 
 // A reviewed taxonomy concept mapping. Concept QNames, context rules and
 // datatypes are qualified data carried here, never invented by the renderer.
+// Precision is not a client choice: it follows the presentation's display rule.
 export const ConceptMapping = Schema.Struct({
   semanticId: Accounting.Identifier,
   concept: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256)),
   contextRef: Accounting.Identifier,
   unitRef: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
-  decimals: Schema.String.check(Schema.isPattern(/^-?[0-9]{1,6}$/)),
 });
 
 export const ReportContextInput = Schema.Struct({
@@ -91,6 +88,7 @@ export const PrepareAnnualReport = Schema.Struct({
     Schema.isMaxLength(10),
   ),
   comparativeSnapshotIds: Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(10)),
+  comparativeFacts: Schema.Array(ReportFactInput).check(Schema.isMaxLength(500)),
   missingHistoryNote: Schema.NullOr(Accounting.Description),
   frameworkRelease: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
   eligibilityEvidenceId: Accounting.Identifier,
@@ -122,9 +120,12 @@ export const AnnualReportDraft = Schema.Struct({
   frameworkRelease: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
   requirements: Schema.Array(DisclosureRequirement),
   facts: Schema.Array(SemanticFact),
-  narratives: Schema.Array(NarrativeSection),
-  narrativesApproved: Schema.Boolean,
+  comparativeFacts: Schema.Array(SemanticFact),
   comparativeSupported: Schema.Boolean,
+  narratives: Schema.Array(NarrativeSection),
+  // The sealed draft is never itself approved, so this stays null. The
+  // retained four-eyes approval is what approves the narrative content.
+  narrativeApprovalRef: Schema.NullOr(Accounting.Identifier),
   evidence: Commerce.EvidenceReference,
   createdAt: Schema.String,
   receipt: Commerce.CommandReceipt,
@@ -158,16 +159,13 @@ export const AnnualReportFinal = Schema.Struct({
   digest: Accounting.Digest,
 });
 
+// The client chooses only a display rule and the totals it reconciles. Every
+// displayed amount is derived from the sealed fact it came from, so a client
+// can neither restate a financial fact nor assert a meaningless grand total.
 export const PrepareReportPresentation = Schema.Struct({
   finalId: Accounting.Identifier,
-  facts: Schema.Array(PresentedFact).check(Schema.isMinLength(1), Schema.isMaxLength(500)),
-  expectedTotalMinor: Accounting.SignedMinorUnits,
-  presentationOnlyRows: Schema.Array(
-    Schema.Struct({
-      label: Accounting.Identifier,
-      amountMinor: Accounting.SignedMinorUnits,
-    }),
-  ).check(Schema.isMaxLength(20)),
+  displayRule: DisplayRule,
+  totals: Schema.Array(PresentedTotal).check(Schema.isMinLength(1), Schema.isMaxLength(20)),
 });
 
 export const ReportPresentation = Schema.Struct({
@@ -184,6 +182,7 @@ export const ReportPresentation = Schema.Struct({
 export const RenderReportArtifact = Schema.Struct({
   presentationId: Accounting.Identifier,
   entityIdentifier: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(128)),
+  taxonomyRelease: SyntheticTaxonomyRelease,
   units: Schema.Array(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64))).check(
     Schema.isMinLength(1),
     Schema.isMaxLength(10),
@@ -202,6 +201,7 @@ export const ReportArtifact = Schema.Struct({
   contentHash: Accounting.Digest,
   mediaType: Schema.Literal("application/xhtml+xml"),
   sizeBytes: Schema.Int,
+  taxonomyRelease: SyntheticTaxonomyRelease,
   factCount: Accounting.MinorUnits,
   contextCount: Accounting.MinorUnits,
   unitCount: Accounting.MinorUnits,
