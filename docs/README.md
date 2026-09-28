@@ -29,6 +29,7 @@ The [open-accounting decision](adr/0005-open-accounting-and-managed-services.md)
 | [Accounted comparison reconciliation](plans/16-comparison-reconciliation.md) | Which FWD proposals still apply, and which existing owners deliver them? |
 | [Reference parity backlog](plans/11-parity-backlog.md)  | What does the reference implementation still owe us, as work packets and preserved rule logic?             |
 | [Reference parity ledger](plans/14-parity-ledger.md) | Which parts of the reference are we at parity with, better than, or short — and which shortfalls have no owner? |
+| [ERPNext/Frappe reference review](plans/17-erpnext-reference-review.md) | Which ERPNext/Frappe concepts and algorithms are adoptable, under which license terms, and where would they live? |
 | [Reference-derived defects](plans/13-reference-derived-defects.md) | What is already shipped that is wrong, and how is it fixed without editing the reviewed baseline? |
 | [NEXT dossier plan](plans/12-next-implementation-dossier.md) | What does the vendored NEXT-01…50 implementation design say for each work item, and which maintained packet owns it? |
 | [Vendored specifications](specs/README.md)             | Which external design documents are stored here, at which pinned revision, and how to verify them?           |

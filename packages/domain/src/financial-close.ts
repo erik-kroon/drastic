@@ -52,11 +52,7 @@ function amount(value: bigint) {
   return value.toString();
 }
 
-export const FamilyControlStatus = Schema.Literals([
-  "required_met",
-  "not_applicable",
-  "blocker",
-]);
+export const FamilyControlStatus = Schema.Literals(["required_met", "not_applicable", "blocker"]);
 
 export type FamilyControlStatus = typeof FamilyControlStatus.Type;
 
@@ -238,9 +234,7 @@ export type OpeningProjectionInput = typeof OpeningProjectionInput.Type;
 // cash, asset or liability journal: old-year postings already establish
 // those balances, so an extra cash journal refuses here.
 export function projectClosing(input: OpeningProjectionInput): Checked<ReadonlyArray<BalanceLine>> {
-  const doubleCounted = input.movementJournalIds.find((id) =>
-    input.openingJournalIds.includes(id),
-  );
+  const doubleCounted = input.movementJournalIds.find((id) => input.openingJournalIds.includes(id));
 
   if (doubleCounted !== undefined) {
     return fail(
@@ -305,10 +299,7 @@ export function assertCloseConservation(
   current: CloseCurrent,
 ): Checked<FinalProposal> {
   if (current.closeBasisVersion !== plan.closeBasisVersion) {
-    return fail(
-      "StaleCloseBasis",
-      "The close basis moved after the final proposal was sealed.",
-    );
+    return fail("StaleCloseBasis", "The close basis moved after the final proposal was sealed.");
   }
 
   const blocker = current.controls.find((control) => control.status === "blocker");

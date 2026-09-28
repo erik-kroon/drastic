@@ -179,7 +179,9 @@ export type AdmitInput = typeof AdmitInput.Type;
 // check, refuses an unresolved prior attempt without a provider-safe
 // continuation, and otherwise opens one attempt with stable correlation.
 export function admitSubmission(input: AdmitInput): Checked<SubmissionAttempt> {
-  const replayed = input.priorAttempts.find((attempt) => attempt.intentId === input.intent.intentId);
+  const replayed = input.priorAttempts.find(
+    (attempt) => attempt.intentId === input.intent.intentId,
+  );
 
   if (replayed !== undefined) {
     return Result.succeed(replayed);
@@ -274,10 +276,7 @@ export function advanceSubmissionState(
     return Result.succeed("needs_review");
   }
 
-  return fail(
-    "IllegalTransition",
-    `Observation ${observation} is not allowed from ${current}.`,
-  );
+  return fail("IllegalTransition", `Observation ${observation} is not allowed from ${current}.`);
 }
 
 export const AuthorityReceipt = Schema.Struct({

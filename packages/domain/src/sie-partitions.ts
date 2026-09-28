@@ -150,8 +150,7 @@ export function resolveObjectAssignment(
 
   const candidates = mappings.filter(
     (entry) =>
-      entry.sourceDimensionId === sourceDimensionId &&
-      entry.sourceObjectCode === sourceObjectCode,
+      entry.sourceDimensionId === sourceDimensionId && entry.sourceObjectCode === sourceObjectCode,
   );
 
   if (candidates.length !== 1 || candidates[0] === undefined) {

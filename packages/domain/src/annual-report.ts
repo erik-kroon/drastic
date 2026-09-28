@@ -135,10 +135,7 @@ export function finalizeSemanticReport(
   }
 
   if (!draft.comparativeSupported) {
-    return fail(
-      "UnsupportedComparison",
-      "An unsupported comparative basis blocks finalization.",
-    );
+    return fail("UnsupportedComparison", "An unsupported comparative basis blocks finalization.");
   }
 
   if (!draft.narrativesApproved) {
@@ -182,9 +179,7 @@ export const PresentationRevision = Schema.Struct({
   modelDigest: Digest,
   displayUnit: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(16)),
   facts: Schema.Array(PresentedFact),
-  presentationOnlyRows: Schema.Array(
-    Schema.Struct({ label: Identifier, amountMinor: MinorUnits }),
-  ),
+  presentationOnlyRows: Schema.Array(Schema.Struct({ label: Identifier, amountMinor: MinorUnits })),
   presentationDigest: Digest,
 });
 
@@ -195,9 +190,7 @@ export const PreparePresentationInput = Schema.Struct({
   report: FinalSemanticReport,
   facts: Schema.Array(PresentedFact),
   expectedTotalMinor: MinorUnits,
-  presentationOnlyRows: Schema.Array(
-    Schema.Struct({ label: Identifier, amountMinor: MinorUnits }),
-  ),
+  presentationOnlyRows: Schema.Array(Schema.Struct({ label: Identifier, amountMinor: MinorUnits })),
   presentationDigest: Digest,
 });
 
@@ -207,7 +200,9 @@ export type PreparePresentationInput = typeof PreparePresentationInput.Type;
 // provenance. Displayed totals must reconcile through an explicit
 // presentation-only row or refuse; no balancing journal is ever created
 // for display rounding.
-export function preparePresentation(input: PreparePresentationInput): Checked<PresentationRevision> {
+export function preparePresentation(
+  input: PreparePresentationInput,
+): Checked<PresentationRevision> {
   let displayed = 0n;
 
   for (const fact of input.facts) {
@@ -221,10 +216,7 @@ export function preparePresentation(input: PreparePresentationInput): Checked<Pr
   }
 
   if (displayed + adjustment !== BigInt(input.expectedTotalMinor)) {
-    return fail(
-      "PresentationMismatch",
-      "Displayed facts do not reconcile to the declared total.",
-    );
+    return fail("PresentationMismatch", "Displayed facts do not reconcile to the declared total.");
   }
 
   return Result.succeed({
@@ -262,7 +254,9 @@ export const IxbrlAssemblyInput = Schema.Struct({
   mappedFacts: Schema.Array(IxbrlFact),
   contexts: Schema.Array(IxbrlContext),
   units: Schema.Array(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64))),
-  unmappedConcepts: Schema.Array(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256))),
+  unmappedConcepts: Schema.Array(
+    Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256)),
+  ),
 });
 
 export type IxbrlAssemblyInput = typeof IxbrlAssemblyInput.Type;
@@ -298,10 +292,7 @@ export function assembleIxbrl(input: IxbrlAssemblyInput): Checked<IxbrlDocument>
   }
 
   if (input.report.modelDigest !== input.presentation.modelDigest) {
-    return fail(
-      "FinancialMismatch",
-      "The presentation does not belong to the finalized model.",
-    );
+    return fail("FinancialMismatch", "The presentation does not belong to the finalized model.");
   }
 
   const contextRefs = new Set(input.contexts.map((context) => context.contextRef));
@@ -340,10 +331,7 @@ export function assembleIxbrl(input: IxbrlAssemblyInput): Checked<IxbrlDocument>
     const prior = seen.get(key);
 
     if (prior !== undefined && prior !== fact.valueMinor) {
-      return fail(
-        "DuplicateFactConflict",
-        "Duplicate facts carry inconsistent values.",
-      );
+      return fail("DuplicateFactConflict", "Duplicate facts carry inconsistent values.");
     }
 
     seen.set(key, fact.valueMinor);

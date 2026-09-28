@@ -65,9 +65,7 @@ export const CashRow = Schema.Struct({
   kind: CashRowKind,
   activity: Schema.NullOr(CashActivity),
   originRef: Schema.NullOr(Identifier),
-  transferId: Schema.NullOr(
-    Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
-  ),
+  transferId: Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200))),
   witnessRef: Schema.NullOr(Identifier),
 });
 
@@ -76,9 +74,7 @@ export type CashRow = typeof CashRow.Type;
 export const CashFlowInput = Schema.Struct({
   periodStartsOn: AccountingDate,
   periodEndsOn: AccountingDate,
-  recordedCutoff: Schema.String.check(
-    Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/),
-  ),
+  recordedCutoff: Schema.String.check(Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)),
   openingCashMinor: SignedMinorUnits,
   actualClosingCashMinor: SignedMinorUnits,
   sourceControlsComplete: Schema.Boolean,
@@ -125,10 +121,7 @@ export function calculateCashFlow(input: CashFlowInput): Checked<CashFlowStateme
 
     if (row.kind === "valuation_effect") {
       if (row.witnessRef === null) {
-        return fail(
-          "NonCashRow",
-          `Valuation row ${row.rowId} needs its exact owner witness.`,
-        );
+        return fail("NonCashRow", `Valuation row ${row.rowId} needs its exact owner witness.`);
       }
 
       totals.exchange += signed;

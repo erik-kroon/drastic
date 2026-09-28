@@ -200,10 +200,7 @@ export type PrepareAwardInput = typeof PrepareAwardInput.Type;
 // instead of falling back to direct payment.
 export function prepareTripAward(input: PrepareAwardInput): Checked<TripAwardPlan> {
   if (input.priorAwardTripIds.includes(input.trip.id)) {
-    return fail(
-      "DuplicateTripClaim",
-      "This trip already has an award under an earlier key.",
-    );
+    return fail("DuplicateTripClaim", "This trip already has an award under an earlier key.");
   }
 
   if (input.overlappingTripIds.includes(input.trip.id)) {
@@ -262,10 +259,7 @@ export type SameKeyAwardInput = typeof SameKeyAwardInput.Type;
 // The same trip under a second key recovers no second award.
 export function replayTripAward(input: SameKeyAwardInput): Checked<TripAwardPlan> {
   if (input.tripRevisionId !== input.existingTripRevisionId) {
-    return fail(
-      "DuplicateTripClaim",
-      "A different trip cannot reuse a committed award identity.",
-    );
+    return fail("DuplicateTripClaim", "A different trip cannot reuse a committed award identity.");
   }
 
   if (input.commandKey !== input.existingCommandKey) {
@@ -330,7 +324,11 @@ export function correctTripAward(input: TripCorrectionInput): Checked<TripCorrec
 
     if (Result.isFailure(replacement)) return Result.fail(replacement.failure);
 
-    return Result.succeed({ kind: "replacing_award", correctionId: input.correctionId, plan: replacement.success });
+    return Result.succeed({
+      kind: "replacing_award",
+      correctionId: input.correctionId,
+      plan: replacement.success,
+    });
   }
 
   if (input.lawfulRecoveryBasis === null) {
@@ -344,8 +342,12 @@ export function correctTripAward(input: TripCorrectionInput): Checked<TripCorrec
     kind: "consumed_delta",
     correctionId: input.correctionId,
     originalAwardId: input.plan.awardId,
-    exemptDeltaMinor: (BigInt(split.success.exemptPaidPartMinor) - BigInt(input.plan.split.exemptPaidPartMinor)).toString(),
-    taxableDeltaMinor: (BigInt(split.success.taxablePartMinor) - BigInt(input.plan.split.taxablePartMinor)).toString(),
+    exemptDeltaMinor: (
+      BigInt(split.success.exemptPaidPartMinor) - BigInt(input.plan.split.exemptPaidPartMinor)
+    ).toString(),
+    taxableDeltaMinor: (
+      BigInt(split.success.taxablePartMinor) - BigInt(input.plan.split.taxablePartMinor)
+    ).toString(),
     recoveryBasis: input.lawfulRecoveryBasis,
   });
 }

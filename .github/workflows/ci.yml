@@ -34,6 +34,10 @@ jobs:
         id: install
         timeout-minutes: 5
         run: bun install --frozen-lockfile
+      - name: Build applications and generate frontend types
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 5
+        run: bun run build
       - name: Check formatting
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 2
@@ -46,10 +50,6 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 5
         run: bun run check-types
-      - name: Build applications
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        timeout-minutes: 5
-        run: bun run build
 
   # The E2E suite is the only place the application is proven against a real
   # PostgreSQL: it applies every migration, provisions the restricted runtime
@@ -95,6 +95,14 @@ jobs:
             }
             "${bindir}/${binary}" --version
           done
+
+      - name: Build applications for self-host proof
+        timeout-minutes: 5
+        run: bun run build
+
+      - name: Install pinned Chromium for browser proof
+        timeout-minutes: 5
+        run: bun run --cwd apps/api playwright install --with-deps chromium
 
       - name: Run E2E against real PostgreSQL
         id: e2e

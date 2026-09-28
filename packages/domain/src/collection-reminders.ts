@@ -47,12 +47,7 @@ export const ReminderStage = Schema.Literals(["first", "follow_up", "final"]);
 
 export type ReminderStage = typeof ReminderStage.Type;
 
-export const AttemptOutcome = Schema.Literals([
-  "accepted",
-  "delivered",
-  "failed",
-  "unknown",
-]);
+export const AttemptOutcome = Schema.Literals(["accepted", "delivered", "failed", "unknown"]);
 
 export type AttemptOutcome = typeof AttemptOutcome.Type;
 
@@ -140,10 +135,7 @@ export function approveReminder(
   nowIso: string,
 ): Checked<ReminderApproval> {
   if (approval.digest !== intent.contentDigest) {
-    return fail(
-      "DigestMismatch",
-      "The approval must cover the exact sealed reminder digest.",
-    );
+    return fail("DigestMismatch", "The approval must cover the exact sealed reminder digest.");
   }
 
   if (nowIso > intent.expiresAt) {
@@ -173,10 +165,7 @@ export function admitReminderDispatch(
   }
 
   if (current.superseded) {
-    return fail(
-      "SupersededReminder",
-      "A superseding reminder resolution blocks this admission.",
-    );
+    return fail("SupersededReminder", "A superseding reminder resolution blocks this admission.");
   }
 
   if (current.disputeHold) {

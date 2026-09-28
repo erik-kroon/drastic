@@ -130,10 +130,7 @@ export function compileFuturePayAdjustment(
   input: FuturePayAdjustmentInput,
 ): Checked<FuturePayInstruction> {
   if (input.lawfulOffsetBasis === null) {
-    return fail(
-      "MissingLawfulBasis",
-      "A future-pay adjustment needs a qualified offset right.",
-    );
+    return fail("MissingLawfulBasis", "A future-pay adjustment needs a qualified offset right.");
   }
 
   const delta = BigInt(input.grossDeltaMinor);
@@ -196,10 +193,7 @@ export type GrossRecoveryPlan = typeof GrossRecoveryPlan.Type;
 // number is a duplicate, never a replacement.
 export function compileGrossRecoveryClaim(input: GrossRecoveryInput): Checked<GrossRecoveryPlan> {
   if (input.enforceableClaimEvidence === null) {
-    return fail(
-      "MissingLawfulBasis",
-      "A gross recovery needs enforceable claim evidence.",
-    );
+    return fail("MissingLawfulBasis", "A gross recovery needs enforceable claim evidence.");
   }
 
   const claimed = BigInt(input.claimedGrossMinor);
@@ -269,10 +263,7 @@ export function recordRecoveryCash(input: RecoveryCashInput): Checked<RecoveryCa
   }
 
   if (received > remaining) {
-    return fail(
-      "CashOverAllocated",
-      "The receipt exceeds the remaining gross receivable.",
-    );
+    return fail("CashOverAllocated", "The receipt exceeds the remaining gross receivable.");
   }
 
   return Result.succeed({

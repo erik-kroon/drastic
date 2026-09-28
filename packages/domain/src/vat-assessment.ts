@@ -57,11 +57,14 @@ export type AssessmentJournalLines = typeof AssessmentJournalLines.Type;
 
 type JournalLine = AssessmentJournalLine;
 
-function addSigned(lines: Array<JournalLine>, line: {
-  readonly accountId: string;
-  readonly signedMinor: bigint;
-  readonly description: string;
-}) {
+function addSigned(
+  lines: Array<JournalLine>,
+  line: {
+    readonly accountId: string;
+    readonly signedMinor: bigint;
+    readonly description: string;
+  },
+) {
   if (line.signedMinor === 0n) return;
 
   lines.push({
@@ -194,10 +197,7 @@ export type AssessmentPlan = typeof AssessmentPlan.Type;
 // for the tax-account match in the same application transaction.
 export function prepareAssessment(input: AssessmentInput): Checked<AssessmentPlan> {
   if (input.knownAssessmentIdentities.includes(input.assessmentIdentity)) {
-    return fail(
-      "AlreadyApplied",
-      "This assessment identity is already financially represented.",
-    );
+    return fail("AlreadyApplied", "This assessment identity is already financially represented.");
   }
 
   const assessed = BigInt(input.assessedMinor);

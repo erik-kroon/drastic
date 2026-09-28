@@ -252,10 +252,7 @@ export function selectPayoutRoute(input: PayoutRouteInput): Checked<PayoutRoute>
   const liability = BigInt(input.liabilityMinor);
 
   if (reimbursable <= 0n || reimbursable > liability) {
-    return fail(
-      "CapacityExceeded",
-      "The routed amount must stay within the employee liability.",
-    );
+    return fail("CapacityExceeded", "The routed amount must stay within the employee liability.");
   }
 
   if (input.kind === "payroll" && input.payrollInstructionRef === null) {

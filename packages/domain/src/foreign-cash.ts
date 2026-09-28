@@ -166,11 +166,14 @@ export type ForeignCashJournalLines = typeof ForeignCashJournalLines.Type;
 
 type JournalLine = ForeignCashJournalLine;
 
-function addSigned(lines: Array<JournalLine>, line: {
-  readonly accountId: string;
-  readonly signedMinor: bigint;
-  readonly description: string;
-}) {
+function addSigned(
+  lines: Array<JournalLine>,
+  line: {
+    readonly accountId: string;
+    readonly signedMinor: bigint;
+    readonly description: string;
+  },
+) {
   if (line.signedMinor === 0n) return;
 
   lines.push({
@@ -368,8 +371,7 @@ export function valueCashHolding(
     return fail("ConsumedHistoryValuation", "The reporting rate needs a positive denominator.");
   }
 
-  const target =
-    (BigInt(nativeUnitsMinor) * BigInt(reportingRateNumerator)) / denominator;
+  const target = (BigInt(nativeUnitsMinor) * BigInt(reportingRateNumerator)) / denominator;
 
   if ((BigInt(nativeUnitsMinor) * BigInt(reportingRateNumerator)) % denominator !== 0n) {
     return fail(

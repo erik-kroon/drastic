@@ -59,9 +59,7 @@ export const WorkRef = Schema.Struct({
   severity: WorkSeverity,
   affectedPeriod: Schema.NullOr(Identifier),
   blockedOperation: Schema.NullOr(Identifier),
-  missingInputs: Schema.Array(
-    Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(128)),
-  ),
+  missingInputs: Schema.Array(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(128))),
   nextPermittedPreparation: Schema.NullOr(Identifier),
   immutableRef: Identifier,
   digest: Digest,
@@ -86,9 +84,7 @@ export const BookContextSnapshot = Schema.Struct({
   principalScopeFingerprint: Digest,
   bookId: Identifier,
   goal: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(128)),
-  recordedCutoff: Schema.String.check(
-    Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/),
-  ),
+  recordedCutoff: Schema.String.check(Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)),
   ledgerBoundary: Identifier,
   contextVersion: MinorUnits,
   modules: Schema.Array(ModuleSummary),
@@ -105,10 +101,7 @@ export type BookContextSnapshot = typeof BookContextSnapshot.Type;
 export function assertModuleCompleteness(module: ModuleSummary): Checked<ModuleSummary> {
   if (module.status === "unavailable" || module.status === "not_authorized") {
     if (BigInt(module.rowCount) !== 0n) {
-      return fail(
-        "UnavailableAsZero",
-        "An unavailable module cannot contribute work rows.",
-      );
+      return fail("UnavailableAsZero", "An unavailable module cannot contribute work rows.");
     }
 
     return Result.succeed(module);
@@ -143,9 +136,7 @@ export const RankWorkInput = Schema.Struct({
   snapshot: BookContextSnapshot,
   goal: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(128)),
   period: Schema.NullOr(Identifier),
-  deadlineUrgency: Schema.Array(
-    Schema.Struct({ identity: Identifier, dueRank: MinorUnits }),
-  ),
+  deadlineUrgency: Schema.Array(Schema.Struct({ identity: Identifier, dueRank: MinorUnits })),
 });
 
 export type RankWorkInput = typeof RankWorkInput.Type;
@@ -170,7 +161,9 @@ export function rankWork(input: RankWorkInput): Checked<RankedWork> {
 
   const relevant = input.snapshot.work.filter(
     (item) =>
-      (input.period === null || item.affectedPeriod === null || item.affectedPeriod === input.period) &&
+      (input.period === null ||
+        item.affectedPeriod === null ||
+        item.affectedPeriod === input.period) &&
       (item.blockedOperation === null ||
         input.snapshot.allowedCapabilities.includes(item.blockedOperation)),
   );
@@ -273,11 +266,17 @@ export function getContextDelta(input: DeltaInput): Checked<ContextDelta> {
   }
 
   if (input.base.contextVersion !== input.target.contextVersion) {
-    return fail("ContextVersionMismatch", "A delta needs supported context versions on both sides.");
+    return fail(
+      "ContextVersionMismatch",
+      "A delta needs supported context versions on both sides.",
+    );
   }
 
   const keyOf = (owner: string, identity: string) => `${owner}\u0000${identity}`;
-  const baseByKey = new Map(input.base.work.map((item) => [keyOf(item.owner, item.identity), item]));
+
+  const baseByKey = new Map(
+    input.base.work.map((item) => [keyOf(item.owner, item.identity), item]),
+  );
 
   const targetByKey = new Map(
     input.target.work.map((item) => [keyOf(item.owner, item.identity), item]),

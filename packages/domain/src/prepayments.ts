@@ -143,7 +143,6 @@ function periodWeight(
   return end > start ? dayCount(start, end) : 0n;
 }
 
-
 export const PrepaymentInput = Schema.Struct({
   costMinor: MinorUnits,
   serviceStartOn: AccountingDate,
@@ -305,14 +304,15 @@ export type AccrualResolutionInput = typeof AccrualResolutionInput.Type;
 // Resolving an accrual with the actual invoice: release the consumed
 // liability, post the signed expense true-up (a credit on overestimate,
 // never a plug) and the qualified deductible tax, and recognize the payable.
-export function resolveAccrualWithInvoice(
-  input: AccrualResolutionInput,
-): Checked<{ readonly trueUpMinor: string; readonly journal: ReadonlyArray<{
-  readonly accountId: string;
-  readonly debitMinor: string;
-  readonly creditMinor: string;
-  readonly description: string;
-}> }> {
+export function resolveAccrualWithInvoice(input: AccrualResolutionInput): Checked<{
+  readonly trueUpMinor: string;
+  readonly journal: ReadonlyArray<{
+    readonly accountId: string;
+    readonly debitMinor: string;
+    readonly creditMinor: string;
+    readonly description: string;
+  }>;
+}> {
   if (input.knownResolutionIds.includes(input.resolutionId)) {
     return fail(
       "DuplicateResolution",
@@ -330,10 +330,7 @@ export function resolveAccrualWithInvoice(
   }
 
   if (consumed < 0n || consumed > remaining) {
-    return fail(
-      "IncompleteCoverage",
-      "Consumed accrual must stay within the remaining accrual.",
-    );
+    return fail("IncompleteCoverage", "Consumed accrual must stay within the remaining accrual.");
   }
 
   // The signed true-up: positive debits expense on underestimate, negative

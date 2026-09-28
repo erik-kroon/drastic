@@ -288,9 +288,7 @@ export function resolveDirectoryBalances(input: DirectoryViewInput): Checked<Arr
 }
 
 export const IdentityBasis = Schema.Struct({
-  memberEpochs: Schema.Array(
-    Schema.Struct({ partyId: Identifier, identityEpoch: MinorUnits }),
-  ),
+  memberEpochs: Schema.Array(Schema.Struct({ partyId: Identifier, identityEpoch: MinorUnits })),
   redirectClosures: Schema.Array(
     Schema.Struct({ partyId: Identifier, closure: Schema.Array(Identifier) }),
   ),
@@ -313,16 +311,11 @@ export function assertResolutionCurrent(
 ): Checked<PartyResolution> {
   const epochs = new Map(current.memberEpochs.map((entry) => [entry.partyId, entry.identityEpoch]));
 
-  const closures = new Map(
-    current.redirectClosures.map((entry) => [entry.partyId, entry.closure]),
-  );
+  const closures = new Map(current.redirectClosures.map((entry) => [entry.partyId, entry.closure]));
 
   for (const member of resolution.members) {
     if (epochs.get(member.partyId) !== member.identityEpoch) {
-      return fail(
-        "StaleIdentityBasis",
-        "A member epoch moved since the resolution was prepared.",
-      );
+      return fail("StaleIdentityBasis", "A member epoch moved since the resolution was prepared.");
     }
 
     const closure = closures.get(member.partyId) ?? [];

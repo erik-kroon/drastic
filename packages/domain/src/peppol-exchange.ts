@@ -122,10 +122,7 @@ export function reconcileBisTotals(input: ReconcileInput): Checked<BisTotals> {
   }
 
   if (document.documentType === "CreditNote" && document.originalInvoiceRef === null) {
-    return fail(
-      "SemanticMismatch",
-      "A credit document needs its original-invoice reference.",
-    );
+    return fail("SemanticMismatch", "A credit document needs its original-invoice reference.");
   }
 
   let lineNet = 0n;
@@ -309,10 +306,7 @@ export function receiveEnvelope(input: ReceiveEnvelopeInput): Checked<InboxOutco
     }
 
     if (input.retainedOccurrenceId === null) {
-      return fail(
-        "IntegrityIncident",
-        "A retained message without its occurrence cannot replay.",
-      );
+      return fail("IntegrityIncident", "A retained message without its occurrence cannot replay.");
     }
 
     return Result.succeed({ kind: "replayed", occurrenceId: input.retainedOccurrenceId });

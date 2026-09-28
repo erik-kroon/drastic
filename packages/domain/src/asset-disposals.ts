@@ -69,10 +69,7 @@ export const DispositionBasis = Schema.Struct({
 
 export type DispositionBasis = typeof DispositionBasis.Type;
 
-export const ProceedsIdentity = Schema.String.check(
-  Schema.isMinLength(1),
-  Schema.isMaxLength(200),
-);
+export const ProceedsIdentity = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200));
 
 export const UnpostedCashProceeds = Schema.Struct({
   kind: Schema.Literal("unposted_cash_sale"),

@@ -144,7 +144,9 @@ function oldAmount(
   accountingOn: string,
   role: AttributionRole,
 ): bigint {
-  const line = oldEffective.find((entry) => entry.accountingOn === accountingOn && entry.role === role);
+  const line = oldEffective.find(
+    (entry) => entry.accountingOn === accountingOn && entry.role === role,
+  );
 
   return line === undefined ? 0n : BigInt(line.amountMinor);
 }
@@ -346,7 +348,10 @@ export function assertRepairCurrent(
   }
 
   if (current.knownRepairKeys.includes(plan.repairKey)) {
-    return fail("AlreadyApplied", "The repair key is already applied; reuse the aggregate receipt.");
+    return fail(
+      "AlreadyApplied",
+      "The repair key is already applied; reuse the aggregate receipt.",
+    );
   }
 
   return Result.succeed(plan);

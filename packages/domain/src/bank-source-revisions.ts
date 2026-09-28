@@ -405,10 +405,7 @@ export type PrepareAdmissionInput = typeof PrepareAdmissionInput.Type;
 // is prepared through the existing intake owner.
 export function prepareBankAdmission(input: PrepareAdmissionInput): Checked<AdmissionPlan> {
   if (!input.terminalSupported) {
-    return fail(
-      "StaleRevisionBasis",
-      "Only a terminal supported observation can be admitted.",
-    );
+    return fail("StaleRevisionBasis", "Only a terminal supported observation can be admitted.");
   }
 
   if (!input.revisionCurrent) {
@@ -416,10 +413,7 @@ export function prepareBankAdmission(input: PrepareAdmissionInput): Checked<Admi
   }
 
   if (input.materialConflictOpen) {
-    return fail(
-      "MaterialConflictUnresolved",
-      "An unresolved material conflict blocks admission.",
-    );
+    return fail("MaterialConflictUnresolved", "An unresolved material conflict blocks admission.");
   }
 
   if (input.sameEventRelation !== null) {
@@ -475,10 +469,7 @@ export function replayAdmission(input: SameKeyAdmissionInput): Checked<typeof Id
   }
 
   if (input.rawDigest !== input.existingRawDigest) {
-    return fail(
-      "IdempotencyConflict",
-      "The same command key carries a different source revision.",
-    );
+    return fail("IdempotencyConflict", "The same command key carries a different source revision.");
   }
 
   return Result.succeed(input.existingObservationId);

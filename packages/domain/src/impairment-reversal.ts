@@ -325,17 +325,11 @@ export function disposeZeroCarryingAsset(input: ZeroDisposalInput): Checked<Zero
     BigInt(input.accumulatedImpairmentMinor);
 
   if (carrying !== 0n) {
-    return fail(
-      "WrongValuationKind",
-      "This disposal path is only for zero-carrying assets.",
-    );
+    return fail("WrongValuationKind", "This disposal path is only for zero-carrying assets.");
   }
 
   if (BigInt(input.proceedsMinor) !== 0n) {
-    return fail(
-      "WrongValuationKind",
-      "Proceeds belong to the disposal-with-proceeds owner.",
-    );
+    return fail("WrongValuationKind", "Proceeds belong to the disposal-with-proceeds owner.");
   }
 
   return Result.succeed({
@@ -359,10 +353,7 @@ export type ReviveInput = typeof ReviveInput.Type;
 // another evidenced event.
 export function refuseRevival(input: ReviveInput): Checked<typeof Identifier.Type> {
   if (input.scheduleState === "disposed") {
-    return fail(
-      "DisposalRevivalRefused",
-      "A disposed asset cannot be revived by valuation.",
-    );
+    return fail("DisposalRevivalRefused", "A disposed asset cannot be revived by valuation.");
   }
 
   return Result.succeed(input.assetId);

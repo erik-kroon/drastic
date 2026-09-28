@@ -342,14 +342,16 @@ export type HolidayAdjustmentInput = typeof HolidayAdjustmentInput.Type;
 
 // The control adjustment toward the target. Negative deltas reverse the
 // relevant accrual effects; they never touch paid wages.
-export function compileHolidayAdjustment(
-  input: HolidayAdjustmentInput,
-): Checked<{ readonly moneyDeltaMinor: string; readonly socialDeltaMinor: string; readonly journal: ReadonlyArray<{
-  readonly accountId: string;
-  readonly debitMinor: string;
-  readonly creditMinor: string;
-  readonly description: string;
-}> }> {
+export function compileHolidayAdjustment(input: HolidayAdjustmentInput): Checked<{
+  readonly moneyDeltaMinor: string;
+  readonly socialDeltaMinor: string;
+  readonly journal: ReadonlyArray<{
+    readonly accountId: string;
+    readonly debitMinor: string;
+    readonly creditMinor: string;
+    readonly description: string;
+  }>;
+}> {
   const targetValue = BigInt(input.target.valueMinor);
   const currentMoney = BigInt(input.currentMoneyLiabilityMinor);
 

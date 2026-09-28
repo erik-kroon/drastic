@@ -7,14 +7,14 @@ User authorization: the initial Vitest work was approved on 2026-09-22. On 2026-
 The user explicitly approved focused E2E additions for the architecture-review fixes.
 These failure contracts precede the new test implementation:
 
-| Given / when | Required observation and counterfactual |
-| --- | --- |
-| Fresh migrated runtime role admits, executes, reviews, cancels and retries extraction | Immutable request rows need no UPDATE grant; one retained result survives redelivery. Removing lifecycle UPDATE permission is detected. Locking the immutable request again must fail this journey. |
-| Executor credential, identity admission or book membership is revoked before capture or while object reading is paused | No unauthorized source read before capture; no result publication after revocation. Restoring authority permits the same durable request to resume. A wrong entity/book scope is refused. |
-| Requester session ends after admitting service-intent work | Current authorized executor can finish; cancellation or supersession still fences publication independently of session expiry. |
-| More than 200 accepted historical drafts, then a new draft | Creation succeeds, bounded pages cover retained heads, accepted revisions remain readable and ledger history is unchanged by listing. Restoring the lifetime cap must fail. |
-| Duplicate pages cross draft and registered-invoice anchors | Both emitted cursor kinds resume; wrong-context, malformed and invalid-kind/revision cursors fail. Exact nonzero, zero and unknown summary totals retain their meanings. |
-| Swedish calendar crosses summer/winter month/year boundaries | Actual company overview and backend admission use Stockholm dates; an open page refreshes at midnight and after tab suspension. Restoring UTC slicing must fail. |
+| Given / when                                                                                                           | Required observation and counterfactual                                                                                                                                                             |
+| ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fresh migrated runtime role admits, executes, reviews, cancels and retries extraction                                  | Immutable request rows need no UPDATE grant; one retained result survives redelivery. Removing lifecycle UPDATE permission is detected. Locking the immutable request again must fail this journey. |
+| Executor credential, identity admission or book membership is revoked before capture or while object reading is paused | No unauthorized source read before capture; no result publication after revocation. Restoring authority permits the same durable request to resume. A wrong entity/book scope is refused.           |
+| Requester session ends after admitting service-intent work                                                             | Current authorized executor can finish; cancellation or supersession still fences publication independently of session expiry.                                                                      |
+| More than 200 accepted historical drafts, then a new draft                                                             | Creation succeeds, bounded pages cover retained heads, accepted revisions remain readable and ledger history is unchanged by listing. Restoring the lifetime cap must fail.                         |
+| Duplicate pages cross draft and registered-invoice anchors                                                             | Both emitted cursor kinds resume; wrong-context, malformed and invalid-kind/revision cursors fail. Exact nonzero, zero and unknown summary totals retain their meanings.                            |
+| Swedish calendar crosses summer/winter month/year boundaries                                                           | Actual company overview and backend admission use Stockholm dates; an open page refreshes at midnight and after tab suspension. Restoring UTC slicing must fail.                                    |
 
 The seam is HTTP into workerd/PostgreSQL plus the real Bun extraction handler with
 a controlled retained-object adapter for publication races. Browser observations
