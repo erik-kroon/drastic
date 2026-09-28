@@ -81,6 +81,7 @@
     "./roles": "./src/roles.ts",
     "./payroll-calculations": "./src/payroll-calculations.ts",
     "./corporate-tax": "./src/corporate-tax.ts",
+    "./annual-report": "./src/annual-report.ts",
     "./expense-tax": "./src/expense-tax.ts",
     "./owner-register": "./src/owner-register.ts",
     "./financial-close": "./src/financial-close.ts",

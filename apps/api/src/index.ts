@@ -28,6 +28,7 @@ import { McpRoutes } from "./transport/mcp";
 import { type Bindings, RequestEnvironment } from "./runtime/environment";
 import { ReportHandlers } from "./transport/http/routes/reports";
 import { ReportStatementHandlers } from "./transport/http/routes/report-statements";
+import { AnnualReportHandlers } from "./transport/http/routes/annual-report";
 import { PurchaseRecognitionHandlers } from "./transport/http/routes/purchase-recognition";
 import { ServicePurchaseHandlers } from "./transport/http/routes/service-purchases";
 import { CaseHandlers } from "./transport/http/routes/cases";
@@ -117,6 +118,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     AccountingHandlers,
     ReportHandlers,
     ReportStatementHandlers,
+    AnnualReportHandlers,
     PurchaseRecognitionHandlers,
     ReconciliationHandlers,
     CaseHandlers,

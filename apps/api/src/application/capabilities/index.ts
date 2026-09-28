@@ -16,6 +16,7 @@ import { runCaseCapabilities } from "./runs-cases";
 import { periodWorkCapabilities } from "./period-work";
 import { reportCapabilities } from "./reports";
 import { reportStatementCapabilities } from "./report-statements";
+import { annualReportCapabilities } from "./annual-report";
 import { sourceIntakeCapabilities } from "./source-intake";
 import { fxCapabilities } from "./fx";
 import { reviewCapabilities } from "./review";
@@ -46,6 +47,7 @@ export const capabilities = {
   ...periodWorkCapabilities,
   ...reportCapabilities,
   ...reportStatementCapabilities,
+  ...annualReportCapabilities,
   ...sourceIntakeCapabilities,
   ...fxCapabilities,
   ...reviewCapabilities,

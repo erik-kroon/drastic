@@ -1350,6 +1350,59 @@ export const financialReopenEvents = openerp.table("financial_reopen_events", {
   recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
 });
 
+// NEXT-24: K2 annual-report semantic model and iXBRL. Versioned SQL
+// migrations own the DDL; this is the typed mapping.
+export const annualReportDrafts = openerp.table("annual_report_drafts", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  closeCertificateId: text("close_certificate_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const annualReportApprovals = openerp.table("annual_report_approvals", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  draftId: text("draft_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  actorId: text("actor_id").notNull(),
+  digest: text().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const annualReportFinals = openerp.table("annual_report_finals", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  draftId: text("draft_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const annualReportPresentations = openerp.table("annual_report_presentations", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  finalId: text("final_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const annualReportArtifacts = openerp.table("annual_report_artifacts", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  presentationId: text("presentation_id").notNull(),
+  finalId: text("final_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
 export const recurringInvoiceAgreements = openerp.table("recurring_invoice_agreements", {
   bookId: text("book_id").notNull(),
   id: text().notNull(),
