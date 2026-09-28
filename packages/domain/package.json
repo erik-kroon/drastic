@@ -28,6 +28,7 @@
     "./document-signatures": "./src/document-signatures.ts",
     "./paid-payroll-recovery": "./src/paid-payroll-recovery.ts",
     "./impairment-reversal": "./src/impairment-reversal.ts",
+    "./rehearsal-verification": "./src/rehearsal-verification.ts",
     "./fx-remeasurement": "./src/fx-remeasurement.ts",
     "./customer-credits": "./src/customer-credits.ts",
     "./cash-method": "./src/cash-method.ts",
