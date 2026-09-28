@@ -434,20 +434,54 @@ export function prepareSupplierRefund(input: SupplierRefundInput): Checked<Suppl
   });
 }
 
-// If a payment is reversed after a refund receivable or cash refund depends
-// on it, the standalone reversal is rejected: an owned correction must
-// restore the payment, credit and refund relationships together.
-export function refuseConsumedHistoryReversal(input: PaidPositionInput): Checked<PaidPosition> {
-  const position = derivePaidPosition(input);
+// A standalone payment reversal is rejected when a posted refund receivable
+// or cash refund already depends on the payment being reversed. The caller
+// passes the retained prior position (before the reversal) alongside the
+// posterior position (after it); both are derived here so no caller-supplied
+// calculated effect is trusted. An owned correction must restore the
+// payment, credit and refund relationships together instead.
+export function refuseConsumedHistoryReversal(
+  prior: PaidPositionInput,
+  posterior: PaidPositionInput,
+): Checked<PaidPosition> {
+  const before = derivePaidPosition(prior);
 
-  if (Result.isFailure(position)) {
+  if (Result.isFailure(before)) {
+    return fail(
+      "UnsupportedConsumedHistory",
+      "The retained payment, credit and refund history is already consumed and needs an owning correction.",
+    );
+  }
+
+  // Any posted refund principal or allocated refund means the prior payment
+  // is consumed: reversing it standalone would orphan the receivable, even
+  // when the posterior position still derives (e.g. G125000 K50000 P100000
+  // Q0 carries principal 25000; reversing to P0 derives cleanly with
+  // principal 0 while the posted 25000 receivable remains).
+  if (BigInt(before.success.refundPrincipalMinor) > 0n || BigInt(prior.refundedMinor) > 0n) {
     return fail(
       "UnsupportedConsumedHistory",
       "The reversal leaves a consumed payment, credit and refund history without an owning correction.",
     );
   }
 
-  return position;
+  const after = derivePaidPosition(posterior);
+
+  if (Result.isFailure(after)) {
+    return fail(
+      "UnsupportedConsumedHistory",
+      "The reversal leaves a consumed payment, credit and refund history without an owning correction.",
+    );
+  }
+
+  if (BigInt(after.success.refundPrincipalMinor) < BigInt(before.success.refundPrincipalMinor)) {
+    return fail(
+      "UnsupportedConsumedHistory",
+      "The reversal leaves a consumed payment, credit and refund history without an owning correction.",
+    );
+  }
+
+  return after;
 }
 
 export const RefundReportCutoff = Schema.Struct({

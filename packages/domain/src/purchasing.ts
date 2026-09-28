@@ -425,7 +425,12 @@ export function assertBalancedJournal(
     const debit = BigInt(line.debitMinor);
     const credit = BigInt(line.creditMinor);
 
-    return debit === credit || debit < 0n || credit < 0n;
+    // Exactly one side is positive: both-zero, both-positive and any
+    // negative side are malformed, even when the group still balances
+    // (e.g. 100/50 pairs with 0/50 elsewhere).
+    const exactlyOnePositive = (debit > 0n && credit === 0n) || (debit === 0n && credit > 0n);
+
+    return !exactlyOnePositive;
   });
 
   if (malformed !== undefined) {
