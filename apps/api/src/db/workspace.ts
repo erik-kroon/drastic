@@ -56,6 +56,7 @@ export type WorkAnchorRow = { readonly createdAt: string; readonly id: string };
 export type WorkItemRow = {
   readonly id: string;
   readonly revision: string;
+  readonly planVersion: string | null;
   readonly description: string | null;
   readonly createdAt: string;
   readonly createdBy: string;
@@ -209,7 +210,8 @@ export function listWorkItems(transaction: Transaction, bookId: string, filters:
   return transaction.execute<WorkItemRow>(
     sql`
       with ${workCte(bookId, filters.period, filters.search)}, ${workFilter(filters.status)}
-      select id, digest as revision, action->>'description' as description, created_text as "createdAt",
+      select id, digest as revision, plan->>'version' as "planVersion",
+        action->>'description' as description, created_text as "createdAt",
         created_by as "createdBy", action->>'postingDate' as "postingDate",
         action->>'accountingPeriodId' as "periodId",
         (select coalesce(sum((line->>'debitMinor')::numeric), 0)::text

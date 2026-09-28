@@ -3,6 +3,7 @@ import { Api } from "@open-erp/contracts/api";
 import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
+import { getBookContext } from "../../../application/agent/context";
 import * as Workspace from "../../../application/workspace";
 
 export const WorkspaceHandlers = HttpApiBuilder.group(Api, "workspace", (handlers) =>
@@ -10,6 +11,11 @@ export const WorkspaceHandlers = HttpApiBuilder.group(Api, "workspace", (handler
     .handle("workspaceCoordination", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
         Workspace.coordination(token, { scope: scopeFromPath(params) }),
+      ),
+    )
+    .handle("agentBookContext", ({ params, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        getBookContext(token, { scope: scopeFromPath(params), input: payload }),
       ),
     )
     .handle("saveWorkspaceView", ({ params, headers, payload }) =>

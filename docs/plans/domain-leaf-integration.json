@@ -3,9 +3,8 @@
   "leaves": [
     {
       "leaf": "agent-context",
-      "status": "deferred",
-      "reason": "Packet leaves capture, adapter reads and receipts with the capability owners; no adapter exists that could call it.",
-      "unblockedBy": "An agent capability owner reading retained workspace state through a named application operation."
+      "status": "wired",
+      "consumers": ["apps/api/src/application/agent/context.ts"]
     },
     {
       "leaf": "annual-report",
