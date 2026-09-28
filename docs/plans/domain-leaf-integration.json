@@ -61,8 +61,8 @@
     {
       "leaf": "customer-credits",
       "status": "deferred",
-      "reason": "Leaf exists with no packet, no progress row and no owner; provenance is unknown.",
-      "unblockedBy": "Identify the packet and owner, then wire it, or delete the leaf."
+      "reason": "NEXT-30 leaf implemented and reviewed: adopted receipt/refund clearing journals balance without repeated cash, and reversals compare retained prior/posterior credit consequences; legal issuance and posting/persistence remain with the commerce owners.",
+      "unblockedBy": "The commerce customer-credit owner exists and gains customer-credit liability effects and refund operations through its shared invoice, payment-allocation and legal-credit transaction boundary."
     },
     {
       "leaf": "dimension-restatement",
@@ -125,8 +125,8 @@
     {
       "leaf": "fx-remeasurement",
       "status": "deferred",
-      "reason": "Leaf exists with no packet, no progress row and no owner; provenance is unknown.",
-      "unblockedBy": "Identify the packet and owner, then wire it, or delete the leaf."
+      "reason": "NEXT-18 leaf implemented and reviewed: per-item control binding, unique execution membership, bounded money, all supported scale pairs and empty-population decisions repaired; valuation posting and effects persistence remain with the commerce FX owner.",
+      "unblockedBy": "The commerce FX owner persists the remeasurement valuation and effects, and its application operation composes this leaf per open item."
     },
     {
       "leaf": "historical-adoptions",
