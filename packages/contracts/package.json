@@ -50,6 +50,7 @@
     "./supplier-recognition": "./src/supplier-recognition.ts",
     "./supplier-payment-batches": "./src/supplier-payment-batches.ts",
     "./supplier-credits": "./src/supplier-credits.ts",
+    "./supplier-refunds": "./src/supplier-refunds.ts",
     "./subledger-controls": "./src/subledger-controls.ts",
     "./exchange-rates": "./src/exchange-rates.ts",
     "./invoice-issuance": "./src/invoice-issuance.ts",

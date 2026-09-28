@@ -11,6 +11,7 @@ import { subledgerOwnerCapabilities } from "./subledger-owners";
 import { commerceInvoiceCapabilities } from "./commerce-invoices";
 import { purchaseRecognitionCapabilities } from "./purchase-recognition";
 import { servicePurchaseCapabilities } from "./service-purchases";
+import { supplierRefundCapabilities } from "./supplier-refunds";
 import { vatCapabilities } from "./vat";
 import { runCaseCapabilities } from "./runs-cases";
 import { periodWorkCapabilities } from "./period-work";
@@ -42,6 +43,7 @@ export const capabilities = {
   ...commerceInvoiceCapabilities,
   ...purchaseRecognitionCapabilities,
   ...servicePurchaseCapabilities,
+  ...supplierRefundCapabilities,
   ...vatCapabilities,
   ...runCaseCapabilities,
   ...periodWorkCapabilities,

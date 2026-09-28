@@ -1489,3 +1489,76 @@ export const recurringInvoiceOccurrenceIssues = openerp.table(
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
   },
 );
+
+// NEXT-07: supplier paid credits and cash refunds. Versioned SQL migrations
+// own the DDL; these are the typed mappings.
+export const supplierRefundPrincipalIncreases = openerp.table(
+  "supplier_refund_principal_increases",
+  {
+    bookId: text("book_id").notNull(),
+    id: text().notNull(),
+    creditId: text("credit_id").notNull(),
+    invoiceId: text("invoice_id").notNull(),
+    apReleaseMinor: numeric("ap_release_minor", { mode: "string" }).notNull(),
+    refundIncreaseMinor: numeric("refund_increase_minor", { mode: "string" }).notNull(),
+    refundReceivableAccountId: text("refund_receivable_account_id").notNull(),
+    body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+    digest: text().notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+  },
+);
+
+export const supplierRefundReviews = openerp.table("supplier_refund_reviews", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  invoiceId: text("invoice_id").notNull(),
+  changeSetId: text("change_set_id"),
+  eventId: text("event_id"),
+  evidenceId: text("evidence_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const supplierRefundApprovals = openerp.table("supplier_refund_approvals", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  reviewId: text("review_id").notNull(),
+  actorId: text("actor_id").notNull(),
+  digest: text().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const supplierRefunds = openerp.table("supplier_refunds", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  reviewId: text("review_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  invoiceId: text("invoice_id").notNull(),
+  amountMinor: numeric("amount_minor", { mode: "string" }).notNull(),
+  refundDate: date("refund_date", { mode: "string" }).notNull(),
+  voucherId: text("voucher_id"),
+  adoptedRef: text("adopted_ref"),
+  sourceKind: text("source_kind").notNull(),
+  evidenceId: text("evidence_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const supplierRefundAllocations = openerp.table("supplier_refund_allocations", {
+  bookId: text("book_id").notNull(),
+  refundId: text("refund_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  allocationId: text("allocation_id").notNull(),
+  amountMinor: numeric("amount_minor", { mode: "string" }).notNull(),
+});
+
+export const supplierRefundSourceUsages = openerp.table("supplier_refund_source_usages", {
+  bookId: text("book_id").notNull(),
+  refundId: text("refund_id").notNull(),
+  sourceKind: text("source_kind").notNull(),
+  bankAccountId: text("bank_account_id"),
+  evidenceId: text("evidence_id"),
+  adoptedRef: text("adopted_ref"),
+  amountMinor: numeric("amount_minor", { mode: "string" }).notNull(),
+});

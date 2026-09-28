@@ -39,6 +39,7 @@ import { ServicePurchaseCapabilities } from "./service-purchases";
 import { PurchaseRecognitionCapabilities } from "./supplier-recognition";
 import { SupplierPaymentBatchCapabilities } from "./supplier-payment-batches";
 import { SupplierCreditCapabilities } from "./supplier-credits";
+import { SupplierRefundCapabilities } from "./supplier-refunds";
 import { SubledgerControlCapabilities } from "./subledger-controls";
 import { ExchangeRateCapabilities } from "./exchange-rates";
 import { InvoiceIssuanceCapabilities } from "./invoice-issuance";
@@ -125,6 +126,7 @@ export const Capabilities = {
   ...PurchaseRecognitionCapabilities,
   ...SupplierPaymentBatchCapabilities,
   ...SupplierCreditCapabilities,
+  ...SupplierRefundCapabilities,
   ...SubledgerControlCapabilities,
   ...ExchangeRateCapabilities,
   ...InvoiceIssuanceCapabilities,

@@ -22,6 +22,8 @@ export const allocationTables = [
   "accounts",
   "books",
   "memberships",
+  "supplier_refund_principal_increases",
+  "supplier_refunds",
 ] as const;
 
 export type BookAuthorityRow = {
@@ -261,6 +263,43 @@ export function readAccountAuthority(transaction: Transaction, bookId: string, a
       select a.id, a.version::text, a.active
       from openerp.accounts a
       where a.book_id = ${bookId} and a.id = ${accountId}
+    `,
+    "objects",
+  );
+}
+
+// Invoices whose payments are consumed by a posted supplier refund
+// receivable or an allocated cash refund (NEXT-07). Reversing a payment leg
+// against one of them standalone would orphan the refund; only an owning
+// correction may restore the relationships together.
+export function readSupplierRefundExposure(
+  transaction: Transaction,
+  bookId: string,
+  invoiceIds: string[],
+) {
+  if (invoiceIds.length === 0) {
+    return transaction.execute<{ readonly invoiceId: string }>(
+      sql`select null::text as "invoiceId" where false`,
+      "objects",
+    );
+  }
+
+  return transaction.execute<{ readonly invoiceId: string }>(
+    sql`
+      select distinct i.id as "invoiceId"
+      from openerp.commerce_invoices i
+      where i.book_id = ${bookId} and i.id in (${sql.join(
+        invoiceIds.map((id) => sql`${id}`),
+        sql`, `,
+      )})
+        and (exists (
+          select 1 from openerp.supplier_refund_principal_increases p
+          where p.book_id = i.book_id and p.invoice_id = i.id
+            and p.refund_increase_minor > 0
+        ) or exists (
+          select 1 from openerp.supplier_refunds f
+          where f.book_id = i.book_id and f.invoice_id = i.id
+        ))
     `,
     "objects",
   );

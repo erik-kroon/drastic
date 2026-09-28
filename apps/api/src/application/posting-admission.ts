@@ -21,6 +21,7 @@ export type PostingOwner = {
     | "legal_credit"
     | "supplier_acceptance"
     | "supplier_credit"
+    | "supplier_refund"
     | "service_purchase"
     | "financial_close"
     | "asset_disposal"

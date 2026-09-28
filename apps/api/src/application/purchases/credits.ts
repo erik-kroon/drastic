@@ -409,6 +409,19 @@ export const executeSupplierCredit = Effect.fn("purchases.credits.execute")(func
       );
 
       if (request.previous) return request.previous;
+
+      // A paid credit review carries its payable/refund-receivable split and
+      // belongs to the paid owner: the unpaid path must not execute it, even
+      // though both share the review table. The decoded review drops the
+      // marker, so the raw row is inspected.
+      const raw = (yield* CreditDb.readCreditReview(tx, scope.bookId, reviewId))[0];
+
+      const marker = raw
+        ? Shared.objectField(Shared.objectField(raw.body, "snapshot"), "paid")
+        : {};
+
+      if (Object.keys(marker).length) return yield* failure("StaleDependency");
+
       const review = yield* checkedCredit(tx, scope, reviewId, input.digest);
 
       const row = (yield* CreditDb.readApprovals(tx, scope.bookId, reviewId)).find(

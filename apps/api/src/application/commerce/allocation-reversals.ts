@@ -309,6 +309,14 @@ function reversalSnapshot(
     if (!paymentRow) return yield* failure("NotFound");
     const payment = yield* paymentCapacityView(book, scope, paymentRow);
 
+    const exposed = new Set(
+      (yield* AllocationDb.readSupplierRefundExposure(
+        transaction,
+        scope.bookId,
+        legs.map((leg) => leg.invoiceId),
+      )).map((row) => row.invoiceId),
+    );
+
     const invoices = yield* Effect.forEach(legs, (leg) =>
       Effect.gen(function* () {
         const live = (yield* InvoiceDb.readLiveInvoice(
@@ -323,8 +331,17 @@ function reversalSnapshot(
           return yield* failure("StaleDependency");
         }
 
+        const decoded = yield* decode(InvoiceSchema, live.body);
+
+        // A payment consumed by a posted refund receivable or an allocated
+        // cash refund cannot be reversed standalone: the owned correction
+        // must restore the payment, credit and refund together.
+        if (decoded.direction === "supplier" && exposed.has(leg.invoiceId)) {
+          return yield* failure("StaleDependency");
+        }
+
         return {
-          invoice: yield* decode(InvoiceSchema, live.body),
+          invoice: decoded,
           releasedMinor: leg.amountMinor,
           outstandingAfterMinor: (
             BigInt(live.outstandingMinor ?? "0") + BigInt(leg.amountMinor)

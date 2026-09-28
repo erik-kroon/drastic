@@ -160,7 +160,7 @@ function liveInvoice(bookId: string, identity: SQL | undefined) {
           ) end,
           'recordedAllocatedMinor', base.allocated::text,
           'outstandingMinor', case when base.blockers = '[]'::jsonb
-            then to_jsonb((base.effective - base.allocated)::text) else 'null'::jsonb end,
+            then to_jsonb(greatest(base.effective - base.allocated, 0)::text) else 'null'::jsonb end,
           'status', case
             when base.blockers <> '[]'::jsonb then 'blocked'
             when base.cancellation is not null then 'cancelled'
@@ -202,19 +202,36 @@ function liveInvoice(bookId: string, identity: SQL | undefined) {
               ) then 'A retained allocation payment voucher was corrected.'::text end,
               case when credits.invalid then 'A supplier credit posting or payable line is invalid.'::text end,
                case when customer_credits.invalid then 'A customer credit posting or receivable line is invalid.'::text end,
-               case when owner_discharges.invalid then 'An owner-paid supplier discharge posting or payable line is invalid.'::text end,
-               case when credits.total + customer_credits.total + ${activeLegTotal()} + owner_discharges.total > case when ${cancellationBody()} is null
+              case when owner_discharges.invalid then 'An owner-paid supplier discharge posting or payable line is invalid.'::text end,
+              case when credits.total + customer_credits.total + ${activeLegTotal()} + owner_discharges.total > case when ${cancellationBody()} is null
                 then i.amount_minor else 0 end
+                and not refundcover.has_paid
                 then 'Recorded allocations exceed the invoice amount.'::text end
             ], null)) with ordinality as remaining(value, ordinal)
           ), '[]'::jsonb) as blockers
         from openerp.commerce_invoices i
         cross join lateral (
           select coalesce(sum(c.amount_minor),0) as total, count(*) as total_count,
-            coalesce(bool_or(not (${voucherCurrent(sql`c.voucher_id`)}) or l.account_id<>i.control_account_id
-              or l.debit_minor<>c.amount_minor or l.credit_minor<>0),false) as invalid
+            coalesce(bool_or(not (${voucherCurrent(sql`c.voucher_id`)})
+              or case when p.credit_id is null
+                then (l.account_id<>i.control_account_id
+                  or l.debit_minor<>c.amount_minor or l.credit_minor<>0)
+                else ((p.ap_release_minor > 0
+                  and (l.account_id<>i.control_account_id
+                    or l.debit_minor<>p.ap_release_minor or l.credit_minor<>0))
+                or (p.ap_release_minor = 0
+                  and (l.account_id<>p.refund_receivable_account_id
+                    or l.debit_minor<>p.refund_increase_minor or l.credit_minor<>0))
+                or (p.refund_increase_minor > 0 and not exists (
+                  select 1 from openerp.journal_lines r
+                  where (r.book_id, r.voucher_id) = (c.book_id, c.voucher_id)
+                    and r.account_id = p.refund_receivable_account_id
+                    and r.debit_minor = p.refund_increase_minor and r.credit_minor = 0)))
+              end),false) as invalid
           from openerp.supplier_credits c join openerp.journal_lines l
             on (l.book_id,l.voucher_id,l.id)=(c.book_id,c.voucher_id,c.control_line_id)
+          left join openerp.supplier_refund_principal_increases p
+            on (p.book_id, p.credit_id) = (c.book_id, c.id)
           where c.book_id=i.book_id and c.invoice_id=i.id
         ) credits
         -- An issued legal customer credit reduces the same receivable control, so the
@@ -227,7 +244,18 @@ function liveInvoice(bookId: string, identity: SQL | undefined) {
             on (l.book_id,l.voucher_id,l.id)=(c.book_id,c.voucher_id,c.control_line_id)
           where c.book_id=i.book_id and c.register_invoice_id=i.id
          ) customer_credits
-         cross join lateral (${ownerDischargeSummary(null, null)}) owner_discharges
+          -- A paid supplier credit converts the over-allocated excess into an
+          -- explicit refund receivable (NEXT-07): with a sealed principal
+          -- increase on the invoice the excess is refund principal, not an
+          -- inconsistency, so the legacy over-allocation blocker stays silent
+          -- and the unpaid residual clamps at zero instead of going negative.
+          cross join lateral (
+            select exists (
+              select 1 from openerp.supplier_refund_principal_increases p
+              where p.book_id = i.book_id and p.invoice_id = i.id
+            ) as has_paid
+          ) refundcover
+          cross join lateral (${ownerDischargeSummary(null, null)}) owner_discharges
         where i.book_id = ${bookId} and ${identity === undefined ? sql`true` : identity}
       ) base
     ) live
