@@ -2,6 +2,20 @@ import { sql } from "drizzle-orm";
 import type { Transaction } from "./transaction";
 import type { JsonObject } from "./commerce/access";
 
+export function readActiveCloseCoveringDate(tx: Transaction, book: string, date: string) {
+  return tx.execute<{ readonly id: string }>(
+    sql`
+    select c.id from openerp.financial_close_certificates c
+    join openerp.fiscal_years y on(y.book_id,y.id)=(c.book_id,c.fiscal_year_id)
+    where c.book_id=${book} and ${date}::date<=y.ends_on
+      and not exists(select from openerp.financial_reopen_events r
+        where r.book_id=c.book_id and r.certificate_id=c.id
+          and r.body->'downstreamRefusals'='[]'::jsonb)
+    limit 1`,
+    "objects",
+  );
+}
+
 export function readOwnedSources(
   tx: Transaction,
   book: string,
@@ -153,6 +167,7 @@ export function readProtectedCorrections(tx: Transaction, book: string, voucher:
   return tx.execute<{ readonly kind: string }>(
     sql`
     select 'owner' as kind from openerp.owner_effects where book_id=${book} and voucher_id=${voucher}
+    union all select 'financial_close' from openerp.financial_close_transfers where book_id=${book} and voucher_id=${voucher}
     union all select 'tax_account' from openerp.tax_account_match_capacity where book_id=${book} and voucher_id=${voucher}
     union all select 'supplier_credit' from openerp.supplier_credits where book_id=${book} and voucher_id=${voucher}
     union all select 'vat_reclassification' from openerp.vat_control_reclassification_effects where book_id=${book} and voucher_id=${voucher}

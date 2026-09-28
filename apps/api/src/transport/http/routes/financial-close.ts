@@ -4,6 +4,10 @@ import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
 import {
+  approveYearReopen,
+  executeYearReopen,
+} from "../../../application/closing/financial-reopen";
+import {
   advanceYearClose,
   approveFinalProposal,
   executeFinalClose,
@@ -17,6 +21,26 @@ import {
 
 export const FinancialCloseHandlers = HttpApiBuilder.group(Api, "financialClose", (handlers) =>
   handlers
+    .handle("approveYearReopen", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        approveYearReopen(token, {
+          scope: scopeFromPath(params),
+          proposalId: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("executeYearReopen", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        executeYearReopen(token, {
+          scope: scopeFromPath(params),
+          proposalId: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
     .handle("prepareYearClose", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         prepareYearClose(token, {

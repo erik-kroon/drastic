@@ -78,6 +78,36 @@ export type StatementOpeningBaseRow = {
   readonly openingVoucherId: string | null;
 };
 
+export function readFinancialOpening(transaction: Transaction, bookId: string, startsOn: string) {
+  return transaction.execute<{
+    readonly id: string;
+    readonly body: JsonObject;
+    readonly reopened: boolean;
+  }>(
+    sql`
+    select o.id,o.body,exists(select from openerp.financial_reopen_events r
+      where r.book_id=o.book_id and r.certificate_id=o.certificate_id and r.body->'downstreamRefusals'='[]'::jsonb) as reopened
+    from openerp.financial_opening_sets o join openerp.fiscal_years y on(y.book_id,y.id)=(o.book_id,o.fiscal_year_id)
+    where o.book_id=${bookId} and y.ends_on=(${startsOn}::date-1)
+    order by o.version desc limit 1`,
+    "objects",
+  );
+}
+
+export function readOpeningSourceDrift(
+  transaction: Transaction,
+  bookId: string,
+  startsOn: string,
+  boundary: string,
+) {
+  return transaction.execute<{ readonly id: string }>(
+    sql`
+    select id from openerp.vouchers where book_id=${bookId}
+      and sequence>${boundary}::bigint and posting_date<${startsOn}::date limit 1`,
+    "objects",
+  );
+}
+
 export type StatementAmountRow = { readonly accountId: string; readonly minor: string };
 
 export type StatementComponentRow = {
@@ -98,7 +128,7 @@ export type StatementDigestRow = { readonly digest: string };
 
 export type StatementRowPageRow = {
   readonly scannedCount: string;
-  readonly items: JsonObject;
+  readonly items: ReadonlyArray<JsonObject>;
   readonly nextOrdinal: string | null;
 };
 
@@ -242,7 +272,10 @@ export function readStatementComponents(
         v.sequence::text as sequence, l.ordinal, v.posting_date::text as "postingDate",
         l.account_id as "accountId", l.debit_minor::text as "debitMinor",
         l.credit_minor::text as "creditMinor", l.description,
-        v.posting_purpose = any(${ownedResultTransferPurposes}::text[]) as "ownedTransfer"
+        v.posting_purpose in (${sql.join(
+          ownedResultTransferPurposes.map((purpose) => sql`${purpose}`),
+          sql`, `,
+        )}) as "ownedTransfer"
       from openerp.journal_lines l
       join openerp.vouchers v on v.book_id = l.book_id and v.id = l.voucher_id
       where l.book_id = ${bookId} and v.sequence <= ${sequence}::bigint
@@ -535,13 +568,18 @@ export function readStatementLiveStatus(
           as "committedSequence",
         (select count(*)::text from openerp.vouchers
           where book_id = ${bookId} and sequence > ${sequence}::bigint) as "postingsAfterCutoff",
-        exists (
+        (exists (
           select 1 from openerp.closing_transitions t
           join openerp.periods p on p.book_id = t.book_id and p.id = t.period_id
           where t.book_id = ${bookId} and t.body->>'action' = 'reopen'
             and (t.body->>'committedAt')::timestamptz > ${createdAt}::timestamptz
             and p.ends_on >= ${asOf}::date
-        ) as "reopenedAfterCapture"
+        ) or exists (
+          select from openerp.financial_reopen_events r
+          join openerp.fiscal_years y on(y.book_id,y.id)=(r.book_id,r.fiscal_year_id)
+          where r.book_id=${bookId} and r.body->'downstreamRefusals'='[]'::jsonb
+            and r.recorded_at>${createdAt}::timestamptz and y.starts_on<=${asOf}::date
+        )) as "reopenedAfterCapture"
     `,
     "objects",
   );

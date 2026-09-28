@@ -47,6 +47,12 @@ export const admitPosting = Effect.fn("posting.admitOwnedSources")(function* (
   if (!eventId || !year || !date || !Array.isArray(action.evidenceRefs))
     return yield* failure("InvalidJournal");
 
+  // A close freezes cumulative BS balances, including earlier open years. The
+  // owning transfer precedes its certificate in the same transaction; replay
+  // precedes admission, and an approved successful reopen releases this fence.
+  if ((yield* Db.readActiveCloseCoveringDate(tx, scope.bookId, date)).length > 0)
+    return yield* failure("StaleDependency");
+
   if (action.foreignCurrency !== undefined && owner?.kind !== "commerce_fx")
     return yield* failure("UnsupportedProfile");
 

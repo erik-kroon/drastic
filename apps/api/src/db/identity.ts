@@ -42,6 +42,9 @@ export type AccessCredential = {
 
 export type AuthorityRequirement = {
   readonly operatorOnly: boolean;
+  readonly beforeBook?: (
+    transaction: Transaction,
+  ) => Effect.Effect<void, Accounting.AccountingError>;
 };
 
 export type AuthorityLockMode = "share" | "update";
@@ -184,6 +187,8 @@ function verifyAuthority(
     if (!membership || (requirement.operatorOnly && membership.role !== "operator")) {
       return yield* failure("Forbidden");
     }
+
+    if (requirement.beforeBook !== undefined) yield* requirement.beforeBook(transaction);
 
     const bookRows = yield* lockBook(transaction, scope, lockMode);
 

@@ -19,9 +19,8 @@ import {
 
 export { BalanceLine, FamilyControl, FinalProposal, TransferPlan };
 
-// Families beyond statements and corporate tax are stated, never verified by
-// this owner. A family claimed required outside the two verified families is
-// a blocker; an inapplicable family carries its dated evidence.
+// Legacy supplemental evidence only. Applicability and complete current controls
+// come from the closing inventory owner, never from these caller claims.
 export const OtherFamilyClaim = Schema.Struct({
   familyId: Accounting.Identifier,
   applicability: Schema.Literal("not_applicable"),
@@ -37,6 +36,9 @@ export const PrepareYearClose = Schema.Struct({
   evidenceId: Accounting.Identifier,
   reason: Accounting.Description,
   proposedAdjustmentRefs: Schema.Array(Commerce.EvidenceReference).check(Schema.isMaxLength(20)),
+  adjustmentReceiptIds: Schema.optional(
+    Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(20), Schema.isUnique()),
+  ),
   otherFamilies: Schema.Array(OtherFamilyClaim).check(Schema.isMaxLength(20)),
 });
 
@@ -70,7 +72,10 @@ export const ClosePreparation = Schema.Struct({
   bridgeId: Accounting.Identifier,
   bridgeDigest: Accounting.Digest,
   recognizedTaxMinor: Accounting.SignedMinorUnits,
-  familyControls: Schema.Array(FamilyControl).check(Schema.isMaxLength(20)),
+  familyControls: Schema.Array(FamilyControl).check(Schema.isMaxLength(1000)),
+  currentBasisDigest: Schema.optional(Accounting.Digest),
+  taxEffectId: Schema.optional(Accounting.Identifier),
+  taxReceiptId: Schema.optional(Accounting.Identifier),
   closeBasisVersion: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
   evidence: Commerce.EvidenceReference,
   createdAt: Schema.String,
@@ -148,6 +153,7 @@ export const FinancialOpeningSet = Schema.Struct({
   supersedesId: Schema.NullOr(Accounting.Identifier),
   transferDeltaMinor: Accounting.SignedMinorUnits,
   rows: Schema.Array(BalanceLine).check(Schema.isMaxLength(500)),
+  sourceBoundary: Schema.optional(Accounting.MinorUnits),
   createdAt: Schema.String,
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,
@@ -175,12 +181,32 @@ export const PrepareYearReopen = Schema.Struct({
 export const ExecuteYearReopen = Schema.Struct({
   version: Schema.Literal(1),
   digest: Accounting.Digest,
+  approvalId: Accounting.Identifier,
+});
+
+export const FinancialReopenProposal = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  version: Schema.Literal(1),
+  certificateId: Accounting.Identifier,
+  fiscalYearId: Accounting.Identifier,
+  reason: Accounting.Description,
+  periodDigest: Accounting.Digest,
+  periodIds: Schema.Array(Accounting.Identifier),
+  downstreamRefusals: Schema.Array(Schema.String),
+  createdBy: Accounting.Identifier,
+  createdAt: Schema.String,
+  digest: Accounting.Digest,
+  receipt: Commerce.CommandReceipt,
 });
 
 export const FinancialReopenEvent = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
   version: Schema.Literal(1),
+  proposalId: Schema.optional(Accounting.Identifier),
+  approvalId: Schema.optional(Accounting.Identifier),
+  status: Schema.optional(Schema.Literals(["executed", "refused"])),
   certificateId: Accounting.Identifier,
   fiscalYearId: Accounting.Identifier,
   reason: Accounting.Description,
@@ -212,6 +238,7 @@ export const FinancialCloseHistory = Schema.Struct({
   scope: Accounting.Scope,
   fiscalYearId: Accounting.Identifier,
   complete: Schema.Literal(true),
+  reopenings: Schema.optional(Schema.Array(FinancialReopenEvent)),
   preparations: Schema.Array(
     Schema.Struct({
       id: Accounting.Identifier,
@@ -264,8 +291,18 @@ export const FinancialCloseApi = HttpApiGroup.make("financialClose").add(
     }),
     headers: Accounting.IdempotencyHeaders,
     payload: PrepareYearReopen.annotate({ parseOptions: { onExcessProperty: "error" } }),
-    success: FinancialReopenEvent,
+    success: FinancialReopenProposal,
     error: accountingErrors,
+  }),
+  HttpApiEndpoint.post("approveYearReopen", `${path}/reopen-proposals/:id/approvals`, {
+    ...mutation,
+    payload: ApproveFinalProposal.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: FinalProposalApproval,
+  }),
+  HttpApiEndpoint.post("executeYearReopen", `${path}/reopen-proposals/:id/execute`, {
+    ...mutation,
+    payload: ExecuteYearReopen.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: FinancialReopenEvent,
   }),
   HttpApiEndpoint.get("getFinancialYearStatus", `${path}/:id/status`, {
     params: Accounting.ChangePath,

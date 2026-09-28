@@ -11,6 +11,7 @@ import * as ClosingDb from "../../db/closing/inventories";
 import * as PostingDb from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
 import { closingBasisDependencies } from "./inventories";
+import * as FinancialDb from "../../db/closing/financial-close";
 
 type Scope = typeof Accounting.Scope.Type;
 
@@ -78,7 +79,7 @@ function requireNativeProfile(transaction: Transaction, bookId: string) {
   });
 }
 
-function readBasis(transaction: Transaction, bookId: string, periodId: string) {
+export function readBasis(transaction: Transaction, bookId: string, periodId: string) {
   return Effect.gen(function* () {
     const period = (yield* ClosingDb.readPeriod(transaction, bookId, periodId, "share"))[0];
 
@@ -191,6 +192,31 @@ export const prepareClosing = Effect.fn("closing.prepare")(function* (
         (input.action === "reopen" && basis.locked !== true)
       ) {
         return yield* failure("StaleDependency");
+      }
+
+      if (input.action === "reopen") {
+        const period = (yield* PostingDb.readPeriod(
+          transaction,
+          command.scope.bookId,
+          command.periodId,
+        ))[0];
+
+        if (!period) return yield* failure("NotFound");
+
+        for (const certificate of yield* FinancialDb.readCertificatesForYear(
+          transaction,
+          command.scope.bookId,
+          period.fiscalYearId,
+        )) {
+          if (
+            (yield* FinancialDb.readReopenForCertificate(
+              transaction,
+              command.scope.bookId,
+              certificate.id,
+            )).length === 0
+          )
+            return yield* failure("StaleDependency");
+        }
       }
 
       const captured = yield* decode(ReadinessSchema, basis);

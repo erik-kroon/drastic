@@ -76,6 +76,7 @@ export const StatementSnapshot = Schema.Struct({
   factRevisions: StatementFactRevisions,
   mappingRelease: SealedStatementMapping,
   balance: StatementBalance,
+  fiscalYtdProfitMinor: Schema.optional(Accounting.SignedMinorUnits),
   coverage: StatementCoverage,
   diagnostics: Schema.Array(StatementDiagnostic).check(Schema.isMaxLength(1000)),
   calculationNodes: Schema.Array(StatementCalculationNode).check(Schema.isMaxLength(200)),

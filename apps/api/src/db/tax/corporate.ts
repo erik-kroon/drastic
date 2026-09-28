@@ -278,6 +278,7 @@ export function insertBridge(
     readonly body: Schema.JsonObject;
     readonly digest: string;
     readonly createdBy: string;
+    readonly createdAt: string;
   },
 ) {
   return transaction.insert(corporateTaxBridges).values(row);
@@ -396,8 +397,7 @@ export function readPlan(transaction: Transaction, bookId: string, changeSetId: 
   return transaction
     .select({ plan: changeSets.plan, digest: changeSets.digest })
     .from(changeSets)
-    .where(and(eq(changeSets.bookId, bookId), eq(changeSets.id, changeSetId)))
-    .for("share");
+    .where(and(eq(changeSets.bookId, bookId), eq(changeSets.id, changeSetId)));
 }
 
 // The posting-group receipt the shared journal primitive actually wrote for this
@@ -542,7 +542,7 @@ export function readStatementIncomeTaxContributions(
         c.body ->> 'description'::text as description
       from openerp.report_statement_contributions c
       where c.book_id = ${bookId} and c.snapshot_id = ${snapshotId}
-        and (c.body ->> 'accountId'::text) = any(${accountIds})
+        and (c.body ->> 'accountId'::text) in (select jsonb_array_elements_text(${JSON.stringify(accountIds)}::jsonb))
       order by c.ordinal
       limit ${limit + 1}
     `,

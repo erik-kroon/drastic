@@ -12,6 +12,12 @@ import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
+import { captureFinancialBasis } from "./financial-basis";
+import { executedBridgeIsCurrent } from "../tax/corporate";
+import {
+  withFinancialApproval as withCloseApproval,
+  reviewerIsCurrent,
+} from "./financial-authority";
 import {
   approveChangeInTransaction,
   digest,
@@ -36,11 +42,12 @@ import {
   textField,
   toJsonObject,
   unsupported,
-  withBook,
+  withBook as withReadBook,
   type Scope,
 } from "../commerce/support";
 
-type JsonObject = Schema.JsonObject;
+const withBook: typeof withReadBook = (token, scope, operatorOnly, operation) =>
+  withReadBook(token, scope, operatorOnly, operation, operatorOnly ? "update" : "share");
 
 const PreparationSchema = Close.ClosePreparation;
 
@@ -123,6 +130,8 @@ type BridgeBasis = {
   readonly bridge: typeof BridgeSchema.Type;
   readonly digest: string;
   readonly recognizedMinor: string;
+  readonly effectId: string;
+  readonly receiptId: string;
 };
 
 function readBridgeBasis(
@@ -140,6 +149,9 @@ function readBridgeBasis(
 
     const bridge = yield* decode(BridgeSchema, row.body);
 
+    if (!(yield* executedBridgeIsCurrent(transaction, scope, bridge, row)))
+      return yield* failure("StaleDependency");
+
     const recognized = (yield* CorpDb.readRecognizedForYear(
       transaction,
       scope.bookId,
@@ -148,7 +160,33 @@ function readBridgeBasis(
 
     if (recognized === undefined) return yield* failure("InternalError");
 
-    return { bridge, digest: row.digest, recognizedMinor: recognized.minor } satisfies BridgeBasis;
+    const effectRow = (yield* CorpDb.readEffectByBridge(transaction, scope.bookId, bridgeId))[0];
+
+    if (!effectRow || recognized.minor !== bridge.currentTaxTargetMinor)
+      return yield* failure("StaleDependency");
+
+    const effect = yield* decode(Tax.CorporateTaxEffect, effectRow.body);
+
+    if (
+      effect.bridgeDigest !== bridge.digest ||
+      effect.yearTaxTargetMinor !== bridge.currentTaxTargetMinor ||
+      effect.recognizedAfterMinor !== recognized.minor ||
+      (yield* Db.readTaxReceipt(
+        transaction,
+        scope.bookId,
+        effect.groupReceiptId,
+        bridge.changeSetId,
+      )).length !== 1
+    )
+      return yield* failure("StaleDependency");
+
+    return {
+      bridge,
+      digest: row.digest,
+      recognizedMinor: recognized.minor,
+      effectId: effect.id,
+      receiptId: effect.groupReceiptId,
+    } satisfies BridgeBasis;
   });
 }
 
@@ -205,12 +243,6 @@ function snapshotIsCurrent(
   });
 }
 
-function arrayOf(value: JsonObject, key: string) {
-  const parsed = Schema.decodeUnknownOption(Schema.Array(Schema.JsonObject))(value[key]);
-
-  return Option.isSome(parsed) ? parsed.value : null;
-}
-
 function readBsRows(transaction: Transaction, scope: Scope, snapshotId: string) {
   return Effect.gen(function* () {
     const rows: Array<{ readonly rowId: string; readonly closingMinor: string }> = [];
@@ -228,7 +260,8 @@ function readBsRows(transaction: Transaction, scope: Scope, snapshotId: string) 
 
       if (page === undefined) return yield* failure("InternalError");
 
-      const items = arrayOf(page.items, "items");
+      const parsed = Schema.decodeOption(Schema.Array(Schema.JsonObject))(page.items);
+      const items = Option.isSome(parsed) ? parsed.value : null;
 
       if (items === null) return yield* failure("InternalError");
 
@@ -248,30 +281,12 @@ function readBsRows(transaction: Transaction, scope: Scope, snapshotId: string) 
   });
 }
 
-function verifyTransferAccounts(
-  transaction: Transaction,
-  scope: Scope,
-  nominalAccountId: string,
-  equityAccountId: string,
-) {
-  return Effect.gen(function* () {
-    if (nominalAccountId === equityAccountId) return yield* failure("InvalidJournal");
-
-    for (const accountId of [nominalAccountId, equityAccountId]) {
-      const account = (yield* Db.readActiveAccount(transaction, scope.bookId, accountId))[0];
-
-      if (account === undefined || account.id !== accountId) {
-        return yield* failure("InvalidJournal");
-      }
-    }
-  });
-}
-
 function basisVersion(parts: {
   readonly snapshotDigest: string;
   readonly bridgeDigest: string;
   readonly recognizedMinor: string;
   readonly priorTransferMinor: string;
+  readonly currentDigest: string;
 }) {
   return digest(parts);
 }
@@ -346,16 +361,6 @@ export const prepareYearClose = Effect.fn("closing.financial-close.prepare")(fun
   },
 ) {
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
-    yield* closeAccess(transaction, [...Db.financialCloseInserts]);
-
-    const book = (yield* Ledger.readBook(transaction, command.scope))[0];
-
-    if (!book) return yield* failure("Forbidden");
-
-    if (book.profile !== "synthetic-core-v1" || book.authority !== "native") {
-      return yield* unsupported();
-    }
-
     const request = yield* replay(
       transaction,
       command.scope,
@@ -367,6 +372,15 @@ export const prepareYearClose = Effect.fn("closing.financial-close.prepare")(fun
     );
 
     if (request.previous) return request.previous;
+
+    yield* closeAccess(transaction, [...Db.financialCloseInserts]);
+
+    const book = (yield* Ledger.readBook(transaction, command.scope))[0];
+
+    if (!book) return yield* failure("Forbidden");
+
+    if (book.profile !== "synthetic-core-v1" || book.authority !== "native")
+      return yield* unsupported();
 
     const year = yield* readYear(transaction, command.scope.bookId, command.input.fiscalYearId);
     const chain = yield* readChain(transaction, command.scope, command.input.fiscalYearId);
@@ -396,6 +410,14 @@ export const prepareYearClose = Effect.fn("closing.financial-close.prepare")(fun
       return yield* failure("StaleDependency");
     }
 
+    const current = yield* captureFinancialBasis(
+      transaction,
+      command.scope,
+      retained.snapshot,
+      command.input.nominalAccountId,
+      command.input.equityAccountId,
+    );
+
     const bridge = yield* readBridgeBasis(
       transaction,
       command.scope,
@@ -413,12 +435,24 @@ export const prepareYearClose = Effect.fn("closing.financial-close.prepare")(fun
       command.input.evidenceId,
     );
 
-    yield* verifyTransferAccounts(
-      transaction,
-      command.scope,
-      command.input.nominalAccountId,
-      command.input.equityAccountId,
-    );
+    const receiptIds = command.input.adjustmentReceiptIds ?? [];
+
+    if (receiptIds.length !== command.input.proposedAdjustmentRefs.length)
+      return yield* failure("StaleDependency");
+
+    for (const [index, adjustment] of command.input.proposedAdjustmentRefs.entries()) {
+      if (
+        (yield* Db.readAdjustmentReceipts(
+          transaction,
+          command.scope.bookId,
+          adjustment.evidenceId,
+          adjustment.sha256,
+          receiptIds[index]!,
+          year.id,
+        )).length !== 1
+      )
+        return yield* failure("StaleDependency");
+    }
 
     const seenFamilies = new Set<string>();
 
@@ -447,11 +481,7 @@ export const prepareYearClose = Effect.fn("closing.financial-close.prepare")(fun
         status: "required_met" as const,
         evidenceId: bridge.bridge.id,
       },
-      ...command.input.otherFamilies.map((claim) => ({
-        familyId: claim.familyId,
-        status: "not_applicable" as const,
-        evidenceId: claim.evidenceId,
-      })),
+      ...current.controls,
     ];
 
     const priorTransfers = yield* Db.readTransfersForYear(
@@ -469,6 +499,7 @@ export const prepareYearClose = Effect.fn("closing.financial-close.prepare")(fun
       bridgeDigest: bridge.digest,
       recognizedMinor: bridge.recognizedMinor,
       priorTransferMinor,
+      currentDigest: current.digest,
     });
 
     const preparationId = newId("close_preparation");
@@ -481,7 +512,10 @@ export const prepareYearClose = Effect.fn("closing.financial-close.prepare")(fun
       input: yield* toJsonObject(command.input),
       statementSnapshotId: retained.snapshot.id,
       statementDigest: retained.digest,
-      statementResultMinor: retained.snapshot.balance.virtualUntransferredResultMinor,
+      statementResultMinor: current.profitMinor,
+      currentBasisDigest: current.digest,
+      taxEffectId: bridge.effectId,
+      taxReceiptId: bridge.receiptId,
       bridgeId: bridge.bridge.id,
       bridgeDigest: bridge.digest,
       recognizedTaxMinor: bridge.recognizedMinor,
@@ -557,16 +591,6 @@ export const advanceYearClose = Effect.fn("closing.financial-close.advance")(fun
   },
 ) {
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
-    yield* closeAccess(transaction, [...Db.financialCloseInserts]);
-
-    const book = (yield* Ledger.readBook(transaction, command.scope))[0];
-
-    if (!book) return yield* failure("Forbidden");
-
-    if (book.profile !== "synthetic-core-v1" || book.authority !== "native") {
-      return yield* unsupported();
-    }
-
     const request = yield* replay(
       transaction,
       command.scope,
@@ -581,6 +605,15 @@ export const advanceYearClose = Effect.fn("closing.financial-close.advance")(fun
     );
 
     if (request.previous) return request.previous;
+
+    yield* closeAccess(transaction, [...Db.financialCloseInserts]);
+
+    const book = (yield* Ledger.readBook(transaction, command.scope))[0];
+
+    if (!book) return yield* failure("Forbidden");
+
+    if (book.profile !== "synthetic-core-v1" || book.authority !== "native")
+      return yield* unsupported();
 
     const preparationRow = yield* readPreparationRow(
       transaction,
@@ -619,6 +652,14 @@ export const advanceYearClose = Effect.fn("closing.financial-close.advance")(fun
     if (!(yield* snapshotIsCurrent(transaction, command.scope, retained.snapshot, year.id))) {
       return yield* failure("StaleDependency");
     }
+
+    const current = yield* captureFinancialBasis(
+      transaction,
+      command.scope,
+      retained.snapshot,
+      preparation.input.nominalAccountId,
+      preparation.input.equityAccountId,
+    );
 
     const bridge = yield* readBridgeBasis(
       transaction,
@@ -666,7 +707,7 @@ export const advanceYearClose = Effect.fn("closing.financial-close.advance")(fun
         status: control.status,
         evidenceId: control.evidenceId,
       })),
-      taxBridgeReceiptId: bridge.bridge.id,
+      taxBridgeReceiptId: bridge.receiptId,
       transfer: {
         profitMinor: preparation.statementResultMinor,
         priorTransferMinor,
@@ -680,18 +721,41 @@ export const advanceYearClose = Effect.fn("closing.financial-close.advance")(fun
 
     if (Result.isFailure(sealed)) return yield* refusalFor(sealed.failure);
 
+    if (
+      current.digest !== preparation.currentBasisDigest ||
+      current.profitMinor !== preparation.statementResultMinor
+    )
+      return yield* failure("StaleDependency");
+
     const version = yield* basisVersion({
       snapshotDigest: retained.digest,
       bridgeDigest: bridge.digest,
       recognizedMinor: bridge.recognizedMinor,
       priorTransferMinor,
+      currentDigest: current.digest,
     });
 
     if (version !== preparation.closeBasisVersion) {
       return yield* failure("StaleDependency");
     }
 
-    const bsRows = yield* readBsRows(transaction, command.scope, retained.snapshot.id);
+    // Decode the retained membership as well; presentation rows are evidence,
+    // never account identities or a source of opening balances.
+    yield* readBsRows(transaction, command.scope, retained.snapshot.id);
+
+    const openingTarget = current.opening.map((row) => ({
+      ...row,
+      balanceMinor:
+        row.accountId === preparation.input.equityAccountId
+          ? (BigInt(row.balanceMinor) - BigInt(sealed.success.transfer.deltaMinor)).toString()
+          : row.balanceMinor,
+    }));
+
+    if (
+      BigInt(current.nominalMinor) + BigInt(sealed.success.transfer.deltaMinor) !== 0n ||
+      openingTarget.reduce((sum, row) => sum + BigInt(row.balanceMinor), 0n) !== 0n
+    )
+      return yield* failure("InvalidJournal");
 
     const proposalId = newId("close_proposal");
 
@@ -711,11 +775,7 @@ export const advanceYearClose = Effect.fn("closing.financial-close.advance")(fun
         creditMinor: line.creditMinor,
         description: line.description,
       })),
-      openingTarget: bsRows.map((row) => ({
-        accountId: row.rowId,
-        balanceMinor: row.closingMinor,
-        nominal: false,
-      })),
+      openingTarget,
       nominalAccountId: preparation.input.nominalAccountId,
       equityAccountId: preparation.input.equityAccountId,
       accountingPeriodId: command.input.accountingPeriodId,
@@ -802,8 +862,6 @@ export const approveFinalProposal = Effect.fn("closing.financial-close.approve")
   },
 ) {
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
-    yield* closeAccess(transaction, [...Db.financialCloseInserts]);
-
     const request = yield* replay(
       transaction,
       command.scope,
@@ -819,7 +877,40 @@ export const approveFinalProposal = Effect.fn("closing.financial-close.approve")
 
     if (request.previous) return request.previous;
 
+    yield* closeAccess(transaction, [...Db.financialCloseInserts]);
+
     const proposalRow = yield* readProposalRow(transaction, command.scope, command.proposalId);
+
+    const proposed = yield* decode(ProposalSchema, proposalRow.body);
+
+    const preparedRow = yield* readPreparationRow(
+      transaction,
+      command.scope,
+      proposed.preparationId,
+    );
+
+    const prepared = yield* decode(PreparationSchema, preparedRow.body);
+
+    if ([proposed.receipt.actorId, prepared.receipt.actorId].includes(principal.actorId))
+      return yield* failure("ApprovalRequired");
+
+    const retained = yield* readRetainedSnapshot(
+      transaction,
+      command.scope,
+      prepared.statementSnapshotId,
+    );
+
+    const current = yield* captureFinancialBasis(
+      transaction,
+      command.scope,
+      retained.snapshot,
+      proposed.nominalAccountId,
+      proposed.equityAccountId,
+    );
+
+    if (current.digest !== prepared.currentBasisDigest) return yield* failure("StaleDependency");
+
+    yield* readBridgeBasis(transaction, command.scope, prepared.bridgeId, proposed.fiscalYearId);
 
     if (command.input.digest !== textField(proposalRow.body, "digest")) {
       return yield* failure("StaleDependency");
@@ -886,378 +977,427 @@ export const executeFinalClose = Effect.fn("closing.financial-close.execute")(fu
     readonly input: typeof Close.ExecuteFinalClose.Type;
   },
 ) {
-  return yield* withBook(token, command.scope, true, function* (transaction, principal) {
-    const operation = "execute_financial_close";
+  return yield* withCloseApproval(
+    token,
+    command.scope,
+    command.proposalId,
+    command.input.approvalId,
+    function* (transaction, principal) {
+      const operation = "execute_financial_close";
 
-    const request = yield* replay(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      operation,
-      principal.actorId,
-      { proposalId: command.proposalId, input: yield* toJsonObject(command.input) },
-      CertificateSchema,
-    );
-
-    if (request.previous) return request.previous;
-
-    yield* closeAccess(transaction, [...Db.financialCloseInserts]);
-
-    const book = (yield* Ledger.readBook(transaction, command.scope))[0];
-
-    if (!book) return yield* failure("Forbidden");
-
-    const proposalRow = yield* readProposalRow(transaction, command.scope, command.proposalId);
-    const proposal = yield* decode(ProposalSchema, proposalRow.body);
-
-    if (
-      proposal.digest !== command.input.digest ||
-      (yield* closeProposalBlockers(transaction, command.scope, proposalRow)).length > 0
-    ) {
-      return yield* failure("StaleDependency");
-    }
-
-    const approval = (yield* Db.readApprovalById(
-      transaction,
-      command.scope.bookId,
-      command.input.approvalId,
-      command.proposalId,
-    ))[0];
-
-    const now = yield* isoNow(transaction);
-
-    if (
-      approval === undefined ||
-      approval.digest !== proposal.digest ||
-      Date.parse(approval.expiresAt) <= Date.parse(now) ||
-      (yield* Db.readCertificateByProposal(
+      const request = yield* replay(
         transaction,
-        command.scope.bookId,
-        approval.proposalId,
-      ))[0] !== undefined
-    ) {
-      return yield* failure("ApprovalRequired");
-    }
-
-    // Four-eyes separation: the operator who approved the final proposal may
-    // not be the operator who executes it. The kernel approval below is the
-    // execution authorization, not a second human review.
-    if (approval.actorId === principal.actorId) {
-      return yield* failure("ApprovalRequired");
-    }
-
-    const chain = yield* readChain(transaction, command.scope, proposal.fiscalYearId);
-
-    const activeCertificate = [...chain.certificatesByProposal.values()].find(
-      (certificate) => !executedReopen(chain.reopensByCertificate, certificate.id),
-    );
-
-    if (activeCertificate !== undefined) return yield* failure("AlreadyPosted");
-
-    const preparationRow = yield* readPreparationRow(
-      transaction,
-      command.scope,
-      proposal.preparationId,
-    );
-
-    const preparation = yield* decode(PreparationSchema, preparationRow.body);
-
-    const retained = yield* readRetainedSnapshot(
-      transaction,
-      command.scope,
-      preparation.statementSnapshotId,
-    );
-
-    const bridge = yield* readBridgeBasis(
-      transaction,
-      command.scope,
-      preparation.bridgeId,
-      proposal.fiscalYearId,
-    );
-
-    const priorTransfers = yield* Db.readTransfersForYear(
-      transaction,
-      command.scope.bookId,
-      proposal.fiscalYearId,
-    );
-
-    const priorTransferMinor = priorTransfers
-      .reduce((total, row) => total + BigInt(row.deltaMinor), 0n)
-      .toString();
-
-    if (priorTransferMinor !== proposal.priorTransferMinor) {
-      return yield* failure("StaleDependency");
-    }
-
-    const version = yield* basisVersion({
-      snapshotDigest: retained.digest,
-      bridgeDigest: bridge.digest,
-      recognizedMinor: bridge.recognizedMinor,
-      priorTransferMinor,
-    });
-
-    if (version !== preparation.closeBasisVersion) {
-      return yield* failure("StaleDependency");
-    }
-
-    const conserved = assertCloseConservation(proposal.plan, {
-      closeBasisVersion: version,
-      controls: preparation.familyControls.map((control) => ({
-        familyId: control.familyId,
-        status: control.status,
-        evidenceId: control.evidenceId,
-      })),
-    });
-
-    if (Result.isFailure(conserved)) return yield* refusalFor(conserved.failure);
-
-    const delta = proposal.plan.transfer.deltaMinor;
-    const consumesVoucher = proposal.plan.transfer.consumesVoucher;
-    let transferVoucherId: string | null = null;
-
-    if (consumesVoucher) {
-      const eventKey = `financial_close_${proposal.fiscalYearId}`;
-
-      const eventRows = yield* Ledger.readEvent(
-        transaction,
-        command.scope.bookId,
-        preparation.evidence.evidenceId,
-        eventKey,
+        command.scope,
+        command.idempotencyKey,
+        operation,
+        principal.actorId,
+        { proposalId: command.proposalId, input: yield* toJsonObject(command.input) },
+        CertificateSchema,
       );
 
-      const eventId =
-        eventRows[0]?.id ??
-        (yield* Ledger.insertEvent(
+      if (request.previous) return request.previous;
+
+      yield* closeAccess(transaction, [...Db.financialCloseInserts]);
+
+      const book = (yield* Ledger.readBook(transaction, command.scope))[0];
+
+      if (!book) return yield* failure("Forbidden");
+
+      const proposalRow = yield* readProposalRow(transaction, command.scope, command.proposalId);
+      const proposal = yield* decode(ProposalSchema, proposalRow.body);
+
+      if (
+        proposal.digest !== command.input.digest ||
+        (yield* closeProposalBlockers(transaction, command.scope, proposalRow)).length > 0
+      ) {
+        return yield* failure("StaleDependency");
+      }
+
+      const approval = (yield* Db.readApprovalById(
+        transaction,
+        command.scope.bookId,
+        command.input.approvalId,
+        command.proposalId,
+      ))[0];
+
+      const now = yield* isoNow(transaction);
+
+      if (
+        approval === undefined ||
+        approval.digest !== proposal.digest ||
+        Date.parse(approval.expiresAt) <= Date.parse(now) ||
+        (yield* Db.readCertificateByProposal(
           transaction,
           command.scope.bookId,
-          newId("event"),
-          preparation.evidence.evidenceId,
-          eventKey,
-        ))[0]?.id;
+          approval.proposalId,
+        ))[0] !== undefined
+      ) {
+        return yield* failure("ApprovalRequired");
+      }
 
-      if (eventId === undefined) return yield* failure("InternalError");
+      // Four-eyes separation: the operator who approved the final proposal may
+      // not be the operator who executes it. The kernel approval below is the
+      // execution authorization, not a second human review.
+      if (approval.actorId === principal.actorId) {
+        return yield* failure("ApprovalRequired");
+      }
 
-      const occurrenceSeed = yield* sha256Hex(`${proposal.id}:${proposal.digest}`);
+      if (!(yield* reviewerIsCurrent(transaction, command.scope.bookId, approval.actorId)))
+        return yield* failure("ApprovalRequired");
 
-      const action = yield* decode(Accounting.VoucherPostingAction, {
-        kind: "post_voucher",
-        correctsVoucherId: null,
-        eventId,
-        postingPurpose: "result_transfer_v1",
-        occurrenceKey: `result_transfer_${occurrenceSeed.slice(0, 32)}`,
-        fiscalYearId: proposal.fiscalYearId,
-        accountingPeriodId: proposal.accountingPeriodId,
-        postingDate: proposal.postingDate,
-        series: proposal.series,
-        currency: book.currency,
-        description: `Year result transfer ${proposal.fiscalYearId}`,
-        rationale: preparation.input.reason,
-        taxAssessment: "not_applicable",
-        lines: proposal.transferJournal.map((line) => ({
-          lineId: newId("line"),
-          accountId: line.accountId,
-          debitMinor: line.debitMinor,
-          creditMinor: line.creditMinor,
-          description: line.description,
-        })),
-        evidenceRefs: [
-          {
-            evidenceId: preparation.evidence.evidenceId,
-            sha256: preparation.evidence.sha256,
-            locator: eventKey,
-          },
-        ],
-        resultTransfer: {
-          proposalId: proposal.id,
-          fiscalYearId: proposal.fiscalYearId,
-          deltaMinor: delta,
-        },
-      });
+      const chain = yield* readChain(transaction, command.scope, proposal.fiscalYearId);
 
-      const plan = yield* sealActionInTransaction(
-        transaction,
-        principal,
-        command.scope,
-        action,
-        false,
-        true,
+      const activeCertificate = [...chain.certificatesByProposal.values()].find(
+        (certificate) => !executedReopen(chain.reopensByCertificate, certificate.id),
       );
 
-      const kernel = yield* approveChangeInTransaction(transaction, principal, {
-        scope: command.scope,
-        changeSetId: plan.id,
-        idempotencyKey: newId("close_approve"),
-        input: { version: 1, planDigest: plan.planDigest },
-      });
+      if (activeCertificate !== undefined) return yield* failure("AlreadyPosted");
 
-      const postingReceipt = yield* executeChangeInTransaction(transaction, principal, {
-        scope: command.scope,
-        changeSetId: plan.id,
-        idempotencyKey: newId("close_post"),
-        input: { version: 1, planDigest: plan.planDigest, approvalId: kernel.id },
-        owner: { kind: "financial_close", id: proposal.id },
-      });
+      const preparationRow = yield* readPreparationRow(
+        transaction,
+        command.scope,
+        proposal.preparationId,
+      );
 
-      transferVoucherId = postingReceipt.voucherId;
-    }
+      const preparation = yield* decode(PreparationSchema, preparationRow.body);
 
-    // The conservation proof, inside the same transaction after the transfer
-    // posted: the sealed basis still describes the current ledger, with only
-    // this owner's transfer postings and the corporate-tax effects after the
-    // cutoff. Anything else refuses the close rather than sealing over it.
-    if (
-      !(yield* snapshotIsCurrent(
+      const retained = yield* readRetainedSnapshot(
+        transaction,
+        command.scope,
+        preparation.statementSnapshotId,
+      );
+
+      const current = yield* captureFinancialBasis(
         transaction,
         command.scope,
         retained.snapshot,
+        proposal.nominalAccountId,
+        proposal.equityAccountId,
+      );
+
+      const bridge = yield* readBridgeBasis(
+        transaction,
+        command.scope,
+        preparation.bridgeId,
         proposal.fiscalYearId,
-      ))
-    ) {
-      return yield* failure("StaleDependency");
-    }
+      );
 
-    const recordedAt = yield* isoNow(transaction);
-    const transferId = newId("close_transfer");
-    const transferOrdinal = priorTransfers.length + 1;
-    const openingId = newId("opening_set");
-    const certificateId = newId("close_certificate");
+      const priorTransfers = yield* Db.readTransfersForYear(
+        transaction,
+        command.scope.bookId,
+        proposal.fiscalYearId,
+      );
 
-    const openings = yield* Db.readOpeningSetsForYear(
-      transaction,
-      command.scope.bookId,
-      proposal.fiscalYearId,
-    );
+      const priorTransferMinor = priorTransfers
+        .reduce((total, row) => total + BigInt(row.deltaMinor), 0n)
+        .toString();
 
-    const openingVersion = openings.length + 1;
-    const supersedes = openings[openings.length - 1];
+      if (priorTransferMinor !== proposal.priorTransferMinor) {
+        return yield* failure("StaleDependency");
+      }
 
-    const transferBody = {
-      id: transferId,
-      scope: command.scope,
-      certificateId,
-      fiscalYearId: proposal.fiscalYearId,
-      ordinal: transferOrdinal,
-      deltaMinor: delta,
-      voucherId: transferVoucherId,
-      proposalId: proposal.id,
-      createdAt: recordedAt,
-      receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
-    };
+      if (
+        current.digest !== preparation.currentBasisDigest ||
+        bridge.effectId !== preparation.taxEffectId ||
+        bridge.receiptId !== preparation.taxReceiptId
+      )
+        return yield* failure("StaleDependency");
 
-    const transfer = {
-      ...transferBody,
-      digest: yield* digest(transferBody),
-    };
+      const version = yield* basisVersion({
+        snapshotDigest: retained.digest,
+        bridgeDigest: bridge.digest,
+        recognizedMinor: bridge.recognizedMinor,
+        priorTransferMinor,
+        currentDigest: current.digest,
+      });
 
-    const openingBody = {
-      id: openingId,
-      scope: command.scope,
-      version: openingVersion,
-      fiscalYearId: proposal.fiscalYearId,
-      certificateId,
-      basisSnapshotId: retained.snapshot.id,
-      supersedesId: supersedes?.id ?? null,
-      transferDeltaMinor: delta,
-      rows: proposal.openingTarget,
-      createdAt: recordedAt,
-      receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
-    };
+      if (version !== preparation.closeBasisVersion) {
+        return yield* failure("StaleDependency");
+      }
 
-    const opening = {
-      ...openingBody,
-      digest: yield* digest(openingBody),
-    };
+      const conserved = assertCloseConservation(proposal.plan, {
+        closeBasisVersion: version,
+        controls: preparation.familyControls.map((control) => ({
+          familyId: control.familyId,
+          status: control.status,
+          evidenceId: control.evidenceId,
+        })),
+      });
 
-    const locked = yield* Db.setYearPeriodLocks(
-      transaction,
-      command.scope.bookId,
-      proposal.fiscalYearId,
-      true,
-    );
+      if (Result.isFailure(conserved)) return yield* refusalFor(conserved.failure);
 
-    if (locked.length === 0) return yield* failure("InvalidJournal");
+      const delta = proposal.plan.transfer.deltaMinor;
+      const consumesVoucher = proposal.plan.transfer.consumesVoucher;
+      let transferVoucherId: string | null = null;
 
-    const lockedPeriodIds = locked.map((period) => period.id);
+      if (consumesVoucher) {
+        const eventKey = `financial_close_${proposal.fiscalYearId}`;
 
-    const certificateBody = {
-      id: certificateId,
-      scope: command.scope,
-      version: 1,
-      proposalId: proposal.id,
-      proposalDigest: proposal.digest,
-      approvalId: approval.id,
-      fiscalYearId: proposal.fiscalYearId,
-      transferDeltaMinor: delta,
-      transferVoucherId,
-      openingSetId: openingId,
-      lockedPeriodIds,
-      evidence: preparation.evidence,
-      createdAt: recordedAt,
-      receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
-    };
+        const eventRows = yield* Ledger.readEvent(
+          transaction,
+          command.scope.bookId,
+          preparation.evidence.evidenceId,
+          eventKey,
+        );
 
-    const certificate = yield* decode(CertificateSchema, {
-      ...certificateBody,
-      digest: yield* digest(certificateBody),
-    });
+        const eventId =
+          eventRows[0]?.id ??
+          (yield* Ledger.insertEvent(
+            transaction,
+            command.scope.bookId,
+            newId("event"),
+            preparation.evidence.evidenceId,
+            eventKey,
+          ))[0]?.id;
 
-    yield* Db.insertTransfer(transaction, {
-      bookId: command.scope.bookId,
-      id: transferId,
-      fiscalYearId: proposal.fiscalYearId,
-      ordinal: transferOrdinal,
-      deltaMinor: delta,
-      voucherId: transferVoucherId,
-      body: yield* toJsonObject(transfer),
-      digest: transfer.digest,
-      recordedAt,
-    });
+        if (eventId === undefined) return yield* failure("InternalError");
 
-    yield* Db.insertOpeningSet(transaction, {
-      bookId: command.scope.bookId,
-      id: openingId,
-      fiscalYearId: proposal.fiscalYearId,
-      version: openingVersion,
-      certificateId,
-      supersedesId: opening.supersedesId,
-      body: yield* toJsonObject(opening),
-      digest: opening.digest,
-      recordedAt,
-    });
+        const occurrenceSeed = yield* sha256Hex(`${proposal.id}:${proposal.digest}`);
 
-    yield* Db.insertCertificate(transaction, {
-      bookId: command.scope.bookId,
-      id: certificateId,
-      proposalId: proposal.id,
-      fiscalYearId: proposal.fiscalYearId,
-      openingSetId: openingId,
-      transferId,
-      body: yield* toJsonObject(certificate),
-      digest: certificate.digest,
-      recordedAt,
-    });
+        const action = yield* decode(Accounting.VoucherPostingAction, {
+          kind: "post_voucher",
+          correctsVoucherId: null,
+          eventId,
+          postingPurpose: "result_transfer_v1",
+          occurrenceKey: `result_transfer_${occurrenceSeed.slice(0, 32)}`,
+          fiscalYearId: proposal.fiscalYearId,
+          accountingPeriodId: proposal.accountingPeriodId,
+          postingDate: proposal.postingDate,
+          series: proposal.series,
+          currency: book.currency,
+          description: `Year result transfer ${proposal.fiscalYearId}`,
+          rationale: preparation.input.reason,
+          taxAssessment: "not_applicable",
+          lines: proposal.transferJournal.map((line) => ({
+            lineId: newId("line"),
+            accountId: line.accountId,
+            debitMinor: line.debitMinor,
+            creditMinor: line.creditMinor,
+            description: line.description,
+          })),
+          evidenceRefs: [
+            {
+              evidenceId: preparation.evidence.evidenceId,
+              sha256: preparation.evidence.sha256,
+              locator: eventKey,
+            },
+          ],
+          resultTransfer: {
+            proposalId: proposal.id,
+            fiscalYearId: proposal.fiscalYearId,
+            deltaMinor: delta,
+          },
+        });
 
-    yield* saveCommand(
-      transaction,
-      command.scope,
-      command.idempotencyKey,
-      request.expected,
-      operation,
-      principal.actorId,
-      yield* toJsonObject(certificate),
-    );
+        const plan = yield* sealActionInTransaction(
+          transaction,
+          principal,
+          command.scope,
+          action,
+          false,
+          true,
+        );
 
-    return certificate;
-  });
+        const kernel = yield* approveChangeInTransaction(transaction, principal, {
+          scope: command.scope,
+          changeSetId: plan.id,
+          idempotencyKey: newId("close_approve"),
+          input: { version: 1, planDigest: plan.planDigest },
+          owner: { kind: "financial_close", id: proposal.id },
+        });
+
+        const postingReceipt = yield* executeChangeInTransaction(transaction, principal, {
+          scope: command.scope,
+          changeSetId: plan.id,
+          idempotencyKey: newId("close_post"),
+          input: { version: 1, planDigest: plan.planDigest, approvalId: kernel.id },
+          owner: { kind: "financial_close", id: proposal.id },
+        });
+
+        transferVoucherId = postingReceipt.voucherId;
+      }
+
+      // The conservation proof, inside the same transaction after the transfer
+      // posted: the sealed basis still describes the current ledger, with only
+      // this owner's transfer postings and the corporate-tax effects after the
+      // cutoff. Anything else refuses the close rather than sealing over it.
+      const recordedAt = yield* isoNow(transaction);
+      const transferId = newId("close_transfer");
+      const transferOrdinal = priorTransfers.length + 1;
+      const openingId = newId("opening_set");
+      const certificateId = newId("close_certificate");
+
+      const openings = yield* Db.readOpeningSetsForYear(
+        transaction,
+        command.scope.bookId,
+        proposal.fiscalYearId,
+      );
+
+      const openingVersion = openings.length + 1;
+      const supersedes = openings[openings.length - 1];
+
+      const transferBody = {
+        id: transferId,
+        scope: command.scope,
+        certificateId,
+        fiscalYearId: proposal.fiscalYearId,
+        ordinal: transferOrdinal,
+        deltaMinor: delta,
+        voucherId: transferVoucherId,
+        proposalId: proposal.id,
+        createdAt: recordedAt,
+        receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+      };
+
+      const transfer = {
+        ...transferBody,
+        digest: yield* digest(transferBody),
+      };
+
+      const openingBody = {
+        id: openingId,
+        scope: command.scope,
+        version: openingVersion,
+        fiscalYearId: proposal.fiscalYearId,
+        certificateId,
+        basisSnapshotId: retained.snapshot.id,
+        supersedesId: supersedes?.id ?? null,
+        transferDeltaMinor: delta,
+        sourceBoundary: (yield* Ledger.readBook(
+          transaction,
+          command.scope,
+        ))[0]!.committedSequence.toString(),
+        rows: proposal.openingTarget,
+        createdAt: recordedAt,
+        receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+      };
+
+      const opening = {
+        ...openingBody,
+        digest: yield* digest(openingBody),
+      };
+
+      const locked = yield* Db.setYearPeriodLocks(
+        transaction,
+        command.scope.bookId,
+        proposal.fiscalYearId,
+        true,
+      );
+
+      if (locked.length === 0) return yield* failure("InvalidJournal");
+
+      const lockedPeriodIds = locked.map((period) => period.id);
+
+      const certificateBody = {
+        id: certificateId,
+        scope: command.scope,
+        version: 1,
+        proposalId: proposal.id,
+        proposalDigest: proposal.digest,
+        approvalId: approval.id,
+        fiscalYearId: proposal.fiscalYearId,
+        transferDeltaMinor: delta,
+        transferVoucherId,
+        openingSetId: openingId,
+        lockedPeriodIds,
+        evidence: preparation.evidence,
+        createdAt: recordedAt,
+        receipt: commandReceipt(command.idempotencyKey, operation, principal.actorId),
+      };
+
+      const certificate = yield* decode(CertificateSchema, {
+        ...certificateBody,
+        digest: yield* digest(certificateBody),
+      });
+
+      yield* Db.insertTransfer(transaction, {
+        bookId: command.scope.bookId,
+        id: transferId,
+        fiscalYearId: proposal.fiscalYearId,
+        ordinal: transferOrdinal,
+        deltaMinor: delta,
+        voucherId: transferVoucherId,
+        body: yield* toJsonObject(transfer),
+        digest: transfer.digest,
+        recordedAt,
+      });
+
+      if (
+        !(yield* snapshotIsCurrent(
+          transaction,
+          command.scope,
+          retained.snapshot,
+          proposal.fiscalYearId,
+        ))
+      )
+        return yield* failure("StaleDependency");
+
+      const raw = yield* Db.readRawYearBalances(
+        transaction,
+        command.scope.bookId,
+        retained.snapshot.fiscalYear.startsOn,
+        retained.snapshot.fiscalYear.endsOn,
+      );
+
+      const roles = new Map(
+        retained.snapshot.mappingRelease.accountRoleRules.map((row) => [row.accountId, row.role]),
+      );
+
+      const finalNominal = raw
+        .filter((row) => ["income", "expense"].includes(roles.get(row.accountId) ?? ""))
+        .reduce((sum, row) => sum + BigInt(row.yearMinor), 0n);
+
+      if (
+        finalNominal !== 0n ||
+        proposal.openingTarget.some(
+          (row) =>
+            BigInt(row.balanceMinor) !==
+            BigInt(raw.find((balance) => balance.accountId === row.accountId)?.balanceMinor ?? "0"),
+        )
+      )
+        return yield* failure("InvalidJournal");
+
+      yield* Db.insertOpeningSet(transaction, {
+        bookId: command.scope.bookId,
+        id: openingId,
+        fiscalYearId: proposal.fiscalYearId,
+        version: openingVersion,
+        certificateId,
+        supersedesId: opening.supersedesId,
+        body: yield* toJsonObject(opening),
+        digest: opening.digest,
+        recordedAt,
+      });
+
+      yield* Db.insertCertificate(transaction, {
+        bookId: command.scope.bookId,
+        id: certificateId,
+        proposalId: proposal.id,
+        fiscalYearId: proposal.fiscalYearId,
+        openingSetId: openingId,
+        transferId,
+        body: yield* toJsonObject(certificate),
+        digest: certificate.digest,
+        recordedAt,
+      });
+
+      yield* saveCommand(
+        transaction,
+        command.scope,
+        command.idempotencyKey,
+        request.expected,
+        operation,
+        principal.actorId,
+        yield* toJsonObject(certificate),
+      );
+
+      return certificate;
+    },
+  );
 });
 
-// A reopen is one atomic step, not a prepare/execute split: the downstream
-// enumeration and the lock update must see the same membership, and a
-// downstream close landing between two steps would invalidate the
-// enumeration. A consumed downstream year refuses with its exact dependency
-// list retained on the sealed refusal record; an unconsumed year unlocks and
-// returns to open through the appended event. Old certificates, openings and
-// reports stay byte-identical either way.
+// Preparation captures impact only. Approval and execution bind this exact
+// proposal; execution enumerates consumers again under the writer barrier.
 export const prepareYearReopen = Effect.fn("closing.financial-close.reopen")(function* (
   token: string,
   command: {
@@ -1268,22 +1408,22 @@ export const prepareYearReopen = Effect.fn("closing.financial-close.reopen")(fun
   },
 ) {
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
-    yield* closeAccess(transaction, [...Db.financialCloseInserts]);
-
     const request = yield* replay(
       transaction,
       command.scope,
       command.idempotencyKey,
-      "reopen_financial_year",
+      "prepare_financial_reopen",
       principal.actorId,
       {
         fiscalYearId: command.fiscalYearId,
         input: yield* toJsonObject(command.input),
       },
-      Close.FinancialReopenEvent,
+      Close.FinancialReopenProposal,
     );
 
     if (request.previous) return request.previous;
+
+    yield* closeAccess(transaction, [...Db.financialCloseInserts]);
 
     const year = yield* readYear(transaction, command.scope.bookId, command.fiscalYearId);
 
@@ -1306,49 +1446,17 @@ export const prepareYearReopen = Effect.fn("closing.financial-close.reopen")(fun
       return yield* failure("AlreadyPosted");
     }
 
-    const refusals: Array<string> = [];
-
-    const laterYears = yield* Db.readLaterFiscalYears(
+    const refusals = (yield* Db.readDownstreamConsumers(
       transaction,
       command.scope.bookId,
+      certificate.id,
       year.endsOn,
-    );
+    )).map((row) => row.id);
 
-    for (const later of laterYears) {
-      for (const opening of yield* Db.readOpeningSetsForYear(
-        transaction,
-        command.scope.bookId,
-        later.id,
-      )) {
-        refusals.push(`opening_set:${opening.id}`);
-      }
-
-      for (const laterCertificate of yield* Db.readCertificatesForYear(
-        transaction,
-        command.scope.bookId,
-        later.id,
-      )) {
-        refusals.push(`certificate:${laterCertificate.id}`);
-      }
-    }
-
-    for (const snapshot of yield* Db.readLaterSnapshots(
-      transaction,
-      command.scope.bookId,
-      year.endsOn,
-    )) {
-      refusals.push(`statement_snapshot:${snapshot.id}`);
-    }
+    const periods = yield* Db.lockYearPeriods(transaction, command.scope.bookId, year.id);
 
     const recordedAt = yield* isoNow(transaction);
     const reopenId = newId("close_reopen");
-
-    const unlocked =
-      refusals.length === 0
-        ? (yield* Db.setYearPeriodLocks(transaction, command.scope.bookId, year.id, false)).map(
-            (period) => period.id,
-          )
-        : [];
 
     const body = {
       id: reopenId,
@@ -1358,37 +1466,39 @@ export const prepareYearReopen = Effect.fn("closing.financial-close.reopen")(fun
       fiscalYearId: year.id,
       reason: command.input.reason,
       downstreamRefusals: refusals,
-      unlockedPeriodIds: unlocked,
+      periodIds: periods.map((period) => period.id),
+      periodDigest: yield* digest(periods),
+      createdBy: principal.actorId,
       createdAt: recordedAt,
-      receipt: commandReceipt(command.idempotencyKey, "reopen_financial_year", principal.actorId),
+      receipt: commandReceipt(
+        command.idempotencyKey,
+        "prepare_financial_reopen",
+        principal.actorId,
+      ),
     };
 
-    const event = yield* decode(Close.FinancialReopenEvent, {
+    const event = yield* decode(Close.FinancialReopenProposal, {
       ...body,
       digest: yield* digest(body),
     });
 
-    yield* Db.insertReopenEvent(transaction, {
-      bookId: command.scope.bookId,
-      id: reopenId,
-      certificateId: certificate.id,
-      fiscalYearId: year.id,
-      body: yield* toJsonObject(event),
-      digest: event.digest,
-      recordedAt,
-    });
+    yield* Db.insertReopenProposal(
+      transaction,
+      command.scope.bookId,
+      reopenId,
+      certificate.id,
+      yield* toJsonObject(event),
+    );
 
     yield* saveCommand(
       transaction,
       command.scope,
       command.idempotencyKey,
       request.expected,
-      "reopen_financial_year",
+      "prepare_financial_reopen",
       principal.actorId,
       yield* toJsonObject(event),
     );
-
-    if (refusals.length > 0) return yield* failure("UnsupportedProfile");
 
     return event;
   });
@@ -1403,8 +1513,8 @@ function yearStatus(
     (certificate) => !executedReopen(chain.reopensByCertificate, certificate.id),
   );
 
-  const reopened = [...chain.certificatesByProposal.keys()].some((id) =>
-    executedReopen(chain.reopensByCertificate, id),
+  const reopened = [...chain.certificatesByProposal.values()].some((certificate) =>
+    executedReopen(chain.reopensByCertificate, certificate.id),
   );
 
   if (activeCertificate !== undefined) {
@@ -1431,7 +1541,21 @@ function yearStatus(
     };
   }
 
-  const headPreparation = chain.preparations[chain.preparations.length - 1];
+  const latestReopen = [...chain.reopensByCertificate.values()].reduce((latest, event) => {
+    const createdAt = textField(event.body, "createdAt") ?? "";
+
+    return createdAt > latest ? createdAt : latest;
+  }, "");
+
+  const headPreparation = chain.preparations
+    .filter((preparation) => {
+      if ((textField(preparation.body, "createdAt") ?? "") <= latestReopen) return false;
+
+      const proposal = chain.proposalsByPreparation.get(preparation.id);
+
+      return proposal === undefined || !chain.certificatesByProposal.has(proposal.id);
+    })
+    .at(-1);
 
   if (headPreparation === undefined) {
     return {
@@ -1584,6 +1708,11 @@ export const financialCloseHistory = Effect.fn("closing.financial-close.history"
       scope: command.scope,
       fiscalYearId: command.fiscalYearId,
       complete: true,
+      reopenings: (yield* Db.readReopensForYear(
+        transaction,
+        command.scope.bookId,
+        command.fiscalYearId,
+      )).map((row) => row.body),
       preparations: chain.preparations.map((preparation) => {
         const proposal = chain.proposalsByPreparation.get(preparation.id);
 

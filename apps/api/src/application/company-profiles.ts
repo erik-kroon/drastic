@@ -7,6 +7,7 @@ import {
   replay,
   saveCommand,
   versionedDigest,
+  digest,
 } from "./posting";
 import { failure } from "./failures";
 import { readTableAccess } from "../db/commerce/access";
@@ -50,7 +51,7 @@ function requireProfileTables(transaction: Transaction, write: boolean) {
 
       if (rows.some((row) => !row.canSelect)) return failure("UnsupportedProfile");
 
-      return write && rows.some((row) => !row.canInsert)
+      return write && rows.some((row) => row.tableName !== "rule_releases" && !row.canInsert)
         ? failure("UnsupportedProfile")
         : Effect.void;
     }),
@@ -255,7 +256,7 @@ export const recordCompanyFact = Effect.fn("companyProfiles.recordFact")(functio
         receipt: commandReceipt(command.idempotencyKey, "record_company_fact", principal.actorId),
       });
 
-      const sealed = yield* versionedDigest(body);
+      const sealed = yield* digest(body);
       const result = yield* decode(Profiles.FactRevision, { ...body, digest: sealed });
       const row = yield* toJsonObject(result);
 
@@ -320,7 +321,7 @@ function recordImpacts(
         recordedAt: today,
       });
 
-      const sealed = yield* versionedDigest(body);
+      const sealed = yield* digest(body);
       const impact = yield* decode(Profiles.CompanyActivationImpact, { ...body, digest: sealed });
 
       yield* Db.insertActivationImpact(transaction, {
@@ -404,7 +405,7 @@ export const reviewCompanyFact = Effect.fn("companyProfiles.reviewFact")(functio
         receipt: commandReceipt(command.idempotencyKey, "review_company_fact", principal.actorId),
       });
 
-      const sealed = yield* versionedDigest(body);
+      const sealed = yield* digest(body);
       const result = yield* decode(Profiles.FactReview, { ...body, digest: sealed });
       const row = yield* toJsonObject(result);
 
@@ -497,7 +498,7 @@ export const recordCompanyRoleBinding = Effect.fn("companyProfiles.recordRoleBin
         ),
       });
 
-      const sealed = yield* versionedDigest(body);
+      const sealed = yield* digest(body);
       const result = yield* decode(Profiles.RoleBinding, { ...body, digest: sealed });
       const row = yield* toJsonObject(result);
 

@@ -981,6 +981,7 @@ export const approveChangeInTransaction = Effect.fn("posting.approveChangeInTran
         command.scope,
         plan,
         command.owner?.kind === "legal_issue" || command.owner?.kind === "legal_credit",
+        command.owner?.kind === "financial_close",
       );
 
       if (command.owner !== undefined) {

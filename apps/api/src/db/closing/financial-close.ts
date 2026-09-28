@@ -4,6 +4,108 @@ import type { Transaction } from "../transaction";
 
 type JsonObject = Schema.JsonObject;
 
+export function readFinancialReviewer(
+  tx: Transaction,
+  bookId: string,
+  proposalId: string,
+  approvalId: string,
+) {
+  return tx.execute<{ readonly actorId: string }>(
+    sql`select actor_id as "actorId" from openerp.financial_close_approvals
+    where book_id=${bookId} and proposal_id=${proposalId} and id=${approvalId}
+    union all select actor_id from openerp.financial_reopen_approvals
+    where book_id=${bookId} and proposal_id=${proposalId} and id=${approvalId}`,
+    "objects",
+  );
+}
+
+// These represented families have no complete close-control provider in the
+// released inventory owner. A dated not-applicable claim cannot hide their rows.
+export function readUncoveredCloseFamilies(tx: Transaction, bookId: string) {
+  return tx.execute<{ readonly family: string; readonly total: string }>(
+    sql`
+    select 'payroll' as family, count(*)::text as total from openerp.payroll_employees where book_id=${bookId}
+    union all select 'payroll',count(*)::text from openerp.payroll_calculations where book_id=${bookId}
+    union all select 'foreign_currency',count(*)::text from openerp.commerce_fx_items where book_id=${bookId}
+    union all select 'foreign_currency',count(*)::text from openerp.commerce_fx_recognition_reviews where book_id=${bookId}`,
+    "objects",
+  );
+}
+
+export function readReopenProposal(tx: Transaction, bookId: string, id: string) {
+  return tx.execute<BodyRow>(
+    sql`select id,body from openerp.financial_reopen_proposals where book_id=${bookId} and id=${id}`,
+    "objects",
+  );
+}
+
+export function insertReopenProposal(
+  tx: Transaction,
+  bookId: string,
+  id: string,
+  certificateId: string,
+  body: JsonObject,
+) {
+  return tx.execute(
+    sql`insert into openerp.financial_reopen_proposals(book_id,id,certificate_id,body)
+    values(${bookId},${id},${certificateId},${JSON.stringify(body)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function readReopenApproval(tx: Transaction, bookId: string, id: string) {
+  return tx.execute<BodyRow>(
+    sql`select id,body from openerp.financial_reopen_approvals where book_id=${bookId} and id=${id}`,
+    "objects",
+  );
+}
+
+export function insertReopenApproval(
+  tx: Transaction,
+  bookId: string,
+  id: string,
+  proposalId: string,
+  actorId: string,
+  body: JsonObject,
+) {
+  return tx.execute(
+    sql`insert into openerp.financial_reopen_approvals(book_id,id,proposal_id,actor_id,body)
+    values(${bookId},${id},${proposalId},${actorId},${JSON.stringify(body)}::jsonb)`,
+    "objects",
+  );
+}
+
+export function readReopenOutcome(tx: Transaction, bookId: string, proposalId: string) {
+  return tx.execute<BodyRow>(
+    sql`select id,body from openerp.financial_reopen_events where book_id=${bookId} and body->>'proposalId'=${proposalId}`,
+    "objects",
+  );
+}
+
+export function readDownstreamConsumers(
+  tx: Transaction,
+  bookId: string,
+  certificateId: string,
+  endsOn: string,
+) {
+  return tx.execute<{ readonly id: string }>(
+    sql`select id from (
+    select 'opening_set:'||s.id as id from openerp.financial_opening_sets s join openerp.fiscal_years y on(y.book_id,y.id)=(s.book_id,s.fiscal_year_id)
+      where s.book_id=${bookId} and y.starts_on>${endsOn}::date
+    union all select 'certificate:'||s.id from openerp.financial_close_certificates s join openerp.fiscal_years y on(y.book_id,y.id)=(s.book_id,s.fiscal_year_id)
+      where s.book_id=${bookId} and y.starts_on>${endsOn}::date
+    union all select 'statement_snapshot:'||id from openerp.report_statement_snapshots where book_id=${bookId} and as_of>${endsOn}::date
+    union all select 'report_snapshot:'||id from openerp.report_snapshots where book_id=${bookId} and ends_on>${endsOn}::date
+    union all select 'tax_declaration:'||d.id from openerp.corporate_tax_declarations d
+      join openerp.fiscal_years y on(y.book_id,y.id)=(d.book_id,d.fiscal_year_id)
+      where d.book_id=${bookId} and y.ends_on>=${endsOn}::date
+    union all select 'sie_book_export:'||id from openerp.sie_book_exports where book_id=${bookId} and as_of>=${endsOn}::date
+    union all select 'annual_report:'||id from openerp.annual_report_drafts where book_id=${bookId} and body->>'closeCertificateId'=${certificateId}
+    ) consumers order by id collate "C"`,
+    "objects",
+  );
+}
+
 // The financial-close owner's own tables plus every retained record it reads:
 // the fiscal year and its periods, the NEXT-13 statement snapshot and rows,
 // the NEXT-22 bridge and effects, and the posting kernel's vouchers and
@@ -506,6 +608,7 @@ export function readReopenForCertificate(
       select id, body
       from openerp.financial_reopen_events
       where book_id = ${bookId} and certificate_id = ${certificateId}
+        and body->'downstreamRefusals'='[]'::jsonb
     `,
     "objects",
   );
@@ -594,6 +697,81 @@ export function readTransferVoucherLines(
       where book_id = ${bookId} and voucher_id = ${voucherId}
       order by ordinal
     `,
+    "objects",
+  );
+}
+
+export function lockYearPeriods(tx: Transaction, bookId: string, yearId: string) {
+  return tx.execute<PeriodRow>(
+    sql`select id, fiscal_year_id as "fiscalYearId", locked, version::text,
+    starts_on::text as "startsOn", ends_on::text as "endsOn" from openerp.periods
+    where book_id=${bookId} and fiscal_year_id=${yearId} order by starts_on,id collate "C" for update`,
+    "objects",
+  );
+}
+
+export function readRawYearBalances(
+  tx: Transaction,
+  bookId: string,
+  startsOn: string,
+  endsOn: string,
+) {
+  return tx.execute<{
+    readonly accountId: string;
+    readonly balanceMinor: string;
+    readonly yearMinor: string;
+    readonly ordinaryMinor: string;
+  }>(
+    sql`
+    select l.account_id as "accountId", sum(l.debit_minor-l.credit_minor)::text as "balanceMinor",
+      coalesce(sum(l.debit_minor-l.credit_minor) filter(where v.posting_date>=${startsOn}::date),0)::text as "yearMinor",
+      coalesce(sum(l.debit_minor-l.credit_minor) filter(where v.posting_date>=${startsOn}::date and not exists(
+        select from openerp.financial_close_transfers t where t.book_id=v.book_id and t.voucher_id=v.id)),0)::text as "ordinaryMinor"
+    from openerp.journal_lines l join openerp.vouchers v on (v.book_id,v.id)=(l.book_id,l.voucher_id)
+    where l.book_id=${bookId} and v.posting_date<=${endsOn}::date group by l.account_id order by l.account_id collate "C"`,
+    "objects",
+  );
+}
+
+export function readCloseEpochs(tx: Transaction, bookId: string) {
+  return tx.execute<{ readonly family: string; readonly epoch: string }>(
+    sql`
+    select family, membership_epoch::text as epoch from openerp.company_family_memberships
+    where book_id=${bookId} order by family`,
+    "objects",
+  );
+}
+
+export function readAdjustmentReceipts(
+  tx: Transaction,
+  bookId: string,
+  evidenceId: string,
+  sha256: string,
+  receiptId: string,
+  fiscalYearId: string,
+) {
+  return tx.execute<{ readonly id: string }>(
+    sql`select r.id from openerp.execution_receipts r
+    join openerp.vouchers v on(v.book_id,v.id)=(r.book_id,r.voucher_id)
+    join openerp.events e on(e.book_id,e.id)=(v.book_id,v.event_id)
+    join openerp.evidence d on(d.book_id,d.id)=(e.book_id,e.evidence_id)
+    where r.book_id=${bookId} and r.id=${receiptId} and v.fiscal_year_id=${fiscalYearId}
+      and d.id=${evidenceId} and d.sha256=${sha256}
+      and not exists(select from openerp.vouchers reversal where reversal.book_id=v.book_id and reversal.corrects_voucher_id=v.id)`,
+    "objects",
+  );
+}
+
+export function readTaxReceipt(
+  tx: Transaction,
+  bookId: string,
+  receiptId: string,
+  changeSetId: string,
+) {
+  return tx.execute<{ readonly id: string }>(
+    sql`select r.id from openerp.posting_group_receipts r
+    join openerp.approval_consumptions a on(a.book_id,a.receipt_id)=(r.book_id,r.id)
+    where r.book_id=${bookId} and r.id=${receiptId} and r.change_set_id=${changeSetId}`,
     "objects",
   );
 }

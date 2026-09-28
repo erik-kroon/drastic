@@ -2,11 +2,12 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as StatementContract from "@open-erp/contracts/report-statements";
 import { calculateStatementModel } from "@open-erp/domain/statements";
 import * as Effect from "effect/Effect";
+import { FinancialOpeningSet } from "@open-erp/contracts/financial-close";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { failure } from "./failures";
-import { isoNow, newId, replay, saveCommand, versionedDigest } from "./posting";
+import { isoNow, newId, replay, saveCommand, digest } from "./posting";
 import { decode, toJsonObject, unsupported, withBook, type JsonObject } from "./commerce/support";
 import { readTableAccess } from "../db/commerce/access";
 import * as Db from "../db/report-statements";
@@ -161,12 +162,40 @@ function capture(
 
     if (year === undefined) return yield* failure("NotFound");
     const base = (yield* Db.readStatementOpeningBase(transaction, scope.bookId, year.id))[0];
+
+    const financialRow = (yield* Db.readFinancialOpening(
+      transaction,
+      scope.bookId,
+      year.startsOn,
+    ))[0];
+
+    if (financialRow?.reopened) return yield* failure("StaleDependency");
+
+    const financial = financialRow ? yield* decode(FinancialOpeningSet, financialRow.body) : null;
+
+    // Pre-repair openings remain readable history. Their presentation rows are
+    // not qualified raw balances and cannot silently become a reviewed opening.
+    if (financial && financial.sourceBoundary === undefined)
+      return yield* failure("StaleDependency");
+
+    if (
+      financial &&
+      (yield* Db.readOpeningSourceDrift(
+        transaction,
+        scope.bookId,
+        year.startsOn,
+        financial.sourceBoundary!,
+      )).length > 0
+    )
+      return yield* failure("StaleDependency");
+
     const openingVoucherId = base?.mode === "opening_set" ? (base.openingVoucherId ?? null) : null;
 
     // A pending opening set has no voucher yet, so the honest representation is the
     // committed prior native balance, and the model says so through its diagnostic.
-    const representation =
-      openingVoucherId === null
+    const representation = financial
+      ? ("financial_close" as const)
+      : openingVoucherId === null
         ? ("prior_native_balance" as const)
         : ("opening_set_voucher" as const);
 
@@ -180,14 +209,16 @@ function capture(
       return yield* failure("UnsupportedProfile");
     }
 
-    const opening = yield* Db.readStatementOpeningLines(
-      transaction,
-      scope.bookId,
-      year.startsOn,
-      boundary,
-      openingVoucherId,
-      Db.maximumStatementAccounts,
-    );
+    const opening = financial
+      ? financial.rows.map((row) => ({ accountId: row.accountId, minor: row.balanceMinor }))
+      : yield* Db.readStatementOpeningLines(
+          transaction,
+          scope.bookId,
+          year.startsOn,
+          boundary,
+          openingVoucherId,
+          Db.maximumStatementAccounts,
+        );
 
     if (opening.length > Db.maximumStatementAccounts) return yield* failure("UnsupportedProfile");
 
@@ -213,9 +244,11 @@ function capture(
       fiscalYear: year,
       openingBasis: {
         representation,
-        basisId: base !== undefined && openingVoucherId !== null ? base.sourcePlanId : year.id,
+        basisId:
+          financial?.id ??
+          (base !== undefined && openingVoucherId !== null ? base.sourcePlanId : year.id),
         openingVoucherId,
-        reviewed: false,
+        reviewed: financial !== null,
       },
       accounts,
       opening,
@@ -341,7 +374,7 @@ export const prepareStatementSnapshot = Effect.fn("statements.prepare")(function
       }
 
       const mapping = yield* toJsonObject(command.input.mapping);
-      const checksum = yield* versionedDigest(mapping);
+      const checksum = yield* digest(mapping);
       const id = newId("statement");
 
       const body = yield* toJsonObject({
@@ -359,6 +392,7 @@ export const prepareStatementSnapshot = Effect.fn("statements.prepare")(function
         factRevisions: basis.factRevisions,
         mappingRelease: { ...mapping, checksum },
         balance: calculated.success.balance,
+        fiscalYtdProfitMinor: calculated.success.outcome.fiscalYtdProfitMinor,
         coverage: calculated.success.coverage,
         diagnostics: calculated.success.diagnostics,
         calculationNodes: calculated.success.calculationNodes,
@@ -479,7 +513,10 @@ export const getStatementSnapshot = Effect.fn("statements.get")(function* (
     ))[0];
 
     if (page === undefined) return yield* failure("InternalError");
-    const items = arrayOf(page.items, "items");
+
+    const items = Option.getOrNull(
+      Schema.decodeOption(Schema.Array(Schema.JsonObject))(page.items),
+    );
 
     if (items === null) return yield* failure("InternalError");
 
@@ -690,7 +727,10 @@ export const compareStatementSnapshots = Effect.fn("statements.compare")(functio
     ))[0];
 
     if (page === undefined) return yield* failure("InternalError");
-    const raw = arrayOf(page.items, "items");
+
+    const raw = Option.getOrNull(
+      Schema.decodeUnknownOption(Schema.Array(Schema.JsonObject))(page.items),
+    );
 
     if (raw === null) return yield* failure("InternalError");
 

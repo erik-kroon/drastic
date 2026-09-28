@@ -156,10 +156,14 @@ export const StatementOpeningLine = Schema.Struct({
 export type StatementOpeningLine = typeof StatementOpeningLine.Type;
 
 export const StatementOpeningBasis = Schema.Struct({
-  representation: Schema.Literals(["opening_set_voucher", "prior_native_balance"]),
+  representation: Schema.Literals([
+    "opening_set_voucher",
+    "prior_native_balance",
+    "financial_close",
+  ]),
   basisId: Identifier,
   openingVoucherId: Schema.NullOr(Identifier),
-  reviewed: Schema.Literal(false),
+  reviewed: Schema.Boolean,
 });
 
 export type StatementOpeningBasis = typeof StatementOpeningBasis.Type;

@@ -18,6 +18,7 @@ import {
   sealActionInTransaction,
   validatePlan,
   versionedDigest,
+  digest as digestJson,
 } from "../posting";
 import { resolveCompanyProfileInTransaction } from "../company-profiles";
 import { base64, sha256HexOf } from "../bytes";
@@ -114,12 +115,6 @@ function requireTableGrants(transaction: Transaction, write: boolean) {
         : Effect.void;
     }),
   );
-}
-
-function arrayOf(value: JsonObject, key: string) {
-  const parsed = Schema.decodeUnknownOption(Schema.Array(Schema.JsonObject))(value[key]);
-
-  return Option.isSome(parsed) ? parsed.value : null;
 }
 
 // A refusal keeps its reviewed reason in the message and is reported through the
@@ -242,7 +237,9 @@ const readRetainedStatement = Effect.fn("corporateTax.retainedStatement")(functi
 
     if (page === undefined) return yield* failure("InternalError");
 
-    const items = arrayOf(page.items, "items");
+    const items = Option.getOrNull(
+      Schema.decodeOption(Schema.Array(Schema.JsonObject))(page.items),
+    );
 
     if (items === null) return yield* failure("InternalError");
 
@@ -263,7 +260,7 @@ const readRetainedStatement = Effect.fn("corporateTax.retainedStatement")(functi
   return {
     snapshot,
     amounts,
-    digest: yield* versionedDigest(
+    digest: yield* digestJson(
       yield* toJsonObject({ snapshot: header.body, rows: bodies }),
       "StaleDependency",
     ),
@@ -342,6 +339,10 @@ const statementIsCurrent = Effect.fn("corporateTax.statementIsCurrent")(function
 
   return foreign === 0n;
 });
+
+function statementYearProfit(snapshot: typeof SnapshotSchema.Type) {
+  return snapshot.fiscalYtdProfitMinor ?? snapshot.balance.virtualUntransferredResultMinor;
+}
 
 const captureBasis = Effect.fn("corporateTax.captureBasis")(function* (
   transaction: Transaction,
@@ -426,7 +427,9 @@ const captureBasis = Effect.fn("corporateTax.captureBasis")(function* (
     transaction,
     scope.bookId,
     snapshot.id,
-    accounts.accounts.map((entry) => entry.accountId),
+    accounts.accounts
+      .filter((entry) => entry.role !== "current_liability")
+      .map((entry) => entry.accountId),
     maximumIncomeTaxComponents,
   );
 
@@ -493,7 +496,7 @@ const captureBasis = Effect.fn("corporateTax.captureBasis")(function* (
       // The canonical form digests an object, never a bare array, so the retained
       // membership is enveloped under its own key. The envelope is part of the
       // digest, so this exact set cannot be re-spelled into a different value.
-      incomeTaxContributionDigest: yield* versionedDigest(
+      incomeTaxContributionDigest: yield* digestJson(
         yield* toJsonObject({
           components: components.map((entry) => ({
             componentId: entry.componentId,
@@ -503,7 +506,7 @@ const captureBasis = Effect.fn("corporateTax.captureBasis")(function* (
         }),
         "StaleDependency",
       ),
-      retainedStatementResultMinor: snapshot.balance.virtualUntransferredResultMinor,
+      retainedStatementResultMinor: statementYearProfit(snapshot),
       incomeTaxAccounts: accounts.accounts,
       incomeTaxComponents: components,
       incomeTaxExpenseEffectMinor: currentExpense.toString(),
@@ -533,7 +536,7 @@ const captureBasis = Effect.fn("corporateTax.captureBasis")(function* (
     membership,
     accounts,
     overlay,
-    overlayDigest: yield* versionedDigest(yield* toJsonObject(overlay), "StaleDependency"),
+    overlayDigest: yield* digestJson(yield* toJsonObject(overlay), "StaleDependency"),
     recognized: BigInt(recognizedRow.minor),
   };
 });
@@ -833,10 +836,11 @@ export const prepareBridge = Effect.fn("corporateTax.prepareBridge")(function* (
         receipt: commandReceipt(command.idempotencyKey, bridgeOperation, principal.actorId),
       });
 
-      const digest = yield* versionedDigest(body, "StaleDependency");
+      const digest = yield* digestJson(body, "StaleDependency");
       const bridge = yield* decode(BridgeSchema, { ...body, digest });
 
       yield* Db.insertBridge(transaction, {
+        createdAt,
         bookId: command.scope.bookId,
         id: bridgeId,
         fiscalYearId: captured.fiscalYear.id,
@@ -1034,6 +1038,7 @@ const revalidateBasis = Effect.fn("corporateTax.revalidateBasis")(function* (
   scope: Scope,
   bridge: typeof Tax.TaxBridge.Type,
   sealed: Db.BridgeRow,
+  executed = false,
 ) {
   const fiscalYear = (yield* Ledger.readFiscalYear(
     transaction,
@@ -1123,10 +1128,25 @@ const revalidateBasis = Effect.fn("corporateTax.revalidateBasis")(function* (
   const target = BigInt(sealed.currentTaxTargetMinor);
   const delta = target - recognized;
 
-  if (recognized !== BigInt(sealed.recognizedMinor) || delta !== BigInt(sealed.deltaMinor))
+  if (
+    executed
+      ? recognized !== target
+      : recognized !== BigInt(sealed.recognizedMinor) || delta !== BigInt(sealed.deltaMinor)
+  )
     return null;
 
   return { recognized, target, delta };
+});
+
+// Consumed by financial close through the same transaction. The already executed
+// target still needs its current reviewed facts, roles, release and population.
+export const executedBridgeIsCurrent = Effect.fn("corporateTax.executedBridgeIsCurrent")(function* (
+  transaction: Transaction,
+  scope: Scope,
+  bridge: typeof Tax.TaxBridge.Type,
+  sealed: Db.BridgeRow,
+) {
+  return (yield* revalidateBasis(transaction, scope, bridge, sealed, true)) !== null;
 });
 
 export const executeEffect = Effect.fn("corporateTax.executeEffect")(function* (
@@ -1390,7 +1410,7 @@ export const executeEffect = Effect.fn("corporateTax.executeEffect")(function* (
         receipt: commandReceipt(command.idempotencyKey, effectOperation, principal.actorId),
       });
 
-      const digest = yield* versionedDigest(body, "StaleDependency");
+      const digest = yield* digestJson(body, "StaleDependency");
       const effect = yield* decode(EffectSchema, { ...body, digest });
 
       yield* Db.insertEffect(transaction, {
