@@ -2,22 +2,16 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { Description, Identifier } from "./values";
 import { MinorUnits } from "./money";
-import {
-  assertBalancedJournal,
-  cumulativeRelease,
-  type RoundingMode,
-} from "./purchasing";
+import { assertBalancedJournal, cumulativeRelease } from "./purchasing";
 
 // Pure cash-method recognition for qualified domestic same-currency
 // invoices. NEXT-38 leaf: partial-payment coverage, once-only year-end
 // unpaid recognition, next-year settlement without repeated VAT, and the
 // credit/correction boundary.
 //
-// Accrual effects are never relabeled: per source line, disjoint recognized
-// coverage keeps the paid and year-end paths from recognizing the same
-// portion twice. Method eligibility and cutover are separately reviewed;
-// this compiler takes them as inputs and refuses anything outside the
-// qualified ordinary profile. Fees are separate sources and effects.
+// Leaf-only contract: callers qualify method eligibility, original treatment,
+// immutable component history and cutover. They persist returned state with
+// fresh versions and financial effects atomically. Fees are separate sources.
 
 export const CashMethodFailureCode = Schema.Literals([
   "UnrecognizedCoverageExceeded",
@@ -58,17 +52,24 @@ export const CashMethodRounding = Schema.Literals(["exact", "half_up"]);
 
 export type CashMethodRounding = typeof CashMethodRounding.Type;
 
-// One original source line with its cumulative recognized gross coverage.
-// Net/tax splits of any new coverage derive from these exact totals, so the
-// final consumption releases exact residuals instead of rounding drift.
+export const CashMethodComponentPolicy = Schema.Literal("tax_first_cumulative_v1");
+
+// Original amounts never change. Paid and effective recognized coverage are
+// prefixes; unpaid credits consume the suffix, unrecognized coverage first.
+// For G = original gross, C = credited, P = paid, R = recognized:
+//   0 <= P <= R <= G-C; recognized unpaid = R-P; commercial unpaid = G-C-P.
+// This policy does not support arbitrary interior credits or paid refunds.
 export const CashMethodLine = Schema.Struct({
   sourceLineId: Identifier,
   netMinor: MinorUnits,
   taxMinor: MinorUnits,
+  creditedGrossMinor: MinorUnits,
+  paidGrossMinor: MinorUnits,
   recognizedGrossMinor: MinorUnits,
   recognizedVersion: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
-  // Original deductible total and its released part, for purchase lines.
-  // Sale lines post the full output tax and leave both at zero.
+  componentPolicy: CashMethodComponentPolicy,
+  rounding: CashMethodRounding,
+  // Effective deduction after recognized credit corrections. Sales use zero.
   originalDeductibleMinor: MinorUnits,
   releasedDeductibleMinor: MinorUnits,
 });
@@ -89,7 +90,6 @@ export const CashPaymentInput = Schema.Struct({
     Schema.isMinLength(1),
     Schema.isMaxLength(50),
   ),
-  rounding: CashMethodRounding,
   settlementControlAccountId: Identifier,
   expenseOrRevenueAccountId: Identifier,
   taxAccountId: Identifier,
@@ -106,7 +106,9 @@ export const RecognizedSlice = Schema.Struct({
   settledRecognizedMinor: MinorUnits,
   newNetMinor: MinorUnits,
   newTaxMinor: MinorUnits,
+  newDeductibleMinor: MinorUnits,
   recognizedGrossAfterMinor: MinorUnits,
+  lineAfter: CashMethodLine,
 });
 
 export type RecognizedSlice = typeof RecognizedSlice.Type;
@@ -157,19 +159,12 @@ function addSigned(
 
 function releaseComponent(
   originalComponent: bigint,
-  originalGross: bigint,
-  recognizedBefore: bigint,
-  newCoverage: bigint,
-  rounding: RoundingMode,
+  totalBasis: bigint,
+  coverage: bigint,
+  rounding: CashMethodRounding,
   subject: string,
 ): Checked<bigint> {
-  const released = cumulativeRelease(
-    originalComponent,
-    originalGross,
-    recognizedBefore,
-    newCoverage,
-    rounding,
-  );
+  const released = cumulativeRelease(originalComponent, totalBasis, 0n, coverage, rounding);
 
   if (Result.isFailure(released)) {
     return fail("InsufficientLineCapacity", `${subject}: ${released.failure.message}`);
@@ -178,7 +173,83 @@ function releaseComponent(
   return Result.succeed(released.success);
 }
 
-// A partial payment in frozen original line order. The already-recognized
+// Round cumulative tax first; net is its gross complement. Split deduction
+// within cumulative tax so every increment conserves gross and deduction
+// cannot exceed the tax increment. No rate or entitlement is inferred.
+function componentsAt(line: CashMethodLine, coverage: bigint) {
+  const gross = BigInt(line.netMinor) + BigInt(line.taxMinor);
+
+  const tax = releaseComponent(
+    BigInt(line.taxMinor),
+    gross,
+    coverage,
+    line.rounding,
+    line.sourceLineId,
+  );
+
+  if (Result.isFailure(tax)) return Result.fail(tax.failure);
+
+  const deductible = releaseComponent(
+    BigInt(line.originalDeductibleMinor),
+    BigInt(line.taxMinor),
+    tax.success,
+    line.rounding,
+    line.sourceLineId,
+  );
+
+  if (Result.isFailure(deductible)) return Result.fail(deductible.failure);
+
+  return Result.succeed({
+    net: coverage - tax.success,
+    tax: tax.success,
+    deductible: deductible.success,
+  });
+}
+
+function lineCoverage(direction: CashDirection, line: CashMethodLine) {
+  if (line.componentPolicy !== "tax_first_cumulative_v1") {
+    return fail("UnsupportedProfile", "The line needs the qualified tax-first cumulative policy.");
+  }
+
+  if (!Schema.is(CashMethodLine)(line)) {
+    return fail(
+      "StaleCoverage",
+      "The line needs valid exact amounts and a qualified rounding rule.",
+    );
+  }
+
+  const gross = BigInt(line.netMinor) + BigInt(line.taxMinor);
+  const credited = BigInt(line.creditedGrossMinor);
+  const paid = BigInt(line.paidGrossMinor);
+  const recognized = BigInt(line.recognizedGrossMinor);
+  const deductible = BigInt(line.originalDeductibleMinor);
+
+  if (
+    !Schema.is(MinorUnits)(amount(gross)) ||
+    credited > gross ||
+    paid > recognized ||
+    recognized > gross - credited ||
+    deductible > BigInt(line.taxMinor) ||
+    (direction === "sale" && deductible !== 0n)
+  ) {
+    return fail("StaleCoverage", `Coverage or deduction of ${line.sourceLineId} is inconsistent.`);
+  }
+
+  const components = componentsAt(line, recognized);
+
+  if (Result.isFailure(components)) return Result.fail(components.failure);
+
+  if (BigInt(line.releasedDeductibleMinor) !== components.success.deductible) {
+    return fail(
+      "StaleCoverage",
+      `Retained deduction of ${line.sourceLineId} does not match its policy history.`,
+    );
+  }
+
+  return Result.succeed({ gross, credited, paid, recognized, components: components.success });
+}
+
+// Allocations arrive in the caller's frozen original line order. The recognized-unpaid
 // part settles the payable/receivable with no new tax facts; only the newly
 // recognized remainder posts expense/revenue and tax.
 export function applyCashPayment(input: CashPaymentInput): Checked<CashPaymentPlan> {
@@ -187,6 +258,16 @@ export function applyCashPayment(input: CashPaymentInput): Checked<CashPaymentPl
       "DuplicateSourceUse",
       "This cash evidence is already used and cannot recognize again.",
     );
+  }
+
+  const lineIds = new Set<string>();
+
+  for (const line of input.lines) {
+    if (lineIds.has(line.sourceLineId)) {
+      return fail("DuplicateSourceUse", `${line.sourceLineId} occurs twice in the payment basis.`);
+    }
+
+    lineIds.add(line.sourceLineId);
   }
 
   const seen = new Set<string>();
@@ -218,20 +299,16 @@ export function applyCashPayment(input: CashPaymentInput): Checked<CashPaymentPl
       return fail("NonPositiveAmount", `Payment against ${line.sourceLineId} must be positive.`);
     }
 
-    const gross = BigInt(line.netMinor) + BigInt(line.taxMinor);
-    const recognized = BigInt(line.recognizedGrossMinor);
+    const coverage = lineCoverage(input.direction, line);
 
-    if (recognized < 0n || recognized > gross) {
-      return fail(
-        "StaleCoverage",
-        `Recognized coverage of ${line.sourceLineId} is outside its gross.`,
-      );
-    }
+    if (Result.isFailure(coverage)) return Result.fail(coverage.failure);
+    const { gross, credited, paid, recognized } = coverage.success;
+    const components = coverage.success.components;
+    const recognizedUnpaid = recognized - paid;
+    const unrecognized = gross - credited - recognized;
 
-    const unrecognized = gross - recognized;
-
-    // s settles previously recognized coverage; r is newly recognized now.
-    const s = p < recognized ? p : recognized;
+    // Only an unpaid recognized position can settle control, never paid history.
+    const s = p < recognizedUnpaid ? p : recognizedUnpaid;
     const r = p - s;
 
     if (r > unrecognized) {
@@ -241,52 +318,13 @@ export function applyCashPayment(input: CashPaymentInput): Checked<CashPaymentPl
       );
     }
 
-    const newNet = releaseComponent(
-      BigInt(line.netMinor),
-      gross,
-      recognized,
-      r,
-      input.rounding,
-      line.sourceLineId,
-    );
+    const after = componentsAt(line, recognized + r);
 
-    if (Result.isFailure(newNet)) return Result.fail(newNet.failure);
-
-    const newTax = releaseComponent(
-      BigInt(line.taxMinor),
-      gross,
-      recognized,
-      r,
-      input.rounding,
-      line.sourceLineId,
-    );
-
-    if (Result.isFailure(newTax)) return Result.fail(newTax.failure);
-
-    const newDeductible = releaseComponent(
-      BigInt(line.originalDeductibleMinor),
-      gross,
-      recognized,
-      r,
-      input.rounding,
-      line.sourceLineId,
-    );
-
-    if (Result.isFailure(newDeductible)) return Result.fail(newDeductible.failure);
-
-    if (
-      newDeductible.success < 0n ||
-      newDeductible.success > newTax.success ||
-      BigInt(line.releasedDeductibleMinor) + newDeductible.success >
-        BigInt(line.originalDeductibleMinor)
-    ) {
-      return fail(
-        "InsufficientLineCapacity",
-        `Released deduction of ${line.sourceLineId} is outside its original deductible.`,
-      );
-    }
-
-    const nonDeductible = newTax.success - newDeductible.success;
+    if (Result.isFailure(after)) return Result.fail(after.failure);
+    const newNet = after.success.net - components.net;
+    const newTax = after.success.tax - components.tax;
+    const newDeductible = after.success.deductible - components.deductible;
+    const nonDeductible = newTax - newDeductible;
 
     if (input.direction === "purchase") {
       // Debit payable for the already-recognized part; recognize the
@@ -300,13 +338,13 @@ export function applyCashPayment(input: CashPaymentInput): Checked<CashPaymentPl
       addSigned(journal, {
         sourceLineId: line.sourceLineId,
         accountId: input.expenseOrRevenueAccountId,
-        signedMinor: newNet.success + nonDeductible,
+        signedMinor: newNet + nonDeductible,
         description: `Recognize expense ${line.sourceLineId}`,
       });
       addSigned(journal, {
         sourceLineId: line.sourceLineId,
         accountId: input.taxAccountId,
-        signedMinor: newDeductible.success,
+        signedMinor: newDeductible,
         description: `Deductible input VAT ${line.sourceLineId}`,
       });
       addSigned(journal, {
@@ -333,13 +371,13 @@ export function applyCashPayment(input: CashPaymentInput): Checked<CashPaymentPl
       addSigned(journal, {
         sourceLineId: line.sourceLineId,
         accountId: input.expenseOrRevenueAccountId,
-        signedMinor: -newNet.success,
+        signedMinor: -newNet,
         description: `Recognize revenue ${line.sourceLineId}`,
       });
       addSigned(journal, {
         sourceLineId: line.sourceLineId,
         accountId: input.taxAccountId,
-        signedMinor: -newTax.success,
+        signedMinor: -newTax,
         description: `Output VAT ${line.sourceLineId}`,
       });
     }
@@ -349,9 +387,16 @@ export function applyCashPayment(input: CashPaymentInput): Checked<CashPaymentPl
       sourceLineId: line.sourceLineId,
       trigger: "actual_payment",
       settledRecognizedMinor: amount(s),
-      newNetMinor: amount(newNet.success),
-      newTaxMinor: amount(newTax.success),
+      newNetMinor: amount(newNet),
+      newTaxMinor: amount(newTax),
+      newDeductibleMinor: amount(newDeductible),
       recognizedGrossAfterMinor: amount(recognized + r),
+      lineAfter: {
+        ...line,
+        paidGrossMinor: amount(paid + p),
+        recognizedGrossMinor: amount(recognized + r),
+        releasedDeductibleMinor: amount(after.success.deductible),
+      },
     });
   }
 
@@ -376,7 +421,6 @@ export const YearEndInput = Schema.Struct({
   expectedInvoiceCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   invoiceCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   lines: Schema.Array(CashMethodLine).check(Schema.isMaxLength(500)),
-  rounding: CashMethodRounding,
   settlementControlAccountId: Identifier,
   expenseOrRevenueAccountId: Identifier,
   taxAccountId: Identifier,
@@ -390,6 +434,8 @@ export const YearEndSlice = Schema.Struct({
   unpaidMinor: MinorUnits,
   newNetMinor: MinorUnits,
   newTaxMinor: MinorUnits,
+  newDeductibleMinor: MinorUnits,
+  lineAfter: CashMethodLine,
 });
 
 export type YearEndSlice = typeof YearEndSlice.Type;
@@ -416,81 +462,46 @@ export function prepareYearEnd(input: YearEndInput): Checked<YearEndPlan> {
 
   const journal: Array<JournalLine> = [];
   const slices: Array<YearEndSlice> = [];
+  const seen = new Set<string>();
   let recognized = 0n;
 
   for (const line of input.lines) {
-    const gross = BigInt(line.netMinor) + BigInt(line.taxMinor);
-    const already = BigInt(line.recognizedGrossMinor);
-
-    if (already < 0n || already > gross) {
+    if (seen.has(line.sourceLineId)) {
       return fail(
-        "StaleCoverage",
-        `Recognized coverage of ${line.sourceLineId} is outside its gross.`,
+        "DuplicateSourceUse",
+        `${line.sourceLineId} occurs twice in the year-end population.`,
       );
     }
 
-    const u = gross - already;
+    seen.add(line.sourceLineId);
+    const coverage = lineCoverage(input.direction, line);
+
+    if (Result.isFailure(coverage)) return Result.fail(coverage.failure);
+    const { gross, credited, recognized: already, components } = coverage.success;
+
+    const u = gross - credited - already;
 
     if (u === 0n) continue;
 
-    const newNet = releaseComponent(
-      BigInt(line.netMinor),
-      gross,
-      already,
-      u,
-      input.rounding,
-      line.sourceLineId,
-    );
+    const after = componentsAt(line, already + u);
 
-    if (Result.isFailure(newNet)) return Result.fail(newNet.failure);
-
-    const newTax = releaseComponent(
-      BigInt(line.taxMinor),
-      gross,
-      already,
-      u,
-      input.rounding,
-      line.sourceLineId,
-    );
-
-    if (Result.isFailure(newTax)) return Result.fail(newTax.failure);
-
-    const newDeductible = releaseComponent(
-      BigInt(line.originalDeductibleMinor),
-      gross,
-      already,
-      u,
-      input.rounding,
-      line.sourceLineId,
-    );
-
-    if (Result.isFailure(newDeductible)) return Result.fail(newDeductible.failure);
-
-    if (
-      newDeductible.success < 0n ||
-      newDeductible.success > newTax.success ||
-      BigInt(line.releasedDeductibleMinor) + newDeductible.success >
-        BigInt(line.originalDeductibleMinor)
-    ) {
-      return fail(
-        "InsufficientLineCapacity",
-        `Released deduction of ${line.sourceLineId} is outside its original deductible.`,
-      );
-    }
-
-    const nonDeductible = newTax.success - newDeductible.success;
+    if (Result.isFailure(after)) return Result.fail(after.failure);
+    const newNet = after.success.net - components.net;
+    const newTax = after.success.tax - components.tax;
+    const newDeductible = after.success.deductible - components.deductible;
+    const nonDeductible = newTax - newDeductible;
 
     if (input.direction === "purchase") {
       addSigned(journal, {
         sourceLineId: line.sourceLineId,
         accountId: input.expenseOrRevenueAccountId,
-        signedMinor: newNet.success + nonDeductible,
+        signedMinor: newNet + nonDeductible,
         description: `Year-end expense ${line.sourceLineId}`,
       });
       addSigned(journal, {
         sourceLineId: line.sourceLineId,
         accountId: input.taxAccountId,
-        signedMinor: newDeductible.success,
+        signedMinor: newDeductible,
         description: `Year-end input VAT ${line.sourceLineId}`,
       });
       addSigned(journal, {
@@ -509,13 +520,13 @@ export function prepareYearEnd(input: YearEndInput): Checked<YearEndPlan> {
       addSigned(journal, {
         sourceLineId: line.sourceLineId,
         accountId: input.expenseOrRevenueAccountId,
-        signedMinor: -newNet.success,
+        signedMinor: -newNet,
         description: `Year-end revenue ${line.sourceLineId}`,
       });
       addSigned(journal, {
         sourceLineId: line.sourceLineId,
         accountId: input.taxAccountId,
-        signedMinor: -newTax.success,
+        signedMinor: -newTax,
         description: `Year-end output VAT ${line.sourceLineId}`,
       });
     }
@@ -525,8 +536,14 @@ export function prepareYearEnd(input: YearEndInput): Checked<YearEndPlan> {
       sourceLineId: line.sourceLineId,
       trigger: "unpaid_year_end",
       unpaidMinor: amount(u),
-      newNetMinor: amount(newNet.success),
-      newTaxMinor: amount(newTax.success),
+      newNetMinor: amount(newNet),
+      newTaxMinor: amount(newTax),
+      newDeductibleMinor: amount(newDeductible),
+      lineAfter: {
+        ...line,
+        recognizedGrossMinor: amount(already + u),
+        releasedDeductibleMinor: amount(after.success.deductible),
+      },
     });
   }
 
@@ -548,12 +565,15 @@ export const RecognizedPosition = Schema.Struct({
   recognitionSliceId: Identifier,
   initialGrossMinor: MinorUnits,
   settledGrossMinor: MinorUnits,
+  creditedGrossMinor: MinorUnits,
 });
 
 export type RecognizedPosition = typeof RecognizedPosition.Type;
 
 // Payment in the next year against a year-end recognized position: bank
-// versus AP/AR only, with zero new revenue, expense or tax facts.
+// versus AP/AR only, with zero new revenue, expense or tax facts. This is an
+// alternative journal compiler to applyCashPayment, not an additional posting.
+// Callers project its settlement and owned credits into line coverage atomically.
 export function settleRecognizedPosition(
   position: RecognizedPosition,
   paymentGrossMinor: string,
@@ -564,9 +584,21 @@ export function settleRecognizedPosition(
   readonly settledMinor: string;
   readonly taxDeltaMinor: "0";
   readonly journal: CashJournalLines;
+  readonly positionAfter: RecognizedPosition;
 }> {
+  if (!Schema.is(RecognizedPosition)(position) || !Schema.is(MinorUnits)(paymentGrossMinor)) {
+    return fail("StaleCoverage", "A recognized position needs valid exact amounts.");
+  }
+
   const payment = BigInt(paymentGrossMinor);
-  const remaining = BigInt(position.initialGrossMinor) - BigInt(position.settledGrossMinor);
+  const settled = BigInt(position.settledGrossMinor);
+
+  const remaining =
+    BigInt(position.initialGrossMinor) - settled - BigInt(position.creditedGrossMinor);
+
+  if (remaining < 0n) {
+    return fail("StaleCoverage", "The recognized position history exceeds its original capacity.");
+  }
 
   if (payment <= 0n) {
     return fail("NonPositiveAmount", "A settlement payment must be positive.");
@@ -613,6 +645,7 @@ export function settleRecognizedPosition(
     settledMinor: amount(payment),
     taxDeltaMinor: "0",
     journal,
+    positionAfter: { ...position, settledGrossMinor: amount(settled + payment) },
   });
 }
 
@@ -625,7 +658,15 @@ export function assertCoverageVersion(
   if (
     sealed.sourceLineId !== current.sourceLineId ||
     sealed.recognizedVersion !== current.recognizedVersion ||
-    sealed.recognizedGrossMinor !== current.recognizedGrossMinor
+    sealed.recognizedGrossMinor !== current.recognizedGrossMinor ||
+    sealed.paidGrossMinor !== current.paidGrossMinor ||
+    sealed.creditedGrossMinor !== current.creditedGrossMinor ||
+    sealed.netMinor !== current.netMinor ||
+    sealed.taxMinor !== current.taxMinor ||
+    sealed.originalDeductibleMinor !== current.originalDeductibleMinor ||
+    sealed.releasedDeductibleMinor !== current.releasedDeductibleMinor ||
+    sealed.componentPolicy !== current.componentPolicy ||
+    sealed.rounding !== current.rounding
   ) {
     return fail(
       "StaleCoverage",
@@ -640,9 +681,8 @@ export const CashCreditInput = Schema.Struct({
   direction: CashDirection,
   line: CashMethodLine,
   creditGrossMinor: MinorUnits,
-  // True when the credited portion was already recognized (paid or
-  // year-end). An unrecognized portion only revises the commercial
-  // residual with no reversal of nonexistent accounting.
+  // Must match the recognized-unpaid suffix removed by this credit. The
+  // unrecognized portion has no accounting to reverse; paid credits refuse.
   recognizedPortionMinor: MinorUnits,
   // Paid-principal credits route to the qualified refund extension; until
   // cash-method reporting there is qualified this branch refuses.
@@ -651,34 +691,16 @@ export const CashCreditInput = Schema.Struct({
 
 export type CashCreditInput = typeof CashCreditInput.Type;
 
-// An unpaid credit consumes explicitly linked source-line coverage.
+// An unpaid credit consumes the linked original line's remaining suffix.
+// Return exact correction components and effective state, not a posted credit.
 export function applyCashCredit(input: CashCreditInput): Checked<{
   readonly commercialRevisionMinor: string;
   readonly recognizedCorrectionMinor: string;
+  readonly correctionNetMinor: string;
+  readonly correctionTaxMinor: string;
+  readonly correctionDeductibleMinor: string;
+  readonly lineAfter: CashMethodLine;
 }> {
-  const gross = BigInt(input.line.netMinor) + BigInt(input.line.taxMinor);
-  const credit = BigInt(input.creditGrossMinor);
-  const recognizedPortion = BigInt(input.recognizedPortionMinor);
-
-  if (credit <= 0n) {
-    return fail("NonPositiveAmount", "A cash-method credit needs a positive amount.");
-  }
-
-  if (credit > gross - BigInt(input.line.recognizedGrossMinor) + recognizedPortion) {
-    return fail("InsufficientLineCapacity", "The credit exceeds the linked source-line coverage.");
-  }
-
-  if (recognizedPortion < 0n || recognizedPortion > credit) {
-    return fail("InsufficientLineCapacity", "The recognized portion must stay within the credit.");
-  }
-
-  if (recognizedPortion > BigInt(input.line.recognizedGrossMinor)) {
-    return fail(
-      "InsufficientLineCapacity",
-      "The recognized portion exceeds the recognized coverage.",
-    );
-  }
-
   if (input.paidPrincipal) {
     return fail(
       "UnsupportedProfile",
@@ -686,9 +708,48 @@ export function applyCashCredit(input: CashCreditInput): Checked<{
     );
   }
 
+  const coverage = lineCoverage(input.direction, input.line);
+
+  if (Result.isFailure(coverage)) return Result.fail(coverage.failure);
+  const { gross, credited, paid, recognized } = coverage.success;
+  const components = coverage.success.components;
+  const credit = BigInt(input.creditGrossMinor);
+  const recognizedPortion = BigInt(input.recognizedPortionMinor);
+
+  if (credit <= 0n) {
+    return fail("NonPositiveAmount", "A cash-method credit needs a positive amount.");
+  }
+
+  if (credit > gross - credited - paid) {
+    return fail("InsufficientLineCapacity", "The credit exceeds the linked source-line coverage.");
+  }
+
+  const effectiveGrossAfter = gross - credited - credit;
+  const recognizedAfter = recognized < effectiveGrossAfter ? recognized : effectiveGrossAfter;
+
+  if (recognizedPortion !== recognized - recognizedAfter) {
+    return fail(
+      "InsufficientLineCapacity",
+      "The recognized portion must match the remaining recognized-unpaid suffix.",
+    );
+  }
+
+  const after = componentsAt(input.line, recognizedAfter);
+
+  if (Result.isFailure(after)) return Result.fail(after.failure);
+
   return Result.succeed({
     commercialRevisionMinor: amount(credit - recognizedPortion),
     recognizedCorrectionMinor: amount(recognizedPortion),
+    correctionNetMinor: amount(components.net - after.success.net),
+    correctionTaxMinor: amount(components.tax - after.success.tax),
+    correctionDeductibleMinor: amount(components.deductible - after.success.deductible),
+    lineAfter: {
+      ...input.line,
+      creditedGrossMinor: amount(credited + credit),
+      recognizedGrossMinor: amount(recognizedAfter),
+      releasedDeductibleMinor: amount(after.success.deductible),
+    },
   });
 }
 
