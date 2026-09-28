@@ -38,6 +38,9 @@ services:
     environment:
       DATABASE_URL: postgresql://openerp_app:${OPENERP_RUNTIME_PASSWORD:?Missing runtime password}@postgres:5432/openerp
       OPENERP_PREPARATION_TOKEN: ${OPENERP_PREPARATION_TOKEN:-}
+      OPENERP_DOCUMENT_READER: ${OPENERP_DOCUMENT_READER:-disabled}
+      OPENERP_DOCUMENT_READER_ENDPOINT: ${OPENERP_DOCUMENT_READER_ENDPOINT:-}
+      OPENERP_DOCUMENT_READER_KEY: ${OPENERP_DOCUMENT_READER_KEY:-}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Missing session secret}
       OPENERP_PUBLIC_URL: ${OPENERP_PUBLIC_URL:-http://localhost:3000}
       OPENERP_BIND_ADDRESS: 0.0.0.0
@@ -64,6 +67,12 @@ services:
     environment:
       DATABASE_URL: postgresql://openerp_app:${OPENERP_RUNTIME_PASSWORD:?Missing runtime password}@postgres:5432/openerp
       OPENERP_PREPARATION_TOKEN: ${OPENERP_PREPARATION_TOKEN:-}
+      OPENERP_DOCUMENT_READER: ${OPENERP_DOCUMENT_READER:-disabled}
+      OPENERP_DOCUMENT_READER_ENDPOINT: ${OPENERP_DOCUMENT_READER_ENDPOINT:-}
+      OPENERP_DOCUMENT_READER_KEY: ${OPENERP_DOCUMENT_READER_KEY:-}
+      OPENERP_OBJECT_DIRECTORY: /data/evidence/objects
+    volumes:
+      - evidence-data:/data/evidence
     depends_on:
       migrate:
         condition: service_completed_successfully

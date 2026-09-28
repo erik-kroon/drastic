@@ -8,6 +8,8 @@ import * as Layer from "effect/Layer";
 import * as Redacted from "effect/Redacted";
 import { applicationPostgresTypes, Database } from "../src/db/connection";
 import { filesystemObjectStore } from "../src/adapters/storage/filesystem-objects";
+import { configuredDocumentReader } from "../src/runtime/document-reader";
+import { fileObjectStore } from "./file-object-store";
 import {
   jobAttempts,
   jobDedupe,
@@ -49,13 +51,18 @@ if (!connectionString || !token) {
 // stored content does not need a store at all.
 const evidenceRoot = process.env.EVIDENCE_STORE_ROOT;
 
-const objectStoreBindings = (preparationToken: string): Bindings => {
-  if (evidenceRoot === undefined) return { OPENERP_PREPARATION_TOKEN: preparationToken };
+const reader = configuredDocumentReader(process.env);
 
-  return {
-    OPENERP_PREPARATION_TOKEN: preparationToken,
-    EVIDENCE_STORE: filesystemObjectStore(evidenceRoot),
-  };
+const evidenceStore = process.env.OPENERP_OBJECT_DIRECTORY
+  ? await fileObjectStore(process.env.OPENERP_OBJECT_DIRECTORY)
+  : evidenceRoot
+    ? filesystemObjectStore(evidenceRoot)
+    : undefined;
+
+const bindings: Bindings = {
+  OPENERP_PREPARATION_TOKEN: token,
+  DOCUMENT_READER: reader,
+  EVIDENCE_STORE: evidenceStore,
 };
 
 const postgres = PgClient.layer({
@@ -87,7 +94,7 @@ const services = Layer.mergeAll(
     flowOutbox: jobFlowOutbox,
   }),
   Layer.succeed(RequestEnvironment, {
-    bindings: objectStoreBindings(token),
+    bindings,
     url: new URL("http://localhost/"),
   }),
 ).pipe(Layer.provide(postgres));

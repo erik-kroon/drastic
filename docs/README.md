@@ -6,6 +6,8 @@ The repository contains a synthetic accounting implementation and ongoing domain
 
 The current first-company product direction is [Book Zero, daily work and Drastic Cash](plans/15-book-zero-workflow-cash.md): an independently reviewed Drastic period, a usable daily review journey and a read-only payment forecast. It maps the supplied openERP-specific PRD to existing owners and gates. The wider Drastic Financial Platform PRD is not adopted as implementation scope by this update.
 
+The [Document Intelligence first journey](plans/document-intelligence-delivery.md) records the PDF/image-to-review-to-draft implementation and normal self-host synthetic verification. Live provider use remains disabled.
+
 ## Reading order
 
 The [open-accounting decision](adr/0005-open-accounting-and-managed-services.md), [application-owned replacement](adr/0010-application-owned-accounting-replacement.md), [architecture follow-up](architecture-followup.md), [licensing policy](../LICENSING.md) and [self-host setup](../infra/self-host/README.md) describe the open-source distribution and the latest design reconciliation.

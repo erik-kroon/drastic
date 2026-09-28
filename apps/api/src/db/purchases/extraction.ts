@@ -336,3 +336,48 @@ export function insertFieldDecision(
     "objects",
   );
 }
+
+export function claimDocumentOperation(
+  transaction: Transaction,
+  bookId: string,
+  requestId: string,
+  readerIdentity: string,
+) {
+  return transaction.execute<{ readonly requestId: string }>(
+    sql`
+    insert into openerp.supplier_document_operations (book_id, request_id, reader_identity)
+    values (${bookId}, ${requestId}, ${readerIdentity})
+    on conflict do nothing returning request_id as "requestId"
+  `,
+    "objects",
+  );
+}
+
+export function readDocumentOperation(transaction: Transaction, bookId: string, requestId: string) {
+  return transaction.execute<{
+    readonly readerIdentity: string;
+    readonly operationUrl: string | null;
+    readonly dispatchExpired: boolean;
+  }>(
+    sql`
+    select reader_identity as "readerIdentity", operation_url as "operationUrl", started_at < clock_timestamp() - interval '30 seconds' as "dispatchExpired"
+    from openerp.supplier_document_operations where book_id = ${bookId} and request_id = ${requestId}
+  `,
+    "objects",
+  );
+}
+
+export function saveDocumentOperation(
+  transaction: Transaction,
+  bookId: string,
+  requestId: string,
+  operationUrl: string,
+) {
+  return transaction.execute(
+    sql`
+    update openerp.supplier_document_operations set operation_url = ${operationUrl}
+    where book_id = ${bookId} and request_id = ${requestId} and operation_url is null
+  `,
+    "objects",
+  );
+}

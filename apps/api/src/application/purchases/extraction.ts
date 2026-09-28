@@ -3,6 +3,10 @@ import * as Extraction from "@open-erp/contracts/supplier-extraction";
 import * as SupplierDrafts from "@open-erp/contracts/supplier-invoice-drafts";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
+import * as Option from "effect/Option";
+import { DocumentOutputError, physicalPageCount } from "../../adapters/document-reading/azure";
+import { interpretDocument } from "./document-reading";
+import { requireOriginalEvidence } from "./inbox";
 
 import {
   objectStore,
@@ -154,8 +158,12 @@ function integerField(value: JsonObject, key: string) {
   return typeof found === "number" && Number.isInteger(found) && found >= 0 ? found : null;
 }
 
-function stringList(value: JsonObject, key: string) {
-  return Shared.arrayField(value, key).filter((item): item is string => typeof item === "string");
+function sourceLocators(value: JsonObject) {
+  return Shared.arrayField(value, "sourceLocators").flatMap((item) => {
+    const parsed = Schema.decodeUnknownOption(Extraction.SourceLocator)(item);
+
+    return Option.isSome(parsed) ? [parsed.value] : [];
+  });
 }
 
 // Selected pages must be non-overlapping, ascending and inside the retained
@@ -217,23 +225,30 @@ function attemptBody(
     attemptId: attempt.id,
     createdAt: attempt.body.createdAt,
     retainedOutputHash: attempt.body.retainedOutputHash,
-    diagnostics: Shared.arrayField(structured, "extractionDiagnostics"),
+    originalHashUnchanged: structured["originalHashUnchanged"] ?? true,
+    diagnostics: structured["diagnostics"] ?? structured["extractionDiagnostics"] ?? [],
   });
 }
 
 function mergeSuggestions(body: JsonObject) {
   const suggestions: MergeSuggestion[] = [];
+  const sparseDocument = Shared.textField(body, "engineRelease") === "azure-invoice-v1";
 
   for (const field of Shared.arrayField(body, "fields")) {
     if (!Shared.isJsonObject(field)) continue;
     const fieldKey = Shared.textField(field, "fieldKey");
 
-    if (fieldKey === undefined || !isFieldKey(fieldKey)) continue;
+    if (
+      fieldKey === undefined ||
+      !isFieldKey(fieldKey) ||
+      (sparseDocument && field["proposedValue"] === null)
+    )
+      continue;
     suggestions.push({
       candidateLineId: null,
       fieldKey,
       proposedValue: field["proposedValue"] ?? null,
-      sourceLocators: stringList(field, "sourceLocators"),
+      sourceLocators: sourceLocators(field),
     });
   }
 
@@ -247,12 +262,17 @@ function mergeSuggestions(body: JsonObject) {
       if (!Shared.isJsonObject(field)) continue;
       const fieldKey = Shared.textField(field, "fieldKey");
 
-      if (fieldKey === undefined || !isFieldKey(fieldKey)) continue;
+      if (
+        fieldKey === undefined ||
+        !isFieldKey(fieldKey) ||
+        (sparseDocument && field["proposedValue"] === null)
+      )
+        continue;
       suggestions.push({
         candidateLineId,
         fieldKey,
         proposedValue: field["proposedValue"] ?? null,
-        sourceLocators: stringList(field, "sourceLocators"),
+        sourceLocators: sourceLocators(field),
       });
     }
   }
@@ -315,6 +335,8 @@ export const requestSupplierExtraction = Effect.fn("purchases.extraction.request
     readonly input: typeof Extraction.RequestSupplierExtraction.Type;
   },
 ) {
+  const documentReaderAvailable = Boolean((yield* RequestEnvironment).bindings.DOCUMENT_READER);
+
   return yield* Shared.withBook(token, command.scope, true, "update", (transaction, principal) =>
     Effect.gen(function* () {
       yield* requireExtractionAccess(transaction);
@@ -337,9 +359,15 @@ export const requestSupplierExtraction = Effect.fn("purchases.extraction.request
       if (request.previous) return request.previous;
       yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
 
-      if (command.input.engineRelease !== nativeTextEngine) {
-        return yield* failure("UnsupportedProfile");
+      if (command.input.engineRelease === "azure-invoice-v1" && !documentReaderAvailable) {
+        return yield* failure("Unavailable");
       }
+
+      if (
+        command.input.engineRelease === "azure-invoice-v1" &&
+        (book.currency !== "SEK" || book.currencyScale !== 2)
+      )
+        return yield* failure("UnsupportedProfile");
 
       const entry = (yield* InboxDb.readInboxForUpdate(
         transaction,
@@ -364,7 +392,18 @@ export const requestSupplierExtraction = Effect.fn("purchases.extraction.request
         return yield* failure("InvalidJournal");
       }
 
-      const pages = orderedPages(command.input.selectedPages, originalBytes);
+      const pages =
+        command.input.engineRelease === nativeTextEngine
+          ? orderedPages(command.input.selectedPages, originalBytes)
+          : [];
+
+      if (
+        command.input.engineRelease === "azure-invoice-v1" &&
+        !["application/pdf", "image/jpeg", "image/png"].includes(
+          Shared.textField(occurrence.body, "mediaType") ?? "",
+        )
+      )
+        return yield* failure("UnsupportedProfile");
 
       if (pages === null) return yield* failure("InvalidJournal");
 
@@ -387,7 +426,7 @@ export const requestSupplierExtraction = Effect.fn("purchases.extraction.request
       const selection = yield* digest(yield* Shared.toJson(pageJson(pages)));
 
       const attemptIdentity = `sha256:${yield* sha256Hex(
-        `${command.scope.bookId}:${command.occurrenceId}:${originalHash}:${nativeTextEngine}:${selection}`,
+        `${command.scope.bookId}:${command.occurrenceId}:${originalHash}:${command.input.engineRelease}:${selection}`,
       )}`;
 
       const requestId = newId("supplier_extraction_request");
@@ -400,7 +439,7 @@ export const requestSupplierExtraction = Effect.fn("purchases.extraction.request
         id: requestId,
         occurrenceId: command.occurrenceId,
         generation,
-        engineRelease: nativeTextEngine,
+        engineRelease: command.input.engineRelease,
         originalHash,
         originalBytes,
         attemptIdentity,
@@ -422,7 +461,7 @@ export const requestSupplierExtraction = Effect.fn("purchases.extraction.request
         generation,
         originalHash,
         originalBytes: String(originalBytes),
-        engineRelease: nativeTextEngine,
+        engineRelease: command.input.engineRelease,
         attemptIdentity,
         requestedBy: principal.actorId,
         requestedAt,
@@ -452,7 +491,7 @@ export const requestSupplierExtraction = Effect.fn("purchases.extraction.request
             generation,
             originalHash,
             originalBytes: String(originalBytes),
-            engineRelease: nativeTextEngine,
+            engineRelease: command.input.engineRelease,
             attemptIdentity,
             requestedBy: principal.actorId,
             requestedAt,
@@ -574,9 +613,19 @@ export const getSupplierExtractionState = Effect.fn("purchases.extraction.state"
   token: string,
   command: { readonly scope: Scope; readonly occurrenceId: string },
 ) {
+  const documentReaderAvailable = Boolean((yield* RequestEnvironment).bindings.DOCUMENT_READER);
+
   return yield* Shared.withBook(token, command.scope, false, "share", (transaction) =>
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, extractionTables);
+
+      const book = (yield* Shared.PurchaseDb.lockBook(
+        transaction,
+        command.scope.bookId,
+        "share",
+      ))[0];
+
+      if (!book) return yield* failure("Forbidden");
 
       const entry = (yield* InboxDb.readInbox(
         transaction,
@@ -618,8 +667,10 @@ export const getSupplierExtractionState = Effect.fn("purchases.extraction.state"
             );
 
       return yield* Shared.decode(StateSchema, {
+        currencyScale: book.currencyScale,
         scope: command.scope,
         occurrenceId: command.occurrenceId,
+        documentReaderAvailable,
         requests: requests.map((row) =>
           requestView(row, {
             requestId: row.id,
@@ -851,6 +902,7 @@ export const prepareSupplierExtractionReview = Effect.fn("purchases.extraction.p
           : null;
 
       return yield* Shared.decode(PreparationSchema, {
+        currencyScale: book.currencyScale,
         scope: command.scope,
         occurrenceId: command.occurrenceId,
         request: requestView(basis.request, basis.state),
@@ -1154,6 +1206,13 @@ export const commitSupplierExtractionReview = Effect.fn("purchases.extraction.re
 
       const reviewed = yield* Shared.decode(SupplierContentSchema, chosen.content);
 
+      yield* requireOriginalEvidence(
+        transaction,
+        command.scope.bookId,
+        command.occurrenceId,
+        reviewed.sourceEvidenceId,
+      );
+
       const draft = yield* basis.current === null
         ? createSupplierInvoiceDraftInTransaction(transaction, principal, {
             scope: command.scope,
@@ -1272,6 +1331,7 @@ type ExtractedReading = {
   readonly fields: ReadonlyArray<JsonObject>;
   readonly candidateLines: ReadonlyArray<JsonObject>;
   readonly diagnostics: ReadonlyArray<JsonObject>;
+  readonly document?: typeof Extraction.DocumentReadingEvidence.Type;
 };
 
 function fieldJson(
@@ -1291,7 +1351,7 @@ function fieldJson(
 // The engine runs on the retained original's own bytes, outside every financial
 // lock. Its retained hash and length are verified before a single byte is read as
 // text, and a failure is an extraction outcome, not a reason to delete anything.
-function readOriginalText(
+function readOriginalBytes(
   content: RetentionDb.ContentRow,
   expectedHash: string,
   expectedBytes: number,
@@ -1313,10 +1373,7 @@ function readOriginalText(
 
     if (verified !== expectedHash) return yield* failure("MissingEvidence");
 
-    return yield* Effect.try({
-      try: () => new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes),
-      catch: () => failure("InvalidJournal"),
-    });
+    return bytes;
   });
 }
 
@@ -1432,6 +1489,7 @@ export const runSupplierExtraction = Effect.fn("purchases.extraction.run")(funct
       if (principal.kind !== "apiCredential") return yield* failure("Forbidden");
       yield* requireExtractionAccess(transaction);
       const book = yield* Shared.readBook(transaction, scope.bookId);
+      yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
 
       const request = (yield* ExtractionDb.readExtractionRequest(
         transaction,
@@ -1497,7 +1555,8 @@ export const runSupplierExtraction = Effect.fn("purchases.extraction.run")(funct
 
   if (captured.terminal !== null) return captured.terminal;
 
-  const pages = requestPages(captured.request);
+  const pages =
+    captured.request.engineRelease === nativeTextEngine ? requestPages(captured.request) : [];
 
   if (pages === null) {
     yield* settleRequest(token, scope, requestId, "unknown");
@@ -1509,11 +1568,35 @@ export const runSupplierExtraction = Effect.fn("purchases.extraction.run")(funct
 
   const mediaType = Shared.textField(captured.occurrence.body, "mediaType") ?? "";
 
-  const outcome = yield* readOriginalText(
+  if (captured.request.engineRelease === "azure-invoice-v1") {
+    const outcome = yield* runDocumentReader(
+      token,
+      scope,
+      captured.request,
+      captured.content,
+      mediaType,
+    );
+
+    if (outcome === null) return "ready";
+
+    return yield* publishExtraction(token, scope, requestId, captured.state.cancelVersion, outcome);
+  }
+
+  const outcome = yield* readOriginalBytes(
     captured.content,
     captured.request.originalHash,
     byteLength,
   ).pipe(
+    Effect.flatMap((bytes) =>
+      Effect.try({
+        try: () => new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes),
+        catch: () =>
+          new Accounting.AccountingError({
+            code: "InvalidJournal",
+            message: "Original is not valid UTF-8.",
+          }),
+      }),
+    ),
     Effect.map((text) =>
       runNativeEngine(text, mediaType, captured.book.currencyScale, pages, byteLength),
     ),
@@ -1534,6 +1617,8 @@ function publishExtraction(
     Effect.gen(function* () {
       if (principal.kind !== "apiCredential") return yield* failure("Forbidden");
       yield* requireExtractionAccess(transaction);
+      const book = yield* Shared.readBook(transaction, scope.bookId);
+      yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
 
       const request = (yield* ExtractionDb.readExtractionRequest(
         transaction,
@@ -1585,17 +1670,22 @@ function publishExtraction(
 
       if (ordinal > maximumAttempts) return yield* failure("InvalidJournal");
 
-      const interpretation = {
+      const interpreted: JsonObject = {
         result: outcome.result,
-        engineRelease: nativeTextEngine,
-        sourceHash: request.originalHash,
+        engineRelease: request.engineRelease,
         originalHashUnchanged: true,
+        sourceHash: request.originalHash,
         textDigest: outcome.textDigest,
         textByteLength: outcome.textByteLength,
-        fields: outcome.fields,
-        candidateLines: outcome.candidateLines,
-        extractionDiagnostics: outcome.diagnostics,
+        fields: request.body["dataUsePolicy"] === "retain_diagnostics" ? [] : outcome.fields,
+        candidateLines:
+          request.body["dataUsePolicy"] === "retain_diagnostics" ? [] : outcome.candidateLines,
+        diagnostics: outcome.diagnostics,
       } satisfies JsonObject;
+
+      const interpretation = outcome.document
+        ? Object.assign({}, interpreted, { document: yield* Shared.toJsonObject(outcome.document) })
+        : interpreted;
 
       const retainedOutputHash = yield* digest(yield* Shared.toJsonObject(interpretation));
 
@@ -1608,14 +1698,15 @@ function publishExtraction(
         ordinal,
         createdBy: principal.actorId,
         createdAt,
-        parserVersion: nativeTextEngine,
+        parserVersion: request.engineRelease,
         status: outcome.result,
         suggestions: [],
         diagnostics: outcome.diagnostics
           .map((entry) => Shared.textField(entry, "code") ?? "")
           .slice(0, 50),
         requestId,
-        engineRelease: nativeTextEngine,
+        engineRelease: request.engineRelease,
+        originalHashUnchanged: true,
         sourceHash: request.originalHash,
         textDigest: outcome.textDigest,
         textByteLength: outcome.textByteLength,
@@ -1726,3 +1817,206 @@ export const stopFailedExtractionDelivery = Effect.fn("purchases.extraction.stop
     );
   },
 );
+
+function runDocumentReader(
+  token: string,
+  scope: Scope,
+  request: ExtractionDb.ExtractionRequestRow,
+  content: RetentionDb.ContentRow,
+  mediaType: string,
+) {
+  return Effect.gen(function* () {
+    const reader = (yield* RequestEnvironment).bindings.DOCUMENT_READER;
+
+    if (!reader)
+      return failedReading("document_reader_disabled", "Document reading is not enabled.");
+
+    const bytes = yield* readOriginalBytes(
+      content,
+      request.originalHash,
+      Number(request.originalBytes),
+    );
+
+    const physicalPages = yield* Effect.tryPromise({
+      try: () => physicalPageCount(bytes, mediaType),
+      catch: () =>
+        new Accounting.AccountingError({
+          code: "InvalidJournal",
+          message: "Original is outside the document profile.",
+        }),
+    });
+
+    const claimed = yield* Shared.withBook(token, scope, false, "update", (transaction) =>
+      Effect.gen(function* () {
+        const book = yield* Shared.readBook(transaction, scope.bookId);
+        yield* Shared.requireNativeCommerceProfile(book.profile, book.authority);
+
+        const state = (yield* ExtractionDb.readExtractionState(
+          transaction,
+          scope.bookId,
+          request.id,
+        ))[0];
+
+        const latest = (yield* ExtractionDb.readLatestExtractionRequest(
+          transaction,
+          scope.bookId,
+          request.occurrenceId,
+        ))[0];
+
+        if (state?.state !== "ready" || latest?.id !== request.id) return null;
+
+        return yield* ExtractionDb.claimDocumentOperation(
+          transaction,
+          scope.bookId,
+          request.id,
+          reader.identity,
+        );
+      }).pipe(Effect.mapError(databaseFailure)),
+    );
+
+    if (claimed === null) return null;
+
+    let operation: string;
+
+    if (claimed.length > 0) {
+      const submitted = yield* Effect.tryPromise(() => reader.submit(bytes)).pipe(Effect.option);
+
+      if (Option.isNone(submitted))
+        return {
+          ...failedReading(
+            "submission_unknown",
+            "The reader may have received the document. This request will not be sent again.",
+          ),
+          result: "unknown" as const,
+        };
+      operation = submitted.value;
+      yield* Shared.withBook(token, scope, false, "update", (transaction) =>
+        ExtractionDb.saveDocumentOperation(transaction, scope.bookId, request.id, operation).pipe(
+          Effect.mapError(databaseFailure),
+        ),
+      );
+    } else {
+      const stored = yield* Shared.withBook(token, scope, false, "share", (transaction) =>
+        ExtractionDb.readDocumentOperation(transaction, scope.bookId, request.id).pipe(
+          Effect.mapError(databaseFailure),
+        ),
+      );
+
+      const previous = stored[0];
+
+      // A concurrent submit or a crash after disclosure is never a reason to POST again.
+      if (!previous?.operationUrl) {
+        return previous?.dispatchExpired
+          ? {
+              ...failedReading(
+                "submission_unknown",
+                "No operation receipt was retained. This request will not be sent again.",
+              ),
+              result: "unknown" as const,
+            }
+          : null;
+      }
+
+      if (previous.readerIdentity !== reader.identity)
+        return failedReading(
+          "reader_configuration_changed",
+          "The original reader configuration is required to resume.",
+        );
+      operation = previous.operationUrl;
+    }
+
+    const polled = yield* Effect.tryPromise({
+      try: () => reader.poll(operation),
+      catch: (error) =>
+        error instanceof DocumentOutputError
+          ? ("invalid_output" as const)
+          : ("poll_unavailable" as const),
+    }).pipe(Effect.result);
+
+    if (polled._tag === "Failure")
+      return polled.failure === "invalid_output"
+        ? {
+            ...failedReading(
+              "reader_output_rejected",
+              "The response was not bounded, unambiguous JSON.",
+            ),
+            result: "rejected_output" as const,
+          }
+        : null;
+
+    const status = Schema.decodeUnknownOption(Schema.Struct({ status: Schema.String }))(
+      polled.success,
+    );
+
+    if (Option.isSome(status) && ["running", "notStarted"].includes(status.value.status))
+      return null;
+
+    if (Option.isSome(status) && status.value.status === "failed")
+      return failedReading(
+        "provider_failed",
+        "The document reader reported a failure. The original remains available.",
+      );
+
+    return yield* Effect.try({
+      try: () => {
+        const parsed = interpretDocument(polled.success, physicalPages);
+
+        if (Shared.byteLength(JSON.stringify(parsed)) > 48000)
+          throw new Error("reader_retained_size");
+
+        return parsed;
+      },
+      catch: () =>
+        new Accounting.AccountingError({
+          code: "InvalidJournal",
+          message: "Reader output rejected.",
+        }),
+    }).pipe(
+      Effect.flatMap((parsed) =>
+        Effect.gen(function* () {
+          return {
+            result: "succeeded" as const,
+            textDigest: `sha256:${yield* sha256Hex(parsed.document.transcript)}`,
+            textByteLength: new TextEncoder().encode(parsed.document.transcript).length,
+            fields: yield* Schema.encodeEffect(Schema.Array(Extraction.ExtractedField))(
+              parsed.fields,
+            ).pipe(
+              Effect.flatMap(Shared.toJson),
+              Effect.map((values) =>
+                Array.isArray(values) ? values.filter(Shared.isJsonObject) : [],
+              ),
+            ),
+            candidateLines: yield* Schema.encodeEffect(Schema.Array(Extraction.ExtractedLine))(
+              parsed.candidateLines,
+            ).pipe(
+              Effect.flatMap(Shared.toJson),
+              Effect.map((values) =>
+                Array.isArray(values) ? values.filter(Shared.isJsonObject) : [],
+              ),
+            ),
+            diagnostics: parsed.diagnostics,
+            document: parsed.document,
+          } satisfies ExtractedReading;
+        }),
+      ),
+      Effect.catch(() =>
+        Effect.succeed({
+          ...failedReading(
+            "reader_output_rejected",
+            "The response could not be matched to bounded page evidence.",
+          ),
+          result: "rejected_output" as const,
+        }),
+      ),
+    );
+  }).pipe(
+    Effect.catch(() =>
+      Effect.succeed(
+        failedReading(
+          "document_reading_failed",
+          "The retained original could not be read within this document profile.",
+        ),
+      ),
+    ),
+  );
+}

@@ -125,9 +125,12 @@ function SupplierInboxEntry(props: {
         </Box>
       ))}
       <SupplierExtraction
+        key={props.id}
         book={props.commerceProps.book}
         locale={props.commerceProps.locale}
         occurrenceId={props.id}
+        originalBytes={props.entry.occurrence.occurrence.byteLength}
+        mediaType={props.entry.occurrence.occurrence.mediaType}
         onRefresh={props.onRefresh}
       />
       {!props.entry.draftId && props.commerceProps.book.role === "operator" ? (
@@ -262,8 +265,8 @@ export function SupplierInbox(
     <Box as="section" display="grid" gap="lg" minWidth="zero">
       <Text>
         {sv
-          ? "Inkorg för leverantörsfakturor · originalet sparas innan granskning. Ingen automatisk e-posthämtning eller OCR är ansluten."
-          : "Supplier invoice inbox · keep the original before review. Automatic email intake and OCR are not connected."}
+          ? "Spara originalet och granska uppgifterna innan du skapar ett utkast."
+          : "Keep the original and review its details before creating a draft."}
       </Text>
       <Box display="flex" flexWrap="wrap" gap="md">
         <Button type="button" variant="outline" onClick={() => setUpload(!upload)}>

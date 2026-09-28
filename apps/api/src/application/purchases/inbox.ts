@@ -440,30 +440,12 @@ export const reviewSupplierInbox = Effect.fn("purchases.inbox.review")(function*
 
       if (sourceEvidenceId === undefined) return yield* failure("InvalidJournal");
 
-      const evidence = (yield* InboxDb.readReviewedEvidence(
-        transaction,
-        command.scope.bookId,
-        sourceEvidenceId,
-      ))[0];
-
-      if (!evidence) return yield* failure("InvalidJournal");
-      const parsed = purchaseSourceReference(evidence.content);
-      const reference = Shared.objectField(parsed, "source");
-
-      const occurrence = (yield* InboxDb.readOccurrence(
+      yield* requireOriginalEvidence(
         transaction,
         command.scope.bookId,
         command.occurrenceId,
-      ))[0];
-
-      if (!occurrence) return yield* failure("NotFound");
-
-      if (
-        Shared.textField(reference, "occurrenceId") !== command.occurrenceId ||
-        Shared.textField(reference, "sha256") !== occurrence.sha256
-      ) {
-        return yield* failure("InvalidJournal");
-      }
+        sourceEvidenceId,
+      );
 
       const draftKey = `ap_${(yield* sha256Hex(
         `${command.scope.bookId}:${command.occurrenceId}`,
@@ -510,3 +492,33 @@ export const reviewSupplierInbox = Effect.fn("purchases.inbox.review")(function*
     }),
   );
 });
+
+export function requireOriginalEvidence(
+  transaction: import("../../db/transaction").Transaction,
+  bookId: string,
+  occurrenceId: string,
+  sourceEvidenceId: string,
+) {
+  return Effect.gen(function* () {
+    const evidence = (yield* InboxDb.readReviewedEvidence(
+      transaction,
+      bookId,
+      sourceEvidenceId,
+    ))[0];
+
+    if (!evidence) return yield* failure("InvalidJournal");
+    const parsed = purchaseSourceReference(evidence.content);
+    const reference = Shared.objectField(parsed, "source");
+
+    const occurrence = (yield* InboxDb.readOccurrence(transaction, bookId, occurrenceId))[0];
+
+    if (!occurrence) return yield* failure("NotFound");
+
+    if (
+      Shared.textField(reference, "occurrenceId") !== occurrenceId ||
+      Shared.textField(reference, "sha256") !== occurrence.sha256
+    ) {
+      return yield* failure("InvalidJournal");
+    }
+  });
+}

@@ -94,3 +94,31 @@ docker compose --env-file infra/self-host/.env -f infra/self-host/compose.yaml u
 Release operators must provide corresponding source and notices as described in [LICENSING.md](../../LICENSING.md). The repository's public/private flags and this packaging do not publish anything by themselves.
 
 Runtime references: [Bun HTTP server](https://bun.sh/docs/runtime/http/server), [Compose startup conditions](https://docs.docker.com/compose/how-tos/startup-order/) and [PostgreSQL image documentation](https://github.com/docker-library/docs/blob/master/postgres/README.md).
+
+## Document reading
+
+Document reading defaults to **disabled**. Upload, original preview and manual
+supplier drafts work without a provider. This delivery does not enable live use.
+
+The app and the preparation worker use the same `OPENERP_DOCUMENT_READER` mode,
+`OPENERP_DOCUMENT_READER_ENDPOINT` and `OPENERP_DOCUMENT_READER_KEY` configuration.
+An enabled app requires `OPENERP_PREPARATION_TOKEN`; start the existing preparation
+profile with the same database, token and evidence volume. Both services mount
+`/data/evidence/objects`, so the worker reads the exact original retained by the app.
+For a direct Bun launch, set `OPENERP_OBJECT_DIRECTORY` to the same absolute private
+canonical directory in both processes. The older `EVIDENCE_STORE_ROOT` remains
+supported by the worker for existing installations.
+
+`local-azure-fixture` accepts only HTTP on `127.0.0.1` and uses a synthetic fixture
+credential. It is for the repeatable local E2E workflow, not real OCR. The configured
+`azure-invoice-v1` mode requires an HTTPS endpoint and a secret; leave it disabled
+until provider use, credentials, privacy, hostile-document isolation and quality
+are qualified and explicitly authorized. Supplying an endpoint or secret alone
+does not enable reading. Credentials are server-only and must not enter the web
+build or a committed environment file. Hosted Worker deployment is not configured
+by these self-host settings.
+
+The [delivery record](../../docs/plans/document-intelligence-delivery.md) owns
+scope and evidence. PDF/PNG/JPEG originals use the bounded whole-document Swedish
+SEK profile. Reading proposes values; users must check and explicitly use them,
+complete missing facts and save a draft. It never posts or pays an invoice.

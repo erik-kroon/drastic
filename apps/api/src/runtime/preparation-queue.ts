@@ -56,7 +56,7 @@ export class ExtractionQueue extends Job.make("supplier-extraction", {
   error: Accounting.AccountingError,
   queue: "preparation",
   idempotencyKey: extractionKey,
-  retryable: isTerminalDeliveryFailure,
+  retryable: (error) => !isTerminalDeliveryFailure(error),
   metadata: ({ scope }) => ({ bookId: scope.bookId }),
   defaults: { attempts: 5, backoff: { type: "exponential", delay: "10 seconds" } },
 }) {}
@@ -190,6 +190,15 @@ export const dispatchPendingExtractions = Effect.fn("Extraction.dispatchPending"
     payloads,
     (payload) => {
       const id = JobStore.JobId(extractionRecordId(payload));
+      const record = snapshot.records.get(id);
+
+      // A failed job below its attempt limit was explicitly non-retryable.
+      // Retrying it cannot change the result; completed jobs cannot be re-enqueued.
+      if (
+        record?.state === "completed" ||
+        (record?.state === "failed" && record.attemptsMade < record.attemptsMax)
+      )
+        return stopFailedExtractionDelivery(payload);
 
       return deliveryDispatch(
         id,
@@ -214,7 +223,13 @@ export const handleExtraction = Effect.fn("Extraction.handleQueueJob")(function*
   requestId: string;
   scope: typeof Accounting.Scope.Type;
 }) {
-  return yield* runSupplierExtraction(payload.scope, payload.requestId);
+  const result = yield* runSupplierExtraction(payload.scope, payload.requestId);
+
+  // Pending provider operations must use the queue's backoff, not become a
+  // completed deterministic job that can never be enqueued again.
+  if (result === "ready") return yield* failure("Unavailable");
+
+  return result;
 });
 
 const periodWorkRunBound = 20;
