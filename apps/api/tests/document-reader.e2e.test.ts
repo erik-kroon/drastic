@@ -762,6 +762,56 @@ test("single images retain sparse lines and originals beyond the page cap are no
   }
 });
 
+test("corrupt PDFs fail closed without provider disclosure", async () => {
+  const harness = await documentFixture();
+
+  try {
+    const corrupt = new TextEncoder().encode("not-a-pdf");
+    const source = await decoded(
+      await harness.apiCall("/source-occurrences", {
+        sourceSystem: "document-reader-e2e",
+        sourceAccountId: "synthetic",
+        occurrenceKey: key(),
+        sourceRevision: "1",
+        filename: "corrupt.pdf",
+        mediaType: "application/pdf",
+        contentBase64: Buffer.from(corrupt).toString("base64"),
+      }),
+      Source.SourceOccurrence,
+    );
+
+    await decoded(
+      await harness.apiCall("/commerce/supplier-inbox", {
+        occurrenceId: source.id,
+        channel: "upload",
+        messageIdentity: null,
+      }),
+      Inbox.SupplierInboxView,
+    );
+
+    const path = `/commerce/supplier-inbox/${source.id}/extraction`;
+    const admitted = await decoded(
+      await harness.apiCall(path, {
+        engineRelease: "azure-invoice-v1",
+        pageSelection: "all",
+        amountProfile: "sv-SE-SEK",
+        dataUsePolicy: "retain_output",
+      }),
+      Extraction.SupplierExtractionRequestResult,
+    );
+
+    harness.setResponse(invoiceResponse());
+    await harness.run(admitted.request.id);
+
+    const state = await decoded(await harness.apiCall(path), Extraction.SupplierExtractionState);
+
+    expect(state.attempt?.result).toBe("failed");
+    expect(harness.counts().submissions).toBe(0);
+  } finally {
+    await harness.close();
+  }
+});
+
 test("cancelling during a provider response fences the late result", async () => {
   const local = await documentFixture();
 
