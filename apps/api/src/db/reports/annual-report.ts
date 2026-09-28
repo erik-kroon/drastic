@@ -19,6 +19,7 @@ export const annualReportTables = [
   "execution_receipts",
   "command_receipts",
   "report_statement_snapshots",
+  "report_statement_rows",
   "financial_close_certificates",
   "financial_reopen_events",
   "annual_report_drafts",
