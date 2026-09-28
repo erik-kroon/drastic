@@ -19,6 +19,7 @@
     "./capabilities": "./src/capabilities.ts",
     "./reconciliation": "./src/reconciliation.ts",
     "./reports": "./src/reports.ts",
+    "./cash-flow": "./src/cash-flow.ts",
     "./report-statements": "./src/report-statements.ts",
     "./cases": "./src/cases.ts",
     "./automation": "./src/automation.ts",

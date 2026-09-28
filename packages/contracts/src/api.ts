@@ -77,6 +77,7 @@ import { ExpenseTaxApi } from "./expense-tax";
 import { OwnerRegisterApi } from "./owner-register";
 import { OwnerOperationsApi } from "./owner-operations";
 import { FinancialCloseApi } from "./financial-close";
+import { CashFlowApi } from "./cash-flow";
 import { FirmApi } from "./firms";
 import { WorkspaceApi } from "./workspace";
 
@@ -182,6 +183,7 @@ export class Api extends HttpApi.make("open-erp")
     AccountingApi,
     ReportApi,
     StatementApi,
+    CashFlowApi,
     ReconciliationApi,
     CasesApi,
     AutomationApi,

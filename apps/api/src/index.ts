@@ -29,6 +29,7 @@ import { type Bindings, RequestEnvironment } from "./runtime/environment";
 import { ReportHandlers } from "./transport/http/routes/reports";
 import { ReportStatementHandlers } from "./transport/http/routes/report-statements";
 import { AnnualReportHandlers } from "./transport/http/routes/annual-report";
+import { CashFlowHandlers } from "./transport/http/routes/cash-flow";
 import { PurchaseRecognitionHandlers } from "./transport/http/routes/purchase-recognition";
 import { ServicePurchaseHandlers } from "./transport/http/routes/service-purchases";
 import { CaseHandlers } from "./transport/http/routes/cases";
@@ -121,6 +122,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     ReportHandlers,
     ReportStatementHandlers,
     AnnualReportHandlers,
+    CashFlowHandlers,
     PurchaseRecognitionHandlers,
     ReconciliationHandlers,
     CaseHandlers,

@@ -42,9 +42,9 @@
     },
     {
       "leaf": "cash-flow-statement",
-      "status": "deferred",
-      "reason": "Packet keeps relationship resolution with the report owners; no cash-flow report owner exists.",
-      "unblockedBy": "A report owner composes this leaf from retained statement snapshots."
+      "status": "wired",
+      "consumers": ["apps/api"],
+      "note": "NEXT-45 owner apps/api/src/application/reports/cash-flow-statement.ts composes the leaf from retained postings read through apps/api/src/db/reports/cash-flow-statement.ts inside the caller's transaction, exposed as POST /v1/entities/:entityId/books/:bookId/cash-flow. Opening and closing cash are derived from retained journal lines, never accepted from the request. Read-only, so no migration."
     },
     {
       "leaf": "cash-method",
