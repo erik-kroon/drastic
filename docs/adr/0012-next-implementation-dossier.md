@@ -1,6 +1,6 @@
 # 0012 — vendored NEXT implementation dossiers
 
-Status: accepted planning decision, 2026-09-26; amended 2026-09-28 to cover a third wave, NEXT-51 … NEXT-75, and a fourth wave, NEXT-76 … NEXT-100, under the same rules. It governs where design material lives and how implementing agents consume it. No packet, rule, rate, provider or legal profile is activated, and no implementation, runtime or company-readiness status is claimed.
+Status: accepted planning decision, 2026-09-26; amended 2026-09-28 to cover a third wave, NEXT-51 … NEXT-75, a fourth wave, NEXT-76 … NEXT-100, and a fifth wave, NEXT-101 … NEXT-125, under the same rules. It governs where design material lives and how implementing agents consume it. No packet, rule, rate, provider or legal profile is activated, and no implementation, runtime or company-readiness status is claimed.
 
 ## Context
 
@@ -69,3 +69,13 @@ A fourth dossier arrived on the same date, pinned to `66355b62b23e3b8007c2d324f3
 ## Implementation and proof
 
 This decision is a planning artifact. Its proof is that `python3 docs/plans/check-plan.py` still passes with the mandated index unchanged in count, edges and denominator, that all four vendored trees still satisfy their recorded checksums and self-checkers, and that the maintained bridge document states its mapping as proposed rather than verified. Proof that any packet is implemented is that packet's own acceptance under the authorization in force, which is out of scope here.
+
+## Amendment 2026-09-28 (third): fifth wave NEXT-101 … NEXT-125
+
+A fifth dossier arrived on the same date, pinned to `66355b62b23e3b8007c2d324f3739fbbcc96cdc0` — this repository's head at import — with twenty-five further work items. It is vendored at `docs/specs/next-101-125/` under the same rules, with its own import observation in [next-101-125-dossier-verification.md](../plans/evidence/next-101-125-dossier-verification.md). The decision above is unchanged. Two things are recorded.
+
+**Scope extension.** One hundred twenty-five supplemental packets now exist, and all one hundred twenty-five remain outside the mandated 53-packet index, its DAG and its completion denominator. The fifth wave renumbers nothing, records the prior range as "not assumed complete", states that only its own new-wave edges are checked with no 125-node graph claim, and releases no reservation. Its specialist profiles — provisions, B2C/OSS, foreign VAT recovery, car benefit, share subscriptions, direct debit and standing posting mandates — are explicitly not launch prerequisites, and the dossier plan records a dated search finding twelve further lifecycles with no maintained owner, plus three that compound gaps already recorded rather than adding decisions.
+
+**The fifth wave is the first to propose work this repository has already specified.** NEXT-121, opt-in bounded standing posting mandates, is design for a contract [the operations plan](../operations.md) has already adopted: explicit operation/book/period/account scope, currency, validity, revocation and cumulative limits, atomic shared-budget reserve and consumption, the rule that a mandate never implicitly authorizes payment, closure, signature or filing, and unattended posting already placed outside the Book Zero delivery as later scope. The packet's proposed profile is narrower than the contract permits. This is recorded because it changes what kind of decision the packet needs: an **authorization** decision, not an ownership decision, and the operations plan remains the maintained authority. The wider point is that a later wave landing on an adopted contract is the expected case, not a surprise, and it is a reason to reconcile each packet against the maintained plans before treating it as new scope.
+
+The tooling caveat recorded for the fourth wave recurs here for a different cause: this wave's checker also rewrites `checks/results.json`, and the regenerated file differs from the archived one because a Python set of task IDs is rendered into one check's `detail` string and string-set iteration order depends on the interpreter's hash seed. Same 741 results, same counts, 0 failed; the manifest fails on that one file until the archived bytes are restored. The import record documents the restore that was performed and re-verified.

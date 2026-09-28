@@ -6,7 +6,7 @@ This repository is the starting point for the OpenERP product.
 
 - Start at `docs/README.md` for maintained scope, architecture, domain invariants and delivery gates.
 - Check `docs/open-decisions.md` before treating an unresolved company fact or contract choice as settled.
-- For a `NEXT-nn` work item, read `docs/plans/12-next-implementation-dossier.md` and its packet under `docs/specs/` for the implementation design. Bind its proposed names to the real owners, resolve its released-slice prerequisite, and keep its vectors as obligations; it is design input, not authority.
+- For a `NEXT-nn` work item, read `docs/plans/12-next-implementation-dossier.md` and its packet under `docs/specs/` for the implementation design. Bind its proposed names to the real owners, resolve its released-slice prerequisite, and keep its vectors as obligations; it is design input, not authority. A capability with an owner in the dossier plan is not thereby implemented or verified.
 - Keep working design, implemented behavior and verified results distinct. Update the relevant maintained docs when a material decision changes.
 
 ## Scope
@@ -45,7 +45,8 @@ This repository is the starting point for the OpenERP product.
 - Keep anti-slop Oxlint rules enabled as errors.
 - Prefer deletion and direct local code over speculative abstractions.
 - Do not add dependencies when the platform or existing UI package solves the need.
-- Do not add tests unless the user explicitly approves the test change.
+- Focused unit, property/conformance, regression and integration/E2E tests needed for existing or explicitly adopted workflows are authorised by the owner-delegated decision pass dated 2026-09-28 ([ADR 0015](docs/adr/0015-owner-delegated-decision-pass.md)). Use synthetic fixtures and disposable isolated local/CI systems. Real local PostgreSQL, workerd, Bun and selected browser/REST/MCP tests are within this engineering scope. Prefer the repository's current test/check infrastructure.
+- That permission does not authorise real company-data use, live provider credentials, customer contact, production migrations/resets, deployment, payments or statutory submissions. Do not broaden product scope through a test, weaken expectations to get green output or use production functions as their own expected-result oracle. Preserve narrower existing task restrictions, including the dated document-intelligence authorisation and its no-live-provider limit. Unrelated test work needs separate task authority.
 - Never weaken lint or type rules to make a check pass.
 - When dependency manifests change, update and commit `bun.lock` with them and verify `bun install --frozen-lockfile` before handoff. CI must keep frozen installs enabled.
 
