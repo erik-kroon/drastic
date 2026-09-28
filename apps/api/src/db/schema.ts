@@ -1403,6 +1403,76 @@ export const annualReportArtifacts = openerp.table("annual_report_artifacts", {
   recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
 });
 
+// NEXT-37: VAT assessment ownership and exact-to-assessed bridge. Versioned
+// SQL migrations own the DDL; this is the typed mapping.
+export const vatRoundingBridges = openerp.table("vat_rounding_bridges", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  returnId: text("return_id").notNull(),
+  deltaMinor: numeric("delta_minor", { mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const vatBridgeApprovals = openerp.table("vat_bridge_approvals", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  bridgeId: text("bridge_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  actorId: text("actor_id").notNull(),
+  digest: text().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const vatAssessments = openerp.table("vat_assessments", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  assessmentIdentity: text("assessment_identity").notNull(),
+  returnId: text("return_id").notNull(),
+  eventId: text("event_id").notNull(),
+  matchRef: text("match_ref"),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const vatAssessmentApprovals = openerp.table("vat_assessment_approvals", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  assessmentId: text("assessment_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  actorId: text("actor_id").notNull(),
+  digest: text().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const vatBridgeReceipts = openerp.table("vat_bridge_receipts", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  bridgeId: text("bridge_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  voucherId: text("voucher_id"),
+  changeSetId: text("change_set_id"),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const vatAssessmentReceipts = openerp.table("vat_assessment_receipts", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  assessmentId: text("assessment_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  voucherId: text("voucher_id"),
+  matchRef: text("match_ref"),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
 export const recurringInvoiceAgreements = openerp.table("recurring_invoice_agreements", {
   bookId: text("book_id").notNull(),
   id: text().notNull(),
@@ -1489,3 +1559,76 @@ export const recurringInvoiceOccurrenceIssues = openerp.table(
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
   },
 );
+
+// NEXT-07: supplier paid credits and cash refunds. Versioned SQL migrations
+// own the DDL; these are the typed mappings.
+export const supplierRefundPrincipalIncreases = openerp.table(
+  "supplier_refund_principal_increases",
+  {
+    bookId: text("book_id").notNull(),
+    id: text().notNull(),
+    creditId: text("credit_id").notNull(),
+    invoiceId: text("invoice_id").notNull(),
+    apReleaseMinor: numeric("ap_release_minor", { mode: "string" }).notNull(),
+    refundIncreaseMinor: numeric("refund_increase_minor", { mode: "string" }).notNull(),
+    refundReceivableAccountId: text("refund_receivable_account_id").notNull(),
+    body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+    digest: text().notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+  },
+);
+
+export const supplierRefundReviews = openerp.table("supplier_refund_reviews", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  invoiceId: text("invoice_id").notNull(),
+  changeSetId: text("change_set_id"),
+  eventId: text("event_id"),
+  evidenceId: text("evidence_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const supplierRefundApprovals = openerp.table("supplier_refund_approvals", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  reviewId: text("review_id").notNull(),
+  actorId: text("actor_id").notNull(),
+  digest: text().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const supplierRefunds = openerp.table("supplier_refunds", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  reviewId: text("review_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  invoiceId: text("invoice_id").notNull(),
+  amountMinor: numeric("amount_minor", { mode: "string" }).notNull(),
+  refundDate: date("refund_date", { mode: "string" }).notNull(),
+  voucherId: text("voucher_id"),
+  adoptedRef: text("adopted_ref"),
+  sourceKind: text("source_kind").notNull(),
+  evidenceId: text("evidence_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const supplierRefundAllocations = openerp.table("supplier_refund_allocations", {
+  bookId: text("book_id").notNull(),
+  refundId: text("refund_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  allocationId: text("allocation_id").notNull(),
+  amountMinor: numeric("amount_minor", { mode: "string" }).notNull(),
+});
+
+export const supplierRefundSourceUsages = openerp.table("supplier_refund_source_usages", {
+  bookId: text("book_id").notNull(),
+  refundId: text("refund_id").notNull(),
+  sourceKind: text("source_kind").notNull(),
+  bankAccountId: text("bank_account_id"),
+  evidenceId: text("evidence_id"),
+  adoptedRef: text("adopted_ref"),
+  amountMinor: numeric("amount_minor", { mode: "string" }).notNull(),
+});

@@ -41,6 +41,7 @@ import { CommerceFxApi } from "./commerce-fx";
 import { PeriodWorkApi } from "./period-work";
 import { RegisterReportsApi } from "./register-reports";
 import { VatReturnsApi } from "./vat-returns";
+import { VatAssessmentApi } from "./vat-assessment";
 import { SieApi } from "./sie";
 import { Sie4EApi } from "./sie4e";
 import { InvoiceDraftsApi } from "./invoice-drafts";
@@ -52,6 +53,7 @@ import { ServicePurchaseApi } from "./service-purchases";
 import { PurchaseRecognitionApi } from "./supplier-recognition";
 import { SupplierPaymentBatchesApi } from "./supplier-payment-batches";
 import { SupplierCreditsApi } from "./supplier-credits";
+import { SupplierRefundsApi } from "./supplier-refunds";
 import { SubledgerControlsApi } from "./subledger-controls";
 import { ExchangeRatesApi } from "./exchange-rates";
 import { InvoiceIssuanceApi } from "./invoice-issuance";
@@ -197,6 +199,7 @@ export class Api extends HttpApi.make("open-erp")
     PeriodWorkApi,
     RegisterReportsApi,
     VatReturnsApi,
+    VatAssessmentApi,
     SieApi,
     Sie4EApi,
     InvoiceDraftsApi,
@@ -208,6 +211,7 @@ export class Api extends HttpApi.make("open-erp")
     PurchaseRecognitionApi,
     SupplierPaymentBatchesApi,
     SupplierCreditsApi,
+    SupplierRefundsApi,
     SubledgerControlsApi,
     ExchangeRatesApi,
     InvoiceIssuanceApi,

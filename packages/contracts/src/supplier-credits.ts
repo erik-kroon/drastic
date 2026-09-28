@@ -168,7 +168,14 @@ export const SupplierCreditReceipt = Schema.Struct({
   postingReceipt: Accounting.ExecutionReceipt,
   creditEvidence: Commerce.EvidenceReference,
   status: Schema.Literal("credited"),
-  paid: Schema.Literal(false),
+  paid: Schema.Boolean,
+  // A paid credit (NEXT-07) carries its sealed payable/refund-receivable
+  // split. Unpaid rows omit these fields and still decode.
+  apReleaseMinor: Schema.optional(Accounting.MinorUnits),
+  refundPrincipalIncreaseMinor: Schema.optional(Accounting.MinorUnits),
+  refundReceivableAccountId: Schema.optional(Accounting.Identifier),
+  unpaidAfterMinor: Schema.optional(Accounting.MinorUnits),
+  refundPrincipalAfterMinor: Schema.optional(Accounting.MinorUnits),
   createdAt: Schema.String,
   receipt: Commerce.CommandReceipt,
   digest: Accounting.Digest,

@@ -43,6 +43,7 @@ export function readOwnedSources(
       select 'invoice_issue' as kind,id,change_set_id as change_id,evidence_id,body from openerp.invoice_issue_reviews where book_id=${book}
       union all select 'supplier_acceptance',id,change_set_id,evidence_id,body from openerp.supplier_acceptance_reviews where book_id=${book}
       union all select 'supplier_credit',id,change_set_id,evidence_id,body from openerp.supplier_credit_reviews where book_id=${book}
+      union all select 'supplier_refund',id,change_set_id,evidence_id,body from openerp.supplier_refund_reviews where book_id=${book}
       union all select 'asset_disposal',id,change_set_id,evidence_id,body from openerp.subledger_disposal_reviews where book_id=${book}
       union all select 'asset_impairment',id,change_set_id,evidence_id,body from openerp.subledger_impairment_reviews where book_id=${book}
       union all select 'legal_issue',id,null,body->'sourceEvidence'->>'evidenceId',body from openerp.ar_legal_issue_reviews where book_id=${book}
@@ -170,6 +171,7 @@ export function readProtectedCorrections(tx: Transaction, book: string, voucher:
     union all select 'financial_close' from openerp.financial_close_transfers where book_id=${book} and voucher_id=${voucher}
     union all select 'tax_account' from openerp.tax_account_match_capacity where book_id=${book} and voucher_id=${voucher}
     union all select 'supplier_credit' from openerp.supplier_credits where book_id=${book} and voucher_id=${voucher}
+    union all select 'supplier_refund' from openerp.supplier_refunds where book_id=${book} and voucher_id=${voucher}
     union all select 'vat_reclassification' from openerp.vat_control_reclassification_effects where book_id=${book} and voucher_id=${voucher}
     union all select 'vat_contribution' from openerp.vat_control_reclassification_contributions where book_id=${book} and voucher_id=${voucher}
     union all select 'fx' from openerp.commerce_fx_items where book_id=${book} and voucher_id=${voucher}

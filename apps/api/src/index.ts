@@ -58,6 +58,7 @@ import { CommerceHandlers } from "./transport/http/routes/commerce";
 import { CommerceFxHandlers } from "./transport/http/routes/commerce-fx";
 import { RegisterReportHandlers } from "./transport/http/routes/register-reports";
 import { VatReturnsHandlers } from "./transport/http/routes/vat-returns";
+import { VatAssessmentHandlers } from "./transport/http/routes/vat-assessment";
 import { SieHandlers } from "./transport/http/routes/sie";
 import { Sie4EHandlers } from "./transport/http/routes/sie4e";
 import { InvoiceDraftHandlers } from "./transport/http/routes/invoice-drafts";
@@ -67,6 +68,7 @@ import { SupplierInvoiceDraftHandlers } from "./transport/http/routes/supplier-i
 import { SupplierAcceptanceHandlers } from "./transport/http/routes/supplier-acceptance";
 import { SupplierPaymentBatchHandlers } from "./transport/http/routes/supplier-payment-batches";
 import { SupplierCreditHandlers } from "./transport/http/routes/supplier-credits";
+import { SupplierRefundHandlers } from "./transport/http/routes/supplier-refunds";
 import { SubledgerControlsHandlers } from "./transport/http/routes/subledger-controls";
 import { ExchangeRatesHandlers } from "./transport/http/routes/exchange-rates";
 import { InvoiceIssuanceHandlers } from "./transport/http/routes/invoice-issuance";
@@ -137,6 +139,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     CommerceFxHandlers,
     RegisterReportHandlers,
     VatReturnsHandlers,
+    VatAssessmentHandlers,
     SieHandlers,
     Sie4EHandlers,
     InvoiceDraftHandlers,
@@ -147,6 +150,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     ServicePurchaseHandlers,
     SupplierPaymentBatchHandlers,
     SupplierCreditHandlers,
+    SupplierRefundHandlers,
     SubledgerControlsHandlers,
     ExchangeRatesHandlers,
     InvoiceIssuanceHandlers,

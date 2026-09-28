@@ -153,7 +153,7 @@ test("retains native extraction, diagnostics and replay through the public state
 // HTTP simulator replaces only the external provider. API transport, retained
 // filesystem bytes, restricted PostgreSQL role and the normal job handler are real.
 async function documentFixture(
-  mediaType: "application/pdf" | "image/png" = "application/pdf",
+  mediaType: "application/pdf" | "image/png" | "image/jpeg" = "application/pdf",
   pageCount = 2,
 ) {
   let submissions = 0;
@@ -176,7 +176,11 @@ async function documentFixture(
       )(Buffer.concat(chunks).toString());
 
       expect(Buffer.from(body.base64Source, "base64").subarray(0, 5).toString("hex")).toBe(
-        mediaType === "application/pdf" ? "255044462d" : "89504e470d",
+        mediaType === "application/pdf"
+          ? "255044462d"
+          : mediaType === "image/png"
+            ? "89504e470d"
+            : "ffd8ffe000",
       );
 
       if (loseSubmission) {
@@ -261,10 +265,15 @@ async function documentFixture(
   const bytes =
     mediaType === "application/pdf"
       ? await pdf.save()
-      : Buffer.from(
-          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aZ1sAAAAASUVORK5CYII=",
-          "base64",
-        );
+      : mediaType === "image/png"
+        ? Buffer.from(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aZ1sAAAAASUVORK5CYII=",
+            "base64",
+          )
+        : Buffer.from(
+            "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAA8A/9k=",
+            "base64",
+          );
 
   const source = await decoded(
     await apiCall("/source-occurrences", {
@@ -767,6 +776,7 @@ test("corrupt PDFs fail closed without provider disclosure", async () => {
 
   try {
     const corrupt = new TextEncoder().encode("not-a-pdf");
+
     const source = await decoded(
       await harness.apiCall("/source-occurrences", {
         sourceSystem: "document-reader-e2e",
@@ -790,6 +800,7 @@ test("corrupt PDFs fail closed without provider disclosure", async () => {
     );
 
     const path = `/commerce/supplier-inbox/${source.id}/extraction`;
+
     const admitted = await decoded(
       await harness.apiCall(path, {
         engineRelease: "azure-invoice-v1",
@@ -809,6 +820,48 @@ test("corrupt PDFs fail closed without provider disclosure", async () => {
     expect(harness.counts().submissions).toBe(0);
   } finally {
     await harness.close();
+  }
+});
+
+test("JPEG originals retain sparse complete readings", async () => {
+  const image = await documentFixture("image/jpeg", 1);
+
+  try {
+    const reading = invoiceResponse([1]);
+    const invoice = reading.analyzeResult.documents[0]!;
+    image.setResponse({
+      ...reading,
+      analyzeResult: {
+        ...reading.analyzeResult,
+        documents: [
+          {
+            ...invoice,
+            fields: {
+              ...invoice.fields,
+              Items: { valueArray: [{ valueObject: { Description: invoice.fields.InvoiceId } }] },
+            },
+          },
+        ],
+      },
+    });
+    const admitted = await image.request();
+    await image.run(admitted.request.id);
+
+    const state = await decoded(
+      await image.apiCall(image.path),
+      Extraction.SupplierExtractionState,
+    );
+
+    expect(state.attempt?.result).toBe("succeeded");
+    expect(state.attempt?.document?.physicalPages).toBe(1);
+    expect(state.attempt?.document?.coverage).toBe("complete");
+    expect(state.attempt?.candidateLines[0]?.fields.map((field) => field.fieldKey)).toEqual([
+      "description",
+    ]);
+    expect(state.attempt?.candidateLines[0]?.content).toBeUndefined();
+    expect(image.counts().submissions).toBe(1);
+  } finally {
+    await image.close();
   }
 });
 
