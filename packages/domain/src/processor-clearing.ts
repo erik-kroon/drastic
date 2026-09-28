@@ -1,7 +1,8 @@
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { Description, Identifier } from "./values";
-import { MinorUnits } from "./money";
+import { MinorUnits, SignedMinorUnits } from "./money";
+import { canonicalizeJson } from "./canonicalization";
 
 // Pure processor-clearing math for one Stripe account.
 // NEXT-39 leaf: gross/fee/refund/payout clearing with exact journals that
@@ -19,6 +20,8 @@ export const ClearingFailureCode = Schema.Literals([
   "UnsupportedCurrency",
   "MissingSaleRelationship",
   "RefundCapacityExceeded",
+  "DisputeCapacityExceeded",
+  "InvalidSourceIdentity",
   "NonPositivePayout",
   "TransitCapacityExceeded",
   "PayoutFailureUnproven",
@@ -48,6 +51,47 @@ function amount(value: bigint) {
 
 export const CurrencyCode = Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/));
 
+const ProviderOccurrenceId = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256));
+
+const ProviderSignedMinorUnits = SignedMinorUnits.check(Schema.isPattern(/^-?[0-9]{1,38}$/));
+
+const ProcessorPartition = Schema.Struct({
+  accountId: Identifier,
+  liveMode: Schema.Boolean,
+  currency: CurrencyCode,
+});
+
+export const PayoutReference = Schema.Struct({
+  ...ProcessorPartition.fields,
+  providerPayoutId: ProviderOccurrenceId,
+});
+
+// Covers the canonical object, including two maximally escaped provider IDs.
+const SourceIdentity = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(4096));
+
+function clearingSourceIdentity(
+  partition: typeof ProcessorPartition.Type,
+  kind: "balance_transaction" | "bank_receipt",
+  occurrenceId: string,
+  providerPayoutId: string | null,
+): Checked<string> {
+  const canonical = canonicalizeJson({
+    version: 1,
+    kind,
+    accountId: partition.accountId,
+    liveMode: partition.liveMode,
+    currency: partition.currency,
+    occurrenceId,
+    providerPayoutId,
+  });
+
+  if (Result.isFailure(canonical)) {
+    return fail("InvalidSourceIdentity", "Source identifiers need canonical Unicode text.");
+  }
+
+  return Result.succeed(canonical.success.json);
+}
+
 export const ProcessorEventType = Schema.Literals([
   "charge",
   "payment",
@@ -62,16 +106,16 @@ export const ProcessorEventType = Schema.Literals([
 export type ProcessorEventType = typeof ProcessorEventType.Type;
 
 export const ProcessorObservation = Schema.Struct({
-  accountId: Identifier,
-  liveMode: Schema.Boolean,
-  balanceTransactionId: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256)),
+  ...ProcessorPartition.fields,
+  balanceTransactionId: ProviderOccurrenceId,
+  // The originating payout, not automatic-payout membership of a charge.
+  providerPayoutId: Schema.NullOr(ProviderOccurrenceId),
   rawSourceRef: Identifier,
   eventType: ProcessorEventType,
-  currency: CurrencyCode,
   currencySupported: Schema.Boolean,
-  grossMinor: MinorUnits,
+  grossMinor: ProviderSignedMinorUnits,
   feeMinor: MinorUnits,
-  netMinor: MinorUnits,
+  netMinor: ProviderSignedMinorUnits,
   availableOn: Schema.String.check(Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/)),
 });
 
@@ -98,7 +142,7 @@ export const ClearingJournalLine = Schema.Struct({
 export type ClearingJournalLine = typeof ClearingJournalLine.Type;
 
 export const ProcessorEffect = Schema.Struct({
-  sourceIdentity: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256)),
+  sourceIdentity: SourceIdentity,
   ownedKind: Schema.Literals([
     "charge_clearing",
     "refund_clearing",
@@ -121,34 +165,52 @@ export const CompileEffectInput = Schema.Struct({
   accountLiveMode: Schema.Boolean,
   recognizedSaleRelationship: Schema.Boolean,
   remainingRefundCapacityMinor: MinorUnits,
+  // Reviewed recoverable principal, excluding fees; holds require a fresh
+  // receivable, releases consume this linked dispute's remaining principal.
+  dispute: Schema.NullOr(
+    Schema.Struct({
+      disputeId: ProviderOccurrenceId,
+      remainingReceivableMinor: MinorUnits,
+    }),
+  ),
 });
 
 export type CompileEffectInput = typeof CompileEffectInput.Type;
 
 function balanced(lines: Array<ClearingJournalLine>): Checked<Array<ClearingJournalLine>> {
   let net = 0n;
+  const journal: Array<ClearingJournalLine> = [];
 
   for (const line of lines) {
+    if (!Schema.is(ClearingJournalLine)(line)) {
+      return fail("ArithmeticMismatch", "Clearing lines need bounded nonnegative minor units.");
+    }
+
     const debit = BigInt(line.debitMinor);
     const credit = BigInt(line.creditMinor);
 
-    if ((debit === 0n && credit === 0n) || (debit !== 0n && credit !== 0n)) {
+    if (debit === 0n && credit === 0n) continue;
+
+    if (debit !== 0n && credit !== 0n) {
       return fail("ArithmeticMismatch", "Every clearing line needs exactly one positive side.");
     }
 
     net += debit - credit;
+    journal.push(line);
   }
 
   if (net !== 0n) {
     return fail("ArithmeticMismatch", "The clearing journal does not balance.");
   }
 
-  return Result.succeed(lines);
+  return Result.succeed(journal);
 }
 
 // Compiles one balance transaction into its exact clearing effect. Charges
 // allocate AR principal and create no sale or VAT; refunds consume the
-// reviewed customer-credit capacity and create no second tax fact; payouts
+// reviewed customer-credit capacity and create no second tax fact. This journal
+// already releases the liability: do not also post NEXT-30's refund journal.
+// The application records that owner's capacity consumption in the same tx. Payouts
 // move to transit; unknown types stay visible as unclassified differences
 // instead of being silently omitted or forced into revenue.
 export function compileProcessorEffect(input: CompileEffectInput): Checked<ProcessorEffect> {
@@ -179,9 +241,29 @@ export function compileProcessorEffect(input: CompileEffectInput): Checked<Proce
     return fail("ArithmeticMismatch", "The provider fee cannot be negative.");
   }
 
-  const source = `${observation.accountId}|${observation.balanceTransactionId}`;
+  if (observation.eventType !== "payout" && observation.providerPayoutId !== null) {
+    return fail("UnsupportedObservationType", "Only a payout carries its originating payout ID.");
+  }
+
+  const identity = clearingSourceIdentity(
+    observation,
+    "balance_transaction",
+    observation.balanceTransactionId,
+    observation.providerPayoutId,
+  );
+
+  if (Result.isFailure(identity)) return Result.fail(identity.failure);
+
+  const source = identity.success;
 
   if (observation.eventType === "charge" || observation.eventType === "payment") {
+    if (gross <= 0n || net < 0n) {
+      return fail(
+        "UnsupportedObservationType",
+        "A charge needs positive gross and nonnegative net.",
+      );
+    }
+
     if (!input.recognizedSaleRelationship) {
       return fail(
         "MissingSaleRelationship",
@@ -280,6 +362,13 @@ export function compileProcessorEffect(input: CompileEffectInput): Checked<Proce
   }
 
   if (observation.eventType === "payout") {
+    if (fee !== 0n || observation.providerPayoutId === null) {
+      return fail(
+        "UnsupportedObservationType",
+        "Only fee-free, payout-linked transfers are supported.",
+      );
+    }
+
     const payoutAmount = -net;
 
     if (payoutAmount <= 0n) {
@@ -345,11 +434,37 @@ export function compileProcessorEffect(input: CompileEffectInput): Checked<Proce
     });
   }
 
-  if (observation.eventType === "dispute_hold") {
-    const hold = net;
+  if (observation.eventType === "dispute_hold" || observation.eventType === "dispute_won") {
+    return compileDisputeEffect(input, source);
+  }
 
-    if (hold <= 0n) {
-      return fail("NonPositivePayout", "A dispute hold needs a positive held amount.");
+  return Result.succeed({
+    sourceIdentity: source,
+    ownedKind: "unclassified_difference",
+    journal: [],
+    consumedRefundCapacityMinor: "0",
+    createsSaleOrTaxFact: false,
+  });
+}
+
+function compileDisputeEffect(input: CompileEffectInput, source: string): Checked<ProcessorEffect> {
+  const observation = input.observation;
+  const gross = BigInt(observation.grossMinor);
+  const fee = BigInt(observation.feeMinor);
+  const net = BigInt(observation.netMinor);
+
+  if (observation.eventType === "dispute_hold") {
+    const hold = -gross;
+
+    if (
+      hold <= 0n ||
+      input.dispute === null ||
+      BigInt(input.dispute.remainingReceivableMinor) !== 0n
+    ) {
+      return fail(
+        "UnsupportedObservationType",
+        "A recoverable hold needs a linked new receivable and negative provider gross.",
+      );
     }
 
     const journal = balanced([
@@ -360,9 +475,15 @@ export function compileProcessorEffect(input: CompileEffectInput): Checked<Proce
         description: "Dispute hold receivable",
       },
       {
+        accountId: input.accounts.feeCostAccountId,
+        debitMinor: amount(fee),
+        creditMinor: "0",
+        description: "Qualified dispute fee cost",
+      },
+      {
         accountId: input.accounts.processorControlAccountId,
         debitMinor: "0",
-        creditMinor: amount(hold),
+        creditMinor: amount(-net),
         description: "Processor control hold",
       },
     ]);
@@ -379,10 +500,17 @@ export function compileProcessorEffect(input: CompileEffectInput): Checked<Proce
   }
 
   if (observation.eventType === "dispute_won") {
-    const released = -net;
+    const released = gross;
 
-    if (released <= 0n) {
-      return fail("NonPositivePayout", "A won dispute needs a positive released amount.");
+    if (released <= 0n || fee !== 0n || input.dispute === null) {
+      return fail(
+        "UnsupportedObservationType",
+        "A dispute release needs linked principal, positive gross and no fee adjustment.",
+      );
+    }
+
+    if (released > BigInt(input.dispute.remainingReceivableMinor)) {
+      return fail("DisputeCapacityExceeded", "The release exceeds the linked dispute receivable.");
     }
 
     const journal = balanced([
@@ -411,21 +539,18 @@ export function compileProcessorEffect(input: CompileEffectInput): Checked<Proce
     });
   }
 
-  return Result.succeed({
-    sourceIdentity: source,
-    ownedKind: "unclassified_difference",
-    journal: [],
-    consumedRefundCapacityMinor: "0",
-    createsSaleOrTaxFact: false,
-  });
+  return fail("UnsupportedObservationType", "Only recoverable holds and releases are supported.");
 }
 
 export const BankReceiptInput = Schema.Struct({
+  payout: PayoutReference,
+  bankObservationId: Identifier,
   payoutAmountMinor: MinorUnits,
   transitCapacityMinor: MinorUnits,
   currencyMatches: Schema.Boolean,
   providerBankRelationship: Schema.Boolean,
-  adoptsExistingPosting: Schema.Boolean,
+  // The caller qualifies the exact compatible bank/transit posting.
+  adoptedPostingRef: Schema.NullOr(Identifier),
   bankAccountId: Identifier,
   payoutTransitAccountId: Identifier,
 });
@@ -456,9 +581,18 @@ export function recordBankPayoutReceipt(input: BankReceiptInput): Checked<Proces
     );
   }
 
-  if (input.adoptsExistingPosting) {
+  const identity = clearingSourceIdentity(
+    input.payout,
+    "bank_receipt",
+    input.bankObservationId,
+    input.payout.providerPayoutId,
+  );
+
+  if (Result.isFailure(identity)) return Result.fail(identity.failure);
+
+  if (input.adoptedPostingRef !== null) {
     return Result.succeed({
-      sourceIdentity: `adopted|${input.payoutAmountMinor}`,
+      sourceIdentity: identity.success,
       ownedKind: "payout_transit",
       journal: [],
       consumedRefundCapacityMinor: "0",
@@ -484,7 +618,7 @@ export function recordBankPayoutReceipt(input: BankReceiptInput): Checked<Proces
   if (Result.isFailure(journal)) return Result.fail(journal.failure);
 
   return Result.succeed({
-    sourceIdentity: `bank|${input.payoutAmountMinor}`,
+    sourceIdentity: identity.success,
     ownedKind: "payout_transit",
     journal: journal.success,
     consumedRefundCapacityMinor: "0",
@@ -493,7 +627,11 @@ export function recordBankPayoutReceipt(input: BankReceiptInput): Checked<Proces
 }
 
 export const PayoutFailureInput = Schema.Struct({
+  payout: PayoutReference,
+  failureBalanceTransactionId: ProviderOccurrenceId,
+  nonSettlementEvidenceRef: Identifier,
   payoutAmountMinor: MinorUnits,
+  transitCapacityMinor: MinorUnits,
   cashSettled: Schema.Boolean,
   transitAccountId: Identifier,
   processorControlAccountId: Identifier,
@@ -514,6 +652,26 @@ export function reverseFailedPayout(input: PayoutFailureInput): Checked<Processo
 
   const payoutAmount = BigInt(input.payoutAmountMinor);
 
+  if (payoutAmount <= 0n) {
+    return fail("NonPositivePayout", "A failed payout reversal needs a positive amount.");
+  }
+
+  if (payoutAmount > BigInt(input.transitCapacityMinor)) {
+    return fail(
+      "TransitCapacityExceeded",
+      "The failure exceeds the linked payout-transit capacity.",
+    );
+  }
+
+  const identity = clearingSourceIdentity(
+    input.payout,
+    "balance_transaction",
+    input.failureBalanceTransactionId,
+    input.payout.providerPayoutId,
+  );
+
+  if (Result.isFailure(identity)) return Result.fail(identity.failure);
+
   const journal = balanced([
     {
       accountId: input.processorControlAccountId,
@@ -532,7 +690,7 @@ export function reverseFailedPayout(input: PayoutFailureInput): Checked<Processo
   if (Result.isFailure(journal)) return Result.fail(journal.failure);
 
   return Result.succeed({
-    sourceIdentity: `failed|${input.payoutAmountMinor}`,
+    sourceIdentity: identity.success,
     ownedKind: "payout_transit",
     journal: journal.success,
     consumedRefundCapacityMinor: "0",
@@ -541,8 +699,8 @@ export function reverseFailedPayout(input: PayoutFailureInput): Checked<Processo
 }
 
 export const ReplaySourceInput = Schema.Struct({
-  existingSourceIdentity: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(512)),
-  sourceIdentity: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(512)),
+  existingSourceIdentity: SourceIdentity,
+  sourceIdentity: SourceIdentity,
   existingEffect: ProcessorEffect,
 });
 
@@ -551,7 +709,10 @@ export type ReplaySourceInput = typeof ReplaySourceInput.Type;
 // The same source read under the payout and balance lists resolves to one
 // effect: the same identity replays, anything else refuses.
 export function replaySameSourceEffect(input: ReplaySourceInput): Checked<ProcessorEffect> {
-  if (input.sourceIdentity !== input.existingSourceIdentity) {
+  if (
+    input.sourceIdentity !== input.existingSourceIdentity ||
+    input.existingEffect.sourceIdentity !== input.sourceIdentity
+  ) {
     return fail(
       "DuplicateSourceEffect",
       "A different source identity cannot reuse a committed clearing effect.",
@@ -562,16 +723,16 @@ export function replaySameSourceEffect(input: ReplaySourceInput): Checked<Proces
 }
 
 export const ClosingInput = Schema.Struct({
-  reviewedOpeningMinor: MinorUnits,
-  netEffectsMinor: Schema.Array(MinorUnits),
+  reviewedOpeningMinor: SignedMinorUnits,
+  netEffectsMinor: Schema.Array(SignedMinorUnits),
 });
 
 export type ClosingInput = typeof ClosingInput.Type;
 
-// Independent control: processor closing equals the reviewed opening plus
-// every supported net balance effect. Availability dates partition pending
-// and available states without posting again.
-export function processorClosing(input: ClosingInput): Checked<typeof MinorUnits.Type> {
+// Arithmetic only. The caller proves complete unique membership, account/mode/
+// currency partition and agreement with independent controls. Neither this sum
+// nor an availability-date partition certifies reconciliation.
+export function processorClosing(input: ClosingInput): Checked<typeof SignedMinorUnits.Type> {
   let closing = BigInt(input.reviewedOpeningMinor);
 
   for (const effect of input.netEffectsMinor) {
@@ -589,7 +750,10 @@ export const TransitClosingInput = Schema.Struct({
 
 export type TransitClosingInput = typeof TransitClosingInput.Type;
 
-export function payoutTransitClosing(input: TransitClosingInput): Checked<typeof MinorUnits.Type> {
+// A negative total exposes over-resolution; it is not a reconciliation receipt.
+export function payoutTransitClosing(
+  input: TransitClosingInput,
+): Checked<typeof SignedMinorUnits.Type> {
   const closing =
     BigInt(input.payoutsMovedOutMinor) -
     BigInt(input.bankReceiptsMinor) -
