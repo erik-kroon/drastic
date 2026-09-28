@@ -65,6 +65,11 @@ const legalPostingPurposes: ReadonlyArray<string> = [
   "legal_customer_credit_v1",
 ];
 
+// Only the financial-close application operation may present this purpose. It
+// moves the sealed transfer delta and nothing else; the statement owner
+// recognizes its vouchers as owned transfers through the retained purpose.
+const transferPostingPurposes: ReadonlyArray<string> = ["result_transfer_v1"];
+
 const EvidenceSchema = Accounting.Evidence;
 
 const EvidenceContentSchema = Accounting.EvidenceContent;
@@ -234,6 +239,7 @@ export function validateAction(
   book: { currency: string; profile: string; authority: string },
   action: Action,
   allowLegal = false,
+  allowTransfer = false,
 ) {
   return Effect.gen(function* () {
     const lines = validatePostingLines(action.lines);
@@ -288,7 +294,8 @@ export function validateAction(
       yield* validateReversalAction(transaction, scope, action);
     } else if (
       (action.postingPurpose !== "adjustment" &&
-        !(allowLegal && legalPostingPurposes.includes(action.postingPurpose))) ||
+        !(allowLegal && legalPostingPurposes.includes(action.postingPurpose)) &&
+        !(allowTransfer && transferPostingPurposes.includes(action.postingPurpose))) ||
       action.correctsVoucherId !== null
     ) {
       return yield* failure("InvalidJournal");
@@ -301,6 +308,7 @@ export function validatePlan(
   scope: Scope,
   plan: Plan,
   allowLegal = false,
+  allowTransfer = false,
 ) {
   return Effect.gen(function* () {
     const planWithoutDigest = Object.fromEntries(
@@ -356,7 +364,7 @@ export function validatePlan(
 
       for (const action of storedGroup.actions) {
         const decodedAction = yield* decode(ActionSchema, action);
-        yield* validateAction(transaction, scope, book, decodedAction, allowLegal);
+        yield* validateAction(transaction, scope, book, decodedAction, allowLegal, allowTransfer);
       }
     }
   });
@@ -1186,6 +1194,7 @@ export const executeChangeInTransaction = Effect.fn("posting.execute")(function*
       command.scope,
       plan,
       command.owner?.kind === "legal_issue" || command.owner?.kind === "legal_credit",
+      command.owner?.kind === "financial_close",
     );
     yield* assertPlanUnposted(transaction, command.scope, plan);
     yield* admitPosting(transaction, command.scope, plan.id, action, command.owner);
@@ -1367,11 +1376,12 @@ export function sealActionInTransaction(
   scope: Scope,
   action: Action,
   allowLegal = false,
+  allowTransfer = false,
 ) {
   return Effect.gen(function* () {
     const book = yield* readBook(transaction, scope);
     const period = yield* readPeriod(transaction, scope, action.accountingPeriodId);
-    yield* validateAction(transaction, scope, book, action, allowLegal);
+    yield* validateAction(transaction, scope, book, action, allowLegal, allowTransfer);
     // NEXT-14. The original dimension assignments are resolved and sealed here,
     // before the proposal is hashed, so every owner that seals a plan through
     // this path carries the same reviewed assignment set.

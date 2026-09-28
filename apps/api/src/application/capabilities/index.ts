@@ -4,6 +4,7 @@ import { workspaceCapabilities } from "./workspace";
 import { taxAccountCapabilities } from "./tax-account";
 import { commerceLegalCapabilities } from "./commerce-legal";
 import { closingCapabilities } from "./closing";
+import { financialCloseCapabilities } from "./financial-close";
 import { collectionsCapabilities } from "./collections";
 import { bankingCapabilities } from "./banking";
 import { subledgerOwnerCapabilities } from "./subledger-owners";
@@ -33,6 +34,7 @@ export const capabilities = {
   ...taxAccountCapabilities,
   ...commerceLegalCapabilities,
   ...closingCapabilities,
+  ...financialCloseCapabilities,
   ...collectionsCapabilities,
   ...bankingCapabilities,
   ...subledgerOwnerCapabilities,

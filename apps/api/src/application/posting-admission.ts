@@ -22,6 +22,7 @@ export type PostingOwner = {
     | "supplier_acceptance"
     | "supplier_credit"
     | "service_purchase"
+    | "financial_close"
     | "asset_disposal"
     | "asset_impairment"
     | "historical_import"
@@ -59,6 +60,9 @@ export const admitPosting = Effect.fn("posting.admitOwnedSources")(function* (
     return yield* failure("UnsupportedProfile");
 
   if (action.postingPurpose === "legal_customer_credit_v1" && owner?.kind !== "legal_credit")
+    return yield* failure("UnsupportedProfile");
+
+  if (action.postingPurpose === "result_transfer_v1" && owner?.kind !== "financial_close")
     return yield* failure("UnsupportedProfile");
 
   if (

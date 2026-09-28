@@ -158,10 +158,38 @@ const SyntheticVoucherAction = Schema.Struct({
   legalCredit: Schema.optional(Schema.Null),
 });
 
+// Financial-close result-transfer variant (NEXT-23). It moves exactly the
+// sealed transfer delta from the nominal result-transfer role to the
+// year-result equity role and never opens another recognition, so it is not
+// an adjustment and not a reversal. Only the financial-close owner may
+// present this purpose; the statement owner recognizes its vouchers as owned
+// transfers through the retained purpose.
+export const ResultTransferPostingAction = Schema.Struct({
+  ...PostingAction.fields,
+  correctsVoucherId: Schema.Null,
+  postingPurpose: Schema.Literal("result_transfer_v1"),
+  occurrenceKey: Schema.String.check(Schema.isPattern(/^result_transfer_[a-f0-9]{32}$/)),
+  lines: Schema.Array(
+    Schema.Struct({
+      ...JournalLine.fields,
+      lineId: Identifier,
+      originalDimensions: Schema.optional(
+        Schema.Array(OriginalDimensionAssignment).check(Schema.isMaxLength(64)),
+      ),
+    }),
+  ).check(Schema.isMinLength(2), Schema.isMaxLength(2)),
+  resultTransfer: Schema.Struct({
+    proposalId: Identifier,
+    fiscalYearId: Identifier,
+    deltaMinor: SignedMinorUnits,
+  }),
+});
+
 export const VoucherPostingAction = Schema.Union([
   SyntheticVoucherAction,
   LegalArPostingAction,
   LegalCustomerCreditPostingAction,
+  ResultTransferPostingAction,
 ]);
 
 export const ChangeSet = Schema.Struct({

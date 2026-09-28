@@ -1270,6 +1270,86 @@ export const commerceFxSettlementSources = openerp.table("commerce_fx_settlement
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });
 
+// NEXT-23: financial close and single-count carry-forward. Versioned SQL
+// migrations own the DDL; this is the typed mapping.
+export const financialClosePreparations = openerp.table("financial_close_preparations", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  statementSnapshotId: text("statement_snapshot_id").notNull(),
+  bridgeId: text("bridge_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const financialCloseProposals = openerp.table("financial_close_proposals", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  preparationId: text("preparation_id").notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const financialCloseApprovals = openerp.table("financial_close_approvals", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  proposalId: text("proposal_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  actorId: text("actor_id").notNull(),
+  digest: text().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const financialCloseTransfers = openerp.table("financial_close_transfers", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  deltaMinor: numeric("delta_minor", { mode: "string" }).notNull(),
+  voucherId: text("voucher_id"),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const financialOpeningSets = openerp.table("financial_opening_sets", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  version: integer("version").notNull(),
+  certificateId: text("certificate_id").notNull(),
+  supersedesId: text("supersedes_id"),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const financialCloseCertificates = openerp.table("financial_close_certificates", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  proposalId: text("proposal_id").notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  openingSetId: text("opening_set_id").notNull(),
+  transferId: text("transfer_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const financialReopenEvents = openerp.table("financial_reopen_events", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  certificateId: text("certificate_id").notNull(),
+  fiscalYearId: text("fiscal_year_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
 export const recurringInvoiceAgreements = openerp.table("recurring_invoice_agreements", {
   bookId: text("book_id").notNull(),
   id: text().notNull(),

@@ -44,11 +44,11 @@ export const maximumStatementComponents = 20000;
 export const maximumStatementRows = 400;
 
 // NEXT-13 does not post. A result transfer can only be excluded from ordinary
-// profit and loss when an owned transfer receipt exists, and this release
-// implements no result-transfer posting operation, so no retained voucher
-// currently carries one. An unexplained entry on a transfer role therefore stays
-// in the profit and loss and raises a diagnostic instead of erasing activity.
-const ownedResultTransferPurposes: ReadonlyArray<string> = [];
+// profit and loss when an owned transfer receipt exists. NEXT-23 posts owned
+// result transfers with the purpose below, so their vouchers carry it here;
+// an unexplained entry on a transfer role still stays in the profit and loss
+// and raises a diagnostic instead of erasing activity.
+const ownedResultTransferPurposes: ReadonlyArray<string> = ["result_transfer_v1"];
 
 export type StatementBookRow = {
   readonly entityId: string;

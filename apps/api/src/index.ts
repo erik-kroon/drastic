@@ -51,6 +51,7 @@ import { failure } from "./application/failures";
 import { SubledgerHandlers } from "./transport/http/routes/subledgers";
 
 import { ClosingHandlers } from "./transport/http/routes/closing";
+import { FinancialCloseHandlers } from "./transport/http/routes/financial-close";
 
 import { CommerceHandlers } from "./transport/http/routes/commerce";
 import { CommerceFxHandlers } from "./transport/http/routes/commerce-fx";
@@ -177,6 +178,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     OwnerRegisterHandlers,
     OwnerOperationHandlers,
     ClosingHandlers,
+    FinancialCloseHandlers,
     SubledgerHandlers,
     CorporateTaxHandlers,
   ]),
