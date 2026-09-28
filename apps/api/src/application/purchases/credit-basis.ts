@@ -307,6 +307,10 @@ const purchaseCreditPlan = Effect.fn("purchases.credits.purchaseCreditPlan")(fun
     recognition,
   );
 
+  const creditIdentity = yield* Recognition.creditRecognitionId(
+    Recognition.creditEconomicKey(counterparty, input.supplierCreditNumber),
+  );
+
   const compiled = compileUnpaidPurchaseCredit({
     currencyScale: recognition.currencyScale,
     taxPoint: {
@@ -318,12 +322,10 @@ const purchaseCreditPlan = Effect.fn("purchases.credits.purchaseCreditPlan")(fun
     // The credit's components are namespaced by the credit document's own
     // recognition identity, so re-reviewing one supplier credit document
     // resolves to the same components instead of forking new ones.
-    taxComponentPrefix: yield* Recognition.creditRecognitionId(
-      Recognition.creditEconomicKey(counterparty, input.supplierCreditNumber),
-    ),
+    taxComponentPrefix: creditIdentity,
     creditEvidence: {
       evidenceId: input.creditEvidenceId,
-      sourceKey: `supplier_credit:${input.supplierCreditNumber}`,
+      sourceKey: `supplier_credit:${creditIdentity}`,
     },
     original: capacities,
     requested:
@@ -406,6 +408,10 @@ const paidCreditPlan = Effect.fn("purchases.credits.paidCreditPlan")(function* (
     recognition,
   );
 
+  const creditIdentity = yield* Recognition.creditRecognitionId(
+    Recognition.creditEconomicKey(counterparty, input.supplierCreditNumber),
+  );
+
   const compiled = compilePaidSupplierCredit({
     currencyScale: recognition.currencyScale,
     taxPoint: {
@@ -414,12 +420,10 @@ const paidCreditPlan = Effect.fn("purchases.credits.paidCreditPlan")(function* (
     },
     reportingObligationId: null,
     ruleReleaseId: recognition.profileWitness?.ruleReleaseId ?? null,
-    taxComponentPrefix: yield* Recognition.creditRecognitionId(
-      Recognition.creditEconomicKey(counterparty, input.supplierCreditNumber),
-    ),
+    taxComponentPrefix: creditIdentity,
     creditEvidence: {
       evidenceId: input.creditEvidenceId,
-      sourceKey: `supplier_credit:${input.supplierCreditNumber}`,
+      sourceKey: `supplier_credit:${creditIdentity}`,
     },
     original: capacities,
     requested:
