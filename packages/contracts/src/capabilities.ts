@@ -8,6 +8,7 @@ import * as Accounting from "./accounting";
 import * as Reports from "./reports";
 import { StatementCapabilities } from "./report-statements";
 import { CashFlowCapabilities } from "./cash-flow";
+import { PaymentResolutionCapabilities } from "./payment-resolutions";
 import * as Reconciliation from "./reconciliation";
 import { CaseCapabilities } from "./cases";
 import * as Automation from "./automation";
@@ -86,6 +87,7 @@ const changeMutation = { ...mutation, changeSetId: Accounting.Identifier };
 
 export const Capabilities = {
   ...CashFlowCapabilities,
+  ...PaymentResolutionCapabilities,
   runs_start_background: {
     description:
       "Admit a ready preparation run for durable background execution. Authority is rechecked for every chunk; manual changes stop the job. Posting requires separate approval.",

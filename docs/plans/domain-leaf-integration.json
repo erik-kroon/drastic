@@ -180,9 +180,9 @@
     },
     {
       "leaf": "payment-resolutions",
-      "status": "deferred",
-      "reason": "Packet keeps the payment-batch/export owners; no payment batch owner exists.",
-      "unblockedBy": "A payment-batch owner executes an allocation and calls this leaf."
+      "status": "wired",
+      "consumers": ["apps/api"],
+      "note": "NEXT-08 owner apps/api/src/application/purchases/payment-resolutions.ts extends the supplier payment-batch/export owner with instruction resolution and replacement. It derives the instruction per export item from retained bytes, reads the retained outcome chain, and records receipts in command_receipts. It posts, allocates and moves nothing. No proof branch is currently satisfiable, so resolution reports unknown and replacement is gated; both are exercised."
     },
     {
       "leaf": "payroll-runs",

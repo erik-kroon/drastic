@@ -52,6 +52,7 @@ import { SupplierAcceptanceApi } from "./supplier-acceptance";
 import { ServicePurchaseApi } from "./service-purchases";
 import { PurchaseRecognitionApi } from "./supplier-recognition";
 import { SupplierPaymentBatchesApi } from "./supplier-payment-batches";
+import { PaymentResolutionsApi } from "./payment-resolutions";
 import { SupplierCreditsApi } from "./supplier-credits";
 import { SupplierRefundsApi } from "./supplier-refunds";
 import { SubledgerControlsApi } from "./subledger-controls";
@@ -212,6 +213,7 @@ export class Api extends HttpApi.make("open-erp")
     ServicePurchaseApi,
     PurchaseRecognitionApi,
     SupplierPaymentBatchesApi,
+    PaymentResolutionsApi,
     SupplierCreditsApi,
     SupplierRefundsApi,
     SubledgerControlsApi,
