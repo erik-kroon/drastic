@@ -4,6 +4,12 @@ import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
 import * as CommerceFx from "../../../application/commerce/fx";
+import {
+  approveFxRemeasurement,
+  executeFxRemeasurement,
+  getFxRemeasurement,
+  prepareFxRemeasurement,
+} from "../../../application/commerce/fx-remeasurement";
 
 export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handlers) =>
   handlers
@@ -150,6 +156,40 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
           idempotencyKey: headers["idempotency-key"],
           input: payload,
         }),
+      ),
+    )
+    .handle("prepareFxRemeasurement", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        prepareFxRemeasurement(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("approveFxRemeasurement", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        approveFxRemeasurement(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          reviewId: params.id,
+          input: payload,
+        }),
+      ),
+    )
+    .handle("executeFxRemeasurement", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        executeFxRemeasurement(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          reviewId: params.id,
+          input: payload,
+        }),
+      ),
+    )
+    .handle("getFxRemeasurement", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        getFxRemeasurement(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("getCommerceFxItem", ({ params }) =>

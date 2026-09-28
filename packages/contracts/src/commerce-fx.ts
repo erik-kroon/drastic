@@ -4,6 +4,7 @@ import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 import * as Commerce from "./commerce";
 import * as Rates from "./exchange-rates";
+import { ValuationPlan } from "@open-erp/domain/fx-remeasurement";
 
 const Currency = Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/));
 
@@ -613,6 +614,96 @@ export const CommandRecovery = Schema.Struct({
   ),
 });
 
+// NEXT-18. An incremental open-item FX remeasurement. The caller names the
+// items, the reporting-rate revision and the cutoff; it states no amount and
+// no carrying. The owner reads every remaining balance, every current
+// carrying and the retained rate, and seals the target-less-current plan.
+export const RemeasurementItemSelection = Schema.Struct({
+  itemId: Accounting.Identifier,
+});
+
+export const PrepareRemeasurement = Schema.Struct({
+  itemIds: Schema.Array(Accounting.Identifier).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(500),
+  ),
+  rateObservationId: Accounting.Identifier,
+  rateDigest: Accounting.Digest,
+  accountingCutoff: Accounting.AccountingDate,
+  bookScale: Rates.CurrencyScale,
+  unrealizedGainAccountId: Accounting.Identifier,
+  unrealizedLossAccountId: Accounting.Identifier,
+  rounding: Schema.Literals(["exact", "half_up"]),
+  economicDecisionId: Accounting.Identifier,
+  fiscalYearId: Accounting.Identifier,
+  accountingPeriodId: Accounting.Identifier,
+  series: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(32)),
+  reason: Accounting.Description,
+});
+
+// The posting witnesses above are reviewed configuration: the fiscal year,
+// period and series the cutoff falls in. They are verified at prepare and
+// sealed with the plan, so execution cannot move the valuation to another
+// period.
+
+// The posting witnesses are reviewed configuration, not valuation math: the
+// fiscal year, period and series the cutoff falls in, and the book currency the
+// valuation is stated in. They are verified at prepare and sealed with the plan.
+export const RemeasurementPosting = Schema.Struct({
+  fiscalYearId: Accounting.Identifier,
+  accountingPeriodId: Accounting.Identifier,
+  series: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(32)),
+  bookCurrency: Currency,
+});
+
+export const RemeasurementReview = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  version: Schema.Literal(1),
+  actorId: Accounting.Identifier,
+  digest: Accounting.Digest,
+  plan: ValuationPlan,
+  // The reporting rate's evidence anchors the posting event. It is read from
+  // the retained rate revision at prepare, never stated by the caller.
+  rateEvidenceId: Accounting.Identifier,
+  posting: RemeasurementPosting,
+  createdAt: Schema.String,
+  receipt: Commerce.CommandReceipt,
+});
+
+export const ApproveRemeasurement = Schema.Struct({
+  version: Schema.Literal(1),
+  digest: Accounting.Digest,
+});
+
+export const RemeasurementApproval = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  reviewId: Accounting.Identifier,
+  digest: Accounting.Digest,
+  version: Schema.Literal(1),
+  actorId: Accounting.Identifier,
+  expiresAt: Schema.String,
+  createdAt: Schema.String,
+  receipt: Commerce.CommandReceipt,
+});
+
+export const ExecuteRemeasurement = Schema.Struct({
+  version: Schema.Literal(1),
+  digest: Accounting.Digest,
+  approvalId: Accounting.Identifier,
+});
+
+export const RemeasurementExecuted = Schema.Struct({
+  scope: Accounting.Scope,
+  reviewId: Accounting.Identifier,
+  digest: Accounting.Digest,
+  approvalId: Accounting.Identifier,
+  voucherId: Schema.NullOr(Accounting.Identifier),
+  effectCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  createdAt: Schema.String,
+});
+
 const path = "/v1/entities/:entityId/books/:bookId/commerce/fx";
 
 const scoped = { params: Accounting.Scope, error: accountingErrors };
@@ -740,5 +831,27 @@ export const CommerceFxApi = HttpApiGroup.make("commerceFx").add(
     params: RecoveryPath,
     error: accountingErrors,
     success: CommandRecovery,
+  }),
+  HttpApiEndpoint.post("prepareFxRemeasurement", `${path}/remeasurement-reviews`, {
+    ...mutation,
+    payload: PrepareRemeasurement.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: RemeasurementReview,
+    error: accountingErrors,
+  }),
+  HttpApiEndpoint.post("approveFxRemeasurement", `${path}/remeasurement-reviews/:id/approvals`, {
+    ...identifiedMutation,
+    payload: ApproveRemeasurement.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: RemeasurementApproval,
+    error: accountingErrors,
+  }),
+  HttpApiEndpoint.post("executeFxRemeasurement", `${path}/remeasurement-reviews/:id/execute`, {
+    ...identifiedMutation,
+    payload: ExecuteRemeasurement.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: RemeasurementExecuted,
+    error: accountingErrors,
+  }),
+  HttpApiEndpoint.get("getFxRemeasurement", `${path}/remeasurement-reviews/:id`, {
+    ...identified,
+    success: RemeasurementReview,
   }),
 );

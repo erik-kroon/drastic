@@ -123,9 +123,8 @@
     },
     {
       "leaf": "fx-remeasurement",
-      "status": "deferred",
-      "reason": "NEXT-18 leaf implemented and reviewed: per-item control binding, unique execution membership, bounded money, all supported scale pairs and empty-population decisions repaired; valuation posting and effects persistence remain with the commerce FX owner.",
-      "unblockedBy": "The commerce FX owner persists the remeasurement valuation and effects, and its application operation composes this leaf per open item."
+      "status": "wired",
+      "consumers": ["apps/api/src/application/commerce/fx-remeasurement.ts"]
     },
     {
       "leaf": "historical-adoptions",
