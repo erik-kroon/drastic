@@ -29,6 +29,7 @@ import { ClosingCapabilities } from "./closing";
 import { CommerceCapabilities } from "./commerce";
 import { RegisterReportCapabilities } from "./register-reports";
 import { VatReturnCapabilities } from "./vat-returns";
+import { VatAssessmentCapabilities } from "./vat-assessment";
 import { SieCapabilities } from "./sie";
 import { Sie4ECapabilities } from "./sie4e";
 import { InvoiceDraftCapabilities } from "./invoice-drafts";
@@ -116,6 +117,7 @@ export const Capabilities = {
   ...Reports.ReportComparisonCapabilities,
   ...StatementCapabilities,
   ...VatReturnCapabilities,
+  ...VatAssessmentCapabilities,
   ...SieCapabilities,
   ...Sie4ECapabilities,
   ...InvoiceDraftCapabilities,

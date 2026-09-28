@@ -590,6 +590,81 @@ export const previewMatch = Effect.fn("taxAccount.previewMatch")(function* (
   );
 });
 
+// The internal transaction-passing entrypoint for one tax-account match.
+// `matchEvent` calls this inside its own book transaction. A caller that
+// already holds the book locked for update calls it directly, so the match and
+// the financial effect it belongs to commit or roll back together instead of
+// leaving a posted journal with no match. `expectedBasisDigest` is the
+// previewed basis digest and is enforced for every public caller; it is null
+// only for an in-transaction caller whose selection was built from the rows it
+// just wrote under the same lock, and the sealed match then carries the basis
+// digest actually used.
+export function recordTaxAccountMatch(
+  transaction: Transaction,
+  scope: Scope,
+  request: {
+    readonly selection: Selection;
+    readonly rationale: string;
+    readonly evidenceId: string;
+    readonly expectedBasisDigest: string | null;
+  },
+  evidenceSha256: string,
+  receipt: { readonly key: string; readonly operation: string; readonly actorId: string },
+) {
+  return Effect.gen(function* () {
+    yield* requireTaxAccountAccess(transaction, true);
+    yield* Db.lockBookForUpdate(transaction, scope);
+
+    const count = yield* TaxDb.readCount(transaction, "tax_account_matches", scope.bookId);
+
+    if ((count[0]?.total ?? 0) >= matchBound) return yield* unsupported();
+
+    const basis = yield* readMatchBasis(transaction, scope, request.selection);
+
+    if (request.expectedBasisDigest !== null && basis.digest !== request.expectedBasisDigest) {
+      return yield* failure("StaleDependency");
+    }
+
+    const input: MatchInput = {
+      selection: request.selection,
+      expectedBasisDigest: basis.digest,
+      evidenceId: request.evidenceId,
+      rationale: request.rationale,
+    };
+
+    const body = yield* digestBody({
+      id: newId("taxmatch"),
+      scope,
+      input,
+      basis,
+      evidenceSha256,
+      createdAt: yield* isoNow(transaction),
+      receipt,
+    });
+
+    const match = yield* decode(MatchSchema, body);
+
+    yield* TaxDb.insertMatch(transaction, {
+      bookId: scope.bookId,
+      id: match.id,
+      eventId: basis.event.id,
+      voucherId: basis.line.voucherId,
+      lineId: basis.line.lineId,
+      evidenceId: request.evidenceId,
+      body,
+    });
+    yield* TaxDb.insertMatchCapacity(transaction, {
+      bookId: scope.bookId,
+      matchId: match.id,
+      eventId: basis.event.id,
+      voucherId: basis.line.voucherId,
+      lineId: basis.line.lineId,
+    });
+
+    return match;
+  });
+}
+
 export const matchEvent = Effect.fn("taxAccount.matchEvent")(function* (
   token: string,
   command: { scope: Scope; idempotencyKey: string; input: MatchInput },
@@ -613,8 +688,6 @@ export const matchEvent = Effect.fn("taxAccount.matchEvent")(function* (
         );
 
         if (request.previous) return request.previous;
-        yield* requireTaxAccountAccess(transaction, true);
-        yield* Db.lockBookForUpdate(transaction, command.scope);
 
         const evidence = yield* Db.readEvidence(
           transaction,
@@ -626,50 +699,23 @@ export const matchEvent = Effect.fn("taxAccount.matchEvent")(function* (
 
         if (sha256 === undefined) return yield* failure("MissingEvidence");
 
-        const count = yield* TaxDb.readCount(
+        const match = yield* recordTaxAccountMatch(
           transaction,
-          "tax_account_matches",
-          command.scope.bookId,
-        );
-
-        if ((count[0]?.total ?? 0) >= matchBound) return yield* unsupported();
-        const basis = yield* readMatchBasis(transaction, command.scope, command.input.selection);
-
-        if (basis.digest !== command.input.expectedBasisDigest) {
-          return yield* failure("StaleDependency");
-        }
-
-        const body = yield* digestBody({
-          id: newId("taxmatch"),
-          scope: command.scope,
-          input: command.input,
-          basis,
-          evidenceSha256: sha256,
-          createdAt: yield* isoNow(transaction),
-          receipt: {
+          command.scope,
+          {
+            selection: command.input.selection,
+            rationale: command.input.rationale,
+            evidenceId: command.input.evidenceId,
+            expectedBasisDigest: command.input.expectedBasisDigest,
+          },
+          sha256,
+          {
             key: command.idempotencyKey,
             operation: "match_tax_account_event",
             actorId: principal.actorId,
           },
-        });
+        );
 
-        const match = yield* decode(MatchSchema, body);
-        yield* TaxDb.insertMatch(transaction, {
-          bookId: command.scope.bookId,
-          id: match.id,
-          eventId: basis.event.id,
-          voucherId: basis.line.voucherId,
-          lineId: basis.line.lineId,
-          evidenceId: command.input.evidenceId,
-          body,
-        });
-        yield* TaxDb.insertMatchCapacity(transaction, {
-          bookId: command.scope.bookId,
-          matchId: match.id,
-          eventId: basis.event.id,
-          voucherId: basis.line.voucherId,
-          lineId: basis.line.lineId,
-        });
         yield* saveCommand(
           transaction,
           command.scope,
@@ -983,7 +1029,7 @@ export const recordStatement = Effect.fn("taxAccount.recordStatement")(function*
           const retained = yield* decode(StatementSchema, existing.body);
 
           if (!sameJson(retained.input, command.input)) {
-            return yield* failure("IdempotencyConflict");
+            return yield* failure("Forbidden");
           }
 
           yield* saveCommand(
@@ -1008,7 +1054,7 @@ export const recordStatement = Effect.fn("taxAccount.recordStatement")(function*
             command.input.sourceLocator,
           )).length > 0
         ) {
-          return yield* failure("IdempotencyConflict");
+          return yield* failure("ApprovalRequired");
         }
 
         const statements = yield* TaxDb.readCount(
@@ -1125,13 +1171,13 @@ function admitStatementRows(transaction: Transaction, scope: Scope, input: State
         return yield* failure("InvalidJournal");
       }
 
-      if (seen.has(row.eventKey)) return yield* failure("IdempotencyConflict");
+      if (seen.has(row.eventKey)) return yield* failure("StaleDependency");
 
       if (
         (yield* TaxDb.readEventByKey(transaction, scope.bookId, input.accountId, row.eventKey))
           .length > 0
       ) {
-        return yield* failure("IdempotencyConflict");
+        return yield* failure("InvalidJournal");
       }
 
       seen.add(row.eventKey);
@@ -1148,7 +1194,7 @@ function admitTaxAccountSource(transaction: Transaction, scope: Scope, input: St
     const source = (yield* TaxDb.readSource(transaction, scope.bookId, input.accountId))[0];
 
     if (source !== undefined && source.sourceKey !== input.sourceAccountKey) {
-      return yield* failure("IdempotencyConflict");
+      return yield* failure("Forbidden");
     }
 
     const mapped = (yield* TaxDb.readSourceByKey(
@@ -1158,7 +1204,7 @@ function admitTaxAccountSource(transaction: Transaction, scope: Scope, input: St
     ))[0];
 
     if (mapped !== undefined && mapped.accountId !== input.accountId) {
-      return yield* failure("IdempotencyConflict");
+      return yield* failure("ApprovalRequired");
     }
 
     if (source !== undefined) return;

@@ -39,6 +39,7 @@
     "./commerce-fx": "./src/commerce-fx.ts",
     "./register-reports": "./src/register-reports.ts",
     "./vat-returns": "./src/vat-returns.ts",
+    "./vat-assessment": "./src/vat-assessment.ts",
     "./vat-filing-release": "./src/vat-filing-release.ts",
     "./sie": "./src/sie.ts",
     "./sie4e": "./src/sie4e.ts",

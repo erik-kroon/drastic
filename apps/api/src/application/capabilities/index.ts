@@ -13,6 +13,7 @@ import { purchaseRecognitionCapabilities } from "./purchase-recognition";
 import { servicePurchaseCapabilities } from "./service-purchases";
 import { supplierRefundCapabilities } from "./supplier-refunds";
 import { vatCapabilities } from "./vat";
+import { vatAssessmentCapabilities } from "./vat-assessment";
 import { runCaseCapabilities } from "./runs-cases";
 import { periodWorkCapabilities } from "./period-work";
 import { reportCapabilities } from "./reports";
@@ -45,6 +46,7 @@ export const capabilities = {
   ...servicePurchaseCapabilities,
   ...supplierRefundCapabilities,
   ...vatCapabilities,
+  ...vatAssessmentCapabilities,
   ...runCaseCapabilities,
   ...periodWorkCapabilities,
   ...reportCapabilities,

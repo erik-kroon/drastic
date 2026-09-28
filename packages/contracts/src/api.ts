@@ -41,6 +41,7 @@ import { CommerceFxApi } from "./commerce-fx";
 import { PeriodWorkApi } from "./period-work";
 import { RegisterReportsApi } from "./register-reports";
 import { VatReturnsApi } from "./vat-returns";
+import { VatAssessmentApi } from "./vat-assessment";
 import { SieApi } from "./sie";
 import { Sie4EApi } from "./sie4e";
 import { InvoiceDraftsApi } from "./invoice-drafts";
@@ -198,6 +199,7 @@ export class Api extends HttpApi.make("open-erp")
     PeriodWorkApi,
     RegisterReportsApi,
     VatReturnsApi,
+    VatAssessmentApi,
     SieApi,
     Sie4EApi,
     InvoiceDraftsApi,

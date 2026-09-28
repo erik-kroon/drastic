@@ -24,6 +24,7 @@ export type PostingOwner = {
     | "supplier_refund"
     | "service_purchase"
     | "financial_close"
+    | "vat_assessment"
     | "asset_disposal"
     | "asset_impairment"
     | "historical_import"

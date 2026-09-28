@@ -1403,6 +1403,76 @@ export const annualReportArtifacts = openerp.table("annual_report_artifacts", {
   recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
 });
 
+// NEXT-37: VAT assessment ownership and exact-to-assessed bridge. Versioned
+// SQL migrations own the DDL; this is the typed mapping.
+export const vatRoundingBridges = openerp.table("vat_rounding_bridges", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  returnId: text("return_id").notNull(),
+  deltaMinor: numeric("delta_minor", { mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const vatBridgeApprovals = openerp.table("vat_bridge_approvals", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  bridgeId: text("bridge_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  actorId: text("actor_id").notNull(),
+  digest: text().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const vatAssessments = openerp.table("vat_assessments", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  assessmentIdentity: text("assessment_identity").notNull(),
+  returnId: text("return_id").notNull(),
+  eventId: text("event_id").notNull(),
+  matchRef: text("match_ref"),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const vatAssessmentApprovals = openerp.table("vat_assessment_approvals", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  assessmentId: text("assessment_id").notNull(),
+  ordinal: integer("ordinal").notNull(),
+  actorId: text("actor_id").notNull(),
+  digest: text().notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const vatBridgeReceipts = openerp.table("vat_bridge_receipts", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  bridgeId: text("bridge_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  voucherId: text("voucher_id"),
+  changeSetId: text("change_set_id"),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const vatAssessmentReceipts = openerp.table("vat_assessment_receipts", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  assessmentId: text("assessment_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  voucherId: text("voucher_id"),
+  matchRef: text("match_ref"),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  digest: text().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
 export const recurringInvoiceAgreements = openerp.table("recurring_invoice_agreements", {
   bookId: text("book_id").notNull(),
   id: text().notNull(),

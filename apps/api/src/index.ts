@@ -58,6 +58,7 @@ import { CommerceHandlers } from "./transport/http/routes/commerce";
 import { CommerceFxHandlers } from "./transport/http/routes/commerce-fx";
 import { RegisterReportHandlers } from "./transport/http/routes/register-reports";
 import { VatReturnsHandlers } from "./transport/http/routes/vat-returns";
+import { VatAssessmentHandlers } from "./transport/http/routes/vat-assessment";
 import { SieHandlers } from "./transport/http/routes/sie";
 import { Sie4EHandlers } from "./transport/http/routes/sie4e";
 import { InvoiceDraftHandlers } from "./transport/http/routes/invoice-drafts";
@@ -138,6 +139,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     CommerceFxHandlers,
     RegisterReportHandlers,
     VatReturnsHandlers,
+    VatAssessmentHandlers,
     SieHandlers,
     Sie4EHandlers,
     InvoiceDraftHandlers,
