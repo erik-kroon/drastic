@@ -96,6 +96,10 @@ jobs:
             "${bindir}/${binary}" --version
           done
 
+      - name: Build applications for self-host proof
+        timeout-minutes: 5
+        run: bun run build
+
       - name: Run E2E against real PostgreSQL
         id: e2e
         timeout-minutes: 10

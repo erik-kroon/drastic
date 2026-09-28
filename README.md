@@ -1,18 +1,20 @@
 # OpenERP
 
-**Open-source accounting for Swedish businesses.**
+[![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-blue.svg)](LICENSE) [![CI](https://github.com/erik-kroon/openERP/actions/workflows/ci.yml/badge.svg)](https://github.com/erik-kroon/openERP/actions/workflows/ci.yml)
 
-Bookkeeping, invoicing, bank reconciliation and financial reports, built to be operated by you or your AI agent. Run it yourself, work with your accountant, and keep control of what gets posted.
+**Open-source accounting for the daily work of Swedish aktiebolag.**
 
-[Self-host](#self-hosting) · [Documentation](docs/README.md) · [Connect an agent](apps/api/docs/MCP.md) · [Contribute](CONTRIBUTING.md)
+Invoicing, suppliers, bank reconciliation, VAT prep, payroll prep, close and reports — every posting traceable to its source evidence and approved before posting, with cash you can explain. Built to be operated by you or your AI agent. Run it yourself, work with your accountant, and keep control of what gets posted.
+
+[Self-host](#self-hosting) · [Documentation](docs/README.md) · [Roadmap and proof](#proof) · [Connect an agent](apps/api/docs/MCP.md) · [Contribute](CONTRIBUTING.md)
 
 ## Why OpenERP?
 
-**Traceable by design.** Follow a report total back to its journal entries and original documents. Review changes before posting, and correct mistakes without rewriting history.
+**Built to run daily.** One workspace for owner, finance and accountant: work queue, review, approval-before-posting, receipts and recovery. Follow a report total back to its journal entries and original documents, and correct mistakes through linked corrections without rewriting history.
 
-**Agent-native.** MCP tools let your agent gather evidence, draft entries and reconcile transactions through the same accounting engine as the web app. You approve the posting; the agent cannot approve its own work.
+**Agent-native.** Book-scoped MCP tools let your agent gather evidence, draft entries and reconcile transactions through the same accounting engine as the web app. Work is staged as prepare–approve–execute: you approve the posting; the agent cannot approve its own work.
 
-**Yours to run.** AGPL-3.0-only, self-hostable with Docker, Bun and PostgreSQL. The accounting core and agent interface require no paid service or Cloudflare account.
+**Yours to run, with cash you can explain.** AGPL-3.0-only, self-hostable with Docker, Bun and PostgreSQL. The accounting core and agent interface require no paid service or Cloudflare account. A read-only cash forecast reads the same qualified data — opening, remaining receivables/payables, minimum with date and headroom — and never invents payments.
 
 ## Features
 
@@ -38,7 +40,15 @@ The development build includes:
 - **Accountant workspaces** — Multiple client books, team assignments, access controls and due-work views.
 - **Agent access (MCP)** — Book-scoped tools for preparation, reconciliation, reports and execution of human-approved postings; REST and OpenAPI for integrations.
 
-> **Under active development.** Modules have different levels of implementation and verification, and availability depends on company setup and reviewed rule profiles. OpenERP is not yet validated for live company books or statutory filing. See [implementation status](docs/plans/next-packet-progress.md) and the [roadmap](docs/roadmap.md).
+> **Under active development.** Modules have different levels of implementation and verification, and availability depends on company setup and reviewed rule profiles. OpenERP is not yet validated for live company books or statutory filing. Current focus: a complete daily journey, a reviewer-accepted first period (Book Zero) and Cash qualification. See [implementation status](docs/plans/next-packet-progress.md) and the [roadmap](docs/roadmap.md).
+
+## Proof
+
+No screenshots yet — proof here means repeatable evidence, linked with its limits:
+
+- Backend E2E on real PostgreSQL and workerd, with source-hash manifests retained in `test-results/e2e/` and history in `test-results/e2e-history/`. Reproduce it with `bun run test:e2e` (see the [E2E guide](apps/api/tests/README.md)).
+- Dated synthetic browser journey: create evidence → prepare → review → approve → post → restart → recover, with receipts retained under `test-results/replacement-final/` (see `browser-proof.json`).
+- What each phase requires for acceptance: [roadmap](docs/roadmap.md), [verification scenarios](docs/verification.md) and the [Book Zero plan](docs/plans/15-book-zero-workflow-cash.md).
 
 ## Self-hosting
 
@@ -93,6 +103,10 @@ Accounting logic lives in the application; PostgreSQL enforces record integrity 
 | [`infra/self-host`](infra/self-host) | Bun and PostgreSQL self-hosting |
 | [`infra/alchemy`](infra/alchemy) | Cloudflare deployment |
 | [`docs`](docs/README.md) | Product scope, architecture, delivery plans and verification |
+
+## Community
+
+Found a bug or have an idea? [Open an issue](https://github.com/erik-kroon/openERP/issues). Keep customer books, credentials and private data out of issues.
 
 ## Contributing
 
