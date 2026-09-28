@@ -169,11 +169,34 @@ prepare/approve/execute journey remains unobserved under the existing-checks-onl
 lifecycle: the append-only admitted request basis, its one mutable lifecycle row, and
 the immutable human field decisions. It declares no function, reuses the baseline
 `immutable_row` guard and `digest` check helper, and carries its own runtime grants. It
-too has never been applied by PostgreSQL. Extraction produces suggestions and source
+is applied by the fresh-database E2E setup. Extraction produces suggestions and source
 locators only; the reviewed draft stays with the supplier draft owner and an accepted
 economic document is never revised there. The built-in engine reads text media only,
 so a PDF or image original is refused with a retained `media_type_not_supported`
 diagnostic.
+
+Extraction requests are service intent. The original requester remains admission
+provenance; expiry of that requester's browser session does not cancel the request.
+The Bun handler admits the configured API credential against current identity,
+entity and book membership at capture and again at publication. Terminal delivery
+settlement uses the same scoped authority. Dispatch selects only the runner's books.
+Cancellation and supersession are separate publication fences. Immutable request
+reads use SELECT; the mutable lifecycle row takes FOR UPDATE behind the admitted
+book lock, so request history needs no UPDATE grant.
+
+Supplier draft creation has no lifetime retained-row quota. The list endpoint and
+MCP capability return live keyset pages of at most 200 heads, with optional `q`
+search and a scope/search-bound `after` cursor. `count` is the returned page count;
+`complete` is true only for an unpaginated matching collection, and `next` names
+the continuation. Immutable revision history remains independently readable.
+Duplicate pages decode retained draft revisions and batch registered candidates
+through the commerce owner's live invoice projection. Both cursor kinds retain
+their source-context and anchor checks.
+
+`swedishBusinessDate` converts instants in Europe/Stockholm for book-status admission
+and the web overview. The web calendar subscription refreshes at minute boundaries
+and on focus/visibility changes, including a long-open page crossing local midnight.
+Entered accounting dates remain plain calendar values.
 
 The replacement is implemented, including historical financial import, impairment/disposal, schedule amendments and the commerce/purchase operations missed by the original placeholder inventory. Shared posting admission enforces domain ownership, source capacity and historical-import fences inside the financial transaction. TypeScript computes plans and canonical seals; the two pure SQL helpers remain for integrity constraints and read projections. Feature handoffs under `docs/` label the former SQL implementation as history; their migration and statement-map instructions do not describe the current runtime.
 

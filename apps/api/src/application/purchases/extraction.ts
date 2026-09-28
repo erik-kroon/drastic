@@ -578,14 +578,6 @@ export const getSupplierExtractionState = Effect.fn("purchases.extraction.state"
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, extractionTables);
 
-      const book = (yield* Shared.PurchaseDb.lockBook(
-        transaction,
-        command.scope.bookId,
-        "share",
-      ))[0];
-
-      if (!book) return yield* failure("Forbidden");
-
       const entry = (yield* InboxDb.readInbox(
         transaction,
         command.scope.bookId,

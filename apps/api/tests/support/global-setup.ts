@@ -141,11 +141,20 @@ export default async function setup(project: TestProject) {
       if (sourceFiles !== undefined) {
         const finalSources = await sourceInventory();
         const stable = JSON.stringify(finalSources) === JSON.stringify(sourceFiles);
+        const initialByPath = new Map(sourceFiles.map((file) => [file.path, file]));
+        const finalByPath = new Map(finalSources.map((file) => [file.path, file]));
+
+        const changedPaths = [...new Set([...initialByPath.keys(), ...finalByPath.keys()])].filter(
+          (path) =>
+            JSON.stringify(initialByPath.get(path)) !== JSON.stringify(finalByPath.get(path)),
+        );
+
         await writeFile(
           join(artifacts, "source-integrity.json"),
           JSON.stringify(
             {
               status: stable ? "stable" : "changed_during_run",
+              changedPaths,
               sourceInventorySha256: createHash("sha256")
                 .update(JSON.stringify(sourceFiles))
                 .digest("hex"),
@@ -163,7 +172,7 @@ export default async function setup(project: TestProject) {
           // Vitest reports teardown errors separately from test assertions.
           process.exitCode = 1;
           throw new Error(
-            "Source inputs changed during the E2E run; its results are not fixed-revision evidence.",
+            `Source inputs changed during the E2E run: ${changedPaths.join(", ")}. Its results are not fixed-revision evidence.`,
           );
         }
       }
@@ -198,7 +207,7 @@ export default async function setup(project: TestProject) {
       "-l",
       join(artifacts, "postgres.log"),
       "-o",
-      `-h 127.0.0.1 -p ${port} -k ${scratch}`,
+      `-h 127.0.0.1 -p ${port} -k ${scratch} -c shared_preload_libraries=pg_stat_statements`,
       "-w",
       "start",
     ]);
@@ -214,6 +223,7 @@ export default async function setup(project: TestProject) {
     await admin.connect();
 
     try {
+      await admin.query("CREATE EXTENSION pg_stat_statements");
       await admin.query(
         `CREATE ROLE e2e_runtime LOGIN PASSWORD '${password}' IN ROLE openerp_runtime`,
       );

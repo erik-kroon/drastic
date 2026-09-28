@@ -18,8 +18,8 @@ const agentToolingIgnorePatterns = [
 
 export default defineConfig({
   test: {
-    // Only apps/api/tests exists. Add an apps/web/tests entry here when a browser
-    // suite lands; the global setup boots workerd and PostgreSQL, not a web server.
+    // Global setup owns workerd/PostgreSQL. The browser journey starts its own
+    // web server and authenticated Worker against that disposable database.
     include: ["apps/api/tests/**/*.e2e.test.ts"],
     globalSetup: ["./apps/api/tests/support/global-setup.ts"],
     environment: "node",
@@ -27,7 +27,7 @@ export default defineConfig({
     testTimeout: 30_000,
     hookTimeout: 120_000,
     retry: 0,
-    forbidOnly: Boolean(process.env.CI),
+    allowOnly: !process.env.CI,
     reporters: ["default", "json", "junit"],
     outputFile: {
       json: "test-results/e2e/results.json",

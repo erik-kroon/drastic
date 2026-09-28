@@ -8,7 +8,78 @@ import {
   purchaseEvidence,
   supplierFixture,
 } from "./support/supplier-review";
-import { decoded, environment, failure, persisted, request } from "./support/fixtures";
+import {
+  database,
+  decoded,
+  environment,
+  failure,
+  persisted,
+  request,
+  type BookFixture,
+} from "./support/fixtures";
+
+async function measureDuplicatePage(book: BookFixture, path: string) {
+  const admin = await database();
+  const latencyMs: number[] = [];
+
+  try {
+    await admin.query("SELECT pg_stat_statements_reset()");
+
+    for (let sample = 0; sample < 5; sample += 1) {
+      const started = performance.now();
+      await decoded(await request(book, path), Drafts.SupplierInvoiceDraftDuplicates);
+      latencyMs.push(performance.now() - started);
+    }
+
+    const statements = await admin.query<{ calls: number; executionMs: number }>(`
+      SELECT coalesce(sum(calls),0)::int AS calls, coalesce(sum(total_exec_time),0)::float8 AS "executionMs"
+      FROM pg_stat_statements WHERE userid = (SELECT oid FROM pg_roles WHERE rolname = 'e2e_runtime')`);
+
+    return { latencyMs, statements: statements.rows[0]! };
+  } finally {
+    await admin.end();
+  }
+}
+
+async function observeBookBarrier(book: BookFixture, path: string) {
+  const lock = await database();
+
+  try {
+    await lock.query("BEGIN");
+    await lock.query("SELECT id FROM openerp.books WHERE id = $1 FOR UPDATE", [book.bookId]);
+    const started = performance.now();
+    const pending = request(book, path);
+    let waitMs = 0;
+
+    try {
+      await expect
+        .poll(
+          async () => {
+            await lock.query("SELECT pg_stat_clear_snapshot()");
+
+            const blocked = await lock.query<{
+              waitMs: number;
+            }>(`SELECT extract(epoch FROM clock_timestamp() - query_start)::float8 * 1000 AS "waitMs"
+          FROM pg_stat_activity WHERE application_name = 'open-erp-api' AND wait_event_type = 'Lock'`);
+
+            waitMs = blocked.rows[0]?.waitMs ?? 0;
+
+            return blocked.rows.length;
+          },
+          { timeout: 5000 },
+        )
+        .toBeGreaterThan(0);
+    } finally {
+      await lock.query("ROLLBACK");
+    }
+
+    await decoded(await pending, Drafts.SupplierInvoiceDraftDuplicates);
+
+    return { waitMs, requestMs: performance.now() - started };
+  } finally {
+    await lock.end();
+  }
+}
 
 test("retained supplier history remains pageable beyond 200 and both duplicate cursor kinds resume", async () => {
   const { book, content } = await supplierFixture();
@@ -89,6 +160,19 @@ test("retained supplier history remains pageable beyond 200 and both duplicate c
   expect(registeredTail.items).toHaveLength(1);
   expect(registeredTail.items[0]?.kind).toBe("registered");
   expect(registeredTail.next).toBeNull();
+
+  const fullPageMeasurement = await measureDuplicatePage(book, duplicatePath);
+
+  const tailMeasurement = await measureDuplicatePage(
+    book,
+    `${duplicatePath}?after=${registeredPage.next}`,
+  );
+
+  // A larger candidate page must not add one database round trip per body.
+  expect(fullPageMeasurement.statements.calls).toBeLessThanOrEqual(
+    tailMeasurement.statements.calls + 5,
+  );
+  const bookBarrier = await observeBookBarrier(book, duplicatePath);
 
   await createDraft(book, active.content);
 
@@ -173,6 +257,7 @@ test("retained supplier history remains pageable beyond 200 and both duplicate c
         activeDraft: active.id,
         duplicateCursors: { registered: registeredPage.next, draft: draftPage.next },
         duplicateCount: allIds.length,
+        queryMeasurements: { fullPageMeasurement, tailMeasurement, bookBarrier },
         zero: zeroPage.items,
         unknown: unknownPage.items,
       },

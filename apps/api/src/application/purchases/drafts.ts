@@ -368,13 +368,6 @@ export const getSupplierInvoiceDraft = Effect.fn("purchases.draft.get")(function
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, draftTables);
 
-      const book = (yield* Shared.PurchaseDb.lockBook(
-        transaction,
-        command.scope.bookId,
-        "share",
-      ))[0];
-
-      if (!book) return yield* failure("Forbidden");
       const requested = command.revision ?? "";
 
       if (requested !== "" && !/^[1-9][0-9]{0,17}$/.test(requested)) {
@@ -418,13 +411,6 @@ export const listSupplierInvoiceDrafts = Effect.fn("purchases.draft.list")(funct
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, draftTables);
 
-      const book = (yield* Shared.PurchaseDb.lockBook(
-        transaction,
-        command.scope.bookId,
-        "share",
-      ))[0];
-
-      if (!book) return yield* failure("Forbidden");
       const search = command.q ?? "";
 
       if (search.length > 200) return yield* failure("InvalidJournal");
@@ -478,13 +464,6 @@ export const supplierInvoiceDraftHistory = Effect.fn("purchases.draft.history")(
     Effect.gen(function* () {
       yield* Shared.requireTables(transaction, draftTables);
 
-      const book = (yield* Shared.PurchaseDb.lockBook(
-        transaction,
-        command.scope.bookId,
-        "share",
-      ))[0];
-
-      if (!book) return yield* failure("Forbidden");
       const draft = yield* storedDraft(transaction, command.scope.bookId, command.draftId);
 
       const rows = yield* DraftDb.listDraftHistory(
@@ -540,14 +519,6 @@ export const supplierInvoiceDraftDuplicates = Effect.fn("purchases.draft.duplica
         "customer_credit_notes",
         "journal_lines",
       ]);
-
-      const book = (yield* Shared.PurchaseDb.lockBook(
-        transaction,
-        command.scope.bookId,
-        "share",
-      ))[0];
-
-      if (!book) return yield* failure("Forbidden");
 
       const head = (yield* DraftDb.readHeadRevision(
         transaction,
@@ -692,14 +663,6 @@ export const supplierAccountSuggestions = Effect.fn("purchases.draft.accountSugg
     return yield* Shared.withBook(token, command.scope, false, "share", (transaction) =>
       Effect.gen(function* () {
         yield* Shared.requireTables(transaction, draftTables);
-
-        const book = (yield* Shared.PurchaseDb.lockBook(
-          transaction,
-          command.scope.bookId,
-          "share",
-        ))[0];
-
-        if (!book) return yield* failure("Forbidden");
 
         if (
           (yield* DraftDb.readSupplierCounterpartyExists(
