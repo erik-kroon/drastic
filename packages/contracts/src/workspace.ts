@@ -166,6 +166,67 @@ const coordinationCommand = {
   idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
 };
 
+// NEXT-50. An agent asks for its book context for one stated goal: the module
+// summaries it may read, the retained unresolved work ranked for that goal,
+// and the capability catalog this build exposes. It is a read. The goal and an
+// optional period filter are the only caller choices; every identity, revision
+// and rank below is retained or computed.
+export const AgentContextQuery = Schema.Struct({
+  goal: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(128)),
+  period: Schema.NullOr(Accounting.Identifier),
+});
+
+export const AgentContextModule = Schema.Struct({
+  owner: Accounting.Identifier,
+  status: Schema.Literals(["available", "unsupported", "unavailable", "not_authorized"]),
+  rowCount: Accounting.MinorUnits,
+  fullCount: Accounting.MinorUnits,
+  hasContinuation: Schema.Boolean,
+  coverageKnown: Schema.Boolean,
+  ownerVersion: Schema.NullOr(Accounting.Identifier),
+});
+
+export const AgentContextWorkRef = Schema.Struct({
+  owner: Accounting.Identifier,
+  identity: Accounting.Identifier,
+  revision: Accounting.MinorUnits,
+  kind: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(128)),
+  severity: Schema.Literals(["blocks_goal", "material", "routine"]),
+  affectedPeriod: Schema.NullOr(Accounting.Identifier),
+  blockedOperation: Schema.NullOr(Accounting.Identifier),
+  missingInputs: Schema.Array(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(128))),
+  nextPermittedPreparation: Schema.NullOr(Accounting.Identifier),
+  immutableRef: Accounting.Identifier,
+  digest: Accounting.Digest,
+});
+
+export const AgentContextQuestion = Schema.Struct({
+  question: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256)),
+  affectedRefs: Schema.Array(Accounting.Identifier),
+  distinctEffects: Accounting.MinorUnits,
+});
+
+export const BookContextView = Schema.Struct({
+  scope: Accounting.Scope,
+  snapshot: Schema.Struct({
+    id: Accounting.Identifier,
+    principalScopeFingerprint: Accounting.Digest,
+    bookId: Accounting.Identifier,
+    goal: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(128)),
+    recordedCutoff: Schema.String,
+    ledgerBoundary: Accounting.Identifier,
+    contextVersion: Accounting.MinorUnits,
+    modules: Schema.Array(AgentContextModule),
+    work: Schema.Array(AgentContextWorkRef),
+    allowedCapabilities: Schema.Array(Accounting.Identifier),
+    contentDigest: Accounting.Digest,
+  }),
+  ranked: Schema.Struct({
+    orderedIdentities: Schema.Array(Accounting.Identifier),
+    questions: Schema.Array(AgentContextQuestion),
+  }),
+});
+
 export const WorkspaceCapabilities = {
   workspace_coordination: {
     description:
@@ -200,6 +261,13 @@ export const WorkspaceCapabilities = {
       "Read a scoped, bounded work list covering standalone journal proposals, commercial invoice drafts and expense reviews. Counts reflect the same filters. Completion names the domain transition, never company completeness.",
     input: Schema.Struct({ scope: Accounting.Scope, ...AttentionQuery.fields }),
     output: AttentionPage,
+    readOnly: true,
+  },
+  workspace_agent_context: {
+    description:
+      "Read this agent's book context for one stated goal: per-domain module summaries, retained unresolved work ranked by goal prevention, and this build's exposed capability catalog. Read-only; introduces no new tables.",
+    input: Schema.Struct({ scope: Accounting.Scope, input: AgentContextQuery }),
+    output: BookContextView,
     readOnly: true,
   },
   workspace_list_work: {
@@ -256,6 +324,16 @@ export const WorkspaceApi = HttpApiGroup.make("workspace").add(
     success: AttentionPage,
     error: accountingErrors,
   }),
+  HttpApiEndpoint.post(
+    "agentBookContext",
+    "/v1/entities/:entityId/books/:bookId/workspace/context",
+    {
+      params: Accounting.Scope,
+      payload: AgentContextQuery.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: BookContextView,
+      error: accountingErrors,
+    },
+  ),
   HttpApiEndpoint.get("listWorkspaceWork", "/v1/entities/:entityId/books/:bookId/work", {
     params: Accounting.Scope,
     query: WorkQuery,
