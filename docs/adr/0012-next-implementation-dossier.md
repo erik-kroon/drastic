@@ -1,6 +1,6 @@
 # 0012 — vendored NEXT implementation dossiers
 
-Status: accepted planning decision, 2026-09-26. It governs where design material lives and how implementing agents consume it. No packet, rule, rate, provider or legal profile is activated, and no implementation, runtime or company-readiness status is claimed.
+Status: accepted planning decision, 2026-09-26; amended 2026-09-28 to cover a third wave, NEXT-51 … NEXT-75, and a fourth wave, NEXT-76 … NEXT-100, under the same rules. It governs where design material lives and how implementing agents consume it. No packet, rule, rate, provider or legal profile is activated, and no implementation, runtime or company-readiness status is claimed.
 
 ## Context
 
@@ -46,6 +46,26 @@ The dossiers grant **no authority**. They add no repository test, no data reset,
 - Six requirements the plans do not yet own are now visible with a named decision each, instead of arriving later as an undocumented extension.
 - The material can go stale. Both waves are dated snapshots; the plan records how to supersede a packet without silently editing the reviewed artifact.
 
+## Amendment 2026-09-28: third wave NEXT-51 … NEXT-75
+
+A third dossier arrived with implementation-level pseudocode for twenty-five further work items, pinned to `116a5ca6b5fb9ec9fb08ee55c3beaad5af6b8fa5` and prepared 2026-09-28. It is vendored at `docs/specs/next-51-75/` under exactly the rules above, and the decision above is unchanged by it. What the amendment records is the scope extension and the one place where the third wave's own wording weakens an evidence claim the first two waves already limited.
+
+**Scope extension.** Vendor the tree byte-identical and checksummed at `docs/specs/next-51-75/`, with its own import observation in [next-51-75-dossier-verification.md](../plans/evidence/next-51-75-dossier-verification.md). `NEXT-nn` remains a supplemental work namespace outside the mandated 53-packet index, its DAG and its completion denominator; the third wave renumbers nothing and asserts that it preserves NEXT-01 … NEXT-50. Seventy-five supplemental packets now exist and all seventy-five remain outside the denominator. No new reservation is added and none is released.
+
+**Where the third wave is weaker evidence of absence.** The first two waves at least claimed a repository review at a pinned revision. The third wave's own `INTEGRATION-MAP.md` defines "new" as absent from the *prior NEXT scope* and states that this is not an exhaustive current-source absence audit, and its `README.md` states that it does not claim every new capability is wholly absent from unreviewed code. Its "new deliverable" column is therefore a statement of authorial intent, not a finding about this checkout. The dossier plan records this and instructs the same reconciliation the other two waves already required.
+
+**What the amendment does not do.** It does not adopt any packet design, requirement, packet count, dependency edge, sequencing order or gap decision; it does not add a D-row to [open decisions](../open-decisions.md); it does not grant test, deployment, provider, payment, filing or company-data authority; and it does not discharge any earlier packet's application, persistence or proof obligation. Five lifecycles the third wave names — the EU sales statement, receivable allowance and loss lifecycle, purchase commitments, budget control and accounting-method change — are recorded in the dossier plan as dated, unverified search results needing a decision, not as adopted scope.
+
+## Amendment 2026-09-28 (second): fourth wave NEXT-76 … NEXT-100
+
+A fourth dossier arrived on the same date, pinned to `66355b62b23e3b8007c2d324f3739fbbcc96cdc0` — this repository's head at import — with twenty-five further work items. It is vendored at `docs/specs/next-76-100/` under the same rules, with its own import observation in [next-76-100-dossier-verification.md](../plans/evidence/next-76-100-dossier-verification.md). The decision above is unchanged. Two things are recorded because they are new.
+
+**Scope extension.** One hundred supplemental packets now exist, and all one hundred remain outside the mandated 53-packet index, its DAG and its completion denominator. The fourth wave renumbers nothing, records the prior range as "not assumed complete", and reserves the same owners. Its conditional tax, grant, dividend, termination, pension and lease profiles are explicitly not launch prerequisites, and the dossier plan records that a dated search found no maintained owner for twelve of its lifecycles, each with the decision it needs.
+
+**Pinning and auditing are independent, and this wave separates them.** Earlier waves were pinned to revisions this repository has moved past, so their statements were stale but auditable. The fourth is pinned to the current head, so nothing in it is stale — and it states that its repository reading was "targeted to plans, operations and the candidate entry point" with "no complete source audit or runtime qualification" claimed. A well-pinned proposal from a targeted read is still a proposal. The rule that a packet is a contract to bind to real code, not a framework to reproduce, and the rule that a statement of absence describes a pinned revision rather than the checkout, both apply unchanged.
+
+**One tooling caveat, recorded because it affects verification.** Every vendored checker writes its own `checks/results.json` when it runs, so running one inside a vendored tree is a write. For the first three waves the regenerated file is byte-identical to the archived one. For the fourth it is not: the same 264 checks pass with the same counts, but the document checks are emitted in filesystem enumeration order, so the file fails its own manifest entry until the archived bytes are restored. Verification of that tree is therefore order-sensitive, and the import record states the restore that was performed and re-verified. This is a property of the archive's tooling and is not evidence for or against any packet.
+
 ## Implementation and proof
 
-This decision is a planning artifact. Its proof is that `python3 docs/plans/check-plan.py` still passes with the mandated index unchanged in count, edges and denominator, that both vendored trees still satisfy their recorded checksums and self-checkers, and that the maintained bridge document states its mapping as proposed rather than verified. Proof that any packet is implemented is that packet's own acceptance under the authorization in force, which is out of scope here.
+This decision is a planning artifact. Its proof is that `python3 docs/plans/check-plan.py` still passes with the mandated index unchanged in count, edges and denominator, that all four vendored trees still satisfy their recorded checksums and self-checkers, and that the maintained bridge document states its mapping as proposed rather than verified. Proof that any packet is implemented is that packet's own acceptance under the authorization in force, which is out of scope here.

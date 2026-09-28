@@ -17,7 +17,7 @@ The status describes a decision's authority, not implementation progress. “Est
 | [0011](0011-reference-parity-backlog.md) | Accepted planning decision | Reference-parity findings stay supplemental to the mandated index, and every adopted rule is classified adopt/structure-only/re-derive before implementation. |
 | [0013](0013-reference-derived-defects.md) | Accepted planning decision | Reference-derived defects are fixed by forward migration or forward packet; the reviewed three-file baseline is never edited. |
 | [0014](0014-retro-payroll-open-period-adjustments.md) | Working decision | Linked payroll adjustments post in open periods; original payroll attribution and declaration corrections remain separate. |
-| [0012](0012-next-implementation-dossier.md) | Accepted planning decision | Externally produced NEXT-01…50 dossiers are vendored byte-identical under `docs/specs`, and `NEXT-nn` stays a supplemental work namespace outside the mandated index. |
+| [0012](0012-next-implementation-dossier.md) | Accepted planning decision; amended 2026-09-28 for the third and fourth waves | Externally produced NEXT dossiers are vendored byte-identical under `docs/specs`, and `NEXT-nn` stays a supplemental work namespace outside the mandated index. |
 
 The separately authored [Swedish VAT profile boundary](0002-swedish-vat-profile-boundary.md) also uses the number 0002 in its filename. Refer to it by title and full filename to distinguish it from the posting ADR. It records a bounded research profile and source limitations; it does not activate statutory support.
 
