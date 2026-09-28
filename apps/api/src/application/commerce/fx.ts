@@ -162,7 +162,7 @@ function evidenceReference(row: { id: string; sha256: string }) {
   return { evidenceId: row.id, sha256: row.sha256 };
 }
 
-function commandReceipt(key: string, operation: string, actorId: string) {
+export function commandReceipt(key: string, operation: string, actorId: string) {
   return { key, operation, actorId };
 }
 
@@ -397,7 +397,7 @@ function settlementItemSnapshot(item: typeof ItemSchema.Type) {
   };
 }
 
-function readItemState(transaction: Transaction, scope: Scope, itemId: string) {
+export function readItemState(transaction: Transaction, scope: Scope, itemId: string) {
   return Effect.gen(function* () {
     const itemRows = yield* FxDb.readItem(transaction, scope.bookId, itemId);
     const itemRow = itemRows[0];
@@ -1378,7 +1378,7 @@ function reviewDigest(value: JsonObject) {
   );
 }
 
-function makePlanAndPost(
+export function makePlanAndPost(
   transaction: Transaction,
   scope: Scope,
   principal: Principal,
@@ -1877,7 +1877,12 @@ function correctionAction(
   } satisfies JsonObject;
 }
 
-function ensureEvent(transaction: Transaction, scope: Scope, evidenceId: string, eventKey: string) {
+export function ensureEvent(
+  transaction: Transaction,
+  scope: Scope,
+  evidenceId: string,
+  eventKey: string,
+) {
   return Effect.gen(function* () {
     const eventRows = yield* Db.readEvent(transaction, scope.bookId, evidenceId, eventKey);
 
