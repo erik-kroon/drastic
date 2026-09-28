@@ -1,6 +1,8 @@
 import * as Schema from "effect/Schema";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import { OriginalDimensionStatus } from "@open-erp/domain/dimensions";
+import { RestatementPlan } from "@open-erp/domain/dimension-restatement";
+import { DimensionPolicy } from "@open-erp/domain/dimensions";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 
@@ -162,12 +164,184 @@ export const AssignmentReportQuery = Schema.Struct({
   dimensionCodes: Schema.Array(Code).check(Schema.isMinLength(1), Schema.isMaxLength(64)),
 });
 
+// NEXT-43. A client names the lines and the reviewed assignment set it wants,
+// and nothing else: it carries no amount, account, currency, tax point or
+// economic owner, and it never states a financial fact. The owner reads the
+// retained original assignments and the current heads, derives the plan, and
+// records the reviewed history.
+export const RestatementLineSelection = Schema.Struct({
+  voucherId: Accounting.Identifier,
+  lineId: Accounting.Identifier,
+});
+
+export const RequestedClassification = Schema.Struct({
+  lineId: Accounting.Identifier,
+  expectedHeadRevision: Revision,
+  desiredAssignments: Schema.Array(
+    Schema.Struct({
+      dimensionCode: Code,
+      valueCode: Schema.NullOr(Code),
+      valueRevision: Schema.NullOr(SavedRevision),
+    }),
+  ).check(Schema.isMaxLength(64)),
+  reason: Accounting.Description,
+});
+
+export const PrepareRestatement = Schema.Struct({
+  analyticalScope: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
+  reason: Accounting.Description,
+  // The reviewed analytical policy witness for this scope. It is a
+  // configuration assertion, exactly as NEXT-14's posting witness is, and it is
+  // sealed into the plan the reviewer approves. It is not a financial fact: no
+  // amount, account, currency, tax point or economic owner is accepted here.
+  dimensionPolicy: DimensionPolicy,
+  lines: Schema.Array(RestatementLineSelection).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(500),
+  ),
+  changes: Schema.Array(RequestedClassification).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(500),
+  ),
+});
+
+export const RestatementPlanView = Schema.Struct({
+  scope: Accounting.Scope,
+  planId: Accounting.Identifier,
+  analyticalScope: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
+  digest: Accounting.Digest,
+  plan: RestatementPlan,
+  createdAt: Schema.String,
+});
+
+// The plan id is the path, so the body carries only the approval shape: the
+// exact digest the reviewer saw, and the contract version it was prepared under.
+export const ApplyRestatement = Schema.Struct({
+  version: Schema.Literal(1),
+  digest: Accounting.Digest,
+});
+
+export const RestatementAppliedLine = Schema.Struct({
+  voucherId: Accounting.Identifier,
+  lineId: Accounting.Identifier,
+  outcome: Schema.Literals(["appended", "replayed"]),
+  revisionId: Revision,
+  version: Revision,
+});
+
+export const RestatementApplied = Schema.Struct({
+  scope: Accounting.Scope,
+  planId: Accounting.Identifier,
+  digest: Accounting.Digest,
+  appendedCount: Schema.Finite.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0)),
+  replayedCount: Schema.Finite.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0)),
+  lines: Schema.Array(RestatementAppliedLine).check(Schema.isMaxLength(500)),
+  createdAt: Schema.String,
+});
+
+// Report-time resolution. A report asks for the original view or the reviewed
+// view as at its own cutoff, and a saved report keeps the view it was built
+// from because the cutoff is part of the question.
+export const ClassificationQuery = Schema.Struct({
+  voucherId: Accounting.Identifier,
+  lineId: Accounting.Identifier,
+  mode: Schema.Literals(["original", "reviewed"]),
+  classificationCutoff: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
+});
+
+export const ClassificationView = Schema.Struct({
+  scope: Accounting.Scope,
+  voucherId: Accounting.Identifier,
+  lineId: Accounting.Identifier,
+  mode: Schema.Literals(["original", "reviewed"]),
+  classificationCutoff: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
+  resolvedRevisionId: Revision,
+  assignments: Schema.Array(
+    Schema.Struct({
+      dimensionCode: Code,
+      valueCode: Schema.NullOr(Code),
+      valueRevision: Schema.NullOr(SavedRevision),
+    }),
+  ),
+  revisionCount: Schema.Finite.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0)),
+});
+
+// The original-versus-reviewed analytical view over a selection, at one cutoff.
+// It is a read. Each requested dimension partitions the same selection
+// independently, so no total is summed across dimension systems.
+export const AnalyticalViewQuery = Schema.Struct({
+  lines: Schema.Array(RestatementLineSelection).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(500),
+  ),
+  dimensionCodes: Schema.Array(Code).check(Schema.isMinLength(1), Schema.isMaxLength(64)),
+  classificationCutoff: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
+});
+
+export const AnalyticalViewLine = Schema.Struct({
+  lineId: Accounting.Identifier,
+  signedMinor: Accounting.SignedMinorUnits,
+  original: Schema.Array(
+    Schema.Struct({
+      dimensionCode: Code,
+      status: Schema.Literals([
+        "explicit",
+        "explicit_unassigned",
+        "historical_exemption",
+        "not_recorded_in_source",
+      ]),
+      valueCode: Schema.NullOr(Code),
+      valueRevision: Schema.NullOr(SavedRevision),
+    }),
+  ),
+  reviewed: Schema.Array(
+    Schema.Struct({
+      dimensionCode: Code,
+      valueCode: Schema.NullOr(Code),
+      valueRevision: Schema.NullOr(SavedRevision),
+    }),
+  ),
+  resolvedRevisionId: Revision,
+});
+
+export const AnalyticalViewValueTotal = Schema.Struct({
+  dimensionCode: Code,
+  valueCode: Schema.NullOr(Code),
+  totalMinor: Accounting.SignedMinorUnits,
+});
+
+export const AnalyticalViewResult = Schema.Struct({
+  scope: Accounting.Scope,
+  classificationCutoff: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
+  dimensionCodes: Schema.Array(Code),
+  lineCount: Revision,
+  revisionCount: Revision,
+  unfilteredTotalMinor: Accounting.SignedMinorUnits,
+  lines: Schema.Array(AnalyticalViewLine).check(Schema.isMaxLength(500)),
+  originalTotals: Schema.Array(AnalyticalViewValueTotal).check(Schema.isMaxLength(200)),
+  reviewedTotals: Schema.Array(AnalyticalViewValueTotal).check(Schema.isMaxLength(200)),
+});
+
 export const DimensionsCapabilities = {
   dimensions_list: {
     description:
       "Read the book-scoped dimension and value catalogue, including immutable revision history and archive state.",
     input: Schema.Struct({ scope: Accounting.Scope }),
     output: DimensionList,
+    readOnly: true,
+  },
+  dimensions_classification_view: {
+    description:
+      "Resolve one posted line's dimension classification as at a cutoff, as the original recorded tags or as the latest approved reviewed revision at or before that cutoff. A restatement never changes a journal line, an amount or an original tag.",
+    input: Schema.Struct({ scope: Accounting.Scope, input: ClassificationQuery }),
+    output: ClassificationView,
+    readOnly: true,
+  },
+  dimensions_restatement_view: {
+    description:
+      "Read the original-versus-reviewed dimension classification of a selected set of posted lines as at a cutoff. Each requested dimension partitions the same selection independently and independently of every other dimension, and the reviewed view reads approved history without changing an amount, an original tag or a retained revision.",
+    input: Schema.Struct({ scope: Accounting.Scope, input: AnalyticalViewQuery }),
+    output: AnalyticalViewResult,
     readOnly: true,
   },
   dimensions_assignment_report: {
@@ -194,6 +368,51 @@ export const DimensionsApi = HttpApiGroup.make("dimensions")
       params: Accounting.Scope,
       payload: AssignmentReportQuery,
       success: DimensionAssignmentReport,
+      error: accountingErrors,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post("prepareRestatement", `${base}/restatements`, {
+      params: Accounting.Scope,
+      headers: Accounting.IdempotencyHeaders,
+      payload: PrepareRestatement.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: RestatementPlanView,
+      error: accountingErrors,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post("applyRestatement", `${base}/restatements/:id/apply`, {
+      params: Schema.Struct({ ...Accounting.ChangePath.fields, id: Accounting.Identifier }),
+      headers: Accounting.IdempotencyHeaders,
+      payload: ApplyRestatement.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: RestatementApplied,
+      error: accountingErrors,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get("classificationView", `${base}/lines/:voucherId/:lineId/classification`, {
+      // This path names the voucher and the line directly, so it takes the
+      // scope params rather than the change path's single `id`. The mode and
+      // the cutoff are the question being asked, so they are query params.
+      params: Schema.Struct({
+        entityId: Accounting.Identifier,
+        bookId: Accounting.Identifier,
+        voucherId: Accounting.Identifier,
+        lineId: Accounting.Identifier,
+      }),
+      query: Schema.Struct({
+        mode: Schema.Literals(["original", "reviewed"]),
+        classificationCutoff: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
+      }),
+      success: ClassificationView,
+      error: accountingErrors,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post("restatementView", `${base}/restatements/view`, {
+      params: Accounting.Scope,
+      payload: AnalyticalViewQuery.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: AnalyticalViewResult,
       error: accountingErrors,
     }),
   )

@@ -66,9 +66,11 @@
     },
     {
       "leaf": "dimension-restatement",
-      "status": "deferred",
-      "reason": "Packet keeps revision append and report-time resolution with the dimension/report owners.",
-      "unblockedBy": "A report owner resolves classificationAt and calls this leaf."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/dimensions/restatement.ts",
+        "packages/contracts/src/dimensions.ts"
+      ]
     },
     {
       "leaf": "dimensions",
