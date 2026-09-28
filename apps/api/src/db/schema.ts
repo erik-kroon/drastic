@@ -392,6 +392,54 @@ export const journalLineDimensions = openerp.table("journal_line_dimensions", {
     .defaultNow(),
 });
 
+// NEXT-43. Reviewed classification history beside the immutable original
+// assignments. A revision is the complete reviewed assignment set for one
+// posted line at one analytical scope, and is never rewritten. The head is the
+// current pointer and the only mutable row.
+export const dimensionClassificationRevisions = openerp.table(
+  "dimension_classification_revisions",
+  {
+    bookId: text("book_id").notNull(),
+    voucherId: text("voucher_id").notNull(),
+    lineId: text("line_id").notNull(),
+    revisionId: integer("revision_id").notNull(),
+    analyticalScope: text("analytical_scope").notNull(),
+    reason: text("reason").notNull(),
+    // The complete reviewed assignment set, stored as a JSON array. The
+    // reviewed baseline requires an array here, so a partial set cannot be
+    // smuggled in as a scalar.
+    assignments: jsonb("assignments").$type<ReadonlyArray<Schema.JsonObject>>().notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+);
+
+export const dimensionClassificationHeads = openerp.table("dimension_classification_heads", {
+  bookId: text("book_id").notNull(),
+  voucherId: text("voucher_id").notNull(),
+  lineId: text("line_id").notNull(),
+  revisionId: integer("revision_id").notNull(),
+  version: integer("version").notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+});
+
+// NEXT-43. A prepared restatement plan is retained immutably so the apply step
+// records exactly the preview a reviewer approved.
+export const dimensionRestatementPlans = openerp.table("dimension_restatement_plans", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  analyticalScope: text("analytical_scope").notNull(),
+  reason: text("reason").notNull(),
+  digest: text("digest").notNull(),
+  plan: jsonb("plan").$type<Schema.JsonObject>().notNull(),
+  // The posted lines the plan covers, as {lineId, voucherId}.
+  selection: jsonb("selection").$type<ReadonlyArray<Schema.JsonObject>>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
 export const executionReceipts = openerp.table("execution_receipts", {
   bookId: text("book_id").notNull(),
   id: text().notNull(),

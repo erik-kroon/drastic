@@ -1,8 +1,16 @@
 import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
 import * as Effect from "effect/Effect";
+import * as Schema from "effect/Schema";
 import * as Dimensions from "@open-erp/domain/dimensions";
 import { readTableAccess } from "./commerce/access";
-import { journalLineDimensions, vouchers } from "./schema";
+import {
+  dimensionClassificationHeads,
+  dimensionClassificationRevisions,
+  dimensionRestatementPlans,
+  journalLineDimensions,
+  journalLines,
+  vouchers,
+} from "./schema";
 import type { Transaction } from "./transaction";
 
 export type DimensionRow = {
@@ -462,4 +470,272 @@ export function insertOriginalAssignmentsBatch(
   return Effect.forEach(chunk(rows, 500), (batch) =>
     transaction.insert(journalLineDimensions).values(batch),
   );
+}
+
+// NEXT-43. The classification history is a separate store from the original
+// assignments: an original tag is immutable history written by the posting
+// transaction, while a reviewed classification revision is appended by this
+// owner's own operation. Blurring them would let a retagging rewrite a
+// recorded fact.
+export const classificationTables = [
+  "dimension_restatement_plans",
+  "dimension_classification_revisions",
+  "dimension_classification_heads",
+] as const;
+
+// A selection that would exceed this bound refuses rather than truncating,
+// because a partial classification history would resolve the wrong view.
+export const maximumClassificationRevisions = 20000;
+
+export type ClassificationRevisionRow = {
+  readonly voucherId: string;
+  readonly lineId: string;
+  readonly revisionId: number;
+  readonly analyticalScope: string;
+  readonly reason: string;
+  readonly assignments: unknown;
+  readonly recordedAt: string;
+};
+
+export type ClassificationHeadRow = {
+  readonly voucherId: string;
+  readonly lineId: string;
+  readonly revisionId: number;
+  readonly version: number;
+  readonly recordedAt: string;
+};
+
+export type LineIdentity = {
+  readonly voucherId: string;
+  readonly lineId: string;
+};
+
+const revisionColumns = {
+  voucherId: dimensionClassificationRevisions.voucherId,
+  lineId: dimensionClassificationRevisions.lineId,
+  revisionId: dimensionClassificationRevisions.revisionId,
+  analyticalScope: dimensionClassificationRevisions.analyticalScope,
+  reason: dimensionClassificationRevisions.reason,
+  assignments: dimensionClassificationRevisions.assignments,
+  recordedAt: dimensionClassificationRevisions.recordedAt,
+};
+
+const headColumns = {
+  voucherId: dimensionClassificationHeads.voucherId,
+  lineId: dimensionClassificationHeads.lineId,
+  revisionId: dimensionClassificationHeads.revisionId,
+  version: dimensionClassificationHeads.version,
+  recordedAt: dimensionClassificationHeads.recordedAt,
+};
+
+// The current head of one line. A line with no head has never been restated,
+// which is revision 0, so an absent row is a fact rather than a missing one.
+export function readClassificationHead(
+  transaction: Transaction,
+  bookId: string,
+  line: LineIdentity,
+) {
+  return transaction
+    .select(headColumns)
+    .from(dimensionClassificationHeads)
+    .where(
+      and(
+        eq(dimensionClassificationHeads.bookId, bookId),
+        eq(dimensionClassificationHeads.voucherId, line.voucherId),
+        eq(dimensionClassificationHeads.lineId, line.lineId),
+      ),
+    )
+    .limit(1);
+}
+
+// Every retained revision for one line, oldest first, so report-time
+// resolution can pick the latest revision at or before its own cutoff.
+export function readClassificationRevisions(
+  transaction: Transaction,
+  bookId: string,
+  line: LineIdentity,
+) {
+  return transaction
+    .select(revisionColumns)
+    .from(dimensionClassificationRevisions)
+    .where(
+      and(
+        eq(dimensionClassificationRevisions.bookId, bookId),
+        eq(dimensionClassificationRevisions.voucherId, line.voucherId),
+        eq(dimensionClassificationRevisions.lineId, line.lineId),
+      ),
+    )
+    .orderBy(asc(dimensionClassificationRevisions.revisionId));
+}
+
+export function insertClassificationRevision(
+  transaction: Transaction,
+  row: {
+    readonly bookId: string;
+    readonly voucherId: string;
+    readonly lineId: string;
+    readonly revisionId: number;
+    readonly analyticalScope: string;
+    readonly reason: string;
+    readonly assignments: ReadonlyArray<Schema.JsonObject>;
+    readonly recordedAt: string;
+  },
+) {
+  return transaction.insert(dimensionClassificationRevisions).values(row);
+}
+
+// The head advances in place. The reviewed baseline's trigger refuses any move
+// that is not exactly one revision and one version, so a concurrent restatement
+// aborts here rather than merging silently.
+export function updateClassificationHead(
+  transaction: Transaction,
+  row: {
+    readonly bookId: string;
+    readonly voucherId: string;
+    readonly lineId: string;
+    readonly revisionId: number;
+    readonly version: number;
+    readonly recordedAt: string;
+  },
+) {
+  return transaction
+    .update(dimensionClassificationHeads)
+    .set({ revisionId: row.revisionId, version: row.version, recordedAt: row.recordedAt })
+    .where(
+      and(
+        eq(dimensionClassificationHeads.bookId, row.bookId),
+        eq(dimensionClassificationHeads.voucherId, row.voucherId),
+        eq(dimensionClassificationHeads.lineId, row.lineId),
+      ),
+    );
+}
+
+export function insertClassificationHead(
+  transaction: Transaction,
+  row: {
+    readonly bookId: string;
+    readonly voucherId: string;
+    readonly lineId: string;
+    readonly revisionId: number;
+    readonly version: number;
+    readonly recordedAt: string;
+  },
+) {
+  return transaction.insert(dimensionClassificationHeads).values(row);
+}
+
+export type RestatementPlanRow = {
+  readonly id: string;
+  readonly analyticalScope: string;
+  readonly reason: string;
+  readonly digest: string;
+  readonly plan: unknown;
+  readonly selection: unknown;
+  readonly createdAt: string;
+};
+
+// The posted lines a retained plan covers, as {lineId, voucherId}.
+export type PlanSelectionEntry = {
+  readonly lineId: string;
+  readonly voucherId: string;
+};
+
+const SelectionSchema = Schema.Array(
+  Schema.Struct({ lineId: Schema.String, voucherId: Schema.String }),
+);
+
+// The retained original assignments of one posted line, keyed by that line. A
+// voucher-wide read would let a selection borrow another line's tags.
+export function readOriginalAssignmentsForLine(
+  transaction: Transaction,
+  bookId: string,
+  line: LineIdentity,
+) {
+  return transaction
+    .select(assignmentColumns)
+    .from(journalLineDimensions)
+    .where(
+      and(
+        eq(journalLineDimensions.bookId, bookId),
+        eq(journalLineDimensions.voucherId, line.voucherId),
+        eq(journalLineDimensions.lineId, line.lineId),
+      ),
+    )
+    .orderBy(asc(journalLineDimensions.dimensionCode));
+}
+
+export type LineFinancialFacts = {
+  readonly accountId: string;
+  readonly debitMinor: string;
+  readonly creditMinor: string;
+  readonly postingDate: string;
+  readonly taxPointOn: string;
+};
+
+// The retained financial facts of one posted line. A restatement must not
+// change any of them, so the owner reads them here and digests them rather than
+// trusting anything in the request. A line that does not exist is null.
+export function readLineFinancialFacts(
+  transaction: Transaction,
+  bookId: string,
+  line: LineIdentity,
+) {
+  return transaction
+    .select({
+      accountId: journalLines.accountId,
+      debitMinor: journalLines.debitMinor,
+      creditMinor: journalLines.creditMinor,
+      postingDate: vouchers.postingDate,
+    })
+    .from(journalLines)
+    .innerJoin(
+      vouchers,
+      and(eq(vouchers.bookId, journalLines.bookId), eq(vouchers.id, journalLines.voucherId)),
+    )
+    .where(
+      and(
+        eq(journalLines.bookId, bookId),
+        eq(journalLines.voucherId, line.voucherId),
+        eq(journalLines.id, line.lineId),
+      ),
+    )
+    .limit(1);
+}
+
+export function readRestatementPlan(transaction: Transaction, bookId: string, planId: string) {
+  return transaction
+    .select({
+      id: dimensionRestatementPlans.id,
+      analyticalScope: dimensionRestatementPlans.analyticalScope,
+      reason: dimensionRestatementPlans.reason,
+      digest: dimensionRestatementPlans.digest,
+      plan: dimensionRestatementPlans.plan,
+      selection: dimensionRestatementPlans.selection,
+      createdAt: dimensionRestatementPlans.createdAt,
+    })
+    .from(dimensionRestatementPlans)
+    .where(
+      and(eq(dimensionRestatementPlans.bookId, bookId), eq(dimensionRestatementPlans.id, planId)),
+    )
+    .limit(1);
+}
+
+export function insertRestatementPlan(
+  transaction: Transaction,
+  row: {
+    readonly bookId: string;
+    readonly id: string;
+    readonly analyticalScope: string;
+    readonly reason: string;
+    readonly digest: string;
+    readonly plan: Schema.JsonObject;
+    readonly selection: ReadonlyArray<Schema.JsonObject>;
+    readonly recordedAt: string;
+  },
+) {
+  return transaction.insert(dimensionRestatementPlans).values(row);
+}
+
+export function decodePlanSelection(value: unknown): ReadonlyArray<PlanSelectionEntry> {
+  return Schema.decodeUnknownSync(SelectionSchema)(value);
 }
