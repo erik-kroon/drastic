@@ -419,3 +419,190 @@ export function appendRevision(
 }
 
 export { OriginalDimensionStatus };
+
+export const AnalyticalViewLine = Schema.Struct({
+  lineId: Identifier,
+  signedMinor: SignedMinorUnits,
+  originalAssignments: Schema.Array(OriginalDimensionAssignment),
+  revisions: Schema.Array(ClassificationRevisionRecord).check(Schema.isMaxLength(2000)),
+});
+
+export type AnalyticalViewLine = typeof AnalyticalViewLine.Type;
+
+export const AnalyticalViewInput = Schema.Struct({
+  lines: Schema.Array(AnalyticalViewLine).check(Schema.isMinLength(1), Schema.isMaxLength(500)),
+  dimensionCodes: Schema.Array(DimensionCode).check(Schema.isMinLength(1), Schema.isMaxLength(64)),
+  classificationCutoff: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
+});
+
+export type AnalyticalViewInput = typeof AnalyticalViewInput.Type;
+
+export const AnalyticalViewLineResult = Schema.Struct({
+  lineId: Identifier,
+  signedMinor: SignedMinorUnits,
+  original: Schema.Array(OriginalDimensionAssignment),
+  reviewed: Schema.Array(ReviewedAssignment),
+  resolvedRevisionId: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+});
+
+export type AnalyticalViewLineResult = typeof AnalyticalViewLineResult.Type;
+
+export const AnalyticalView = Schema.Struct({
+  classificationCutoff: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
+  dimensionCodes: Schema.Array(DimensionCode),
+  lineCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  revisionCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  unfilteredTotalMinor: SignedMinorUnits,
+  lines: Schema.Array(AnalyticalViewLineResult).check(Schema.isMaxLength(500)),
+  originalTotals: Schema.Array(ValueTotal).check(Schema.isMaxLength(200)),
+  reviewedTotals: Schema.Array(ValueTotal).check(Schema.isMaxLength(200)),
+});
+
+export type AnalyticalView = typeof AnalyticalView.Type;
+
+// The original-versus-reviewed analytical view over a selection, at one cutoff.
+// It is a read: no amount, original tag or retained revision is touched.
+//
+// Each requested dimension partitions the SAME selection, so every bucket of a
+// dimension sums to the unfiltered total in both views. A line with no
+// assignment for a dimension lands in an explicit unassigned bucket rather than
+// vanishing, which is what makes the partition complete. Two dimensions are
+// never added together: each is independent of the others.
+type DimensionValue = typeof DimensionCode.Type;
+
+export function analyticalView(input: AnalyticalViewInput): Checked<AnalyticalView> {
+  const codes = [...input.dimensionCodes].sort();
+
+  if (new Set(codes).size !== codes.length) {
+    return fail("IncompleteSelection", "A dimension is requested more than once.");
+  }
+
+  const original = new Map<DimensionValue, Map<string, bigint>>();
+  const reviewed = new Map<DimensionValue, Map<string, bigint>>();
+  const results: Array<AnalyticalViewLineResult> = [];
+  let unfiltered = 0n;
+  let revisions = 0;
+
+  for (const key of codes) {
+    original.set(key, new Map());
+    reviewed.set(key, new Map());
+  }
+
+  for (const line of input.lines) {
+    const signed = BigInt(line.signedMinor);
+
+    const applicable = line.revisions.filter(
+      (revision) => revision.recordedAt <= input.classificationCutoff,
+    );
+
+    const latest = applicable.at(-1);
+
+    const resolved = classificationAt(
+      line.originalAssignments,
+      line.revisions,
+      "reviewed",
+      input.classificationCutoff,
+    );
+
+    const asReviewed: ReadonlyArray<ReviewedAssignment> = resolved.map((entry) =>
+      "status" in entry
+        ? {
+            dimensionCode: entry.dimensionCode,
+            valueCode: entry.status === "explicit" ? entry.valueCode : null,
+            valueRevision: entry.status === "explicit" ? entry.valueRevision : null,
+          }
+        : entry,
+    );
+
+    unfiltered += signed;
+    revisions += line.revisions.length;
+
+    for (const code of codes) {
+      // A line with no assignment for the requested dimension is unassigned,
+      // not absent, so the partition still covers the whole selection.
+      const originalAssignment = line.originalAssignments.find(
+        (entry) => entry.dimensionCode === code,
+      );
+
+      // originalValueKey already returns a dimension-qualified key, so it is
+      // used as the bucket key directly. Prefixing it again would nest the
+      // dimension inside the value and split one bucket into two.
+      const originalKey =
+        originalAssignment === undefined
+          ? `${code}:unassigned`
+          : (originalValueKey(code, originalAssignment) ?? `${code}:unassigned`);
+
+      const reviewedEntry = asReviewed.find((entry) => entry.dimensionCode === code);
+      const reviewedKey = `${code}:${reviewedEntry === undefined ? "unassigned" : (reviewedEntry.valueCode ?? "unassigned")}`;
+
+      addTo(original.get(code) ?? new Map(), originalKey, signed);
+      addTo(reviewed.get(code) ?? new Map(), reviewedKey, signed);
+    }
+
+    results.push({
+      lineId: line.lineId,
+      signedMinor: line.signedMinor,
+      original: [...line.originalAssignments],
+      reviewed: asReviewed,
+      resolvedRevisionId: latest?.revisionId ?? 0,
+    });
+  }
+
+  const originalTotals = flatten(original);
+  const reviewedTotals = flatten(reviewed);
+
+  for (const code of codes) {
+    if (totalOf(originalTotals, code) !== unfiltered) {
+      return fail(
+        "TotalsChanged",
+        `The original view of ${code} does not partition the selection.`,
+      );
+    }
+
+    if (totalOf(reviewedTotals, code) !== unfiltered) {
+      return fail(
+        "TotalsChanged",
+        `The reviewed view of ${code} does not partition the selection.`,
+      );
+    }
+  }
+
+  return Result.succeed({
+    classificationCutoff: input.classificationCutoff,
+    dimensionCodes: codes,
+    lineCount: results.length,
+    revisionCount: revisions,
+    unfilteredTotalMinor: amount(unfiltered),
+    lines: results,
+    originalTotals,
+    reviewedTotals,
+  });
+}
+
+function addTo(totals: Map<string, bigint>, key: string, signed: bigint) {
+  totals.set(key, (totals.get(key) ?? 0n) + signed);
+}
+
+function flatten(totals: ReadonlyMap<DimensionValue, Map<string, bigint>>): Array<ValueTotal> {
+  return [...totals.entries()]
+    .flatMap(([code, buckets]) =>
+      [...buckets.entries()].map(([key, total]) => ({
+        dimensionCode: code,
+        valueCode:
+          key.slice(`${code}:`.length) === "unassigned" ? null : key.slice(`${code}:`.length),
+        totalMinor: amount(total),
+      })),
+    )
+    .sort((left, right) =>
+      `${left.dimensionCode}:${left.valueCode ?? ""}` <
+      `${right.dimensionCode}:${right.valueCode ?? ""}`
+        ? -1
+        : 1,
+    );
+}
+
+function totalOf(totals: ReadonlyArray<ValueTotal>, code: DimensionValue): bigint {
+  return totals
+    .filter((entry) => entry.dimensionCode === code)
+    .reduce((carry, entry) => carry + BigInt(entry.totalMinor), 0n);
+}

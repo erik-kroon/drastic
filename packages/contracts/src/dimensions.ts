@@ -266,6 +266,62 @@ export const ClassificationView = Schema.Struct({
   revisionCount: Schema.Finite.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0)),
 });
 
+// The original-versus-reviewed analytical view over a selection, at one cutoff.
+// It is a read. Each requested dimension partitions the same selection
+// independently, so no total is summed across dimension systems.
+export const AnalyticalViewQuery = Schema.Struct({
+  lines: Schema.Array(RestatementLineSelection).check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(500),
+  ),
+  dimensionCodes: Schema.Array(Code).check(Schema.isMinLength(1), Schema.isMaxLength(64)),
+  classificationCutoff: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
+});
+
+export const AnalyticalViewLine = Schema.Struct({
+  lineId: Accounting.Identifier,
+  signedMinor: Accounting.SignedMinorUnits,
+  original: Schema.Array(
+    Schema.Struct({
+      dimensionCode: Code,
+      status: Schema.Literals([
+        "explicit",
+        "explicit_unassigned",
+        "historical_exemption",
+        "not_recorded_in_source",
+      ]),
+      valueCode: Schema.NullOr(Code),
+      valueRevision: Schema.NullOr(SavedRevision),
+    }),
+  ),
+  reviewed: Schema.Array(
+    Schema.Struct({
+      dimensionCode: Code,
+      valueCode: Schema.NullOr(Code),
+      valueRevision: Schema.NullOr(SavedRevision),
+    }),
+  ),
+  resolvedRevisionId: Revision,
+});
+
+export const AnalyticalViewValueTotal = Schema.Struct({
+  dimensionCode: Code,
+  valueCode: Schema.NullOr(Code),
+  totalMinor: Accounting.SignedMinorUnits,
+});
+
+export const AnalyticalViewResult = Schema.Struct({
+  scope: Accounting.Scope,
+  classificationCutoff: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
+  dimensionCodes: Schema.Array(Code),
+  lineCount: Revision,
+  revisionCount: Revision,
+  unfilteredTotalMinor: Accounting.SignedMinorUnits,
+  lines: Schema.Array(AnalyticalViewLine).check(Schema.isMaxLength(500)),
+  originalTotals: Schema.Array(AnalyticalViewValueTotal).check(Schema.isMaxLength(200)),
+  reviewedTotals: Schema.Array(AnalyticalViewValueTotal).check(Schema.isMaxLength(200)),
+});
+
 export const DimensionsCapabilities = {
   dimensions_list: {
     description:
@@ -279,6 +335,13 @@ export const DimensionsCapabilities = {
       "Resolve one posted line's dimension classification as at a cutoff, as the original recorded tags or as the latest approved reviewed revision at or before that cutoff. A restatement never changes a journal line, an amount or an original tag.",
     input: Schema.Struct({ scope: Accounting.Scope, input: ClassificationQuery }),
     output: ClassificationView,
+    readOnly: true,
+  },
+  dimensions_restatement_view: {
+    description:
+      "Read the original-versus-reviewed dimension classification of a selected set of posted lines as at a cutoff. Each requested dimension partitions the same selection independently and independently of every other dimension, and the reviewed view reads approved history without changing an amount, an original tag or a retained revision.",
+    input: Schema.Struct({ scope: Accounting.Scope, input: AnalyticalViewQuery }),
+    output: AnalyticalViewResult,
     readOnly: true,
   },
   dimensions_assignment_report: {
@@ -342,6 +405,14 @@ export const DimensionsApi = HttpApiGroup.make("dimensions")
         classificationCutoff: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
       }),
       success: ClassificationView,
+      error: accountingErrors,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post("restatementView", `${base}/restatements/view`, {
+      params: Accounting.Scope,
+      payload: AnalyticalViewQuery.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: AnalyticalViewResult,
       error: accountingErrors,
     }),
   )

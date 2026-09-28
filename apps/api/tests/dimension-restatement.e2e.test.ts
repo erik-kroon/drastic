@@ -507,3 +507,125 @@ test("NEXT-43 refuses to restate a line that no retained posting carries", async
     "NotFound",
   );
 });
+
+test("NEXT-43 shows the original and reviewed views side by side without moving money", async () => {
+  const { book, source } = await setup();
+
+  await catalogue(book);
+
+  const posted = await taggedPosting(book, source.id, "0012");
+  const voucherId = posted.voucherId;
+  const lineId = posted.lineId;
+
+  const plan = await post(
+    book,
+    "/dimensions/restatements",
+    {
+      analyticalScope: "management_department_view",
+      reason: "Synthetic review",
+      dimensionPolicy: policy,
+      lines: [{ voucherId, lineId }],
+      changes: [
+        {
+          lineId,
+          expectedHeadRevision: 0,
+          desiredAssignments: [
+            { dimensionCode: department, valueCode: "0099", valueRevision: 1 },
+            { dimensionCode: project, valueCode: "Case-A", valueRevision: 1 },
+          ],
+          reason: "Synthetic reviewed reclassification",
+        },
+      ],
+    },
+    Dimensions.RestatementPlanView,
+  );
+
+  await post(
+    book,
+    `/dimensions/restatements/${plan.planId}/apply`,
+    { version: 1, digest: plan.digest },
+    Dimensions.RestatementApplied,
+  );
+
+  const view = await post(
+    book,
+    "/dimensions/restatements/view",
+    {
+      lines: [{ voucherId, lineId }],
+      dimensionCodes: [department, project],
+      classificationCutoff: "2099-12-31",
+    },
+    Dimensions.AnalyticalViewResult,
+  );
+
+  // Independent expectation, from the retained posting: the selection is one
+  // debited line worth 12500 minor units.
+  expect(view.unfilteredTotalMinor).toBe("12500");
+  expect(view.lineCount).toBe(1);
+  expect(view.lines[0]?.signedMinor).toBe("12500");
+
+  // The original view still shows the original tag; the reviewed view shows the
+  // new one. They are two views of the same money, not two amounts.
+  const originalDepartment = view.originalTotals.find(
+    (entry) => entry.dimensionCode === department && entry.valueCode === "0012",
+  );
+
+  const reviewedDepartment = view.reviewedTotals.find(
+    (entry) => entry.dimensionCode === department && entry.valueCode === "0099",
+  );
+
+  expect(originalDepartment?.totalMinor).toBe("12500");
+  expect(reviewedDepartment?.totalMinor).toBe("12500");
+
+  // The original view has no 0099 bucket and the reviewed view has no 0012
+  // bucket, so the reclassification really moved between buckets rather than
+  // duplicating the money.
+  expect(
+    view.originalTotals.some(
+      (entry) => entry.dimensionCode === department && entry.valueCode === "0099",
+    ),
+  ).toBe(false);
+  expect(
+    view.reviewedTotals.some(
+      (entry) => entry.dimensionCode === department && entry.valueCode === "0012",
+    ),
+  ).toBe(false);
+
+  // Conservation, per dimension and per view: every bucket of a dimension sums
+  // to the unfiltered selection total. The Project dimension was never changed,
+  // so its two views are identical.
+  for (const totals of [view.originalTotals, view.reviewedTotals]) {
+    for (const code of [department, project]) {
+      const sum = totals
+        .filter((entry) => entry.dimensionCode === code)
+        .reduce((carry, entry) => carry + BigInt(entry.totalMinor), 0n);
+
+      expect(String(sum), `${code} partition`).toBe("12500");
+    }
+  }
+
+  const projectOriginal = view.originalTotals.find(
+    (entry) => entry.dimensionCode === project && entry.valueCode === "Case-A",
+  );
+
+  const projectReviewed = view.reviewedTotals.find(
+    (entry) => entry.dimensionCode === project && entry.valueCode === "Case-A",
+  );
+
+  expect(projectOriginal?.totalMinor).toBe(projectReviewed?.totalMinor);
+
+  // A cutoff before the revision resolves the original view for both, because
+  // the question "as at when" is part of the request.
+  const earlier = await post(
+    book,
+    "/dimensions/restatements/view",
+    {
+      lines: [{ voucherId, lineId }],
+      dimensionCodes: [department],
+      classificationCutoff: "2020-01-01",
+    },
+    Dimensions.AnalyticalViewResult,
+  );
+
+  expect(earlier.reviewedTotals).toEqual(earlier.originalTotals);
+});

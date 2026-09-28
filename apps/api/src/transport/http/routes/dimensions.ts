@@ -12,6 +12,7 @@ import { dimensionAssignmentReport } from "../../../application/dimensions/assig
 import {
   applyDimensionRestatement,
   dimensionClassificationView,
+  dimensionRestatementView,
   prepareDimensionRestatement,
 } from "../../../application/dimensions/restatement";
 
@@ -57,6 +58,11 @@ export const DimensionHandlers = HttpApiBuilder.group(Api, "dimensions", (handle
             classificationCutoff: query.classificationCutoff,
           },
         }),
+      ),
+    )
+    .handle("restatementView", ({ params, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        dimensionRestatementView(token, { scope: scopeFromPath(params), input: payload }),
       ),
     )
     .handle("saveDimension", ({ params, headers, payload }) =>

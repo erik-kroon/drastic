@@ -578,3 +578,83 @@ export const dimensionClassificationView = Effect.fn("dimensions.classificationV
     );
   });
 });
+
+// The original-versus-reviewed analytical view over a selection. It reads the
+// retained original tags and the retained revision history, then the pure
+// compiler partitions the same selection per dimension in both views. No amount,
+// original tag or revision is touched, and two dimensions are never added
+// together: each is independent of the others.
+export const dimensionRestatementView = Effect.fn("dimensions.restatementView")(function* (
+  token: string,
+  command: { readonly scope: Scope; readonly input: typeof Contracts.AnalyticalViewQuery.Type },
+) {
+  return yield* withBook(token, command.scope, false, function* (transaction) {
+    yield* requireTableAccess(transaction, Catalogue.classificationTables, false);
+
+    const lines: Array<Restatement.AnalyticalViewLine> = [];
+
+    for (const selected of command.input.lines) {
+      const identity: Catalogue.LineIdentity = {
+        voucherId: selected.voucherId,
+        lineId: selected.lineId,
+      };
+
+      const original = (yield* Catalogue.readOriginalAssignmentsForLine(
+        transaction,
+        command.scope.bookId,
+        identity,
+      )).map(toOriginal);
+
+      const rows = yield* Catalogue.readClassificationRevisions(
+        transaction,
+        command.scope.bookId,
+        identity,
+      );
+
+      lines.push({
+        lineId: selected.lineId,
+        signedMinor: (yield* readLineAmount(
+          transaction,
+          command.scope.bookId,
+          identity,
+        )).toString(),
+        originalAssignments: original,
+        revisions: toRecords(rows),
+      });
+    }
+
+    const view = Restatement.analyticalView({
+      lines,
+      dimensionCodes: command.input.dimensionCodes,
+      classificationCutoff: command.input.classificationCutoff,
+    });
+
+    if (Result.isFailure(view)) return yield* refuse(view.failure);
+
+    return yield* decode(
+      Contracts.AnalyticalViewResult,
+      yield* toJsonObject({
+        scope: command.scope,
+        classificationCutoff: view.success.classificationCutoff,
+        dimensionCodes: view.success.dimensionCodes,
+        lineCount: view.success.lineCount,
+        revisionCount: view.success.revisionCount,
+        unfilteredTotalMinor: view.success.unfilteredTotalMinor,
+        lines: view.success.lines.map((line) => ({
+          lineId: line.lineId,
+          signedMinor: line.signedMinor,
+          original: line.original.map((entry) => ({
+            dimensionCode: entry.dimensionCode,
+            status: entry.status,
+            valueCode: entry.valueCode,
+            valueRevision: entry.valueRevision,
+          })),
+          reviewed: toJsonAssignments(line.reviewed),
+          resolvedRevisionId: line.resolvedRevisionId,
+        })),
+        originalTotals: view.success.originalTotals,
+        reviewedTotals: view.success.reviewedTotals,
+      }),
+    );
+  });
+});
