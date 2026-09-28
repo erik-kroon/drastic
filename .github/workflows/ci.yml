@@ -50,6 +50,10 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 5
         run: bun run check-types
+      - name: Check domain leaf integration declarations
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 2
+        run: bun run check:integration
 
   # The E2E suite is the only place the application is proven against a real
   # PostgreSQL: it applies every migration, provisions the restricted runtime

@@ -1,0 +1,274 @@
+{
+  "$comment": "Integration declaration for every packages/domain leaf, enforced by `bun run check:integration` (scripts/check-integration.ts). A leaf with no consumer outside packages/domain is dead code. Wiring it is the goal; where wiring is genuinely blocked, this file records who is missing and what would unblock it. Do not delete a leaf to silence this file: wire it, or state the real reason.",
+  "leaves": [
+    {
+      "leaf": "agent-context",
+      "status": "deferred",
+      "reason": "Packet leaves capture, adapter reads and receipts with the capability owners; no adapter exists that could call it.",
+      "unblockedBy": "An agent capability owner reading retained workspace state through a named application operation."
+    },
+    {
+      "leaf": "annual-report",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "asset-disposals",
+      "status": "deferred",
+      "reason": "Packet keeps schedule retirement and disposition persistence with the reserved asset owner; no asset register owner exists yet.",
+      "unblockedBy": "The asset register owner gains retained schedules, then a disposal application operation calls this leaf."
+    },
+    {
+      "leaf": "bank-source-revisions",
+      "status": "deferred",
+      "reason": "Packet keeps posting, matching and persistence with the bank intake owners, which are not built.",
+      "unblockedBy": "Bank intake persists provider observations, then its application owner composes this leaf."
+    },
+    {
+      "leaf": "bank-sync-windows",
+      "status": "deferred",
+      "reason": "Packet keeps claim/lease persistence with the connector owners; no sync window table exists.",
+      "unblockedBy": "A connector owner owns the window table and calls this leaf at each page boundary."
+    },
+    {
+      "leaf": "books",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "canonicalization",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "cash-flow-statement",
+      "status": "deferred",
+      "reason": "Packet keeps relationship resolution with the report owners; no cash-flow report owner exists.",
+      "unblockedBy": "A report owner composes this leaf from retained statement snapshots."
+    },
+    {
+      "leaf": "cash-method",
+      "status": "deferred",
+      "reason": "NEXT-38 is a calculation leaf whose cash-method application owner was never built.",
+      "unblockedBy": "The cash/bank owner adopts this leaf for cash-method assignment."
+    },
+    {
+      "leaf": "collection-reminders",
+      "status": "deferred",
+      "reason": "Packet keeps sealed-message delivery and dispute handling with the commerce/delivery owners.",
+      "unblockedBy": "A delivery owner sends the sealed message and calls this leaf for reminder admission."
+    },
+    {
+      "leaf": "customer-credits",
+      "status": "deferred",
+      "reason": "Leaf exists with no packet, no progress row and no owner; provenance is unknown.",
+      "unblockedBy": "Identify the packet and owner, then wire it, or delete the leaf."
+    },
+    {
+      "leaf": "dimension-restatement",
+      "status": "deferred",
+      "reason": "Packet keeps revision append and report-time resolution with the dimension/report owners.",
+      "unblockedBy": "A report owner resolves classificationAt and calls this leaf."
+    },
+    {
+      "leaf": "dimensions",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "document-signatures",
+      "status": "deferred",
+      "reason": "Packet keeps the provider protocol and receipts with the signing adapter owners; no adapter is selected.",
+      "unblockedBy": "A signing adapter is qualified, then its owner calls this leaf for intent freezing."
+    },
+    {
+      "leaf": "employee-claims",
+      "status": "deferred",
+      "reason": "Packet keeps the payout-route handoff with the claim/payroll owners.",
+      "unblockedBy": "A payroll owner pays a reviewed claim and calls this leaf."
+    },
+    {
+      "leaf": "errors",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "exchange-rates",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "filing-lifecycle",
+      "status": "deferred",
+      "reason": "Packet keeps provider state and receipts with the external-delivery owners; filing is outside current authority.",
+      "unblockedBy": "Separate authority for an external filing provider, then a delivery owner calls this leaf."
+    },
+    {
+      "leaf": "financial-close",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "foreign-cash",
+      "status": "deferred",
+      "reason": "Reviewed and repaired as a pure leaf. Packet keeps cash mutation and reconciliation with the banking owners, which are not built.",
+      "unblockedBy": "A banking owner owns foreign cash holdings, then its application owner calls this leaf."
+    },
+    {
+      "leaf": "fx-chain-repair",
+      "status": "deferred",
+      "reason": "Packet keeps the owning transaction and correction while accepted scope stays open.",
+      "unblockedBy": "An FX owner accepts a correction scope, then its transaction calls this leaf."
+    },
+    {
+      "leaf": "fx-remeasurement",
+      "status": "deferred",
+      "reason": "Leaf exists with no packet, no progress row and no owner; provenance is unknown.",
+      "unblockedBy": "Identify the packet and owner, then wire it, or delete the leaf."
+    },
+    {
+      "leaf": "historical-adoptions",
+      "status": "deferred",
+      "reason": "Packet keeps persistence with the sie/historical and commerce settlement owners.",
+      "unblockedBy": "A settlement owner persists an adoption and calls this leaf for residual allocation."
+    },
+    {
+      "leaf": "impairment-reversal",
+      "status": "deferred",
+      "reason": "Packet keeps valuation and persistence with the asset owners.",
+      "unblockedBy": "An asset owner persists carrying amounts and calls this leaf for a reversal."
+    },
+    {
+      "leaf": "ledger",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "loan-lifecycle",
+      "status": "deferred",
+      "reason": "Packet keeps the treasury handoff with the treasury owners; no loan owner exists.",
+      "unblockedBy": "A treasury owner persists a loan timeline and calls this leaf for accrual."
+    },
+    {
+      "leaf": "mileage-reimbursement",
+      "status": "deferred",
+      "reason": "Packet keeps payroll handoff with the claim/payroll owners.",
+      "unblockedBy": "A payroll owner settles a reviewed claim and calls this leaf for the distance split."
+    },
+    {
+      "leaf": "money",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "owner-funding",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "paid-payroll-recovery",
+      "status": "deferred",
+      "reason": "Packet keeps the payroll period handoff with the payroll owners.",
+      "unblockedBy": "A payroll owner settles a paid period and calls this leaf for recovery."
+    },
+    {
+      "leaf": "party-identity",
+      "status": "deferred",
+      "reason": "Packet keeps persistence and invalidation with the directory owners.",
+      "unblockedBy": "A directory owner persists a reviewed resolution and calls this leaf."
+    },
+    {
+      "leaf": "payment-resolutions",
+      "status": "deferred",
+      "reason": "Packet keeps the payment-batch/export owners; no payment batch owner exists.",
+      "unblockedBy": "A payment-batch owner executes an allocation and calls this leaf."
+    },
+    {
+      "leaf": "payroll-runs",
+      "status": "deferred",
+      "reason": "Packet keeps the payroll run posting and payslips with the payroll owners.",
+      "unblockedBy": "A payroll owner owns a run and calls this leaf for its journal."
+    },
+    {
+      "leaf": "peppol-exchange",
+      "status": "deferred",
+      "reason": "Packet keeps transport and persistence with the delivery owners; no access point is qualified.",
+      "unblockedBy": "An access point is qualified, then a delivery owner calls this leaf for dispatch admission."
+    },
+    {
+      "leaf": "period-work",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "posting",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "prepayments",
+      "status": "deferred",
+      "reason": "Packet keeps schedule and invoice resolution with the subledger/commerce owners.",
+      "unblockedBy": "A subledger owner persists a schedule and calls this leaf for allocation."
+    },
+    {
+      "leaf": "processor-clearing",
+      "status": "deferred",
+      "reason": "Reviewed and repaired as a pure leaf. Packet keeps fetching, profiles and persistence with the treasury/banking owners, which are not built.",
+      "unblockedBy": "A treasury owner owns processor observations, then its application owner calls this leaf."
+    },
+    {
+      "leaf": "purchasing",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "recurrence",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "rehearsal-verification",
+      "status": "deferred",
+      "reason": "Packet requires checkpoint capture, backup and restore under separate operations authority, which is not held here.",
+      "unblockedBy": "Operations authority for backup/restore, then an operations owner calls this leaf."
+    },
+    {
+      "leaf": "service-purchases",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "sie-partitions",
+      "status": "deferred",
+      "reason": "Packet keeps the declaration and migration journey with the SIE owners.",
+      "unblockedBy": "A SIE owner declares a partition and calls this leaf for the comparison."
+    },
+    {
+      "leaf": "statements",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "supplier-refunds",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "values",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    },
+    {
+      "leaf": "variable-pay",
+      "status": "deferred",
+      "reason": "Packet keeps the payroll handoff with the payroll owners.",
+      "unblockedBy": "A payroll owner runs a pay period and calls this leaf for variable components."
+    },
+    {
+      "leaf": "vat-assessment",
+      "status": "wired",
+      "consumers": ["apps/api"]
+    }
+  ]
+}

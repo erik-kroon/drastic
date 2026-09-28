@@ -46,7 +46,8 @@
     "prepare": "effect-tsgo patch --typescript",
     "test": "vp test run",
     "test:e2e": "vp test run",
-    "check:tests": "tsc --project apps/api/tests/tsconfig.json --noEmit"
+    "check:tests": "tsc --project apps/api/tests/tsconfig.json --noEmit",
+    "check:integration": "bun scripts/check-integration.ts"
   },
   "devDependencies": {
     "@effect/platform-bun": "4.0.0-rc.112",

@@ -9,6 +9,16 @@ This repository is the starting point for the OpenERP product.
 - For a `NEXT-nn` work item, read `docs/plans/12-next-implementation-dossier.md` and its packet under `docs/specs/` for the implementation design. Bind its proposed names to the real owners, resolve its released-slice prerequisite, and keep its vectors as obligations; it is design input, not authority. A capability with an owner in the dossier plan is not thereby implemented or verified.
 - Keep working design, implemented behavior and verified results distinct. Update the relevant maintained docs when a material decision changes.
 
+## Packet delivery
+
+A `packages/domain` leaf that no application owner consumes is dead code. Delivering a packet therefore means wiring it up, not only writing its calculation:
+
+- A packet is delivered when a named `apps/api` application owner composes the leaf, or when the packet's own text says a *different* owner holds the workflow and that owner is given the leaf. Writing the leaf and stopping is not delivery.
+- If you cannot wire it, say so in the same change: add an entry to `docs/plans/domain-leaf-integration.json` marking the leaf `deferred` with the real blocker and what would unblock it. A deferral naming a missing owner is a legitimate answer. Silence is not.
+- Never mark a leaf `wired` to make a check pass. The entry is verified against real imports.
+- `bun run check:integration` enforces this and runs in CI. New undeclared leaves, placeholder deferral reasons, and stale `deferred` claims for leaves that now have consumers all fail it.
+- An owner that exists but takes its financial facts from the request is not wired either. Derive the value from retained data inside the owning transaction; a client may name a source and cite evidence, never state the amount.
+
 ## Scope
 
 - `apps/web` owns product routes, application composition, and visible product behavior.
@@ -72,6 +82,7 @@ bun run dev
 bun run check:changed
 bun run check:changed:full
 bun run check
+bun run check:integration
 bun run lint
 bun run check-types
 bun run build
