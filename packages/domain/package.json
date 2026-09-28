@@ -43,6 +43,7 @@
     "./financial-close": "./src/financial-close.ts",
     "./payroll-runs": "./src/payroll-runs.ts",
     "./loan-lifecycle": "./src/loan-lifecycle.ts",
+    "./fx-chain-repair": "./src/fx-chain-repair.ts",
     "./owner-funding": "./src/owner-funding.ts",
     "./exchange-rates": "./src/exchange-rates.ts",
     "./period-work": "./src/period-work.ts",
