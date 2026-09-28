@@ -6,6 +6,7 @@ import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Drafts from "@open-erp/contracts/supplier-invoice-drafts";
 import * as Refunds from "@open-erp/contracts/supplier-refunds";
+import * as Credits from "@open-erp/contracts/supplier-credits";
 import {
   createSession,
   database,
@@ -371,7 +372,7 @@ test("paid credit splits payable release and refund receivable, then two cash re
       refundedMinor: "0",
     },
     creditEvidenceId: creditEvidence.id,
-    supplierCreditNumber: "n07-cn-1",
+    supplierCreditNumber: "N07-CN-1",
     amountMinor: "50000",
     creditLines: [{ lineId: "line_purchase", netMinor: "40000", sourceTaxMinor: "10000" }],
     creditDate: "2026-09-24",
@@ -745,6 +746,84 @@ test("a paid credit is refused without an approval, on stale position and withou
     "StaleDependency",
   );
 }, 120_000);
+
+// Valid document numbers are evidence, not internal identifiers. Both owners
+// must retain their exact spelling while producing bounded tax-source keys.
+test.each([
+  { label: "uppercase", documentNumber: "UNPAID-CN-01" },
+  { label: "unicode", documentNumber: "KREDIT Å/2026:1" },
+  { label: "maximum-length", documentNumber: "X".repeat(128) },
+])("unpaid credits preserve valid document numbers: $label", async ({ label, documentNumber }) => {
+  const { book, invoiceId, acceptance } = await recognizedPurchase();
+  const current = await invoice(book, invoiceId);
+  const creditEvidence = await ownEvidence(book, documentNumber);
+
+  const review = await post(
+    book,
+    "/commerce/supplier-credit-reviews",
+    {
+      profile: "swedish-purchase-partial-credit-v1",
+      invoiceId,
+      acceptanceDigest: acceptance.digest,
+      expectedInvoiceRevision: current.currentRevision.revision,
+      expectedAllocationVersion: current.allocationVersion,
+      expectedOutstandingMinor: "125000",
+      creditEvidenceId: creditEvidence.id,
+      supplierCreditNumber: documentNumber,
+      amountMinor: "25000",
+      creditLines: [{ lineId: "line_purchase", netMinor: "20000", sourceTaxMinor: "5000" }],
+      creditDate: "2026-09-24",
+      accountingPeriodId: "period_2026",
+      series: "A",
+      reason: "Retain the supplied credit document number",
+      acknowledgeSyntheticOnly: true,
+    },
+    Credits.SupplierCreditReview,
+  );
+
+  const sourceKey = review.snapshot.taxAdjustments?.[0]?.sourceRefs[0]?.sourceKey;
+  expect(sourceKey).toMatch(/^[a-z0-9][a-z0-9._:-]{2,127}$/);
+  expect(review.snapshot.supplierCreditNumber).toBe(documentNumber);
+
+  const approval = await post(
+    book,
+    `/commerce/supplier-credit-reviews/${review.id}/approvals`,
+    {
+      digest: review.digest,
+      acknowledgeSyntheticOnly: true,
+    },
+    Credits.SupplierCreditApproval,
+  );
+
+  const executionKey = key();
+  const input = { digest: review.digest, approvalId: approval.id, acknowledgeSyntheticOnly: true };
+
+  const executeCredit = () =>
+    request(book, `/commerce/supplier-credit-reviews/${review.id}/execute`, {
+      method: "POST",
+      headers: { "idempotency-key": executionKey },
+      body: JSON.stringify(input),
+    });
+
+  const receipt = await decoded(await executeCredit(), Credits.SupplierCreditReceipt);
+  expect(receipt.supplierCreditNumber).toBe(documentNumber);
+  expect(receipt.paid).toBe(false);
+  expect(receipt.outstandingAfterMinor).toBe("100000");
+  expect(await decoded(await executeCredit(), Credits.SupplierCreditReceipt)).toEqual(receipt);
+  await writeFile(
+    join(environment().artifacts, `supplier-credit-source-${label}.json`),
+    JSON.stringify(
+      {
+        documentNumber,
+        sourceKey,
+        reviewId: review.id,
+        receipt,
+      },
+      null,
+      2,
+    ),
+  );
+});
 
 test("a reversal of the payment consumed by the refund receivable is refused", async () => {
   const journey = await recognizedPurchase();
