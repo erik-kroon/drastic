@@ -134,6 +134,7 @@ export const CustomerReceiptSource = Schema.Union([
   Schema.Struct({
     kind: Schema.Literal("adopted_clearing"),
     clearingRef: Identifier,
+    clearingAccountId: Identifier,
     unusedCapacityMinor: MinorUnits,
   }),
 ]);
@@ -259,6 +260,7 @@ export function compileCustomerReceipt(input: CustomerReceiptInput): Checked<Cus
     }
 
     adoptedRef = input.source.clearingRef;
+    debit(journal, input.source.clearingAccountId, g, "Release customer receipt clearing");
   } else {
     debit(journal, input.source.bankAccountId, g, "Customer cash receipt");
   }
@@ -279,9 +281,7 @@ export function compileCustomerReceipt(input: CustomerReceiptInput): Checked<Cus
     0n,
   );
 
-  // An adopted clearing receipt carries no new cash debit by construction, so
-  // its journal only settles receivables against the liability.
-  if (input.source.kind === "new_cash" && balance !== 0n) {
+  if (balance !== 0n) {
     return fail("UnbalancedJournal", "Receipt lines must balance exactly.");
   }
 
@@ -503,6 +503,7 @@ export const CustomerRefundSource = Schema.Union([
   Schema.Struct({
     kind: Schema.Literal("adopted_clearing"),
     clearingRef: Identifier,
+    clearingAccountId: Identifier,
     unusedCapacityMinor: MinorUnits,
   }),
 ]);
@@ -548,8 +549,6 @@ export function recordCustomerRefund(
         "The clearing entry has no exact unused capacity for this refund.",
       );
     }
-
-    return Result.succeed({ refundedMinor: amount(value), journal: [] });
   }
 
   return Result.succeed({
@@ -564,29 +563,50 @@ export function recordCustomerRefund(
       },
       {
         sourceLineId: null,
-        accountId: input.source.bankAccountId,
+        accountId:
+          input.source.kind === "new_payment"
+            ? input.source.bankAccountId
+            : input.source.clearingAccountId,
         debitMinor: "0",
         creditMinor: amount(value),
-        description: "Customer refund cash payment",
+        description:
+          input.source.kind === "new_payment"
+            ? "Customer refund cash payment"
+            : "Release customer refund clearing",
       },
     ],
   });
 }
 
-// A standalone reversal of an invoice payment that generated subsequently
-// consumed credit is refused: the correction must restore the related
-// credit, application and refund consequences atomically.
+// A standalone reversal cannot change credit principal while its retained
+// liability/application/refund effects remain posted. Compare both histories;
+// a valid posterior formula alone cannot prove the reversal conserves the books.
 export function refuseConsumedHistoryReversal(
-  input: CustomerPositionInput,
+  prior: CustomerPositionInput,
+  posterior: CustomerPositionInput,
 ): Checked<CustomerPosition> {
-  const position = deriveCustomerPosition(input);
+  const before = deriveCustomerPosition(prior);
+  const after = deriveCustomerPosition(posterior);
 
-  if (Result.isFailure(position)) {
+  if (Result.isFailure(before) || Result.isFailure(after)) {
     return fail(
       "UnsupportedConsumedHistory",
       "The reversal leaves a consumed payment, credit and refund history without an owning correction.",
     );
   }
 
-  return position;
+  if (
+    prior.originalGrossMinor !== posterior.originalGrossMinor ||
+    prior.creditedMinor !== posterior.creditedMinor ||
+    prior.consumedMinor !== posterior.consumedMinor ||
+    BigInt(posterior.paidMinor) > BigInt(prior.paidMinor) ||
+    before.success.creditPrincipalMinor !== after.success.creditPrincipalMinor
+  ) {
+    return fail(
+      "UnsupportedConsumedHistory",
+      "A change to retained credit consequences needs an owning correction.",
+    );
+  }
+
+  return after;
 }
