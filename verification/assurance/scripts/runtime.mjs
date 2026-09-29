@@ -4,6 +4,8 @@ import { lstat, readFile, readdir, writeFile, mkdir } from "node:fs/promises";
 import { resolve, join, dirname, isAbsolute, relative } from "node:path";
 import { redactLog } from "./gates.mjs";
 
+const byPath = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
 export function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
@@ -184,7 +186,7 @@ export async function findTests(root, relativeDir, suffix) {
 
   await walk(join(root, relativeDir));
 
-  return out.sort();
+  return out.sort(byPath);
 }
 
 export async function captureSources(repo) {
@@ -228,7 +230,9 @@ export async function captureSources(repo) {
 
   const files = [];
 
-  for (const path of [...new Set([...tracked, ...others])].filter((p) => !generated(p)).sort()) {
+  for (const path of [...new Set([...tracked, ...others])]
+    .filter((p) => !generated(p))
+    .sort(byPath)) {
     const full = safeInside(repo, path);
     await requireNoSymlinkParents(repo, full);
 
