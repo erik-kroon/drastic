@@ -4,6 +4,7 @@ import * as Accounting from "./accounting";
 import * as Commerce from "./commerce";
 import * as Ar from "./ar-legal-issue";
 import { accountingErrors } from "./accounting-errors";
+import { CustomerJournalLines } from "@open-erp/domain/customer-credits";
 
 const profile = Schema.Literal("se-domestic-b2b-sek-25-accrual-credit-v1");
 
@@ -422,6 +423,88 @@ const mutation = {
   error: accountingErrors,
 };
 
+// NEXT-30. A customer cash receipt names the customer, the cash amount and the
+// explicit invoice legs; it states no remaining balances. The owner reads every
+// leg's retained remaining, and the unallocated remainder becomes a
+// customer-credit liability only with a qualified classification.
+export const ReceiptLegInput = Schema.Struct({
+  invoiceId: Accounting.Identifier,
+  amountMinor: Accounting.SignedMinorUnits,
+});
+
+export const PrepareCustomerReceipt = Schema.Struct({
+  customerId: Accounting.Identifier,
+  currency: Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/)),
+  cashMinor: Accounting.SignedMinorUnits,
+  legs: Schema.Array(ReceiptLegInput).check(Schema.isMaxLength(50)),
+  surplusClassification: Schema.NullOr(
+    Schema.Literals(["refundable_overpayment", "unapplied_cash"]),
+  ),
+  bankAccountId: Accounting.Identifier,
+  evidenceId: Accounting.Identifier,
+  receivableControlAccountId: Accounting.Identifier,
+  creditLiabilityAccountId: Accounting.Identifier,
+  fiscalYearId: Accounting.Identifier,
+  accountingPeriodId: Accounting.Identifier,
+  series: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(32)),
+  reason: Accounting.Description,
+});
+
+// Executing a prepared receipt re-derives the plan from retained rows and
+// requires it to match the prepared digest, so a changed invoice remaining
+// between preview and execution refuses rather than posting a stale split.
+export const ExecuteCustomerReceipt = Schema.Struct({
+  version: Schema.Literal(1),
+  digest: Accounting.Digest,
+  prepare: PrepareCustomerReceipt,
+});
+
+export const CustomerReceiptView = Schema.Struct({
+  scope: Accounting.Scope,
+  id: Accounting.Identifier,
+  originId: Schema.NullOr(Accounting.Identifier),
+  digest: Accounting.Digest,
+  allocatedMinor: Accounting.SignedMinorUnits,
+  creditOriginMinor: Accounting.SignedMinorUnits,
+  journal: CustomerJournalLines,
+  createdAt: Schema.String,
+});
+
+// Apply retained credit to a retained invoice, or refund it in cash. The
+// origin, the remaining capacity and the destination are all read inside the
+// transaction; the caller names them but states no amount.
+export const ApplyCustomerCredit = Schema.Struct({
+  originId: Accounting.Identifier,
+  invoiceId: Accounting.Identifier,
+  amountMinor: Accounting.SignedMinorUnits,
+  evidenceId: Accounting.Identifier,
+  fiscalYearId: Accounting.Identifier,
+  accountingPeriodId: Accounting.Identifier,
+  series: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(32)),
+  reason: Accounting.Description,
+});
+
+export const RefundCustomerCredit = Schema.Struct({
+  originId: Accounting.Identifier,
+  amountMinor: Accounting.SignedMinorUnits,
+  cashAccountId: Accounting.Identifier,
+  evidenceId: Accounting.Identifier,
+  fiscalYearId: Accounting.Identifier,
+  accountingPeriodId: Accounting.Identifier,
+  series: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(32)),
+  reason: Accounting.Description,
+});
+
+export const CustomerCreditEffectView = Schema.Struct({
+  scope: Accounting.Scope,
+  id: Accounting.Identifier,
+  originId: Accounting.Identifier,
+  digest: Accounting.Digest,
+  consumedMinor: Accounting.SignedMinorUnits,
+  journal: CustomerJournalLines,
+  createdAt: Schema.String,
+});
+
 export const CustomerCreditNotesApi = HttpApiGroup.make("customerCreditNotes").add(
   HttpApiEndpoint.get(
     "getCustomerCreditArtifactState",
@@ -459,6 +542,51 @@ export const CustomerCreditNotesApi = HttpApiGroup.make("customerCreditNotes").a
     ...mutation,
     payload: ApproveCustomerCredit.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: CustomerCreditApproval,
+  }),
+  HttpApiEndpoint.post("prepareCustomerReceipt", `${path}/customer-receipts`, {
+    params: Accounting.Scope,
+    headers: Accounting.IdempotencyHeaders,
+    payload: PrepareCustomerReceipt.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: CustomerReceiptView,
+    error: accountingErrors,
+  }),
+  HttpApiEndpoint.post("executeCustomerReceipt", `${path}/customer-receipts/execute`, {
+    params: Accounting.Scope,
+    headers: Accounting.IdempotencyHeaders,
+    payload: ExecuteCustomerReceipt.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: CustomerReceiptView,
+    error: accountingErrors,
+  }),
+  HttpApiEndpoint.post("applyCustomerCredit", `${path}/customer-credit-origins/:id/apply`, {
+    params: Schema.Struct({
+      entityId: Accounting.Identifier,
+      bookId: Accounting.Identifier,
+      id: Accounting.Identifier,
+    }),
+    headers: Accounting.IdempotencyHeaders,
+    payload: ApplyCustomerCredit.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: CustomerCreditEffectView,
+    error: accountingErrors,
+  }),
+  HttpApiEndpoint.post("refundCustomerCredit", `${path}/customer-credit-origins/:id/refund`, {
+    params: Schema.Struct({
+      entityId: Accounting.Identifier,
+      bookId: Accounting.Identifier,
+      id: Accounting.Identifier,
+    }),
+    headers: Accounting.IdempotencyHeaders,
+    payload: RefundCustomerCredit.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: CustomerCreditEffectView,
+    error: accountingErrors,
+  }),
+  HttpApiEndpoint.get("getCustomerCreditOrigin", `${path}/customer-credit-origins/:id`, {
+    params: Schema.Struct({
+      entityId: Accounting.Identifier,
+      bookId: Accounting.Identifier,
+      id: Accounting.Identifier,
+    }),
+    success: CustomerReceiptView,
+    error: accountingErrors,
   }),
   HttpApiEndpoint.post("executeCustomerCredit", `${path}/customer-credit-reviews/:id/execute`, {
     ...mutation,

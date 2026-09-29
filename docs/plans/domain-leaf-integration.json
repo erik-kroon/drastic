@@ -57,11 +57,10 @@
       "reason": "Packet keeps sealed-message delivery and dispute handling with the commerce/delivery owners.",
       "unblockedBy": "A delivery owner sends the sealed message and calls this leaf for reminder admission."
     },
-    {
+        {
       "leaf": "customer-credits",
-      "status": "deferred",
-      "reason": "NEXT-30 leaf implemented and reviewed: adopted receipt/refund clearing journals balance without repeated cash, and reversals compare retained prior/posterior credit consequences; legal issuance and posting/persistence remain with the commerce owners.",
-      "unblockedBy": "The commerce customer-credit owner exists and gains customer-credit liability effects and refund operations through its shared invoice, payment-allocation and legal-credit transaction boundary."
+      "status": "wired",
+      "consumers": ["apps/api/src/application/commerce/customer-receipts.ts"]
     },
     {
       "leaf": "dimension-restatement",
