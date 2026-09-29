@@ -178,6 +178,180 @@ export function selectWitness(input: {
 
   const jurisdiction = jurisdictions[0] ?? "";
 
+  // Book-aware selection comes first: an effectively activated book keeps its
+  // exact qualified release even when other overlapping qualified profiles are
+  // published globally. Global uniqueness is only the fallback for unactivated
+  // preparation, where ambiguity remains a refusal.
+  const effectiveActivations = input.activations.filter((row) => covers(row, input.date));
+  const effectiveReleaseIds = [...new Set(effectiveActivations.map((row) => row.ruleReleaseId))];
+
+  if (effectiveReleaseIds.length > 1) {
+    return {
+      witness: null,
+      gaps: [
+        familyGap(
+          "overlapping_activation",
+          `${input.family}:${jurisdiction}:activations=${effectiveReleaseIds.join(",")}`,
+          input.family,
+          [`company_execute_activation:${input.family}`],
+        ),
+      ],
+    };
+  }
+
+  const pinnedReleaseId = effectiveReleaseIds[0];
+
+  if (pinnedReleaseId !== undefined) {
+    const pinned = input.releases.find((entry) => entry.row.id === pinnedReleaseId);
+
+    if (pinned === undefined) {
+      return {
+        witness: null,
+        gaps: [familyGap("missing_rule_release", pinnedReleaseId, input.family)],
+      };
+    }
+
+    const pinnedQualifies =
+      pinned.row.jurisdiction === jurisdiction &&
+      pinned.row.family === input.family &&
+      pinned.release.qualificationStatus === "reviewed" &&
+      pinned.release.recordClasses.includes(input.recordClass) &&
+      pinned.release.validFrom <= input.date &&
+      input.date <= pinned.release.validTo;
+
+    if (!pinnedQualifies) {
+      return {
+        witness: null,
+        gaps: [
+          familyGap(
+            "inapplicable_release",
+            `${pinned.row.id}:${jurisdiction}:${input.date}`,
+            input.family,
+          ),
+        ],
+      };
+    }
+
+    const candidate = pinned;
+
+    // One review exists per revision, so the selected review identities are the
+    // selected revision identities.
+    const pinnedFactRevisionIds: Array<string> = [];
+    const pinnedFactReviewIds: Array<string> = [];
+    const pinnedKnown: Array<{ kind: string; value: string }> = [];
+
+    for (const kind of new Set(["jurisdiction", ...candidate.release.requiredFactKinds])) {
+      const matching = input.facts.filter(
+        (row) => row.factKind === kind && covers(row, input.date),
+      );
+
+      const confirmed = matching.filter((row) =>
+        isConfirmed(input.reviews.find((entry) => entry.factRevisionId === row.id)),
+      );
+
+      if (confirmed.length !== 1) {
+        gaps.push(
+          factGap(
+            confirmed.length === 0 && matching.length === 0
+              ? "unknown_fact"
+              : confirmed.length === 0
+                ? "unreviewed_fact"
+                : "ambiguous_fact",
+            kind,
+            input.family,
+          ),
+        );
+        continue;
+      }
+
+      const row = confirmed[0];
+
+      if (row === undefined) continue;
+
+      if (!isEstablished(row)) {
+        gaps.push(factGap("unknown_fact", kind, input.family));
+        continue;
+      }
+
+      const value = knownValue(row);
+
+      pinnedFactRevisionIds.push(row.id);
+      pinnedFactReviewIds.push(row.id);
+
+      if (value !== null) pinnedKnown.push({ kind, value });
+    }
+
+    if (!applicabilityHolds(candidate.release.applicability, pinnedKnown)) {
+      gaps.push(familyGap("inapplicable_release", candidate.row.id, input.family));
+    }
+
+    const pinnedRoleBindingIds: Array<string> = [];
+
+    for (const kind of candidate.release.requiredRoleKinds) {
+      const matching = input.bindings.filter(
+        (row) => row.roleKind === kind && covers(row, input.date),
+      );
+
+      if (matching.length !== 1) {
+        gaps.push(
+          familyGap(
+            matching.length === 0 ? "missing_role_binding" : "ambiguous_role_binding",
+            kind,
+            input.family,
+            [`company_prepare_activation:${input.family}`],
+          ),
+        );
+        continue;
+      }
+
+      const row = matching[0];
+      const account = row === undefined ? undefined : input.accounts.get(row.accountId);
+
+      if (row === undefined) continue;
+
+      if (account === undefined || !account.active) {
+        gaps.push(familyGap("inactive_account", row.accountId, input.family));
+        continue;
+      }
+
+      if (account.version !== row.accountVersion) {
+        gaps.push(familyGap("stale_role_binding", row.id, input.family));
+        continue;
+      }
+
+      pinnedRoleBindingIds.push(row.id);
+    }
+
+    const pinnedLive = effectiveActivations.filter((row) => row.ruleReleaseId === candidate.row.id);
+
+    if (pinnedLive.length > 1) {
+      gaps.push(
+        familyGap("overlapping_activation", input.family, input.family, [
+          `company_execute_activation:${input.family}`,
+        ]),
+      );
+    }
+
+    if (gaps.length > 0) return { witness: null, gaps };
+
+    return {
+      witness: {
+        family: input.family,
+        recordClass: input.recordClass,
+        dates: input.dates,
+        selectorDate: input.date,
+        jurisdiction,
+        ruleReleaseId: candidate.row.id,
+        ruleReleaseChecksum: candidate.row.checksum,
+        factRevisionIds: pinnedFactRevisionIds.sort(),
+        factReviewIds: pinnedFactReviewIds.sort(),
+        roleBindingIds: pinnedRoleBindingIds.sort(),
+        activationId: pinnedLive[0]?.id ?? effectiveActivations[0]?.id ?? null,
+      },
+      gaps,
+    };
+  }
+
   const candidates = input.releases.filter(
     (entry) =>
       entry.row.jurisdiction === jurisdiction &&
@@ -194,7 +368,9 @@ export function selectWitness(input: {
       gaps: [
         familyGap(
           candidates.length === 0 ? "missing_rule_release" : "ambiguous_rule_release",
-          `${input.family}:${jurisdiction}`,
+          candidates.length === 0
+            ? `${input.family}:${jurisdiction}`
+            : `${input.family}:${jurisdiction}:candidates=${candidates.map((entry) => entry.row.id).join(",")}`,
           input.family,
           [`company_prepare_activation:${input.family}`],
         ),

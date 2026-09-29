@@ -141,6 +141,11 @@ function readQualifiedRelease(transaction: Transaction, scope: Scope, input: Inp
     const witness = resolved.families.find((entry) => entry.family === "vat")?.witness ?? null;
 
     if (witness === null) return yield* unsupported();
+
+    // A financial VAT filing requires an effective book activation. An
+    // unactivated preparation may list candidates, but this owner never
+    // fabricates an activation from a global release.
+    if (witness.activationId === null) return yield* unsupported();
     const book = (yield* Ledger.readBook(transaction, scope))[0];
 
     if (!book) return yield* failure("Forbidden");

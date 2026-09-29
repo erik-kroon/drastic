@@ -1,4 +1,4 @@
-import { sql, type SQL } from "drizzle-orm";
+import { inArray, sql, type SQL } from "drizzle-orm";
 import type { Transaction } from "../transaction";
 import type { JsonObject } from "./access";
 
@@ -275,13 +275,7 @@ export function readLiveInvoicePage(
   invoiceIds: ReadonlyArray<string>,
 ) {
   return transaction.execute<LiveInvoiceRow>(
-    liveInvoice(
-      bookId,
-      sql`i.id in (${sql.join(
-        invoiceIds.map((id) => sql`${id}`),
-        sql`, `,
-      )})`,
-    ),
+    liveInvoice(bookId, inArray(sql`i.id`, [...invoiceIds])),
     "objects",
   );
 }

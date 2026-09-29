@@ -55,7 +55,7 @@ export const preparePartyResolution = Effect.fn("directory.prepareResolution")(f
   command: {
     readonly scope: Scope;
     readonly idempotencyKey: string;
-    readonly input: typeof PartyIdentity.PreparePartyResolution.Type;
+    readonly input: PartyIdentity.PreparePartyResolution;
   },
 ) {
   return yield* withBook(token, command.scope, true, function* (transaction, principal) {
@@ -269,7 +269,7 @@ export const readDirectoryBalances = Effect.fn("directory.balances")(function* (
   command: {
     readonly scope: Scope;
     readonly idempotencyKey: string;
-    readonly input: typeof PartyIdentity.ReadDirectoryBalances.Type;
+    readonly input: PartyIdentity.ReadDirectoryBalances;
   },
 ) {
   return yield* withBook(token, command.scope, false, function* (transaction, principal) {
@@ -298,7 +298,7 @@ export const readDirectoryBalances = Effect.fn("directory.balances")(function* (
     // A saved resolution is read by its own command key and decoded through
     // the contract. What the caller asserts is the key; everything the view
     // groups by comes from the retained receipt.
-    let resolution: typeof PartyIdentity.PartyResolutionReport.Type | null = null;
+    let resolution: PartyIdentity.PartyResolutionReport | null = null;
 
     if (input.resolutionKey !== null) {
       const saved = yield* DirectoryDb.readPartyResolutionByKey(
@@ -460,7 +460,7 @@ export const readDirectoryBalances = Effect.fn("directory.balances")(function* (
 function assertCurrent(
   transaction: Parameters<typeof readLiveInvoicePage>[0],
   bookId: string,
-  resolution: typeof PartyIdentity.PartyResolutionReport.Type,
+  resolution: PartyIdentity.PartyResolutionReport,
 ) {
   return Effect.gen(function* () {
     const heads = yield* DirectoryDb.readCounterpartyHeads(

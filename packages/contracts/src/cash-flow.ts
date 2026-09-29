@@ -99,6 +99,16 @@ export const CashFlowStatementReport = Schema.Struct({
   unclassifiedRowIds: Schema.Array(Accounting.Identifier),
   complete: Schema.Boolean,
   sourceControlsComplete: Schema.Boolean,
+  // Ledger-only scope, stated explicitly: periodCoverageComplete proves the
+  // retained periods tile the interval, not that bank sources were imported
+  // or confirmed. independentSourceControlsComplete stays false until a
+  // bank-source attestation owner exists; complete means ledger arithmetic
+  // classified and reconciled over that tiled population, not independently
+  // reconciled cash. recordedCutoff is the real database instant the owner
+  // read, never a fixed sentinel.
+  periodCoverageComplete: Schema.Boolean,
+  independentSourceControlsComplete: Schema.Boolean,
+  recordedCutoff: Schema.String,
   basisDigest: Accounting.Digest,
   ledgerBoundary: Accounting.MinorUnits,
 });
@@ -127,7 +137,7 @@ export const CashFlowApi = HttpApiGroup.make("cashFlow").add(
 export const CashFlowCapabilities = {
   reports_cash_flow_statement: {
     description:
-      "Classify retained posted cash movements into operating, investing and financing under one reviewed cash perimeter, and reconcile opening cash plus those flows plus exchange and perimeter bridges to actual closing cash. Opening and closing cash are derived from retained postings, never supplied. A row that cannot be resolved from the reviewed basis stays unclassified and makes complete false; read that flag rather than inferring completeness. Presentation and statutory applicability are not established by this result.",
+      "Classify retained posted cash movements into operating, investing and financing under one reviewed cash perimeter, and reconcile opening cash plus those flows plus exchange and perimeter bridges to actual closing cash. This is a ledger-only report: complete means the tiled ledger population classified and reconciled, while independentSourceControlsComplete stays false until a bank-source attestation owner exists. Opening and closing cash are derived from retained postings, never supplied. A row that cannot be resolved from the reviewed basis stays unclassified and makes complete false; read that flag rather than inferring completeness. Presentation and statutory applicability are not established by this result.",
     input: Schema.Struct({
       scope: Accounting.Scope,
       input: PrepareCashFlowStatement,

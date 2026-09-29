@@ -362,3 +362,53 @@ test("an agent reads the derived statement over MCP and is told when it is not c
     "no reviewed activity role",
   );
 });
+
+test("a split payment keeps one row per activity with stable scoped identities", async () => {
+  const book = await fixture(accounts);
+
+  await post(
+    book,
+    entry("2026-03-01", "Loan payment with fee", [
+      { accountId: "account_bank", debit: "0", credit: "7000" },
+      { accountId: "account_loan", debit: "6000", credit: "0" },
+      { accountId: "account_payable", debit: "1000", credit: "0" },
+    ]),
+  );
+
+  const report = await statement(book, "2026-02-01", "2026-09-30", mapping);
+
+  expect(report.unclassifiedRowIds).toEqual([]);
+  expect(report.complete).toBe(true);
+  expect(report.periodCoverageComplete).toBe(true);
+  expect(report.independentSourceControlsComplete).toBe(false);
+  expect(report.recordedCutoff).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+  expect(report.totals.financingNetMinor).toBe("-6000");
+  expect(report.totals.operatingNetMinor).toBe("-1000");
+  expect(report.totals.actualClosingMinor).toBe("-7000");
+  expect(report.totals.reconciliationDifferenceMinor).toBe("0");
+
+  const ids = report.lines.map((line) => line.rowId);
+
+  expect(new Set(ids).size).toBe(ids.length);
+  expect(report.lines).toHaveLength(2);
+});
+
+test("a settlement with a realised gain is not a pure valuation effect", async () => {
+  const book = await fixture(accounts);
+
+  await post(
+    book,
+    entry("2026-03-01", "Receivable settlement with gain", [
+      { accountId: "account_bank", debit: "11000", credit: "0" },
+      { accountId: "account_revenue", debit: "0", credit: "10000" },
+      { accountId: "account_fx", debit: "0", credit: "1000" },
+    ]),
+  );
+
+  const report = await statement(book, "2026-02-01", "2026-09-30", mapping);
+
+  expect(report.lines.filter((line) => line.kind === "valuation_effect")).toHaveLength(0);
+  expect(report.unclassifiedRowIds).toHaveLength(1);
+  expect(report.complete).toBe(false);
+  expect(report.independentSourceControlsComplete).toBe(false);
+});

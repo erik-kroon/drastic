@@ -53,6 +53,24 @@ wait. These are local workload observations, not production latency guarantees.
 
 ## Run evidence
 
+### Failure diagnostics regression contract
+
+Before implementation: `diagnostics.e2e.test.ts` must prove that a known Worker
+console message is captured; an invalid retained change-set version yields a
+generic 500 and a correlated schema path/type; a PostgreSQL constraint fault
+yields a generic 500 and a correlated SQLSTATE/constraint; and a connection
+failure yields a generic 503 with a diagnostic. Each unexpected failure is
+logged once. Expected authorization refusals produce no error diagnostic.
+Tokens, invalid input values, SQL parameters and database error detail must not
+appear in the Worker artifact or public error body. The response assertion helper
+must identify the request and link to the Worker artifact when it fails.
+
+Run `bun run test:e2e apps/api/tests/diagnostics.e2e.test.ts`. Its isolated Worker
+uses the real API and the suite's disposable PostgreSQL; only the console probe
+lives in a test-only entrypoint. `diagnostics-worker.json` retains captured logs
+even if an assertion fails. Removing logging, cause retention, correlation or
+capture must fail the relevant assertion.
+
 The latest run writes `test-results/e2e`. Before a new run starts, the runner moves the previous directory into `test-results/e2e-history/<timestamp>-<suffix>`. Both paths are ignored by Git. Local history is not a production archive; retain release evidence under the operator's custody policy.
 
 - `manifest.json` binds HEAD, tracked diff, lockfile, migration checksums and runtime versions. It also lists each tracked or untracked file in the declared source roots, its SHA-256 and tracked state. Deleted tracked files have a null hash. Ignored files and symlinks are not accepted as implicit source inputs: ignored files are outside this inventory, and discovered symlinks refuse the run.

@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import { failure } from "../failures";
 import { digest as digestNative } from "../json";
+import { isoNow } from "../posting";
 import { decode, toJsonObject, unsupported, withBook } from "../commerce/support";
 import { readTableAccess } from "../../db/commerce/access";
 import * as Db from "../../db/reports/cash-flow-statement";
@@ -112,9 +113,10 @@ function baseLine(
     Line,
     "rowId" | "voucherId" | "lineId" | "postingDate" | "accountId" | "signedCashMinor" | "kind"
   >,
+  rowId: string = component.componentId,
 ): Line {
   return {
-    rowId: component.componentId,
+    rowId,
     voucherId: component.voucherId,
     lineId: component.lineId,
     postingDate: component.postingDate,
@@ -123,6 +125,23 @@ function baseLine(
     kind,
     ...rest,
   };
+}
+
+// Each classification slice keeps its parent cash-component identity through
+// voucher/line/account, but needs its own stable row identity: the pure leaf
+// refuses any repeated rowId as SplitMismatch. The id is derived
+// deterministically from the parent component, the resolved activity and the
+// exact counterpart account, so repeated reads agree and a duplicate source
+// slice still collides rather than passing silently.
+function sliceRowId(componentId: string, activity: Activity, accountId: string): string {
+  const clean = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, "_")
+      .replace(/^[^a-z]+/, "x")
+      .slice(0, 40) || "x";
+
+  return `${componentId}--${activity}--${clean(accountId)}`.slice(0, 127);
 }
 
 const unresolved = (component: Component, signed: bigint, reason: string): Line =>
@@ -176,9 +195,23 @@ function externalRows(
   signed: bigint,
   context: ClassifyContext,
 ): Array<Line> {
-  const valuation = nonCash.find((row) => context.exchangeEffect.has(row.accountId));
+  // A pure cash-holding remeasurement is the only voucher that becomes a
+  // valuation effect: every non-cash counterpart names a reviewed
+  // exchange-effect account. A receivable settlement with a realised FX gain
+  // keeps its gross bank receipt as operating cash; the gain is P&L handled
+  // separately, never a reason to reclassify the whole receipt. Mixed or
+  // unmapped counterparts fall through to the activity split below, which
+  // leaves them unclassified with a reason rather than guessing.
+  const allExchange =
+    nonCash.length > 0 && nonCash.every((row) => context.exchangeEffect.has(row.accountId));
 
-  if (valuation !== undefined) {
+  if (allExchange) {
+    const valuation = nonCash[0];
+
+    if (valuation === undefined) {
+      return [unresolved(cashLeg, signed, "valuation voucher names no counterpart line")];
+    }
+
     return [
       baseLine(cashLeg, "valuation_effect", signed, {
         activity: null,
@@ -242,14 +275,24 @@ function externalRows(
     ];
   }
 
-  return [...byKey.values()].map((value) =>
-    baseLine(cashLeg, "external", value.minor, {
-      activity: value.activity,
-      originRef: value.row.lineId,
-      transferId: null,
-      witnessRef: null,
-      reason: null,
-    }),
+  const slices = [...byKey.values()];
+
+  return slices.map((value) =>
+    baseLine(
+      cashLeg,
+      "external",
+      value.minor,
+      {
+        activity: value.activity,
+        originRef: value.row.lineId,
+        transferId: null,
+        witnessRef: null,
+        reason: null,
+      },
+      slices.length === 1
+        ? cashLeg.componentId
+        : sliceRowId(cashLeg.componentId, value.activity, value.row.accountId),
+    ),
   );
 }
 
@@ -445,15 +488,24 @@ export const prepareCashFlowStatement = Effect.fn("cashFlow.prepare")(function* 
       exchangeEffect: new Set(mapping.exchangeEffectAccountIds),
     });
 
-    const sourceControlsComplete = coversInterval(periods, input.startsOn, input.endsOn);
+    // Period tiling proves the retained calendar covers the interval. It does
+    // not prove bank sources were imported or confirmed: no source
+    // attestation owner exists yet, so independent controls stay explicit.
+    const periodCoverageComplete = coversInterval(periods, input.startsOn, input.endsOn);
+    const sourceControlsComplete = periodCoverageComplete;
+    const independentSourceControlsComplete = false;
+
+    const recordedCutoff = (yield* isoNow(transaction)).slice(0, 19);
 
     // The leaf classifies each row once and owns the bridge arithmetic. It
     // reports complete only when nothing is unclassified, no internal
-    // counterpart is missing, the difference is zero and source controls hold.
+    // counterpart is missing, the difference is zero and the tiled ledger
+    // population holds. That is ledger-scope completeness, not independently
+    // reconciled cash.
     const computed = calculateCashFlow({
       periodStartsOn: input.startsOn,
       periodEndsOn: input.endsOn,
-      recordedCutoff: "1970-01-01T00:00:00.000",
+      recordedCutoff,
       openingCashMinor: opening.toString(),
       actualClosingCashMinor: closing.toString(),
       sourceControlsComplete,
@@ -495,11 +547,16 @@ export const prepareCashFlowStatement = Effect.fn("cashFlow.prepare")(function* 
       unclassifiedRowIds: statement.unclassifiedRowIds,
       complete: statement.complete,
       sourceControlsComplete,
+      periodCoverageComplete,
+      independentSourceControlsComplete,
+      recordedCutoff,
       basisDigest: yield* digestOf({
         accounts: accounts.map((row) => ({ id: row.id, version: row.version })),
         roles: mapping.accountRoleRules,
         perimeter: mapping.perimeterAccountIds,
         exchangeEffect: mapping.exchangeEffectAccountIds,
+        ledgerBoundary: boundary.toString(),
+        recordedCutoff,
       }),
       ledgerBoundary: boundary,
     };
