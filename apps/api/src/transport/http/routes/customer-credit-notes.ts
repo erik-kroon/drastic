@@ -17,9 +17,59 @@ import {
   getCustomerCreditReview,
   prepareCustomerCredit,
 } from "../../../application/commerce/credit-notes";
+import {
+  applyCustomerCredit,
+  executeCustomerReceipt,
+  getCustomerCreditOrigin,
+  prepareCustomerReceipt,
+  refundCustomerCredit,
+} from "../../../application/commerce/customer-receipts";
 
 export const CustomerCreditHandlers = HttpApiBuilder.group(Api, "customerCreditNotes", (handlers) =>
   handlers
+    .handle("prepareCustomerReceipt", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        prepareCustomerReceipt(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("executeCustomerReceipt", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        executeCustomerReceipt(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("applyCustomerCredit", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        applyCustomerCredit(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          originId: params.id,
+          input: payload,
+        }),
+      ),
+    )
+    .handle("refundCustomerCredit", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        refundCustomerCredit(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          originId: params.id,
+          input: payload,
+        }),
+      ),
+    )
+    .handle("getCustomerCreditOrigin", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        getCustomerCreditOrigin(token, { scope: scopeFromPath(params), id: params.id }),
+      ),
+    )
     .handle("getCustomerCreditArtifactState", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
         getCustomerCreditArtifactState(token, { scope: scopeFromPath(params), id: params.id }),

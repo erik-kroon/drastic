@@ -33,6 +33,7 @@ export type PostingOwner = {
     | "commerce_fx"
     | "vat_reclassification"
     | "corporate_income_tax"
+    | "customer_receipt"
     | "owner_operation";
   readonly id: string;
 };
