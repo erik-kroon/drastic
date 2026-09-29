@@ -21,6 +21,21 @@ export type Release = {
 
 export type Selection = { readonly witness: Witness | null; readonly gaps: ReadonlyArray<Gap> };
 
+// Every input the pure selection reads. The activated and the global route share
+// it so a change to what selection may read happens in one place.
+export type WitnessInput = {
+  readonly family: Family;
+  readonly recordClass: RecordClass;
+  readonly dates: Dates;
+  readonly date: string;
+  readonly facts: ReadonlyArray<Db.FactRevisionRow>;
+  readonly reviews: ReadonlyArray<Db.FactReviewRow>;
+  readonly releases: ReadonlyArray<Release>;
+  readonly bindings: ReadonlyArray<Db.RoleBindingRow>;
+  readonly activations: ReadonlyArray<Db.ActivationRow>;
+  readonly accounts: ReadonlyMap<string, { readonly active: boolean; readonly version: bigint }>;
+};
+
 // Each family reads the configuration its own operation uses, on the date that
 // operation uses. An annual rule is never selected by today's date.
 export const familySelector = {
@@ -143,20 +158,7 @@ function isEstablished(revision: Db.FactRevisionRow) {
 // The pure part of admission: given captured rows, which reviewed release, facts
 // and role bindings apply to one family on that family's own date. It reads no
 // database and starts no runtime.
-export function selectWitness(input: {
-  readonly family: Family;
-  readonly recordClass: RecordClass;
-  readonly dates: Dates;
-  readonly date: string;
-  readonly facts: ReadonlyArray<Db.FactRevisionRow>;
-  readonly reviews: ReadonlyArray<Db.FactReviewRow>;
-  readonly releases: ReadonlyArray<Release>;
-  readonly bindings: ReadonlyArray<Db.RoleBindingRow>;
-  readonly activations: ReadonlyArray<Db.ActivationRow>;
-  readonly accounts: ReadonlyMap<string, { readonly active: boolean; readonly version: bigint }>;
-}): Selection {
-  const gaps: Array<Gap> = [];
-
+export function selectWitness(input: WitnessInput): Selection {
   const jurisdictions = input.facts
     .filter((row) => row.factKind === "jurisdiction" && covers(row, input.date))
     .filter((row) => isConfirmed(input.reviews.find((entry) => entry.factRevisionId === row.id)))
@@ -211,15 +213,7 @@ export function selectWitness(input: {
       };
     }
 
-    const pinnedQualifies =
-      pinned.row.jurisdiction === jurisdiction &&
-      pinned.row.family === input.family &&
-      pinned.release.qualificationStatus === "reviewed" &&
-      pinned.release.recordClasses.includes(input.recordClass) &&
-      pinned.release.validFrom <= input.date &&
-      input.date <= pinned.release.validTo;
-
-    if (!pinnedQualifies) {
+    if (!qualifies(pinned, input, jurisdiction)) {
       return {
         witness: null,
         gaps: [
@@ -232,135 +226,15 @@ export function selectWitness(input: {
       };
     }
 
-    const candidate = pinned;
-
-    // One review exists per revision, so the selected review identities are the
-    // selected revision identities.
-    const pinnedFactRevisionIds: Array<string> = [];
-    const pinnedFactReviewIds: Array<string> = [];
-    const pinnedKnown: Array<{ kind: string; value: string }> = [];
-
-    for (const kind of new Set(["jurisdiction", ...candidate.release.requiredFactKinds])) {
-      const matching = input.facts.filter(
-        (row) => row.factKind === kind && covers(row, input.date),
-      );
-
-      const confirmed = matching.filter((row) =>
-        isConfirmed(input.reviews.find((entry) => entry.factRevisionId === row.id)),
-      );
-
-      if (confirmed.length !== 1) {
-        gaps.push(
-          factGap(
-            confirmed.length === 0 && matching.length === 0
-              ? "unknown_fact"
-              : confirmed.length === 0
-                ? "unreviewed_fact"
-                : "ambiguous_fact",
-            kind,
-            input.family,
-          ),
-        );
-        continue;
-      }
-
-      const row = confirmed[0];
-
-      if (row === undefined) continue;
-
-      if (!isEstablished(row)) {
-        gaps.push(factGap("unknown_fact", kind, input.family));
-        continue;
-      }
-
-      const value = knownValue(row);
-
-      pinnedFactRevisionIds.push(row.id);
-      pinnedFactReviewIds.push(row.id);
-
-      if (value !== null) pinnedKnown.push({ kind, value });
-    }
-
-    if (!applicabilityHolds(candidate.release.applicability, pinnedKnown)) {
-      gaps.push(familyGap("inapplicable_release", candidate.row.id, input.family));
-    }
-
-    const pinnedRoleBindingIds: Array<string> = [];
-
-    for (const kind of candidate.release.requiredRoleKinds) {
-      const matching = input.bindings.filter(
-        (row) => row.roleKind === kind && covers(row, input.date),
-      );
-
-      if (matching.length !== 1) {
-        gaps.push(
-          familyGap(
-            matching.length === 0 ? "missing_role_binding" : "ambiguous_role_binding",
-            kind,
-            input.family,
-            [`company_prepare_activation:${input.family}`],
-          ),
-        );
-        continue;
-      }
-
-      const row = matching[0];
-      const account = row === undefined ? undefined : input.accounts.get(row.accountId);
-
-      if (row === undefined) continue;
-
-      if (account === undefined || !account.active) {
-        gaps.push(familyGap("inactive_account", row.accountId, input.family));
-        continue;
-      }
-
-      if (account.version !== row.accountVersion) {
-        gaps.push(familyGap("stale_role_binding", row.id, input.family));
-        continue;
-      }
-
-      pinnedRoleBindingIds.push(row.id);
-    }
-
-    const pinnedLive = effectiveActivations.filter((row) => row.ruleReleaseId === candidate.row.id);
-
-    if (pinnedLive.length > 1) {
-      gaps.push(
-        familyGap("overlapping_activation", input.family, input.family, [
-          `company_execute_activation:${input.family}`,
-        ]),
-      );
-    }
-
-    if (gaps.length > 0) return { witness: null, gaps };
-
-    return {
-      witness: {
-        family: input.family,
-        recordClass: input.recordClass,
-        dates: input.dates,
-        selectorDate: input.date,
-        jurisdiction,
-        ruleReleaseId: candidate.row.id,
-        ruleReleaseChecksum: candidate.row.checksum,
-        factRevisionIds: pinnedFactRevisionIds.sort(),
-        factReviewIds: pinnedFactReviewIds.sort(),
-        roleBindingIds: pinnedRoleBindingIds.sort(),
-        activationId: pinnedLive[0]?.id ?? effectiveActivations[0]?.id ?? null,
-      },
-      gaps,
-    };
+    return sealSelection(input, jurisdiction, pinned, {
+      live: effectiveActivations.filter((row) => row.ruleReleaseId === pinned.row.id),
+      // A pinned release reached through its own activation names that
+      // activation, never another book's or another release's.
+      activationFallback: effectiveActivations[0]?.id ?? null,
+    });
   }
 
-  const candidates = input.releases.filter(
-    (entry) =>
-      entry.row.jurisdiction === jurisdiction &&
-      entry.row.family === input.family &&
-      entry.release.qualificationStatus === "reviewed" &&
-      entry.release.recordClasses.includes(input.recordClass) &&
-      entry.release.validFrom <= input.date &&
-      input.date <= entry.release.validTo,
-  );
+  const candidates = input.releases.filter((entry) => qualifies(entry, input, jurisdiction));
 
   if (candidates.length !== 1) {
     return {
@@ -384,10 +258,84 @@ export function selectWitness(input: {
     return { witness: null, gaps: [familyGap("missing_rule_release", input.family, input.family)] };
   }
 
-  // One review exists per revision, so the selected review identities are the
-  // selected revision identities.
-  const factRevisionIds: Array<string> = [];
-  const factReviewIds: Array<string> = [];
+  return sealSelection(input, jurisdiction, candidate, {
+    live: input.activations.filter(
+      (row) => covers(row, input.date) && row.ruleReleaseId === candidate.row.id,
+    ),
+    // An unactivated preparation has no activation of its own to name.
+    activationFallback: null,
+  });
+}
+
+// One reviewed release, on one family's own date, for one record class. Nothing
+// else makes a release eligible: a qualified release for another jurisdiction,
+// family, record class or validity window is not a candidate.
+function qualifies(entry: Release, input: WitnessInput, jurisdiction: string) {
+  return (
+    entry.row.jurisdiction === jurisdiction &&
+    entry.row.family === input.family &&
+    entry.release.qualificationStatus === "reviewed" &&
+    entry.release.recordClasses.includes(input.recordClass) &&
+    entry.release.validFrom <= input.date &&
+    input.date <= entry.release.validTo
+  );
+}
+
+// The shared selection tail. Both routes have already chosen their release;
+// they differ only in which activations count as live, so confirming the
+// required facts and role bindings and sealing the witness happens exactly once
+// here rather than once per route.
+function sealSelection(
+  input: WitnessInput,
+  jurisdiction: string,
+  candidate: Release,
+  activation: {
+    readonly live: ReadonlyArray<Db.ActivationRow>;
+    readonly activationFallback: string | null;
+  },
+): Selection {
+  const gaps: Array<Gap> = [];
+  const facts = confirmFacts(input, candidate, gaps);
+  const roleBindingIds = activeRoleBindings(input, candidate, gaps);
+
+  if (!applicabilityHolds(candidate.release.applicability, facts.known)) {
+    gaps.push(familyGap("inapplicable_release", candidate.row.id, input.family));
+  }
+
+  if (activation.live.length > 1) {
+    gaps.push(
+      familyGap("overlapping_activation", input.family, input.family, [
+        `company_execute_activation:${input.family}`,
+      ]),
+    );
+  }
+
+  if (gaps.length > 0) return { witness: null, gaps };
+
+  return {
+    witness: {
+      family: input.family,
+      recordClass: input.recordClass,
+      dates: input.dates,
+      selectorDate: input.date,
+      jurisdiction,
+      ruleReleaseId: candidate.row.id,
+      ruleReleaseChecksum: candidate.row.checksum,
+      factRevisionIds: facts.revisionIds.sort(),
+      factReviewIds: facts.reviewIds.sort(),
+      roleBindingIds: roleBindingIds.sort(),
+      activationId: activation.live[0]?.id ?? activation.activationFallback,
+    },
+    gaps,
+  };
+}
+
+// One review exists per revision, so the selected review identities are the
+// selected revision identities. A kind that is missing, unreviewed, ambiguous or
+// unestablished is a named gap and never a silent omission.
+function confirmFacts(input: WitnessInput, candidate: Release, gaps: Array<Gap>) {
+  const revisionIds: Array<string> = [];
+  const reviewIds: Array<string> = [];
   const known: Array<{ kind: string; value: string }> = [];
 
   for (const kind of new Set(["jurisdiction", ...candidate.release.requiredFactKinds])) {
@@ -423,16 +371,19 @@ export function selectWitness(input: {
 
     const value = knownValue(row);
 
-    factRevisionIds.push(row.id);
-    factReviewIds.push(row.id);
+    revisionIds.push(row.id);
+    reviewIds.push(row.id);
 
     if (value !== null) known.push({ kind, value });
   }
 
-  if (!applicabilityHolds(candidate.release.applicability, known)) {
-    gaps.push(familyGap("inapplicable_release", candidate.row.id, input.family));
-  }
+  return { revisionIds, reviewIds, known };
+}
 
+// A role binding is live only when exactly one binding of that kind covers the
+// date, its account is active, and the binding still names the account version
+// it was reviewed against.
+function activeRoleBindings(input: WitnessInput, candidate: Release, gaps: Array<Gap>) {
   const roleBindingIds: Array<string> = [];
 
   for (const kind of candidate.release.requiredRoleKinds) {
@@ -470,34 +421,5 @@ export function selectWitness(input: {
     roleBindingIds.push(row.id);
   }
 
-  const live = input.activations.filter(
-    (row) => covers(row, input.date) && row.ruleReleaseId === candidate.row.id,
-  );
-
-  if (live.length > 1) {
-    gaps.push(
-      familyGap("overlapping_activation", input.family, input.family, [
-        `company_execute_activation:${input.family}`,
-      ]),
-    );
-  }
-
-  if (gaps.length > 0) return { witness: null, gaps };
-
-  return {
-    witness: {
-      family: input.family,
-      recordClass: input.recordClass,
-      dates: input.dates,
-      selectorDate: input.date,
-      jurisdiction,
-      ruleReleaseId: candidate.row.id,
-      ruleReleaseChecksum: candidate.row.checksum,
-      factRevisionIds: factRevisionIds.sort(),
-      factReviewIds: factReviewIds.sort(),
-      roleBindingIds: roleBindingIds.sort(),
-      activationId: live[0]?.id ?? null,
-    },
-    gaps,
-  };
+  return roleBindingIds;
 }
