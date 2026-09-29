@@ -56,6 +56,7 @@
     "./supplier-credits": "./src/supplier-credits.ts",
     "./supplier-refunds": "./src/supplier-refunds.ts",
     "./subledger-controls": "./src/subledger-controls.ts",
+    "./prepayments": "./src/prepayments.ts",
     "./exchange-rates": "./src/exchange-rates.ts",
     "./invoice-issuance": "./src/invoice-issuance.ts",
     "./invoice-cancellations": "./src/invoice-cancellations.ts",

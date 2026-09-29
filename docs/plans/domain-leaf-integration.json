@@ -250,9 +250,11 @@
     },
     {
       "leaf": "prepayments",
-      "status": "deferred",
-      "reason": "Packet keeps schedule and invoice resolution with the subledger/commerce owners.",
-      "unblockedBy": "A subledger owner persists a schedule and calls this leaf for allocation."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/subledger/prepayments.ts"
+      ],
+      "note": "NEXT-31 owner apps/api/src/application/subledger/prepayments.ts composes the leaf at the cost-basis, accrual and invoice-resolution boundaries, extending the existing subledger schedule owner rather than adding a second scheduling engine. The schedule, its revisions and its occurrences stay where the released owner put them; 0039-next-31-prepayments.sql records only the link and the resolution. The expense cost excludes deductible input VAT, so deferring changes expense timing and never a VAT tax point, and no tax fact is created. A residual is a computed difference."
     },
     {
       "leaf": "processor-clearing",

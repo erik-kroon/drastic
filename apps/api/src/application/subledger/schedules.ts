@@ -72,7 +72,7 @@ function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
   );
 }
 
-function toJsonObject(value: unknown) {
+export function toJsonObject(value: unknown) {
   return Schema.decodeUnknownEffect(Schema.JsonObject)(value).pipe(
     Effect.mapError((cause) => failure("InternalError", cause)),
   );
@@ -104,15 +104,15 @@ function withoutKey(value: JsonObject, key: string): JsonObject {
   return Object.fromEntries(Object.entries(value).filter(([name]) => name !== key));
 }
 
-function digestValue(value: Schema.Json) {
+export function digestValue(value: Schema.Json) {
   return toJsonObject(value).pipe(Effect.flatMap((object) => digestNative(object)));
 }
 
-function merge(...sources: ReadonlyArray<JsonObject>): JsonObject {
+export function merge(...sources: ReadonlyArray<JsonObject>): JsonObject {
   return Object.assign({}, ...sources);
 }
 
-function digestBody(body: JsonObject) {
+export function digestBody(body: JsonObject) {
   return digestValue(body).pipe(Effect.map((digest) => merge(body, { digest })));
 }
 
@@ -126,7 +126,7 @@ function isCalendarDate(value: string) {
   return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === value;
 }
 
-function withSubledgerBook<A>(
+export function withSubledgerBook<A>(
   token: string,
   scope: Scope,
   operatorOnly: boolean,
@@ -143,7 +143,7 @@ function withSubledgerBook<A>(
   );
 }
 
-function readBook(transaction: Transaction, scope: Scope) {
+export function readBook(transaction: Transaction, scope: Scope) {
   return Effect.gen(function* () {
     const book = (yield* Db.readBook(transaction, scope))[0];
 
@@ -157,7 +157,7 @@ function readBook(transaction: Transaction, scope: Scope) {
   });
 }
 
-function requireScheduleAccess(transaction: Transaction, write: boolean) {
+export function requireScheduleAccess(transaction: Transaction, write: boolean) {
   return SchedulesDb.readScheduleAccess(transaction).pipe(
     Effect.flatMap((rows) => {
       if (rows.length !== SchedulesDb.scheduleTables.length) return unsupported();
