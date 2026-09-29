@@ -171,9 +171,9 @@
     },
     {
       "leaf": "party-identity",
-      "status": "deferred",
-      "reason": "Packet keeps persistence and invalidation with the directory owners.",
-      "unblockedBy": "A directory owner persists a reviewed resolution and calls this leaf."
+      "status": "wired",
+      "consumers": ["apps/api"],
+      "note": "NEXT-27 owner apps/api/src/application/commerce/party-identity.ts extends the party directory with reviewed resolutions and balance views. It derives members from retained counterparty revisions with all identifiers honestly unverified, requires cited retained evidence for same-entity claims, and groups retained open obligations without netting. No new table; receipts in command_receipts."
     },
     {
       "leaf": "payment-resolutions",

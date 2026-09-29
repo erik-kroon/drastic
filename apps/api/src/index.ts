@@ -69,6 +69,7 @@ import { SupplierInvoiceDraftHandlers } from "./transport/http/routes/supplier-i
 import { SupplierAcceptanceHandlers } from "./transport/http/routes/supplier-acceptance";
 import { SupplierPaymentBatchHandlers } from "./transport/http/routes/supplier-payment-batches";
 import { PaymentResolutionHandlers } from "./transport/http/routes/payment-resolutions";
+import { PartyIdentityHandlers } from "./transport/http/routes/party-identity";
 import { SupplierCreditHandlers } from "./transport/http/routes/supplier-credits";
 import { SupplierRefundHandlers } from "./transport/http/routes/supplier-refunds";
 import { SubledgerControlsHandlers } from "./transport/http/routes/subledger-controls";
@@ -153,6 +154,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     ServicePurchaseHandlers,
     SupplierPaymentBatchHandlers,
     PaymentResolutionHandlers,
+    PartyIdentityHandlers,
     SupplierCreditHandlers,
     SupplierRefundHandlers,
     SubledgerControlsHandlers,

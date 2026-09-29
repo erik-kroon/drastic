@@ -20,6 +20,7 @@ import { reportCapabilities } from "./reports";
 import { reportStatementCapabilities } from "./report-statements";
 import { cashFlowCapabilities } from "./cash-flow";
 import { paymentResolutionCapabilities } from "./payment-resolutions";
+import { partyIdentityCapabilities } from "./party-identity";
 import { annualReportCapabilities } from "./annual-report";
 import { sourceIntakeCapabilities } from "./source-intake";
 import { fxCapabilities } from "./fx";
@@ -55,6 +56,7 @@ export const capabilities = {
   ...reportStatementCapabilities,
   ...cashFlowCapabilities,
   ...paymentResolutionCapabilities,
+  ...partyIdentityCapabilities,
   ...annualReportCapabilities,
   ...sourceIntakeCapabilities,
   ...fxCapabilities,
