@@ -37,6 +37,10 @@ export const accountColumns = [
 const mutableColumns = new Map([
   ["bank_connector_consents", ["revoked_at", "cursor"]],
   ["bank_sources", ["revision"]],
+  [
+    "bank_sync_streams",
+    ["published_cursor", "publication_version", "current_generation_id", "fence", "lease_until"],
+  ],
 ]);
 
 export function unsupported() {

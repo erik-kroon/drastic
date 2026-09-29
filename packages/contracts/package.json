@@ -64,6 +64,7 @@
     "./invoice-policy": "./src/invoice-policy.ts",
     "./invoice-delivery": "./src/invoice-delivery.ts",
     "./bank-connector": "./src/bank-connector.ts",
+    "./bank-sync-windows": "./src/bank-sync-windows.ts",
     "./sie-import": "./src/sie-import.ts",
     "./historical-migration": "./src/historical-migration.ts",
     "./ar-legal-issue": "./src/ar-legal-issue.ts",

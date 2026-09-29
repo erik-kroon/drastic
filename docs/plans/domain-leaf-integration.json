@@ -29,9 +29,11 @@
     },
     {
       "leaf": "bank-sync-windows",
-      "status": "deferred",
-      "reason": "Packet keeps claim/lease persistence with the connector owners; no sync window table exists.",
-      "unblockedBy": "A connector owner owns the window table and calls this leaf at each page boundary."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/banking/sync-windows.ts"
+      ],
+      "note": "NEXT-09 owner apps/api/src/application/banking/sync-windows.ts composes the leaf at the claim, page and publication boundaries, over a per-consent stream pointer and the immutable generation/page/candidate/publication rows in 0036-next-09-sync-windows.sql. Claim, page append and publication are three short transactions with no provider call inside them; the persistent Bun job owns the HTTP call. The published cursor moves only with its publication marker, so a staged generation is never a reviewed bank observation."
     },
     {
       "leaf": "books",

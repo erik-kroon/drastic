@@ -80,6 +80,7 @@ import { OwnerOperationsApi } from "./owner-operations";
 import { FinancialCloseApi } from "./financial-close";
 import { CashFlowApi } from "./cash-flow";
 import { PartyIdentityApi } from "./party-identity";
+import { BankSyncWindowsApi } from "./bank-sync-windows";
 import { FirmApi } from "./firms";
 import { WorkspaceApi } from "./workspace";
 
@@ -187,6 +188,7 @@ export class Api extends HttpApi.make("open-erp")
     StatementApi,
     CashFlowApi,
     PartyIdentityApi,
+    BankSyncWindowsApi,
     ReconciliationApi,
     CasesApi,
     AutomationApi,
