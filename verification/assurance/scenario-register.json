@@ -1,0 +1,389 @@
+{
+  "schema": "openerp-assurance-coverage/v1",
+  "baseline": "6bcfe1e990801294488ff7bbe7df0316c14ff4ee",
+  "meaning": "Implementation coverage inventory, not a passing result or release certificate. E-IDs refer to existing acceptance plan.",
+  "scenarios": [
+    {
+      "id": "ASR-ROUND",
+      "title": "Exact signed rational rounding",
+      "implementation": "implemented_addition",
+      "file": "apps/api/tests/assurance/money.conformance.test.ts",
+      "acceptance_mapping": [
+        "E-02"
+      ],
+      "scope": "420 independent expected results, including exact refusal and 60-digit intermediate arithmetic.",
+      "execution_status": "not_executed_by_package_author"
+    },
+    {
+      "id": "ASR-RELEASE",
+      "title": "Cumulative deduction release",
+      "implementation": "implemented_addition",
+      "file": "apps/api/tests/assurance/money.conformance.test.ts",
+      "acceptance_mapping": [
+        "E-02",
+        "E-13"
+      ],
+      "scope": "72 independently specified release legs, exact final residual and invalid boundaries.",
+      "execution_status": "not_executed_by_package_author"
+    },
+    {
+      "id": "ASR-C14N",
+      "title": "Approval identity bytes",
+      "implementation": "implemented_addition",
+      "file": "apps/api/tests/assurance/canonicalization.conformance.test.ts",
+      "acceptance_mapping": [
+        "E-03",
+        "E-11"
+      ],
+      "scope": "UTF-8 ordering, duplicate decoded keys, no Unicode normalization and versioned versus generic JSON.",
+      "execution_status": "not_executed_by_package_author"
+    },
+    {
+      "id": "ASR-PURCHASE",
+      "title": "Purchase, deduction and line credit",
+      "implementation": "implemented_addition",
+      "file": "apps/api/tests/assurance/purchasing.conformance.test.ts",
+      "acceptance_mapping": [
+        "E-13",
+        "E-16"
+      ],
+      "scope": "Actual production compilers with explicit synthetic treatment, consecutive credits and output-schema roundtrip.",
+      "execution_status": "not_executed_by_package_author"
+    },
+    {
+      "id": "ASR-CASH-METHOD",
+      "title": "Paid/year-end recognition coverage",
+      "implementation": "implemented_addition",
+      "file": "apps/api/tests/assurance/cash-method.conformance.test.ts",
+      "acceptance_mapping": [
+        "E-14",
+        "E-16"
+      ],
+      "scope": "Actual pure cash-method owner, purchase/sale lifecycle and no repeated next-year VAT. Not application integration.",
+      "execution_status": "not_executed_by_package_author"
+    },
+    {
+      "id": "ASR-CYCLE",
+      "title": "Recurrence and business dates",
+      "implementation": "implemented_addition",
+      "file": "apps/api/tests/assurance/calendar.conformance.test.ts",
+      "acceptance_mapping": [
+        "E-02",
+        "E-13"
+      ],
+      "scope": "Original anchor, century leap boundaries, half-open adjacency, pause/resume and Stockholm midnight.",
+      "execution_status": "not_executed_by_package_author"
+    },
+    {
+      "id": "ASR-ATOMIC",
+      "title": "Multi-phase late SQL failures",
+      "implementation": "implemented_addition",
+      "file": "apps/api/tests/assurance/atomicity.e2e.test.ts",
+      "acceptance_mapping": [
+        "E-04",
+        "E-09",
+        "E-20"
+      ],
+      "scope": "Actual workerd request and independent committed-state reads after four scoped failure points.",
+      "execution_status": "not_executed_by_package_author"
+    },
+    {
+      "id": "ASR-RACE",
+      "title": "Observed first-execution contention",
+      "implementation": "implemented_addition",
+      "file": "apps/api/tests/assurance/concurrency.e2e.test.ts",
+      "acceptance_mapping": [
+        "E-05",
+        "E-11"
+      ],
+      "scope": "Two actual runtime PIDs observed blocked behind one book barrier before release. Same receipt after commit.",
+      "execution_status": "not_executed_by_package_author"
+    },
+    {
+      "id": "ASR-UNKNOWN-COMMIT",
+      "title": "Response loss after successful upstream commit",
+      "implementation": "implemented_addition",
+      "file": "apps/api/tests/assurance/response-loss.e2e.test.ts",
+      "acceptance_mapping": [
+        "E-08"
+      ],
+      "scope": "Proxy consumes real successful upstream response then destroys downstream socket. Replays original identity.",
+      "execution_status": "not_executed_by_package_author"
+    },
+    {
+      "id": "ASR-STORAGE",
+      "title": "Extreme line values and large aggregates",
+      "implementation": "implemented_addition",
+      "file": "apps/api/tests/assurance/exact-storage.e2e.test.ts",
+      "acceptance_mapping": [
+        "E-02",
+        "E-10"
+      ],
+      "scope": "1, above MAX_SAFE_INTEGER, maximum 38-digit line and aggregate wider than line.",
+      "execution_status": "not_executed_by_package_author"
+    },
+    {
+      "id": "ASR-ALLOC",
+      "title": "Many-to-many bank capacity",
+      "implementation": "implemented_addition",
+      "file": "apps/api/tests/assurance/bank-capacity.e2e.test.ts",
+      "acceptance_mapping": [
+        "E-13",
+        "E-15"
+      ],
+      "scope": "Both source and target overconsumption, duplicate pair, sign, late leg fault and no new voucher.",
+      "execution_status": "not_executed_by_package_author"
+    },
+    {
+      "id": "ASR-DB-KILL",
+      "title": "Database process interruption",
+      "implementation": "implemented_addition",
+      "file": "apps/api/tests/assurance/interruption.e2e.test.ts",
+      "acceptance_mapping": [
+        "E-09",
+        "E-20"
+      ],
+      "scope": "Backend killed only after observed blocking inside the test-owned late outbox barrier; same-key recovery.",
+      "execution_status": "not_executed_by_package_author"
+    },
+    {
+      "id": "ASR-REVOKE",
+      "title": "Revocation wins before new admission",
+      "implementation": "implemented_addition",
+      "file": "apps/api/tests/assurance/interruption.e2e.test.ts",
+      "acceptance_mapping": [
+        "E-01",
+        "E-11"
+      ],
+      "scope": "Exclusive membership revocation precedes requester shared admission; waiting is observed, not timed speculation.",
+      "execution_status": "not_executed_by_package_author"
+    },
+    {
+      "id": "NATIVE-ADMISSION",
+      "title": "admission",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/admission.e2e.test.ts",
+      "scope": "Current human/machine identity, missing evidence, stale periods and malformed financial inputs.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-POSTING",
+      "title": "posting",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/posting.e2e.test.ts",
+      "scope": "Exact money, same-key replay and historical reversal.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-PERSISTENCE",
+      "title": "persistence",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/persistence.e2e.test.ts",
+      "scope": "Restricted-role integrity, baseline rerun and checksum drift, existing outbox-failure test.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-BANK-REFERENCES",
+      "title": "bank-references",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/bank-references.e2e.test.ts",
+      "scope": "Reference-assisted matching and distinction between bank match and commerce allocation.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-BUSINESS-DATE",
+      "title": "business-date",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/business-date.e2e.test.ts",
+      "scope": "Existing browser date behavior in the actual web journey.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-DOCUMENT-READER",
+      "title": "document-reader",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/document-reader.e2e.test.ts",
+      "scope": "Existing document-reader/browser/recovery journey; read its fixture/proof limitations.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-SUPPLIER-DRAFTS",
+      "title": "supplier-drafts",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/supplier-drafts.e2e.test.ts",
+      "scope": "Existing supplier draft workflow and source scope.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-SUPPLIER-EXTRACTION",
+      "title": "supplier-extraction",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/supplier-extraction.e2e.test.ts",
+      "scope": "Existing synthetic extraction jobs, immutable originals and reviewed fields.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-SUPPLIER-REFUNDS",
+      "title": "supplier-refunds",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/supplier-refunds.e2e.test.ts",
+      "scope": "Existing supplier refund implementation cases.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-SUPPLIER-REFUND-JOURNEY",
+      "title": "supplier-refund-journey",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/supplier-refund-journey.e2e.test.ts",
+      "scope": "Existing cross-layer purchasing/credit/refund journey.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-FINANCIAL-CLOSE",
+      "title": "financial-close",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/financial-close.e2e.test.ts",
+      "scope": "Existing closing/opening/correction runtime scenarios.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-CASH-FLOW-STATEMENT",
+      "title": "cash-flow-statement",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/cash-flow-statement.e2e.test.ts",
+      "scope": "Existing cash-flow statement owner and lineage cases.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-CREDIT-DOCUMENT",
+      "title": "credit-document",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/credit-document.e2e.test.ts",
+      "scope": "Existing legal-credit semantic/artifact behavior.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-DIMENSION-RESTATEMENT",
+      "title": "dimension-restatement",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/dimension-restatement.e2e.test.ts",
+      "scope": "Existing analytical classification projection cases.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-SIE-DIMENSIONS",
+      "title": "sie-dimensions",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/sie-dimensions.e2e.test.ts",
+      "scope": "Existing SIE source/output/dimension qualification subset.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-VAT-ASSESSMENT",
+      "title": "vat-assessment",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/vat-assessment.e2e.test.ts",
+      "scope": "Existing supported VAT assessment/obligation cases.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-MCP",
+      "title": "mcp",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/mcp.e2e.test.ts",
+      "scope": "Existing real JSON-RPC protocol/schema behavior.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-MCP-AUTHORITY",
+      "title": "mcp-authority",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/mcp-authority.e2e.test.ts",
+      "scope": "Existing agent versus operator authority boundaries.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "NATIVE-EVIDENCE-MANIFEST",
+      "title": "evidence-manifest",
+      "implementation": "existing_suite_reused_not_copied",
+      "file": "apps/api/tests/evidence-manifest.e2e.test.ts",
+      "scope": "Existing fixed-revision source/evidence artifact tests.",
+      "execution_status": "not_executed_by_package_author",
+      "review_note": "File discovery plus existing suite documentation; not all source bodies were read in this task."
+    },
+    {
+      "id": "GAP-PAYROLL-PROFILES",
+      "title": "Qualified real-company payroll/AGI regimes",
+      "implementation": "explicit_coverage_gap",
+      "scope": "Synthetic algebra and input schema are not jurisdiction/person eligibility or actual signed/submitted AGI. Add profile-specific direct compiler and end-to-end fixtures when supported.",
+      "execution_status": "not_implemented_by_this_package",
+      "release_effect": "Blocks any claim that requires this capability; not counted as a skipped/passed test."
+    },
+    {
+      "id": "GAP-JOBS",
+      "title": "effect-mq delivery/lease/rotation matrix",
+      "implementation": "explicit_coverage_gap",
+      "scope": "Existing extraction hosts are useful but do not prove every queue claim, credential rotation, cancellation and stale handler race. Add actual job-driver cases; no new generic queue implementation.",
+      "execution_status": "not_implemented_by_this_package",
+      "release_effect": "Blocks any claim that requires this capability; not counted as a skipped/passed test."
+    },
+    {
+      "id": "GAP-FILING",
+      "title": "Live filing and signature acceptance",
+      "implementation": "explicit_coverage_gap",
+      "scope": "Do not use recorded fake provider success as real Skatteverket/Bolagsverket/BankID entitlement or acceptance. Preserve exact-byte adapter tests and explicitly approved sandbox acceptance separately.",
+      "execution_status": "not_implemented_by_this_package",
+      "release_effect": "Blocks any claim that requires this capability; not counted as a skipped/passed test."
+    },
+    {
+      "id": "GAP-RESTORE",
+      "title": "Complete evidence-bearing restore and obsolete-writer fencing",
+      "implementation": "explicit_coverage_gap",
+      "scope": "Source-manifest tests do not restore a database/object archive or prove old credentials/network fenced. Requires a dedicated isolated maintenance exercise with actual artifact inventory.",
+      "execution_status": "not_implemented_by_this_package",
+      "release_effect": "Blocks any claim that requires this capability; not counted as a skipped/passed test."
+    },
+    {
+      "id": "GAP-UI",
+      "title": "All accessibility and human approval journeys",
+      "implementation": "explicit_coverage_gap",
+      "scope": "Existing browser cases are reused. They do not prove every form at actual 200% zoom, focus recovery, session switching or provider interruption.",
+      "execution_status": "not_implemented_by_this_package",
+      "release_effect": "Blocks any claim that requires this capability; not counted as a skipped/passed test."
+    },
+    {
+      "id": "GAP-RULES",
+      "title": "Every Swedish profile and every NEXT packet",
+      "implementation": "explicit_coverage_gap",
+      "scope": "A code/test file count cannot qualify all 125 planning packets. Missing, unimplemented and inapplicable profiles remain separate.",
+      "execution_status": "not_implemented_by_this_package",
+      "release_effect": "Blocks any claim that requires this capability; not counted as a skipped/passed test."
+    },
+    {
+      "id": "GAP-REFERENCES",
+      "title": "Complete cross-repository behavioral equivalence",
+      "implementation": "explicit_coverage_gap",
+      "scope": "Only selected test patterns were studied. No full Accounted/ERPNext suite was ported or executed; their policy defaults are not authority for OpenERP.",
+      "execution_status": "not_implemented_by_this_package",
+      "release_effect": "Blocks any claim that requires this capability; not counted as a skipped/passed test."
+    }
+  ]
+}

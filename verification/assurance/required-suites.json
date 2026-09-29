@@ -1,0 +1,56 @@
+{
+  "nativeFiles": [
+    "apps/api/tests/admission.e2e.test.ts",
+    "apps/api/tests/bank-references.e2e.test.ts",
+    "apps/api/tests/business-date.e2e.test.ts",
+    "apps/api/tests/cash-flow-statement.e2e.test.ts",
+    "apps/api/tests/credit-document.e2e.test.ts",
+    "apps/api/tests/dimension-restatement.e2e.test.ts",
+    "apps/api/tests/document-reader.e2e.test.ts",
+    "apps/api/tests/evidence-manifest.e2e.test.ts",
+    "apps/api/tests/financial-close.e2e.test.ts",
+    "apps/api/tests/mcp-authority.e2e.test.ts",
+    "apps/api/tests/mcp.e2e.test.ts",
+    "apps/api/tests/persistence.e2e.test.ts",
+    "apps/api/tests/posting.e2e.test.ts",
+    "apps/api/tests/sie-dimensions.e2e.test.ts",
+    "apps/api/tests/supplier-drafts.e2e.test.ts",
+    "apps/api/tests/supplier-extraction.e2e.test.ts",
+    "apps/api/tests/supplier-refund-journey.e2e.test.ts",
+    "apps/api/tests/supplier-refunds.e2e.test.ts",
+    "apps/api/tests/vat-assessment.e2e.test.ts",
+    "apps/api/tests/assurance/atomicity.e2e.test.ts",
+    "apps/api/tests/assurance/concurrency.e2e.test.ts",
+    "apps/api/tests/assurance/response-loss.e2e.test.ts",
+    "apps/api/tests/assurance/exact-storage.e2e.test.ts",
+    "apps/api/tests/assurance/bank-capacity.e2e.test.ts",
+    "apps/api/tests/assurance/interruption.e2e.test.ts"
+  ],
+  "pureFiles": [
+    "apps/api/tests/assurance/money.conformance.test.ts",
+    "apps/api/tests/assurance/canonicalization.conformance.test.ts",
+    "apps/api/tests/assurance/purchasing.conformance.test.ts",
+    "apps/api/tests/assurance/calendar.conformance.test.ts",
+    "apps/api/tests/assurance/cash-method.conformance.test.ts"
+  ],
+  "nativePrefixes": [
+    "[ASR-ATOMIC]",
+    "[ASR-RACE]",
+    "[ASR-UNKNOWN-COMMIT]",
+    "[ASR-STORAGE-EXACT]",
+    "[ASR-AGGREGATE]",
+    "[ASR-ALLOC-REFUSE]",
+    "[ASR-ALLOC-ATOMIC]",
+    "[ASR-DB-KILL]",
+    "[ASR-REVOKE-ORDER]"
+  ],
+  "purePrefixes": [
+    "[ASR-ROUND]",
+    "[ASR-RELEASE]",
+    "[ASR-C14N]",
+    "[ASR-PURCHASE-MULTILINE]",
+    "[ASR-CREDIT-SEQUENCE]",
+    "[ASR-CYCLE-ADJACENCY]",
+    "[ASR-CASH-METHOD]"
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "scope": "Synthetic expectations for supported arithmetic/profile fixtures, not legal tax data.",
+  "vectors": [
+    {
+      "id": "PURCHASE-HALF-DEDUCTION",
+      "net": "10000",
+      "sourceTax": "2500",
+      "deductibleTax": "1250",
+      "expense": "11250",
+      "payable": "12500"
+    },
+    {
+      "id": "CREDIT-PARTIAL-THEN-FINAL",
+      "originalNet": "100",
+      "originalTax": "25",
+      "originalDeduction": "13",
+      "legs": [
+        {
+          "net": "40",
+          "tax": "10",
+          "deduction": "5"
+        },
+        {
+          "net": "60",
+          "tax": "15",
+          "deduction": "8"
+        }
+      ]
+    },
+    {
+      "id": "PAID-CREDIT",
+      "G": "125000",
+      "P": "100000",
+      "K": "50000",
+      "Q": "10000",
+      "unpaid": "0",
+      "refundPrincipal": "25000",
+      "refundDue": "15000"
+    },
+    {
+      "id": "FX-VALUATION-THEN-SETTLEMENT",
+      "opening": "110000",
+      "revalued": "115000",
+      "cash": "116000",
+      "valuationGain": "5000",
+      "settlementGain": "1000"
+    },
+    {
+      "id": "SCHEDULE-FINAL-REMAINDER",
+      "total": "10000",
+      "shares": [
+        "3333",
+        "3333",
+        "3334"
+      ]
+    },
+    {
+      "id": "FALSE-RECONCILIATION",
+      "unexplained": [
+        "500",
+        "-500"
+      ],
+      "sum": "0",
+      "ready": false
+    }
+  ]
+}

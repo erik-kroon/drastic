@@ -1,0 +1,47 @@
+{
+  "provenance": "Manually specified canonical strings and Python hashlib digests. UTF-8 ordering, no normalization.",
+  "cases": [
+    {
+      "id": "C14N-KEYS",
+      "input": "{ \"z\": 2, \"a\": \"9007199254740993\" }",
+      "expected": "{\"a\":\"9007199254740993\",\"z\":2}",
+      "sha256": "8e477832574d0718ce83a2b21b15a8dc95064a422e87a20e0c60a916b7cbde45"
+    },
+    {
+      "id": "C14N-ARRAY",
+      "input": "{\"x\":[3,1,2],\"a\":true}",
+      "expected": "{\"a\":true,\"x\":[3,1,2]}",
+      "sha256": "95ee6c6e2cf2892d455d8ba38615a86320591f3ebc7b66d3188554bd4c9d6a54"
+    },
+    {
+      "id": "C14N-UTF8",
+      "input": "{\"𐀀\":1,\"\":2,\"z\":3}",
+      "expected": "{\"z\":3,\"\":2,\"𐀀\":1}",
+      "sha256": "24ba547b7dd83ea2e77bd3aeecb57c7b162b5fd97c4a53f0e190d572b697836a"
+    },
+    {
+      "id": "C14N-NO-NFC",
+      "input": "{\"b\":\"å\",\"a\":\"å\"}",
+      "expected": "{\"a\":\"å\",\"b\":\"å\"}",
+      "sha256": "6885aa9b5d3bd2148512ebf72b9a1fff6c0f223f1cc16899bded5c6d130352e9"
+    },
+    {
+      "id": "C14N-ESCAPES",
+      "input": "{\"v\":\"a\\n\\t\\u0000b\",\"q\":\"\\\"\\\\\"}",
+      "expected": "{\"q\":\"\\\"\\\\\",\"v\":\"a\\n\\t\\u0000b\"}",
+      "sha256": "1e541c1d3953dd4221b88e827063da18d02e306b8e8f6a6e8067d179339de567"
+    },
+    {
+      "id": "C14N-GENERIC-ARRAY",
+      "input": "[\"x\",null,false]",
+      "expected": "[\"x\",null,false]",
+      "sha256": "331a25a7968c688be77657cc538019751a8cd9fcd423b5cfd34c58f4ad26350e"
+    },
+    {
+      "id": "C14N-SAFE-MAX",
+      "input": "{\"v\":9007199254740991}",
+      "expected": "{\"v\":9007199254740991}",
+      "sha256": "210e9afd5b97d46616c53c7bc51eb7349d44183691bb0866ae2ef6a2b798823f"
+    }
+  ]
+}

@@ -1,0 +1,653 @@
+{
+  "provenance": "Cumulative independently rounded endpoints; final endpoint is original capacity.",
+  "cases": [
+    {
+      "id": "RELEASE-001",
+      "capacity": "0",
+      "basis": "7",
+      "consumed": "0",
+      "consume": "2",
+      "mode": "floor",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-002",
+      "capacity": "0",
+      "basis": "7",
+      "consumed": "2",
+      "consume": "2",
+      "mode": "floor",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-003",
+      "capacity": "0",
+      "basis": "7",
+      "consumed": "4",
+      "consume": "3",
+      "mode": "floor",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-004",
+      "capacity": "0",
+      "basis": "7",
+      "consumed": "0",
+      "consume": "2",
+      "mode": "toward_zero",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-005",
+      "capacity": "0",
+      "basis": "7",
+      "consumed": "2",
+      "consume": "2",
+      "mode": "toward_zero",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-006",
+      "capacity": "0",
+      "basis": "7",
+      "consumed": "4",
+      "consume": "3",
+      "mode": "toward_zero",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-007",
+      "capacity": "0",
+      "basis": "7",
+      "consumed": "0",
+      "consume": "2",
+      "mode": "half_up",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-008",
+      "capacity": "0",
+      "basis": "7",
+      "consumed": "2",
+      "consume": "2",
+      "mode": "half_up",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-009",
+      "capacity": "0",
+      "basis": "7",
+      "consumed": "4",
+      "consume": "3",
+      "mode": "half_up",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-010",
+      "capacity": "0",
+      "basis": "7",
+      "consumed": "0",
+      "consume": "2",
+      "mode": "half_even",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-011",
+      "capacity": "0",
+      "basis": "7",
+      "consumed": "2",
+      "consume": "2",
+      "mode": "half_even",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-012",
+      "capacity": "0",
+      "basis": "7",
+      "consumed": "4",
+      "consume": "3",
+      "mode": "half_even",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-013",
+      "capacity": "1",
+      "basis": "3",
+      "consumed": "0",
+      "consume": "1",
+      "mode": "floor",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-014",
+      "capacity": "1",
+      "basis": "3",
+      "consumed": "1",
+      "consume": "1",
+      "mode": "floor",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-015",
+      "capacity": "1",
+      "basis": "3",
+      "consumed": "2",
+      "consume": "1",
+      "mode": "floor",
+      "expected": "1"
+    },
+    {
+      "id": "RELEASE-016",
+      "capacity": "1",
+      "basis": "3",
+      "consumed": "0",
+      "consume": "1",
+      "mode": "toward_zero",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-017",
+      "capacity": "1",
+      "basis": "3",
+      "consumed": "1",
+      "consume": "1",
+      "mode": "toward_zero",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-018",
+      "capacity": "1",
+      "basis": "3",
+      "consumed": "2",
+      "consume": "1",
+      "mode": "toward_zero",
+      "expected": "1"
+    },
+    {
+      "id": "RELEASE-019",
+      "capacity": "1",
+      "basis": "3",
+      "consumed": "0",
+      "consume": "1",
+      "mode": "half_up",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-020",
+      "capacity": "1",
+      "basis": "3",
+      "consumed": "1",
+      "consume": "1",
+      "mode": "half_up",
+      "expected": "1"
+    },
+    {
+      "id": "RELEASE-021",
+      "capacity": "1",
+      "basis": "3",
+      "consumed": "2",
+      "consume": "1",
+      "mode": "half_up",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-022",
+      "capacity": "1",
+      "basis": "3",
+      "consumed": "0",
+      "consume": "1",
+      "mode": "half_even",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-023",
+      "capacity": "1",
+      "basis": "3",
+      "consumed": "1",
+      "consume": "1",
+      "mode": "half_even",
+      "expected": "1"
+    },
+    {
+      "id": "RELEASE-024",
+      "capacity": "1",
+      "basis": "3",
+      "consumed": "2",
+      "consume": "1",
+      "mode": "half_even",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-025",
+      "capacity": "2",
+      "basis": "3",
+      "consumed": "0",
+      "consume": "1",
+      "mode": "floor",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-026",
+      "capacity": "2",
+      "basis": "3",
+      "consumed": "1",
+      "consume": "1",
+      "mode": "floor",
+      "expected": "1"
+    },
+    {
+      "id": "RELEASE-027",
+      "capacity": "2",
+      "basis": "3",
+      "consumed": "2",
+      "consume": "1",
+      "mode": "floor",
+      "expected": "1"
+    },
+    {
+      "id": "RELEASE-028",
+      "capacity": "2",
+      "basis": "3",
+      "consumed": "0",
+      "consume": "1",
+      "mode": "toward_zero",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-029",
+      "capacity": "2",
+      "basis": "3",
+      "consumed": "1",
+      "consume": "1",
+      "mode": "toward_zero",
+      "expected": "1"
+    },
+    {
+      "id": "RELEASE-030",
+      "capacity": "2",
+      "basis": "3",
+      "consumed": "2",
+      "consume": "1",
+      "mode": "toward_zero",
+      "expected": "1"
+    },
+    {
+      "id": "RELEASE-031",
+      "capacity": "2",
+      "basis": "3",
+      "consumed": "0",
+      "consume": "1",
+      "mode": "half_up",
+      "expected": "1"
+    },
+    {
+      "id": "RELEASE-032",
+      "capacity": "2",
+      "basis": "3",
+      "consumed": "1",
+      "consume": "1",
+      "mode": "half_up",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-033",
+      "capacity": "2",
+      "basis": "3",
+      "consumed": "2",
+      "consume": "1",
+      "mode": "half_up",
+      "expected": "1"
+    },
+    {
+      "id": "RELEASE-034",
+      "capacity": "2",
+      "basis": "3",
+      "consumed": "0",
+      "consume": "1",
+      "mode": "half_even",
+      "expected": "1"
+    },
+    {
+      "id": "RELEASE-035",
+      "capacity": "2",
+      "basis": "3",
+      "consumed": "1",
+      "consume": "1",
+      "mode": "half_even",
+      "expected": "0"
+    },
+    {
+      "id": "RELEASE-036",
+      "capacity": "2",
+      "basis": "3",
+      "consumed": "2",
+      "consume": "1",
+      "mode": "half_even",
+      "expected": "1"
+    },
+    {
+      "id": "RELEASE-037",
+      "capacity": "13",
+      "basis": "25",
+      "consumed": "0",
+      "consume": "8",
+      "mode": "floor",
+      "expected": "4"
+    },
+    {
+      "id": "RELEASE-038",
+      "capacity": "13",
+      "basis": "25",
+      "consumed": "8",
+      "consume": "8",
+      "mode": "floor",
+      "expected": "4"
+    },
+    {
+      "id": "RELEASE-039",
+      "capacity": "13",
+      "basis": "25",
+      "consumed": "16",
+      "consume": "9",
+      "mode": "floor",
+      "expected": "5"
+    },
+    {
+      "id": "RELEASE-040",
+      "capacity": "13",
+      "basis": "25",
+      "consumed": "0",
+      "consume": "8",
+      "mode": "toward_zero",
+      "expected": "4"
+    },
+    {
+      "id": "RELEASE-041",
+      "capacity": "13",
+      "basis": "25",
+      "consumed": "8",
+      "consume": "8",
+      "mode": "toward_zero",
+      "expected": "4"
+    },
+    {
+      "id": "RELEASE-042",
+      "capacity": "13",
+      "basis": "25",
+      "consumed": "16",
+      "consume": "9",
+      "mode": "toward_zero",
+      "expected": "5"
+    },
+    {
+      "id": "RELEASE-043",
+      "capacity": "13",
+      "basis": "25",
+      "consumed": "0",
+      "consume": "8",
+      "mode": "half_up",
+      "expected": "4"
+    },
+    {
+      "id": "RELEASE-044",
+      "capacity": "13",
+      "basis": "25",
+      "consumed": "8",
+      "consume": "8",
+      "mode": "half_up",
+      "expected": "4"
+    },
+    {
+      "id": "RELEASE-045",
+      "capacity": "13",
+      "basis": "25",
+      "consumed": "16",
+      "consume": "9",
+      "mode": "half_up",
+      "expected": "5"
+    },
+    {
+      "id": "RELEASE-046",
+      "capacity": "13",
+      "basis": "25",
+      "consumed": "0",
+      "consume": "8",
+      "mode": "half_even",
+      "expected": "4"
+    },
+    {
+      "id": "RELEASE-047",
+      "capacity": "13",
+      "basis": "25",
+      "consumed": "8",
+      "consume": "8",
+      "mode": "half_even",
+      "expected": "4"
+    },
+    {
+      "id": "RELEASE-048",
+      "capacity": "13",
+      "basis": "25",
+      "consumed": "16",
+      "consume": "9",
+      "mode": "half_even",
+      "expected": "5"
+    },
+    {
+      "id": "RELEASE-049",
+      "capacity": "1250",
+      "basis": "2500",
+      "consumed": "0",
+      "consume": "833",
+      "mode": "floor",
+      "expected": "416"
+    },
+    {
+      "id": "RELEASE-050",
+      "capacity": "1250",
+      "basis": "2500",
+      "consumed": "833",
+      "consume": "833",
+      "mode": "floor",
+      "expected": "417"
+    },
+    {
+      "id": "RELEASE-051",
+      "capacity": "1250",
+      "basis": "2500",
+      "consumed": "1666",
+      "consume": "834",
+      "mode": "floor",
+      "expected": "417"
+    },
+    {
+      "id": "RELEASE-052",
+      "capacity": "1250",
+      "basis": "2500",
+      "consumed": "0",
+      "consume": "833",
+      "mode": "toward_zero",
+      "expected": "416"
+    },
+    {
+      "id": "RELEASE-053",
+      "capacity": "1250",
+      "basis": "2500",
+      "consumed": "833",
+      "consume": "833",
+      "mode": "toward_zero",
+      "expected": "417"
+    },
+    {
+      "id": "RELEASE-054",
+      "capacity": "1250",
+      "basis": "2500",
+      "consumed": "1666",
+      "consume": "834",
+      "mode": "toward_zero",
+      "expected": "417"
+    },
+    {
+      "id": "RELEASE-055",
+      "capacity": "1250",
+      "basis": "2500",
+      "consumed": "0",
+      "consume": "833",
+      "mode": "half_up",
+      "expected": "417"
+    },
+    {
+      "id": "RELEASE-056",
+      "capacity": "1250",
+      "basis": "2500",
+      "consumed": "833",
+      "consume": "833",
+      "mode": "half_up",
+      "expected": "416"
+    },
+    {
+      "id": "RELEASE-057",
+      "capacity": "1250",
+      "basis": "2500",
+      "consumed": "1666",
+      "consume": "834",
+      "mode": "half_up",
+      "expected": "417"
+    },
+    {
+      "id": "RELEASE-058",
+      "capacity": "1250",
+      "basis": "2500",
+      "consumed": "0",
+      "consume": "833",
+      "mode": "half_even",
+      "expected": "416"
+    },
+    {
+      "id": "RELEASE-059",
+      "capacity": "1250",
+      "basis": "2500",
+      "consumed": "833",
+      "consume": "833",
+      "mode": "half_even",
+      "expected": "417"
+    },
+    {
+      "id": "RELEASE-060",
+      "capacity": "1250",
+      "basis": "2500",
+      "consumed": "1666",
+      "consume": "834",
+      "mode": "half_even",
+      "expected": "417"
+    },
+    {
+      "id": "RELEASE-061",
+      "capacity": "9007199254740993",
+      "basis": "11",
+      "consumed": "0",
+      "consume": "3",
+      "mode": "floor",
+      "expected": "2456508887656634"
+    },
+    {
+      "id": "RELEASE-062",
+      "capacity": "9007199254740993",
+      "basis": "11",
+      "consumed": "3",
+      "consume": "3",
+      "mode": "floor",
+      "expected": "2456508887656634"
+    },
+    {
+      "id": "RELEASE-063",
+      "capacity": "9007199254740993",
+      "basis": "11",
+      "consumed": "6",
+      "consume": "5",
+      "mode": "floor",
+      "expected": "4094181479427725"
+    },
+    {
+      "id": "RELEASE-064",
+      "capacity": "9007199254740993",
+      "basis": "11",
+      "consumed": "0",
+      "consume": "3",
+      "mode": "toward_zero",
+      "expected": "2456508887656634"
+    },
+    {
+      "id": "RELEASE-065",
+      "capacity": "9007199254740993",
+      "basis": "11",
+      "consumed": "3",
+      "consume": "3",
+      "mode": "toward_zero",
+      "expected": "2456508887656634"
+    },
+    {
+      "id": "RELEASE-066",
+      "capacity": "9007199254740993",
+      "basis": "11",
+      "consumed": "6",
+      "consume": "5",
+      "mode": "toward_zero",
+      "expected": "4094181479427725"
+    },
+    {
+      "id": "RELEASE-067",
+      "capacity": "9007199254740993",
+      "basis": "11",
+      "consumed": "0",
+      "consume": "3",
+      "mode": "half_up",
+      "expected": "2456508887656634"
+    },
+    {
+      "id": "RELEASE-068",
+      "capacity": "9007199254740993",
+      "basis": "11",
+      "consumed": "3",
+      "consume": "3",
+      "mode": "half_up",
+      "expected": "2456508887656635"
+    },
+    {
+      "id": "RELEASE-069",
+      "capacity": "9007199254740993",
+      "basis": "11",
+      "consumed": "6",
+      "consume": "5",
+      "mode": "half_up",
+      "expected": "4094181479427724"
+    },
+    {
+      "id": "RELEASE-070",
+      "capacity": "9007199254740993",
+      "basis": "11",
+      "consumed": "0",
+      "consume": "3",
+      "mode": "half_even",
+      "expected": "2456508887656634"
+    },
+    {
+      "id": "RELEASE-071",
+      "capacity": "9007199254740993",
+      "basis": "11",
+      "consumed": "3",
+      "consume": "3",
+      "mode": "half_even",
+      "expected": "2456508887656635"
+    },
+    {
+      "id": "RELEASE-072",
+      "capacity": "9007199254740993",
+      "basis": "11",
+      "consumed": "6",
+      "consume": "5",
+      "mode": "half_even",
+      "expected": "4094181479427724"
+    }
+  ]
+}

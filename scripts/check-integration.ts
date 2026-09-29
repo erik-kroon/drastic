@@ -178,7 +178,15 @@ function consumerSourceFiles(): ReadonlyArray<string> {
   return consumerRoots
     .map((root) => join(repositoryRoot, root))
     .filter((path) => existsSync(path) && statSync(path).isDirectory())
-    .flatMap((path) => listSourceFiles(path));
+    .flatMap((path) => listSourceFiles(path))
+    .filter((path) => !isTestOwned(path));
+}
+
+// Conformance and journey tests prove a leaf's contract but do not deliver its
+// packet: no application owner composes the leaf. Counting them as consumers
+// would mark an unwired leaf wired to make this check pass.
+function isTestOwned(path: string): boolean {
+  return path.includes("/tests/") || path.endsWith(".test.ts") || path.endsWith(".test.tsx");
 }
 
 // A leaf counts as consumed when something outside `packages/domain` imports

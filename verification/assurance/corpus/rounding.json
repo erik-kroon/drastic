@@ -1,0 +1,3365 @@
+{
+  "provenance": "Independent Python Fraction/division calculation. Synthetic arithmetic, no statutory claims.",
+  "cases": [
+    {
+      "id": "ROUND-001",
+      "n": "-101",
+      "d": "1",
+      "mode": "exact",
+      "expected": "-101",
+      "failure": null
+    },
+    {
+      "id": "ROUND-002",
+      "n": "-101",
+      "d": "1",
+      "mode": "floor",
+      "expected": "-101",
+      "failure": null
+    },
+    {
+      "id": "ROUND-003",
+      "n": "-101",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "-101",
+      "failure": null
+    },
+    {
+      "id": "ROUND-004",
+      "n": "-101",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "-101",
+      "failure": null
+    },
+    {
+      "id": "ROUND-005",
+      "n": "-101",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "-101",
+      "failure": null
+    },
+    {
+      "id": "ROUND-006",
+      "n": "-101",
+      "d": "2",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-007",
+      "n": "-101",
+      "d": "2",
+      "mode": "floor",
+      "expected": "-51",
+      "failure": null
+    },
+    {
+      "id": "ROUND-008",
+      "n": "-101",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "-50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-009",
+      "n": "-101",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "-51",
+      "failure": null
+    },
+    {
+      "id": "ROUND-010",
+      "n": "-101",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "-50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-011",
+      "n": "-101",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-012",
+      "n": "-101",
+      "d": "4",
+      "mode": "floor",
+      "expected": "-26",
+      "failure": null
+    },
+    {
+      "id": "ROUND-013",
+      "n": "-101",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "-25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-014",
+      "n": "-101",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "-25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-015",
+      "n": "-101",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "-25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-016",
+      "n": "-101",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-017",
+      "n": "-101",
+      "d": "100",
+      "mode": "floor",
+      "expected": "-2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-018",
+      "n": "-101",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-019",
+      "n": "-101",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-020",
+      "n": "-101",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-021",
+      "n": "-100",
+      "d": "1",
+      "mode": "exact",
+      "expected": "-100",
+      "failure": null
+    },
+    {
+      "id": "ROUND-022",
+      "n": "-100",
+      "d": "1",
+      "mode": "floor",
+      "expected": "-100",
+      "failure": null
+    },
+    {
+      "id": "ROUND-023",
+      "n": "-100",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "-100",
+      "failure": null
+    },
+    {
+      "id": "ROUND-024",
+      "n": "-100",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "-100",
+      "failure": null
+    },
+    {
+      "id": "ROUND-025",
+      "n": "-100",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "-100",
+      "failure": null
+    },
+    {
+      "id": "ROUND-026",
+      "n": "-100",
+      "d": "2",
+      "mode": "exact",
+      "expected": "-50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-027",
+      "n": "-100",
+      "d": "2",
+      "mode": "floor",
+      "expected": "-50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-028",
+      "n": "-100",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "-50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-029",
+      "n": "-100",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "-50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-030",
+      "n": "-100",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "-50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-031",
+      "n": "-100",
+      "d": "4",
+      "mode": "exact",
+      "expected": "-25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-032",
+      "n": "-100",
+      "d": "4",
+      "mode": "floor",
+      "expected": "-25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-033",
+      "n": "-100",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "-25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-034",
+      "n": "-100",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "-25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-035",
+      "n": "-100",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "-25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-036",
+      "n": "-100",
+      "d": "100",
+      "mode": "exact",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-037",
+      "n": "-100",
+      "d": "100",
+      "mode": "floor",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-038",
+      "n": "-100",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-039",
+      "n": "-100",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-040",
+      "n": "-100",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-041",
+      "n": "-99",
+      "d": "1",
+      "mode": "exact",
+      "expected": "-99",
+      "failure": null
+    },
+    {
+      "id": "ROUND-042",
+      "n": "-99",
+      "d": "1",
+      "mode": "floor",
+      "expected": "-99",
+      "failure": null
+    },
+    {
+      "id": "ROUND-043",
+      "n": "-99",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "-99",
+      "failure": null
+    },
+    {
+      "id": "ROUND-044",
+      "n": "-99",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "-99",
+      "failure": null
+    },
+    {
+      "id": "ROUND-045",
+      "n": "-99",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "-99",
+      "failure": null
+    },
+    {
+      "id": "ROUND-046",
+      "n": "-99",
+      "d": "2",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-047",
+      "n": "-99",
+      "d": "2",
+      "mode": "floor",
+      "expected": "-50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-048",
+      "n": "-99",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "-49",
+      "failure": null
+    },
+    {
+      "id": "ROUND-049",
+      "n": "-99",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "-50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-050",
+      "n": "-99",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "-50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-051",
+      "n": "-99",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-052",
+      "n": "-99",
+      "d": "4",
+      "mode": "floor",
+      "expected": "-25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-053",
+      "n": "-99",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "-24",
+      "failure": null
+    },
+    {
+      "id": "ROUND-054",
+      "n": "-99",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "-25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-055",
+      "n": "-99",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "-25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-056",
+      "n": "-99",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-057",
+      "n": "-99",
+      "d": "100",
+      "mode": "floor",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-058",
+      "n": "-99",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-059",
+      "n": "-99",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-060",
+      "n": "-99",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-061",
+      "n": "-7",
+      "d": "1",
+      "mode": "exact",
+      "expected": "-7",
+      "failure": null
+    },
+    {
+      "id": "ROUND-062",
+      "n": "-7",
+      "d": "1",
+      "mode": "floor",
+      "expected": "-7",
+      "failure": null
+    },
+    {
+      "id": "ROUND-063",
+      "n": "-7",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "-7",
+      "failure": null
+    },
+    {
+      "id": "ROUND-064",
+      "n": "-7",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "-7",
+      "failure": null
+    },
+    {
+      "id": "ROUND-065",
+      "n": "-7",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "-7",
+      "failure": null
+    },
+    {
+      "id": "ROUND-066",
+      "n": "-7",
+      "d": "2",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-067",
+      "n": "-7",
+      "d": "2",
+      "mode": "floor",
+      "expected": "-4",
+      "failure": null
+    },
+    {
+      "id": "ROUND-068",
+      "n": "-7",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "-3",
+      "failure": null
+    },
+    {
+      "id": "ROUND-069",
+      "n": "-7",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "-4",
+      "failure": null
+    },
+    {
+      "id": "ROUND-070",
+      "n": "-7",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "-4",
+      "failure": null
+    },
+    {
+      "id": "ROUND-071",
+      "n": "-7",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-072",
+      "n": "-7",
+      "d": "4",
+      "mode": "floor",
+      "expected": "-2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-073",
+      "n": "-7",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-074",
+      "n": "-7",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "-2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-075",
+      "n": "-7",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "-2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-076",
+      "n": "-7",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-077",
+      "n": "-7",
+      "d": "100",
+      "mode": "floor",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-078",
+      "n": "-7",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-079",
+      "n": "-7",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-080",
+      "n": "-7",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-081",
+      "n": "-5",
+      "d": "1",
+      "mode": "exact",
+      "expected": "-5",
+      "failure": null
+    },
+    {
+      "id": "ROUND-082",
+      "n": "-5",
+      "d": "1",
+      "mode": "floor",
+      "expected": "-5",
+      "failure": null
+    },
+    {
+      "id": "ROUND-083",
+      "n": "-5",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "-5",
+      "failure": null
+    },
+    {
+      "id": "ROUND-084",
+      "n": "-5",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "-5",
+      "failure": null
+    },
+    {
+      "id": "ROUND-085",
+      "n": "-5",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "-5",
+      "failure": null
+    },
+    {
+      "id": "ROUND-086",
+      "n": "-5",
+      "d": "2",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-087",
+      "n": "-5",
+      "d": "2",
+      "mode": "floor",
+      "expected": "-3",
+      "failure": null
+    },
+    {
+      "id": "ROUND-088",
+      "n": "-5",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "-2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-089",
+      "n": "-5",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "-3",
+      "failure": null
+    },
+    {
+      "id": "ROUND-090",
+      "n": "-5",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "-2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-091",
+      "n": "-5",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-092",
+      "n": "-5",
+      "d": "4",
+      "mode": "floor",
+      "expected": "-2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-093",
+      "n": "-5",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-094",
+      "n": "-5",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-095",
+      "n": "-5",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-096",
+      "n": "-5",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-097",
+      "n": "-5",
+      "d": "100",
+      "mode": "floor",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-098",
+      "n": "-5",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-099",
+      "n": "-5",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-100",
+      "n": "-5",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-101",
+      "n": "-3",
+      "d": "1",
+      "mode": "exact",
+      "expected": "-3",
+      "failure": null
+    },
+    {
+      "id": "ROUND-102",
+      "n": "-3",
+      "d": "1",
+      "mode": "floor",
+      "expected": "-3",
+      "failure": null
+    },
+    {
+      "id": "ROUND-103",
+      "n": "-3",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "-3",
+      "failure": null
+    },
+    {
+      "id": "ROUND-104",
+      "n": "-3",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "-3",
+      "failure": null
+    },
+    {
+      "id": "ROUND-105",
+      "n": "-3",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "-3",
+      "failure": null
+    },
+    {
+      "id": "ROUND-106",
+      "n": "-3",
+      "d": "2",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-107",
+      "n": "-3",
+      "d": "2",
+      "mode": "floor",
+      "expected": "-2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-108",
+      "n": "-3",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-109",
+      "n": "-3",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "-2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-110",
+      "n": "-3",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "-2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-111",
+      "n": "-3",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-112",
+      "n": "-3",
+      "d": "4",
+      "mode": "floor",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-113",
+      "n": "-3",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-114",
+      "n": "-3",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-115",
+      "n": "-3",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-116",
+      "n": "-3",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-117",
+      "n": "-3",
+      "d": "100",
+      "mode": "floor",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-118",
+      "n": "-3",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-119",
+      "n": "-3",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-120",
+      "n": "-3",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-121",
+      "n": "-2",
+      "d": "1",
+      "mode": "exact",
+      "expected": "-2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-122",
+      "n": "-2",
+      "d": "1",
+      "mode": "floor",
+      "expected": "-2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-123",
+      "n": "-2",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "-2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-124",
+      "n": "-2",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "-2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-125",
+      "n": "-2",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "-2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-126",
+      "n": "-2",
+      "d": "2",
+      "mode": "exact",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-127",
+      "n": "-2",
+      "d": "2",
+      "mode": "floor",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-128",
+      "n": "-2",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-129",
+      "n": "-2",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-130",
+      "n": "-2",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-131",
+      "n": "-2",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-132",
+      "n": "-2",
+      "d": "4",
+      "mode": "floor",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-133",
+      "n": "-2",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-134",
+      "n": "-2",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-135",
+      "n": "-2",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-136",
+      "n": "-2",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-137",
+      "n": "-2",
+      "d": "100",
+      "mode": "floor",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-138",
+      "n": "-2",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-139",
+      "n": "-2",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-140",
+      "n": "-2",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-141",
+      "n": "-1",
+      "d": "1",
+      "mode": "exact",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-142",
+      "n": "-1",
+      "d": "1",
+      "mode": "floor",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-143",
+      "n": "-1",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-144",
+      "n": "-1",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-145",
+      "n": "-1",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-146",
+      "n": "-1",
+      "d": "2",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-147",
+      "n": "-1",
+      "d": "2",
+      "mode": "floor",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-148",
+      "n": "-1",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-149",
+      "n": "-1",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-150",
+      "n": "-1",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-151",
+      "n": "-1",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-152",
+      "n": "-1",
+      "d": "4",
+      "mode": "floor",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-153",
+      "n": "-1",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-154",
+      "n": "-1",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-155",
+      "n": "-1",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-156",
+      "n": "-1",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-157",
+      "n": "-1",
+      "d": "100",
+      "mode": "floor",
+      "expected": "-1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-158",
+      "n": "-1",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-159",
+      "n": "-1",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-160",
+      "n": "-1",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-161",
+      "n": "0",
+      "d": "1",
+      "mode": "exact",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-162",
+      "n": "0",
+      "d": "1",
+      "mode": "floor",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-163",
+      "n": "0",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-164",
+      "n": "0",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-165",
+      "n": "0",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-166",
+      "n": "0",
+      "d": "2",
+      "mode": "exact",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-167",
+      "n": "0",
+      "d": "2",
+      "mode": "floor",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-168",
+      "n": "0",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-169",
+      "n": "0",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-170",
+      "n": "0",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-171",
+      "n": "0",
+      "d": "4",
+      "mode": "exact",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-172",
+      "n": "0",
+      "d": "4",
+      "mode": "floor",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-173",
+      "n": "0",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-174",
+      "n": "0",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-175",
+      "n": "0",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-176",
+      "n": "0",
+      "d": "100",
+      "mode": "exact",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-177",
+      "n": "0",
+      "d": "100",
+      "mode": "floor",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-178",
+      "n": "0",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-179",
+      "n": "0",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-180",
+      "n": "0",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-181",
+      "n": "1",
+      "d": "1",
+      "mode": "exact",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-182",
+      "n": "1",
+      "d": "1",
+      "mode": "floor",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-183",
+      "n": "1",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-184",
+      "n": "1",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-185",
+      "n": "1",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-186",
+      "n": "1",
+      "d": "2",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-187",
+      "n": "1",
+      "d": "2",
+      "mode": "floor",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-188",
+      "n": "1",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-189",
+      "n": "1",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-190",
+      "n": "1",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-191",
+      "n": "1",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-192",
+      "n": "1",
+      "d": "4",
+      "mode": "floor",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-193",
+      "n": "1",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-194",
+      "n": "1",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-195",
+      "n": "1",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-196",
+      "n": "1",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-197",
+      "n": "1",
+      "d": "100",
+      "mode": "floor",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-198",
+      "n": "1",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-199",
+      "n": "1",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-200",
+      "n": "1",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-201",
+      "n": "2",
+      "d": "1",
+      "mode": "exact",
+      "expected": "2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-202",
+      "n": "2",
+      "d": "1",
+      "mode": "floor",
+      "expected": "2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-203",
+      "n": "2",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-204",
+      "n": "2",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-205",
+      "n": "2",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-206",
+      "n": "2",
+      "d": "2",
+      "mode": "exact",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-207",
+      "n": "2",
+      "d": "2",
+      "mode": "floor",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-208",
+      "n": "2",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-209",
+      "n": "2",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-210",
+      "n": "2",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-211",
+      "n": "2",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-212",
+      "n": "2",
+      "d": "4",
+      "mode": "floor",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-213",
+      "n": "2",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-214",
+      "n": "2",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-215",
+      "n": "2",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-216",
+      "n": "2",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-217",
+      "n": "2",
+      "d": "100",
+      "mode": "floor",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-218",
+      "n": "2",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-219",
+      "n": "2",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-220",
+      "n": "2",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-221",
+      "n": "3",
+      "d": "1",
+      "mode": "exact",
+      "expected": "3",
+      "failure": null
+    },
+    {
+      "id": "ROUND-222",
+      "n": "3",
+      "d": "1",
+      "mode": "floor",
+      "expected": "3",
+      "failure": null
+    },
+    {
+      "id": "ROUND-223",
+      "n": "3",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "3",
+      "failure": null
+    },
+    {
+      "id": "ROUND-224",
+      "n": "3",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "3",
+      "failure": null
+    },
+    {
+      "id": "ROUND-225",
+      "n": "3",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "3",
+      "failure": null
+    },
+    {
+      "id": "ROUND-226",
+      "n": "3",
+      "d": "2",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-227",
+      "n": "3",
+      "d": "2",
+      "mode": "floor",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-228",
+      "n": "3",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-229",
+      "n": "3",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-230",
+      "n": "3",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-231",
+      "n": "3",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-232",
+      "n": "3",
+      "d": "4",
+      "mode": "floor",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-233",
+      "n": "3",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-234",
+      "n": "3",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-235",
+      "n": "3",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-236",
+      "n": "3",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-237",
+      "n": "3",
+      "d": "100",
+      "mode": "floor",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-238",
+      "n": "3",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-239",
+      "n": "3",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-240",
+      "n": "3",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-241",
+      "n": "5",
+      "d": "1",
+      "mode": "exact",
+      "expected": "5",
+      "failure": null
+    },
+    {
+      "id": "ROUND-242",
+      "n": "5",
+      "d": "1",
+      "mode": "floor",
+      "expected": "5",
+      "failure": null
+    },
+    {
+      "id": "ROUND-243",
+      "n": "5",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "5",
+      "failure": null
+    },
+    {
+      "id": "ROUND-244",
+      "n": "5",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "5",
+      "failure": null
+    },
+    {
+      "id": "ROUND-245",
+      "n": "5",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "5",
+      "failure": null
+    },
+    {
+      "id": "ROUND-246",
+      "n": "5",
+      "d": "2",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-247",
+      "n": "5",
+      "d": "2",
+      "mode": "floor",
+      "expected": "2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-248",
+      "n": "5",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-249",
+      "n": "5",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "3",
+      "failure": null
+    },
+    {
+      "id": "ROUND-250",
+      "n": "5",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-251",
+      "n": "5",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-252",
+      "n": "5",
+      "d": "4",
+      "mode": "floor",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-253",
+      "n": "5",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-254",
+      "n": "5",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-255",
+      "n": "5",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-256",
+      "n": "5",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-257",
+      "n": "5",
+      "d": "100",
+      "mode": "floor",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-258",
+      "n": "5",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-259",
+      "n": "5",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-260",
+      "n": "5",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-261",
+      "n": "7",
+      "d": "1",
+      "mode": "exact",
+      "expected": "7",
+      "failure": null
+    },
+    {
+      "id": "ROUND-262",
+      "n": "7",
+      "d": "1",
+      "mode": "floor",
+      "expected": "7",
+      "failure": null
+    },
+    {
+      "id": "ROUND-263",
+      "n": "7",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "7",
+      "failure": null
+    },
+    {
+      "id": "ROUND-264",
+      "n": "7",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "7",
+      "failure": null
+    },
+    {
+      "id": "ROUND-265",
+      "n": "7",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "7",
+      "failure": null
+    },
+    {
+      "id": "ROUND-266",
+      "n": "7",
+      "d": "2",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-267",
+      "n": "7",
+      "d": "2",
+      "mode": "floor",
+      "expected": "3",
+      "failure": null
+    },
+    {
+      "id": "ROUND-268",
+      "n": "7",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "3",
+      "failure": null
+    },
+    {
+      "id": "ROUND-269",
+      "n": "7",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "4",
+      "failure": null
+    },
+    {
+      "id": "ROUND-270",
+      "n": "7",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "4",
+      "failure": null
+    },
+    {
+      "id": "ROUND-271",
+      "n": "7",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-272",
+      "n": "7",
+      "d": "4",
+      "mode": "floor",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-273",
+      "n": "7",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-274",
+      "n": "7",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-275",
+      "n": "7",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "2",
+      "failure": null
+    },
+    {
+      "id": "ROUND-276",
+      "n": "7",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-277",
+      "n": "7",
+      "d": "100",
+      "mode": "floor",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-278",
+      "n": "7",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-279",
+      "n": "7",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-280",
+      "n": "7",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-281",
+      "n": "99",
+      "d": "1",
+      "mode": "exact",
+      "expected": "99",
+      "failure": null
+    },
+    {
+      "id": "ROUND-282",
+      "n": "99",
+      "d": "1",
+      "mode": "floor",
+      "expected": "99",
+      "failure": null
+    },
+    {
+      "id": "ROUND-283",
+      "n": "99",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "99",
+      "failure": null
+    },
+    {
+      "id": "ROUND-284",
+      "n": "99",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "99",
+      "failure": null
+    },
+    {
+      "id": "ROUND-285",
+      "n": "99",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "99",
+      "failure": null
+    },
+    {
+      "id": "ROUND-286",
+      "n": "99",
+      "d": "2",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-287",
+      "n": "99",
+      "d": "2",
+      "mode": "floor",
+      "expected": "49",
+      "failure": null
+    },
+    {
+      "id": "ROUND-288",
+      "n": "99",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "49",
+      "failure": null
+    },
+    {
+      "id": "ROUND-289",
+      "n": "99",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-290",
+      "n": "99",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-291",
+      "n": "99",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-292",
+      "n": "99",
+      "d": "4",
+      "mode": "floor",
+      "expected": "24",
+      "failure": null
+    },
+    {
+      "id": "ROUND-293",
+      "n": "99",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "24",
+      "failure": null
+    },
+    {
+      "id": "ROUND-294",
+      "n": "99",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-295",
+      "n": "99",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-296",
+      "n": "99",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-297",
+      "n": "99",
+      "d": "100",
+      "mode": "floor",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-298",
+      "n": "99",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "0",
+      "failure": null
+    },
+    {
+      "id": "ROUND-299",
+      "n": "99",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-300",
+      "n": "99",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-301",
+      "n": "100",
+      "d": "1",
+      "mode": "exact",
+      "expected": "100",
+      "failure": null
+    },
+    {
+      "id": "ROUND-302",
+      "n": "100",
+      "d": "1",
+      "mode": "floor",
+      "expected": "100",
+      "failure": null
+    },
+    {
+      "id": "ROUND-303",
+      "n": "100",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "100",
+      "failure": null
+    },
+    {
+      "id": "ROUND-304",
+      "n": "100",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "100",
+      "failure": null
+    },
+    {
+      "id": "ROUND-305",
+      "n": "100",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "100",
+      "failure": null
+    },
+    {
+      "id": "ROUND-306",
+      "n": "100",
+      "d": "2",
+      "mode": "exact",
+      "expected": "50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-307",
+      "n": "100",
+      "d": "2",
+      "mode": "floor",
+      "expected": "50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-308",
+      "n": "100",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-309",
+      "n": "100",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-310",
+      "n": "100",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-311",
+      "n": "100",
+      "d": "4",
+      "mode": "exact",
+      "expected": "25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-312",
+      "n": "100",
+      "d": "4",
+      "mode": "floor",
+      "expected": "25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-313",
+      "n": "100",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-314",
+      "n": "100",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-315",
+      "n": "100",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-316",
+      "n": "100",
+      "d": "100",
+      "mode": "exact",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-317",
+      "n": "100",
+      "d": "100",
+      "mode": "floor",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-318",
+      "n": "100",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-319",
+      "n": "100",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-320",
+      "n": "100",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-321",
+      "n": "101",
+      "d": "1",
+      "mode": "exact",
+      "expected": "101",
+      "failure": null
+    },
+    {
+      "id": "ROUND-322",
+      "n": "101",
+      "d": "1",
+      "mode": "floor",
+      "expected": "101",
+      "failure": null
+    },
+    {
+      "id": "ROUND-323",
+      "n": "101",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "101",
+      "failure": null
+    },
+    {
+      "id": "ROUND-324",
+      "n": "101",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "101",
+      "failure": null
+    },
+    {
+      "id": "ROUND-325",
+      "n": "101",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "101",
+      "failure": null
+    },
+    {
+      "id": "ROUND-326",
+      "n": "101",
+      "d": "2",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-327",
+      "n": "101",
+      "d": "2",
+      "mode": "floor",
+      "expected": "50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-328",
+      "n": "101",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-329",
+      "n": "101",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "51",
+      "failure": null
+    },
+    {
+      "id": "ROUND-330",
+      "n": "101",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "50",
+      "failure": null
+    },
+    {
+      "id": "ROUND-331",
+      "n": "101",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-332",
+      "n": "101",
+      "d": "4",
+      "mode": "floor",
+      "expected": "25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-333",
+      "n": "101",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-334",
+      "n": "101",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-335",
+      "n": "101",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "25",
+      "failure": null
+    },
+    {
+      "id": "ROUND-336",
+      "n": "101",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-337",
+      "n": "101",
+      "d": "100",
+      "mode": "floor",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-338",
+      "n": "101",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-339",
+      "n": "101",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-340",
+      "n": "101",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "1",
+      "failure": null
+    },
+    {
+      "id": "ROUND-341",
+      "n": "9007199254740993",
+      "d": "1",
+      "mode": "exact",
+      "expected": "9007199254740993",
+      "failure": null
+    },
+    {
+      "id": "ROUND-342",
+      "n": "9007199254740993",
+      "d": "1",
+      "mode": "floor",
+      "expected": "9007199254740993",
+      "failure": null
+    },
+    {
+      "id": "ROUND-343",
+      "n": "9007199254740993",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "9007199254740993",
+      "failure": null
+    },
+    {
+      "id": "ROUND-344",
+      "n": "9007199254740993",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "9007199254740993",
+      "failure": null
+    },
+    {
+      "id": "ROUND-345",
+      "n": "9007199254740993",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "9007199254740993",
+      "failure": null
+    },
+    {
+      "id": "ROUND-346",
+      "n": "9007199254740993",
+      "d": "2",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-347",
+      "n": "9007199254740993",
+      "d": "2",
+      "mode": "floor",
+      "expected": "4503599627370496",
+      "failure": null
+    },
+    {
+      "id": "ROUND-348",
+      "n": "9007199254740993",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "4503599627370496",
+      "failure": null
+    },
+    {
+      "id": "ROUND-349",
+      "n": "9007199254740993",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "4503599627370497",
+      "failure": null
+    },
+    {
+      "id": "ROUND-350",
+      "n": "9007199254740993",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "4503599627370496",
+      "failure": null
+    },
+    {
+      "id": "ROUND-351",
+      "n": "9007199254740993",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-352",
+      "n": "9007199254740993",
+      "d": "4",
+      "mode": "floor",
+      "expected": "2251799813685248",
+      "failure": null
+    },
+    {
+      "id": "ROUND-353",
+      "n": "9007199254740993",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "2251799813685248",
+      "failure": null
+    },
+    {
+      "id": "ROUND-354",
+      "n": "9007199254740993",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "2251799813685248",
+      "failure": null
+    },
+    {
+      "id": "ROUND-355",
+      "n": "9007199254740993",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "2251799813685248",
+      "failure": null
+    },
+    {
+      "id": "ROUND-356",
+      "n": "9007199254740993",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-357",
+      "n": "9007199254740993",
+      "d": "100",
+      "mode": "floor",
+      "expected": "90071992547409",
+      "failure": null
+    },
+    {
+      "id": "ROUND-358",
+      "n": "9007199254740993",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "90071992547409",
+      "failure": null
+    },
+    {
+      "id": "ROUND-359",
+      "n": "9007199254740993",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "90071992547410",
+      "failure": null
+    },
+    {
+      "id": "ROUND-360",
+      "n": "9007199254740993",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "90071992547410",
+      "failure": null
+    },
+    {
+      "id": "ROUND-361",
+      "n": "-9007199254740993",
+      "d": "1",
+      "mode": "exact",
+      "expected": "-9007199254740993",
+      "failure": null
+    },
+    {
+      "id": "ROUND-362",
+      "n": "-9007199254740993",
+      "d": "1",
+      "mode": "floor",
+      "expected": "-9007199254740993",
+      "failure": null
+    },
+    {
+      "id": "ROUND-363",
+      "n": "-9007199254740993",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "-9007199254740993",
+      "failure": null
+    },
+    {
+      "id": "ROUND-364",
+      "n": "-9007199254740993",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "-9007199254740993",
+      "failure": null
+    },
+    {
+      "id": "ROUND-365",
+      "n": "-9007199254740993",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "-9007199254740993",
+      "failure": null
+    },
+    {
+      "id": "ROUND-366",
+      "n": "-9007199254740993",
+      "d": "2",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-367",
+      "n": "-9007199254740993",
+      "d": "2",
+      "mode": "floor",
+      "expected": "-4503599627370497",
+      "failure": null
+    },
+    {
+      "id": "ROUND-368",
+      "n": "-9007199254740993",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "-4503599627370496",
+      "failure": null
+    },
+    {
+      "id": "ROUND-369",
+      "n": "-9007199254740993",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "-4503599627370497",
+      "failure": null
+    },
+    {
+      "id": "ROUND-370",
+      "n": "-9007199254740993",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "-4503599627370496",
+      "failure": null
+    },
+    {
+      "id": "ROUND-371",
+      "n": "-9007199254740993",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-372",
+      "n": "-9007199254740993",
+      "d": "4",
+      "mode": "floor",
+      "expected": "-2251799813685249",
+      "failure": null
+    },
+    {
+      "id": "ROUND-373",
+      "n": "-9007199254740993",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "-2251799813685248",
+      "failure": null
+    },
+    {
+      "id": "ROUND-374",
+      "n": "-9007199254740993",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "-2251799813685248",
+      "failure": null
+    },
+    {
+      "id": "ROUND-375",
+      "n": "-9007199254740993",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "-2251799813685248",
+      "failure": null
+    },
+    {
+      "id": "ROUND-376",
+      "n": "-9007199254740993",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-377",
+      "n": "-9007199254740993",
+      "d": "100",
+      "mode": "floor",
+      "expected": "-90071992547410",
+      "failure": null
+    },
+    {
+      "id": "ROUND-378",
+      "n": "-9007199254740993",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "-90071992547409",
+      "failure": null
+    },
+    {
+      "id": "ROUND-379",
+      "n": "-9007199254740993",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "-90071992547410",
+      "failure": null
+    },
+    {
+      "id": "ROUND-380",
+      "n": "-9007199254740993",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "-90071992547410",
+      "failure": null
+    },
+    {
+      "id": "ROUND-381",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "1",
+      "mode": "exact",
+      "expected": "1000000000000000000000000000000000000000000000000000000000025",
+      "failure": null
+    },
+    {
+      "id": "ROUND-382",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "1",
+      "mode": "floor",
+      "expected": "1000000000000000000000000000000000000000000000000000000000025",
+      "failure": null
+    },
+    {
+      "id": "ROUND-383",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "1000000000000000000000000000000000000000000000000000000000025",
+      "failure": null
+    },
+    {
+      "id": "ROUND-384",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "1000000000000000000000000000000000000000000000000000000000025",
+      "failure": null
+    },
+    {
+      "id": "ROUND-385",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "1000000000000000000000000000000000000000000000000000000000025",
+      "failure": null
+    },
+    {
+      "id": "ROUND-386",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "2",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-387",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "2",
+      "mode": "floor",
+      "expected": "500000000000000000000000000000000000000000000000000000000012",
+      "failure": null
+    },
+    {
+      "id": "ROUND-388",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "500000000000000000000000000000000000000000000000000000000012",
+      "failure": null
+    },
+    {
+      "id": "ROUND-389",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "500000000000000000000000000000000000000000000000000000000013",
+      "failure": null
+    },
+    {
+      "id": "ROUND-390",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "500000000000000000000000000000000000000000000000000000000012",
+      "failure": null
+    },
+    {
+      "id": "ROUND-391",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-392",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "4",
+      "mode": "floor",
+      "expected": "250000000000000000000000000000000000000000000000000000000006",
+      "failure": null
+    },
+    {
+      "id": "ROUND-393",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "250000000000000000000000000000000000000000000000000000000006",
+      "failure": null
+    },
+    {
+      "id": "ROUND-394",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "250000000000000000000000000000000000000000000000000000000006",
+      "failure": null
+    },
+    {
+      "id": "ROUND-395",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "250000000000000000000000000000000000000000000000000000000006",
+      "failure": null
+    },
+    {
+      "id": "ROUND-396",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-397",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "100",
+      "mode": "floor",
+      "expected": "10000000000000000000000000000000000000000000000000000000000",
+      "failure": null
+    },
+    {
+      "id": "ROUND-398",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "10000000000000000000000000000000000000000000000000000000000",
+      "failure": null
+    },
+    {
+      "id": "ROUND-399",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "10000000000000000000000000000000000000000000000000000000000",
+      "failure": null
+    },
+    {
+      "id": "ROUND-400",
+      "n": "1000000000000000000000000000000000000000000000000000000000025",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "10000000000000000000000000000000000000000000000000000000000",
+      "failure": null
+    },
+    {
+      "id": "ROUND-401",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "1",
+      "mode": "exact",
+      "expected": "-1000000000000000000000000000000000000000000000000000000000025",
+      "failure": null
+    },
+    {
+      "id": "ROUND-402",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "1",
+      "mode": "floor",
+      "expected": "-1000000000000000000000000000000000000000000000000000000000025",
+      "failure": null
+    },
+    {
+      "id": "ROUND-403",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "1",
+      "mode": "toward_zero",
+      "expected": "-1000000000000000000000000000000000000000000000000000000000025",
+      "failure": null
+    },
+    {
+      "id": "ROUND-404",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "1",
+      "mode": "half_up",
+      "expected": "-1000000000000000000000000000000000000000000000000000000000025",
+      "failure": null
+    },
+    {
+      "id": "ROUND-405",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "1",
+      "mode": "half_even",
+      "expected": "-1000000000000000000000000000000000000000000000000000000000025",
+      "failure": null
+    },
+    {
+      "id": "ROUND-406",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "2",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-407",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "2",
+      "mode": "floor",
+      "expected": "-500000000000000000000000000000000000000000000000000000000013",
+      "failure": null
+    },
+    {
+      "id": "ROUND-408",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "2",
+      "mode": "toward_zero",
+      "expected": "-500000000000000000000000000000000000000000000000000000000012",
+      "failure": null
+    },
+    {
+      "id": "ROUND-409",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "2",
+      "mode": "half_up",
+      "expected": "-500000000000000000000000000000000000000000000000000000000013",
+      "failure": null
+    },
+    {
+      "id": "ROUND-410",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "2",
+      "mode": "half_even",
+      "expected": "-500000000000000000000000000000000000000000000000000000000012",
+      "failure": null
+    },
+    {
+      "id": "ROUND-411",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "4",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-412",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "4",
+      "mode": "floor",
+      "expected": "-250000000000000000000000000000000000000000000000000000000007",
+      "failure": null
+    },
+    {
+      "id": "ROUND-413",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "4",
+      "mode": "toward_zero",
+      "expected": "-250000000000000000000000000000000000000000000000000000000006",
+      "failure": null
+    },
+    {
+      "id": "ROUND-414",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "4",
+      "mode": "half_up",
+      "expected": "-250000000000000000000000000000000000000000000000000000000006",
+      "failure": null
+    },
+    {
+      "id": "ROUND-415",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "4",
+      "mode": "half_even",
+      "expected": "-250000000000000000000000000000000000000000000000000000000006",
+      "failure": null
+    },
+    {
+      "id": "ROUND-416",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "100",
+      "mode": "exact",
+      "expected": null,
+      "failure": "UnsupportedRounding"
+    },
+    {
+      "id": "ROUND-417",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "100",
+      "mode": "floor",
+      "expected": "-10000000000000000000000000000000000000000000000000000000001",
+      "failure": null
+    },
+    {
+      "id": "ROUND-418",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "100",
+      "mode": "toward_zero",
+      "expected": "-10000000000000000000000000000000000000000000000000000000000",
+      "failure": null
+    },
+    {
+      "id": "ROUND-419",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "100",
+      "mode": "half_up",
+      "expected": "-10000000000000000000000000000000000000000000000000000000000",
+      "failure": null
+    },
+    {
+      "id": "ROUND-420",
+      "n": "-1000000000000000000000000000000000000000000000000000000000025",
+      "d": "100",
+      "mode": "half_even",
+      "expected": "-10000000000000000000000000000000000000000000000000000000000",
+      "failure": null
+    }
+  ]
+}
