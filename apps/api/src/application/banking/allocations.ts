@@ -275,6 +275,11 @@ export const prepareBankAllocation = Effect.fn("banking.allocation.prepare")(fun
         snapshot: yield* Shared.toJsonObject(snapshot),
         createdBy: principal.actorId,
         createdAt: yield* isoNow(transaction),
+        receipt: Shared.receipt(
+          command.idempotencyKey,
+          "prepare_bank_allocation",
+          principal.actorId,
+        ),
       } satisfies JsonObject);
 
       const sealed = Object.assign({}, body, { digest: yield* digest(body) });

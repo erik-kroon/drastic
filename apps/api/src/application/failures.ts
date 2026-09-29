@@ -1,6 +1,7 @@
 import * as Accounting from "@open-erp/domain/errors";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
+import * as Logger from "effect/Logger";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import * as SchemaIssue from "effect/SchemaIssue";
@@ -120,5 +121,5 @@ export const logFailure = Effect.fn("Accounting.logFailure")(function* (
       code: error.code,
       diagnostic: diagnosticCause(causes.get(error) ?? error),
     }),
-  );
+  ).pipe(Effect.provideService(Logger.LogToStderr, true));
 });

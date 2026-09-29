@@ -78,7 +78,8 @@ and attaches it to both the response and Effect logs. Nested diagnostic data is
 serialized explicitly so Worker console formatting cannot collapse it to
 `[Object]` or `[Array]`. The transaction boundary logs unexpected failures once;
 the outer fetch boundary covers acquisition failures. Public error bodies remain
-generic. `request()` prints 5xx method/URL/status/body/request-ID context, and
+generic. Diagnostic logs go to stderr so Bun subprocess stdout remains usable
+for JSON responses. `request()` prints 5xx method/URL/status/body/request-ID context, and
 `decoded()`/`failure()` include it in failed assertions.
 
 The connection regression covers PostgreSQL authentication rejection, not every

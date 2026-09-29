@@ -45,6 +45,7 @@ async function diagnostic(response: Response) {
     server.getLogs().filter((log) => requestId !== null && log.message.includes(requestId));
 
   await expect.poll(() => matching().length).toBe(1);
+  expect(matching().map((entry) => entry.level)).toEqual(["error"]);
 
   return JSON.stringify(matching());
 }
