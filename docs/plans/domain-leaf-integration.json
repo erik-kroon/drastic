@@ -62,9 +62,11 @@
     },
     {
       "leaf": "cash-method",
-      "status": "deferred",
-      "reason": "NEXT-38 is a calculation leaf whose cash-method application owner was never built.",
-      "unblockedBy": "The cash/bank owner adopts this leaf for cash-method assignment."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/commerce/cash-method.ts"
+      ],
+      "note": "NEXT-38 owner apps/api/src/application/commerce/cash-method.ts composes the leaf at the payment-recognition and year-end boundaries, extending the existing commerce invoice owner. The net and tax split is read from the retained recognition voucher's journal lines, classified by the retained VAT account role, and the commercial gross from the invoice's own amount, so no caller ever states an amount. 0040-next-38-cash-method.sql holds the recognized prefix, the append-only recognition history naming its trigger, and one cutover run per period. The line advances one version under the version the writer observed, so a concurrent recognition cannot both succeed."
     },
     {
       "leaf": "collection-reminders",

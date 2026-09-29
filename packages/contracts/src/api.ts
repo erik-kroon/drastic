@@ -83,6 +83,7 @@ import { PartyIdentityApi } from "./party-identity";
 import { BankSyncWindowsApi } from "./bank-sync-windows";
 import { BankSourceRevisionsApi } from "./bank-source-revisions";
 import { PrepaymentsApi } from "./prepayments";
+import { CashMethodApi } from "./cash-method";
 import { FirmApi } from "./firms";
 import { WorkspaceApi } from "./workspace";
 
@@ -193,6 +194,7 @@ export class Api extends HttpApi.make("open-erp")
     BankSyncWindowsApi,
     BankSourceRevisionsApi,
     PrepaymentsApi,
+    CashMethodApi,
     ReconciliationApi,
     CasesApi,
     AutomationApi,

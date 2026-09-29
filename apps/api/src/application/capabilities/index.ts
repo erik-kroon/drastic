@@ -10,6 +10,7 @@ import { bankingCapabilities } from "./banking";
 import { bankingSyncCapabilities } from "./bank-sync-windows";
 import { bankingSourceRevisionCapabilities } from "./bank-source-revisions";
 import { prepaymentCapabilities } from "./prepayments";
+import { cashMethodCapabilities } from "./cash-method";
 import { subledgerOwnerCapabilities } from "./subledger-owners";
 import { commerceInvoiceCapabilities } from "./commerce-invoices";
 import { purchaseRecognitionCapabilities } from "./purchase-recognition";
@@ -49,6 +50,7 @@ export const capabilities = {
   ...bankingSyncCapabilities,
   ...bankingSourceRevisionCapabilities,
   ...prepaymentCapabilities,
+  ...cashMethodCapabilities,
   ...subledgerOwnerCapabilities,
   ...commerceInvoiceCapabilities,
   ...purchaseRecognitionCapabilities,
