@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Three precise semantic mutants in an isolated, disposable Git worktree only. */
 import { mkdtemp, readFile, writeFile, rm, mkdir } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,11 +13,37 @@ const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 if (process.argv.length !== 2)
   throw new Error("Usage: node verification/assurance/scripts/mutate.mjs");
 
-const status = tool("git", ["status", "--porcelain", "--untracked-files=all"], { cwd: repo });
+// Ignore generated evidence/build/cache outputs, exactly as captureSources does:
+// the local Bend stage legitimately rewrites its evidence receipts, and the
+// mutation worktree is built from the committed revision, not from those bytes.
+// Real source drift must still refuse.
+// Read NUL-delimited porcelain without trimming, so every record keeps its
+// exact "XY <path>" status columns. A trimmed line would lose the leading
+// column of the first record and silently shift the path.
+const porcelainRecords = execFileSync(
+  "git",
+  ["status", "--porcelain", "-z", "--untracked-files=all"],
+  { cwd: repo, encoding: "utf8", maxBuffer: 20 * 1024 * 1024 },
+)
+  .split("\0")
+  .filter(Boolean);
 
-if (status)
+const generatedOutput = (record) => {
+  const path = record.slice(3).replace(/^"(.*)"$/, "$1");
+
+  return (
+    /(^|\/)(node_modules|dist|\.wrangler|test-results)(\/|$)/.test(path) ||
+    path.endsWith(".tsbuildinfo") ||
+    /(^|\/)tsconfig\.changed\.json$/.test(path) ||
+    /^verification\/bend\/(?:authority\/)?evidence\//.test(path)
+  );
+};
+
+const status = porcelainRecords.filter((record) => !generatedOutput(record));
+
+if (status.length)
   throw new Error(
-    "Mutation requires a clean committed checkout including this suite. Never mutate the active dirty worktree.",
+    `Mutation requires a clean committed checkout including this suite. Never mutate the active dirty worktree.\n${status.join("\n")}`,
   );
 
 const temp = await mkdtemp(join(tmpdir(), "openerp-assurance-mutation-"));
