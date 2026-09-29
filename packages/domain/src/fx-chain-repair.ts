@@ -139,16 +139,37 @@ function sumMinor(values: ReadonlyArray<string>): bigint {
   return total;
 }
 
-function oldAmount(
-  oldEffective: ReadonlyArray<AttributedLine>,
-  accountingOn: string,
-  role: AttributionRole,
-): bigint {
-  const line = oldEffective.find(
-    (entry) => entry.accountingOn === accountingOn && entry.role === role,
-  );
+// One date/role key aggregates every prior contribution: original owned
+// effects plus all previous repair deltas. Reading only the first row for a
+// date/role would propose a correction against a partial prior total, so a
+// date/role already summing to the target would gain a spurious extra delta.
+function oldVector(oldEffective: ReadonlyArray<AttributedLine>): Map<string, bigint> {
+  const vector = new Map<string, bigint>();
 
-  return line === undefined ? 0n : BigInt(line.amountMinor);
+  for (const line of oldEffective) {
+    const key = attributionKey(line.accountingOn, line.role);
+    const next = (vector.get(key) ?? 0n) + BigInt(line.amountMinor);
+
+    vector.set(key, next);
+  }
+
+  return vector;
+}
+
+function attributionKey(accountingOn: string, role: AttributionRole): string {
+  return `${accountingOn}|${role}`;
+}
+
+function desiredVector(lines: ReadonlyArray<AttributedLine>): Map<string, bigint> {
+  const vector = new Map<string, bigint>();
+
+  for (const line of lines) {
+    const key = attributionKey(line.accountingOn, line.role);
+
+    vector.set(key, (vector.get(key) ?? 0n) + BigInt(line.amountMinor));
+  }
+
+  return vector;
 }
 
 // Replays the desired attribution over frozen facts with the corrected
@@ -191,6 +212,11 @@ export function calculateChainRepair(basis: ChainBasis): Checked<ChainRepair> {
   let foreignRemaining = BigInt(basis.anchorForeignMinor);
   let carrying = BigInt(basis.anchorCarryingMinor);
   const desired: Array<AttributedLine> = [];
+
+  // A closed typed set of replay handlers. Anything else refuses before any
+  // financial effect is computed: a nonnull handlerId with no real dispatch
+  // would silently skip an event and understate the chain.
+  const supportedHandlers: ReadonlySet<string> = new Set();
 
   for (const event of ordered) {
     if (event.kind === "valuation") {
@@ -240,11 +266,13 @@ export function calculateChainRepair(basis: ChainBasis): Checked<ChainRepair> {
 
       foreignRemaining -= BigInt(event.originalUnitsMinor);
       carrying -= release;
-    } else if (event.handlerId === null) {
-      return fail(
-        "UnhandledEvent",
-        `Event ${event.eventId} has no supported replay handler; it is a blocker, never skipped.`,
-      );
+    } else {
+      if (event.handlerId === null || !supportedHandlers.has(event.handlerId)) {
+        return fail(
+          "UnhandledEvent",
+          `Event ${event.eventId} has no supported replay handler; it is a blocker, never skipped.`,
+        );
+      }
     }
   }
 
@@ -267,26 +295,36 @@ export function calculateChainRepair(basis: ChainBasis): Checked<ChainRepair> {
     );
   }
 
-  const seen = new Set<string>();
+  // Diff the union of old and desired keys. Iterating only the desired keys
+  // would silently drop an old-only P&L or carrying contribution, and reading
+  // one old row per key would over-correct against a partial prior total.
+  const oldVectorByKey = oldVector(basis.oldEffective);
+  const desiredVectorByKey = desiredVector(desired);
+  const allLines = [...basis.oldEffective, ...desired];
+
+  const keys = [
+    ...new Map(
+      allLines.map((line) => [attributionKey(line.accountingOn, line.role), line]),
+    ).values(),
+  ]
+    .map((line) => ({ accountingOn: line.accountingOn, role: line.role }))
+    .sort((left, right) =>
+      attributionKey(left.accountingOn, left.role) < attributionKey(right.accountingOn, right.role)
+        ? -1
+        : 1,
+    );
+
   const deltas: Array<AttributedLine> = [];
 
-  for (const line of desired) {
-    const key = `${line.accountingOn}${line.role}`;
-
-    if (seen.has(key)) continue;
-
-    seen.add(key);
-
-    const want = sumMinor(
-      desired
-        .filter((entry) => entry.accountingOn === line.accountingOn && entry.role === line.role)
-        .map((entry) => entry.amountMinor),
-    );
+  for (const line of keys) {
+    const key = attributionKey(line.accountingOn, line.role);
+    const want = desiredVectorByKey.get(key) ?? 0n;
+    const have = oldVectorByKey.get(key) ?? 0n;
 
     deltas.push({
       accountingOn: line.accountingOn,
       role: line.role,
-      amountMinor: amount(want - oldAmount(basis.oldEffective, line.accountingOn, line.role)),
+      amountMinor: amount(want - have),
     });
   }
 
@@ -294,18 +332,26 @@ export function calculateChainRepair(basis: ChainBasis): Checked<ChainRepair> {
     deltas.filter((line) => line.role === "ar_movement").map((line) => line.amountMinor),
   );
 
-  const oldAr = sumMinor(
-    basis.oldEffective
-      .filter((line) => line.role === "ar_movement")
-      .map((line) => line.amountMinor),
-  );
+  // Conservation is checked per role over the whole vector, not only for the
+  // carrying side: an AR-only check would pass while a P&L omission slipped
+  // through. Identity across the two sides of the replay is also required, so
+  // a valuation that moves carrying without its matching gain refuses.
+  for (const role of ["ar_movement", "pnl"] as const) {
+    const old = sumMinor(
+      basis.oldEffective.filter((line) => line.role === role).map((line) => line.amountMinor),
+    );
 
-  const desiredAr = sumMinor(
-    desired.filter((line) => line.role === "ar_movement").map((line) => line.amountMinor),
-  );
+    const wanted = sumMinor(
+      desired.filter((line) => line.role === role).map((line) => line.amountMinor),
+    );
 
-  if (arDelta !== desiredAr - oldAr) {
-    return fail("UnbalancedRepair", "The grouped carrying delta does not conserve the replay.");
+    const delta = sumMinor(
+      deltas.filter((line) => line.role === role).map((line) => line.amountMinor),
+    );
+
+    if (delta !== wanted - old) {
+      return fail("UnbalancedRepair", `The grouped ${role} delta does not conserve the replay.`);
+    }
   }
 
   return Result.succeed({

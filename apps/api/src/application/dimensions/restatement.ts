@@ -271,10 +271,11 @@ export const prepareDimensionRestatement = Effect.fn("dimensions.prepareRestatem
         identity,
       );
 
-      const [head, signedMinor, retainedFinancialDigest] = yield* Effect.all([
+      const [head, signedMinor, retainedFinancialDigest, revisions] = yield* Effect.all([
         readHead(transaction, command.scope.bookId, identity),
         readLineAmount(transaction, command.scope.bookId, identity),
         readLineFinancialDigest(transaction, command.scope.bookId, identity),
+        Catalogue.readClassificationRevisions(transaction, command.scope.bookId, identity),
       ]);
 
       if (retainedFinancialDigest === null) return yield* failure("NotFound");
@@ -285,6 +286,7 @@ export const prepareDimensionRestatement = Effect.fn("dimensions.prepareRestatem
         retainedFinancialDigest,
         signedMinor: signedMinor.toString(),
         originalAssignments: rows.map(toOriginal),
+        currentAssignments: [...readCurrentReviewed(revisions, rows.map(toOriginal))],
         currentHeadRevision: head.revisionId,
       });
     }
@@ -591,6 +593,14 @@ export const dimensionRestatementView = Effect.fn("dimensions.restatementView")(
   return yield* withBook(token, command.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, Catalogue.classificationTables, false);
 
+    // The same scoped line twice would double its amount in every partition
+    // while both conservation checks repeat the mistake, so refuse up front.
+    const identities = command.input.lines.map(
+      (selected) => `${selected.voucherId}:${selected.lineId}`,
+    );
+
+    if (new Set(identities).size !== identities.length) return yield* failure("InvalidJournal");
+
     const lines: Array<Restatement.AnalyticalViewLine> = [];
 
     for (const selected of command.input.lines) {
@@ -612,6 +622,7 @@ export const dimensionRestatementView = Effect.fn("dimensions.restatementView")(
       );
 
       lines.push({
+        voucherId: selected.voucherId,
         lineId: selected.lineId,
         signedMinor: (yield* readLineAmount(
           transaction,
@@ -641,6 +652,7 @@ export const dimensionRestatementView = Effect.fn("dimensions.restatementView")(
         revisionCount: view.success.revisionCount,
         unfilteredTotalMinor: view.success.unfilteredTotalMinor,
         lines: view.success.lines.map((line) => ({
+          voucherId: line.voucherId,
           lineId: line.lineId,
           signedMinor: line.signedMinor,
           original: line.original.map((entry) => ({

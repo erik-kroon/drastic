@@ -629,3 +629,106 @@ test("NEXT-43 shows the original and reviewed views side by side without moving 
 
   expect(earlier.reviewedTotals).toEqual(earlier.originalTotals);
 });
+
+test("the analytical view refuses a line selected twice instead of doubling it", async () => {
+  const { book, source } = await setup();
+
+  await catalogue(book);
+
+  const posted = await taggedPosting(book, source.id, "0012");
+
+  const response = await request(book, "/dimensions/restatements/view", {
+    method: "POST",
+    headers: { "content-type": "application/json", "idempotency-key": `${posted.voucherId}-dup` },
+    body: JSON.stringify({
+      lines: [
+        { voucherId: posted.voucherId, lineId: posted.lineId },
+        { voucherId: posted.voucherId, lineId: posted.lineId },
+      ],
+      dimensionCodes: [department],
+      classificationCutoff: "2099-12-31",
+    }),
+  });
+
+  await failure(response, 422, "InvalidJournal");
+});
+
+test("a second preview derives its before-state from the current review, not the original", async () => {
+  const { book, source } = await setup();
+
+  await catalogue(book);
+
+  const posted = await taggedPosting(book, source.id, "0012");
+  const selection = [{ voucherId: posted.voucherId, lineId: posted.lineId }];
+
+  const first = await post(
+    book,
+    "/dimensions/restatements",
+    {
+      analyticalScope: "management_department_view",
+      reason: "Synthetic first review A to B",
+      dimensionPolicy: policy,
+      lines: selection,
+      changes: [
+        {
+          lineId: posted.lineId,
+          expectedHeadRevision: 0,
+          desiredAssignments: [
+            { dimensionCode: department, valueCode: "0099", valueRevision: 1 },
+            { dimensionCode: project, valueCode: "Case-A", valueRevision: 1 },
+          ],
+          reason: "Synthetic A to B",
+        },
+      ],
+    },
+    Dimensions.RestatementPlanView,
+  );
+
+  expect(
+    first.plan.totalsBefore.find(
+      (entry) => entry.dimensionCode === department && entry.valueCode === "0012",
+    )?.totalMinor,
+  ).toBe("12500");
+
+  await post(
+    book,
+    `/dimensions/restatements/${first.planId}/apply`,
+    { version: 1, digest: first.digest },
+    Dimensions.RestatementApplied,
+  );
+
+  const second = await post(
+    book,
+    "/dimensions/restatements",
+    {
+      analyticalScope: "management_department_view",
+      reason: "Synthetic second review B to C",
+      dimensionPolicy: policy,
+      lines: selection,
+      changes: [
+        {
+          lineId: posted.lineId,
+          expectedHeadRevision: 1,
+          desiredAssignments: [
+            { dimensionCode: department, valueCode: "0012", valueRevision: 1 },
+            { dimensionCode: project, valueCode: "Case-A", valueRevision: 1 },
+          ],
+          reason: "Synthetic B back to 0012",
+        },
+      ],
+    },
+    Dimensions.RestatementPlanView,
+  );
+
+  // The second preview calls B the before bucket: the current review, not A.
+  expect(
+    second.plan.totalsBefore.find(
+      (entry) => entry.dimensionCode === department && entry.valueCode === "0099",
+    )?.totalMinor,
+  ).toBe("12500");
+  expect(
+    second.plan.totalsOriginal.find(
+      (entry) => entry.dimensionCode === department && entry.valueCode === "0012",
+    )?.totalMinor,
+  ).toBe("12500");
+});

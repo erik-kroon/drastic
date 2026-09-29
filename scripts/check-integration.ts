@@ -9,9 +9,20 @@
 // This script is the ratchet. It fails when:
 //
 //   - a leaf has no declared entry here (the failure this file exists to stop);
-//   - an entry claims a consumer that does not exist;
+//   - an entry claims a consumer that does not exist in this repository;
+//   - a declared consumer holds no value import of that exact leaf;
 //   - an entry claims an unwired leaf but a consumer appeared (stale claim);
 //   - a deferral gives no reason, or a placeholder instead of a reason.
+//
+// Consumer detection parses real module specifiers with the installed
+// TypeScript parser rather than matching substrings, so a comment, a
+// similarly prefixed package, an unrelated relative module, a type-only
+// import or a test file cannot certify a wire. Tests never count: a
+// conformance test proves a contract but no application owner composes it.
+//
+// A green run is declaration/import consistency, not a verified workflow. An
+// import proves source composition only; a separately observed journey is a
+// stronger claim and belongs in the test/CI record, not here.
 //
 // It passes for a leaf that is wired, or deferred with a real reason. Wiring a
 // leaf is the goal; this only makes the gap visible and attributed.
@@ -189,24 +200,176 @@ function isTestOwned(path: string): boolean {
   return path.includes("/tests/") || path.endsWith(".test.ts") || path.endsWith(".test.tsx");
 }
 
-// A leaf counts as consumed when something outside `packages/domain` imports
-// it by its package export path, or a sibling leaf's relative import counts as
-// internal composition only.
+// Exact module-specifier scanning, done with Bun's own parser. It replaces the
+// old substring search, so a comment, a similarly prefixed package, an
+// unrelated relative `./leaf` module, a type-only import or a test file can
+// no longer certify a wire. `import type` and an all-type named import are
+// dropped by the parser, so a schema or type consumer is never counted as
+// runtime composition. A sibling leaf's relative import is internal
+// composition only and never counts here, because those files are outside the
+// consumer roots. Even a real import is source composition, not proof of a
+// successful workflow; an observed journey is a separate, stronger claim.
+// One scanner per loader, so a `.tsx` module parses as TSX rather than TS.
+const scanners = new Map<string, Bun.Transpiler>();
+
+function scannerFor(path: string): Bun.Transpiler {
+  const loader = path.endsWith(".tsx") ? "tsx" : "ts";
+  const existing = scanners.get(loader);
+
+  if (existing !== undefined) return existing;
+
+  const created = new Bun.Transpiler({ loader });
+
+  scanners.set(loader, created);
+
+  return created;
+}
+
+function contentsImportLeaf(contents: string, path: string, leaf: string): boolean {
+  const target = `@open-erp/domain/${leaf}`;
+
+  try {
+    return scannerFor(path)
+      .scanImports(contents)
+      .some((entry) => entry.path === target && entry.kind !== "require-call");
+  } catch {
+    // An unparseable module cannot certify a wire either way.
+    return false;
+  }
+}
+
+function fileValueImportsLeaf(path: string, leaf: string): boolean {
+  let contents: string;
+
+  try {
+    contents = readFileSync(path, "utf8");
+  } catch {
+    return false;
+  }
+
+  return contentsImportLeaf(contents, path, leaf);
+}
+
 function findConsumers(leaf: string, files: ReadonlyArray<string>): ReadonlyArray<string> {
-  const packageImport = `@open-erp/domain/${leaf}`;
+  return files.filter((path) => fileValueImportsLeaf(path, leaf));
+}
 
-  return files.filter((path) => {
-    const contents = readFileSync(path, "utf8");
+// A declared consumer names a real path in this repository. A single module
+// must hold a runtime import of that exact leaf. A directory claim is broader
+// and weaker, so it only holds when at least one real consumer found by the
+// exact scan actually lives under it: naming `apps/api` cannot stand in for
+// naming the owner, so it proves reachability, not ownership.
+function declaredConsumerHolds(
+  consumer: string,
+  leaf: string,
+  found: ReadonlyArray<string>,
+): "ok" | "missing" | "no_import" {
+  const direct = [
+    join(repositoryRoot, consumer),
+    join(repositoryRoot, `${consumer}.ts`),
+    join(repositoryRoot, `${consumer}.tsx`),
+    join(repositoryRoot, consumer, "index.ts"),
+  ].find((candidate) => existsSync(candidate) && statSync(candidate).isFile());
 
-    return (
-      contents.includes(packageImport) ||
-      contents.includes(`from "./${leaf}"`) ||
-      contents.includes(`from './${leaf}'`)
-    );
-  });
+  if (direct !== undefined) {
+    return fileValueImportsLeaf(direct, leaf) ? "ok" : "no_import";
+  }
+
+  const root = join(repositoryRoot, consumer);
+
+  if (!existsSync(root) || !statSync(root).isDirectory()) return "missing";
+
+  return found.some((path) => path === root || path.startsWith(`${root}/`)) ? "ok" : "no_import";
+}
+
+// Self-check for the scanning rules, so a future substring regression is caught
+// by this ratchet rather than by a future review. These are in-memory fixtures:
+// they read no leaf, declare nothing, and cannot make a deferred leaf look
+// wired. Each case is one thing a substring search could have got wrong.
+const leafUnderTest = "cash-flow-statement";
+
+const selfCheck: ReadonlyArray<SelfCheckCase> = [
+  {
+    name: "comment only",
+    path: "apps/api/src/application/comment-only.ts",
+    contents: `// composes @open-erp/domain/${leafUnderTest} for the statement\nexport const value = 1;\n`,
+    consumer: false,
+  },
+  {
+    name: "test only",
+    path: "apps/api/tests/assurance/cash-flow.conformance.test.ts",
+    contents: `import { calculateCashFlow } from "@open-erp/domain/${leafUnderTest}";\nvoid calculateCashFlow;\n`,
+    consumer: false,
+  },
+  {
+    name: "type-only import",
+    path: "packages/contracts/src/type-only.ts",
+    contents: `import type { CashFlowStatement } from "@open-erp/domain/${leafUnderTest}";\nexport type { CashFlowStatement };\n`,
+    consumer: false,
+  },
+  {
+    name: "all-type named import",
+    path: "packages/contracts/src/named-type-only.ts",
+    contents: `import { type CashFlowStatement } from "@open-erp/domain/${leafUnderTest}";\nexport type { CashFlowStatement };\n`,
+    consumer: false,
+  },
+  {
+    name: "same-prefix package",
+    path: "apps/api/src/application/prefixed.ts",
+    contents: `import { calculateCashFlow } from "@open-erp/domain/${leafUnderTest}-extra";\nvoid calculateCashFlow;\n`,
+    consumer: false,
+  },
+  {
+    name: "unrelated relative module",
+    path: "packages/contracts/src/relative.ts",
+    contents: `import { calculateCashFlow } from "./${leafUnderTest}";\nvoid calculateCashFlow;\n`,
+    consumer: false,
+  },
+  {
+    name: "valid named owner composition",
+    path: "apps/api/src/application/reports/cash-flow-statement.ts",
+    contents: `import { calculateCashFlow } from "@open-erp/domain/${leafUnderTest}";\nvoid calculateCashFlow;\n`,
+    consumer: true,
+  },
+];
+
+type SelfCheckCase = {
+  readonly name: string;
+  readonly path: string;
+  readonly contents: string;
+  readonly consumer: boolean;
+};
+
+function runSelfCheck(selfCheck: ReadonlyArray<SelfCheckCase>): ReadonlyArray<string> {
+  const failures: Array<string> = [];
+
+  for (const fixture of selfCheck) {
+    const imported = contentsImportLeaf(fixture.contents, fixture.path, leafUnderTest);
+    // A test-owned path is excluded from consumers regardless of its import,
+    // which is what lets a deferred leaf gain conformance tests honestly.
+    const counts = imported && !isTestOwned(fixture.path);
+
+    if (counts !== fixture.consumer) {
+      failures.push(
+        `${fixture.name}: expected ${fixture.consumer ? "a" : "no"} runtime consumer, got ${counts ? "one" : "none"}`,
+      );
+    }
+  }
+
+  return failures;
 }
 
 function check(): number {
+  const selfFailures = runSelfCheck(selfCheck);
+
+  if (selfFailures.length > 0) {
+    console.error(`Integration checker self-check failed with ${selfFailures.length} case(s):`);
+
+    for (const failure of selfFailures) console.error(`  ${failure}`);
+
+    return 1;
+  }
+
   const declaration = readDeclaration();
 
   if (Result.isFailure(declaration)) {
@@ -247,7 +410,21 @@ function check(): number {
       if (consumersFound.length === 0) {
         problems.push({
           leaf,
-          problem: "declared wired, but nothing outside packages/domain imports it",
+          problem: "declared wired, but nothing outside packages/domain value-imports it",
+        });
+      }
+
+      for (const consumer of entry.consumers ?? []) {
+        const verdict = declaredConsumerHolds(consumer, leaf, consumersFound);
+
+        if (verdict === "ok") continue;
+
+        problems.push({
+          leaf,
+          problem:
+            verdict === "missing"
+              ? `declared consumer "${consumer}" does not exist in this repository`
+              : `declared consumer "${consumer}" holds no runtime import of @open-erp/domain/${leaf}`,
         });
       }
 

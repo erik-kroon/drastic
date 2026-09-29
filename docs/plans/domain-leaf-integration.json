@@ -4,12 +4,16 @@
     {
       "leaf": "agent-context",
       "status": "wired",
-      "consumers": ["apps/api/src/application/agent/context.ts"]
+      "consumers": [
+        "apps/api/src/application/agent/context.ts"
+      ]
     },
     {
       "leaf": "annual-report",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "apps/api"
+      ]
     },
     {
       "leaf": "asset-disposals",
@@ -32,17 +36,24 @@
     {
       "leaf": "books",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "packages/contracts/src/accounting.ts"
+      ],
+      "note": "Composed into the shared API contract: packages/contracts/src/accounting.ts re-exports this leaf's schemas and apps/api consumes those contracts. The reachable owner is the contract layer, not a directly importing application module."
     },
     {
       "leaf": "canonicalization",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "apps/api"
+      ]
     },
     {
       "leaf": "cash-flow-statement",
       "status": "wired",
-      "consumers": ["apps/api"],
+      "consumers": [
+        "apps/api"
+      ],
       "note": "NEXT-45 owner apps/api/src/application/reports/cash-flow-statement.ts composes the leaf from retained postings read through apps/api/src/db/reports/cash-flow-statement.ts inside the caller's transaction, exposed as POST /v1/entities/:entityId/books/:bookId/cash-flow. Opening and closing cash are derived from retained journal lines, never accepted from the request. Read-only, so no migration."
     },
     {
@@ -57,10 +68,12 @@
       "reason": "Packet keeps sealed-message delivery and dispute handling with the commerce/delivery owners.",
       "unblockedBy": "A delivery owner sends the sealed message and calls this leaf for reminder admission."
     },
-        {
+    {
       "leaf": "customer-credits",
       "status": "wired",
-      "consumers": ["apps/api/src/application/commerce/customer-receipts.ts"]
+      "consumers": [
+        "apps/api/src/application/commerce/customer-receipts.ts"
+      ]
     },
     {
       "leaf": "dimension-restatement",
@@ -73,7 +86,9 @@
     {
       "leaf": "dimensions",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "apps/api"
+      ]
     },
     {
       "leaf": "document-signatures",
@@ -90,12 +105,17 @@
     {
       "leaf": "errors",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "apps/api"
+      ]
     },
     {
       "leaf": "exchange-rates",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "packages/contracts/src/exchange-rates.ts"
+      ],
+      "note": "Composed into the shared API contract: packages/contracts/src/accounting.ts re-exports this leaf's schemas and apps/api consumes those contracts. The reachable owner is the contract layer, not a directly importing application module."
     },
     {
       "leaf": "filing-lifecycle",
@@ -106,7 +126,9 @@
     {
       "leaf": "financial-close",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "apps/api"
+      ]
     },
     {
       "leaf": "foreign-cash",
@@ -117,12 +139,16 @@
     {
       "leaf": "fx-chain-repair",
       "status": "wired",
-      "consumers": ["apps/api/src/application/commerce/fx-chain-repair.ts"]
+      "consumers": [
+        "apps/api/src/application/commerce/fx-chain-repair.ts"
+      ]
     },
     {
       "leaf": "fx-remeasurement",
       "status": "wired",
-      "consumers": ["apps/api/src/application/commerce/fx-remeasurement.ts"]
+      "consumers": [
+        "apps/api/src/application/commerce/fx-remeasurement.ts"
+      ]
     },
     {
       "leaf": "historical-adoptions",
@@ -139,7 +165,9 @@
     {
       "leaf": "ledger",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "apps/api"
+      ]
     },
     {
       "leaf": "loan-lifecycle",
@@ -156,12 +184,17 @@
     {
       "leaf": "money",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "packages/contracts/src/accounting.ts"
+      ],
+      "note": "Composed into the shared API contract: packages/contracts/src/accounting.ts re-exports this leaf's schemas and apps/api consumes those contracts. The reachable owner is the contract layer, not a directly importing application module."
     },
     {
       "leaf": "owner-funding",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "apps/api"
+      ]
     },
     {
       "leaf": "paid-payroll-recovery",
@@ -172,13 +205,17 @@
     {
       "leaf": "party-identity",
       "status": "wired",
-      "consumers": ["apps/api"],
+      "consumers": [
+        "apps/api"
+      ],
       "note": "NEXT-27 owner apps/api/src/application/commerce/party-identity.ts extends the party directory with reviewed resolutions and balance views. It derives members from retained counterparty revisions with all identifiers honestly unverified, requires cited retained evidence for same-entity claims, and groups retained open obligations without netting. No new table; receipts in command_receipts."
     },
     {
       "leaf": "payment-resolutions",
       "status": "wired",
-      "consumers": ["apps/api"],
+      "consumers": [
+        "apps/api"
+      ],
       "note": "NEXT-08 owner apps/api/src/application/purchases/payment-resolutions.ts extends the supplier payment-batch/export owner with instruction resolution and replacement. It derives the instruction per export item from retained bytes, reads the retained outcome chain, and records receipts in command_receipts. It posts, allocates and moves nothing. No proof branch is currently satisfiable, so resolution reports unknown and replacement is gated; both are exercised."
     },
     {
@@ -196,12 +233,16 @@
     {
       "leaf": "period-work",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "apps/api"
+      ]
     },
     {
       "leaf": "posting",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "apps/api"
+      ]
     },
     {
       "leaf": "prepayments",
@@ -218,12 +259,16 @@
     {
       "leaf": "purchasing",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "apps/api"
+      ]
     },
     {
       "leaf": "recurrence",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "apps/api"
+      ]
     },
     {
       "leaf": "rehearsal-verification",
@@ -234,7 +279,9 @@
     {
       "leaf": "service-purchases",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "apps/api"
+      ]
     },
     {
       "leaf": "sie-partitions",
@@ -245,17 +292,23 @@
     {
       "leaf": "statements",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "apps/api"
+      ]
     },
     {
       "leaf": "supplier-refunds",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "apps/api"
+      ]
     },
     {
       "leaf": "values",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "apps/api"
+      ]
     },
     {
       "leaf": "variable-pay",
@@ -266,7 +319,9 @@
     {
       "leaf": "vat-assessment",
       "status": "wired",
-      "consumers": ["apps/api"]
+      "consumers": [
+        "apps/api"
+      ]
     }
   ]
 }

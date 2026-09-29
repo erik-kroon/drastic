@@ -66,6 +66,11 @@ export const RestatementLine = Schema.Struct({
   retainedFinancialDigest: Digest,
   signedMinor: SignedMinorUnits,
   originalAssignments: Schema.Array(OriginalDimensionAssignment),
+  // The reviewed set currently in force for this line, resolved by the owner
+  // from retained revisions. The preview derives its before-state from here,
+  // never from the original tags: after A->B, the B->C preview calls B the
+  // before bucket while the original comparison stays its own view.
+  currentAssignments: Schema.Array(ReviewedAssignment),
   currentHeadRevision: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
 });
 
@@ -92,6 +97,15 @@ export type RestatementInput = typeof RestatementInput.Type;
 export const ValueTotal = Schema.Struct({
   dimensionCode: DimensionCode,
   valueCode: Schema.NullOr(DimensionValueCode),
+  // Unknown original history and an evidenced exemption stay distinct from
+  // deliberate unassignment in summaries; a null valueCode alone never
+  // decides which of the three a bucket holds.
+  state: Schema.Literals([
+    "value",
+    "explicit_unassigned",
+    "historical_exemption",
+    "not_recorded_in_source",
+  ]),
   totalMinor: SignedMinorUnits,
 });
 
@@ -107,6 +121,9 @@ export const RestatementPlan = Schema.Struct({
       reason: Description,
     }),
   ),
+  // The retained original view, kept as its own comparison. totalsBefore is
+  // the current reviewed state the reviewer actually sees, not the original.
+  totalsOriginal: Schema.Array(ValueTotal),
   totalsBefore: Schema.Array(ValueTotal),
   totalsAfter: Schema.Array(ValueTotal),
 });
@@ -130,17 +147,27 @@ function originalValueKey(
   return null;
 }
 
+type BucketState = (typeof ValueTotal.Type)["state"];
+
+type Bucket = {
+  dimensionCode: string;
+  valueCode: string | null;
+  state: BucketState;
+  total: bigint;
+};
+
 function accumulate(
-  totals: Map<string, { dimensionCode: string; valueCode: string | null; total: bigint }>,
+  totals: Map<string, Bucket>,
   dimensionCode: string,
   valueCode: string | null,
+  state: BucketState,
   signed: bigint,
 ) {
-  const key = `${dimensionCode}:${valueCode ?? "unassigned"}`;
+  const key = `${dimensionCode}:${state}:${valueCode ?? "unassigned"}`;
   const entry = totals.get(key);
 
   if (entry === undefined) {
-    totals.set(key, { dimensionCode, valueCode, total: signed });
+    totals.set(key, { dimensionCode, valueCode, state, total: signed });
   } else {
     entry.total += signed;
   }
@@ -157,15 +184,11 @@ export function prepareRestatement(input: RestatementInput): Checked<Restatement
   const lines = new Map(input.lines.map((line) => [line.lineId, line]));
   const policyCodes = new Set(input.policy.map((entry) => entry.dimensionCode));
 
-  const before = new Map<
-    string,
-    { dimensionCode: string; valueCode: string | null; total: bigint }
-  >();
+  const original = new Map<string, Bucket>();
 
-  const after = new Map<
-    string,
-    { dimensionCode: string; valueCode: string | null; total: bigint }
-  >();
+  const before = new Map<string, Bucket>();
+
+  const after = new Map<string, Bucket>();
 
   const assignments: Array<{
     lineId: string;
@@ -253,12 +276,34 @@ export function prepareRestatement(input: RestatementInput): Checked<Restatement
       const separator = key.indexOf(":");
       const value = key.slice(separator + 1);
 
-      accumulate(before, assignment.dimensionCode, value === "unassigned" ? null : value, signed);
+      accumulate(
+        original,
+        assignment.dimensionCode,
+        value === "unassigned" ? null : value,
+        value === "unassigned" ? "explicit_unassigned" : "value",
+        signed,
+      );
+    }
+
+    for (const current of line.currentAssignments) {
+      accumulate(
+        before,
+        current.dimensionCode,
+        current.valueCode,
+        current.valueCode === null ? "explicit_unassigned" : "value",
+        signed,
+      );
     }
 
     for (const desired of change.desiredAssignments) {
       if (policyCodes.has(desired.dimensionCode)) {
-        accumulate(after, desired.dimensionCode, desired.valueCode, signed);
+        accumulate(
+          after,
+          desired.dimensionCode,
+          desired.valueCode,
+          desired.valueCode === null ? "explicit_unassigned" : "value",
+          signed,
+        );
       }
     }
 
@@ -276,28 +321,36 @@ export function prepareRestatement(input: RestatementInput): Checked<Restatement
     [...totals.values()].reduce((total, entry) => total + entry.total, 0n);
 
   // Retagging moves money between buckets; the unfiltered signed total of
-  // the selection cannot change.
+  // the selection cannot change. The current-reviewed total is the
+  // comparator: the original view is preserved separately and never stands
+  // in for what the reviewer sees now.
   if (sum(before) !== sum(after)) {
     return fail("TotalsChanged", "The restatement changed the selection total.");
+  }
+
+  if (sum(original) !== sum(after)) {
+    return fail("TotalsChanged", "The restatement changed the original selection total.");
   }
 
   const toTotals = (totals: typeof before): Array<ValueTotal> =>
     [...totals.values()]
       .sort((left, right) =>
-        `${left.dimensionCode}:${left.valueCode ?? ""}` <
-        `${right.dimensionCode}:${right.valueCode ?? ""}`
+        `${left.dimensionCode}:${left.state}:${left.valueCode ?? ""}` <
+        `${right.dimensionCode}:${right.state}:${right.valueCode ?? ""}`
           ? -1
           : 1,
       )
       .map((entry) => ({
         dimensionCode: entry.dimensionCode,
         valueCode: entry.valueCode,
+        state: entry.state,
         totalMinor: amount(entry.total),
       }));
 
   return Result.succeed({
     analyticalScope: input.analyticalScope,
     assignments,
+    totalsOriginal: toTotals(original),
     totalsBefore: toTotals(before),
     totalsAfter: toTotals(after),
   });
@@ -385,6 +438,8 @@ export function appendRevision(
     );
   }
 
+  // Semantic equality includes the value revision: changing only the
+  // revision is a real change that must append, never silently replay.
   const same =
     desiredAssignments.length === currentAssignments.length &&
     [...desiredAssignments]
@@ -397,7 +452,8 @@ export function appendRevision(
         return (
           current !== undefined &&
           current.dimensionCode === desired.dimensionCode &&
-          current.valueCode === desired.valueCode
+          current.valueCode === desired.valueCode &&
+          current.valueRevision === desired.valueRevision
         );
       });
 
@@ -421,6 +477,9 @@ export function appendRevision(
 export { OriginalDimensionStatus };
 
 export const AnalyticalViewLine = Schema.Struct({
+  // The full scoped identity: a line id is only unique within its voucher,
+  // so two vouchers may legitimately reuse a local line id.
+  voucherId: Identifier,
   lineId: Identifier,
   signedMinor: SignedMinorUnits,
   originalAssignments: Schema.Array(OriginalDimensionAssignment),
@@ -438,6 +497,7 @@ export const AnalyticalViewInput = Schema.Struct({
 export type AnalyticalViewInput = typeof AnalyticalViewInput.Type;
 
 export const AnalyticalViewLineResult = Schema.Struct({
+  voucherId: Identifier,
   lineId: Identifier,
   signedMinor: SignedMinorUnits,
   original: Schema.Array(OriginalDimensionAssignment),
@@ -460,6 +520,29 @@ export const AnalyticalView = Schema.Struct({
 
 export type AnalyticalView = typeof AnalyticalView.Type;
 
+// A missing assignment is a deliberate unassigned bucket. A recorded value is
+// a value bucket. An evidenced exemption and an unrecorded source are states
+// of their own, so a summary never presents them as a reviewer decision.
+type BucketPlacement = { readonly valueCode: string | null; readonly state: BucketState };
+
+function originalBucketOf(assignment: OriginalDimensionAssignment | undefined): BucketPlacement {
+  if (assignment === undefined) {
+    return { valueCode: null, state: "explicit_unassigned" };
+  }
+
+  if (assignment.status === "explicit") {
+    return assignment.valueCode === null
+      ? { valueCode: null, state: "explicit_unassigned" }
+      : { valueCode: assignment.valueCode, state: "value" };
+  }
+
+  if (assignment.status === "explicit_unassigned") {
+    return { valueCode: null, state: "explicit_unassigned" };
+  }
+
+  return { valueCode: null, state: assignment.status };
+}
+
 // The original-versus-reviewed analytical view over a selection, at one cutoff.
 // It is a read: no amount, original tag or retained revision is touched.
 //
@@ -477,8 +560,19 @@ export function analyticalView(input: AnalyticalViewInput): Checked<AnalyticalVi
     return fail("IncompleteSelection", "A dimension is requested more than once.");
   }
 
-  const original = new Map<DimensionValue, Map<string, bigint>>();
-  const reviewed = new Map<DimensionValue, Map<string, bigint>>();
+  // The same scoped journal line selected twice would double its amount in
+  // every partition while both conservation checks repeat the mistake.
+  const identities = input.lines.map((line) => `${line.voucherId}:${line.lineId}`);
+
+  if (new Set(identities).size !== identities.length) {
+    return fail(
+      "IncompleteSelection",
+      "A journal line is selected more than once; it contributes once or the request refuses.",
+    );
+  }
+
+  const original = new Map<DimensionValue, Map<string, Bucket>>();
+  const reviewed = new Map<DimensionValue, Map<string, Bucket>>();
   const results: Array<AnalyticalViewLineResult> = [];
   let unfiltered = 0n;
   let revisions = 0;
@@ -519,27 +613,55 @@ export function analyticalView(input: AnalyticalViewInput): Checked<AnalyticalVi
 
     for (const code of codes) {
       // A line with no assignment for the requested dimension is unassigned,
-      // not absent, so the partition still covers the whole selection.
+      // not absent, so the partition still covers the whole selection. An
+      // evidenced exemption and an unrecorded source stay distinct from
+      // deliberate unassignment instead of collapsing into one null bucket.
       const originalAssignment = line.originalAssignments.find(
         (entry) => entry.dimensionCode === code,
       );
 
-      // originalValueKey already returns a dimension-qualified key, so it is
-      // used as the bucket key directly. Prefixing it again would nest the
-      // dimension inside the value and split one bucket into two.
-      const originalKey =
-        originalAssignment === undefined
-          ? `${code}:unassigned`
-          : (originalValueKey(code, originalAssignment) ?? `${code}:unassigned`);
+      const originalBucket = originalBucketOf(originalAssignment);
 
+      addBucket(
+        original.get(code) ?? new Map(),
+        code,
+        originalBucket.valueCode,
+        originalBucket.state,
+        signed,
+      );
+
+      // When no approved revision exists, the reviewed view falls back to the
+      // original state including its exemption marker; it never relabels an
+      // exemption or an unknown source as a deliberate unassignment.
       const reviewedEntry = asReviewed.find((entry) => entry.dimensionCode === code);
-      const reviewedKey = `${code}:${reviewedEntry === undefined ? "unassigned" : (reviewedEntry.valueCode ?? "unassigned")}`;
+      const hasRevision = latest !== undefined;
 
-      addTo(original.get(code) ?? new Map(), originalKey, signed);
-      addTo(reviewed.get(code) ?? new Map(), reviewedKey, signed);
+      if (
+        reviewedEntry === undefined ||
+        (!hasRevision &&
+          originalAssignment !== undefined &&
+          originalAssignment.status !== "explicit")
+      ) {
+        addBucket(
+          reviewed.get(code) ?? new Map(),
+          code,
+          originalBucket.valueCode,
+          originalBucket.state,
+          signed,
+        );
+      } else {
+        addBucket(
+          reviewed.get(code) ?? new Map(),
+          code,
+          reviewedEntry?.valueCode ?? null,
+          (reviewedEntry?.valueCode ?? null) === null ? "explicit_unassigned" : "value",
+          signed,
+        );
+      }
     }
 
     results.push({
+      voucherId: line.voucherId,
       lineId: line.lineId,
       signedMinor: line.signedMinor,
       original: [...line.originalAssignments],
@@ -579,23 +701,36 @@ export function analyticalView(input: AnalyticalViewInput): Checked<AnalyticalVi
   });
 }
 
-function addTo(totals: Map<string, bigint>, key: string, signed: bigint) {
-  totals.set(key, (totals.get(key) ?? 0n) + signed);
+function addBucket(
+  totals: Map<string, Bucket>,
+  code: string,
+  valueCode: string | null,
+  state: BucketState,
+  signed: bigint,
+) {
+  const key = `${code}:${state}:${valueCode ?? "unassigned"}`;
+  const entry = totals.get(key);
+
+  if (entry === undefined) {
+    totals.set(key, { dimensionCode: code, valueCode, state, total: signed });
+  } else {
+    entry.total += signed;
+  }
 }
 
-function flatten(totals: ReadonlyMap<DimensionValue, Map<string, bigint>>): Array<ValueTotal> {
+function flatten(totals: ReadonlyMap<DimensionValue, Map<string, Bucket>>): Array<ValueTotal> {
   return [...totals.entries()]
     .flatMap(([code, buckets]) =>
-      [...buckets.entries()].map(([key, total]) => ({
+      [...buckets.values()].map((entry) => ({
         dimensionCode: code,
-        valueCode:
-          key.slice(`${code}:`.length) === "unassigned" ? null : key.slice(`${code}:`.length),
-        totalMinor: amount(total),
+        valueCode: entry.valueCode,
+        state: entry.state,
+        totalMinor: amount(entry.total),
       })),
     )
     .sort((left, right) =>
-      `${left.dimensionCode}:${left.valueCode ?? ""}` <
-      `${right.dimensionCode}:${right.valueCode ?? ""}`
+      `${left.dimensionCode}:${left.state}:${left.valueCode ?? ""}` <
+      `${right.dimensionCode}:${right.state}:${right.valueCode ?? ""}`
         ? -1
         : 1,
     );

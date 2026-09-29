@@ -279,6 +279,7 @@ export const AnalyticalViewQuery = Schema.Struct({
 });
 
 export const AnalyticalViewLine = Schema.Struct({
+  voucherId: Accounting.Identifier,
   lineId: Accounting.Identifier,
   signedMinor: Accounting.SignedMinorUnits,
   original: Schema.Array(
@@ -307,6 +308,12 @@ export const AnalyticalViewLine = Schema.Struct({
 export const AnalyticalViewValueTotal = Schema.Struct({
   dimensionCode: Code,
   valueCode: Schema.NullOr(Code),
+  state: Schema.Literals([
+    "value",
+    "explicit_unassigned",
+    "historical_exemption",
+    "not_recorded_in_source",
+  ]),
   totalMinor: Accounting.SignedMinorUnits,
 });
 
