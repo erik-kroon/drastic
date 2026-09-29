@@ -95,7 +95,7 @@ export function evaluateVitest(
     failed,
     other,
     fileCount: fileNames.size,
-    assertionIdentities: [...identities].sort(),
+    assertionIdentities: [...identities].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
     reasons,
   };
 }

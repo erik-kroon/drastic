@@ -2,11 +2,7 @@
   "schema": "openerp-excellence-profile/v1",
   "id": "core",
   "claim": "Supported synthetic accounting core, adversarial state histories and isolated recovery",
-  "stages": [
-    "tooling",
-    "foundation",
-    "recovery"
-  ],
+  "stages": ["tooling", "foundation", "recovery"],
   "cases": [
     {
       "id": "EXC-SUPPLIER-1715004",

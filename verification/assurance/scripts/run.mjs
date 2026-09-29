@@ -56,11 +56,34 @@ let before;
 const evidence = async () =>
   writeFile(join(out, "run.json"), JSON.stringify(report, null, 2) + "\n", { mode: 0o600 });
 
+/** Point a parent excellence run at this child report. Kept outside `finally` so its failure is recorded, not thrown over a real stage failure. */
+async function writeChildLink({ root: repoRoot, parent, profile: childProfile, id: childId }) {
+  if (!/^[a-zA-Z0-9_.:-]{1,120}$/.test(parent)) throw new Error("Invalid parent run identity");
+  const links = join(repoRoot, "test-results/excellence-child-links");
+  await mkdir(links, { recursive: true, mode: 0o700 });
+  await writeFile(
+    join(links, `${parent}-${childProfile}.json`),
+    JSON.stringify({
+      parentRun: parent,
+      profile: childProfile,
+      relativeReport: `test-results/assurance/${childId}/run.json`,
+    }) + "\n",
+    { mode: 0o600, flag: "wx" },
+  );
+}
+
 try {
   try {
-    const parentLock = JSON.parse(await readFile(join(root, "test-results/excellence/ACTIVE.lock"), "utf8"));
-    if (parentLock.runId !== process.env.EXCELLENCE_PARENT_RUN) throw new Error("Another excellence run owns this worktree");
-  } catch (error) { if (error?.code !== "ENOENT") throw error; }
+    const parentLock = JSON.parse(
+      await readFile(join(root, "test-results/excellence/ACTIVE.lock"), "utf8"),
+    );
+
+    if (parentLock.runId !== process.env.EXCELLENCE_PARENT_RUN)
+      throw new Error("Another excellence run owns this worktree");
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+
   lock = await open(lockPath, "wx", 0o600);
   await lock.writeFile(
     JSON.stringify({ pid: process.pid, id, profile, startedAt: report.startedAt }),
@@ -76,10 +99,15 @@ try {
   await writeFile(join(out, "sources-start.json"), JSON.stringify(before, null, 2));
 
   const env = childEnvironment({
-    ...(process.env.OPENERP_E2E_ARTIFACTS ? { OPENERP_E2E_ARTIFACTS: process.env.OPENERP_E2E_ARTIFACTS } : {}),
     PATH: `${join(root, "node_modules/.bin")}${process.platform === "win32" ? ";" : ":"}${process.env.PATH ?? ""}`,
     OPENERP_REPO: root,
   });
+
+  // Honour the caller's artifact root so scoped lanes do not read another
+  // lane's stale manifest, and fall back to the repository default.
+  const artifactRoot = process.env.OPENERP_E2E_ARTIFACTS ?? "test-results/e2e";
+
+  env.OPENERP_E2E_ARTIFACTS = artifactRoot;
 
   if (["fast", "runtime", "full"].includes(profile))
     report.bun = tool("bun", ["--version"], { cwd: root, env });
@@ -234,7 +262,7 @@ try {
 
       if (native) {
         for (const name of ["manifest.json", "source-integrity.json"]) {
-          const file = join(root, process.env.OPENERP_E2E_ARTIFACTS ?? "test-results/e2e", name);
+          const file = join(root, artifactRoot, name);
 
           if ((await stat(file)).mtimeMs < result.startedAt - 2_000)
             throw new Error(`Stale native ${name}`);
@@ -336,13 +364,17 @@ try {
   await evidence();
 
   const parent = process.env.EXCELLENCE_PARENT_RUN;
+
+  // Record the child link even on failure, but never throw from `finally`:
+  // that would replace the real stage failure with a bookkeeping error.
   if (parent) {
-    if (!/^[a-zA-Z0-9_.:-]{1,120}$/.test(parent)) throw new Error("Invalid parent run identity");
-    const links = join(root, "test-results/excellence-child-links");
-    await mkdir(links, { recursive: true, mode: 0o700 });
-    await writeFile(join(links, `${parent}-${profile}.json`), JSON.stringify({
-      parentRun: parent, profile, relativeReport: `test-results/assurance/${id}/run.json`
-    }) + "\n", { mode: 0o600, flag: "wx" });
+    try {
+      await writeChildLink({ root, parent, profile, id, lockPath });
+    } catch (linkError) {
+      report.childLinkError = String(linkError.message ?? linkError);
+      report.status = "blocked";
+      await evidence();
+    }
   }
 
   if (lock) {

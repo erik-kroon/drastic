@@ -222,7 +222,7 @@ export async function captureSources(repo) {
 
   const generated = (path) =>
     /(^|\/)(node_modules|dist|\.wrangler|test-results)(\/|$)/.test(path) ||
-    path.endsWith('.tsbuildinfo') ||
+    path.endsWith(".tsbuildinfo") ||
     /(^|\/)tsconfig\.changed\.json$/.test(path) ||
     /^verification\/bend\/(?:authority\/)?evidence\//.test(path);
 
