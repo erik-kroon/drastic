@@ -116,9 +116,8 @@
     },
     {
       "leaf": "fx-chain-repair",
-      "status": "deferred",
-      "reason": "Packet keeps the owning transaction and correction while accepted scope stays open.",
-      "unblockedBy": "An FX owner accepts a correction scope, then its transaction calls this leaf."
+      "status": "wired",
+      "consumers": ["apps/api/src/application/commerce/fx-chain-repair.ts"]
     },
     {
       "leaf": "fx-remeasurement",
