@@ -5,6 +5,12 @@ import { HttpApiBuilder } from "effect/unstable/httpapi";
 import { authenticate } from "../auth";
 import * as CommerceFx from "../../../application/commerce/fx";
 import {
+  approveFxChainRepair,
+  executeFxChainRepair,
+  getFxChainRepair,
+  prepareFxChainRepair,
+} from "../../../application/commerce/fx-chain-repair";
+import {
   approveFxRemeasurement,
   executeFxRemeasurement,
   getFxRemeasurement,
@@ -190,6 +196,40 @@ export const CommerceFxHandlers = HttpApiBuilder.group(Api, "commerceFx", (handl
     .handle("getFxRemeasurement", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
         getFxRemeasurement(token, { scope: scopeFromPath(params), id: params.id }),
+      ),
+    )
+    .handle("prepareFxChainRepair", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        prepareFxChainRepair(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("approveFxChainRepair", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        approveFxChainRepair(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          reviewId: params.id,
+          input: payload,
+        }),
+      ),
+    )
+    .handle("executeFxChainRepair", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        executeFxChainRepair(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          reviewId: params.id,
+          input: payload,
+        }),
+      ),
+    )
+    .handle("getFxChainRepair", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        getFxChainRepair(token, { scope: scopeFromPath(params), id: params.id }),
       ),
     )
     .handle("getCommerceFxItem", ({ params }) =>

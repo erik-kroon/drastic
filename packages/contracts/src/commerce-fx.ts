@@ -5,6 +5,7 @@ import { accountingErrors } from "./accounting-errors";
 import * as Commerce from "./commerce";
 import * as Rates from "./exchange-rates";
 import { ValuationPlan } from "@open-erp/domain/fx-remeasurement";
+import { ChainBasis, ChainRepair } from "@open-erp/domain/fx-chain-repair";
 
 const Currency = Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/));
 
@@ -655,6 +656,78 @@ export const RemeasurementPosting = Schema.Struct({
   series: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(32)),
   bookCurrency: Currency,
 });
+// NEXT-41. A late rate correction replays one item's frozen chain: prior
+// valuations and settlements are read as history, the corrected rate is
+// applied, and the per-date attribution delta posts as a correction journal.
+// The caller names the item, the corrected rate revision and the repair key;
+// every event, carrying and prior delta comes from a retained row.
+
+export const PrepareChainRepair = Schema.Struct({
+  itemId: Accounting.Identifier,
+  rateObservationId: Accounting.Identifier,
+  rateDigest: Accounting.Digest,
+  accountingCutoff: Accounting.AccountingDate,
+  repairKey: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
+  rounding: Schema.Literals(["exact", "half_up"]),
+  economicDecisionId: Accounting.Identifier,
+  unrealizedGainAccountId: Accounting.Identifier,
+  unrealizedLossAccountId: Accounting.Identifier,
+  fiscalYearId: Accounting.Identifier,
+  accountingPeriodId: Accounting.Identifier,
+  series: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(32)),
+  reason: Accounting.Description,
+});
+
+export const ChainRepairReview = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  version: Schema.Literal(1),
+  actorId: Accounting.Identifier,
+  digest: Accounting.Digest,
+  repair: ChainRepair,
+  // The sealed basis is retained whole, so execution re-verifies the same
+  // frozen chain rather than reconstructing a different one.
+  basis: ChainBasis,
+  gainAccountId: Accounting.Identifier,
+  lossAccountId: Accounting.Identifier,
+  controlAccountId: Accounting.Identifier,
+  rateEvidenceId: Accounting.Identifier,
+  posting: RemeasurementPosting,
+  createdAt: Schema.String,
+  receipt: Commerce.CommandReceipt,
+});
+
+export const ApproveChainRepair = Schema.Struct({
+  version: Schema.Literal(1),
+  digest: Accounting.Digest,
+});
+
+export const ChainRepairApproval = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  reviewId: Accounting.Identifier,
+  digest: Accounting.Digest,
+  version: Schema.Literal(1),
+  actorId: Accounting.Identifier,
+  expiresAt: Schema.String,
+  createdAt: Schema.String,
+  receipt: Commerce.CommandReceipt,
+});
+
+export const ExecuteChainRepair = Schema.Struct({
+  version: Schema.Literal(1),
+  digest: Accounting.Digest,
+  approvalId: Accounting.Identifier,
+});
+
+export const ChainRepairExecuted = Schema.Struct({
+  scope: Accounting.Scope,
+  reviewId: Accounting.Identifier,
+  digest: Accounting.Digest,
+  approvalId: Accounting.Identifier,
+  voucherId: Schema.NullOr(Accounting.Identifier),
+  createdAt: Schema.String,
+});
 
 export const RemeasurementReview = Schema.Struct({
   id: Accounting.Identifier,
@@ -849,6 +922,28 @@ export const CommerceFxApi = HttpApiGroup.make("commerceFx").add(
     payload: ExecuteRemeasurement.annotate({ parseOptions: { onExcessProperty: "error" } }),
     success: RemeasurementExecuted,
     error: accountingErrors,
+  }),
+  HttpApiEndpoint.post("prepareFxChainRepair", `${path}/chain-repair-reviews`, {
+    ...mutation,
+    payload: PrepareChainRepair.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: ChainRepairReview,
+    error: accountingErrors,
+  }),
+  HttpApiEndpoint.post("approveFxChainRepair", `${path}/chain-repair-reviews/:id/approvals`, {
+    ...identifiedMutation,
+    payload: ApproveChainRepair.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: ChainRepairApproval,
+    error: accountingErrors,
+  }),
+  HttpApiEndpoint.post("executeFxChainRepair", `${path}/chain-repair-reviews/:id/execute`, {
+    ...identifiedMutation,
+    payload: ExecuteChainRepair.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: ChainRepairExecuted,
+    error: accountingErrors,
+  }),
+  HttpApiEndpoint.get("getFxChainRepair", `${path}/chain-repair-reviews/:id`, {
+    ...identified,
+    success: ChainRepairReview,
   }),
   HttpApiEndpoint.get("getFxRemeasurement", `${path}/remeasurement-reviews/:id`, {
     ...identified,
