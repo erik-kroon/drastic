@@ -73,6 +73,7 @@ import { SupplierPaymentBatchHandlers } from "./transport/http/routes/supplier-p
 import { PaymentResolutionHandlers } from "./transport/http/routes/payment-resolutions";
 import { PartyIdentityHandlers } from "./transport/http/routes/party-identity";
 import { BankSyncWindowsHandlers } from "./transport/http/routes/bank-sync-windows";
+import { BankSourceRevisionsHandlers } from "./transport/http/routes/bank-source-revisions";
 import { SupplierCreditHandlers } from "./transport/http/routes/supplier-credits";
 import { SupplierRefundHandlers } from "./transport/http/routes/supplier-refunds";
 import { SubledgerControlsHandlers } from "./transport/http/routes/subledger-controls";
@@ -159,6 +160,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     PaymentResolutionHandlers,
     PartyIdentityHandlers,
     BankSyncWindowsHandlers,
+    BankSourceRevisionsHandlers,
     SupplierCreditHandlers,
     SupplierRefundHandlers,
     SubledgerControlsHandlers,

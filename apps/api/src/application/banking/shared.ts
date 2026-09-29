@@ -38,6 +38,18 @@ const mutableColumns = new Map([
   ["bank_connector_consents", ["revoked_at", "cursor"]],
   ["bank_sources", ["revision"]],
   [
+    "bank_observation_heads",
+    [
+      "latest_revision_id",
+      "eligibility_version",
+      "admitted_statement_id",
+      "admitted_row_ordinal",
+      "matched",
+      "accounting_complete",
+      "version",
+    ],
+  ],
+  [
     "bank_sync_streams",
     ["published_cursor", "publication_version", "current_generation_id", "fence", "lease_until"],
   ],

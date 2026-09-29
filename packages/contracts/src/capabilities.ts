@@ -11,6 +11,7 @@ import { CashFlowCapabilities } from "./cash-flow";
 import { PaymentResolutionCapabilities } from "./payment-resolutions";
 import { PartyIdentityCapabilities } from "./party-identity";
 import { BankSyncWindowsCapabilities } from "./bank-sync-windows";
+import { BankSourceRevisionsCapabilities } from "./bank-source-revisions";
 import * as Reconciliation from "./reconciliation";
 import { CaseCapabilities } from "./cases";
 import * as Automation from "./automation";
@@ -92,6 +93,7 @@ export const Capabilities = {
   ...PaymentResolutionCapabilities,
   ...PartyIdentityCapabilities,
   ...BankSyncWindowsCapabilities,
+  ...BankSourceRevisionsCapabilities,
   runs_start_background: {
     description:
       "Admit a ready preparation run for durable background execution. Authority is rechecked for every chunk; manual changes stop the job. Posting requires separate approval.",

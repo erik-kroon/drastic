@@ -23,9 +23,11 @@
     },
     {
       "leaf": "bank-source-revisions",
-      "status": "deferred",
-      "reason": "Packet keeps posting, matching and persistence with the bank intake owners, which are not built.",
-      "unblockedBy": "Bank intake persists provider observations, then its application owner composes this leaf."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/banking/source-revisions.ts"
+      ],
+      "note": "NEXT-10 owner apps/api/src/application/banking/source-revisions.ts composes the leaf at the interpretation, revision-application and admission boundaries, over the immutable revision, case and admission rows and the version-guarded observation head in 0037-next-10-source-revisions.sql. The amount is derived from the retained provider page bytes, never from the request. Admission adopts an existing statement-backed observation with cited evidence and never creates a second one. Nothing posts, matches or reverses."
     },
     {
       "leaf": "bank-sync-windows",

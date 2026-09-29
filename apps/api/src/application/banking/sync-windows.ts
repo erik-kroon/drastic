@@ -360,10 +360,15 @@ export const claimSyncWindow = Effect.fn("banking.sync.claimWindow")(function* (
           fence: locked.fence,
           consentValid: consent.revokedAt === null,
           streamMappingUnchanged: true,
-          // An unexpired lease blocks a second claimant. An expired one is
-          // taken over by bumping the fence, so the previous worker's own
-          // appends and publication refuse rather than interleave.
-          activeLeaseUnexpired: leaseIsHeld(locked.leaseUntil, Date.now()),
+          // An unexpired lease blocks a second claimant only while there is
+          // something to protect. Once the stream's generation has published,
+          // the previous window is finished and its lease no longer holds
+          // anything: blocking the next window on it would strand the stream
+          // until the lease timed out. An expired one is taken over by bumping
+          // the fence, so the previous worker's own appends and publication
+          // refuse rather than interleave.
+          activeLeaseUnexpired:
+            incomplete !== undefined && leaseIsHeld(locked.leaseUntil, Date.now()),
           incompleteGeneration:
             incomplete === undefined ? null : generationOf(incomplete, locked.fence),
           commandKey: command.idempotencyKey,

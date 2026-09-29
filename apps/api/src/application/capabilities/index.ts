@@ -8,6 +8,7 @@ import { financialCloseCapabilities } from "./financial-close";
 import { collectionsCapabilities } from "./collections";
 import { bankingCapabilities } from "./banking";
 import { bankingSyncCapabilities } from "./bank-sync-windows";
+import { bankingSourceRevisionCapabilities } from "./bank-source-revisions";
 import { subledgerOwnerCapabilities } from "./subledger-owners";
 import { commerceInvoiceCapabilities } from "./commerce-invoices";
 import { purchaseRecognitionCapabilities } from "./purchase-recognition";
@@ -45,6 +46,7 @@ export const capabilities = {
   ...collectionsCapabilities,
   ...bankingCapabilities,
   ...bankingSyncCapabilities,
+  ...bankingSourceRevisionCapabilities,
   ...subledgerOwnerCapabilities,
   ...commerceInvoiceCapabilities,
   ...purchaseRecognitionCapabilities,
