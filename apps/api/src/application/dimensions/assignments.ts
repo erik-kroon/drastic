@@ -95,7 +95,9 @@ function refuse(outcome: Refusal): Effect.Effect<never, AccountingError> {
 }
 
 function decodeJson<A>(schema: Schema.Decoder<A>, value: JsonObject) {
-  return Schema.decodeEffect(schema)(value).pipe(Effect.mapError(() => failure("InternalError")));
+  return Schema.decodeEffect(schema)(value).pipe(
+    Effect.mapError((cause) => failure("InternalError", cause)),
+  );
 }
 
 type RetainedAssignment = {

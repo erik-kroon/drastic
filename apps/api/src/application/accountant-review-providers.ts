@@ -31,7 +31,7 @@ export const readBasisDependencies = Effect.fn("accountantReview.dependencies")(
 
 function object(value: Schema.Json | undefined) {
   return Schema.decodeUnknownEffect(Schema.JsonObject)(value).pipe(
-    Effect.mapError(() => failure("InternalError")),
+    Effect.mapError((cause) => failure("InternalError", cause)),
   );
 }
 

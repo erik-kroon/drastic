@@ -43,7 +43,9 @@ const BundleApproval = Corrections.CorrectionBundleApproval;
 const BundleReceipt = Corrections.CorrectionBundleReceipt;
 
 function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
-  return Schema.decodeEffect(schema)(value).pipe(Effect.mapError(() => failure("InternalError")));
+  return Schema.decodeEffect(schema)(value).pipe(
+    Effect.mapError((cause) => failure("InternalError", cause)),
+  );
 }
 
 function withBook<A>(

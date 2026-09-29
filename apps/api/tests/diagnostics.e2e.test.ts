@@ -14,13 +14,8 @@ function options(databaseUrl: string): TestHarnessOptions {
     root: apiDirectory,
     workers: [
       {
-        config: {
-          name: "diagnostics-api",
-          main: "tests/support/diagnostics-worker.ts",
-          compatibility_date: "2026-09-22",
-          compatibility_flags: ["nodejs_compat"],
-          vars: { DATABASE_URL: databaseUrl },
-        },
+        configPath: "tests/support/diagnostics.wrangler.jsonc",
+        secrets: { DATABASE_URL: databaseUrl },
       },
     ],
   };
@@ -98,7 +93,7 @@ test("retained schema failures keep the field and type, not the input, and corre
   const log = await diagnostic(response);
   expect(log).toContain("SchemaError");
   expect(log).toContain("version");
-  expect(log).toContain("Number");
+  expect(log).toContain("Expected literal 1");
   expect(log).toContain("GET");
   expect(log).toContain(`/change-sets/${corruptId}`);
   expect(log).not.toContain(secret);
@@ -165,13 +160,17 @@ test("database faults retain SQLSTATE and constraint without SQL values and expe
 });
 
 test("connection failures produce a safe correlated 503", async () => {
+  const book = await fixture();
   const unavailable = new URL(environment().runtimeUrl);
-  unavailable.port = "1";
+  unavailable.password = "synthetic-wrong-password";
   await server.update(options(unavailable.href));
 
   try {
-    const response = await fetch(`${baseUrl}/api/health`);
-    expect(response.status).toBe(503);
+    const response = await fetch(`${baseUrl}${book.path}/change-sets/missing`, {
+      headers: { authorization: `Bearer ${book.token}` },
+    });
+
+    expect(response.status, await response.clone().text()).toBe(503);
     expect(await response.text()).not.toContain(unavailable.password);
     const log = await diagnostic(response);
     expect(log).toContain("ConnectionError");

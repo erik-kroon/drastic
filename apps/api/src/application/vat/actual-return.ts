@@ -307,7 +307,7 @@ function readControlBindings(transaction: Transaction, scope: Scope) {
     }
 
     return yield* Schema.decodeEffect(BasisSchema.fields.accountRoles)(bindings).pipe(
-      Effect.mapError(() => failure("InternalError")),
+      Effect.mapError((cause) => failure("InternalError", cause)),
     );
   });
 }
@@ -377,7 +377,7 @@ function readCoverage(
     }
 
     return yield* Schema.decodeEffect(BasisSchema.fields.sourceCoverage)(members).pipe(
-      Effect.mapError(() => failure("InternalError")),
+      Effect.mapError((cause) => failure("InternalError", cause)),
     );
   });
 }

@@ -14,10 +14,12 @@ import { CompanySetupHandlers } from "./transport/http/routes/company-setup";
 import { CompanyProfileHandlers } from "./transport/http/routes/company-profile";
 import { Api } from "@open-erp/contracts/api";
 import * as Context from "effect/Context";
+import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Redacted from "effect/Redacted";
+import * as References from "effect/References";
 import { HttpRouter, HttpServer } from "effect/unstable/http";
 import { HttpApiBuilder } from "effect/unstable/httpapi";
 
@@ -48,7 +50,7 @@ import { ReconciliationHandlers } from "./transport/http/routes/reconciliation";
 import { AccountingErrorStatus } from "@open-erp/contracts/api";
 import { databaseFailure } from "./db/transaction";
 import { Database, databaseLayer } from "./db/connection";
-import { failure } from "./application/failures";
+import { failure, logFailure } from "./application/failures";
 
 import { SubledgerHandlers } from "./transport/http/routes/subledgers";
 
@@ -241,6 +243,9 @@ function withRequestDatabase<A, E, R>(bindings: Bindings, effect: Effect.Effect<
 
 export default {
   async fetch(request: Request, bindings: Bindings): Promise<Response> {
+    const requestId = crypto.randomUUID();
+    const annotations = { requestId, method: request.method, path: new URL(request.url).pathname };
+
     const response = await Effect.runPromise(
       boundedRequest(request).pipe(
         Effect.matchEffect({
@@ -260,17 +265,29 @@ export default {
                           Context.make(RequestEnvironment, {
                             bindings,
                             url: new URL(request.url),
-                          }).pipe(Context.add(Database, db)),
+                          }).pipe(
+                            Context.add(Database, db),
+                            Context.add(References.CurrentLogAnnotations, annotations),
+                          ),
                         ),
                       catch: databaseFailure,
                     });
                   }),
                 ),
         }),
+        Effect.catchCause((cause) => {
+          if (Cause.hasInterrupts(cause)) return Effect.failCause(cause);
+
+          const safe = databaseFailure(Cause.squash(cause));
+
+          return logFailure(safe).pipe(Effect.as(boundaryResponse(safe)));
+        }),
+        Effect.annotateLogs(annotations),
       ),
     );
 
     response.headers.set("cache-control", "no-store");
+    response.headers.set("x-request-id", requestId);
 
     return response;
   },

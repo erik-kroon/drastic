@@ -51,7 +51,7 @@ function withHuman<Eff extends Effect.Effect<unknown, unknown, unknown>, A>(
 
 function decodeFirmList(value: typeof FirmListSchema.Type) {
   return Schema.decodeEffect(FirmListSchema)(value).pipe(
-    Effect.mapError(() => failure("InternalError")),
+    Effect.mapError((cause) => failure("InternalError", cause)),
   );
 }
 

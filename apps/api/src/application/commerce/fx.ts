@@ -102,12 +102,14 @@ const fullSettlementProfile = "synthetic_full_book_currency_settlement_v1";
 const minorCeiling = 10n ** 38n;
 
 function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
-  return Schema.decodeEffect(schema)(value).pipe(Effect.mapError(() => failure("InternalError")));
+  return Schema.decodeEffect(schema)(value).pipe(
+    Effect.mapError((cause) => failure("InternalError", cause)),
+  );
 }
 
 function toJsonObject(value: unknown) {
   return Schema.decodeUnknownEffect(Schema.JsonObject)(value).pipe(
-    Effect.mapError(() => failure("InternalError")),
+    Effect.mapError((cause) => failure("InternalError", cause)),
   );
 }
 

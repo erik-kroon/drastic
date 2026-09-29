@@ -109,18 +109,20 @@ const recurringTables = ["recurring_activations", "recurring_deactivations", "co
 const bookVersionColumns = ["books.profile_version", "books.writer_epoch"];
 
 function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
-  return Schema.decodeEffect(schema)(value).pipe(Effect.mapError(() => failure("InternalError")));
+  return Schema.decodeEffect(schema)(value).pipe(
+    Effect.mapError((cause) => failure("InternalError", cause)),
+  );
 }
 
 function decodeField<A>(schema: Schema.Decoder<A>, value: unknown) {
   return Schema.decodeUnknownEffect(schema)(value).pipe(
-    Effect.mapError(() => failure("InternalError")),
+    Effect.mapError((cause) => failure("InternalError", cause)),
   );
 }
 
 function toJsonObject(value: unknown) {
   return Schema.decodeUnknownEffect(Schema.JsonObject)(value).pipe(
-    Effect.mapError(() => failure("InternalError")),
+    Effect.mapError((cause) => failure("InternalError", cause)),
   );
 }
 

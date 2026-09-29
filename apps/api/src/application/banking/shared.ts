@@ -44,12 +44,14 @@ export function unsupported() {
 }
 
 export function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
-  return Schema.decodeEffect(schema)(value).pipe(Effect.mapError(() => failure("InternalError")));
+  return Schema.decodeEffect(schema)(value).pipe(
+    Effect.mapError((cause) => failure("InternalError", cause)),
+  );
 }
 
 export function toJsonObject<A>(value: A) {
   return Schema.encodeUnknownEffect(Schema.JsonObject)(value).pipe(
-    Effect.mapError(() => failure("InternalError")),
+    Effect.mapError((cause) => failure("InternalError", cause)),
   );
 }
 

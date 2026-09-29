@@ -30,8 +30,8 @@ export default defineConfig({
     allowOnly: !process.env.CI,
     reporters: ["default", "json", "junit"],
     outputFile: {
-      json: "test-results/e2e/results.json",
-      junit: "test-results/e2e/junit.xml",
+      json: `${process.env.OPENERP_E2E_ARTIFACTS ?? "test-results/e2e"}/results.json`,
+      junit: `${process.env.OPENERP_E2E_ARTIFACTS ?? "test-results/e2e"}/junit.xml`,
     },
   },
   fmt: {

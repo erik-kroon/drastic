@@ -99,7 +99,7 @@ async function unusedPort() {
 }
 
 export default async function setup(project: TestProject) {
-  const artifacts = join(root, "test-results/e2e");
+  const artifacts = resolve(root, process.env.OPENERP_E2E_ARTIFACTS ?? "test-results/e2e");
   const history = join(root, "test-results/e2e-history");
   await mkdir(history, { recursive: true, mode: 0o700 });
 
@@ -136,8 +136,6 @@ export default async function setup(project: TestProject) {
 
   async function cleanup() {
     try {
-      await writeFile(join(artifacts, "worker.json"), JSON.stringify(server.getLogs(), null, 2));
-
       if (sourceFiles !== undefined) {
         const finalSources = await sourceInventory();
         const stable = JSON.stringify(finalSources) === JSON.stringify(sourceFiles);
@@ -180,9 +178,16 @@ export default async function setup(project: TestProject) {
       try {
         await server.close();
       } finally {
-        if (started)
-          await run(join(pgBin, "pg_ctl"), ["-D", data, "-m", "immediate", "-w", "stop"]);
-        await rm(scratch, { recursive: true, force: true });
+        try {
+          await writeFile(
+            join(artifacts, "worker.json"),
+            JSON.stringify(server.getLogs(), null, 2),
+          );
+        } finally {
+          if (started)
+            await run(join(pgBin, "pg_ctl"), ["-D", data, "-m", "immediate", "-w", "stop"]);
+          await rm(scratch, { recursive: true, force: true });
+        }
       }
     }
   }

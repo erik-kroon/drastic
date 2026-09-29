@@ -79,7 +79,9 @@ export function newId(prefix: string) {
 }
 
 function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
-  return Schema.decodeEffect(schema)(value).pipe(Effect.mapError(() => failure("InternalError")));
+  return Schema.decodeEffect(schema)(value).pipe(
+    Effect.mapError((cause) => failure("InternalError", cause)),
+  );
 }
 
 function requestDigest(operation: string, actorId: string, input: JsonObject) {
@@ -581,7 +583,7 @@ export const listBooks = Effect.fn("posting.listBooks")(function* (token: string
           role: row.role,
           sequence: row.sequence.toString(),
         })),
-      ).pipe(Effect.mapError(() => failure("InternalError")));
+      ).pipe(Effect.mapError((cause) => failure("InternalError", cause)));
     }),
   );
 });

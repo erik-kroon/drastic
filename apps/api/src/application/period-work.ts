@@ -970,7 +970,7 @@ function planIdentityOf(prepared: Schema.Json) {
       reviewId: review.id,
       reviewDigest: review.digest,
     })),
-    Effect.mapError(() => failure("InternalError")),
+    Effect.mapError((cause) => failure("InternalError", cause)),
   );
 }
 
@@ -1662,7 +1662,7 @@ export const executePeriodWorkBatch = Effect.fn("periodWork.executeBatch")(funct
 function receiptIdentityOf(result: Schema.Json) {
   return Schema.decodeUnknownEffect(OwnerReceipt)(result).pipe(
     Effect.map((receipt) => receipt.id),
-    Effect.mapError(() => failure("InternalError")),
+    Effect.mapError((cause) => failure("InternalError", cause)),
   );
 }
 

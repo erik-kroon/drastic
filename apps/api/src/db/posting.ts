@@ -132,7 +132,7 @@ export function readDatabaseTime(transaction: Transaction) {
     .pipe(
       Effect.flatMap((rows) =>
         Schema.decodeUnknownEffect(DatabaseTime)(rows[0]).pipe(
-          Effect.mapError(() => failure("InternalError")),
+          Effect.mapError((cause) => failure("InternalError", cause)),
         ),
       ),
     );

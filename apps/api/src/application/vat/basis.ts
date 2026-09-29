@@ -52,12 +52,12 @@ export function readCurrentFactObservations(transaction: Transaction, bookId: st
 
 export function toJsonList(value: unknown) {
   return Schema.decodeUnknownEffect(Schema.Array(Schema.Json))(value).pipe(
-    Effect.mapError(() => failure("InternalError")),
+    Effect.mapError((cause) => failure("InternalError", cause)),
   );
 }
 
 export function toJsonObjectList(value: unknown) {
   return Schema.decodeUnknownEffect(Schema.Array(Schema.JsonObject))(value).pipe(
-    Effect.mapError(() => failure("InternalError")),
+    Effect.mapError((cause) => failure("InternalError", cause)),
   );
 }

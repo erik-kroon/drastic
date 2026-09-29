@@ -123,7 +123,7 @@ function validateInput(input: JsonObject) {
 
 function decodeObligationList(value: unknown) {
   return Schema.decodeUnknownEffect(Schema.Array(DeadlineSchema))(value).pipe(
-    Effect.mapError(() => failure("InternalError")),
+    Effect.mapError((cause) => failure("InternalError", cause)),
   );
 }
 

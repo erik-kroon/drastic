@@ -44,7 +44,9 @@ type RecoveryRequest = typeof Recovery.RecoveryRequest.Type;
 type RecoveredRequest = typeof Recovery.RecoveredPostingRequest.Type;
 
 function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
-  return Schema.decodeEffect(schema)(value).pipe(Effect.mapError(() => failure("InternalError")));
+  return Schema.decodeEffect(schema)(value).pipe(
+    Effect.mapError((cause) => failure("InternalError", cause)),
+  );
 }
 
 function withBook<A>(
@@ -728,14 +730,14 @@ export const getPostingRecovery = Effect.fn("posting.getRecovery")(function* (
         Effect.gen(function* () {
           const operation = yield* Schema.decodeUnknownEffect(Recovery.PostingOperation)(
             request.operation,
-          ).pipe(Effect.mapError(() => failure("InternalError")));
+          ).pipe(Effect.mapError((cause) => failure("InternalError", cause)));
 
           const metadata = yield* Schema.decodeEffect(
             Schema.Struct({
               id: Schema.optional(Accounting.Identifier),
               planDigest: Schema.optional(Accounting.Digest),
             }),
-          )(request.result).pipe(Effect.mapError(() => failure("InternalError")));
+          )(request.result).pipe(Effect.mapError((cause) => failure("InternalError", cause)));
 
           let approvalState: RecoveryRequest["approvalState"] = null;
 
@@ -826,7 +828,7 @@ export const recoverPostingRequest = Effect.fn("posting.recoverRequest")(functio
 
       const operation = yield* Schema.decodeUnknownEffect(Recovery.PostingOperation)(
         row.operation,
-      ).pipe(Effect.mapError(() => failure("InternalError")));
+      ).pipe(Effect.mapError((cause) => failure("InternalError", cause)));
 
       const result = yield* decode(recoveredResultSchema(operation), row.result);
 

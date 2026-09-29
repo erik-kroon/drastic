@@ -56,7 +56,7 @@ const readSource = Effect.fn("historical.readSource")(function* (
 
   const vouchers = yield* Schema.decodeUnknownEffect(Sie.SiePreview.fields.vouchers)(
     rows.map((row) => row.body),
-  ).pipe(Effect.mapError(() => failure("InternalError")));
+  ).pipe(Effect.mapError((cause) => failure("InternalError", cause)));
 
   return { source, plan, vouchers };
 });

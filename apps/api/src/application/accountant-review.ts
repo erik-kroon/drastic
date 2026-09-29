@@ -87,7 +87,9 @@ const DescriptorSchema = Review.ReviewArtifactDescriptor;
 const ReportSchema = Reports.ReportSnapshot;
 
 function decode<A>(schema: Schema.Decoder<A>, value: unknown) {
-  return Schema.decodeEffect(schema)(value).pipe(Effect.mapError(() => failure("InternalError")));
+  return Schema.decodeEffect(schema)(value).pipe(
+    Effect.mapError((cause) => failure("InternalError", cause)),
+  );
 }
 
 function withBook<A>(
@@ -241,7 +243,7 @@ function csvArtifact(
 
 function toJsonObject<A>(value: A) {
   return Schema.encodeUnknownEffect(Schema.JsonObject)(value).pipe(
-    Effect.mapError(() => failure("InternalError")),
+    Effect.mapError((cause) => failure("InternalError", cause)),
   );
 }
 

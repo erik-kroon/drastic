@@ -39,7 +39,9 @@ const requiredBodyKeys = {
 } as const satisfies { readonly [K in RevisionKind]: ReadonlyArray<string> };
 
 function decode<A>(schema: Schema.Decoder<A>, value: unknown) {
-  return Schema.decodeEffect(schema)(value).pipe(Effect.mapError(() => failure("InternalError")));
+  return Schema.decodeEffect(schema)(value).pipe(
+    Effect.mapError((cause) => failure("InternalError", cause)),
+  );
 }
 
 function payrollFacts(value: unknown) {

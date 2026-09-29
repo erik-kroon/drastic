@@ -134,7 +134,9 @@ export async function fixture(
 
 export type BookFixture = Awaited<ReturnType<typeof fixture>>;
 
-export function request(book: BookFixture, path: string, init: RequestInit = {}) {
+const requestMethods = new WeakMap<Response, string>();
+
+export async function request(book: BookFixture, path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
 
   if (!headers.has("authorization")) headers.set("authorization", `Bearer ${book.token}`);
@@ -144,7 +146,17 @@ export function request(book: BookFixture, path: string, init: RequestInit = {})
   if (init.method === "POST" && !headers.has("idempotency-key"))
     headers.set("idempotency-key", key());
 
-  return fetch(`${environment().baseUrl}${book.path}${path}`, { ...init, headers });
+  const response = await fetch(`${environment().baseUrl}${book.path}${path}`, { ...init, headers });
+  requestMethods.set(response, init.method ?? "GET");
+
+  if (response.status >= 500)
+    console.error(responseDiagnostic(response, await response.clone().text()));
+
+  return response;
+}
+
+function responseDiagnostic(response: Response, body: string) {
+  return `${requestMethods.get(response) ?? "HTTP"} ${response.url}: ${response.status}\n${body}\nrequestId=${response.headers.get("x-request-id") ?? "unavailable"}; Worker logs: ${join(environment().artifacts, "worker.json")}`;
 }
 
 export async function decoded<S extends Schema.Top & { readonly DecodingServices: never }>(
@@ -152,7 +164,7 @@ export async function decoded<S extends Schema.Top & { readonly DecodingServices
   schema: S,
 ): Promise<S["Type"]> {
   const body = await response.text();
-  expect(response.status, `${response.url}: ${body}`).toBe(200);
+  expect(response.status, responseDiagnostic(response, body)).toBe(200);
 
   return Schema.decodeSync(Schema.fromJsonString(schema))(body);
 }
@@ -175,7 +187,7 @@ export async function failure(
   code: typeof Accounting.FailureCode.Type,
 ) {
   const body = await response.text();
-  expect(response.status, body).toBe(status);
+  expect(response.status, responseDiagnostic(response, body)).toBe(status);
   expect(Schema.decodeSync(Schema.fromJsonString(Accounting.AccountingError))(body).code).toBe(
     code,
   );

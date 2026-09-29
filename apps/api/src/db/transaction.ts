@@ -5,7 +5,7 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as SqlError from "effect/unstable/sql/SqlError";
-import { failure } from "../application/failures";
+import { failure, logFailure } from "../application/failures";
 import { Database, type DatabaseClient } from "./connection";
 
 const PostgresFailure = Schema.Struct({
@@ -23,14 +23,14 @@ export type Transaction = Parameters<DatabaseClient["transaction"]>[0] extends (
 export function databaseFailure(error: unknown): Accounting.AccountingError {
   if (error instanceof Accounting.AccountingError) return error;
 
-  if (SqlError.isSqlError(error)) return failure("Unavailable");
+  if (SqlError.isSqlError(error)) return failure("Unavailable", error);
 
-  if (!(error instanceof EffectDrizzleQueryError)) return failure("InternalError");
+  if (!(error instanceof EffectDrizzleQueryError)) return failure("InternalError", error);
 
   const nested = Cause.isCause(error.cause) ? Cause.findErrorOption(error.cause) : Option.none();
 
   if (Option.isNone(nested) || !SqlError.isSqlError(nested.value)) {
-    return failure("InternalError");
+    return failure("InternalError", error);
   }
 
   const cause = nested.value.reason.cause;
@@ -53,13 +53,13 @@ export function databaseFailure(error: unknown): Accounting.AccountingError {
         "StatementTimeoutError",
       ].includes(nested.value.reason._tag)
     ) {
-      return failure("Unavailable");
+      return failure("Unavailable", error);
     }
 
-    return failure("InternalError");
+    return failure("InternalError", error);
   }
 
-  return failure("Unavailable");
+  return failure("Unavailable", error);
 }
 
 export function withTransaction<A, R>(
@@ -81,6 +81,7 @@ export function withTransaction<A, R>(
 
           return Effect.fail(databaseFailure(Cause.squash(cause)));
         }),
+        Effect.tapError(logFailure),
       );
   });
 }

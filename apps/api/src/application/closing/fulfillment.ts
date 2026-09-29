@@ -46,7 +46,7 @@ const FulfillmentListSchema = Deadlines.FulfillmentList;
 
 function decodeList<A>(schema: Schema.Decoder<ReadonlyArray<A>>, value: unknown) {
   return Schema.decodeUnknownEffect(schema)(value).pipe(
-    Effect.mapError(() => failure("InternalError")),
+    Effect.mapError((cause) => failure("InternalError", cause)),
   );
 }
 

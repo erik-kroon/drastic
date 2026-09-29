@@ -58,8 +58,8 @@ wait. These are local workload observations, not production latency guarantees.
 Before implementation: `diagnostics.e2e.test.ts` must prove that a known Worker
 console message is captured; an invalid retained change-set version yields a
 generic 500 and a correlated schema path/type; a PostgreSQL constraint fault
-yields a generic 500 and a correlated SQLSTATE/constraint; and a connection
-failure yields a generic 503 with a diagnostic. Each unexpected failure is
+yields a generic 500 and a correlated SQLSTATE/constraint; and rejected database
+credentials yield a generic 503 with a diagnostic. Each unexpected failure is
 logged once. Expected authorization refusals produce no error diagnostic.
 Tokens, invalid input values, SQL parameters and database error detail must not
 appear in the Worker artifact or public error body. The response assertion helper
@@ -71,7 +71,29 @@ lives in a test-only entrypoint. `diagnostics-worker.json` retains captured logs
 even if an assertion fails. Removing logging, cause retention, correlation or
 capture must fail the relevant assertion.
 
+Application diagnostics retain schema paths/expected types, error categories,
+stack frames and database identifiers, but omit raw error messages, input values,
+SQL text/parameters and request query strings. The server generates `x-request-id`
+and attaches it to both the response and Effect logs. Nested diagnostic data is
+serialized explicitly so Worker console formatting cannot collapse it to
+`[Object]` or `[Array]`. The transaction boundary logs unexpected failures once;
+the outer fetch boundary covers acquisition failures. Public error bodies remain
+generic. `request()` prints 5xx method/URL/status/body/request-ID context, and
+`decoded()`/`failure()` include it in failed assertions.
+
+The connection regression covers PostgreSQL authentication rejection, not every
+socket failure. A closed-port probe produced a workerd hung-request cancellation
+before an application response; that runtime/socket behavior is not fixed or
+qualified by these tests.
+
 The latest run writes `test-results/e2e`. Before a new run starts, the runner moves the previous directory into `test-results/e2e-history/<timestamp>-<suffix>`. Both paths are ignored by Git. Local history is not a production archive; retain release evidence under the operator's custody policy.
+
+Set `OPENERP_E2E_ARTIFACTS=test-results/diagnostics` for an independent output
+directory; the harness and Vitest reporters use the same path. This prevents
+concurrent runs from rotating one another's evidence, but source changes during
+a run still fail the integrity check. Worker logs are saved after Worker shutdown,
+including when shutdown fails, before the database and scratch directory are
+removed.
 
 - `manifest.json` binds HEAD, tracked diff, lockfile, migration checksums and runtime versions. It also lists each tracked or untracked file in the declared source roots, its SHA-256 and tracked state. Deleted tracked files have a null hash. Ignored files and symlinks are not accepted as implicit source inputs: ignored files are outside this inventory, and discovered symlinks refuse the run.
 - `source-integrity.json` compares the source inventory at startup and teardown. A mismatch fails the run. It checks those two observations, not continuous filesystem history.

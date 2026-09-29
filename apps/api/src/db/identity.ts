@@ -79,7 +79,7 @@ type LockedAuthority =
 
 function decodeOne<A>(schema: Schema.Decoder<A>, value: unknown) {
   return Schema.decodeUnknownEffect(schema)(value).pipe(
-    Effect.mapError(() => failure("InternalError")),
+    Effect.mapError((cause) => failure("InternalError", cause)),
   );
 }
 
