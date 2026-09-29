@@ -271,7 +271,7 @@ export const prepareBankInventorySignoff = Effect.fn("banking.inventorySignoff.p
           }),
       );
 
-      const membersBody = yield* Shared.toJsonObject(members);
+      const membersBody = yield* Shared.toJson(members);
 
       const body = Object.assign(
         {},

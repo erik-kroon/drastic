@@ -192,7 +192,7 @@ function currentReversalSnapshot(transaction: Transaction, bookId: string, planB
       bookId,
       accountId,
       Shared.objectField(snapshot, "original"),
-      yield* Shared.toJsonObject(plan.snapshot.legs),
+      yield* Shared.toJson(plan.snapshot.legs),
     );
   });
 }

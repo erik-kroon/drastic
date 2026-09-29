@@ -55,6 +55,16 @@ export function toJsonObject<A>(value: A) {
   );
 }
 
+// A retained leg list or member list is an array. Encoding it through the
+// object-only contract would reject it and turn a real value into
+// InternalError, so JSON-capable values use the JSON contract and only genuine
+// objects use the object-only one.
+export function toJson<A>(value: A) {
+  return Schema.encodeUnknownEffect(Schema.Json)(value).pipe(
+    Effect.mapError((cause) => failure("InternalError", cause)),
+  );
+}
+
 export function withBook<A>(
   token: string,
   scope: Scope,
