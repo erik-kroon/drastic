@@ -1,0 +1,23 @@
+-- Bank capacity reconciliation: grant the append the owner already performs.
+--
+-- `openerp.bank_capacity_reconciliations` was created with the rest of the
+-- banking schema and granted SELECT, plus a column-scoped UPDATE that the
+-- immutable_row trigger already makes unreachable. It was never granted
+-- INSERT, even though:
+--
+--   * `reconciliations.ts` lists the report table in `requireTables` inserts
+--     for the capacity basis, and the exact basis writes the sibling
+--     `bank_reconciliations` the same way;
+--   * `bank_signoff_plans.reconciliation_id` has a foreign key into this
+--     table, so `prepareBankSignoff` and `prepareBankInventorySignoff` can
+--     never name a reconciliation;
+--   * `reconcileBankCapacity` is a wired public endpoint.
+--
+-- The effect was that the capacity basis always answered
+-- UnsupportedProfile, which made the whole bank sign-off chain unreachable in
+-- a provisioned environment.
+--
+-- The report row is an immutable fact, so this grants INSERT only, matching
+-- the exact basis. Nothing may update or delete it.
+
+GRANT INSERT ON TABLE openerp.bank_capacity_reconciliations TO openerp_runtime;

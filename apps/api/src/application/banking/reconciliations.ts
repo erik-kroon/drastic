@@ -496,12 +496,22 @@ function saveReconciliation(
         return yield* failure("InternalError");
       }
 
-      yield* ReportDb.insertReconciliation(transaction, {
-        bookId: command.scope.bookId,
-        id: reportId,
-        accountId,
-        body,
-      });
+      // Each basis owns its own report table. The sign-off plan's foreign key
+      // names the capacity table, so a capacity report written to the exact
+      // table would be invisible to every later reader.
+      yield* basis === "capacity"
+        ? ReportDb.insertCapacityReconciliation(transaction, {
+            bookId: command.scope.bookId,
+            id: reportId,
+            accountId,
+            body,
+          })
+        : ReportDb.insertReconciliation(transaction, {
+            bookId: command.scope.bookId,
+            id: reportId,
+            accountId,
+            body,
+          });
       yield* saveCommand(
         transaction,
         command.scope,

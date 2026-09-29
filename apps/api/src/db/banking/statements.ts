@@ -392,7 +392,7 @@ export function readSourceRows(
           'rowOrdinal', o.row_ordinal, 'providerId', o.provider_id, 'date', o.observed_on::text,
           'description', o.description, 'amountMinor', o.amount_minor::text
           ${capacity ? sql`, 'allocatedMinor', (${allocated})::text` : sql``}
-          ${capacity ? sql`, 'remainingMinor', (o.amount_minor - ${allocated})::text` : sql``}
+          ${capacity ? sql`, 'remainingMinor', (o.amount_minor - (${allocated}))::text` : sql``}
         ) order by s.starts_on, o.row_ordinal), '[]'::jsonb) as rows
       from openerp.bank_observations o
       join openerp.bank_statements s on (s.book_id, s.id) = (o.book_id, o.statement_id)
@@ -422,7 +422,7 @@ export function readLedgerRows(
           'voucherId', v.id, 'lineId', l.id, 'date', v.posting_date::text, 'sequence', v.sequence::text,
           'description', l.description, 'amountMinor', (l.debit_minor - l.credit_minor)::text
           ${capacity ? sql`, 'allocatedMinor', (${allocated})::text` : sql``}
-          ${capacity ? sql`, 'remainingMinor', (l.debit_minor - l.credit_minor - ${allocated})::text` : sql``}
+          ${capacity ? sql`, 'remainingMinor', (l.debit_minor - l.credit_minor - (${allocated}))::text` : sql``}
         ) order by v.sequence, l.ordinal), '[]'::jsonb) as rows
       from openerp.journal_lines l
       join openerp.vouchers v on (v.book_id, v.id) = (l.book_id, l.voucher_id)

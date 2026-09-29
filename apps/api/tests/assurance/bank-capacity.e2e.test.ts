@@ -120,6 +120,94 @@ async function allocations(w: Awaited<ReturnType<typeof world>>) {
   }
 }
 
+async function executeAllocation(
+  w: Awaited<ReturnType<typeof world>>,
+  legs: Array<{ row: number; line: number; amount: string }>,
+) {
+  const plan = await decoded(await prepareAllocation(w, legs), Settlement.BankAllocationPlan);
+
+  const approval = await decoded(
+    await request(w.book, `/bank-allocation-plans/${plan.id}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ version: 1, digest: plan.digest }),
+    }),
+    Settlement.BankAllocationApproval,
+  );
+
+  return decoded(
+    await request(w.book, `/bank-allocation-plans/${plan.id}/execute`, {
+      method: "POST",
+      body: JSON.stringify({ version: 1, digest: plan.digest, approvalId: approval.id }),
+    }),
+    Settlement.BankAllocationExecution,
+  );
+}
+
+async function capacityReport(w: Awaited<ReturnType<typeof world>>) {
+  return decoded(
+    await request(w.book, "/bank-capacity-reconciliations", {
+      method: "POST",
+      body: JSON.stringify({
+        accountId: "account_bank",
+        startsOn: "2026-09-01",
+        endsOn: "2026-09-30",
+      }),
+    }),
+    Settlement.BankCapacityReconciliation,
+  );
+}
+
+test("[ASR-CAPACITY-RESIDUAL] a residual is the amount minus the whole allocated sum", async () => {
+  // One source row of 12500 and two posted bank lines of 10000 each. Half of
+  // the shared obligation is allocated, so both sides must retain 2500.
+  const w = await world(["10000", "10000"], ["12500"]);
+
+  await executeAllocation(w, [{ row: 1, line: 0, amount: "7500" }]);
+
+  const report = await capacityReport(w);
+  const source = report.sourceRows[0];
+  const line = report.ledgerLines[0];
+
+  expect(source?.amountMinor).toBe("12500");
+  expect(source?.allocatedMinor).toBe("7500");
+  // The defect interpolated the sum without parentheses, so this was
+  // (12500 - 0) + 7500 = 20000 and the report never reached "complete".
+  expect(source?.remainingMinor).toBe("5000");
+
+  expect(line?.amountMinor).toBe("10000");
+  expect(line?.allocatedMinor).toBe("7500");
+  expect(line?.remainingMinor).toBe("2500");
+
+  // Both sides retain a genuine residual, so the basis must not claim closure.
+  expect(report.unmatchedSource).toHaveLength(1);
+  // Line 0 keeps 2500 and line 1 was never allocated, so both are unmatched.
+  expect(report.unmatchedLedger).toHaveLength(2);
+  expect(report.status).toBe("differences");
+});
+
+test("[ASR-CAPACITY-CONSUMED] a fully allocated shared obligation reaches complete", async () => {
+  // One source row of 20000 against two posted bank lines of 10000 each, so a
+  // complete allocation is possible and the basis must then reach "complete".
+  const w = await world(["10000", "10000"], ["20000"]);
+
+  await executeAllocation(w, [
+    { row: 1, line: 0, amount: "10000" },
+    { row: 1, line: 1, amount: "10000" },
+  ]);
+
+  const report = await capacityReport(w);
+
+  for (const row of [...report.sourceRows, ...report.ledgerLines])
+    expect(row.remainingMinor, JSON.stringify(row)).toBe("0");
+
+  // Every consumed row leaves no residual, so neither side is unmatched and no
+  // difference is reported. The overall status still reflects this fixture's
+  // declared-incomplete statement coverage, which is a separate concern.
+  expect(report.unmatchedSource).toHaveLength(0);
+  expect(report.unmatchedLedger).toHaveLength(0);
+  expect(report.differences).toEqual([]);
+});
+
 test.each([
   {
     label: "same source over two targets",
