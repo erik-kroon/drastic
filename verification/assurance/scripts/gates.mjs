@@ -95,6 +95,7 @@ export function evaluateVitest(
     failed,
     other,
     fileCount: fileNames.size,
+    assertionIdentities: [...identities].sort(),
     reasons,
   };
 }
@@ -151,7 +152,9 @@ export function mutationOutcome(input) {
     mutant &&
     mutant.failed > 0 &&
     mutant.tests === baseline.tests &&
-    mutant.other === 0
+    mutant.other === 0 &&
+    Array.isArray(baseline.assertionIdentities) &&
+    JSON.stringify(mutant.assertionIdentities) === JSON.stringify(baseline.assertionIdentities)
   )
     return "killed_by_assertion";
 

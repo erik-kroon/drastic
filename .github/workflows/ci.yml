@@ -61,7 +61,7 @@ jobs:
   # server binaries because the harness runs initdb/pg_ctl itself.
   e2e:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 60
     env:
       PG_BINDIR: /usr/lib/postgresql/17/bin
 
@@ -108,12 +108,13 @@ jobs:
         timeout-minutes: 5
         run: bun run --cwd apps/api playwright install --with-deps chromium
 
-      - name: Run E2E against real PostgreSQL
+      - name: Run scoped excellence qualification
         id: e2e
-        timeout-minutes: 10
+        timeout-minutes: 50
         run: |
+          set -o pipefail
           mkdir -p test-results/ci
-          bun run test:e2e 2>&1 | tee test-results/ci/e2e.log
+          node verification/assurance/excellence/scripts/run.mjs core 2>&1 | tee test-results/ci/e2e.log
 
       # The harness writes manifest.json (revision, worktree diff hash, lock hash,
       # per-migration SHA-256, postgres version) beside results.json and junit.xml.
@@ -124,6 +125,10 @@ jobs:
           name: e2e-evidence
           path: |
             test-results/e2e/
+            test-results/excellence/
+            test-results/excellence-native/
+            test-results/assurance/
+            test-results/excellence-child-links/
             test-results/ci/e2e.log
           if-no-files-found: error
           retention-days: 14

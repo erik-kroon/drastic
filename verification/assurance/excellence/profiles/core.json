@@ -1,0 +1,94 @@
+{
+  "schema": "openerp-excellence-profile/v1",
+  "id": "core",
+  "claim": "Supported synthetic accounting core, adversarial state histories and isolated recovery",
+  "stages": [
+    "tooling",
+    "foundation",
+    "recovery"
+  ],
+  "cases": [
+    {
+      "id": "EXC-SUPPLIER-1715004",
+      "marker": "EXC-SUPPLIER-1715004",
+      "file": "apps/api/tests/assurance/excellence/supplier-stateful.e2e.test.ts",
+      "lane": "native",
+      "evidence": "excellence-supplier-1715004.json",
+      "requiredMeaning": "Every generated committed step agrees in exact journal footprint, AP/refund residuals, tax facts and original source capacities; successful command replay preserves it."
+    },
+    {
+      "id": "EXC-SUPPLIER-12648430",
+      "marker": "EXC-SUPPLIER-12648430",
+      "file": "apps/api/tests/assurance/excellence/supplier-stateful.e2e.test.ts",
+      "lane": "native",
+      "evidence": "excellence-supplier-12648430.json",
+      "requiredMeaning": "Every generated committed step agrees in exact journal footprint, AP/refund residuals, tax facts and original source capacities; successful command replay preserves it."
+    },
+    {
+      "id": "EXC-SUPPLIER-305419896",
+      "marker": "EXC-SUPPLIER-305419896",
+      "file": "apps/api/tests/assurance/excellence/supplier-stateful.e2e.test.ts",
+      "lane": "native",
+      "evidence": "excellence-supplier-305419896.json",
+      "requiredMeaning": "Every generated committed step agrees in exact journal footprint, AP/refund residuals, tax facts and original source capacities; successful command replay preserves it."
+    },
+    {
+      "id": "EXC-SUPPLIER-ROLLBACK",
+      "marker": "EXC-SUPPLIER-ROLLBACK",
+      "file": "apps/api/tests/assurance/excellence/supplier-stateful.e2e.test.ts",
+      "lane": "native",
+      "evidence": "excellence-supplier-late-rollback.json",
+      "requiredMeaning": "A late financial source-usage failure leaves all earlier writes rolled back and the same request can succeed once."
+    },
+    {
+      "id": "EXC-FX-receivable",
+      "marker": "EXC-FX-receivable",
+      "file": "apps/api/tests/assurance/excellence/fx-sequences.conformance.test.ts",
+      "lane": "pure",
+      "requiredMeaning": "Actual FX owner follows independent targets, no repeated gain and exact complete-population semantics. Stateful partial settlement HTTP stays in the existing FX suites."
+    },
+    {
+      "id": "EXC-FX-payable",
+      "marker": "EXC-FX-payable",
+      "file": "apps/api/tests/assurance/excellence/fx-sequences.conformance.test.ts",
+      "lane": "pure",
+      "requiredMeaning": "Actual FX owner follows independent targets, no repeated gain and exact complete-population semantics. Stateful partial settlement HTTP stays in the existing FX suites."
+    },
+    {
+      "id": "EXC-FX-MEMBERSHIP",
+      "marker": "EXC-FX-MEMBERSHIP",
+      "file": "apps/api/tests/assurance/excellence/fx-sequences.conformance.test.ts",
+      "lane": "pure",
+      "requiredMeaning": "Actual FX owner follows independent targets, no repeated gain and exact complete-population semantics. Stateful partial settlement HTTP stays in the existing FX suites."
+    },
+    {
+      "id": "EXC-PAYROLL-QUANTA",
+      "marker": "EXC-PAYROLL-QUANTA",
+      "file": "apps/api/tests/assurance/excellence/payroll-arithmetic.conformance.test.ts",
+      "lane": "pure",
+      "requiredMeaning": "Current payroll kernel passes independent unit, sign, threshold and contiguous-band examples; not statutory profile qualification."
+    },
+    {
+      "id": "EXC-PAYROLL-BANDS",
+      "marker": "EXC-PAYROLL-BANDS",
+      "file": "apps/api/tests/assurance/excellence/payroll-arithmetic.conformance.test.ts",
+      "lane": "pure",
+      "requiredMeaning": "Current payroll kernel passes independent unit, sign, threshold and contiguous-band examples; not statutory profile qualification."
+    },
+    {
+      "id": "EXC-RECOVERY-COMPLETE",
+      "marker": "EXC-RECOVERY-COMPLETE",
+      "file": "apps/api/tests/assurance/excellence/recovery.recovery.test.ts",
+      "lane": "recovery",
+      "evidence": "excellence-recovery.json",
+      "requiredMeaning": "A genuine pg_dump/pg_restore recovers exact selected book state, a private retained object and old command receipt in real Worker/Bun owners; missing/corrupt object refuses; selected retired deployment cannot log in."
+    }
+  ],
+  "limitations": [
+    "Tests are synthetic and profile-scoped, not all125 planned product capabilities",
+    "Current source has partly unimplemented six-books normalization; infrastructure success is not corpus completion",
+    "Local Bend and official artifact qualification remain distinct; no deployment trust is changed",
+    "Recovery drill shares the PostgreSQL cluster and does not qualify all production IAM/network/storage or provider-secret recovery",
+    "Private payroll legal profiles, real external acceptance and complete company facts remain explicit separate obligations"
+  ]
+}
