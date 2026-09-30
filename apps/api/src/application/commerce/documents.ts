@@ -17,8 +17,7 @@ import { base64, bytesEqual, sha256HexOf } from "../bytes";
 import { failure } from "../failures";
 import { renderInvoiceDocument } from "./invoice-document-renderer";
 import { renderInvoicePdf } from "./invoice-pdf-renderer";
-import { renderLegalInvoicePdf } from "./legal-invoice-pdf-renderer-takumi-v1";
-import { renderLegalInvoicePdfV2 } from "./legal-invoice-pdf-renderer-takumi-v2";
+import { renderLegalInvoicePdf } from "./legal-invoice-pdf-renderer-pdfcn";
 import {
   decode,
   objectField,
@@ -1057,22 +1056,9 @@ export const resumeLegalInvoicePdf = Effect.fn("commerce.legalPdfs.resume")(func
   const version = view.capture.input.rendererVersion;
 
   const rendered = new Uint8Array(
-    yield* Effect.gen(function* () {
-      if (version === "openerp-se-invoice-takumi-v1") {
-        return yield* Effect.tryPromise({
-          try: () => renderLegalInvoicePdf(view.capture),
-          catch: renderFailure,
-        });
-      }
-
-      if (version === "openerp-se-invoice-takumi-v2") {
-        return yield* Effect.tryPromise({
-          try: () => renderLegalInvoicePdfV2(view.capture),
-          catch: renderFailure,
-        });
-      }
-
-      return yield* unsupported();
+    yield* Effect.tryPromise({
+      try: () => renderLegalInvoicePdf(view.capture),
+      catch: renderFailure,
     }),
   );
 

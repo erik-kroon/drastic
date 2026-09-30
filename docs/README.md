@@ -8,6 +8,8 @@ The current first-company product direction is [Book Zero, daily work and Drasti
 
 The [Document Intelligence first journey](plans/document-intelligence-delivery.md) records the PDF/image-to-review-to-draft implementation and normal self-host synthetic verification. Live provider use remains disabled.
 
+The [pdfcn decision](adr/0016-pdfcn-legal-documents.md) and [adoption record](plans/pdfcn-adoption.md) describe the current legal-invoice and credit-note presentation and its local E2E proof.
+
 ## Reading order
 
 The [open-accounting decision](adr/0005-open-accounting-and-managed-services.md), [application-owned replacement](adr/0010-application-owned-accounting-replacement.md), [architecture follow-up](architecture-followup.md), [licensing policy](../LICENSING.md) and [self-host setup](../infra/self-host/README.md) describe the open-source distribution and the latest design reconciliation.

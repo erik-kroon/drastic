@@ -20,7 +20,7 @@ const Totals = Schema.Struct({
   grossMinor: Accounting.MinorUnits,
 });
 
-export const customerCreditRendererVersion = "openerp-se-credit-note-v1";
+export const customerCreditRendererVersion = "openerp-se-credit-note-pdfcn-v1";
 
 export const customerCreditRenderEvent = "customer_credit.render_requested.v1";
 

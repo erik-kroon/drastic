@@ -4,6 +4,16 @@
 
 Application operations live in [application/commerce/documents.ts](../src/application/commerce/documents.ts), with shared dispatch in [capabilities](../src/application/capabilities/).
 
+## Current legal PDF presentation
+
+The current renderer is `openerp-se-invoice-pdfcn-v1`. The owner selected pdfcn on 2026-09-30 and confirmed that no existing customer artifacts, customers or real database require compatibility with the synthetic Takumi templates. Those templates have been replaced directly by [the pdfcn invoice renderer](../src/application/commerce/legal-invoice-pdf-renderer-pdfcn.tsx).
+
+The [owned pdfcn adapter](../src/adapters/pdf/pdfcn/UPSTREAM.md) retains pinned upstream provenance and its MIT notice. React document components render through Takumi 0.11.3, with a fixed OpenERP theme, bundled IBM Plex Mono fonts, point-based sizing and actual page counters. The invoice consumes the immutable issue and reviewed policy snapshots. Exact minor-unit strings supply every displayed amount; presentation does not calculate VAT or issue another number. Missing facts, unsupported characters and output above 2 MiB fail visibly.
+
+Under `/api/v1/entities/:entityId/books/:bookId/commerce`, POST `/legal-invoice-pdfs` accepts an idempotency key and `{issueId, issueDigest, rendererVersion: "openerp-se-invoice-pdfcn-v1"}`. GET `/legal-invoice-pdfs/:id`, POST `/legal-invoice-pdfs/:id/render` and GET `/legal-invoice-issues/:id/pdfs` retain their current capture, seal, recovery and authority behavior. Rendering does not imply delivery.
+
+Run `bun run test:e2e apps/api/tests/pdfcn.e2e.test.ts apps/api/tests/credit-document.e2e.test.ts`. The [adoption record](../../../docs/plans/pdfcn-adoption.md) owns implementation and verification status. Its E2E failure contract covers exact large amounts, frozen parties, literal text, fifty-row pagination, unsupported glyphs, replay and scope. Inspect the retained PDF files, independently extracted text/coordinates, journey receipts, manifest and source-integrity result. Historical observations below describe superseded renderers and do not qualify the pdfcn output.
+
 ## Historical implementation notes
 
 The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.

@@ -5,13 +5,12 @@ import * as Drafts from "./invoice-drafts";
 import * as Policy from "./legal-sales-policy";
 import { accountingErrors } from "./accounting-errors";
 
+export const legalInvoiceRendererVersion = "openerp-se-invoice-pdfcn-v1";
+
 export const PrepareLegalInvoicePdf = Schema.Struct({
   issueId: Accounting.Identifier,
   issueDigest: Accounting.Digest,
-  rendererVersion: Schema.Literals([
-    "openerp-se-invoice-takumi-v1",
-    "openerp-se-invoice-takumi-v2",
-  ]),
+  rendererVersion: Schema.Literal(legalInvoiceRendererVersion),
 });
 
 export const LegalIssuePdfFacts = Schema.Struct({
@@ -74,10 +73,7 @@ export const LegalInvoicePdfArtifact = Schema.Struct({
   sealedAt: Schema.String,
   legalInvoice: Schema.Literal(true),
   delivered: Schema.Literal(false),
-  rendererVersion: Schema.Literals([
-    "openerp-se-invoice-takumi-v1",
-    "openerp-se-invoice-takumi-v2",
-  ]),
+  rendererVersion: Schema.Literal(legalInvoiceRendererVersion),
 });
 
 export const LegalInvoicePdfView = Schema.Struct({

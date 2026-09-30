@@ -4,7 +4,7 @@ Feature implementation notes, handoffs and feasibility reviews live in [docs](..
 
 `src/index.ts` composes the shared HTTP API. The Worker and Bun self-host entrypoints use that same application.
 
-[Credit-note documents](docs/CREDIT-DOCUMENTS.md) now have a scoped PDF artifact workflow and an effect-mq consumer. Rendering uses the issued semantic revision and keeps financial issuance, current artifact state, VAT consequences and customer delivery separate.
+[Legal invoices](docs/INVOICE-PDF.md) and [credit-note documents](docs/CREDIT-DOCUMENTS.md) use the owned [pdfcn/Takumi adapter](src/adapters/pdf/pdfcn/UPSTREAM.md) with exact retained amounts, bundled fonts and immutable issued facts. Credit notes have a scoped PDF artifact workflow and an effect-mq consumer. Rendering keeps financial issuance, current artifact state, VAT consequences and customer delivery separate.
 
 ```text
 src/

@@ -4,7 +4,7 @@
 
 The [credit document owner](../src/application/commerce/credit-documents.ts) renders an already issued `CustomerCreditSemanticDocument`. It copies retained parties, dates, references and amounts. It does not calculate VAT, issue another number, post, refund or send a document.
 
-The PDF profile is `openerp-se-credit-note-v1`: Swedish SEK, scale 2, up to 50 retained lines and a 2 MiB artifact. It reuses the existing Takumi renderer dependency and bundled font coverage. Unsupported characters cause a visible failure; they are not replaced or removed.
+The PDF profile is `openerp-se-credit-note-pdfcn-v1`: Swedish SEK, scale 2, up to 50 retained lines and a 2 MiB artifact. The [pdfcn presentation](../src/application/commerce/credit-document-renderer.tsx) composes the same pinned, adapted components as legal invoices, rendered by Takumi with bundled font coverage and a fixed OpenERP theme. All amount formatting uses the retained minor-unit strings. Unsupported characters cause a visible failure; they are not replaced or removed. Migration [0042](../migrations/0042-pdfcn-renderer.sql) updates the renderer constraint for this direct replacement of the synthetic setup; the owner confirmed there are no existing customer artifacts or real database to migrate. The [adoption record](../../../docs/plans/pdfcn-adoption.md) distinguishes implementation from verification.
 
 The immutable credit receipt keeps its issue-time `artifactState: issued_artifact_pending`. Read the separate artifact view for current state. `available` means that verified bytes are retained, not that a customer received them or that a VAT return includes the credit.
 

@@ -19,6 +19,7 @@ The status describes a decision's authority, not implementation progress. “Est
 | [0014](0014-retro-payroll-open-period-adjustments.md) | Working decision | Linked payroll adjustments post in open periods; original payroll attribution and declaration corrections remain separate. |
 | [0012](0012-next-implementation-dossier.md) | Accepted planning decision; amended 2026-09-28 for the third, fourth and fifth waves | Externally produced NEXT dossiers are vendored byte-identical under `docs/specs`, and `NEXT-nn` stays a supplemental work namespace outside the mandated index. |
 | [0015](0015-owner-delegated-decision-pass.md) | Accepted decision, 2026-09-28 | Owner-delegated decision pass: owner-operated private release with an owner-acceptance engineering gate, a bounded standing test permission, local-first operating mode, Accounted as a pinned non-authoritative reference, and dispositions for 23 product-scope capabilities. |
+| [0016](0016-pdfcn-legal-documents.md) | Accepted owner decision, 2026-09-30 | Adapt pinned pdfcn source for legal invoices and credit notes, with exact retained amounts, actual pagination and direct replacement of synthetic legal templates. |
 
 The separately authored [Swedish VAT profile boundary](0002-swedish-vat-profile-boundary.md) also uses the number 0002 in its filename. Refer to it by title and full filename to distinguish it from the posting ADR. It records a bounded research profile and source limitations; it does not activate statutory support.
 
