@@ -4,16 +4,17 @@ import * as Accounting from "./accounting";
 import { CommandReceipt } from "./reconciliation";
 import { accountingErrors as errors } from "./accounting-errors";
 
-// NEXT-38 owner contract: cash-method recognition and unpaid year-end cutover,
-// extending the existing commerce invoice owner.
+// NEXT-38 reserved contract: the read path can inspect retained rows, but the
+// financial write endpoints refuse UnsupportedProfile until the commerce
+// invoice and payment owners retain a native cash-method source and final cash.
 //
-// A cash-method book recognizes a document when it is paid, and once-only at
-// year end recognizes the unpaid remainder. The commercial balance and the
-// accounting recognition stay separate throughout: paying an invoice does not
-// change what is owed, and recognizing it does not create a second document.
+// A qualified cash-method book would recognize a document when it is paid,
+// and once-only at year end recognize the unpaid remainder. The commercial balance and the
+// accounting recognition stay separate throughout: paying an invoice reduces
+// its commercial debt; recognizing an unpaid portion does not pay that debt.
 //
-// Eligibility is never inferred. A line joins cash method only because a
-// reviewed profile witness says so, and the witness is retained with the line.
+// Eligibility is never inferred. A caller-supplied witness alone does not
+// establish a reviewed accounting-method profile or undo an accrual posting.
 // Nothing in this contract infers the method from a company size, a document
 // label or a relabelled accrual effect.
 //
@@ -93,8 +94,9 @@ export const CashPaymentRecognition = Schema.Struct({
   recognitionId: Ref,
   lineId: Ref,
   paymentRef: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
-  // The gross this payment recognized, which is the recognized-unpaid portion
-  // the payment covers, not the whole invoice.
+  // Newly recognized gross on this payment. Settlement of gross already
+  // recognized at year end is excluded; a payment covering only that portion
+  // reports zero here.
   recognizedGrossMinor: Accounting.AggregateMinorUnits,
   recognizedGrossAfterMinor: Accounting.AggregateMinorUnits,
   paidGrossAfterMinor: Accounting.AggregateMinorUnits,

@@ -62,11 +62,9 @@
     },
     {
       "leaf": "cash-method",
-      "status": "wired",
-      "consumers": [
-        "apps/api/src/application/commerce/cash-method.ts"
-      ],
-      "note": "NEXT-38 owner apps/api/src/application/commerce/cash-method.ts composes the leaf at the payment-recognition and year-end boundaries, extending the existing commerce invoice owner. The net and tax split is read from the retained recognition voucher's journal lines, classified by the retained VAT account role, and the commercial gross from the invoice's own amount, so no caller ever states an amount. 0040-next-38-cash-method.sql holds the recognized prefix, the append-only recognition history naming its trigger, and one cutover run per period. The line advances one version under the version the writer observed, so a concurrent recognition cannot both succeed."
+      "status": "deferred",
+      "reason": "The commerce invoice owner currently requires an executed accrual recognition voucher; the former cash-method writer reused that accrual invoice and accepted an asserted payment amount and trigger. The financial write endpoints now refuse UnsupportedProfile rather than double-posting or inventing a cash event.",
+      "unblockedBy": "Commerce adds a qualified cash-method document whose issue has no accrual revenue/VAT posting, and the owning allocation transaction supplies a retained final cash event, exact allocated amount and correction link. Then wire this leaf into that owner with year-end complete-population and tax-fact proof."
     },
     {
       "leaf": "collection-reminders",
