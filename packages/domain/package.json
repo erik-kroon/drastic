@@ -19,6 +19,7 @@
     "./payment-resolutions": "./src/payment-resolutions.ts",
     "./bank-sync-windows": "./src/bank-sync-windows.ts",
     "./bank-source-revisions": "./src/bank-source-revisions.ts",
+    "./bank-cover-search": "./src/bank-cover-search.ts",
     "./party-identity": "./src/party-identity.ts",
     "./agent-context": "./src/agent-context.ts",
     "./processor-clearing": "./src/processor-clearing.ts",

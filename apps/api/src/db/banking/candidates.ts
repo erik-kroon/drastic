@@ -35,6 +35,23 @@ export type CandidateLinesRow = {
   readonly lines: Json;
 };
 
+export function readCandidatePeerOrdinals(
+  transaction: Transaction,
+  bookId: string,
+  statementId: string,
+  rowOrdinal: number,
+) {
+  return transaction.execute<{ readonly rowOrdinal: number; readonly total: number }>(
+    sql`
+    select row_ordinal as "rowOrdinal", count(*) over ()::integer as total from openerp.bank_observations
+    where book_id = ${bookId} and statement_id = ${statementId} and row_ordinal <> ${rowOrdinal}
+    order by row_ordinal
+    limit 11
+  `,
+    "objects",
+  );
+}
+
 export function readCandidateSource(
   transaction: Transaction,
   bookId: string,

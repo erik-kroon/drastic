@@ -1,5 +1,6 @@
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Candidates from "@open-erp/contracts/bank-match-candidates";
+import { findExactCovers } from "@open-erp/domain/bank-cover-search";
 import { StatementPaymentReference } from "@open-erp/contracts/reconciliation";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
@@ -7,6 +8,7 @@ import { failure } from "../failures";
 import { digest } from "../posting";
 import * as CandidateDb from "../../db/banking/candidates";
 import * as BankDb from "../../db/banking/shared";
+import type { Transaction } from "../../db/transaction";
 import * as Shared from "./shared";
 
 type Scope = typeof Accounting.Scope.Type;
@@ -79,6 +81,108 @@ function capacityIsConsistent(amount: bigint, allocated: bigint) {
     (allocated === 0n || Shared.signOf(allocated) === Shared.signOf(amount))
   );
 }
+
+const discoverCoverConflicts = Effect.fn("banking.candidates.coverConflicts")(function* (
+  transaction: Transaction,
+  bookId: string,
+  currency: string,
+  source: CandidateDb.CandidateSourceRow,
+  candidates: ReadonlyArray<typeof Candidates.BankMatchCandidate.Type>,
+  periods: ReadonlyArray<Period>,
+  coverSearch: ReturnType<typeof findExactCovers>,
+) {
+  const peers = yield* CandidateDb.readCandidatePeerOrdinals(
+    transaction,
+    bookId,
+    source.statementId,
+    source.rowOrdinal,
+  );
+
+  const conflicts: Array<{
+    coverIndex: number;
+    rowOrdinal: number;
+    sharedLines: Array<{ voucherId: string; lineId: string }>;
+  }> = [];
+
+  let completeWithinStatement = peers.length <= 10 && coverSearch.status !== "incomplete_search";
+
+  for (const peer of peers.slice(0, 10)) {
+    const observation = (yield* CandidateDb.readCandidateSource(
+      transaction,
+      bookId,
+      source.statementId,
+      peer.rowOrdinal,
+    ))[0];
+
+    if (!observation) return yield* failure("StaleDependency");
+
+    const amount = Shared.minor(observation.amountMinor);
+    const allocated = Shared.minor(observation.allocatedMinor);
+
+    if (amount === undefined || allocated === undefined || !capacityIsConsistent(amount, allocated))
+      return yield* failure("InvalidJournal");
+
+    const remaining = amount - allocated;
+
+    const pool = candidates.filter(
+      (candidate) =>
+        candidate.blockedReasons.every(
+          (block) => block.startsWith("source_") || block === "opposite_sign",
+        ) &&
+        candidate.sameCurrency &&
+        Shared.signOf(BigInt(candidate.remainingMinor)) === Shared.signOf(remaining),
+    );
+
+    const peerCandidates = [];
+
+    for (const candidate of pool) {
+      const days = Shared.dayDistance(candidate.postedOn, observation.observedOn);
+
+      if (days === undefined) return yield* failure("InternalError");
+
+      peerCandidates.push({
+        voucherId: candidate.voucherId,
+        lineId: candidate.lineId,
+        amountMinor: candidate.remainingMinor,
+        dayDistance: days,
+      });
+    }
+
+    const peerSearch = findExactCovers(
+      remaining.toString(),
+      peerCandidates,
+      coverSearch.limits,
+      observation.accountActive &&
+        observation.currency === currency &&
+        periodState(periods, observation.observedOn) === "open",
+    );
+
+    if (peerSearch.status === "incomplete_search") completeWithinStatement = false;
+
+    for (const [coverIndex, cover] of coverSearch.covers.entries()) {
+      const sharedLines = cover.legs
+        .filter((leg) =>
+          peerSearch.covers.some((other) =>
+            other.legs.some(
+              (item) => item.voucherId === leg.voucherId && item.lineId === leg.lineId,
+            ),
+          ),
+        )
+        .map(({ voucherId, lineId }) => ({ voucherId, lineId }));
+
+      if (sharedLines.length)
+        conflicts.push({ coverIndex, rowOrdinal: peer.rowOrdinal, sharedLines });
+    }
+  }
+
+  return {
+    scope: "same_statement_v1" as const,
+    populationCount: peers[0]?.total ?? 0,
+    searchedCount: Math.min(peers.length, 10),
+    completeWithinStatement,
+    conflicts,
+  };
+});
 
 export const discoverBankMatchCandidates = Effect.fn("banking.candidates.discover")(function* (
   token: string,
@@ -326,6 +430,38 @@ export const discoverBankMatchCandidates = Effect.fn("banking.candidates.discove
 
       const eligible = candidates.filter((candidate) => candidate.eligible);
 
+      const limits = command.input.coverLimits ?? {
+        maxCandidates: 40,
+        maxSetSize: 4,
+        maxVisited: 10000,
+      };
+
+      const coverSearch = findExactCovers(
+        sourceRemaining.toString(),
+        eligible.map((candidate) => ({
+          voucherId: Shared.textField(candidate.body, "voucherId") ?? "",
+          lineId: Shared.textField(candidate.body, "lineId") ?? "",
+          amountMinor: Shared.textField(candidate.body, "remainingMinor") ?? "0",
+          dayDistance: candidate.days,
+        })),
+        limits,
+        sourceBlocks.length === 0,
+      );
+
+      const typedCandidates = yield* Effect.forEach(candidates, (candidate) =>
+        Shared.decode(Candidates.BankMatchCandidate, candidate.body),
+      );
+
+      const coverConflicts = yield* discoverCoverConflicts(
+        transaction,
+        command.scope.bookId,
+        book.currency,
+        source,
+        typedCandidates,
+        periods,
+        coverSearch,
+      );
+
       const body = Object.assign({}, {
         version: "bank_match_candidates_v1",
         scope: { entityId: book.entityId, bookId: book.id },
@@ -372,6 +508,8 @@ export const discoverBankMatchCandidates = Effect.fn("banking.candidates.discove
           : "unavailable",
         rankingPolicy: "retained_then_reference_amount_date_v2",
         coverage: "not_established",
+        coverSearch,
+        coverConflicts,
       } satisfies JsonObject);
 
       const bodyDigest = yield* digest(body);

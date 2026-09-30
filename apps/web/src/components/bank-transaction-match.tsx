@@ -59,6 +59,11 @@ function DiscoverMatch(props: Props & { statementId: string }) {
   const { book, locale, statementId, rowOrdinal } = props;
   const sv = locale === "sv";
   const [selection, setSelection] = useState<string | null>(null);
+
+  const [coverSelection, setCoverSelection] = useState<{ digest: string; index: number } | null>(
+    null,
+  );
+
   const [visible, setVisible] = useState(25);
 
   const matches = useQuery({
@@ -82,6 +87,12 @@ function DiscoverMatch(props: Props & { statementId: string }) {
 
   const data = matches.isSuccess ? matches.data : undefined;
   const selected = data?.candidates.find((row) => `${row.voucherId}:${row.lineId}` === selection);
+
+  const selectedCover =
+    data && coverSelection?.digest === data.digest
+      ? data.coverSearch.covers[coverSelection.index]
+      : undefined;
+
   const copy = bankCandidateCopy(locale);
 
   const money = (value: string) =>
@@ -125,17 +136,30 @@ function DiscoverMatch(props: Props & { statementId: string }) {
           {data.source.blockedReasons.map((reason) => (
             <Text key={reason}>{copy.blocks[reason]}</Text>
           ))}
-          {selected ? (
+          {selected || selectedCover ? (
             <MatchChoice
               {...props}
-              key={selection}
+              key={`${data.digest}:${selection}:${coverSelection?.index ?? "manual"}`}
               data={data}
               candidate={selected}
+              cover={selectedCover}
               current={!matches.isFetching}
-              onBack={() => setSelection(null)}
+              onBack={() => {
+                setSelection(null);
+                setCoverSelection(null);
+              }}
             />
           ) : (
             <RecordSection title={sv ? "Välj bokförd transaktion" : "Choose a posted transaction"}>
+              <ExactCoverChoices
+                data={data}
+                locale={locale}
+                current={!matches.isFetching}
+                onChoose={(index) => {
+                  setSelection(null);
+                  setCoverSelection({ digest: data.digest, index });
+                }}
+              />
               <PageCaption>
                 {sv
                   ? "Välj den bokförda transaktion som hör till bankhändelsen. Du kan matcha hela eller delar av beloppet."
@@ -173,7 +197,10 @@ function DiscoverMatch(props: Props & { statementId: string }) {
                         key="choose"
                         variant="outline"
                         disabled={!row.eligible || matches.isFetching}
-                        onClick={() => setSelection(`${row.voucherId}:${row.lineId}`)}
+                        onClick={() => {
+                          setCoverSelection(null);
+                          setSelection(`${row.voucherId}:${row.lineId}`);
+                        }}
                       >
                         {sv ? "Välj" : "Choose"}
                       </Button>,
@@ -207,25 +234,152 @@ function DiscoverMatch(props: Props & { statementId: string }) {
   );
 }
 
+function ExactCoverChoices({
+  data,
+  locale,
+  current,
+  onChoose,
+}: {
+  data: typeof Candidates.BankMatchCandidates.Type;
+  locale: Props["locale"];
+  current: boolean;
+  onChoose: (index: number) => void;
+}) {
+  const sv = locale === "sv";
+  const [visible, setVisible] = useState(10);
+  const search = data.coverSearch;
+
+  const status = {
+    unique_within_declared_pool: sv
+      ? "En exakt kombination inom sökområdet"
+      : "One exact combination within the search scope",
+    ambiguous: sv
+      ? "Flera likvärdiga exakta kombinationer"
+      : "Several equally ranked exact combinations",
+    no_match_within_declared_pool: sv
+      ? "Ingen exakt kombination inom sökgränserna"
+      : "No exact combination within the search limits",
+    incomplete_search: sv
+      ? "Sökningen är ofullständig. Fler kombinationer kan finnas."
+      : "Search is incomplete. More combinations may exist.",
+    unavailable: sv
+      ? "Exakt kombinationssökning är inte tillgänglig för transaktionen."
+      : "Exact combination search is unavailable for this transaction.",
+  }[search.status];
+
+  return (
+    <Box display="grid" gap="md" minWidth="zero">
+      <Text role="status">{status}</Text>
+      <PageCaption>
+        {sv
+          ? `Sökområde: ${data.window.startsOn}–${data.window.endsOn}. ${search.searchedCount} av ${search.populationCount} möjliga rader, högst ${search.limits.maxSetSize} rader per kombination. Ingen matchning sparas när du väljer.`
+          : `Search scope: ${data.window.startsOn}–${data.window.endsOn}. ${search.searchedCount} of ${search.populationCount} eligible lines, at most ${search.limits.maxSetSize} lines per combination. Choosing does not save a match.`}
+      </PageCaption>
+      {!data.coverConflicts.completeWithinStatement ? (
+        <Text>
+          {sv
+            ? "Kontrollen mot andra banktransaktioner är ofullständig."
+            : "The check against other bank entries is incomplete."}
+        </Text>
+      ) : null}
+      {search.covers.slice(0, visible).map((cover, index) => {
+        const conflicts = data.coverConflicts.conflicts.filter(
+          (conflict) => conflict.coverIndex === index,
+        );
+
+        return (
+          <Box
+            key={cover.legs.map((leg) => `${leg.voucherId}:${leg.lineId}`).join("/")}
+            display="grid"
+            gap="sm"
+            padding="md"
+            borderWidth="thin"
+            borderColor="default"
+            borderRadius="surface"
+            minWidth="zero"
+          >
+            {cover.legs.map((leg) => {
+              const line = data.candidates.find(
+                (candidate) =>
+                  candidate.voucherId === leg.voucherId && candidate.lineId === leg.lineId,
+              );
+
+              return (
+                <Text key={`${leg.voucherId}:${leg.lineId}`}>
+                  {line?.postedOn} · {line?.description} ·{" "}
+                  {formatMinorAmount(leg.amountMinor, data.currencyScale, locale)} {data.currency}
+                </Text>
+              );
+            })}
+            <Text>
+              {sv ? "Totalt" : "Total"}:{" "}
+              {formatMinorAmount(cover.totalMinor, data.currencyScale, locale)} {data.currency} ·{" "}
+              {sv ? "Kvar" : "Left over"}: 0
+            </Text>
+            {conflicts.length ? (
+              <Text>
+                {sv
+                  ? `Delar bokförda rader med kontoutdragets rader ${conflicts.map((conflict) => conflict.rowOrdinal).join(", ")}. Granska alternativen innan du matchar.`
+                  : `Shares posted lines with statement rows ${conflicts.map((conflict) => conflict.rowOrdinal).join(", ")}. Review the alternatives before matching.`}
+              </Text>
+            ) : null}
+            <Box>
+              <Button
+                variant="outline"
+                disabled={!current || !data.source.eligible}
+                onClick={() => onChoose(index)}
+              >
+                {sv ? `Granska kombination ${index + 1}` : `Review combination ${index + 1}`}
+              </Button>
+            </Box>
+          </Box>
+        );
+      })}
+      {search.covers.length > visible ? (
+        <Box>
+          <Button variant="ghost" onClick={() => setVisible(visible + 10)}>
+            {sv ? "Visa fler kombinationer" : "Show more combinations"}
+          </Button>
+        </Box>
+      ) : null}
+    </Box>
+  );
+}
+
 function MatchChoice(
   props: Props & {
     data: typeof Candidates.BankMatchCandidates.Type;
-    candidate: typeof Candidates.BankMatchCandidate.Type;
+    candidate?: typeof Candidates.BankMatchCandidate.Type;
+    cover?: (typeof Candidates.BankMatchCandidates.Type)["coverSearch"]["covers"][number];
     current: boolean;
     onBack: () => void;
   },
 ) {
-  const { data, candidate, locale } = props;
+  const { data, candidate, cover, locale } = props;
   const sv = locale === "sv";
   const sourceAmount = BigInt(data.source.remainingMinor);
-  const lineAmount = BigInt(candidate.remainingMinor);
+  const lineAmount = BigInt(candidate?.remainingMinor ?? "0");
   const abs = (amount: bigint) => (amount < 0n ? -amount : amount);
   const limit = abs(sourceAmount) < abs(lineAmount) ? abs(sourceAmount) : abs(lineAmount);
   const initial = (sourceAmount < 0n ? -limit : limit).toString();
 
-  const [amounts, setAmounts] = useState<Record<string, string>>({
-    [`${candidate.voucherId}:${candidate.lineId}`]: minorToDecimal(initial, data.currencyScale),
-  });
+  const [amounts, setAmounts] = useState<Record<string, string>>(() =>
+    cover
+      ? Object.fromEntries(
+          cover.legs.map((leg) => [
+            `${leg.voucherId}:${leg.lineId}`,
+            minorToDecimal(leg.amountMinor, data.currencyScale),
+          ]),
+        )
+      : candidate
+        ? {
+            [`${candidate.voucherId}:${candidate.lineId}`]: minorToDecimal(
+              initial,
+              data.currencyScale,
+            ),
+          }
+        : {},
+  );
 
   const [acknowledged, setAcknowledged] = useState(false);
   const chosen = data.candidates.filter((item) => `${item.voucherId}:${item.lineId}` in amounts);

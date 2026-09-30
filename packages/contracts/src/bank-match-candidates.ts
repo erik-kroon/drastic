@@ -3,6 +3,7 @@ import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 import { RowOrdinal, StatementPaymentReference } from "./reconciliation";
+import { CoverLimits, CoverSearch } from "@open-erp/domain/bank-cover-search";
 
 export const BankCandidateSource = Schema.Struct({
   statementId: Accounting.Identifier,
@@ -12,6 +13,7 @@ export const BankCandidateSource = Schema.Struct({
 export const DiscoverBankMatchCandidates = Schema.Struct({
   ...BankCandidateSource.fields,
   previousDigest: Schema.optionalKey(Accounting.Digest),
+  coverLimits: Schema.optionalKey(CoverLimits),
 });
 
 export const BankCandidateBlock = Schema.Literals([
@@ -122,6 +124,22 @@ export const BankMatchCandidates = Schema.Struct({
   providerReferenceComparison: Schema.Literals(["unavailable", "invoice_document_number_v1"]),
   rankingPolicy: Schema.Literal("retained_then_reference_amount_date_v2"),
   coverage: Schema.Literal("not_established"),
+  coverSearch: CoverSearch,
+  coverConflicts: Schema.Struct({
+    scope: Schema.Literal("same_statement_v1"),
+    populationCount: Schema.Int,
+    searchedCount: Schema.Int,
+    completeWithinStatement: Schema.Boolean,
+    conflicts: Schema.Array(
+      Schema.Struct({
+        coverIndex: Schema.Int,
+        rowOrdinal: RowOrdinal,
+        sharedLines: Schema.Array(
+          Schema.Struct({ voucherId: Accounting.Identifier, lineId: Accounting.Identifier }),
+        ),
+      }),
+    ),
+  }),
   digest: Accounting.Digest,
   previousDigestMatches: Schema.NullOr(Schema.Boolean),
 });
@@ -144,7 +162,7 @@ export const BankMatchCandidatesApi = HttpApiGroup.make("bankMatchCandidates").a
 export const BankMatchCandidateCapabilities = {
   bank_discover_match_candidates: {
     description:
-      "Read all bounded mapped-account lines in a retained source's statement interval. Explain effective capacity, blockers and heuristic ranking; never establish identity, select or apply a match.",
+      "Read bounded mapped-account lines and exact whole-residual covers in a retained statement interval. Explain capacity, blockers, tied alternatives, search limits and same-statement conflicts; never establish identity, select or apply a match.",
     input: Schema.Struct({ scope: Accounting.Scope, input: DiscoverBankMatchCandidates }),
     output: BankMatchCandidates,
     readOnly: true,
