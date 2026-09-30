@@ -3,6 +3,7 @@ import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
 import * as A from "./accounting";
 import * as Intake from "./source-intake";
 import { accountingErrors } from "./accounting-errors";
+import { AccountCode } from "@open-erp/domain/values";
 
 const Label = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200));
 
@@ -73,7 +74,7 @@ export const SiePreview = Schema.Struct({
 });
 
 export const Mapping = Schema.Struct({
-  sourceAccount: Schema.String.check(Schema.isPattern(/^[0-9]{4}$/)),
+  sourceAccount: AccountCode,
   accountId: A.Identifier,
 });
 

@@ -1,4 +1,4 @@
-import { Buffer } from "node:buffer";
+import { isAccountCode } from "@open-erp/domain/values";
 
 export type SieDiagnostic = {
   code: string;
@@ -119,7 +119,7 @@ const exactAmount = /^-?(?:0|[1-9][0-9]{0,35})(?:\.[0-9]{1,2})?$/;
 function validTransaction(fields: string[]) {
   return (
     fields.length >= 3 &&
-    /^[0-9]{4}$/.test(fields[0] ?? "") &&
+    isAccountCode(fields[0]) &&
     /^\{.*\}$/.test(fields[1] ?? "") &&
     exactAmount.test(fields[2] ?? "")
   );
@@ -129,7 +129,7 @@ function validControl(fields: string[]) {
   return (
     fields.length >= 3 &&
     /^-?[0-9]{1,4}$/.test(fields[0] ?? "") &&
-    /^[0-9]{4}$/.test(fields[1] ?? "") &&
+    isAccountCode(fields[1]) &&
     exactAmount.test(fields[2] ?? "")
   );
 }
@@ -213,6 +213,16 @@ function recordObjectControl(record: SieRecord, depth: number, append: AppendDia
       record.line,
       record.byteStart,
       "Object balance needs a year, account, object group and exact amount.",
+    );
+}
+
+function recordAccountDeclaration(record: SieRecord, depth: number, append: AppendDiagnostic) {
+  if (depth !== 0 || record.fields.length < 2 || !isAccountCode(record.fields[0]))
+    append(
+      "account_code",
+      record.line,
+      record.byteStart,
+      "Account declarations require an exact one-to-eight-digit account code and name.",
     );
 }
 
@@ -324,7 +334,7 @@ function scanSieLines(
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i] ?? "";
     const byteStart = offset;
-    offset += encoding !== "utf-8" ? raw.length : Buffer.byteLength(raw, "utf8");
+    offset += encoding !== "utf-8" ? raw.length : new TextEncoder().encode(raw).length;
     const line = raw.replace(/\r?\n$/, "");
 
     if (line.trim() === "") continue;
@@ -377,6 +387,7 @@ function scanSieLines(
       append("unsupported_record", i + 1, byteStart, `Unsupported #${tag} record is retained.`);
 
     if (tag === "OIB" || tag === "OUB") recordObjectControl(record, depth, append);
+    else if (tag === "KONTO") recordAccountDeclaration(record, depth, append);
     else current = recordSieFact(record, current, depth, vouchers, controls, append);
   }
 

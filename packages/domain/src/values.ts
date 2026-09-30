@@ -2,6 +2,12 @@ import * as Schema from "effect/Schema";
 
 export const Identifier = Schema.String.check(Schema.isPattern(/^[a-z][a-z0-9_-]{2,127}$/));
 
+// Account codes are lexical identifiers. Preserve source zero prefixes; chart
+// classification and a renderer's narrower profile are separate decisions.
+export const AccountCode = Schema.String.check(Schema.isPattern(/^[0-9]{1,8}$/));
+
+export const isAccountCode = Schema.is(AccountCode);
+
 export const AccountingDate = Schema.String.check(Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/));
 
 const swedishCalendar = new Intl.DateTimeFormat("sv-SE", {

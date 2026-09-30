@@ -1,5 +1,6 @@
 import * as Accounting from "@open-erp/domain/errors";
 import type * as Sie from "@open-erp/contracts/sie";
+import { isAccountCode } from "@open-erp/domain/values";
 
 // Unicode mapping for IBM CP437 bytes 0x80..0xff. ASCII control bytes are not text.
 const extended =
@@ -39,12 +40,17 @@ export function amount(minor: bigint) {
 }
 
 function numericCompare(left: string, right: string) {
-  const leftNumber = BigInt(left);
-  const rightNumber = BigInt(right);
+  // Compare decimal magnitude without converting lexical account identifiers.
+  // This preserves the existing positive-code byte order and never rewrites a
+  // retained code, including any leading zeros.
+  const leftDigits = left.replace(/^0+(?=.)/, "");
+  const rightDigits = right.replace(/^0+(?=.)/, "");
 
-  if (leftNumber < rightNumber) return -1;
+  if (leftDigits.length !== rightDigits.length) return leftDigits.length - rightDigits.length;
 
-  if (leftNumber > rightNumber) return 1;
+  if (leftDigits < rightDigits) return -1;
+
+  if (leftDigits > rightDigits) return 1;
 
   return 0;
 }
@@ -73,7 +79,7 @@ function captureVouchers(capture: Capture) {
   const codes = new Set<string>();
 
   for (const account of accounts.values()) {
-    if (!/^[1-9][0-9]{0,7}$/.test(account.code) || codes.has(account.code))
+    if (!isAccountCode(account.code) || codes.has(account.code))
       refuse("SIE4I requires unique numeric account codes of at most eight digits.");
     codes.add(account.code);
   }
