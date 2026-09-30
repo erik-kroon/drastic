@@ -20,7 +20,7 @@ import {
 } from "../commerce/invoice-documents";
 import { getInvoicePdf, invoicePdfHistory } from "../commerce/documents";
 import { getSupplierAcceptanceReview, supplierAcceptanceHistory } from "../purchases/acceptance";
-import { inspectPaymentIdentifier } from "../purchases/payment-identifiers";
+import { inspectPaymentIdentifier, inspectBankAccountHint } from "../purchases/payment-identifiers";
 import { getSupplierCreditReview, supplierCreditHistory } from "../purchases/credits";
 import { getSupplierInbox, listSupplierInboxes } from "../purchases/inbox";
 import {
@@ -75,6 +75,10 @@ import {
 } from "../commerce/register";
 
 export const commerceInvoiceCapabilities = {
+  payments_check_bank_account: effectCapability(
+    Capabilities.payments_check_bank_account,
+    inspectBankAccountHint,
+  ),
   payments_check_identifier: effectCapability(
     Capabilities.payments_check_identifier,
     inspectPaymentIdentifier,

@@ -15,6 +15,7 @@ import { readAccounting } from "@/lib/accounting-api";
 import { decimalToMinor, formatMinorAmount, minorToDecimal } from "@/lib/workspace-api";
 import { CommandForm, checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
 import { PaymentIdentifierCheck } from "./payment-identifier-check";
+import { BankAccountHintCheck } from "./bank-account-hint-check";
 
 type EligibleInvoice = (typeof Payments.PaymentEligibility.Type)["items"][number];
 
@@ -144,6 +145,7 @@ export function SupplierPaymentFiles(props: CommerceProps & { recordId?: string 
       </RecordSection>
       <PaymentPreparationSection {...props} invoices={ready} onPrepared={setBatchId} />
       <PaymentIdentifierCheck {...props} />
+      <BankAccountHintCheck key={props.book.id} {...props} />
       <RecordSection
         title={sv ? "Öppna en tidigare förhandsgranskning" : "Open an existing preview"}
       >

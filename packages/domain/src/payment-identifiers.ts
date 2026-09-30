@@ -100,3 +100,136 @@ export function checkPaymentIdentifier(
 
   return { ...result, status: "valid", output };
 }
+
+export const BankAccountHintInput = Schema.Struct({
+  profile: Schema.Literal("reference_r2_v1"),
+  clearing: Schema.String.check(Schema.isMaxLength(20)),
+  account: Schema.String.check(Schema.isMaxLength(20)),
+});
+
+const BankAccountRule = Schema.Literals([
+  "mod11_last10",
+  "mod11_full",
+  "mod11_9",
+  "mod10_10",
+  "account_clearing_mod10",
+]);
+
+export const BankAccountHint = Schema.Struct({
+  profile: BankAccountHintInput.fields.profile,
+  clearing: Schema.String,
+  account: Schema.String,
+  normalizedClearing: Schema.String,
+  normalizedAccount: Schema.String,
+  rule: Schema.NullOr(BankAccountRule),
+  status: Schema.Literals(["valid", "invalid", "unknown"]),
+  reason: Schema.Literals([
+    "unmapped_clearing",
+    "unusable_input",
+    "unsupported_length",
+    "checksum_passed",
+    "checksum_failed",
+  ]),
+  accountVerified: Schema.Literal(false),
+  paymentAuthorized: Schema.Literal(false),
+  nonBlocking: Schema.Literal(true),
+});
+
+const lastTenRanges = [
+  { from: "1100", to: "1399" },
+  { from: "1400", to: "2099" },
+  { from: "2400", to: "2499" },
+  { from: "3000", to: "3299" },
+  { from: "3410", to: "3999" },
+  { from: "5000", to: "5999" },
+  { from: "7000", to: "7999" },
+  { from: "9400", to: "9449" },
+];
+
+function clearingRule(clearing: string): typeof BankAccountRule.Type | null {
+  // These are the retained R2 reference ranges, not a live bank catalogue.
+  // Exact exceptions must win before the surrounding range is considered.
+  if (clearing === "3300" || clearing === "3782") return "mod10_10";
+
+  if (lastTenRanges.some((range) => clearing >= range.from && clearing <= range.to))
+    return "mod11_last10";
+
+  if (clearing >= "4000" && clearing <= "4999") return "mod11_full";
+
+  if (clearing >= "6000" && clearing <= "6999") return "mod11_9";
+
+  if (clearing >= "8000" && clearing <= "8999") return "account_clearing_mod10";
+
+  return null;
+}
+
+function validateMod11(digits: string) {
+  if (!/^[0-9]{1,11}$/.test(digits)) return false;
+  let sum = 0;
+  const offset = 11 - digits.length;
+
+  for (let index = 0; index < digits.length; index += 1) {
+    const position = offset + index;
+    const weight = position === 0 ? 1 : 11 - position;
+    sum += (digits.charCodeAt(index) - 48) * weight;
+  }
+
+  return sum !== 0 && sum % 11 === 0;
+}
+
+export function checkBankAccountHint(
+  input: typeof BankAccountHintInput.Type,
+): typeof BankAccountHint.Type {
+  const clearing = input.clearing.replaceAll(/\s/g, "");
+  const account = input.account.replaceAll(/\s/g, "");
+  const clearingUsable = /^[0-9]{4,5}$/.test(clearing);
+  const rule = clearingUsable ? clearingRule(clearing.slice(0, 4)) : null;
+
+  const result = {
+    profile: input.profile,
+    clearing: input.clearing,
+    account: input.account,
+    normalizedClearing: clearing,
+    normalizedAccount: account,
+    rule,
+    accountVerified: false as const,
+    paymentAuthorized: false as const,
+    nonBlocking: true as const,
+  };
+
+  if (rule === null)
+    return {
+      ...result,
+      status: "unknown",
+      reason: clearingUsable ? "unmapped_clearing" : "unusable_input",
+    };
+
+  if (!/^[0-9]+$/.test(account)) return { ...result, status: "unknown", reason: "unusable_input" };
+
+  if (clearing.length === 5 && rule !== "account_clearing_mod10")
+    return { ...result, status: "unknown", reason: "unsupported_length" };
+
+  let valid: boolean;
+
+  if (rule === "mod11_last10" || rule === "mod11_full") {
+    if (account.length > 7) return { ...result, status: "unknown", reason: "unsupported_length" };
+    const full = clearing + account.padStart(7, "0");
+    valid = validateMod11(rule === "mod11_last10" ? full.slice(-10) : full);
+  } else if (rule === "mod10_10") {
+    if (account.length > 10) return { ...result, status: "unknown", reason: "unsupported_length" };
+    valid = validateMod10(account.padStart(10, "0"));
+  } else if (rule === "mod11_9") {
+    if (account.length > 9) return { ...result, status: "unknown", reason: "unsupported_length" };
+    valid = validateMod11(account.padStart(9, "0"));
+  } else {
+    if (account.length < 6 || account.length > 10)
+      return { ...result, status: "unknown", reason: "unsupported_length" };
+    valid = validateMod10(account) && (clearing.length === 4 || validateMod10(clearing));
+  }
+
+  return {
+    ...result,
+    status: valid ? "valid" : "invalid",
+    reason: valid ? "checksum_passed" : "checksum_failed",
+  };
+}
