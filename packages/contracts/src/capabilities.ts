@@ -9,6 +9,7 @@ import * as Reports from "./reports";
 import { StatementCapabilities } from "./report-statements";
 import { CashFlowCapabilities } from "./cash-flow";
 import { PaymentResolutionCapabilities } from "./payment-resolutions";
+import { PaymentIdentifierCapabilities } from "./payment-identifiers";
 import { PartyIdentityCapabilities } from "./party-identity";
 import { BankSyncWindowsCapabilities } from "./bank-sync-windows";
 import { BankSourceRevisionsCapabilities } from "./bank-source-revisions";
@@ -93,6 +94,7 @@ const changeMutation = { ...mutation, changeSetId: Accounting.Identifier };
 export const Capabilities = {
   ...CashFlowCapabilities,
   ...PaymentResolutionCapabilities,
+  ...PaymentIdentifierCapabilities,
   ...PartyIdentityCapabilities,
   ...BankSyncWindowsCapabilities,
   ...BankSourceRevisionsCapabilities,

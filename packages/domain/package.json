@@ -17,6 +17,7 @@
     "./purchasing": "./src/purchasing.ts",
     "./supplier-refunds": "./src/supplier-refunds.ts",
     "./payment-resolutions": "./src/payment-resolutions.ts",
+    "./payment-identifiers": "./src/payment-identifiers.ts",
     "./bank-sync-windows": "./src/bank-sync-windows.ts",
     "./bank-source-revisions": "./src/bank-source-revisions.ts",
     "./bank-cover-search": "./src/bank-cover-search.ts",

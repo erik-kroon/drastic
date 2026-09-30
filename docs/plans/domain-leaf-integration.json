@@ -2,6 +2,14 @@
   "$comment": "Integration declaration for every packages/domain leaf, enforced by `bun run check:integration` (scripts/check-integration.ts). A leaf with no consumer outside packages/domain is dead code. Wiring it is the goal; where wiring is genuinely blocked, this file records who is missing and what would unblock it. Do not delete a leaf to silence this file: wire it, or state the real reason.",
   "leaves": [
     {
+      "leaf": "payment-identifiers",
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/purchases/payment-identifiers.ts",
+        "packages/contracts/src/payment-identifiers.ts"
+      ]
+    },
+    {
       "leaf": "bank-cover-search",
       "status": "wired",
       "consumers": ["apps/api/src/application/banking/candidates.ts", "packages/contracts/src/bank-match-candidates.ts"]

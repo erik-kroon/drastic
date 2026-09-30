@@ -22,6 +22,7 @@
     "./cash-flow": "./src/cash-flow.ts",
     "./party-identity": "./src/party-identity.ts",
     "./payment-resolutions": "./src/payment-resolutions.ts",
+    "./payment-identifiers": "./src/payment-identifiers.ts",
     "./report-statements": "./src/report-statements.ts",
     "./cases": "./src/cases.ts",
     "./automation": "./src/automation.ts",
