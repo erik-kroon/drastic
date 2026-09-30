@@ -10,12 +10,7 @@ import { SealedAction } from "@/components/journal-review";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { postingCopy } from "./copy";
-import {
-  readSavedPostingRequest,
-  runSavedPostingRequest,
-  savedPostingPath,
-  sendSavedPostingCommand,
-} from "./request";
+import { readSavedPostingRequest, runSavedPostingRequest, savedPostingPath } from "./request";
 
 export function useSavedPostingRequests(
   book: typeof Accounting.Book.Type,
@@ -269,16 +264,7 @@ function SavedRequestActions(
   });
 
   const run = useMutation({
-    mutationFn: (newRequest: boolean) =>
-      newRequest
-        ? sendSavedPostingCommand({
-            book,
-            actorId: saved.request.actorId,
-            command,
-            storageMessage: copy.storage,
-            replaceTerminal: true,
-          })
-        : runSavedPostingRequest(book, saved),
+    mutationFn: () => runSavedPostingRequest(book, saved),
     onSuccess: (result) => {
       client.setQueryData([...bookKey(book), "posting-saved", result.request.key], result);
       setReviewed(false);
@@ -361,7 +347,9 @@ function SavedRequestActions(
         <Text>{copy.otherActor}</Text>
       ) : saved.outcome?.state !== "committed" ? (
         <>
-          {saved.outcome?.state === "refused" ? <Text>{copy.terminalHelp}</Text> : null}
+          {saved.outcome?.state === "refused" ? (
+            <Text>{saved.request.retryableRefusal ? copy.retryHelp : copy.terminalHelp}</Text>
+          ) : null}
           <Box as="label" display="flex" gap="md" alignItems="center">
             <input
               type="checkbox"
@@ -374,10 +362,16 @@ function SavedRequestActions(
           <Box>
             <Button
               size="xl"
-              disabled={!reviewed || busy || !planReady || !authorityAllowed}
-              onClick={() => run.mutate(saved.outcome?.state === "refused")}
+              disabled={
+                !reviewed ||
+                busy ||
+                !planReady ||
+                !authorityAllowed ||
+                (saved.outcome?.state === "refused" && !saved.request.retryableRefusal)
+              }
+              onClick={() => run.mutate()}
             >
-              {saved.outcome?.state === "refused" ? copy.newRequest : copy.run}
+              {copy.run}
             </Button>
           </Box>
         </>

@@ -7,7 +7,7 @@ import {
   changeSets,
   commandReceipts,
   postingApprovalRevocations,
-  postingRequestOutcomes,
+  postingRequestAttempts,
   postingSavedRequests,
 } from "./schema";
 import type { Transaction } from "./transaction";
@@ -64,19 +64,21 @@ export function readSavedOutcome(
   scope: typeof Accounting.Scope.Type,
   key: string,
 ) {
-  return transaction
-    .select({
-      bookId: postingRequestOutcomes.bookId,
-      key: postingRequestOutcomes.key,
-      state: postingRequestOutcomes.state,
-      result: postingRequestOutcomes.result,
-      refusal: postingRequestOutcomes.refusal,
-      recordedAt: postingRequestOutcomes.recordedAt,
-    })
-    .from(postingRequestOutcomes)
-    .where(
-      and(eq(postingRequestOutcomes.bookId, scope.bookId), eq(postingRequestOutcomes.key, key)),
-    );
+  return transaction.execute<SavedOutcomeRow>(
+    sql`
+    select book_id as "bookId", key, state, result, refusal, recorded_at as "recordedAt"
+    from (
+      select book_id, key, state, result, refusal, recorded_at, 0 as attempt
+      from openerp.posting_request_outcomes where book_id = ${scope.bookId} and key = ${key}
+      union all
+      select book_id, key, state, result, refusal, recorded_at, attempt
+      from openerp.posting_request_attempts where book_id = ${scope.bookId} and key = ${key}
+    ) observations
+    order by (state = 'committed') desc, attempt desc
+    limit 1
+  `,
+    "objects",
+  );
 }
 
 export function insertSavedOutcome(
@@ -90,7 +92,15 @@ export function insertSavedOutcome(
     recordedAt: string;
   },
 ) {
-  return transaction.insert(postingRequestOutcomes).values([row]);
+  // The admitted operation holds the book update lock across the attempt and
+  // kernel writes, so competing runs cannot allocate the same attempt ordinal.
+  return transaction.insert(postingRequestAttempts).values({
+    ...row,
+    attempt: sql`(
+    select coalesce(max(attempt), 0) + 1 from openerp.posting_request_attempts
+    where book_id = ${row.bookId} and key = ${row.key}
+  )`,
+  });
 }
 
 export function listSavedRequests(

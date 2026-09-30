@@ -276,10 +276,9 @@ export function readReservedCommand(tx: Transaction, book: string, key: string) 
   return tx.execute<{
     readonly actorId: string;
     readonly command: JsonObject;
-    readonly refused: boolean;
   }>(
     sql`
-    select r.actor_id as "actorId",r.command,exists(select from openerp.posting_request_outcomes o where(o.book_id,o.key)=(r.book_id,r.key) and o.state='refused') as refused
+    select r.actor_id as "actorId", r.command
     from openerp.posting_saved_requests r where r.book_id=${book} and r.command_key=${key}`,
     "objects",
   );

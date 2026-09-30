@@ -163,7 +163,7 @@ function RecoveryDetail(props: {
           input: { planDigest: current.plan.planDigest, version: current.plan.version },
         },
         storageMessage: copy.storage,
-        replaceTerminal: true,
+        renewApproval: true,
       }),
     onSettled: refresh,
   });

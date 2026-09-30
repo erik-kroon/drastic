@@ -70,6 +70,14 @@ A later standing mandate is a separate human-authorized record, never inferred f
 
 The review screen displays currency/scale, date/period, source evidence, exact lines, rationale, rule identity, dependency changes and approval scope. Hide technical hashes behind inspectable details while keeping the actual decision clear. Recovery must be keyboard reachable and must not require copying a key from developer tools.
 
+[DF-04 saved-request retry](evidence/df-04-saved-request-retry.md) implements the
+PST-03 refusal boundary: pure request-content failures remain terminal, while
+referenced-state refusals permit an explicit unchanged retry under the original
+saved and kernel keys. Immutable attempts retain refusal-to-success history;
+committed replay never runs the command again. The UI and MCP consume the same
+`retryableRefusal` metadata. Synthetic HTTP/browser, concurrency, migration and
+late-write rollback observations are recorded in the linked evidence.
+
 ## Delivery packets
 
 | ID     | Deliverable                                                                                                                   | Depends on     | Acceptance                                                                                                                                                                             |

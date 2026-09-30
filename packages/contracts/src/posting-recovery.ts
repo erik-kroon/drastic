@@ -177,6 +177,7 @@ export const SavedPostingSummary = Schema.Struct({
   commandKey: SavedRequestKey,
   savedAt: Schema.String,
   state: Schema.Literals(["unknown", "committed", "refused"]),
+  retryableRefusal: Schema.Boolean,
 });
 
 export const SavedPostingRequest = Schema.Struct({
@@ -214,7 +215,7 @@ export const PostingRecoveryCapabilities = {
   },
   posting_run_request: {
     description:
-      "Deliberately run the original actor's saved request using its retained body and kernel key. Returns the same terminal outcome on replay. Unknown is not refusal. Cannot grant or revoke human approval.",
+      "Deliberately run the original actor's saved request using its retained body and kernel key. Committed results and request-content refusals replay; referenced-state refusals may run again unchanged after their blocker is resolved. Unknown is not refusal. Cannot grant or revoke human approval.",
     input: Schema.Struct({ scope: Accounting.Scope, key: SavedRequestKey }),
     output: SavedPostingRequest,
     readOnly: false,

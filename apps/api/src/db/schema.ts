@@ -493,6 +493,18 @@ export const postingRequestOutcomes = openerp.table("posting_request_outcomes", 
     .defaultNow(),
 });
 
+export const postingRequestAttempts = openerp.table("posting_request_attempts", {
+  bookId: text("book_id").notNull(),
+  key: text().notNull(),
+  attempt: integer().notNull(),
+  state: text().notNull(),
+  result: jsonb("result").$type<Schema.JsonObject | null>(),
+  refusal: jsonb("refusal").$type<{ readonly code: string; readonly message: string } | null>(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+});
+
 export const postingApprovalRevocations = openerp.table("posting_approval_revocations", {
   bookId: text("book_id").notNull(),
   approvalId: text("approval_id").notNull(),

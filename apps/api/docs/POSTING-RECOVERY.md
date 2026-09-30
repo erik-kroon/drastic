@@ -4,6 +4,23 @@
 
 Application operations live in [application/posting-recovery.ts](../src/application/posting-recovery.ts), with shared dispatch in [capabilities](../src/application/capabilities/).
 
+### Current saved-request retry boundary — DF-04
+
+The [2026-09-30 repair](../../../docs/plans/evidence/df-04-saved-request-retry.md)
+supersedes the historical **all refusals are terminal** rule below. Current runs
+append immutable `posting_request_attempts` under forward `0043`. Old outcomes
+remain readable and immutable. Pure posting-line validation proves a content
+refusal terminal; other business refusals conservatively permit explicit retry
+with the same body and kernel key after their blocker is resolved. A committed
+outcome remains absorbing. `SavedPostingSummary.retryableRefusal` is shared by
+REST, MCP and the saved-work UI. The reserved-key kernel check still enforces
+actor/operation/body identity, but a historical refusal no longer burns the key.
+
+Local HTTP, MCP and Chromium observations include state recovery, legacy outcomes,
+concurrent retry, terminal bad content and late-write rollback. The full synthetic
+suite passed 182 tests across 46 files. The linked record names the tested source
+and retained artifacts; none of this establishes actual-company activation.
+
 ## Historical implementation notes
 
 The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.

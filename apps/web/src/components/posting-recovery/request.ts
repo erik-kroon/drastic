@@ -55,7 +55,7 @@ export async function sendSavedPostingCommand(request: {
   actorId: string;
   command: typeof Recovery.SavedPostingCommand.Type;
   storageMessage: string;
-  replaceTerminal?: boolean;
+  renewApproval?: boolean;
 }) {
   const body = JSON.stringify(request.command);
   const path = `${bookPath(request.book)}/${request.command.operation === "approve_change" || request.command.operation === "revoke_approval" ? "saved-posting-authority-requests" : "saved-posting-requests"}`;
@@ -109,7 +109,14 @@ export async function sendSavedPostingCommand(request: {
   let saved = await save(key);
 
   // A failed save/read or an unknown result cannot rotate identity.
-  if (request.replaceTerminal && saved.sameActor && saved.outcome !== null)
+  // A new explicit approval gesture may renew a committed, expired approval.
+  // Refusal and unknown-outcome recovery always retain the original identity.
+  if (
+    request.renewApproval &&
+    request.command.operation === "approve_change" &&
+    saved.sameActor &&
+    saved.outcome?.state === "committed"
+  )
     saved = await save(crypto.randomUUID());
 
   return runSavedPostingRequest(request.book, saved);

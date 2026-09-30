@@ -1,0 +1,119 @@
+import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { once } from "node:events";
+import { writeFile } from "node:fs/promises";
+import { createServer } from "node:net";
+import { join, resolve } from "node:path";
+import { chromium, type Page } from "playwright";
+import { createTestHarness } from "wrangler";
+import { expect } from "vitest";
+import { apiDirectory, environment, run, type BookFixture } from "./fixtures";
+
+export async function withWorkspaceBrowser(
+  book: BookFixture,
+  artifact: string,
+  observe: (page: Page, workspace: string) => Promise<void>,
+) {
+  const email = `${book.actorId}@e2e.invalid`;
+  const password = randomBytes(24).toString("hex");
+  await run("bun", ["scripts/create-user.ts", book.actorId], {
+    cwd: apiDirectory,
+    env: {
+      ...process.env,
+      DATABASE_ADMIN_URL: environment().adminUrl,
+      OPENERP_EMAIL: email,
+      OPENERP_PASSWORD: password,
+    },
+  });
+  const socket = createServer();
+  socket.listen(0, "127.0.0.1");
+  await once(socket, "listening");
+  const address = socket.address();
+
+  if (!address || typeof address === "string") throw new Error("No browser port allocated");
+  const port = address.port;
+  await new Promise<void>((done, reject) =>
+    socket.close((error) => (error ? reject(error) : done())),
+  );
+  const url = `http://127.0.0.1:${port}`;
+
+  const worker = createTestHarness({
+    root: apiDirectory,
+    workers: [
+      {
+        configPath: "wrangler.jsonc",
+        secrets: {
+          DATABASE_URL: environment().runtimeUrl,
+          BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),
+          BETTER_AUTH_URL: url,
+        },
+      },
+    ],
+  });
+
+  const listening = await worker.listen();
+
+  const web = spawn(
+    "bun",
+    [
+      "run",
+      "dev",
+      "--config",
+      "tests/vite.config.ts",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      String(port),
+    ],
+    {
+      cwd: resolve(apiDirectory, "../web"),
+      env: { ...process.env, OPENERP_E2E_API_URL: listening.url.origin },
+      stdio: ["ignore", "pipe", "pipe"],
+      detached: true,
+    },
+  );
+
+  let webLog = "";
+  web.stdout.on("data", (chunk: Buffer) => {
+    webLog += chunk.toString();
+  });
+  web.stderr.on("data", (chunk: Buffer) => {
+    webLog += chunk.toString();
+  });
+  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
+
+  try {
+    browser = await chromium.launch();
+    await expect
+      .poll(
+        async () => {
+          if (web.exitCode !== null) throw new Error(webLog);
+
+          return fetch(url).then(
+            (response) => response.ok,
+            () => false,
+          );
+        },
+        { timeout: 60000 },
+      )
+      .toBe(true);
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, locale: "en-US" });
+    await page.goto(`${url}/companies`);
+    await page.getByLabel("Email", { exact: true }).fill(email);
+    await page.getByLabel("Password", { exact: true }).fill(password);
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await page.getByText("Synthetic E2E book", { exact: true }).first().waitFor();
+    await observe(page, `${url}/entities/${book.entityId}/books/${book.bookId}`);
+  } finally {
+    await browser?.close();
+    await writeFile(join(environment().artifacts, `${artifact}-web.log`), webLog);
+
+    if (web.pid && web.exitCode === null) {
+      const exited = once(web, "exit");
+      process.kill(-web.pid, "SIGTERM");
+      await exited;
+    }
+
+    await worker.close();
+  }
+}

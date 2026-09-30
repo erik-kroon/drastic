@@ -2,6 +2,8 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Recovery from "@open-erp/contracts/posting-recovery";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
+import * as Result from "effect/Result";
+import { validatePostingLines } from "@open-erp/domain/posting";
 import { sql } from "drizzle-orm";
 import { failure } from "./failures";
 import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal } from "./identity";
@@ -42,6 +44,20 @@ const ApprovalSchema = Accounting.Approval;
 type RecoveryRequest = typeof Recovery.RecoveryRequest.Type;
 
 type RecoveredRequest = typeof Recovery.RecoveredPostingRequest.Type;
+
+// Only a refusal proven from the saved bytes can be absorbing. Coarse public
+// error codes also describe changing state, so they do not decide retry policy.
+function requestContentFailure(command: SavedCommand) {
+  if (command.operation !== "prepare_journal") return null;
+
+  const checked = validatePostingLines(
+    command.input.lines.map((line, index) => ({ ...line, lineId: `saved_line_${index}` })),
+  );
+
+  return Result.isFailure(checked)
+    ? new Accounting.AccountingError({ code: "InvalidJournal", message: checked.failure.message })
+    : null;
+}
 
 function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
   return Schema.decodeEffect(schema)(value).pipe(
@@ -114,6 +130,7 @@ function summaryForCommand(
     commandKey: row.commandKey,
     savedAt: row.savedAt,
     state,
+    retryableRefusal: state === "refused" && requestContentFailure(command) === null,
   } satisfies typeof Recovery.SavedPostingSummary.Type;
 }
 
@@ -328,11 +345,16 @@ function runPostingRequestWithAuthority(
 
       const prior = (yield* RecoveryDb.readSavedOutcome(transaction, command.scope, row.key))[0];
 
-      if (prior) return yield* savedView(transaction, command.scope, row, principal.actorId);
+      const contentFailure = requestContentFailure(savedCommand);
+
+      if (prior?.state === "committed" || (prior?.state === "refused" && contentFailure !== null))
+        return yield* savedView(transaction, command.scope, row, principal.actorId);
 
       const operation = yield* runWithSavepoint(
         transaction,
-        runSavedCommand(transaction, principal, command.scope, savedCommand, row.commandKey),
+        contentFailure !== null
+          ? Effect.fail(contentFailure)
+          : runSavedCommand(transaction, principal, command.scope, savedCommand, row.commandKey),
       );
 
       if (operation.state === "refused") {

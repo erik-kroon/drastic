@@ -17,9 +17,10 @@ const english = {
     "This request was refused. Its attempted changes were rolled back. This does not say that another request did not post the event.",
   replayCheck: "I reviewed the exact saved command. Run it unchanged under my current authority.",
   run: "Run this saved request",
-  newRequest: "Save as a new request and run",
+  retryHelp:
+    "Resolve the blocker, then run this saved request again. Its body and original identity stay unchanged.",
   terminalHelp:
-    "A refused request stays refused. After resolving its blocker, you can deliberately create a new request. An unknown request must keep its original identity.",
+    "This request's content is invalid. Correct the input and review a new request; rerunning the same bytes cannot fix it.",
   otherActor:
     "Only the actor who saved this request can run it. Current book access still permits reading its history.",
   resumeEvidence: "Use this retained evidence",
@@ -111,9 +112,10 @@ const swedish: typeof english = {
   replayCheck:
     "Jag har granskat det exakta sparade kommandot. Kör det oförändrat med min nuvarande behörighet.",
   run: "Kör denna sparade begäran",
-  newRequest: "Spara som ny begäran och kör",
+  retryHelp:
+    "Lös hindret och kör sedan denna sparade begäran igen. Innehållet och den ursprungliga identiteten behålls.",
   terminalHelp:
-    "En avvisad begäran förblir avvisad. När hindret är löst kan du uttryckligen skapa en ny begäran. En begäran med okänt utfall måste behålla sin ursprungliga identitet.",
+    "Begärans innehåll är ogiltigt. Rätta uppgifterna och granska en ny begäran; samma innehåll kan inte lösa felet.",
   otherActor:
     "Endast aktören som sparade begäran kan köra den. Aktuell åtkomst till boken medger fortfarande läsning av historiken.",
   resumeEvidence: "Använd detta sparade underlag",

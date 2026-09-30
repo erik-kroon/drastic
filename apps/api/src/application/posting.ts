@@ -398,7 +398,6 @@ export function replay<A>(
           : { id: reserved.command.id ?? null, input: reserved.command.input ?? null };
 
       if (
-        reserved.refused ||
         savedOperation !== operation ||
         reserved.actorId !== actorId ||
         !equalJson(payload, input)
