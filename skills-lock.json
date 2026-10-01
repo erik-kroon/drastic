@@ -1,17 +1,53 @@
 {
   "version": 1,
   "skills": {
+    "build-design-system": {
+      "source": "arla6ka/skills",
+      "sourceType": "github",
+      "skillPath": "skills/build-design-system/SKILL.md",
+      "computedHash": "deba93ca20e601f12c052077d79118bea05d68f232487e4ee5be1f6a874f78ae"
+    },
+    "component-docs": {
+      "source": "arla6ka/skills",
+      "sourceType": "github",
+      "skillPath": "skills/component-docs/SKILL.md",
+      "computedHash": "07fe2f9d4c3bfe439144a39e47dc7376d870cddd8318574d19b44c8b3c050a25"
+    },
+    "design-system-boss": {
+      "source": "arla6ka/skills",
+      "sourceType": "github",
+      "skillPath": "skills/design-system-boss/SKILL.md",
+      "computedHash": "d32194b43ad728af6c8c84d0cdd23b4f0d8ecba4281f5bcdf68211398af221ea"
+    },
     "herdr": {
       "source": "herdrdev/herdr",
       "sourceType": "github",
       "skillPath": "skills/herdr/SKILL.md",
       "computedHash": "c741134cc22372c08da2f469d49aac9f9bbddd4f5e1da0558cf1132836fa3287"
     },
+    "migrate-design-system": {
+      "source": "arla6ka/skills",
+      "sourceType": "github",
+      "skillPath": "skills/migrate-design-system/SKILL.md",
+      "computedHash": "5cd63b6a004edbc58ab6ce1f8cc18b8542287505e9685ce5be546c810aae4329"
+    },
+    "token-mapping": {
+      "source": "arla6ka/skills",
+      "sourceType": "github",
+      "skillPath": "skills/token-mapping/SKILL.md",
+      "computedHash": "9e0b0498b5b3482e024dfddb521be99d00b1bc2fb725a888dc5e3b35637a3e55"
+    },
     "typescript-advanced-types": {
       "source": "wshobson/agents",
       "sourceType": "github",
       "skillPath": "plugins/javascript-typescript/skills/typescript-advanced-types/SKILL.md",
       "computedHash": "8cbf2bf600f392d7260e476e3202932a876e2281cda3b15a8b6a5a43f383252d"
+    },
+    "ui-review": {
+      "source": "arla6ka/skills",
+      "sourceType": "github",
+      "skillPath": "skills/ui-review/SKILL.md",
+      "computedHash": "744b6a0df513d5b2832a7937aea7956b0422183e69ff3b12e9c0e6162b37cff0"
     }
   }
 }
