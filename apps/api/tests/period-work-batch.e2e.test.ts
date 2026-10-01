@@ -4,6 +4,7 @@ import * as PeriodWork from "@open-erp/contracts/period-work";
 import * as Domain from "@open-erp/domain/period-work";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Owners from "@open-erp/contracts/owner-register";
+import * as SupplierDrafts from "@open-erp/contracts/supplier-invoice-drafts";
 import * as Schema from "effect/Schema";
 import { expect, test } from "vitest";
 import {
@@ -663,6 +664,83 @@ test("bounded execution freezes each chunk result while later independent member
     JSON.stringify({ batch, first, second, expectedVouchers: 2 }, null, 2),
   );
 });
+
+test.each(["revision", "cancel"] as const)(
+  "sealed batch refuses %s changed after approval",
+  async (change) => {
+    const { book, manifest, batch, batchPath } = await preparedBatch();
+
+    await post(
+      book,
+      `${batchPath}/approvals`,
+      { expectedDigest: batch.digest, acknowledgeSyntheticOnly: true },
+      PeriodWork.ApprovalBatch,
+    );
+
+    if (change === "revision") {
+      const source = manifest.children[0];
+
+      if (!source) throw new Error("The manifest must retain its first source identity.");
+
+      const view = await decoded(
+        await request(book, `/commerce/supplier-invoice-drafts/${source.sourceId}`),
+        SupplierDrafts.SupplierInvoiceDraftView,
+      );
+
+      const draft = view.record;
+
+      await post(
+        book,
+        `/commerce/supplier-invoice-drafts/${draft.id}/revisions`,
+        {
+          expectedRevision: draft.revision,
+          expectedDigest: draft.digest,
+          reason: "Reviewed source text changed after sealed batch approval",
+          content: { ...draft.content, title: "Revised retained source after approval" },
+        },
+        SupplierDrafts.SupplierInvoiceDraftRevision,
+      );
+    } else {
+      await post(
+        book,
+        `/period-work/manifests/${manifest.id}/cancel`,
+        {
+          expectedDigest: manifest.digest,
+        },
+        PeriodWork.PeriodWorkRunProgress,
+      );
+    }
+
+    const result = await post(
+      book,
+      `${batchPath}/execute`,
+      { expectedDigest: batch.digest, boundedCount: 2, acknowledgeSyntheticOnly: true },
+      PeriodWork.PeriodWorkExecutionResult,
+    );
+
+    expect(result.committed).toHaveLength(change === "revision" ? 1 : 0);
+    expect(result.refused).toHaveLength(change === "revision" ? 1 : 2);
+    const admin = await database();
+
+    try {
+      expect(
+        (
+          await admin.query(
+            "select count(*)::int as count from openerp.vouchers where book_id=$1",
+            [book.bookId],
+          )
+        ).rows,
+      ).toEqual([{ count: change === "revision" ? 1 : 0 }]);
+    } finally {
+      await admin.end();
+    }
+
+    await writeFile(
+      join(environment().artifacts, `period-batch-${change}-refusal.json`),
+      JSON.stringify({ batch, result, expectedVouchers: change === "revision" ? 1 : 0 }, null, 2),
+    );
+  },
+);
 
 test("batch dispatch links a retained supplier credit to its owning receipt without repeating recognition", async () => {
   const local = await supplierFixture();
