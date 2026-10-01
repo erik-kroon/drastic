@@ -165,10 +165,7 @@ const readCreditPosting = Effect.fn("purchases.credits.posting")(function* (
   if (!voucher || input.creditDate < invoice.issuedOn || input.creditDate < voucher.postingDate)
     return yield* failure("InvalidJournal");
 
-  const date = Date.parse(`${input.creditDate}T00:00:00Z`);
-
-  if (!Number.isFinite(date) || new Date(date).toISOString().slice(0, 10) !== input.creditDate)
-    return yield* failure("InvalidJournal");
+  if (!Accounting.isCalendarDate(input.creditDate)) return yield* failure("InvalidJournal");
 
   const action = yield* Shared.decode(Accounting.VoucherPostingAction, voucher.action);
   const control = action.lines.find((line) => line.lineId === invoice.recognition.lineId);

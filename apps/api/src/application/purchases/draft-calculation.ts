@@ -1,5 +1,6 @@
 import * as Effect from "effect/Effect";
 import type * as Schema from "effect/Schema";
+import { isCalendarDate } from "@open-erp/domain/values";
 import { failure } from "../failures";
 import type { Transaction } from "../../db/transaction";
 import * as DraftDb from "../../db/purchases/drafts";
@@ -104,13 +105,7 @@ function calendarDate(value: JsonObject, key: string) {
 
   if (candidate === null) return null;
 
-  if (typeof candidate !== "string" || !Shared.datePattern.test(candidate)) {
-    return yieldInvalid();
-  }
-
-  const parsed = new Date(`${candidate}T00:00:00.000Z`);
-
-  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== candidate) {
+  if (typeof candidate !== "string" || !isCalendarDate(candidate)) {
     return yieldInvalid();
   }
 

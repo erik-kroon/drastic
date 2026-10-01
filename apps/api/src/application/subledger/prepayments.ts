@@ -86,11 +86,7 @@ function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
   return Schema.decodeEffect(schema)(value).pipe(Effect.mapError(() => failure("InternalError")));
 }
 
-function isCalendarDate(value: string) {
-  const parsed = Date.parse(`${value}T00:00:00.000Z`);
-
-  return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === value;
-}
+const isCalendarDate = Accounting.isCalendarDate;
 
 function receipt(key: string, operation: string, actorId: string) {
   return { key, operation, actorId } satisfies JsonObject;

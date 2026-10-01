@@ -30,6 +30,12 @@ const workspaceTables = [
 
 const views = ["unmatched", "all", "matched", "ledger"] as const;
 
+function validInterval(startsOn: string, endsOn: string) {
+  return (
+    Accounting.isCalendarDate(startsOn) && Accounting.isCalendarDate(endsOn) && startsOn <= endsOn
+  );
+}
+
 export const bankWorkspace = Effect.fn("banking.workspace")(function* (
   token: string,
   command: { readonly scope: Scope; readonly input: typeof Workspace.BankWorkspaceQuery.Type },
@@ -43,7 +49,7 @@ export const bankWorkspace = Effect.fn("banking.workspace")(function* (
 
       const { startsOn, endsOn } = command.input;
 
-      if (startsOn > endsOn) return yield* failure("InvalidJournal");
+      if (!validInterval(startsOn, endsOn)) return yield* failure("InvalidJournal");
       const view = command.input.view ?? "unmatched";
 
       if (!views.includes(view)) return yield* failure("InvalidJournal");

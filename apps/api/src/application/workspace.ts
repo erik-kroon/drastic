@@ -65,12 +65,7 @@ function trimmed(value: string | undefined) {
 function calendarDate(value: string | undefined) {
   if (value === undefined) return null;
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
-  const parsed = Date.parse(`${value}T00:00:00.000Z`);
-
-  if (!Number.isFinite(parsed)) return undefined;
-
-  return new Date(parsed).toISOString().slice(0, 10) === value ? value : undefined;
+  return Accounting.isCalendarDate(value) ? value : undefined;
 }
 
 function oneOf<C extends string>(value: string, choices: ReadonlyArray<C>) {

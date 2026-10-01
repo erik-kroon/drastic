@@ -1,6 +1,7 @@
 import { admitAccountRole } from "../resource-admission";
 import { canonicalText as canonicalNative } from "../json";
 import * as Tax from "@open-erp/contracts/tax-account";
+import { isCalendarDate } from "@open-erp/domain/values";
 import { canonicalizeJson } from "@open-erp/domain/canonicalization";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
@@ -156,12 +157,6 @@ function readBook(transaction: Transaction, scope: Scope) {
 
 function minor(value: string) {
   return BigInt(value);
-}
-
-function isCalendarDate(value: string) {
-  const parsed = Date.parse(`${value}T00:00:00.000Z`);
-
-  return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === value;
 }
 
 function shiftDate(value: string, days: number) {

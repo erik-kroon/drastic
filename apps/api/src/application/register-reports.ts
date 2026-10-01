@@ -60,12 +60,7 @@ function exact(value: string) {
 }
 
 function calendarDate(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-  const parsed = Date.parse(`${value}T00:00:00.000Z`);
-
-  if (!Number.isFinite(parsed)) return null;
-
-  return new Date(parsed).toISOString().slice(0, 10) === value ? value : null;
+  return Accounting.isCalendarDate(value) ? value : null;
 }
 
 function arrayOf(value: Schema.Json | undefined) {

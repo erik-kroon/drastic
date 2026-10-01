@@ -10,6 +10,19 @@ export const isAccountCode = Schema.is(AccountCode);
 
 export const AccountingDate = Schema.String.check(Schema.isPattern(/^\d{4}-\d{2}-\d{2}$/));
 
+/** Source/storage shape remains loose; interpreted dates use this refinement. */
+export function isCalendarDate(value: string) {
+  if (!Schema.is(AccountingDate)(value) || value < "0001-01-01" || value > "9999-12-31")
+    return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+
+  return Number.isFinite(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+export const CalendarDate = AccountingDate.check(
+  Schema.makeFilter((value) => isCalendarDate(value) || "Enter a valid calendar date."),
+);
+
 const swedishCalendar = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Europe/Stockholm",
   calendar: "iso8601",

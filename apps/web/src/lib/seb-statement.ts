@@ -1,3 +1,5 @@
+import { isCalendarDate } from "@open-erp/contracts/accounting";
+
 export const statementByteLimit = 1_048_576;
 
 const rowLimit = 10_000;
@@ -115,11 +117,7 @@ function csvRecords(source: string): CsvRecord[] {
 }
 
 function accountingDate(value: string, line: number) {
-  if (!/^[1-9]\d{3}-\d{2}-\d{2}$/.test(value)) throw new StatementProblem("date", line);
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-
-  if (!Number.isFinite(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== value)
-    throw new StatementProblem("date", line);
+  if (!isCalendarDate(value)) throw new StatementProblem("date", line);
 
   return value;
 }

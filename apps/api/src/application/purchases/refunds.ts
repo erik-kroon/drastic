@@ -994,10 +994,7 @@ const refundPlan = Effect.fn("purchases.refunds.plan")(function* (
   )
     return yield* failure("StaleDependency");
 
-  const date = Date.parse(`${input.refundDate}T00:00:00Z`);
-
-  if (!Number.isFinite(date) || new Date(date).toISOString().slice(0, 10) !== input.refundDate)
-    return yield* failure("InvalidJournal");
+  if (!Accounting.isCalendarDate(input.refundDate)) return yield* failure("InvalidJournal");
 
   if (input.refundDate < invoice.issuedOn) return yield* failure("InvalidJournal");
 

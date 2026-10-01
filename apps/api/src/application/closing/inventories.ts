@@ -90,11 +90,7 @@ function requireSyntheticProfile(transaction: Transaction, bookId: string) {
 }
 
 function calendarDate(value: string) {
-  const parsed = Date.parse(`${value}T00:00:00.000Z`);
-
-  if (!Number.isFinite(parsed)) return null;
-
-  return new Date(parsed).toISOString().slice(0, 10) === value ? new Date(parsed) : null;
+  return Accounting.isCalendarDate(value) ? new Date(`${value}T00:00:00.000Z`) : null;
 }
 
 function requireDeclaredAccounts(

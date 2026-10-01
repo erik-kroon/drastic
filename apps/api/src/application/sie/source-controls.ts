@@ -1,4 +1,5 @@
 import type * as Sie from "@open-erp/contracts/sie-import";
+import { isCalendarDate } from "@open-erp/domain/values";
 import * as Effect from "effect/Effect";
 import { failure } from "../failures";
 
@@ -61,13 +62,10 @@ export function checkControls(preview: Preview, input: Input) {
     const balances = new Map<string, bigint>();
 
     for (const item of input.openItems) {
-      const parsed = Date.parse(`${item.asOf}T00:00:00.000Z`);
-
       if (
         identities.has(item.sourceIdentity) ||
         !mapped.has(item.sourceAccount) ||
-        !Number.isFinite(parsed) ||
-        new Date(parsed).toISOString().slice(0, 10) !== item.asOf
+        !isCalendarDate(item.asOf)
       )
         return yield* failure("InvalidJournal");
       identities.add(item.sourceIdentity);

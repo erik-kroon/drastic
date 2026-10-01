@@ -608,10 +608,8 @@ const paymentSelection = Effect.fn("purchases.payments.selection")(function* (
   if (book.currency !== "SEK" || book.currencyScale !== 2)
     return yield* failure("UnsupportedProfile");
   const today = (yield* PaymentDb.readDatabaseDate(tx))[0]?.today;
-  const date = Date.parse(`${input.executionDate}T00:00:00Z`);
 
-  if (!Number.isFinite(date) || new Date(date).toISOString().slice(0, 10) !== input.executionDate)
-    return yield* failure("InvalidJournal");
+  if (!Accounting.isCalendarDate(input.executionDate)) return yield* failure("InvalidJournal");
 
   if (!today || input.executionDate < today) return yield* failure("StaleDependency");
   yield* validateAccount(input.debtorName, input.debtorIban, input.debtorBic);

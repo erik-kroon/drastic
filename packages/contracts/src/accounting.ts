@@ -11,6 +11,8 @@ import {
 export {
   Identifier,
   AccountingDate,
+  CalendarDate,
+  isCalendarDate,
   Description,
   Digest,
   Scope,
