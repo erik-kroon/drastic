@@ -168,8 +168,21 @@ function observationAgrees(
     source.startsOn === statement.startsOn &&
     source.endsOn === statement.endsOn &&
     source.currency === currency &&
-    row.providerId === null &&
     BigInt(row.amountMinor) < 0n
+  );
+}
+
+function supportsSettlementBook(book: {
+  profile: string;
+  authority: string;
+  currency: string;
+  currencyScale: number;
+}) {
+  return (
+    book.profile === "synthetic-core-v1" &&
+    book.authority === "native" &&
+    book.currency === "SEK" &&
+    book.currencyScale === 2
   );
 }
 
@@ -182,13 +195,7 @@ const captureBasis = Effect.fn("purchases.supplierSettlement.captureBasis")(func
 
   const book = yield* readBook(tx, scope);
 
-  if (
-    book.profile !== "synthetic-core-v1" ||
-    book.authority !== "native" ||
-    book.currency !== "SEK" ||
-    book.currencyScale !== 2
-  )
-    return yield* failure("UnsupportedProfile");
+  if (!supportsSettlementBook(book)) return yield* failure("UnsupportedProfile");
   const live = (yield* InvoiceDb.readLiveInvoice(tx, scope.bookId, input.invoiceId))[0];
   const statement = (yield* StatementDb.readStatement(tx, scope.bookId, input.statementId))[0];
 
@@ -203,6 +210,8 @@ const captureBasis = Effect.fn("purchases.supplierSettlement.captureBasis")(func
   const invoice = yield* decode(Commerce.Invoice, live.body);
   const source = yield* decode(Bank.StatementSource, statement.source);
   const row = source.rows.find((entry) => entry.rowOrdinal === input.rowOrdinal);
+
+  if (row && row.providerId !== null) return yield* failure("UnsupportedProfile");
 
   if (
     !row ||

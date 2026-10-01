@@ -102,7 +102,11 @@ const RpcReceipt = Schema.Struct({
   structuredContent: Schema.Struct({ result: Committed }),
 });
 
-async function setup(amounts = ["-4000"], invoiceMinor = "10000") {
+async function setup(
+  amounts = ["-4000"],
+  invoiceMinor = "10000",
+  providerId: string | null = null,
+) {
   const book = await fixture([{ id: "account_expense", code: "4010", name: "Synthetic expense" }]);
   const independent = await fixture();
   const reviewer = { ...book, actorId: independent.actorId, token: independent.token };
@@ -313,7 +317,7 @@ async function setup(amounts = ["-4000"], invoiceMinor = "10000") {
     completeness: { declaredComplete: true, basis: "Complete synthetic September source" },
     rows: amounts.map((amountMinor, index) => ({
       rowOrdinal: index + 1,
-      providerId: null,
+      providerId,
       date: "2026-09-23",
       description: "Synthetic supplier payment",
       amountMinor,
@@ -829,14 +833,15 @@ test("supplier missing reviewer admission fails closed without effects", async (
   );
 });
 
-test("supplier preparation refuses positive observations and oversize retained debits", async () => {
+test("supplier preparation refuses invalid oversized and unsupported retained observations", async () => {
   const observations = [];
 
-  for (const [amount, status, code] of [
-    ["4000", 422, "InvalidJournal"],
-    ["-11000", 409, "StaleDependency"],
+  for (const [amount, providerId, status, code] of [
+    ["4000", null, 422, "InvalidJournal"],
+    ["-11000", null, 409, "StaleDependency"],
+    ["-4000", "synthetic_provider_transaction", 422, "UnsupportedProfile"],
   ] as const) {
-    const data = await setup([amount]);
+    const data = await setup([amount], "10000", providerId);
     const before = await financial(data.book);
 
     await failure(
@@ -848,7 +853,7 @@ test("supplier preparation refuses positive observations and oversize retained d
 
     expect(after).toEqual(before);
     expect(await owned(data.book)).toEqual({ claims: 0, receipts: 0, cancellations: 0 });
-    observations.push({ amount, status, code, before, after });
+    observations.push({ amount, providerId, status, code, before, after });
   }
 
   await writeFile(
