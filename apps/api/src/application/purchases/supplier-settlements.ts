@@ -613,6 +613,7 @@ const approvalUsable = Effect.fn("purchases.supplierSettlement.approvalUsable")(
   approval: Approval,
 ) {
   if (
+    approval.actorId === plan.createdBy ||
     (yield* Db.readRevocation(tx, plan.scope.bookId, approval.id)).length > 0 ||
     approval.digest !== plan.digest ||
     !(Date.parse(approval.expiresAt) > Date.parse(yield* isoNow(tx)))
