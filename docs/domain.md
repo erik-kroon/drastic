@@ -44,6 +44,12 @@ Use civil dates for documents, economic occurrence/service interval, accounting,
 
 ## Invariants
 
+Supplier credits may be partial, but their retained gross amounts together must
+not exceed the original supplier invoice amount. Every retained credit consumes
+capacity. The separate invoice-cancellation workflow reverses the full original
+amount and therefore retains its one-cancellation-per-invoice identity; it is not
+the partial-credit record. See [DF-09 proof](plans/evidence/df-09-supplier-credit-cap.md).
+
 | ID   | Invariant                                                                                                                                  | Enforcement owner                                                             |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
 | I-01 | Every financial reference belongs to the authorized legal entity and book.                                                                 | Trusted application scope plus composite database constraints and privileges. |
