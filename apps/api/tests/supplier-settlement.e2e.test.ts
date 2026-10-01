@@ -1049,8 +1049,8 @@ test("supplier pending owner retains prospective plans and independent approval 
 
   await failure(
     await request(data.reviewer, `${plans}/${plan.id}/approvals`, approveRequest),
-    403,
-    "Forbidden",
+    401,
+    "Unauthorized",
   );
   const foreign = await fixture();
   await failure(await request(foreign, `${plans}/${plan.id}`), 404, "NotFound");
