@@ -136,8 +136,8 @@ async function selectorOutcomes(client: Client) {
 
       outcomes.push({
         code: error.code,
-        constraint: "constraint" in error ? error.constraint : null,
-        column: "column" in error ? error.column : null,
+        constraint: "constraint" in error ? (error.constraint ?? null) : null,
+        column: "column" in error ? (error.column ?? null) : null,
       });
     } finally {
       await client.query("ROLLBACK");
