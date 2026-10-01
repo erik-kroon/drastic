@@ -201,7 +201,11 @@ test("duplicate JSON keys are rejected before sealing", async () => {
   const body = `${JSON.stringify(journal(source.id)).slice(0, -1)},"rationale":"duplicate"}`;
   const response = await request(book, "/change-sets", { method: "POST", body });
   expect(response.status).toBe(400);
-  expect(await response.json()).toEqual({ message: "JSON object keys must be unique." });
+  expect(await response.json()).toEqual({
+    code: "InvalidRequest",
+    message: "JSON object keys must be unique.",
+    recovery: "permanent",
+  });
   expect(await sealedPlans(book)).toBe(0);
 });
 
