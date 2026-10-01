@@ -1,4 +1,5 @@
 import { admitBankMatch } from "../resource-admission";
+import { readClaim } from "../../db/purchases/supplier-settlements";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Settlement from "@open-erp/contracts/settlements";
 import * as Effect from "effect/Effect";
@@ -245,6 +246,14 @@ export const prepareBankAllocation = Effect.fn("banking.allocation.prepare")(fun
       ]);
       yield* Shared.requireColumns(transaction, Shared.accountColumns);
       const book = yield* lockBook(transaction, command.scope.bookId);
+
+      for (const leg of command.input.legs) {
+        if (
+          (yield* readClaim(transaction, command.scope.bookId, leg.statementId, leg.rowOrdinal))
+            .length > 0
+        )
+          return yield* failure("ApprovalRequired");
+      }
 
       const request = yield* replay(
         transaction,

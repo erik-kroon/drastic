@@ -523,6 +523,35 @@ test("supplier accrual owner posts4000 once, cancels exactly and retains unresol
       match_reversals: 0,
     });
     expect(await owned(data.book)).toEqual({ claims: 1, receipts: 1, cancellations: 0 });
+
+    for (const [endpoint, input] of [
+      [
+        `/vouchers/${receipt.postingReceipt.voucherId}/correction-proposals`,
+        {
+          accountingPeriodId: "period_2026",
+          postingDate: "2026-09-23",
+          rationale: "Generic inverse forbidden",
+        },
+      ],
+      [
+        "/commerce/allocation-reversal-plans",
+        { receiptId: receipt.allocationReceipt.id, reason: "Generic unallocation forbidden" },
+      ],
+      [
+        "/bank-match-reversal-plans",
+        {
+          target: { kind: "exact_match", statementId: data.input.statementId, rowOrdinal: 1 },
+          reason: "Generic unmatch forbidden",
+        },
+      ],
+    ] as const) {
+      await failure(
+        await request(data.book, endpoint, { method: "POST", body: JSON.stringify(input) }),
+        403,
+        "ApprovalRequired",
+      );
+    }
+
     expect(
       Schema.decodeUnknownSync(RpcReceipt)(
         (await mcp(data.book, "purchases_execute_supplier_settlement", args)).result,
@@ -602,6 +631,33 @@ test("supplier accrual owner posts4000 once, cancels exactly and retains unresol
       closingDifferenceMinor: "-4000",
     });
     expect(report.unmatchedSource).toHaveLength(1);
+
+    const claimedTarget = {
+      statementId: data.input.statementId,
+      rowOrdinal: 1,
+      voucherId: receipt.postingReceipt.voucherId,
+      lineId: plan.bankLineId,
+    };
+
+    for (const [endpoint, input] of [
+      ["/bank-matches", claimedTarget],
+      [
+        "/bank-allocation-plans",
+        {
+          accountId: "account_bank",
+          reason: "Claimed source cannot be reused",
+          ambiguityAcknowledged: true,
+          legs: [{ ...claimedTarget, amountMinor: "-4000" }],
+        },
+      ],
+    ] as const) {
+      await failure(
+        await request(data.book, endpoint, { method: "POST", body: JSON.stringify(input) }),
+        403,
+        "ApprovalRequired",
+      );
+    }
+
     await failure(
       await request(data.book, plans, { method: "POST", body: JSON.stringify(data.input) }),
       409,
