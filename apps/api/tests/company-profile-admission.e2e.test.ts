@@ -272,6 +272,18 @@ test("company activation seals authenticated actor and database time, executes w
 
     const actorMismatch = await refuse(reviewer, path, command, 409, "IdempotencyConflict");
 
+    await save("company-activation-preparation", {
+      input,
+      plan,
+      replayedPlan,
+      databaseTime: { before: beforeTime.rows, after: afterTime.rows },
+      retained: retained.rows,
+      canonicalBody: canonical(body),
+      recomputed,
+      changed,
+      actorMismatch,
+    });
+
     const authorityResponse = await request(book, path, {
       method: "POST",
       body: JSON.stringify({
@@ -536,4 +548,81 @@ test("confirmed superseding company facts remain ambiguous instead of choosing t
   expect(after).toEqual(before);
   expect(after.admission.plans).toBe(0);
   await save("company-activation-ambiguity", { original, replacement, before, refusal, after });
+}, 120000);
+
+test("concurrent activation approval and execution retain one winner and exact concurrent replay", async () => {
+  const { book, reviewer } = await prepared();
+
+  const plans = await Promise.all([
+    post(book, path, input, Profiles.CompanyActivationPlan),
+    post(book, path, input, Profiles.CompanyActivationPlan),
+  ]);
+
+  const approvals = await Promise.all(plans.map((plan) => approve(reviewer, plan)));
+  const commands = plans.map((plan, index) => execution(plan, approvals[index]!));
+
+  const responses = await Promise.all(
+    plans.map((plan, index) => request(book, `${path}/${plan.id}/executions`, commands[index])),
+  );
+
+  expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+
+  const winner = responses.findIndex((response) => response.status === 200);
+  const loser = responses.findIndex((response) => response.status === 409);
+  const receipt = await decoded(responses[winner]!, Profiles.CompanyActivationReceipt);
+
+  const loserBody = Schema.decodeSync(Schema.fromJsonString(Accounting.AccountingError))(
+    await responses[loser]!.clone().text(),
+  );
+
+  await failure(responses[loser]!, 409, "StaleDependency");
+  expect(approvals.map((approval) => approval.actorId)).toEqual([
+    reviewer.actorId,
+    reviewer.actorId,
+  ]);
+
+  const replayed = await Promise.all(
+    [0, 1].map(async () =>
+      decoded(
+        await request(book, `${path}/${plans[winner]!.id}/executions`, commands[winner]),
+        Profiles.CompanyActivationReceipt,
+      ),
+    ),
+  );
+
+  expect(replayed).toEqual([receipt, receipt]);
+
+  const observed = await counts(book);
+
+  expect(observed).toEqual({
+    admission: {
+      plans: 2,
+      activations: 1,
+      receipts: 1,
+      consumptions: 1,
+      consumed: 1,
+      epoch: "2",
+      commands: 1,
+    },
+    financial: {
+      sequence: "0",
+      vouchers: 0,
+      lines: 0,
+      receipts: 0,
+      outbox: 0,
+      consumed: 1,
+      counter: "0",
+    },
+  });
+  await save("company-activation-concurrency", {
+    plans,
+    approvals,
+    statuses: responses.map((response) => response.status),
+    winner,
+    loser,
+    receipt,
+    loserBody,
+    replayed,
+    observed,
+  });
 }, 120000);
