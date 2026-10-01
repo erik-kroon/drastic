@@ -297,7 +297,7 @@ test("company activation seals authenticated actor and database time, executes w
 
     const authorityFields = {
       status: authorityResponse.status,
-      error: Schema.decodeSync(Schema.JsonObject)(await authorityResponse.json()),
+      error: await authorityResponse.text(),
     };
 
     const approval = await approve(reviewer, plan);
@@ -331,6 +331,12 @@ test("company activation seals authenticated actor and database time, executes w
     expect(activation.activatedBy).toBe(book.actorId);
     expect(activation.approvedDigest).toBe(plan.digest);
     expect(activation.factRevisionIds).toEqual(plan.witness.factRevisionIds);
+
+    const { digest: activationDigest, ...activationBody } = activation;
+    const recomputedActivationDigest = `sha256:${createHash("sha256").update(canonical(activationBody)).digest("hex")}`;
+
+    expect(activationDigest).toBe(recomputedActivationDigest);
+
     const observed = await counts(book);
 
     expect(observed).toEqual({
@@ -370,6 +376,7 @@ test("company activation seals authenticated actor and database time, executes w
       receipt,
       repeated,
       activation,
+      recomputedActivationDigest,
       observed,
     });
   } finally {
@@ -565,7 +572,9 @@ test("concurrent activation approval and execution retain one winner and exact c
     plans.map((plan, index) => request(book, `${path}/${plan.id}/executions`, commands[index])),
   );
 
-  expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+  expect(responses.map((response) => response.status).sort((left, right) => left - right)).toEqual([
+    200, 409,
+  ]);
 
   const winner = responses.findIndex((response) => response.status === 200);
   const loser = responses.findIndex((response) => response.status === 409);

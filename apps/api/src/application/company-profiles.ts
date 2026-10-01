@@ -860,7 +860,7 @@ export const executeCompanyActivation = Effect.fn("companyProfiles.executeActiva
         activatedAt: committedAt,
       });
 
-      const sealed = yield* versionedDigest(body);
+      const sealed = yield* digest(body);
       const activation = yield* decode(Profiles.CompanyActivation, { ...body, digest: sealed });
 
       const receipt = yield* decode(Profiles.CompanyActivationReceipt, {
