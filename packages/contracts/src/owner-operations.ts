@@ -57,6 +57,8 @@ const ReimbursementEvidence = Schema.Struct({
 
 const FundingEvidence = Schema.Struct({
   fundingEvidenceId: Accounting.Identifier,
+  statementId: Schema.optional(Accounting.Identifier),
+  rowOrdinal: Schema.optional(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100000 }))),
   legalForm: FundingLegalForm,
   reason: Accounting.Description,
 });
@@ -98,14 +100,14 @@ export const PrepareOwnerOperation = Schema.Union([
     ...commonFields,
     mode: Schema.Literal("owner_loan"),
     cashAccountId: Accounting.Identifier,
-    amountMinor: Accounting.MinorUnits,
+    amountMinor: Schema.optional(Accounting.MinorUnits),
     evidence: FundingEvidence,
   }),
   Schema.Struct({
     ...commonFields,
     mode: Schema.Literal("owner_contribution"),
     cashAccountId: Accounting.Identifier,
-    amountMinor: Accounting.MinorUnits,
+    amountMinor: Schema.optional(Accounting.MinorUnits),
     evidence: FundingEvidence,
   }),
 ]);
@@ -212,6 +214,7 @@ export const OwnerOperationReceipt = Schema.Struct({
   ownerId: Accounting.Identifier,
   ownerRecordId: Accounting.Identifier,
   ownerEffectId: Accounting.Identifier,
+  recordedAmountMinor: Schema.optional(Accounting.MinorUnits),
   ownerClaimMinor: Accounting.MinorUnits,
   postingReceipt: Accounting.ExecutionReceipt,
   recognitionId: Schema.NullOr(Accounting.Identifier),

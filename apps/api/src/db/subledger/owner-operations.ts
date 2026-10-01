@@ -416,3 +416,19 @@ export function insertTaxFact(
     "objects",
   );
 }
+
+export function readFundingSourceUsage(
+  transaction: Transaction,
+  bookId: string,
+  statementId: string,
+  rowOrdinal: number,
+) {
+  return transaction.execute<{ readonly used: boolean }>(
+    sql`
+    select exists(select 1 from openerp.bank_matches where book_id=${bookId}
+      and statement_id=${statementId} and row_ordinal=${rowOrdinal})
+    or exists(select 1 from openerp.bank_active_allocation_legs where book_id=${bookId}
+      and statement_id=${statementId} and row_ordinal=${rowOrdinal}) as used`,
+    "objects",
+  );
+}

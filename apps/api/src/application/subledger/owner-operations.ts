@@ -1,4 +1,5 @@
 import * as Accounting from "@open-erp/contracts/accounting";
+import * as FundingBank from "../../db/banking/statements";
 import * as Operation from "@open-erp/contracts/owner-operations";
 import * as RecognitionContract from "@open-erp/contracts/supplier-recognition";
 import {
@@ -788,11 +789,54 @@ const compileFunding = Effect.fn("owner.operations.funding")(function* (
     return yield* failure("InvalidJournal");
   }
 
+  if (input.amountMinor !== undefined) return yield* failure("InvalidJournal");
+
+  yield* PurchaseShared.requireTables(
+    transaction,
+    ["bank_statements", "bank_observations", "bank_matches", "bank_active_allocation_legs"],
+    ["bank_matches"],
+  );
+
+  const { statementId, rowOrdinal } = input.evidence;
+
+  if (statementId === undefined || rowOrdinal === undefined)
+    return yield* failure("UnsupportedProfile");
+
+  const source = (yield* FundingBank.readObservation(
+    transaction,
+    scope.bookId,
+    statementId,
+    rowOrdinal,
+  ))[0];
+
+  const statement = (yield* FundingBank.readStatement(transaction, scope.bookId, statementId))[0];
+
+  if (!source || !statement) return yield* failure("NotFound");
+
+  if (
+    source.accountId !== input.cashAccountId ||
+    source.evidenceId !== input.evidence.fundingEvidenceId ||
+    source.observedOn !== input.postingDate ||
+    statement.source.currency !== book.currency ||
+    BigInt(source.amountMinor) <= 0n
+  )
+    return yield* failure("StaleDependency");
+
+  if (
+    (yield* OperationDb.readFundingSourceUsage(
+      transaction,
+      scope.bookId,
+      statementId,
+      rowOrdinal,
+    ))[0]?.used
+  )
+    return yield* failure("AlreadyPosted");
+
   const funding = compileOwnerFunding({
     currencyScale: book.currencyScale,
     cashAccountId: input.cashAccountId,
     liabilityAccountId: control.id,
-    amountMinor: input.amountMinor,
+    amountMinor: source.amountMinor,
     legalForm: input.evidence.legalForm,
     description,
   });
@@ -1038,6 +1082,17 @@ const reviewBlockers = Effect.fn("owner.operations.blockers")(function* (
 
   if (control === undefined || !control.active) {
     blockers.push("The reviewed owner control account is no longer active.");
+  }
+
+  if (review.mode === "owner_loan" || review.mode === "owner_contribution") {
+    const funding = yield* compileOperation(transaction, scope, review.input).pipe(
+      Effect.match({ onFailure: () => undefined, onSuccess: (value) => value }),
+    );
+
+    if (funding === undefined || funding.ownerEffect.amountMinor !== review.ownerEffect.amountMinor)
+      blockers.push(
+        "The retained funding source or its unused cash capacity is no longer current.",
+      );
   }
 
   if (review.discharges !== null) {
@@ -1308,6 +1363,25 @@ const commitOwnerGroup = Effect.fn("owner.operations.commit")(function* (
     return yield* failure("StaleDependency");
   }
 
+  if (review.input.mode === "owner_loan" || review.input.mode === "owner_contribution") {
+    const { statementId, rowOrdinal } = review.input.evidence;
+    const cashAccountId = review.input.cashAccountId;
+    const bankLine = action.lines.find((line) => line.accountId === cashAccountId);
+
+    if (statementId === undefined || rowOrdinal === undefined || bankLine === undefined)
+      return yield* failure("StaleDependency");
+
+    yield* FundingBank.insertMatch(transaction, {
+      bookId: scope.bookId,
+      statementId,
+      rowOrdinal,
+      voucherId: posted.voucherId,
+      lineId: bankLine.lineId,
+      origin: "explicit",
+      actorId: principal.actorId,
+    });
+  }
+
   const book = yield* readBook(transaction, scope);
   const recordId = newId("owner_record");
   const ownerReviewId = newId("owner_review");
@@ -1419,7 +1493,8 @@ const commitOwnerGroup = Effect.fn("owner.operations.commit")(function* (
     ownerId: review.ownerId,
     ownerRecordId: recordId,
     ownerEffectId: effect,
-    ownerClaimMinor: review.ownerEffect.amountMinor,
+    recordedAmountMinor: review.ownerEffect.amountMinor,
+    ownerClaimMinor: review.mode === "owner_contribution" ? "0" : review.ownerEffect.amountMinor,
     postingReceipt: posted,
     recognitionId: recognition === null ? null : recognition.recognitionId,
     taxFactIds: recognition === null ? [] : recognition.taxFactIds,
@@ -1449,7 +1524,7 @@ const commitOwnerGroup = Effect.fn("owner.operations.commit")(function* (
     controlLineId: control.lineId,
     recognitionId: result.recognitionId,
     invoiceId: result.dischargedInvoiceId,
-    amountMinor: result.ownerClaimMinor,
+    amountMinor: review.ownerEffect.amountMinor,
     body: sealed,
     digest: PurchaseShared.textField(sealed, "digest") ?? "",
     committedAt: result.committedAt,
