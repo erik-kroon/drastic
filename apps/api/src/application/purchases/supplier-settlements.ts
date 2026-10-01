@@ -615,7 +615,7 @@ const approvalUsable = Effect.fn("purchases.supplierSettlement.approvalUsable")(
   if (
     (yield* Db.readRevocation(tx, plan.scope.bookId, approval.id)).length > 0 ||
     approval.digest !== plan.digest ||
-    Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(tx))
+    !(Date.parse(approval.expiresAt) > Date.parse(yield* isoNow(tx)))
   )
     return false;
   const actors = yield* LedgerDb.readOperatorMembership(tx, plan.scope.bookId, approval.actorId);
@@ -645,8 +645,8 @@ const approvalUsable = Effect.fn("purchases.supplierSettlement.approvalUsable")(
     allocation.actorId !== approval.actorId ||
     payment.digest !== plan.paymentPlan.planDigest ||
     allocation.digest !== plan.pendingAllocation.digest ||
-    Date.parse(payment.expiresAt) <= Date.parse(yield* isoNow(tx)) ||
-    Date.parse(allocation.expiresAt) <= Date.parse(yield* isoNow(tx)) ||
+    !(Date.parse(payment.expiresAt) > Date.parse(yield* isoNow(tx))) ||
+    !(Date.parse(allocation.expiresAt) > Date.parse(yield* isoNow(tx))) ||
     (yield* LedgerDb.readApprovalRevocation(tx, plan.scope.bookId, payment.id)).length > 0
   )
     return false;
@@ -1421,6 +1421,24 @@ export const executeSupplierSettlementCancellation = Effect.fn(
         return yield* failure("ApprovalRequired");
       const approval = yield* decode(Settlement.SupplierSettlementCancellationApproval, row.body);
 
+      const bindings = (yield* Db.readCancellationApprovalBindings(
+        tx,
+        command.scope.bookId,
+        approval.id,
+      ))[0];
+
+      if (
+        !bindings ||
+        approval.actorId === plan.createdBy ||
+        bindings.paymentActorId !== approval.actorId ||
+        bindings.allocationActorId !== approval.actorId ||
+        bindings.matchActorId !== approval.actorId ||
+        bindings.paymentPlanId !== plan.paymentPlan.id ||
+        bindings.allocationPlanId !== plan.allocationReversal.id ||
+        bindings.matchPlanId !== plan.matchReversal.id
+      )
+        return yield* failure("ApprovalRequired");
+
       const membership = yield* LedgerDb.readOperatorMembership(
         tx,
         command.scope.bookId,
@@ -1429,9 +1447,18 @@ export const executeSupplierSettlementCancellation = Effect.fn(
 
       const admission = (yield* LedgerDb.readActorAdmission(tx, approval.actorId))[0];
 
+      const now = Date.parse(yield* isoNow(tx));
+
+      const expired = [
+        approval.expiresAt,
+        bindings.paymentExpiresAt,
+        bindings.allocationExpiresAt,
+        bindings.matchExpiresAt,
+      ].some((expiry) => !(Date.parse(expiry) > now));
+
       if (
         approval.digest !== plan.digest ||
-        Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(tx)) ||
+        expired ||
         membership.length !== 1 ||
         admission?.enabled !== true
       )

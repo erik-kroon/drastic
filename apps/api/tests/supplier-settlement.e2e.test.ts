@@ -1426,6 +1426,83 @@ test("supplier cancellation approval revocation refuses execution and permits fr
   );
 });
 
+test("supplier cancellation refuses a parent approval whose actor does not own the native approvals", async () => {
+  const data = await setup();
+  const plan = await prepared(data);
+  const approval = await approved(data, plan);
+  const receipt = await decoded(await executeSettlement(data.book, plan, approval), Committed);
+  const corrected = await cancellation(data, receipt);
+  const forgedId = `supplier_cancel_wrong_actor_${key()}`;
+  const before = await financial(data.book);
+  const admin = await database();
+
+  try {
+    const inserted = await admin.query(
+      `insert into openerp.supplier_settlement_cancellation_approvals
+      (book_id,id,plan_id,actor_id,payment_approval_id,allocation_approval_id,match_approval_id,body)
+      select book_id,$3,plan_id,$4,payment_approval_id,allocation_approval_id,match_approval_id,
+        jsonb_set(jsonb_set(body,'{id}',to_jsonb($3::text)),'{actorId}',to_jsonb($4::text))
+      from openerp.supplier_settlement_cancellation_approvals where book_id=$1 and id=$2`,
+      [data.book.bookId, corrected.approval.id, forgedId, data.book.actorId],
+    );
+
+    expect(inserted.rowCount).toBe(1);
+  } finally {
+    await admin.end();
+  }
+
+  await failure(
+    await request(data.book, `${cancellations}/${corrected.plan.id}/execute`, {
+      method: "POST",
+      body: JSON.stringify({ ...corrected.input, approvalId: forgedId }),
+    }),
+    403,
+    "ApprovalRequired",
+  );
+  expect(await financial(data.book)).toEqual(before);
+  const expiryObservations = [];
+
+  for (const expiresAt of ["2000-01-01T00:00:00Z", "not-a-date"]) {
+    const expiredId = `supplier_cancel_expiry_${key()}`;
+    const seed = await database();
+
+    try {
+      const inserted = await seed.query(
+        `insert into openerp.supplier_settlement_cancellation_approvals
+        (book_id,id,plan_id,actor_id,payment_approval_id,allocation_approval_id,match_approval_id,body)
+        select book_id,$3,plan_id,actor_id,payment_approval_id,allocation_approval_id,match_approval_id,
+          jsonb_set(jsonb_set(body,'{id}',to_jsonb($3::text)),'{expiresAt}',to_jsonb($4::text))
+        from openerp.supplier_settlement_cancellation_approvals where book_id=$1 and id=$2`,
+        [data.book.bookId, corrected.approval.id, expiredId, expiresAt],
+      );
+
+      expect(inserted.rowCount).toBe(1);
+    } finally {
+      await seed.end();
+    }
+
+    await failure(
+      await request(data.book, `${cancellations}/${corrected.plan.id}/execute`, {
+        method: "POST",
+        body: JSON.stringify({ ...corrected.input, approvalId: expiredId }),
+      }),
+      403,
+      "ApprovalRequired",
+    );
+    expect(await financial(data.book)).toEqual(before);
+    expiryObservations.push({ expiredId, expiresAt });
+  }
+
+  await writeFile(
+    join(environment().artifacts, "supplier-cancellation-approval-bindings.json"),
+    JSON.stringify(
+      { forgedId, expiryObservations, before, after: await financial(data.book) },
+      null,
+      2,
+    ),
+  );
+});
+
 test("supplier cancellation refuses invoice changes after settlement without financial effects", async () => {
   const data = await setup();
   const plan = await prepared(data);

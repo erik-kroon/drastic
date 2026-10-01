@@ -177,6 +177,36 @@ export function readApprovalActors(tx: Transaction, bookId: string, planId: stri
 
 export type JsonObject = Schema.JsonObject;
 
+export function readCancellationApprovalBindings(
+  tx: Transaction,
+  bookId: string,
+  approvalId: string,
+) {
+  return tx.execute<{
+    paymentActorId: string;
+    allocationActorId: string;
+    matchActorId: string;
+    paymentPlanId: string;
+    allocationPlanId: string;
+    matchPlanId: string;
+    paymentExpiresAt: string;
+    allocationExpiresAt: string;
+    matchExpiresAt: string;
+  }>(
+    sql`
+    select p.actor_id as "paymentActorId", a.actor_id as "allocationActorId", m.actor_id as "matchActorId",
+      p.change_set_id as "paymentPlanId", a.plan_id as "allocationPlanId", m.plan_id as "matchPlanId",
+      p.expires_at::text as "paymentExpiresAt", a.expires_at::text as "allocationExpiresAt", m.expires_at::text as "matchExpiresAt"
+    from openerp.supplier_settlement_cancellation_approvals parent
+    join openerp.approvals p on (p.book_id,p.id)=(parent.book_id,parent.payment_approval_id)
+    join openerp.commerce_allocation_reversal_approvals a on (a.book_id,a.id)=(parent.book_id,parent.allocation_approval_id)
+    join openerp.bank_match_reversal_approvals m on (m.book_id,m.id)=(parent.book_id,parent.match_approval_id)
+    where parent.book_id=${bookId} and parent.id=${approvalId}
+  `,
+    "objects",
+  );
+}
+
 export function readCancellationRevocation(tx: Transaction, bookId: string, approvalId: string) {
   return tx
     .select()
