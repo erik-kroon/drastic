@@ -469,7 +469,7 @@ async function cancellation(
     setupResult.reviewer,
     `${cancellations}/${plan.id}/approvals`,
     { version: 1, digest: plan.digest },
-    Identity,
+    Schema.Struct({ ...Identity.fields, matchApprovalId: Accounting.Identifier }),
   );
 
   return { plan, approval, input: { version: 1, digest: plan.digest, approvalId: approval.id } };
@@ -1493,10 +1493,82 @@ test("supplier cancellation refuses a parent approval whose actor does not own t
     expiryObservations.push({ expiredId, expiresAt });
   }
 
+  const wrongChildId = `unmatchapproval_wrong_digest_${key()}`;
+  const wrongParentId = `supplier_cancel_wrong_digest_${key()}`;
+  const digestSeed = await database();
+
+  try {
+    const child = await digestSeed.query(
+      `insert into openerp.bank_match_reversal_approvals
+      (book_id,id,plan_id,actor_id,expires_at,body)
+      select book_id,$3,plan_id,actor_id,expires_at,
+        jsonb_set(jsonb_set(body,'{id}',to_jsonb($3::text)),'{digest}',to_jsonb($4::text))
+      from openerp.bank_match_reversal_approvals where book_id=$1 and id=$2`,
+      [
+        data.book.bookId,
+        corrected.approval.matchApprovalId,
+        wrongChildId,
+        `sha256:${"c".repeat(64)}`,
+      ],
+    );
+
+    expect(child.rowCount).toBe(1);
+
+    const parent = await digestSeed.query(
+      `insert into openerp.supplier_settlement_cancellation_approvals
+      (book_id,id,plan_id,actor_id,payment_approval_id,allocation_approval_id,match_approval_id,body)
+      select book_id,$3,plan_id,actor_id,payment_approval_id,allocation_approval_id,$4,
+        jsonb_set(jsonb_set(body,'{id}',to_jsonb($3::text)),'{matchApprovalId}',to_jsonb($4::text))
+      from openerp.supplier_settlement_cancellation_approvals where book_id=$1 and id=$2`,
+      [data.book.bookId, corrected.approval.id, wrongParentId, wrongChildId],
+    );
+
+    expect(parent.rowCount).toBe(1);
+  } finally {
+    await digestSeed.end();
+  }
+
+  const digestBefore = await financial(data.book);
+
+  await failure(
+    await request(data.book, `${cancellations}/${corrected.plan.id}/execute`, {
+      method: "POST",
+      body: JSON.stringify({ ...corrected.input, approvalId: wrongParentId }),
+    }),
+    403,
+    "ApprovalRequired",
+  );
+  expect(await financial(data.book)).toEqual(digestBefore);
+
+  const childRevocation = await post(
+    data.reviewer,
+    `/bank-match-reversal-approvals/${corrected.approval.matchApprovalId}/revoke`,
+    { reason: "Withdraw exact native cancellation match permission" },
+    Schema.Struct({ approvalId: Accounting.Identifier }),
+  );
+
+  await failure(
+    await request(data.book, `${cancellations}/${corrected.plan.id}/execute`, {
+      method: "POST",
+      body: JSON.stringify(corrected.input),
+    }),
+    403,
+    "ApprovalRequired",
+  );
+  expect(await financial(data.book)).toEqual(before);
   await writeFile(
     join(environment().artifacts, "supplier-cancellation-approval-bindings.json"),
     JSON.stringify(
-      { forgedId, expiryObservations, before, after: await financial(data.book) },
+      {
+        forgedId,
+        expiryObservations,
+        wrongChildId,
+        wrongParentId,
+        digestBefore,
+        childRevocation,
+        before,
+        after: await financial(data.book),
+      },
       null,
       2,
     ),

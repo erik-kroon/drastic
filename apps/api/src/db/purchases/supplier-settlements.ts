@@ -192,11 +192,23 @@ export function readCancellationApprovalBindings(
     paymentExpiresAt: string;
     allocationExpiresAt: string;
     matchExpiresAt: string;
+    paymentRevoked: boolean;
+    allocationRevoked: boolean;
+    matchRevoked: boolean;
+    paymentConsumed: boolean;
+    paymentDigest: string;
+    allocationDigest: string | null;
+    matchDigest: string | null;
   }>(
     sql`
     select p.actor_id as "paymentActorId", a.actor_id as "allocationActorId", m.actor_id as "matchActorId",
       p.change_set_id as "paymentPlanId", a.plan_id as "allocationPlanId", m.plan_id as "matchPlanId",
-      p.expires_at::text as "paymentExpiresAt", a.expires_at::text as "allocationExpiresAt", m.expires_at::text as "matchExpiresAt"
+      p.expires_at::text as "paymentExpiresAt", a.expires_at::text as "allocationExpiresAt", m.expires_at::text as "matchExpiresAt",
+      p.consumed_at is not null as "paymentConsumed",
+      p.digest as "paymentDigest", a.body->>'digest' as "allocationDigest", m.body->>'digest' as "matchDigest",
+      exists(select from openerp.posting_approval_revocations r where (r.book_id,r.approval_id)=(p.book_id,p.id)) as "paymentRevoked",
+      exists(select from openerp.commerce_allocation_reversal_revocations r where (r.book_id,r.approval_id)=(a.book_id,a.id)) as "allocationRevoked",
+      exists(select from openerp.bank_match_reversal_revocations r where (r.book_id,r.approval_id)=(m.book_id,m.id)) as "matchRevoked"
     from openerp.supplier_settlement_cancellation_approvals parent
     join openerp.approvals p on (p.book_id,p.id)=(parent.book_id,parent.payment_approval_id)
     join openerp.commerce_allocation_reversal_approvals a on (a.book_id,a.id)=(parent.book_id,parent.allocation_approval_id)

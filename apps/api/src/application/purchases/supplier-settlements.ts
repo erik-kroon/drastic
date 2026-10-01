@@ -1435,7 +1435,10 @@ export const executeSupplierSettlementCancellation = Effect.fn(
         bindings.matchActorId !== approval.actorId ||
         bindings.paymentPlanId !== plan.paymentPlan.id ||
         bindings.allocationPlanId !== plan.allocationReversal.id ||
-        bindings.matchPlanId !== plan.matchReversal.id
+        bindings.matchPlanId !== plan.matchReversal.id ||
+        bindings.paymentDigest !== plan.paymentPlan.planDigest ||
+        bindings.allocationDigest !== plan.allocationReversal.digest ||
+        bindings.matchDigest !== plan.matchReversal.digest
       )
         return yield* failure("ApprovalRequired");
 
@@ -1458,6 +1461,10 @@ export const executeSupplierSettlementCancellation = Effect.fn(
 
       if (
         approval.digest !== plan.digest ||
+        bindings.paymentConsumed ||
+        bindings.paymentRevoked ||
+        bindings.allocationRevoked ||
+        bindings.matchRevoked ||
         expired ||
         membership.length !== 1 ||
         admission?.enabled !== true
