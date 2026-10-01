@@ -3,17 +3,33 @@ import { createHash, randomBytes } from "node:crypto";
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Client } from "pg";
+import { createTestHarness } from "wrangler";
+import * as Schema from "effect/Schema";
+import * as Evaluations from "@open-erp/contracts/evaluations";
+import * as Intake from "@open-erp/contracts/source-intake";
 import { expect, test } from "vitest";
 import { databaseInventory, roleInventory } from "../scripts/operations/inventory";
 import { tableFingerprints } from "../scripts/operations/snapshot";
 import { OperationsFailure } from "../scripts/operations/safety";
-import { apiDirectory, database, environment, run } from "./support/fixtures";
+import { apiDirectory, database, decoded, environment, run } from "./support/fixtures";
 
 const targetConstraint = "vat_assessment_receipts_match_fkey";
 
-const historical = "0048-cash-invoice-recognition-period.sql";
+const historical = "0049-evaluation-contracts.sql";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
+
+function canonical(value: Schema.Json): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+
+  if (typeof value === "object" && value !== null)
+    return `{${Object.entries(value)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([name, member]) => `${JSON.stringify(name)}:${canonical(member)}`)
+      .join(",")}}`;
+
+  return JSON.stringify(value);
+}
 
 async function release() {
   const names = (await readdir(join(apiDirectory, "migrations")))
@@ -164,6 +180,7 @@ test("strict recovery qualifies the validated VAT match constraint without chang
   const restoredName = `recovery_restored_${suffix}`;
   const created: string[] = [];
   const clients: Client[] = [];
+  let worker: ReturnType<typeof createTestHarness> | undefined;
 
   const observed: {
     historicalMigration?: string;
@@ -179,6 +196,7 @@ test("strict recovery qualifies the validated VAT match constraint without chang
     restoreCatalogDifferences?: object;
     selectorsBefore?: object;
     selectorUpgrade?: object;
+    evaluation?: object;
   } = {};
 
   const manifest = await release();
@@ -426,6 +444,136 @@ test("strict recovery qualifies the validated VAT match constraint without chang
     expect(await databaseInventory(source, manifest)).toEqual(qualifiedInventory);
     expect(await tableFingerprints(source)).toEqual(qualifiedTables);
 
+    const bookId = `book_${suffix}`,
+      entityId = `entity_${suffix}`,
+      actorId = `operator_${suffix}`;
+
+    const configPath = join(env.scratch, "recovery-evaluation-provision.json");
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        entity: { id: entityId, name: "Synthetic recovery evaluation" },
+        book: {
+          id: bookId,
+          name: "Synthetic recovery book",
+          currency: "SEK",
+          profile: "synthetic-core-v1",
+        },
+        actor: {
+          id: actorId,
+          name: "Synthetic recovery operator",
+          role: "operator",
+          tokenExpiresAt: new Date(Date.now() + 3600000).toISOString(),
+        },
+        fiscalYear: { id: "fy_2026", startsOn: "2026-01-01", endsOn: "2026-12-31" },
+        periods: [{ id: "period_2026", startsOn: "2026-01-01", endsOn: "2026-12-31" }],
+        accounts: [
+          { id: "account_bank", code: "1930", name: "Bank" },
+          { id: "account_clearing", code: "2999", name: "Clearing" },
+        ],
+      }),
+      { mode: 0o600 },
+    );
+    const token = randomBytes(32).toString("hex");
+    await run("bun", ["scripts/provision.ts", configPath], {
+      cwd: apiDirectory,
+      env: {
+        ...process.env,
+        DATABASE_ADMIN_URL: sourceURL.toString(),
+        OPENERP_ACCESS_TOKEN: randomBytes(32).toString("hex"),
+      },
+      timeout: 30000,
+    });
+    await source.query(
+      `INSERT INTO openerp_auth."user"(id,name,email) VALUES($1,'Synthetic operator',$2)`,
+      [actorId, `${actorId}@e2e.invalid`],
+    );
+    await source.query(
+      `INSERT INTO openerp.identity_admissions(actor_id,provider_id,subject,enabled) VALUES($1,'e2e-current-session',$1,true)`,
+      [actorId],
+    );
+    await source.query(
+      `INSERT INTO openerp_auth.session(id,token,user_id,expires_at) VALUES($1,$2,$3,now()+interval '1 hour')`,
+      [`session_${suffix}`, token, actorId],
+    );
+    const runtimeURL = new URL(env.runtimeUrl);
+    runtimeURL.pathname = `/${sourceName}`;
+    const bookPath = `/api/v1/entities/${entityId}/books/${bookId}`;
+
+    const call = async (url: string, path: string, body?: object) =>
+      fetch(`${url}${bookPath}${path}`, {
+        method: body ? "POST" : "GET",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+          "idempotency-key": randomBytes(16).toString("hex"),
+        },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
+
+    worker = createTestHarness({
+      root: apiDirectory,
+      workers: [
+        {
+          configPath: "wrangler.jsonc",
+          env: "e2e",
+          secrets: { DATABASE_URL: runtimeURL.toString() },
+        },
+      ],
+    });
+    const sourceOrigin = (await worker.listen()).url.origin;
+    const originalText = "Synthetic original. No accounting amounts or reference postings.";
+
+    const original = await decoded(
+      await call(sourceOrigin, "/source-occurrences", {
+        sourceSystem: "recovery",
+        sourceAccountId: bookId,
+        occurrenceKey: suffix,
+        sourceRevision: "1",
+        filename: "original.csv",
+        mediaType: "text/csv",
+        contentBase64: Buffer.from(originalText).toString("base64"),
+      }),
+      Intake.SourceOccurrence,
+    );
+
+    const evaluation = await decoded(
+      await call(sourceOrigin, "/evaluations/contracts", {
+        recordClass: "synthetic",
+        interval: { startsOn: "2026-01-01", endsOn: "2026-12-31" },
+        originalIds: [original.id],
+        openingBasis: { status: "unknown", reason: "Unreviewed synthetic opening." },
+        familyPopulation: { status: "unknown", reason: "Incomplete synthetic population." },
+        permittedAssistance: [],
+        allowedCapabilities: ["source_get_occurrence"],
+        predecessor: null,
+      }),
+      Evaluations.EvaluationContract,
+    );
+
+    const { digest, ...unsigned } = Schema.decodeSync(Schema.JsonObject)(evaluation);
+    expect(digest).toBe(`sha256:${hash(canonical(unsigned))}`);
+    expect(evaluation.originals).toHaveLength(1);
+    expect(evaluation.originals[0]?.sha256).toBe(`sha256:${hash(originalText)}`);
+    expect(evaluation.wholeYearComplete).toBe(false);
+    expect(evaluation.capabilityPolicy).toBe("declared_not_enforced");
+    await worker.close();
+    worker = undefined;
+    const populatedInventory = await databaseInventory(source, manifest);
+    const populatedTables = await tableFingerprints(source);
+    expect(
+      populatedTables.find(
+        (table) => table.schema === "openerp" && table.table === "evaluation_contracts",
+      )?.rows,
+    ).toBe("1");
+    observed.evaluation = {
+      originalText,
+      contract: evaluation,
+      independentDigest: digest,
+      inventory: populatedInventory,
+      tables: populatedTables,
+    };
+
     const dump = join(env.scratch, "recovery-constraint.dump");
     await run(join(pgBin, "pg_dump"), ["--format=custom", "--no-owner", "--file", dump], {
       env: pgEnv,
@@ -474,8 +622,34 @@ test("strict recovery qualifies the validated VAT match constraint without chang
       restored: restoredCatalog.filter((row) => !sourceObjects.has(JSON.stringify(row))),
     };
 
-    expect(restoredInventory).toEqual(qualifiedInventory);
-    expect(restoredTables).toEqual(qualifiedTables);
+    expect(restoredInventory).toEqual(populatedInventory);
+    expect(restoredTables).toEqual(populatedTables);
+    runtimeURL.pathname = `/${restoredName}`;
+    worker = createTestHarness({
+      root: apiDirectory,
+      workers: [
+        {
+          configPath: "wrangler.jsonc",
+          env: "e2e",
+          secrets: { DATABASE_URL: runtimeURL.toString() },
+        },
+      ],
+    });
+    const restoredOrigin = (await worker.listen()).url.origin;
+    expect(
+      await decoded(
+        await call(restoredOrigin, `/evaluations/contracts/${evaluation.id}`),
+        Evaluations.EvaluationContract,
+      ),
+    ).toEqual(evaluation);
+
+    const restoredOriginal = await decoded(
+      await call(restoredOrigin, `/source-occurrences/${original.id}`),
+      Intake.SourceOccurrenceView,
+    );
+
+    expect(restoredOriginal.contentBase64).toBe(Buffer.from(originalText).toString("base64"));
+    expect(await tableFingerprints(restored)).toEqual(populatedTables);
 
     const evidence = (
       await restored.query<{ content: string }>(
@@ -486,6 +660,7 @@ test("strict recovery qualifies the validated VAT match constraint without chang
     expect(evidence).toEqual([{ content: "SYNTHETIC RECOVERY VALIDATION" }]);
     observed.restore = { inventory: restoredInventory, tables: restoredTables, evidence };
   } finally {
+    await worker?.close();
     await writeFile(
       join(env.artifacts, "recovery-constraint-validation.json"),
       JSON.stringify(

@@ -56,7 +56,6 @@ try {
       closure,
       extensions: extensions.rows,
       unvalidatedConstraints: unvalidated.rows,
-      schemaQualification: "not-established",
     }),
   );
 } finally {

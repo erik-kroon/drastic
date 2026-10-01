@@ -460,18 +460,39 @@ test("[EXC-RECOVERY-COMPLETE] database, external original, recorded approval and
       { name: "plpgsql" },
     ]);
     expect(afterQualification.extensions).toEqual([{ name: "plpgsql" }]);
-    expect(afterQualification.unvalidatedConstraints).toEqual([
-      { name: "vat_assessment_receipts_match_fkey", table: "openerp.vat_assessment_receipts" },
-    ]);
-    expect(afterQualification.schemaQualification).toBe("not-established");
+    expect(afterQualification.unvalidatedConstraints).toEqual([]);
+    expect(
+      (
+        await admin.query<{ name: string }>(
+          "SELECT extname AS name FROM pg_extension ORDER BY extname",
+        )
+      ).rows,
+    ).toEqual(beforeQualification.extensions);
+
+    const releasePath = join(env.artifacts, "evaluation-migration-release.json");
+    await writeFile(releasePath, JSON.stringify(migrationRelease, null, 2), { mode: 0o600 });
+    expect(migrationRelease.files).toHaveLength(55);
+
+    const strictProbe = Schema.decodeSync(Schema.fromJsonString(Schema.JsonObject))(
+      (
+        await run("bun", ["scripts/evaluation-recovery-probe.ts", releasePath], {
+          cwd: apiDirectory,
+          env: { ...process.env, DATABASE_ADMIN_URL: targetAdmin.toString() },
+          timeout: 60000,
+        })
+      ).stdout,
+    );
+
+    expect(strictProbe).toEqual({
+      evaluationRows: "1",
+      schemaInventory: "matched",
+      jsonClosure: "matched",
+    });
 
     await writeFile(
       join(env.artifacts, "evaluation-recovery-closure.json"),
-      JSON.stringify({ beforeQualification, afterQualification }, null, 2),
-    );
-    await writeFile(
-      join(env.artifacts, "evaluation-migration-release.json"),
-      JSON.stringify(migrationRelease, null, 2),
+      JSON.stringify({ beforeQualification, afterQualification, strictProbe }, null, 2),
+      { mode: 0o600 },
     );
 
     await writeFile(
@@ -489,7 +510,7 @@ test("[EXC-RECOVERY-COMPLETE] database, external original, recorded approval and
             originalSourceRecovered: true,
             evaluationContractRecovered: evaluation.id,
             restoredTableFingerprintsAndJsonClosure: true,
-            strictSchemaQualification: "pending-separate-vat-constraint-unit",
+            strictSchemaQualification: strictProbe,
             restoredDiagnosticExtensionRemovedBeforeQualification: true,
             missingSourceRefused: true,
             corruptSourceRefused: true,
@@ -499,7 +520,7 @@ test("[EXC-RECOVERY-COMPLETE] database, external original, recorded approval and
             "Same PG cluster, not independent infrastructure disaster recovery",
             "Only the test-owned old deployment role is fenced; this is not proof that all production writers are retired",
             "No live signing/provider secret restored",
-            "Strict schema qualification remains blocked by preexisting unvalidated VAT constraint; separate failing probe evidence is retained",
+            "The instrumented source schema is not claimed equal to the restored target after diagnostic extension removal",
           ],
         },
         null,
