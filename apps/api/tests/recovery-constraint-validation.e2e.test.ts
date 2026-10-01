@@ -118,6 +118,7 @@ test("strict recovery qualifies the validated VAT match constraint without chang
     unrelatedRefusal?: object;
     migrationMismatch?: object;
     restore?: object;
+    restoreCatalogDifferences?: object;
   } = {};
 
   const manifest = await release();
@@ -319,6 +320,40 @@ test("strict recovery qualifies the validated VAT match constraint without chang
     const restored = await connect(restoredName);
     const restoredInventory = await databaseInventory(restored, manifest);
     const restoredTables = await tableFingerprints(restored);
+
+    observed.restore = { inventory: restoredInventory, tables: restoredTables };
+
+    const inventorySource = await readFile(
+      join(apiDirectory, "scripts/operations/inventory.ts"),
+      "utf8",
+    );
+
+    const objectQuery = inventorySource.match(
+      /WITH objects\(kind, name, body\) AS \(([\s\S]*?)\n    \) SELECT encode/,
+    );
+
+    if (!objectQuery) throw new Error("Recovery inventory catalog query unavailable");
+
+    const catalogQuery = `WITH objects(kind, name, body) AS (${objectQuery[1]})
+      SELECT kind, name, body FROM objects ORDER BY kind COLLATE "C", name COLLATE "C", body::text COLLATE "C"`;
+
+    const sourceCatalog = (
+      await source.query<{ kind: string; name: string; body: unknown }>(catalogQuery)
+    ).rows;
+
+    const restoredCatalog = (
+      await restored.query<{ kind: string; name: string; body: unknown }>(catalogQuery)
+    ).rows;
+
+    observed.restoreCatalogDifferences = {
+      source: sourceCatalog.filter(
+        (row) => !restoredCatalog.some((other) => JSON.stringify(other) === JSON.stringify(row)),
+      ),
+      restored: restoredCatalog.filter(
+        (row) => !sourceCatalog.some((other) => JSON.stringify(other) === JSON.stringify(row)),
+      ),
+    };
+
     expect(restoredInventory).toEqual(afterInventory);
     expect(restoredTables).toEqual(afterTables);
 
