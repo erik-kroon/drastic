@@ -50,7 +50,7 @@ async function constraints(client: Client) {
       k.convalidated AS validated, pg_get_constraintdef(k.oid) AS definition
     FROM pg_constraint k JOIN pg_namespace n ON n.oid=k.connamespace
     WHERE n.nspname !~ '^pg_' AND n.nspname<>'information_schema'
-    ORDER BY relation COLLATE "C", name COLLATE "C"`)
+    ORDER BY k.conrelid::regclass::text COLLATE "C", k.conname COLLATE "C"`)
   ).rows;
 }
 
