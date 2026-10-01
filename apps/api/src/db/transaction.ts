@@ -20,20 +20,26 @@ export type Transaction = Parameters<DatabaseClient["transaction"]>[0] extends (
   ? T
   : never;
 
-export function databaseFailure(error: unknown): Accounting.AccountingError {
-  if (error instanceof Accounting.AccountingError) return error;
+function sqlFailure(error: unknown) {
+  if (SqlError.isSqlError(error)) return error;
 
-  if (SqlError.isSqlError(error)) return failure("Unavailable", error);
-
-  if (!(error instanceof EffectDrizzleQueryError)) return failure("InternalError", error);
+  if (!(error instanceof EffectDrizzleQueryError)) return null;
 
   const nested = Cause.isCause(error.cause) ? Cause.findErrorOption(error.cause) : Option.none();
 
-  if (Option.isNone(nested) || !SqlError.isSqlError(nested.value)) {
+  return Option.isSome(nested) && SqlError.isSqlError(nested.value) ? nested.value : null;
+}
+
+export function databaseFailure(error: unknown): Accounting.AccountingError {
+  if (error instanceof Accounting.AccountingError) return error;
+
+  const sqlError = sqlFailure(error);
+
+  if (sqlError === null) {
     return failure("InternalError", error);
   }
 
-  const cause = nested.value.reason.cause;
+  const cause = sqlError.reason.cause;
 
   if (Schema.is(PostgresFailure)(cause)) {
     if (cause.code === "P0001" && Schema.is(Accounting.FailureCode)(cause.detail)) {
@@ -51,7 +57,7 @@ export function databaseFailure(error: unknown): Accounting.AccountingError {
         "SerializationError",
         "LockTimeoutError",
         "StatementTimeoutError",
-      ].includes(nested.value.reason._tag)
+      ].includes(sqlError.reason._tag)
     ) {
       return failure("Unavailable", error);
     }
