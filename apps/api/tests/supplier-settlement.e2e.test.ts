@@ -1018,7 +1018,7 @@ test("supplier pending owner retains prospective plans and independent approval 
       evidenceId: data.bankEvidence.id,
       reason: "Change retained invoice while review open",
     },
-    Commerce.InvoiceRevision,
+    Commerce.Invoice,
   );
   expect(await decoded(await request(data.book, `${plans}/${plan.id}`), PendingView)).toMatchObject(
     { pendingBasisCurrent: false, approvalUsable: false },
