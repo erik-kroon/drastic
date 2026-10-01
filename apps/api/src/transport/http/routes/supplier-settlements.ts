@@ -5,6 +5,7 @@ import { authenticate } from "../auth";
 import { scopeFromPath } from "../scope";
 import {
   listSupplierSettlements,
+  listSupplierSettlementCancellationApprovals,
   getSupplierSettlementCancellation,
   prepareSupplierSettlement,
   getSupplierSettlement,
@@ -23,6 +24,15 @@ export const SupplierSettlementHandlers = HttpApiBuilder.group(
   "supplierSettlements",
   (handlers) =>
     handlers
+      .handle("listSupplierSettlementCancellationApprovals", ({ params, query }) =>
+        Effect.flatMap(authenticate, (token) =>
+          listSupplierSettlementCancellationApprovals(token, {
+            scope: scopeFromPath(params),
+            planId: params.id,
+            ...query,
+          }),
+        ),
+      )
       .handle("listSupplierSettlements", ({ params, query }) =>
         Effect.flatMap(authenticate, (token) =>
           listSupplierSettlements(token, { scope: scopeFromPath(params), ...query }),

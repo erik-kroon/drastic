@@ -188,6 +188,16 @@ export const SupplierSettlementCancellationView = Schema.Struct({
   receipt: Schema.NullOr(SupplierSettlementCancellationReceipt),
 });
 
+export const SupplierSettlementCancellationApprovalPage = Schema.Struct({
+  items: Schema.Array(
+    Schema.Struct({
+      approval: SupplierSettlementCancellationApproval,
+      revocation: Schema.NullOr(SupplierSettlementApprovalRevocation),
+    }),
+  ),
+  next: Schema.NullOr(Accounting.Identifier),
+});
+
 const path = "/v1/entities/:entityId/books/:bookId/purchases";
 
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
@@ -215,6 +225,15 @@ export const SupplierSettlementsApi = HttpApiGroup.make("supplierSettlements")
       "getSupplierSettlementCancellation",
       `${path}/supplier-settlement-cancellation-plans/:id`,
       { ...identified, success: SupplierSettlementCancellationView },
+    ),
+    HttpApiEndpoint.get(
+      "listSupplierSettlementCancellationApprovals",
+      `${path}/supplier-settlement-cancellation-plans/:id/approvals`,
+      {
+        ...identified,
+        query: Schema.Struct({ after: Schema.optionalKey(Accounting.Identifier) }),
+        success: SupplierSettlementCancellationApprovalPage,
+      },
     ),
     HttpApiEndpoint.post("prepareSupplierSettlement", `${path}/supplier-settlement-plans`, {
       ...mutation,
@@ -299,6 +318,17 @@ export const SupplierSettlementsApi = HttpApiGroup.make("supplierSettlements")
   );
 
 export const SupplierSettlementCapabilities = {
+  purchases_list_supplier_settlement_cancellation_approvals: {
+    description:
+      "Recover retained cancellation approvals and revocations with scoped ID pagination. History is not current execution permission.",
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      planId: Accounting.Identifier,
+      after: Schema.optionalKey(Accounting.Identifier),
+    }),
+    output: SupplierSettlementCancellationApprovalPage,
+    readOnly: true,
+  },
   purchases_list_supplier_settlements: {
     description:
       "Discover retained settlement and cancellation plans with scoped live ID pagination. This is not a frozen inventory or execution permission.",

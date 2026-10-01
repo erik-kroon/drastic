@@ -915,6 +915,30 @@ export const getSupplierSettlementReceipt = Effect.fn("purchases.supplierSettlem
 
 type CancellationPlan = typeof Settlement.SupplierSettlementCancellationPlan.Type;
 
+export const listSupplierSettlementCancellationApprovals = Effect.fn(
+  "purchases.supplierSettlement.listCancellationApprovals",
+)(function* (token: string, input: { scope: Scope; planId: string; after?: string }) {
+  return yield* owned(token, input.scope, false, null, (tx) =>
+    Effect.gen(function* () {
+      yield* readCancellationPlan(tx, input.scope, input.planId);
+
+      const rows = yield* Db.listCancellationApprovals(
+        tx,
+        input.scope.bookId,
+        input.planId,
+        input.after,
+      );
+
+      return yield* decode(Settlement.SupplierSettlementCancellationApprovalPage, {
+        items: rows
+          .slice(0, 25)
+          .map((row) => ({ approval: row.approval, revocation: row.revocation })),
+        next: rows.length > 25 ? (rows[24]?.id ?? null) : null,
+      });
+    }),
+  );
+});
+
 const cancellationBasis = Effect.fn("purchases.supplierSettlement.cancellationBasis")(function* (
   tx: Transaction,
   scope: Scope,
@@ -949,11 +973,17 @@ const cancellationBasis = Effect.fn("purchases.supplierSettlement.cancellationBa
 
   const impactResources = impactRows.map((row) => row.resource);
 
-  if (
-    impactResources.length > 1000 ||
-    impactResources.some((resource) => resource.kind === "report" || resource.kind === "closing")
-  )
-    return yield* failure("StaleDependency");
+  if (impactResources.length > 1000) return yield* failure("StaleDependency");
+
+  const consumed = impactResources.find(
+    (resource) => resource.kind === "report" || resource.kind === "closing",
+  );
+
+  if (consumed)
+    return yield* new Accounting.AccountingError({
+      code: "StaleDependency",
+      message: `Retained ${consumed.kind} ${consumed.id} consumes this settlement. Review ${consumed.path}; this cancellation owner does not support later-consumed corrections.`,
+    });
 
   const live = (yield* InvoiceDb.readLiveInvoice(
     tx,
@@ -1350,6 +1380,10 @@ export const executeSupplierSettlementCancellation = Effect.fn(
       const plan = yield* readCancellationPlan(tx, command.scope, command.planId);
 
       if (plan.digest !== command.input.digest) return yield* failure("StaleDependency");
+
+      if ((yield* Db.readCancellationReceiptByPlan(tx, command.scope.bookId, plan.id)).length > 0)
+        return yield* failure("AlreadyPosted");
+
       yield* currentCancellation(tx, plan);
 
       const row = (yield* Db.readCancellationApproval(

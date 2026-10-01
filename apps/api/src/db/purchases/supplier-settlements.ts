@@ -189,6 +189,29 @@ export function readCancellationRevocation(tx: Transaction, bookId: string, appr
     );
 }
 
+export function listCancellationApprovals(
+  tx: Transaction,
+  bookId: string,
+  planId: string,
+  after: string | undefined,
+) {
+  return tx.execute<{
+    id: string;
+    approval: Schema.JsonObject;
+    revocation: Schema.JsonObject | null;
+  }>(
+    sql`
+    select a.id, a.body as approval, r.body as revocation
+    from openerp.supplier_settlement_cancellation_approvals a
+    left join openerp.supplier_settlement_cancellation_revocations r
+      on (r.book_id,r.approval_id)=(a.book_id,a.id)
+    where a.book_id=${bookId} and a.plan_id=${planId} and a.id>${after ?? ""}
+    order by a.id limit 26
+  `,
+    "objects",
+  );
+}
+
 export function insertCancellationRevocation(
   tx: Transaction,
   bookId: string,

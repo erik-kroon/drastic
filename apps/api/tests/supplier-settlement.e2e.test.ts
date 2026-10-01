@@ -789,6 +789,73 @@ test("supplier owner refuses authority, strict input, stale basis and independen
   expect(await financial(data.book)).toEqual(before);
 });
 
+test("supplier execution locks reviewer authority before the book and observes committed disable", async () => {
+  const data = await setup();
+  const plan = await prepared(data);
+  const approval = await approved(data, plan);
+  const before = await financial(data.book);
+  const holder = await database();
+  const observer = await database();
+  let executing: Promise<Response> | undefined;
+
+  try {
+    await holder.query("begin");
+    const held = await holder.query<{ pid: number }>("select pg_backend_pid() as pid");
+    const holderPid = held.rows[0]?.pid;
+
+    expect(holderPid).toBeDefined();
+    await holder.query("update openerp.identity_admissions set enabled=false where actor_id=$1", [
+      data.reviewer.actorId,
+    ]);
+    executing = executeSettlement(data.book, plan, approval);
+    const deadline = Date.now() + 5000;
+    let blocked: Array<{ pid: number; query: string }> = [];
+
+    while (blocked.length === 0 && Date.now() < deadline) {
+      blocked = (
+        await observer.query<{ pid: number; query: string }>(
+          "select pid,query from pg_stat_activity where $1=any(pg_blocking_pids(pid)) and query like '%identity_admissions%'",
+          [holderPid],
+        )
+      ).rows;
+    }
+
+    expect(blocked).toHaveLength(1);
+    await observer.query("begin");
+
+    const book = await observer.query(
+      "select id from openerp.books where id=$1 for update nowait",
+      [data.book.bookId],
+    );
+
+    expect(book.rowCount).toBe(1);
+    await observer.query("rollback");
+    await holder.query("commit");
+    await failure(await executing, 403, "ApprovalRequired");
+    expect(await financial(data.book)).toEqual(before);
+    await writeFile(
+      join(environment().artifacts, "supplier-authority-lock-order.json"),
+      JSON.stringify(
+        {
+          holderPid,
+          blocked,
+          bookLockAvailableWhileReviewerBlocked: true,
+          before,
+          after: await financial(data.book),
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await observer.query("rollback");
+    await holder.query("rollback");
+    await executing;
+    await observer.end();
+    await holder.end();
+  }
+});
+
 test("supplier source and invoice capacity races have one financial winner and preserve distinct equal rows", async () => {
   const data = await setup(["-4000", "-4000"], "6000");
   const first = await prepared(data);
@@ -1132,6 +1199,39 @@ test("supplier cancellation approval revocation refuses execution and permits fr
   );
 
   expect(inverse.outstandingAfterMinor).toBe("10000");
+
+  const approvalHistory = await decoded(
+    await request(data.book, `${cancellations}/${corrected.plan.id}/approvals`),
+    Schema.Struct({
+      items: Schema.Array(
+        Schema.Struct({
+          approval: Identity,
+          revocation: Schema.NullOr(Schema.Struct({ approvalId: Accounting.Identifier })),
+        }),
+      ),
+      next: Schema.NullOr(Accounting.Identifier),
+    }),
+  );
+
+  expect(approvalHistory.items).toHaveLength(2);
+  expect(
+    approvalHistory.items.find((item) => item.approval.id === corrected.approval.id)?.revocation,
+  ).toEqual(revoked);
+  expect(
+    approvalHistory.items.find((item) => item.approval.id === replacement.id)?.revocation,
+  ).toBeNull();
+  expect(approvalHistory.next).toBeNull();
+  const afterCancellation = await financial(data.book);
+
+  await failure(
+    await request(data.book, `${cancellations}/${corrected.plan.id}/execute`, {
+      method: "POST",
+      body: JSON.stringify({ ...corrected.input, approvalId: replacement.id }),
+    }),
+    409,
+    "AlreadyPosted",
+  );
+  expect(await financial(data.book)).toEqual(afterCancellation);
   await writeFile(
     join(environment().artifacts, "supplier-cancellation-revocation.json"),
     JSON.stringify(
@@ -1416,9 +1516,7 @@ test("supplier pending owner retains prospective plans and independent approval 
   expect(names).toContain("purchases_get_supplier_settlement");
   expect(names).toContain("purchases_execute_supplier_settlement");
   expect(names).toContain("purchases_prepare_supplier_settlement_cancellation");
-  expect(
-    names.filter((name) => name.startsWith("purchases_") && /approv|revoke/.test(name)),
-  ).toEqual([]);
+  expect(names.filter((name) => /^purchases_(approve|revoke)_/.test(name))).toEqual([]);
   await writeFile(
     join(environment().artifacts, "supplier-settlement-pending.json"),
     JSON.stringify(
