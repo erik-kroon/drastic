@@ -18,7 +18,7 @@ import { assertPeriodWorkFence } from "./period-work-fence";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
-import { failure } from "./failures";
+import { failure, postingFailure } from "./failures";
 import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal } from "./identity";
 import * as Db from "../db/posting";
 import { readLiveCredential } from "../db/preparation-jobs";
@@ -181,13 +181,13 @@ export function readPeriod(transaction: Transaction, scope: Scope, periodId: str
     Effect.flatMap((rows) => {
       const row = rows[0];
 
-      if (!row) return failure("InvalidJournal");
+      if (!row) return failure("AccountingPeriodMissing");
 
       return readFiscalYear(transaction, scope, row.fiscalYearId).pipe(
         Effect.flatMap((fiscalYearRows) => {
           const fiscalYear = fiscalYearRows[0];
 
-          if (!fiscalYear) return failure("InvalidJournal");
+          if (!fiscalYear) return failure("AccountingPeriodMissing");
 
           return Effect.succeed({ ...row, fiscalYear });
         }),
@@ -246,7 +246,7 @@ export function validateAction(
   return Effect.gen(function* () {
     const lines = validatePostingLines(action.lines);
 
-    if (Result.isFailure(lines)) return yield* failure("InvalidJournal");
+    if (Result.isFailure(lines)) return yield* postingFailure(lines.failure.code);
 
     if (action.currency !== book.currency || book.profile !== "synthetic-core-v1") {
       return yield* failure("UnsupportedProfile");
@@ -265,7 +265,7 @@ export function validateAction(
       action.postingDate < period.fiscalYear.startsOn ||
       action.postingDate > period.fiscalYear.endsOn
     ) {
-      return yield* failure("InvalidJournal");
+      return yield* failure("PostingDateOutsidePeriod");
     }
 
     const accountRows = yield* Db.readAccounts(
@@ -275,11 +275,11 @@ export function validateAction(
     );
 
     if (accountRows.length !== new Set(action.lines.map((line) => line.accountId)).size) {
-      return yield* failure("InvalidJournal");
+      return yield* failure("AccountMissing");
     }
 
     if (action.postingPurpose !== "reversal" && accountRows.some((account) => !account.active)) {
-      return yield* failure("InvalidJournal");
+      return yield* failure("AccountInactive");
     }
 
     const eventRows = yield* Db.readEventById(transaction, scope.bookId, action.eventId);

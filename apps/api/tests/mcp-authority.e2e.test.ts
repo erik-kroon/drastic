@@ -124,7 +124,11 @@ test("MCP withholds human authority and preserves scoped approved execution and 
 
     for (const token of [book.agentToken, book.token]) {
       const response = await rpc(token, "tools/call", { name, arguments: {} });
-      expect(response.error).toEqual({ code: -32602, message: "Unknown tool." });
+      expect(response.error).toEqual({
+        code: -32602,
+        message: "Unknown tool.",
+        data: { code: "InvalidRequest" },
+      });
     }
   }
 

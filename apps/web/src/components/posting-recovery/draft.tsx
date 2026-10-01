@@ -13,6 +13,7 @@ import {
   WorkflowSurface,
 } from "@open-erp/ui/components/workflow";
 import { Label } from "@open-erp/ui/components/label";
+import { AccountingStatus } from "@/components/accounting-status";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import {
   SavedPostingOutcome,
@@ -174,11 +175,7 @@ export function PostingDraft({
             ) : null}
             {inputError ? <Text role="status">{inputError}</Text> : null}
             {evidence.isPending ? <Text role="status">{posting.pending}</Text> : null}
-            {evidence.isError ? (
-              <Text role="alert">
-                {posting.commandUnknown} {evidence.error.message}
-              </Text>
-            ) : null}
+            <AccountingStatus locale={locale} write error={evidence.error} />
             {evidence.data && !retainedEvidence ? (
               <SavedPostingOutcome saved={evidence.data} locale={locale} />
             ) : null}
@@ -549,11 +546,7 @@ function JournalForm(props: {
       </Box>
       {inputError ? <Text role="status">{inputError}</Text> : null}
       {prepare.isPending ? <Text role="status">{posting.pending}</Text> : null}
-      {prepare.isError ? (
-        <Text role="alert">
-          {posting.commandUnknown} {prepare.error.message}
-        </Text>
-      ) : null}
+      <AccountingStatus locale={props.locale} write error={prepare.error} />
       {prepare.data ? <SavedPostingOutcome saved={prepare.data} locale={locale} /> : null}
     </Box>
   );

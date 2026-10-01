@@ -32,6 +32,17 @@ export function AccountingStatus({
               : copy.journal_read_error}
         </Text>
       ) : null}
+      {error instanceof Accounting.AccountingError ? <Text>{error.code}</Text> : null}
+      {write &&
+      error instanceof Accounting.AccountingError &&
+      Accounting.failureRecovery(error.code) === "transient" ? (
+        <Text>{copy.journal_retry_unchanged}</Text>
+      ) : null}
+      {write &&
+      error instanceof Accounting.AccountingError &&
+      Accounting.failureRecovery(error.code) === "permanent" ? (
+        <Text>{copy.journal_repair_required}</Text>
+      ) : null}
       {write && error instanceof Accounting.AccountingError && isUncertainWriteError(error) ? (
         <Text>{copy.journal_uncertain}</Text>
       ) : null}

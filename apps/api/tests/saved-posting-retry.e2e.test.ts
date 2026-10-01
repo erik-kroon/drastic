@@ -276,7 +276,8 @@ test("DF-04 keeps invalid request content terminal and rejects different bytes u
     Recovery.SavedPostingRequest,
   );
 
-  expect(refused.outcome?.refusal?.code).toBe("InvalidJournal");
+  expect(refused.outcome?.refusal?.code).toBe("UnbalancedPosting");
+  expect(refused.outcome?.refusal?.recovery).toBe("permanent");
 
   const repeated = await post(
     book,
@@ -390,6 +391,16 @@ test("DF-04 recovers an old persisted state refusal without rewriting its origin
   } finally {
     await admin.end();
   }
+
+  const legacy = await decoded(
+    await request(book, `/saved-posting-requests/${requestKey}`),
+    Recovery.SavedPostingRequest,
+  );
+
+  expect(legacy.outcome?.refusal).toEqual({
+    code: "PeriodLocked",
+    message: "Historical period refusal",
+  });
 
   const result = await post(
     book,

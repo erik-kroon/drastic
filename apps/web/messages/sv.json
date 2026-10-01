@@ -85,6 +85,8 @@
   "journal_leave": "Byte av bok tar bort det osparade utkastet. Sparade underlag och förseglade planer finns kvar på servern.",
   "journal_invalid": "Kontrollera fältens format. Belopp måste vara icke-negativa heltalssträngar; ID och datum måste ha rätt format.",
   "journal_uncertain": "Begäran misslyckades. En skrivning kan redan ha slutförts. Försök igen med samma åtgärd utan att ändra fälten för att säkert hämta resultatet.",
+  "journal_retry_unchanged": "Transaktionen återställdes. Försök igen med samma åtgärd utan att ändra fälten eller begärans nyckel.",
+  "journal_repair_required": "Åtgärda det angivna problemet innan du försöker igen. Att upprepa samma begäran löser inte problemet.",
   "journal_read_error": "Kunde inte läsa in poster. Försök igen.",
   "journal_setup_warnings": "Profilbegränsningar",
   "journal_correction": "Förbered rättelse",

@@ -7,6 +7,7 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { SealedAction } from "@/components/journal-review";
+import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import type { Locale } from "@/paraglide/runtime";
 import { postingCopy } from "./copy";
@@ -61,9 +62,11 @@ export function SavedPostingOutcome({
         {copy.checked}: {saved.checkedAt}
       </Text>
       {saved.outcome?.state === "refused" ? (
-        <Text>
-          {saved.outcome.refusal.code}: {saved.outcome.refusal.message}
-        </Text>
+        <AccountingStatus
+          locale={locale}
+          write
+          error={new Accounting.AccountingError(saved.outcome.refusal)}
+        />
       ) : null}
       {saved.outcome ? (
         <details>
@@ -303,11 +306,7 @@ function SavedRequestActions(
           {copy.refresh}
         </Button>
       </Box>
-      {run.isError ? (
-        <Text role="alert">
-          {copy.commandUnknown} {run.error.message}
-        </Text>
-      ) : null}
+      <AccountingStatus locale={props.locale} write error={run.error} />
       {run.isPending ? <Text role="status">{copy.pending}</Text> : null}
       <SavedPostingOutcome saved={saved} locale={locale} />
       <Text>

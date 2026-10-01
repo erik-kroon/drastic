@@ -85,6 +85,8 @@
   "journal_leave": "Switching books discards the unsaved draft. Retained evidence and sealed plans remain on the server.",
   "journal_invalid": "Check the field formats. Amounts must be non-negative integer strings; IDs and dates must match the required format.",
   "journal_uncertain": "The request failed. A write may already have completed. Retry the same action without changing its fields to recover the result safely.",
+  "journal_retry_unchanged": "The transaction was rolled back. Retry the same action without changing its fields or request key.",
+  "journal_repair_required": "Resolve the stated issue before trying again. Repeating the unchanged request will not fix it.",
   "journal_read_error": "Could not load records. Try again.",
   "journal_setup_warnings": "Profile limitations",
   "journal_correction": "Prepare correction",

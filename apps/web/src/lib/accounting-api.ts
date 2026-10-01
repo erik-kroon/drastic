@@ -48,6 +48,7 @@ export async function readAccounting<S extends Schema.Top & { readonly DecodingS
       throw new Accounting.AccountingError({
         code: accessCode,
         message: `HTTP ${response.status}`,
+        recovery: Accounting.failureRecovery(accessCode),
       });
     }
 
@@ -76,8 +77,7 @@ export function isUncertainWriteError(error: Error | null) {
   return (
     error !== null &&
     (!(error instanceof Accounting.AccountingError) ||
-      error.code === "Unavailable" ||
-      error.code === "InternalError")
+      Accounting.failureRecovery(error.code) === "outcome-unknown")
   );
 }
 
@@ -90,6 +90,10 @@ export function requiresNewProposal(error: Error | null) {
       "PeriodLocked",
       "UnsupportedProfile",
       "AlreadyPosted",
+      "AccountingPeriodMissing",
+      "PostingDateOutsidePeriod",
+      "AccountMissing",
+      "AccountInactive",
     ].includes(error.code)
   );
 }

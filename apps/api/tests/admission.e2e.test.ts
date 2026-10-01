@@ -202,6 +202,7 @@ test("duplicate JSON keys are rejected before sealing", async () => {
   const response = await request(book, "/change-sets", { method: "POST", body });
   expect(response.status).toBe(400);
   expect(await response.json()).toEqual({
+    _tag: "AccountingError",
     code: "InvalidRequest",
     message: "JSON object keys must be unique.",
     recovery: "permanent",
@@ -217,7 +218,7 @@ test("unsafe JSON number money is rejected before sealing", async () => {
   expect(unsafe).not.toBe(quoted);
   const response = await request(book, "/change-sets", { method: "POST", body: unsafe });
   expect(response.status).toBe(400);
-  expect(await response.text()).toBe("");
+  expect(await response.json()).toMatchObject({ code: "InvalidRequest", recovery: "permanent" });
   expect(await sealedPlans(book)).toBe(0);
 });
 
@@ -236,7 +237,7 @@ test("unbalanced lines and missing evidence reject without journaling", async ()
       }),
     }),
     422,
-    "InvalidJournal",
+    "UnbalancedPosting",
   );
   await failure(
     await request(book, "/change-sets", {

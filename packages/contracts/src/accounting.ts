@@ -19,7 +19,12 @@ export {
 
 export { MinorUnits, SignedMinorUnits, AggregateMinorUnits } from "@open-erp/domain/money";
 
-export { FailureCode, AccountingError } from "@open-erp/domain/errors";
+export {
+  FailureCode,
+  AccountingError,
+  RecoveryClass,
+  failureRecovery,
+} from "@open-erp/domain/errors";
 
 export {
   JournalLine,
