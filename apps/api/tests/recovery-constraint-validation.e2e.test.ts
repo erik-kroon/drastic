@@ -98,6 +98,64 @@ async function matchValidation(client: Client, match: string | null, parent: boo
   }
 }
 
+async function selectorOutcomes(client: Client) {
+  const outcomes = [];
+
+  for (const selectors of [
+    [],
+    ["one"],
+    Array.from({ length: 20 }, () => "one"),
+    Array.from({ length: 21 }, () => "one"),
+    [null],
+    null,
+  ]) {
+    await client.query("BEGIN");
+
+    try {
+      await client.query("SET LOCAL session_replication_role=replica");
+
+      const body = {
+        id: "selector_notice",
+        scope: { bookId: "fault_book" },
+        oldReleaseId: "old_release",
+        newReleaseId: "new_release",
+        changeKind: "applicability",
+      };
+
+      await client.query(
+        `INSERT INTO openerp.rule_change_notices
+        (book_id,id,old_release_id,new_release_id,change_kind,effective_from,reason,
+          qualification_evidence,changed_selectors,captured_by,captured_at,digest,body)
+        VALUES('fault_book','selector_notice','old_release','new_release','applicability','2026-01-01',
+          'Synthetic selector boundary','{}',$1,'fault_actor',now(),openerp.digest($2::jsonb),$2)`,
+        [selectors, JSON.stringify(body)],
+      );
+      outcomes.push({ code: "accepted", constraint: null, column: null });
+    } catch (error) {
+      if (!(error instanceof Error) || !("code" in error)) throw error;
+
+      outcomes.push({
+        code: error.code,
+        constraint: "constraint" in error ? error.constraint : null,
+        column: "column" in error ? error.column : null,
+      });
+    } finally {
+      await client.query("ROLLBACK");
+    }
+  }
+
+  expect(outcomes).toEqual([
+    { code: "23514", constraint: "rule_change_notices_selectors_check", column: null },
+    { code: "accepted", constraint: null, column: null },
+    { code: "accepted", constraint: null, column: null },
+    { code: "23514", constraint: "rule_change_notices_selectors_check", column: null },
+    { code: "23514", constraint: "rule_change_notices_selectors_check", column: null },
+    { code: "23502", constraint: null, column: "changed_selectors" },
+  ]);
+
+  return outcomes;
+}
+
 test("strict recovery qualifies the validated VAT match constraint without changing retained state", async () => {
   const env = environment();
   const admin = await database();
@@ -119,9 +177,19 @@ test("strict recovery qualifies the validated VAT match constraint without chang
     migrationMismatch?: object;
     restore?: object;
     restoreCatalogDifferences?: object;
+    selectorsBefore?: object;
+    selectorUpgrade?: object;
   } = {};
 
   const manifest = await release();
+
+  const vatRelease = {
+    ...manifest,
+    files: manifest.files.filter(
+      (file) => file.path.split("/").at(-1)! <= "0050-validate-vat-receipt-match.sql",
+    ),
+  };
+
   const pgBin = process.env.PG_BINDIR ?? (await run("pg_config", ["--bindir"])).stdout.trim();
   const sourceURL = new URL(env.adminUrl);
   sourceURL.pathname = `/${sourceName}`;
@@ -234,6 +302,8 @@ test("strict recovery qualifies the validated VAT match constraint without chang
     await source.query(`INSERT INTO openerp.evidence(book_id,id,title,content,media_type,origin,sha256,created_by)
       VALUES('recovery_book','recovery_evidence','Synthetic recovery evidence','SYNTHETIC RECOVERY VALIDATION','text/plain','operator',
         encode(sha256(convert_to('SYNTHETIC RECOVERY VALIDATION','UTF8')),'hex'),'recovery_actor')`);
+    observed.selectorsBefore = await selectorOutcomes(source);
+
     const beforeTables = await tableFingerprints(source);
     const beforeRoles = await roleInventory(source);
 
@@ -247,8 +317,8 @@ test("strict recovery qualifies the validated VAT match constraint without chang
       ).stdout.replace(/^\\(?:un)?restrict .+$/gm, "");
 
     const beforeSchema = await schema();
-    observed.upgrade = (await migrate()).stdout;
-    const afterInventory = await databaseInventory(source, manifest);
+    observed.upgrade = (await migrate("0050-validate-vat-receipt-match.sql")).stdout;
+    const afterInventory = await databaseInventory(source, vatRelease);
     const afterConstraints = await constraints(source);
     expect(afterConstraints).toEqual(
       beforeConstraints.map((row) =>
@@ -270,7 +340,7 @@ test("strict recovery qualifies the validated VAT match constraint without chang
       beforeTables.filter((table) => table.table !== "openerp_migrations"),
     );
     expect(afterInventory.migrations).toEqual(
-      manifest.files.map((file) => ({ name: file.path.split("/").at(-1), sha256: file.sha256 })),
+      vatRelease.files.map((file) => ({ name: file.path.split("/").at(-1), sha256: file.sha256 })),
     );
     observed.upgradePreservation = {
       beforeConstraints,
@@ -282,20 +352,20 @@ test("strict recovery qualifies the validated VAT match constraint without chang
       afterTables,
       inventory: afterInventory,
     };
-    observed.migrationReplay = (await migrate()).stdout;
-    expect(await databaseInventory(source, manifest)).toEqual(afterInventory);
+    observed.migrationReplay = (await migrate("0050-validate-vat-receipt-match.sql")).stdout;
+    expect(await databaseInventory(source, vatRelease)).toEqual(afterInventory);
     expect(await tableFingerprints(source)).toEqual(afterTables);
     await source.query(
       "ALTER TABLE openerp.evidence ADD CONSTRAINT recovery_unrelated_fault CHECK (true) NOT VALID",
     );
-    observed.unrelatedRefusal = await refusal(() => databaseInventory(source, manifest));
+    observed.unrelatedRefusal = await refusal(() => databaseInventory(source, vatRelease));
     expect(observed.unrelatedRefusal).toEqual(observed.beforeRefusal);
     await source.query("ALTER TABLE openerp.evidence DROP CONSTRAINT recovery_unrelated_fault");
-    expect(await databaseInventory(source, manifest)).toEqual(afterInventory);
+    expect(await databaseInventory(source, vatRelease)).toEqual(afterInventory);
     observed.migrationMismatch = await refusal(() =>
       databaseInventory(source, {
-        ...manifest,
-        files: manifest.files.map((file, index) =>
+        ...vatRelease,
+        files: vatRelease.files.map((file, index) =>
           index === 0 ? { ...file, sha256: "0".repeat(64) } : file,
         ),
       }),
@@ -305,6 +375,57 @@ test("strict recovery qualifies the validated VAT match constraint without chang
       message:
         "Applied migration receipts differ from the captured release. A partial or changed schema cannot be marked complete.",
     });
+
+    const oldSelector = afterConstraints.find(
+      (row) => row.name === "rule_change_notices_selectors_check",
+    );
+
+    expect(oldSelector?.definition).toBe(
+      "CHECK ((((cardinality(changed_selectors) >= 1) AND (cardinality(changed_selectors) <= 20)) AND (array_position(changed_selectors, NULL::text) IS NULL)))",
+    );
+
+    const selectorMigration = (await migrate()).stdout;
+    const qualifiedConstraints = await constraints(source);
+    const selectorsAfter = await selectorOutcomes(source);
+
+    const stableCheck =
+      "CHECK (((cardinality(changed_selectors) >= 1) AND (cardinality(changed_selectors) <= 20) AND (array_position(changed_selectors, NULL::text) IS NULL)))";
+
+    const qualifiedTables = await tableFingerprints(source);
+    const qualifiedInventory = await databaseInventory(source, manifest);
+    const qualifiedSchema = await schema();
+
+    observed.selectorUpgrade = {
+      migration: selectorMigration,
+      constraints: qualifiedConstraints,
+      selectorsAfter,
+      tables: qualifiedTables,
+      inventory: qualifiedInventory,
+      schemaSha256: hash(qualifiedSchema),
+    };
+
+    expect(qualifiedConstraints).toEqual(
+      afterConstraints.map((row) =>
+        row.name === "rule_change_notices_selectors_check" &&
+        row.relation === "openerp.rule_change_notices"
+          ? { ...row, definition: stableCheck }
+          : row,
+      ),
+    );
+    expect(selectorsAfter).toEqual(observed.selectorsBefore);
+    expect(qualifiedSchema).toBe(afterSchema.replace(oldSelector!.definition, stableCheck));
+    expect(await roleInventory(source)).toEqual(beforeRoles);
+    expect(qualifiedTables.filter((table) => table.table !== "openerp_migrations")).toEqual(
+      afterTables.filter((table) => table.table !== "openerp_migrations"),
+    );
+    expect(qualifiedInventory.migrations).toEqual(
+      manifest.files.map((file) => ({ name: file.path.split("/").at(-1), sha256: file.sha256 })),
+    );
+
+    await migrate();
+    expect(await databaseInventory(source, manifest)).toEqual(qualifiedInventory);
+    expect(await tableFingerprints(source)).toEqual(qualifiedTables);
+
     const dump = join(env.scratch, "recovery-constraint.dump");
     await run(join(pgBin, "pg_dump"), ["--format=custom", "--no-owner", "--file", dump], {
       env: pgEnv,
@@ -345,17 +466,16 @@ test("strict recovery qualifies the validated VAT match constraint without chang
       await restored.query<{ kind: string; name: string; body: unknown }>(catalogQuery)
     ).rows;
 
+    const sourceObjects = new Set(sourceCatalog.map((row) => JSON.stringify(row)));
+    const restoredObjects = new Set(restoredCatalog.map((row) => JSON.stringify(row)));
+
     observed.restoreCatalogDifferences = {
-      source: sourceCatalog.filter(
-        (row) => !restoredCatalog.some((other) => JSON.stringify(other) === JSON.stringify(row)),
-      ),
-      restored: restoredCatalog.filter(
-        (row) => !sourceCatalog.some((other) => JSON.stringify(other) === JSON.stringify(row)),
-      ),
+      source: sourceCatalog.filter((row) => !restoredObjects.has(JSON.stringify(row))),
+      restored: restoredCatalog.filter((row) => !sourceObjects.has(JSON.stringify(row))),
     };
 
-    expect(restoredInventory).toEqual(afterInventory);
-    expect(restoredTables).toEqual(afterTables);
+    expect(restoredInventory).toEqual(qualifiedInventory);
+    expect(restoredTables).toEqual(qualifiedTables);
 
     const evidence = (
       await restored.query<{ content: string }>(
