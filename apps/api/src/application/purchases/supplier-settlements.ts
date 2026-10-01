@@ -334,11 +334,32 @@ export const prepareSupplierSettlement = Effect.fn("purchases.supplierSettlement
         const controlLineId = newId("line");
         const bankLineId = newId("line");
 
+        const eventKey = `supplier_settlement_${basis.statementId}_${basis.observation.rowOrdinal}`;
+
+        const events = yield* LedgerDb.readEvent(
+          tx,
+          command.scope.bookId,
+          basis.sourceEvidence.evidenceId,
+          eventKey,
+        );
+
+        const eventId = events[0]?.id ?? newId("event");
+
+        if (events.length === 0) {
+          yield* LedgerDb.insertEvent(
+            tx,
+            command.scope.bookId,
+            eventId,
+            basis.sourceEvidence.evidenceId,
+            eventKey,
+          );
+        }
+
         const paymentPlan = yield* sealActionInTransaction(tx, actor, command.scope, {
           kind: "post_voucher",
           postingPurpose: "adjustment",
           correctsVoucherId: null,
-          eventId: basis.sourceEvidence.evidenceId,
+          eventId,
           occurrenceKey: `${basis.statementId}_${basis.observation.rowOrdinal}`,
           fiscalYearId: basis.fiscalYearId,
           accountingPeriodId: basis.periodId,
