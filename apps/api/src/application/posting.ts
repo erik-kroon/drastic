@@ -1,3 +1,4 @@
+import * as SupplierSettlementDb from "../db/purchases/supplier-settlements";
 import { equalJson } from "@open-erp/domain/canonicalization";
 import { swedishBusinessDate } from "@open-erp/domain/values";
 import { admitPosting, type PostingOwner } from "./posting-admission";
@@ -963,6 +964,18 @@ export const approveChangeInTransaction = Effect.fn("posting.approveChangeInTran
     },
   ) {
     return yield* Effect.gen(function* () {
+      const settlement = (yield* SupplierSettlementDb.readPostingChild(
+        transaction,
+        command.scope.bookId,
+        command.changeSetId,
+      ))[0];
+
+      if (
+        settlement &&
+        (command.owner?.kind !== "supplier_settlement" || command.owner.id !== settlement.id)
+      )
+        return yield* failure("ApprovalRequired");
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -1148,6 +1161,15 @@ export const executeChangeInTransaction = Effect.fn("posting.execute")(function*
   },
 ) {
   return yield* Effect.gen(function* () {
+    if (
+      (yield* SupplierSettlementDb.readPostingChild(
+        transaction,
+        command.scope.bookId,
+        command.changeSetId,
+      )).length > 0
+    )
+      return yield* failure("ApprovalRequired");
+
     const request = yield* replay(
       transaction,
       command.scope,

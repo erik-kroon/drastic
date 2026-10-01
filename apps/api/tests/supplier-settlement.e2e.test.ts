@@ -842,3 +842,267 @@ test("supplier integrity retains immutable scoped claims and denies runtime hist
     await admin.end();
   }
 });
+
+test("supplier pending owner retains prospective plans and independent approval without financial effects", async () => {
+  const data = await setup();
+
+  const PendingView = Schema.Struct({
+    plan: Prepared,
+    approval: Schema.NullOr(Approved),
+    pendingBasisCurrent: Schema.Boolean,
+    approvalUsable: Schema.Boolean,
+    paymentPosted: Schema.Literal(false),
+    executionAvailable: Schema.Literal(false),
+  });
+
+  const before = await financial(data.book);
+  const prepareKey = key();
+
+  const prepareRequest = {
+    method: "POST",
+    headers: { "idempotency-key": prepareKey },
+    body: JSON.stringify(data.input),
+  };
+
+  const plan = await decoded(await request(data.book, plans, prepareRequest), Prepared);
+  expect(await decoded(await request(data.book, plans, prepareRequest), Prepared)).toEqual(plan);
+  expect(plan.pendingAllocation.payment).toMatchObject({
+    voucherId: plan.reservedVoucherId,
+    lineId: plan.controlLineId,
+    direction: "supplier",
+    amountMinor: "4000",
+    allocatedMinor: "0",
+    remainingMinor: "4000",
+    capacityVersion: "0",
+  });
+  expect(plan.pendingAllocation.legs[0]).toMatchObject({
+    outstandingBeforeMinor: "10000",
+    amountMinor: "4000",
+    outstandingAfterMinor: "6000",
+  });
+  expect(plan.pendingAllocation.cashEffect).toBeUndefined();
+  expect(await financial(data.book)).toEqual(before);
+  expect(await decoded(await request(data.book, `${plans}/${plan.id}`), PendingView)).toMatchObject(
+    {
+      approval: null,
+      pendingBasisCurrent: true,
+      approvalUsable: false,
+      paymentPosted: false,
+      executionAvailable: false,
+    },
+  );
+
+  const ordinaryView = await decoded(
+    await request(data.book, `/commerce/allocation-plans/${plan.pendingAllocation.id}`),
+    Commerce.AllocationView,
+  );
+
+  expect(ordinaryView.dependenciesCurrent).toBe(false);
+  await failure(
+    await request(data.book, `${plans}/${plan.id}/approvals`, {
+      method: "POST",
+      body: JSON.stringify({ version: 1, digest: plan.digest }),
+    }),
+    403,
+    "Forbidden",
+  );
+  const approveKey = key();
+
+  const approveRequest = {
+    method: "POST",
+    headers: { "idempotency-key": approveKey },
+    body: JSON.stringify({ version: 1, digest: plan.digest }),
+  };
+
+  const approval = await decoded(
+    await request(data.reviewer, `${plans}/${plan.id}/approvals`, approveRequest),
+    Approved,
+  );
+
+  expect(
+    await decoded(
+      await request(data.reviewer, `${plans}/${plan.id}/approvals`, approveRequest),
+      Approved,
+    ),
+  ).toEqual(approval);
+  expect(await decoded(await request(data.book, `${plans}/${plan.id}`), PendingView)).toMatchObject(
+    { pendingBasisCurrent: true, approvalUsable: true },
+  );
+
+  const generic = [
+    [
+      `/change-sets/${plan.paymentPlan.id}/approvals`,
+      { version: 1, planDigest: plan.paymentPlan.planDigest },
+    ],
+    [
+      `/change-sets/${plan.paymentPlan.id}/execute`,
+      {
+        version: 1,
+        planDigest: plan.paymentPlan.planDigest,
+        approvalId: approval.paymentApprovalId,
+      },
+    ],
+    [
+      `/commerce/allocation-plans/${plan.pendingAllocation.id}/approvals`,
+      { version: 1, planDigest: plan.pendingAllocation.digest },
+    ],
+    [
+      `/commerce/allocation-plans/${plan.pendingAllocation.id}/apply`,
+      {
+        version: 1,
+        planDigest: plan.pendingAllocation.digest,
+        approvalId: approval.allocationApprovalId,
+      },
+    ],
+    [
+      "/commerce/allocation-plans",
+      {
+        voucherId: plan.reservedVoucherId,
+        lineId: plan.controlLineId,
+        evidenceId: data.bankEvidence.id,
+        rationale: "Cannot adopt reserved payment",
+        allocations: [{ invoiceId: data.input.invoiceId, amountMinor: "4000" }],
+      },
+    ],
+  ] as const;
+
+  for (const [endpoint, input] of generic) {
+    await failure(
+      await request(data.book, endpoint, { method: "POST", body: JSON.stringify(input) }),
+      403,
+      "ApprovalRequired",
+    );
+  }
+
+  const revokedKey = key();
+
+  const revokeRequest = {
+    method: "POST",
+    headers: { "idempotency-key": revokedKey },
+    body: JSON.stringify({ reason: "Independent withdrawal of pending approval" }),
+  };
+
+  const revoked = await request(
+    data.reviewer,
+    `/purchases/supplier-settlement-approvals/${approval.id}/revoke`,
+    revokeRequest,
+  );
+
+  expect(revoked.status).toBe(200);
+  const revokedBody = await revoked.text();
+  expect(
+    await (
+      await request(
+        data.reviewer,
+        `/purchases/supplier-settlement-approvals/${approval.id}/revoke`,
+        revokeRequest,
+      )
+    ).text(),
+  ).toBe(revokedBody);
+  expect(await decoded(await request(data.book, `${plans}/${plan.id}`), PendingView)).toMatchObject(
+    { pendingBasisCurrent: true, approvalUsable: false },
+  );
+
+  const invoice = await decoded(
+    await request(data.book, `/commerce/invoices/${data.input.invoiceId}`),
+    Commerce.Invoice,
+  );
+
+  await post(
+    data.book,
+    `/commerce/invoices/${invoice.id}/revisions`,
+    {
+      expectedRevision: invoice.currentRevision.revision,
+      dueOn: "2026-10-23",
+      description: "Independent stale invoice revision",
+      evidenceId: data.bankEvidence.id,
+      reason: "Change retained invoice while review open",
+    },
+    Commerce.InvoiceRevision,
+  );
+  expect(await decoded(await request(data.book, `${plans}/${plan.id}`), PendingView)).toMatchObject(
+    { pendingBasisCurrent: false, approvalUsable: false },
+  );
+  await failure(
+    await request(data.reviewer, `${plans}/${plan.id}/approvals`, {
+      method: "POST",
+      body: JSON.stringify({ version: 1, digest: plan.digest }),
+    }),
+    409,
+    "StaleDependency",
+  );
+  expect(await financial(data.book)).toEqual(before);
+  const admin = await database();
+
+  try {
+    await admin.query(
+      "insert into openerp.identity_admissions(actor_id,provider_id,subject,enabled) values($1,'e2e-pending',$1,false) on conflict(actor_id) do update set enabled=false",
+      [data.reviewer.actorId],
+    );
+  } finally {
+    await admin.end();
+  }
+
+  await failure(
+    await request(data.reviewer, `${plans}/${plan.id}/approvals`, approveRequest),
+    403,
+    "Forbidden",
+  );
+  const foreign = await fixture();
+  await failure(await request(foreign, `${plans}/${plan.id}`), 404, "NotFound");
+
+  const tools = await fetch(`${environment().baseUrl}/api/mcp`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${data.book.agentToken}`,
+      "content-type": "application/json",
+      accept: "application/json",
+      "MCP-Protocol-Version": "2025-11-25",
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list" }),
+  });
+
+  const catalog = Schema.decodeUnknownSync(
+    Schema.Struct({
+      result: Schema.Struct({ tools: Schema.Array(Schema.Struct({ name: Schema.String })) }),
+    }),
+  )(await tools.json());
+
+  const names = catalog.result.tools.map((tool) => tool.name);
+  expect(names).toContain("purchases_prepare_supplier_settlement");
+  expect(names).toContain("purchases_get_supplier_settlement");
+  expect(names).not.toContain("purchases_execute_supplier_settlement");
+  expect(names).not.toContain("purchases_prepare_supplier_settlement_cancellation");
+  expect(
+    names.filter((name) => name.startsWith("purchases_") && /approv|revoke/.test(name)),
+  ).toEqual([]);
+  await writeFile(
+    join(environment().artifacts, "supplier-settlement-pending.json"),
+    JSON.stringify(
+      {
+        state: "pending_only",
+        sourceReusable: false,
+        paymentPosted: false,
+        executionAvailable: false,
+        planId: plan.id,
+        reservedVoucherId: plan.reservedVoucherId,
+        paymentChildId: plan.paymentPlan.id,
+        allocationChildId: plan.pendingAllocation.id,
+        approvalId: approval.id,
+        literalOracle: {
+          accrued: "10000",
+          planned: "4000",
+          prospectiveResidual: "6000",
+          actualResidual: "10000",
+          bank: "0",
+          newVAT: "0",
+        },
+        before,
+        after: await financial(data.book),
+      },
+      null,
+      2,
+    ),
+    { mode: 0o600 },
+  );
+});

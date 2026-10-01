@@ -1,3 +1,4 @@
+import { SupplierSettlementsApi } from "./supplier-settlements";
 import { EvaluationsApi } from "./evaluations";
 import { DeadlinesApi } from "./deadlines";
 import { RuleImpactApi } from "./rule-impact";
@@ -224,6 +225,7 @@ export class Api extends HttpApi.make("open-erp")
     SalesOrdersApi,
     SupplierInvoiceDraftsApi,
     SupplierAcceptanceApi,
+    SupplierSettlementsApi,
     ServicePurchaseApi,
     PurchaseRecognitionApi,
     SupplierPaymentBatchesApi,

@@ -23,6 +23,7 @@ export type PostingOwner = {
     | "invoice_cancellation"
     | "legal_issue"
     | "legal_credit"
+    | "supplier_settlement"
     | "supplier_acceptance"
     | "supplier_credit"
     | "supplier_refund"

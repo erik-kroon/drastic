@@ -1711,3 +1711,34 @@ export const evaluationContracts = openerp.table("evaluation_contracts", {
   digest: text().notNull(),
   body: jsonb("body").$type<Schema.JsonObject>().notNull(),
 });
+
+export const supplierSettlementPlans = openerp.table("supplier_settlement_plans", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  invoiceId: text("invoice_id").notNull(),
+  statementId: text("statement_id").notNull(),
+  rowOrdinal: integer("row_ordinal").notNull(),
+  paymentChangeSetId: text("payment_change_set_id").notNull(),
+  allocationPlanId: text("allocation_plan_id").notNull(),
+  reservedVoucherId: text("reserved_voucher_id").notNull(),
+  controlLineId: text("control_line_id").notNull(),
+  bankLineId: text("bank_line_id").notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const supplierSettlementApprovals = openerp.table("supplier_settlement_approvals", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  planId: text("plan_id").notNull(),
+  actorId: text("actor_id").notNull(),
+  paymentApprovalId: text("payment_approval_id").notNull(),
+  allocationApprovalId: text("allocation_approval_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const supplierSettlementRevocations = openerp.table("supplier_settlement_revocations", {
+  bookId: text("book_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});

@@ -1,3 +1,5 @@
+import * as SupplierSettlementDb from "../../db/purchases/supplier-settlements";
+import type { Principal } from "./support";
 import { admitLineOwner } from "../resource-admission";
 import { digest as digestNative, canonicalText as canonicalNative } from "../json";
 import * as Commerce from "@open-erp/contracts/commerce";
@@ -465,6 +467,15 @@ export const approveAllocation = Effect.fn("commerce.allocation.approve")(functi
     command.scope,
     true,
     function* (transaction, principal) {
+      if (
+        (yield* SupplierSettlementDb.readAllocationChild(
+          transaction,
+          command.scope.bookId,
+          command.id,
+        )).length > 0
+      )
+        return yield* failure("ApprovalRequired");
+
       const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
 
       const request = yield* replay(
@@ -1421,6 +1432,15 @@ export const prepareAllocation = Effect.fn("commerce.allocation.prepare")(functi
     command.scope,
     false,
     function* (transaction, principal) {
+      if (
+        (yield* SupplierSettlementDb.readReservation(
+          transaction,
+          command.scope.bookId,
+          command.input.voucherId,
+        )).length > 0
+      )
+        return yield* failure("ApprovalRequired");
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -1573,6 +1593,15 @@ export const applyAllocation = Effect.fn("commerce.allocation.apply")(function* 
     command.scope,
     false,
     function* (transaction, principal) {
+      if (
+        (yield* SupplierSettlementDb.readAllocationChild(
+          transaction,
+          command.scope.bookId,
+          command.id,
+        )).length > 0
+      )
+        return yield* failure("ApprovalRequired");
+
       const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
 
       const request = yield* replay(
@@ -1731,4 +1760,92 @@ export const applyAllocation = Effect.fn("commerce.allocation.apply")(function* 
     },
     "update",
   );
+});
+
+export const sealProspectiveSupplierAllocationInTransaction = Effect.fn(
+  "commerce.sealProspectiveSupplierAllocation",
+)(function* (
+  transaction: Transaction,
+  principal: Principal,
+  scope: Scope,
+  key: string,
+  selection: Omit<AllocationPlan, "id" | "scope" | "version" | "digest" | "createdAt" | "receipt">,
+) {
+  if (
+    selection.cashEffect !== undefined ||
+    selection.legs.length !== 1 ||
+    selection.payment.direction !== "supplier"
+  )
+    return yield* failure("UnsupportedProfile");
+
+  const body = yield* toJsonObject({
+    ...selection,
+    id: newId("allocation"),
+    scope,
+    version: 1,
+    createdAt: yield* retainedNow(transaction),
+    receipt: commandReceipt(key, "commerce_prepare_supplier_allocation", principal.actorId),
+  });
+
+  const plan = yield* decode(AllocationPlanSchema, { ...body, digest: yield* digestNative(body) });
+  yield* AllocationDb.insertAllocationPlan(transaction, {
+    bookId: scope.bookId,
+    id: plan.id,
+    body: yield* toJsonObject(plan),
+  });
+
+  return plan;
+});
+
+export const approveProspectiveSupplierAllocationInTransaction = Effect.fn(
+  "commerce.approveProspectiveSupplierAllocation",
+)(function* (
+  transaction: Transaction,
+  principal: Principal,
+  scope: Scope,
+  ownerId: string,
+  plan: AllocationPlan,
+  key: string,
+) {
+  const owner = (yield* SupplierSettlementDb.readAllocationChild(
+    transaction,
+    scope.bookId,
+    plan.id,
+  ))[0];
+
+  if (
+    !owner ||
+    owner.id !== ownerId ||
+    !(yield* sameJson(objectField(owner.body, "pendingAllocation"), yield* toJsonObject(plan)))
+  )
+    return yield* failure("ApprovalRequired");
+
+  if (
+    plan.cashEffect !== undefined ||
+    plan.legs.length !== 1 ||
+    plan.payment.direction !== "supplier"
+  )
+    return yield* failure("UnsupportedProfile");
+  const expiresAt = yield* approvalExpiry(transaction);
+
+  const approval = yield* decode(AllocationApprovalSchema, {
+    id: newId("allocation_approval"),
+    planId: plan.id,
+    planDigest: plan.digest,
+    actorId: principal.actorId,
+    expiresAt,
+    receipt: commandReceipt(key, "commerce_approve_supplier_allocation", principal.actorId),
+  });
+
+  yield* AllocationDb.insertAllocationApproval(transaction, {
+    bookId: scope.bookId,
+    id: approval.id,
+    planId: plan.id,
+    actorId: principal.actorId,
+    digest: plan.digest,
+    expiresAt,
+    body: yield* toJsonObject(approval),
+  });
+
+  return approval;
 });
