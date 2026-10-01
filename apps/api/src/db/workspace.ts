@@ -82,6 +82,7 @@ export type AttentionItemRow = {
   readonly id: string;
   readonly revision: string;
   readonly title: string | null;
+  readonly sourceRevision: string | null;
   readonly date: string | null;
   readonly updatedAt: string;
   readonly amountMinor: string | null;
@@ -450,7 +451,7 @@ function attentionCte(bookId: string) {
   return sql`
     observed as (
       select 'journal_' || source.id as key, 'journal' as kind, source.id as id,
-        source.digest as revision, source.action->>'description' as title,
+        source.digest as revision, null::text as "sourceRevision", source.action->>'description' as title,
         source.action->>'postingDate' as date, source.created_text as updated,
         (select coalesce(sum((line->>'debitMinor')::numeric), 0)::text
           from jsonb_array_elements(source.action->'lines') line) as amount,
@@ -488,7 +489,7 @@ function attentionCte(bookId: string) {
           then 'journal_review' else 'journal_posted' end as reason
       from (${observedProposals(bookId)}) source
       union all
-      select 'invoice_' || d.id, 'invoice', d.id, r.body->>'digest',
+      select 'invoice_' || d.id, 'invoice', d.id, r.body->>'digest', r.revision::text,
         r.body->'content'->>'title', r.body->'content'->>'plannedIssueDate', r.body->>'createdAt',
         r.body->'totals'->>'grossMinor', r.body->'content'->>'currency',
         (r.body->'content'->>'currencyScale')::integer,
@@ -500,7 +501,7 @@ function attentionCte(bookId: string) {
       left join openerp.invoice_issues i on i.book_id = d.book_id and i.draft_id = d.id
       where d.book_id = ${bookId}
       union all
-      select 'expense_' || e.id, 'expense', e.id, e.source->>'digest',
+      select 'expense_' || e.id, 'expense', e.id, e.source->>'digest', e.source_revision,
         e.source->'facts'->>'description', e.source->'facts'->>'issuedOn', e.source->>'recordedAt',
         e.source->'facts'->'amounts'->>'grossMinor', e.source->'facts'->>'currency',
         (e.source->'facts'->>'currencyScale')::integer,
@@ -508,14 +509,17 @@ function attentionCte(bookId: string) {
         case when e.review->>'sourceDigest' = e.source->>'digest' then 'expense_reviewed'
           else 'expense_review' end
       from (
-        select s.id,
-          (select r.body from openerp.expense_tax_source_revisions r
-            where r.book_id = s.book_id and r.source_id = s.id
-            order by r.revision desc limit 1) as source,
+        select s.id, latest.revision::text as source_revision, latest.body as source,
           (select r.body from openerp.expense_tax_reviews r
             where r.book_id = s.book_id and r.source_id = s.id
             order by r.revision desc limit 1) as review
-        from openerp.expense_tax_sources s where s.book_id = ${bookId}
+        from openerp.expense_tax_sources s
+        left join lateral (
+          select r.revision, r.body from openerp.expense_tax_source_revisions r
+          where r.book_id = s.book_id and r.source_id = s.id
+          order by r.revision desc limit 1
+        ) latest on true
+        where s.book_id = ${bookId}
       ) e
     )
   `;
@@ -571,7 +575,7 @@ export function listAttentionItems(
         ${attentionOrder(filters.sort)}
         limit 51
       )
-      select c.key, c.kind, c.id, c.revision, c.title, c.date, c.updated as "updatedAt",
+      select c.key, c.kind, c.id, c.revision, c."sourceRevision", c.title, c.date, c.updated as "updatedAt",
         supplier.draft_id as "supplierDraftId", supplier.id as "supplierReviewId",
         c.amount as "amountMinor", c.currency, c.scale as "currencyScale", c.state, c.reason,
         a.kind as "assignmentKind", a.record_id as "assignmentRecordId",

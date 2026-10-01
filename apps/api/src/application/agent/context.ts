@@ -4,6 +4,7 @@ import { Capabilities } from "@open-erp/contracts/capabilities";
 import { AccountingError, FailureCode } from "@open-erp/domain/errors";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
+import * as Schema from "effect/Schema";
 import * as WorkspaceDb from "../../db/workspace";
 import * as ContextDb from "../../db/agent-context";
 import * as PostingDb from "../../db/posting";
@@ -16,26 +17,7 @@ import {
   type Scope,
 } from "../commerce/support";
 import { digest, isoNow } from "../posting";
-
-// NEXT-50. The read-only owner of an agent's book context.
-//
-// Three responsibilities and nothing else:
-//   * derive one module summary per retained work domain from bounded reads,
-//     so a module reporting nothing is either known empty or refused;
-//   * derive one work row per retained unresolved item, with its severity read
-//     from retained state rather than asserted by the caller;
-//   * rank those rows for the caller's stated goal and seal the snapshot.
-//
-// The pure rules are in @open-erp/domain/agent-context: module completeness,
-// goal-bound ranking with collapsed blockers, and scope-fenced deltas. This
-// module owns the transaction, the mapping from a domain refusal to the public
-// error family, and nothing about what an agent should do next.
-//
-// A severity is a retained-state fact, not an opinion:
-//   * an item whose retained due moment already passed, or whose accounting
-//     period already ended while it is still unposted, blocks the goal;
-//   * every other retained unresolved item is material.
-// Nothing retained and unresolved is routine, and nothing absent is zero.
+import { failure } from "../failures";
 
 type Refusal = { readonly code: Context.ContextFailureCode; readonly message: string };
 
@@ -58,9 +40,6 @@ function refuse(outcome: Refusal): Effect.Effect<never, AccountingError> {
   );
 }
 
-// One already-admitted read returns at most 51 rows, and the 51st means there
-// are more. A context that silently covered a partial inventory would report an
-// unknown as complete, so a fuller inventory refuses instead of paging.
 const inventoryBound = 50;
 
 function bounded<T>(rows: ReadonlyArray<T>, what: string) {
@@ -77,21 +56,10 @@ function bounded<T>(rows: ReadonlyArray<T>, what: string) {
   return { ok: true as const, rows };
 }
 
-// The attention row is the existing workspace owner's type, reused rather than
-// redeclared, so a new attention column cannot silently drift out of the index.
 type AttentionRow = WorkspaceDb.AttentionItemRow;
 
 type JournalRow = WorkspaceDb.WorkItemRow;
 
-// The operational vocabulary of one retained unresolved item, read from the
-// attention `reason` the existing workspace owner already records. It names
-// what is blocked, what is still missing and which named operation runs next,
-// so a ranked question always points at a real next step.
-// A blocked operation names a registered capability an agent could call, because
-// rankWork only ranks work its snapshot authorizes. An unposted change-set is
-// unblocked by execution, so it names `changes_execute`. A review has no
-// registered capability that would unblock it, so it names none rather than
-// inventing one; the next human step is still recorded as preparation.
 function journalVocabulary() {
   return {
     blockedOperation: "changes_execute",
@@ -116,9 +84,6 @@ function reviewVocabulary(reason: string) {
   };
 }
 
-// One module summary per work domain the inventory covers. `rowCount` is the
-// retained unresolved rows, `fullCount` is the retained rows, and coverage is
-// known because the same bounded read produced both.
 function deriveModuleSummaries(
   kinds: ReadonlyArray<string>,
   rows: ReadonlyArray<AttentionRow>,
@@ -138,27 +103,42 @@ function deriveModuleSummaries(
   });
 }
 
-// Every retained unresolved shape the index knows is listed here. An item of
-// an unknown shape refuses the whole index rather than entering under a
-// guessed identity, and rather than being silently dropped while the index
-// claims to be complete.
-function workRefOfReview(item: AttentionRow, now: string): Context.WorkRef | "journal" | null {
-  if (item.state !== "open") return null;
+function incompleteFacts(): Context.Checked<never> {
+  return Result.fail({
+    code: "IncompleteCoverageClaimed",
+    message:
+      "A retained work row has unsupported revision or digest facts, so the index is not complete.",
+  });
+}
 
-  // Journal proposals are indexed from the change-set source, not from the
-  // attention read that also carries them. Any other unrecognized open shape
-  // is unclassifiable rather than silently dropped.
-  if (item.kind === "journal") return "journal";
+function workRefOfReview(
+  item: AttentionRow,
+  now: string,
+): Context.Checked<Context.WorkRef | "journal" | null> {
+  if (item.state !== "open") return Result.succeed(null);
 
-  if (item.kind !== "invoice" && item.kind !== "expense") return null;
+  if (item.kind === "journal") return Result.succeed("journal");
+
+  if (item.kind !== "invoice" && item.kind !== "expense") return incompleteFacts();
+
+  const ownerVersion = item.sourceRevision;
+  const ownerDigest = item.revision;
+
+  if (
+    !Schema.is(Workspace.AgentContextWorkRef.fields.revision)(ownerVersion) ||
+    !Schema.is(Workspace.AgentContextWorkRef.fields.digest)(ownerDigest) ||
+    ownerVersion === "0" ||
+    BigInt(ownerVersion) > (item.kind === "invoice" ? 50n : 20n)
+  )
+    return incompleteFacts();
 
   const vocabulary = reviewVocabulary(item.reason);
   const overdue = item.assignmentDueOn !== null && item.assignmentDueOn < now;
 
-  return {
+  return Result.succeed({
     owner: item.kind,
     identity: item.id,
-    revision: item.revision,
+    revision: ownerVersion,
     kind: `${item.kind}_review`,
     severity: overdue ? "blocks_goal" : "material",
     affectedPeriod: null,
@@ -166,8 +146,8 @@ function workRefOfReview(item: AttentionRow, now: string): Context.WorkRef | "jo
     missingInputs: [...vocabulary.missingInputs],
     nextPermittedPreparation: vocabulary.nextPermittedPreparation,
     immutableRef: item.id,
-    digest: item.revision,
-  };
+    digest: ownerDigest,
+  });
 }
 
 function deriveWorkRefs(
@@ -183,8 +163,6 @@ function deriveWorkRefs(
 
     const blocked = item.periodId !== null && closedPeriods.has(item.periodId);
 
-    // The revision is the retained plan version, not the digest: the digest
-    // is the content hash, and the two change independently.
     if (item.planVersion === null) {
       return Result.fail({
         code: "IncompleteCoverageClaimed",
@@ -208,14 +186,11 @@ function deriveWorkRefs(
   }
 
   for (const item of reviews) {
-    const ref = workRefOfReview(item, now);
+    const checked = workRefOfReview(item, now);
 
-    if (ref === null && item.state === "open") {
-      return Result.fail({
-        code: "IncompleteCoverageClaimed",
-        message: `A retained ${item.kind} row cannot be classified, so the index is not complete.`,
-      });
-    }
+    if (Result.isFailure(checked)) return Result.fail(checked.failure);
+
+    const ref = checked.success;
 
     if (ref !== null && ref !== "journal") work.push(ref);
   }
@@ -223,9 +198,6 @@ function deriveWorkRefs(
   return Result.succeed(work);
 }
 
-// The accounting periods that already ended. An unposted item in one of them
-// can no longer be posted in its own period, which is what makes it block the
-// goal rather than merely waiting its turn.
 function readClosedPeriods(transaction: Transaction, bookId: string, now: string) {
   return Effect.gen(function* () {
     const periods = yield* PostingDb.readAllPeriods(transaction, bookId);
@@ -238,16 +210,10 @@ function readClosedPeriods(transaction: Transaction, bookId: string, now: string
   });
 }
 
-// The server capability catalog is build configuration, not retained data: no
-// per-actor capability grant table exists. The index therefore lists the
-// capabilities this server build exposes, and says so.
 function registeredCapabilities() {
   return Object.keys(Capabilities);
 }
 
-// The book context for one stated goal. Every identity, revision, amount of
-// work and capability below comes from retained rows or the registered catalog;
-// the caller supplies only the goal and the optional period filter.
 export const getBookContext = Effect.fn("agent.getBookContext")(function* (
   token: string,
   command: {
@@ -257,6 +223,17 @@ export const getBookContext = Effect.fn("agent.getBookContext")(function* (
 ) {
   return yield* withBook(token, command.scope, false, function* (transaction, principal) {
     yield* requireTableAccess(transaction, [...WorkspaceDb.workspaceTables], false);
+
+    const period =
+      command.input.period === null
+        ? null
+        : (yield* WorkspaceDb.readPeriod(
+            transaction,
+            command.scope.bookId,
+            command.input.period,
+          ))[0];
+
+    if (period === undefined) return yield* failure("NotFound");
 
     const attention = yield* WorkspaceDb.listAttentionItems(
       transaction,
@@ -269,8 +246,8 @@ export const getBookContext = Effect.fn("agent.getBookContext")(function* (
         search: "",
         after: null,
       },
-      null,
-      null,
+      period === null ? null : period.startsOn,
+      period === null ? null : period.endsOn,
     );
 
     const attentionBound = bounded(attention, "attention rows");
