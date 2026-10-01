@@ -1734,6 +1734,61 @@ test("supplier cancellation posts its exact inverse in a selected later open per
   );
 });
 
+test("supplier report and cancellation serialize to a retained report before or after the exact inverse", async () => {
+  const data = await setup();
+  const plan = await prepared(data);
+  const approval = await approved(data, plan);
+  const receipt = await decoded(await executeSettlement(data.book, plan, approval), Committed);
+  const corrected = await cancellation(data, receipt);
+  const before = await financial(data.book);
+
+  const [reportResponse, cancellationResponse] = await Promise.all([
+    request(data.book, "/report-snapshots", {
+      method: "POST",
+      body: JSON.stringify({
+        kind: "trial_balance_v1",
+        startsOn: "2026-01-01",
+        endsOn: "2026-12-31",
+      }),
+    }),
+    request(data.book, `${cancellations}/${corrected.plan.id}/execute`, {
+      method: "POST",
+      body: JSON.stringify(corrected.input),
+    }),
+  ]);
+
+  const report = await decoded(
+    reportResponse,
+    Schema.Struct({
+      id: Accounting.Identifier,
+      voucherCount: Schema.Finite,
+    }),
+  );
+
+  const after = await financial(data.book);
+
+  if (cancellationResponse.status === 200) {
+    await decoded(cancellationResponse, Cancelled);
+    expect(report.voucherCount).toBe(3);
+    expect(after).toMatchObject({ bank: "0", payable: "10000", vouchers: 3 });
+    expect(await owned(data.book)).toEqual({ claims: 1, receipts: 1, cancellations: 1 });
+  } else {
+    await failure(cancellationResponse, 409, "StaleDependency");
+    expect(report.voucherCount).toBe(2);
+    expect(after).toEqual(before);
+    expect(await owned(data.book)).toEqual({ claims: 1, receipts: 1, cancellations: 0 });
+  }
+
+  await writeFile(
+    join(environment().artifacts, "supplier-report-cancellation-order.json"),
+    JSON.stringify(
+      { report, cancellationStatus: cancellationResponse.status, before, after },
+      null,
+      2,
+    ),
+  );
+});
+
 test("supplier cancellation refuses invoice changes after settlement without financial effects", async () => {
   const data = await setup();
   const plan = await prepared(data);
