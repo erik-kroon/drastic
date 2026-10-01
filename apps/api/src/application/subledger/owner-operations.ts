@@ -809,6 +809,7 @@ const compileLoanRepayment = Effect.fn("owner.operations.loanRepayment")(functio
       scope.bookId,
       statementId,
       rowOrdinal,
+      cashEvidenceId,
     ))[0]?.used
   )
     return yield* failure("AlreadyPosted");
@@ -927,6 +928,7 @@ const compileFunding = Effect.fn("owner.operations.funding")(function* (
       scope.bookId,
       statementId,
       rowOrdinal,
+      input.evidence.fundingEvidenceId,
     ))[0]?.used
   )
     return yield* failure("AlreadyPosted");

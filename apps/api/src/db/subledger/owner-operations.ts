@@ -422,13 +422,30 @@ export function readFundingSourceUsage(
   bookId: string,
   statementId: string,
   rowOrdinal: number,
+  evidenceId: string,
 ) {
   return transaction.execute<{ readonly used: boolean }>(
     sql`
     select exists(select 1 from openerp.bank_matches where book_id=${bookId}
       and statement_id=${statementId} and row_ordinal=${rowOrdinal})
     or exists(select 1 from openerp.bank_active_allocation_legs where book_id=${bookId}
-      and statement_id=${statementId} and row_ordinal=${rowOrdinal}) as used`,
+       and statement_id=${statementId} and row_ordinal=${rowOrdinal})
+    or exists (
+      select 1 from openerp.vouchers v
+      join openerp.events e on e.book_id=v.book_id and e.id=v.event_id
+      where v.book_id=${bookId} and (
+        e.evidence_id=${evidenceId} or exists (
+          select 1 from jsonb_array_elements(coalesce(v.action->'evidenceRefs','[]'::jsonb)) ref
+          where ref->>'evidenceId'=${evidenceId}
+        )
+      ) and not exists (
+        select 1 from openerp.owner_operation_receipts o
+        join openerp.bank_matches m on m.book_id=o.book_id and m.voucher_id=o.voucher_id
+        join openerp.bank_statements s on s.book_id=m.book_id and s.id=m.statement_id
+        where o.book_id=v.book_id and o.voucher_id=v.id and s.evidence_id=${evidenceId}
+          and o.mode in ('owner_loan','owner_contribution','repay_owner_loan')
+      )
+    ) as used`,
     "objects",
   );
 }

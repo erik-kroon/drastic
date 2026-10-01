@@ -12,6 +12,7 @@ import {
   environment,
   failure,
   fixture,
+  execute,
   key,
   post,
   request,
@@ -559,6 +560,93 @@ test.each(["shareholder_loan", "conditional_contribution", "unconditional_contri
     expect(sourceControl.accountControls[0]?.unexplainedMinor).toBe("0");
     expect(sourceControl.ownerBalances[0]?.recordedNetCreditMinor).toBe(
       legalForm === "shareholder_loan" ? "90000" : "130000",
+    );
+
+    const postedSource = {
+      ...declaration,
+      statementIdentifier: key(),
+      startsOn: "2026-12-01",
+      endsOn: "2026-12-31",
+      openingMinor: "0",
+      closingMinor: "50000",
+      rows: [
+        {
+          rowOrdinal: 1,
+          providerId: key(),
+          date: "2026-12-22",
+          description: "Already recorded cash",
+          amountMinor: "50000",
+        },
+      ],
+    };
+
+    const postedEvidence = await post(
+      book,
+      "/evidence",
+      {
+        title: "Already recorded original",
+        content: JSON.stringify(postedSource),
+        mediaType: "application/json",
+        origin: "Independent posted-source refusal fixture",
+      },
+      Accounting.Evidence,
+    );
+
+    const postedStatement = await post(
+      book,
+      "/bank-statements",
+      { ...postedSource, evidenceId: postedEvidence.id, existingMatches: [] },
+      Bank.StatementImportReceipt,
+    );
+
+    const recorded = await post(
+      book,
+      "/change-sets",
+      {
+        kind: "manual_journal",
+        evidenceId: postedEvidence.id,
+        eventKey: key(),
+        accountingPeriodId: "period_2026",
+        postingDate: "2026-12-22",
+        series: "A",
+        description: "Already recorded source cash",
+        rationale: "Require adoption rather than another cash debit",
+        taxAssessment: "not_applicable",
+        lines: [
+          {
+            accountId: "account_bank",
+            debitMinor: "50000",
+            creditMinor: "0",
+            description: "Recorded cash",
+          },
+          {
+            accountId: "account_owner",
+            debitMinor: "0",
+            creditMinor: "50000",
+            description: "Recorded funding control",
+          },
+        ],
+      },
+      Accounting.ChangeSet,
+    );
+
+    await execute(book, recorded);
+    await failure(
+      await request(book, "/owner-operations/reviews", {
+        method: "POST",
+        body: JSON.stringify({
+          ...input,
+          postingDate: "2026-12-22",
+          evidence: {
+            ...input.evidence,
+            fundingEvidenceId: postedEvidence.id,
+            statementId: postedStatement.statement.id,
+            rowOrdinal: 1,
+          },
+        }),
+      }),
+      409,
+      "AlreadyPosted",
     );
     await writeFile(
       join(environment().artifacts, `owner-funding-${legalForm}-retained-source.json`),
