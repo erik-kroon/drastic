@@ -599,7 +599,7 @@ test("context admission returns empty selected inventory and ignores51 out-of-pe
   expect(ordinary.total).toBe("1");
 });
 
-test("context admission preserves50/51 all-status bound including a completed journal", async () => {
+test("context admission traverses beyond50 retained rows without losing open work", async () => {
   const local = await admissionFixture();
   const plan = await unposted(local.book, local.source.id, "period_2026", "2026-06-30");
   await execute(local.book, plan);
@@ -636,11 +636,21 @@ test("context admission preserves50/51 all-status bound including a completed jo
   expect(ordinary50.total).toBe("50");
   expect(ordinary50.counts).toEqual({ open: "49", completed: "1" });
   expect(ordinary51.total).toBe("51");
-  expect(fiftyOne.status).toBe(422);
-  expect(JSON.parse(fiftyOne.body)).toEqual({
-    _tag: "AccountingError",
-    code: "UnsupportedProfile",
-    message: "More than 50 attention rows are retained; this read does not page an index.",
+
+  const complete = assertReferences(fiftyOne, [
+    ...expected,
+    {
+      id: added.sourceId,
+      owner: "expense",
+      revision: "1",
+      digest: added.digest,
+    },
+  ]);
+
+  expect(complete.snapshot.modules.find((row) => row.owner === "expense")).toMatchObject({
+    rowCount: "50",
+    fullCount: "50",
+    coverageKnown: true,
   });
   const result = assertReferences(fifty, expected);
   expect(result.snapshot.modules.find((row) => row.owner === "journal")).toMatchObject({
@@ -680,7 +690,7 @@ test("context admission refuses missing retained source facts without private va
   expect(exchange.body).not.toContain("private_missing_revision");
 });
 
-test("context admission keeps current authority and51 retained journal refusal", async () => {
+test("context admission traverses51 retained journals and still enforces current authority", async () => {
   const local = await admissionFixture();
 
   for (let index = 0; index < 51; index++)
@@ -703,15 +713,64 @@ test("context admission keeps current authority and51 retained journal refusal",
 
   await retainCase("authority", { exchanges: { bounded, revoked }, before, after });
   expect(after).toEqual(before);
-  expect(bounded.status).toBe(422);
-  expect(JSON.parse(bounded.body)).toEqual({
-    _tag: "AccountingError",
-    code: "UnsupportedProfile",
-    message: "More than 50 attention rows are retained; this read does not page an index.",
-  });
+  expect(view(bounded).snapshot.work).toHaveLength(51);
+  expect(new Set(view(bounded).ranked.orderedIdentities).size).toBe(51);
   expect(revoked.status).toBe(403);
   expect(JSON.parse(revoked.body)).toMatchObject({ code: "Forbidden" });
   expect(revoked.body).not.toContain("Private synthetic");
+});
+
+test("context continuation reconstructs103 retained proposals after a new session and observes completed work", async () => {
+  const local = await admissionFixture();
+  const plans = [];
+
+  for (let index = 0; index < 103; index++) {
+    plans.push(await unposted(local.book, local.source.id, "period_2026", "2026-06-30"));
+  }
+
+  const before = await financialState(local.book);
+  const initial = await context(local.book, "period_2026");
+  const renewed = { ...local.book, token: (await createSession(local.book)).token };
+  const resumed = await context(renewed, "period_2026");
+  const expected = plans.map((plan) => plan.id).sort();
+
+  expect(
+    view(initial)
+      .snapshot.work.map((item) => item.identity)
+      .sort(),
+  ).toEqual(expected);
+  expect(
+    view(resumed)
+      .snapshot.work.map((item) => item.identity)
+      .sort(),
+  ).toEqual(expected);
+  expect(new Set(view(resumed).ranked.orderedIdentities).size).toBe(103);
+  expect(await financialState(local.book)).toEqual(before);
+  const first = plans[0];
+
+  if (!first) throw new Error("Retained synthetic proposal missing");
+  await execute(renewed, first);
+  const afterExecution = await financialState(local.book);
+  const fresh = await context(renewed, "period_2026");
+
+  expect(
+    view(fresh)
+      .snapshot.work.map((item) => item.identity)
+      .sort(),
+  ).toEqual(expected.filter((id) => id !== first.id));
+  expect(view(fresh).snapshot.modules.find((module) => module.owner === "journal")).toMatchObject({
+    fullCount: "103",
+    rowCount: "102",
+    coverageKnown: true,
+  });
+  expect(await financialState(local.book)).toEqual(afterExecution);
+  await retainCase("continuation103", {
+    expected,
+    completedId: first.id,
+    exchanges: { initial, resumed, fresh },
+    before,
+    afterExecution,
+  });
 });
 
 async function expensePrivileges() {

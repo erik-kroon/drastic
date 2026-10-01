@@ -40,22 +40,6 @@ function refuse(outcome: Refusal): Effect.Effect<never, AccountingError> {
   );
 }
 
-const inventoryBound = 50;
-
-function bounded<T>(rows: ReadonlyArray<T>, what: string) {
-  if (rows.length > inventoryBound) {
-    return {
-      ok: false as const,
-      refusal: {
-        code: "UnsupportedProfile",
-        message: `More than ${inventoryBound} ${what} are retained; this read does not page an index.`,
-      } satisfies { readonly code: PublicFailureCode; readonly message: string },
-    };
-  }
-
-  return { ok: true as const, rows };
-}
-
 type AttentionRow = WorkspaceDb.AttentionItemRow;
 
 type JournalRow = WorkspaceDb.WorkItemRow;
@@ -235,49 +219,61 @@ export const getBookContext = Effect.fn("agent.getBookContext")(function* (
 
     if (period === undefined) return yield* failure("NotFound");
 
-    const attention = yield* WorkspaceDb.listAttentionItems(
-      transaction,
-      command.scope.bookId,
-      {
-        kind: "all",
-        period: command.input.period,
-        status: "all",
-        sort: "oldest",
-        search: "",
-        after: null,
-      },
-      period === null ? null : period.startsOn,
-      period === null ? null : period.endsOn,
-    );
+    const attention: Array<AttentionRow> = [];
+    let after: string | null = null;
 
-    const attentionBound = bounded(attention, "attention rows");
-
-    if (!attentionBound.ok) {
-      return yield* Effect.fail(
-        new AccountingError({
-          code: attentionBound.refusal.code,
-          message: attentionBound.refusal.message,
-        }),
+    while (true) {
+      const page: Array<AttentionRow> = yield* WorkspaceDb.listAttentionItems(
+        transaction,
+        command.scope.bookId,
+        {
+          kind: "all",
+          period: command.input.period,
+          status: "all",
+          sort: "oldest",
+          search: "",
+          after,
+        },
+        period === null ? null : period.startsOn,
+        period === null ? null : period.endsOn,
       );
+
+      attention.push(...page);
+
+      if (page.length < 51) break;
+
+      const tail = page.at(-1);
+
+      if (!tail || tail.key === after) return yield* failure("StaleDependency");
+      after = tail.key;
     }
 
-    const journals = yield* WorkspaceDb.listWorkItems(transaction, command.scope.bookId, {
-      period: command.input.period,
-      status: "all",
-      sort: "oldest",
-      search: "",
-      anchor: null,
-    });
+    const journals: Array<JournalRow> = [];
+    let anchor: WorkspaceDb.WorkFilters["anchor"] = null;
+    let lastJournalId: string | null = null;
 
-    const journalsBound = bounded(journals, "work rows");
-
-    if (!journalsBound.ok) {
-      return yield* Effect.fail(
-        new AccountingError({
-          code: journalsBound.refusal.code,
-          message: journalsBound.refusal.message,
-        }),
+    while (true) {
+      const page: Array<JournalRow> = yield* WorkspaceDb.listWorkItems(
+        transaction,
+        command.scope.bookId,
+        {
+          period: command.input.period,
+          status: "all",
+          sort: "oldest",
+          search: "",
+          anchor,
+        },
       );
+
+      journals.push(...page);
+
+      if (page.length < 51) break;
+
+      const tail = page.at(-1);
+
+      if (!tail || tail.id === lastJournalId) return yield* failure("StaleDependency");
+      lastJournalId = tail.id;
+      anchor = { createdAt: tail.createdAt, id: tail.id };
     }
 
     const now = yield* isoNow(transaction);
