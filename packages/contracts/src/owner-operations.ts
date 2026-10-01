@@ -9,7 +9,7 @@ import { accountingErrors } from "./accounting-errors";
 
 // Owner-paid expenses, reimbursement and funding. The pure purchase calculation
 // stays with the source-line purchase owner; this file is the wire shape of the
-// five owner operation modes and the exact group each one posts.
+// owner operation modes and the exact group each one posts.
 
 export { FundingLegalForm, OwnerClassification };
 
@@ -72,7 +72,7 @@ const commonFields = {
   reason: Accounting.Description,
 };
 
-// The five owner operation modes. Every account is reviewed: the owner control
+// Every account is reviewed: the owner control
 // account, the company cash account and the supplier payable are named here, and
 // no account is inferred from a bank description, an owner identity or a document
 // total. The input VAT account is not an input at all: it is the account the
@@ -98,6 +98,18 @@ export const PrepareOwnerOperation = Schema.Union([
   }),
   Schema.Struct({
     ...commonFields,
+    mode: Schema.Literal("repay_owner_loan"),
+    cashAccountId: Accounting.Identifier,
+    evidence: Schema.Struct({
+      cashEvidenceId: Accounting.Identifier,
+      statementId: Accounting.Identifier,
+      rowOrdinal: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100000 })),
+      loanEffectId: Accounting.Identifier,
+      reason: Accounting.Description,
+    }),
+  }),
+  Schema.Struct({
+    ...commonFields,
     mode: Schema.Literal("owner_loan"),
     cashAccountId: Accounting.Identifier,
     amountMinor: Schema.optional(Accounting.MinorUnits),
@@ -118,6 +130,7 @@ export const OwnerOperationMode = Schema.Literals([
   "owner_paid_purchase",
   "owner_pays_payable",
   "reimburse_owner",
+  "repay_owner_loan",
   "owner_loan",
   "owner_contribution",
 ]);
@@ -310,7 +323,7 @@ export const OwnerOperationsApi = HttpApiGroup.make("ownerOperations").add(
 export const OwnerOperationCapabilities = {
   owners_prepare_operation: {
     description:
-      "Seal one owner-paid expense, owner payment of an existing supplier payable, reimbursement, shareholder loan or capital contribution as a single exact financial group with its owner effect. Every amount, account, classification and evidence reference is a reviewed input; a missing one is a refusal, never a default. An owner-paid purchase of a document that already has a supplier recognition is compiled as the payable transfer instead of a second purchase, and an unresolved funding classification produces no financial plan. The owner-paid purchase reuses the qualified source-line purchase compiler, so the tax decision does not depend on who paid.",
+      "Seal one owner-paid expense, owner payment of an existing supplier payable, reimbursement, shareholder loan, loan repayment or capital contribution as a single exact financial group with its owner effect. Funding and loan repayment amounts come from unused retained bank rows, not caller-stated amounts. Accounts, classification and evidence need review; missing facts refuse. An owner-paid document already recognized by a supplier is a payable transfer, never a second purchase. Unresolved funding classification produces no plan. Owner-paid purchases reuse the source-line tax compiler.",
     input: Schema.Struct({
       scope: Accounting.Scope,
       idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],

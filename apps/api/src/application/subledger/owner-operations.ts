@@ -671,6 +671,10 @@ const compileOperation = Effect.fn("owner.operations.compile")(function* (
     return compiled(input, yield* compileReimbursement(transaction, scope, book, input));
   }
 
+  if (input.mode === "repay_owner_loan") {
+    return compiled(input, yield* compileLoanRepayment(transaction, scope, book, input));
+  }
+
   return compiled(input, yield* compileFunding(transaction, scope, book, input, description));
 });
 
@@ -762,6 +766,101 @@ const compileReimbursement = Effect.fn("owner.operations.reimbursement")(functio
 // interest is a separate, unsupported question. A supported contribution credits
 // the reviewed equity account and is not reimbursable. An unresolved or
 // unsupported classification produces no financial plan at all.
+const compileLoanRepayment = Effect.fn("owner.operations.loanRepayment")(function* (
+  transaction: Transaction,
+  scope: Scope,
+  book: { readonly currency: string; readonly currencyScale: number },
+  input: Extract<Input, { readonly mode: "repay_owner_loan" }>,
+) {
+  yield* requireOwnerControlAccount(transaction, scope.bookId, input.controlAccountId, [
+    input.cashAccountId,
+  ]);
+  yield* requireCashAccount(transaction, scope.bookId, input.cashAccountId);
+  yield* PurchaseShared.requireTables(
+    transaction,
+    ["bank_statements", "bank_observations", "bank_matches", "bank_active_allocation_legs"],
+    ["bank_matches"],
+  );
+  const { statementId, rowOrdinal, loanEffectId, cashEvidenceId } = input.evidence;
+
+  const source = (yield* FundingBank.readObservation(
+    transaction,
+    scope.bookId,
+    statementId,
+    rowOrdinal,
+  ))[0];
+
+  const statement = (yield* FundingBank.readStatement(transaction, scope.bookId, statementId))[0];
+
+  if (!source || !statement) return yield* failure("NotFound");
+
+  if (
+    source.accountId !== input.cashAccountId ||
+    source.evidenceId !== cashEvidenceId ||
+    source.observedOn !== input.postingDate ||
+    statement.source.currency !== book.currency ||
+    BigInt(source.amountMinor) >= 0n
+  )
+    return yield* failure("StaleDependency");
+
+  if (
+    (yield* OperationDb.readFundingSourceUsage(
+      transaction,
+      scope.bookId,
+      statementId,
+      rowOrdinal,
+    ))[0]?.used
+  )
+    return yield* failure("AlreadyPosted");
+
+  const claim = yield* readCapacity(transaction, scope, loanEffectId);
+  const effect = claim.effect;
+
+  if (
+    effect.classification !== "shareholder_loan" ||
+    effect.side !== "credit" ||
+    effect.ownerId !== input.ownerId ||
+    effect.accountId !== input.controlAccountId ||
+    effect.currency !== book.currency ||
+    effect.currencyScale !== book.currencyScale ||
+    effect.postingDate > input.postingDate
+  )
+    return yield* failure("InvalidJournal");
+
+  const amountMinor = (-BigInt(source.amountMinor)).toString();
+  const legs = [{ claimId: loanEffectId, amountMinor }];
+  const description = `Owner loan repayment ${input.ownerId}`;
+
+  const repayment = compileOwnerReimbursement({
+    currencyScale: book.currencyScale,
+    ownerLiabilityAccountId: input.controlAccountId,
+    cashAccountId: input.cashAccountId,
+    description,
+    legs,
+    capacities: [{ claimId: loanEffectId, remainingMinor: claim.remainingMinor }],
+  });
+
+  if (Result.isFailure(repayment)) return yield* ownerFailure(repayment.failure.code);
+
+  return {
+    lines: journalLines(repayment.success.journal),
+    ownerEffect: {
+      accountId: input.controlAccountId,
+      side: "debit" as const,
+      classification: "loan_repayment" as const,
+      amountMinor,
+    },
+    controlAccountId: input.controlAccountId,
+    recognition: null,
+    reimburses: legs,
+    discharges: null,
+    evidenceId: cashEvidenceId,
+    witness: null,
+    gaps: [],
+    description,
+  };
+});
+
 const compileFunding = Effect.fn("owner.operations.funding")(function* (
   transaction: Transaction,
   scope: Scope,
@@ -866,14 +965,21 @@ const compileFunding = Effect.fn("owner.operations.funding")(function* (
   };
 });
 
-// The retained source locator of one owner mode. It never contains a document
-// number, an amount or an owner identity, so a locator is not a second key.
-function locatorOf(mode: Input["mode"]) {
-  return mode.replaceAll("_", "-");
+// Cash source locators identify the retained row within its evidence, not the
+// operation label. Other modes retain their existing source locator.
+function locatorOf(input: Input) {
+  if (
+    input.mode === "owner_loan" ||
+    input.mode === "owner_contribution" ||
+    input.mode === "repay_owner_loan"
+  )
+    return `bank-row-${input.evidence.rowOrdinal}`;
+
+  return input.mode.replaceAll("_", "-");
 }
 
 function sourceKindOf(mode: Input["mode"]) {
-  if (mode === "reimburse_owner") return "settlement" as const;
+  if (mode === "reimburse_owner" || mode === "repay_owner_loan") return "settlement" as const;
 
   return mode === "owner_loan" || mode === "owner_contribution"
     ? ("funding" as const)
@@ -912,12 +1018,21 @@ export const prepareOwnerOperation = Effect.fn("owner.operations.prepare")(funct
         const decision = yield* compileOperation(transaction, command.scope, command.input);
         const evidenceId = decision.evidenceId;
 
+        // One statement original can contain many cash events. These owners
+        // admit unused rows and atomically match each row; other document owners
+        // keep their existing whole-evidence duplicate-recognition fence.
+        const sourceBoundCash =
+          decision.input.mode === "owner_loan" ||
+          decision.input.mode === "owner_contribution" ||
+          decision.input.mode === "repay_owner_loan";
+
         if (
-          yield* PurchaseShared.evidenceHasPostedHistory(
+          !sourceBoundCash &&
+          (yield* PurchaseShared.evidenceHasPostedHistory(
             transaction,
             command.scope.bookId,
             evidenceId,
-          )
+          ))
         ) {
           return yield* failure("AlreadyPosted");
         }
@@ -1084,7 +1199,11 @@ const reviewBlockers = Effect.fn("owner.operations.blockers")(function* (
     blockers.push("The reviewed owner control account is no longer active.");
   }
 
-  if (review.mode === "owner_loan" || review.mode === "owner_contribution") {
+  if (
+    review.mode === "owner_loan" ||
+    review.mode === "owner_contribution" ||
+    review.mode === "repay_owner_loan"
+  ) {
     const funding = yield* compileOperation(transaction, scope, review.input).pipe(
       Effect.match({ onFailure: () => undefined, onSuccess: (value) => value }),
     );
@@ -1363,7 +1482,11 @@ const commitOwnerGroup = Effect.fn("owner.operations.commit")(function* (
     return yield* failure("StaleDependency");
   }
 
-  if (review.input.mode === "owner_loan" || review.input.mode === "owner_contribution") {
+  if (
+    review.input.mode === "owner_loan" ||
+    review.input.mode === "owner_contribution" ||
+    review.input.mode === "repay_owner_loan"
+  ) {
     const { statementId, rowOrdinal } = review.input.evidence;
     const cashAccountId = review.input.cashAccountId;
     const bankLine = action.lines.find((line) => line.accountId === cashAccountId);
@@ -1404,7 +1527,7 @@ const commitOwnerGroup = Effect.fn("owner.operations.commit")(function* (
     recordId,
     reviewId: ownerReviewId,
     sourceKey: `owner_operation:${review.id}`,
-    locator: locatorOf(review.mode),
+    locator: locatorOf(review.input),
     evidenceId: review.evidence.evidenceId,
     occurredOn: review.input.postingDate,
     currency: book.currency,
@@ -1441,7 +1564,7 @@ const commitOwnerGroup = Effect.fn("owner.operations.commit")(function* (
     accountId: control.accountId,
     postingDate: action.postingDate,
     occurredOn: review.input.postingDate,
-    locator: locatorOf(review.mode),
+    locator: locatorOf(review.input),
     eventId: action.eventId,
     changeSetId: review.changeSetId,
     classification: review.ownerEffect.classification,
