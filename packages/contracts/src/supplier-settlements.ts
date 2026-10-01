@@ -6,6 +6,7 @@ import * as Bank from "./reconciliation";
 import * as Profiles from "./company-profiles";
 import * as AllocationReversal from "./commerce-allocation-reversals";
 import * as MatchReversal from "./bank-match-reversals";
+import * as Corrections from "./corrections";
 import { accountingErrors } from "./accounting-errors";
 
 export const PrepareSupplierSettlement = Schema.Struct({
@@ -132,6 +133,7 @@ export const SupplierSettlementCancellationPlan = Schema.Struct({
   paymentPlan: Accounting.ChangeSet,
   allocationReversal: AllocationReversal.CommerceAllocationReversalPlan,
   matchReversal: MatchReversal.BankMatchReversalPlan,
+  impactResources: Schema.optionalKey(Schema.Array(Corrections.CorrectionImpactResource)),
 });
 
 export const SupplierSettlementCancellationApproval = Schema.Struct({
@@ -283,6 +285,15 @@ export const SupplierSettlementsApi = HttpApiGroup.make("supplierSettlements")
         ...identifiedMutation,
         payload: ExecuteSupplierSettlement,
         success: SupplierSettlementCancellationReceipt,
+      },
+    ),
+    HttpApiEndpoint.post(
+      "revokeSupplierSettlementCancellationApproval",
+      `${path}/supplier-settlement-cancellation-approvals/:id/revoke`,
+      {
+        ...identifiedMutation,
+        payload: RevokeSupplierSettlementApproval.annotate(strict),
+        success: SupplierSettlementApprovalRevocation,
       },
     ),
   );

@@ -1015,6 +1015,133 @@ test("supplier scoped discovery continues beyond one page without losing retaine
   );
 });
 
+test("supplier cancellation refuses retained report consumption without financial effects", async () => {
+  const data = await setup();
+  const plan = await prepared(data);
+  const approval = await approved(data, plan);
+  const receipt = await decoded(await executeSettlement(data.book, plan, approval), Committed);
+
+  await post(
+    data.book,
+    "/report-snapshots",
+    {
+      kind: "trial_balance_v1",
+      startsOn: "2026-01-01",
+      endsOn: "2026-12-31",
+    },
+    Schema.Struct({ id: Accounting.Identifier }),
+  );
+  const before = await financial(data.book);
+
+  await failure(
+    await request(data.book, cancellations, {
+      method: "POST",
+      body: JSON.stringify({
+        settlementReceiptId: receipt.id,
+        reason: "Consumed settlement cannot be cancelled",
+        evidence: data.input.evidence,
+      }),
+    }),
+    409,
+    "StaleDependency",
+  );
+  expect(await financial(data.book)).toEqual(before);
+  await writeFile(
+    join(environment().artifacts, "supplier-report-consumption.json"),
+    JSON.stringify({ receiptId: receipt.id, before, after: await financial(data.book) }, null, 2),
+  );
+});
+
+test("supplier cancellation revalidates report consumption after approval", async () => {
+  const data = await setup();
+  const plan = await prepared(data);
+  const approval = await approved(data, plan);
+  const receipt = await decoded(await executeSettlement(data.book, plan, approval), Committed);
+  const corrected = await cancellation(data, receipt);
+
+  await post(
+    data.book,
+    "/report-snapshots",
+    {
+      kind: "trial_balance_v1",
+      startsOn: "2026-01-01",
+      endsOn: "2026-12-31",
+    },
+    Schema.Struct({ id: Accounting.Identifier }),
+  );
+  const before = await financial(data.book);
+
+  await failure(
+    await request(data.book, `${cancellations}/${corrected.plan.id}/execute`, {
+      method: "POST",
+      body: JSON.stringify(corrected.input),
+    }),
+    409,
+    "StaleDependency",
+  );
+  expect(await financial(data.book)).toEqual(before);
+  await writeFile(
+    join(environment().artifacts, "supplier-late-report-consumption.json"),
+    JSON.stringify(
+      { planId: corrected.plan.id, before, after: await financial(data.book) },
+      null,
+      2,
+    ),
+  );
+});
+
+test("supplier cancellation approval revocation refuses execution and permits fresh review", async () => {
+  const data = await setup();
+  const plan = await prepared(data);
+  const approval = await approved(data, plan);
+  const receipt = await decoded(await executeSettlement(data.book, plan, approval), Committed);
+  const corrected = await cancellation(data, receipt);
+  const before = await financial(data.book);
+
+  const revoked = await post(
+    data.reviewer,
+    `/purchases/supplier-settlement-cancellation-approvals/${corrected.approval.id}/revoke`,
+    { reason: "Withdraw cancellation permission" },
+    Schema.Struct({ approvalId: Accounting.Identifier }),
+  );
+
+  expect(revoked.approvalId).toBe(corrected.approval.id);
+  await failure(
+    await request(data.book, `${cancellations}/${corrected.plan.id}/execute`, {
+      method: "POST",
+      body: JSON.stringify(corrected.input),
+    }),
+    403,
+    "ApprovalRequired",
+  );
+  expect(await financial(data.book)).toEqual(before);
+
+  const replacement = await post(
+    data.reviewer,
+    `${cancellations}/${corrected.plan.id}/approvals`,
+    { version: 1, digest: corrected.plan.digest },
+    Identity,
+  );
+
+  const inverse = await decoded(
+    await request(data.book, `${cancellations}/${corrected.plan.id}/execute`, {
+      method: "POST",
+      body: JSON.stringify({ ...corrected.input, approvalId: replacement.id }),
+    }),
+    Cancelled,
+  );
+
+  expect(inverse.outstandingAfterMinor).toBe("10000");
+  await writeFile(
+    join(environment().artifacts, "supplier-cancellation-revocation.json"),
+    JSON.stringify(
+      { revoked, replacement, inverse, before, after: await financial(data.book) },
+      null,
+      2,
+    ),
+  );
+});
+
 test("supplier cancellation refuses invoice changes after settlement without financial effects", async () => {
   const data = await setup();
   const plan = await prepared(data);

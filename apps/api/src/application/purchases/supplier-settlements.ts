@@ -24,6 +24,7 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Db from "../../db/purchases/supplier-settlements";
 import * as LedgerDb from "../../db/posting";
+import * as CorrectionDb from "../../db/posting-corrections";
 import * as InvoiceDb from "../../db/commerce/invoices";
 import * as AllocationDb from "../../db/commerce/allocations";
 import * as StatementDb from "../../db/banking/statements";
@@ -939,6 +940,21 @@ const cancellationBasis = Effect.fn("purchases.supplierSettlement.cancellationBa
 
   if (period.locked) return yield* failure("PeriodLocked");
 
+  const impactRows = yield* CorrectionDb.readImpactResources(
+    tx,
+    scope.bookId,
+    receipt.postingReceipt.voucherId,
+    originalPlan.basis.observation.date,
+  );
+
+  const impactResources = impactRows.map((row) => row.resource);
+
+  if (
+    impactResources.length > 1000 ||
+    impactResources.some((resource) => resource.kind === "report" || resource.kind === "closing")
+  )
+    return yield* failure("StaleDependency");
+
   const live = (yield* InvoiceDb.readLiveInvoice(
     tx,
     scope.bookId,
@@ -978,7 +994,7 @@ const cancellationBasis = Effect.fn("purchases.supplierSettlement.cancellationBa
     invoice.controlAccountId,
   );
 
-  return { invoice, profileWitness };
+  return { invoice, profileWitness, impactResources };
 });
 
 const readCancellationPlan = Effect.fn("purchases.supplierSettlement.readCancellationPlan")(
@@ -1000,11 +1016,16 @@ const readCancellationPlan = Effect.fn("purchases.supplierSettlement.readCancell
 
 const currentCancellation = Effect.fn("purchases.supplierSettlement.currentCancellation")(
   function* (tx: Transaction, plan: CancellationPlan) {
+    if (plan.impactResources === undefined) return yield* failure("StaleDependency");
     const current = yield* cancellationBasis(tx, plan.scope, plan.original, plan.originalPlan);
 
     if (
       (yield* canonicalText(current)) !==
-      (yield* canonicalText({ invoice: plan.invoice, profileWitness: plan.profileWitness }))
+      (yield* canonicalText({
+        invoice: plan.invoice,
+        profileWitness: plan.profileWitness,
+        impactResources: plan.impactResources,
+      }))
     )
       return yield* failure("StaleDependency");
     yield* validatePlan(tx, plan.scope, plan.paymentPlan);
@@ -1233,6 +1254,73 @@ export const approveSupplierSettlementCancellation = Effect.fn(
   );
 });
 
+export const revokeSupplierSettlementCancellationApproval = Effect.fn(
+  "purchases.supplierSettlement.revokeCancellation",
+)(function* (
+  token: string,
+  command: {
+    scope: Scope;
+    approvalId: string;
+    idempotencyKey: string;
+    input: typeof Settlement.RevokeSupplierSettlementApproval.Type;
+  },
+) {
+  return yield* owned(token, command.scope, true, null, (tx, actor) =>
+    Effect.gen(function* () {
+      const operation = "revoke_supplier_settlement_cancellation_approval";
+
+      const request = yield* replay(
+        tx,
+        command.scope,
+        command.idempotencyKey,
+        operation,
+        actor.actorId,
+        { id: command.approvalId, input: command.input },
+        Settlement.SupplierSettlementApprovalRevocation,
+      );
+
+      if (request.previous) return request.previous;
+
+      const approval = (yield* Db.readCancellationApproval(
+        tx,
+        command.scope.bookId,
+        command.approvalId,
+      ))[0];
+
+      if (!approval) return yield* failure("NotFound");
+
+      const existing = (yield* Db.readCancellationRevocation(
+        tx,
+        command.scope.bookId,
+        command.approvalId,
+      ))[0];
+
+      const result = existing
+        ? yield* decode(Settlement.SupplierSettlementApprovalRevocation, existing.body)
+        : {
+            approvalId: command.approvalId,
+            actorId: actor.actorId,
+            reason: command.input.reason,
+            revokedAt: yield* isoNow(tx),
+            receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
+          };
+
+      if (!existing) yield* Db.insertCancellationRevocation(tx, command.scope.bookId, result);
+      yield* saveCommand(
+        tx,
+        command.scope,
+        command.idempotencyKey,
+        request.expected,
+        operation,
+        actor.actorId,
+        yield* toJsonObject(result),
+      );
+
+      return result;
+    }),
+  );
+});
+
 export const executeSupplierSettlementCancellation = Effect.fn(
   "purchases.supplierSettlement.executeCancellation",
 )(function* (
@@ -1271,6 +1359,9 @@ export const executeSupplierSettlementCancellation = Effect.fn(
       ))[0];
 
       if (!row || row.planId !== plan.id) return yield* failure("ApprovalRequired");
+
+      if ((yield* Db.readCancellationRevocation(tx, command.scope.bookId, row.id)).length > 0)
+        return yield* failure("ApprovalRequired");
       const approval = yield* decode(Settlement.SupplierSettlementCancellationApproval, row.body);
 
       const membership = yield* LedgerDb.readOperatorMembership(

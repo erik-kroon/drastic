@@ -4,6 +4,7 @@ import {
   supplierSettlementCancellationPlans,
   supplierSettlementCancellationApprovals,
   supplierSettlementCancellationReceipts,
+  supplierSettlementCancellationRevocations,
 } from "../schema";
 import { and, eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
@@ -175,6 +176,30 @@ export function readApprovalActors(tx: Transaction, bookId: string, planId: stri
 }
 
 export type JsonObject = Schema.JsonObject;
+
+export function readCancellationRevocation(tx: Transaction, bookId: string, approvalId: string) {
+  return tx
+    .select()
+    .from(supplierSettlementCancellationRevocations)
+    .where(
+      and(
+        eq(supplierSettlementCancellationRevocations.bookId, bookId),
+        eq(supplierSettlementCancellationRevocations.approvalId, approvalId),
+      ),
+    );
+}
+
+export function insertCancellationRevocation(
+  tx: Transaction,
+  bookId: string,
+  body: typeof Settlement.SupplierSettlementApprovalRevocation.Type,
+) {
+  return tx.insert(supplierSettlementCancellationRevocations).values({
+    bookId,
+    approvalId: body.approvalId,
+    body,
+  });
+}
 
 export function readReceipt(tx: Transaction, bookId: string, id: string) {
   return tx

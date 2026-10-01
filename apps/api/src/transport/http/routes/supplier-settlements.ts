@@ -15,6 +15,7 @@ import {
   approveSupplierSettlementCancellation,
   approveSupplierSettlement,
   revokeSupplierSettlementApproval,
+  revokeSupplierSettlementCancellationApproval,
 } from "../../../application/purchases/supplier-settlements";
 
 export const SupplierSettlementHandlers = HttpApiBuilder.group(
@@ -111,6 +112,16 @@ export const SupplierSettlementHandlers = HttpApiBuilder.group(
           approveSupplierSettlementCancellation(token, {
             scope: scopeFromPath(params),
             planId: params.id,
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
+        ),
+      )
+      .handle("revokeSupplierSettlementCancellationApproval", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          revokeSupplierSettlementCancellationApproval(token, {
+            scope: scopeFromPath(params),
+            approvalId: params.id,
             idempotencyKey: headers["idempotency-key"],
             input: payload,
           }),

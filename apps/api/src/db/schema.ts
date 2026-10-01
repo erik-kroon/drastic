@@ -1802,3 +1802,12 @@ export const supplierSettlementCancellationReceipts = openerp.table(
     body: jsonb("body").$type<Schema.JsonObject>().notNull(),
   },
 );
+
+export const supplierSettlementCancellationRevocations = openerp.table(
+  "supplier_settlement_cancellation_revocations",
+  {
+    bookId: text("book_id").notNull(),
+    approvalId: text("approval_id").notNull(),
+    body: jsonb().$type<Schema.JsonObject>().notNull(),
+  },
+);
