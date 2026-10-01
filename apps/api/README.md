@@ -119,7 +119,8 @@ The dispatch set is exactly the four operations that exist:
 `purchases.recognition`, `purchases.credits`, `owner.operations` and
 `commerce.invoice`. A [bounded synthetic accrual settlement owner](../../docs/plans/evidence/whole-year-supplier-accrual-slice.md)
 now composes native payment, bank matching and allocation with full latest
-same-open-period cancellation. It is not a qualified real-company or period-work
+cancellation in the original or a selected later open period; the original period
+must also remain open. It is not a qualified real-company or period-work
 dispatch owner, so `purchases.settlement` and `banking.settlement` are absent from the
 router's vocabulary, the database refuses them as a routed owner, and a child that
 needs one becomes a review case naming

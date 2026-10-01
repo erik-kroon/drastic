@@ -1575,6 +1575,165 @@ test("supplier cancellation refuses a parent approval whose actor does not own t
   );
 });
 
+test("supplier cancellation posts its exact inverse in a selected later open period", async () => {
+  const data = await setup();
+  const plan = await prepared(data);
+  const approval = await approved(data, plan);
+  const receipt = await decoded(await executeSettlement(data.book, plan, approval), Committed);
+  const admin = await database();
+
+  try {
+    await admin.query(
+      "update openerp.periods set ends_on='2026-09-30',version=version+1 where book_id=$1 and id='period_2026'",
+      [data.book.bookId],
+    );
+    await admin.query(
+      `insert into openerp.periods(book_id,id,fiscal_year_id,starts_on,ends_on,locked,version)
+      select book_id,'period_later',fiscal_year_id,'2026-10-01','2026-12-31',false,1
+      from openerp.periods where book_id=$1 and id='period_2026'`,
+      [data.book.bookId],
+    );
+  } finally {
+    await admin.end();
+  }
+
+  const correction = { accountingPeriodId: "period_later", postingDate: "2026-10-02" };
+
+  for (const periodId of ["period_2026", "period_later"]) {
+    const gate = await database();
+
+    try {
+      await gate.query(
+        "update openerp.periods set locked=true,version=version+1 where book_id=$1 and id=$2",
+        [data.book.bookId, periodId],
+      );
+      const lockedBefore = await financial(data.book);
+
+      await failure(
+        await request(data.book, cancellations, {
+          method: "POST",
+          body: JSON.stringify({
+            settlementReceiptId: receipt.id,
+            reason: "A locked source or target cannot be bypassed",
+            evidence: data.input.evidence,
+            correction,
+          }),
+        }),
+        409,
+        "PeriodLocked",
+      );
+      expect(await financial(data.book)).toEqual(lockedBefore);
+    } finally {
+      await gate.query(
+        "update openerp.periods set locked=false,version=version+1 where book_id=$1 and id=$2",
+        [data.book.bookId, periodId],
+      );
+      await gate.end();
+    }
+  }
+
+  const invalidBefore = await financial(data.book);
+
+  await failure(
+    await request(data.book, cancellations, {
+      method: "POST",
+      body: JSON.stringify({
+        settlementReceiptId: receipt.id,
+        reason: "Date is outside the selected correction period",
+        evidence: data.input.evidence,
+        correction: { ...correction, postingDate: "2026-09-24" },
+      }),
+    }),
+    422,
+    "InvalidJournal",
+  );
+  expect(await financial(data.book)).toEqual(invalidBefore);
+
+  const cancellationPlan = await post(
+    data.book,
+    cancellations,
+    {
+      settlementReceiptId: receipt.id,
+      reason: "Retain original September and correct in October",
+      evidence: data.input.evidence,
+      correction,
+    },
+    Cancellation,
+  );
+
+  const cancellationApproval = await post(
+    data.reviewer,
+    `${cancellations}/${cancellationPlan.id}/approvals`,
+    { version: 1, digest: cancellationPlan.digest },
+    Identity,
+  );
+
+  const before = await financial(data.book);
+
+  const requestKey = key();
+
+  const command = {
+    method: "POST",
+    headers: { "idempotency-key": requestKey },
+    body: JSON.stringify({
+      version: 1,
+      digest: cancellationPlan.digest,
+      approvalId: cancellationApproval.id,
+    }),
+  };
+
+  const inverse = await decoded(
+    await request(data.book, `${cancellations}/${cancellationPlan.id}/execute`, command),
+    Cancelled,
+  );
+
+  expect(inverse.outstandingAfterMinor).toBe("10000");
+  const after = await financial(data.book);
+
+  expect(after).toMatchObject({
+    bank: "0",
+    expense: "10000",
+    payable: "10000",
+    vouchers: 3,
+    lines: 6,
+  });
+  const inspector = await database();
+  let periods;
+
+  try {
+    periods = (
+      await inspector.query<{ periodId: string; bank: string; payable: string }>(
+        `
+      select v.period_id as "periodId",
+        sum(case when l.account_id='account_bank' then l.debit_minor-l.credit_minor else 0 end)::text as bank,
+        sum(case when l.account_id='account_clearing' then l.credit_minor-l.debit_minor else 0 end)::text as payable
+      from openerp.vouchers v join openerp.journal_lines l on(l.book_id,l.voucher_id)=(v.book_id,v.id)
+      where v.book_id=$1 group by v.period_id order by v.period_id`,
+        [data.book.bookId],
+      )
+    ).rows;
+  } finally {
+    await inspector.end();
+  }
+
+  expect(periods).toEqual([
+    { periodId: "period_2026", bank: "-4000", payable: "6000" },
+    { periodId: "period_later", bank: "4000", payable: "4000" },
+  ]);
+  expect(
+    await decoded(
+      await request(data.book, `${cancellations}/${cancellationPlan.id}/execute`, command),
+      Cancelled,
+    ),
+  ).toEqual(inverse);
+  expect(await financial(data.book)).toEqual(after);
+  expect(await owned(data.book)).toEqual({ claims: 1, receipts: 1, cancellations: 1 });
+  await writeFile(
+    join(environment().artifacts, "supplier-cross-period-cancellation.json"),
+    JSON.stringify({ correction, before, after, periods, inverse }, null, 2),
+  );
+});
+
 test("supplier cancellation refuses invoice changes after settlement without financial effects", async () => {
   const data = await setup();
   const plan = await prepared(data);

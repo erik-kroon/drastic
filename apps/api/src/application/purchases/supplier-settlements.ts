@@ -961,6 +961,7 @@ const cancellationBasis = Effect.fn("purchases.supplierSettlement.cancellationBa
   scope: Scope,
   receipt: typeof Settlement.SupplierSettlementReceipt.Type,
   originalPlan: Plan,
+  correction?: (typeof Settlement.PrepareSupplierSettlementCancellation.Type)["correction"],
 ) {
   if (
     (yield* Db.readCancellationReceipt(tx, scope.bookId, receipt.id)).length > 0 ||
@@ -977,9 +978,29 @@ const cancellationBasis = Effect.fn("purchases.supplierSettlement.cancellationBa
 
   if (claim?.receiptId !== receipt.id || claim.planId !== originalPlan.id)
     return yield* failure("StaleDependency");
-  const period = yield* readPeriod(tx, scope, originalPlan.basis.periodId);
 
-  if (period.locked) return yield* failure("PeriodLocked");
+  const selected = correction ?? {
+    accountingPeriodId: originalPlan.basis.periodId,
+    postingDate: originalPlan.basis.observation.date,
+  };
+
+  const periods = yield* Effect.forEach(
+    [...new Set([originalPlan.basis.periodId, selected.accountingPeriodId])].sort(),
+    (id) => readPeriod(tx, scope, id),
+  );
+
+  if (periods.some((period) => period.locked)) return yield* failure("PeriodLocked");
+
+  const target = periods.find((period) => period.id === selected.accountingPeriodId);
+
+  if (!target) return yield* failure("NotFound");
+
+  if (
+    selected.postingDate < originalPlan.basis.observation.date ||
+    selected.postingDate < target.startsOn ||
+    selected.postingDate > target.endsOn
+  )
+    return yield* failure("InvalidJournal");
 
   const impactRows = yield* CorrectionDb.readImpactResources(
     tx,
@@ -989,6 +1010,28 @@ const cancellationBasis = Effect.fn("purchases.supplierSettlement.cancellationBa
   );
 
   const impactResources = impactRows.map((row) => row.resource);
+
+  if (selected.postingDate !== originalPlan.basis.observation.date) {
+    const targetRows = yield* CorrectionDb.readImpactResources(
+      tx,
+      scope.bookId,
+      receipt.postingReceipt.voucherId,
+      selected.postingDate,
+    );
+
+    const identities = new Set(
+      impactResources.map((resource) => `${resource.kind}:${resource.id}:${resource.detail}`),
+    );
+
+    for (const row of targetRows) {
+      const identity = `${row.resource.kind}:${row.resource.id}:${row.resource.detail}`;
+
+      if (!identities.has(identity)) {
+        identities.add(identity);
+        impactResources.push(row.resource);
+      }
+    }
+  }
 
   if (impactResources.length > 1000) return yield* failure("StaleDependency");
 
@@ -1041,7 +1084,18 @@ const cancellationBasis = Effect.fn("purchases.supplierSettlement.cancellationBa
     invoice.controlAccountId,
   );
 
-  return { invoice, profileWitness, impactResources };
+  const correctionWitness =
+    selected.postingDate === originalPlan.basis.observation.date
+      ? profileWitness
+      : yield* qualifiedProfile(
+          tx,
+          scope,
+          selected.postingDate,
+          originalPlan.basis.source.accountId,
+          invoice.controlAccountId,
+        );
+
+  return { invoice, profileWitness, impactResources, correctionWitness };
 });
 
 const readCancellationPlan = Effect.fn("purchases.supplierSettlement.readCancellationPlan")(
@@ -1065,7 +1119,13 @@ const currentCancellation = Effect.fn("purchases.supplierSettlement.currentCance
   function* (tx: Transaction, plan: CancellationPlan) {
     if (plan.impactResources === undefined) return yield* failure("StaleDependency");
 
-    const current = yield* cancellationBasis(tx, plan.scope, plan.original, plan.originalPlan).pipe(
+    const current = yield* cancellationBasis(
+      tx,
+      plan.scope,
+      plan.original,
+      plan.originalPlan,
+      plan.input.correction,
+    ).pipe(
       Effect.catchIf(
         (error) =>
           error instanceof Accounting.AccountingError && error.code === "UnsupportedProfile",
@@ -1079,6 +1139,7 @@ const currentCancellation = Effect.fn("purchases.supplierSettlement.currentCance
         invoice: plan.invoice,
         profileWitness: plan.profileWitness,
         impactResources: plan.impactResources,
+        correctionWitness: plan.correctionWitness ?? plan.profileWitness,
       }))
     )
       return yield* failure("StaleDependency");
@@ -1125,7 +1186,15 @@ export const prepareSupplierSettlementCancellation = Effect.fn(
         (yield* canonicalText(originalPlan.basis.sourceEvidence))
       )
         return yield* failure("StaleDependency");
-      const basis = yield* cancellationBasis(tx, command.scope, original, originalPlan);
+
+      const basis = yield* cancellationBasis(
+        tx,
+        command.scope,
+        original,
+        originalPlan,
+        command.input.correction,
+      );
+
       const id = newId("supplier_cancellation");
 
       const paymentPlan = yield* prepareCorrectionInTransaction(tx, actor, {
@@ -1133,8 +1202,9 @@ export const prepareSupplierSettlementCancellation = Effect.fn(
         voucherId: original.postingReceipt.voucherId,
         idempotencyKey: `${id}_posting`,
         input: {
-          accountingPeriodId: originalPlan.basis.periodId,
-          postingDate: originalPlan.basis.observation.date,
+          accountingPeriodId:
+            command.input.correction?.accountingPeriodId ?? originalPlan.basis.periodId,
+          postingDate: command.input.correction?.postingDate ?? originalPlan.basis.observation.date,
           rationale: command.input.reason,
         },
         owner: { kind: "supplier_settlement_cancellation", id: original.id },

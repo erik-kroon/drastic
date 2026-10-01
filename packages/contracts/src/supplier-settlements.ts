@@ -121,6 +121,12 @@ export const PrepareSupplierSettlementCancellation = Schema.Struct({
   settlementReceiptId: Accounting.Identifier,
   reason: Accounting.Description,
   evidence: Commerce.EvidenceReference,
+  correction: Schema.optionalKey(
+    Schema.Struct({
+      accountingPeriodId: Accounting.Identifier,
+      postingDate: Accounting.AccountingDate,
+    }),
+  ),
 });
 
 export const SupplierSettlementCancellationPlan = Schema.Struct({
@@ -134,6 +140,7 @@ export const SupplierSettlementCancellationPlan = Schema.Struct({
   allocationReversal: AllocationReversal.CommerceAllocationReversalPlan,
   matchReversal: MatchReversal.BankMatchReversalPlan,
   impactResources: Schema.optionalKey(Schema.Array(Corrections.CorrectionImpactResource)),
+  correctionWitness: Schema.optionalKey(Profiles.ProfileWitness),
 });
 
 export const SupplierSettlementCancellationApproval = Schema.Struct({
