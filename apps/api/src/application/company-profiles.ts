@@ -632,6 +632,8 @@ export const prepareCompanyActivation = Effect.fn("companyProfiles.prepareActiva
         input: prepared,
         witness: resolution.witness,
         dependencies: activationDependencies(resolution.witness, epoch),
+        createdBy: principal.actorId,
+        createdAt: yield* isoNow(transaction),
       });
 
       const sealed = yield* versionedDigest(body);
