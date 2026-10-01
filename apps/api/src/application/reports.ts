@@ -8,6 +8,7 @@ import { failure } from "./failures";
 import { isoNow, newId, replay, saveCommand } from "./posting";
 import { decode, exactKeys, toJsonObject, unsupported, withBook } from "./commerce/support";
 import * as Db from "../db/reports";
+import * as StatementDb from "../db/report-statements";
 import { readTableAccess } from "../db/commerce/access";
 import type { Transaction } from "../db/transaction";
 
@@ -614,22 +615,34 @@ function familyView(
     cutoff: { sequence, startsOn, endsOn },
     mapping,
     mappingDigest,
-    lines: lines.map((row) => ({
-      id: row.id,
-      label: row.label,
-      accountIds: row.accountIds,
-      openingMinor: row.openingMinor,
-      movementMinor: row.movementMinor,
-      closingMinor: row.closingMinor,
-      amountMinor: row.amountMinor,
-    })),
+    lines: lines.map((row) => {
+      const line = {
+        id: row.id,
+        label: row.label,
+        accountIds: row.accountIds,
+        openingMinor: row.openingMinor,
+        movementMinor: row.movementMinor,
+        closingMinor: row.closingMinor,
+        amountMinor: row.amountMinor,
+      };
+
+      return report.profitBasis === "owned_result_transfer_exclusion_v1"
+        ? { ...line, resultTransferMinor: row.resultTransferMinor }
+        : line;
+    }),
     totals,
     interpretation: "synthetic_reviewed_mapping_only",
     coverage: "not_established",
     reviewedOpening: false,
     statutory: false,
     financialClose: false,
-    warnings,
+    warnings:
+      family === "profit_and_loss" && report.profitBasis !== "owned_result_transfer_exclusion_v1"
+        ? [
+            ...warnings,
+            "This retained legacy P&L family uses raw journal movement, including result transfers. Prepare a new family snapshot to obtain the ordinary-activity bridge.",
+          ]
+        : warnings,
   } satisfies JsonObject;
 }
 
@@ -783,7 +796,35 @@ export const prepareReportFamily = Effect.fn("reports.prepareFamily")(function* 
 
       if (mappingDigest === undefined) return yield* failure("InternalError");
 
-      const body = yield* toJsonObject({
+      // Consume the released statement owner's admitted transfer classification
+      // at the saved source cutoff, never a live account-level exclusion. Store
+      // complete membership so an old family cannot change after a later close.
+      const components =
+        selected === "profit_and_loss"
+          ? yield* StatementDb.readStatementComponents(
+              transaction,
+              command.scope.bookId,
+              source.startsOn,
+              source.endsOn,
+              source.sequence,
+              null,
+              StatementDb.maximumStatementComponents,
+            )
+          : [];
+
+      if (components.length > StatementDb.maximumStatementComponents) return yield* unsupported();
+
+      const transferIds = [
+        ...new Set(
+          components
+            .filter((component) => component.ownedTransfer)
+            .map((component) => component.voucherId),
+        ),
+      ].sort((left, right) => left.localeCompare(right));
+
+      if (transferIds.length > 1000) return yield* unsupported();
+
+      const baseBody = {
         kind: selected,
         id: reportId,
         scope: command.scope,
@@ -811,7 +852,21 @@ export const prepareReportFamily = Effect.fn("reports.prepareFamily")(function* 
           "The report uses the saved source cutoff and explicit reviewed account-role mapping; no account classification is inferred.",
           "Contributing entries remain the existing fixed-cutoff journal-line lineage and require the saved source report interpretation.",
         ],
-      });
+      };
+
+      const body = yield* toJsonObject(
+        selected === "profit_and_loss"
+          ? {
+              ...baseBody,
+              profitBasis: "owned_result_transfer_exclusion_v1",
+              resultTransferVoucherIds: transferIds,
+              warnings: [
+                ...baseBody.warnings,
+                "Profit-and-loss amounts exclude captured owned result transfers through a signed bridge; movement, closing balances and account drill-down remain raw ledger facts.",
+              ],
+            }
+          : baseBody,
+      );
 
       yield* Db.insertSnapshot(transaction, {
         bookId: command.scope.bookId,

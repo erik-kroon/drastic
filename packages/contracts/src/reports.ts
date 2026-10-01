@@ -93,6 +93,10 @@ export const ReportSnapshot = Schema.Struct({
   family: Schema.optional(ReportFamily),
   mapping: Schema.optional(ReportMapping),
   mappingDigest: Schema.optional(Accounting.Digest),
+  profitBasis: Schema.optional(Schema.Literal("owned_result_transfer_exclusion_v1")),
+  resultTransferVoucherIds: Schema.optional(
+    Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(1000)),
+  ),
   reviewedOpening: Schema.optional(Schema.Literal(false)),
   statutory: Schema.optional(Schema.Literal(false)),
   financialClose: Schema.optional(Schema.Literal(false)),
@@ -106,6 +110,7 @@ export const ReportFamilyLine = Schema.Struct({
   movementMinor: Accounting.SignedMinorUnits,
   closingMinor: Accounting.SignedMinorUnits,
   amountMinor: Accounting.SignedMinorUnits,
+  resultTransferMinor: Schema.optional(Accounting.SignedMinorUnits),
 });
 
 export const ReportFamilyTotals = Schema.Struct({

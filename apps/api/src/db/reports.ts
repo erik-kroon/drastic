@@ -66,6 +66,7 @@ export type FamilyLineRow = {
   readonly movementMinor: string;
   readonly closingMinor: string;
   readonly amountMinor: string;
+  readonly resultTransferMinor: string;
 };
 
 export type FamilyRow = {
@@ -549,6 +550,14 @@ export function readFamilyLines(
       with role_map as (
         select m->>'accountId' as account_id, m->>'role' as role_name
         from jsonb_array_elements(${JSON.stringify(mapping)}::jsonb->'roles') m
+      ), transfer_map as (
+        select l.account_id, sum(l.debit_minor - l.credit_minor) as transfer_minor
+        from openerp.report_snapshots r
+        cross join lateral jsonb_array_elements_text(coalesce(r.body->'resultTransferVoucherIds', '[]'::jsonb)) t(id)
+        join openerp.journal_lines l on l.book_id = r.book_id and l.voucher_id = t.id
+        where r.book_id = ${bookId} and r.id = ${reportId}
+          and r.body->>'profitBasis' = 'owned_result_transfer_exclusion_v1'
+        group by l.account_id
       ), grouped as (
         select catalog.role_name, catalog.label, catalog.ordinal, catalog.side,
           coalesce(jsonb_agg(l.account_id order by l.account_id collate "C")
@@ -556,16 +565,23 @@ export function readFamilyLines(
           coalesce(sum((l.body->>'openingMinor')::numeric), 0) as opening_minor,
           coalesce(sum((l.body->>'debitMinor')::numeric - (l.body->>'creditMinor')::numeric), 0)
             as movement_minor,
-          coalesce(sum((l.body->>'closingMinor')::numeric), 0) as closing_minor
-        from (select * from jsonb_array_elements(${JSON.stringify(catalog)}::jsonb)) catalog
+          coalesce(sum((l.body->>'closingMinor')::numeric), 0) as closing_minor,
+          coalesce(sum(t.transfer_minor), 0) as result_transfer_minor
+        from (
+          select c.role as role_name, c.label, c.ordinal, c.side
+          from jsonb_to_recordset(${JSON.stringify(catalog)}::jsonb)
+            as c(role text, label text, ordinal integer, side text)
+        ) catalog
         left join role_map m on m.role_name = catalog.role_name
         left join openerp.report_lines l
           on l.book_id = ${bookId} and l.report_id = ${reportId} and l.account_id = m.account_id
+        left join transfer_map t on t.account_id = l.account_id
         group by catalog.role_name, catalog.label, catalog.ordinal, catalog.side
       ), calculated as (
         select g.*, case
-          when ${family} = 'profit_and_loss' and g.side = 'credit' then -g.movement_minor
-          when ${family} in ('profit_and_loss', 'cash_flow') and g.side = 'debit' then g.movement_minor
+          when ${family} = 'profit_and_loss' and g.side = 'credit' then -(g.movement_minor - g.result_transfer_minor)
+          when ${family} = 'profit_and_loss' and g.side = 'debit' then g.movement_minor - g.result_transfer_minor
+          when ${family} = 'cash_flow' and g.side = 'debit' then g.movement_minor
           when ${family} = 'balance_sheet' and g.side = 'credit' then -g.closing_minor
           else g.closing_minor
         end as amount_minor
@@ -576,7 +592,8 @@ export function readFamilyLines(
           select jsonb_agg(jsonb_build_object(
             'id', c.role_name, 'label', c.label, 'accountIds', c.account_ids,
             'openingMinor', c.opening_minor::text, 'movementMinor', c.movement_minor::text,
-            'closingMinor', c.closing_minor::text, 'amountMinor', c.amount_minor::text)
+            'closingMinor', c.closing_minor::text, 'amountMinor', c.amount_minor::text,
+            'resultTransferMinor', c.result_transfer_minor::text)
             order by c.ordinal) from calculated c), '[]'::jsonb) as lines,
         (select jsonb_build_object(
           'openingMinor', coalesce(sum(c.opening_minor), 0)::text,

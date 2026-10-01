@@ -536,6 +536,7 @@ function SavedReportFamily(props: {
   const sv = locale === "sv";
   const labels = sv ? familySwedish : familyEnglish;
   const scale = snapshot.report.currencyScale;
+  const hasTransferBridge = snapshot.report.profitBasis === "owned_result_transfer_exclusion_v1";
 
   const amount = (value: string) =>
     scale === undefined
@@ -568,6 +569,13 @@ function SavedReportFamily(props: {
           ? "Fasta totaler från den sparade rapportens avklippning. Kontrollera varje konto och verifikat."
           : "Fixed totals from the saved report cutoff. Inspect each account and contributing entry."}
       </Text>
+      {hasTransferBridge ? (
+        <Text>
+          {sv
+            ? "Det mappade beloppet exkluderar den visade resultatöverföringen. Rörelser, saldon och kontodetaljer visar hela den bokförda historiken."
+            : "The mapped amount excludes the displayed result transfer. Movements, balances and account details retain the complete posted history."}
+        </Text>
+      ) : null}
       <DataTable
         title={labels.lines}
         narrow="stack"
@@ -578,6 +586,15 @@ function SavedReportFamily(props: {
           { id: "movement", label: sv ? "Rörelse" : "Movement", numeric: true },
           { id: "closing", label: sv ? "Utgående" : "Closing", numeric: true },
           { id: "amount", label: sv ? "Mappat belopp" : "Mapped amount", numeric: true },
+          ...(hasTransferBridge
+            ? [
+                {
+                  id: "transfer",
+                  label: sv ? "Resultatöverföring" : "Result transfer",
+                  numeric: true,
+                },
+              ]
+            : []),
         ]}
         rows={snapshot.lines.map((line) => ({
           id: line.id,
@@ -599,6 +616,9 @@ function SavedReportFamily(props: {
             amount(line.movementMinor),
             amount(line.closingMinor),
             amount(line.amountMinor),
+            ...(hasTransferBridge
+              ? [line.resultTransferMinor === undefined ? "—" : amount(line.resultTransferMinor)]
+              : []),
           ],
         }))}
       />
