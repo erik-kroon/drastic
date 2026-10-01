@@ -1,3 +1,4 @@
+import { EvaluationCapabilities } from "./evaluations";
 import { CompanySetupCapabilities } from "./company-setup";
 import { CompanyProfileCapabilities } from "./company-profiles";
 import { LegalDeliveryCapabilities } from "./legal-delivery";
@@ -118,6 +119,8 @@ export const Capabilities = {
   ...FirmCapabilities,
   ...CompanySetupCapabilities,
   ...CompanyProfileCapabilities,
+  ...EvaluationCapabilities,
+
   ...LegalDeliveryCapabilities,
   ...LegalInvoicePdfCapabilities,
   ...LegalSalesPolicyCapabilities,

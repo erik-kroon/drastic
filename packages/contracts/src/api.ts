@@ -1,3 +1,4 @@
+import { EvaluationsApi } from "./evaluations";
 import { DeadlinesApi } from "./deadlines";
 import { RuleImpactApi } from "./rule-impact";
 import { PayrollFoundationApi } from "./payroll-foundation";
@@ -187,6 +188,8 @@ export class Api extends HttpApi.make("open-erp")
     FirmApi,
     CompanySetupApi,
     CompanyProfileApi,
+    EvaluationsApi,
+
     AccountingApi,
     ReportApi,
     StatementApi,

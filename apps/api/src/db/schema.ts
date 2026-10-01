@@ -1700,3 +1700,14 @@ export const supplierRefundSourceUsages = openerp.table("supplier_refund_source_
   adoptedRef: text("adopted_ref"),
   amountMinor: numeric("amount_minor", { mode: "string" }).notNull(),
 });
+
+export const evaluationContracts = openerp.table("evaluation_contracts", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  predecessorId: text("predecessor_id"),
+  predecessorDigest: text("predecessor_digest"),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+  digest: text().notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});

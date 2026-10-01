@@ -95,7 +95,8 @@
     "./expense-tax": "./src/expense-tax.ts",
     "./owner-register": "./src/owner-register.ts",
     "./financial-close": "./src/financial-close.ts",
-    "./owner-operations": "./src/owner-operations.ts"
+    "./owner-operations": "./src/owner-operations.ts",
+    "./evaluations": "./src/evaluations.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

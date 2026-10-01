@@ -1,3 +1,4 @@
+import { evaluationCapabilities } from "./evaluations";
 import { companyFirmCapabilities } from "./company-firms";
 import { companyProfileCapabilities } from "./company-profiles";
 import { workspaceCapabilities } from "./workspace";
@@ -40,6 +41,8 @@ import { Capabilities } from "@open-erp/contracts/capabilities";
 export const capabilities = {
   ...companyFirmCapabilities,
   ...companyProfileCapabilities,
+  ...evaluationCapabilities,
+
   ...workspaceCapabilities,
   ...taxAccountCapabilities,
   ...commerceLegalCapabilities,
