@@ -525,6 +525,24 @@ function attentionCte(bookId: string) {
   `;
 }
 
+export function readContextResolutions(
+  transaction: Transaction,
+  bookId: string,
+  identities: ReadonlyArray<string>,
+) {
+  return transaction.execute<{ readonly id: string; readonly kind: string }>(
+    sql`
+    with ${attentionCte(bookId)}
+    select id,kind from observed where state='completed' and id in (
+      ${sql.join(
+        identities.map((id) => sql`${id}`),
+        sql`, `,
+      )}
+    )`,
+    "objects",
+  );
+}
+
 function attentionScoped(filters: AttentionFilters, starts: string | null, ends: string | null) {
   return sql`
     scoped as materialized (

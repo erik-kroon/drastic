@@ -5,6 +5,7 @@ import {
   captureAgentContext,
   getAgentContextPage,
   advanceAgentContext,
+  getAgentContextDelta,
 } from "../agent/continuation";
 import {
   assignWork,
@@ -16,6 +17,10 @@ import {
 } from "../workspace";
 
 export const workspaceCapabilities = {
+  workspace_context_delta: effectCapability(
+    Capabilities.workspace_context_delta,
+    getAgentContextDelta,
+  ),
   workspace_capture_context: effectCapability(
     Capabilities.workspace_capture_context,
     captureAgentContext,

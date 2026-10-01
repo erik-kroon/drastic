@@ -73,7 +73,7 @@ test("NEXT-50 reports an honest empty index for a book with nothing retained", a
   expect(view.snapshot.allowedCapabilities).toContain("workspace_list_work");
 
   for (const module of view.snapshot.modules) {
-    expect(module.coverageKnown).toBe(true);
+    expect(module.coverageKnown).toBe(module.status === "available");
   }
 });
 
@@ -585,17 +585,15 @@ test("context admission returns empty selected inventory and ignores51 out-of-pe
   expect(after).toEqual(before);
   assertReferences(empty, []);
   const result = assertReferences(small, expected);
-  expect(result.snapshot.modules).toEqual([
-    {
-      owner: "expense",
-      status: "available",
-      rowCount: "1",
-      fullCount: "1",
-      hasContinuation: false,
-      coverageKnown: true,
-      ownerVersion: null,
-    },
-  ]);
+  expect(result.snapshot.modules.find((module) => module.owner === "expense")).toEqual({
+    owner: "expense",
+    status: "available",
+    rowCount: "1",
+    fullCount: "1",
+    hasContinuation: false,
+    coverageKnown: true,
+    ownerVersion: null,
+  });
   expect(ordinary.total).toBe("1");
 });
 
@@ -683,6 +681,7 @@ test("context admission refuses missing retained source facts without private va
   expect(JSON.parse(exchange.body)).toEqual({
     _tag: "AccountingError",
     code: "InvalidJournal",
+    recovery: "permanent",
     message:
       "A retained work row has unsupported revision or digest facts, so the index is not complete.",
   });

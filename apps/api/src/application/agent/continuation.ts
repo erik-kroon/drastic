@@ -1,5 +1,8 @@
 import * as Workspace from "@open-erp/contracts/workspace";
 import * as Effect from "effect/Effect";
+import * as Context from "@open-erp/domain/agent-context";
+import * as Result from "effect/Result";
+import { readContextResolutions } from "../../db/workspace";
 import * as Db from "../../db/agent-context";
 import type { Transaction } from "../../db/transaction";
 import { decode, toJsonObject, withBook, type Principal, type Scope } from "../commerce/support";
@@ -202,6 +205,93 @@ export const getAgentContextPage = Effect.fn("agent.context.getPage")(function* 
     const stored = yield* retained(tx, principal, command.scope, command.captureId);
 
     return yield* page(tx, principal, command.scope, stored, command.after);
+  });
+});
+
+export const getAgentContextDelta = Effect.fn("agent.context.delta")(function* (
+  token: string,
+  command: { scope: Scope; captureId: string; targetId: string; after?: string },
+) {
+  return yield* withBook(token, command.scope, false, function* (tx, principal) {
+    const base = yield* retained(tx, principal, command.scope, command.captureId);
+    const target = yield* retained(tx, principal, command.scope, command.targetId);
+
+    if (
+      base.capture.query.goal !== target.capture.query.goal ||
+      base.capture.query.period !== target.capture.query.period
+    )
+      return yield* failure("StaleDependency");
+
+    const fresh = yield* captureBookContextInTransaction(tx, principal, {
+      scope: command.scope,
+      input: target.capture.query,
+    });
+
+    if ((yield* digest(inventoryBasis(fresh))) !== target.capture.digest)
+      return yield* failure("StaleDependency");
+
+    const keyOf = (item: Context.WorkRef) => `${item.owner}\u0000${item.identity}`;
+
+    const keys = [
+      ...new Set([...base.inventory.snapshot.work, ...target.inventory.snapshot.work].map(keyOf)),
+    ].sort();
+
+    const offset = BigInt(command.after ?? "0");
+
+    if (offset > BigInt(keys.length) || offset % 50n !== 0n)
+      return yield* failure("InvalidJournal");
+
+    const selected = new Set(keys.slice(Number(offset), Number(offset) + pageSize));
+    const baseWork = base.inventory.snapshot.work.filter((item) => selected.has(keyOf(item)));
+    const targetWork = target.inventory.snapshot.work.filter((item) => selected.has(keyOf(item)));
+
+    const absent = baseWork.filter(
+      (item) => !targetWork.some((entry) => keyOf(entry) === keyOf(item)),
+    );
+
+    const completed =
+      absent.length === 0
+        ? []
+        : yield* readContextResolutions(
+            tx,
+            command.scope.bookId,
+            absent.map((item) => item.identity),
+          );
+
+    const resolved = absent
+      .filter((item) =>
+        completed.some(
+          (row) =>
+            row.id === item.identity &&
+            row.kind === (item.owner === "change_sets" ? "journal" : item.owner),
+        ),
+      )
+      .map((item) => item.immutableRef);
+
+    const delta = Context.getContextDelta({
+      base: { ...base.inventory.snapshot, work: baseWork },
+      target: { ...target.inventory.snapshot, work: targetWork },
+      ownerReportedResolved: resolved,
+      confirmedScopeChanges: [],
+    });
+
+    if (Result.isFailure(delta) || delta.success.kind !== "delta")
+      return yield* failure("StaleDependency");
+
+    const end = Number(offset) + selected.size;
+
+    return yield* decode(
+      Workspace.ContextDeltaPage,
+      yield* toJsonObject({
+        baseId: base.capture.id,
+        targetId: target.capture.id,
+        baseDigest: base.capture.digest,
+        targetDigest: target.capture.digest,
+        offset: offset.toString(),
+        entries: delta.success.entries,
+        next: end < keys.length ? String(end) : null,
+      }),
+    );
   });
 });
 

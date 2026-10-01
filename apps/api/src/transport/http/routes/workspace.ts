@@ -8,11 +8,21 @@ import {
   captureAgentContext,
   getAgentContextPage,
   advanceAgentContext,
+  getAgentContextDelta,
 } from "../../../application/agent/continuation";
 import * as Workspace from "../../../application/workspace";
 
 export const WorkspaceHandlers = HttpApiBuilder.group(Api, "workspace", (handlers) =>
   handlers
+    .handle("getAgentContextDelta", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        getAgentContextDelta(token, {
+          scope: scopeFromPath(params),
+          captureId: params.id,
+          ...query,
+        }),
+      ),
+    )
     .handle("captureAgentContext", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         captureAgentContext(token, {

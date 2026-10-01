@@ -251,6 +251,27 @@ export const AdvanceContext = Schema.Struct({
   pageDigest: Accounting.Digest,
 });
 
+export const ContextDeltaQuery = Schema.Struct({
+  targetId: Accounting.Identifier,
+  after: Schema.optionalKey(Accounting.MinorUnits),
+});
+
+export const ContextDeltaPage = Schema.Struct({
+  baseId: Accounting.Identifier,
+  targetId: Accounting.Identifier,
+  baseDigest: Accounting.Digest,
+  targetDigest: Accounting.Digest,
+  offset: Accounting.MinorUnits,
+  entries: Schema.Array(
+    Schema.Struct({
+      owner: Accounting.Identifier,
+      identity: Accounting.Identifier,
+      state: Schema.Literals(["added", "changed", "resolved", "removed", "unknown_now"]),
+    }),
+  ),
+  next: Schema.NullOr(Accounting.MinorUnits),
+});
+
 export const ContextPage = Schema.Struct({
   capture: ContextCapture,
   offset: Accounting.MinorUnits,
@@ -264,6 +285,17 @@ export const ContextPage = Schema.Struct({
 });
 
 export const WorkspaceCapabilities = {
+  workspace_context_delta: {
+    description:
+      "Compare retained captures in bounded identity pages. Resolution requires retained owner completion, never disappearance. Different query scopes require a fresh context.",
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      captureId: Accounting.Identifier,
+      ...ContextDeltaQuery.fields,
+    }),
+    output: ContextDeltaPage,
+    readOnly: true,
+  },
   workspace_capture_context: {
     description:
       "Capture an immutable principal-scoped work inventory for durable continuation. This records orientation only, not approval or financial completion.",
@@ -345,6 +377,16 @@ export const WorkspaceCapabilities = {
 };
 
 export const WorkspaceApi = HttpApiGroup.make("workspace").add(
+  HttpApiEndpoint.get(
+    "getAgentContextDelta",
+    "/v1/entities/:entityId/books/:bookId/workspace/context-captures/:id/delta",
+    {
+      params: Accounting.ChangePath,
+      query: ContextDeltaQuery,
+      success: ContextDeltaPage,
+      error: accountingErrors,
+    },
+  ),
   HttpApiEndpoint.post(
     "captureAgentContext",
     "/v1/entities/:entityId/books/:bookId/workspace/context-captures",

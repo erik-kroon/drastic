@@ -279,9 +279,30 @@ export const captureBookContextInTransaction = Effect.fn("agent.captureBookConte
     }
 
     const now = yield* isoNow(transaction);
-    const kinds = [...new Set(attention.map((row) => row.kind))].sort();
+
+    const kinds = [
+      ...new Set(["expense", "invoice", "journal", ...attention.map((row) => row.kind)]),
+    ].sort();
 
     const modules = deriveModuleSummaries(kinds, attention);
+
+    const namespaces = [
+      ...new Set(registeredCapabilities().map((name) => name.split("_")[0])),
+    ].sort((left, right) => (left ?? "").localeCompare(right ?? ""));
+
+    // A registered operation does not establish a context adapter or full work coverage.
+    for (const owner of namespaces) {
+      if (!owner || kinds.includes(owner)) continue;
+      modules.push({
+        owner: owner.length < 3 ? `${owner}_operations` : owner,
+        status: owner === "payroll" ? "not_authorized" : "unavailable",
+        rowCount: "0",
+        fullCount: "0",
+        hasContinuation: false,
+        coverageKnown: false,
+        ownerVersion: null,
+      });
+    }
 
     for (const module of modules) {
       const checked = Context.assertModuleCompleteness(module);

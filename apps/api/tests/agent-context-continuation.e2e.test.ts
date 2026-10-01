@@ -1,4 +1,5 @@
 import * as Accounting from "@open-erp/contracts/accounting";
+import * as Workspace from "@open-erp/contracts/workspace";
 import * as Schema from "effect/Schema";
 import { writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -43,6 +44,97 @@ const Page = Schema.Struct({
   pageDigest: Accounting.Digest,
   current: Schema.Boolean,
   progress: Progress,
+});
+
+test("context explicitly reports supported empty adapters and derives resolution from owning receipts", async () => {
+  const book = await fixture();
+
+  const empty = await post(
+    book,
+    "/workspace/context",
+    { goal: "close_the_year", period: null },
+    Workspace.BookContextView,
+  );
+
+  expect(
+    empty.snapshot.modules
+      .filter((module) => module.status === "available")
+      .map((module) => module.owner)
+      .sort(),
+  ).toEqual(["expense", "invoice", "journal"]);
+  expect(
+    empty.snapshot.modules
+      .filter((module) => module.status === "available")
+      .every((module) => module.coverageKnown && module.fullCount === "0"),
+  ).toBe(true);
+  expect(empty.snapshot.modules.find((module) => module.owner === "purchases")).toMatchObject({
+    status: "unavailable",
+    coverageKnown: false,
+  });
+  expect(empty.snapshot.modules.find((module) => module.owner === "payroll")).toMatchObject({
+    status: "not_authorized",
+    coverageKnown: false,
+  });
+
+  const source = await evidence(book);
+
+  const original = await post(
+    book,
+    "/change-sets",
+    journal(source.id, "12500"),
+    Accounting.ChangeSet,
+  );
+
+  const input = { goal: "close_the_year", period: null };
+  const base = await post(book, "/workspace/context-captures", input, Capture);
+
+  await execute(book, original);
+  const added = await post(book, "/change-sets", journal(source.id, "12500"), Accounting.ChangeSet);
+  const target = await post(book, "/workspace/context-captures", input, Capture);
+
+  const deltaSchema = Schema.Struct({
+    entries: Schema.Array(
+      Schema.Struct({ owner: Schema.String, identity: Schema.String, state: Schema.String }),
+    ),
+    next: Schema.NullOr(Accounting.MinorUnits),
+  });
+
+  const delta = await decoded(
+    await request(book, `/workspace/context-captures/${base.id}/delta?targetId=${target.id}`),
+    deltaSchema,
+  );
+
+  expect(delta.entries).toEqual(
+    expect.arrayContaining([
+      { owner: "change_sets", identity: original.id, state: "resolved" },
+      { owner: "change_sets", identity: added.id, state: "added" },
+    ]),
+  );
+  expect(delta.entries).toHaveLength(2);
+  expect(delta.next).toBeNull();
+
+  const otherGoal = await post(
+    book,
+    "/workspace/context-captures",
+    { goal: "review_work", period: null },
+    Capture,
+  );
+
+  await failure(
+    await request(book, `/workspace/context-captures/${base.id}/delta?targetId=${otherGoal.id}`),
+    409,
+    "StaleDependency",
+  );
+  await execute(book, added);
+  await failure(
+    await request(book, `/workspace/context-captures/${base.id}/delta?targetId=${target.id}`),
+    409,
+    "StaleDependency",
+  );
+  await writeFile(
+    join(environment().artifacts, "agent-context-owner-delta.json"),
+    JSON.stringify({ empty: empty.snapshot.modules, base, target, delta }, null, 2),
+  );
 });
 
 test("retained context resumes through MCP after its serving Worker is stopped and replaced", async () => {
@@ -250,6 +342,42 @@ test("durable agent context captures page beyond50 resume after session loss ref
 
   expect(fresh.total).toBe("102");
   expect(fresh.id).not.toBe(capture.id);
+
+  const freshPage = await decoded(
+    await request(renewed, `/workspace/context-captures/${fresh.id}`),
+    Page,
+  );
+
+  const acknowledgements = await Promise.all(
+    [key(), key()].map((idempotencyKey) =>
+      request(renewed, `/workspace/context-captures/${fresh.id}/progress`, {
+        method: "POST",
+        headers: { "idempotency-key": idempotencyKey },
+        body: JSON.stringify({ expectedRevision: "0", pageDigest: freshPage.pageDigest }),
+      }),
+    ),
+  );
+
+  expect(
+    acknowledgements.map((response) => response.status).sort((left, right) => left - right),
+  ).toEqual([200, 409]);
+  const deltaEntries = [];
+  let deltaAfter = "0";
+
+  while (true) {
+    const delta = await decoded(
+      await request(renewed, `${path}/delta?targetId=${fresh.id}&after=${deltaAfter}`),
+      Workspace.ContextDeltaPage,
+    );
+
+    expect(delta.entries.length).toBeLessThanOrEqual(50);
+    deltaEntries.push(...delta.entries);
+
+    if (delta.next === null) break;
+    deltaAfter = delta.next;
+  }
+
+  expect(deltaEntries).toEqual([{ owner: "change_sets", identity: first.id, state: "resolved" }]);
   const inspector = await database();
 
   try {
@@ -262,9 +390,16 @@ test("durable agent context captures page beyond50 resume after session loss ref
         )
       ).rows,
     ).toEqual([{ count: 2 }]);
+    await inspector.query("DELETE FROM openerp.memberships WHERE book_id=$1 AND actor_id=$2", [
+      book.bookId,
+      book.actorId,
+    ]);
   } finally {
     await inspector.end();
   }
+
+  await failure(await request(renewed, path), 403, "Forbidden");
+  await failure(await request(renewed, `${path}/delta?targetId=${fresh.id}`), 403, "Forbidden");
 
   await writeFile(
     join(environment().artifacts, "agent-context-durable-continuation.json"),
