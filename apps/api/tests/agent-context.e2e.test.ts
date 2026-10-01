@@ -713,3 +713,239 @@ test("context admission keeps current authority and51 retained journal refusal",
   expect(JSON.parse(revoked.body)).toMatchObject({ code: "Forbidden" });
   expect(revoked.body).not.toContain("Private synthetic");
 });
+
+async function expensePrivileges() {
+  const admin = await database();
+
+  try {
+    return (
+      await admin.query<{
+        canSelect: boolean;
+        canInsert: boolean;
+        canUpdate: boolean;
+        canDelete: boolean;
+      }>(
+        `SELECT has_table_privilege('openerp_runtime','openerp.expense_tax_source_revisions','SELECT') AS "canSelect", has_table_privilege('openerp_runtime','openerp.expense_tax_source_revisions','INSERT') AS "canInsert", has_table_privilege('openerp_runtime','openerp.expense_tax_source_revisions','UPDATE') AS "canUpdate", has_table_privilege('openerp_runtime','openerp.expense_tax_source_revisions','DELETE') AS "canDelete"`,
+      )
+    ).rows;
+  } finally {
+    await admin.end();
+  }
+}
+
+test("expense immutable revision admission serializes revision2/replay/stale/concurrent writers through existing book authority", async () => {
+  const local = await admissionFixture(),
+    foreign = await admissionFixture();
+
+  const initial = await expense(local, "2026-04-15");
+  const path = `/expense-tax/sources/${initial.sourceId}`;
+
+  const before = await financialState(local.book),
+    privilegesBefore = await expensePrivileges();
+
+  const exchanges: Array<{
+    method: string;
+    path: string;
+    requestKey: string;
+    status: number;
+    body: string;
+  }> = [];
+
+  const observed: {
+    revision2?: typeof Expenses.TaxSourceRevision.Type;
+    revision3?: typeof Expenses.TaxSourceRevision.Type;
+    review?: typeof Expenses.TaxReview.Type;
+    withdrawal?: typeof Expenses.TaxSourceWithdrawal.Type;
+    final?: typeof Expenses.TaxSourceView.Type;
+  } = {};
+
+  const owner = async (book: Book, route: string, input?: object, requestKey = key()) => {
+    const response = await request(book, route, {
+      method: input ? "POST" : "GET",
+      headers: { "idempotency-key": requestKey },
+      ...(input ? { body: JSON.stringify(input) } : {}),
+    });
+
+    const result = {
+      method: input ? "POST" : "GET",
+      path: route,
+      requestKey,
+      status: response.status,
+      body: await response.text(),
+    };
+
+    exchanges.push(result);
+
+    return result;
+  };
+
+  const successful = (response: { status: number; body: string }) => {
+    expect(response.status, response.body).toBe(200);
+
+    return response.body;
+  };
+
+  try {
+    const first = await owner(local.book, path);
+
+    const mutation = {
+      sourceKey: initial.sourceKey,
+      expectedSourceDigest: initial.digest,
+      facts: { ...initial.facts, description: "Private source revision2" },
+    };
+
+    const revisionKey = key();
+    const response2 = await owner(local.book, "/expense-tax/sources", mutation, revisionKey);
+
+    const read1 = Schema.decodeSync(Schema.fromJsonString(Expenses.TaxSourceView))(
+      successful(first),
+    );
+
+    expect(read1.current).toEqual(initial);
+
+    const revision2 = Schema.decodeSync(Schema.fromJsonString(Expenses.TaxSourceRevision))(
+      successful(response2),
+    );
+
+    observed.revision2 = revision2;
+    expect(revision2.revision).toBe(2);
+    expect(revision2.sourceId).toBe(initial.sourceId);
+    expect(revision2.previousDigest).toBe(initial.digest);
+    const replay = await owner(local.book, "/expense-tax/sources", mutation, revisionKey);
+    expect(JSON.parse(successful(replay))).toEqual(revision2);
+
+    const read2 = Schema.decodeSync(Schema.fromJsonString(Expenses.TaxSourceView))(
+      successful(await owner(local.book, path)),
+    );
+
+    expect(read2.current).toEqual(revision2);
+    expect(read2.sourceHistory.map((row) => row.revision)).toEqual([1, 2]);
+    const stale = await owner(local.book, "/expense-tax/sources", mutation);
+    expect(stale.status).toBe(409);
+    expect(JSON.parse(stale.body)).toMatchObject({ code: "StaleDependency" });
+
+    const concurrent = await Promise.all(
+      ["Private contenderA", "Private contenderB"].map((description) =>
+        owner(local.book, "/expense-tax/sources", {
+          sourceKey: initial.sourceKey,
+          expectedSourceDigest: revision2.digest,
+          facts: { ...initial.facts, description },
+        }),
+      ),
+    );
+
+    expect(concurrent.map((row) => row.status).sort()).toEqual([200, 409]);
+    const winner = concurrent.find((row) => row.status === 200);
+    const loser = concurrent.find((row) => row.status === 409);
+
+    if (!winner || !loser) throw Error("Expected one actual source winner and one stale writer");
+    expect(JSON.parse(loser.body)).toMatchObject({ code: "StaleDependency" });
+
+    const revision3 = Schema.decodeSync(Schema.fromJsonString(Expenses.TaxSourceRevision))(
+      winner.body,
+    );
+
+    observed.revision3 = revision3;
+    expect(revision3.revision).toBe(3);
+    expect(revision3.previousDigest).toBe(revision2.digest);
+
+    const read3 = Schema.decodeSync(Schema.fromJsonString(Expenses.TaxSourceView))(
+      successful(await owner(local.book, path)),
+    );
+
+    expect(read3.current).toEqual(revision3);
+    expect(read3.sourceHistory.map((row) => row.revision)).toEqual([1, 2, 3]);
+    const crossed = await owner(foreign.book, path);
+    expect(crossed.status).toBe(404);
+    expect(JSON.parse(crossed.body)).toMatchObject({ code: "NotFound" });
+    expect(crossed.body).not.toContain(revision3.facts.description);
+
+    const reviewInput = {
+      sourceDigest: revision3.digest,
+      expectedReviewDigest: null,
+      facts: {
+        evidenceId: local.source.id,
+        rationale: "Synthetic fact-only review",
+        amounts: initial.facts.amounts,
+        registration: "unknown",
+        registrationEvidenceId: null,
+        method: "unknown",
+        methodEvidenceId: null,
+        bookJurisdiction: "SE",
+        suppliedOn: null,
+        taxPointOn: null,
+        dateBasis: null,
+        dateEvidenceId: null,
+        treatment: "unknown",
+        profileId: null,
+        profileVersion: null,
+        rateNumerator: null,
+        rateDenominator: null,
+        deductionNumerator: null,
+        deductionDenominator: null,
+        deductionBasis: null,
+        deductionEvidenceId: null,
+        roundingPolicy: "unknown",
+      },
+    };
+
+    const denied = await owner(
+      { ...local.book, token: local.book.agentToken },
+      `${path}/reviews`,
+      reviewInput,
+    );
+
+    expect(denied.status).toBe(403);
+    expect(JSON.parse(denied.body)).toMatchObject({ code: "Forbidden" });
+
+    const review = Schema.decodeSync(Schema.fromJsonString(Expenses.TaxReview))(
+      successful(await owner(local.book, `${path}/reviews`, reviewInput)),
+    );
+
+    observed.review = review;
+    expect(review.sourceDigest).toBe(revision3.digest);
+    expect(review.revision).toBe(1);
+
+    const withdrawal = Schema.decodeSync(Schema.fromJsonString(Expenses.TaxSourceWithdrawal))(
+      successful(
+        await owner(local.book, `${path}/withdrawals`, {
+          expectedSourceDigest: revision3.digest,
+          evidenceId: local.source.id,
+          rationale: "Synthetic withdrawal",
+        }),
+      ),
+    );
+
+    observed.withdrawal = withdrawal;
+    expect(withdrawal.revision).toBe(3);
+    expect(withdrawal.revisionDigest).toBe(revision3.digest);
+
+    const final = Schema.decodeSync(Schema.fromJsonString(Expenses.TaxSourceView))(
+      successful(await owner(local.book, path)),
+    );
+
+    observed.final = final;
+    expect(final.current).toEqual(revision3);
+    expect(final.sourceHistory.map((row) => row.revision)).toEqual([1, 2, 3]);
+    expect(final.latestReview).toEqual(review);
+    expect(final.withdrawal).toEqual(withdrawal);
+  } finally {
+    const after = await financialState(local.book),
+      privilegesAfter = await expensePrivileges();
+
+    await retainCase("expense-prerequisite", {
+      initial,
+      before,
+      privilegesBefore,
+      ...observed,
+      exchanges,
+      after,
+      privilegesAfter,
+    });
+    expect(after).toEqual(before);
+    expect(privilegesAfter).toEqual(privilegesBefore);
+    expect(privilegesAfter).toEqual([
+      { canSelect: true, canInsert: true, canUpdate: false, canDelete: false },
+    ]);
+  }
+});
