@@ -318,7 +318,14 @@ const basisCurrent = Effect.fn("purchases.supplierSettlement.basisCurrent")(func
   tx: Transaction,
   plan: Plan,
 ) {
-  const current = yield* captureBasis(tx, plan.scope, plan.input);
+  const current = yield* captureBasis(tx, plan.scope, plan.input).pipe(
+    Effect.catchIf(
+      (error) => error instanceof Accounting.AccountingError && error.code === "UnsupportedProfile",
+      () => Effect.succeed(null),
+    ),
+  );
+
+  if (current === null) return false;
 
   return (yield* canonicalText(current)) === (yield* canonicalText(plan.basis));
 });
@@ -621,7 +628,7 @@ const approvalUsable = Effect.fn("purchases.supplierSettlement.approvalUsable")(
     !payment ||
     !allocation ||
     actors.length !== 1 ||
-    admission?.enabled === false ||
+    admission?.enabled !== true ||
     payment.consumedAt !== null ||
     payment.changeSetId !== plan.paymentPlan.id ||
     allocation.planId !== plan.pendingAllocation.id ||
@@ -1047,7 +1054,14 @@ const readCancellationPlan = Effect.fn("purchases.supplierSettlement.readCancell
 const currentCancellation = Effect.fn("purchases.supplierSettlement.currentCancellation")(
   function* (tx: Transaction, plan: CancellationPlan) {
     if (plan.impactResources === undefined) return yield* failure("StaleDependency");
-    const current = yield* cancellationBasis(tx, plan.scope, plan.original, plan.originalPlan);
+
+    const current = yield* cancellationBasis(tx, plan.scope, plan.original, plan.originalPlan).pipe(
+      Effect.catchIf(
+        (error) =>
+          error instanceof Accounting.AccountingError && error.code === "UnsupportedProfile",
+        () => Effect.fail(failure("StaleDependency")),
+      ),
+    );
 
     if (
       (yield* canonicalText(current)) !==
@@ -1410,7 +1424,7 @@ export const executeSupplierSettlementCancellation = Effect.fn(
         approval.digest !== plan.digest ||
         Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(tx)) ||
         membership.length !== 1 ||
-        admission?.enabled === false
+        admission?.enabled !== true
       )
         return yield* failure("ApprovalRequired");
       const id = newId("supplier_cancel_receipt");

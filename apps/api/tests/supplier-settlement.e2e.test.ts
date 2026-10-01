@@ -155,6 +155,8 @@ async function setup(amounts = ["-4000"], invoiceMinor = "10000") {
     await admin.end();
   }
 
+  const facts: Array<typeof Profiles.FactRevision.Type> = [];
+
   for (const declaration of [
     { factKind: "jurisdiction", value: { state: "known", value: "ZZ" } },
     { factKind: "accounting_method", value: { state: "known", value: "accrual" } },
@@ -172,6 +174,8 @@ async function setup(amounts = ["-4000"], invoiceMinor = "10000") {
       },
       Profiles.FactRevision,
     );
+
+    facts.push(fact);
 
     await post(
       reviewer,
@@ -345,7 +349,7 @@ async function setup(amounts = ["-4000"], invoiceMinor = "10000") {
     evidence: { evidenceId: bankEvidence.id, sha256: bankEvidence.sha256 },
   };
 
-  return { book, reviewer, acceptance, bankEvidence, statement, statementInput, input };
+  return { book, reviewer, acceptance, bankEvidence, statement, statementInput, input, facts };
 }
 
 async function financial(book: BookFixture) {
@@ -741,6 +745,13 @@ test("supplier owner refuses authority, strict input, stale basis and independen
   });
 
   expect(extra.status).toBe(400);
+  const foreign = await fixture();
+
+  await failure(
+    await request(foreign, plans, { method: "POST", body: JSON.stringify(data.input) }),
+    404,
+    "NotFound",
+  );
   const plan = await prepared(data);
   await failure(
     await request(data.book, `${plans}/${plan.id}/approvals`, {
@@ -787,6 +798,174 @@ test("supplier owner refuses authority, strict input, stale basis and independen
 
   await failure(await executeSettlement(data.book, plan, approval), 403, "ApprovalRequired");
   expect(await financial(data.book)).toEqual(before);
+});
+
+test("supplier missing reviewer admission fails closed without effects", async () => {
+  const data = await setup();
+  const plan = await prepared(data);
+  const approval = await approved(data, plan);
+  const before = await financial(data.book);
+  const admin = await database();
+
+  try {
+    const removed = await admin.query("delete from openerp.identity_admissions where actor_id=$1", [
+      data.reviewer.actorId,
+    ]);
+
+    expect(removed.rowCount).toBe(1);
+  } finally {
+    await admin.end();
+  }
+
+  await failure(await executeSettlement(data.book, plan, approval), 403, "ApprovalRequired");
+  expect(await financial(data.book)).toEqual(before);
+  await writeFile(
+    join(environment().artifacts, "supplier-missing-authority.json"),
+    JSON.stringify(
+      { reviewer: data.reviewer.actorId, before, after: await financial(data.book) },
+      null,
+      2,
+    ),
+  );
+});
+
+test("supplier preparation refuses positive observations and oversize retained debits", async () => {
+  const observations = [];
+
+  for (const [amount, status, code] of [
+    ["4000", 422, "InvalidJournal"],
+    ["-11000", 409, "StaleDependency"],
+  ] as const) {
+    const data = await setup([amount]);
+    const before = await financial(data.book);
+
+    await failure(
+      await request(data.book, plans, { method: "POST", body: JSON.stringify(data.input) }),
+      status,
+      code,
+    );
+    const after = await financial(data.book);
+
+    expect(after).toEqual(before);
+    expect(await owned(data.book)).toEqual({ claims: 0, receipts: 0, cancellations: 0 });
+    observations.push({ amount, status, code, before, after });
+  }
+
+  await writeFile(
+    join(environment().artifacts, "supplier-source-refusals.json"),
+    JSON.stringify(observations, null, 2),
+  );
+});
+
+test("supplier sealed approval becomes stale when reviewed accounting qualification changes", async () => {
+  const data = await setup();
+  const plan = await prepared(data);
+  const approval = await approved(data, plan);
+  const original = data.facts.find((fact) => fact.factKind === "accounting_method");
+
+  if (!original) throw new Error("Synthetic accounting method missing");
+
+  const replacement = await post(
+    data.book,
+    "/company-facts",
+    {
+      factKind: "accounting_method",
+      value: { state: "known", value: "cash" },
+      effectiveFrom: "2026-01-01",
+      effectiveTo: null,
+      supersedesId: original.id,
+      evidence: [{ evidenceId: data.bankEvidence.id, sha256: data.bankEvidence.sha256 }],
+      note: "Independent qualification change",
+    },
+    Profiles.FactRevision,
+  );
+
+  await post(
+    data.reviewer,
+    `/company-facts/${replacement.id}/reviews`,
+    {
+      factRevisionId: replacement.id,
+      expectedDigest: replacement.digest,
+      result: "confirmed",
+      rationale: "Independent method change review",
+    },
+    Profiles.FactReview,
+  );
+  const before = await financial(data.book);
+
+  await failure(await executeSettlement(data.book, plan, approval), 409, "StaleDependency");
+  await failure(
+    await request(data.book, plans, { method: "POST", body: JSON.stringify(data.input) }),
+    422,
+    "UnsupportedProfile",
+  );
+  expect(await financial(data.book)).toEqual(before);
+  await writeFile(
+    join(environment().artifacts, "supplier-qualification-change.json"),
+    JSON.stringify(
+      {
+        originalFactId: original.id,
+        replacementFactId: replacement.id,
+        before,
+        after: await financial(data.book),
+      },
+      null,
+      2,
+    ),
+  );
+});
+
+test("supplier execution refuses changed account writer source and locked period bases", async () => {
+  const observations = [];
+
+  for (const [kind, sql, code] of [
+    [
+      "account",
+      "update openerp.accounts set version=version+1 where book_id=$1 and id='account_bank'",
+      "StaleDependency",
+    ],
+    [
+      "writer",
+      "update openerp.books set writer_epoch=writer_epoch+1 where id=$1",
+      "StaleDependency",
+    ],
+    [
+      "source",
+      "update openerp.bank_sources set revision=revision+1 where book_id=$1",
+      "StaleDependency",
+    ],
+    [
+      "period",
+      "update openerp.periods set locked=true,version=version+1 where book_id=$1 and id='period_2026'",
+      "PeriodLocked",
+    ],
+  ] as const) {
+    const data = await setup();
+    const plan = await prepared(data);
+    const approval = await approved(data, plan);
+    const admin = await database();
+
+    try {
+      const mutation = await admin.query(sql, [data.book.bookId]);
+
+      expect(mutation.rowCount).toBe(1);
+    } finally {
+      await admin.end();
+    }
+
+    const before = await financial(data.book);
+
+    await failure(await executeSettlement(data.book, plan, approval), 409, code);
+    const after = await financial(data.book);
+
+    expect(after).toEqual(before);
+    observations.push({ kind, code, before, after });
+  }
+
+  await writeFile(
+    join(environment().artifacts, "supplier-stale-bases.json"),
+    JSON.stringify(observations, null, 2),
+  );
 });
 
 test("supplier execution locks reviewer authority before the book and observes committed disable", async () => {
@@ -1441,6 +1620,7 @@ test("supplier pending owner retains prospective plans and independent approval 
   expect(await decoded(await request(data.book, `${plans}/${plan.id}`), PendingView)).toMatchObject(
     { pendingBasisCurrent: true, approvalUsable: false },
   );
+  await failure(await executeSettlement(data.book, plan, approval), 403, "ApprovalRequired");
 
   const invoice = await decoded(
     await request(data.book, `/commerce/invoices/${data.input.invoiceId}`),
@@ -1462,6 +1642,7 @@ test("supplier pending owner retains prospective plans and independent approval 
   expect(await decoded(await request(data.book, `${plans}/${plan.id}`), PendingView)).toMatchObject(
     { pendingBasisCurrent: false, approvalUsable: false },
   );
+  await failure(await executeSettlement(data.book, plan, approval), 409, "StaleDependency");
   await failure(
     await request(data.reviewer, `${plans}/${plan.id}/approvals`, {
       method: "POST",
