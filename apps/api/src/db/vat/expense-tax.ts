@@ -136,12 +136,7 @@ export function insertSource(
   );
 }
 
-export function readCurrentRevision(
-  transaction: Transaction,
-  bookId: string,
-  sourceId: string,
-  lock: "share" | "update" = "share",
-) {
+export function readCurrentRevision(transaction: Transaction, bookId: string, sourceId: string) {
   return transaction.execute<RevisionRow>(
     sql`
       select id, source_id as "sourceId", revision, evidence_id as "evidenceId",
@@ -150,7 +145,6 @@ export function readCurrentRevision(
       where book_id = ${bookId} and source_id = ${sourceId}
       order by revision desc
       limit 1
-      ${lock === "update" ? sql`for update` : sql`for share`}
     `,
     "objects",
   );

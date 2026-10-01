@@ -544,6 +544,17 @@ function readStorage(transaction: Transaction, scope: Scope, occurrenceId: strin
   );
 }
 
+export function readSourceOccurrenceInTransaction(
+  transaction: Transaction,
+  scope: Scope,
+  occurrenceId: string,
+) {
+  return requireRetentionAccess(transaction, false).pipe(
+    Effect.flatMap(() => readStorage(transaction, scope, occurrenceId)),
+    Effect.map((storage) => storage.occurrence),
+  );
+}
+
 function readOccurrenceView(token: string, scope: Scope, occurrenceId: string) {
   return withBook(token, scope, false, function* (transaction) {
     yield* requireRetentionAccess(transaction, false);

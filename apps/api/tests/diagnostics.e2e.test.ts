@@ -186,8 +186,10 @@ test("connection failures produce a safe correlated 503", async () => {
     expect(failureBody).toMatchObject({ code: "ConfigurationError", recovery: "permanent" });
     expect(JSON.stringify(failureBody)).not.toContain(unavailable.password);
     const log = await diagnostic(response);
-    expect(log).toContain("ConnectionError");
+    expect(log).toContain("AuthenticationError");
+    expect(log).toContain("28P01");
     expect(log).not.toContain(unavailable.password);
+    expect(log).not.toContain(book.token);
   } finally {
     await server.update(options(environment().runtimeUrl));
   }

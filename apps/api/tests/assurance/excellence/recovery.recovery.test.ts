@@ -1,11 +1,13 @@
+import { ReleaseManifest } from "@open-erp/contracts/operations";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, writeFile, readFile, cp, rm, realpath } from "node:fs/promises";
+import { mkdir, writeFile, readFile, readdir, cp, rm, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { Client } from "pg";
 import { createTestHarness } from "wrangler";
 import { expect, test } from "vitest";
+import * as Evaluations from "@open-erp/contracts/evaluations";
 import * as A from "@open-erp/contracts/accounting";
 import * as I from "@open-erp/contracts/source-intake";
 import * as Schema from "effect/Schema";
@@ -251,6 +253,24 @@ test("[EXC-RECOVERY-COMPLETE] database, external original, recorded approval and
     expect(retained.ok).toBe(true);
     const occurrence = Schema.decodeUnknownSync(I.SourceOccurrence)(retained.value);
 
+    const evaluation = await decoded(
+      await sourceCall("/evaluations/contracts", {
+        method: "POST",
+        headers: { "idempotency-key": key() },
+        body: JSON.stringify({
+          recordClass: "synthetic",
+          interval: { startsOn: "2026-01-01", endsOn: "2026-12-31" },
+          originalIds: [occurrence.id],
+          openingBasis: { status: "unknown", reason: "Unreviewed synthetic opening." },
+          familyPopulation: { status: "unknown", reason: "Incomplete synthetic population." },
+          permittedAssistance: [],
+          allowedCapabilities: ["source_get_occurrence"],
+          predecessor: null,
+        }),
+      }),
+      Evaluations.EvaluationContract,
+    );
+
     const objects = await admin.query<{
       object_key: string;
       sha256: string;
@@ -264,6 +284,35 @@ test("[EXC-RECOVERY-COMPLETE] database, external original, recorded approval and
     const object = objects.rows[0]!;
     expect(object.sha256).toBe("sha256:" + hash(original));
     expect(object.byte_length).toBe(original.length);
+    const closureOriginal = await readFile(join(originalStore, object.object_key));
+
+    expect("sha256:" + hash(closureOriginal)).toBe(object.sha256);
+
+    const migrationFiles = await Promise.all(
+      (await readdir(join(apiDirectory, "migrations")))
+        .filter((name) => name.endsWith(".sql"))
+        .sort()
+        .map(async (name) => {
+          const bytes = await readFile(join(apiDirectory, "migrations", name));
+
+          return {
+            path: `apps/api/migrations/${name}`,
+            bytes: String(bytes.length),
+            sha256: hash(bytes),
+          };
+        }),
+    );
+
+    const migrationRelease = Schema.decodeUnknownSync(ReleaseManifest)({
+      version: 1,
+      kind: "openerp-source-release",
+      capturedAt: new Date().toISOString(),
+      files: migrationFiles,
+      databaseAdapter: "drizzle-effect-postgres",
+      browserAuthentication: "better-auth",
+      runtimeVerification: "not-run",
+    });
+
     await admin.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
     let before: Awaited<ReturnType<typeof image>>;
 
@@ -359,6 +408,14 @@ test("[EXC-RECOVERY-COMPLETE] database, external original, recorded approval and
     );
 
     expect(recovered).toEqual(receipt);
+    expect(
+      await decoded(
+        await targetCall(`/evaluations/contracts/${evaluation.id}`),
+        Evaluations.EvaluationContract,
+      ),
+    ).toEqual(evaluation);
+    expect(before.evaluation_contracts?.count).toBe(1);
+
     expect(await image(target, book.bookId)).toEqual(before!);
     const afterSource = await runHost(targetURL.toString(), restoredStore, "read", occurrence.id);
     expect(afterSource.ok).toBe(true);
@@ -379,6 +436,65 @@ test("[EXC-RECOVERY-COMPLETE] database, external original, recorded approval and
       true,
     );
     expect(await image(target, book.bookId)).toEqual(before!);
+
+    const closureProbe = () =>
+      run("bun", ["scripts/evaluation-recovery-closure.ts", restoredStore], {
+        cwd: apiDirectory,
+        env: { ...process.env, DATABASE_ADMIN_URL: targetAdmin.toString() },
+        timeout: 60000,
+      });
+
+    const beforeQualification = Schema.decodeSync(Schema.fromJsonString(Schema.JsonObject))(
+      (await closureProbe()).stdout,
+    );
+
+    await target.query("DROP EXTENSION pg_stat_statements");
+
+    const afterQualification = Schema.decodeSync(Schema.fromJsonString(Schema.JsonObject))(
+      (await closureProbe()).stdout,
+    );
+
+    expect(afterQualification.tables).toEqual(beforeQualification.tables);
+    expect(beforeQualification.extensions).toEqual([
+      { name: "pg_stat_statements" },
+      { name: "plpgsql" },
+    ]);
+    expect(afterQualification.extensions).toEqual([{ name: "plpgsql" }]);
+    expect(afterQualification.unvalidatedConstraints).toEqual([]);
+    expect(
+      (
+        await admin.query<{ name: string }>(
+          "SELECT extname AS name FROM pg_extension ORDER BY extname",
+        )
+      ).rows,
+    ).toEqual(beforeQualification.extensions);
+
+    const releasePath = join(env.artifacts, "evaluation-migration-release.json");
+    await writeFile(releasePath, JSON.stringify(migrationRelease, null, 2), { mode: 0o600 });
+    expect(migrationRelease.files).toHaveLength(55);
+
+    const strictProbe = Schema.decodeSync(Schema.fromJsonString(Schema.JsonObject))(
+      (
+        await run("bun", ["scripts/evaluation-recovery-probe.ts", releasePath], {
+          cwd: apiDirectory,
+          env: { ...process.env, DATABASE_ADMIN_URL: targetAdmin.toString() },
+          timeout: 60000,
+        })
+      ).stdout,
+    );
+
+    expect(strictProbe).toEqual({
+      evaluationRows: "1",
+      schemaInventory: "matched",
+      jsonClosure: "matched",
+    });
+
+    await writeFile(
+      join(env.artifacts, "evaluation-recovery-closure.json"),
+      JSON.stringify({ beforeQualification, afterQualification, strictProbe }, null, 2),
+      { mode: 0o600 },
+    );
+
     await writeFile(
       join(env.artifacts, "excellence-recovery.json"),
       JSON.stringify(
@@ -392,6 +508,10 @@ test("[EXC-RECOVERY-COMPLETE] database, external original, recorded approval and
             referencedObjects: objects.rows,
             originalCommandRecovered: true,
             originalSourceRecovered: true,
+            evaluationContractRecovered: evaluation.id,
+            restoredTableFingerprintsAndJsonClosure: true,
+            strictSchemaQualification: strictProbe,
+            restoredDiagnosticExtensionRemovedBeforeQualification: true,
             missingSourceRefused: true,
             corruptSourceRefused: true,
             oldSelectedDeploymentLoginRevoked: true,
@@ -400,6 +520,7 @@ test("[EXC-RECOVERY-COMPLETE] database, external original, recorded approval and
             "Same PG cluster, not independent infrastructure disaster recovery",
             "Only the test-owned old deployment role is fenced; this is not proof that all production writers are retired",
             "No live signing/provider secret restored",
+            "The instrumented source schema is not claimed equal to the restored target after diagnostic extension removal",
           ],
         },
         null,

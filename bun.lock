@@ -141,6 +141,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "effect-mq@0.7.0": "patches/effect-mq@0.7.0.patch",
+  },
   "overrides": {
     "@effect/platform-node-shared": "4.0.0",
     "@effect/sql-d1": "4.0.0",

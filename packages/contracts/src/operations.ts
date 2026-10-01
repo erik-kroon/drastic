@@ -202,8 +202,8 @@ export const QueueSequence = Schema.Struct({
 export const RecoveryWorkInventory = Schema.Struct({
   version: Schema.Literal(2),
   queue: Schema.Struct({
-    tables: Schema.Array(TableFingerprint).check(Schema.isLengthBetween(7, 7)),
-    sequences: Schema.Array(QueueSequence).check(Schema.isLengthBetween(2, 2)),
+    tables: Schema.Array(TableFingerprint).check(Schema.isMinLength(7), Schema.isMaxLength(7)),
+    sequences: Schema.Array(QueueSequence).check(Schema.isMinLength(2), Schema.isMaxLength(2)),
   }),
   kind: Schema.Literal("openerp-durable-work-inventory"),
   snapshot: Schema.String,

@@ -1,10 +1,13 @@
 import { createHash, randomBytes } from "node:crypto";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Profiles from "@open-erp/contracts/company-profiles";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { expect, test } from "vitest";
 import {
   database,
+  environment,
   decoded,
   failure,
   execute,
@@ -493,4 +496,171 @@ test("cash admission rejects wrong-book draft, stale source, incompatible accoun
     tax_facts: "0",
     cash_lines: "0",
   });
+}, 240000);
+
+test("locked document period admits only a constrained commercial cash invoice without posting", async () => {
+  const { book, input, draft } = await prepared();
+  const admin = await database();
+  const commandKey = key();
+
+  const send = () =>
+    request(book, path, {
+      method: "POST",
+      headers: { "idempotency-key": commandKey },
+      body: JSON.stringify(input),
+    });
+
+  try {
+    await admin.query(
+      "update openerp.periods set locked=true where book_id=$1 and id='period_2026'",
+      [book.bookId],
+    );
+
+    const invoice = await decoded(await send(), Commerce.Invoice);
+    expect(invoice.recognition).toBeNull();
+    expect(invoice.amountMinor).toBe("125000");
+    expect(invoice.outstandingMinor).toBe("125000");
+    expect(invoice.cashMethod?.draftId).toBe(draft.id);
+
+    const population = await admin.query(
+      "select version::text from openerp.cash_method_population_epochs where book_id=$1",
+      [book.bookId],
+    );
+
+    expect(population.rows).toEqual([{ version: "1" }]);
+
+    const replayed = await decoded(await send(), Commerce.Invoice);
+
+    const replayedPopulation = await admin.query(
+      "select version::text from openerp.cash_method_population_epochs where book_id=$1",
+      [book.bookId],
+    );
+
+    expect(replayed).toEqual(invoice);
+    expect(replayedPopulation.rows).toEqual([{ version: "1" }]);
+
+    const invalidInvoices = [
+      {
+        name: "ordinary_null_recognition",
+        voucher: null,
+        line: null,
+        draft: null,
+        body: { ...invoice, kind: "synthetic_invoice_v1" },
+      },
+      { name: "cash_missing_draft", voucher: null, line: null, draft: null, body: invoice },
+      {
+        name: "cash_mixed_voucher",
+        voucher: "missing_voucher",
+        line: null,
+        draft: draft.id,
+        body: invoice,
+      },
+      {
+        name: "cash_mixed_line",
+        voucher: null,
+        line: "missing_line",
+        draft: draft.id,
+        body: invoice,
+      },
+    ];
+
+    const refusals: Array<{ name: string; code: string; constraint: string } | null> = [];
+
+    for (const invalidInvoice of invalidInvoices) {
+      const refusal = await admin
+        .query(
+          `insert into openerp.commerce_invoices
+        (book_id,id,direction,counterparty_id,counterparty_revision,document_number,issued_on,
+        amount_minor,control_account_id,recognition_voucher_id,recognition_line_id,evidence_id,
+        current_revision,body,cash_method_source_draft_id)
+        select book_id,$2,direction,counterparty_id,counterparty_revision,$2,issued_on,
+        amount_minor,control_account_id,$3,$4,evidence_id,current_revision,$5::jsonb,$6
+        from openerp.commerce_invoices where book_id=$1 and id=$7`,
+          [
+            book.bookId,
+            invalidInvoice.name,
+            invalidInvoice.voucher,
+            invalidInvoice.line,
+            JSON.stringify(invalidInvoice.body),
+            invalidInvoice.draft,
+            invoice.id,
+          ],
+        )
+        .then(
+          () => null,
+          (error: unknown) => {
+            if (
+              !(error instanceof Error) ||
+              !("code" in error) ||
+              typeof error.code !== "string" ||
+              !("constraint" in error) ||
+              typeof error.constraint !== "string"
+            )
+              throw error;
+
+            return { name: invalidInvoice.name, code: error.code, constraint: error.constraint };
+          },
+        );
+
+      expect(refusal).toEqual({
+        name: invalidInvoice.name,
+        code: "23514",
+        constraint: "commerce_recognition_shape",
+      });
+
+      refusals.push(refusal);
+    }
+
+    expect(
+      (
+        await admin.query(
+          "select count(*)::int as count from openerp.commerce_invoices where book_id=$1",
+          [book.bookId],
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+
+    const documentPeriod = await admin.query(
+      "select locked from openerp.periods where book_id=$1 and id='period_2026'",
+      [book.bookId],
+    );
+
+    expect(documentPeriod.rows).toEqual([{ locked: true }]);
+
+    const cashRecognition = await admin.query(
+      `select (select count(*)::text from openerp.cash_method_recognitions where book_id=$1) as recognitions,
+      (select coalesce(sum(last_number),0)::text from openerp.series_counters where book_id=$1) as counter`,
+      [book.bookId],
+    );
+
+    expect(cashRecognition.rows).toEqual([{ recognitions: "0", counter: "0" }]);
+
+    const financial = await financialCounts(book);
+    expect(financial).toEqual({
+      vouchers: "0",
+      lines: "0",
+      recognitions: "0",
+      tax_facts: "0",
+      cash_lines: "0",
+    });
+    await writeFile(
+      join(environment().artifacts, "cash-commercial-period-admission.json"),
+      JSON.stringify(
+        {
+          invoice,
+          documentPeriod: documentPeriod.rows,
+          population: population.rows,
+          replayed,
+          replayedPopulation: replayedPopulation.rows,
+          refusals,
+          financial,
+          cashRecognition: cashRecognition.rows,
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await admin.end();
+  }
 }, 240000);

@@ -1,0 +1,100 @@
+diff --git a/dist/drizzle-postgres/DrizzleJobStore.js b/dist/drizzle-postgres/DrizzleJobStore.js
+index 3261b4b05f03315e8858d9ae20c619b99ace118c..cb4836e19cf2ea5be8030603ff872984051bc07b 100644
+--- a/dist/drizzle-postgres/DrizzleJobStore.js
++++ b/dist/drizzle-postgres/DrizzleJobStore.js
+@@ -247,7 +247,7 @@ export const make = (options) => Effect.gen(function* () {
+     };
+     // Resubscribe forever: if the LISTEN stream ends or fails, wake-ups
+     // degrade to the worker's pollInterval until the next attempt succeeds.
+-    yield* client.listen(wakeChannel).pipe(Stream.runForEach((payload) => Effect.sync(() => signalWake(payload === "*" ? undefined : JobStore.QueueName(payload)))), Effect.catchCause((cause) => Effect.logWarning("effect-mq: LISTEN subscription failed; wake-ups degraded to polling until resubscribe", cause)), Effect.andThen(Effect.sleep("1 second")), Effect.forever, Effect.forkScoped);
++    yield* client.listen(wakeChannel).pipe(Effect.flatMap((notifications) => Stream.fromQueue(notifications).pipe(Stream.runForEach(({ payload }) => Effect.sync(() => signalWake(payload === "*" ? undefined : JobStore.QueueName(payload)))))), Effect.scoped, Effect.catchCause((cause) => Effect.logWarning("effect-mq: LISTEN subscription failed; wake-ups degraded to polling until resubscribe", cause)), Effect.andThen(Effect.sleep("1 second")), Effect.forever, Effect.forkScoped);
+     // Automatic retention (the store-level sweep and per-job `keep`) never
+     // prunes a flow parent that still owes cascade cancels: its dependency
+     // rows marked `cancelled` and not `cascaded` are the only record that
+diff --git a/dist/drizzle-postgres/schema.d.ts b/dist/drizzle-postgres/schema.d.ts
+index cf9834ced22240987be57fcf500101b9e51d5e10..cd359d59f06f53bf5ad6d7af1ed0440b38ac7450 100644
+--- a/dist/drizzle-postgres/schema.d.ts
++++ b/dist/drizzle-postgres/schema.d.ts
+@@ -192,6 +192,7 @@ export declare const mqJobs: <JobName extends string = string, Queue extends str
+         generated: T[Key]["_"]["generated"] extends true ? true : undefined;
+     }>; } : never;
+     dialect: 'pg';
++    isAlias: false;
+ }>;
+ declare const attemptsColumns: (jobs: MqJobsTable) => {
+     jobId: import("drizzle-orm/pg-core").Set$Type<import("drizzle-orm/pg-core").SetNotNull<import("drizzle-orm/pg-core").PgTextBuilder<[string, ...string[]]>>, JobStore.JobId>;
+@@ -303,6 +304,7 @@ export declare const mqJobAttempts: (jobs: MqJobsTable, tableName?: string, opti
+         }>;
+     };
+     dialect: 'pg';
++    isAlias: false;
+ }>;
+ declare const schedulesColumns: <JobName extends string, Queue extends string>() => {
+     key: import("drizzle-orm/pg-core").Set$Type<import("drizzle-orm/pg-core").SetIsPrimaryKey<import("drizzle-orm/pg-core").PgTextBuilder<[string, ...string[]]>>, JobStore.ScheduleKey>;
+@@ -561,6 +563,7 @@ export declare const mqSchedules: <JobName extends string = string, Queue extend
+         }>;
+     };
+     dialect: 'pg';
++    isAlias: false;
+ }>;
+ declare const dedupeColumns: <JobName extends string>() => {
+     name: import("drizzle-orm/pg-core").Set$Type<import("drizzle-orm/pg-core").SetNotNull<import("drizzle-orm/pg-core").PgTextBuilder<[string, ...string[]]>>, JobName>;
+@@ -640,6 +643,7 @@ export declare const mqDedupe: <JobName extends string = string>(tableName?: str
+         }>;
+     };
+     dialect: 'pg';
++    isAlias: false;
+ }>;
+ declare const flowChildrenColumns: () => {
+     /** The parent (flow) job's id in this store. */
+@@ -822,6 +826,7 @@ export declare const mqFlowChildren: (tableName?: string, options?: MqTableOptio
+         }>;
+     };
+     dialect: 'pg';
++    isAlias: false;
+ }>;
+ declare const flowOutboxColumns: () => {
+     /** Store-assigned, oldest-first; exposed to callers as an opaque string. */
+@@ -906,6 +911,7 @@ export declare const mqFlowOutbox: (tableName?: string, options?: MqTableOptions
+         }>;
+     };
+     dialect: 'pg';
++    isAlias: false;
+ }>;
+ declare const queueControlColumns: <Queue extends string>() => {
+     queue: import("drizzle-orm/pg-core").Set$Type<import("drizzle-orm/pg-core").SetIsPrimaryKey<import("drizzle-orm/pg-core").PgTextBuilder<[string, ...string[]]>>, Queue>;
+@@ -952,6 +958,7 @@ export declare const mqQueueControl: <Queue extends string = QueueName>(tableNam
+         }>;
+     };
+     dialect: 'pg';
++    isAlias: false;
+ }>;
+ /**
+  * @since 0.1.0
+@@ -982,4 +989,3 @@ export type MqFlowChildrenTable = ReturnType<typeof mqFlowChildren>;
+  */
+ export type MqFlowOutboxTable = ReturnType<typeof mqFlowOutbox>;
+ export {};
+-//# sourceMappingURL=schema.d.ts.map
+\ No newline at end of file
+diff --git a/src/drizzle-postgres/DrizzleJobStore.ts b/src/drizzle-postgres/DrizzleJobStore.ts
+index c11cd835739ceff063e47b7b7f174b37209d66a2..0d8c8ce851fb4cff43f8ac3bdc426cc8f9b4be1b 100644
+--- a/src/drizzle-postgres/DrizzleJobStore.ts
++++ b/src/drizzle-postgres/DrizzleJobStore.ts
+@@ -419,9 +419,14 @@ export const make = (
+     // Resubscribe forever: if the LISTEN stream ends or fails, wake-ups
+     // degrade to the worker's pollInterval until the next attempt succeeds.
+     yield* client.listen(wakeChannel).pipe(
+-      Stream.runForEach((payload) =>
+-        Effect.sync(() => signalWake(payload === "*" ? undefined : JobStore.QueueName(payload)))
++      Effect.flatMap((notifications) =>
++        Stream.fromQueue(notifications).pipe(
++          Stream.runForEach(({ payload }) =>
++            Effect.sync(() => signalWake(payload === "*" ? undefined : JobStore.QueueName(payload)))
++          )
++        )
+       ),
++      Effect.scoped,
+       Effect.catchCause((cause) =>
+         Effect.logWarning(
+           "effect-mq: LISTEN subscription failed; wake-ups degraded to polling until resubscribe",

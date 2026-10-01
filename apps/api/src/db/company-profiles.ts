@@ -2,7 +2,6 @@ import { and, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import {
-  changeSets,
   companyActivations,
   companyActivationImpacts,
   companyFactRevisions,
@@ -220,16 +219,6 @@ export function readRoleBinding(transaction: Transaction, bookId: string, id: st
     .select({ id: companyRoleBindings.id, digest: companyRoleBindings.digest })
     .from(companyRoleBindings)
     .where(and(eq(companyRoleBindings.bookId, bookId), eq(companyRoleBindings.id, id)));
-}
-
-// The sealed activation proposal serializes its own execution. The row is
-// immutable, so this is a lock and never a rewrite.
-export function lockActivationPlan(transaction: Transaction, bookId: string, planId: string) {
-  return transaction
-    .select({ id: changeSets.id, plan: changeSets.plan })
-    .from(changeSets)
-    .where(and(eq(changeSets.bookId, bookId), eq(changeSets.id, planId)))
-    .for("update");
 }
 
 export function readFamilyMembership(

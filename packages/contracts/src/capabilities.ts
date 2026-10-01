@@ -1,3 +1,5 @@
+import { SupplierSettlementCapabilities } from "./supplier-settlements";
+import { EvaluationCapabilities } from "./evaluations";
 import { CompanySetupCapabilities } from "./company-setup";
 import { CompanyProfileCapabilities } from "./company-profiles";
 import { LegalDeliveryCapabilities } from "./legal-delivery";
@@ -92,6 +94,7 @@ const change = { ...scoped, changeSetId: Accounting.Identifier };
 const changeMutation = { ...mutation, changeSetId: Accounting.Identifier };
 
 export const Capabilities = {
+  ...SupplierSettlementCapabilities,
   ...CashFlowCapabilities,
   ...PaymentResolutionCapabilities,
   ...PaymentIdentifierCapabilities,
@@ -118,6 +121,8 @@ export const Capabilities = {
   ...FirmCapabilities,
   ...CompanySetupCapabilities,
   ...CompanyProfileCapabilities,
+  ...EvaluationCapabilities,
+
   ...LegalDeliveryCapabilities,
   ...LegalInvoicePdfCapabilities,
   ...LegalSalesPolicyCapabilities,

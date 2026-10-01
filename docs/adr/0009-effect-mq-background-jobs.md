@@ -8,6 +8,10 @@ The [application-owned accounting plan](../plans/application-owned-accounting.md
 
 Source inspection found that effect-mq uses our Drizzle Effect driver family and compatible declared Effect 4 peer ranges. Its persistent worker and PostgreSQL listener fit a Bun process. A regular API Worker invocation does not own that process lifetime. The installed package is `0.7.0` at source revision `b5898fbae56fe926c28768a5a8ff9ad74f1e57a0`; its store started against our pinned dependencies on disposable PostgreSQL 17.
 
+The stable Effect 4 runtime requires the maintained Bun patch at `patches/effect-mq@0.7.0.patch`. The published store consumes the earlier stream-based `PgClient.listen` API. The patch acquires the native notification queue, reads each notification's payload, and scopes each subscription attempt so a failed listener releases its connection before resubscribing. It also regenerates the published schema declaration against pinned Drizzle to retain the required `isAlias: false` table metadata. Runtime schema factories remain unchanged. Remove the patch when an upstream release supplies these same contracts and passes the retained listener and recovery checks.
+
+The runner keeps separate PostgreSQL codec contracts. Its application pool reuses the native application registry from `apps/api/src/db/connection.ts`. Its queue pool uses native defaults because effect-mq's raw timestamp projections require `Date` values. The node-postgres parser configuration belongs only to the Promise-based connection path.
+
 ## Decision
 
 Use effect-mq's PostgreSQL store and a persistent Bun background process for hosted and self-host installations. Keep the existing API runtime choices. The Bun process uses the same application operations and domain packages as the API; it is another runtime composition of the application.

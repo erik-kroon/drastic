@@ -1,3 +1,5 @@
+import { SupplierSettlementsApi } from "./supplier-settlements";
+import { EvaluationsApi } from "./evaluations";
 import { DeadlinesApi } from "./deadlines";
 import { RuleImpactApi } from "./rule-impact";
 import { PayrollFoundationApi } from "./payroll-foundation";
@@ -187,6 +189,8 @@ export class Api extends HttpApi.make("open-erp")
     FirmApi,
     CompanySetupApi,
     CompanyProfileApi,
+    EvaluationsApi,
+
     AccountingApi,
     ReportApi,
     StatementApi,
@@ -221,6 +225,7 @@ export class Api extends HttpApi.make("open-erp")
     SalesOrdersApi,
     SupplierInvoiceDraftsApi,
     SupplierAcceptanceApi,
+    SupplierSettlementsApi,
     ServicePurchaseApi,
     PurchaseRecognitionApi,
     SupplierPaymentBatchesApi,

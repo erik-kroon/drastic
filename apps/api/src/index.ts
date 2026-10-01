@@ -1,3 +1,5 @@
+import { SupplierSettlementHandlers } from "./transport/http/routes/supplier-settlements";
+import { EvaluationHandlers } from "./transport/http/routes/evaluations";
 import { DeadlineHandlers } from "./transport/http/routes/deadlines";
 import { RuleImpactHandlers } from "./transport/http/routes/rule-impact";
 import { DeadlineFeedRoutes } from "./transport/http/routes/deadline-feed";
@@ -129,6 +131,8 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     FirmHandlers,
     CompanySetupHandlers,
     CompanyProfileHandlers,
+    EvaluationHandlers,
+
     AccountingHandlers,
     ReportHandlers,
     ReportStatementHandlers,
@@ -160,6 +164,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     SalesOrderHandlers,
     SupplierInvoiceDraftHandlers,
     SupplierAcceptanceHandlers,
+    SupplierSettlementHandlers,
     ServicePurchaseHandlers,
     SupplierPaymentBatchHandlers,
     PaymentResolutionHandlers,

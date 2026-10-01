@@ -1,3 +1,4 @@
+import * as SupplierSettlementDb from "../db/purchases/supplier-settlements";
 import { equalJson } from "@open-erp/domain/canonicalization";
 import { swedishBusinessDate } from "@open-erp/domain/values";
 import { admitPosting, type PostingOwner } from "./posting-admission";
@@ -963,6 +964,8 @@ export const approveChangeInTransaction = Effect.fn("posting.approveChangeInTran
     },
   ) {
     return yield* Effect.gen(function* () {
+      yield* readSupplierPostingReservation(transaction, command);
+
       const request = yield* replay(
         transaction,
         command.scope,
@@ -1148,6 +1151,8 @@ export const executeChangeInTransaction = Effect.fn("posting.execute")(function*
   },
 ) {
   return yield* Effect.gen(function* () {
+    const settlement = yield* readSupplierPostingReservation(transaction, command);
+
     const request = yield* replay(
       transaction,
       command.scope,
@@ -1226,7 +1231,7 @@ export const executeChangeInTransaction = Effect.fn("posting.execute")(function*
       return yield* failure("InternalError");
     }
 
-    const voucherId = newId("voucher");
+    const voucherId = settlement?.reservedVoucherId ?? newId("voucher");
 
     const voucher = yield* Db.insertVoucher(transaction, {
       bookId: command.scope.bookId,
@@ -1373,6 +1378,7 @@ type CorrectionCommand = {
   voucherId: string;
   idempotencyKey: string;
   input: typeof Accounting.PrepareCorrection.Type;
+  owner?: PostingOwner;
 };
 
 export function sealActionInTransaction(
@@ -1455,6 +1461,18 @@ export function sealActionInTransaction(
 
 export const prepareCorrectionInTransaction = Effect.fn("posting.prepareCorrectionInTransaction")(
   function* (transaction: Transaction, principal: Principal, command: CorrectionCommand) {
+    const owned = (yield* SupplierSettlementDb.readReceiptByVoucher(
+      transaction,
+      command.scope.bookId,
+      command.voucherId,
+    ))[0];
+
+    if (
+      owned &&
+      (command.owner?.kind !== "supplier_settlement_cancellation" || command.owner.id !== owned.id)
+    )
+      return yield* failure("ApprovalRequired");
+
     const request = yield* replay(
       transaction,
       command.scope,
@@ -1691,3 +1709,35 @@ export const getReceipt = Effect.fn("posting.getReceipt")(function* (
 });
 
 export type { ExecutionReceipt };
+
+const readSupplierPostingReservation = Effect.fn("posting.readSupplierReservation")(function* (
+  transaction: Transaction,
+  command: { scope: Scope; changeSetId: string; owner?: PostingOwner },
+) {
+  const settlement = (yield* SupplierSettlementDb.readPostingChild(
+    transaction,
+    command.scope.bookId,
+    command.changeSetId,
+  ))[0];
+
+  if (
+    settlement &&
+    (command.owner?.kind !== "supplier_settlement" || command.owner.id !== settlement.id)
+  )
+    return yield* failure("ApprovalRequired");
+
+  const cancellation = (yield* SupplierSettlementDb.readCancellationPostingChild(
+    transaction,
+    command.scope.bookId,
+    command.changeSetId,
+  ))[0];
+
+  if (
+    cancellation &&
+    (command.owner?.kind !== "supplier_settlement_cancellation" ||
+      command.owner.id !== cancellation.id)
+  )
+    return yield* failure("ApprovalRequired");
+
+  return settlement;
+});

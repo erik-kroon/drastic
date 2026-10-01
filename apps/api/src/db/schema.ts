@@ -1700,3 +1700,114 @@ export const supplierRefundSourceUsages = openerp.table("supplier_refund_source_
   adoptedRef: text("adopted_ref"),
   amountMinor: numeric("amount_minor", { mode: "string" }).notNull(),
 });
+
+export const evaluationContracts = openerp.table("evaluation_contracts", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  predecessorId: text("predecessor_id"),
+  predecessorDigest: text("predecessor_digest"),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+  digest: text().notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const supplierSettlementPlans = openerp.table("supplier_settlement_plans", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  invoiceId: text("invoice_id").notNull(),
+  statementId: text("statement_id").notNull(),
+  rowOrdinal: integer("row_ordinal").notNull(),
+  paymentChangeSetId: text("payment_change_set_id").notNull(),
+  allocationPlanId: text("allocation_plan_id").notNull(),
+  reservedVoucherId: text("reserved_voucher_id").notNull(),
+  controlLineId: text("control_line_id").notNull(),
+  bankLineId: text("bank_line_id").notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const supplierSettlementApprovals = openerp.table("supplier_settlement_approvals", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  planId: text("plan_id").notNull(),
+  actorId: text("actor_id").notNull(),
+  paymentApprovalId: text("payment_approval_id").notNull(),
+  allocationApprovalId: text("allocation_approval_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const supplierSettlementRevocations = openerp.table("supplier_settlement_revocations", {
+  bookId: text("book_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const supplierSettlementReceipts = openerp.table("supplier_settlement_receipts", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  planId: text("plan_id").notNull(),
+  approvalId: text("approval_id").notNull(),
+  statementId: text("statement_id").notNull(),
+  rowOrdinal: integer("row_ordinal").notNull(),
+  invoiceId: text("invoice_id").notNull(),
+  voucherId: text("voucher_id").notNull(),
+  allocationReceiptId: text("allocation_receipt_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+});
+
+export const supplierSettlementSourceClaims = openerp.table("supplier_settlement_source_claims", {
+  bookId: text("book_id").notNull(),
+  statementId: text("statement_id").notNull(),
+  rowOrdinal: integer("row_ordinal").notNull(),
+  receiptId: text("receipt_id").notNull(),
+  planId: text("plan_id").notNull(),
+});
+
+export const supplierSettlementCancellationPlans = openerp.table(
+  "supplier_settlement_cancellation_plans",
+  {
+    bookId: text("book_id").notNull(),
+    id: text("id").notNull(),
+    settlementReceiptId: text("settlement_receipt_id").notNull(),
+    paymentChangeSetId: text("payment_change_set_id").notNull(),
+    allocationReversalId: text("allocation_reversal_id").notNull(),
+    matchReversalId: text("match_reversal_id").notNull(),
+    body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  },
+);
+
+export const supplierSettlementCancellationApprovals = openerp.table(
+  "supplier_settlement_cancellation_approvals",
+  {
+    bookId: text("book_id").notNull(),
+    id: text("id").notNull(),
+    planId: text("plan_id").notNull(),
+    actorId: text("actor_id").notNull(),
+    paymentApprovalId: text("payment_approval_id").notNull(),
+    allocationApprovalId: text("allocation_approval_id").notNull(),
+    matchApprovalId: text("match_approval_id").notNull(),
+    body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  },
+);
+
+export const supplierSettlementCancellationReceipts = openerp.table(
+  "supplier_settlement_cancellation_receipts",
+  {
+    bookId: text("book_id").notNull(),
+    id: text("id").notNull(),
+    planId: text("plan_id").notNull(),
+    approvalId: text("approval_id").notNull(),
+    settlementReceiptId: text("settlement_receipt_id").notNull(),
+    body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  },
+);
+
+export const supplierSettlementCancellationRevocations = openerp.table(
+  "supplier_settlement_cancellation_revocations",
+  {
+    bookId: text("book_id").notNull(),
+    approvalId: text("approval_id").notNull(),
+    body: jsonb().$type<Schema.JsonObject>().notNull(),
+  },
+);

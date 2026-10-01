@@ -173,7 +173,8 @@ export function readOwnerAttachments(tx: Transaction, book: string, change: stri
 export function readProtectedCorrections(tx: Transaction, book: string, voucher: string) {
   return tx.execute<{ readonly kind: string }>(
     sql`
-    select 'owner' as kind from openerp.owner_effects where book_id=${book} and voucher_id=${voucher}
+    select 'supplier_settlement' as kind from openerp.supplier_settlement_receipts where book_id=${book} and voucher_id=${voucher}
+ union all select 'owner' as kind from openerp.owner_effects where book_id=${book} and voucher_id=${voucher}
      union all select 'cash_allocation' from openerp.cash_method_recognitions where book_id=${book}
        and (voucher_id=${voucher} or source_payment_voucher_id=${voucher})
      union all select 'cash_credit' from openerp.cash_method_credits where book_id=${book} and voucher_id=${voucher}

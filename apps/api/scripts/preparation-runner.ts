@@ -6,7 +6,7 @@ import { DrizzleJobStore } from "effect-mq/drizzle-postgres";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Redacted from "effect/Redacted";
-import { applicationPostgresTypes, Database } from "../src/db/connection";
+import { nativePostgresTypes, Database } from "../src/db/connection";
 import { filesystemObjectStore } from "../src/adapters/storage/filesystem-objects";
 import { configuredDocumentReader } from "../src/runtime/document-reader";
 import { fileObjectStore } from "./file-object-store";
@@ -79,7 +79,7 @@ const applicationPostgres = PgClient.layer({
   applicationName: "open-erp-preparation-application",
   maxConnections: 4,
   connectTimeout: "5 seconds",
-  types: applicationPostgresTypes,
+  types: nativePostgresTypes,
 });
 
 const services = Layer.mergeAll(

@@ -12,7 +12,10 @@
     {
       "leaf": "bank-cover-search",
       "status": "wired",
-      "consumers": ["apps/api/src/application/banking/candidates.ts", "packages/contracts/src/bank-match-candidates.ts"]
+      "consumers": [
+        "apps/api/src/application/banking/candidates.ts",
+        "packages/contracts/src/bank-match-candidates.ts"
+      ]
     },
     {
       "leaf": "agent-context",
