@@ -243,7 +243,6 @@ export const recordSource = Effect.fn("expenseTax.recordSource")(function* (
             transaction,
             command.scope.bookId,
             existing.id,
-            "update",
           ))[0];
 
           if (current === undefined) return yield* failure("NotFound");
@@ -395,7 +394,6 @@ export const withdrawSource = Effect.fn("expenseTax.withdrawSource")(function* (
           transaction,
           command.scope.bookId,
           command.id,
-          "update",
         ))[0];
 
         if (current === undefined) return yield* failure("NotFound");
@@ -494,7 +492,6 @@ export const reviewSource = Effect.fn("expenseTax.reviewSource")(function* (
           transaction,
           command.scope.bookId,
           command.id,
-          "update",
         ))[0];
 
         if (current === undefined) return yield* failure("NotFound");

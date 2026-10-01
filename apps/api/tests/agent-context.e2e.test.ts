@@ -834,7 +834,9 @@ test("expense immutable revision admission serializes revision2/replay/stale/con
       ),
     );
 
-    expect(concurrent.map((row) => row.status).sort()).toEqual([200, 409]);
+    expect(concurrent.map((row) => row.status).sort((left, right) => left - right)).toEqual([
+      200, 409,
+    ]);
     const winner = concurrent.find((row) => row.status === 200);
     const loser = concurrent.find((row) => row.status === 409);
 
