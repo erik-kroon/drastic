@@ -92,7 +92,7 @@ async function setup(amounts = ["-4000"], invoiceMinor = "10000") {
   const reviewer = { ...book, actorId: independent.actorId, token: independent.token };
   const source = await evidence(book);
   const admin = await database();
-  const releaseId = `supplier_settlement_${key()}`;
+  const releaseId = "synthetic_supplier_settlement_accrual_v1";
 
   const release = {
     id: releaseId,
@@ -120,11 +120,19 @@ async function setup(amounts = ["-4000"], invoiceMinor = "10000") {
 
   try {
     await admin.query(
+      "insert into openerp_auth.\"user\"(id,name,email) values($1,'Synthetic reviewer',$2) on conflict(id) do nothing",
+      [reviewer.actorId, `${reviewer.actorId}@e2e.invalid`],
+    );
+    await admin.query(
+      "insert into openerp.identity_admissions(actor_id,provider_id,subject,enabled) values($1,'e2e-supplier',$1,true)",
+      [reviewer.actorId],
+    );
+    await admin.query(
       "insert into openerp.memberships(book_id,actor_id,role) values($1,$2,'operator')",
       [book.bookId, reviewer.actorId],
     );
     await admin.query(
-      "insert into openerp.rule_releases(id,jurisdiction,family,version,checksum,body) values($1,'ZZ','posting_eligibility',1,$2,$3)",
+      "insert into openerp.rule_releases(id,jurisdiction,family,version,checksum,body) values($1,'ZZ','posting_eligibility',1,$2,$3) on conflict(id) do nothing",
       [releaseId, release.checksum, release],
     );
   } finally {
@@ -795,6 +803,17 @@ test("supplier owner rolls back native posting, matching, allocation and cancell
         await remove(table);
       }
     }
+
+    const recovered = await decoded(
+      await request(data.book, `${cancellations}/${corrected.plan.id}/execute`, {
+        method: "POST",
+        body: JSON.stringify(corrected.input),
+      }),
+      Cancelled,
+    );
+
+    expect(recovered.outstandingAfterMinor).toBe("10000");
+    expect(await owned(data.book)).toEqual({ claims: 1, receipts: 1, cancellations: 1 });
   } finally {
     await admin.end();
   }
@@ -843,6 +862,46 @@ test("supplier integrity retains immutable scoped claims and denies runtime hist
   }
 });
 
+test("supplier cancellation refuses invoice changes after settlement without financial effects", async () => {
+  const data = await setup();
+  const plan = await prepared(data);
+  const approval = await approved(data, plan);
+  const receipt = await decoded(await executeSettlement(data.book, plan, approval), Committed);
+
+  const invoice = await decoded(
+    await request(data.book, `/commerce/invoices/${data.input.invoiceId}`),
+    Commerce.Invoice,
+  );
+
+  await post(
+    data.book,
+    `/commerce/invoices/${invoice.id}/revisions`,
+    {
+      expectedRevision: invoice.currentRevision.revision,
+      dueOn: "2026-10-23",
+      description: "Changed after settlement",
+      evidenceId: data.bankEvidence.id,
+      reason: "Independent cancellation boundary probe",
+    },
+    Commerce.Invoice,
+  );
+  const before = await financial(data.book);
+
+  await failure(
+    await request(data.book, cancellations, {
+      method: "POST",
+      body: JSON.stringify({
+        settlementReceiptId: receipt.id,
+        reason: "Cannot cancel changed invoice",
+        evidence: data.input.evidence,
+      }),
+    }),
+    409,
+    "StaleDependency",
+  );
+  expect(await financial(data.book)).toEqual(before);
+});
+
 test("supplier pending owner retains prospective plans and independent approval without financial effects", async () => {
   const data = await setup();
 
@@ -852,7 +911,7 @@ test("supplier pending owner retains prospective plans and independent approval 
     pendingBasisCurrent: Schema.Boolean,
     approvalUsable: Schema.Boolean,
     paymentPosted: Schema.Literal(false),
-    executionAvailable: Schema.Literal(false),
+    executionAvailable: Schema.Boolean,
   });
 
   const before = await financial(data.book);
@@ -926,7 +985,7 @@ test("supplier pending owner retains prospective plans and independent approval 
     ),
   ).toEqual(approval);
   expect(await decoded(await request(data.book, `${plans}/${plan.id}`), PendingView)).toMatchObject(
-    { pendingBasisCurrent: true, approvalUsable: true },
+    { pendingBasisCurrent: true, approvalUsable: true, executionAvailable: true },
   );
 
   const generic = [
@@ -1075,8 +1134,8 @@ test("supplier pending owner retains prospective plans and independent approval 
   const names = catalog.result.tools.map((tool) => tool.name);
   expect(names).toContain("purchases_prepare_supplier_settlement");
   expect(names).toContain("purchases_get_supplier_settlement");
-  expect(names).not.toContain("purchases_execute_supplier_settlement");
-  expect(names).not.toContain("purchases_prepare_supplier_settlement_cancellation");
+  expect(names).toContain("purchases_execute_supplier_settlement");
+  expect(names).toContain("purchases_prepare_supplier_settlement_cancellation");
   expect(
     names.filter((name) => name.startsWith("purchases_") && /approv|revoke/.test(name)),
   ).toEqual([]);

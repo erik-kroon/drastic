@@ -48,6 +48,7 @@ export function addMatch(
   actorId: string,
   target: MatchTarget,
   origin: "imported" | "explicit",
+  ownerId?: string,
 ) {
   return Effect.gen(function* () {
     if (
@@ -89,6 +90,8 @@ export function addMatch(
       return yield* failure("InvalidJournal");
     }
 
+    yield* admitBankMatch(transaction, bookId, target, ownerId);
+
     const retained = (yield* StatementDb.readObservationMatch(
       transaction,
       bookId,
@@ -124,7 +127,6 @@ export function addMatch(
       return yield* failure("InvalidJournal");
     }
 
-    yield* admitBankMatch(transaction, bookId, target);
     yield* StatementDb.insertMatch(transaction, {
       bookId,
       statementId: target.statementId,

@@ -1,3 +1,4 @@
+import * as SupplierSettlementDb from "../db/purchases/supplier-settlements";
 import * as Subledgers from "@open-erp/contracts/subledgers";
 import { equalJson } from "@open-erp/domain/canonicalization";
 import * as Effect from "effect/Effect";
@@ -24,6 +25,7 @@ export type PostingOwner = {
     | "legal_issue"
     | "legal_credit"
     | "supplier_settlement"
+    | "supplier_settlement_cancellation"
     | "supplier_acceptance"
     | "supplier_credit"
     | "supplier_refund"
@@ -81,6 +83,8 @@ export const admitPosting = Effect.fn("posting.admitOwnedSources")(function* (
 
   if (action.postingPurpose === "result_transfer_v1" && owner?.kind !== "financial_close")
     return yield* failure("UnsupportedProfile");
+
+  yield* admitSupplierSettlement(tx, scope, changeId, eventId, action, owner);
 
   yield* admitVatAssessment(tx, scope, eventId, action, owner);
 
@@ -404,12 +408,33 @@ const admitCorrectionsAndSchedules = Effect.fn("posting.admitCorrectionsAndSched
   action: JsonObject,
   owner?: PostingOwner,
 ) {
+  const cancellationRows =
+    owner?.kind === "supplier_settlement_cancellation"
+      ? yield* SupplierSettlementDb.readCancellationPlan(tx, scope.bookId, owner.id)
+      : [];
+
+  const cancellation = cancellationRows[0]?.body;
+
+  const exactCancellation =
+    cancellation !== undefined &&
+    textField(objectField(cancellation, "paymentPlan"), "id") === changeId &&
+    textField(objectField(objectField(cancellation, "original"), "postingReceipt"), "voucherId") ===
+      textField(action, "correctsVoucherId");
+
   const original = textField(action, "correctsVoucherId");
 
   if (original) {
     const protectedRows = yield* Db.readProtectedCorrections(tx, scope.bookId, original);
 
-    if (protectedRows.some((r) => !(owner?.kind === "commerce_fx" && r.kind === "fx_settlement")))
+    if (
+      protectedRows.some(
+        (r) =>
+          !(
+            (owner?.kind === "commerce_fx" && r.kind === "fx_settlement") ||
+            (exactCancellation && r.kind === "supplier_settlement")
+          ),
+      )
+    )
       return yield* failure("UnsupportedProfile");
 
     const impacts = yield* Impact.readImpactResources(tx, scope.bookId, original, date);
@@ -419,7 +444,23 @@ const admitCorrectionsAndSchedules = Effect.fn("posting.admitCorrectionsAndSched
       impacts.some(
         ({ resource }) =>
           resource.blocks &&
-          !(owner?.kind === "invoice_cancellation" && resource.kind === "invoice"),
+          !(owner?.kind === "invoice_cancellation" && resource.kind === "invoice") &&
+          !(
+            exactCancellation &&
+            cancellation !== undefined &&
+            ((resource.kind === "bank_match" &&
+              resource.id ===
+                textField(
+                  objectField(objectField(cancellation, "original"), "match"),
+                  "statementId",
+                )) ||
+              (resource.kind === "payment_allocation" &&
+                resource.id ===
+                  textField(
+                    objectField(objectField(cancellation, "original"), "allocationReceipt"),
+                    "id",
+                  )))
+          ),
       )
     )
       return yield* failure("UnsupportedProfile");
@@ -449,5 +490,36 @@ const admitCorrectionsAndSchedules = Effect.fn("posting.admitCorrectionsAndSched
         return yield* failure("StaleDependency");
     } else if ((yield* Db.readLinkedScheduleEvents(tx, scope.bookId, changeId, eventId)).length)
       return yield* failure("StaleDependency");
+  }
+});
+
+const admitSupplierSettlement = Effect.fn("posting.admitSupplierSettlement")(function* (
+  tx: Transaction,
+  scope: Scope,
+  changeId: string,
+  eventId: string,
+  action: JsonObject,
+  owner?: PostingOwner,
+) {
+  const settlementSources = yield* SupplierSettlementDb.readPlansByEvent(tx, scope.bookId, eventId);
+
+  if (settlementSources.length > 0) {
+    const child =
+      owner?.kind === "supplier_settlement"
+        ? settlementSources.find((row) => row.id === owner.id)
+        : undefined;
+
+    const inverse =
+      owner?.kind === "supplier_settlement_cancellation"
+        ? (yield* SupplierSettlementDb.readCancellationPlan(tx, scope.bookId, owner.id))[0]
+        : undefined;
+
+    const retained = child?.body ?? inverse?.body;
+
+    if (!retained || textField(objectField(retained, "paymentPlan"), "id") !== changeId)
+      return yield* failure("ApprovalRequired");
+    const plan = yield* decode(Accounting.ChangeSet, objectField(retained, "paymentPlan"));
+
+    if (!equalJson(plan.groups[0]?.actions[0], action)) return yield* failure("StaleDependency");
   }
 });

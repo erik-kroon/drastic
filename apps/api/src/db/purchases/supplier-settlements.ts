@@ -1,3 +1,10 @@
+import {
+  supplierSettlementReceipts,
+  supplierSettlementSourceClaims,
+  supplierSettlementCancellationPlans,
+  supplierSettlementCancellationApprovals,
+  supplierSettlementCancellationReceipts,
+} from "../schema";
 import { and, eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import type * as Schema from "effect/Schema";
@@ -152,6 +159,11 @@ export function readSourceState(
 export function readApprovalActors(tx: Transaction, bookId: string, planId: string) {
   return tx.execute<{ actorId: string }>(
     sql`select distinct actor_id as "actorId" from (
+ select a.actor_id from openerp.supplier_settlement_cancellation_approvals a where a.book_id=${bookId} and a.plan_id=${planId}
+ union all select a.actor_id from openerp.supplier_settlement_cancellation_plans p join openerp.approvals a on(a.book_id,a.change_set_id)=(p.book_id,p.payment_change_set_id) where p.book_id=${bookId} and p.id=${planId}
+ union all select a.actor_id from openerp.supplier_settlement_cancellation_plans p join openerp.commerce_allocation_reversal_approvals a on(a.book_id,a.plan_id)=(p.book_id,p.allocation_reversal_id) where p.book_id=${bookId} and p.id=${planId}
+ union all select a.actor_id from openerp.supplier_settlement_cancellation_plans p join openerp.bank_match_reversal_approvals a on(a.book_id,a.plan_id)=(p.book_id,p.match_reversal_id) where p.book_id=${bookId} and p.id=${planId}
+ union all
     select a.actor_id from openerp.supplier_settlement_approvals a where a.book_id=${bookId} and a.plan_id=${planId}
     union select p.actor_id from openerp.approvals p join openerp.supplier_settlement_approvals a
       on a.book_id=p.book_id and a.payment_approval_id=p.id where a.book_id=${bookId} and a.plan_id=${planId}
@@ -163,3 +175,246 @@ export function readApprovalActors(tx: Transaction, bookId: string, planId: stri
 }
 
 export type JsonObject = Schema.JsonObject;
+
+export function readReceipt(tx: Transaction, bookId: string, id: string) {
+  return tx
+    .select()
+    .from(supplierSettlementReceipts)
+    .where(
+      and(eq(supplierSettlementReceipts.bookId, bookId), eq(supplierSettlementReceipts.id, id)),
+    );
+}
+
+export function readReceiptByPlan(tx: Transaction, bookId: string, id: string) {
+  return tx
+    .select()
+    .from(supplierSettlementReceipts)
+    .where(
+      and(eq(supplierSettlementReceipts.bookId, bookId), eq(supplierSettlementReceipts.planId, id)),
+    );
+}
+
+export function readReceiptByAllocation(tx: Transaction, bookId: string, id: string) {
+  return tx
+    .select()
+    .from(supplierSettlementReceipts)
+    .where(
+      and(
+        eq(supplierSettlementReceipts.bookId, bookId),
+        eq(supplierSettlementReceipts.allocationReceiptId, id),
+      ),
+    );
+}
+
+export function readReceiptByVoucher(tx: Transaction, bookId: string, id: string) {
+  return tx
+    .select()
+    .from(supplierSettlementReceipts)
+    .where(
+      and(
+        eq(supplierSettlementReceipts.bookId, bookId),
+        eq(supplierSettlementReceipts.voucherId, id),
+      ),
+    );
+}
+
+export function readReceiptBySource(
+  tx: Transaction,
+  bookId: string,
+  statement: string,
+  ordinal: number,
+) {
+  return tx
+    .select()
+    .from(supplierSettlementReceipts)
+    .where(
+      and(
+        eq(supplierSettlementReceipts.bookId, bookId),
+        eq(supplierSettlementReceipts.statementId, statement),
+        eq(supplierSettlementReceipts.rowOrdinal, ordinal),
+      ),
+    );
+}
+
+export function readClaim(tx: Transaction, bookId: string, statement: string, ordinal: number) {
+  return tx
+    .select()
+    .from(supplierSettlementSourceClaims)
+    .where(
+      and(
+        eq(supplierSettlementSourceClaims.bookId, bookId),
+        eq(supplierSettlementSourceClaims.statementId, statement),
+        eq(supplierSettlementSourceClaims.rowOrdinal, ordinal),
+      ),
+    );
+}
+
+export function insertClaim(
+  tx: Transaction,
+  bookId: string,
+  plan: typeof Settlement.SupplierSettlementPlan.Type,
+  receiptId: string,
+) {
+  return tx.insert(supplierSettlementSourceClaims).values({
+    bookId,
+    statementId: plan.input.statementId,
+    rowOrdinal: plan.input.rowOrdinal,
+    planId: plan.id,
+    receiptId,
+  });
+}
+
+export function insertReceipt(
+  tx: Transaction,
+  plan: typeof Settlement.SupplierSettlementPlan.Type,
+  body: typeof Settlement.SupplierSettlementReceipt.Type,
+) {
+  return tx.insert(supplierSettlementReceipts).values({
+    bookId: plan.scope.bookId,
+    id: body.id,
+    planId: plan.id,
+    approvalId: body.approvalId,
+    statementId: plan.input.statementId,
+    rowOrdinal: plan.input.rowOrdinal,
+    invoiceId: plan.input.invoiceId,
+    voucherId: body.postingReceipt.voucherId,
+    allocationReceiptId: body.allocationReceipt.id,
+    body,
+  });
+}
+
+export function insertCancellationPlan(
+  tx: Transaction,
+  body: typeof Settlement.SupplierSettlementCancellationPlan.Type,
+) {
+  return tx.insert(supplierSettlementCancellationPlans).values({
+    bookId: body.scope.bookId,
+    id: body.id,
+    settlementReceiptId: body.original.id,
+    paymentChangeSetId: body.paymentPlan.id,
+    allocationReversalId: body.allocationReversal.id,
+    matchReversalId: body.matchReversal.id,
+    body,
+  });
+}
+
+export function readCancellationPlan(tx: Transaction, bookId: string, id: string) {
+  return tx
+    .select()
+    .from(supplierSettlementCancellationPlans)
+    .where(
+      and(
+        eq(supplierSettlementCancellationPlans.bookId, bookId),
+        eq(supplierSettlementCancellationPlans.id, id),
+      ),
+    );
+}
+
+export function readCancellationPostingChild(tx: Transaction, bookId: string, id: string) {
+  return tx
+    .select()
+    .from(supplierSettlementCancellationPlans)
+    .where(
+      and(
+        eq(supplierSettlementCancellationPlans.bookId, bookId),
+        eq(supplierSettlementCancellationPlans.paymentChangeSetId, id),
+      ),
+    );
+}
+
+export function readCancellationByAllocationReversal(tx: Transaction, bookId: string, id: string) {
+  return tx
+    .select()
+    .from(supplierSettlementCancellationPlans)
+    .where(
+      and(
+        eq(supplierSettlementCancellationPlans.bookId, bookId),
+        eq(supplierSettlementCancellationPlans.allocationReversalId, id),
+      ),
+    );
+}
+
+export function readCancellationByMatchReversal(tx: Transaction, bookId: string, id: string) {
+  return tx
+    .select()
+    .from(supplierSettlementCancellationPlans)
+    .where(
+      and(
+        eq(supplierSettlementCancellationPlans.bookId, bookId),
+        eq(supplierSettlementCancellationPlans.matchReversalId, id),
+      ),
+    );
+}
+
+export function insertCancellationApproval(
+  tx: Transaction,
+  body: typeof Settlement.SupplierSettlementCancellationApproval.Type,
+) {
+  return tx.insert(supplierSettlementCancellationApprovals).values({
+    bookId: body.scope.bookId,
+    id: body.id,
+    planId: body.planId,
+    actorId: body.actorId,
+    paymentApprovalId: body.paymentApprovalId,
+    allocationApprovalId: body.allocationApprovalId,
+    matchApprovalId: body.matchApprovalId,
+    body,
+  });
+}
+
+export function readCancellationApproval(tx: Transaction, bookId: string, id: string) {
+  return tx
+    .select()
+    .from(supplierSettlementCancellationApprovals)
+    .where(
+      and(
+        eq(supplierSettlementCancellationApprovals.bookId, bookId),
+        eq(supplierSettlementCancellationApprovals.id, id),
+      ),
+    );
+}
+
+export function readCancellationReceipt(tx: Transaction, bookId: string, receiptId: string) {
+  return tx
+    .select()
+    .from(supplierSettlementCancellationReceipts)
+    .where(
+      and(
+        eq(supplierSettlementCancellationReceipts.bookId, bookId),
+        eq(supplierSettlementCancellationReceipts.settlementReceiptId, receiptId),
+      ),
+    );
+}
+
+export function insertCancellationReceipt(
+  tx: Transaction,
+  body: typeof Settlement.SupplierSettlementCancellationReceipt.Type,
+) {
+  return tx.insert(supplierSettlementCancellationReceipts).values({
+    bookId: body.scope.bookId,
+    id: body.id,
+    planId: body.planId,
+    approvalId: body.approvalId,
+    settlementReceiptId: body.settlementReceiptId,
+    body,
+  });
+}
+
+export function readLaterSettlement(tx: Transaction, bookId: string, receiptId: string) {
+  return tx.execute<{ present: boolean }>(
+    sql`select exists(select from openerp.supplier_settlement_receipts r join openerp.vouchers v on(v.book_id,v.id)=(r.book_id,r.voucher_id) join openerp.supplier_settlement_receipts o on o.book_id=r.book_id and o.id=${receiptId} join openerp.vouchers ov on(ov.book_id,ov.id)=(o.book_id,o.voucher_id) where r.book_id=${bookId} and r.invoice_id=o.invoice_id and v.sequence>ov.sequence and not exists(select from openerp.supplier_settlement_cancellation_receipts c where(c.book_id,c.settlement_receipt_id)=(r.book_id,r.id))) as present`,
+    "objects",
+  );
+}
+
+export function readPlansByEvent(tx: Transaction, bookId: string, eventId: string) {
+  return tx
+    .select()
+    .from(supplierSettlementPlans)
+    .where(
+      and(
+        eq(supplierSettlementPlans.bookId, bookId),
+        sql`${supplierSettlementPlans.body}->'paymentPlan'->'groups'->0->'actions'->0->>'eventId'=${eventId}`,
+      ),
+    );
+}

@@ -1,3 +1,4 @@
+import * as SettlementDb from "../db/purchases/supplier-settlements";
 import * as Effect from "effect/Effect";
 import * as Db from "../db/posting-admission";
 import type { Transaction } from "../db/transaction";
@@ -37,7 +38,21 @@ export const admitBankMatch = Effect.fn("resources.admitBankMatch")(function* (
     readonly voucherId: string;
     readonly lineId: string;
   },
+  ownerId?: string,
 ) {
+  const claim = (yield* SettlementDb.readClaim(tx, book, leg.statementId, leg.rowOrdinal))[0];
+
+  if (claim) {
+    const plan = (yield* SettlementDb.readPlan(tx, book, claim.planId))[0];
+
+    if (
+      claim.planId !== ownerId ||
+      plan?.reservedVoucherId !== leg.voucherId ||
+      plan.bankLineId !== leg.lineId
+    )
+      return yield* failure("ApprovalRequired");
+  }
+
   const dates = (yield* Db.readBankPostingDates(
     tx,
     book,

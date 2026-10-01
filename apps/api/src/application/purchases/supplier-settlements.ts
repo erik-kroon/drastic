@@ -1,3 +1,20 @@
+import { addMatch } from "../banking/matches";
+import {
+  prepareBankMatchReversalInTransaction,
+  approveBankMatchReversalInTransaction,
+  executeBankMatchReversalInTransaction,
+} from "../banking/match-reversals";
+import {
+  applyAllocationInTransaction,
+  prepareAllocationReversalInTransaction,
+  approveAllocationReversalInTransaction,
+  executeAllocationReversalInTransaction,
+} from "../commerce/allocation-reversals";
+import {
+  executeChangeInTransaction,
+  prepareCorrectionInTransaction,
+  validatePlan,
+} from "../posting";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Bank from "@open-erp/contracts/reconciliation";
@@ -160,6 +177,8 @@ const captureBasis = Effect.fn("purchases.supplierSettlement.captureBasis")(func
   scope: Scope,
   input: typeof Settlement.PrepareSupplierSettlement.Type,
 ) {
+  yield* requireUnclaimedSource(tx, scope, input);
+
   const book = yield* readBook(tx, scope);
 
   if (
@@ -649,8 +668,9 @@ export const getSupplierSettlement = Effect.fn("purchases.supplierSettlement.get
         approval,
         pendingBasisCurrent: current,
         approvalUsable: current && approval !== null && (yield* approvalUsable(tx, plan, approval)),
-        paymentPosted: false as const,
-        executionAvailable: false as const,
+        paymentPosted: (yield* Db.readReceiptByPlan(tx, input.scope.bookId, plan.id)).length > 0,
+        executionAvailable:
+          current && approval !== null && (yield* approvalUsable(tx, plan, approval)),
       };
     }),
   );
@@ -715,5 +735,659 @@ export const revokeSupplierSettlementApproval = Effect.fn("purchases.supplierSet
         return result;
       }),
     );
+  },
+);
+
+const readSettlementReceipt = Effect.fn("purchases.supplierSettlement.readReceipt")(function* (
+  tx: Transaction,
+  scope: Scope,
+  id: string,
+) {
+  const row = (yield* Db.readReceipt(tx, scope.bookId, id))[0];
+
+  if (!row) return yield* failure("NotFound");
+  const receipt = yield* decode(Settlement.SupplierSettlementReceipt, row.body);
+
+  if (receipt.scope.entityId !== scope.entityId) return yield* failure("NotFound");
+
+  return receipt;
+});
+
+export const executeSupplierSettlement = Effect.fn("purchases.supplierSettlement.execute")(
+  function* (
+    token: string,
+    command: {
+      scope: Scope;
+      planId: string;
+      idempotencyKey: string;
+      input: typeof Settlement.ExecuteSupplierSettlement.Type;
+    },
+  ) {
+    return yield* owned(token, command.scope, false, command.planId, (tx, actor) =>
+      Effect.gen(function* () {
+        const operation = "execute_supplier_settlement";
+
+        const request = yield* replay(
+          tx,
+          command.scope,
+          command.idempotencyKey,
+          operation,
+          actor.actorId,
+          { id: command.planId, input: command.input },
+          Settlement.SupplierSettlementReceipt,
+        );
+
+        if (request.previous) return request.previous;
+        const plan = yield* readPlan(tx, command.scope, command.planId);
+
+        if ((yield* Db.readReceiptByPlan(tx, command.scope.bookId, plan.id)).length > 0)
+          return yield* failure("AlreadyPosted");
+
+        if (command.input.digest !== plan.digest || !(yield* basisCurrent(tx, plan)))
+          return yield* failure("StaleDependency");
+        const row = (yield* Db.readApproval(tx, command.scope.bookId, command.input.approvalId))[0];
+
+        if (!row || row.planId !== plan.id) return yield* failure("ApprovalRequired");
+        const approval = yield* decode(Settlement.SupplierSettlementApproval, row.body);
+
+        if (!(yield* approvalUsable(tx, plan, approval))) return yield* failure("ApprovalRequired");
+        const id = newId("supplier_receipt");
+        yield* Db.insertClaim(tx, command.scope.bookId, plan, id);
+
+        const postingReceipt = yield* executeChangeInTransaction(tx, actor, {
+          scope: command.scope,
+          changeSetId: plan.paymentPlan.id,
+          idempotencyKey: `${id}_posting`,
+          input: {
+            version: 1,
+            planDigest: plan.paymentPlan.planDigest,
+            approvalId: approval.paymentApprovalId,
+          },
+          owner: { kind: "supplier_settlement", id: plan.id },
+        });
+
+        if (postingReceipt.voucherId !== plan.reservedVoucherId)
+          return yield* failure("InternalError");
+
+        const match = yield* decode(
+          Bank.BankMatch,
+          yield* addMatch(
+            tx,
+            command.scope.bookId,
+            actor.actorId,
+            {
+              statementId: plan.input.statementId,
+              rowOrdinal: plan.input.rowOrdinal,
+              voucherId: postingReceipt.voucherId,
+              lineId: plan.bankLineId,
+            },
+            "explicit",
+            plan.id,
+          ),
+        );
+
+        const allocationReceipt = yield* applyAllocationInTransaction(
+          tx,
+          actor,
+          {
+            scope: command.scope,
+            id: plan.pendingAllocation.id,
+            idempotencyKey: `${id}_allocation`,
+            input: {
+              version: 1,
+              planDigest: plan.pendingAllocation.digest,
+              approvalId: approval.allocationApprovalId,
+            },
+          },
+          plan.id,
+        );
+
+        const live = (yield* InvoiceDb.readLiveInvoice(
+          tx,
+          command.scope.bookId,
+          plan.input.invoiceId,
+        ))[0];
+
+        if (
+          !live ||
+          live.outstandingMinor !== plan.pendingAllocation.legs[0]?.outstandingAfterMinor
+        )
+          return yield* failure("InternalError");
+
+        const body = yield* toJsonObject({
+          id,
+          scope: command.scope,
+          planId: plan.id,
+          approvalId: approval.id,
+          amountMinor: plan.amountMinor,
+          outstandingAfterMinor: live.outstandingMinor,
+          postingReceipt,
+          allocationReceipt,
+          match,
+          committedAt: yield* isoNow(tx),
+          receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
+        });
+
+        const receipt = yield* decode(Settlement.SupplierSettlementReceipt, {
+          ...body,
+          digest: yield* digest(body),
+        });
+
+        yield* Db.insertReceipt(tx, plan, receipt);
+        yield* saveCommand(
+          tx,
+          command.scope,
+          command.idempotencyKey,
+          request.expected,
+          operation,
+          actor.actorId,
+          yield* toJsonObject(receipt),
+        );
+
+        return receipt;
+      }),
+    );
+  },
+);
+
+export const getSupplierSettlementReceipt = Effect.fn("purchases.supplierSettlement.receipt")(
+  function* (token: string, input: { scope: Scope; receiptId: string }) {
+    return yield* owned(token, input.scope, false, null, (tx) =>
+      Effect.gen(function* () {
+        const receipt = yield* readSettlementReceipt(tx, input.scope, input.receiptId);
+        const inverse = (yield* Db.readCancellationReceipt(tx, input.scope.bookId, receipt.id))[0];
+
+        return {
+          receipt,
+          state: inverse
+            ? ("cancelled_unresolved_original_movement" as const)
+            : ("settled" as const),
+          sourceReusable: false as const,
+          cancellation: inverse
+            ? yield* decode(Settlement.SupplierSettlementCancellationReceipt, inverse.body)
+            : null,
+        };
+      }),
+    );
+  },
+);
+
+type CancellationPlan = typeof Settlement.SupplierSettlementCancellationPlan.Type;
+
+const cancellationBasis = Effect.fn("purchases.supplierSettlement.cancellationBasis")(function* (
+  tx: Transaction,
+  scope: Scope,
+  receipt: typeof Settlement.SupplierSettlementReceipt.Type,
+  originalPlan: Plan,
+) {
+  if (
+    (yield* Db.readCancellationReceipt(tx, scope.bookId, receipt.id)).length > 0 ||
+    (yield* Db.readLaterSettlement(tx, scope.bookId, receipt.id))[0]?.present
+  )
+    return yield* failure("StaleDependency");
+
+  const claim = (yield* Db.readClaim(
+    tx,
+    scope.bookId,
+    originalPlan.input.statementId,
+    originalPlan.input.rowOrdinal,
+  ))[0];
+
+  if (claim?.receiptId !== receipt.id || claim.planId !== originalPlan.id)
+    return yield* failure("StaleDependency");
+  const period = yield* readPeriod(tx, scope, originalPlan.basis.periodId);
+
+  if (period.locked) return yield* failure("PeriodLocked");
+
+  const live = (yield* InvoiceDb.readLiveInvoice(
+    tx,
+    scope.bookId,
+    originalPlan.input.invoiceId,
+  ))[0];
+
+  if (!live) return yield* failure("NotFound");
+  const invoice = yield* decode(Commerce.Invoice, live.body);
+
+  if (
+    invoice.cashMethod !== undefined ||
+    invoice.recognition === null ||
+    invoice.status === "blocked" ||
+    invoice.controlAccountId !== originalPlan.basis.invoice.controlAccountId ||
+    invoice.outstandingMinor === null
+  )
+    return yield* failure("UnsupportedProfile");
+
+  const settledInvoice = {
+    ...originalPlan.basis.invoice,
+    allocationVersion: (BigInt(originalPlan.basis.invoice.allocationVersion) + 1n).toString(),
+    recordedAllocatedMinor: (
+      BigInt(originalPlan.basis.invoice.recordedAllocatedMinor) + BigInt(receipt.amountMinor)
+    ).toString(),
+    outstandingMinor: receipt.outstandingAfterMinor,
+    status: invoice.status,
+  };
+
+  if ((yield* canonicalText(invoice)) !== (yield* canonicalText(settledInvoice)))
+    return yield* failure("StaleDependency");
+
+  const profileWitness = yield* qualifiedProfile(
+    tx,
+    scope,
+    originalPlan.basis.observation.date,
+    originalPlan.basis.source.accountId,
+    invoice.controlAccountId,
+  );
+
+  return { invoice, profileWitness };
+});
+
+const readCancellationPlan = Effect.fn("purchases.supplierSettlement.readCancellationPlan")(
+  function* (tx: Transaction, scope: Scope, id: string) {
+    const row = (yield* Db.readCancellationPlan(tx, scope.bookId, id))[0];
+
+    if (!row) return yield* failure("NotFound");
+    const plan = yield* decode(Settlement.SupplierSettlementCancellationPlan, row.body);
+
+    if (plan.scope.entityId !== scope.entityId) return yield* failure("NotFound");
+    const body = Object.fromEntries(Object.entries(plan).filter(([name]) => name !== "digest"));
+
+    if ((yield* digest(yield* toJsonObject(body))) !== plan.digest)
+      return yield* failure("StaleDependency");
+
+    return plan;
+  },
+);
+
+const currentCancellation = Effect.fn("purchases.supplierSettlement.currentCancellation")(
+  function* (tx: Transaction, plan: CancellationPlan) {
+    const current = yield* cancellationBasis(tx, plan.scope, plan.original, plan.originalPlan);
+
+    if (
+      (yield* canonicalText(current)) !==
+      (yield* canonicalText({ invoice: plan.invoice, profileWitness: plan.profileWitness }))
+    )
+      return yield* failure("StaleDependency");
+    yield* validatePlan(tx, plan.scope, plan.paymentPlan);
+  },
+);
+
+export const prepareSupplierSettlementCancellation = Effect.fn(
+  "purchases.supplierSettlement.prepareCancellation",
+)(function* (
+  token: string,
+  command: {
+    scope: Scope;
+    idempotencyKey: string;
+    input: typeof Settlement.PrepareSupplierSettlementCancellation.Type;
+  },
+) {
+  return yield* owned(token, command.scope, false, null, (tx, actor) =>
+    Effect.gen(function* () {
+      const operation = "prepare_supplier_settlement_cancellation";
+
+      const request = yield* replay(
+        tx,
+        command.scope,
+        command.idempotencyKey,
+        operation,
+        actor.actorId,
+        command.input,
+        Settlement.SupplierSettlementCancellationPlan,
+      );
+
+      if (request.previous) return request.previous;
+
+      const original = yield* readSettlementReceipt(
+        tx,
+        command.scope,
+        command.input.settlementReceiptId,
+      );
+
+      const originalPlan = yield* readPlan(tx, command.scope, original.planId);
+
+      if (
+        (yield* canonicalText(command.input.evidence)) !==
+        (yield* canonicalText(originalPlan.basis.sourceEvidence))
+      )
+        return yield* failure("StaleDependency");
+      const basis = yield* cancellationBasis(tx, command.scope, original, originalPlan);
+      const id = newId("supplier_cancellation");
+
+      const paymentPlan = yield* prepareCorrectionInTransaction(tx, actor, {
+        scope: command.scope,
+        voucherId: original.postingReceipt.voucherId,
+        idempotencyKey: `${id}_posting`,
+        input: {
+          accountingPeriodId: originalPlan.basis.periodId,
+          postingDate: originalPlan.basis.observation.date,
+          rationale: command.input.reason,
+        },
+        owner: { kind: "supplier_settlement_cancellation", id: original.id },
+      });
+
+      const allocationReversal = yield* prepareAllocationReversalInTransaction(
+        tx,
+        actor,
+        {
+          scope: command.scope,
+          idempotencyKey: `${id}_allocation`,
+          input: { receiptId: original.allocationReceipt.id, reason: command.input.reason },
+        },
+        original.id,
+      );
+
+      const matchReversal = yield* prepareBankMatchReversalInTransaction(
+        tx,
+        actor,
+        {
+          scope: command.scope,
+          idempotencyKey: `${id}_match`,
+          input: {
+            target: {
+              kind: "exact_match",
+              statementId: originalPlan.input.statementId,
+              rowOrdinal: originalPlan.input.rowOrdinal,
+            },
+            reason: command.input.reason,
+          },
+        },
+        original.id,
+      );
+
+      const body = yield* toJsonObject({
+        id,
+        scope: command.scope,
+        version: 1,
+        input: command.input,
+        original,
+        originalPlan,
+        ...basis,
+        paymentPlan,
+        allocationReversal,
+        matchReversal,
+        createdBy: actor.actorId,
+        createdAt: yield* isoNow(tx),
+        receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
+      });
+
+      const plan = yield* decode(Settlement.SupplierSettlementCancellationPlan, {
+        ...body,
+        digest: yield* digest(body),
+      });
+
+      yield* Db.insertCancellationPlan(tx, plan);
+      yield* saveCommand(
+        tx,
+        command.scope,
+        command.idempotencyKey,
+        request.expected,
+        operation,
+        actor.actorId,
+        yield* toJsonObject(plan),
+      );
+
+      return plan;
+    }),
+  );
+});
+
+export const approveSupplierSettlementCancellation = Effect.fn(
+  "purchases.supplierSettlement.approveCancellation",
+)(function* (
+  token: string,
+  command: {
+    scope: Scope;
+    planId: string;
+    idempotencyKey: string;
+    input: typeof Settlement.ApproveSupplierSettlement.Type;
+  },
+) {
+  return yield* owned(token, command.scope, true, command.planId, (tx, actor) =>
+    Effect.gen(function* () {
+      const operation = "approve_supplier_settlement_cancellation";
+
+      const request = yield* replay(
+        tx,
+        command.scope,
+        command.idempotencyKey,
+        operation,
+        actor.actorId,
+        { id: command.planId, input: command.input },
+        Settlement.SupplierSettlementCancellationApproval,
+      );
+
+      if (request.previous) return request.previous;
+      const plan = yield* readCancellationPlan(tx, command.scope, command.planId);
+
+      if (plan.createdBy === actor.actorId) return yield* failure("Forbidden");
+
+      if (plan.digest !== command.input.digest) return yield* failure("StaleDependency");
+      yield* currentCancellation(tx, plan);
+      const id = newId("supplier_cancel_approval");
+
+      const payment = yield* approveChangeInTransaction(tx, actor, {
+        scope: command.scope,
+        changeSetId: plan.paymentPlan.id,
+        idempotencyKey: `${id}_posting`,
+        input: { version: 1, planDigest: plan.paymentPlan.planDigest },
+        owner: { kind: "supplier_settlement_cancellation", id: plan.id },
+      });
+
+      const allocation = yield* approveAllocationReversalInTransaction(
+        tx,
+        actor,
+        {
+          scope: command.scope,
+          id: plan.allocationReversal.id,
+          idempotencyKey: `${id}_allocation`,
+          input: { version: 1, digest: plan.allocationReversal.digest },
+        },
+        plan.id,
+      );
+
+      const match = yield* approveBankMatchReversalInTransaction(
+        tx,
+        actor,
+        {
+          scope: command.scope,
+          planId: plan.matchReversal.id,
+          idempotencyKey: `${id}_match`,
+          input: { version: 1, digest: plan.matchReversal.digest },
+        },
+        plan.id,
+      );
+
+      const expiresAt = [payment.expiresAt, allocation.expiresAt, match.expiresAt].sort(
+        (a, b) => Date.parse(a) - Date.parse(b),
+      )[0];
+
+      if (!expiresAt) return yield* failure("InternalError");
+
+      const approval = yield* decode(Settlement.SupplierSettlementCancellationApproval, {
+        id,
+        scope: command.scope,
+        planId: plan.id,
+        version: 1,
+        digest: plan.digest,
+        actorId: actor.actorId,
+        expiresAt,
+        paymentApprovalId: payment.id,
+        allocationApprovalId: allocation.id,
+        matchApprovalId: match.id,
+        receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
+      });
+
+      yield* Db.insertCancellationApproval(tx, approval);
+      yield* saveCommand(
+        tx,
+        command.scope,
+        command.idempotencyKey,
+        request.expected,
+        operation,
+        actor.actorId,
+        yield* toJsonObject(approval),
+      );
+
+      return approval;
+    }),
+  );
+});
+
+export const executeSupplierSettlementCancellation = Effect.fn(
+  "purchases.supplierSettlement.executeCancellation",
+)(function* (
+  token: string,
+  command: {
+    scope: Scope;
+    planId: string;
+    idempotencyKey: string;
+    input: typeof Settlement.ExecuteSupplierSettlement.Type;
+  },
+) {
+  return yield* owned(token, command.scope, false, command.planId, (tx, actor) =>
+    Effect.gen(function* () {
+      const operation = "execute_supplier_settlement_cancellation";
+
+      const request = yield* replay(
+        tx,
+        command.scope,
+        command.idempotencyKey,
+        operation,
+        actor.actorId,
+        { id: command.planId, input: command.input },
+        Settlement.SupplierSettlementCancellationReceipt,
+      );
+
+      if (request.previous) return request.previous;
+      const plan = yield* readCancellationPlan(tx, command.scope, command.planId);
+
+      if (plan.digest !== command.input.digest) return yield* failure("StaleDependency");
+      yield* currentCancellation(tx, plan);
+
+      const row = (yield* Db.readCancellationApproval(
+        tx,
+        command.scope.bookId,
+        command.input.approvalId,
+      ))[0];
+
+      if (!row || row.planId !== plan.id) return yield* failure("ApprovalRequired");
+      const approval = yield* decode(Settlement.SupplierSettlementCancellationApproval, row.body);
+
+      const membership = yield* LedgerDb.readOperatorMembership(
+        tx,
+        command.scope.bookId,
+        approval.actorId,
+      );
+
+      const admission = (yield* LedgerDb.readActorAdmission(tx, approval.actorId))[0];
+
+      if (
+        approval.digest !== plan.digest ||
+        Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(tx)) ||
+        membership.length !== 1 ||
+        admission?.enabled === false
+      )
+        return yield* failure("ApprovalRequired");
+      const id = newId("supplier_cancel_receipt");
+
+      const allocationReversal = yield* executeAllocationReversalInTransaction(
+        tx,
+        actor,
+        {
+          scope: command.scope,
+          id: plan.allocationReversal.id,
+          idempotencyKey: `${id}_allocation`,
+          input: {
+            version: 1,
+            digest: plan.allocationReversal.digest,
+            approvalId: approval.allocationApprovalId,
+          },
+        },
+        plan.id,
+      );
+
+      const matchReversal = yield* executeBankMatchReversalInTransaction(
+        tx,
+        actor,
+        {
+          scope: command.scope,
+          planId: plan.matchReversal.id,
+          idempotencyKey: `${id}_match`,
+          input: {
+            version: 1,
+            digest: plan.matchReversal.digest,
+            approvalId: approval.matchApprovalId,
+          },
+        },
+        plan.id,
+      );
+
+      const postingReceipt = yield* executeChangeInTransaction(tx, actor, {
+        scope: command.scope,
+        changeSetId: plan.paymentPlan.id,
+        idempotencyKey: `${id}_posting`,
+        input: {
+          version: 1,
+          planDigest: plan.paymentPlan.planDigest,
+          approvalId: approval.paymentApprovalId,
+        },
+        owner: { kind: "supplier_settlement_cancellation", id: plan.id },
+      });
+
+      const live = (yield* InvoiceDb.readLiveInvoice(
+        tx,
+        command.scope.bookId,
+        plan.originalPlan.input.invoiceId,
+      ))[0];
+
+      const expected = (
+        BigInt(plan.invoice.outstandingMinor ?? "0") + BigInt(plan.original.amountMinor)
+      ).toString();
+
+      if (!live || live.outstandingMinor !== expected) return yield* failure("InternalError");
+
+      const body = yield* toJsonObject({
+        id,
+        scope: command.scope,
+        planId: plan.id,
+        approvalId: approval.id,
+        settlementReceiptId: plan.original.id,
+        postingReceipt,
+        allocationReversal,
+        matchReversal,
+        outstandingAfterMinor: expected,
+        committedAt: yield* isoNow(tx),
+        receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
+      });
+
+      const result = yield* decode(Settlement.SupplierSettlementCancellationReceipt, {
+        ...body,
+        digest: yield* digest(body),
+      });
+
+      yield* Db.insertCancellationReceipt(tx, result);
+      yield* saveCommand(
+        tx,
+        command.scope,
+        command.idempotencyKey,
+        request.expected,
+        operation,
+        actor.actorId,
+        yield* toJsonObject(result),
+      );
+
+      return result;
+    }),
+  );
+});
+
+const requireUnclaimedSource = Effect.fn("purchases.supplierSettlement.requireUnclaimedSource")(
+  function* (
+    tx: Transaction,
+    scope: Scope,
+    input: typeof Settlement.PrepareSupplierSettlement.Type,
+  ) {
+    if ((yield* Db.readClaim(tx, scope.bookId, input.statementId, input.rowOrdinal)).length > 0)
+      return yield* failure("AlreadyPosted");
   },
 );

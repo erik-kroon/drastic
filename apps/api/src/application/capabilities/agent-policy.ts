@@ -15,6 +15,9 @@ type WriteClass =
 // describe transport policy; the operation must still enforce current authority.
 const writeClasses = {
   purchases_prepare_supplier_settlement: "prepare",
+  purchases_execute_supplier_settlement: "execute_approved",
+  purchases_prepare_supplier_settlement_cancellation: "prepare",
+  purchases_execute_supplier_settlement_cancellation: "execute_approved",
   evaluation_capture_contract: "operator_preparation",
   runs_start_background: "prepare",
   workspace_assign_work: "administration",

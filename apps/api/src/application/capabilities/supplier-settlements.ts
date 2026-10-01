@@ -3,6 +3,10 @@ import { effectCapability } from "./shared";
 import {
   prepareSupplierSettlement,
   getSupplierSettlement,
+  executeSupplierSettlement,
+  getSupplierSettlementReceipt,
+  prepareSupplierSettlementCancellation,
+  executeSupplierSettlementCancellation,
 } from "../purchases/supplier-settlements";
 
 export const supplierSettlementCapabilities = {
@@ -13,5 +17,21 @@ export const supplierSettlementCapabilities = {
   purchases_get_supplier_settlement: effectCapability(
     Capabilities.purchases_get_supplier_settlement,
     getSupplierSettlement,
+  ),
+  purchases_execute_supplier_settlement: effectCapability(
+    Capabilities.purchases_execute_supplier_settlement,
+    executeSupplierSettlement,
+  ),
+  purchases_get_supplier_settlement_receipt: effectCapability(
+    Capabilities.purchases_get_supplier_settlement_receipt,
+    getSupplierSettlementReceipt,
+  ),
+  purchases_prepare_supplier_settlement_cancellation: effectCapability(
+    Capabilities.purchases_prepare_supplier_settlement_cancellation,
+    prepareSupplierSettlementCancellation,
+  ),
+  purchases_execute_supplier_settlement_cancellation: effectCapability(
+    Capabilities.purchases_execute_supplier_settlement_cancellation,
+    executeSupplierSettlementCancellation,
   ),
 };

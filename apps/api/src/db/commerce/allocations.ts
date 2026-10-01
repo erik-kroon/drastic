@@ -113,7 +113,6 @@ export type ReversalApprovalRow = {
 };
 
 export type ReversalExecutionRow = {
-  readonly id: string;
   readonly planId: string;
   readonly approvalId: string;
   readonly body: JsonObject;
@@ -413,7 +412,7 @@ export function insertReversalApproval(
 export function readReversalApprovals(transaction: Transaction, bookId: string, planId: string) {
   return transaction.execute<ReversalApprovalRow>(
     sql`
-      select a.id, a.plan_id as "planId", a.actor_id as "actorId", a.digest, a.body,
+      select a.id, a.plan_id as "planId", a.actor_id as "actorId", a.body->>'digest' as digest, a.body,
         to_char(a.expires_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as "expiresAt",
         exists (
           select from openerp.memberships m
@@ -439,7 +438,7 @@ export function readUsableReversalApproval(
 ) {
   return transaction.execute<ReversalApprovalRow>(
     sql`
-      select a.id, a.plan_id as "planId", a.actor_id as "actorId", a.digest, a.body,
+      select a.id, a.plan_id as "planId", a.actor_id as "actorId", a.body->>'digest' as digest, a.body,
         to_char(a.expires_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as "expiresAt",
         exists (
           select from openerp.memberships m
@@ -483,7 +482,7 @@ export function insertRevocation(
 export function readExecutionForPlan(transaction: Transaction, bookId: string, planId: string) {
   return transaction.execute<ReversalExecutionRow>(
     sql`
-      select r.id, r.plan_id as "planId", r.approval_id as "approvalId", r.body
+      select r.plan_id as "planId", r.approval_id as "approvalId", r.body
       from openerp.commerce_allocation_reversals r
       where r.book_id = ${bookId} and r.plan_id = ${planId}
     `,
@@ -498,7 +497,7 @@ export function readExecutionForReceipt(
 ) {
   return transaction.execute<ReversalExecutionRow>(
     sql`
-      select r.id, r.plan_id as "planId", r.approval_id as "approvalId", r.body
+      select r.plan_id as "planId", r.approval_id as "approvalId", r.body
       from openerp.commerce_allocation_reversals r
       where r.book_id = ${bookId} and r.receipt_id = ${receiptId}
     `,
@@ -574,7 +573,7 @@ export function readReversalApprovalById(
 ) {
   return transaction.execute<ReversalApprovalRow>(
     sql`
-      select a.id, a.plan_id as "planId", a.actor_id as "actorId", a.digest, a.body,
+      select a.id, a.plan_id as "planId", a.actor_id as "actorId", a.body->>'digest' as digest, a.body,
         to_char(a.expires_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as "expiresAt",
         exists (
           select from openerp.memberships m
