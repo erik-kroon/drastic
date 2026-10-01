@@ -53,6 +53,7 @@ export function databaseFailure(error: unknown): Accounting.AccountingError {
       ["57014", "57P01", "57P02", "57P03"].includes(cause.code) ||
       [
         "ConnectionError",
+        "AuthenticationError",
         "DeadlockError",
         "SerializationError",
         "LockTimeoutError",

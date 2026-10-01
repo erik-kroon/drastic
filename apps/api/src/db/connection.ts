@@ -27,7 +27,7 @@ export const applicationPostgresTypes: CustomTypesConfig = {
 };
 
 // Raw projections share the same string contract as Drizzle's date/time columns.
-const nativePostgresTypes = PgTypes.makeRegistry();
+export const nativePostgresTypes = PgTypes.makeRegistry();
 
 for (const oid of [PgTypes.OID.timestamp, PgTypes.OID.timestamptz]) {
   nativePostgresTypes.register(oid, {
