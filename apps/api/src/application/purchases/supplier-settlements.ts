@@ -546,7 +546,9 @@ export const approveSupplierSettlement = Effect.fn("purchases.supplierSettlement
           digest: plan.digest,
           actorId: actor.actorId,
           expiresAt:
-            payment.expiresAt < allocation.expiresAt ? payment.expiresAt : allocation.expiresAt,
+            Date.parse(payment.expiresAt) < Date.parse(allocation.expiresAt)
+              ? payment.expiresAt
+              : allocation.expiresAt,
           paymentApprovalId: payment.id,
           allocationApprovalId: allocation.id,
           receipt: commandReceipt(command.idempotencyKey, operation, actor.actorId),
@@ -577,7 +579,7 @@ const approvalUsable = Effect.fn("purchases.supplierSettlement.approvalUsable")(
   if (
     (yield* Db.readRevocation(tx, plan.scope.bookId, approval.id)).length > 0 ||
     approval.digest !== plan.digest ||
-    approval.expiresAt <= (yield* isoNow(tx))
+    Date.parse(approval.expiresAt) <= Date.parse(yield* isoNow(tx))
   )
     return false;
   const actors = yield* LedgerDb.readOperatorMembership(tx, plan.scope.bookId, approval.actorId);
@@ -607,8 +609,8 @@ const approvalUsable = Effect.fn("purchases.supplierSettlement.approvalUsable")(
     allocation.actorId !== approval.actorId ||
     payment.digest !== plan.paymentPlan.planDigest ||
     allocation.digest !== plan.pendingAllocation.digest ||
-    payment.expiresAt <= (yield* isoNow(tx)) ||
-    allocation.expiresAt <= (yield* isoNow(tx)) ||
+    Date.parse(payment.expiresAt) <= Date.parse(yield* isoNow(tx)) ||
+    Date.parse(allocation.expiresAt) <= Date.parse(yield* isoNow(tx)) ||
     (yield* LedgerDb.readApprovalRevocation(tx, plan.scope.bookId, payment.id)).length > 0
   )
     return false;
