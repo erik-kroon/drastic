@@ -5,6 +5,7 @@ import * as Domain from "@open-erp/domain/period-work";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Owners from "@open-erp/contracts/owner-register";
 import * as SupplierDrafts from "@open-erp/contracts/supplier-invoice-drafts";
+import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
 import * as Schema from "effect/Schema";
 import { expect, test } from "vitest";
 import {
@@ -662,6 +663,84 @@ test("bounded execution freezes each chunk result while later independent member
   await writeFile(
     join(environment().artifacts, "period-batch-bounded-chunks.json"),
     JSON.stringify({ batch, first, second, expectedVouchers: 2 }, null, 2),
+  );
+});
+
+test("concurrent exact batch commands converge on retained owner receipts and one result", async () => {
+  const { book, batch, batchPath } = await preparedBatch();
+
+  await post(
+    book,
+    `${batchPath}/approvals`,
+    { expectedDigest: batch.digest, acknowledgeSyntheticOnly: true },
+    PeriodWork.ApprovalBatch,
+  );
+  const commandKey = key();
+
+  const command = {
+    method: "POST",
+    headers: { "idempotency-key": commandKey },
+    body: JSON.stringify({
+      expectedDigest: batch.digest,
+      boundedCount: 2,
+      acknowledgeSyntheticOnly: true,
+    }),
+  };
+
+  const responses = await Promise.all([
+    request(book, `${batchPath}/execute`, command),
+    request(book, `${batchPath}/execute`, command),
+  ]);
+
+  const results = await Promise.all(
+    responses.map((response) => decoded(response, PeriodWork.PeriodWorkExecutionResult)),
+  );
+
+  expect(results[0]).toEqual(results[1]);
+  expect(results[0]?.committed).toHaveLength(2);
+  expect(results[0]?.refused).toEqual([]);
+  const links = [];
+
+  for (const member of batch.members) {
+    const view = await decoded(
+      await request(book, `/commerce/supplier-acceptance-reviews/${member.ownerReviewId}`),
+      Acceptance.SupplierAcceptanceView,
+    );
+
+    expect(view.acceptance?.id).toBe(
+      results[0]?.committed.find((entry) => entry.workIdentity === member.workIdentity)?.receiptId,
+    );
+    expect(view.acceptance?.draftId).toBe(view.plan.draftSnapshot.id);
+    expect(view.acceptance?.draftDigest).toBe(view.plan.draftSnapshot.digest);
+    expect(view.acceptance?.reviewDigest).toBe(view.plan.digest);
+    links.push(view);
+  }
+
+  const admin = await database();
+
+  try {
+    expect(
+      (
+        await admin.query("select count(*)::int as count from openerp.vouchers where book_id=$1", [
+          book.bookId,
+        ])
+      ).rows,
+    ).toEqual([{ count: 2 }]);
+    expect(
+      (
+        await admin.query(
+          "select count(*)::int as count from openerp.period_work_execution_results where book_id=$1 and command_key=$2",
+          [book.bookId, commandKey],
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+  } finally {
+    await admin.end();
+  }
+
+  await writeFile(
+    join(environment().artifacts, "period-batch-concurrent-owner-links.json"),
+    JSON.stringify({ batch, results, links, expectedVouchers: 2, expectedResults: 1 }, null, 2),
   );
 });
 
