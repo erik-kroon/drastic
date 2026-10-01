@@ -109,11 +109,7 @@ function isWholeCalendarMonth(period: { startsOn: string; endsOn: string }) {
   return period.endsOn === last.toISOString().slice(0, 10);
 }
 
-function isCalendarDate(value: string) {
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-}
+const isCalendarDate = Accounting.isCalendarDate;
 
 function evidenceReferences(input: typeof Payroll.PreparePayRun.Type) {
   const employment = input.employment;

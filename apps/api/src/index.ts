@@ -20,8 +20,8 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Redacted from "effect/Redacted";
 import * as References from "effect/References";
-import { HttpRouter, HttpServer } from "effect/unstable/http";
-import { HttpApiBuilder } from "effect/unstable/httpapi";
+import { HttpRouter, HttpServer } from "effect/http";
+import { HttpApiBuilder } from "effect/http-api";
 
 import { AccountingHandlers } from "./transport/http/routes/accounting";
 import { authHandler } from "./adapters/auth/better-auth";

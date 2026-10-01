@@ -9,6 +9,7 @@ import { isoNow, newId, replay, saveCommand } from "../posting";
 import * as Db from "../../db/posting";
 import * as VatDrafts from "../../db/vat-return-drafts";
 import * as RecognitionDb from "../../db/purchases/recognition";
+import * as CashPaymentsDb from "../../db/commerce/cash-payments";
 import * as VatDb from "../../db/vat/returns";
 import { databaseFailure, type Transaction } from "../../db/transaction";
 import { exactKeys, toJsonObject } from "../commerce/support";
@@ -471,6 +472,12 @@ export const withdrawFact = Effect.fn("vat.withdrawFact")(function* (
 
         if (request.previous) return request.previous;
         yield* requireFactAccess(transaction, ["vat_fact_withdrawals", "command_receipts"]);
+
+        if (
+          (yield* CashPaymentsDb.readFactOwner(transaction, command.scope.bookId, command.id))[0]
+            ?.owned
+        )
+          return yield* failure("UnsupportedProfile");
         yield* Db.lockBookForUpdate(transaction, command.scope);
 
         const current = (yield* VatDb.readCurrentFactRevision(
@@ -770,6 +777,19 @@ export const recordFact = Effect.fn("vat.recordFact")(function* (
         );
 
         if (request.previous) return request.previous;
+
+        if (command.input.sourceKey.startsWith("cash_method_"))
+          return yield* failure("UnsupportedProfile");
+
+        if (
+          command.input.voucherId !== null &&
+          (yield* CashPaymentsDb.readOwnedTaxLines(
+            transaction,
+            command.scope.bookId,
+            command.input.voucherId,
+          )).length
+        )
+          return yield* failure("UnsupportedProfile");
         yield* requireFactAccess(transaction, [
           "vat_fact_components",
           "vat_fact_revisions",

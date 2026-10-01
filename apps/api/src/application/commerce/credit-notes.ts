@@ -160,6 +160,8 @@ const readOriginalBasis = Effect.fn("commerce.customerCredit.original")(function
     return yield* failure("StaleDependency");
 
   const invoice = yield* liveInvoice(tx, scope.bookId, original.registerInvoiceId);
+
+  if (invoice.recognition === null) return yield* failure("UnsupportedProfile");
   const outstandingMinor = invoice.outstandingMinor;
 
   if (invoice.direction !== "customer") return yield* failure("UnsupportedProfile");
@@ -174,7 +176,13 @@ const readOriginalBasis = Effect.fn("commerce.customerCredit.original")(function
   if (invoice.recognition.voucherId !== original.postingReceipt.voucherId)
     return yield* failure("StaleDependency");
 
-  return { original, policy, profile, invoice, outstandingMinor };
+  return {
+    original,
+    policy,
+    profile,
+    invoice: { ...invoice, recognition: invoice.recognition },
+    outstandingMinor,
+  };
 });
 
 const readCreditCapacity = Effect.fn("commerce.customerCredit.readCapacity")(function* (

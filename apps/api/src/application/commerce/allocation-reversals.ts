@@ -1,12 +1,15 @@
 import { admitLineOwner } from "../resource-admission";
 import { digest as digestNative, canonicalText as canonicalNative } from "../json";
 import * as Commerce from "@open-erp/contracts/commerce";
+import * as CashMethod from "@open-erp/contracts/cash-method";
+import * as CashPayments from "./cash-payments";
+import * as CashPaymentsDb from "../../db/commerce/cash-payments";
 import * as Reversal from "@open-erp/contracts/commerce-allocation-reversals";
 import * as Effect from "effect/Effect";
 import { readInstant } from "../../db/commerce/access";
 import * as AllocationDb from "../../db/commerce/allocations";
 import * as InvoiceDb from "../../db/commerce/invoices";
-import { lockBookForUpdate, readAccounts } from "../../db/posting";
+import { lockBookForUpdate, readAccounts, readActorAdmission } from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { failure } from "../failures";
@@ -122,7 +125,7 @@ function sameJson(left: JsonObject, right: JsonObject) {
 }
 
 function planSelection(plan: AllocationPlan) {
-  return {
+  const selection: JsonObject = {
     profileVersion: plan.profileVersion,
     writerEpoch: plan.writerEpoch,
     accountVersion: plan.accountVersion,
@@ -134,17 +137,25 @@ function planSelection(plan: AllocationPlan) {
     totalMinor: plan.totalMinor,
     paymentRemainingAfterMinor: plan.paymentRemainingAfterMinor,
   };
+
+  if (plan.cashEffect !== undefined)
+    Object.assign(selection, { cashEffect: objectField(plan.cashEffect, "selection") });
+
+  return selection;
 }
 
 function planBody(plan: AllocationPlan) {
-  return {
-    ...planSelection(plan),
+  const body: JsonObject = Object.assign({}, planSelection(plan), {
     id: plan.id,
     scope: plan.scope,
     version: plan.version,
     createdAt: plan.createdAt,
     receipt: plan.receipt,
-  };
+  });
+
+  if (plan.cashEffect !== undefined) Object.assign(body, { cashEffect: plan.cashEffect });
+
+  return body;
 }
 
 function retainedNow(transaction: Transaction) {
@@ -223,6 +234,8 @@ function requireAppliedAllocation(
   return Effect.gen(function* () {
     const receipt = yield* decode(AllocationReceiptSchema, row.body);
     const plan = yield* decode(AllocationPlanSchema, row.plan);
+
+    if (plan.cashEffect !== undefined) return yield* failure("UnsupportedProfile");
     yield* decode(AllocationApprovalSchema, approval.body);
     const planned = plan.legs;
 
@@ -502,9 +515,24 @@ export const approveAllocation = Effect.fn("commerce.allocation.approve")(functi
       );
 
       if (applied[0]?.present === true) return yield* failure("IdempotencyConflict");
+      const decodedPlan = yield* decode(AllocationPlanSchema, plan.body);
+
+      if (
+        decodedPlan.cashEffect !== undefined &&
+        !(yield* currentAllocation(transaction, command.scope, book, decodedPlan))
+      )
+        return yield* failure("StaleDependency");
+
+      const cashApproval = yield* CashPayments.approveCashAllocationInTransaction(
+        transaction,
+        principal,
+        command.scope,
+        decodedPlan,
+      );
+
       const expiresAt = yield* approvalExpiry(transaction);
 
-      const result = yield* decode(AllocationApprovalSchema, {
+      const approvalBody: JsonObject = {
         id: newId("allocation_approval"),
         planId: command.id,
         planDigest: input.planDigest,
@@ -515,7 +543,12 @@ export const approveAllocation = Effect.fn("commerce.allocation.approve")(functi
           "commerce_approve_allocation",
           principal.actorId,
         ),
-      });
+      };
+
+      if (cashApproval !== null)
+        Object.assign(approvalBody, { cashPostingApprovalId: cashApproval.id });
+
+      const result = yield* decode(AllocationApprovalSchema, approvalBody);
 
       yield* AllocationDb.insertAllocationApproval(transaction, {
         bookId: command.scope.bookId,
@@ -1249,6 +1282,7 @@ function allocationSelection(
     let counterpartyId: string | null = null;
     let total = 0n;
     const legs: Array<JsonObject> = [];
+    const cashLegs: Array<{ invoiceId: string; ordinal: number; amountMinor: string }> = [];
 
     for (const allocation of input.allocations) {
       yield* exactKeys(yield* toJsonObject(allocation), allocationLegFields);
@@ -1262,6 +1296,7 @@ function allocationSelection(
 
       if (!live) return yield* failure("NotFound");
       const invoice = yield* decode(InvoiceSchema, live.body);
+
       const outstanding = invoice.outstandingMinor;
 
       if (outstanding === null) return yield* failure("InvalidJournal");
@@ -1271,8 +1306,8 @@ function allocationSelection(
         invoice.direction !== payment.direction ||
         invoice.controlAccountId !== payment.accountId ||
         invoice.currency !== payment.currency ||
-        invoice.recognition.eventId === voucher.eventId ||
-        invoice.recognition.postingDate > payment.postingDate
+        invoice.recognition?.eventId === voucher.eventId ||
+        (invoice.recognition?.postingDate ?? invoice.issuedOn) > payment.postingDate
       ) {
         return yield* failure("InvalidJournal");
       }
@@ -1283,6 +1318,13 @@ function allocationSelection(
 
       if (amount > BigInt(outstanding)) return yield* failure("StaleDependency");
       total += amount;
+
+      if (invoice.recognition === null)
+        cashLegs.push({
+          invoiceId: invoice.id,
+          ordinal: legs.length + 1,
+          amountMinor: allocation.amountMinor,
+        });
       legs.push({
         invoiceId: invoice.id,
         revision: invoice.currentRevision.revision,
@@ -1290,7 +1332,7 @@ function allocationSelection(
         documentNumber: invoice.documentNumber,
         counterpartyId,
         counterpartyName: invoice.counterpartyName,
-        recognition: yield* toJsonObject(invoice.recognition),
+        recognition: invoice.recognition === null ? null : yield* toJsonObject(invoice.recognition),
         evidence: yield* toJsonObject(invoice.evidence),
         outstandingBeforeMinor: outstanding,
         amountMinor: allocation.amountMinor,
@@ -1300,7 +1342,17 @@ function allocationSelection(
 
     if (total > BigInt(payment.remainingMinor)) return yield* failure("StaleDependency");
 
-    return {
+    const cashEffect =
+      cashLegs.length === 0
+        ? undefined
+        : yield* CashPayments.captureCashAllocationInTransaction(
+            transaction,
+            scope,
+            payment,
+            cashLegs,
+          );
+
+    const selection: JsonObject = {
       profileVersion: book.profileVersion,
       writerEpoch: book.writerEpoch,
       accountVersion: account.version,
@@ -1311,7 +1363,12 @@ function allocationSelection(
       legs,
       totalMinor: total.toString(),
       paymentRemainingAfterMinor: (BigInt(payment.remainingMinor) - total).toString(),
-    } satisfies JsonObject;
+    };
+
+    if (cashEffect !== undefined)
+      Object.assign(selection, { cashEffect: yield* toJsonObject(cashEffect) });
+
+    return selection;
   });
 }
 
@@ -1335,7 +1392,17 @@ function currentAllocation(
         invoiceId: leg.invoiceId,
         amountMinor: leg.amountMinor,
       })),
-    });
+    }).pipe(
+      Effect.catchIf(
+        (error) =>
+          plan.cashEffect !== undefined &&
+          error instanceof Accounting.AccountingError &&
+          error.code !== "PeriodLocked",
+        () => Effect.succeed(null),
+      ),
+    );
+
+    if (current === null) return false;
 
     return yield* sameJson(current, yield* toJsonObject(planSelection(plan)));
   });
@@ -1376,10 +1443,24 @@ export const prepareAllocation = Effect.fn("commerce.allocation.prepare")(functi
       const input = yield* decode(PrepareAllocationSchema, command.input);
       yield* requireText(input.rationale, 2000);
       const selection = yield* allocationSelection(transaction, command.scope, book, input);
+      const id = newId("allocation");
 
-      const withoutDigest: JsonObject = {
-        ...selection,
-        id: newId("allocation"),
+      const cashEffect =
+        selection.cashEffect === undefined
+          ? undefined
+          : yield* CashPayments.prepareCashAllocationInTransaction(
+              transaction,
+              principal,
+              command.scope,
+              id,
+              yield* decode(
+                CashMethod.CashAllocationSelection,
+                objectField(selection, "cashEffect"),
+              ),
+            );
+
+      const withoutDigest: JsonObject = Object.assign({}, selection, {
+        id,
         scope: command.scope,
         version: 1,
         createdAt: yield* retainedNow(transaction),
@@ -1388,7 +1469,10 @@ export const prepareAllocation = Effect.fn("commerce.allocation.prepare")(functi
           "commerce_prepare_allocation",
           principal.actorId,
         ),
-      };
+      });
+
+      if (cashEffect !== undefined)
+        Object.assign(withoutDigest, { cashEffect: yield* toJsonObject(cashEffect) });
 
       const digest = yield* digestNative(withoutDigest);
 
@@ -1402,6 +1486,16 @@ export const prepareAllocation = Effect.fn("commerce.allocation.prepare")(functi
         id: result.id,
         body: yield* toJsonObject(result),
       });
+
+      if (cashEffect !== undefined)
+        yield* CashPaymentsDb.insertEffect(
+          transaction,
+          command.scope.bookId,
+          id,
+          cashEffect.postingPlan?.id ?? null,
+          cashEffect.selection.source.evidenceId,
+          yield* toJsonObject(cashEffect),
+        );
       yield* saveCommand(
         transaction,
         command.scope,
@@ -1560,10 +1654,13 @@ export const applyAllocation = Effect.fn("commerce.allocation.apply")(function* 
         approval.actorId,
       );
 
-      if (operator[0]?.present !== true) return yield* failure("ApprovalRequired");
+      const admission = (yield* readActorAdmission(transaction, approval.actorId))[0];
+
+      if (operator[0]?.present !== true || admission?.enabled === false)
+        return yield* failure("ApprovalRequired");
       const id = newId("allocation_receipt");
 
-      const result = yield* decode(AllocationReceiptSchema, {
+      const receiptBody: JsonObject = {
         id,
         scope: command.scope,
         planId: command.id,
@@ -1577,7 +1674,14 @@ export const applyAllocation = Effect.fn("commerce.allocation.apply")(function* 
           "commerce_apply_allocation",
           principal.actorId,
         ),
-      });
+      };
+
+      if (plan.cashEffect !== undefined)
+        Object.assign(receiptBody, {
+          cashRecognition: yield* CashPayments.cashAllocationReceiptSummary(plan.cashEffect, id),
+        });
+
+      const result = yield* decode(AllocationReceiptSchema, receiptBody);
 
       yield* admitLineOwner(
         transaction,
@@ -1603,6 +1707,15 @@ export const applyAllocation = Effect.fn("commerce.allocation.apply")(function* 
           paymentLineId: plan.payment.lineId,
           amountMinor: leg.amountMinor,
         }),
+      );
+
+      yield* CashPayments.applyCashAllocationInTransaction(
+        transaction,
+        principal,
+        command.scope,
+        plan,
+        yield* decode(AllocationApprovalSchema, approval.body),
+        id,
       );
       yield* saveCommand(
         transaction,

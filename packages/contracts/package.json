@@ -102,7 +102,7 @@
   },
   "dependencies": {
     "@open-erp/domain": "workspace:*",
-    "effect": "4.0.0-rc.112"
+    "effect": "4.0.0"
   },
   "devDependencies": {
     "@open-erp/config": "workspace:*",

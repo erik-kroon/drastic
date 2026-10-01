@@ -1,5 +1,6 @@
 import * as Historical from "@open-erp/contracts/historical-migration";
 import * as Sie from "@open-erp/contracts/sie-import";
+import { isCalendarDate } from "@open-erp/domain/values";
 import * as Effect from "effect/Effect";
 import * as Db from "../../db/historical";
 import { decode, withBook } from "../commerce/support";
@@ -25,9 +26,8 @@ const absolute = (value: bigint) => (value < 0n ? -value : value);
 
 function validDate(date: string | null, required: boolean) {
   if (date === null) return !required;
-  const instant = Date.parse(`${date}T00:00:00Z`);
 
-  return Number.isFinite(instant) && new Date(instant).toISOString().slice(0, 10) === date;
+  return isCalendarDate(date);
 }
 
 const compareControls = Effect.fn("historical.compareItemControls")(function* (

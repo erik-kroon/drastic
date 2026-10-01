@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import * as Commerce from "./commerce";
 import { accountingErrors } from "./accounting-errors";
@@ -61,6 +61,14 @@ export const ExecuteFinalClose = Schema.Struct({
 });
 
 export const ClosePreparation = Schema.Struct({
+  cashMethodYearEnd: Schema.optional(
+    Schema.Struct({
+      runId: Accounting.Identifier,
+      planId: Accounting.Identifier,
+      populationDigest: Accounting.Digest,
+      memberCount: Schema.Int,
+    }),
+  ),
   id: Accounting.Identifier,
   scope: Accounting.Scope,
   version: Schema.Literal(1),

@@ -295,11 +295,9 @@ export const prepareImpairment = Effect.fn("subledger.prepareImpairment")(functi
       for (const period of input.installments) {
         const retained = periods.find((row) => row.id === period.accountingPeriodId);
         const year = years.find((row) => row.id === retained?.fiscalYearId);
-        const instant = Date.parse(`${period.postingDate}T00:00:00Z`);
 
         if (
-          !Number.isFinite(instant) ||
-          new Date(instant).toISOString().slice(0, 10) !== period.postingDate ||
+          !Accounting.isCalendarDate(period.postingDate) ||
           period.postingDate <= last ||
           !retained ||
           !year ||

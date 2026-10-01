@@ -120,11 +120,7 @@ function minor(value: string) {
   return BigInt(value);
 }
 
-function isCalendarDate(value: string) {
-  const parsed = Date.parse(`${value}T00:00:00.000Z`);
-
-  return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === value;
-}
+const isCalendarDate = Accounting.isCalendarDate;
 
 export function withSubledgerBook<A>(
   token: string,

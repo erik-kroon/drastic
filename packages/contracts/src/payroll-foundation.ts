@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 
@@ -9,18 +9,7 @@ const Text = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256))
 
 const Facts = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(2000));
 
-const PayrollDate = Accounting.AccountingDate.check(
-  Schema.makeFilter((value) => {
-    const time = Date.parse(value);
-
-    return (
-      (value >= "0001-01-01" &&
-        Number.isFinite(time) &&
-        new Date(time).toISOString().slice(0, 10) === value) ||
-      "Enter a valid calendar date."
-    );
-  }),
-);
+const PayrollDate = Accounting.CalendarDate;
 
 const Employment = Schema.Struct({
   personRef: Text,

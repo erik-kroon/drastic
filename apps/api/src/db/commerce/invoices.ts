@@ -188,22 +188,26 @@ function liveInvoice(bookId: string, identity: SQL | undefined) {
           ${cancellationBody()} as cancellation,
           case when ${cancellationBody()} is null then 0 else i.amount_minor end as cancelled,
           (case when ${cancellationBody()} is null then i.amount_minor else 0 end
-            - credits.total - customer_credits.total) as effective,
-          credits.total + customer_credits.total as credited,
-          credits.total_count + customer_credits.total_count as credit_count,
+             - credits.total - customer_credits.total - cash_credits.total) as effective,
+           credits.total + customer_credits.total + cash_credits.total as credited,
+           credits.total_count + customer_credits.total_count + cash_credits.total_count as credit_count,
           coalesce((
             select jsonb_agg(remaining.value order by remaining.ordinal)
             from unnest(array_remove(array[
-              case when not (${recognitionAccounted(sql`i.recognition_voucher_id`)})
+              case when not ((i.cash_method_source_draft_id is not null
+                and i.recognition_voucher_id is null and i.recognition_line_id is null
+                and i.body->>'kind' = 'cash_method_supplier_invoice_v1')
+                or ${recognitionAccounted(sql`i.recognition_voucher_id`)})
                 then 'The retained recognition voucher was corrected.'::text end,
               case when exists (
                 select from ${activeLegs()}
                 and not (${voucherCurrent(sql`l.payment_voucher_id`)})
               ) then 'A retained allocation payment voucher was corrected.'::text end,
               case when credits.invalid then 'A supplier credit posting or payable line is invalid.'::text end,
+              case when cash_credits.invalid then 'A cash-method credit correction or linked coverage is invalid.'::text end,
                case when customer_credits.invalid then 'A customer credit posting or receivable line is invalid.'::text end,
               case when owner_discharges.invalid then 'An owner-paid supplier discharge posting or payable line is invalid.'::text end,
-              case when credits.total + customer_credits.total + ${activeLegTotal()} + owner_discharges.total > case when ${cancellationBody()} is null
+              case when credits.total + customer_credits.total + cash_credits.total + ${activeLegTotal()} + owner_discharges.total > case when ${cancellationBody()} is null
                 then i.amount_minor else 0 end
                 and not refundcover.has_paid
                 then 'Recorded allocations exceed the invoice amount.'::text end
@@ -244,6 +248,32 @@ function liveInvoice(bookId: string, identity: SQL | undefined) {
             on (l.book_id,l.voucher_id,l.id)=(c.book_id,c.voucher_id,c.control_line_id)
           where c.book_id=i.book_id and c.register_invoice_id=i.id
          ) customer_credits
+         -- A commercial-only credit has no voucher; never discard it by joining
+         -- every credit to journal lines. Recognized portions retain their own
+         -- exact linked correction, without rewriting the original recognition.
+         cross join lateral (
+           select coalesce(sum(c.gross_minor),0) as total,count(*) as total_count,
+             coalesce(bool_or(i.cash_method_source_draft_id is null
+               or c.gross_minor<>(select coalesce(sum((cl.body->>'creditGrossMinor')::numeric),0)
+                 from openerp.cash_method_credit_lines cl where(cl.book_id,cl.credit_id)=(c.book_id,c.id))
+               or c.recognized_minor<>(select coalesce(sum((cl.body->>'recognizedCorrectionMinor')::numeric),0)
+                 from openerp.cash_method_credit_lines cl where(cl.book_id,cl.credit_id)=(c.book_id,c.id))
+               or (c.recognized_minor>0 and (not (${voucherCurrent(sql`c.voucher_id`)})
+                 or c.recognized_minor<>(select coalesce(sum(j.debit_minor-j.credit_minor),0)
+                   from openerp.journal_lines j where(j.book_id,j.voucher_id)=(c.book_id,c.voucher_id)
+                     and j.account_id=i.control_account_id)))
+               or exists(select from openerp.cash_method_credit_lines cl
+                 join openerp.cash_method_lines coverage on(coverage.book_id,coverage.id)=(cl.book_id,cl.line_id)
+                 left join openerp.cash_method_recognitions original on(original.book_id,original.id)=(cl.book_id,cl.original_recognition_id)
+                 left join openerp.vat_fact_components vat on(vat.book_id,vat.id)=(cl.book_id,cl.vat_fact_id)
+                 where(cl.book_id,cl.credit_id)=(c.book_id,c.id) and (coverage.invoice_id<>i.id
+                   or ((cl.body->>'recognizedCorrectionMinor')::numeric>0 and
+                     (original.id is null or original.line_id<>cl.line_id or original.trigger_kind<>'year_end_unpaid'
+                       or original.vat_fact_id is distinct from cl.original_vat_fact_id))
+                   or (cl.vat_fact_id is not null and vat.cash_method_credit_id is distinct from cl.id)))
+             ),false) as invalid
+           from openerp.cash_method_credits c where(c.book_id,c.invoice_id)=(i.book_id,i.id)
+         ) cash_credits
           -- A paid supplier credit converts the over-allocated excess into an
           -- explicit refund receivable (NEXT-07): with a sealed principal
           -- increase on the invoice the excess is refund principal, not an

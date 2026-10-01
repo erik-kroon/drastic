@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 
@@ -9,18 +9,7 @@ const Name = Schema.String.check(
   Schema.makeFilter((value) => value.trim().length > 0 || "Enter the company name."),
 );
 
-const SetupDate = Accounting.AccountingDate.check(
-  Schema.makeFilter((value) => {
-    const time = Date.parse(value);
-
-    return (
-      (value >= "0001-01-01" &&
-        Number.isFinite(time) &&
-        new Date(time).toISOString().slice(0, 10) === value) ||
-      "Enter a valid calendar date."
-    );
-  }),
-);
+const SetupDate = Accounting.CalendarDate;
 
 const Revision = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 2147483646 }));
 

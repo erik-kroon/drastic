@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import * as Commerce from "./commerce";
 import { accountingErrors } from "./accounting-errors";
@@ -33,14 +33,20 @@ export const RegisterInvoice = Schema.Struct({
   amountMinor: Accounting.MinorUnits,
   cancelledMinor: Schema.optional(Accounting.MinorUnits),
   creditedMinor: Schema.optional(Accounting.MinorUnits),
+  recognizedCreditedMinor: Schema.optional(Accounting.MinorUnits),
   effectiveAmountMinor: Schema.optional(Accounting.MinorUnits),
   cancellation: Schema.optional(Schema.NullOr(Commerce.InvoiceCancellationSummary)),
   controlAccountId: Accounting.Identifier,
   evidence: Commerce.EvidenceReference,
-  recognition: Commerce.Recognition,
+  recognition: Schema.NullOr(Commerce.Recognition),
   revision: Commerce.InvoiceRevision,
   allocatedMinor: Accounting.AggregateMinorUnits,
+  // Invoice outstanding remains commercial debt. Added fields are optional only
+  // so previously sealed snapshots still decode; new captures always retain them.
   outstandingMinor: Accounting.AggregateMinorUnits,
+  commercialOutstandingMinor: Schema.optional(Accounting.AggregateMinorUnits),
+  recognizedMinor: Schema.optional(Accounting.AggregateMinorUnits),
+  recognizedOutstandingMinor: Schema.optional(Accounting.AggregateMinorUnits),
   daysOverdue: Schema.Int,
   ageBucket: AgeBucket,
 });
@@ -96,11 +102,16 @@ export const RegisterControl = Schema.Struct({
   recognizedMinor: Accounting.AggregateMinorUnits,
   cancelledMinor: Schema.optional(Accounting.AggregateMinorUnits),
   creditedMinor: Schema.optional(Accounting.AggregateMinorUnits),
+  recognizedCreditedMinor: Schema.optional(Accounting.AggregateMinorUnits),
   allocatedMinor: Accounting.AggregateMinorUnits,
+  // Control outstanding is GL-controlled, unlike invoice commercial outstanding.
   outstandingMinor: Accounting.AggregateMinorUnits,
+  commercialOutstandingMinor: Schema.optional(Accounting.AggregateMinorUnits),
+  recognizedOutstandingMinor: Schema.optional(Accounting.AggregateMinorUnits),
   ledgerMinor: Accounting.SignedMinorUnits,
   differenceMinor: Accounting.SignedMinorUnits,
   unexplainedLineCount: Schema.Int,
+  // Ageing includes unrecognized commercial debt; it is not a GL balance.
   ageing: Ageing,
 });
 

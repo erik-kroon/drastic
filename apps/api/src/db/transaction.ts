@@ -4,7 +4,7 @@ import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
-import * as SqlError from "effect/unstable/sql/SqlError";
+import * as SqlError from "effect/sql/SqlError";
 import { failure, logFailure } from "../application/failures";
 import { Database, type DatabaseClient } from "./connection";
 

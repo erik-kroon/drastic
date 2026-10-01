@@ -12,7 +12,10 @@
     {
       "leaf": "bank-cover-search",
       "status": "wired",
-      "consumers": ["apps/api/src/application/banking/candidates.ts", "packages/contracts/src/bank-match-candidates.ts"]
+      "consumers": [
+        "apps/api/src/application/banking/candidates.ts",
+        "packages/contracts/src/bank-match-candidates.ts"
+      ]
     },
     {
       "leaf": "agent-context",
@@ -75,9 +78,13 @@
     },
     {
       "leaf": "cash-method",
-      "status": "deferred",
-      "reason": "The commerce invoice owner currently requires an executed accrual recognition voucher; the former cash-method writer reused that accrual invoice and accepted an asserted payment amount and trigger. The financial write endpoints now refuse UnsupportedProfile rather than double-posting or inventing a cash event.",
-      "unblockedBy": "Commerce adds a qualified cash-method document whose issue has no accrual revenue/VAT posting, and the owning allocation transaction supplies a retained final cash event, exact allocated amount and correction link. Then wire this leaf into that owner with year-end complete-population and tax-fact proof."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/commerce/cash-payments.ts",
+        "apps/api/src/application/commerce/cash-year-end.ts",
+        "apps/api/src/application/commerce/cash-credits.ts"
+      ],
+      "note": "NEXT-38 application owners compose this leaf from retained invoice basis and coverage, effective allocation legs, complete unpaid year-end population, and reviewed credit-source components inside the caller's book-scoped transaction. Financial amounts are derived from retained records rather than accepted from the request. This declares source integration only. Complete HTTP/PostgreSQL qualification of year-end approval/execution, later settlement, unpaid-credit consequences, and report reconciliation remains pending fixed-source runtime evidence."
     },
     {
       "leaf": "collection-reminders",

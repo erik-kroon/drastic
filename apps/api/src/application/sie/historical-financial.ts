@@ -68,11 +68,8 @@ function lease(now: string) {
 function sourceDate(voucher: Voucher) {
   if (!/^\d{8}$/.test(voucher.date)) return undefined;
   const date = `${voucher.date.slice(0, 4)}-${voucher.date.slice(4, 6)}-${voucher.date.slice(6, 8)}`;
-  const parsed = Date.parse(`${date}T00:00:00Z`);
 
-  return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === date
-    ? date
-    : undefined;
+  return Accounting.isCalendarDate(date) ? date : undefined;
 }
 
 const linesFor = Effect.fn("historical.sourceLines")(function* (

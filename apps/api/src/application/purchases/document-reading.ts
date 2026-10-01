@@ -1,5 +1,6 @@
 import * as Schema from "effect/Schema";
 import * as Extraction from "@open-erp/contracts/supplier-extraction";
+import { isCalendarDate } from "@open-erp/domain/values";
 
 const Offset = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 16000 }));
 
@@ -39,7 +40,7 @@ const Result = Schema.Struct({
         docType: Schema.Literal("prebuilt:invoice"),
         fields: Schema.Record(Schema.String, Schema.Unknown),
       }),
-    ).check(Schema.isLengthBetween(1, 1)),
+    ).check(Schema.isBetweenLength(1, 1)),
   }),
 });
 
@@ -106,12 +107,7 @@ export function interpretDocument(value: unknown, physicalPages: number) {
 
     if (fieldKey.endsWith("Minor")) proposedValue = amount(parsed.content);
 
-    if (
-      ["documentDate", "dueDate"].includes(fieldKey) &&
-      (!/^\d{4}-\d{2}-\d{2}$/u.test(parsed.content) ||
-        Number.isNaN(Date.parse(`${parsed.content}T00:00:00Z`)) ||
-        new Date(`${parsed.content}T00:00:00Z`).toISOString().slice(0, 10) !== parsed.content)
-    )
+    if (["documentDate", "dueDate"].includes(fieldKey) && !isCalendarDate(parsed.content))
       proposedValue = null;
 
     if (fieldKey === "quantity" && !/^[0-9]+(?:\.[0-9]{1,6})?$/u.test(parsed.content))

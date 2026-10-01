@@ -3,9 +3,11 @@ import { equalJson } from "@open-erp/domain/canonicalization";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
+import * as CashMethod from "@open-erp/contracts/cash-method";
 import * as Db from "../db/posting-admission";
 import * as Impact from "../db/posting-corrections";
 import * as Schedules from "../db/subledger/schedules";
+import * as Acceptance from "../db/purchases/acceptance";
 import type { Transaction } from "../db/transaction";
 import { failure } from "./failures";
 import { isoNow } from "./posting";
@@ -34,7 +36,10 @@ export type PostingOwner = {
     | "vat_reclassification"
     | "corporate_income_tax"
     | "customer_receipt"
-    | "owner_operation";
+    | "owner_operation"
+    | "cash_allocation"
+    | "cash_year_end"
+    | "cash_credit";
   readonly id: string;
 };
 
@@ -85,6 +90,7 @@ export const admitPosting = Effect.fn("posting.admitOwnedSources")(function* (
     )
   )
     return yield* failure("StaleDependency");
+
   yield* admitSources(tx, scope, changeId, eventId, action, owner);
   yield* admitHistoricalPosting(tx, scope, year, changeId, date, owner);
   yield* admitCorrectionsAndSchedules(tx, scope, changeId, eventId, date, action, owner);
@@ -92,9 +98,11 @@ export const admitPosting = Effect.fn("posting.admitOwnedSources")(function* (
   for (const link of yield* Db.readOwnerAttachments(tx, scope.bookId, changeId, eventId)) {
     if (!link.reviewId || link.linkReviewId !== link.reviewId || !link.lineId)
       return yield* failure("StaleDependency");
+
     const ready = yield* ownerRequireReady(tx, scope, link.recordId, link.reviewId, false);
 
     if (link.revisionDigest !== ready.digest) return yield* failure("StaleDependency");
+
     yield* validateOwnerLine(tx, scope, ready, action, link.lineId);
   }
 });
@@ -169,6 +177,51 @@ function matchesCreditedOriginal(
   );
 }
 
+const matchesCashOriginal = Effect.fn("posting.matchesCashOriginal")(function* (
+  source: { readonly kind: string; readonly id: string; readonly body: JsonObject },
+  retained: { readonly kind: string; readonly body: JsonObject } | undefined,
+  owner: PostingOwner | undefined,
+  eventId: string,
+) {
+  if (source.kind !== "cash_invoice" || !retained) return false;
+
+  if (owner?.kind === "cash_credit" && retained.kind === "cash_credit") {
+    const plan = yield* decode(CashMethod.CashCreditPlan, retained.body);
+
+    return (
+      plan.selection.eventId === eventId &&
+      plan.selection.input.invoiceId === source.id &&
+      equalJson(plan.selection.basis, objectField(source.body, "cashMethod"))
+    );
+  }
+
+  if (owner?.kind === "cash_year_end" && retained.kind === "cash_year_end") {
+    const plan = yield* decode(CashMethod.CashYearEndPlan, retained.body);
+
+    return (
+      plan.selection.eventId === eventId &&
+      plan.selection.invoices.some(
+        (invoice) =>
+          invoice.invoiceId === source.id &&
+          equalJson(invoice.basis, objectField(source.body, "cashMethod")),
+      )
+    );
+  }
+
+  if (owner?.kind !== "cash_allocation" || retained.kind !== "cash_allocation") return false;
+
+  const effect = yield* decode(CashMethod.CashAllocationPrepared, retained.body);
+
+  return (
+    effect.selection.source.eventId === eventId &&
+    effect.selection.invoices.some(
+      (invoice) =>
+        invoice.invoiceId === source.id &&
+        equalJson(invoice.basis, objectField(source.body, "cashMethod")),
+    )
+  );
+});
+
 const admitSources = Effect.fn("posting.admitSources")(function* (
   tx: Transaction,
   scope: Scope,
@@ -177,14 +230,7 @@ const admitSources = Effect.fn("posting.admitSources")(function* (
   action: JsonObject,
   owner?: PostingOwner,
 ) {
-  const evidence = (Array.isArray(action.evidenceRefs) ? action.evidenceRefs : []).flatMap((ref) =>
-    typeof ref === "object" &&
-    ref !== null &&
-    !Array.isArray(ref) &&
-    typeof ref.evidenceId === "string"
-      ? [ref.evidenceId]
-      : [],
-  );
+  const evidence = sourceEvidenceIds(action);
 
   const ownership = yield* Db.readOwnedSources(tx, scope.bookId, changeId, eventId, evidence);
 
@@ -204,33 +250,102 @@ const admitSources = Effect.fn("posting.admitSources")(function* (
     // reviewed original; it does not admit unrelated issue evidence or a new sale.
     if (matchesCreditedOriginal(source, creditOriginal, action)) continue;
 
+    if (yield* matchesCashOriginal(source, retained, owner, eventId)) continue;
+
+    if (yield* matchesSupersededAcceptance(tx, scope, source, ownership, retained, owner, eventId))
+      continue;
+
     if (source.kind !== owner?.kind) return yield* failure("ApprovalRequired");
   }
 
-  if (ownership.length && owner?.kind !== "invoice_cancellation") {
-    if (!retained) return yield* failure("StaleDependency");
+  if (ownership.length && owner?.kind !== "invoice_cancellation")
+    yield* admitSealedOwner(retained, changeId, action);
+});
 
-    if (retained.kind !== "legal_issue" && retained.kind !== "legal_credit") {
-      const plan = objectField(retained.body, "postingPlan");
+function sourceEvidenceIds(action: JsonObject) {
+  return (Array.isArray(action.evidenceRefs) ? action.evidenceRefs : []).flatMap((ref) =>
+    typeof ref === "object" &&
+    ref !== null &&
+    !Array.isArray(ref) &&
+    typeof ref.evidenceId === "string"
+      ? [ref.evidenceId]
+      : [],
+  );
+}
 
-      if (retained.changeId !== changeId || !Array.isArray(plan.groups))
-        return yield* failure("StaleDependency");
-      const first = plan.groups[0];
+type OwnedSource = {
+  readonly kind: string;
+  readonly id: string;
+  readonly changeId: string | null;
+  readonly body: JsonObject;
+};
 
-      if (
-        typeof first !== "object" ||
-        first === null ||
-        Array.isArray(first) ||
-        !Array.isArray(first.actions) ||
-        !equalJson(first.actions[0], action)
-      )
-        return yield* failure("StaleDependency");
-    } else if (retained.kind === "legal_issue") {
-      if (textField(objectField(action, "legalIssue"), "reviewId") !== retained.id)
-        return yield* failure("StaleDependency");
-    } else if (textField(objectField(action, "legalCredit"), "reviewId") !== retained.id)
+const matchesSupersededAcceptance = Effect.fn("posting.matchesSupersededAcceptance")(function* (
+  tx: Transaction,
+  scope: Scope,
+  source: OwnedSource,
+  ownership: ReadonlyArray<OwnedSource>,
+  retained: OwnedSource | undefined,
+  owner: PostingOwner | undefined,
+  eventId: string,
+) {
+  if (
+    source.kind !== "supplier_acceptance" ||
+    !source.changeId ||
+    !(
+      owner?.kind === "cash_allocation" ||
+      owner?.kind === "cash_year_end" ||
+      owner?.kind === "cash_credit"
+    )
+  )
+    return false;
+
+  const evidenceId = textField(objectField(source.body, "evidence"), "evidenceId");
+
+  const original = ownership.find(
+    (candidate) =>
+      candidate.kind === "cash_invoice" &&
+      textField(objectField(candidate.body, "evidence"), "evidenceId") === evidenceId,
+  );
+
+  if (!evidenceId || !original || !(yield* matchesCashOriginal(original, retained, owner, eventId)))
+    return false;
+
+  // The receipt test remains mandatory: executed acceptance is never superseded.
+  return (
+    (yield* Acceptance.readReviewByChangeSet(tx, scope.bookId, source.changeId))[0]?.present ===
+    false
+  );
+});
+
+const admitSealedOwner = Effect.fn("posting.admitSealedOwner")(function* (
+  retained: OwnedSource | undefined,
+  changeId: string,
+  action: JsonObject,
+) {
+  if (!retained) return yield* failure("StaleDependency");
+
+  if (retained.kind !== "legal_issue" && retained.kind !== "legal_credit") {
+    const plan = objectField(retained.body, "postingPlan");
+
+    if (retained.changeId !== changeId || !Array.isArray(plan.groups))
       return yield* failure("StaleDependency");
-  }
+
+    const first = plan.groups[0];
+
+    if (
+      typeof first !== "object" ||
+      first === null ||
+      Array.isArray(first) ||
+      !Array.isArray(first.actions) ||
+      !equalJson(first.actions[0], action)
+    )
+      return yield* failure("StaleDependency");
+  } else if (retained.kind === "legal_issue") {
+    if (textField(objectField(action, "legalIssue"), "reviewId") !== retained.id)
+      return yield* failure("StaleDependency");
+  } else if (textField(objectField(action, "legalCredit"), "reviewId") !== retained.id)
+    return yield* failure("StaleDependency");
 });
 
 const admitHistoricalPosting = Effect.fn("posting.admitHistoricalPosting")(function* (
@@ -246,6 +361,7 @@ const admitHistoricalPosting = Effect.fn("posting.admitHistoricalPosting")(funct
   if (!state) return yield* failure("InternalError");
 
   if (state.superseded) return yield* failure("StaleDependency");
+
   const basis = state.basis;
 
   if (basis?.mode === "opening_set") {
@@ -294,6 +410,7 @@ const admitCorrectionsAndSchedules = Effect.fn("posting.admitCorrectionsAndSched
 
     if (protectedRows.some((r) => !(owner?.kind === "commerce_fx" && r.kind === "fx_settlement")))
       return yield* failure("UnsupportedProfile");
+
     const impacts = yield* Impact.readImpactResources(tx, scope.bookId, original, date);
 
     if (
@@ -316,6 +433,7 @@ const admitCorrectionsAndSchedules = Effect.fn("posting.admitCorrectionsAndSched
       ))[0];
 
       if (!row) return yield* failure("StaleDependency");
+
       const revision = yield* decode(Subledgers.ScheduleRevision, row.body);
       const current = yield* readPostingBasis(tx, scope, revision);
 

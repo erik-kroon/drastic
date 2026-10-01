@@ -110,6 +110,8 @@ const readPosition = Effect.fn("purchases.refunds.position")(function* (
 ) {
   const invoice = yield* liveInvoice(tx, scope.bookId, invoiceId);
 
+  if (invoice.recognition === null) return yield* failure("UnsupportedProfile");
+
   if (invoice.direction !== "supplier") return yield* failure("NotFound");
 
   const row = (yield* RefundDb.readPaidPosition(tx, scope.bookId, invoiceId))[0];
@@ -956,6 +958,8 @@ const refundPlan = Effect.fn("purchases.refunds.plan")(function* (
 
   const invoice = yield* liveInvoice(tx, scope.bookId, input.invoiceId);
 
+  if (invoice.recognition === null) return yield* failure("UnsupportedProfile");
+
   if (invoice.direction !== "supplier") return yield* failure("NotFound");
 
   if (invoice.status === "cancelled") return yield* failure("StaleDependency");
@@ -994,10 +998,7 @@ const refundPlan = Effect.fn("purchases.refunds.plan")(function* (
   )
     return yield* failure("StaleDependency");
 
-  const date = Date.parse(`${input.refundDate}T00:00:00Z`);
-
-  if (!Number.isFinite(date) || new Date(date).toISOString().slice(0, 10) !== input.refundDate)
-    return yield* failure("InvalidJournal");
+  if (!Accounting.isCalendarDate(input.refundDate)) return yield* failure("InvalidJournal");
 
   if (input.refundDate < invoice.issuedOn) return yield* failure("InvalidJournal");
 

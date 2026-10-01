@@ -157,11 +157,7 @@ function withinInterval(value: string | null, startsOn: string, endsOn: string) 
   return value === null || (value >= startsOn && value <= endsOn);
 }
 
-function isCalendarDate(value: string) {
-  const parsed = Date.parse(`${value}T00:00:00.000Z`);
-
-  return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === value;
-}
+const isCalendarDate = Accounting.isCalendarDate;
 
 function minor(value: string) {
   return BigInt(value);

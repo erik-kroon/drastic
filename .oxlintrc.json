@@ -57,6 +57,7 @@
     "anti-slop/no-chained-type-assertions": "error",
     "anti-slop/no-conditional-empty-object-spread": "error",
     "anti-slop/no-deprecated-zod-api": "error",
+    "anti-slop/no-duplicate-calendar-date": "error",
     "anti-slop/no-design-system-escape-hatches": "error",
     "anti-slop/no-hardcoded-design-values": "error",
     "anti-slop/no-feature-react-hooks": "error",

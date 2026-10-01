@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 
@@ -113,7 +113,11 @@ export const InvoiceCancellationSummary = Schema.Struct({
 export const Invoice = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
-  kind: Schema.Literals(["synthetic_invoice_v1", "legal_customer_invoice_v1"]),
+  kind: Schema.Literals([
+    "synthetic_invoice_v1",
+    "legal_customer_invoice_v1",
+    "cash_method_supplier_invoice_v1",
+  ]),
   legalIssueId: Schema.optional(Accounting.Identifier),
   policyId: Schema.optional(Accounting.Identifier),
   direction: Direction,
@@ -127,7 +131,9 @@ export const Invoice = Schema.Struct({
   amountMinor: PositiveMinor,
   controlAccountId: Accounting.Identifier,
   evidence: EvidenceReference,
-  recognition: Recognition,
+  recognition: Schema.NullOr(Recognition),
+  // Frozen source and method basis is decoded by CashMethod.CashInvoiceBasis.
+  cashMethod: Schema.optional(Schema.JsonObject),
   supplierAcceptanceDigest: Schema.optional(Accounting.Digest),
   supplierAcceptanceProfile: Schema.optional(
     Schema.Literals([
@@ -164,7 +170,13 @@ export const Invoice = Schema.Struct({
       }),
     ),
   ),
-});
+}).check(
+  Schema.makeFilter((invoice) =>
+    invoice.kind === "cash_method_supplier_invoice_v1"
+      ? invoice.recognition === null && invoice.cashMethod !== undefined
+      : invoice.recognition !== null && invoice.cashMethod === undefined,
+  ),
+);
 
 export const InvoicePage = Schema.Struct({
   items: Schema.Array(Invoice),
@@ -235,7 +247,7 @@ export const AllocationLeg = Schema.Struct({
   documentNumber: Name,
   counterpartyId: Accounting.Identifier,
   counterpartyName: Name,
-  recognition: Recognition,
+  recognition: Schema.NullOr(Recognition),
   evidence: EvidenceReference,
   outstandingBeforeMinor: Accounting.MinorUnits,
   amountMinor: PositiveMinor,
@@ -257,6 +269,7 @@ export const AllocationPlan = Schema.Struct({
   legs: Schema.Array(AllocationLeg),
   totalMinor: PositiveMinor,
   paymentRemainingAfterMinor: Accounting.MinorUnits,
+  cashEffect: Schema.optional(Schema.JsonObject),
   createdAt: Schema.String,
   receipt: CommandReceipt,
 });
@@ -272,6 +285,7 @@ export const ApplyAllocation = Schema.Struct({
 });
 
 export const AllocationApproval = Schema.Struct({
+  cashPostingApprovalId: Schema.optional(Accounting.Identifier),
   id: Accounting.Identifier,
   planId: Accounting.Identifier,
   planDigest: Accounting.Digest,
@@ -281,6 +295,7 @@ export const AllocationApproval = Schema.Struct({
 });
 
 export const AllocationReceipt = Schema.Struct({
+  cashRecognition: Schema.optional(Schema.JsonObject),
   id: Accounting.Identifier,
   scope: Accounting.Scope,
   planId: Accounting.Identifier,

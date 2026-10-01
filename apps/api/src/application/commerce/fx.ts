@@ -147,11 +147,7 @@ function requireDirectAccess(transaction: Transaction, write: boolean) {
 }
 
 function dateValue(value: string) {
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-
-  return Number.isNaN(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== value
-    ? failure("InvalidJournal")
-    : Effect.succeed(value);
+  return Accounting.isCalendarDate(value) ? Effect.succeed(value) : failure("InvalidJournal");
 }
 
 function assertNative(book: { profile: string; authority: string }) {

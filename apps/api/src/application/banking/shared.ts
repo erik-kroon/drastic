@@ -250,11 +250,7 @@ export function statementBody(row: StatementRow) {
   }) satisfies JsonObject;
 }
 
-export function isCalendarDate(value: string) {
-  const date = new Date(`${value}T00:00:00.000Z`);
-
-  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
-}
+export const isCalendarDate = Accounting.isCalendarDate;
 
 export function nextDay(value: string) {
   const date = new Date(`${value}T00:00:00.000Z`);

@@ -1065,6 +1065,8 @@ export const invoicePayments = Effect.fn("commerce.invoices.payments")(function*
     const page = yield* requirePage(input.page);
     const historyPage = yield* requirePage(input.historyPage);
     const invoice = yield* liveInvoice(transaction, input.scope.bookId, input.id);
+
+    if (invoice.recognition === null) return yield* failure("UnsupportedProfile");
     const books = yield* DraftDb.readBookProfile(transaction, input.scope.bookId);
     const book = books[0];
 

@@ -11,6 +11,7 @@ function repeatedKeys(basis: Basis) {
 
   for (const { fact, withdrawal, expenseSourceWithdrawn } of basis.facts) {
     if (withdrawal || expenseSourceWithdrawn) continue;
+
     const source = fact.input;
     const keys = [`source:${source.evidenceId}:${source.sourceLocator}`];
 
@@ -43,7 +44,11 @@ function profileBlockers(input: typeof Vat.VatFactInput.Type, basis: Basis, sele
   return blockers;
 }
 
-function treatmentBlockers(input: typeof Vat.VatFactInput.Type, selection: Selection) {
+function treatmentBlockers(
+  input: typeof Vat.VatFactInput.Type,
+  selection: Selection,
+  cashCoverage: boolean,
+) {
   const blockers: Blocker[] = [];
   const purchase = input.treatment === "domestic_purchase";
 
@@ -65,7 +70,11 @@ function treatmentBlockers(input: typeof Vat.VatFactInput.Type, selection: Selec
   if (input.registration !== "registered" || !input.registrationEvidenceId)
     blockers.push("registration_unestablished");
 
-  if (input.method !== "accrual" || !input.methodEvidenceId) blockers.push("method_unestablished");
+  if (
+    (input.method !== "accrual" && !(input.method === "cash" && cashCoverage)) ||
+    !input.methodEvidenceId
+  )
+    blockers.push("method_unestablished");
 
   if (input.domesticEligibility !== "confirmed" || !input.treatmentEvidenceId)
     blockers.push("domestic_unestablished");
@@ -93,6 +102,81 @@ function duplicateBlockers(input: typeof Vat.VatFactInput.Type, duplicates: Map<
   return blockers;
 }
 
+function validCashCoverage(fact: typeof Vat.VatFact.Type) {
+  const cash = fact.cashMethodRecognition;
+  const credit = fact.cashMethodCredit;
+  const input = fact.input;
+
+  if (input.method !== "cash" || (!cash && !credit) || (cash && credit)) return false;
+
+  if (credit) {
+    if (
+      input.dateBasis !== "cash_credit" ||
+      fact.receipt.operation !== "cash_method_credit_vat_fact"
+    )
+      return false;
+
+    const gross = BigInt(credit.originalGrossMinor);
+    const tax = BigInt(credit.originalTaxMinor);
+    const net = gross - tax;
+    const before = BigInt(credit.recognizedBeforeMinor);
+    const after = BigInt(credit.recognizedAfterMinor);
+
+    if (
+      gross <= 0n ||
+      net < 0n ||
+      tax !== (2n * net + 4n) / 8n ||
+      after < 0n ||
+      after >= before ||
+      before > gross
+    )
+      return false;
+
+    const taxAt = (coverage: bigint) => (2n * tax * coverage + gross) / (2n * gross);
+
+    return (
+      after - before === BigInt(input.grossMinor) &&
+      taxAt(after) - taxAt(before) === BigInt(input.vatMinor) &&
+      BigInt(input.grossMinor) - BigInt(input.vatMinor) === BigInt(input.netMinor)
+    );
+  }
+
+  if (!cash) return false;
+
+  const dateBasis = cash.trigger === "year_end_unpaid" ? "cash_year_end" : "cash_payment";
+
+  if (input.dateBasis !== dateBasis) return false;
+
+  const gross = BigInt(cash.originalGrossMinor);
+  const tax = BigInt(cash.originalTaxMinor);
+  const net = gross - tax;
+  const before = BigInt(cash.recognizedBeforeMinor);
+  const after = BigInt(cash.recognizedAfterMinor);
+  const taxAt = (coverage: bigint) => (2n * tax * coverage + gross) / (2n * gross);
+
+  return (
+    gross > 0n &&
+    net >= 0n &&
+    // Validate the rounded original, then its cumulative releases; a partial
+    // slice need not itself have an exact 25% ratio.
+    tax === (2n * net + 4n) / 8n &&
+    before >= 0n &&
+    before <= after &&
+    after <= gross &&
+    after - before === BigInt(input.grossMinor) &&
+    taxAt(after) - taxAt(before) === BigInt(input.vatMinor)
+  );
+}
+
+function unsupportedSignedFact(fact: typeof Vat.VatFact.Type, cashCoverage: boolean): boolean {
+  const { input } = fact;
+
+  return (
+    (BigInt(input.netMinor) < 0n || BigInt(input.vatMinor) < 0n || BigInt(input.grossMinor) < 0n) &&
+    (!fact.cashMethodCredit || !cashCoverage)
+  );
+}
+
 function assess(
   observation: typeof Vat.VatFactObservation.Type,
   basis: Basis,
@@ -106,11 +190,16 @@ function assess(
   const sourceDifference = BigInt(input.grossMinor) - net - vat;
   const rateDifference = vat * 4n - net;
   const purchase = input.treatment === "domestic_purchase";
+  const cashCoverage = validCashCoverage(fact);
 
   const blockers = [
     ...profileBlockers(input, basis, selection),
-    ...treatmentBlockers(input, selection),
+    ...treatmentBlockers(input, selection, cashCoverage),
   ];
+
+  // Signed amounts are reserved for a linked owned cash credit, not a manual
+  // negative accrual fact or a caller-selected cash date basis.
+  if (unsupportedSignedFact(fact, cashCoverage)) blockers.push("unsupported_treatment");
 
   if (observation.withdrawal) blockers.push("withdrawn_fact");
 
@@ -118,9 +207,10 @@ function assess(
 
   if (sourceDifference !== 0n) blockers.push("source_amount_difference");
 
-  if (rateDifference !== 0n) blockers.push("rate_difference");
+  if (rateDifference !== 0n && !cashCoverage) blockers.push("rate_difference");
 
   if (!observation.expenseLinkCurrent) blockers.push("stale_expense_review");
+
   blockers.push(...duplicateBlockers(input, duplicates));
 
   const linked =
@@ -141,6 +231,8 @@ function assess(
 
   const ledgerDifference = ledgerTax === null ? null : ledgerTax - vat;
 
+  const negativeCashCredit = cashCoverage && fact.cashMethodCredit !== undefined;
+
   if (!linked) blockers.push("missing_ledger_link");
 
   if (observation.voucherReversed) blockers.push("reversed_voucher");
@@ -149,7 +241,8 @@ function assess(
     linked &&
     (ledgerDifference !== 0n ||
       observation.taxLines.some(
-        (line) => BigInt(purchase ? line.creditMinor : line.debitMinor) !== 0n,
+        (line) =>
+          BigInt(purchase !== negativeCashCredit ? line.creditMinor : line.debitMinor) !== 0n,
       ))
   )
     blockers.push("ledger_tax_difference");
@@ -211,6 +304,7 @@ export function calculateVatDraft(
   if (contributions.length === 0) blockers.push("no_included_facts");
 
   if (contributions.length !== assessments.length) blockers.push("excluded_facts");
+
   let syntheticBoxes: (typeof Vat.VatCalculation.Type)["syntheticBoxes"] = null;
 
   if (selection.mode === "synthetic_demonstration") {

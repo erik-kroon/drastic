@@ -1190,11 +1190,7 @@ function decodeUtf8(bytes: Uint8Array) {
 }
 
 function calendarDate(value: string) {
-  const parsed = Date.parse(`${value}T00:00:00.000Z`);
-
-  if (!Number.isFinite(parsed)) return null;
-
-  return new Date(parsed).toISOString().slice(0, 10) === value ? value : null;
+  return Accounting.isCalendarDate(value) ? value : null;
 }
 
 function parseMinorUnits(value: string | null, separator: string, scale: number) {

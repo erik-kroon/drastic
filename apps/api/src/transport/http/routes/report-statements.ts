@@ -1,6 +1,6 @@
 import { Api } from "@open-erp/contracts/api";
 import * as Effect from "effect/Effect";
-import { HttpApiBuilder } from "effect/unstable/httpapi";
+import { HttpApiBuilder } from "effect/http-api";
 import * as Statements from "../../../application/report-statements";
 import { authenticate } from "../auth";
 import { scopeFromPath } from "../scope";

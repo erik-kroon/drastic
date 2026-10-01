@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import { OriginalDimensionStatus } from "@open-erp/domain/dimensions";
 import { RestatementPlan } from "@open-erp/domain/dimension-restatement";
 import { DimensionPolicy } from "@open-erp/domain/dimensions";

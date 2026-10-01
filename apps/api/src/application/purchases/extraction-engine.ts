@@ -1,4 +1,5 @@
 import type * as Schema from "effect/Schema";
+import { isCalendarDate } from "@open-erp/domain/values";
 
 import * as Shared from "./shared";
 
@@ -217,12 +218,7 @@ function typedValue(fieldKey: string, token: string, currencyScale: number) {
   if (isMoneyFieldKey(fieldKey)) return exactMoney(trimmed, currencyScale);
 
   if (fieldKey === "documentDate" || fieldKey === "supplyDate" || fieldKey === "dueDate") {
-    if (!Shared.datePattern.test(trimmed)) return null;
-    const parsed = new Date(`${trimmed}T00:00:00.000Z`);
-
-    return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== trimmed
-      ? null
-      : trimmed;
+    return isCalendarDate(trimmed) ? trimmed : null;
   }
 
   if (fieldKey === "quantity") return Shared.quantityPattern.test(trimmed) ? trimmed : null;

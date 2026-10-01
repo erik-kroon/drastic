@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as A from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 import { ProfileWitness } from "./company-profiles";
@@ -24,9 +24,9 @@ export const VatFactInput = Schema.Struct({
   reviewEvidenceId: A.Identifier,
   reviewRationale: A.Description,
   treatment: Schema.Literals(["unknown", "domestic_sale", "domestic_purchase", "unsupported"]),
-  netMinor: A.MinorUnits,
-  vatMinor: A.MinorUnits,
-  grossMinor: A.MinorUnits,
+  netMinor: A.SignedMinorUnits,
+  vatMinor: A.SignedMinorUnits,
+  grossMinor: A.SignedMinorUnits,
   currency: Schema.NullOr(Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/))),
   issuedOn: Schema.NullOr(A.AccountingDate),
   receivedOn: Schema.NullOr(A.AccountingDate),
@@ -48,6 +48,29 @@ export const VatFactInput = Schema.Struct({
 });
 
 export const VatFact = Schema.Struct({
+  cashMethodCredit: Schema.optional(
+    Schema.Struct({
+      creditLineId: A.Identifier,
+      originalRecognitionId: A.Identifier,
+      originalVatFactId: A.Identifier,
+      policy: Schema.Literal("tax_first_cumulative_v1"),
+      originalGrossMinor: A.MinorUnits,
+      originalTaxMinor: A.MinorUnits,
+      recognizedBeforeMinor: A.MinorUnits,
+      recognizedAfterMinor: A.MinorUnits,
+    }),
+  ),
+  cashMethodRecognition: Schema.optional(
+    Schema.Struct({
+      recognitionId: A.Identifier,
+      trigger: Schema.optional(Schema.Literals(["actual_payment", "year_end_unpaid"])),
+      policy: Schema.Literal("tax_first_cumulative_v1"),
+      originalGrossMinor: A.MinorUnits,
+      originalTaxMinor: A.MinorUnits,
+      recognizedBeforeMinor: A.MinorUnits,
+      recognizedAfterMinor: A.MinorUnits,
+    }),
+  ),
   id: A.Identifier,
   factId: A.Identifier,
   revision: Schema.Int,
@@ -146,9 +169,9 @@ export const VatBlocker = Schema.Literals([
 ]);
 
 export const VatContribution = Schema.Struct({
-  box05Minor: A.AggregateMinorUnits,
-  box10Minor: A.AggregateMinorUnits,
-  box48Minor: A.AggregateMinorUnits,
+  box05Minor: A.SignedMinorUnits,
+  box10Minor: A.SignedMinorUnits,
+  box48Minor: A.SignedMinorUnits,
 });
 
 export const VatAssessment = Schema.Struct({

@@ -60,12 +60,7 @@ function exact(value: string) {
 }
 
 function calendarDate(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-  const parsed = Date.parse(`${value}T00:00:00.000Z`);
-
-  if (!Number.isFinite(parsed)) return null;
-
-  return new Date(parsed).toISOString().slice(0, 10) === value ? value : null;
+  return Accounting.isCalendarDate(value) ? value : null;
 }
 
 function arrayOf(value: Schema.Json | undefined) {
@@ -140,8 +135,15 @@ function readCounts(transaction: Transaction, bookId: string, asOfDate: string, 
 function invoiceArithmeticHolds(rows: ReadonlyArray<JsonObject>) {
   return rows.every((row) => {
     const outstanding = exactOf(row.outstandingMinor);
+    const recognized = exactOf(row.recognizedOutstandingMinor);
 
-    return outstanding !== null && outstanding >= 0n;
+    return (
+      outstanding !== null &&
+      outstanding >= 0n &&
+      recognized !== null &&
+      recognized >= 0n &&
+      recognized <= outstanding
+    );
   });
 }
 
@@ -259,11 +261,18 @@ function registerStatus(counts: RegisterCounts, controls: ReadonlyArray<JsonObje
 
   const differs = controls.some((row) => {
     const difference = exactOf(row.differenceMinor);
-    const unexplained = exactOf(row.unexplainedLineCount);
+    const unexplained = row.unexplainedLineCount;
 
-    if (difference === null || unexplained === null) return true;
+    if (
+      difference === null ||
+      typeof unexplained !== "number" ||
+      !Number.isSafeInteger(unexplained) ||
+      unexplained < 0
+    ) {
+      return true;
+    }
 
-    return difference !== 0n || unexplained !== 0n;
+    return difference !== 0n || unexplained !== 0;
   });
 
   return differs ? ("differences" as const) : ("balanced" as const);

@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as A from "./accounting";
 import * as Source from "./source-intake";
 import * as Draft from "./supplier-invoice-drafts";

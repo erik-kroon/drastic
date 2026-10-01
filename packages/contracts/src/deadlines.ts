@@ -1,6 +1,6 @@
 import * as Schema from "effect/Schema";
 import { Digest, Identifier, Scope, ChangePath, IdempotencyHeaders } from "./accounting";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import { accountingErrors } from "./accounting-errors";
 
 export const OutcomeKind = Schema.Literals(["prepared", "submitted", "accepted"]);

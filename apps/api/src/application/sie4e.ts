@@ -65,8 +65,6 @@ const rowCursor = /^[a-z][a-z0-9_-]{2,127}:[1-9][0-9]{0,9}$/u;
 
 const cursorOrdinal = /^(0|[1-9][0-9]{0,18})$/u;
 
-const calendarDate = /^\d{4}-\d{2}-\d{2}$/u;
-
 type BookRow = {
   readonly entityId: string;
   readonly currency: string;
@@ -205,10 +203,7 @@ function requireNativeProfile(row: BookRow | undefined) {
 }
 
 function isRealDate(value: string) {
-  if (!calendarDate.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00Z`);
-
-  return Number.isFinite(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === value;
+  return Accounting.isCalendarDate(value);
 }
 
 function arrayOf(value: JsonObject, key: string) {

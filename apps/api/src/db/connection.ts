@@ -1,10 +1,12 @@
 import * as PgClient from "@effect/sql-pg/PgClient";
+import * as PgTypes from "@effect/sql-pg/PgTypes";
 import * as PgDrizzle from "drizzle-orm/effect-postgres";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Redacted from "effect/Redacted";
-import { ConnectionError, SqlError } from "effect/unstable/sql/SqlError";
+import * as Result from "effect/Result";
+import { ConnectionError, SqlError } from "effect/sql/SqlError";
 import { Client, types, type CustomTypesConfig } from "pg";
 
 const makeDatabase = PgDrizzle.makeWithDefaults();
@@ -23,6 +25,37 @@ export const applicationPostgresTypes: CustomTypesConfig = {
     return types.getTypeParser(oid, format);
   },
 };
+
+// Raw projections share the same string contract as Drizzle's date/time columns.
+const nativePostgresTypes = PgTypes.makeRegistry();
+
+for (const oid of [PgTypes.OID.timestamp, PgTypes.OID.timestamptz]) {
+  nativePostgresTypes.register(oid, {
+    encode: (value: unknown) => PgTypes.encode(value, oid),
+    decode: (bytes) =>
+      Result.flatMap(PgTypes.decode(bytes, oid, 1), (value) => {
+        if (!(value instanceof Date) || !Number.isFinite(value.getTime())) {
+          return Result.fail(new PgTypes.CodecError({ message: "Expected a finite timestamp" }));
+        }
+
+        const micros = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getBigInt64(
+          0,
+        );
+
+        const fraction = ((micros % 1_000_000n) + 1_000_000n) % 1_000_000n;
+        const wholeSecond = new Date(Number((micros - fraction) / 1000n) + 946_684_800_000);
+
+        return Result.succeed(
+          `${wholeSecond.toISOString().slice(0, -5)}.${fraction.toString().padStart(6, "0")}Z`,
+        );
+      }),
+  });
+}
+
+nativePostgresTypes.register(PgTypes.OID.int8, {
+  encode: (value: unknown) => PgTypes.encode(value, PgTypes.OID.int8),
+  decode: (bytes) => Result.map(PgTypes.decode(bytes, PgTypes.OID.int8, 1), String),
+});
 
 interface PostgresConfig {
   readonly connectionString: Redacted.Redacted<string>;
@@ -63,10 +96,15 @@ export function acquirePostgres(config: PostgresConfig) {
 
 export function databaseLayer(config: PostgresConfig) {
   const clientLayer = PgClient.layerFrom(
-    PgClient.fromClient({
-      acquire: acquirePostgres(config),
+    PgClient.makeClient({
+      url: config.connectionString,
+      types: nativePostgresTypes,
       acquireForStream: false,
       applicationName: config.applicationName,
+      connectTimeout: config.connectTimeoutMs,
+      startupParameters: {
+        statement_timeout: String(config.statementTimeoutMs),
+      },
     }),
   );
 

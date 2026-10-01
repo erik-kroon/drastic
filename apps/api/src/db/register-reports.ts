@@ -23,6 +23,10 @@ export const registerTables = [
   "accounts",
   "books",
   "command_receipts",
+  "cash_method_lines",
+  "cash_method_recognitions",
+  "cash_method_credits",
+  "cash_method_credit_plans",
 ] as const;
 
 export type RegisterBookRow = {
@@ -58,6 +62,14 @@ export type CursorRow = { readonly cursor: string };
 
 const cutoff = (bookId: string, asOf: string, sequence: string) => sql`
   v.book_id = ${bookId} and v.posting_date <= ${asOf}::date and v.sequence <= ${sequence}::bigint
+`;
+
+const invoiceCutoff = (bookId: string, asOf: string, sequence: string) => sql`
+  i.book_id = ${bookId} and (
+    (i.recognition_voucher_id is not null and ${cutoff(bookId, asOf, sequence)})
+    or (i.recognition_voucher_id is null
+      and i.body->>'kind' = 'cash_method_supplier_invoice_v1'
+      and i.issued_on <= ${asOf}::date))
 `;
 
 // The recognition voucher of a selected invoice stays accounted when it is
@@ -114,8 +126,8 @@ export function readBounds(
            limit 101) bounded) as accounts,
         (select count(*)::text from (
            select 1 from openerp.commerce_invoices i
-           join openerp.vouchers v on v.book_id = i.book_id and v.id = i.recognition_voucher_id
-           where ${cutoff(bookId, asOf, sequence)} limit 2001) bounded) as invoices,
+            left join openerp.vouchers v on v.book_id = i.book_id and v.id = i.recognition_voucher_id
+            where ${invoiceCutoff(bookId, asOf, sequence)} limit 2001) bounded) as invoices,
         (select count(*)::text from (
            select 1 from openerp.commerce_active_allocation_legs l
            join openerp.vouchers v on v.book_id = l.book_id and v.id = l.payment_voucher_id
@@ -173,19 +185,35 @@ export function countInvalidAllocations(
       select count(*)::text as invalid
       from openerp.commerce_active_allocation_legs l
       join openerp.commerce_invoices i on i.book_id = l.book_id and i.id = l.invoice_id
-      join openerp.vouchers recognition
+       left join openerp.vouchers recognition
         on recognition.book_id = i.book_id and recognition.id = i.recognition_voucher_id
-      join openerp.vouchers payment
+       left join openerp.vouchers payment
         on payment.book_id = l.book_id and payment.id = l.payment_voucher_id
-      join openerp.journal_lines j
+       left join openerp.journal_lines j
         on j.book_id = l.book_id and j.voucher_id = payment.id and j.id = l.payment_line_id
       where l.book_id = ${bookId}
-        and payment.posting_date <= ${asOf}::date and payment.sequence <= ${sequence}::bigint
-        and (not (${voucherCurrent(bookId)})
-          or j.account_id <> i.control_account_id
-          or recognition.posting_date > payment.posting_date
-          or recognition.sequence > ${sequence}::bigint
-          or recognition.event_id = payment.event_id
+         and (payment.id is null or
+           (payment.posting_date <= ${asOf}::date and payment.sequence <= ${sequence}::bigint))
+         and (payment.id is null or j.id is null or not (${voucherCurrent(bookId)})
+           or j.account_id <> i.control_account_id
+           or (i.recognition_voucher_id is not null and
+             (recognition.id is null or recognition.posting_date > payment.posting_date
+               or recognition.sequence > ${sequence}::bigint
+               or recognition.event_id = payment.event_id))
+           or (i.recognition_voucher_id is null and
+             (i.body->>'kind' is distinct from 'cash_method_supplier_invoice_v1'
+               or i.issued_on > payment.posting_date
+               or not exists (
+                 select 1 from openerp.cash_method_recognitions cr
+                 join openerp.cash_method_lines cl on cl.book_id = cr.book_id and cl.id = cr.line_id
+                 where cr.book_id = l.book_id and cr.allocation_receipt_id = l.receipt_id
+                   and cr.allocation_ordinal = l.ordinal and cl.invoice_id = i.id
+                   and cr.trigger_kind = 'actual_payment'
+                   and cr.source_payment_voucher_id = payment.id
+                   and cr.source_payment_line_id = j.id)
+               or (select sum(other.amount_minor) from openerp.commerce_active_allocation_legs other
+                 where other.book_id = l.book_id and other.payment_voucher_id = payment.id
+                   and other.payment_line_id = j.id) > j.debit_minor + j.credit_minor))
           or (i.direction = 'customer' and (j.credit_minor = 0 or j.debit_minor <> 0))
           or (i.direction = 'supplier' and (j.debit_minor = 0 or j.credit_minor <> 0)))
     `,
@@ -252,16 +280,24 @@ export function readInvoices(
         'evidence', i.body->'evidence', 'recognition', i.body->'recognition',
          'revision', r.body, 'allocatedMinor', (paid.amount + owner_discharges.total)::text,
         'cancelledMinor', case when cancel.id is null then '0' else i.amount_minor::text end,
-        'creditedMinor', credit.amount::text,
+        'creditedMinor', (credit.amount + cash_credit.gross)::text,
+        'recognizedCreditedMinor', (credit.amount + cash_credit.recognized)::text,
         'effectiveAmountMinor', ((case when cancel.id is null then i.amount_minor else 0 end)
-          - credit.amount)::text,
+          - credit.amount - cash_credit.gross)::text,
         'cancellation', case when cancel.body is null then null else jsonb_build_object(
           'id', cancel.body->>'id', 'reviewId', cancel.body->>'reviewId',
           'issueId', cancel.body->>'issueId', 'originalVoucherId', cancel.body->>'originalVoucherId',
           'reversalVoucherId', cancel.body->>'reversalVoucherId',
           'postingDate', cancel.body->>'postingDate', 'committedAt', cancel.body->>'committedAt') end,
-        'outstandingMinor', ((case when cancel.id is null then i.amount_minor else 0 end)
-           - paid.amount - owner_discharges.total - credit.amount)::text,
+         'outstandingMinor', ((case when cancel.id is null then i.amount_minor else 0 end)
+            - paid.amount - owner_discharges.total - credit.amount - cash_credit.gross)::text,
+         'commercialOutstandingMinor', ((case when cancel.id is null then i.amount_minor else 0 end)
+            - paid.amount - owner_discharges.total - credit.amount - cash_credit.gross)::text,
+         'recognizedMinor', (case when i.recognition_voucher_id is null
+           then cash.amount else i.amount_minor end)::text,
+         'recognizedOutstandingMinor', ((case when i.recognition_voucher_id is null
+           then cash.amount when cancel.id is null then i.amount_minor else 0 end)
+           - paid.amount - owner_discharges.total - credit.amount - cash_credit.recognized)::text,
         'daysOverdue', greatest(${asOf}::date - (r.body->>'dueOn')::date, 0),
         'ageBucket', case
           when ${asOf}::date <= (r.body->>'dueOn')::date then 'not_due'
@@ -283,14 +319,32 @@ export function readInvoices(
         where sc.book_id = i.book_id and sc.invoice_id = i.id
           and cv.posting_date <= ${asOf}::date and cv.sequence <= ${sequence}::bigint
       ) credit
-      join openerp.vouchers v on v.book_id = i.book_id and v.id = i.recognition_voucher_id
+       cross join lateral (
+         select coalesce(sum(cc.gross_minor), 0) as gross,
+           coalesce(sum(cc.recognized_minor), 0) as recognized
+         from openerp.cash_method_credits cc
+         left join openerp.vouchers cv on cv.book_id = cc.book_id and cv.id = cc.voucher_id
+         where cc.book_id = i.book_id and cc.invoice_id = i.id
+           and cc.credit_date <= ${asOf}::date
+           and (cc.voucher_id is null or
+             (cv.posting_date <= ${asOf}::date and cv.sequence <= ${sequence}::bigint))
+       ) cash_credit
+       left join openerp.vouchers v on v.book_id = i.book_id and v.id = i.recognition_voucher_id
+       cross join lateral (
+         select coalesce(sum(cr.recognized_gross_minor::numeric), 0) as amount
+         from openerp.cash_method_lines cl
+         join openerp.cash_method_recognitions cr on cr.book_id = cl.book_id and cr.line_id = cl.id
+         join openerp.vouchers cv on cv.book_id = cr.book_id and cv.id = cr.voucher_id
+         where cl.book_id = i.book_id and cl.invoice_id = i.id
+           and cv.posting_date <= ${asOf}::date and cv.sequence <= ${sequence}::bigint
+       ) cash
       cross join lateral (
         select coalesce(sum((a->>'amountMinor')::numeric), 0) as amount
         from jsonb_array_elements(${JSON.stringify(allocations)}::jsonb) a
         where a->>'invoiceId' = i.id
        ) paid
        cross join lateral (${ownerDischargeSummary(asOf, sequence)}) owner_discharges
-      where i.book_id = ${bookId} and ${cutoff(bookId, asOf, sequence)}
+       where ${invoiceCutoff(bookId, asOf, sequence)}
     `,
     "objects",
   );
@@ -311,24 +365,26 @@ export function readLines(
         'sequence', v.sequence::text, 'ordinal', l.ordinal,
         'postingDate', v.posting_date::text, 'debitMinor', l.debit_minor::text,
         'creditMinor', l.credit_minor::text,
-         'invoiceId', coalesce(invoice.value->>'id', cancelled.value->>'id', credit.invoice_id, owner_discharge.invoice_id),
+          'invoiceId', coalesce(invoice.value->>'id', cancelled.value->>'id', credit.invoice_id, owner_discharge.invoice_id, cash.invoice_id, cash_credit.invoice_id),
          'allocatedMinor', (paid.amount + coalesce(owner_discharge.amount_minor, 0))::text,
-         'cancellationId', cancelled.value->'cancellation'->>'id', 'creditId', credit.id,
+          'cancellationId', cancelled.value->'cancellation'->>'id', 'creditId', coalesce(credit.id, cash_credit.id),
          'ownerDischargeId', owner_discharge.id,
         'registerContributionKind', case
-          when invoice.value is not null then 'recognition'
+           when invoice.value is not null then 'recognition'
+           when cash.amount > 0 then 'recognition'
           when cancelled.value is not null then 'cancellation'
-           when credit.id is not null then 'credit'
+            when credit.id is not null or cash_credit.id is not null then 'credit'
            when owner_discharge.id is not null then 'owner_discharge'
           when paid.amount > 0 then 'allocation' else 'unexplained' end,
-        'registerEffectMinor', (coalesce((invoice.value->>'amountMinor')::numeric, 0)
+         'registerEffectMinor', (coalesce((invoice.value->>'amountMinor')::numeric, 0) + cash.amount
           - coalesce((cancelled.value->>'cancelledMinor')::numeric, 0)
-           - coalesce(credit.amount_minor, 0) - paid.amount - coalesce(owner_discharge.amount_minor, 0))::text,
+            - coalesce(credit.amount_minor, 0) - cash_credit.amount - paid.amount - coalesce(owner_discharge.amount_minor, 0))::text,
         'unexplainedMinor', ((case when c.direction = 'customer'
             then l.debit_minor - l.credit_minor else l.credit_minor - l.debit_minor end)
-          - coalesce((invoice.value->>'amountMinor')::numeric, 0)
+           - coalesce((invoice.value->>'amountMinor')::numeric, 0)
+           - cash.amount
           + coalesce((cancelled.value->>'cancelledMinor')::numeric, 0)
-           + coalesce(credit.amount_minor, 0) + paid.amount + coalesce(owner_discharge.amount_minor, 0))::text
+            + coalesce(credit.amount_minor, 0) + cash_credit.amount + paid.amount + coalesce(owner_discharge.amount_minor, 0))::text
       ) order by v.sequence, l.ordinal), '[]'::jsonb) as value
       from openerp.journal_lines l
       join openerp.vouchers v on v.book_id = l.book_id and v.id = l.voucher_id
@@ -337,7 +393,44 @@ export function readLines(
       left join lateral (
         select i as value from jsonb_array_elements(${JSON.stringify(invoices)}::jsonb) i
         where i->'recognition'->>'voucherId' = v.id and i->'recognition'->>'lineId' = l.id
-      ) invoice on true
+       ) invoice on true
+       cross join lateral (
+         select case when coalesce(sum(cr.recognized_gross_minor::numeric), 0) > 0 then
+           coalesce((select case when c.direction = 'supplier'
+               then (planned->>'creditMinor')::numeric else (planned->>'debitMinor')::numeric end
+             from jsonb_array_elements(v.action->'lines') planned
+             where planned->>'lineId' = l.id and planned->>'accountId' = l.account_id), 0)
+           else 0 end as amount,
+           case when count(distinct cl.invoice_id) = 1 then min(cl.invoice_id) else null end as invoice_id
+         from openerp.cash_method_recognitions cr
+         join openerp.cash_method_lines cl on cl.book_id = cr.book_id and cl.id = cr.line_id
+         join openerp.commerce_invoices ci on ci.book_id = cl.book_id and ci.id = cl.invoice_id
+         where cr.book_id = v.book_id and cr.voucher_id = v.id
+           and ci.control_account_id = l.account_id
+           and ci.recognition_voucher_id is null
+           and ((ci.direction = 'supplier' and l.credit_minor > 0 and l.debit_minor = 0)
+             or (ci.direction = 'customer' and l.debit_minor > 0 and l.credit_minor = 0))
+       ) cash
+       cross join lateral (
+         select coalesce(sum(case when c.direction = 'supplier'
+           then (planned->>'debitMinor')::numeric - (planned->>'creditMinor')::numeric
+           else (planned->>'creditMinor')::numeric - (planned->>'debitMinor')::numeric end), 0) as amount,
+           case when count(distinct cc.invoice_id) = 1 then min(cc.invoice_id) else null end as invoice_id,
+           case when count(*) = 1 then min(cc.id) else null end as id
+         from openerp.cash_method_credits cc
+         join openerp.cash_method_credit_plans cp on cp.book_id = cc.book_id and cp.id = cc.plan_id
+           and cp.change_set_id = v.change_set_id
+          cross join lateral jsonb_array_elements(cp.body->'postingPlan'->'groups') sealed_group
+          cross join lateral jsonb_array_elements(sealed_group->'actions') sealed_action
+          cross join lateral jsonb_array_elements(sealed_action->'lines') planned
+         join openerp.commerce_invoices ci on ci.book_id = cc.book_id and ci.id = cc.invoice_id
+          where cc.book_id = v.book_id and cc.voucher_id = v.id
+            and sealed_action = v.action
+           and planned->>'lineId' = l.id and planned->>'accountId' = l.account_id
+           and cc.credit_date <= ${asOf}::date and ci.control_account_id = l.account_id
+           and ((ci.direction = 'supplier' and l.debit_minor > 0 and l.credit_minor = 0)
+             or (ci.direction = 'customer' and l.credit_minor > 0 and l.debit_minor = 0))
+       ) cash_credit
       left join lateral (
         select i as value from jsonb_array_elements(${JSON.stringify(invoices)}::jsonb) i
         where i->'cancellation'->>'reversalVoucherId' = v.id and i->'recognition'->>'lineId' = l.id
@@ -376,9 +469,12 @@ export function readControls(
         'version', a.version::text, 'active', a.active, 'direction', c.direction,
         'recognizedMinor', recognized.amount::text,
         'cancelledMinor', cancelled.amount::text,
-        'creditedMinor', credited.amount::text,
+         'creditedMinor', credited.amount::text,
+         'recognizedCreditedMinor', recognized_credit.amount::text,
         'allocatedMinor', allocated.amount::text,
-        'outstandingMinor', outstanding.amount::text,
+         'outstandingMinor', outstanding.amount::text,
+         'recognizedOutstandingMinor', outstanding.amount::text,
+         'commercialOutstandingMinor', commercial.amount::text,
         'ledgerMinor', ledger.balance::text,
         'differenceMinor', (ledger.balance - outstanding.amount)::text,
         'unexplainedLineCount', ledger.unexplained,
@@ -389,7 +485,7 @@ export function readControls(
       from openerp.commerce_control_accounts c
       join openerp.accounts a on a.book_id = c.book_id and a.id = c.account_id
       cross join lateral (
-        select coalesce(sum((i->>'amountMinor')::numeric), 0) as amount
+         select coalesce(sum((i->>'recognizedMinor')::numeric), 0) as amount
         from jsonb_array_elements(${JSON.stringify(invoices)}::jsonb) i
         where i->>'controlAccountId' = c.account_id
       ) recognized
@@ -402,17 +498,27 @@ export function readControls(
         select coalesce(sum((i->>'creditedMinor')::numeric), 0) as amount
         from jsonb_array_elements(${JSON.stringify(invoices)}::jsonb) i
         where i->>'controlAccountId' = c.account_id
-      ) credited
+       ) credited
+       cross join lateral (
+         select coalesce(sum((i->>'recognizedCreditedMinor')::numeric), 0) as amount
+         from jsonb_array_elements(${JSON.stringify(invoices)}::jsonb) i
+         where i->>'controlAccountId' = c.account_id
+       ) recognized_credit
       cross join lateral (
         select coalesce(sum((i->>'allocatedMinor')::numeric), 0) as amount
         from jsonb_array_elements(${JSON.stringify(invoices)}::jsonb) i
         where i->>'controlAccountId' = c.account_id
       ) allocated
       cross join lateral (
-        select coalesce(sum((i->>'outstandingMinor')::numeric), 0) as amount
+         select coalesce(sum((i->>'recognizedOutstandingMinor')::numeric), 0) as amount
         from jsonb_array_elements(${JSON.stringify(invoices)}::jsonb) i
         where i->>'controlAccountId' = c.account_id
-      ) outstanding
+       ) outstanding
+       cross join lateral (
+         select coalesce(sum((i->>'commercialOutstandingMinor')::numeric), 0) as amount
+         from jsonb_array_elements(${JSON.stringify(invoices)}::jsonb) i
+         where i->>'controlAccountId' = c.account_id
+       ) commercial
       cross join lateral (
         select coalesce(sum((i->>'outstandingMinor')::numeric)
           filter (where i->>'ageBucket' = 'not_due'), 0) as amount

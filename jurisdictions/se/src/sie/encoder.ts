@@ -1,6 +1,6 @@
 import * as Accounting from "@open-erp/domain/errors";
 import type * as Sie from "@open-erp/contracts/sie";
-import { isAccountCode } from "@open-erp/domain/values";
+import { isAccountCode, isCalendarDate } from "@open-erp/domain/values";
 
 // Unicode mapping for IBM CP437 bytes 0x80..0xff. ASCII control bytes are not text.
 const extended =
@@ -23,12 +23,7 @@ export function quoted(value: string) {
 }
 
 export function date(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith("0000"))
-    refuse("SIE dates must be real calendar dates.");
-  const parsed = new Date(`${value}T00:00:00Z`);
-
-  if (!Number.isFinite(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== value)
-    refuse("SIE dates must be real calendar dates.");
+  if (!isCalendarDate(value)) refuse("SIE dates must be real calendar dates.");
 
   return value.replaceAll("-", "");
 }

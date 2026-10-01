@@ -608,10 +608,8 @@ const paymentSelection = Effect.fn("purchases.payments.selection")(function* (
   if (book.currency !== "SEK" || book.currencyScale !== 2)
     return yield* failure("UnsupportedProfile");
   const today = (yield* PaymentDb.readDatabaseDate(tx))[0]?.today;
-  const date = Date.parse(`${input.executionDate}T00:00:00Z`);
 
-  if (!Number.isFinite(date) || new Date(date).toISOString().slice(0, 10) !== input.executionDate)
-    return yield* failure("InvalidJournal");
+  if (!Accounting.isCalendarDate(input.executionDate)) return yield* failure("InvalidJournal");
 
   if (!today || input.executionDate < today) return yield* failure("StaleDependency");
   yield* validateAccount(input.debtorName, input.debtorIban, input.debtorBic);
@@ -624,6 +622,9 @@ const paymentSelection = Effect.fn("purchases.payments.selection")(function* (
   for (const item of input.items) {
     yield* validateAccount(item.creditorName, item.creditorIban, item.creditorBic);
     const invoice = yield* liveInvoice(tx, scope.bookId, item.invoiceId);
+
+    if (invoice.recognition === null) return yield* failure("UnsupportedProfile");
+
     const facts = (yield* PaymentDb.readInvoicePaymentFacts(tx, scope.bookId, item.invoiceId))[0];
 
     if (invoice.direction !== "supplier" || !facts?.accepted) return yield* failure("NotFound");

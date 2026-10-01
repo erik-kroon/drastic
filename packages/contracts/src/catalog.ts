@@ -1,4 +1,4 @@
-import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import { accountingErrors } from "./accounting-errors";
 import * as Schema from "effect/Schema";
 import * as Accounting from "./accounting";

@@ -2,6 +2,7 @@ import type * as Schema from "effect/Schema";
 import type { SourceLocator } from "@open-erp/contracts/supplier-extraction";
 
 import { equalJson } from "@open-erp/domain/canonicalization";
+import { isCalendarDate } from "@open-erp/domain/values";
 
 import * as Shared from "./shared";
 import { headerFieldKeys, isMoneyFieldKey, lineFieldKeys } from "./extraction-engine";
@@ -397,12 +398,7 @@ export function isExactSelectedValue(fieldKey: string, selected: Json) {
 const dateKeys = ["documentDate", "supplyDate", "dueDate"] as const;
 
 function calendarDate(value: Json) {
-  if (typeof value !== "string" || !Shared.datePattern.test(value)) return null;
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-
-  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value
-    ? null
-    : value;
+  return typeof value === "string" && isCalendarDate(value) ? value : null;
 }
 
 function contentLine(content: JsonObject, index: number) {

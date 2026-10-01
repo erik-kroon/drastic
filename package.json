@@ -50,16 +50,16 @@
     "check:integration": "bun scripts/check-integration.ts"
   },
   "devDependencies": {
-    "@effect/platform-bun": "4.0.0-rc.112",
-    "@effect/platform-node-shared": "4.0.0-rc.112",
+    "@effect/platform-bun": "4.0.0",
+    "@effect/platform-node-shared": "4.0.0",
     "@effect/tsgo": "0.41.0",
     "@open-erp/config": "workspace:*",
     "@oxlint/plugins": "1.79.0",
     "@stylexjs/eslint-plugin": "0.19.0",
     "@types/bun": "catalog:",
     "@types/node": "26.2.0",
-    "alchemy": "2.0.0-beta.77",
-    "effect": "4.0.0-rc.112",
+    "alchemy": "2.0.0-beta.79",
+    "effect": "4.0.0",
     "oxfmt": "^0.64.0",
     "oxlint": "1.79.0",
     "oxlint-tsgolint": "7.0.2001",
@@ -68,10 +68,10 @@
     "vitest": "4.1.10"
   },
   "overrides": {
-    "@effect/platform-node-shared": "4.0.0-rc.112",
-    "@effect/sql-d1": "4.0.0-rc.112",
-    "@effect/sql-sqlite-do": "4.0.0-rc.112",
-    "@effect/vitest": "4.0.0-rc.112",
+    "@effect/platform-node-shared": "4.0.0",
+    "@effect/sql-d1": "4.0.0",
+    "@effect/sql-sqlite-do": "4.0.0",
+    "@effect/vitest": "4.0.0",
     "vite": "npm:@voidzero-dev/vite-plus-core@0.2.9",
     "vitest": "4.1.10"
   },

@@ -1,5 +1,5 @@
 import * as Effect from "effect/Effect";
-import { HttpServerRequest } from "effect/unstable/http";
+import { HttpServerRequest } from "effect/http";
 import { makeAuth } from "../../adapters/auth/better-auth";
 import { failure } from "../../application/failures";
 import { RequestEnvironment } from "../../runtime/environment";
