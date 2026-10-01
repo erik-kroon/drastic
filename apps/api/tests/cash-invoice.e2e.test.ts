@@ -528,15 +528,16 @@ test("locked document period admits only a constrained commercial cash invoice w
     );
 
     expect(population.rows).toEqual([{ version: "1" }]);
-    expect(await decoded(await send(), Commerce.Invoice)).toEqual(invoice);
-    expect(
-      (
-        await admin.query(
-          "select version::text from openerp.cash_method_population_epochs where book_id=$1",
-          [book.bookId],
-        )
-      ).rows,
-    ).toEqual(population.rows);
+
+    const replayed = await decoded(await send(), Commerce.Invoice);
+
+    const replayedPopulation = await admin.query(
+      "select version::text from openerp.cash_method_population_epochs where book_id=$1",
+      [book.bookId],
+    );
+
+    expect(replayed).toEqual(invoice);
+    expect(replayedPopulation.rows).toEqual([{ version: "1" }]);
 
     const invalidInvoices = [
       {
@@ -563,9 +564,11 @@ test("locked document period admits only a constrained commercial cash invoice w
       },
     ];
 
+    const refusals: Array<{ name: string; code: string; constraint: string } | null> = [];
+
     for (const invalidInvoice of invalidInvoices) {
-      await expect(
-        admin.query(
+      const refusal = await admin
+        .query(
           `insert into openerp.commerce_invoices
         (book_id,id,direction,counterparty_id,counterparty_revision,document_number,issued_on,
         amount_minor,control_account_id,recognition_voucher_id,recognition_line_id,evidence_id,
@@ -582,8 +585,30 @@ test("locked document period admits only a constrained commercial cash invoice w
             invalidInvoice.draft,
             invoice.id,
           ],
-        ),
-      ).rejects.toMatchObject({ code: "23514", constraint: "commerce_recognition_shape" });
+        )
+        .then(
+          () => null,
+          (error: unknown) => {
+            if (
+              !(error instanceof Error) ||
+              !("code" in error) ||
+              typeof error.code !== "string" ||
+              !("constraint" in error) ||
+              typeof error.constraint !== "string"
+            )
+              throw error;
+
+            return { name: invalidInvoice.name, code: error.code, constraint: error.constraint };
+          },
+        );
+
+      expect(refusal).toEqual({
+        name: invalidInvoice.name,
+        code: "23514",
+        constraint: "commerce_recognition_shape",
+      });
+
+      refusals.push(refusal);
     }
 
     expect(
@@ -594,14 +619,13 @@ test("locked document period admits only a constrained commercial cash invoice w
         )
       ).rows,
     ).toEqual([{ count: 1 }]);
-    expect(
-      (
-        await admin.query(
-          "select locked from openerp.periods where book_id=$1 and id='period_2026'",
-          [book.bookId],
-        )
-      ).rows,
-    ).toEqual([{ locked: true }]);
+
+    const documentPeriod = await admin.query(
+      "select locked from openerp.periods where book_id=$1 and id='period_2026'",
+      [book.bookId],
+    );
+
+    expect(documentPeriod.rows).toEqual([{ locked: true }]);
 
     const cashRecognition = await admin.query(
       `select (select count(*)::text from openerp.cash_method_recognitions where book_id=$1) as recognitions,
@@ -624,14 +648,11 @@ test("locked document period admits only a constrained commercial cash invoice w
       JSON.stringify(
         {
           invoice,
-          documentPeriodLocked: true,
+          documentPeriod: documentPeriod.rows,
           population: population.rows,
-          replayPreserved: true,
-          invalidInvoices: invalidInvoices.map((invalidInvoice) => ({
-            name: invalidInvoice.name,
-            code: "23514",
-            constraint: "commerce_recognition_shape",
-          })),
+          replayed,
+          replayedPopulation: replayedPopulation.rows,
+          refusals,
           financial,
           cashRecognition: cashRecognition.rows,
         },
