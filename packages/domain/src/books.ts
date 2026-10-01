@@ -13,6 +13,7 @@ export const Book = Schema.Struct({
 });
 
 export const BookSetup = Schema.Struct({
+  today: AccountingDate,
   accounts: Schema.Array(
     Schema.Struct({
       id: Identifier,

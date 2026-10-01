@@ -8,6 +8,7 @@ import { RecordSection } from "@open-erp/ui/components/record-layout";
 import { AccountingStatus } from "@/components/accounting-status";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { useBookWorkspace } from "@/lib/book-context";
+import { useBusinessDate } from "@/lib/use-business-date";
 import { english, swedish } from "./copy";
 
 type Profile = typeof Profiles.CompanyProfile.Type;
@@ -17,7 +18,7 @@ type Copy = typeof english;
 export function CompanyAdmission() {
   const { book, locale } = useBookWorkspace();
   const copy = locale === "sv" ? swedish : english;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = useBusinessDate();
 
   const profile = useQuery({
     queryKey: [...bookKey(book), "company-profile", today],

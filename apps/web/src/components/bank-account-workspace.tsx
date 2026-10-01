@@ -69,8 +69,11 @@ export function bankWorkspaceOptions(book: typeof Accounting.Book.Type, query: U
 }
 
 export function bankWorkspaceParams(setup: typeof Accounting.BookSetup.Type, search: BankSearch) {
-  const period = setup.periods.at(-1);
-  const from = search.from ?? period?.startsOn ?? new Date().toISOString().slice(0, 10);
+  const period =
+    setup.periods.find((item) => item.startsOn <= setup.today && item.endsOn >= setup.today) ??
+    setup.periods.at(-1);
+
+  const from = search.from ?? period?.startsOn ?? setup.today;
   const to = search.to ?? period?.endsOn ?? from;
 
   const query = new URLSearchParams({
@@ -91,16 +94,16 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
   const client = useQueryClient();
   const navigate = useNavigate();
   const sv = locale === "sv";
-  const period = setup.periods.at(-1);
-  const from = search.from ?? period?.startsOn ?? new Date().toISOString().slice(0, 10);
-  const to = search.to ?? period?.endsOn ?? from;
+
+  const query = bankWorkspaceParams(setup, search);
+  const from = query.get("startsOn") ?? setup.today;
+  const to = query.get("endsOn") ?? from;
   const base = `${workspacePath(book)}/accounts`;
 
   const change = (next: BankSearch) =>
     void navigate({ to: base, search: next, resetScroll: false });
 
   const href = (next: BankSearch) => `${base}${defaultStringifySearch(next)}`;
-  const query = bankWorkspaceParams(setup, search);
 
   const workspace = useQuery({
     ...bankWorkspaceOptions(book, query),

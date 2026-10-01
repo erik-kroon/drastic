@@ -409,7 +409,8 @@ export const Capabilities = {
     readOnly: true,
   },
   book_get_setup: {
-    description: "Read accounts, periods and known implementation blockers for a book.",
+    description:
+      "Read the server's Stockholm business date, accounts, periods and known implementation blockers for a book.",
     input: Schema.Struct(scoped),
     output: Accounting.BookSetup,
     readOnly: true,

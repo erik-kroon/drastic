@@ -183,12 +183,11 @@ function CancellationPreparation(
   const copy = invoiceCancellationCopy(locale);
   const setup = useCancellationSetup(book);
 
-  const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm" }).format(
-    new Date(),
-  );
+  const today = setup.data?.today;
 
   const currentPeriod = setup.data?.periods.find(
-    (period) => !period.locked && period.startsOn <= today && period.endsOn >= today,
+    (period) =>
+      today !== undefined && !period.locked && period.startsOn <= today && period.endsOn >= today,
   );
 
   return (

@@ -16,6 +16,7 @@ import { ExecutionReceipt as DomainExecutionReceipt } from "@open-erp/domain/led
 import { orderPostingGroups, validatePostingLines } from "@open-erp/domain/posting";
 import { assertPeriodWorkFence } from "./period-work-fence";
 import * as Effect from "effect/Effect";
+import * as DateTime from "effect/DateTime";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { failure } from "./failures";
@@ -597,8 +598,10 @@ export const bookSetup = Effect.fn("posting.bookSetup")(function* (
       const book = yield* readBook(transaction, command.scope);
       const accountRows = yield* Db.readAllAccounts(transaction, command.scope.bookId);
       const periodRows = yield* Db.readAllPeriods(transaction, command.scope.bookId);
+      const now = yield* DateTime.now;
 
       return yield* decode(BookSetupSchema, {
+        today: swedishBusinessDate(DateTime.toDateUtc(now)),
         accounts: accountRows.map((row) => ({
           id: row.id,
           code: row.code,

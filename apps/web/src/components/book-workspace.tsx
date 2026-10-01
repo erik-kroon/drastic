@@ -47,6 +47,8 @@ export function BookWorkspace({
     retry: false,
     staleTime: 0,
     refetchOnMount: "always",
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: "always",
   });
 
   const scopeUnavailable =

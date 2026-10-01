@@ -25,7 +25,7 @@ async function unusedPort() {
   return address.port;
 }
 
-test("real overview crosses Stockholm midnight and supplier UI follows retained-history pages", async () => {
+test("real overview follows the server date despite browser clock skew and supplier UI retains history pages", async () => {
   const { book, content } = await supplierFixture();
   const setup = await database();
 
@@ -117,12 +117,27 @@ test("real overview crosses Stockholm midnight and supplier UI follows retained-
     const page = await context.newPage();
     const errors: string[] = [];
     const dates: string[] = [];
+    const setupReads: string[] = [];
+    const bankWindows: Array<{ from: string | null; to: string | null }> = [];
+    const admissionDates: Array<string | null> = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("request", (request) => {
       const requested = new URL(request.url());
 
       if (requested.pathname.endsWith("/bank-workspace"))
         dates.push(requested.searchParams.get("endsOn") ?? "");
+
+      if (requested.pathname.endsWith("/setup")) setupReads.push(requested.href);
+
+      if (requested.pathname.endsWith("/bank-workspace")) {
+        bankWindows.push({
+          from: requested.searchParams.get("startsOn"),
+          to: requested.searchParams.get("endsOn"),
+        });
+      }
+
+      if (requested.pathname.endsWith("/company-profile"))
+        admissionDates.push(requested.searchParams.get("postingOn"));
     });
 
     try {
@@ -146,9 +161,22 @@ test("real overview crosses Stockholm midnight and supplier UI follows retained-
       await page.getByRole("button", { name: "Sign in", exact: true }).click();
       await page.getByText("Synthetic E2E book", { exact: true }).first().waitFor();
       const workspace = `${url}/entities/${book.entityId}/books/${book.bookId}`;
+      const expectedClock = await database();
+      let serverToday: string;
 
-      await page.clock.install({ time: new Date("2026-09-30T21:59:00Z") });
-      await page.clock.pauseAt(new Date("2026-09-30T21:59:00Z"));
+      try {
+        const expected = await expectedClock.query<{ day: string }>(
+          "SELECT (clock_timestamp() AT TIME ZONE 'Europe/Stockholm')::date::text AS day",
+        );
+
+        serverToday = expected.rows[0]?.day ?? "";
+        expect(serverToday).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      } finally {
+        await expectedClock.end();
+      }
+
+      await page.clock.install({ time: new Date("2026-01-01T00:00:00Z") });
+      await page.clock.pauseAt(new Date("2026-01-01T00:00:00Z"));
       await page.goto(`${workspace}/overview`);
       await page.clock.runFor(1000);
       await expect
@@ -160,17 +188,21 @@ test("real overview crosses Stockholm midnight and supplier UI follows retained-
           },
           { timeout: 15000 },
         )
-        .toBe("2026-09-30");
+        .toBe(serverToday);
+
+      const initialSetupReads = setupReads.length;
+
       await page.clock.runFor(61000);
       await expect
         .poll(async () => {
           await page.clock.runFor(100);
 
-          return dates.at(-1);
+          return setupReads.length;
         })
-        .toBe("2026-10-01");
+        .toBeGreaterThan(initialSetupReads);
+      expect(dates.at(-1)).toBe(serverToday);
       await page.screenshot({
-        path: join(environment().artifacts, "stockholm-midnight-desktop.png"),
+        path: join(environment().artifacts, "server-business-date-desktop.png"),
         fullPage: true,
       });
 
@@ -201,13 +233,13 @@ test("real overview crosses Stockholm midnight and supplier UI follows retained-
 
               return dates.at(-1);
             })
-            .toBe(vector.expected);
+            .toBe(serverToday);
         }
       } finally {
         await admin.end();
       }
 
-      // Advance wall time without running timers: focus must repair a suspended tab.
+      // A suspended or skewed browser must not invent another business date.
       await page.clock.setSystemTime(new Date("2026-12-31T23:30:00Z"));
       await page.evaluate(() => window.dispatchEvent(new Event("focus")));
       await expect
@@ -216,7 +248,7 @@ test("real overview crosses Stockholm midnight and supplier UI follows retained-
 
           return dates.at(-1);
         })
-        .toBe("2027-01-01");
+        .toBe(serverToday);
       await page.clock.setSystemTime(new Date("2026-06-30T22:30:00Z"));
       await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
       await expect
@@ -225,9 +257,15 @@ test("real overview crosses Stockholm midnight and supplier UI follows retained-
 
           return dates.at(-1);
         })
-        .toBe("2026-07-01");
+        .toBe(serverToday);
 
       await page.clock.resume();
+      await page.goto(`${workspace}/accounts`);
+      await expect.poll(() => bankWindows.at(-1)).toEqual({ from: "2026-01-01", to: "2026-12-31" });
+      await page.goto(`${workspace}/accounts?from=2026-03-01&to=2026-03-31`);
+      await expect.poll(() => bankWindows.at(-1)).toEqual({ from: "2026-03-01", to: "2026-03-31" });
+      await page.goto(`${workspace}/setup`);
+      await expect.poll(() => admissionDates.at(-1)).toBe(serverToday);
       await page.goto(`${workspace}/purchases?view=supplier-drafts`);
       const more = page.getByRole("button", { name: "Load more drafts", exact: true });
       await more.waitFor();
@@ -248,8 +286,12 @@ test("real overview crosses Stockholm midnight and supplier UI follows retained-
             browserTimezone: "America/Los_Angeles",
             dates,
             vectors,
-            midnightWithoutReload: true,
-            focusAndVisibilityRefresh: true,
+            serverToday,
+            setupReads: setupReads.length,
+            browserClockIgnored: true,
+            serverDatePolling: true,
+            bankWindows,
+            admissionDates,
             retainedDrafts: 201,
             loadMore: true,
             search: "Browser supplier 200",
