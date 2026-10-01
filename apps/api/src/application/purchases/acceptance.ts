@@ -2,6 +2,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
 import type { EffectDrizzleQueryError } from "drizzle-orm/effect-core/errors";
 import * as Effect from "effect/Effect";
+import { readDraftAdoption, readCashOriginalAdoption } from "../../db/commerce/cash-invoices";
 import type * as Schema from "effect/Schema";
 import { failure } from "../failures";
 import {
@@ -390,6 +391,11 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
 
       if (request.previous) return request.previous;
 
+      if (
+        (yield* readDraftAdoption(transaction, command.scope.bookId, command.input.draftId)).length
+      )
+        return yield* failure("UnsupportedProfile");
+
       const swedish = command.input.profile === "swedish-purchase-v1";
 
       const head = yield* readDraftForAcceptance(
@@ -439,6 +445,12 @@ export const prepareSupplierAcceptance = Effect.fn("purchases.acceptance.prepare
 
       const sourceEvidenceId =
         Shared.textField(Shared.objectField(head.body, "content"), "sourceEvidenceId") ?? "";
+
+      if (
+        (yield* readCashOriginalAdoption(transaction, command.scope.bookId, sourceEvidenceId))
+          .length
+      )
+        return yield* failure("UnsupportedProfile");
 
       const evidence = yield* Shared.readEvidenceReference(
         transaction,
@@ -603,6 +615,21 @@ function acceptanceBlockers(
     const body = review.body;
     const input = Shared.objectField(body, "input");
     const evidenceId = Shared.textField(Shared.objectField(body, "evidence"), "evidenceId") ?? "";
+
+    if ((yield* readCashOriginalAdoption(transaction, bookId, evidenceId)).length) {
+      return [
+        "This supplier original already belongs to a cash-method commercial invoice.",
+      ] as const;
+    }
+
+    if (
+      (yield* readDraftAdoption(transaction, bookId, Shared.textField(input, "draftId") ?? ""))
+        .length
+    ) {
+      return [
+        "This original was accepted as cash-method commercial debt; accrual recognition is unsupported.",
+      ] as const;
+    }
 
     if (
       (yield* AcceptanceDb.readAcceptanceForDraft(

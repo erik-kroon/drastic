@@ -1,6 +1,6 @@
 import * as Schema from "effect/Schema";
 import * as Accounting from "./accounting";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import { accountingErrors as errors } from "./accounting-errors";
 
 export const PrepareCaseSnapshot = Schema.Struct({

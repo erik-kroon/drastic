@@ -13,6 +13,7 @@ import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { failure } from "../failures";
 import { captureFinancialBasis } from "./financial-basis";
+import { requireCashYearEndForClose } from "../commerce/cash-year-end";
 import { executedBridgeIsCurrent } from "../tax/corporate";
 import {
   withFinancialApproval as withCloseApproval,
@@ -383,6 +384,7 @@ export const prepareYearClose = Effect.fn("closing.financial-close.prepare")(fun
       return yield* unsupported();
 
     const year = yield* readYear(transaction, command.scope.bookId, command.input.fiscalYearId);
+    const cashYearEnd = yield* requireCashYearEndForClose(transaction, command.scope, year.id);
     const chain = yield* readChain(transaction, command.scope, command.input.fiscalYearId);
 
     const activeCertificate = [...chain.certificatesByProposal.values()].find(
@@ -526,6 +528,16 @@ export const prepareYearClose = Effect.fn("closing.financial-close.prepare")(fun
       receipt: commandReceipt(command.idempotencyKey, "prepare_financial_close", principal.actorId),
     };
 
+    if (cashYearEnd !== null)
+      Object.assign(body, {
+        cashMethodYearEnd: {
+          runId: cashYearEnd.id,
+          planId: cashYearEnd.planId,
+          populationDigest: cashYearEnd.populationDigest,
+          memberCount: cashYearEnd.memberCount,
+        },
+      });
+
     const preparation = yield* decode(PreparationSchema, {
       ...body,
       digest: yield* digest(body),
@@ -565,6 +577,30 @@ function readPreparationRow(transaction: Transaction, scope: Scope, preparationI
     }),
   );
 }
+
+const recheckCashYearEnd = Effect.fn("closing.financial-close.recheckCashYearEnd")(function* (
+  transaction: Transaction,
+  scope: Scope,
+  preparation: typeof PreparationSchema.Type,
+) {
+  const receipt = yield* requireCashYearEndForClose(transaction, scope, preparation.fiscalYearId);
+  const sealed = preparation.cashMethodYearEnd;
+
+  if (receipt === null) {
+    if (sealed !== undefined) return yield* failure("StaleDependency");
+
+    return;
+  }
+
+  if (
+    !sealed ||
+    sealed.runId !== receipt.id ||
+    sealed.planId !== receipt.planId ||
+    sealed.populationDigest !== receipt.populationDigest ||
+    sealed.memberCount !== receipt.memberCount
+  )
+    return yield* failure("StaleDependency");
+});
 
 function readProposalRow(transaction: Transaction, scope: Scope, proposalId: string) {
   return Db.readProposal(transaction, scope.bookId, proposalId).pipe(
@@ -638,6 +674,7 @@ export const advanceYearClose = Effect.fn("closing.financial-close.advance")(fun
     }
 
     const year = yield* readYear(transaction, command.scope.bookId, preparation.fiscalYearId);
+    yield* recheckCashYearEnd(transaction, command.scope, preparation);
 
     const retained = yield* readRetainedSnapshot(
       transaction,
@@ -830,6 +867,8 @@ function closeProposalBlockers(
 
     const preparationRow = yield* readPreparationRow(transaction, scope, proposal.preparationId);
     const preparation = yield* decode(PreparationSchema, preparationRow.body);
+
+    yield* recheckCashYearEnd(transaction, scope, preparation);
 
     const snapshot = yield* readRetainedSnapshot(
       transaction,

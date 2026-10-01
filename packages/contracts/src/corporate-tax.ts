@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import { StatementFactRevisions } from "@open-erp/domain/statements";
 import { accountingErrors as errors } from "./accounting-errors";
 import * as Accounting from "./accounting";

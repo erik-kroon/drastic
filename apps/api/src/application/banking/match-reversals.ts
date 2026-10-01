@@ -7,6 +7,7 @@ import { digest, isoNow, newId, replay, saveCommand } from "../posting";
 import * as AllocationDb from "../../db/banking/allocations";
 import * as ReversalDb from "../../db/banking/match-reversals";
 import * as BankDb from "../../db/banking/shared";
+import { readConsumedCashMatches } from "../../db/commerce/cash-payments";
 import type { Transaction } from "../../db/transaction";
 import * as Shared from "./shared";
 
@@ -139,6 +140,9 @@ function reversalSnapshot(
   legs: Json,
 ) {
   return Effect.gen(function* () {
+    if ((yield* readConsumedCashMatches(transaction, bookId, legs))[0]?.present)
+      return yield* Shared.unsupported();
+
     if (
       (yield* ReversalDb.readReversedVoucherPresence(transaction, bookId, legs))[0]?.present ===
       true

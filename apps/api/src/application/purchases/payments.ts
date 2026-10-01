@@ -622,6 +622,9 @@ const paymentSelection = Effect.fn("purchases.payments.selection")(function* (
   for (const item of input.items) {
     yield* validateAccount(item.creditorName, item.creditorIban, item.creditorBic);
     const invoice = yield* liveInvoice(tx, scope.bookId, item.invoiceId);
+
+    if (invoice.recognition === null) return yield* failure("UnsupportedProfile");
+
     const facts = (yield* PaymentDb.readInvoicePaymentFacts(tx, scope.bookId, item.invoiceId))[0];
 
     if (invoice.direction !== "supplier" || !facts?.accepted) return yield* failure("NotFound");

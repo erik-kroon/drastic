@@ -160,6 +160,8 @@ const readCreditPosting = Effect.fn("purchases.credits.posting")(function* (
   input: { readonly creditDate: string },
   invoice: Invoice,
 ) {
+  if (invoice.recognition === null) return yield* failure("UnsupportedProfile");
+  const recognition = invoice.recognition;
   const voucher = (yield* Ledger.readVoucher(tx, scope.bookId, invoice.recognition.voucherId))[0];
 
   if (!voucher || input.creditDate < invoice.issuedOn || input.creditDate < voucher.postingDate)
@@ -168,7 +170,7 @@ const readCreditPosting = Effect.fn("purchases.credits.posting")(function* (
   if (!Accounting.isCalendarDate(input.creditDate)) return yield* failure("InvalidJournal");
 
   const action = yield* Shared.decode(Accounting.VoucherPostingAction, voucher.action);
-  const control = action.lines.find((line) => line.lineId === invoice.recognition.lineId);
+  const control = action.lines.find((line) => line.lineId === recognition.lineId);
 
   if (
     !control ||

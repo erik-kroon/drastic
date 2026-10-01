@@ -279,6 +279,8 @@ const readPayableCapacity = Effect.fn("owner.operations.payableCapacity")(functi
 ) {
   const invoice = yield* liveInvoice(transaction, scope.bookId, payableId);
 
+  if (invoice.recognition === null) return yield* failure("UnsupportedProfile");
+
   if (
     invoice.direction !== "supplier" ||
     invoice.status === "cancelled" ||

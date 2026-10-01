@@ -1,6 +1,6 @@
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
-import { HttpRouter, HttpServerResponse } from "effect/unstable/http";
+import { HttpRouter, HttpServerResponse } from "effect/http";
 import { renderDeadlineCalendar } from "../../../application/deadline-calendar";
 import { readDeadlineFeedEvents } from "../../../application/evidence-work";
 

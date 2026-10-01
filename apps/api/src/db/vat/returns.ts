@@ -203,12 +203,13 @@ export function insertFactComponent(
     readonly id: string;
     readonly sourceKey: string;
     readonly recordClass: string;
+    readonly cashMethodRecognitionId?: string;
   },
 ) {
   return transaction.execute(
     sql`
-      insert into openerp.vat_fact_components (book_id, id, source_key, record_class)
-      values (${row.bookId}, ${row.id}, ${row.sourceKey}, ${row.recordClass})
+      insert into openerp.vat_fact_components (book_id, id, source_key, record_class,cash_method_recognition_id)
+      values (${row.bookId}, ${row.id}, ${row.sourceKey}, ${row.recordClass},${row.cashMethodRecognitionId ?? null})
     `,
     "objects",
   );

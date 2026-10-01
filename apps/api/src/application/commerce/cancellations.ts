@@ -50,6 +50,8 @@ export const cancellationSnapshot = Effect.fn("commerce.cancellation.snapshot")(
   if ((yield* Db.readInvoiceCancellationReceiptForIssue(tx, scope.bookId, issueId)).length)
     return yield* failure("AlreadyPosted");
   const invoice = yield* liveInvoice(tx, scope.bookId, issue.registerInvoiceId);
+
+  if (invoice.recognition === null) return yield* failure("UnsupportedProfile");
   const voucher = (yield* Ledger.readVoucher(tx, scope.bookId, invoice.recognition.voucherId))[0];
 
   if (

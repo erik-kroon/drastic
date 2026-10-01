@@ -45,7 +45,7 @@ Keep an Effect modular monolith. The [API layout](../apps/api/README.md) separat
 
 [ADR 0005](adr/0005-open-accounting-and-managed-services.md) keeps the accounting, jurisdiction and agent layers open under AGPL-3.0-only, with optional managed operations outside the core. The [self-host package](../infra/self-host/README.md) composes the current API and prerendered UI using Bun and PostgreSQL. Rust/Wasm extraction remains deferred until a stable pure contract and a measured consumer justify it.
 
-Effect owns scoped orchestration, domain preparation, authorization and application policy. Application operations own direct scoped writes and pass one transaction through all nested persistence. PostgreSQL owns relational records, DDL, constraints, grants, row locks, the narrow integrity layer and durable receipts; it does not own feature workflows through procedural functions. Drizzle's native Effect PostgreSQL adapter owns application queries, using request-local connections through `@effect/sql-pg` and `pg`. Typed Drizzle mappings serve direct application and maintenance queries; the three-file baseline owns the complete DDL and integrity definitions. The [shared contracts](plans/00-shared-contracts.md) define the lock order, identity, exact values and clean-baseline rules. A generic effect interpreter is not a prerequisite.
+Effect owns scoped orchestration, domain preparation, authorization and application policy. Application operations own direct scoped writes and pass one transaction through all nested persistence. PostgreSQL owns relational records, DDL, constraints, grants, row locks, the narrow integrity layer and durable receipts; it does not own feature workflows through procedural functions. Drizzle's native Effect PostgreSQL adapter owns application queries, using request-local connections through the native `@effect/sql-pg` client. Better Auth uses its official Promise adapter with a separately scoped `pg` connection. Typed Drizzle mappings serve direct application and maintenance queries; the three-file baseline owns the complete DDL and integrity definitions. The [shared contracts](plans/00-shared-contracts.md) define the lock order, identity, exact values and clean-baseline rules. A generic effect interpreter is not a prerequisite.
 
 ## Planned module boundaries
 
@@ -73,7 +73,7 @@ This addition does not select a new runtime, financial calculation authority, st
 
 ## Runtime and resource constraints
 
-Retain the installed Effect `4.0.0-rc.112` and its v4 API family. Retain Bun, Vite+, TanStack, StyleX, Paraglide and Alchemy. A framework upgrade is separate work. Bun is not the deployed Worker runtime; exercise the chosen database driver in local workerd before relying on it ([D-02](open-decisions.md)).
+Use Effect `4.0.0` stable and its v4 API family; keep the Effect runtime and integration packages on synchronized versions. Retain Bun, Vite+, TanStack, StyleX, Paraglide and Alchemy. A framework upgrade is separate work. Bun is not the deployed Worker runtime; exercise the chosen database driver in local workerd before relying on it ([D-02](open-decisions.md)).
 
 Each operation receives trusted actor/entity/book context. Connections and transactions have explicit scoped lifetimes and cleanup; mutable scope cannot live in a global singleton. A transaction uses one connection and transaction-local context. Immutable schemas and rules may be cached by version.
 

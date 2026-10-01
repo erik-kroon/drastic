@@ -135,8 +135,15 @@ function readCounts(transaction: Transaction, bookId: string, asOfDate: string, 
 function invoiceArithmeticHolds(rows: ReadonlyArray<JsonObject>) {
   return rows.every((row) => {
     const outstanding = exactOf(row.outstandingMinor);
+    const recognized = exactOf(row.recognizedOutstandingMinor);
 
-    return outstanding !== null && outstanding >= 0n;
+    return (
+      outstanding !== null &&
+      outstanding >= 0n &&
+      recognized !== null &&
+      recognized >= 0n &&
+      recognized <= outstanding
+    );
   });
 }
 
@@ -254,11 +261,18 @@ function registerStatus(counts: RegisterCounts, controls: ReadonlyArray<JsonObje
 
   const differs = controls.some((row) => {
     const difference = exactOf(row.differenceMinor);
-    const unexplained = exactOf(row.unexplainedLineCount);
+    const unexplained = row.unexplainedLineCount;
 
-    if (difference === null || unexplained === null) return true;
+    if (
+      difference === null ||
+      typeof unexplained !== "number" ||
+      !Number.isSafeInteger(unexplained) ||
+      unexplained < 0
+    ) {
+      return true;
+    }
 
-    return difference !== 0n || unexplained !== 0n;
+    return difference !== 0n || unexplained !== 0;
   });
 
   return differs ? ("differences" as const) : ("balanced" as const);

@@ -1,6 +1,6 @@
 import * as Schema from "effect/Schema";
 import { Identifier, Scope, IdempotencyHeaders } from "./accounting";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import { accountingErrors } from "./accounting-errors";
 import { FulfillmentEnvironment, RuleFamily, StatutoryBasis } from "./deadlines";
 

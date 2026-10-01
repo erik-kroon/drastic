@@ -22,7 +22,7 @@
     "@tanstack/react-router-ssr-query": "1.167.3",
     "@tanstack/react-start": "^1.168.54",
     "better-auth": "1.7.5",
-    "effect": "4.0.0-rc.112",
+    "effect": "4.0.0",
     "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"

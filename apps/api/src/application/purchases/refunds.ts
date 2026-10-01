@@ -110,6 +110,8 @@ const readPosition = Effect.fn("purchases.refunds.position")(function* (
 ) {
   const invoice = yield* liveInvoice(tx, scope.bookId, invoiceId);
 
+  if (invoice.recognition === null) return yield* failure("UnsupportedProfile");
+
   if (invoice.direction !== "supplier") return yield* failure("NotFound");
 
   const row = (yield* RefundDb.readPaidPosition(tx, scope.bookId, invoiceId))[0];
@@ -955,6 +957,8 @@ const refundPlan = Effect.fn("purchases.refunds.plan")(function* (
     return yield* failure("UnsupportedProfile");
 
   const invoice = yield* liveInvoice(tx, scope.bookId, input.invoiceId);
+
+  if (invoice.recognition === null) return yield* failure("UnsupportedProfile");
 
   if (invoice.direction !== "supplier") return yield* failure("NotFound");
 

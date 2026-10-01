@@ -13,7 +13,7 @@ import { SupplierExtractionApi } from "./supplier-extraction";
 import { CompanySetupApi } from "./company-setup";
 import { CompanyProfileApi } from "./company-profiles";
 import * as Schema from "effect/Schema";
-import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi";
+import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/http-api";
 import * as Accounting from "./accounting";
 import { SystemStatus } from "./system";
 import { ReportApi } from "./reports";

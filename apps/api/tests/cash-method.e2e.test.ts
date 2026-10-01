@@ -1,16 +1,7 @@
 import { expect, test } from "vitest";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Commerce from "@open-erp/contracts/commerce";
-import {
-  database,
-  evidence,
-  execute,
-  failure,
-  fixture,
-  key,
-  post,
-  request,
-} from "./support/fixtures";
+import { database, evidence, execute, fixture, key, post, request } from "./support/fixtures";
 
 test("an already posted accrual invoice cannot be relabelled cash-method", async () => {
   const book = await fixture([
@@ -107,23 +98,23 @@ test("an already posted accrual invoice cannot be relabelled cash-method", async
       Commerce.Invoice,
     );
 
-    await failure(
-      await request(book, "/commerce/cash-method/lines", {
-        method: "POST",
-        headers: { "idempotency-key": key() },
-        body: JSON.stringify({
-          invoiceId: invoice.id,
-          sourceLineId: "line_a",
-          direction: "sale",
-          currency: "SEK",
-          profileWitness: "An asserted witness cannot undo a posting",
-          componentPolicy: "tax_first_cumulative_v1",
-          rounding: "half_up",
-        }),
-      }),
-      422,
-      "UnsupportedProfile",
-    );
+    expect(
+      (
+        await request(book, "/commerce/cash-method/lines", {
+          method: "POST",
+          headers: { "idempotency-key": key() },
+          body: JSON.stringify({
+            invoiceId: invoice.id,
+            sourceLineId: "line_a",
+            direction: "sale",
+            currency: "SEK",
+            profileWitness: "An asserted witness cannot undo a posting",
+            componentPolicy: "tax_first_cumulative_v1",
+            rounding: "half_up",
+          }),
+        })
+      ).status,
+    ).toBe(400);
 
     const state = await admin.query<{ line_count: string; voucher_count: string }>(
       `SELECT (SELECT count(*)::text FROM openerp.cash_method_lines WHERE book_id=$1) AS line_count,

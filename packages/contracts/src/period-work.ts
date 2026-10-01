@@ -7,7 +7,7 @@
 // application does not already record.
 
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi";
+import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as PeriodWorkDomain from "@open-erp/domain/period-work";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";

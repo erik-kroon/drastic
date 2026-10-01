@@ -49,6 +49,11 @@ export function readOwnedSources(
       union all select 'legal_issue',id,null,body->'sourceEvidence'->>'evidenceId',body from openerp.ar_legal_issue_reviews where book_id=${book}
       union all select 'legal_credit',id,change_set_id,evidence_id,body from openerp.customer_credit_reviews where book_id=${book}
       union all select 'owner_operation',id,change_set_id,evidence_id,body from openerp.owner_operation_reviews where book_id=${book}
+      union all select 'cash_allocation',allocation_plan_id,change_set_id,null,body from openerp.cash_method_allocation_effects where book_id=${book}
+       union all select 'cash_year_end',id,change_set_id,evidence_id,body from openerp.cash_method_year_end_plans where book_id=${book}
+       union all select 'cash_credit',id,change_set_id,evidence_id,body from openerp.cash_method_credit_plans where book_id=${book}
+      union all select 'cash_invoice',id,null,evidence_id,body from openerp.commerce_invoices
+        where book_id=${book} and cash_method_source_draft_id is not null
       union all select 'corporate_income_tax', b.id, b.change_set_id, null::text,
         jsonb_build_object('postingPlan', p.plan)
         from openerp.corporate_tax_bridges b
@@ -56,7 +61,8 @@ export function readOwnedSources(
         where b.book_id = ${book}
     ) select kind,id,change_id as "changeId",body from reviews
       where change_id in(select change_id from origins) or evidence_id in(select id from evidence)
-        or (kind = 'corporate_income_tax'
+         or (kind = 'cash_allocation' and body -> 'selection' -> 'source' ->> 'eventId' = ${event})
+         or (kind = 'corporate_income_tax'
           and body -> 'postingPlan' -> 'groups' -> 0 -> 'actions' -> 0 ->> 'eventId' = ${event})
     order by kind,id limit 1001`,
     "objects",
@@ -168,6 +174,9 @@ export function readProtectedCorrections(tx: Transaction, book: string, voucher:
   return tx.execute<{ readonly kind: string }>(
     sql`
     select 'owner' as kind from openerp.owner_effects where book_id=${book} and voucher_id=${voucher}
+     union all select 'cash_allocation' from openerp.cash_method_recognitions where book_id=${book}
+       and (voucher_id=${voucher} or source_payment_voucher_id=${voucher})
+     union all select 'cash_credit' from openerp.cash_method_credits where book_id=${book} and voucher_id=${voucher}
     union all select 'financial_close' from openerp.financial_close_transfers where book_id=${book} and voucher_id=${voucher}
     union all select 'tax_account' from openerp.tax_account_match_capacity where book_id=${book} and voucher_id=${voucher}
     union all select 'vat_assessment' from openerp.vat_assessment_receipts where book_id=${book} and voucher_id=${voucher}
@@ -292,7 +301,9 @@ export function readSealedDraft(
 ) {
   return tx.execute<{ readonly id: string }>(
     kind === "supplier"
-      ? sql`select id from openerp.supplier_acceptances where book_id=${book} and draft_id=${id}`
+      ? sql`select id from openerp.supplier_acceptances where book_id=${book} and draft_id=${id}
+          union all select id from openerp.commerce_invoices where book_id=${book} and cash_method_source_draft_id=${id}
+          union all select id from openerp.cash_method_credits where book_id=${book} and draft_id=${id}`
       : kind === "register"
         ? sql`select id from openerp.ar_legal_issues where book_id=${book} and register_invoice_id=${id}`
         : sql`select id from openerp.invoice_issues where book_id=${book} and draft_id=${id} union all select id from openerp.ar_legal_issues where book_id=${book} and draft_id=${id}`,

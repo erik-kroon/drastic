@@ -4,46 +4,40 @@ import * as Effect from "effect/Effect";
 import * as CashMethodDb from "../../db/commerce/cash-method";
 import { failure } from "../failures";
 import { decode, requireTableAccess, toJsonObject, withBook } from "./support";
+import { admitCashMethodInvoice } from "./cash-invoices";
+import { applyAllocation } from "./allocation-reversals";
+import { prepareCashYearEnd } from "./cash-year-end";
 
 type Scope = typeof Accounting.Scope.Type;
-
-// The current invoice owner admits an invoice only after an accrual voucher has
-// posted. A cash-method registration over that invoice would count the same
-// revenue/tax twice. A caller-supplied amount or evidence ID also cannot prove
-// that cash was finally allocated. Until commerce owns unposted cash-method
-// documents and derives recognition from retained final allocations, no write
-// operation in this API is admissible.
-function refuseUnqualifiedWrite(token: string, scope: Scope) {
-  return withBook(
-    token,
-    scope,
-    true,
-    function* () {
-      return yield* failure("UnsupportedProfile");
-    },
-    "update",
-  );
-}
 
 export const registerCashMethodLine = Effect.fn("commerce.cashMethod.registerLine")(function* (
   token: string,
   command: { scope: Scope; idempotencyKey: string; input: CashMethod.RegisterCashMethodLine },
 ) {
-  return yield* refuseUnqualifiedWrite(token, command.scope);
+  return yield* admitCashMethodInvoice(token, command);
 });
 
 export const recognizeCashPayment = Effect.fn("commerce.cashMethod.recognizePayment")(function* (
   token: string,
   command: { scope: Scope; idempotencyKey: string; input: CashMethod.RecognizeCashPayment },
 ) {
-  return yield* refuseUnqualifiedWrite(token, command.scope);
+  return yield* applyAllocation(token, {
+    scope: command.scope,
+    id: command.input.allocationPlanId,
+    idempotencyKey: command.idempotencyKey,
+    input: {
+      version: 1,
+      planDigest: command.input.planDigest,
+      approvalId: command.input.approvalId,
+    },
+  });
 });
 
 export const runCashMethodYearEnd = Effect.fn("commerce.cashMethod.runYearEnd")(function* (
   token: string,
   command: { scope: Scope; idempotencyKey: string; input: CashMethod.RunCashMethodYearEnd },
 ) {
-  return yield* refuseUnqualifiedWrite(token, command.scope);
+  return yield* prepareCashYearEnd(token, command);
 });
 
 // Previously retained rows remain inspectable. The response derives both

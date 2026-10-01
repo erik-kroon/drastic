@@ -40,7 +40,7 @@ const Result = Schema.Struct({
         docType: Schema.Literal("prebuilt:invoice"),
         fields: Schema.Record(Schema.String, Schema.Unknown),
       }),
-    ).check(Schema.isLengthBetween(1, 1)),
+    ).check(Schema.isBetweenLength(1, 1)),
   }),
 });
 

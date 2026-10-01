@@ -1,6 +1,6 @@
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
-import * as Encoding from "effect/Encoding";
+import * as Hex from "effect/encoding/Hex";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { Digest } from "./values";
@@ -629,7 +629,7 @@ export const sha256 = Effect.fn("domain.sha256")(function* (bytes: Uint8Array) {
   const crypto = yield* Crypto.Crypto;
   const digest = yield* crypto.digest("SHA-256", bytes);
 
-  return `sha256:${Encoding.encodeHex(digest)}`;
+  return `sha256:${Hex.encode(digest)}`;
 });
 
 export const sealOpenErpC14nV1 = Effect.fn("domain.sealOpenErpC14nV1")(function* (value: unknown) {
