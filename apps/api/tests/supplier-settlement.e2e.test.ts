@@ -1204,6 +1204,96 @@ test("supplier integrity retains immutable scoped claims and denies runtime hist
   }
 });
 
+test("supplier receipt integrity binds the exact approval plan source and payable", async () => {
+  const data = await setup(["-4000", "-4000"]);
+  const first = await prepared(data, 1);
+  const second = await prepared(data, 2);
+  const firstApproval = await approved(data, first);
+  const secondApproval = await approved(data, second);
+
+  const receipt = await decoded(
+    await executeSettlement(data.book, first, firstApproval),
+    Committed,
+  );
+
+  const before = await financial(data.book);
+  const foreign = await setup();
+  const admin = await database();
+
+  const probes = [
+    {
+      name: "approval-from-another-plan",
+      approvalId: secondApproval.id,
+      invoiceId: data.input.invoiceId,
+      rowOrdinal: 1,
+    },
+    {
+      name: "source-from-another-plan",
+      approvalId: firstApproval.id,
+      invoiceId: data.input.invoiceId,
+      rowOrdinal: 2,
+    },
+    {
+      name: "payable-from-another-book",
+      approvalId: firstApproval.id,
+      invoiceId: foreign.input.invoiceId,
+      rowOrdinal: 1,
+    },
+  ];
+
+  try {
+    const constraints = (
+      await admin.query<{ definition: string }>(`
+      select pg_get_constraintdef(oid) as definition from pg_constraint
+      where conrelid='openerp.supplier_settlement_receipts'::regclass and contype='f'`)
+    ).rows;
+
+    expect(constraints.map((constraint) => constraint.definition)).toContain(
+      "FOREIGN KEY (book_id, approval_id, plan_id) REFERENCES openerp.supplier_settlement_approvals(book_id, id, plan_id)",
+    );
+    expect(constraints.map((constraint) => constraint.definition)).toContain(
+      "FOREIGN KEY (book_id, plan_id, invoice_id, statement_id, row_ordinal) REFERENCES openerp.supplier_settlement_plans(book_id, id, invoice_id, statement_id, row_ordinal)",
+    );
+
+    for (const probe of probes) {
+      await admin.query("begin");
+
+      try {
+        await expect(
+          admin.query(
+            `insert into openerp.supplier_settlement_receipts
+          (book_id,id,plan_id,approval_id,statement_id,row_ordinal,invoice_id,voucher_id,allocation_receipt_id,body)
+          select $7,$3,plan_id,$4,statement_id,$5,$6,voucher_id,allocation_receipt_id,
+            jsonb_set(jsonb_set(jsonb_set(jsonb_set(body,'{id}',to_jsonb($3::text)),
+              '{approvalId}',to_jsonb($4::text)),'{match,rowOrdinal}',to_jsonb($5::integer)),
+              '{scope,bookId}',to_jsonb($7::text))
+          from openerp.supplier_settlement_receipts where book_id=$1 and id=$2`,
+            [
+              data.book.bookId,
+              receipt.id,
+              `supplier_receipt_probe_${key()}`,
+              probe.approvalId,
+              probe.rowOrdinal,
+              probe.invoiceId,
+              foreign.book.bookId,
+            ],
+          ),
+        ).rejects.toMatchObject({ code: "23503" });
+      } finally {
+        await admin.query("rollback");
+      }
+    }
+
+    expect(await financial(data.book)).toEqual(before);
+    await writeFile(
+      join(environment().artifacts, "supplier-receipt-relations.json"),
+      JSON.stringify({ probes, before, after: await financial(data.book) }, null, 2),
+    );
+  } finally {
+    await admin.end();
+  }
+});
+
 test("supplier scoped discovery continues beyond one page without losing retained plans", async () => {
   const data = await setup();
   const ids: string[] = [];
