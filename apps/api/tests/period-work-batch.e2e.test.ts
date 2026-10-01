@@ -3,6 +3,7 @@ import { join } from "node:path";
 import * as PeriodWork from "@open-erp/contracts/period-work";
 import * as Domain from "@open-erp/domain/period-work";
 import * as Commerce from "@open-erp/contracts/commerce";
+import * as Owners from "@open-erp/contracts/owner-register";
 import * as Schema from "effect/Schema";
 import { expect, test } from "vitest";
 import {
@@ -393,6 +394,192 @@ test("committed reviewer revocation refuses every approved batch member without 
   } finally {
     await admin.end();
   }
+});
+
+test("owner expense batch preserves private payment lineage without posting company cash", async () => {
+  const local = await supplierFixture();
+  const { book } = local;
+  const independent = await fixture();
+  const reviewer = { ...book, token: independent.token, actorId: independent.actorId };
+  const setup = await database();
+
+  try {
+    await setup.query(
+      `insert into openerp.accounts(book_id,id,code,name) values
+      ($1,'account_owner','2893','Synthetic owner liability'),
+      ($1,'account_vat','2641','Synthetic input VAT'),
+      ($1,'account_expense','6991','Synthetic expense')`,
+      [book.bookId],
+    );
+    await setup.query(
+      "insert into openerp.memberships(book_id,actor_id,role) values($1,$2,'operator')",
+      [book.bookId, reviewer.actorId],
+    );
+  } finally {
+    await setup.end();
+  }
+
+  const source = await purchaseEvidence(book, 900);
+
+  const owner = await post(
+    book,
+    "/owner-register/owners",
+    {
+      sourceKey: key(),
+      displayName: "Synthetic batch owner",
+      dataNature: "synthetic_example",
+      evidenceId: source.id,
+      reason: "Synthetic batch owner",
+    },
+    Owners.Owner,
+  );
+
+  const identity = `period_work_${"b".repeat(32)}`;
+
+  const manifest = await post(
+    book,
+    "/period-work/manifests",
+    {
+      startsOn: "2026-01-01",
+      endsOn: "2026-12-31",
+      cutoff: "2026-12-31",
+      children: [
+        {
+          workIdentity: identity,
+          economicIdentity: `owner_expense_${source.id}`,
+          sourceRevision: "1",
+          sourceSystem: "owner_expense",
+          sourceId: source.id,
+          documentClass: "owner_expense",
+          currency: "SEK",
+          sourceMinor: "10000",
+          legalSupplierIdentity: local.supplier.id,
+          qualifiedTreatmentId: "synthetic_owner_expense",
+          evidenceIds: [source.id],
+          isPaymentObservation: false,
+          existingMatches: [],
+          dependsOn: [],
+          intendedOwner: "owner.operations",
+          prepareInput: {
+            mode: "owner_paid_purchase",
+            ownerId: owner.id,
+            controlAccountId: "account_owner",
+            accountingPeriodId: "period_2026",
+            postingDate: "2026-09-22",
+            series: "A",
+            reason: "Privately paid synthetic expense",
+            evidence: { paidEvidenceId: source.id, reason: "Retained private payment evidence" },
+            purchase: {
+              sourceEvidenceId: source.id,
+              counterpartyId: local.supplier.id,
+              supplierDocumentNumber: "OWNER-BATCH-1",
+              documentDate: "2026-09-22",
+              taxPoint: { taxPointOn: "2026-09-22", basis: "document_date" },
+              lines: [
+                {
+                  lineId: "expense_line",
+                  expenseAccountId: "account_expense",
+                  netMinor: "10000",
+                  sourceTaxMinor: "0",
+                  treatment: {
+                    basis: "no_tax_exempt",
+                    rate: { numerator: "0", denominator: "1" },
+                    deduction: { numerator: "0", denominator: "1" },
+                    invoiceTaxRounding: "half_up",
+                    deductionRounding: "half_up",
+                    acceptancePolicy: "exact_match",
+                    toleranceMinor: "0",
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ],
+      rules: [
+        {
+          id: "synthetic_owner_rule",
+          version: 1,
+          legalSupplierIdentity: local.supplier.id,
+          supportedDocumentClass: "owner_expense",
+          currency: "SEK",
+          qualifiedTreatmentId: "synthetic_owner_expense",
+          acceptedEvidenceRequirements: [],
+          operationFamily: "OwnerPaidPurchase",
+          approvedExamples: [],
+          negativeExamples: [],
+          activationReview: "synthetic_owner_review",
+        },
+      ],
+      populationComplete: false,
+      excluded: [],
+      acknowledgeNotReconciled: true,
+    },
+    Domain.PeriodWorkManifest,
+  );
+
+  const progress = await post(
+    book,
+    `/period-work/manifests/${manifest.id}/advance`,
+    { boundedCount: 1 },
+    PeriodWork.PeriodWorkRunProgress,
+  );
+
+  expect(progress.children[0]?.state, JSON.stringify(progress)).toBe("prepared");
+
+  const batch = await post(
+    book,
+    "/period-work/batches",
+    { manifestId: manifest.id, workIdentities: [identity] },
+    PeriodWork.ApprovalBatch,
+  );
+
+  await post(
+    reviewer,
+    `/period-work/batches/${batch.id}/approvals`,
+    { expectedDigest: batch.digest, acknowledgeSyntheticOnly: true },
+    PeriodWork.ApprovalBatch,
+  );
+
+  const result = await post(
+    book,
+    `/period-work/batches/${batch.id}/execute`,
+    {
+      expectedDigest: batch.digest,
+      boundedCount: 1,
+      acknowledgeSyntheticOnly: true,
+    },
+    PeriodWork.PeriodWorkExecutionResult,
+  );
+
+  expect(result.refused, JSON.stringify(result)).toEqual([]);
+  expect(result.committed).toHaveLength(1);
+  const admin = await database();
+
+  try {
+    expect(
+      (
+        await admin.query(
+          "select account_id,sum(debit_minor)::text as debit,sum(credit_minor)::text as credit from openerp.journal_lines where book_id=$1 group by account_id order by account_id",
+          [book.bookId],
+        )
+      ).rows,
+    ).toEqual([
+      { account_id: "account_expense", debit: "10000", credit: "0" },
+      { account_id: "account_owner", debit: "0", credit: "10000" },
+    ]);
+  } finally {
+    await admin.end();
+  }
+
+  await writeFile(
+    join(environment().artifacts, "period-batch-owner-expense.json"),
+    JSON.stringify(
+      { source: source.id, owner: owner.id, batch, result, expectedCompanyCash: "0" },
+      null,
+      2,
+    ),
+  );
 });
 
 test("bounded execution freezes each chunk result while later independent members commit", async () => {
