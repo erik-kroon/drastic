@@ -4,6 +4,8 @@ import { HttpApiBuilder } from "effect/http-api";
 import { authenticate } from "../auth";
 import { scopeFromPath } from "../scope";
 import {
+  listSupplierSettlements,
+  getSupplierSettlementCancellation,
   prepareSupplierSettlement,
   getSupplierSettlement,
   executeSupplierSettlement,
@@ -20,6 +22,19 @@ export const SupplierSettlementHandlers = HttpApiBuilder.group(
   "supplierSettlements",
   (handlers) =>
     handlers
+      .handle("listSupplierSettlements", ({ params, query }) =>
+        Effect.flatMap(authenticate, (token) =>
+          listSupplierSettlements(token, { scope: scopeFromPath(params), ...query }),
+        ),
+      )
+      .handle("getSupplierSettlementCancellation", ({ params }) =>
+        Effect.flatMap(authenticate, (token) =>
+          getSupplierSettlementCancellation(token, {
+            scope: scopeFromPath(params),
+            planId: params.id,
+          }),
+        ),
+      )
       .handle("prepareSupplierSettlement", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
           prepareSupplierSettlement(token, {

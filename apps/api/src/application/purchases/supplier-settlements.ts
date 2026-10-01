@@ -1391,3 +1391,38 @@ const requireUnclaimedSource = Effect.fn("purchases.supplierSettlement.requireUn
       return yield* failure("AlreadyPosted");
   },
 );
+
+export const listSupplierSettlements = Effect.fn("purchases.supplierSettlement.list")(function* (
+  token: string,
+  input: { scope: Scope; after?: string },
+) {
+  return yield* owned(token, input.scope, false, null, (tx) =>
+    Effect.gen(function* () {
+      const rows = yield* Db.listRetainedPlans(tx, input.scope.bookId, input.after);
+      const items = rows.slice(0, 25);
+
+      return yield* decode(Settlement.SupplierSettlementDiscovery, {
+        items,
+        next: rows.length > 25 ? (items[24]?.id ?? null) : null,
+      });
+    }),
+  );
+});
+
+export const getSupplierSettlementCancellation = Effect.fn(
+  "purchases.supplierSettlement.getCancellation",
+)(function* (token: string, input: { scope: Scope; planId: string }) {
+  return yield* owned(token, input.scope, false, null, (tx) =>
+    Effect.gen(function* () {
+      const plan = yield* readCancellationPlan(tx, input.scope, input.planId);
+      const stored = (yield* Db.readCancellationReceiptByPlan(tx, input.scope.bookId, plan.id))[0];
+
+      return {
+        plan,
+        receipt: stored
+          ? yield* decode(Settlement.SupplierSettlementCancellationReceipt, stored.body)
+          : null,
+      };
+    }),
+  );
+});

@@ -170,6 +170,22 @@ export const SupplierSettlementReceiptView = Schema.Struct({
   cancellation: Schema.NullOr(SupplierSettlementCancellationReceipt),
 });
 
+export const SupplierSettlementDiscovery = Schema.Struct({
+  items: Schema.Array(
+    Schema.Struct({
+      id: Accounting.Identifier,
+      kind: Schema.Literals(["settlement", "cancellation"]),
+      receiptId: Schema.NullOr(Accounting.Identifier),
+    }),
+  ),
+  next: Schema.NullOr(Accounting.Identifier),
+});
+
+export const SupplierSettlementCancellationView = Schema.Struct({
+  plan: SupplierSettlementCancellationPlan,
+  receipt: Schema.NullOr(SupplierSettlementCancellationReceipt),
+});
+
 const path = "/v1/entities/:entityId/books/:bookId/purchases";
 
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
@@ -187,6 +203,17 @@ const strict = { parseOptions: { onExcessProperty: "error" as const } };
 export const SupplierSettlementsApi = HttpApiGroup.make("supplierSettlements")
   .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" })
   .add(
+    HttpApiEndpoint.get("listSupplierSettlements", `${path}/supplier-settlements`, {
+      params: Accounting.Scope,
+      error: accountingErrors,
+      query: Schema.Struct({ after: Schema.optionalKey(Accounting.Identifier) }),
+      success: SupplierSettlementDiscovery,
+    }),
+    HttpApiEndpoint.get(
+      "getSupplierSettlementCancellation",
+      `${path}/supplier-settlement-cancellation-plans/:id`,
+      { ...identified, success: SupplierSettlementCancellationView },
+    ),
     HttpApiEndpoint.post("prepareSupplierSettlement", `${path}/supplier-settlement-plans`, {
       ...mutation,
       payload: PrepareSupplierSettlement.annotate(strict),
@@ -261,6 +288,23 @@ export const SupplierSettlementsApi = HttpApiGroup.make("supplierSettlements")
   );
 
 export const SupplierSettlementCapabilities = {
+  purchases_list_supplier_settlements: {
+    description:
+      "Discover retained settlement and cancellation plans with scoped live ID pagination. This is not a frozen inventory or execution permission.",
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      after: Schema.optionalKey(Accounting.Identifier),
+    }),
+    output: SupplierSettlementDiscovery,
+    readOnly: true,
+  },
+  purchases_get_supplier_settlement_cancellation: {
+    description:
+      "Recover a retained cancellation plan and its exact committed receipt without executing it.",
+    input: Schema.Struct({ scope: Accounting.Scope, planId: Accounting.Identifier }),
+    output: SupplierSettlementCancellationView,
+    readOnly: true,
+  },
   purchases_prepare_supplier_settlement: {
     description:
       "Prepare a prospective accrued supplier payment from retained invoice and whole bank debit. Independent approval is required before execution.",

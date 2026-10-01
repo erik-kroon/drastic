@@ -76,6 +76,22 @@ const ReceiptView = Schema.Struct({
   cancellation: Schema.NullOr(Cancelled),
 });
 
+const Discovery = Schema.Struct({
+  items: Schema.Array(
+    Schema.Struct({
+      id: Accounting.Identifier,
+      kind: Schema.Literals(["settlement", "cancellation"]),
+      receiptId: Schema.NullOr(Accounting.Identifier),
+    }),
+  ),
+  next: Schema.NullOr(Accounting.Identifier),
+});
+
+const CancellationView = Schema.Struct({
+  plan: Cancellation,
+  receipt: Schema.NullOr(Cancelled),
+});
+
 const Rpc = Schema.Struct({
   result: Schema.optional(Schema.Unknown),
   error: Schema.optional(Schema.JsonObject),
@@ -584,6 +600,25 @@ test("supplier accrual owner posts4000 once, cancels exactly and retains unresol
 
     expect(inverse.outstandingAfterMinor).toBe("10000");
     expect(inverse.settlementReceiptId).toBe(receipt.id);
+
+    expect(
+      await decoded(
+        await request(data.book, `${cancellations}/${corrected.plan.id}`),
+        CancellationView,
+      ),
+    ).toMatchObject({ plan: { id: corrected.plan.id }, receipt: inverse });
+
+    const discovery = await decoded(
+      await request(data.book, "/purchases/supplier-settlements"),
+      Discovery,
+    );
+
+    expect(discovery.items).toEqual([
+      { id: corrected.plan.id, kind: "cancellation", receiptId: inverse.id },
+      { id: plan.id, kind: "settlement", receiptId: receipt.id },
+    ]);
+    expect(discovery.next).toBeNull();
+
     const after = await financial(data.book);
     expect(after).toMatchObject({
       bank: "0",
@@ -916,6 +951,68 @@ test("supplier integrity retains immutable scoped claims and denies runtime hist
     await runtime.end();
     await admin.end();
   }
+});
+
+test("supplier scoped discovery continues beyond one page without losing retained plans", async () => {
+  const data = await setup();
+  const ids: string[] = [];
+
+  for (let ordinal = 0; ordinal < 26; ordinal += 1) {
+    ids.push((await prepared(data)).id);
+  }
+
+  const before = await financial(data.book);
+
+  const first = await decoded(
+    await request(data.book, "/purchases/supplier-settlements"),
+    Discovery,
+  );
+
+  expect(first.items).toHaveLength(25);
+  expect(first.next).toBe(first.items[24]?.id);
+
+  const second = await decoded(
+    await request(data.book, `/purchases/supplier-settlements?after=${first.next}`),
+    Discovery,
+  );
+
+  expect(second.items).toHaveLength(1);
+  expect(second.next).toBeNull();
+  expect([...first.items, ...second.items].map((item) => item.id)).toEqual(ids.sort());
+  expect([...first.items, ...second.items].every((item) => item.receiptId === null)).toBe(true);
+  const foreign = await fixture();
+  expect(
+    await decoded(await request(foreign, "/purchases/supplier-settlements"), Discovery),
+  ).toEqual({ items: [], next: null });
+
+  const rpc = await mcp(data.book, "purchases_list_supplier_settlements", {
+    scope: { entityId: data.book.entityId, bookId: data.book.bookId },
+    after: first.next,
+  });
+
+  expect(
+    Schema.decodeUnknownSync(
+      Schema.Struct({
+        isError: Schema.Literal(false),
+        structuredContent: Schema.Struct({ result: Discovery }),
+      }),
+    )(rpc.result).structuredContent.result,
+  ).toEqual(second);
+  expect(await financial(data.book)).toEqual(before);
+  await writeFile(
+    join(environment().artifacts, "supplier-settlement-discovery.json"),
+    JSON.stringify(
+      {
+        expectedPlans: 26,
+        pages: [first, second],
+        financialBefore: before,
+        financialAfter: await financial(data.book),
+      },
+      null,
+      2,
+    ),
+    { mode: 0o600 },
+  );
 });
 
 test("supplier cancellation refuses invoice changes after settlement without financial effects", async () => {

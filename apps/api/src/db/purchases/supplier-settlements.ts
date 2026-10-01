@@ -418,3 +418,33 @@ export function readPlansByEvent(tx: Transaction, bookId: string, eventId: strin
       ),
     );
 }
+
+export function listRetainedPlans(tx: Transaction, bookId: string, after: string | undefined) {
+  return tx.execute<{ id: string; kind: "settlement" | "cancellation"; receiptId: string | null }>(
+    sql`
+      select p.id, 'settlement'::text as kind, r.id as "receiptId"
+      from openerp.supplier_settlement_plans p
+      left join openerp.supplier_settlement_receipts r on (r.book_id,r.plan_id)=(p.book_id,p.id)
+      where p.book_id=${bookId} and p.id>${after ?? ""}
+      union all
+      select p.id, 'cancellation'::text as kind, r.id as "receiptId"
+      from openerp.supplier_settlement_cancellation_plans p
+      left join openerp.supplier_settlement_cancellation_receipts r on (r.book_id,r.plan_id)=(p.book_id,p.id)
+      where p.book_id=${bookId} and p.id>${after ?? ""}
+      order by id limit 26
+    `,
+    "objects",
+  );
+}
+
+export function readCancellationReceiptByPlan(tx: Transaction, bookId: string, planId: string) {
+  return tx
+    .select()
+    .from(supplierSettlementCancellationReceipts)
+    .where(
+      and(
+        eq(supplierSettlementCancellationReceipts.bookId, bookId),
+        eq(supplierSettlementCancellationReceipts.planId, planId),
+      ),
+    );
+}

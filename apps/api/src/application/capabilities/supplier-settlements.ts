@@ -1,6 +1,8 @@
 import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
 import {
+  listSupplierSettlements,
+  getSupplierSettlementCancellation,
   prepareSupplierSettlement,
   getSupplierSettlement,
   executeSupplierSettlement,
@@ -10,6 +12,14 @@ import {
 } from "../purchases/supplier-settlements";
 
 export const supplierSettlementCapabilities = {
+  purchases_list_supplier_settlements: effectCapability(
+    Capabilities.purchases_list_supplier_settlements,
+    listSupplierSettlements,
+  ),
+  purchases_get_supplier_settlement_cancellation: effectCapability(
+    Capabilities.purchases_get_supplier_settlement_cancellation,
+    getSupplierSettlementCancellation,
+  ),
   purchases_prepare_supplier_settlement: effectCapability(
     Capabilities.purchases_prepare_supplier_settlement,
     prepareSupplierSettlement,
