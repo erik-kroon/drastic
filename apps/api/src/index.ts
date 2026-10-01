@@ -20,6 +20,8 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Redacted from "effect/Redacted";
 import * as References from "effect/References";
+import * as Schema from "effect/Schema";
+import { AccountingError } from "@open-erp/contracts/accounting";
 import { HttpRouter, HttpServer } from "effect/http";
 import { HttpApiBuilder } from "effect/http-api";
 
@@ -220,6 +222,7 @@ function boundaryResponse(error: unknown) {
   if (error instanceof BodyError) {
     return Response.json(
       {
+        _tag: "AccountingError",
         code: error.code,
         message: error.message,
         recovery: error.status === 408 ? "transient" : "permanent",
@@ -236,7 +239,7 @@ function boundaryResponse(error: unknown) {
 function withRequestDatabase<A, E, R>(bindings: Bindings, effect: Effect.Effect<A, E, R>) {
   const connectionString = bindings.HYPERDRIVE?.connectionString || bindings.DATABASE_URL;
 
-  if (!connectionString) return Effect.fail(failure("Unavailable"));
+  if (!connectionString) return Effect.fail(failure("ConfigurationError"));
 
   return effect.pipe(
     Effect.provide(
@@ -249,6 +252,39 @@ function withRequestDatabase<A, E, R>(bindings: Bindings, effect: Effect.Effect<
     ),
     Effect.mapError(databaseFailure),
   );
+}
+
+async function httpFailureResponse(response: Response, path: string) {
+  if (response.status < 400 || !path.startsWith("/api/v1/")) return response;
+
+  const body: unknown = await response
+    .clone()
+    .json()
+    .catch(() => null);
+
+  const decoded = Schema.decodeUnknownOption(AccountingError)(body);
+
+  const fallback =
+    response.status === 400
+      ? "InvalidRequest"
+      : response.status === 401
+        ? "Unauthorized"
+        : response.status === 403
+          ? "Forbidden"
+          : response.status === 404
+            ? "NotFound"
+            : response.status === 405
+              ? "MethodNotAllowed"
+              : response.status === 503
+                ? "Unavailable"
+                : "InternalError";
+
+  const error = decoded._tag === "Some" ? databaseFailure(decoded.value) : failure(fallback);
+  const headers = new Headers(response.headers);
+  headers.delete("content-length");
+  headers.set("content-type", "application/json");
+
+  return Response.json(error, { status: response.status, headers });
 }
 
 export default {
@@ -296,9 +332,10 @@ export default {
       ),
     );
 
-    response.headers.set("cache-control", "no-store");
-    response.headers.set("x-request-id", requestId);
+    const publicResponse = await httpFailureResponse(response, annotations.path);
+    publicResponse.headers.set("cache-control", "no-store");
+    publicResponse.headers.set("x-request-id", requestId);
 
-    return response;
+    return publicResponse;
   },
 };

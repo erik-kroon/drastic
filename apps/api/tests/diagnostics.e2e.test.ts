@@ -60,6 +60,15 @@ test("the real Worker console reaches the harness", async () => {
     .toBe(true);
 });
 
+test.each([
+  ["unreadable", 400, "InvalidRequest", "permanent"],
+  ["stalled", 408, "RequestTimeout", "transient"],
+])("DF-10 %s body fails before application routing", async (kind, status, code, recovery) => {
+  const response = await fetch(`${baseUrl}/__test/body/${kind}`);
+  expect(response.status).toBe(status);
+  expect(await response.json()).toMatchObject({ _tag: "AccountingError", code, recovery });
+});
+
 test("retained schema failures keep the field and type, not the input, and correlate assertions", async () => {
   const book = await fixture();
   const plan = await prepare(book);
@@ -90,6 +99,7 @@ test("retained schema failures keep the field and type, not the input, and corre
     _tag: "AccountingError",
     code: "InternalError",
     message: "The accounting service could not complete this request.",
+    recovery: "outcome-unknown",
   });
   const log = await diagnostic(response);
   expect(log).toContain("SchemaError");
@@ -172,10 +182,32 @@ test("connection failures produce a safe correlated 503", async () => {
     });
 
     expect(response.status, await response.clone().text()).toBe(503);
-    expect(await response.text()).not.toContain(unavailable.password);
+    const failureBody = await response.json();
+    expect(failureBody).toMatchObject({ code: "ConfigurationError", recovery: "permanent" });
+    expect(JSON.stringify(failureBody)).not.toContain(unavailable.password);
     const log = await diagnostic(response);
     expect(log).toContain("ConnectionError");
     expect(log).not.toContain(unavailable.password);
+  } finally {
+    await server.update(options(environment().runtimeUrl));
+  }
+});
+
+test("DF-10 missing runtime configuration is not a transient connection failure", async () => {
+  const book = await fixture();
+  await server.update(options(""));
+
+  try {
+    const response = await fetch(`${baseUrl}${book.path}/change-sets/missing`, {
+      headers: { authorization: `Bearer ${book.token}` },
+    });
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({
+      code: "ConfigurationError",
+      recovery: "permanent",
+    });
+    await diagnostic(response);
   } finally {
     await server.update(options(environment().runtimeUrl));
   }

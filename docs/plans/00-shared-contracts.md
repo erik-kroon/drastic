@@ -83,6 +83,22 @@ Immutable command receipts must not replace live query views. Bank import and pr
 
 A typed failure is not always proof of rollback: `Unavailable` or `InternalError` can follow a committed write whose response was lost or could not be decoded. Manual preparation controls retain the captured input/key for these errors just as they do for generic transport failures. Write-status messages keep the service error and add the existing uncertain-outcome warning. Definite domain refusals and read-only messages retain their prior behavior.
 
+DF-10 adds an exhaustive code-to-recovery contract in `packages/domain/src/errors.ts`:
+`permanent`, `transient`, or `outcome-unknown`. The fallback for an unrecognized
+code is outcome-unknown. `TransactionRetry` is a known PostgreSQL transaction
+abort (503/transient); `ConfigurationError` requires configuration repair
+(503/permanent). `Unavailable` and `InternalError` remain outcome-unknown. Existing
+codes retain their HTTP statuses. New posting codes distinguish invalid lines,
+counts, duplicate identities, side shape, balance, absent/inactive accounts,
+missing periods and out-of-period dates; locked periods keep `PeriodLocked`.
+Malformed wire values remain 400 but now carry `InvalidRequest` instead of an
+empty body. These codes are not inferred from prose.
+
+Current HTTP failures and MCP tool error content include the recovery class.
+The field remains optional when decoding old retained refusals, so sealed bodies
+do not gain fields or change digests. Saved-request terminality stays owned by
+its request-content proof and is not inferred from a permanent retry class.
+
 ## Shared foundation packets
 
 | ID     | Deliverable                                                                                                 | Depends on | Acceptance                                                                                                         |

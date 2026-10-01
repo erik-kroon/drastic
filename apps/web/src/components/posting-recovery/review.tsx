@@ -1,4 +1,5 @@
 import { useState, type ComponentProps } from "react";
+import { AccountingStatus } from "@/components/accounting-status";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Recovery from "@open-erp/contracts/posting-recovery";
@@ -316,12 +317,11 @@ function RecoveryDetail(props: {
           {approve.isPending || execute.isPending || revoke.isPending ? (
             <Text role="status">{copy.pending}</Text>
           ) : null}
-          {approve.isError || execute.isError || revoke.isError ? (
-            <Text role="alert">
-              {copy.commandUnknown}{" "}
-              {approve.error?.message ?? execute.error?.message ?? revoke.error?.message}
-            </Text>
-          ) : null}
+          <AccountingStatus
+            locale={locale}
+            write
+            error={approve.error ?? execute.error ?? revoke.error}
+          />
         </WorkflowSurface>
       ) : null}
       <Disclosure title={accountingCopy(locale).workspace_reference_details}>

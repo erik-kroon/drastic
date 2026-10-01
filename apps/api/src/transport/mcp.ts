@@ -1,4 +1,4 @@
-import { AccountingError } from "@open-erp/contracts/accounting";
+import { AccountingError, failureRecovery } from "@open-erp/contracts/accounting";
 import { AccountingErrorStatus } from "@open-erp/contracts/api";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
@@ -50,7 +50,11 @@ const catalog = tools.map(({ name, capability }) => ({
 
 function rpcError(id: McpSchema.RequestId | null, code: number, message: string, status = 200) {
   return HttpServerResponse.jsonUnsafe(
-    { jsonrpc: "2.0", id, error: { code, message } },
+    {
+      jsonrpc: "2.0",
+      id,
+      error: { code, message, data: { code: "InvalidRequest", recovery: "permanent" } },
+    },
     { status },
   );
 }
@@ -71,7 +75,7 @@ function dispatch(request: typeof McpRequest.Type, token: string) {
         return HttpServerResponse.empty({ status: 202 });
       }
 
-      return HttpServerResponse.empty({ status: 400 });
+      return rpcError(null, -32600, "Send a supported notification.", 400);
     }
 
     const id = request.id;
@@ -91,7 +95,7 @@ function dispatch(request: typeof McpRequest.Type, token: string) {
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: "open-erp-accounting", version: "1.0.0" },
           instructions:
-            "Discover available operations with tools/list and inspect book_get_status for scope and blockers. Installed capabilities are not proof of production accounting, tax, whole-period source completeness or Swedish compliance. Prepare, validate, obtain operator approval outside MCP, then execute the exact approved digest and version. Reuse idempotency keys when retrying unchanged commands; recover durable requests and receipts after an uncertain response. Stateless JSON responses only; no SSE, subscriptions or MCP background-task protocol.",
+            "Discover available operations with tools/list and inspect book_get_status for scope and blockers. Installed capabilities are not proof of production accounting, tax, whole-period source completeness or Swedish compliance. Prepare, validate, obtain operator approval outside MCP, then execute the exact approved digest and version. Failures carry a recovery class: permanent requires repairing the stated issue before retry; transient permits an unchanged same-key retry after a known rollback or pre-routing refusal; outcome-unknown requires reading durable status or receipts before retrying the original command. Unrecognized codes are outcome-unknown. Never replace a key to escape uncertainty. These classes do not override saved-request retry rules or current authority. Stateless JSON responses only; no SSE, subscriptions or MCP background-task protocol.",
         });
       }
 
@@ -132,16 +136,11 @@ function dispatch(request: typeof McpRequest.Type, token: string) {
                 content: [
                   {
                     type: "text",
-                    text: JSON.stringify(
-                      error.code === "Unavailable" || error.code === "InternalError"
-                        ? {
-                            code: error.code,
-                            message: error.message,
-                            recovery:
-                              "The outcome of a mutation may be unknown. Read its durable status or receipt, then retry only with the original input and idempotency key. Do not create a new command.",
-                          }
-                        : { code: error.code, message: error.message },
-                    ),
+                    text: JSON.stringify({
+                      code: error.code,
+                      message: error.message,
+                      recovery: failureRecovery(error.code),
+                    }),
                   },
                 ],
               });
@@ -173,7 +172,7 @@ const handleMcp = Effect.gen(function* () {
   yield* capabilities.book_list.execute(token, {});
 
   if (request.method !== "POST") {
-    return HttpServerResponse.empty({ status: 405, headers: { allow: "POST" } });
+    return yield* failure("MethodNotAllowed");
   }
 
   if (request.headers["content-type"]?.split(";")[0]?.trim().toLowerCase() !== "application/json") {
@@ -220,7 +219,11 @@ function rpcAuthenticationError(error: AccountingError) {
       {
         jsonrpc: "2.0",
         id: null,
-        error: { code: -32001, message: error.message, data: { code: error.code } },
+        error: {
+          code: -32001,
+          message: error.message,
+          data: { code: error.code, recovery: failureRecovery(error.code) },
+        },
       },
       {
         status: AccountingErrorStatus[error.code],

@@ -158,7 +158,11 @@ export const SavedPostingOutcome = Schema.Union([
   Schema.Struct({
     state: Schema.Literal("refused"),
     result: Schema.Null,
-    refusal: Schema.Struct({ code: Accounting.FailureCode, message: Schema.String }),
+    refusal: Schema.Struct({
+      code: Accounting.FailureCode,
+      message: Schema.String,
+      recovery: Schema.optional(Accounting.RecoveryClass),
+    }),
     recordedAt: Schema.String,
   }),
 ]);

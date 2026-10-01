@@ -5,7 +5,7 @@ import * as Schema from "effect/Schema";
 import * as Result from "effect/Result";
 import { validatePostingLines } from "@open-erp/domain/posting";
 import { sql } from "drizzle-orm";
-import { failure } from "./failures";
+import { failure, postingFailure } from "./failures";
 import { withAdmittedPrincipal, type AuthorityLockMode, type VerifiedPrincipal } from "./identity";
 import {
   approveChangeInTransaction,
@@ -54,9 +54,7 @@ function requestContentFailure(command: SavedCommand) {
     command.input.lines.map((line, index) => ({ ...line, lineId: `saved_line_${index}` })),
   );
 
-  return Result.isFailure(checked)
-    ? new Accounting.AccountingError({ code: "InvalidJournal", message: checked.failure.message })
-    : null;
+  return Result.isFailure(checked) ? postingFailure(checked.failure.code) : null;
 }
 
 function decode<A>(schema: Schema.Decoder<A>, value: JsonObject) {
@@ -169,6 +167,21 @@ function savedResult(operation: string, result: JsonObject) {
 }
 
 function isPersistableRefusal(error: Accounting.AccountingError) {
+  if (
+    [
+      "InvalidPostingLine",
+      "InvalidPostingLineCount",
+      "DuplicatePostingLine",
+      "InvalidPostingSide",
+      "UnbalancedPosting",
+      "AccountingPeriodMissing",
+      "PostingDateOutsidePeriod",
+      "AccountMissing",
+      "AccountInactive",
+    ].includes(error.code)
+  )
+    return true;
+
   return [
     "InvalidJournal",
     "MissingEvidence",
@@ -358,7 +371,12 @@ function runPostingRequestWithAuthority(
       );
 
       if (operation.state === "refused") {
-        const refusal = { code: operation.error.code, message: operation.error.message };
+        const refusal = {
+          code: operation.error.code,
+          message: operation.error.message,
+          recovery: Accounting.failureRecovery(operation.error.code),
+        };
+
         yield* RecoveryDb.insertSavedOutcome(transaction, {
           bookId: command.scope.bookId,
           key: row.key,

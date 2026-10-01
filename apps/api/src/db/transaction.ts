@@ -31,7 +31,15 @@ function sqlFailure(error: unknown) {
 }
 
 export function databaseFailure(error: unknown): Accounting.AccountingError {
-  if (error instanceof Accounting.AccountingError) return error;
+  if (error instanceof Accounting.AccountingError) {
+    if (error.recovery !== undefined) return error;
+
+    return new Accounting.AccountingError({
+      code: error.code,
+      message: error.message,
+      recovery: Accounting.failureRecovery(error.code),
+    });
+  }
 
   const sqlError = sqlFailure(error);
 
@@ -44,6 +52,14 @@ export function databaseFailure(error: unknown): Accounting.AccountingError {
   if (Schema.is(PostgresFailure)(cause)) {
     if (cause.code === "P0001" && Schema.is(Accounting.FailureCode)(cause.detail)) {
       return failure(cause.detail);
+    }
+
+    if (["40P01", "40001", "55P03", "57014"].includes(cause.code)) {
+      return failure("TransactionRetry", error);
+    }
+
+    if (["28P01", "28000", "3D000"].includes(cause.code)) {
+      return failure("ConfigurationError", error);
     }
 
     if (
