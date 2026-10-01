@@ -227,7 +227,72 @@ export const BookContextView = Schema.Struct({
   }),
 });
 
+export const ContextCapture = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  actorId: Accounting.Identifier,
+  query: AgentContextQuery,
+  digest: Accounting.Digest,
+  createdAt: Schema.String,
+  total: Accounting.MinorUnits,
+});
+
+export const ContextProgress = Schema.Struct({
+  captureId: Accounting.Identifier,
+  revision: Accounting.MinorUnits,
+  position: Accounting.MinorUnits,
+  recordedAt: Schema.String,
+});
+
+export const ContextPageQuery = Schema.Struct({ after: Schema.optionalKey(Accounting.MinorUnits) });
+
+export const AdvanceContext = Schema.Struct({
+  expectedRevision: Accounting.MinorUnits,
+  pageDigest: Accounting.Digest,
+});
+
+export const ContextPage = Schema.Struct({
+  capture: ContextCapture,
+  offset: Accounting.MinorUnits,
+  items: Schema.Array(AgentContextWorkRef),
+  next: Schema.NullOr(Accounting.MinorUnits),
+  pageDigest: Accounting.Digest,
+  current: Schema.Boolean,
+  progress: ContextProgress,
+  modules: Schema.Array(AgentContextModule),
+  ranked: BookContextView.fields.ranked,
+});
+
 export const WorkspaceCapabilities = {
+  workspace_capture_context: {
+    description:
+      "Capture an immutable principal-scoped work inventory for durable continuation. This records orientation only, not approval or financial completion.",
+    input: Schema.Struct({ ...coordinationCommand, input: AgentContextQuery }),
+    output: ContextCapture,
+    readOnly: false,
+  },
+  workspace_get_context_page: {
+    description:
+      "Resume a retained work capture at its saved discovery position, or read a specified page. Currentness is rechecked; stale references do not permit execution.",
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      captureId: Accounting.Identifier,
+      ...ContextPageQuery.fields,
+    }),
+    output: ContextPage,
+    readOnly: true,
+  },
+  workspace_advance_context: {
+    description:
+      "Persist acknowledgement of the next exact discovery page under revision and fresh-state checks. Does not resolve work or approve any action.",
+    input: Schema.Struct({
+      ...coordinationCommand,
+      captureId: Accounting.Identifier,
+      input: AdvanceContext,
+    }),
+    output: ContextProgress,
+    readOnly: false,
+  },
   workspace_coordination: {
     description:
       "Read current authorized book members and personal or shared work views. No financial state changes.",
@@ -280,6 +345,38 @@ export const WorkspaceCapabilities = {
 };
 
 export const WorkspaceApi = HttpApiGroup.make("workspace").add(
+  HttpApiEndpoint.post(
+    "captureAgentContext",
+    "/v1/entities/:entityId/books/:bookId/workspace/context-captures",
+    {
+      params: Accounting.Scope,
+      headers: Accounting.IdempotencyHeaders,
+      payload: AgentContextQuery.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: ContextCapture,
+      error: accountingErrors,
+    },
+  ),
+  HttpApiEndpoint.get(
+    "getAgentContextPage",
+    "/v1/entities/:entityId/books/:bookId/workspace/context-captures/:id",
+    {
+      params: Accounting.ChangePath,
+      query: ContextPageQuery,
+      success: ContextPage,
+      error: accountingErrors,
+    },
+  ),
+  HttpApiEndpoint.post(
+    "advanceAgentContext",
+    "/v1/entities/:entityId/books/:bookId/workspace/context-captures/:id/progress",
+    {
+      params: Accounting.ChangePath,
+      headers: Accounting.IdempotencyHeaders,
+      payload: AdvanceContext.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: ContextProgress,
+      error: accountingErrors,
+    },
+  ),
   HttpApiEndpoint.get("workspaceCoordination", "/v1/entities/:entityId/books/:bookId/workspace", {
     params: Accounting.Scope,
     success: Coordination,

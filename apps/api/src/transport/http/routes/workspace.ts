@@ -4,10 +4,43 @@ import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/http-api";
 import { authenticate } from "../auth";
 import { getBookContext } from "../../../application/agent/context";
+import {
+  captureAgentContext,
+  getAgentContextPage,
+  advanceAgentContext,
+} from "../../../application/agent/continuation";
 import * as Workspace from "../../../application/workspace";
 
 export const WorkspaceHandlers = HttpApiBuilder.group(Api, "workspace", (handlers) =>
   handlers
+    .handle("captureAgentContext", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        captureAgentContext(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("getAgentContextPage", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        getAgentContextPage(token, {
+          scope: scopeFromPath(params),
+          captureId: params.id,
+          ...query,
+        }),
+      ),
+    )
+    .handle("advanceAgentContext", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        advanceAgentContext(token, {
+          scope: scopeFromPath(params),
+          captureId: params.id,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
     .handle("workspaceCoordination", ({ params }) =>
       Effect.flatMap(authenticate, (token) =>
         Workspace.coordination(token, { scope: scopeFromPath(params) }),

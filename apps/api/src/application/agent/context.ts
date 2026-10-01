@@ -15,6 +15,7 @@ import {
   toJsonObject,
   withBook,
   type Scope,
+  type Principal,
 } from "../commerce/support";
 import { digest, isoNow } from "../posting";
 import { failure } from "../failures";
@@ -198,14 +199,15 @@ function registeredCapabilities() {
   return Object.keys(Capabilities);
 }
 
-export const getBookContext = Effect.fn("agent.getBookContext")(function* (
-  token: string,
-  command: {
-    readonly scope: Scope;
-    readonly input: typeof Workspace.AgentContextQuery.Type;
-  },
-) {
-  return yield* withBook(token, command.scope, false, function* (transaction, principal) {
+export const captureBookContextInTransaction = Effect.fn("agent.captureBookContextInTransaction")(
+  function* (
+    transaction: Transaction,
+    principal: Principal,
+    command: {
+      readonly scope: Scope;
+      readonly input: typeof Workspace.AgentContextQuery.Type;
+    },
+  ) {
     yield* requireTableAccess(transaction, [...WorkspaceDb.workspaceTables], false);
 
     const period =
@@ -336,5 +338,14 @@ export const getBookContext = Effect.fn("agent.getBookContext")(function* (
         ranked: ranked.success,
       }),
     );
+  },
+);
+
+export const getBookContext = Effect.fn("agent.getBookContext")(function* (
+  token: string,
+  command: { readonly scope: Scope; readonly input: typeof Workspace.AgentContextQuery.Type },
+) {
+  return yield* withBook(token, command.scope, false, function* (transaction, principal) {
+    return yield* captureBookContextInTransaction(transaction, principal, command);
   });
 });

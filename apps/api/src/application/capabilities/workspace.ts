@@ -2,6 +2,11 @@ import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
 import { getBookContext } from "../agent/context";
 import {
+  captureAgentContext,
+  getAgentContextPage,
+  advanceAgentContext,
+} from "../agent/continuation";
+import {
   assignWork,
   coordination,
   deleteView,
@@ -11,6 +16,18 @@ import {
 } from "../workspace";
 
 export const workspaceCapabilities = {
+  workspace_capture_context: effectCapability(
+    Capabilities.workspace_capture_context,
+    captureAgentContext,
+  ),
+  workspace_get_context_page: effectCapability(
+    Capabilities.workspace_get_context_page,
+    getAgentContextPage,
+  ),
+  workspace_advance_context: effectCapability(
+    Capabilities.workspace_advance_context,
+    advanceAgentContext,
+  ),
   workspace_agent_context: effectCapability(Capabilities.workspace_agent_context, getBookContext),
   workspace_coordination: effectCapability(Capabilities.workspace_coordination, coordination),
   workspace_save_view: effectCapability(Capabilities.workspace_save_view, saveView),

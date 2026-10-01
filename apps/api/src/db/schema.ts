@@ -1811,3 +1811,20 @@ export const supplierSettlementCancellationRevocations = openerp.table(
     body: jsonb().$type<Schema.JsonObject>().notNull(),
   },
 );
+
+export const agentContextCaptures = openerp.table("agent_context_captures", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  actorId: text("actor_id").notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+  inventory: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const agentContextProgress = openerp.table("agent_context_progress", {
+  bookId: text("book_id").notNull(),
+  captureId: text("capture_id").notNull(),
+  actorId: text("actor_id").notNull(),
+  revision: bigint("revision", { mode: "bigint" }).notNull(),
+  position: bigint("position", { mode: "bigint" }).notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
