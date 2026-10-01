@@ -461,6 +461,14 @@ export const commandReceipts = openerp.table("command_receipts", {
     .defaultNow(),
 });
 
+export const periodWorkExecutionResults = openerp.table("period_work_execution_results", {
+  bookId: text("book_id").notNull(),
+  batchId: text("batch_id").notNull(),
+  commandKey: text("command_key").notNull(),
+  actorId: text("actor_id").notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
 export const outbox = openerp.table("outbox", {
   bookId: text("book_id").notNull(),
   id: text().notNull(),

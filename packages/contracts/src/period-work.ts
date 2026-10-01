@@ -124,6 +124,20 @@ const scoped = { params: Accounting.Scope, error: accountingErrors };
 const mutation = { ...scoped, headers: Accounting.IdempotencyHeaders };
 
 export const PeriodWorkApi = HttpApiGroup.make("periodWork").add(
+  HttpApiEndpoint.get("getPeriodWorkBatch", `${path}/batches/:batchId`, {
+    ...scoped,
+    params: Schema.Struct({ ...Accounting.Scope.fields, batchId: Accounting.Identifier }),
+    success: ApprovalBatch,
+  }),
+  HttpApiEndpoint.get("getPeriodWorkBatchResult", `${path}/batches/:batchId/results/:key`, {
+    ...scoped,
+    params: Schema.Struct({
+      ...Accounting.Scope.fields,
+      batchId: Accounting.Identifier,
+      key: Accounting.IdempotencyHeaders.fields["idempotency-key"],
+    }),
+    success: PeriodWorkExecutionResult,
+  }),
   HttpApiEndpoint.post("preparePeriodWorkManifest", `${path}/manifests`, {
     ...mutation,
     payload: PreparePeriodWorkManifest.annotate({ parseOptions: { onExcessProperty: "error" } }),

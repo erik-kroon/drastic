@@ -17,6 +17,37 @@ import type { WorkChildState } from "@open-erp/domain/period-work";
 
 type JsonObject = EffectSchema.JsonObject;
 
+export function readExecutionResult(
+  transaction: Transaction,
+  bookId: string,
+  batchId: string,
+  commandKey: string,
+) {
+  return transaction
+    .select()
+    .from(Schema.periodWorkExecutionResults)
+    .where(
+      and(
+        eq(Schema.periodWorkExecutionResults.bookId, bookId),
+        eq(Schema.periodWorkExecutionResults.batchId, batchId),
+        eq(Schema.periodWorkExecutionResults.commandKey, commandKey),
+      ),
+    );
+}
+
+export function insertExecutionResult(
+  transaction: Transaction,
+  input: {
+    bookId: string;
+    batchId: string;
+    commandKey: string;
+    actorId: string;
+    body: JsonObject;
+  },
+) {
+  return transaction.insert(Schema.periodWorkExecutionResults).values(input).onConflictDoNothing();
+}
+
 export type TableAccess = {
   readonly tableName: string;
   readonly canSelect: boolean;
@@ -33,6 +64,7 @@ export const periodWorkTables = [
   "period_work_batches",
   "period_work_batch_members",
   "period_work_batch_approvals",
+  "period_work_execution_results",
 ] as const;
 
 const writable = new Set<string>([
@@ -41,6 +73,7 @@ const writable = new Set<string>([
   "period_work_batches",
   "period_work_batch_members",
   "period_work_batch_approvals",
+  "period_work_execution_results",
 ]);
 
 export function isPeriodWorkWritable(tableName: string): boolean {

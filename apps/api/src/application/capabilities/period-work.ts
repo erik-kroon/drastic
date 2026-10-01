@@ -8,12 +8,19 @@ import {
   preparePeriodWorkBatch,
   preparePeriodWorkManifest,
   readPeriodWorkProgress,
+  getPeriodWorkBatch,
+  getPeriodWorkBatchResult,
 } from "../period-work";
 
 // Period-work mutations currently require an operator at the owning boundary.
 // The MCP policy exposes progress reads; REST and the Bun runner use these same
 // operations with their current admission checks.
 export const periodWorkCapabilities = {
+  period_work_get_batch: effectCapability(Capabilities.period_work_get_batch, getPeriodWorkBatch),
+  period_work_get_batch_result: effectCapability(
+    Capabilities.period_work_get_batch_result,
+    getPeriodWorkBatchResult,
+  ),
   period_work_prepare_manifest: effectCapability(
     Capabilities.period_work_prepare_manifest,
     preparePeriodWorkManifest,

@@ -1460,6 +1460,24 @@ export const executePeriodWorkBatch = Effect.fn("periodWork.executeBatch")(funct
 
       if (approved.length === 0) return yield* failure("ApprovalRequired");
 
+      const retainedResult = (yield* Db.readExecutionResult(
+        transaction,
+        command.scope.bookId,
+        command.batchId,
+        command.idempotencyKey,
+      ))[0];
+
+      if (retainedResult) {
+        if (retainedResult.actorId !== principal.actorId) return yield* failure("Forbidden");
+
+        return {
+          previous: yield* decode(Contracts.PeriodWorkExecutionResult, retainedResult.body),
+          manifestId: batch.manifestId,
+          nextOrdinal: null,
+          members: [],
+        };
+      }
+
       const members = yield* Db.readBatchMembers(
         transaction,
         command.scope.bookId,
@@ -1484,6 +1502,7 @@ export const executePeriodWorkBatch = Effect.fn("periodWork.executeBatch")(funct
       }
 
       return {
+        previous: null,
         manifestId: batch.manifestId,
         nextOrdinal: remaining.length > selected.length ? (selected.at(-1)?.ordinal ?? null) : null,
         members: selected.map((member) => ({
@@ -1501,6 +1520,8 @@ export const executePeriodWorkBatch = Effect.fn("periodWork.executeBatch")(funct
     },
     "update",
   );
+
+  if (plan.previous) return plan.previous;
 
   const committed: Array<{ workIdentity: string; receiptId: string }> = [];
   const refused: Array<{ workIdentity: string; reason: string }> = [];
@@ -1534,6 +1555,7 @@ export const executePeriodWorkBatch = Effect.fn("periodWork.executeBatch")(funct
         planDigest: row?.planDigest ?? null,
         ownerReviewId: row?.ownerReviewId ?? null,
         receiptId: row?.receiptId ?? null,
+        missingFacts: row ? readMissingFacts(row.missingFacts) : undefined,
       };
     });
 
@@ -1543,9 +1565,15 @@ export const executePeriodWorkBatch = Effect.fn("periodWork.executeBatch")(funct
     }
 
     if (fence.state !== "prepared" && fence.state !== "refused") {
+      const retainedRefusal = fence.missingFacts?.find((fact) =>
+        fact.startsWith("owner_execution_refused:"),
+      );
+
       refused.push({
         workIdentity: member.workIdentity,
-        reason: `child_not_prepared:${fence.state}`,
+        reason:
+          retainedRefusal?.slice("owner_execution_refused:".length) ??
+          `child_not_prepared:${fence.state}`,
       });
       continue;
     }
@@ -1647,7 +1675,7 @@ export const executePeriodWorkBatch = Effect.fn("periodWork.executeBatch")(funct
     manifestId: plan.manifestId,
   });
 
-  return {
+  const result = {
     batchId: command.batchId,
     manifestId: plan.manifestId,
     committed,
@@ -1656,6 +1684,67 @@ export const executePeriodWorkBatch = Effect.fn("periodWork.executeBatch")(funct
     reconciled: false,
     nextOrdinal: plan.nextOrdinal,
   };
+
+  return yield* withBook(
+    token,
+    command.scope,
+    true,
+    function* (transaction, principal) {
+      yield* Db.insertExecutionResult(transaction, {
+        bookId: command.scope.bookId,
+        batchId: command.batchId,
+        commandKey: command.idempotencyKey,
+        actorId: principal.actorId,
+        body: yield* toJsonObject(result),
+      });
+
+      const stored = (yield* Db.readExecutionResult(
+        transaction,
+        command.scope.bookId,
+        command.batchId,
+        command.idempotencyKey,
+      ))[0];
+
+      if (!stored || stored.actorId !== principal.actorId) return yield* failure("StaleDependency");
+
+      return yield* decode(Contracts.PeriodWorkExecutionResult, stored.body);
+    },
+    "update",
+  );
+});
+
+export const getPeriodWorkBatch = Effect.fn("periodWork.getBatch")(function* (
+  token: string,
+  command: { scope: BookScope; batchId: string },
+) {
+  return yield* withBook(token, command.scope, false, function* (transaction) {
+    yield* requireAccess(transaction, false);
+    const batch = (yield* Db.readBatch(transaction, command.scope.bookId, command.batchId))[0];
+
+    if (!batch) return yield* failure("NotFound");
+
+    return yield* decode(Contracts.ApprovalBatch, batch.body);
+  });
+});
+
+export const getPeriodWorkBatchResult = Effect.fn("periodWork.getBatchResult")(function* (
+  token: string,
+  command: { scope: BookScope; batchId: string; key: string },
+) {
+  return yield* withBook(token, command.scope, false, function* (transaction) {
+    yield* requireAccess(transaction, false);
+
+    const result = (yield* Db.readExecutionResult(
+      transaction,
+      command.scope.bookId,
+      command.batchId,
+      command.key,
+    ))[0];
+
+    if (!result) return yield* failure("NotFound");
+
+    return yield* decode(Contracts.PeriodWorkExecutionResult, result.body);
+  });
 });
 
 /** The economic receipt a member's owner returned. */
@@ -1841,19 +1930,32 @@ export const readPeriodWorkProgress = Effect.fn("periodWork.readProgress")(funct
       manifestId,
       digest: manifest.digest,
       populationComplete: manifest.populationComplete,
-      children: children.map((row) => ({
-        workIdentity: row.workIdentity,
-        state: row.state,
-        planId: row.planId ?? undefined,
-        receiptId: row.receiptId ?? undefined,
-        missingFacts: readMissingFacts(row.missingFacts),
-        refusalReason: row.refusalReason ?? undefined,
-        routedOwner: row.routedOwner ?? undefined,
-        ownerReviewId: row.ownerReviewId ?? undefined,
-        batchId: row.batchId ?? undefined,
-        revision: row.revision,
-        cancelVersion: row.cancelVersion,
-      })),
+      children: children.map((row) => {
+        const child = {
+          workIdentity: row.workIdentity,
+          state: row.state,
+          revision: row.revision,
+          cancelVersion: row.cancelVersion,
+        };
+
+        const missingFacts = readMissingFacts(row.missingFacts);
+
+        if (row.planId !== null) Object.assign(child, { planId: row.planId });
+
+        if (row.receiptId !== null) Object.assign(child, { receiptId: row.receiptId });
+
+        if (missingFacts !== undefined) Object.assign(child, { missingFacts });
+
+        if (row.refusalReason !== null) Object.assign(child, { refusalReason: row.refusalReason });
+
+        if (row.routedOwner !== null) Object.assign(child, { routedOwner: row.routedOwner });
+
+        if (row.ownerReviewId !== null) Object.assign(child, { ownerReviewId: row.ownerReviewId });
+
+        if (row.batchId !== null) Object.assign(child, { batchId: row.batchId });
+
+        return child;
+      }),
       counts,
       reconciled: false as const,
     };

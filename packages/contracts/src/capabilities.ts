@@ -251,6 +251,24 @@ export const Capabilities = {
     output: PeriodWork.PeriodWorkRunProgress,
     readOnly: true,
   },
+  period_work_get_batch: {
+    description:
+      "Read the retained exact batch members and digest without preparing or approving anything.",
+    input: Schema.Struct({ ...scoped, batchId: Accounting.Identifier }),
+    output: PeriodWork.ApprovalBatch,
+    readOnly: true,
+  },
+  period_work_get_batch_result: {
+    description:
+      "Recover a completed batch command's immutable mixed outcome by its original key. Missing results do not establish nonexecution; retry the original command or inspect child receipts.",
+    input: Schema.Struct({
+      ...scoped,
+      batchId: Accounting.Identifier,
+      key: Accounting.IdempotencyHeaders.fields["idempotency-key"],
+    }),
+    output: PeriodWork.PeriodWorkExecutionResult,
+    readOnly: true,
+  },
   period_work_advance: {
     description:
       "Visit a bounded number of children, route each to the operation that already owns its effect, and record the decision. The owning prepare runs between transactions, never inside one.",

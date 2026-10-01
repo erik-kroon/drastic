@@ -5,9 +5,24 @@ import { Api } from "@open-erp/contracts/api";
 import { capabilities } from "../../../application/capabilities";
 import { scopeFromPath } from "../scope";
 import { authenticate } from "../auth";
+import { getPeriodWorkBatch, getPeriodWorkBatchResult } from "../../../application/period-work";
 
 export const PeriodWorkHandlers = HttpApiBuilder.group(Api, "periodWork", (handlers) =>
   handlers
+    .handle("getPeriodWorkBatch", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        getPeriodWorkBatch(token, { scope: scopeFromPath(params), batchId: params.batchId }),
+      ),
+    )
+    .handle("getPeriodWorkBatchResult", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        getPeriodWorkBatchResult(token, {
+          scope: scopeFromPath(params),
+          batchId: params.batchId,
+          key: params.key,
+        }),
+      ),
+    )
     .handle("cancelPeriodWork", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.period_work_cancel.execute(token, {
