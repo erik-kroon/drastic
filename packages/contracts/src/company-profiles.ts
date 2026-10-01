@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
+import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 import { CommandReceipt, EvidenceReference } from "./commerce";
@@ -581,61 +581,63 @@ const planMutation = {
   error: accountingErrors,
 };
 
-export const CompanyProfileApi = HttpApiGroup.make("companyProfile").add(
-  HttpApiEndpoint.get("getCompanyProfile", `${bookPath}/company-profile`, {
-    params: Accounting.Scope,
-    query: Schema.Struct({ recordClass: RecordClass, ...ProfileDates.fields }),
-    success: CompanyProfile,
-    error: accountingErrors,
-  }),
-  HttpApiEndpoint.post("recordCompanyFact", `${bookPath}/company-facts`, {
-    ...mutation,
-    payload: RecordFactRevision.annotate({ parseOptions: { onExcessProperty: "error" } }),
-    success: FactRevision,
-  }),
-  HttpApiEndpoint.post("reviewCompanyFact", `${bookPath}/company-facts/:factRevisionId/reviews`, {
-    params: Schema.Struct({
-      ...Accounting.Scope.fields,
-      factRevisionId: Accounting.Identifier,
+export const CompanyProfileApi = HttpApiGroup.make("companyProfile")
+  .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" })
+  .add(
+    HttpApiEndpoint.get("getCompanyProfile", `${bookPath}/company-profile`, {
+      params: Accounting.Scope,
+      query: Schema.Struct({ recordClass: RecordClass, ...ProfileDates.fields }),
+      success: CompanyProfile,
+      error: accountingErrors,
     }),
-    headers: Accounting.IdempotencyHeaders,
-    payload: Schema.Struct({ ...ReviewFactRevision.fields }).annotate({
-      parseOptions: { onExcessProperty: "error" },
+    HttpApiEndpoint.post("recordCompanyFact", `${bookPath}/company-facts`, {
+      ...mutation,
+      payload: RecordFactRevision.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: FactRevision,
     }),
-    success: FactReview,
-    error: accountingErrors,
-  }),
-  HttpApiEndpoint.post("recordCompanyRoleBinding", `${bookPath}/company-role-bindings`, {
-    ...mutation,
-    payload: RecordRoleBinding.annotate({ parseOptions: { onExcessProperty: "error" } }),
-    success: RoleBinding,
-  }),
-  HttpApiEndpoint.post("prepareCompanyActivation", `${bookPath}/company-activation-plans`, {
-    ...mutation,
-    payload: PrepareCompanyActivation.annotate({ parseOptions: { onExcessProperty: "error" } }),
-    success: CompanyActivationPlan,
-  }),
-  HttpApiEndpoint.post(
-    "approveCompanyActivation",
-    `${bookPath}/company-activation-plans/:planId/approvals`,
-    {
-      ...planMutation,
-      payload: ApproveCompanyActivation.annotate({ parseOptions: { onExcessProperty: "error" } }),
-      success: CompanyActivationApproval,
-    },
-  ),
-  HttpApiEndpoint.post(
-    "executeCompanyActivation",
-    `${bookPath}/company-activation-plans/:planId/executions`,
-    {
-      ...planMutation,
-      payload: ExecuteCompanyActivation.annotate({ parseOptions: { onExcessProperty: "error" } }),
-      success: CompanyActivationReceipt,
-    },
-  ),
-  HttpApiEndpoint.get("getCompanyActivation", `${bookPath}/company-activations/:activationId`, {
-    params: Schema.Struct({ ...Accounting.Scope.fields, activationId: Accounting.Identifier }),
-    success: CompanyActivation,
-    error: accountingErrors,
-  }),
-);
+    HttpApiEndpoint.post("reviewCompanyFact", `${bookPath}/company-facts/:factRevisionId/reviews`, {
+      params: Schema.Struct({
+        ...Accounting.Scope.fields,
+        factRevisionId: Accounting.Identifier,
+      }),
+      headers: Accounting.IdempotencyHeaders,
+      payload: Schema.Struct({ ...ReviewFactRevision.fields }).annotate({
+        parseOptions: { onExcessProperty: "error" },
+      }),
+      success: FactReview,
+      error: accountingErrors,
+    }),
+    HttpApiEndpoint.post("recordCompanyRoleBinding", `${bookPath}/company-role-bindings`, {
+      ...mutation,
+      payload: RecordRoleBinding.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: RoleBinding,
+    }),
+    HttpApiEndpoint.post("prepareCompanyActivation", `${bookPath}/company-activation-plans`, {
+      ...mutation,
+      payload: PrepareCompanyActivation.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: CompanyActivationPlan,
+    }),
+    HttpApiEndpoint.post(
+      "approveCompanyActivation",
+      `${bookPath}/company-activation-plans/:planId/approvals`,
+      {
+        ...planMutation,
+        payload: ApproveCompanyActivation.annotate({ parseOptions: { onExcessProperty: "error" } }),
+        success: CompanyActivationApproval,
+      },
+    ),
+    HttpApiEndpoint.post(
+      "executeCompanyActivation",
+      `${bookPath}/company-activation-plans/:planId/executions`,
+      {
+        ...planMutation,
+        payload: ExecuteCompanyActivation.annotate({ parseOptions: { onExcessProperty: "error" } }),
+        success: CompanyActivationReceipt,
+      },
+    ),
+    HttpApiEndpoint.get("getCompanyActivation", `${bookPath}/company-activations/:activationId`, {
+      params: Schema.Struct({ ...Accounting.Scope.fields, activationId: Accounting.Identifier }),
+      success: CompanyActivation,
+      error: accountingErrors,
+    }),
+  );

@@ -673,18 +673,6 @@ function readActivationPlan(transaction: Transaction, scope: Scope, planId: stri
   );
 }
 
-// The sealed proposal serializes its own execution. Its row is immutable, so
-// this takes a lock and never rewrites the proposal.
-function lockActivationPlan(transaction: Transaction, scope: Scope, planId: string) {
-  return Db.lockActivationPlan(transaction, scope.bookId, planId).pipe(
-    Effect.flatMap((rows) => {
-      const row = rows[0];
-
-      return row ? decode(Profiles.CompanyActivationPlan, row.plan) : failure("NotFound");
-    }),
-  );
-}
-
 export const approveCompanyActivation = Effect.fn("companyProfiles.approveActivation")(function* (
   token: string,
   command: {
@@ -802,8 +790,6 @@ export const executeCompanyActivation = Effect.fn("companyProfiles.executeActiva
 
       if (plan.digest !== input.planDigest) return yield* failure("StaleDependency");
 
-      // Account state is re-resolved under the book writer lock before the plan
-      // row is taken, matching the reviewed account-then-resource order.
       const resolved = yield* resolveCompanyProfileInTransaction(
         transaction,
         scope,
@@ -824,10 +810,6 @@ export const executeCompanyActivation = Effect.fn("companyProfiles.executeActiva
       ) {
         return yield* failure("StaleDependency");
       }
-
-      const locked = yield* lockActivationPlan(transaction, scope, planId);
-
-      if (locked.digest !== plan.digest) return yield* failure("StaleDependency");
 
       if ((yield* Db.readActivationByChangeSet(transaction, scope.bookId, plan.id)).length > 0) {
         return yield* failure("IdempotencyConflict");
