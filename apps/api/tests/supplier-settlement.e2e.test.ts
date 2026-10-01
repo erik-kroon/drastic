@@ -1036,6 +1036,10 @@ test("supplier pending owner retains prospective plans and independent approval 
 
   try {
     await admin.query(
+      "insert into openerp_auth.\"user\"(id,name,email) values($1,'Synthetic reviewer',$2) on conflict(id) do nothing",
+      [data.reviewer.actorId, `${data.reviewer.actorId}@e2e.invalid`],
+    );
+    await admin.query(
       "insert into openerp.identity_admissions(actor_id,provider_id,subject,enabled) values($1,'e2e-pending',$1,false) on conflict(actor_id) do update set enabled=false",
       [data.reviewer.actorId],
     );
