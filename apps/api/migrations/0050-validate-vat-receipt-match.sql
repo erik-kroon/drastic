@@ -1,0 +1,2 @@
+ALTER TABLE openerp.vat_assessment_receipts
+  VALIDATE CONSTRAINT vat_assessment_receipts_match_fkey;
