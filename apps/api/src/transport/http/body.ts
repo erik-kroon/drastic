@@ -2,10 +2,18 @@ import { assertUniqueJsonKeys, JsonKeysError } from "../../adapters/json-keys";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 
-class BodyError extends Data.TaggedError("BodyError")<{
+export class BodyError extends Data.TaggedError("BodyError")<{
   readonly status: number;
   readonly message: string;
-}> {}
+}> {
+  get code() {
+    return this.status === 413
+      ? "RequestTooLarge"
+      : this.status === 408
+        ? "RequestTimeout"
+        : "InvalidRequest";
+  }
+}
 
 const maxBodyBytes = 8 * 1024 * 1024;
 

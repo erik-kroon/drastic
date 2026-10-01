@@ -25,7 +25,7 @@ import { HttpApiBuilder } from "effect/unstable/httpapi";
 
 import { AccountingHandlers } from "./transport/http/routes/accounting";
 import { authHandler } from "./adapters/auth/better-auth";
-import { boundedRequest } from "./transport/http/body";
+import { BodyError, boundedRequest } from "./transport/http/body";
 import { McpRoutes } from "./transport/mcp";
 import { type Bindings, RequestEnvironment } from "./runtime/environment";
 import { ReportHandlers } from "./transport/http/routes/reports";
@@ -217,20 +217,20 @@ const { handler } = HttpRouter.toWebHandler(
 );
 
 function boundaryResponse(error: unknown) {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    typeof error.status === "number" &&
-    "message" in error &&
-    typeof error.message === "string"
-  ) {
-    return Response.json({ message: error.message }, { status: error.status });
+  if (error instanceof BodyError) {
+    return Response.json(
+      {
+        code: error.code,
+        message: error.message,
+        recovery: error.status === 408 ? "transient" : "permanent",
+      },
+      { status: error.status },
+    );
   }
 
   const safe = databaseFailure(error);
 
-  return Response.json({ message: safe.message }, { status: AccountingErrorStatus[safe.code] });
+  return Response.json(safe, { status: AccountingErrorStatus[safe.code] });
 }
 
 function withRequestDatabase<A, E, R>(bindings: Bindings, effect: Effect.Effect<A, E, R>) {
