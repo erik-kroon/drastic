@@ -637,7 +637,22 @@ export function validateOwnerLine(
       textField(source, "locator") ?? "",
     );
 
-    if (eventId === undefined || !events.some((event) => event.id === eventId)) {
+    if (eventId === undefined) return yield* failure("InvalidJournal");
+
+    const direct = events.some((event) => event.id === eventId);
+
+    // A posted correction keeps the source reference but owns a new event.
+    // Require its committed, book-scoped correction ancestry to reach that source.
+    if (
+      !direct &&
+      !(yield* OwnerDb.readCorrectedSourceEvent(
+        transaction,
+        scope.bookId,
+        eventId,
+        textField(source, "evidenceId") ?? "",
+        textField(source, "locator") ?? "",
+      ))[0]?.matched
+    ) {
       return yield* failure("InvalidJournal");
     }
 

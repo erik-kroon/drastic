@@ -5,6 +5,34 @@ import type { Transaction } from "../transaction";
 
 type JsonObject = Schema.JsonObject;
 
+export function readCorrectedSourceEvent(
+  transaction: Transaction,
+  bookId: string,
+  eventId: string,
+  evidenceId: string,
+  locator: string,
+) {
+  return transaction.execute<{ readonly matched: boolean }>(
+    sql`
+    with recursive ancestry(id) as (
+      select id from openerp.vouchers where book_id=${bookId} and event_id=${eventId}
+      union
+      select b.original_voucher_id from ancestry a
+      join openerp.vouchers replacement on replacement.book_id=${bookId} and replacement.id=a.id
+      join openerp.correction_bundles b on b.book_id=replacement.book_id
+        and b.replacement_change_set_id=replacement.change_set_id
+      join openerp.correction_bundle_receipts r on r.book_id=b.book_id and r.bundle_id=b.id
+    )
+    select exists (
+      select 1 from ancestry a
+      join openerp.vouchers v on v.book_id=${bookId} and v.id=a.id
+      join openerp.events e on e.book_id=v.book_id and e.id=v.event_id
+      where e.evidence_id=${evidenceId} and e.event_key=${locator}
+    ) as matched`,
+    "objects",
+  );
+}
+
 export type TableAccessRow = {
   readonly tableName: string;
   readonly canSelect: boolean;

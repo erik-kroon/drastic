@@ -3,6 +3,9 @@ import { join } from "node:path";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Historical from "@open-erp/contracts/historical-migration";
 import * as Corrections from "@open-erp/contracts/corrections";
+import * as Owners from "@open-erp/contracts/owner-register";
+import * as Operations from "@open-erp/contracts/owner-operations";
+import * as Bank from "@open-erp/contracts/reconciliation";
 import * as Intake from "@open-erp/contracts/source-intake";
 import * as Import from "@open-erp/contracts/sie-import";
 import { expect, test } from "vitest";
@@ -389,6 +392,249 @@ test("retained opening capital transfers once and preserves source controls on r
     await final.end();
   }
 
+  const owner = await post(
+    book,
+    "/owner-register/owners",
+    {
+      sourceKey: key(),
+      displayName: "Synthetic opening lender",
+      dataNature: "synthetic_example",
+      evidenceId: opening.proposal.groups[0]?.actions[0]?.evidenceRefs[0]?.evidenceId,
+      reason: "Retained opening loan identity",
+    },
+    Owners.Owner,
+  );
+
+  const evidenceId = opening.proposal.groups[0]?.actions[0]?.evidenceRefs[0]?.evidenceId;
+
+  const record = await post(
+    book,
+    "/owner-register/records",
+    {
+      ownerId: owner.id,
+      dataNature: "synthetic_example",
+      sourceKey: key(),
+      sourceKind: "funding",
+      evidenceId,
+      locator: "opening_fy_2026",
+      occurredOn: "2026-01-01",
+      currency: "SEK",
+      currencyScale: 2,
+      amountMinor: "9500000",
+      counterparty: null,
+      description: "Corrected retained opening loan",
+      classification: "shareholder_loan",
+      origin: "opening",
+      reason: "Exact replacement opening liability",
+    },
+    Owners.RecordView,
+  );
+
+  const reviewed = await post(
+    book,
+    `/owner-register/records/${record.source.id}/reviews`,
+    {
+      expectedRevision: record.currentRevision.revision,
+      revisionDigest: record.currentRevision.digest,
+      controlAccountId: "account_owner",
+      syntheticNoTaxConfirmed: true,
+      evidenceId,
+      reason: "Link corrected opening loan without posting cash again",
+    },
+    Owners.Review,
+  );
+
+  const loanLine = correction.replacement.groups[0]?.actions[0]?.lines.find(
+    (line) => line.accountId === "account_owner",
+  );
+
+  const link = {
+    reviewId: reviewed.id,
+    voucherId: corrected.replacement.voucherId,
+    lineId: loanLine?.lineId,
+  };
+
+  const originalLoanLine = opening.proposal.groups[0]?.actions[0]?.lines.find(
+    (line) => line.accountId === "account_owner",
+  );
+
+  await failure(
+    await request(book, `/owner-register/records/${record.source.id}/posted-lines`, {
+      method: "POST",
+      body: JSON.stringify({
+        reviewId: reviewed.id,
+        voucherId: result.voucherId,
+        lineId: originalLoanLine?.lineId,
+      }),
+    }),
+    409,
+    "StaleDependency",
+  );
+
+  const linkCommand = {
+    method: "POST",
+    headers: { "idempotency-key": key() },
+    body: JSON.stringify(link),
+  };
+
+  const effect = await decoded(
+    await request(book, `/owner-register/records/${record.source.id}/posted-lines`, linkCommand),
+    Owners.PostedEffect,
+  );
+
+  expect(effect.amountMinor).toBe("9500000");
+  expect(effect.origin).toBe("opening");
+  expect(
+    await decoded(
+      await request(book, `/owner-register/records/${record.source.id}/posted-lines`, linkCommand),
+      Owners.PostedEffect,
+    ),
+  ).toEqual(effect);
+
+  const control = await post(
+    book,
+    "/owner-register/controls",
+    { ownerId: owner.id, startsOn: "2026-01-01", endsOn: "2026-12-31" },
+    Owners.Control,
+  );
+
+  expect(control.ownerBalances[0]?.openLoanMinor).toBe("9500000");
+  expect(control.accountControls[0]?.unexplainedMinor).toBe("0");
+  const verify = await database();
+
+  try {
+    expect(
+      (
+        await verify.query("select count(*)::int as count from openerp.vouchers where book_id=$1", [
+          book.bookId,
+        ])
+      ).rows,
+    ).toEqual([{ count: 3 }]);
+  } finally {
+    await verify.end();
+  }
+
+  const declaration = {
+    kind: "synthetic_bank_statement_v1",
+    statementIdentifier: key(),
+    sourceBankAccountId: "synthetic_opening_bank",
+    accountId: "account_bank",
+    currency: "SEK",
+    startsOn: "2026-02-01",
+    endsOn: "2026-02-28",
+    openingMinor: "12500000",
+    closingMinor: "12000000",
+    completeness: { declaredComplete: true, basis: "Independent synthetic repayment statement" },
+    rows: [
+      {
+        rowOrdinal: 1,
+        providerId: key(),
+        date: "2026-02-22",
+        description: "Repay adopted opening loan",
+        amountMinor: "-500000",
+      },
+    ],
+  };
+
+  const cash = await post(
+    book,
+    "/evidence",
+    {
+      title: "Original opening-loan repayment",
+      content: JSON.stringify(declaration),
+      mediaType: "application/json",
+      origin: "Independent synthetic bank",
+    },
+    Accounting.Evidence,
+  );
+
+  const statement = await post(
+    book,
+    "/bank-statements",
+    { ...declaration, evidenceId: cash.id, existingMatches: [] },
+    Bank.StatementImportReceipt,
+  );
+
+  const repayment = await post(
+    book,
+    "/owner-operations/reviews",
+    {
+      mode: "repay_owner_loan",
+      ownerId: owner.id,
+      controlAccountId: "account_owner",
+      cashAccountId: "account_bank",
+      accountingPeriodId: "period_2026",
+      postingDate: "2026-02-22",
+      series: "A",
+      reason: "Repay500000 of adopted9500000 opening capacity",
+      evidence: {
+        cashEvidenceId: cash.id,
+        statementId: statement.statement.id,
+        rowOrdinal: 1,
+        loanEffectId: effect.id,
+        reason: "Exact retained original loan",
+      },
+    },
+    Operations.OwnerOperationReview,
+  );
+
+  const independent = await fixture();
+  const reviewer = { ...book, token: independent.token, actorId: independent.actorId };
+  const membership = await database();
+
+  try {
+    await membership.query(
+      "insert into openerp.memberships(book_id,actor_id,role) values($1,$2,'operator')",
+      [book.bookId, reviewer.actorId],
+    );
+  } finally {
+    await membership.end();
+  }
+
+  const approved = await post(
+    reviewer,
+    `/owner-operations/reviews/${repayment.id}/approvals`,
+    { version: 1, digest: repayment.digest },
+    Operations.OwnerOperationApproval,
+  );
+
+  const repaid = await post(
+    book,
+    `/owner-operations/reviews/${repayment.id}/execute`,
+    { version: 1, digest: repayment.digest, approvalId: approved.id },
+    Operations.OwnerOperationReceipt,
+  );
+
+  expect(repaid.reimburses).toEqual([{ claimId: effect.id, amountMinor: "500000" }]);
+
+  const remaining = await post(
+    book,
+    "/owner-register/controls",
+    { ownerId: owner.id, startsOn: "2026-01-01", endsOn: "2026-12-31" },
+    Owners.Control,
+  );
+
+  expect(remaining.ownerBalances[0]?.openLoanMinor).toBe("9000000");
+  expect(remaining.accountControls[0]?.unexplainedMinor).toBe("0");
+  const balances = await database();
+
+  try {
+    expect(
+      (
+        await balances.query(
+          "select account_id,(sum(debit_minor)-sum(credit_minor))::text as balance from openerp.journal_lines where book_id=$1 group by account_id order by account_id",
+          [book.bookId],
+        )
+      ).rows,
+    ).toEqual([
+      { account_id: "account_bank", balance: "12000000" },
+      { account_id: "account_capital", balance: "-3000000" },
+      { account_id: "account_owner", balance: "-9000000" },
+    ]);
+  } finally {
+    await balances.end();
+  }
+
   await writeFile(
     join(environment().artifacts, "opening-capital-lineage.json"),
     JSON.stringify(
@@ -402,6 +648,12 @@ test("retained opening capital transfers once and preserves source controls on r
         result,
         correction,
         corrected,
+        record,
+        effect,
+        control,
+        repayment,
+        repaid,
+        remaining,
         expected: controls,
       },
       null,
