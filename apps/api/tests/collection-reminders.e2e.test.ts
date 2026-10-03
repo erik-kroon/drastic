@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 import { readFile, writeFile } from "node:fs/promises";
 import { arch, cpus, platform, totalmem } from "node:os";
@@ -11,6 +11,8 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Commerce from "@open-erp/contracts/commerce";
 import { withWorkspaceBrowser } from "./support/workspace-browser";
 import { legalFixture } from "./support/legal-commerce";
+import { captureWorkInventory } from "../scripts/operations/durable-work";
+import { tableFingerprints } from "../scripts/operations/snapshot";
 import {
   apiDirectory,
   createSession,
@@ -257,7 +259,11 @@ type Runner = {
   output: string;
 };
 
-function runner(context: Context, transport: Awaited<ReturnType<typeof fixtureTransport>>) {
+function runner(
+  context: Context,
+  transport: Awaited<ReturnType<typeof fixtureTransport>>,
+  configureTransport = true,
+) {
   const child = spawn("bun", ["scripts/preparation-runner.ts"], {
     cwd: apiDirectory,
     env: {
@@ -267,7 +273,7 @@ function runner(context: Context, transport: Awaited<ReturnType<typeof fixtureTr
       OPENERP_DOCUMENT_READER: "disabled",
       OPENERP_OBJECT_DIRECTORY: "",
       EVIDENCE_STORE_ROOT: "",
-      OPENERP_REMINDER_DELIVERY: "local-fixture",
+      OPENERP_REMINDER_DELIVERY: configureTransport ? "local-fixture" : undefined,
       OPENERP_REMINDER_ENDPOINT: transport.endpoint,
       OPENERP_REMINDER_SECRET: transport.secret,
     },
@@ -1083,3 +1089,168 @@ test("a 10000-minor reminder refuses a pre-admission 4000 payment and a newly ap
     await transport.close();
   }
 });
+
+
+test("two persistent runners racing cancellation retain either a cancelled intent or one admitted message", async () => {
+  const context = await legalFixture();
+  const message = await prepare(context, await reviewed(context));
+  const approvals = await Promise.all([approve(context, message), approve(context, message)]);
+  expect(approvals[0].approval).toEqual(approvals[1].approval);
+  const transport = await fixtureTransport();
+  const first = runner(context, transport);
+  const second = runner(context, transport);
+
+  try {
+    const cancellation = await request(context.author, `${base}/${message.id}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ messageDigest: message.digest }),
+    });
+    expect([200, 409]).toContain(cancellation.status);
+    const expected = cancellation.status === 200 ? "cancelled" : "provider_accepted";
+    const retained = await waitStatus(context, message, expected);
+    if (expected === "cancelled") {
+      expect(retained.attempt).toBe(null);
+      expect(transport.wires).toEqual([]);
+    } else {
+      expect(retained.attempt?.messageDigest).toBe(message.digest);
+      expect(transport.wires).toHaveLength(1);
+      expect(transport.wires[0]?.externalIdentity).toBe(retained.attempt?.externalIdentity);
+      await failure(
+        await request(context.author, `${base}/${message.id}/cancel`, {
+          method: "POST",
+          body: JSON.stringify({ messageDigest: message.digest }),
+        }),
+        409,
+        "StaleDependency",
+      );
+    }
+    await writeFile(
+      join(environment().artifacts, "reminder-cancel-admit-race.json"),
+      JSON.stringify({ cancellationStatus: cancellation.status, retained, wires: transport.wires }, null, 2),
+    );
+  } finally {
+    await stop(first);
+    await stop(second);
+    await transport.close();
+  }
+}, 45000);
+
+
+test("an unauthenticated fixture outcome cannot establish acceptance or delivery", async () => {
+  const context = await legalFixture();
+  const message = await prepare(context, await reviewed(context));
+  await approve(context, message);
+  const transport = await fixtureTransport();
+  transport.deliver();
+  const worker = runner(context, { ...transport, secret: randomBytes(32).toString("hex") });
+  try {
+    const retained = await waitStatus(context, message, "outcome_unknown");
+    expect(retained.attempt).not.toBe(null);
+    expect(retained.observations).toEqual([]);
+    expect(retained.delivered).toBe(false);
+    expect(transport.wires).toEqual([]);
+    expect(transport.reads).toEqual([]);
+    await writeFile(
+      join(environment().artifacts, "reminder-unauthenticated-outcome.json"),
+      JSON.stringify({ retained, authenticatedWires: transport.wires }, null, 2),
+    );
+  } finally {
+    await stop(worker);
+    await transport.close();
+  }
+}, 45000);
+
+
+test("an actual persistent runner without a delivery profile leaves an approval unadmitted and makes no contact", async () => {
+  const context = await legalFixture();
+  const message = await prepare(context, await reviewed(context));
+  await approve(context, message);
+  const transport = await fixtureTransport();
+  const worker = runner(context, transport, false);
+  const admin = await database();
+  try {
+    await expect.poll(async () => {
+      expect(worker.child.exitCode).toBe(null);
+      const connections = await admin.query<{ count: string }>(
+        "SELECT count(*)::text AS count FROM pg_stat_activity WHERE application_name = 'open-erp-preparation-runner'",
+      );
+      return Number(connections.rows[0]?.count ?? "0");
+    }, { timeout: 15000 }).toBeGreaterThan(0);
+    await new Promise((resolve) => setTimeout(resolve, 2100));
+    const retained = await read(context, message);
+    expect(retained.status).toBe("approved");
+    expect(retained.attempt).toBe(null);
+    expect(retained.observations).toEqual([]);
+    expect(transport.wires).toEqual([]);
+    expect(transport.reads).toEqual([]);
+    await writeFile(
+      join(environment().artifacts, "reminder-disabled-by-default.json"),
+      JSON.stringify({ runnerConnected: true, retained, wires: transport.wires }, null, 2),
+    );
+  } finally {
+    await admin.end();
+    await stop(worker);
+    await transport.close();
+  }
+}, 45000);
+
+
+test("recovery v4 binds all five reminder families and preserves complete older work with no resumption authority", async () => {
+  const context = await legalFixture();
+  const message = await prepare(context, await reviewed(context));
+  await approve(context, message);
+  const transport = await fixtureTransport();
+  const worker = runner(context, transport);
+  const admin = await database();
+  try {
+    const retained = await waitStatus(context, message, "provider_accepted");
+    await stop(worker);
+    await admin.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+    const exported = await admin.query<{ snapshot: string }>("SELECT pg_export_snapshot() AS snapshot");
+    const snapshot = exported.rows[0]?.snapshot;
+    if (!snapshot) throw new Error("Recovery snapshot missing");
+    const tables = await tableFingerprints(admin);
+    const captured = await captureWorkInventory(admin, tables, snapshot);
+    const body = Schema.decodeUnknownSync(Schema.Struct({
+      version: Schema.Literal(4),
+      resumptionAuthority: Schema.Literal("not-granted"),
+      providerAttemptHistory: Schema.Literal("payment-reminder-attempts-retained"),
+      recurringSchedules: Schema.Array(Schema.Unknown),
+      recurringEvents: Schema.Array(Schema.Unknown),
+      recurringJobs: Schema.Array(Schema.Unknown),
+      reminderMessages: Schema.Array(Schema.Struct({bookId: Schema.String, id: Schema.String, bodySha256: Schema.String})),
+      reminderApprovals: Schema.Array(Schema.Struct({bookId: Schema.String, messageId: Schema.String, bodySha256: Schema.String})),
+      reminderAttempts: Schema.Array(Schema.Struct({bookId: Schema.String, id: Schema.String, messageId: Schema.String, externalIdentity: Schema.String, bodySha256: Schema.String})),
+      reminderOutbox: Schema.Array(Schema.Struct({bookId: Schema.String, messageId: Schema.String, state: Schema.String, checkpoint: Schema.Int, cancelVersion: Schema.Int})),
+      reminderObservations: Schema.Array(Schema.Struct({bookId: Schema.String, attemptId: Schema.String, observationId: Schema.String, bodySha256: Schema.String})),
+    }))(captured);
+    const selectedMessage = body.reminderMessages.find((row) => row.bookId === context.book.bookId && row.id === message.id);
+    const selectedApproval = body.reminderApprovals.find((row) => row.bookId === context.book.bookId && row.messageId === message.id);
+    const selectedAttempt = body.reminderAttempts.find((row) => row.bookId === context.book.bookId && row.messageId === message.id);
+    const selectedOutbox = body.reminderOutbox.find((row) => row.bookId === context.book.bookId && row.messageId === message.id);
+    const selectedObservation = body.reminderObservations.find((row) => row.bookId === context.book.bookId && row.attemptId === retained.attempt?.id);
+    expect(selectedAttempt?.externalIdentity).toBe(retained.attempt?.externalIdentity);
+    expect(selectedOutbox).toEqual({bookId: context.book.bookId, messageId: message.id, state: "provider_accepted", checkpoint: 0, cancelVersion: 0});
+    expect(selectedObservation?.observationId).toBe(`${retained.attempt?.externalIdentity}/accepted`);
+    const messages = await admin.query<{ body: string }>("SELECT body::text AS body FROM openerp.reminder_messages WHERE book_id=$1 AND id=$2", [context.book.bookId, message.id]);
+    const approvals = await admin.query<{ body: string }>("SELECT body::text AS body FROM openerp.reminder_approvals WHERE book_id=$1 AND message_id=$2", [context.book.bookId, message.id]);
+    const attempts = await admin.query<{ body: string }>("SELECT body::text AS body FROM openerp.reminder_attempts WHERE book_id=$1 AND message_id=$2", [context.book.bookId, message.id]);
+    const observations = await admin.query<{ body: string }>("SELECT body::text AS body FROM openerp.reminder_observations WHERE book_id=$1 AND attempt_id=$2 ORDER BY observation_id", [context.book.bookId, retained.attempt?.id]);
+    for (const pair of [
+      { inventoryHash: selectedMessage?.bodySha256, retainedBody: messages.rows[0]?.body },
+      { inventoryHash: selectedApproval?.bodySha256, retainedBody: approvals.rows[0]?.body },
+      { inventoryHash: selectedAttempt?.bodySha256, retainedBody: attempts.rows[0]?.body },
+      { inventoryHash: selectedObservation?.bodySha256, retainedBody: observations.rows[0]?.body },
+    ]) {
+      if (!pair.retainedBody) throw new Error("Recovery retained body missing");
+      expect(pair.inventoryHash).toBe(createHash("sha256").update(pair.retainedBody, "utf8").digest("hex"));
+    }
+    await writeFile(join(environment().artifacts, "reminder-recovery-v4.json"), JSON.stringify({inventory: captured, retained, wire: transport.wires}, null, 2));
+    await admin.query("ROLLBACK");
+  } finally {
+    await admin.query("ROLLBACK");
+    await admin.end();
+    await stop(worker);
+    await transport.close();
+  }
+}, 45000);

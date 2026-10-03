@@ -26,6 +26,8 @@ The provider call runs outside the database transaction. A lost response leaves 
 | Approved reminder cancelled before admission | Queue | Cancelled, zero fixture submissions | Cancel/admit race contacts customer |
 | Two approvals or claims race | Approve/queue twice | One approval, one attempt, one external identity | Duplicate contact |
 | Provider accepts exact bytes | Read status | `provider_accepted`, delivered false | Acceptance is treated as delivery |
+| Fixture rejects transport authentication | Queue | Unknown outcome; no accepted/delivered observation | Unauthenticated transport establishes an external result |
+| Persistent runner has no configured delivery profile | Queue | Approval stays unadmitted; zero fixture requests | Default runtime can contact a provider |
 | Fixture supplies authenticated delivered observation | Reconcile/read | Delivered observation retained, delivered true | Unauthenticated status can establish delivery |
 | Runner dies after fixture acceptance before observation commit | Restart runner | Same attempt/identity reconciled, no second POST | Crash creates duplicate contact |
 | Provider cannot establish result | Restart/reconcile | `outcome_unknown`; no blind resubmission | Unknown becomes failed/retryable send |
@@ -64,3 +66,8 @@ P08 owns recovery inventory v3. P09 will extend it with a distinct v4 schema aft
 Before recovery code, its failure vectors are fixed. An omitted family, duplicate scoped identity, wrong-book reference, missing approved message, missing attempt for an observation, changed immutable body, changed outbox checkpoint, mismatched table fingerprint, renamed artifact path, wrong source version or inventory exceeding its reviewed row/byte bound refuses qualification. V2/v3 artifacts continue to qualify only their original captured families. A successful inventory match grants no permission to resume contact. Restored admitted attempts reconcile their original identity; restored unadmitted approvals still require current authority and expiry checks.
 
 The performance baseline uses the owned detached pre-feature checkout and `OPENERP_REMINDER_BASELINE=1` with the named fixed-fixture test. Head qualification supplies its retained `performance.json` through `OPENERP_REMINDER_BASELINE_RECEIPT`. Ordinary E2E runs record absolute preview/dispatch budgets; without that receipt the comparison is explicitly `not_checked`, so they do not establish the accepted existing-operation regression budget.
+
+
+## Source verification checkpoint
+
+The initial public journey failed at the absent reminder route after valid legal issuance and reviewed-recipient prerequisites. Production source checkpoint `d9e31ec` subsequently passed the fast/full changed-file gates and the current primary strict type-aware lint with warnings denied. The supported web build generated its required modules and passed. This establishes source checks only. Newly authored concurrency/authentication/default-disabled E2E cases and the first v4 inventory expectation have not run. Persistent runner, crash recovery, complete v4 qualification, browser behavior and timing remain open.
