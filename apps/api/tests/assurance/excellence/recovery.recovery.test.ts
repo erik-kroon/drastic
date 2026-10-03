@@ -471,7 +471,17 @@ test("[EXC-RECOVERY-COMPLETE] database, external original, recorded approval and
 
     const releasePath = join(env.artifacts, "evaluation-migration-release.json");
     await writeFile(releasePath, JSON.stringify(migrationRelease, null, 2), { mode: 0o600 });
-    expect(migrationRelease.files).toHaveLength(55);
+
+    const restoredMigrations = await target.query<{ name: string; sha256: string }>(
+      'SELECT name, sha256 FROM public.openerp_migrations ORDER BY name COLLATE "C"',
+    );
+
+    expect(restoredMigrations.rows).toEqual(
+      migrationRelease.files.map((file) => ({
+        name: file.path.split("/").at(-1),
+        sha256: file.sha256,
+      })),
+    );
 
     const strictProbe = Schema.decodeSync(Schema.fromJsonString(Schema.JsonObject))(
       (
