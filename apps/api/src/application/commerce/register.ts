@@ -110,6 +110,7 @@ const salesRegisterTables = [
     "invoice_drafts",
     "invoice_draft_revisions",
     "invoice_issues",
+    "ar_legal_issues",
   ]),
 ];
 

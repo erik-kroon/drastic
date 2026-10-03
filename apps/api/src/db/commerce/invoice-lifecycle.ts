@@ -1091,6 +1091,9 @@ export function readSalesDraftRows(transaction: Transaction, bookId: string) {
         and not exists (
           select from openerp.invoice_issues i where i.book_id = d.book_id and i.draft_id = d.id
         )
+        and not exists (
+          select from openerp.ar_legal_issues i where i.book_id = d.book_id and i.draft_id = d.id
+        )
       order by d.id collate "C"
     `,
     "objects",
