@@ -75,6 +75,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
   const labels = sv ? swedish : english;
   const base = `${workspacePath(book)}/sales`;
   const opener = useRef<{ base: string; id: string } | undefined>(undefined);
+  const pendingFocus = useRef(false);
   const work = decodeWorkReturn(search.work);
   const contacts = search.view === "parties";
   const status = search.status ?? (search.view === "drafts" && !search.record ? "draft" : "all");
@@ -86,8 +87,10 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
     setSearchText({ applied: search.q ?? "", text: search.q ?? "" });
   const query = new URLSearchParams({ status, sort, page: String(pageNumber), q: search.q ?? "" });
 
+  const registerOptions = salesRegisterOptions(book, query);
+
   const register = useQuery({
-    ...salesRegisterOptions(book, query),
+    ...registerOptions,
     enabled: !contacts,
   });
 
@@ -121,25 +124,38 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
     paymentHistoryPage: undefined,
   };
 
+  const focusRegister = () => {
+    if (
+      !pendingFocus.current ||
+      client.isFetching({ queryKey: registerOptions.queryKey, exact: true })
+    )
+      return;
+
+    const row =
+      opener.current?.base === base
+        ? document.querySelector<HTMLAnchorElement>(
+            `[data-sales-id="${CSS.escape(opener.current.id)}"]`,
+          )
+        : null;
+
+    const target = row ?? document.querySelector<HTMLHeadingElement>("main h1");
+
+    if (target) {
+      if (!row) target.tabIndex = -1;
+      target.focus();
+      pendingFocus.current = false;
+    }
+  };
+
   const close = () => {
+    pendingFocus.current = false;
     void navigate({
       to: base,
       search: { ...registerSearch, view: contacts ? "parties" : undefined },
       resetScroll: false,
     }).then(() => {
-      const row =
-        opener.current?.base === base
-          ? document.querySelector<HTMLAnchorElement>(
-              `[data-sales-id="${CSS.escape(opener.current.id)}"]`,
-            )
-          : null;
-
-      const target = row ?? document.querySelector<HTMLHeadingElement>("main h1");
-
-      if (target) {
-        if (!row) target.tabIndex = -1;
-        target.focus();
-      }
+      pendingFocus.current = true;
+      focusRegister();
     });
   };
 
@@ -298,6 +314,9 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
             </Box>
             <Box
               as="form"
+              ref={(node) => {
+                if (node && !search.record) focusRegister();
+              }}
               display="flex"
               gap="sm"
               alignItems="center"

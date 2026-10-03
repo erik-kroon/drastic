@@ -506,15 +506,51 @@ test("sales page two, secondary routes and browser history retain the register a
     await page.goto(`${workspace}/sales?status=draft&q=${encodeURIComponent(selected.title)}`);
     await opener.click();
     await page.getByRole("button", { name: "Edit draft", exact: true }).click();
-    await page.getByRole("textbox", { name: "Invoice · Draft", exact: true }).fill("Renamed outside the original filter");
-    await page.getByLabel("What changed?", { exact: true }).fill("Synthetic removed-opener journey");
-    await page.getByRole("button", { name: "Save draft", exact: true }).click();
-    await page.getByRole("dialog", { name: "Edit invoice", exact: true }).waitFor({ state: "hidden" });
-    await page.getByRole("button", { name: "Edit draft", exact: true }).waitFor();
-    await page.getByRole("button", { name: "Close invoice", exact: true }).click();
-    await expect.poll(() => new URL(page.url()).searchParams.get("record")).toBe(null);
-    await expect.poll(() => opener.count()).toBe(0);
-    await expect.poll(() => page.evaluate(() => document.activeElement?.textContent?.trim())).toBe("Invoicing");
+    await page
+      .getByRole("textbox", { name: "Invoice · Draft", exact: true })
+      .fill("Renamed outside the original filter");
+    await page
+      .getByLabel("What changed?", { exact: true })
+      .fill("Synthetic removed-opener journey");
+    const releaseRegister = Promise.withResolvers<void>();
+    const registerDelivered = Promise.withResolvers<void>();
+    let registerCaptured = false;
+
+    const filteredRegister = (url: URL) =>
+      url.pathname === `${book.path}/commerce/sales-register` &&
+      url.searchParams.get("q") === selected.title;
+
+    await page.route(filteredRegister, async (route) => {
+      const response = await route.fetch();
+      const body = await response.text();
+
+      expect(response.status()).toBe(200);
+      expect(JSON.parse(body).items).toHaveLength(0);
+      registerCaptured = true;
+      await releaseRegister.promise;
+      await route.fulfill({ response, body });
+      registerDelivered.resolve();
+    });
+
+    try {
+      await page.getByRole("button", { name: "Save draft", exact: true }).click();
+      await page
+        .getByRole("dialog", { name: "Edit invoice", exact: true })
+        .waitFor({ state: "hidden" });
+      await expect.poll(() => registerCaptured).toBe(true);
+      await page.getByRole("button", { name: "Close invoice", exact: true }).click();
+      await expect.poll(() => new URL(page.url()).searchParams.get("record")).toBe(null);
+      releaseRegister.resolve();
+      await registerDelivered.promise;
+      await expect.poll(() => opener.count()).toBe(0);
+      await expect
+        .poll(() => page.evaluate(() => document.activeElement?.textContent?.trim()))
+        .toBe("Invoicing");
+    } finally {
+      releaseRegister.resolve();
+      await page.unroute(filteredRegister);
+    }
+
     expect(new URL(page.url()).searchParams.get("q")).toBe(selected.title);
     await writeFile(
       join(environment().artifacts, "navigation-sales.json"),
@@ -523,7 +559,12 @@ test("sales page two, secondary routes and browser history retain the register a
           selected: { id: selected.id, title: selected.title },
           fixtureSize: 53,
           page: 2,
-          removedOpener: { matchingRows: 0, focusedHeading: "Invoicing", query: selected.title },
+          removedOpener: {
+            matchingRows: 0,
+            focusedHeading: "Invoicing",
+            query: selected.title,
+            delayedRegisterReleased: true,
+          },
           finalUrl: page.url(),
         },
         null,
@@ -532,7 +573,6 @@ test("sales page two, secondary routes and browser history retain the register a
     );
   });
 }, 120000);
-
 
 test("a delayed archive response from another book cannot replace the current book", async () => {
   const oldBook = await fixture();
@@ -603,8 +643,11 @@ test("a delayed archive response from another book cannot replace the current bo
     });
 
     try {
-      await page.goto(`${workspace}/purchases?view=documents`);
+      await page.getByRole("link", { name: "Synthetic E2E book", exact: true }).first().click();
+      await page.getByRole("link", { name: "Purchases", exact: true }).first().click();
+      await page.getByRole("link", { name: "Documents", exact: true }).click();
       await expect.poll(() => captured).toBe(true);
+      await page.locator("summary").filter({ hasText: "Synthetic E2E book" }).click();
       await page.getByRole("link", { name: "Change workspace", exact: true }).click();
       await page.getByRole("link", { name: "Synthetic isolation book", exact: true }).click();
       await page.getByRole("link", { name: "Purchases", exact: true }).first().click();
@@ -616,20 +659,30 @@ test("a delayed archive response from another book cannot replace the current bo
       await page.getByRole("heading", { name: "current-book-original.txt", exact: true }).waitFor();
       await page.getByRole("button", { name: "All documents", exact: true }).click();
       await page.getByRole("link", { name: "current-book-original.txt", exact: true }).waitFor();
-      await expect.poll(() => page.getByRole("link", { name: "old-book-original.txt", exact: true }).count()).toBe(0);
-      expect(await page.getByRole("link", { name: "current-book-original.txt", exact: true }).count()).toBe(1);
-      expect(new URL(page.url()).pathname).toBe(`/entities/${currentBook.entityId}/books/${currentBook.bookId}/purchases`);
+      await expect
+        .poll(() => page.getByRole("link", { name: "old-book-original.txt", exact: true }).count())
+        .toBe(0);
+      expect(
+        await page.getByRole("link", { name: "current-book-original.txt", exact: true }).count(),
+      ).toBe(1);
+      expect(new URL(page.url()).pathname).toBe(
+        `/entities/${currentBook.entityId}/books/${currentBook.bookId}/purchases`,
+      );
       await writeFile(
         join(environment().artifacts, "navigation-book-isolation.json"),
-        JSON.stringify({
-          oldScope: { entityId: oldBook.entityId, bookId: oldBook.bookId },
-          currentScope: { entityId: currentBook.entityId, bookId: currentBook.bookId },
-          delayedResponseReleased: true,
-          oldRequestFailed,
-          oldVisibleRows: 0,
-          currentVisibleRows: 1,
-          finalUrl: page.url(),
-        }, null, 2),
+        JSON.stringify(
+          {
+            oldScope: { entityId: oldBook.entityId, bookId: oldBook.bookId },
+            currentScope: { entityId: currentBook.entityId, bookId: currentBook.bookId },
+            delayedResponseReleased: true,
+            oldRequestFailed,
+            oldVisibleRows: 0,
+            currentVisibleRows: 1,
+            finalUrl: page.url(),
+          },
+          null,
+          2,
+        ),
       );
     } finally {
       release.resolve();
