@@ -219,17 +219,87 @@ export const SourceInventory = Schema.Struct({
   nextCursor: Schema.NullOr(A.Identifier),
 });
 
+export const ArchiveCursor = Schema.String.check(
+  Schema.isMaxLength(1405),
+  Schema.isPattern(/^arc1:[A-Za-z0-9_-]{1,1400}$/),
+);
+
 export const ArchiveFilters = Schema.Struct({
-  cursor: Schema.optional(A.Identifier),
+  cursor: Schema.optional(ArchiveCursor),
   sourceSystem: Schema.optional(Label),
   filename: Schema.optional(Label),
   retainedFrom: Schema.optional(A.AccountingDate),
   retainedTo: Schema.optional(A.AccountingDate),
+  q: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
+  supplierId: Schema.optional(A.Identifier),
+  documentFrom: Schema.optional(A.AccountingDate),
+  documentTo: Schema.optional(A.AccountingDate),
+  currency: Schema.optional(Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/))),
+  currencyScale: Schema.optional(Schema.String.check(Schema.isPattern(/^[0-6]$/))),
+  amountMinor: Schema.optional(A.MinorUnits),
+  invoiceId: Schema.optional(A.Identifier),
+  voucherId: Schema.optional(A.Identifier),
+});
+
+export const DocumentFact = Schema.Struct({
+  ownerKind: Schema.Literals(["supplier_draft", "expense_source"]),
+  ownerId: A.Identifier,
+  revision: Schema.String,
+  digest: A.Digest,
+  sourceEvidenceId: A.Identifier,
+  recordedAt: Schema.String,
+  currentSource: Schema.Boolean,
+  withdrawn: Schema.Boolean,
+  basis: Schema.Literals([
+    "entered_draft",
+    "registered_invoice",
+    "entered_expense",
+    "reviewed_expense",
+  ]),
+  reviewId: Schema.NullOr(A.Identifier),
+  reviewRevision: Schema.NullOr(Schema.String),
+  reviewDigest: Schema.NullOr(A.Digest),
+  reviewedAt: Schema.NullOr(Schema.String),
+  supplierId: Schema.NullOr(A.Identifier),
+  supplierName: Schema.NullOr(Schema.String),
+  documentDate: Schema.NullOr(A.AccountingDate),
+  currency: Schema.NullOr(Schema.String),
+  currencyScale: Schema.NullOr(Schema.Int),
+  grossMinor: Schema.NullOr(A.MinorUnits),
+  invoiceId: Schema.NullOr(A.Identifier),
+  voucherId: Schema.NullOr(A.Identifier),
+});
+
+export const DocumentSuggestion = Schema.Struct({
+  basis: Schema.Literal("unreviewed_extraction"),
+  attemptId: A.Identifier,
+  revision: Schema.String,
+  engineRelease: Schema.String,
+  result: Schema.Literals(["succeeded", "rejected_output", "failed", "unknown"]),
+  retainedOutputHash: A.Digest,
+  sourceHash: A.Digest,
+  createdAt: Schema.String,
+  fields: Schema.Array(
+    Schema.Struct({
+      fieldKey: Schema.String,
+      proposedValue: Schema.NullOr(Schema.String),
+      lineOrdinal: Schema.Int,
+    }),
+  ).check(Schema.isMaxLength(64)),
+});
+
+export const DocumentSearchRow = Schema.Struct({
+  ...SourceOccurrence.fields,
+  facts: Schema.Array(DocumentFact).check(Schema.isMaxLength(1000)),
+  suggestions: Schema.Array(DocumentSuggestion).check(Schema.isMaxLength(50)),
+  originalAvailability: Schema.Literal("not_checked"),
 });
 
 export const ArchiveSearch = Schema.Struct({
-  items: Schema.Array(SourceOccurrence),
-  nextCursor: Schema.NullOr(A.Identifier),
+  items: Schema.Array(DocumentSearchRow),
+  nextCursor: Schema.NullOr(ArchiveCursor),
+  retainedCutoff: Schema.String,
+  metadataConsistency: Schema.Literal("live_owner_revisions"),
 });
 
 export const ArchiveOriginal = Schema.Struct({
@@ -240,7 +310,9 @@ export const ArchiveOriginal = Schema.Struct({
 export const ArchiveExport = Schema.Struct({
   scope: A.Scope,
   items: Schema.Array(ArchiveOriginal),
-  nextCursor: Schema.NullOr(A.Identifier),
+  nextCursor: Schema.NullOr(ArchiveCursor),
+  retainedCutoff: Schema.String,
+  metadataConsistency: Schema.Literal("live_owner_revisions"),
 });
 
 export const SourcePurchaseLinks = Schema.Struct({
@@ -506,7 +578,7 @@ export const SourceIntakeCapabilities = {
   },
   source_search_archive: {
     description:
-      "Search retained originals within one authorized book using immutable occurrence metadata.",
+      "Search retained originals and qualified supplier/expense owner metadata within one authorized book. Facts label entered, reviewed, registered and historical provenance. Extraction suggestions and OCR body text do not qualify fact filters.",
     input: Schema.Struct({ scope: A.Scope, filters: ArchiveFilters }),
     output: ArchiveSearch,
     readOnly: true,
