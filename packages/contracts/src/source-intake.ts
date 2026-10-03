@@ -22,6 +22,7 @@ export const SourceMediaType = Schema.Literals([
 ]);
 
 export const RetainSource = Schema.Struct({
+  destination: Schema.optional(Schema.Literal("supplier_inbox")),
   sourceSystem: Label,
   sourceAccountId: Label,
   occurrenceKey: Label,

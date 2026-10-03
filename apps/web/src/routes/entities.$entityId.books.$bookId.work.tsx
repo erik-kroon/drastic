@@ -1,3 +1,4 @@
+import * as Option from "effect/Option";
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
@@ -66,13 +67,17 @@ function Work() {
                 { value: "journal", label: attentionCopy(locale).journal },
                 { value: "invoice", label: attentionCopy(locale).invoice },
                 { value: "expense", label: attentionCopy(locale).expense },
+                { value: "document", label: attentionCopy(locale).document },
+                { value: "supplier", label: attentionCopy(locale).supplier },
               ]}
               onValueChange={(kind) => {
                 if (
                   kind === "all" ||
                   kind === "journal" ||
                   kind === "invoice" ||
-                  kind === "expense"
+                  kind === "expense" ||
+                  kind === "document" ||
+                  kind === "supplier"
                 )
                   void navigate({ search: { ...filters, kind, after: undefined } });
               }}
@@ -94,7 +99,7 @@ function Work() {
                 manifest: filters.manifest,
               });
 
-              if (parsed._tag === "None") {
+              if (Option.isNone(parsed)) {
                 setError(copy.journal_invalid);
 
                 return;

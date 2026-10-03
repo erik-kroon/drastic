@@ -1,3 +1,4 @@
+import * as Match from "effect/Match";
 import * as Context from "@open-erp/domain/agent-context";
 import * as Workspace from "@open-erp/contracts/workspace";
 import { Capabilities } from "@open-erp/contracts/capabilities";
@@ -62,6 +63,22 @@ function reviewVocabulary(reason: string) {
     };
   }
 
+  if (reason === "document_review" || reason === "document_reading_failed") {
+    return {
+      blockedOperation: null,
+      missingInputs: ["document_review"],
+      nextPermittedPreparation: "review_supplier_inbox",
+    };
+  }
+
+  if (reason === "supplier_draft") {
+    return {
+      blockedOperation: null,
+      missingInputs: ["supplier_acceptance_review"],
+      nextPermittedPreparation: "prepare_supplier_acceptance",
+    };
+  }
+
   return {
     blockedOperation: null,
     missingInputs: ["review_decision"],
@@ -104,7 +121,13 @@ function workRefOfReview(
 
   if (item.kind === "journal") return Result.succeed("journal");
 
-  if (item.kind !== "invoice" && item.kind !== "expense") return incompleteFacts();
+  if (
+    item.kind !== "invoice" &&
+    item.kind !== "expense" &&
+    item.kind !== "document" &&
+    item.kind !== "supplier"
+  )
+    return incompleteFacts();
 
   const ownerVersion = item.sourceRevision;
   const ownerDigest = item.revision;
@@ -113,7 +136,12 @@ function workRefOfReview(
     !Schema.is(Workspace.AgentContextWorkRef.fields.revision)(ownerVersion) ||
     !Schema.is(Workspace.AgentContextWorkRef.fields.digest)(ownerDigest) ||
     ownerVersion === "0" ||
-    BigInt(ownerVersion) > (item.kind === "invoice" ? 50n : 20n)
+    BigInt(ownerVersion) >
+      Match.value(item.kind).pipe(
+        Match.when("document", () => 51n),
+        Match.when("expense", () => 20n),
+        Match.orElse(() => 50n),
+      )
   )
     return incompleteFacts();
 

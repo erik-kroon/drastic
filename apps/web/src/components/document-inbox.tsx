@@ -1,3 +1,4 @@
+import * as Option from "effect/Option";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
@@ -367,10 +368,12 @@ export function DocumentUpload({
   onSaved,
   statement = false,
   sie = false,
+  supplier = false,
 }: {
   onSaved: (id: string) => void;
   statement?: boolean;
   sie?: boolean;
+  supplier?: boolean;
 }) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
@@ -401,6 +404,7 @@ export function DocumentUpload({
         binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
 
       const input = Schema.decodeSync(Sources.RetainSource)({
+        destination: supplier ? "supplier_inbox" : undefined,
         sourceSystem: "manual-upload",
         sourceAccountId: book.id,
         occurrenceKey,

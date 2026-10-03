@@ -12,9 +12,13 @@ import { failure } from "./failures";
 import { digest, isoNow, newId, replay, saveCommand } from "./posting";
 import { lockBookForShare, lockBookForUpdate } from "../db/posting";
 import * as Retention from "../db/source-retention";
+import * as SupplierInboxDb from "../db/purchases/inbox";
+import { readBook } from "./posting";
 import type { Transaction } from "../db/transaction";
 import {
   decode,
+  requireTableAccess,
+  requireInsertAccess,
   exactKeys,
   toJsonObject,
   unsupported,
@@ -166,16 +170,46 @@ export const retainSource = Effect.fn("Source.retain")(function* (
   return yield* withBook(
     token,
     command.scope,
-    false,
+    command.input.destination === "supplier_inbox",
     function* (transaction, principal) {
       yield* requireRetentionAccess(transaction, true);
       yield* lockBookForUpdate(transaction, command.scope);
+      const supplier = command.input.destination === "supplier_inbox";
 
-      if (mediaType === "text/csv" && bytes.length <= inlineBytesBound) {
-        return yield* retainInline(transaction, command, principal.actorId, key, mediaType, bytes);
+      if (supplier) {
+        const book = yield* readBook(transaction, command.scope);
+
+        if (book.profile !== "synthetic-core-v1" || book.authority !== "native")
+          return yield* unsupported();
+        yield* requireTableAccess(transaction, ["supplier_inbox"], false);
+        yield* requireInsertAccess(transaction, ["supplier_inbox"]);
       }
 
-      return yield* retainExternal(transaction, command, principal.actorId, key, mediaType, bytes);
+      const source =
+        mediaType === "text/csv" && bytes.length <= inlineBytesBound
+          ? yield* retainInline(transaction, command, principal.actorId, key, mediaType, bytes)
+          : yield* retainExternal(transaction, command, principal.actorId, key, mediaType, bytes);
+
+      if (supplier) {
+        yield* SupplierInboxDb.insertInbox(transaction, {
+          bookId: command.scope.bookId,
+          occurrenceId: source.id,
+          channel: "upload",
+          messageIdentity: null,
+        });
+
+        const registered = yield* SupplierInboxDb.readRegistration(
+          transaction,
+          command.scope.bookId,
+          source.id,
+          "upload",
+          null,
+        );
+
+        if (registered[0]?.registered !== true) return yield* failure("IdempotencyConflict");
+      }
+
+      return source;
     },
     "update",
   );
@@ -305,20 +339,34 @@ function retainExternal(
       bytes.length,
     );
 
+    const uploadMetadata =
+      command.input.destination === undefined
+        ? metadata
+        : Object.assign({}, metadata, { destination: command.input.destination });
+
     const reference = yield* beginUpload(
       transaction,
       command.scope,
       command.idempotencyKey,
       actorId,
-      metadata,
+      uploadMetadata,
     );
 
     if (reference.completed !== undefined) return reference.completed;
     const store = yield* objectStore;
-    yield* Effect.tryPromise({
-      try: () => store.put(reference.objectKey, bytes),
+
+    const existing = yield* Effect.tryPromise({
+      try: () => store.get(reference.objectKey),
       catch: () => failure("Unavailable"),
     });
+
+    if (existing === null) {
+      yield* Effect.tryPromise({
+        try: () => store.put(reference.objectKey, bytes),
+        catch: () => failure("Unavailable"),
+      });
+    }
+
     yield* readRetainedObject(store, reference);
 
     return yield* completeUpload(
@@ -372,7 +420,12 @@ function beginUpload(
       );
     }
 
-    yield* exactKeys(metadata, uploadMetadataKeys);
+    yield* exactKeys(
+      metadata,
+      metadata.destination === undefined
+        ? uploadMetadataKeys
+        : [...uploadMetadataKeys, "destination"],
+    );
     yield* Retention.insertSourceUpload(
       transaction,
       scope.bookId,
@@ -633,7 +686,7 @@ export const searchSourceArchive = Effect.fn("Source.searchArchive")(function* (
 
 function readArchive(transaction: Transaction, scope: Scope, filters: Filters) {
   return Effect.gen(function* () {
-    yield* Schema.decodeUnknownEffect(Intake.ArchiveFilters)(filters, {
+    yield* Schema.decodeEffect(Intake.ArchiveFilters)(filters, {
       onExcessProperty: "error",
     }).pipe(Effect.mapError(() => failure("InvalidJournal")));
 

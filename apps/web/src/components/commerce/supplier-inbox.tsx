@@ -290,9 +290,10 @@ export function SupplierInbox(
       </Box>
       {upload ? (
         <DocumentUpload
+          supplier
           onSaved={(sourceId) => {
             props.onOpenOccurrence(sourceId);
-            register.mutate(sourceId);
+            setUpload(false);
           }}
         />
       ) : null}

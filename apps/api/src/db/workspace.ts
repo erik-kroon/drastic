@@ -1,3 +1,4 @@
+import * as Match from "effect/Match";
 import { sql, type SQL } from "drizzle-orm";
 import * as Schema from "effect/Schema";
 import type { Transaction } from "./transaction";
@@ -18,6 +19,15 @@ export const workspaceTables = [
   "invoice_drafts",
   "invoice_draft_revisions",
   "invoice_issues",
+  "ar_legal_issues",
+  "supplier_inbox",
+  "intake_occurrences",
+  "supplier_extraction_attempts",
+  "supplier_invoice_drafts",
+  "supplier_invoice_draft_revisions",
+  "supplier_acceptances",
+  "commerce_invoices",
+  "cash_method_credits",
   "expense_tax_sources",
   "expense_tax_source_revisions",
   "expense_tax_reviews",
@@ -142,6 +152,19 @@ const observedProposals = (bookId: string) => sql`
       order by (v.change_set_id = source.id) desc, v.sequence limit 1) as receipt_change_set_id
   from openerp.change_sets source
   where source.book_id = ${bookId}
+    and not exists (
+        select 1 from openerp.supplier_acceptance_reviews old_review
+        join openerp.supplier_invoice_drafts draft
+          on draft.book_id = old_review.book_id and draft.id = old_review.draft_id
+        where old_review.book_id = ${bookId} and old_review.change_set_id = source.id
+          and (old_review.draft_revision <> draft.current_revision
+            or exists (select 1 from openerp.supplier_acceptance_reviews newer
+              where newer.book_id = old_review.book_id and newer.draft_id = old_review.draft_id
+                and newer.draft_revision = draft.current_revision and newer.ordinal > old_review.ordinal)
+            or exists (select 1 from openerp.commerce_invoices cash
+              where cash.book_id = draft.book_id and cash.cash_method_source_draft_id = draft.id)
+            or exists (select 1 from openerp.cash_method_credits credit
+              where credit.book_id = draft.book_id and credit.draft_id = draft.id)))
     and not exists (
       select 1 from openerp.correction_bundles bundle
       where bundle.book_id = source.book_id
@@ -361,16 +384,31 @@ export function readWorkItem(
   kind: string,
   recordId: string,
 ) {
-  const exists: SQL =
-    kind === "journal"
-      ? sql`select 1 from openerp.change_sets c where c.book_id = ${bookId} and c.id = ${recordId}
-          and not exists (
-            select 1 from openerp.correction_bundles bundle
-            where bundle.book_id = c.book_id
-              and c.id in (bundle.reversal_change_set_id, bundle.replacement_change_set_id))`
-      : kind === "invoice"
-        ? sql`select 1 from openerp.invoice_drafts d where d.book_id = ${bookId} and d.id = ${recordId}`
-        : sql`select 1 from openerp.expense_tax_sources s where s.book_id = ${bookId} and s.id = ${recordId}`;
+  const exists: SQL = Match.value(kind).pipe(
+    Match.when(
+      "journal",
+      () => sql`select 1 from (${observedProposals(bookId)}) c where c.id = ${recordId}`,
+    ),
+    Match.when(
+      "invoice",
+      () =>
+        sql`select 1 from openerp.invoice_drafts d where d.book_id = ${bookId} and d.id = ${recordId}`,
+    ),
+    Match.when(
+      "document",
+      () =>
+        sql`select 1 from openerp.supplier_inbox i where i.book_id = ${bookId} and i.occurrence_id = ${recordId}`,
+    ),
+    Match.when(
+      "supplier",
+      () =>
+        sql`select 1 from openerp.supplier_invoice_drafts d where d.book_id = ${bookId} and d.id = ${recordId}`,
+    ),
+    Match.orElse(
+      () =>
+        sql`select 1 from openerp.expense_tax_sources s where s.book_id = ${bookId} and s.id = ${recordId}`,
+    ),
+  );
 
   return transaction.execute<{ readonly present: boolean }>(
     sql`select exists (${exists}) as present`,
@@ -427,12 +465,8 @@ export function readWorkAnchor(transaction: Transaction, bookId: string, changeS
   return transaction.execute<WorkAnchorRow>(
     sql`
       select to_char(created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as "createdAt", id
-      from openerp.change_sets
-      where book_id = ${bookId} and id = ${changeSetId}
-        and not exists (
-          select 1 from openerp.correction_bundles bundle
-          where bundle.book_id = ${bookId}
-            and id in (bundle.reversal_change_set_id, bundle.replacement_change_set_id))
+      from (${observedProposals(bookId)}) source
+      where id = ${changeSetId}
     `,
     "objects",
   );
@@ -488,17 +522,59 @@ function attentionCte(bookId: string) {
             order by (v.change_set_id = source.id) desc, v.sequence limit 1) is null
           then 'journal_review' else 'journal_posted' end as reason
       from (${observedProposals(bookId)}) source
+
       union all
       select 'invoice_' || d.id, 'invoice', d.id, r.body->>'digest', r.revision::text,
         r.body->'content'->>'title', r.body->'content'->>'plannedIssueDate', r.body->>'createdAt',
         r.body->'totals'->>'grossMinor', r.body->'content'->>'currency',
         (r.body->'content'->>'currencyScale')::integer,
-        case when i.id is null then 'open' else 'completed' end,
-        case when i.id is null then 'invoice_draft' else 'invoice_issued' end
+        case when i.id is null and legal.id is null then 'open' else 'completed' end,
+        case when i.id is null and legal.id is null then 'invoice_draft' else 'invoice_issued' end
       from openerp.invoice_drafts d
       join openerp.invoice_draft_revisions r
         on r.book_id = d.book_id and r.draft_id = d.id and r.revision = d.current_revision
       left join openerp.invoice_issues i on i.book_id = d.book_id and i.draft_id = d.id
+      left join openerp.ar_legal_issues legal on legal.book_id = d.book_id and legal.draft_id = d.id
+      where d.book_id = ${bookId}
+      union all
+      select 'document_' || o.id, 'document', o.id,
+        'sha256:' || encode(sha256(convert_to(jsonb_build_object(
+          'occurrence', o.body, 'draftId', i.draft_id, 'attempt', attempt.body)::text, 'UTF8')), 'hex'),
+        (coalesce(attempt.ordinal, 0) + 1)::text, o.body->>'filename', null::text,
+        coalesce(attempt.body->>'createdAt', o.body->>'retainedAt'),
+        null::text, null::text, null::integer,
+        case when i.draft_id is null then 'open' else 'completed' end,
+        case when i.draft_id is not null then 'document_reviewed'
+          when attempt.body->>'status' in ('failed', 'rejected_output', 'unknown') then 'document_reading_failed'
+          else 'document_review' end
+      from openerp.supplier_inbox i
+      join openerp.intake_occurrences o on o.book_id = i.book_id and o.id = i.occurrence_id
+      left join lateral (
+        select a.ordinal, a.body from openerp.supplier_extraction_attempts a
+        where a.book_id = i.book_id and a.occurrence_id = i.occurrence_id
+        order by a.ordinal desc limit 1
+      ) attempt on true
+      where i.book_id = ${bookId}
+      union all
+      select 'supplier_' || d.id, 'supplier', d.id, r.body->>'digest', r.revision::text,
+        r.body->'content'->>'title', r.body->'content'->>'documentDate', r.body->>'createdAt',
+        r.body->'totals'->>'grossMinor', r.body->'content'->>'currency',
+        (r.body->'content'->>'currencyScale')::integer,
+        case when accepted.id is not null or cash.id is not null or credit.id is not null or review.id is not null
+          then 'completed' else 'open' end,
+        case when accepted.id is not null or cash.id is not null or credit.id is not null then 'supplier_accepted'
+          when review.id is not null then 'supplier_review_prepared' else 'supplier_draft' end
+      from openerp.supplier_invoice_drafts d
+      join openerp.supplier_invoice_draft_revisions r
+        on r.book_id = d.book_id and r.draft_id = d.id and r.revision = d.current_revision
+      left join openerp.supplier_acceptances accepted on accepted.book_id = d.book_id and accepted.draft_id = d.id
+      left join openerp.commerce_invoices cash on cash.book_id = d.book_id and cash.cash_method_source_draft_id = d.id
+      left join openerp.cash_method_credits credit on credit.book_id = d.book_id and credit.draft_id = d.id
+      left join lateral (
+        select a.id from openerp.supplier_acceptance_reviews a
+        where a.book_id = d.book_id and a.draft_id = d.id and a.draft_revision = d.current_revision
+        order by a.ordinal desc limit 1
+      ) review on true
       where d.book_id = ${bookId}
       union all
       select 'expense_' || e.id, 'expense', e.id, e.source->>'digest', e.source_revision,
@@ -549,7 +625,8 @@ function attentionScoped(filters: AttentionFilters, starts: string | null, ends:
       select * from observed
       where (${filters.kind} = 'all' or kind = ${filters.kind})
         and (${filters.search} = '' or strpos(lower(title), lower(${filters.search})) > 0)
-        and (${starts}::text is null or (date between ${starts} and ${ends}))
+        and (${starts}::text is null or (date between ${starts} and ${ends})
+          or (kind = 'document' and date is null))
     )
   `;
 }

@@ -50,13 +50,17 @@ export const WorkPage = Schema.Struct({
 
 export const AttentionQuery = Schema.Struct({
   ...WorkQuery.fields,
-  kind: Schema.optional(Schema.Literals(["all", "journal", "invoice", "expense"])),
+  kind: Schema.optional(
+    Schema.Literals(["all", "journal", "invoice", "expense", "document", "supplier"]),
+  ),
   after: Schema.optional(
-    Schema.String.check(Schema.isPattern(/^(journal|invoice|expense)_[a-z][a-z0-9_-]{2,127}$/)),
+    Schema.String.check(
+      Schema.isPattern(/^(journal|invoice|expense|document|supplier)_[a-z][a-z0-9_-]{2,127}$/),
+    ),
   ),
 });
 
-export const WorkKind = Schema.Literals(["journal", "invoice", "expense"]);
+export const WorkKind = Schema.Literals(["journal", "invoice", "expense", "document", "supplier"]);
 
 export const Assignment = Schema.Struct({
   kind: WorkKind,
@@ -127,7 +131,7 @@ export const AttentionItem = Schema.Struct({
   ),
   key: Schema.String,
   assignment: Schema.NullOr(Assignment),
-  kind: Schema.Literals(["journal", "invoice", "expense"]),
+  kind: Schema.Literals(["journal", "invoice", "expense", "document", "supplier"]),
   id: Accounting.Identifier,
   revision: Accounting.Digest,
   title: Schema.String,
@@ -144,16 +148,22 @@ export const AttentionItem = Schema.Struct({
     "invoice_issued",
     "expense_review",
     "expense_reviewed",
+    "document_review",
+    "document_reading_failed",
+    "document_reviewed",
+    "supplier_draft",
+    "supplier_review_prepared",
+    "supplier_accepted",
   ]),
 });
 
 export const AttentionPage = Schema.Struct({
   scope: Accounting.Scope,
   checkedAt: Schema.String,
-  coverage: Schema.Literal("journals_invoice_drafts_expense_reviews"),
+  coverage: Schema.Literal("journals_invoice_drafts_expense_reviews_documents_supplier_drafts"),
   filters: Schema.Struct({
     ...WorkPage.fields.filters.fields,
-    kind: Schema.Literals(["all", "journal", "invoice", "expense"]),
+    kind: Schema.Literals(["all", "journal", "invoice", "expense", "document", "supplier"]),
   }),
   total: Accounting.AggregateMinorUnits,
   counts: WorkPage.fields.counts,
@@ -355,7 +365,7 @@ export const WorkspaceCapabilities = {
   },
   workspace_attention: {
     description:
-      "Read a scoped, bounded work list covering standalone journal proposals, commercial invoice drafts and expense reviews. Counts reflect the same filters. Completion names the domain transition, never company completeness.",
+      "Read a scoped, bounded work list covering standalone journal proposals, commercial invoice drafts, expense reviews, incoming supplier documents and supplier drafts. Counts reflect the same filters. Completion names the domain transition, never company completeness.",
     input: Schema.Struct({ scope: Accounting.Scope, ...AttentionQuery.fields }),
     output: AttentionPage,
     readOnly: true,
