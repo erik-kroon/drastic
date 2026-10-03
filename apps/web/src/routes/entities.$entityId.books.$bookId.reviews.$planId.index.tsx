@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { WorkQueueQuery } from "@/lib/work-return";
+import { OwnerReviewQuery, decodeOwnerReturn, ownerReturnHref } from "@/lib/work-return";
 import { createFileRoute, Navigate, defaultStringifySearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import * as Recovery from "@open-erp/contracts/posting-recovery";
@@ -13,7 +13,7 @@ import { accountingCopy } from "@/lib/accounting-copy";
 
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/reviews/$planId/")({
   component: ResolveReview,
-  validateSearch: Schema.decodeUnknownSync(WorkQueueQuery),
+  validateSearch: Schema.decodeUnknownSync(OwnerReviewQuery),
 });
 
 function ResolveReview() {
@@ -21,6 +21,7 @@ function ResolveReview() {
   const { planId } = Route.useParams();
   const { book, locale } = useBookWorkspace();
   const copy = accountingCopy(locale);
+  const owner = decodeOwnerReturn(filters.returnTo);
 
   const recovery = useQuery({
     queryKey: [...bookKey(book), "posting-recovery", "detail", planId, null],
@@ -54,7 +55,13 @@ function ResolveReview() {
 
   return (
     <Box display="grid" gap="lg">
-      <Link href={`${workspacePath(book)}/work${defaultStringifySearch(filters)}`}>
+      <Link
+        href={
+          owner
+            ? ownerReturnHref(workspacePath(book), owner)
+            : `${workspacePath(book)}/work${defaultStringifySearch(filters)}`
+        }
+      >
         {copy.workspace_back}
       </Link>
       <AccountingStatus locale={locale} pending={recovery.isPending} error={recovery.error} />

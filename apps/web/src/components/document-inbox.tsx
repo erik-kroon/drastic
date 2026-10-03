@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
+import * as Option from "effect/Option";
 import * as Sources from "@open-erp/contracts/source-intake";
 import { ArrowLeft, Upload, Download, FileText } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
@@ -10,38 +11,54 @@ import { DataTable } from "@open-erp/ui/components/data-table";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { DocumentPreview } from "@open-erp/ui/components/document-preview";
 import { RecordHeading, RecordSplit, RecordSection } from "@open-erp/ui/components/record-layout";
-import {
-  PageEmpty,
-  PageAction,
-  PageCaption,
-  RecordOpen,
-} from "@open-erp/ui/components/accounting-page";
+import { PageEmpty, PageAction, PageCaption } from "@open-erp/ui/components/accounting-page";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
-import { useWorkReturn, workReturnHref } from "@/lib/work-return";
+import { defaultStringifySearch, useSearch } from "@tanstack/react-router";
+import { encodeOwnerReturn, useWorkReturn, workReturnHref } from "@/lib/work-return";
 import { downloadIntake } from "@/components/source-intake/download";
 
 export function DocumentInbox({
   recordId,
   onOpen,
+  filters: search,
+  onFilters,
 }: {
   recordId?: string;
   onOpen: (id: string) => void;
+  filters: typeof Sources.ArchiveFilters.Type;
+  onFilters: (filters: typeof Sources.ArchiveFilters.Type) => void;
 }) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
-  const [filters, setFilters] = useState<typeof Sources.ArchiveFilters.Type>({});
+
+  const filters = {
+    filename: search.filename,
+    sourceSystem: search.sourceSystem,
+    retainedFrom: search.retainedFrom,
+    retainedTo: search.retainedTo,
+    cursor: search.cursor,
+  };
+
+  const opener = useRef<string | null>(null);
+  const pendingFocus = useRef<string | null | undefined>(undefined);
+  const areaSearch = useSearch({ strict: false });
+
+  const base = `${workspacePath(book)}/purchases`;
+
+  const href = (id: string) =>
+    `${base}${defaultStringifySearch({ ...areaSearch, view: "documents", record: id })}`;
+
   const [filterError, setFilterError] = useState<string | null>(null);
 
-  const sources = useInfiniteQuery({
+  const sources = useQuery({
     queryKey: [...bookKey(book), "document-inbox", filters],
-    initialPageParam: "",
-    queryFn: async ({ pageParam, signal }) => {
+    queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        archivePath(`${bookPath(book)}/source-archive`, filters, pageParam),
+        archivePath(`${bookPath(book)}/source-archive`, filters),
         Sources.ArchiveSearch,
         { signal },
       );
@@ -53,7 +70,6 @@ export function DocumentInbox({
 
       return result;
     },
-    getNextPageParam: (page) => page.nextCursor ?? undefined,
     retry: false,
   });
 
@@ -81,14 +97,26 @@ export function DocumentInbox({
     },
   });
 
-  const items = sources.data?.pages.flatMap((page) => page.items) ?? [];
-  const hasFilters = Object.keys(filters).length > 0;
+  const items = sources.data?.items ?? [];
+
+  const hasFilters = !!(
+    filters.filename ||
+    filters.sourceSystem ||
+    filters.retainedFrom ||
+    filters.retainedTo
+  );
 
   if (recordId && recordId !== "new")
     return (
       <Box display="grid" gap="xl">
         <Box>
-          <Button variant="ghost" onClick={() => onOpen("")}>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              pendingFocus.current = opener.current;
+              onOpen("");
+            }}
+          >
             <ArrowLeft size={14} />
             {labels.allDocuments}
           </Button>
@@ -98,7 +126,25 @@ export function DocumentInbox({
     );
 
   return (
-    <Box display="grid" gap="xl">
+    <Box
+      ref={(node) => {
+        if (!node || !sources.isSuccess || pendingFocus.current === undefined) return;
+
+        const row = pendingFocus.current
+          ? node.querySelector<HTMLAnchorElement>(`[data-document-id="${pendingFocus.current}"]`)
+          : null;
+
+        const target = row ?? node.querySelector<HTMLHeadingElement>("h2");
+
+        if (target) {
+          if (!row) target.tabIndex = -1;
+          target.focus();
+          pendingFocus.current = undefined;
+        }
+      }}
+      display="grid"
+      gap="xl"
+    >
       <RecordHeading
         title={labels.documents}
         subtitle={labels.receiptsInvoicesAndStatementsOriginal}
@@ -143,7 +189,7 @@ export function DocumentInbox({
           });
 
           if (
-            decoded._tag === "None" ||
+            Option.isNone(decoded) ||
             (decoded.value.retainedFrom &&
               decoded.value.retainedTo &&
               decoded.value.retainedFrom > decoded.value.retainedTo)
@@ -154,9 +200,18 @@ export function DocumentInbox({
           }
 
           setFilterError(null);
-          setFilters(decoded.value);
 
-          if (intent === "export") archiveExport.mutate(decoded.value);
+          const changed =
+            decoded.value.filename !== filters.filename ||
+            decoded.value.sourceSystem !== filters.sourceSystem ||
+            decoded.value.retainedFrom !== filters.retainedFrom ||
+            decoded.value.retainedTo !== filters.retainedTo;
+
+          const applied = { ...decoded.value, cursor: changed ? undefined : filters.cursor };
+
+          onFilters(applied);
+
+          if (intent === "export") archiveExport.mutate(applied);
           else archiveExport.reset();
         }}
       >
@@ -202,7 +257,13 @@ export function DocumentInbox({
               variant="ghost"
               disabled={archiveExport.isPending}
               onClick={() => {
-                setFilters({});
+                onFilters({
+                  filename: undefined,
+                  sourceSystem: undefined,
+                  retainedFrom: undefined,
+                  retainedTo: undefined,
+                  cursor: undefined,
+                });
                 setFilterError(null);
                 archiveExport.reset();
               }}
@@ -247,10 +308,18 @@ export function DocumentInbox({
             rows={items.map((occurrence) => ({
               id: occurrence.id,
               cells: [
-                <RecordOpen key="open" onClick={() => onOpen(occurrence.id)}>
+                <PageAction
+                  key="open"
+                  quiet
+                  href={href(occurrence.id)}
+                  data-document-id={occurrence.id}
+                  onClick={() => {
+                    opener.current = occurrence.id;
+                  }}
+                >
                   <FileText size={14} />
                   {occurrence.filename}
-                </RecordOpen>,
+                </PageAction>,
                 occurrence.sourceSystem,
                 new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
                   new Date(occurrence.retainedAt),
@@ -266,16 +335,16 @@ export function DocumentInbox({
           />
         )
       ) : null}
-      {sources.hasNextPage ? (
+      {sources.data?.nextCursor ? (
         <Box>
           <Button
             variant="outline"
-            disabled={sources.isFetchingNextPage}
+            disabled={sources.isFetching}
             onClick={() => {
-              void sources.fetchNextPage();
+              onFilters({ ...filters, cursor: sources.data?.nextCursor ?? undefined });
             }}
           >
-            {sources.isFetchingNextPage ? labels.loadingDocuments : labels.loadMoreDocuments}
+            {sources.isFetching ? labels.loadingDocuments : labels.loadMoreDocuments}
           </Button>
         </Box>
       ) : null}
@@ -298,10 +367,12 @@ export function DocumentUpload({
   onSaved,
   statement = false,
   sie = false,
+  supplier = false,
 }: {
   onSaved: (id: string) => void;
   statement?: boolean;
   sie?: boolean;
+  supplier?: boolean;
 }) {
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
@@ -332,6 +403,7 @@ export function DocumentUpload({
         binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
 
       const input = Schema.decodeSync(Sources.RetainSource)({
+        destination: supplier ? "supplier_inbox" : undefined,
         sourceSystem: "manual-upload",
         sourceAccountId: book.id,
         occurrenceKey,
@@ -423,6 +495,8 @@ export function DocumentUpload({
 
 function DocumentDetail({ id }: { id: string }) {
   const work = useWorkReturn();
+  const ownerSearch = useSearch({ strict: false });
+  const returnTo = encodeOwnerReturn({ owner: "documents", search: ownerSearch });
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
@@ -530,14 +604,14 @@ function DocumentDetail({ id }: { id: string }) {
                   <PageCaption>{labels.theOriginalIsRetainedNo}</PageCaption>
                   {book.role === "operator" ? (
                     <PageAction
-                      href={`${workReturnHref(`${workspacePath(book)}/purchases`, "supplier-drafts", work)}&record=${encodeURIComponent(`new:${source.id}`)}`}
+                      href={`${workReturnHref(`${workspacePath(book)}/purchases`, "supplier-drafts", work)}&returnTo=${encodeURIComponent(returnTo)}&record=${encodeURIComponent(`new:${source.id}`)}`}
                     >
                       {sv ? "Förbered leverantörsfaktura" : "Prepare supplier invoice"}
                     </PageAction>
                   ) : null}
                   {book.role === "operator" && !document.data?.admission ? (
                     <PageAction
-                      href={`${workReturnHref(`${workspacePath(book)}/purchases`, "expenses", work)}&record=${encodeURIComponent(`new:${source.id}`)}`}
+                      href={`${workReturnHref(`${workspacePath(book)}/purchases`, "expenses", work)}&returnTo=${encodeURIComponent(returnTo)}&record=${encodeURIComponent(`new:${source.id}`)}`}
                     >
                       {sv ? "Förbered utgift" : "Prepare expense"}
                     </PageAction>
@@ -558,7 +632,7 @@ function DocumentDetail({ id }: { id: string }) {
                     (draft) => (
                       <PageAction
                         key={draft.id}
-                        href={`${workReturnHref(`${workspacePath(book)}/purchases`, "supplier-drafts", work)}&record=${encodeURIComponent(draft.id)}`}
+                        href={`${workReturnHref(`${workspacePath(book)}/purchases`, "supplier-drafts", work)}&returnTo=${encodeURIComponent(returnTo)}&record=${encodeURIComponent(draft.id)}`}
                       >
                         {sv ? "Fakturautkast" : "Invoice draft"}: {draft.title} ·{" "}
                         {draft.currentSource
@@ -574,7 +648,7 @@ function DocumentDetail({ id }: { id: string }) {
                   {(!purchases.isError ? purchases.data?.expenses : undefined)?.map((expense) => (
                     <PageAction
                       key={expense.id}
-                      href={`${workReturnHref(`${workspacePath(book)}/purchases`, "expenses", work)}&record=${encodeURIComponent(expense.id)}`}
+                      href={`${workReturnHref(`${workspacePath(book)}/purchases`, "expenses", work)}&returnTo=${encodeURIComponent(returnTo)}&record=${encodeURIComponent(expense.id)}`}
                     >
                       {sv ? "Utgift" : "Expense"}: {expense.description} ·{" "}
                       {!expense.currentSource
@@ -622,7 +696,7 @@ function DocumentDetail({ id }: { id: string }) {
   );
 }
 
-function archivePath(base: string, filters: typeof Sources.ArchiveFilters.Type, cursor = "") {
+function archivePath(base: string, filters: typeof Sources.ArchiveFilters.Type) {
   const query = new URLSearchParams();
 
   if (filters.filename) query.set("filename", filters.filename);
@@ -633,7 +707,7 @@ function archivePath(base: string, filters: typeof Sources.ArchiveFilters.Type, 
 
   if (filters.retainedTo) query.set("retainedTo", filters.retainedTo);
 
-  if (cursor) query.set("cursor", cursor);
+  if (filters.cursor) query.set("cursor", filters.cursor);
   const search = query.toString();
 
   return search ? `${base}?${search}` : base;
@@ -645,7 +719,7 @@ const english = {
   receiptsInvoicesAndStatementsOriginal:
     "Receipts, invoices and statements. Original files are kept unchanged.",
   uploadDocument: "Upload document",
-  exportArchivePage: "Export first page and originals",
+  exportArchivePage: "Export this page and originals",
   exportingArchive: "Exporting page",
   archiveExportHelp:
     "Exports up to 10 matching originals with a JSON manifest. Additional pages stay separate.",
@@ -664,7 +738,7 @@ const english = {
   aHomeForYourSource: "A home for your source documents",
   adjustArchiveFilters: "Clear or change the archive filters.",
   uploadAPdfImageOr: "Upload a PDF, image or data file to retain the original.",
-  loadMoreDocuments: "Load more documents",
+  loadMoreDocuments: "Next documents",
   loadingDocuments: "Loading documents…",
   uploadingRetainsTheOriginalIt:
     "Uploading retains the original. It does not create a posting or automatically extract document details.",
@@ -685,7 +759,7 @@ const swedish: typeof english = {
   receiptsInvoicesAndStatementsOriginal:
     "Kvitton, fakturor och kontoutdrag. Originalen sparas oförändrade.",
   uploadDocument: "Ladda upp dokument",
-  exportArchivePage: "Exportera första sidan och original",
+  exportArchivePage: "Exportera sidan och original",
   exportingArchive: "Exporterar sidan",
   archiveExportHelp:
     "Exporterar upp till 10 matchande original med en JSON-manifest. Ytterligare sidor exporteras separat.",
@@ -705,7 +779,7 @@ const swedish: typeof english = {
   aHomeForYourSource: "En plats för dina underlag",
   adjustArchiveFilters: "Rensa eller ändra arkivfiltren.",
   uploadAPdfImageOr: "Ladda upp en PDF, bild eller datafil för att behålla originalet.",
-  loadMoreDocuments: "Läs in fler dokument",
+  loadMoreDocuments: "Nästa dokument",
   loadingDocuments: "Läser in dokument…",
   uploadingRetainsTheOriginalIt:
     "Uppladdning sparar originalet. Den skapar inte bokföring eller automatisk dokumenttolkning.",

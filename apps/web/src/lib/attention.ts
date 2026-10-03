@@ -44,10 +44,6 @@ export function attentionQueryOptions(book: typeof Accounting.Book.Type, filters
   });
 }
 
-// A record is opened in its own area, so the queue's own search travels as one
-// `work` parameter and comes back only when the record is left. The journal
-// review route takes the same search directly, because it is the queue's own
-// schema rather than a record area's.
 export function attentionPath(
   book: typeof Accounting.Book.Type,
   item: typeof Workspace.AttentionItem.Type,
@@ -58,6 +54,12 @@ export function attentionPath(
 
   if (item.kind === "journal")
     return `${reviewPath(book, item.id, item.revision)}${defaultStringifySearch(work)}`;
+
+  if (item.kind === "document" || item.kind === "supplier") {
+    const selection = item.kind === "document" ? "occurrence" : "record";
+
+    return `${workReturnHref(`${workspacePath(book)}/purchases`, "supplier-drafts", work)}&${selection}=${encodeURIComponent(item.id)}`;
+  }
 
   const base = `${workspacePath(book)}/${item.kind === "invoice" ? "sales" : "purchases"}`;
   const area = workReturnHref(base, item.kind === "invoice" ? "drafts" : "expenses", work);
@@ -88,6 +90,14 @@ const english = {
   journal: "Bookkeeping",
   invoice: "Invoices",
   expense: "Expenses",
+  document: "Incoming documents",
+  supplier: "Supplier drafts",
+  document_review: "Review original",
+  document_reading_failed: "Review original after reading failed",
+  document_reviewed: "Document review complete",
+  supplier_draft: "Review supplier draft",
+  supplier_review_prepared: "Acceptance review prepared",
+  supplier_accepted: "Supplier invoice registered",
   type: "Type",
   journal_review: "Review proposal",
   journal_posted: "Posted",
@@ -96,7 +106,7 @@ const english = {
   expense_review: "Review tax treatment",
   expense_reviewed: "Tax review saved",
   coverage:
-    "Journal proposals, invoice drafts and expense reviews. Other period checks are available in Year-end.",
+    "Journal proposals, customer and supplier drafts, incoming documents and expense reviews. Undated documents remain visible when filtering by period. Other period checks are available in Year-end.",
   emptyPage: "No work on this page",
   emptyPageDetail: "The list may have changed. Return to the first page of this view.",
   empty: "Nothing in this view",
@@ -122,6 +132,14 @@ const swedish: typeof english = {
   journal: "Bokföring",
   invoice: "Fakturor",
   expense: "Utgifter",
+  document: "Inkomna underlag",
+  supplier: "Leverantörsutkast",
+  document_review: "Granska original",
+  document_reading_failed: "Granska original efter misslyckad läsning",
+  document_reviewed: "Underlag granskat",
+  supplier_draft: "Granska leverantörsutkast",
+  supplier_review_prepared: "Bokföringsgranskning förberedd",
+  supplier_accepted: "Leverantörsfaktura registrerad",
   type: "Typ",
   journal_review: "Granska förslag",
   journal_posted: "Bokfört",
@@ -130,7 +148,7 @@ const swedish: typeof english = {
   expense_review: "Granska moms",
   expense_reviewed: "Momsgranskning sparad",
   coverage:
-    "Bokföringsförslag, fakturautkast och utgiftsgranskningar. Övriga periodkontroller finns under Årsavslut.",
+    "Bokföringsförslag, kund- och leverantörsutkast, inkomna underlag och utgiftsgranskningar. Odaterade underlag visas även vid periodfilter. Övriga periodkontroller finns under Årsavslut.",
   emptyPage: "Inget arbete på den här sidan",
   emptyPageDetail: "Listan kan ha ändrats. Gå tillbaka till första sidan i den här vyn.",
   empty: "Inget i den här vyn",

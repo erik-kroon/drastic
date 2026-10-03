@@ -1,5 +1,5 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useWorkReturn, workReturnHref } from "@/lib/work-return";
+import { useWorkReturn, workReturnHref, useOwnerReturn } from "@/lib/work-return";
 import { useQuery } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Acceptance from "@open-erp/contracts/supplier-acceptance";
@@ -734,6 +734,7 @@ function SupplierAcceptanceResult(
   const { receipt } = props;
   const sv = props.locale === "sv";
   const work = useWorkReturn();
+  const owner = useOwnerReturn();
 
   return (
     <Box display="grid" gap="md">
@@ -750,12 +751,12 @@ function SupplierAcceptanceResult(
       <Box display="flex" flexWrap="wrap" gap="md">
         <PageAction
           quiet
-          href={`${workReturnHref(`${workspacePath(props.book)}/books`, "vouchers", work)}&record=${encodeURIComponent(receipt.postingReceipt.voucherId)}&returnSupplier=${encodeURIComponent(props.draftId)}&returnSupplierReview=${encodeURIComponent(props.reviewId)}`}
+          href={`${workReturnHref(`${workspacePath(props.book)}/books`, "vouchers", work, owner)}&record=${encodeURIComponent(receipt.postingReceipt.voucherId)}&returnSupplier=${encodeURIComponent(props.draftId)}&returnSupplierReview=${encodeURIComponent(props.reviewId)}`}
         >
           {sv ? "Visa verifikation" : "View voucher"}
         </PageAction>
         <PageAction
-          href={`${workReturnHref(`${workspacePath(props.book)}/purchases`, "invoices", work)}&record=${encodeURIComponent(receipt.registerInvoiceId)}`}
+          href={`${workReturnHref(`${workspacePath(props.book)}/purchases`, "invoices", work, owner)}&record=${encodeURIComponent(receipt.registerInvoiceId)}`}
         >
           {sv ? "Öppna registrerad faktura" : "Open registered invoice"}
         </PageAction>

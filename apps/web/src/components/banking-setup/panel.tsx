@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, defaultStringifySearch } from "@tanstack/react-router";
 import * as Connector from "@open-erp/contracts/bank-connector";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
@@ -12,10 +12,11 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { checkScope } from "@/components/commerce/shared";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
+import { WorkReturnAction } from "@/components/work-return-action";
 import { ConsentForm } from "./consent-form";
 import { ConsentDetail } from "./consent-detail";
 
-export function BankingSetup({ consent }: { consent?: string }) {
+export function BankingSetup({ consent, returnTo }: { consent?: string; returnTo?: string }) {
   const { book, setup, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const navigate = useNavigate();
@@ -68,11 +69,14 @@ export function BankingSetup({ consent }: { consent?: string }) {
   });
 
   const base = `${workspacePath(book)}/banking-setup`;
-  const open = (id: string) => void navigate({ to: base, search: { consent: id } });
+  const open = (id: string) => void navigate({ to: base, search: { consent: id, returnTo } });
 
   return (
     <>
-      <WorkspaceHeader title={sv ? "Bankinställningar" : "Banking setup"} />
+      <WorkspaceHeader
+        title={sv ? "Bankinställningar" : "Banking setup"}
+        action={<WorkReturnAction work={undefined} />}
+      />
       <PageContent>
         <Box display="flex" gap="lg" flexWrap="wrap">
           <Link href={`${workspacePath(book)}/setup`}>
@@ -100,7 +104,7 @@ export function BankingSetup({ consent }: { consent?: string }) {
         </Text>
         {consent ? (
           <>
-            <Link href={base}>
+            <Link href={`${base}${defaultStringifySearch({ returnTo })}`}>
               {sv ? "Alla sparade kontokopplingar" : "All saved account mappings"}
             </Link>
             <ConsentDetail key={consent} id={consent} />

@@ -8,6 +8,14 @@ import * as Commerce from "../../../application/commerce/invoice-lifecycle";
 
 export const InvoiceDraftHandlers = HttpApiBuilder.group(Api, "invoiceDrafts", (handlers) =>
   handlers
+    .handle("calculateCommercialDraft", ({ params, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Commerce.calculateCommercialDraft(token, {
+          scope: scopeFromPath(params),
+          input: payload,
+        }),
+      ),
+    )
     .handle("salesRegister", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
         capabilities.commerce_sales_register.execute(token, {

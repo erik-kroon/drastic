@@ -1,3 +1,4 @@
+import * as Match from "effect/Match";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Workspace from "@open-erp/contracts/workspace";
 import * as Effect from "effect/Effect";
@@ -33,7 +34,7 @@ const statuses = ["all", "open", "completed"] as const;
 
 const sorts = ["newest", "oldest"] as const;
 
-const workKinds = ["journal", "invoice", "expense"] as const;
+const workKinds = ["journal", "invoice", "expense", "document", "supplier"] as const;
 
 const attentionKinds = ["all", ...workKinds] as const;
 
@@ -494,12 +495,11 @@ export const listWork = Effect.fn("workspace.listWork")(function* (
         periodId: row.periodId!,
         amountMinor: row.amountMinor,
         currency: row.currency!,
-        state:
-          row.postingStatus === "unposted_at_check"
-            ? "unposted"
-            : row.postingStatus === "posted"
-              ? "posted"
-              : "posted_elsewhere",
+        state: Match.value(row.postingStatus).pipe(
+          Match.when("unposted_at_check", () => "unposted"),
+          Match.when("posted", () => "posted"),
+          Match.orElse(() => "posted_elsewhere"),
+        ),
         receiptId: row.receiptId,
       })),
       next: rows.length > 50 ? (page.at(-1)?.id ?? null) : null,
@@ -573,7 +573,7 @@ export const listAttention = Effect.fn("workspace.listAttention")(function* (
     return yield* decode(AttentionPageSchema, {
       scope: command.scope,
       checkedAt: yield* isoNow(transaction),
-      coverage: "journals_invoice_drafts_expense_reviews",
+      coverage: "journals_invoice_drafts_expense_reviews_documents_supplier_drafts",
       filters: { kind, period, status, sort, q: search },
       counts: { open: counts.open, completed: counts.completed },
       total: counts.total,

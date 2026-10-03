@@ -32,6 +32,7 @@ import { BankReport } from "@/components/bank-report";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
+import { encodeOwnerReturn } from "@/lib/work-return";
 import { checkScope } from "@/components/commerce/shared";
 
 export type BankSearch = {
@@ -244,7 +245,7 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
                 onReport={(report) => change({ ...clearRecord, report })}
               />
             ) : null}
-            <BankAdditionalTools sv={sv} base={base} />
+            <BankAdditionalTools sv={sv} base={base} search={search} />
           </>
         )}
         {(search.statement && search.row) || search.plan ? (
@@ -555,7 +556,7 @@ function AccountTransactions(props: ActivityProps) {
                 <PageAction
                   key="voucher"
                   quiet
-                  href={`${props.bookBase}/books?view=vouchers&record=${encodeURIComponent(row.voucherId ?? "")}`}
+                  href={`${props.bookBase}/books${defaultStringifySearch({ view: "vouchers", record: row.voucherId, returnTo: encodeOwnerReturn({ owner: "bank", search }) })}`}
                 >
                   {sv ? "Visa verifikation" : "View voucher"}
                 </PageAction>
@@ -764,19 +765,35 @@ function AccountReport(props: {
   );
 }
 
-function BankAdditionalTools({ sv, base }: { sv: boolean; base: string }) {
+function BankAdditionalTools({
+  sv,
+  base,
+  search,
+}: {
+  sv: boolean;
+  base: string;
+  search: BankSearch;
+}) {
+  const returnTo = encodeOwnerReturn({ owner: "bank", search });
+
+  const specialist = (view: string) =>
+    `${base}${defaultStringifySearch({ ...search, view, record: undefined, returnTo })}`;
+
   return (
     <Disclosure
       label={sv ? "Avstämningsrapporter och fler verktyg" : "Reconciliation reports and more tools"}
     >
       <Box display="flex" gap="lg" flexWrap="wrap">
-        <PageAction quiet href={`${base.replace(/\/accounts$/, "")}/banking-setup`}>
+        <PageAction
+          quiet
+          href={`${base.replace(/\/accounts$/, "")}/banking-setup${defaultStringifySearch({ returnTo })}`}
+        >
           {sv ? "Samtycken och kontokopplingar" : "Consents and account mappings"}
         </PageAction>
-        <PageAction quiet href={`${base}?view=coverage`}>
+        <PageAction quiet href={specialist("coverage")}>
           {sv ? "Granska underlagstäckning" : "Review statement coverage"}
         </PageAction>
-        <PageAction quiet href={`${base}?view=payments`}>
+        <PageAction quiet href={specialist("payments")}>
           {sv ? "Betalningsfördelningar" : "Payment allocations"}
         </PageAction>
       </Box>

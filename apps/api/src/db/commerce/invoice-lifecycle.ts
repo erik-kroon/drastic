@@ -182,6 +182,23 @@ export function readDraftHead(transaction: Transaction, bookId: string, id: stri
   );
 }
 
+export function readDraftLifecycle(transaction: Transaction, bookId: string, id: string) {
+  return transaction.execute<{
+    readonly kind: "issued_synthetic" | "issued_legal";
+    readonly issueId: string;
+    readonly registerInvoiceId: string;
+  }>(
+    sql`
+    select 'issued_synthetic'::text as kind, id as "issueId", register_invoice_id as "registerInvoiceId"
+      from openerp.invoice_issues where book_id=${bookId} and draft_id=${id}
+    union all
+    select 'issued_legal'::text as kind, id as "issueId", register_invoice_id as "registerInvoiceId"
+      from openerp.ar_legal_issues where book_id=${bookId} and draft_id=${id}
+  `,
+    "objects",
+  );
+}
+
 export function readDraftRevision(
   transaction: Transaction,
   bookId: string,

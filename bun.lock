@@ -58,6 +58,7 @@
       "dependencies": {
         "@inlang/paraglide-js": "catalog:",
         "@open-erp/contracts": "workspace:*",
+        "@open-erp/domain": "workspace:*",
         "@open-erp/ui": "workspace:*",
         "@stylexjs/stylex": "catalog:",
         "@tanstack/react-form": "^1.33.5",

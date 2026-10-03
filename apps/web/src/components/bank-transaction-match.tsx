@@ -1,4 +1,6 @@
 import { useRef, useState } from "react";
+import { useSearch, defaultStringifySearch } from "@tanstack/react-router";
+import { encodeOwnerReturn } from "@/lib/work-return";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import * as Candidates from "@open-erp/contracts/bank-match-candidates";
 import * as Reversal from "@open-erp/contracts/bank-match-reversals";
@@ -922,6 +924,7 @@ function MatchingTransactions(
   props: CommerceProps & { capacity: typeof Settlement.AllocationCapacity.Type },
 ) {
   const { book, locale, capacity } = props;
+  const ownerSearch = useSearch({ from: "/entities/$entityId/books/$bookId/accounts" });
   const { leg } = capacity;
   const sv = locale === "sv";
 
@@ -981,7 +984,7 @@ function MatchingTransactions(
             <Box>
               <PageAction
                 quiet
-                href={`${workspacePath(book)}/books?view=vouchers&record=${encodeURIComponent(leg.voucherId)}`}
+                href={`${workspacePath(book)}/books${defaultStringifySearch({ view: "vouchers", record: leg.voucherId, returnTo: encodeOwnerReturn({ owner: "bank", search: ownerSearch }) })}`}
               >
                 {sv ? "Visa verifikation" : "View voucher"} {records.data.voucher.action.series}
                 {records.data.voucher.number}

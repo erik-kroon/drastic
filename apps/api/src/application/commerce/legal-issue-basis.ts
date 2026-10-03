@@ -11,7 +11,9 @@ import type { Transaction } from "../../db/transaction";
 import { admitAccountRole } from "../resource-admission";
 import { failure } from "../failures";
 import { digest, isoNow, readBook, readPeriod } from "../posting";
-import { calculateDraft } from "./draft-calculation";
+import { recalculateInvoiceDraft } from "./draft-calculation";
+import { commercialLineAmounts } from "@open-erp/domain/commercial-invoice";
+import * as Result from "effect/Result";
 import { toJsonObject, decode, requireRetainedEvidence, type Scope } from "./support";
 
 type Accounts = {
@@ -85,13 +87,25 @@ export const calculateLegalIssue = Effect.fn("commerce.legalIssue.calculate")(fu
 
   const standing = new Set([
     "issuance_not_implemented",
+    "legal_issue_review_required",
     "legal_identity_not_verified",
     "tax_profile_not_activated",
   ]);
 
-  if (draft.totals.sourceTotalMatches !== true || draft.blockers.some((b) => !standing.has(b.code)))
+  if (
+    (draft.purpose !== "commercial" && draft.totals.sourceTotalMatches !== true) ||
+    draft.blockers.some((b) => !standing.has(b.code))
+  )
     return yield* failure("UnsupportedProfile");
-  const calculation = yield* calculateDraft(tx, scope, book, draft.content);
+  const calculation = yield* recalculateInvoiceDraft(tx, scope, book, draft);
+
+  if (
+    draft.purpose === "commercial" &&
+    (!equalJson(calculation.content, draft.content) ||
+      !("inputDigest" in calculation) ||
+      calculation.inputDigest !== draft.inputDigest)
+  )
+    return yield* failure("StaleDependency");
 
   const current = {
     counterparty: calculation.counterparty,
@@ -275,6 +289,17 @@ const calculateLines = Effect.fn("commerce.legalIssue.lines")(function* (
   draft: typeof Drafts.InvoiceDraftRevision.Type,
   policy: typeof Policy.LegalSalesPolicy.Type,
 ) {
+  if (
+    draft.purpose === "commercial" &&
+    draft.commercialInput.lines.some(
+      (line) =>
+        line.treatment.kind !== "legal_sales_policy" ||
+        line.treatment.id !== policy.id ||
+        line.treatment.digest !== policy.digest,
+    )
+  )
+    return yield* failure("UnsupportedProfile");
+
   const lines: Array<(typeof Ar.ArLegalIssueReview.Type.lines)[number]> = [];
 
   let netTotal = 0n,
@@ -294,14 +319,27 @@ const calculateLines = Effect.fn("commerce.legalIssue.lines")(function* (
     )
       return yield* failure("UnsupportedProfile");
 
-    const tax = (net * 25n + 50n) / 100n,
-      gross = net + tax;
+    const calculated = commercialLineAmounts({
+      quantity: line.quantity,
+      unitPriceMinor: line.unitPriceMinor,
+      discountMinor: line.discountMinor,
+      chargeMinor: line.chargeMinor,
+      taxRule: "line-tax-half-up-minor-25-v1",
+    });
+
+    if (
+      Result.isFailure(calculated) ||
+      calculated.success.tax === null ||
+      calculated.success.gross === null
+    )
+      return yield* failure("UnsupportedProfile");
+    const { tax, gross } = calculated.success;
 
     if (
       tax <= 0n ||
       gross >= 10n ** 38n ||
       line.taxMinor !== tax.toString() ||
-      line.sourceGrossMinor !== gross.toString()
+      (draft.purpose !== "commercial" && line.sourceGrossMinor !== gross.toString())
     )
       return yield* failure("UnsupportedProfile");
     lines.push({
@@ -327,7 +365,7 @@ const calculateLines = Effect.fn("commerce.legalIssue.lines")(function* (
     draft.totals.netMinor !== netTotal.toString() ||
     draft.totals.taxMinor !== taxTotal.toString() ||
     draft.totals.grossMinor !== grossTotal.toString() ||
-    draft.content.sourceTotalMinor !== grossTotal.toString()
+    (draft.purpose !== "commercial" && draft.content.sourceTotalMinor !== grossTotal.toString())
   )
     return yield* failure("InvalidJournal");
 
