@@ -47,6 +47,14 @@ Keep an Effect modular monolith. The [API layout](../apps/api/README.md) separat
 
 Effect owns scoped orchestration, domain preparation, authorization and application policy. Application operations own direct scoped writes and pass one transaction through all nested persistence. PostgreSQL owns relational records, DDL, constraints, grants, row locks, the narrow integrity layer and durable receipts; it does not own feature workflows through procedural functions. Drizzle's native Effect PostgreSQL adapter owns application queries, using request-local connections through the native `@effect/sql-pg` client. Better Auth uses its official Promise adapter with a separately scoped `pg` connection. Typed Drizzle mappings serve direct application and maintenance queries; the three-file baseline owns the complete DDL and integrity definitions. The [shared contracts](plans/00-shared-contracts.md) define the lock order, identity, exact values and clean-baseline rules. A generic effect interpreter is not a prerequisite.
 
+## Customer commercial draft calculation
+
+P02 extends the existing customer draft lifecycle with an explicit commercial purpose. The API accepts quantity, price, discount, charge and a retained reviewed tax-policy reference; it derives line and document amounts inside the scoped owning transaction. The shared pure calculator is consumed by draft preparation and legal admission. Commercial revisions retain their input digest, policy references and derived facts. Source-transcription revisions keep their asserted base, tax and source totals; older immutable JSON bodies are not rewritten.
+
+The browser consumes `/commerce/invoice-drafts/calculate` through TanStack Query, validates the returned scope, input digest and expected revision, and discards replies for superseded inputs. Calculated base and tax fields are read-only. Preview is not an issuance approval. The existing domestic Swedish 25% accrual owner still checks identities, effective policy, account profile, period, current dependencies and approval before consuming a legal number or posting. Unresolved treatment retains unknown VAT and gross. Customer cash-method issuance remains absent.
+
+Current draft reads separately report the canonical editable, synthetic-issued or legal-issued lifecycle. A historical draft revision remains readable with its original digest while the current seal prevents editing. The existing legal invoice and pdfcn owners keep number, posting and frozen-document authority. The failure contract and repeatable local evidence are described in [P02 commercial drafts](plans/p02-commercial-draft-failures.md).
+
 ## Planned module boundaries
 
 | Module                    | Owns                                                                                          | May not do                                               |

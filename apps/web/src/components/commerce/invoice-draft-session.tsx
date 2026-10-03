@@ -26,6 +26,7 @@ const PendingSave = Schema.Struct({
 });
 
 const EditingState = Schema.Struct({
+  purpose: Schema.optional(Schema.Literals(["commercial", "source_transcription"])),
   baseline: Schema.NullOr(Drafts.InvoiceDraftRevision),
   expected: Schema.optional(
     Schema.Struct({ revision: Commerce.Version, digest: Accounting.Digest }),
@@ -205,6 +206,7 @@ class ConcurrentInvoiceEdit extends Error {}
 
 function initialState(baseline?: Draft): DraftEditingState {
   return {
+    purpose: baseline ? (baseline.purpose ?? "source_transcription") : "commercial",
     baseline: baseline ?? null,
     draftKey: baseline?.draftKey ?? `draft_${crypto.randomUUID().replaceAll("-", "")}`,
     customer: baseline?.counterparty ?? null,

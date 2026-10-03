@@ -144,6 +144,10 @@ const sv = {
 } satisfies Record<keyof typeof en, string>;
 
 const blockers = {
+  legal_issue_review_required: {
+    en: "Review the current invoice, legal profile and accounting setup before issuance.",
+    sv: "Granska aktuell faktura, juridisk profil och bokföringsinställningar före utfärdande.",
+  },
   issuance_not_implemented: {
     en: "This draft does not itself activate legal invoice issuance.",
     sv: "Utkastet aktiverar inte juridisk fakturering på egen hand.",
