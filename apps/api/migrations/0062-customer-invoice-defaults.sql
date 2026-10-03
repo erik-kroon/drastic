@@ -57,4 +57,3 @@ CREATE TRIGGER immutable_crm_customer_invoice_defaults_revision BEFORE UPDATE OR
   FOR EACH ROW EXECUTE FUNCTION openerp.immutable_row();
 GRANT SELECT, INSERT ON openerp.crm_customer_invoice_defaults, openerp.crm_customer_invoice_defaults_revisions TO openerp_runtime;
 GRANT UPDATE(current_revision) ON openerp.crm_customer_invoice_defaults TO openerp_runtime;
-
