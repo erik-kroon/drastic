@@ -94,6 +94,7 @@ export function renderInvoicePdf(capture: typeof Pdf.InvoicePdfCapture.Type) {
   append("Supply date (draft)", content.supplyDate, lines);
   append("Due date (draft)", content.dueDate, lines);
   append("Payment terms (draft)", content.paymentTerms, lines);
+  append("Note", content.note ?? null, lines);
   append("Title", content.title, lines);
   append(
     "Asserted source total",

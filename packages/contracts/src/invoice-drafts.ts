@@ -57,6 +57,7 @@ export const DraftContent = Schema.Struct({
   supplyDate: Schema.NullOr(Accounting.AccountingDate),
   dueDate: Schema.NullOr(Accounting.AccountingDate),
   paymentTerms: Schema.NullOr(Note),
+  note: Schema.optional(Schema.NullOr(Note)),
   sourceTotalMinor: Schema.NullOr(Accounting.MinorUnits),
   lines: Schema.Array(DraftLine).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
 });
@@ -93,6 +94,7 @@ export const CommercialContent = Schema.Struct({
   supplyDate: DraftContent.fields.supplyDate,
   dueDate: DraftContent.fields.dueDate,
   paymentTerms: DraftContent.fields.paymentTerms,
+  note: DraftContent.fields.note,
   lines: Schema.Array(CommercialLine).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
 });
 
@@ -156,6 +158,12 @@ export const DraftBlocker = Schema.Struct({
   lineId: Schema.NullOr(Accounting.Identifier),
 });
 
+export const InvoiceTemplateSelection = Schema.Struct({
+  id: Accounting.Identifier,
+  revision: Commerce.Version,
+  digest: Accounting.Digest,
+});
+
 export const SourceInvoiceDraftRevision = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -168,6 +176,7 @@ export const SourceInvoiceDraftRevision = Schema.Struct({
   calculationBasis: Schema.Literal("explicit_line_amounts_v1"),
   purpose: Schema.optional(Schema.Literal("source_transcription")),
   content: DraftContent,
+  templateSelection: Schema.optional(InvoiceTemplateSelection),
   occurrence: Schema.optional(OccurrenceReference),
   counterparty: Commerce.CounterpartyRevision,
   sellerEvidence: Commerce.EvidenceReference,

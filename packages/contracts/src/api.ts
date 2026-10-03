@@ -7,6 +7,7 @@ import { PayrollCalculationApi } from "./payroll-calculations";
 import { CorporateTaxApi } from "./corporate-tax";
 import { AnnualReportApi } from "./annual-report";
 import { CrmMasterApi } from "./crm-master";
+import { InvoiceTemplatesApi } from "./invoice-templates";
 import { CatalogApi } from "./catalog";
 import { CollectionsApi } from "./collections";
 import { DimensionsApi } from "./dimensions";
@@ -257,6 +258,7 @@ export class Api extends HttpApi.make("open-erp")
     CollectionsApi,
     CrmMasterApi,
     CatalogApi,
+    InvoiceTemplatesApi,
     PayrollFoundationApi,
     PayrollCalculationApi,
     CorporateTaxApi,

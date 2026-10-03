@@ -1,3 +1,8 @@
+import {
+  listInvoiceTemplates,
+  getInvoiceTemplate,
+  applyInvoiceTemplate,
+} from "../commerce/invoice-templates";
 import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
 import {
@@ -86,6 +91,15 @@ export const commerceInvoiceCapabilities = {
   crm_get_reviewed_recipient: effectCapability(
     Capabilities.crm_get_reviewed_recipient,
     getCustomerRecipient,
+  ),
+  invoice_templates_list: effectCapability(
+    Capabilities.invoice_templates_list,
+    listInvoiceTemplates,
+  ),
+  invoice_templates_get: effectCapability(Capabilities.invoice_templates_get, getInvoiceTemplate),
+  invoice_templates_apply: effectCapability(
+    Capabilities.invoice_templates_apply,
+    applyInvoiceTemplate,
   ),
   payments_check_bank_account: effectCapability(
     Capabilities.payments_check_bank_account,

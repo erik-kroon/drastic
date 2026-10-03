@@ -97,7 +97,8 @@
     "./financial-close": "./src/financial-close.ts",
     "./owner-operations": "./src/owner-operations.ts",
     "./evaluations": "./src/evaluations.ts",
-    "./supplier-settlements": "./src/supplier-settlements.ts"
+    "./supplier-settlements": "./src/supplier-settlements.ts",
+    "./invoice-templates": "./src/invoice-templates.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

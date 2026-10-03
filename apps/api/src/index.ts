@@ -6,6 +6,7 @@ import { DeadlineFeedRoutes } from "./transport/http/routes/deadline-feed";
 import { PayrollFoundationHandlers } from "./transport/http/routes/payroll-foundation";
 import { PayrollCalculationHandlers } from "./transport/http/routes/payroll-calculations";
 import { CrmMasterHandlers } from "./transport/http/routes/crm-master";
+import { InvoiceTemplateHandlers } from "./transport/http/routes/invoice-templates";
 import { CatalogHandlers } from "./transport/http/routes/catalog";
 import { CorporateTaxHandlers } from "./transport/http/routes/corporate-tax";
 import { CollectionsHandlers } from "./transport/http/routes/collections";
@@ -20,6 +21,8 @@ import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Match from "effect/Match";
+import * as Option from "effect/Option";
 import * as Redacted from "effect/Redacted";
 import * as References from "effect/References";
 import * as Schema from "effect/Schema";
@@ -200,6 +203,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     CollectionsHandlers,
     CrmMasterHandlers,
     CatalogHandlers,
+    InvoiceTemplateHandlers,
     PayrollFoundationHandlers,
     PayrollCalculationHandlers,
     DeadlineHandlers,
@@ -226,12 +230,11 @@ const { handler } = HttpRouter.toWebHandler(
 function boundaryResponse(error: unknown) {
   if (error instanceof BodyError) {
     return Response.json(
-      {
-        _tag: "AccountingError",
+      new AccountingError({
         code: error.code,
         message: error.message,
         recovery: error.status === 408 ? "transient" : "permanent",
-      },
+      }),
       { status: error.status },
     );
   }
@@ -269,22 +272,18 @@ async function httpFailureResponse(response: Response, path: string) {
 
   const decoded = Schema.decodeUnknownOption(AccountingError)(body);
 
-  const fallback =
-    response.status === 400
-      ? "InvalidRequest"
-      : response.status === 401
-        ? "Unauthorized"
-        : response.status === 403
-          ? "Forbidden"
-          : response.status === 404
-            ? "NotFound"
-            : response.status === 405
-              ? "MethodNotAllowed"
-              : response.status === 503
-                ? "Unavailable"
-                : "InternalError";
-
-  const error = decoded._tag === "Some" ? databaseFailure(decoded.value) : failure(fallback);
+  const error = Option.match(decoded, {
+    onSome: databaseFailure,
+    onNone: () => Match.value(response.status).pipe(
+      Match.when(400, () => failure("InvalidRequest")),
+      Match.when(401, () => failure("Unauthorized")),
+      Match.when(403, () => failure("Forbidden")),
+      Match.when(404, () => failure("NotFound")),
+      Match.when(405, () => failure("MethodNotAllowed")),
+      Match.when(503, () => failure("Unavailable")),
+      Match.orElse(() => failure("InternalError")),
+    ),
+  });
   const headers = new Headers(response.headers);
   headers.delete("content-length");
   headers.set("content-type", "application/json");

@@ -164,6 +164,7 @@ export async function renderLegalInvoicePdf(capture: typeof Pdf.LegalInvoicePdfC
           <Section spacing="sm">
             <Text weight="semibold">Betalningsvillkor</Text>
             <Text variant="sm">{required(content.paymentTerms, "payment terms")}</Text>
+            {content.note ? <Text variant="sm">{content.note}</Text> : null}
             <Text variant="sm">Ange fakturanummer {number} vid betalning.</Text>
             <Text variant="xs" muted noMargin>
               Fakturan avser en svensk försäljning med 25 % moms. Valuta: SEK.

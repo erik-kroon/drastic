@@ -174,6 +174,7 @@ export function renderInvoiceReviewDocument(capture: typeof Documents.InvoiceDoc
     fact("Captured supply date", content.supplyDate),
     fact("Captured due date", content.dueDate),
     fact("Captured payment terms (not an instruction)", content.paymentTerms),
+    fact("Customer-facing note", content.note ?? null),
     fact("Currency", content.currency),
     fact("Currency scale", String(scale)),
     fact("Issued at", issue.createdAt),

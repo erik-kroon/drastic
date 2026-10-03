@@ -70,6 +70,7 @@ import { OwnerOperationCapabilities } from "./owner-operations";
 import { FinancialCloseCapabilities } from "./financial-close";
 import { FirmCapabilities } from "./firms";
 import { WorkspaceCapabilities } from "./workspace";
+import { InvoiceTemplateCapabilities } from "./invoice-templates";
 import { CatalogCapabilities } from "./catalog";
 import { DimensionsCapabilities } from "./dimensions";
 import { CrmMasterCapabilities } from "./crm-master";
@@ -162,6 +163,7 @@ export const Capabilities = {
   ...CustomerCreditCapabilities,
   ...CommerceAllocationReversalCapabilities,
   ...CatalogCapabilities,
+  ...InvoiceTemplateCapabilities,
   ...DimensionsCapabilities,
   ...CrmMasterCapabilities,
   ...CollectionsCapabilities,

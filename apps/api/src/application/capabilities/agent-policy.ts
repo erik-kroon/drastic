@@ -14,6 +14,7 @@ type WriteClass =
 // A new write has no MCP exposure until its owner classifies it here. These classes
 // describe transport policy; the operation must still enforce current authority.
 const writeClasses = {
+  invoice_templates_apply: "prepare",
   workspace_capture_context: "prepare",
   workspace_advance_context: "record",
   purchases_prepare_supplier_settlement: "prepare",

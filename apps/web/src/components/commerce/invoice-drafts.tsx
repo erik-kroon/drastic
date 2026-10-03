@@ -1,4 +1,5 @@
 import { InvoiceDefaultsSelection } from "./customer-invoice-defaults";
+import { InvoiceTemplateActions } from "./invoice-templates";
 import { useState, type ReactNode } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
@@ -108,7 +109,7 @@ export function InvoiceDrafts(
             </Button>
           </Box>
         ) : null}
-        <DraftDetail {...props} id={selected} />
+        <DraftDetail {...props} id={selected} onPrepared={select} />
       </Box>
     );
 
@@ -276,6 +277,7 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
       supplyDate: inputText(fields, "supplyDate"),
       dueDate: inputText(fields, "dueDate"),
       paymentTerms: inputText(fields, "terms"),
+      note: inputText(fields, "note"),
       sourceTotalMinor: decimalField(fields, "sourceTotal", currencyScale, true),
       lines: lines.map((line) => {
         const catalogSelection = line.defaults?.catalogSelection;
@@ -326,6 +328,7 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
             supplyDate: next.supplyDate,
             dueDate: session.state.dueDateOrigin === "customer_default" ? null : next.dueDate,
             paymentTerms: next.paymentTerms,
+            note: next.note,
             lines: next.lines.map((line) => {
               const compositionLine = {
                 id: line.id,
@@ -503,6 +506,12 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
               footer={
                 <Box display="grid" gap="lg">
                   <InputField
+                    name="note"
+                    label={sv ? "Meddelande till kunden" : "Customer-facing note"}
+                    maxLength={1000}
+                    defaultValue={restoredField(session, "note", content?.note ?? "")}
+                  />
+                  <InputField
                     name="terms"
                     label={labels.paymentTerms}
                     maxLength={1000}
@@ -587,7 +596,9 @@ function DraftFooter(props: {
   );
 }
 
-function DraftDetail(props: CommerceProps & DraftActions & { id: string }) {
+function DraftDetail(
+  props: CommerceProps & DraftActions & { id: string; onPrepared: (id: string) => void },
+) {
   const sv = props.locale === "sv";
   const labels = sv ? swedish : english;
   const [revision, setRevision] = useState("");
@@ -638,6 +649,20 @@ function DraftDetail(props: CommerceProps & DraftActions & { id: string }) {
         <>
           <Box display="flex" gap="sm" justifyContent="end" flexWrap="wrap" alignItems="center">
             {props.issueAction}
+            <InvoiceTemplateActions
+              key={`${record.id}:${record.revision}`}
+              book={props.book}
+              locale={props.locale}
+              record={record}
+              editable={
+                view.data?.lifecycle.kind === "editable" &&
+                record.revision === view.data?.currentRevision
+              }
+              onSaved={(id) => {
+                setRevision("");
+                props.onPrepared(id);
+              }}
+            />
             <Button
               variant="outline"
               disabled={

@@ -182,6 +182,7 @@ function draftRecord(
     content: JsonObject;
     reason: string;
     occurrence?: JsonObject;
+    templateSelection?: typeof Drafts.InvoiceTemplateSelection.Type;
   },
   calculation: {
     counterparty: JsonObject;
@@ -239,10 +240,15 @@ function draftRecord(
             copiedCustomerDefaults: calculation.commercial.copiedCustomerDefaults,
           });
 
+    const withTemplate: JsonObject =
+      row.templateSelection === undefined
+        ? withDefaults
+        : Object.assign({}, withDefaults, { templateSelection: row.templateSelection });
+
     const withOccurrence: JsonObject =
       row.occurrence === undefined
-        ? withDefaults
-        : Object.assign({}, withDefaults, { occurrence: row.occurrence });
+        ? withTemplate
+        : Object.assign({}, withTemplate, { occurrence: row.occurrence });
 
     const digest = yield* digestNative(withOccurrence);
 
@@ -257,14 +263,19 @@ type CreateDraftCommand = {
 };
 
 export const createInvoiceDraftInTransaction = Effect.fn("commerce.drafts.createInTransaction")(
-  function* (transaction: Transaction, principal: Principal, command: CreateDraftCommand) {
+  function* (
+    transaction: Transaction,
+    principal: Principal,
+    command: CreateDraftCommand,
+    templateSelection?: typeof Drafts.InvoiceTemplateSelection.Type,
+  ) {
     const request = yield* replay(
       transaction,
       command.scope,
       command.idempotencyKey,
       "create_invoice_draft",
       principal.actorId,
-      command.input,
+      templateSelection === undefined ? command.input : { input: command.input, templateSelection },
       RevisionSchema,
     );
 
@@ -333,6 +344,7 @@ export const createInvoiceDraftInTransaction = Effect.fn("commerce.drafts.create
         content: yield* toJsonObject(content),
         reason: draftBounds.initialReason,
         occurrence,
+        templateSelection,
       },
       calculation,
     );
@@ -444,135 +456,143 @@ export const calculateCommercialDraft = Effect.fn("commerce.drafts.calculateComm
   });
 });
 
+type ReviseDraftCommand = {
+  scope: Scope;
+  id: string;
+  idempotencyKey: string;
+  input: typeof Drafts.ReviseInvoiceDraft.Type;
+};
+
+export const reviseInvoiceDraftInTransaction = Effect.fn("commerce.drafts.reviseInTransaction")(
+  function* (
+    transaction: Transaction,
+    principal: Principal,
+    command: ReviseDraftCommand,
+    templateSelection?: typeof Drafts.InvoiceTemplateSelection.Type,
+  ) {
+    const replayInput: JsonObject = { id: command.id, input: command.input };
+
+    const request = yield* replay(
+      transaction,
+      command.scope,
+      command.idempotencyKey,
+      "revise_invoice_draft",
+      principal.actorId,
+      templateSelection === undefined
+        ? replayInput
+        : Object.assign({}, replayInput, { templateSelection }),
+      RevisionSchema,
+    );
+
+    if (request.previous) return request.previous;
+    yield* requireTableAccess(transaction, DraftDb.invoiceDraftTables, false);
+    yield* requireInsertAccess(transaction, ["invoice_draft_revisions"]);
+    yield* lockBookForUpdate(transaction, command.scope);
+    const books = yield* DraftDb.readBookCurrency(transaction, command.scope.bookId);
+    const book = books[0];
+
+    if (!book) return yield* failure("Forbidden");
+    yield* requireNativeWriter(book.authority);
+    yield* exactKeys(
+      yield* toJsonObject(command.input),
+      "commercial" in command.input
+        ? ["commercial", "expectedDigest", "expectedRevision", "reason"]
+        : reviseFields,
+    );
+
+    if (JSON.stringify(command.input).length > draftBounds.inputBytes) {
+      return yield* failure("InvalidJournal");
+    }
+
+    const input = yield* decode(ReviseSchema, command.input);
+
+    const draft = (yield* DraftDb.readDraft(
+      transaction,
+      command.scope.bookId,
+      command.id,
+      true,
+    ))[0];
+
+    if (!draft) return yield* failure("NotFound");
+
+    if ((yield* readSealedDraft(transaction, command.scope.bookId, command.id, "customer")).length)
+      return yield* failure("Forbidden");
+    const head = (yield* DraftDb.readDraftHead(transaction, command.scope.bookId, command.id))[0];
+
+    if (!head) return yield* failure("NotFound");
+
+    if (
+      input.expectedRevision !== draft.currentRevision ||
+      input.expectedDigest !== textField(head.body, "digest")
+    ) {
+      return yield* failure("StaleDependency");
+    }
+
+    const previous = yield* decode(RevisionSchema, head.body);
+
+    if ((previous.purpose === "commercial") !== "commercial" in input)
+      return yield* failure("InvalidJournal");
+
+    if (Number(draft.currentRevision) >= draftBounds.revisions) {
+      return yield* failure("InvalidJournal");
+    }
+
+    const calculation =
+      "commercial" in input
+        ? yield* calculateCommercialContent(transaction, command.scope, book, input.commercial, previous)
+        : yield* calculateDraft(transaction, command.scope, book, input.content);
+
+    const content = calculation.content;
+    const revision = (BigInt(draft.currentRevision) + 1n).toString();
+
+    const body = yield* draftRecord(
+      transaction,
+      command,
+      principal,
+      {
+        id: command.id,
+        draftKey: draft.draftKey,
+        revision,
+        content: yield* toJsonObject(content),
+        reason: input.reason,
+        occurrence: occurrenceOf(head.body),
+        templateSelection: templateSelection ?? previous.templateSelection,
+      },
+      calculation,
+    );
+
+    const result = yield* decode(RevisionSchema, body);
+    yield* DraftDb.insertDraftRevision(transaction, {
+      bookId: command.scope.bookId,
+      draftId: command.id,
+      revision,
+      body,
+    });
+    yield* DraftDb.advanceDraftRevision(transaction, command.scope.bookId, command.id);
+    yield* saveCommand(
+      transaction,
+      command.scope,
+      command.idempotencyKey,
+      request.expected,
+      "revise_invoice_draft",
+      principal.actorId,
+      result,
+    );
+
+    return result;
+  },
+);
+
 export const reviseInvoiceDraft = Effect.fn("commerce.drafts.revise")(function* (
   token: string,
-  command: {
-    scope: Scope;
-    id: string;
-    idempotencyKey: string;
-    input: typeof Drafts.ReviseInvoiceDraft.Type;
-  },
+  command: ReviseDraftCommand,
 ) {
   return yield* withBook(
     token,
     command.scope,
     true,
     function* (transaction, principal) {
-      const replayInput = { id: command.id, input: command.input } satisfies JsonObject;
-
-      const request = yield* replay(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        "revise_invoice_draft",
-        principal.actorId,
-        replayInput,
-        RevisionSchema,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireTableAccess(transaction, DraftDb.invoiceDraftTables, false);
-      yield* requireInsertAccess(transaction, ["invoice_draft_revisions"]);
-      yield* lockBookForUpdate(transaction, command.scope);
-      const books = yield* DraftDb.readBookCurrency(transaction, command.scope.bookId);
-      const book = books[0];
-
-      if (!book) return yield* failure("Forbidden");
-      yield* requireNativeWriter(book.authority);
-      yield* exactKeys(
-        yield* toJsonObject(command.input),
-        "commercial" in command.input
-          ? ["commercial", "expectedDigest", "expectedRevision", "reason"]
-          : reviseFields,
-      );
-
-      if (JSON.stringify(command.input).length > draftBounds.inputBytes) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const input = yield* decode(ReviseSchema, command.input);
-
-      const draft = (yield* DraftDb.readDraft(
-        transaction,
-        command.scope.bookId,
-        command.id,
-        true,
-      ))[0];
-
-      if (!draft) return yield* failure("NotFound");
-
-      if (
-        (yield* readSealedDraft(transaction, command.scope.bookId, command.id, "customer")).length
-      )
-        return yield* failure("Forbidden");
-      const head = (yield* DraftDb.readDraftHead(transaction, command.scope.bookId, command.id))[0];
-
-      if (!head) return yield* failure("NotFound");
-
-      if (
-        input.expectedRevision !== draft.currentRevision ||
-        input.expectedDigest !== textField(head.body, "digest")
-      ) {
-        return yield* failure("StaleDependency");
-      }
-
-      const previous = yield* decode(RevisionSchema, head.body);
-
-      if ((previous.purpose === "commercial") !== "commercial" in input)
-        return yield* failure("InvalidJournal");
-
-      if (Number(draft.currentRevision) >= draftBounds.revisions) {
-        return yield* failure("InvalidJournal");
-      }
-
-      const calculation =
-        "commercial" in input
-          ? yield* calculateCommercialContent(
-              transaction,
-              command.scope,
-              book,
-              input.commercial,
-              previous,
-            )
-          : yield* calculateDraft(transaction, command.scope, book, input.content);
-
-      const content = calculation.content;
-      const revision = (BigInt(draft.currentRevision) + 1n).toString();
-
-      const body = yield* draftRecord(
-        transaction,
-        command,
-        principal,
-        {
-          id: command.id,
-          draftKey: draft.draftKey,
-          revision,
-          content: yield* toJsonObject(content),
-          reason: input.reason,
-          occurrence: occurrenceOf(head.body),
-        },
-        calculation,
-      );
-
-      const result = yield* decode(RevisionSchema, body);
-      yield* DraftDb.insertDraftRevision(transaction, {
-        bookId: command.scope.bookId,
-        draftId: command.id,
-        revision,
-        body,
-      });
-      yield* DraftDb.advanceDraftRevision(transaction, command.scope.bookId, command.id);
-      yield* saveCommand(
-        transaction,
-        command.scope,
-        command.idempotencyKey,
-        request.expected,
-        "revise_invoice_draft",
-        principal.actorId,
-        result,
-      );
-
-      return result;
+      return yield* reviseInvoiceDraftInTransaction(transaction, principal, command);
     },
     "update",
   );

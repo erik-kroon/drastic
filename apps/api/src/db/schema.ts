@@ -1873,3 +1873,16 @@ export const customerRecipientsRevisions = openerp.table("crm_customer_recipient
     .notNull()
     .defaultNow(),
 });
+
+export const invoiceTemplates = openerp.table("invoice_templates", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  currentRevision: bigint("current_revision", { mode: "bigint" }).notNull(),
+});
+
+export const invoiceTemplateRevisions = openerp.table("invoice_template_revisions", {
+  bookId: text("book_id").notNull(),
+  templateId: text("template_id").notNull(),
+  revision: bigint({ mode: "bigint" }).notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
