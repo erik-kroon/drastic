@@ -350,7 +350,7 @@ test("bank voucher links preserve scoped owner state and reject unknown return o
       },
     });
     await voucherLink.click();
-    await page.getByRole("button", { name: "Back to vouchers", exact: true }).click();
+    await page.getByRole("button", { name: "Back to work", exact: true }).click();
     await expect
       .poll(() => new URL(page.url()).pathname)
       .toBe(`/entities/${book.entityId}/books/${book.bookId}/accounts`);
