@@ -97,7 +97,6 @@ function optionalMinor(value: string | null) {
   return value === null ? null : BigInt(value);
 }
 
-/** Quantity is an exact canonical decimal; minor units are integers. */
 function exactLineBase(quantity: string, unitPriceMinor: string | null) {
   if (unitPriceMinor === null) return null;
 

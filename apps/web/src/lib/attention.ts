@@ -44,10 +44,6 @@ export function attentionQueryOptions(book: typeof Accounting.Book.Type, filters
   });
 }
 
-// A record is opened in its own area, so the queue's own search travels as one
-// `work` parameter and comes back only when the record is left. The journal
-// review route takes the same search directly, because it is the queue's own
-// schema rather than a record area's.
 export function attentionPath(
   book: typeof Accounting.Book.Type,
   item: typeof Workspace.AttentionItem.Type,

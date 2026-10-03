@@ -116,9 +116,6 @@ export type AttentionCountsRow = {
   readonly completed: string;
 };
 
-// The retained posting-recovery status of one standalone proposal, expressed
-// without the retired provider function. A proposal posts itself, or through a
-// retained economic-identity or reversal link to another proposal.
 const observedProposals = (bookId: string) => sql`
   select source.*, source.plan #> '{groups,0,actions,0}' as action,
     to_char(source.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_text,
