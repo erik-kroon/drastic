@@ -47,7 +47,7 @@ export async function renderLegalInvoicePdf(capture: typeof Pdf.LegalInvoicePdfC
     draft.totals.taxMinor !== issue.totals.taxMinor ||
     draft.totals.netMinor !== issue.totals.netMinor ||
     draft.totals.grossMinor !== issue.totals.grossMinor ||
-    !draft.totals.sourceTotalMatches
+    (draft.purpose !== "commercial" && draft.totals.sourceTotalMatches !== true)
   )
     unsupported(
       "The legal PDF source does not match its approved seller, version or exact invoice amounts.",
@@ -55,13 +55,18 @@ export async function renderLegalInvoicePdf(capture: typeof Pdf.LegalInvoicePdfC
 
   for (const [index, line] of issue.lines.entries()) {
     const asserted = content.lines[index];
+    const calculated = draft.calculatedLines[index];
 
     if (
       !asserted ||
       asserted.id !== line.id ||
       line.vatTreatment !== "se-domestic-standard-25-v1" ||
       asserted.taxMinor !== line.taxMinor ||
-      asserted.sourceGrossMinor !== line.grossMinor ||
+      (draft.purpose !== "commercial" && asserted.sourceGrossMinor !== line.grossMinor) ||
+      !calculated ||
+      calculated.id !== line.id ||
+      calculated.netMinor !== line.netMinor ||
+      calculated.grossMinor !== line.grossMinor ||
       asserted.unitPriceMinor !== line.unitPriceMinor
     )
       unsupported("A legal invoice line is not the exact approved issued line.");

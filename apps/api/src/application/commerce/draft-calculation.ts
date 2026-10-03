@@ -546,7 +546,7 @@ export const calculateCommercialContent = Effect.fn("commerce.drafts.calculateCo
       );
     }
 
-    const content: DraftContent = {
+    const withoutNote: DraftContent = {
       title: input.title,
       counterpartyId: input.counterpartyId,
       counterpartyRevision: input.counterpartyRevision,
@@ -559,12 +559,14 @@ export const calculateCommercialContent = Effect.fn("commerce.drafts.calculateCo
           ? snapshot.dueDate
           : input.dueDate,
       paymentTerms: input.paymentTerms ?? snapshot?.paymentTerms ?? null,
-      ...(input.note === undefined ? {} : { note: input.note }),
       currency: book.currency,
       currencyScale: book.currencyScale,
       sourceTotalMinor: null,
       lines,
     };
+
+    const content: DraftContent =
+      input.note === undefined ? withoutNote : Object.assign({}, withoutNote, { note: input.note });
 
     const calculation = yield* calculateDraft(transaction, scope, book, content, true);
 

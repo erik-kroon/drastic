@@ -274,16 +274,18 @@ async function httpFailureResponse(response: Response, path: string) {
 
   const error = Option.match(decoded, {
     onSome: databaseFailure,
-    onNone: () => Match.value(response.status).pipe(
-      Match.when(400, () => failure("InvalidRequest")),
-      Match.when(401, () => failure("Unauthorized")),
-      Match.when(403, () => failure("Forbidden")),
-      Match.when(404, () => failure("NotFound")),
-      Match.when(405, () => failure("MethodNotAllowed")),
-      Match.when(503, () => failure("Unavailable")),
-      Match.orElse(() => failure("InternalError")),
-    ),
+    onNone: () =>
+      Match.value(response.status).pipe(
+        Match.when(400, () => failure("InvalidRequest")),
+        Match.when(401, () => failure("Unauthorized")),
+        Match.when(403, () => failure("Forbidden")),
+        Match.when(404, () => failure("NotFound")),
+        Match.when(405, () => failure("MethodNotAllowed")),
+        Match.when(503, () => failure("Unavailable")),
+        Match.orElse(() => failure("InternalError")),
+      ),
   });
+
   const headers = new Headers(response.headers);
   headers.delete("content-length");
   headers.set("content-type", "application/json");

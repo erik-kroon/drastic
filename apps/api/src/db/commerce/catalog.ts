@@ -31,7 +31,7 @@ export function readArticlePointer(
 
   return transaction.execute<ArticlePointerRow>(
     sql`
-      select code, current_revision as "currentRevision"
+      select code, current_revision::text as "currentRevision"
       from openerp.catalog_articles
       where book_id = ${bookId} and code = ${code}
       ${lockClause}

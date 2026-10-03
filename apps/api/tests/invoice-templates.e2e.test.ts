@@ -778,18 +778,19 @@ test("template customer note is retained in the issued PDF after the template ch
   );
 });
 
-
 test("template article selections require current admission for new drafts and preserve existing copies", async () => {
   const context = await legalFixture();
   const input = templateInput(context);
+
   const articleSchema = Schema.Struct({
     code: Schema.String,
-    revision: Schema.Number,
+    revision: Schema.Int,
     digest: Accounting.Digest,
     scope: Accounting.Scope,
     unit: Schema.String,
     unitPriceMinor: Schema.String,
   });
+
   const articleInput = {
     code: "TEMPLATE_SERVICE",
     expectedRevision: 0,
@@ -800,7 +801,9 @@ test("template article selections require current admission for new drafts and p
     treatment: input.content.lines[0]?.treatment,
     status: "active",
   };
+
   const article = await post(context.author, "/commerce/articles", articleInput, articleSchema);
+
   const selection = {
     code: article.code,
     revision: article.revision,
@@ -808,67 +811,117 @@ test("template article selections require current admission for new drafts and p
     scope: article.scope,
     unit: article.unit,
   };
-  const template = await post(context.author, base, {
-    ...input,
-    content: {
-      ...input.content,
-      lines: input.content.lines.map((line) => ({ ...line, catalogSelection: selection })),
+
+  const template = await post(
+    context.author,
+    base,
+    {
+      ...input,
+      content: {
+        ...input.content,
+        lines: input.content.lines.map((line) => ({ ...line, catalogSelection: selection })),
+      },
     },
-  }, Template);
+    Template,
+  );
+
   const applicationPath = `${base}/${template.id}/applications`;
+
   const apply = {
     revision: template.revision,
     digest: template.digest,
     target: newTarget(context),
     reason: "Copy a currently qualified article",
   };
+
   const commandKey = key();
-  const saved = await decoded(await request(context.author, applicationPath, {
-    method: "POST",
-    headers: { "idempotency-key": commandKey },
-    body: JSON.stringify(apply),
-  }), Applied);
+
+  const saved = await decoded(
+    await request(context.author, applicationPath, {
+      method: "POST",
+      headers: { "idempotency-key": commandKey },
+      body: JSON.stringify(apply),
+    }),
+    Applied,
+  );
+
   expect(saved.totals.grossMinor).toBe("250000");
-  const changed = await post(context.author, "/commerce/articles", {
-    ...articleInput,
-    expectedRevision: article.revision,
-    unitPriceMinor: "150000",
-  }, articleSchema);
-  const refuseNew = () => request(context.author, applicationPath, {
-    method: "POST",
-    body: JSON.stringify({ ...apply, target: newTarget(context) }),
-  });
-  await failure(await refuseNew(), 409, "StaleDependency");
-  await post(context.author, "/commerce/articles", {
-    ...articleInput,
-    expectedRevision: changed.revision,
-    unitPriceMinor: "150000",
-    status: "archived",
-  }, articleSchema);
-  await failure(await refuseNew(), 409, "StaleDependency");
-  expect(await decoded(await request(context.author, applicationPath, {
-    method: "POST",
-    headers: { "idempotency-key": commandKey },
-    body: JSON.stringify(apply),
-  }), Applied)).toEqual(saved);
-  const replaced = await post(context.author, applicationPath, {
-    ...apply,
-    target: {
-      kind: "existing",
-      id: saved.id,
-      expectedRevision: saved.revision,
-      expectedDigest: saved.digest,
-      acknowledgeReplace: true,
+
+  const changed = await post(
+    context.author,
+    "/commerce/articles",
+    {
+      ...articleInput,
+      expectedRevision: article.revision,
+      unitPriceMinor: "150000",
     },
-    reason: "Preserve the actual target's retained article copy",
-  }, Applied);
+    articleSchema,
+  );
+
+  const refuseNew = () =>
+    request(context.author, applicationPath, {
+      method: "POST",
+      body: JSON.stringify({ ...apply, target: newTarget(context) }),
+    });
+
+  await failure(await refuseNew(), 409, "StaleDependency");
+  await post(
+    context.author,
+    "/commerce/articles",
+    {
+      ...articleInput,
+      expectedRevision: changed.revision,
+      unitPriceMinor: "150000",
+      status: "archived",
+    },
+    articleSchema,
+  );
+  await failure(await refuseNew(), 409, "StaleDependency");
+  expect(
+    await decoded(
+      await request(context.author, applicationPath, {
+        method: "POST",
+        headers: { "idempotency-key": commandKey },
+        body: JSON.stringify(apply),
+      }),
+      Applied,
+    ),
+  ).toEqual(saved);
+
+  const replaced = await post(
+    context.author,
+    applicationPath,
+    {
+      ...apply,
+      target: {
+        kind: "existing",
+        id: saved.id,
+        expectedRevision: saved.revision,
+        expectedDigest: saved.digest,
+        acknowledgeReplace: true,
+      },
+      reason: "Preserve the actual target's retained article copy",
+    },
+    Applied,
+  );
+
   expect(replaced.revision).toBe("2");
   expect(replaced.totals.grossMinor).toBe("250000");
   expect(replaced.commercialInput.note).toBe("Thank you for your business.");
   expect(replaced.commercialInput.lines[0]?.catalogSelection).toEqual(selection);
-  const retained = await decoded(await request(context.author,
-    `/commerce/invoice-drafts/${saved.id}?revision=1`), Drafts.InvoiceDraftView);
+
+  const retained = await decoded(
+    await request(context.author, `/commerce/invoice-drafts/${saved.id}?revision=1`),
+    Drafts.InvoiceDraftView,
+  );
+
   expect(retained.record.digest).toBe(saved.digest);
-  await writeFile(join(environment().artifacts, "invoice-template-article-admission.json"),
-    JSON.stringify({ template, saved, replaced, staleNewDraftRefused: true, archivedNewDraftRefused: true }, null, 2));
+  await writeFile(
+    join(environment().artifacts, "invoice-template-article-admission.json"),
+    JSON.stringify(
+      { template, saved, replaced, staleNewDraftRefused: true, archivedNewDraftRefused: true },
+      null,
+      2,
+    ),
+  );
 });

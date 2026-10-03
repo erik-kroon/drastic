@@ -17,8 +17,8 @@ test("DF-10 pre-routing body refusals carry stable codes without reflecting inpu
       { method: "POST", headers: { "content-type": "application/json" }, body: input.body },
     );
 
-    expect(response.status).toBe(input.status);
     const body = await response.json();
+    expect(response.status, JSON.stringify(body)).toBe(input.status);
     expect(body).toMatchObject({ code: input.code, recovery: "permanent" });
     expect(JSON.stringify(body)).not.toContain("private-boundary-input");
     expect(response.headers.get("x-request-id")).toMatch(/^[0-9a-f-]{36}$/);

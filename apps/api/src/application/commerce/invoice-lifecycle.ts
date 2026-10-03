@@ -539,7 +539,13 @@ export const reviseInvoiceDraftInTransaction = Effect.fn("commerce.drafts.revise
 
     const calculation =
       "commercial" in input
-        ? yield* calculateCommercialContent(transaction, command.scope, book, input.commercial, previous)
+        ? yield* calculateCommercialContent(
+            transaction,
+            command.scope,
+            book,
+            input.commercial,
+            previous,
+          )
         : yield* calculateDraft(transaction, command.scope, book, input.content);
 
     const content = calculation.content;
