@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Link } from "@open-erp/ui/components/link";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
@@ -54,10 +55,11 @@ const styles = stylex.create({
 
 export function DocumentRegister(props: {
   title: string;
-  headings: { document: string; type: string; source: string; date: string };
+  headings: { document: string; facts?: string; type: string; source: string; date: string };
   rows: readonly {
     id: string;
     filename: string;
+    facts?: ReactNode;
     type: string;
     source: string;
     date: string;
@@ -73,6 +75,11 @@ export function DocumentRegister(props: {
             <th scope="col" {...stylex.props(styles.cell, styles.heading, styles.first)}>
               {props.headings.document}
             </th>
+            {props.headings.facts ? (
+              <th scope="col" {...stylex.props(styles.cell, styles.heading)}>
+                {props.headings.facts}
+              </th>
+            ) : null}
             <th scope="col" {...stylex.props(styles.cell, styles.heading, styles.type)}>
               {props.headings.type}
             </th>
@@ -97,6 +104,7 @@ export function DocumentRegister(props: {
                   {row.filename}
                 </Link>
               </td>
+              {props.headings.facts ? <td {...stylex.props(styles.cell)}>{row.facts}</td> : null}
               <td {...stylex.props(styles.cell, styles.type)}>{row.type}</td>
               <td {...stylex.props(styles.cell, styles.source)}>{row.source}</td>
               <td {...stylex.props(styles.cell, styles.date)}>{row.date}</td>

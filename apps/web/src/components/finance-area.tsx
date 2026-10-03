@@ -233,8 +233,6 @@ function OwnedFinanceArea(props: {
   archive?: typeof DocumentQuery.Type;
   bankSearch?: typeof BankOwnerQuery.Type;
   returnTo?: string;
-  // The open supplier occurrence. It is a separate address from `record`, which the
-  // supplier draft panel owns, so opening a draft does not displace the original.
   occurrence?: string;
 }) {
   const { area, view, record, account } = props;
@@ -246,22 +244,21 @@ function OwnedFinanceArea(props: {
   const selected = tabs.find((tab) => tab.key === view)?.key ?? tabs[0]?.key;
   const recordId = record ?? "";
   const base = `${workspacePath(book)}/${area}`;
-  // The work queue this area was opened from. It rides along with every record
-  // and tab so the queue is still reachable after browsing inside the area.
   const work = workReturnAreas.has(area) ? decodeWorkReturn(props.work) : undefined;
 
   const onPrepared = (id: string) => {
     void navigate({ to: reviewPath(book, id), search: { ...work, returnTo: props.returnTo } });
   };
 
-  // One place writes this area's search, so a selection cannot be dropped by a
-  // navigation that forgot it. An empty id clears its own selection only.
   const navigateArea = (search: { record?: string; occurrence?: string }) => {
     void navigate({
       to: base,
       search: {
         ...props.archive,
         ...props.bankSearch,
+        draftRevision: undefined,
+        expenseRevision: undefined,
+        expenseReviewId: undefined,
         view: selected,
         work: props.work,
         returnTo: props.returnTo,

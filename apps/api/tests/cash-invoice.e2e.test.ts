@@ -4,6 +4,7 @@ import { join } from "node:path";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Profiles from "@open-erp/contracts/company-profiles";
 import * as Accounting from "@open-erp/contracts/accounting";
+import * as Source from "@open-erp/contracts/source-intake";
 import { expect, test } from "vitest";
 import {
   database,
@@ -158,8 +159,39 @@ async function prepared(method: "cash" | "accrual" = "cash", reviewed = true) {
 
   const methodId = await qualify(book, source, method, reviewed);
 
+  const occurrence = await post(
+    book,
+    "/source-occurrences",
+    {
+      sourceSystem: "cash_invoice_fixture",
+      sourceAccountId: "synthetic_supplier",
+      occurrenceKey: key(),
+      sourceRevision: "1",
+      filename: "cash-invoice.csv",
+      mediaType: "text/csv",
+      contentBase64: Buffer.from("commercial debt,125000 SEK minor units\n").toString("base64"),
+    },
+    Source.SourceOccurrence,
+  );
+
+  const originalReference = await post(
+    book,
+    "/evidence",
+    {
+      title: "Cash invoice original reference",
+      mediaType: "application/json",
+      origin: "Synthetic retained original",
+      content: JSON.stringify({
+        kind: "supplier_invoice_source_v1",
+        source: { occurrenceId: occurrence.id, sha256: occurrence.sha256 },
+      }),
+    },
+    Accounting.Evidence,
+  );
+
   const draft = await createDraft(book, {
     ...content,
+    sourceEvidenceId: originalReference.id,
     sourceTotalMinor: "125000",
     lines: [
       {
@@ -199,7 +231,7 @@ async function prepared(method: "cash" | "accrual" = "cash", reviewed = true) {
     acknowledgeSyntheticOnly: true,
   };
 
-  return { book, source, draft, input, methodId };
+  return { book, source: originalReference, draft, input, methodId, occurrence };
 }
 
 async function financialCounts(book: BookFixture) {
@@ -248,7 +280,7 @@ test("cash line admission delegates to retained commercial-only invoice ownershi
 }, 240000);
 
 test("qualified retained cash invoice is commercial-only, replayable and sealed against duplicate adoption", async () => {
-  const { book, input, draft, methodId } = await prepared();
+  const { book, input, draft, methodId, occurrence } = await prepared();
   const commandKey = key();
 
   const send = (body = input) =>
@@ -260,6 +292,27 @@ test("qualified retained cash invoice is commercial-only, replayable and sealed 
 
   const invoice = await decoded(await send(), Commerce.Invoice);
   expect(invoice.recognition).toBeNull();
+
+  const library = await decoded(
+    await request(book, `/source-archive?invoiceId=${invoice.id}`),
+    Source.ArchiveSearch,
+  );
+
+  expect(library.items.map((row) => row.id)).toEqual([occurrence.id]);
+  expect(library.items[0]?.facts).toEqual([
+    expect.objectContaining({
+      ownerId: draft.id,
+      revision: draft.revision,
+      digest: draft.digest,
+      currentSource: true,
+      basis: "registered_invoice",
+      grossMinor: "125000",
+      currency: "SEK",
+      currencyScale: 2,
+      invoiceId: invoice.id,
+      voucherId: null,
+    }),
+  ]);
   expect(invoice.amountMinor).toBe("125000");
   expect(invoice.outstandingMinor).toBe("125000");
   expect(invoice.recordedAllocatedMinor).toBe("0");

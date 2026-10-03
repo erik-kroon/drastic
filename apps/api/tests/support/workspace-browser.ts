@@ -115,6 +115,13 @@ export async function withWorkspaceBrowser(
       await exited;
     }
 
-    await worker.close();
+    try {
+      await worker.close();
+    } finally {
+      await writeFile(
+        join(environment().artifacts, `${artifact}-worker.json`),
+        JSON.stringify(worker.getLogs(), null, 2),
+      );
+    }
   }
 }

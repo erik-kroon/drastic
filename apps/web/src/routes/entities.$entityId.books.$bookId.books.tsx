@@ -23,6 +23,7 @@ import { PostingDraft } from "@/components/posting-recovery/draft";
 import { PostedRecords, PostedRecord } from "@/components/posted-records";
 import { ChartOfAccounts } from "@/components/account-register";
 import { frontendCopy } from "@/lib/frontend-copy";
+import { accountingCopy } from "@/lib/accounting-copy";
 
 const search = Schema.Struct({
   view: Schema.optional(Schema.Literals(["journal", "vouchers", "accounts"])),
@@ -54,6 +55,14 @@ function Books() {
   const copy = frontendCopy(locale);
   const work = decodeWorkReturn(query.work);
   const owner = decodeOwnerReturn(query.returnTo);
+
+  const ownerReturnLabels = {
+    documents: locale === "sv" ? "Tillbaka till dokument" : "Back to documents",
+    sales: accountingCopy(locale).workspace_back,
+    bank: accountingCopy(locale).workspace_back,
+    work: accountingCopy(locale).workspace_back,
+  };
+
   const base = `${workspacePath(book)}/books`;
 
   const onPrepared = (id: string) => {
@@ -122,7 +131,9 @@ function Books() {
                   ? locale === "sv"
                     ? "Tillbaka till rapporten"
                     : "Back to report"
-                  : copy.returnVouchers
+                  : owner
+                    ? ownerReturnLabels[owner.owner]
+                    : copy.returnVouchers
             }
             onClose={() =>
               void navigate(

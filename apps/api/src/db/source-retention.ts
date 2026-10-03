@@ -50,14 +50,6 @@ export type OccurrenceWrite = {
   readonly body: JsonObject;
 };
 
-export type ArchiveFilters = {
-  readonly cursor: string | null;
-  readonly sourceSystem: string | null;
-  readonly filename: string | null;
-  readonly retainedFrom: string | null;
-  readonly retainedTo: string | null;
-};
-
 export const retentionTables = [
   "intake_occurrences",
   "intake_contents",
@@ -204,27 +196,6 @@ export function readOccurrenceStorage(transaction: Transaction, bookId: string, 
       ) latest on true
       left join openerp.intake_admissions a on a.book_id = o.book_id and a.occurrence_id = o.id
       where o.book_id = ${bookId} and o.id = ${id}
-      for share of o
-    `,
-    "objects",
-  );
-}
-
-export function listArchive(transaction: Transaction, bookId: string, filters: ArchiveFilters) {
-  return transaction.execute<{ readonly id: string; readonly body: JsonObject }>(
-    sql`
-      select o.id, o.body
-      from openerp.intake_occurrences o
-      where o.book_id = ${bookId}
-        and o.id > coalesce(${filters.cursor}::text, '')
-        and (${filters.sourceSystem}::text is null or o.source_system = ${filters.sourceSystem})
-        and (${filters.filename}::text is null or o.body->>'filename' = ${filters.filename})
-        and (${filters.retainedFrom}::text is null
-          or left(o.body->>'retainedAt', 10) >= ${filters.retainedFrom})
-        and (${filters.retainedTo}::text is null
-          or left(o.body->>'retainedAt', 10) <= ${filters.retainedTo})
-      order by o.id
-      limit 11
       for share of o
     `,
     "objects",

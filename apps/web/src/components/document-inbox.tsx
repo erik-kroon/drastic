@@ -20,6 +20,7 @@ import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
 import { defaultStringifySearch, useSearch } from "@tanstack/react-router";
 import { encodeOwnerReturn, useWorkReturn, workReturnHref } from "@/lib/work-return";
+import { decimalToMinor, minorToDecimal, formatMinorAmount } from "@/lib/workspace-api";
 import { downloadIntake } from "@/components/source-intake/download";
 
 export function DocumentInbox(props: {
@@ -36,6 +37,16 @@ export function DocumentInbox(props: {
   const labels = sv ? swedish : english;
 
   const filters = {
+    q: search.q,
+    supplierId: search.supplierId,
+    documentFrom: search.documentFrom,
+    documentTo: search.documentTo,
+    currency: search.currency,
+    currencyScale: search.currencyScale,
+    amountMinor: search.amountMinor,
+    invoiceId: search.invoiceId,
+    voucherId: search.voucherId,
+    occurrenceId: search.occurrenceId,
     filename: search.filename,
     sourceSystem: search.sourceSystem,
     retainedFrom: search.retainedFrom,
@@ -100,11 +111,8 @@ export function DocumentInbox(props: {
 
   const items = sources.data?.items ?? [];
 
-  const hasFilters = !!(
-    filters.filename ||
-    filters.sourceSystem ||
-    filters.retainedFrom ||
-    filters.retainedTo
+  const hasFilters = Object.entries(filters).some(
+    ([name, value]) => name !== "cursor" && value !== undefined,
   );
 
   const actions = (
@@ -142,19 +150,9 @@ export function DocumentInbox(props: {
 
         const intent = submitter instanceof HTMLButtonElement ? submitter.value : null;
 
-        const decoded = Schema.decodeUnknownOption(Sources.ArchiveFilters)({
-          filename: fields.get("filename") || undefined,
-          sourceSystem: fields.get("sourceSystem") || undefined,
-          retainedFrom: fields.get("retainedFrom") || undefined,
-          retainedTo: fields.get("retainedTo") || undefined,
-        });
+        const decoded = readArchiveForm(fields, filters.occurrenceId);
 
-        if (
-          Option.isNone(decoded) ||
-          (decoded.value.retainedFrom &&
-            decoded.value.retainedTo &&
-            decoded.value.retainedFrom > decoded.value.retainedTo)
-        ) {
+        if (Option.isNone(decoded)) {
           setFilterError(labels.invalidArchiveFilters);
           setFiltersOpen(true);
 
@@ -162,12 +160,17 @@ export function DocumentInbox(props: {
         }
 
         setFilterError(null);
+        const criteria = { ...filters, cursor: undefined };
 
         const changed =
-          decoded.value.filename !== filters.filename ||
-          decoded.value.sourceSystem !== filters.sourceSystem ||
-          decoded.value.retainedFrom !== filters.retainedFrom ||
-          decoded.value.retainedTo !== filters.retainedTo;
+          Object.entries(decoded.value).some(
+            ([name, value]) =>
+              Object.entries(criteria).find(([key]) => key === name)?.[1] !== value,
+          ) ||
+          Object.entries(criteria).some(
+            ([name, value]) =>
+              Object.entries(decoded.value).find(([key]) => key === name)?.[1] !== value,
+          );
 
         const applied = { ...decoded.value, cursor: changed ? undefined : filters.cursor };
 
@@ -178,6 +181,81 @@ export function DocumentInbox(props: {
       }}
     >
       <Box key={JSON.stringify(filters)} display="flex" flexWrap="wrap" alignItems="end" gap="md">
+        <InputField
+          name="q"
+          label={labels.filenameOrSupplier}
+          defaultValue={filters.q}
+          maxLength={200}
+          autoComplete="off"
+          disabled={archiveExport.isPending}
+        />
+        <InputField
+          name="supplierId"
+          label={labels.supplierReference}
+          defaultValue={filters.supplierId}
+          maxLength={128}
+          autoComplete="off"
+          disabled={archiveExport.isPending}
+        />
+        <InputField
+          name="documentFrom"
+          type="date"
+          label={labels.documentFrom}
+          defaultValue={filters.documentFrom}
+          disabled={archiveExport.isPending}
+        />
+        <InputField
+          name="documentTo"
+          type="date"
+          label={labels.documentTo}
+          defaultValue={filters.documentTo}
+          disabled={archiveExport.isPending}
+        />
+        <InputField
+          name="amount"
+          label={labels.exactGrossAmount}
+          inputMode="decimal"
+          defaultValue={
+            filters.amountMinor && filters.currencyScale !== undefined
+              ? minorToDecimal(filters.amountMinor, Number(filters.currencyScale))
+              : ""
+          }
+          autoComplete="off"
+          disabled={archiveExport.isPending}
+        />
+        <InputField
+          name="currency"
+          label={labels.currency}
+          defaultValue={filters.currency}
+          maxLength={3}
+          autoComplete="off"
+          disabled={archiveExport.isPending}
+        />
+        <InputField
+          name="currencyScale"
+          label={labels.currencyDecimals}
+          defaultValue={filters.currencyScale}
+          inputMode="numeric"
+          maxLength={1}
+          autoComplete="off"
+          disabled={archiveExport.isPending}
+        />
+        <InputField
+          name="invoiceId"
+          label={labels.invoiceReference}
+          defaultValue={filters.invoiceId}
+          maxLength={128}
+          autoComplete="off"
+          disabled={archiveExport.isPending}
+        />
+        <InputField
+          name="voucherId"
+          label={labels.voucherReference}
+          defaultValue={filters.voucherId}
+          maxLength={128}
+          autoComplete="off"
+          disabled={archiveExport.isPending}
+        />
         <InputField
           name="filename"
           label={labels.exactFilename}
@@ -220,6 +298,16 @@ export function DocumentInbox(props: {
             disabled={archiveExport.isPending}
             onClick={() => {
               onFilters({
+                q: undefined,
+                supplierId: undefined,
+                documentFrom: undefined,
+                documentTo: undefined,
+                currency: undefined,
+                currencyScale: undefined,
+                amountMinor: undefined,
+                invoiceId: undefined,
+                voucherId: undefined,
+                occurrenceId: undefined,
                 filename: undefined,
                 sourceSystem: undefined,
                 retainedFrom: undefined,
@@ -246,7 +334,7 @@ export function DocumentInbox(props: {
             <Button
               variant="ghost"
               onClick={() => {
-                pendingFocus.current = opener.current;
+                pendingFocus.current = opener.current ?? recordId;
                 onOpen("");
               }}
             >
@@ -312,6 +400,7 @@ export function DocumentInbox(props: {
             title={labels.documents}
             headings={{
               document: labels.document,
+              facts: labels.savedFacts,
               type: labels.fileType,
               source: labels.sourceSystem,
               date: labels.uploaded,
@@ -322,6 +411,7 @@ export function DocumentInbox(props: {
             rows={items.map((occurrence) => ({
               id: occurrence.id,
               filename: occurrence.filename,
+              facts: <DocumentFactSummary row={occurrence} />,
               href: href(occurrence.id),
               type: occurrence.mediaType.split("/").at(-1)?.toUpperCase() ?? occurrence.mediaType,
               source: occurrence.sourceSystem,
@@ -351,6 +441,7 @@ export function DocumentInbox(props: {
         </Box>
       ) : null}
       <Box padding={standalone ? "lg" : "none"}>
+        <PageCaption>{labels.archiveSearchHelp}</PageCaption>
         <PageCaption>{labels.archiveExportHelp}</PageCaption>
         <PageCaption>{labels.uploadingRetainsTheOriginalIt}</PageCaption>
       </Box>
@@ -586,28 +677,31 @@ function DocumentDetail({ id }: { id: string }) {
     retry: false,
   });
 
-  const purchases = useQuery({
-    queryKey: [...bookKey(book), "source-purchase-links", id],
+  const metadata = useQuery({
+    queryKey: [...bookKey(book), "document-library-metadata", id],
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
-        `${bookPath(book)}/source-occurrences/${encodeURIComponent(id)}/purchase-links`,
-        Sources.SourcePurchaseLinks,
+        archivePath(`${bookPath(book)}/source-archive`, { occurrenceId: id }),
+        Sources.ArchiveSearch,
         { signal },
       );
 
       if (
-        result.occurrenceId !== id ||
-        result.scope.bookId !== book.id ||
-        result.scope.entityId !== book.entityId
+        result.items.some(
+          (item) =>
+            item.id !== id ||
+            item.scope.bookId !== book.id ||
+            item.scope.entityId !== book.entityId,
+        )
       )
-        throw new Error("Purchase source scope mismatch");
+        throw new Error("Document metadata scope mismatch");
 
-      return result;
+      return result.items[0] ?? null;
     },
     retry: false,
   });
 
-  const source = document.isError ? undefined : document.data?.occurrence;
+  const source = metadata.data ?? document.data?.occurrence;
 
   return (
     <Box display="grid" gap="xl">
@@ -624,6 +718,25 @@ function DocumentDetail({ id }: { id: string }) {
           </Button>
         </Box>
       ) : null}
+      <AccountingStatus locale={locale} pending={metadata.isPending} error={metadata.error} />
+      {metadata.isError ? (
+        <Box>
+          <Button
+            variant="outline"
+            disabled={metadata.isFetching}
+            onClick={() => void metadata.refetch()}
+          >
+            {labels.retryArchiveSearch}
+          </Button>
+        </Box>
+      ) : null}
+      {metadata.isSuccess && !metadata.data ? (
+        <PageCaption>
+          {sv
+            ? "Originalet finns inte i detta arkiv."
+            : "The original is absent from this archive."}
+        </PageCaption>
+      ) : null}
       {source ? (
         <>
           <RecordHeading
@@ -632,6 +745,7 @@ function DocumentDetail({ id }: { id: string }) {
             action={
               <Button
                 variant="outline"
+                disabled={!document.data}
                 onClick={() => {
                   if (document.data)
                     downloadIntake(
@@ -672,7 +786,7 @@ function DocumentDetail({ id }: { id: string }) {
                       {sv ? "Förbered leverantörsfaktura" : "Prepare supplier invoice"}
                     </PageAction>
                   ) : null}
-                  {book.role === "operator" && !document.data?.admission ? (
+                  {book.role === "operator" && document.data && !document.data.admission ? (
                     <PageAction
                       href={`${workReturnHref(`${workspacePath(book)}/purchases`, "expenses", work)}&returnTo=${encodeURIComponent(returnTo)}&record=${encodeURIComponent(`new:${source.id}`)}`}
                     >
@@ -680,66 +794,8 @@ function DocumentDetail({ id }: { id: string }) {
                     </PageAction>
                   ) : null}
                 </RecordSection>
-                <RecordSection title={sv ? "Arbete från originalet" : "Work from this original"}>
-                  <AccountingStatus
-                    locale={locale}
-                    pending={purchases.isPending}
-                    error={purchases.error}
-                  />
-                  {purchases.isError ? (
-                    <Button variant="outline" onClick={() => void purchases.refetch()}>
-                      {sv ? "Försök igen" : "Retry"}
-                    </Button>
-                  ) : null}
-                  {(!purchases.isError ? purchases.data?.supplierDrafts : undefined)?.map(
-                    (draft) => (
-                      <PageAction
-                        key={draft.id}
-                        href={`${workReturnHref(`${workspacePath(book)}/purchases`, "supplier-drafts", work)}&returnTo=${encodeURIComponent(returnTo)}&record=${encodeURIComponent(draft.id)}`}
-                      >
-                        {sv ? "Fakturautkast" : "Invoice draft"}: {draft.title} ·{" "}
-                        {draft.currentSource
-                          ? sv
-                            ? "Aktuellt underlag"
-                            : "Current source"
-                          : sv
-                            ? "Tidigare underlag"
-                            : "Earlier source"}
-                      </PageAction>
-                    ),
-                  )}
-                  {(!purchases.isError ? purchases.data?.expenses : undefined)?.map((expense) => (
-                    <PageAction
-                      key={expense.id}
-                      href={`${workReturnHref(`${workspacePath(book)}/purchases`, "expenses", work)}&returnTo=${encodeURIComponent(returnTo)}&record=${encodeURIComponent(expense.id)}`}
-                    >
-                      {sv ? "Utgift" : "Expense"}: {expense.description} ·{" "}
-                      {!expense.currentSource
-                        ? sv
-                          ? "Tidigare underlag"
-                          : "Earlier source"
-                        : expense.withdrawn
-                          ? sv
-                            ? "Återtagen"
-                            : "Withdrawn"
-                          : expense.reviewCurrent
-                            ? sv
-                              ? "Granskad"
-                              : "Reviewed"
-                            : sv
-                              ? "Att granska"
-                              : "Needs review"}
-                    </PageAction>
-                  ))}
-                  {purchases.isSuccess &&
-                  !purchases.data.supplierDrafts.length &&
-                  !purchases.data.expenses.length ? (
-                    <PageCaption>
-                      {sv
-                        ? "Inga sparade inköpsuppgifter är kopplade till originalet."
-                        : "No saved purchase work is linked to this original."}
-                    </PageCaption>
-                  ) : null}
+                <RecordSection title={labels.savedFacts}>
+                  {metadata.data ? <DocumentFacts row={metadata.data} returnTo={returnTo} /> : null}
                 </RecordSection>
               </Box>
             }
@@ -762,18 +818,238 @@ function DocumentDetail({ id }: { id: string }) {
 function archivePath(base: string, filters: typeof Sources.ArchiveFilters.Type) {
   const query = new URLSearchParams();
 
-  if (filters.filename) query.set("filename", filters.filename);
+  for (const [name, value] of Object.entries(filters)) {
+    if (value !== undefined) query.set(name, value);
+  }
 
-  if (filters.sourceSystem) query.set("sourceSystem", filters.sourceSystem);
-
-  if (filters.retainedFrom) query.set("retainedFrom", filters.retainedFrom);
-
-  if (filters.retainedTo) query.set("retainedTo", filters.retainedTo);
-
-  if (filters.cursor) query.set("cursor", filters.cursor);
   const search = query.toString();
 
   return search ? `${base}?${search}` : base;
+}
+
+function readArchiveForm(fields: FormData, occurrenceId: string | undefined) {
+  const text = (name: string) => {
+    const value = fields.get(name);
+
+    return typeof value === "string" ? value : "";
+  };
+
+  const scaleText = text("currencyScale");
+
+  const scale = /^[0-6]$/.test(scaleText) ? Number(scaleText) : null;
+
+  const amount = text("amount").trim().replace(",", ".");
+
+  const decoded = Schema.decodeUnknownOption(Sources.ArchiveFilters)({
+    occurrenceId,
+    ...Object.fromEntries(
+      [
+        "q",
+        "supplierId",
+        "documentFrom",
+        "documentTo",
+        "invoiceId",
+        "voucherId",
+        "filename",
+        "sourceSystem",
+        "retainedFrom",
+        "retainedTo",
+      ].map((name) => [name, text(name) || undefined]),
+    ),
+    currency: text("currency").trim().toUpperCase() || undefined,
+    currencyScale: scaleText || undefined,
+    amountMinor: amount ? (scale === null ? null : decimalToMinor(amount, scale)) : undefined,
+  });
+
+  if (Option.isNone(decoded)) return decoded;
+  const filters = decoded.value;
+
+  if (
+    (filters.amountMinor !== undefined &&
+      (filters.currency === undefined || filters.currencyScale === undefined)) ||
+    (filters.currencyScale !== undefined && filters.currency === undefined) ||
+    (filters.documentFrom !== undefined &&
+      filters.documentTo !== undefined &&
+      filters.documentFrom > filters.documentTo) ||
+    (filters.retainedFrom !== undefined &&
+      filters.retainedTo !== undefined &&
+      filters.retainedFrom > filters.retainedTo)
+  )
+    return Option.none();
+
+  return decoded;
+}
+
+function documentAmount(fact: typeof Sources.DocumentFact.Type, locale: "en" | "sv") {
+  if (fact.grossMinor === null) return locale === "sv" ? "Okänt belopp" : "Unknown amount";
+
+  if (fact.currency === null || fact.currencyScale === null)
+    return `${fact.grossMinor} · ${locale === "sv" ? "valutaenhet okänd" : "currency units unknown"}`;
+
+  return `${formatMinorAmount(fact.grossMinor, fact.currencyScale, locale)} ${fact.currency}`;
+}
+
+function factBasis(fact: typeof Sources.DocumentFact.Type, sv: boolean) {
+  switch (fact.basis) {
+    case "entered_draft":
+      return sv ? "Angivet i utkast" : "Entered draft";
+    case "registered_invoice":
+      return sv ? "Registrerad faktura" : "Registered invoice";
+    case "entered_expense":
+      return sv ? "Angiven utgift" : "Entered expense";
+    case "reviewed_expense":
+      return sv ? "Granskad utgift" : "Reviewed expense";
+  }
+}
+
+function DocumentFactSummary({ row }: { row: typeof Sources.DocumentSearchRow.Type }) {
+  const { locale } = useBookWorkspace();
+  const sv = locale === "sv";
+  const current = row.facts.filter((fact) => fact.currentSource);
+
+  return (
+    <Box display="grid" gap="sm">
+      {current.length > 1 ? (
+        <PageCaption>{sv ? "Flera aktuella uppgifter" : "Multiple current records"}</PageCaption>
+      ) : null}
+      {current.map((fact) => (
+        <Box key={`${fact.ownerKind}:${fact.ownerId}:${fact.revision}:${fact.basis}`}>
+          <Text>
+            {fact.supplierName ?? (sv ? "Leverantör okänd" : "Supplier unknown")} ·{" "}
+            {documentAmount(fact, locale)}
+          </Text>
+          <PageCaption>
+            {factBasis(fact, sv)} ·{" "}
+            {fact.documentDate ?? (sv ? "Dokumentdatum okänt" : "Document date unknown")}
+          </PageCaption>
+          {fact.withdrawn ? (
+            <PageCaption>{sv ? "Återtaget underlag" : "Withdrawn source"}</PageCaption>
+          ) : null}
+        </Box>
+      ))}
+      {!current.length ? (
+        <PageCaption>
+          {sv ? "Inga aktuella sparade uppgifter" : "No current saved facts"}
+        </PageCaption>
+      ) : null}
+      {row.facts.some((fact) => !fact.currentSource) ? (
+        <PageCaption>
+          {sv ? "Tidigare versioner finns i dokumentet" : "Earlier revisions in document details"}
+        </PageCaption>
+      ) : null}
+      {row.suggestions.length ? (
+        <PageCaption>
+          {sv ? "Ogranskade tolkningsförslag" : "Unreviewed extraction suggestions"}
+        </PageCaption>
+      ) : null}
+    </Box>
+  );
+}
+
+function DocumentFacts({
+  row,
+  returnTo,
+}: {
+  row: typeof Sources.DocumentSearchRow.Type;
+  returnTo: string;
+}) {
+  const { book, locale } = useBookWorkspace();
+  const work = useWorkReturn();
+  const sv = locale === "sv";
+
+  const purchase = (view: string, record: string) =>
+    `${workReturnHref(`${workspacePath(book)}/purchases`, view, work)}&returnTo=${encodeURIComponent(returnTo)}&record=${encodeURIComponent(record)}`;
+
+  return (
+    <Box display="grid" gap="lg">
+      {!row.facts.length ? (
+        <PageCaption>
+          {sv
+            ? "Inga sparade uppgifter är kopplade till originalet."
+            : "No saved facts are linked to this original."}
+        </PageCaption>
+      ) : null}
+      {row.facts.map((fact) => (
+        <Box
+          display="grid"
+          gap="sm"
+          key={`${fact.ownerKind}:${fact.ownerId}:${fact.revision}:${fact.basis}`}
+        >
+          <Text>
+            {fact.supplierName ?? (sv ? "Leverantör okänd" : "Supplier unknown")} ·{" "}
+            {documentAmount(fact, locale)}
+          </Text>
+          <Text>
+            {factBasis(fact, sv)} ·{" "}
+            {fact.currentSource
+              ? sv
+                ? "Aktuellt underlag"
+                : "Current source"
+              : sv
+                ? "Tidigare underlag"
+                : "Earlier source"}{" "}
+            · {fact.documentDate ?? (sv ? "Dokumentdatum okänt" : "Document date unknown")}
+          </Text>
+          <PageAction
+            href={`${purchase(fact.ownerKind === "supplier_draft" ? "supplier-drafts" : "expenses", fact.ownerId)}&${defaultStringifySearch(fact.ownerKind === "supplier_draft" ? { draftRevision: fact.revision } : { expenseRevision: fact.revision }).slice(1)}`}
+          >
+            {fact.ownerKind === "supplier_draft"
+              ? sv
+                ? "Fakturautkast version"
+                : "Supplier draft version"
+              : sv
+                ? "Utgiftsunderlag version"
+                : "Expense source version"}{" "}
+            {fact.revision}
+          </PageAction>
+          {fact.reviewId ? (
+            <Box display="grid" gap="sm">
+              <PageAction
+                href={`${purchase("expenses", fact.ownerId)}&expenseReviewId=${encodeURIComponent(fact.reviewId)}`}
+              >
+                {sv ? "Utgiftsgranskning version" : "Expense review version"} {fact.reviewRevision}
+              </PageAction>
+              <PageCaption>
+                {sv ? "Granskning" : "Review"} {fact.reviewedAt} · {fact.reviewDigest}
+              </PageCaption>
+            </Box>
+          ) : null}
+          {fact.invoiceId ? (
+            <PageAction href={purchase("invoices", fact.invoiceId)}>
+              {sv ? "Faktura" : "Invoice"} {fact.invoiceId}
+            </PageAction>
+          ) : null}
+          {fact.voucherId ? (
+            <PageAction
+              href={`${workReturnHref(`${workspacePath(book)}/books`, "vouchers", work)}&returnTo=${encodeURIComponent(returnTo)}&record=${encodeURIComponent(fact.voucherId)}`}
+            >
+              {sv ? "Verifikat" : "Voucher"} {fact.voucherId}
+            </PageAction>
+          ) : null}
+          {fact.withdrawn ? (
+            <PageCaption>{sv ? "Återtaget underlag" : "Withdrawn source"}</PageCaption>
+          ) : null}
+          <PageCaption>
+            {sv ? "Sparad version" : "Retained revision"} {fact.revision} · {fact.recordedAt} ·{" "}
+            {fact.digest}
+          </PageCaption>
+        </Box>
+      ))}
+      {row.suggestions.map((suggestion) => (
+        <Box key={suggestion.attemptId} display="grid" gap="sm">
+          <Text>
+            {sv ? "Ogranskade tolkningsförslag" : "Unreviewed extraction suggestions"} ·{" "}
+            {suggestion.engineRelease} · {suggestion.createdAt}
+          </Text>
+          {suggestion.fields.map((field, index) => (
+            <PageCaption key={`${field.fieldKey}:${field.lineOrdinal}:${index}`}>
+              {field.fieldKey}: {field.proposedValue ?? (sv ? "Okänt" : "Unknown")}
+            </PageCaption>
+          ))}
+        </Box>
+      ))}
+    </Box>
+  );
 }
 
 const english = {
@@ -786,13 +1062,26 @@ const english = {
   exportingArchive: "Exporting page",
   archiveExportHelp:
     "Exports up to 10 matching originals with a JSON manifest. Additional pages stay separate.",
+  filenameOrSupplier: "Filename or supplier",
+  supplierReference: "Supplier reference",
+  documentFrom: "Document from",
+  documentTo: "Document to",
+  exactGrossAmount: "Exact gross amount",
+  currency: "Currency",
+  currencyDecimals: "Currency decimals",
+  invoiceReference: "Invoice reference",
+  voucherReference: "Voucher reference",
+  savedFacts: "Saved facts",
+  archiveSearchHelp:
+    "Search filenames and saved supplier or expense facts. Exact amounts require currency and its decimal places. Document dates and retained dates are separate. OCR body text is outside this search.",
   exactFilename: "Exact filename",
   sourceSystem: "Source system",
   retainedFrom: "Retained from",
   retainedTo: "Retained to",
   applyArchiveFilters: "Search archive",
   clearArchiveFilters: "Clear filters",
-  invalidArchiveFilters: "Enter valid dates and a retained-from date no later than retained-to.",
+  invalidArchiveFilters:
+    "Check the dates, references and exact amount. Amount searches need a currency and 0 to 6 decimal places.",
   retryArchiveSearch: "Retry archive search",
   document: "Document",
   uploaded: "Uploaded",
@@ -813,7 +1102,8 @@ const english = {
   originalDocument: "Original document",
   downloadOriginal: "Download original",
   documentDetails: "Document details",
-  theOriginalIsRetainedNo: "The original is retained. No posting was created by this upload.",
+  theOriginalIsRetainedNo:
+    "This is the original retention receipt. Uploading did not create a posting.",
 };
 
 const swedish: typeof english = {
@@ -826,6 +1116,18 @@ const swedish: typeof english = {
   exportingArchive: "Exporterar sidan",
   archiveExportHelp:
     "Exporterar upp till 10 matchande original med en JSON-manifest. Ytterligare sidor exporteras separat.",
+  filenameOrSupplier: "Filnamn eller leverantör",
+  supplierReference: "Leverantörsreferens",
+  documentFrom: "Dokument från",
+  documentTo: "Dokument till",
+  exactGrossAmount: "Exakt bruttobelopp",
+  currency: "Valuta",
+  currencyDecimals: "Valutadecimaler",
+  invoiceReference: "Fakturareferens",
+  voucherReference: "Verifikationsreferens",
+  savedFacts: "Sparade uppgifter",
+  archiveSearchHelp:
+    "Sök filnamn och sparade leverantörs- eller utgiftsuppgifter. Exakta belopp behöver valuta och antal decimaler. Dokumentdatum och sparat datum är separata. OCR-text ingår inte i sökningen.",
   exactFilename: "Exakt filnamn",
   sourceSystem: "Källsystem",
   retainedFrom: "Sparad från",
@@ -833,7 +1135,7 @@ const swedish: typeof english = {
   applyArchiveFilters: "Sök i arkivet",
   clearArchiveFilters: "Rensa filter",
   invalidArchiveFilters:
-    "Ange giltiga datum och ett från-datum som är före eller lika med till-datumet.",
+    "Kontrollera datum, referenser och exakt belopp. Beloppssökning behöver valuta och 0 till 6 decimaler.",
   retryArchiveSearch: "Försök arkivsökningen igen",
   document: "Dokument",
   uploaded: "Uppladdat",
@@ -854,5 +1156,6 @@ const swedish: typeof english = {
   originalDocument: "Sparat original",
   downloadOriginal: "Ladda ned original",
   documentDetails: "Dokumentuppgifter",
-  theOriginalIsRetainedNo: "Originalet är sparat. Ingen bokföring har skapats från uppladdningen.",
+  theOriginalIsRetainedNo:
+    "Detta är kvittot för originalet. Uppladdningen skapade ingen bokföring.",
 };

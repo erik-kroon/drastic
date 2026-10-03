@@ -14,6 +14,7 @@ import { lockBookForShare, lockBookForUpdate } from "../db/posting";
 import * as Retention from "../db/source-retention";
 import * as SupplierInboxDb from "../db/purchases/inbox";
 import { readBook } from "./posting";
+import * as Archive from "../db/source-archive";
 import type { Transaction } from "../db/transaction";
 import {
   decode,
@@ -684,26 +685,140 @@ export const searchSourceArchive = Effect.fn("Source.searchArchive")(function* (
   });
 });
 
+const ArchiveTraversal = Schema.Struct({
+  context: Schema.String.check(Schema.isPattern(/^[a-f0-9]{64}$/)),
+  cutoff: Schema.String.check(Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3,6}Z$/)),
+  after: Intake.SourceOccurrence.fields.id,
+});
+
+function normalizedArchiveFilters(filters: Filters) {
+  return {
+    occurrenceId: filters.occurrenceId ?? null,
+    sourceSystem: filters.sourceSystem ?? null,
+    filename: filters.filename ?? null,
+    retainedFrom: filters.retainedFrom ?? null,
+    retainedTo: filters.retainedTo ?? null,
+    q: filters.q?.trim() || null,
+    supplierId: filters.supplierId ?? null,
+    documentFrom: filters.documentFrom ?? null,
+    documentTo: filters.documentTo ?? null,
+    currency: filters.currency ?? null,
+    currencyScale: filters.currencyScale ?? null,
+    amountMinor: filters.amountMinor ?? null,
+    invoiceId: filters.invoiceId ?? null,
+    voucherId: filters.voucherId ?? null,
+  };
+}
+
 function readArchive(transaction: Transaction, scope: Scope, filters: Filters) {
   return Effect.gen(function* () {
     yield* Schema.decodeEffect(Intake.ArchiveFilters)(filters, {
       onExcessProperty: "error",
     }).pipe(Effect.mapError(() => failure("InvalidJournal")));
 
-    const rows = yield* Retention.listArchive(transaction, scope.bookId, {
-      cursor: filters.cursor ?? null,
-      sourceSystem: filters.sourceSystem ?? null,
-      filename: filters.filename ?? null,
-      retainedFrom: filters.retainedFrom ?? null,
-      retainedTo: filters.retainedTo ?? null,
+    if (
+      (filters.amountMinor !== undefined &&
+        (filters.currency === undefined || filters.currencyScale === undefined)) ||
+      (filters.currencyScale !== undefined && filters.currency === undefined) ||
+      (filters.documentFrom !== undefined &&
+        filters.documentTo !== undefined &&
+        filters.documentFrom > filters.documentTo) ||
+      (filters.retainedFrom !== undefined &&
+        filters.retainedTo !== undefined &&
+        filters.retainedFrom > filters.retainedTo)
+    ) {
+      return yield* failure("InvalidJournal");
+    }
+
+    const access = yield* Archive.readArchiveAccess(transaction);
+
+    if (
+      Archive.archiveTables.some(
+        (table) => !access.some((row) => row.tableName === table && row.canSelect),
+      )
+    ) {
+      return yield* unsupported();
+    }
+
+    const normalized = normalizedArchiveFilters(filters);
+    const now = yield* isoNow(transaction);
+    let cutoff = now;
+    let after: string | null = null;
+
+    if (filters.cursor !== undefined) {
+      const encoded = filters.cursor.slice(5);
+      const content = Buffer.from(encoded, "base64url").toString("utf8");
+
+      if (Buffer.from(content).toString("base64url") !== encoded)
+        return yield* failure("InvalidJournal");
+
+      const cursor = yield* Schema.decodeEffect(Schema.fromJsonString(ArchiveTraversal))(
+        content,
+      ).pipe(Effect.mapError(() => failure("InvalidJournal")));
+
+      const expectedContext = (yield* digest({
+        scope,
+        filters: normalized,
+        cutoff: cursor.cutoff,
+      })).slice(7);
+
+      if (
+        cursor.context !== expectedContext ||
+        !Number.isFinite(Date.parse(cursor.cutoff)) ||
+        Date.parse(cursor.cutoff) > Date.parse(now)
+      ) {
+        return yield* failure("InvalidJournal");
+      }
+
+      cutoff = cursor.cutoff;
+      after = cursor.after;
+
+      const anchors = yield* Archive.readArchiveAnchor(transaction, scope.bookId, {
+        filters,
+        cutoff,
+        after,
+      });
+
+      if (anchors.length !== 1) return yield* failure("InvalidJournal");
+    }
+
+    const selectionFilters = { ...filters, q: normalized.q ?? undefined };
+
+    const rows = yield* Archive.listArchive(transaction, scope.bookId, {
+      filters: selectionFilters,
+      cutoff,
+      after,
     });
 
     const page = rows.slice(0, archivePageSize);
-    const items = yield* Effect.forEach(page, (row) => decode(OccurrenceSchema, row.body));
+
+    if (page.some((row) => Array.isArray(row.facts) && row.facts.length > 1000))
+      return yield* unsupported();
+
+    const items = yield* Effect.forEach(page, (row) =>
+      decode(
+        Intake.DocumentSearchRow,
+        Object.assign({}, row.body, {
+          facts: row.facts,
+          suggestions: row.suggestions,
+          originalAvailability: "not_checked",
+        }),
+      ),
+    );
+
+    const context = (yield* digest({ scope, filters: normalized, cutoff })).slice(7);
+    const anchor = page.at(-1);
+
+    const nextCursor =
+      rows.length > page.length && anchor !== undefined
+        ? `arc1:${Buffer.from(JSON.stringify({ context, cutoff, after: anchor.id })).toString("base64url")}`
+        : null;
 
     return yield* decode(ArchiveSchema, {
       items,
-      nextCursor: rows.length > page.length ? (page.at(-1)?.id ?? null) : null,
+      nextCursor,
+      retainedCutoff: cutoff,
+      metadataConsistency: "live_owner_revisions",
     });
   });
 }
@@ -718,10 +833,16 @@ export const exportSourceArchive = Effect.fn("Source.exportArchive")(function* (
 
   for (const occurrence of page.items) {
     const original = yield* getSourceOccurrence(token, { scope, occurrenceId: occurrence.id });
-    items.push({ occurrence, contentBase64: original.contentBase64 });
+    items.push({ occurrence: original.occurrence, contentBase64: original.contentBase64 });
   }
 
   yield* searchSourceArchive(token, scope, filters);
 
-  return yield* decode(ExportSchema, { scope, items, nextCursor: page.nextCursor });
+  return yield* decode(ExportSchema, {
+    scope,
+    items,
+    nextCursor: page.nextCursor,
+    retainedCutoff: page.retainedCutoff,
+    metadataConsistency: page.metadataConsistency,
+  });
 });
