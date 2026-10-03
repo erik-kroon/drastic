@@ -441,6 +441,22 @@ test("reminders bind exact debt and reviewed bytes, retain acceptance separately
   expect(message.html).toContain("125.00 SEK");
   expect(await prepare(context, recipient, prepareKey)).toEqual(message);
 
+  for (const action of ["approvals", "cancel", "reconcile"] as const) {
+    const input = action === "approvals"
+      ? { messageDigest: message.digest, acknowledgeExactMessage: true, externalIdentity: "request_must_not_choose_identity" }
+      : { messageDigest: message.digest, externalIdentity: "request_must_not_choose_identity" };
+
+    await failure(await request(context.author, `${base}/${message.id}/${action}`, {
+      method: "POST", body: JSON.stringify(input),
+    }), 400, "InvalidRequest");
+  }
+
+  const unchanged = await read(context, message);
+
+  expect(unchanged.status).toBe("prepared");
+  expect(unchanged.approval).toBeNull();
+  expect(unchanged.attempt).toBeNull();
+
   for (const token of [context.book.agentToken, context.book.token])
     await failure(
       await request({ ...context.author, token }, `${base}/${message.id}/approvals`, {
@@ -604,6 +620,7 @@ test("reminders bind exact debt and reviewed bytes, retain acceptance separately
       JSON.stringify(
         {
           historical,
+          excessPayloadFieldsRefused: ["prepare.outstandingMinor", "approve.externalIdentity", "cancel.externalIdentity", "reconcile.externalIdentity"],
           message,
           accepted,
           paid,

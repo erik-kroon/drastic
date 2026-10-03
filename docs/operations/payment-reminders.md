@@ -17,6 +17,7 @@ The provider call runs outside the database transaction. A lost response leaves 
 | Given | Public action | Independently expected result | Bad implementation caught |
 | --- | --- | --- | --- |
 | Issued invoice gross 12500 SEK minor units | Prepare with reviewed recipient | Exact residual `12500`, recipient and invoice number in retained plain/HTML bytes | Request amount or raw destination controls send |
+| Reminder payload contains an undeclared amount or external identity | Prepare/approve/cancel/reconcile | `400/InvalidRequest` before application command; message remains prepared with no approval/attempt | Transport silently drops request facts and admits a different command |
 | Foreign book or customer recipient | Prepare/read | Refusal without source disclosure | Unscoped lookup or recipient fallback |
 | Prepared reminder and a payment of 4000 before admission | Approve then queue | Stale refusal, zero fixture submissions; next preview residual `8500` | Sending stale debt |
 | Open reminder hold before admission | Queue | Stale refusal, zero fixture submissions | Ignoring collection disputes |
@@ -61,6 +62,8 @@ Timing uses five warmups and thirty measured samples. Existing collection read p
 The dedicated reminder owner was selected over a generic notification engine. Invoice delivery and payment reminders have different admission facts and existing legal delivery handoffs do not prove external transport. Combining their models would broaden behavior without removing a required reminder boundary.
 
 The independent root challenge retained five constraints. Observations after admission may be retained even after approval expiry, session expiry or payment. Unknown or absent reconciliation cannot authorize a new POST. Current authority precedes command replay, while a stale current residual blocks new admission without rewriting old attempts. The fixture is explicit, authenticated, loopback only and disabled by default. Recovery inventory must include all five reminder families and mutable outbox progress before integrated backup proof.
+
+Effect 4 HTTP parsing is qualified separately from schema metadata. `HttpApiBuilder` merges API/group/endpoint Context annotations and passes the `HttpApi.PayloadParseOptions` slot to the payload decoder. The schema's `annotate({ parseOptions })` metadata does not establish excess-key refusal. Only the four reminder mutation endpoints receive the supported strict payload annotation; existing collection endpoints keep their declared transport policy. The public unknown-field expectation was authored before this correction and remains `400/InvalidRequest`. Runtime observation is still required.
 
 ## Recovery inventory obligation
 
