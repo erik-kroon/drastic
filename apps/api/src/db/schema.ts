@@ -1995,5 +1995,4 @@ export const recurringInvoiceDraftJobs = openerp.table("recurring_invoice_draft_
   dispatchedAt: timestamp("dispatched_at", { withTimezone: true, mode: "string" }),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
   settledAt: timestamp("settled_at", { withTimezone: true, mode: "string" }),
-
 });

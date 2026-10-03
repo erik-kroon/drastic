@@ -83,11 +83,21 @@ export function InvoiceDrafts(
   const selected = props.recordId ?? local;
   const select = props.onOpen ?? setLocal;
 
-  const list = useQuery({
-    queryKey: [...commerceKey(props.book), "invoice-drafts"],
-    queryFn: async ({ signal }) => {
+  const normalizedSearch = search.trim().toLowerCase();
+
+  const list = useInfiniteQuery({
+    queryKey: [...commerceKey(props.book), "invoice-drafts", "pages", normalizedSearch],
+    initialPageParam: "",
+
+    queryFn: async ({ pageParam, signal }) => {
+      const query = new URLSearchParams();
+
+      if (pageParam) query.set("after", pageParam);
+
+      if (normalizedSearch) query.set("search", normalizedSearch);
+
       const result = await readAccounting(
-        `${commercePath(props.book)}/invoice-drafts`,
+        `${commercePath(props.book)}/invoice-drafts?${query.toString()}`,
         Drafts.InvoiceDraftList,
         { signal },
       );
@@ -96,7 +106,9 @@ export function InvoiceDrafts(
 
       return result;
     },
+    getNextPageParam: (page): string | undefined => page.continuation ?? undefined,
     retry: false,
+    enabled: !selected || selected === "new",
   });
 
   if (selected && selected !== "new")
@@ -114,12 +126,7 @@ export function InvoiceDrafts(
       </Box>
     );
 
-  const items =
-    list.data?.items.filter((record) =>
-      `${record.title} ${record.customerName}`
-        .toLocaleLowerCase(props.locale)
-        .includes(search.toLocaleLowerCase(props.locale)),
-    ) ?? [];
+  const items = list.data?.pages.flatMap((page) => page.items) ?? [];
 
   return (
     <Box display="grid" gap="xl">
@@ -136,6 +143,7 @@ export function InvoiceDrafts(
       <RegisterFilters>
         <RegisterSearch
           aria-label={labels.searchInvoiceDrafts}
+          maxLength={200}
           placeholder={labels.searchCustomerOrDescription}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -180,6 +188,18 @@ export function InvoiceDrafts(
               detail={labels.chooseACustomerAddYour}
             />
           )}
+          {list.hasNextPage ? (
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={list.isFetchingNextPage}
+              onClick={() => {
+                void list.fetchNextPage();
+              }}
+            >
+              {labels.loadMoreDrafts}
+            </Button>
+          ) : null}
           <PageCaption>{labels.draftsHaveNotBeenIssued}</PageCaption>
         </>
       ) : null}
@@ -886,6 +906,7 @@ const english = {
   chooseCustomer: "Choose customer",
   selectACustomer: "Select a customer…",
   loadMoreCustomers: "Load more customers",
+  loadMoreDrafts: "Load more drafts",
   addACustomerFirst: "Add a customer first",
   billingName: "Billing name",
   billingAddress: "Billing address",
@@ -959,6 +980,7 @@ const swedish: typeof english = {
   chooseCustomer: "Välj kund",
   selectACustomer: "Välj en kund…",
   loadMoreCustomers: "Läs in fler kunder",
+  loadMoreDrafts: "Visa fler fakturautkast",
   addACustomerFirst: "Lägg till en kund först",
   billingName: "Fakturanamn",
   billingAddress: "Fakturaadress",

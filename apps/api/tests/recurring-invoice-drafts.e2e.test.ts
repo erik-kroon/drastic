@@ -21,6 +21,7 @@ import {
   decoded,
   environment,
   failure,
+  fixture,
   post,
   request,
 } from "./support/fixtures";
@@ -45,6 +46,14 @@ const Scheduling = Schema.Struct({
       draftId: Schema.NullOr(Schema.String),
     }),
   ),
+});
+
+const DraftInventoryPage = Schema.Struct({
+  scope: Accounting.Scope,
+  complete: Schema.Boolean,
+  count: Schema.Int,
+  continuation: Schema.NullOr(Accounting.Identifier),
+  items: Schema.Array(Drafts.InvoiceDraftSummary).check(Schema.isMaxLength(200)),
 });
 
 const AgreementPage = Schema.Struct({
@@ -413,7 +422,8 @@ test("paused cycles and manual future occupancy remain explicit without catch-up
 
   try {
     finished = await waitFor(context, recurring.path, (value) =>
-      value.history.some((item) => item.cycleOrdinal === "5" && item.state === "existing"),
+      value.history.some((item) => item.cycleOrdinal === "5" && item.state === "existing") &&
+      value.history.some((item) => item.cycleOrdinal === "4" && item.state === "drafted"),
     );
   } finally {
     await stop(process.child);
@@ -585,7 +595,7 @@ test("full lifecycle witness fences admitted jobs and revocation remains visible
       recurringAgreementId: recurring.record.id,
     });
     expect(failedJob?.draftId).toBe(null);
-    const attentionItem = attention.items[0];
+    const attentionItem = attention.items.find((item) => item.id === failedJob?.id);
 
     if (attentionItem === undefined) throw new Error("Missing recurring failure attention item");
 
@@ -615,21 +625,33 @@ test("full lifecycle witness fences admitted jobs and revocation remains visible
       404,
       "NotFound",
     );
-    await withWorkspaceBrowser(initial.book, "recurring-recovery", async (page, workspace) => {
-      await page.goto(`${workspace}/work?kind=recurring&status=open`);
-      await page.getByRole("link", { name: recurring.record.title, exact: true }).first().click();
-      await page.getByRole("heading", { name: recurring.record.title, exact: true }).waitFor();
-      expect(page.url()).toContain(`record=${recurring.record.id}`);
-      await page.setViewportSize({ width: 320, height: 900 });
-      await page.getByRole("checkbox", { name: "Confirm the selected cycle", exact: true }).check();
-      await page
-        .getByRole("button", { name: "Queue selected cycle for review", exact: true })
-        .focus();
-      await page.screenshot({
-        path: join(environment().artifacts, "recurring-recovery-320.png"),
-        fullPage: true,
-      });
-    });
+    const browserActor = await fixture();
+
+    await admin.query(
+      "INSERT INTO openerp.memberships(book_id,actor_id,role) VALUES($1,$2,'operator')",
+      [initial.book.bookId, browserActor.actorId],
+    );
+    await withWorkspaceBrowser(
+      { ...initial.book, actorId: browserActor.actorId },
+      "recurring-recovery",
+      async (page, workspace) => {
+        await page.goto(`${workspace}/work?kind=recurring&status=open`);
+        await page.getByRole("link", { name: recurring.record.title, exact: true }).first().click();
+        await page.getByRole("heading", { name: recurring.record.title, exact: true }).waitFor();
+        expect(page.url()).toContain(`record=${recurring.record.id}`);
+        await page.setViewportSize({ width: 320, height: 900 });
+        await page
+          .getByRole("checkbox", { name: "Confirm the selected cycle", exact: true })
+          .check();
+        await page
+          .getByRole("button", { name: "Queue selected cycle for review", exact: true })
+          .focus();
+        await page.screenshot({
+          path: join(environment().artifacts, "recurring-recovery-320.png"),
+          fullPage: true,
+        });
+      },
+    );
 
     const rows = await admin.query<{ count: number }>(
       "SELECT count(*)::int AS count FROM openerp.recurring_invoice_occurrences WHERE book_id=$1 AND agreement_id=$2",
@@ -669,7 +691,7 @@ test("unknown commit recovery and pruned queue history retain one economic occur
     [context.book.bookId],
   );
   await admin.query(
-    "UPDATE openerp.recurring_invoice_draft_jobs SET state='ready', dispatched_at=null WHERE book_id=$1 AND agreement_id=$2 AND cycle_ordinal=1",
+    "UPDATE openerp.recurring_invoice_draft_jobs SET state='ready', draft_id=null, settled_at=null, dispatched_at=null WHERE book_id=$1 AND agreement_id=$2 AND cycle_ordinal=1",
     [context.book.bookId, recurring.record.id],
   );
   const second = runner(context);
@@ -769,8 +791,8 @@ test("scoped agreement pages and scanner continuation cover 1000 agreements with
         percentile_cont(0.95) WITHIN GROUP (ORDER BY extract(epoch FROM j.settled_at-q.processed_at)*1000) AS p95,
         percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM q.processed_at-j.created_at)*1000) AS "queueP50",
         percentile_cont(0.95) WITHIN GROUP (ORDER BY extract(epoch FROM q.processed_at-j.created_at)*1000) AS "queueP95",
-        extract(epoch FROM max(j.created_at))*1000-$2::numeric AS "scanDuration",
-        extract(epoch FROM max(j.created_at)-min(j.created_at))*1000 AS "admissionSpan",
+        (extract(epoch FROM max(j.created_at))*1000-$2::numeric)::double precision AS "scanDuration",
+        (extract(epoch FROM max(j.created_at)-min(j.created_at))*1000)::double precision AS "admissionSpan",
         (SELECT count(*)::int FROM openerp.recurring_invoice_draft_schedules WHERE book_id=$1 AND next_cycle_ordinal > 1) AS examined,
         (SELECT count(*)::int FROM openerp.invoice_drafts d JOIN openerp.recurring_invoice_occurrences o ON o.book_id=d.book_id AND o.draft_id=d.id WHERE d.book_id=$1) AS drafts
       FROM openerp.recurring_invoice_draft_jobs j JOIN public.effect_mq_jobs q
@@ -814,6 +836,7 @@ test("commercial drafts remain admissible after 200 retained records", async () 
   const source = context.original.draftSnapshot.content;
   let last: typeof Drafts.InvoiceDraftRevision.Type | undefined;
   const durations: number[] = [];
+  const admittedIds = [context.original.draftId];
 
   for (let index = 0; index < 205; index++) {
     const start = performance.now();
@@ -839,6 +862,7 @@ test("commercial drafts remain admissible after 200 retained records", async () 
       Drafts.InvoiceDraftRevision,
     );
     durations.push(performance.now() - start);
+    admittedIds.push(last.id);
 
     if (index === 24) {
       const ordered = [...durations].sort((left, right) => left - right);
@@ -870,9 +894,221 @@ test("commercial drafts remain admissible after 200 retained records", async () 
     );
 
     expect(count.rows[0]?.count).toBe(206);
+    const listResponse = await request(context.author, "/commerce/invoice-drafts");
+
+    await writeFile(
+      join(environment().artifacts, "recurring-lifetime-list-probe.json"),
+      JSON.stringify(
+        {
+          scope: { entityId: context.book.entityId, bookId: context.book.bookId },
+          retainedCount: count.rows[0]?.count,
+          admittedIds,
+          last,
+          listStatus: listResponse.status,
+          listBody: await listResponse.clone().text(),
+        },
+        null,
+        2,
+      ),
+    );
+    const first = await decoded(listResponse, DraftInventoryPage);
+
+    expect(first).toMatchObject({
+      scope: { entityId: context.book.entityId, bookId: context.book.bookId },
+      count: 200,
+      complete: false,
+    });
+    expect(first.items).toHaveLength(200);
+    expect(first.continuation).toBe(first.items.at(-1)?.id);
+
+    const next = await decoded(
+      await request(
+        context.author,
+        `/commerce/invoice-drafts?after=${encodeURIComponent(first.continuation ?? "")}`,
+      ),
+      DraftInventoryPage,
+    );
+
+    expect(next).toMatchObject({ count: 6, complete: false, continuation: null });
+    expect(next.items).toHaveLength(6);
+    const listed = [...first.items, ...next.items].map((item) => item.id);
+
+    expect(new Set(listed).size).toBe(206);
+    expect([...listed].sort()).toEqual([...admittedIds].sort());
+
+    const filtered = await decoded(
+      await request(
+        context.author,
+        "/commerce/invoice-drafts?search=%20P08%20LIFETIME%20inventory%20proof%20",
+      ),
+      DraftInventoryPage,
+    );
+
+    expect(filtered.items).toHaveLength(200);
+
+    const filteredNext = await decoded(
+      await request(
+        context.author,
+        `/commerce/invoice-drafts?search=P08%20lifetime%20inventory%20proof&after=${encodeURIComponent(filtered.continuation ?? "")}`,
+      ),
+      DraftInventoryPage,
+    );
+
+    expect(filteredNext.items).toHaveLength(5);
+    expect(filteredNext.continuation).toBeNull();
+
+    const literalSearch = await decoded(
+      await request(context.author, "/commerce/invoice-drafts?search=%25"),
+      DraftInventoryPage,
+    );
+
+    expect(literalSearch).toMatchObject({
+      count: 0,
+      complete: true,
+      continuation: null,
+      items: [],
+    });
+
+    const rpc = await fetch(`${environment().baseUrl}/api/mcp`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${context.author.agentToken}`,
+        "content-type": "application/json",
+        accept: "application/json",
+        "MCP-Protocol-Version": "2025-11-25",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: {
+          name: "commerce_list_invoice_drafts",
+          arguments: {
+            scope: { entityId: context.book.entityId, bookId: context.book.bookId },
+            after: first.continuation,
+          },
+        },
+      }),
+    });
+
+    expect(rpc.status).toBe(200);
+
+    const rpcResult = Schema.decodeUnknownSync(
+      Schema.Struct({
+        result: Schema.Struct({ structuredContent: Schema.Struct({ result: DraftInventoryPage }) }),
+      }),
+    )(await rpc.json());
+
+    expect(rpcResult.result.structuredContent.result.items.map((item) => item.id)).toEqual(
+      next.items.map((item) => item.id),
+    );
+    const browserActor = await fixture();
+    await admin.query(
+      "INSERT INTO openerp.memberships(book_id,actor_id,role) VALUES($1,$2,'operator')",
+      [context.book.bookId, browserActor.actorId],
+    );
+    await withWorkspaceBrowser(
+      { ...context.book, actorId: browserActor.actorId },
+      "recurring-lifetime-directory",
+      async (page, workspace) => {
+        await page.goto(`${workspace}/sales?view=issue`);
+        const loadMore = page.getByRole("button", { name: "Load more drafts", exact: true });
+
+        await loadMore.waitFor();
+        await loadMore.click();
+        const picker = page.getByRole("combobox", { name: "Invoice draft", exact: true });
+
+        await picker.click();
+        await expect.poll(() => page.getByRole("option").count()).toBe(207);
+        await page.screenshot({
+          path: join(environment().artifacts, "recurring-lifetime-directory.png"),
+          fullPage: true,
+        });
+        await page.keyboard.press("Escape");
+
+        const searched = page.waitForResponse(
+          (response) =>
+            response.url().includes("/invoice-drafts?search=%25") &&
+            response.request().method() === "GET",
+        );
+
+        await page.getByRole("textbox", { name: "Search invoice drafts", exact: true }).fill("%");
+        expect((await searched).status()).toBe(200);
+        await expect.poll(() => loadMore.count()).toBe(0);
+        await picker.click();
+        await expect.poll(() => page.getByRole("option").count()).toBe(1);
+      },
+    );
+    const other = await legalFixture();
+
+    await failure(
+      await request(
+        context.author,
+        `/commerce/invoice-drafts?after=${encodeURIComponent(other.original.draftId)}`,
+      ),
+      404,
+      "NotFound",
+    );
+    const late = next.items.at(-1);
+
+    if (late === undefined)
+      throw new Error("The second actual inventory page must contain a reviewable draft.");
+
+    const reviewedDraft = await decoded(
+      await request(context.author, `/commerce/invoice-drafts/${late.id}`),
+      Drafts.InvoiceDraftView,
+    );
+
+    const review = await post(
+      context.author,
+      "/commerce/ar-legal-issue-reviews",
+      {
+        profile: "se-domestic-b2b-sek-25-accrual-v1",
+        draftId: reviewedDraft.record.id,
+        expectedRevision: reviewedDraft.record.revision,
+        expectedDigest: reviewedDraft.record.digest,
+        policyId: context.original.policyId,
+        policyDigest: context.original.policyDigest,
+        accountingProfileId: context.profile.id,
+        accountingProfileDigest: context.profile.digest,
+        controlAccountId: "account_ar",
+        revenueAccountId: "account_revenue",
+        outputVatAccountId: "account_vat",
+        accountingPeriodId: "period_2026",
+        voucherSeries: "A",
+        reason: "Normal review remains available after the first inventory page",
+        acknowledgeLimitedProfile: true,
+      },
+      Ar.ArLegalIssueReview,
+    );
+
+    expect(review.totals).toEqual({ netMinor: "3005", taxMinor: "751", grossMinor: "3756" });
+
+    const issues = await admin.query<{ count: number }>(
+      "SELECT count(*)::int AS count FROM openerp.ar_legal_issues WHERE book_id=$1",
+      [context.book.bookId],
+    );
+
+    expect(issues.rows[0]?.count).toBe(1);
     await writeFile(
       join(environment().artifacts, "recurring-lifetime-inventory.json"),
-      JSON.stringify({ count: count.rows[0]?.count, last }, null, 2),
+      JSON.stringify(
+        {
+          count: count.rows[0]?.count,
+          last,
+          first,
+          next,
+          filtered,
+          filteredNext,
+          literalSearch,
+          rpcResult,
+          reviewedDraft,
+          review,
+          issues: issues.rows,
+        },
+        null,
+        2,
+      ),
     );
   } finally {
     await admin.end();
@@ -1047,6 +1283,7 @@ test("a retained commercial template freezes its catalog revision and refuses a 
     ...base,
     lines: base.lines.map((line) => ({
       ...line,
+      description: article.description,
       catalogSelection: {
         scope: article.scope,
         digest: article.digest,

@@ -691,25 +691,37 @@ export const getInvoiceDraft = Effect.fn("commerce.drafts.get")(function* (
 
 export const listInvoiceDrafts = Effect.fn("commerce.drafts.list")(function* (
   token: string,
-  input: { scope: Scope },
+  input: { scope: Scope; after?: string; search?: string },
 ) {
   return yield* withBook(token, input.scope, false, function* (transaction) {
     yield* requireTableAccess(transaction, DraftDb.invoiceDraftTables, false);
+
+    const cursor =
+      input.after === undefined
+        ? undefined
+        : (yield* DraftDb.readDraft(transaction, input.scope.bookId, input.after, false))[0];
+
+    if (input.after !== undefined && cursor === undefined) return yield* failure("NotFound");
+    const search = input.search?.trim().toLowerCase() ?? "";
 
     const rows = yield* DraftDb.readDraftSummaries(
       transaction,
       input.scope.bookId,
       null,
       draftBounds.inventory,
+      cursor?.draftKey ?? null,
+      search,
     );
 
-    if (rows.length > draftBounds.inventory) return yield* failure("InvalidJournal");
+    const page = rows.slice(0, draftBounds.inventory);
+    const continuation = rows.length > draftBounds.inventory ? (page.at(-1)?.id ?? null) : null;
 
     const withoutDigest: JsonObject = {
       scope: input.scope,
-      complete: true,
-      count: rows.length,
-      items: rows.map((row) => row.body),
+      complete: input.after === undefined && continuation === null,
+      count: page.length,
+      continuation,
+      items: page.map((row) => row.body),
       capturedAt: yield* retainedNow(transaction),
     };
 

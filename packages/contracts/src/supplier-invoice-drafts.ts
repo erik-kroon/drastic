@@ -93,14 +93,21 @@ export const SupplierInvoiceDraftListQuery = Schema.Struct({
 });
 
 export const SupplierInvoiceDraftList = Schema.Struct({
-  ...Drafts.InvoiceDraftList.fields,
+  scope: Accounting.Scope,
   complete: Schema.Boolean,
+  count: Schema.Int,
+  capturedAt: Schema.String,
+  digest: Accounting.Digest,
   items: Schema.Array(SupplierInvoiceDraftSummary).check(Schema.isMaxLength(200)),
   next: Schema.NullOr(SupplierInvoiceDraftListCursor),
 });
 
 export const SupplierInvoiceDraftHistory = Schema.Struct({
-  ...Drafts.InvoiceDraftList.fields,
+  scope: Accounting.Scope,
+  complete: Schema.Literal(true),
+  count: Schema.Int,
+  capturedAt: Schema.String,
+  digest: Accounting.Digest,
   id: Accounting.Identifier,
   currentRevision: Commerce.Version,
   items: Schema.Array(SupplierInvoiceDraftSummary).check(Schema.isMaxLength(50)),
