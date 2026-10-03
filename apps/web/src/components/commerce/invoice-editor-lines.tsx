@@ -121,7 +121,34 @@ export function invoiceEditorTotals(lines: readonly EditableInvoiceLine[], scale
   };
 }
 
+function editorTotals(
+  commercial: boolean | undefined,
+  calculation: typeof Drafts.CommercialDraftCalculation.Type | undefined,
+  lines: readonly EditableInvoiceLine[],
+  scale: number,
+) {
+  if (!commercial) return invoiceEditorTotals(lines, scale);
+  const derived = calculation?.totals;
+
+  return {
+    net: derived ? BigInt(derived.netMinor) : null,
+    tax: derived?.taxMinor == null ? null : BigInt(derived.taxMinor),
+  };
+}
+
+function calculatedDisplay(
+  line: typeof Drafts.DraftLine.Type | undefined,
+  field: "amount" | "tax",
+  scale: number,
+) {
+  const minor = field === "amount" ? line?.baseMinor : line?.taxMinor;
+
+  return minor == null ? "" : minorToDecimal(minor, scale);
+}
+
 export function InvoiceEditorLines(props: {
+  commercial?: boolean;
+  calculation?: typeof Drafts.CommercialDraftCalculation.Type;
   book?: CommerceProps["book"];
   lines: readonly EditableInvoiceLine[];
   onChange: (lines: EditableInvoiceLine[], changedLineId?: string) => void;
@@ -159,7 +186,7 @@ export function InvoiceEditorLines(props: {
   });
 
   const articles = catalog.data?.pages.flatMap((page) => page.items) ?? [];
-  const totals = invoiceEditorTotals(lines, props.scale);
+  const totals = editorTotals(props.commercial, props.calculation, lines, scale);
 
   const amount = (value: bigint | null) =>
     value === null
@@ -194,6 +221,8 @@ export function InvoiceEditorLines(props: {
       <InvoiceLines labels={labels}>
         {lines.map((line, index) => (
           <EditorLine
+            commercial={props.commercial}
+            calculatedLine={props.calculation?.content.lines.find((item) => item.id === line.id)}
             key={line.id}
             book={props.book}
             line={line}
@@ -228,21 +257,23 @@ export function InvoiceEditorLines(props: {
           <Plus size={14} strokeWidth={1.5} />
           {sv ? "Lägg till rad" : "Add line"}
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          static
-          aria-expanded={showDetails}
-          onClick={() => setShowDetails(!showDetails)}
-        >
-          {showDetails
-            ? sv
-              ? "Dölj moms och underlag"
-              : "Hide tax and source details"
-            : sv
-              ? "Moms och underlag"
-              : "Tax and source details"}
-        </Button>
+        {!props.commercial ? (
+          <Button
+            type="button"
+            variant="ghost"
+            static
+            aria-expanded={showDetails}
+            onClick={() => setShowDetails(!showDetails)}
+          >
+            {showDetails
+              ? sv
+                ? "Dölj moms och underlag"
+                : "Hide tax and source details"
+              : sv
+                ? "Moms och underlag"
+                : "Tax and source details"}
+          </Button>
+        ) : null}
       </Box>
       <RecordColumns>
         {props.footer ?? <Box />}
@@ -262,16 +293,32 @@ export function InvoiceEditorLines(props: {
       </RecordColumns>
       {totals.tax === null ? (
         <PageCaption>
-          {sv
-            ? "Ange momsbelopp per rad för att beräkna totalen. Tom moms betyder att den inte är fastställd."
-            : "Enter tax for each line to calculate the total. Blank tax means it has not been determined."}
+          {props.commercial
+            ? sv
+              ? "Välj en granskad momsprofil för att fastställa momsen."
+              : "Choose a reviewed tax profile to determine tax."
+            : sv
+              ? "Ange momsbelopp per rad för att beräkna totalen. Tom moms betyder att den inte är fastställd."
+              : "Enter tax for each line to calculate the total. Blank tax means it has not been determined."}
         </PageCaption>
       ) : null}
     </Box>
   );
 }
 
+function lineAmountWarning(commercial: boolean | undefined, sv: boolean) {
+  return commercial
+    ? sv
+      ? "Antal × enhetspris måste ge ett exakt belopp. Justera värdena."
+      : "Quantity × unit price must give an exact amount. Adjust the values."
+    : sv
+      ? "Antal × enhetspris ger inte ett exakt belopp. Justera värdena eller ange radbeloppet."
+      : "Quantity × unit price does not give an exact amount. Adjust the values or enter the line amount.";
+}
+
 function EditorLine(props: {
+  commercial?: boolean;
+  calculatedLine?: DraftLine;
   book?: CommerceProps["book"];
   line: EditableInvoiceLine;
   articles: readonly (typeof Catalog.Article.Type)[];
@@ -318,9 +365,14 @@ function EditorLine(props: {
       name={`${line.id}_${field === "price" ? "unitPrice" : field}`}
       aria-label={`${props.labels[fieldIndex + 1]} ${index + 1}`}
       inputMode="decimal"
-      required={field === "quantity" || field === "amount"}
+      required={field === "quantity" || (field === "amount" && !props.commercial)}
+      readOnly={props.commercial && (field === "amount" || field === "tax")}
       disabled={field === "price" && !!catalogSelection}
-      value={line[field]}
+      value={
+        props.commercial && (field === "amount" || field === "tax")
+          ? calculatedDisplay(props.calculatedLine, field, scale)
+          : line[field]
+      }
       placeholder={field === "tax" ? "—" : "0"}
       onChange={(event) => props.onChange(changedLine(line, field, event.target.value, scale))}
     />
@@ -347,13 +399,9 @@ function EditorLine(props: {
       details={
         <Box display="grid" gap="sm">
           {line.price && calculated === null ? (
-            <PageCaption>
-              {sv
-                ? "Antal × enhetspris ger inte ett exakt belopp. Justera värdena eller ange radbeloppet."
-                : "Quantity × unit price does not give an exact amount. Adjust the values or enter the line amount."}
-            </PageCaption>
+            <PageCaption>{lineAmountWarning(props.commercial, sv)}</PageCaption>
           ) : null}
-          <Box display={props.showDetails ? "grid" : "none"}>
+          <Box display={props.showDetails && !props.commercial ? "grid" : "none"}>
             <Box display="grid" gap="md">
               {line.explicitAmount && calculated !== null ? (
                 <Box>

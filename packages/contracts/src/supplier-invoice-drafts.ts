@@ -26,12 +26,12 @@ export const SupplierDraftContent = Schema.Struct({
 });
 
 export const CreateSupplierInvoiceDraft = Schema.Struct({
-  draftKey: Drafts.CreateInvoiceDraft.fields.draftKey,
+  draftKey: Drafts.SourceCreateInvoiceDraft.fields.draftKey,
   content: SupplierDraftContent,
 });
 
 export const ReviseSupplierInvoiceDraft = Schema.Struct({
-  ...Drafts.ReviseInvoiceDraft.fields,
+  ...Drafts.SourceReviseInvoiceDraft.fields,
   content: SupplierDraftContent,
 });
 
@@ -44,7 +44,7 @@ export const SupplierInvoiceDraftRevision = Schema.Struct({
   acceptanceSupported: Schema.Literal(false),
   recognitionSupported: Schema.Literal(false),
   recognitionAssessment: Schema.Literal("not_assessed"),
-  calculationBasis: Drafts.InvoiceDraftRevision.fields.calculationBasis,
+  calculationBasis: Drafts.SourceInvoiceDraftRevision.fields.calculationBasis,
   content: SupplierDraftContent,
   counterparty: Commerce.CounterpartyRevision,
   supplierEvidence: Commerce.EvidenceReference,

@@ -1,5 +1,10 @@
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import * as Effect from "effect/Effect";
+import * as Result from "effect/Result";
+import * as Policy from "@open-erp/contracts/legal-sales-policy";
+import { commercialLineAmounts, exactCommercialBase } from "@open-erp/domain/commercial-invoice";
+import * as Policies from "../../db/commerce/legal-policies";
+import { digest } from "../json";
 import * as CatalogDb from "../../db/commerce/catalog";
 import * as DraftDb from "../../db/commerce/invoice-lifecycle";
 import type { Transaction } from "../../db/transaction";
@@ -9,6 +14,8 @@ import {
   readEvidenceReference,
   textField,
   toJsonObject,
+  decode,
+  requireRetainedEvidence,
   type JsonObject,
   type Scope,
 } from "./support";
@@ -93,11 +100,8 @@ function optionalMinor(value: string | null) {
 /** Quantity is an exact canonical decimal; minor units are integers. */
 function exactLineBase(quantity: string, unitPriceMinor: string | null) {
   if (unitPriceMinor === null) return null;
-  const [whole = "0", fraction = ""] = quantity.split(".");
-  const scale = 10n ** BigInt(fraction.length);
-  const product = BigInt(whole + fraction) * BigInt(unitPriceMinor);
 
-  return product % scale === 0n ? product / scale : null;
+  return exactCommercialBase(quantity, unitPriceMinor);
 }
 
 function identityBlockers(identity: DraftIdentity, role: string) {
@@ -300,6 +304,7 @@ export function calculateDraft(
     if (sourceTotalMatches === false) blockers.push(blocker("document_total_mismatch", null));
 
     return {
+      content,
       counterparty: counterparty.revision,
       sellerEvidence,
       customerEvidence,
@@ -326,3 +331,121 @@ export const draftBounds = {
   retainedBytes,
   initialReason,
 } as const;
+
+export const calculateCommercialContent = Effect.fn("commerce.drafts.calculateCommercialContent")(
+  function* (
+    transaction: Transaction,
+    scope: Scope,
+    book: DraftDb.BookCurrencyRow,
+    input: typeof Drafts.CommercialContent.Type,
+  ) {
+    const lines: DraftLine[] = [];
+    const seen = new Set<string>();
+
+    for (const line of input.lines) {
+      if (seen.has(line.id)) return yield* failure("InvalidJournal");
+      seen.add(line.id);
+      let taxEvidenceId: string | null = null;
+      let taxDescription: string | null = null;
+
+      if (line.treatment.kind === "legal_sales_policy") {
+        const row = (yield* Policies.readPolicy(transaction, scope.bookId, line.treatment.id))[0];
+
+        if (!row) return yield* failure("StaleDependency");
+        const policy = yield* decode(Policy.LegalSalesPolicy, row.body);
+
+        if (policy.digest !== line.treatment.digest) return yield* failure("StaleDependency");
+
+        if (
+          book.currency !== "SEK" ||
+          book.currencyScale !== 2 ||
+          policy.status !== "active" ||
+          policy.input.ruleVersion !== "se-domestic-standard-25-2023-200-v1" ||
+          policy.candidate.input.vatTreatment !== "se-domestic-standard-25-v1" ||
+          policy.candidate.input.roundingMethod !== "line-tax-half-up-minor-v1"
+        )
+          return yield* failure("UnsupportedProfile");
+        yield* requireRetainedEvidence(
+          transaction,
+          scope.bookId,
+          policy.candidate.input.vatEvidence,
+        );
+        taxEvidenceId = policy.candidate.input.vatEvidence.evidenceId;
+        taxDescription = policy.candidate.input.vatTreatment;
+      }
+
+      const amounts = commercialLineAmounts({
+        quantity: line.quantity,
+        unitPriceMinor: line.unitPriceMinor,
+        discountMinor: line.discountMinor,
+        chargeMinor: line.chargeMinor,
+        taxRule: taxDescription === null ? "unresolved" : "line-tax-half-up-minor-25-v1",
+      });
+
+      if (Result.isFailure(amounts)) return yield* failure("InvalidJournal");
+
+      const expanded: DraftLine = {
+        id: line.id,
+        description: line.description,
+        quantity: line.quantity,
+        unitPriceMinor: line.unitPriceMinor,
+        baseMinor: amounts.success.base.toString(),
+        discountMinor: line.discountMinor,
+        chargeMinor: line.chargeMinor,
+        taxMinor: amounts.success.tax?.toString() ?? null,
+        taxDescription,
+        taxEvidenceId,
+        sourceGrossMinor: null,
+      };
+
+      lines.push(
+        line.catalogSelection === undefined
+          ? expanded
+          : { ...expanded, catalogSelection: line.catalogSelection },
+      );
+    }
+
+    const content: DraftContent = {
+      ...input,
+      currency: book.currency,
+      currencyScale: book.currencyScale,
+      sourceTotalMinor: null,
+      lines,
+    };
+
+    const calculation = yield* calculateDraft(transaction, scope, book, content);
+
+    if (
+      BigInt(calculation.totals.netMinor) >= maximumMinor ||
+      (calculation.totals.grossMinor !== null &&
+        BigInt(calculation.totals.grossMinor) >= maximumMinor)
+    )
+      return yield* failure("InvalidJournal");
+    const inputDigest = yield* digest(yield* toJsonObject(input));
+
+    return {
+      ...calculation,
+      content,
+      calculationBasis: "commercial_minor_v1",
+      blockers: [
+        ...calculation.blockers.filter(
+          (item) => !standingBlockers.some((standing) => standing.code === item.code),
+        ),
+        blocker("legal_issue_review_required", null),
+      ],
+      commercial: { input, digest: inputDigest },
+      inputDigest,
+    };
+  },
+);
+
+export const recalculateInvoiceDraft = Effect.fn("commerce.drafts.recalculate")(function* (
+  transaction: Transaction,
+  scope: Scope,
+  book: DraftDb.BookCurrencyRow,
+  draft: typeof Drafts.InvoiceDraftRevision.Type,
+) {
+  return draft.purpose === "commercial"
+    ? yield* calculateCommercialContent(transaction, scope, book, draft.commercialInput)
+    : yield* calculateDraft(transaction, scope, book, draft.content);
+});

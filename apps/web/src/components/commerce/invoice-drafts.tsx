@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import * as Commerce from "@open-erp/contracts/commerce";
+import * as Legal from "@open-erp/contracts/legal-sales-policy";
 import { Plus, ArrowLeft } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
@@ -216,6 +217,22 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
   const customer = session.state.customer;
   const draftKey = session.state.draftKey;
   const lines = session.state.lines;
+
+  const commercial =
+    (baseline?.purpose ?? session.state.purpose ?? "source_transcription") === "commercial";
+
+  const policies = useQuery({
+    queryKey: [...commerceKey(props.book), "commercial-policies"],
+    enabled: commercial,
+    queryFn: ({ signal }) =>
+      readAccounting(
+        `${commercePath(props.book)}/legal-sales-policies`,
+        Legal.LegalSalesPolicyHistory,
+        { signal },
+      ),
+    retry: false,
+  });
+
   const metadata = useQuery(workQueryOptions(props.book, {}));
   const scale = content?.currencyScale ?? metadata.data?.currencyScale;
 
@@ -224,190 +241,293 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
       <AccountingStatus locale={props.locale} pending={metadata.isPending} error={metadata.error} />
     );
 
+  const currencyScale = scale;
+
+  const initialTreatment =
+    baseline?.purpose === "commercial" ? baseline.commercialInput.lines[0]?.treatment : undefined;
+
+  const policyId = initialTreatment?.kind === "legal_sales_policy" ? initialTreatment.id : "";
+
+  function draftCommand(fields: FormData, evidenceId: string) {
+    const next = {
+      title: inputText(fields, "title"),
+      counterpartyId: customer?.id,
+      counterpartyRevision: customer?.revision,
+      seller: {
+        legalName: inputText(fields, "seller"),
+        registrationId: inputText(fields, "registration"),
+        taxId: content?.seller.taxId ?? null,
+        address: inputText(fields, "sellerAddress"),
+        countryCode: inputText(fields, "sellerCountry"),
+        evidenceId,
+      },
+      customer: {
+        legalName: inputText(fields, "customerName"),
+        registrationId: inputText(fields, "customerRegistration"),
+        taxId: content?.customer.taxId ?? null,
+        address: inputText(fields, "customerAddress"),
+        countryCode: inputText(fields, "customerCountry"),
+        evidenceId,
+      },
+      currency: content?.currency ?? props.book.currency,
+      currencyScale,
+      plannedIssueDate: inputText(fields, "issueDate"),
+      supplyDate: inputText(fields, "supplyDate"),
+      dueDate: inputText(fields, "dueDate"),
+      paymentTerms: inputText(fields, "terms"),
+      sourceTotalMinor: decimalField(fields, "sourceTotal", currencyScale, true),
+      lines: lines.map((line) => {
+        const catalogSelection = line.defaults?.catalogSelection;
+
+        const nextLine = {
+          id: line.id,
+          description: catalogSelection
+            ? (line.defaults?.description ?? null)
+            : inputText(fields, `${line.id}_description`),
+          quantity: invoiceQuantity(inputText(fields, `${line.id}_quantity`)),
+          unitPriceMinor: catalogSelection
+            ? (line.defaults?.unitPriceMinor ?? null)
+            : decimalField(fields, `${line.id}_unitPrice`, currencyScale, true),
+          baseMinor: decimalField(fields, `${line.id}_amount`, currencyScale),
+          discountMinor: line.defaults?.discountMinor ?? "0",
+          chargeMinor: line.defaults?.chargeMinor ?? "0",
+          taxMinor: decimalField(fields, `${line.id}_tax`, currencyScale, true),
+          taxDescription: catalogSelection
+            ? (line.defaults?.taxDescription ?? null)
+            : inputText(fields, `${line.id}_taxDescription`),
+          taxEvidenceId: inputText(fields, `${line.id}_tax`) === null ? null : evidenceId,
+          sourceGrossMinor: decimalField(fields, `${line.id}_sourceGross`, currencyScale, true),
+        };
+
+        return catalogSelection ? { ...nextLine, catalogSelection } : nextLine;
+      }),
+    };
+
+    const selectedPolicyId = inputText(fields, "commercialPolicy");
+    const policy = policies.data?.items.find((item) => item.id === selectedPolicyId);
+
+    const composition = commercial
+      ? {
+          commercial: {
+            title: next.title,
+            counterpartyId: next.counterpartyId,
+            counterpartyRevision: next.counterpartyRevision,
+            seller: {
+              ...next.seller,
+              taxId:
+                policy?.candidate.input.sellerIdentity.vatRegistrationNumber ?? next.seller.taxId,
+              evidenceId: policy?.candidate.input.sellerEvidence.evidenceId ?? evidenceId,
+            },
+            customer: { ...next.customer, evidenceId: customer?.evidenceId ?? evidenceId },
+            plannedIssueDate: next.plannedIssueDate,
+            supplyDate: next.supplyDate,
+            dueDate: next.dueDate,
+            paymentTerms: next.paymentTerms,
+            lines: next.lines.map((line) => {
+              const compositionLine = {
+                id: line.id,
+                description: line.description,
+                quantity: line.quantity,
+                unitPriceMinor: line.unitPriceMinor,
+                discountMinor: line.discountMinor,
+                chargeMinor: line.chargeMinor,
+                treatment: policy
+                  ? { kind: "legal_sales_policy", id: policy.id, digest: policy.digest }
+                  : { kind: "unresolved" },
+              };
+
+              return "catalogSelection" in line
+                ? { ...compositionLine, catalogSelection: line.catalogSelection }
+                : compositionLine;
+            }),
+          },
+        }
+      : { content: next };
+
+    return baseline
+      ? {
+          expectedRevision: session.state.expected?.revision ?? baseline.revision,
+          expectedDigest: session.state.expected?.digest ?? baseline.digest,
+          reason: inputText(fields, "reason"),
+          ...composition,
+        }
+      : { draftKey, ...composition };
+  }
+
+  const seller = {
+    legalName: restoredField(session, "seller", content?.seller.legalName ?? props.book.name),
+    registrationId: restoredField(session, "registration", content?.seller.registrationId ?? ""),
+    address: restoredField(session, "sellerAddress", content?.seller.address ?? ""),
+    countryCode: restoredField(session, "sellerCountry", content?.seller.countryCode ?? ""),
+  };
+
   return (
     <InvoiceDraftSave
       {...props}
-      footerSummary={
+      footerSummary={(calculation) => (
         <DraftFooter
+          commercial={commercial}
+          calculation={calculation}
           lines={lines}
           scale={scale}
           content={content}
           bookCurrency={props.book.currency}
           locale={props.locale}
         />
-      }
+      )}
       source={(fields) => ({
         title: inputText(fields, "title") ?? labels.invoiceDrafts,
         origin: "Invoice details entered in OpenERP",
         mediaType: "application/json",
         content: JSON.stringify({ kind: "invoice_entry_v1", fields: Object.fromEntries(fields) }),
       })}
-      input={(fields, evidence) => {
-        const evidenceId = evidence.id;
-
-        const next = {
-          title: inputText(fields, "title"),
-          counterpartyId: customer?.id,
-          counterpartyRevision: customer?.revision,
-          seller: {
-            legalName: inputText(fields, "seller"),
-            registrationId: inputText(fields, "registration"),
-            taxId: content?.seller.taxId ?? null,
-            address: inputText(fields, "sellerAddress"),
-            countryCode: inputText(fields, "sellerCountry"),
-            evidenceId,
-          },
-          customer: {
-            legalName: inputText(fields, "customerName"),
-            registrationId: inputText(fields, "customerRegistration"),
-            taxId: content?.customer.taxId ?? null,
-            address: inputText(fields, "customerAddress"),
-            countryCode: inputText(fields, "customerCountry"),
-            evidenceId,
-          },
-          currency: content?.currency ?? props.book.currency,
-          currencyScale: scale,
-          plannedIssueDate: inputText(fields, "issueDate"),
-          supplyDate: inputText(fields, "supplyDate"),
-          dueDate: inputText(fields, "dueDate"),
-          paymentTerms: inputText(fields, "terms"),
-          sourceTotalMinor: decimalField(fields, "sourceTotal", scale, true),
-          lines: lines.map((line) => {
-            const catalogSelection = line.defaults?.catalogSelection;
-
-            const nextLine = {
-              id: line.id,
-              description: catalogSelection
-                ? (line.defaults?.description ?? null)
-                : inputText(fields, `${line.id}_description`),
-              quantity: invoiceQuantity(inputText(fields, `${line.id}_quantity`)),
-              unitPriceMinor: catalogSelection
-                ? (line.defaults?.unitPriceMinor ?? null)
-                : decimalField(fields, `${line.id}_unitPrice`, scale, true),
-              baseMinor: decimalField(fields, `${line.id}_amount`, scale),
-              discountMinor: line.defaults?.discountMinor ?? "0",
-              chargeMinor: line.defaults?.chargeMinor ?? "0",
-              taxMinor: decimalField(fields, `${line.id}_tax`, scale, true),
-              taxDescription: catalogSelection
-                ? (line.defaults?.taxDescription ?? null)
-                : inputText(fields, `${line.id}_taxDescription`),
-              taxEvidenceId: inputText(fields, `${line.id}_tax`) === null ? null : evidenceId,
-              sourceGrossMinor: decimalField(fields, `${line.id}_sourceGross`, scale, true),
-            };
-
-            return catalogSelection ? { ...nextLine, catalogSelection } : nextLine;
-          }),
-        };
-
-        return baseline
-          ? {
-              expectedRevision: session.state.expected?.revision ?? baseline.revision,
-              expectedDigest: session.state.expected?.digest ?? baseline.digest,
-              reason: inputText(fields, "reason"),
-              content: next,
-            }
-          : { draftKey, content: next };
-      }}
+      input={(fields, evidence) => draftCommand(fields, evidence.id)}
+      previewInput={
+        commercial
+          ? (fields) => draftCommand(fields, customer?.evidenceId ?? "unselected")
+          : undefined
+      }
     >
-      <DocumentPaper compact>
-        <DraftDates content={content} locale={props.locale} session={session} />
-        <RecordColumns>
-          <DraftCustomerPicker
-            book={props.book}
-            locale={props.locale}
-            content={content}
-            customer={customer}
-            session={session}
-            onChange={(party) => selectDraftCustomer(session, party)}
-          />
-          <InvoiceDraftParty
-            title={labels.from}
-            prefix="seller"
-            locale={props.locale}
-            party={{
-              legalName: restoredField(
-                session,
-                "seller",
-                content?.seller.legalName ?? props.book.name,
-              ),
-              registrationId: restoredField(
-                session,
-                "registration",
-                content?.seller.registrationId ?? "",
-              ),
-              address: restoredField(session, "sellerAddress", content?.seller.address ?? ""),
-              countryCode: restoredField(
-                session,
-                "sellerCountry",
-                content?.seller.countryCode ?? "",
-              ),
-            }}
-          />
-        </RecordColumns>
-        <RecordSection title={`${labels.lineItems} · ${content?.currency ?? props.book.currency}`}>
-          <InvoiceEditorLines
-            book={props.book}
-            lines={lines}
-            fields={session.state.fields}
-            onChange={(next, changedLineId) => {
-              const fields = { ...session.state.fields };
-
-              if (changedLineId) {
-                for (const key of Object.keys(fields)) {
-                  if (key.startsWith(`${changedLineId}_`)) delete fields[key];
-                }
+      {(calculation) => (
+        <DocumentPaper compact>
+          {!baseline ? (
+            <SelectField
+              name="draftPurpose"
+              label={sv ? "Typ av utkast" : "Draft purpose"}
+              value={commercial ? "commercial" : "source_transcription"}
+              onValueChange={(value) =>
+                session.update({
+                  purpose: value === "commercial" ? "commercial" : "source_transcription",
+                })
               }
+              options={[
+                {
+                  value: "commercial",
+                  label: sv ? "Beräkna kommersiell faktura" : "Calculate commercial invoice",
+                },
+                {
+                  value: "source_transcription",
+                  label: sv ? "Registrera belopp från underlag" : "Transcribe source amounts",
+                },
+              ]}
+            />
+          ) : null}
+          {commercial ? (
+            <>
+              <AccountingStatus
+                locale={props.locale}
+                pending={policies.isPending}
+                error={policies.error}
+              />
+              <SelectField
+                name="commercialPolicy"
+                label={sv ? "Granskad momsprofil" : "Reviewed tax profile"}
+                defaultValue={restoredField(session, "commercialPolicy", policyId)}
+                onValueChange={(value) =>
+                  session.update({
+                    fields: { ...session.state.fields, commercialPolicy: value ?? "" },
+                  })
+                }
+                options={[
+                  { value: "", label: sv ? "Ej fastställd" : "Unresolved" },
+                  ...(policies.data?.items.map((policy) => ({
+                    value: policy.id,
+                    label: `${policy.candidate.input.sellerIdentity.legalName} · ${policy.candidate.input.vatTreatment}`,
+                  })) ?? []),
+                ]}
+              />
+            </>
+          ) : null}
+          <DraftDates content={content} locale={props.locale} session={session} />
+          <RecordColumns>
+            <DraftCustomerPicker
+              book={props.book}
+              locale={props.locale}
+              content={content}
+              customer={customer}
+              session={session}
+              onChange={(party) => selectDraftCustomer(session, party)}
+            />
+            <InvoiceDraftParty
+              title={labels.from}
+              prefix="seller"
+              locale={props.locale}
+              party={seller}
+            />
+          </RecordColumns>
+          <RecordSection
+            title={`${labels.lineItems} · ${content?.currency ?? props.book.currency}`}
+          >
+            <InvoiceEditorLines
+              commercial={commercial}
+              calculation={calculation}
+              book={props.book}
+              lines={lines}
+              fields={session.state.fields}
+              onChange={(next, changedLineId) => {
+                const fields = { ...session.state.fields };
 
-              session.update({ lines: next, fields });
-            }}
-            scale={scale}
-            currency={content?.currency ?? props.book.currency}
-            locale={props.locale}
-            footer={
-              <Box display="grid" gap="lg">
-                <InputField
-                  name="terms"
-                  label={labels.paymentTerms}
-                  maxLength={1000}
-                  defaultValue={restoredField(session, "terms", content?.paymentTerms ?? "")}
-                  placeholder={sv ? "Till exempel 30 dagar" : "For example, 30 days"}
-                />
-                <Box display="grid" gap="sm">
+                if (changedLineId) {
+                  for (const key of Object.keys(fields)) {
+                    if (key.startsWith(`${changedLineId}_`)) delete fields[key];
+                  }
+                }
+
+                session.update({ lines: next, fields });
+              }}
+              scale={scale}
+              currency={content?.currency ?? props.book.currency}
+              locale={props.locale}
+              footer={
+                <Box display="grid" gap="lg">
                   <InputField
-                    name="sourceTotal"
-                    label={sv ? "Avtalat totalbelopp (valfritt)" : "Agreed total (optional)"}
-                    inputMode="decimal"
-                    defaultValue={restoredField(
-                      session,
-                      "sourceTotal",
-                      editAmount(content?.sourceTotalMinor, scale),
-                    )}
-                    placeholder="—"
+                    name="terms"
+                    label={labels.paymentTerms}
+                    maxLength={1000}
+                    defaultValue={restoredField(session, "terms", content?.paymentTerms ?? "")}
+                    placeholder={sv ? "Till exempel 30 dagar" : "For example, 30 days"}
                   />
-                  <PageCaption>
-                    {sv
-                      ? "Totalsumman från avtalet eller beställningen."
-                      : "The total from your agreement or order."}
-                  </PageCaption>
+                  {!commercial ? (
+                    <Box display="grid" gap="sm">
+                      <InputField
+                        name="sourceTotal"
+                        label={sv ? "Avtalat totalbelopp (valfritt)" : "Agreed total (optional)"}
+                        inputMode="decimal"
+                        defaultValue={restoredField(
+                          session,
+                          "sourceTotal",
+                          editAmount(content?.sourceTotalMinor, scale),
+                        )}
+                        placeholder="—"
+                      />
+                      <PageCaption>
+                        {sv
+                          ? "Totalsumman från avtalet eller beställningen."
+                          : "The total from your agreement or order."}
+                      </PageCaption>
+                    </Box>
+                  ) : null}
                 </Box>
-              </Box>
-            }
-          />
-        </RecordSection>
-        {baseline ? (
-          <InputField
-            name="reason"
-            label={labels.whatChanged}
-            required
-            defaultValue={restoredField(session, "reason")}
-          />
-        ) : null}
-      </DocumentPaper>
+              }
+            />
+          </RecordSection>
+          {baseline ? (
+            <InputField
+              name="reason"
+              label={labels.whatChanged}
+              required
+              defaultValue={restoredField(session, "reason")}
+            />
+          ) : null}
+        </DocumentPaper>
+      )}
     </InvoiceDraftSave>
   );
 }
 
 function DraftFooter(props: {
+  commercial?: boolean;
+  calculation?: typeof Drafts.CommercialDraftCalculation.Type;
   lines: readonly EditableInvoiceLine[];
   scale: number;
   content?: DraftContent;
@@ -415,7 +535,14 @@ function DraftFooter(props: {
   locale: CommerceProps["locale"];
 }) {
   const labels = props.locale === "sv" ? swedish : english;
-  const gross = invoiceEditorTotals(props.lines, props.scale).gross;
+  const derived = props.calculation?.totals.grossMinor;
+
+  const gross = props.commercial
+    ? derived == null
+      ? null
+      : BigInt(derived)
+    : invoiceEditorTotals(props.lines, props.scale).gross;
+
   const currency = props.content?.currency ?? props.bookCurrency;
 
   return (
@@ -489,6 +616,7 @@ function DraftDetail(props: CommerceProps & DraftActions & { id: string }) {
               disabled={
                 props.book.role !== "operator" ||
                 view.isFetching ||
+                view.data?.lifecycle.kind !== "editable" ||
                 record.revision !== view.data?.currentRevision
               }
               onClick={() => setEditing(record)}
@@ -566,6 +694,7 @@ function DraftReadiness({ record, locale }: { record: Draft; locale: CommercePro
 
   const setupCodes = new Set([
     "issuance_not_implemented",
+    "legal_issue_review_required",
     "legal_identity_not_verified",
     "tax_profile_not_activated",
   ]);

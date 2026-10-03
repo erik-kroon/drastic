@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { defaultStringifySearch, useSearch } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as ArLegal from "@open-erp/contracts/ar-legal-issue";
@@ -59,6 +60,7 @@ export function InvoiceIssuance(props: IssueWorkspaceProps) {
 }
 
 function IssueWorkspace(props: IssueWorkspaceProps) {
+  const search = useSearch({ from: "/entities/$entityId/books/$bookId/sales", shouldThrow: false });
   const copy = invoiceIssueCopy(props.locale);
   const [draftId, setDraftId] = useState(props.recordId ?? "");
   const [localReviewId, setLocalReviewId] = useState("");
@@ -125,7 +127,7 @@ function IssueWorkspace(props: IssueWorkspaceProps) {
         ) : (
           <PageAction
             quiet
-            href={`${workspacePath(props.book)}/sales?view=drafts&record=${encodeURIComponent(draftId)}`}
+            href={`${workspacePath(props.book)}/sales${defaultStringifySearch({ ...search, view: "drafts", record: draftId, kind: "draft", stage: undefined, review: undefined })}`}
           >
             {props.locale === "sv" ? "Till fakturan" : "Back to invoice"}
           </PageAction>
@@ -212,6 +214,7 @@ function IssueDraft(props: CommerceProps & { id: string; onOpen: (id: string) =>
           draft={draft.data.record}
           allowed={
             draft.isSuccess &&
+            draft.data.lifecycle.kind === "editable" &&
             draft.fetchStatus === "idle" &&
             draft.isFetchedAfterMount &&
             history.isSuccess &&
