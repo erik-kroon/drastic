@@ -55,7 +55,14 @@ export function PostingRecoveryReview(props: {
 
   return (
     <Box as="section" id="journal-review" tabIndex={-1} display="grid" gap="lg" minWidth="zero">
-      <Box display="flex" flexWrap="wrap" justifyContent="between" alignItems="center" gap="md">
+      <Box
+        display="flex"
+        flexWrap="wrap"
+        justifyContent="between"
+        alignItems="center"
+        gap="md"
+        padding="md"
+      >
         {recovery.data && !recovery.isError ? (
           <Box role="status" display="grid" gap="sm">
             <Text>{copy[recovery.data.summary.postingStatus]}</Text>
@@ -213,32 +220,10 @@ function RecoveryDetail(props: {
   const unposted = current.summary.postingStatus === "unposted_at_check";
   const actionable = unposted && current.validation.status === "current" && reviewed && !busy;
 
-  return (
-    <Box display="grid" gap="lg" minWidth="zero">
-      {current.plan.groups.map((group) => (
-        <Box key={group.id} display="grid" gap="lg" minWidth="zero">
-          {group.actions.map((action) => (
-            <ReviewEntry
-              key={`${action.eventId}/${action.occurrenceKey}`}
-              book={book}
-              action={action}
-              locale={locale}
-              accounts={accounts}
-            />
-          ))}
-        </Box>
-      ))}
-      <RecoveryReceipt
-        book={book}
-        current={current}
-        locale={locale}
-        returnSearch={props.returnSearch}
-      />
-      <CommandOutcome saved={approve.data} locale={locale} />
-      <CommandOutcome saved={execute.data} locale={locale} />
-      <CommandOutcome saved={revoke.data} locale={locale} />
+  const approval = (
+    <>
       {unposted ? (
-        <WorkflowSurface>
+        <Box display="grid" gap="md" minWidth="zero">
           {current.validation.blocker ? (
             <Text role="alert">
               {copy.blocked} {current.validation.blocker.message}
@@ -322,8 +307,39 @@ function RecoveryDetail(props: {
             write
             error={approve.error ?? execute.error ?? revoke.error}
           />
-        </WorkflowSurface>
-      ) : null}
+        </Box>
+      ) : null}{" "}
+    </>
+  );
+
+  return (
+    <Box display="grid" gap="lg" minWidth="zero">
+      {current.plan.groups.map((group) => (
+        <Box key={group.id} display="grid" gap="lg" minWidth="zero">
+          {group.actions.map((action, index) => (
+            <ReviewEntry
+              key={`${action.eventId}/${action.occurrenceKey}`}
+              book={book}
+              action={action}
+              locale={locale}
+              accounts={accounts}
+            >
+              {group === current.plan.groups.at(-1) && index === group.actions.length - 1
+                ? approval
+                : null}
+            </ReviewEntry>
+          ))}
+        </Box>
+      ))}
+      <RecoveryReceipt
+        book={book}
+        current={current}
+        locale={locale}
+        returnSearch={props.returnSearch}
+      />
+      <CommandOutcome saved={approve.data} locale={locale} />
+      <CommandOutcome saved={execute.data} locale={locale} />
+      <CommandOutcome saved={revoke.data} locale={locale} />
       <Disclosure title={accountingCopy(locale).workspace_reference_details}>
         <Text tone="muted">{current.plan.id}</Text>
         <Text tone="muted">

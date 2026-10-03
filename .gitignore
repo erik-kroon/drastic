@@ -2,7 +2,7 @@
 node_modules
 .pnp
 .pnp.js
-
+docs/design/*
 .codex/*
 .codex/
 .codex
@@ -92,3 +92,4 @@ temp
 # Local Cloudflare runtime and development secrets
 .wrangler/
 .dev.vars
+.design-system/paper-route-matrix.json

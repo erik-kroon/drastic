@@ -6,8 +6,11 @@ const styles = stylex.create({
   canvas: { containerType: "inline-size", minWidth: 0 },
   paper: {
     display: "grid",
-    gap: tokens.space8,
-    padding: tokens.space6,
+    gap: tokens.space3_5,
+    paddingBlock: tokens.space9,
+    paddingInline: tokens.space10,
+    minHeight: 700,
+    alignContent: "start",
     minWidth: 0,
     borderWidth: 1,
     borderStyle: "solid",
@@ -21,13 +24,12 @@ const styles = stylex.create({
     fontSize: tokens.fontSizeCompact,
     letterSpacing: tokens.trackingSection,
     textTransform: "uppercase",
-    fontFamily: tokens.fontMono,
   },
   title: {
     marginBlockStart: tokens.space2,
-    fontSize: tokens.fontSizeBase,
-    fontWeight: tokens.fontWeightMedium,
-    lineHeight: tokens.lineHeightNormal,
+    fontSize: tokens.fontSizeEmptyTitle,
+    fontWeight: tokens.fontWeightSemibold,
+    lineHeight: tokens.lineHeight28Px,
     overflowWrap: "anywhere",
   },
   dates: {
@@ -43,7 +45,6 @@ const styles = stylex.create({
     display: "flex",
     gap: tokens.space2,
     fontSize: tokens.fontSizeCompact,
-    fontFamily: tokens.fontMono,
   },
   dateValue: { fontVariantNumeric: "tabular-nums" },
   details: {
@@ -59,7 +60,6 @@ const styles = stylex.create({
     borderCollapse: "collapse",
     width: "100%",
     fontSize: tokens.fontSizeXs,
-    fontFamily: tokens.fontMono,
   },
   lineHeader: {
     paddingBlock: tokens.space3,

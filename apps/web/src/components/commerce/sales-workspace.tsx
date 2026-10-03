@@ -3,13 +3,10 @@ import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter, defaultStringifySearch } from "@tanstack/react-router";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Sales from "@open-erp/contracts/sales-register";
-import { Plus, ArrowLeft, ArrowRight, Search } from "lucide-react";
+import { ArrowLeft, ArrowRight, Search } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
-import { Badge } from "@open-erp/ui/components/badge";
-import { Link } from "@open-erp/ui/components/link";
 import { SelectControl } from "@open-erp/ui/components/select";
-import { DataTable } from "@open-erp/ui/components/data-table";
 import { RecordSheet } from "@open-erp/ui/components/record-sheet";
 import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
 import { PageTabs, PageTab } from "@open-erp/ui/components/workflow";
@@ -17,11 +14,18 @@ import {
   PageContent,
   PageCaption,
   PageEmpty,
-  RegisterFilters,
   RegisterSearch,
-  RegisterFilter,
 } from "@open-erp/ui/components/accounting-page";
-import { Text } from "@open-erp/ui/components/typography";
+import {
+  RegisterWorkspace,
+  RegisterNavigation,
+  RegisterGroup,
+  RegisterRow,
+  RegisterDetailHeading,
+  RegisterDetailActions,
+  type RegisterStatus,
+} from "@open-erp/ui/components/register-workspace";
+import { PageAction } from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
@@ -82,6 +86,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
   const status = search.status ?? (search.view === "drafts" && !search.record ? "draft" : "all");
   const sort = search.sort ?? "newest";
   const pageNumber = Number(search.page ?? "1");
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState({ applied: search.q ?? "", text: search.q ?? "" });
 
   if (searchText.applied !== (search.q ?? ""))
@@ -136,9 +141,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
 
     const row =
       opener.current?.base === base
-        ? document.querySelector<HTMLAnchorElement>(
-            `[data-sales-id="${CSS.escape(opener.current.id)}"]`,
-          )
+        ? document.querySelector<HTMLElement>(`[data-sales-id="${CSS.escape(opener.current.id)}"]`)
         : null;
 
     const target = row ?? document.querySelector<HTMLHeadingElement>("main h1");
@@ -212,51 +215,42 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
     return labels[row.status];
   };
 
-  return (
-    <>
-      <WorkspaceHeader
-        title={labels.invoicing}
-        action={
-          <Box display="flex" alignItems="center" gap="lg" flexWrap="wrap">
-            <WorkReturnAction work={work} />
-            {!contacts ? (
-              <Button disabled={book.role !== "operator"} onClick={() => open("new", "draft")}>
-                <Plus size={14} />
-                {labels.newInvoice}
-              </Button>
-            ) : null}
-          </Box>
-        }
-      />
-      <PageContent>
-        <PageTabs label={labels.invoicing}>
-          <PageTab
-            href={`${base}${defaultStringifySearch({ ...registerSearch, view: undefined })}`}
-            active={!contacts}
-            onPointerEnter={preloadInvoices}
-            onFocus={preloadInvoices}
-          >
-            {labels.invoices}
-          </PageTab>
-          <PageTab
-            href={tabHref("parties")}
-            active={contacts}
-            onPointerEnter={preloadCustomers}
-            onFocus={preloadCustomers}
-          >
-            {labels.customers}
-          </PageTab>
-          <PageTab href={tabHref("collections")} active={search.view === "collections"}>
-            {sv ? "Krav" : "Collections"}
-          </PageTab>
-          <PageTab href={tabHref("orders")} active={search.view === "orders"}>
-            {sv ? "Offerter och order" : "Quotes and orders"}
-          </PageTab>
-          <PageTab href={tabHref("articles")} active={search.view === "articles"}>
-            {labels.articleCatalog}
-          </PageTab>
-        </PageTabs>
-        {contacts ? (
+  const tabs = [
+    {
+      label: labels.invoices,
+      href: `${base}${defaultStringifySearch({ ...registerSearch, view: undefined })}`,
+      active: !contacts,
+      preload: preloadInvoices,
+    },
+    {
+      label: labels.customers,
+      href: tabHref("parties"),
+      active: contacts,
+      preload: preloadCustomers,
+    },
+    { label: labels.articleCatalog, href: tabHref("articles"), active: false },
+    { label: sv ? "Offerter" : "Quotes", href: tabHref("orders"), active: false },
+    { label: sv ? "Krav" : "Collections", href: tabHref("collections"), active: false },
+  ];
+
+  if (contacts)
+    return (
+      <>
+        <WorkspaceHeader title={labels.invoicing} />
+        <PageContent>
+          <PageTabs label={labels.invoicing}>
+            {tabs.map((tab) => (
+              <PageTab
+                key={tab.href}
+                href={tab.href}
+                active={tab.active}
+                onPointerEnter={tab.preload}
+                onFocus={tab.preload}
+              >
+                {tab.label}
+              </PageTab>
+            ))}
+          </PageTabs>
           <Counterparties
             defaultRole="customer"
             book={book}
@@ -264,228 +258,287 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
             recordId={search.record ?? ""}
             onOpen={(id) => change({ ...search, view: "parties", record: id || undefined })}
           />
-        ) : (
-          <>
-            <Box
-              display="flex"
-              justifyContent="between"
-              alignItems="center"
-              flexWrap="wrap"
-              gap="lg"
+        </PageContent>
+      </>
+    );
+
+  const data = register.isError ? undefined : register.data;
+
+  return (
+    <>
+      <RegisterWorkspace
+        title={labels.invoicing}
+        tabs={<RegisterNavigation label={labels.invoicing} options={tabs} />}
+        action={
+          <Box display="flex" gap="sm" alignItems="center">
+            <WorkReturnAction work={work} />
+            <Button
+              size="sm"
+              disabled={book.role !== "operator"}
+              onClick={() => open("new", "draft")}
             >
-              <RegisterFilters>
-                {statuses.map((item) => (
-                  <Button
-                    key={item.value}
-                    size="sm"
-                    variant={status === item.value ? "secondary" : "ghost"}
-                    static
-                    onClick={() =>
-                      change({
-                        ...search,
-                        view: undefined,
-                        status: item.value,
-                        page: undefined,
-                        record: undefined,
-                      })
-                    }
-                  >
-                    {item.label}
-                    {register.isSuccess ? ` ${register.data.counts[item.value]}` : ""}
-                  </Button>
-                ))}
-              </RegisterFilters>
-              <RegisterFilter>
-                <SelectControl
-                  aria-label={labels.sort}
-                  value={sort}
-                  options={[
-                    { value: "newest", label: labels.newest },
-                    { value: "oldest", label: labels.oldest },
-                    { value: "customer", label: labels.customer },
-                    { value: "due", label: labels.dueDate },
-                  ]}
-                  onValueChange={(value) => {
-                    if (
-                      value === "newest" ||
-                      value === "oldest" ||
-                      value === "customer" ||
-                      value === "due"
-                    )
-                      change({ ...search, sort: value, page: undefined });
-                  }}
-                />
-              </RegisterFilter>
-            </Box>
-            <Box
-              as="form"
-              ref={(node) => {
-                if (node && !search.record) focusRegister();
+              {labels.newInvoice}
+            </Button>
+          </Box>
+        }
+        filters={
+          <Box
+            as="form"
+            display="flex"
+            gap="sm"
+            alignItems="center"
+            flexWrap="wrap"
+            ref={(node) => {
+              if (node && !search.record) focusRegister();
+            }}
+            onSubmit={(event) => {
+              event.preventDefault();
+              change({ ...search, q: searchText.text.trim() || undefined, page: undefined });
+            }}
+          >
+            <SelectControl
+              size="compact"
+              aria-label={labels.status}
+              value={status}
+              options={statuses.map((item) => ({
+                value: item.value,
+                label: `${item.label}${data ? ` ${data.counts[item.value]}` : ""}`,
+              }))}
+              onValueChange={(value) => {
+                const selectedStatus = statuses.find((item) => item.value === value);
+
+                if (selectedStatus)
+                  change({
+                    ...search,
+                    status: selectedStatus.value,
+                    page: undefined,
+                    record: undefined,
+                  });
               }}
-              display="flex"
-              gap="sm"
-              alignItems="center"
-              onSubmit={(event) => {
-                event.preventDefault();
-                change({ ...search, q: searchText.text.trim() || undefined, page: undefined });
+            />
+            <SelectControl
+              size="compact"
+              aria-label={labels.sort}
+              value={sort}
+              options={[
+                { value: "newest", label: labels.newest },
+                { value: "oldest", label: labels.oldest },
+                { value: "customer", label: labels.customer },
+                { value: "due", label: labels.dueDate },
+              ]}
+              onValueChange={(value) => {
+                if (
+                  value === "newest" ||
+                  value === "oldest" ||
+                  value === "customer" ||
+                  value === "due"
+                )
+                  change({ ...search, sort: value, page: undefined });
               }}
-            >
-              <RegisterSearch
-                aria-label={labels.search}
-                placeholder={labels.search}
-                value={searchText.text}
-                onChange={(event) => setSearchText({ ...searchText, text: event.target.value })}
-                maxLength={200}
-              />
-              <Button type="submit" variant="ghost" size="sm">
-                <Search size={14} />
-                {labels.searchAction}
+            />
+            <RegisterSearch
+              compact
+              aria-label={labels.search}
+              placeholder={labels.search}
+              value={searchText.text}
+              onChange={(event) => setSearchText({ ...searchText, text: event.target.value })}
+              maxLength={200}
+            />
+            <Button type="submit" variant="ghost" size="sm">
+              <Search size={14} />
+              {labels.searchAction}
+            </Button>
+            {search.q ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchText({ applied: "", text: "" });
+                  change({ ...search, q: undefined, page: undefined });
+                }}
+              >
+                {labels.clear}
               </Button>
-              {search.q ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSearchText({ applied: "", text: "" });
-                    change({ ...search, q: undefined, page: undefined });
-                  }}
-                >
-                  {labels.clear}
-                </Button>
-              ) : null}
-            </Box>
+            ) : null}
+          </Box>
+        }
+        detail={
+          <SalesPreview
+            data={data}
+            selectedId={previewId}
+            locale={locale}
+            rowStatus={rowStatus}
+            rowUrl={rowUrl}
+            onOpen={(id) => {
+              opener.current = { base, id };
+            }}
+          />
+        }
+      >
+        {register.isPending || register.isError ? (
+          <Box padding="lg">
             <AccountingStatus locale={locale} pending={register.isPending} error={register.error} />
             {register.isError ? (
-              <Box>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    void register.refetch();
-                  }}
-                >
-                  {labels.retry}
-                </Button>
-              </Box>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  void register.refetch();
+                }}
+              >
+                {labels.retry}
+              </Button>
             ) : null}
-            {register.data && !register.isError ? (
-              <>
-                <SalesPagination
-                  data={register.data}
-                  page={pageNumber}
-                  locale={locale}
-                  searching={!!search.q}
-                  onPage={(page) => change({ ...search, page: String(page) })}
-                />
-                {register.data.items.length ? (
-                  <DataTable
-                    title={labels.invoices}
-                    minWidth="wide"
-                    columns={[
-                      { id: "invoice", label: labels.invoice },
-                      { id: "customer", label: labels.customer },
-                      { id: "status", label: labels.status },
-                      { id: "date", label: labels.date },
-                      { id: "due", label: labels.dueDate },
-                      { id: "amount", label: labels.amount, numeric: true },
-                    ]}
-                    rows={register.data.items.map((row) => ({
-                      id: row.id,
-                      cells: [
-                        <Box key="invoice" display="grid" gap="xs">
-                          <Link
-                            href={rowUrl(row)}
-                            data-sales-id={row.id}
-                            onClick={() => {
-                              opener.current = { base, id: row.id };
-                            }}
-                          >
-                            {row.number ?? row.title}
-                          </Link>
-                          {row.number ? <Text tone="muted">{row.title}</Text> : null}
-                        </Box>,
-                        row.customer,
-                        <Badge
-                          key="status"
-                          variant={
-                            row.overdue || row.needsDetails
-                              ? "warning"
-                              : row.status === "allocated"
-                                ? "success"
-                                : "secondary"
-                          }
-                        >
-                          {rowStatus(row)}
-                        </Badge>,
-                        <Box key="date" display="grid" gap="xs">
-                          <Text>
-                            {new Intl.DateTimeFormat(locale, {
-                              dateStyle: "medium",
-                              timeZone: "UTC",
-                            }).format(new Date(row.date))}
-                          </Text>
-                          <Text tone="muted">
-                            {row.kind === "draft" ? labels.updated : labels.issued}
-                          </Text>
-                        </Box>,
-                        row.dueOn
-                          ? new Intl.DateTimeFormat(locale, {
-                              dateStyle: "medium",
-                              timeZone: "UTC",
-                            }).format(new Date(row.dueOn))
-                          : "—",
-                        <Box key="amount" display="grid" gap="xs">
-                          <Text>
-                            {row.amountMinor === null
-                              ? "—"
-                              : `${formatMinorAmount(row.amountMinor, row.currencyScale, locale)} ${row.currency}`}
-                          </Text>
-                          {row.status === "partially_allocated" && row.outstandingMinor !== null ? (
-                            <Text tone="muted">
-                              {formatMinorAmount(row.outstandingMinor, row.currencyScale, locale)}{" "}
-                              {row.currency} {labels.remaining}
-                            </Text>
-                          ) : null}
-                        </Box>,
-                      ],
-                    }))}
-                  />
-                ) : register.data.total > 0 ? (
-                  <Box display="grid" gap="md">
-                    <PageEmpty title={labels.noPage} detail={labels.returnToFirst} />
-                    <Box>
-                      <Button
-                        variant="outline"
-                        onClick={() => change({ ...search, page: undefined })}
-                      >
-                        {labels.firstPage}
-                      </Button>
-                    </Box>
-                  </Box>
-                ) : (
-                  <PageEmpty
-                    title={search.q || status !== "all" ? labels.noMatches : labels.firstInvoice}
-                    detail={
-                      search.q || status !== "all" ? labels.changeFilters : labels.startInvoice
-                    }
-                  />
-                )}
-                {register.data.items.length > 10 ? (
-                  <SalesPagination
-                    data={register.data}
-                    page={pageNumber}
-                    locale={locale}
-                    searching={!!search.q}
-                    onPage={(page) => change({ ...search, page: String(page) })}
-                  />
-                ) : null}
-              </>
-            ) : null}
-            <SalesRecord search={search} close={close} open={open} change={change} />
-          </>
-        )}
-      </PageContent>
+          </Box>
+        ) : null}
+        <SalesRows
+          data={data}
+          selectedId={previewId}
+          locale={locale}
+          onSelect={setPreviewId}
+          rowStatus={rowStatus}
+        />
+        {data && !data.items.length ? (
+          <Box padding="lg">
+            <PageEmpty
+              title={search.q || status !== "all" ? labels.noMatches : labels.firstInvoice}
+              detail={search.q || status !== "all" ? labels.changeFilters : labels.startInvoice}
+            />
+          </Box>
+        ) : null}
+        {data ? (
+          <Box padding="lg">
+            <SalesPagination
+              data={data}
+              page={pageNumber}
+              locale={locale}
+              searching={!!search.q}
+              onPage={(page) => change({ ...search, page: String(page) })}
+            />
+          </Box>
+        ) : null}
+      </RegisterWorkspace>
+      <SalesRecord search={search} close={close} open={open} change={change} />
     </>
   );
+}
+
+function SalesRows(props: {
+  data: typeof Sales.SalesPage.Type | undefined;
+  selectedId: string | null;
+  locale: "sv" | "en";
+  onSelect: (id: string) => void;
+  rowStatus: (row: typeof Sales.SalesRow.Type) => string;
+}) {
+  const { data, selectedId, locale, rowStatus } = props;
+  const labels = locale === "sv" ? swedish : english;
+  const groups = [...new Set(data?.items.map((item) => salesGroup(item)) ?? [])];
+  const selected = data?.items.find((item) => item.id === selectedId) ?? data?.items[0];
+
+  return (
+    <>
+      {groups.map((group) => {
+        const items = data?.items.filter((row) => salesGroup(row) === group) ?? [];
+
+        return (
+          <Box key={group}>
+            <RegisterGroup title={labels[group]} count={items.length} />
+            {items.map((row) => (
+              <RegisterRow
+                key={row.id}
+                id={row.id}
+                prefix={row.number ?? undefined}
+                title={row.customer}
+                status={salesSymbol(row)}
+                state={rowStatus(row)}
+                amount={salesAmount(row, locale)}
+                selected={row.id === selected?.id}
+                onSelect={() => props.onSelect(row.id)}
+              />
+            ))}
+          </Box>
+        );
+      })}
+    </>
+  );
+}
+
+function salesAmount(row: typeof Sales.SalesRow.Type, locale: "en" | "sv") {
+  return row.amountMinor === null
+    ? "—"
+    : formatMinorAmount(row.amountMinor, row.currencyScale, locale);
+}
+
+function SalesPreview(props: {
+  data: typeof Sales.SalesPage.Type | undefined;
+  selectedId: string | null;
+  locale: "en" | "sv";
+  rowStatus: (row: typeof Sales.SalesRow.Type) => string;
+  rowUrl: (row: typeof Sales.SalesRow.Type) => string;
+  onOpen: (id: string) => void;
+}) {
+  const { data, selectedId, locale, rowStatus } = props;
+  const sv = locale === "sv";
+  const labels = sv ? swedish : english;
+  const selected = data?.items.find((item) => item.id === selectedId) ?? data?.items[0];
+
+  if (!selected)
+    return (
+      <PageCaption>
+        {sv ? "Välj en faktura för att se detaljer." : "Select an invoice to see details."}
+      </PageCaption>
+    );
+
+  return (
+    <>
+      <RegisterDetailHeading
+        title={selected.customer}
+        amount={salesAmount(selected, locale)}
+        caption={selected.number ?? selected.title}
+      />
+      <PageCaption>
+        {rowStatus(selected)} · {selected.currency}
+      </PageCaption>
+      <PageCaption>
+        {labels.date}: {selected.date.slice(0, 10)}
+        {selected.dueOn ? ` · ${labels.dueDate}: ${selected.dueOn}` : ""}
+      </PageCaption>
+      {selected.outstandingMinor !== null ? (
+        <PageCaption>
+          {formatMinorAmount(selected.outstandingMinor, selected.currencyScale, locale)}{" "}
+          {selected.currency} {labels.remaining}
+        </PageCaption>
+      ) : null}
+      <RegisterDetailActions>
+        <PageAction href={props.rowUrl(selected)} onClick={() => props.onOpen(selected.id)}>
+          {sv ? "Öppna faktura" : "Open invoice"}
+        </PageAction>
+      </RegisterDetailActions>
+    </>
+  );
+}
+
+function salesGroup(
+  row: typeof Sales.SalesRow.Type,
+): "overdue" | "drafts" | "open" | "settled" | "cancelled" {
+  if (row.overdue) return "overdue";
+
+  if (row.status === "draft") return "drafts";
+
+  if (row.status === "allocated") return "settled";
+
+  if (row.status === "cancelled") return "cancelled";
+
+  return "open";
+}
+
+function salesSymbol(row: typeof Sales.SalesRow.Type): RegisterStatus {
+  if (row.overdue || row.needsDetails || row.status === "blocked") return "warning";
+
+  if (row.status === "allocated") return "completed";
+
+  if (row.status === "draft") return "draft";
+
+  return "open";
 }
 
 function SalesPagination(props: {
@@ -643,7 +696,7 @@ function SalesRecord({
 }
 
 const english = {
-  invoicing: "Invoicing",
+  invoicing: "Sales",
   articleCatalog: "Article catalog",
   invoices: "Invoices",
   invoice: "Invoice",
@@ -693,11 +746,11 @@ const english = {
 };
 
 const swedish: typeof english = {
-  invoicing: "Fakturering",
-  articleCatalog: "Artikelkatalog",
+  invoicing: "Försäljning",
+  articleCatalog: "Artiklar",
   invoices: "Fakturor",
   invoice: "Faktura",
-  customers: "Kunder och kontakter",
+  customers: "Kunder",
   newInvoice: "Ny faktura",
   all: "Alla",
   drafts: "Utkast",

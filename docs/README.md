@@ -25,6 +25,8 @@ The [open-accounting decision](adr/0005-open-accounting-and-managed-services.md)
 | [Local development](local-development.md)              | How do I run the source against an isolated PostgreSQL database?                                         |
 | [Customer frontend plan](frontend.md)                  | How should founders, finance teams and accountants navigate, review and finish work?                     |
 | [Interface design brief](ui-design-brief.md)            | What should each OpenERP page help a user see and do, and what should Paper explore first?                |
+| [Paper design prompt](ui-design-prompt.md)             | How do we carefully rebuild the intended product from Accounted, one screen and flow at a time?           |
+| [Screen design checklist](ui-design-checklist.md)      | Which pages, subviews and flows remain to be designed and reviewed in Enthusiastic lantern?                |
 | [Architecture](architecture.md)                        | Which module owns each responsibility, and where does it run?                                            |
 | [Domain and invariants](domain.md)                     | What do the records mean, and what must never become false?                                              |
 | [Operations and review](operations.md)                 | How do people and agents prepare, approve, execute and recover work?                                     |

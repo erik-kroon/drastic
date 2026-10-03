@@ -32,6 +32,18 @@ const styles = stylex.create({
     lineHeight: tokens.lineHeightNormal,
     ":focus-visible": { outline: "none", boxShadow: tokens.controlFocusShadow },
   },
+  compactField: { gap: tokens.space1 },
+  compactLabel: {
+    color: tokens.mutedForeground,
+    fontSize: tokens.fontSizeXs,
+    fontWeight: tokens.fontWeightNormal,
+    lineHeight: tokens.lineHeight16Px,
+  },
+  compactControl: {
+    minHeight: { default: tokens.space8, "@media (pointer: coarse)": tokens.space11 },
+    fontSize: { default: tokens.fontSizeBase, "@media (min-width: 768px)": tokens.fontSizeControl },
+    paddingInline: tokens.space2_5,
+  },
   numeric: { textAlign: "end", fontVariantNumeric: "tabular-nums" },
   control: {
     minHeight: { default: tokens.space9, "@media (pointer: coarse)": tokens.space11 },
@@ -45,21 +57,31 @@ export function InputField({
   id,
   styleX,
   suggestions,
+  compact = false,
   ...props
-}: InputProps & { label: string; suggestions?: readonly string[] }) {
+}: InputProps & { label: string; suggestions?: readonly string[]; compact?: boolean }) {
   const generatedId = useId();
   const controlId = id ?? generatedId;
 
   return (
-    <div {...stylex.props(styles.field)}>
-      <Label htmlFor={controlId} disabled={props.disabled} styleX={styles.label}>
+    <div {...stylex.props(styles.field, compact && styles.compactField)}>
+      <Label
+        htmlFor={controlId}
+        disabled={props.disabled}
+        styleX={[styles.label, compact && styles.compactLabel]}
+      >
         {label}
       </Label>
       <Input
         {...props}
         id={controlId}
         list={suggestions?.length ? `${controlId}-options` : props.list}
-        styleX={[styles.control, props.inputMode === "decimal" && styles.numeric, styleX]}
+        styleX={[
+          styles.control,
+          compact && styles.compactControl,
+          props.inputMode === "decimal" && styles.numeric,
+          styleX,
+        ]}
       />
       {suggestions?.length ? (
         <datalist id={`${controlId}-options`}>

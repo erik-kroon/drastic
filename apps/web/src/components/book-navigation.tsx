@@ -8,20 +8,18 @@ import {
   BarChart3,
   CalendarCheck,
   Percent,
+  FolderOpen,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
-import {
-  WorkspaceNavigation,
-  WorkspaceNavLink,
-  WorkspaceSubnavigation,
-} from "@open-erp/ui/components/workspace";
+import { WorkspaceNavigation, WorkspaceNavLink } from "@open-erp/ui/components/workspace";
 import { frontendCopy } from "@/lib/frontend-copy";
 import type { Locale } from "@/paraglide/runtime";
 
 export function BookNavigation(props: {
   base: string;
   pathname: string;
+  search: string;
   locale: Locale;
   book: typeof Accounting.Book.Type;
   setup: typeof Accounting.BookSetup.Type | undefined;
@@ -31,6 +29,7 @@ export function BookNavigation(props: {
   const copy = frontendCopy(locale);
   const home = pathname === base || pathname === `${base}/`;
   const reviewing = pathname.includes("/reviews/") || pathname.endsWith("/work");
+  const documents = new URLSearchParams(props.search).get("view") === "documents";
   const bookkeeping = pathname === `${base}/books`;
 
   const preloadAccounts = () => {
@@ -63,35 +62,24 @@ export function BookNavigation(props: {
   return (
     <>
       <WorkspaceNavigation label={copy.todo} showLabel={false}>
-        <WorkspaceNavLink href={`${base}/overview`} active={pathname === `${base}/overview`}>
-          <LayoutDashboard size={15} strokeWidth={1.5} aria-hidden="true" />
-          {locale === "sv" ? "Översikt" : "Overview"}
-        </WorkspaceNavLink>
         <WorkspaceNavLink href={`${base}/`} active={home || reviewing} current={home}>
-          <CheckSquare size={15} strokeWidth={1.5} aria-hidden="true" />
+          <CheckSquare size={16} strokeWidth={1.5} aria-hidden="true" />
           {copy.todo}
         </WorkspaceNavLink>
-        {home || reviewing ? (
-          <WorkspaceSubnavigation>
-            <WorkspaceNavLink
-              href={`${base}/work`}
-              active={reviewing}
-              current={pathname.endsWith("/work")}
-            >
-              {copy.proposals}
-            </WorkspaceNavLink>
-          </WorkspaceSubnavigation>
-        ) : null}
+        <WorkspaceNavLink href={`${base}/overview`} active={pathname === `${base}/overview`}>
+          <LayoutDashboard size={16} strokeWidth={1.5} aria-hidden="true" />
+          {locale === "sv" ? "Översikt" : "Overview"}
+        </WorkspaceNavLink>
       </WorkspaceNavigation>
-      <WorkspaceNavigation label={copy.company}>
+      <WorkspaceNavigation label={locale === "sv" ? "Arbete" : "Work"}>
         <WorkspaceNavLink
           href={`${base}/accounts`}
           active={pathname === `${base}/accounts`}
           onPointerEnter={preloadAccounts}
           onFocus={preloadAccounts}
         >
-          <Landmark size={15} strokeWidth={1.5} aria-hidden="true" />
-          {copy.accounts}
+          <Landmark size={16} strokeWidth={1.5} aria-hidden="true" />
+          Bank
         </WorkspaceNavLink>
         <WorkspaceNavLink
           href={`${base}/sales`}
@@ -99,28 +87,40 @@ export function BookNavigation(props: {
           onPointerEnter={preloadSales}
           onFocus={preloadSales}
         >
-          <ReceiptText size={15} strokeWidth={1.5} aria-hidden="true" />
-          {copy.sales}
+          <ReceiptText size={16} strokeWidth={1.5} aria-hidden="true" />
+          {locale === "sv" ? "Försäljning" : "Sales"}
         </WorkspaceNavLink>
-        <WorkspaceNavLink href={`${base}/purchases`} active={pathname === `${base}/purchases`}>
-          <Wallet size={15} strokeWidth={1.5} aria-hidden="true" />
+        <WorkspaceNavLink
+          href={`${base}/purchases`}
+          active={pathname === `${base}/purchases` && !documents}
+        >
+          <Wallet size={16} strokeWidth={1.5} aria-hidden="true" />
           {copy.purchases}
         </WorkspaceNavLink>
+        <WorkspaceNavLink
+          href={`${base}/purchases?view=documents`}
+          active={pathname === `${base}/purchases` && documents}
+        >
+          <FolderOpen size={16} strokeWidth={1.5} aria-hidden="true" />
+          {locale === "sv" ? "Dokument" : "Documents"}
+        </WorkspaceNavLink>
+      </WorkspaceNavigation>
+      <WorkspaceNavigation label={locale === "sv" ? "Redovisning" : "Accounting"}>
         <WorkspaceNavLink href={`${base}/books`} active={bookkeeping}>
-          <BookOpen size={15} strokeWidth={1.5} aria-hidden="true" />
+          <BookOpen size={16} strokeWidth={1.5} aria-hidden="true" />
           {copy.bookkeeping}
         </WorkspaceNavLink>
 
         <WorkspaceNavLink href={`${base}/tax`} active={pathname === `${base}/tax`}>
-          <Percent size={15} strokeWidth={1.5} aria-hidden="true" />
-          {copy.tax}
+          <Percent size={16} strokeWidth={1.5} aria-hidden="true" />
+          {locale === "sv" ? "Skatt och löner" : "Tax and payroll"}
         </WorkspaceNavLink>
         <WorkspaceNavLink href={`${base}/reports`} active={pathname === `${base}/reports`}>
-          <BarChart3 size={15} strokeWidth={1.5} aria-hidden="true" />
+          <BarChart3 size={16} strokeWidth={1.5} aria-hidden="true" />
           {copy.reports}
         </WorkspaceNavLink>
         <WorkspaceNavLink href={`${base}/closing`} active={pathname === `${base}/closing`}>
-          <CalendarCheck size={15} strokeWidth={1.5} aria-hidden="true" />
+          <CalendarCheck size={16} strokeWidth={1.5} aria-hidden="true" />
           {copy.closing}
         </WorkspaceNavLink>
       </WorkspaceNavigation>

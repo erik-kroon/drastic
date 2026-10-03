@@ -17,6 +17,12 @@ const Select = SelectPrimitive.Root;
 
 const styles = stylex.create({
   control: { width: "100%" },
+  compact: {
+    width: "auto",
+    height: 28,
+    fontSize: tokens.fontSizeXs,
+    fontWeight: tokens.fontWeightNormal,
+  },
   comfortable: {
     minHeight: tokens.space10,
     height: "auto",
@@ -164,7 +170,7 @@ type SelectOption = {
 };
 
 type SelectControlProps = {
-  size?: "default" | "comfortable";
+  size?: "default" | "comfortable" | "compact";
   "aria-describedby"?: string;
   "aria-invalid"?: boolean;
   "aria-label"?: string;
@@ -378,7 +384,12 @@ function SelectControl({
         aria-labelledby={ariaLabelledBy}
         className={className}
         id={id}
-        styleX={[styles.control, size === "comfortable" && styles.comfortable, styleX]}
+        styleX={[
+          styles.control,
+          size === "comfortable" && styles.comfortable,
+          size === "compact" && styles.compact,
+          styleX,
+        ]}
       >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>

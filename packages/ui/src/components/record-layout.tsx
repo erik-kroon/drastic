@@ -103,9 +103,8 @@ const styles = stylex.create({
   },
   editorFields: { display: "grid", gap: 16, paddingBlockEnd: 8 },
   documentTitle: {
-    fontFamily: tokens.fontSerif,
-    fontSize: tokens.fontSize2xl,
-    fontWeight: tokens.fontWeightNormal,
+    fontSize: tokens.fontSizeLg,
+    fontWeight: tokens.fontWeightSemibold,
     height: 44,
     paddingInline: 0,
     borderRadius: 0,

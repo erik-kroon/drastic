@@ -22,6 +22,12 @@ const DocumentInbox = lazy(() =>
   import("@/components/document-inbox").then((module) => ({ default: module.DocumentInbox })),
 );
 
+const PurchaseRegister = lazy(() =>
+  import("@/components/commerce/purchase-register").then((module) => ({
+    default: module.PurchaseRegister,
+  })),
+);
+
 const BankingWorkspace = lazy(() =>
   import("@/components/banking-workspace").then((module) => ({ default: module.BankingWorkspace })),
 );
@@ -158,7 +164,67 @@ function isTrialBalanceMode(value: string | undefined): value is "trial" | "ledg
   return value !== undefined && trialBalanceModes.has(value);
 }
 
-export function FinanceArea(props: {
+export function FinanceArea(props: ComponentProps<typeof OwnedFinanceArea>) {
+  const { locale } = useBookWorkspace();
+
+  if (props.area === "purchases" && props.view === "documents") {
+    return <DocumentArea {...props} />;
+  }
+
+  if (
+    props.area === "purchases" &&
+    (props.view === undefined || props.view === "register") &&
+    !props.record &&
+    !props.occurrence
+  ) {
+    return (
+      <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
+        <PurchaseRegister workSearch={props.work} />
+      </Suspense>
+    );
+  }
+
+  return <OwnedFinanceArea {...props} />;
+}
+
+function DocumentArea(props: ComponentProps<typeof OwnedFinanceArea>) {
+  const { book, locale } = useBookWorkspace();
+  const navigate = useNavigate();
+  const base = `${workspacePath(book)}/purchases`;
+
+  const search = {
+    ...props.archive,
+    view: "documents",
+    work: props.work,
+    returnTo: props.returnTo,
+  };
+
+  return (
+    <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
+      <DocumentInbox
+        standalone
+        recordId={props.record}
+        filters={props.archive ?? {}}
+        onOpen={(id) =>
+          void navigate({
+            to: base,
+            search: { ...search, record: id || undefined },
+            resetScroll: false,
+          })
+        }
+        onFilters={(filters) =>
+          void navigate({
+            to: base,
+            search: { ...search, ...filters, record: undefined },
+            resetScroll: false,
+          })
+        }
+      />
+    </Suspense>
+  );
+}
+
+function OwnedFinanceArea(props: {
   area: "accounts" | "sales" | "purchases" | "reports" | "tax" | "closing";
   view?: string;
   record?: string;
@@ -228,28 +294,6 @@ export function FinanceArea(props: {
           work={work}
         />
         <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
-          {selected === "documents" ? (
-            <DocumentInbox
-              key={`${book.entityId}:${book.id}`}
-              recordId={record}
-              filters={props.archive ?? {}}
-              onFilters={(filters) =>
-                void navigate({
-                  to: base,
-                  search: {
-                    ...props.archive,
-                    ...filters,
-                    record: undefined,
-                    work: props.work,
-                    returnTo: props.returnTo,
-                    view: "documents",
-                  },
-                  resetScroll: false,
-                })
-              }
-              onOpen={onOpen}
-            />
-          ) : null}
           {selected === "bank" ? <BankingWorkspace recordId={record} onOpen={onOpen} /> : null}
           {selected === "coverage" ? (
             <BankSourceCoveragePanel

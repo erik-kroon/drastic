@@ -18,6 +18,10 @@
   ],
   "jsPlugins": [
     {
+      "name": "anti-slop-effect",
+      "specifier": "./config/oxlint/anti-slop/effect/index.ts"
+    },
+    {
       "name": "anti-slop",
       "specifier": "./config/oxlint/anti-slop/index.ts"
     },

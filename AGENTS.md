@@ -50,6 +50,14 @@ A `packages/domain` leaf that no application owner consumes is dead code. Delive
 - Respect keyboard focus, reduced motion, readable contrast, and 200% zoom.
 - Keep interface copy direct and specific.
 
+### Paper product design
+
+- Start with `docs/ui-design-prompt.md` and work through `docs/ui-design-checklist.md` one screen at a time in Paper's **Enthusiastic lantern** file.
+- Accounted is the product and workflow baseline. Study its actual screens, then carefully improve the intended OpenERP experience. Current OpenERP UI, dashboards, local screenshots and historical verification screenshots are excluded as visual references.
+- Design how the product should look, function and flow. Current OpenERP route/component/backend completeness is implementation context, not a design ceiling. Record implementation dependencies outside the product UI.
+- Existing Paper screens are drafts to reconsider, not approved templates. Do not mass-produce frames, force each task into one generic layout, or mark a checklist item complete merely because a frame exists.
+- Preserve accounting truth, sourced facts and explicit product boundaries. A planned design is not evidence of an implemented operation or an actual external result.
+
 ## Quality rules
 
 - Keep anti-slop Oxlint rules enabled as errors.
@@ -65,6 +73,8 @@ A `packages/domain` leaf that no application owner consumes is dead code. Delive
 Run `bun run check:changed` after each coherent edit. This is the fast feedback gate: it formats changed source files, then runs normal lint (including anti-slop rules) and incremental TypeScript checks sequentially, one project at a time. The runner limits native worker pools to two (`--threads`, TypeScript `--checkers`, and `GOMAXPROCS`) so several agents can share the machine. Type checks include the changed files' imports. The first run for a project is slower; keep the ignored `tsconfig.changed.tsbuildinfo` caches so later runs reuse compiler work.
 
 Run `bun run check:changed:full` before handoff and after changes involving async or Promise handling. It adds type-aware lint, including floating/misused Promise checks, which the fast gate does not run. A passing fast gate does not replace this fuller gate. Both commands compare against `HEAD` by default and accept a base ref, e.g. `bun run check:changed:full main` to cover committed branch changes too.
+
+Changed-file checks fail on every warning and error in each selected file, including pre-existing findings. They also enforce the vendored Effect rules in `.oxlintrc.changed.json`; existing workspace lint keeps its current rule scope. Use `bun run lint:changed <base-ref>` for the same lint gate without formatting or type checking. CI runs this command against the pull request's base SHA. Fix spacing with `bunx oxlint --fix <files>`; fix other findings through real types, constructors and Effect handlers. A `SAFETY:` comment documents a checked invariant but does not override the production assertion ban. Do not suppress findings to pass the gate.
 
 Do not run full-workspace `check`, `lint` or `check-types` scans after every edit. Reserve them for final integration checks when shared configuration, dependencies or cross-workspace changes warrant broader coverage. The changed-file commands select source files, so configuration-only edits need the relevant broader check.
 

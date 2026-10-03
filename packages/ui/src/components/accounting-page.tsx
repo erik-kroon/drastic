@@ -98,10 +98,9 @@ const styles = stylex.create({
   },
   empty: { display: "grid", justifyItems: "start", gap: 8, padding: "40px 4px", maxWidth: "34rem" },
   emptyTitle: {
-    fontFamily: tokens.fontSerif,
-    fontSize: tokens.fontSizeEmptyTitle,
-    lineHeight: tokens.lineHeight30Px,
-    fontWeight: tokens.fontWeightNormal,
+    fontSize: tokens.fontSizeLg,
+    lineHeight: tokens.lineHeight22Px,
+    fontWeight: tokens.fontWeightSemibold,
   },
   emptyDetail: {
     fontSize: tokens.fontSizeControl,
@@ -134,6 +133,12 @@ const styles = stylex.create({
     backgroundColor: { default: "transparent", ":hover": tokens.muted },
     color: tokens.foreground,
     borderColor: tokens.border,
+  },
+  compactAction: {
+    minHeight: 28,
+    fontSize: tokens.fontSizeControl,
+    lineHeight: tokens.lineHeight16Px,
+    "@media (pointer: coarse)": { minHeight: 44 },
   },
   record: {
     display: "inline-flex",
@@ -188,6 +193,7 @@ const styles = stylex.create({
   },
   filter: { width: "min(100%, 230px)", minWidth: 0 },
   filters: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 },
+  compactSearch: { width: 220, minWidth: 0, minHeight: 28, backgroundColor: tokens.card },
   search: {
     borderWidth: 1,
     borderStyle: "solid",
@@ -285,9 +291,15 @@ export function PageEmpty({
 
 export function PageAction({
   quiet = false,
+  compact = false,
   ...props
-}: ComponentProps<typeof Link> & { quiet?: boolean }) {
-  return <Link {...props} {...stylex.props(styles.action, quiet && styles.quiet)} />;
+}: ComponentProps<typeof Link> & { quiet?: boolean; compact?: boolean }) {
+  return (
+    <Link
+      {...props}
+      {...stylex.props(styles.action, quiet && styles.quiet, compact && styles.compactAction)}
+    />
+  );
 }
 
 export function RecordToggle({
@@ -352,8 +364,17 @@ export function RegisterFilters({ children }: { children: ReactNode }) {
   return <div {...stylex.props(styles.filters)}>{children}</div>;
 }
 
-export function RegisterSearch(props: Omit<ComponentProps<"input">, "style" | "className">) {
-  return <input {...props} type="search" {...stylex.props(styles.search)} />;
+export function RegisterSearch({
+  compact = false,
+  ...props
+}: Omit<ComponentProps<"input">, "style" | "className"> & { compact?: boolean }) {
+  return (
+    <input
+      {...props}
+      type="search"
+      {...stylex.props(styles.search, compact && styles.compactSearch)}
+    />
+  );
 }
 
 export function RegisterFilter({ children }: { children: ReactNode }) {

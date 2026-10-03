@@ -124,6 +124,7 @@ export function InvoiceDraftSession(props: SessionProps) {
   if (!actorId || !local.isSuccess || !local.isFetchedAfterMount)
     return (
       <FormDialog
+        size="fullscreen"
         title={props.locale === "sv" ? "Fakturautkast" : "Invoice draft"}
         closeLabel={props.locale === "sv" ? "Stäng" : "Close"}
         onClose={props.onClose}
@@ -397,6 +398,7 @@ function EditingSession(
   return (
     <>
       <FormDialog
+        size="fullscreen"
         title={
           state.baseline
             ? sv

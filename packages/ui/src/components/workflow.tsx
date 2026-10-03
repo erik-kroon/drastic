@@ -9,11 +9,29 @@ const styles = stylex.create({
     display: "grid",
     alignItems: "start",
     minWidth: 0,
-    gap: tokens.space6,
+    gap: 0,
     gridTemplateColumns: {
-      default: "minmax(0, 0.85fr) minmax(0, 1.15fr)",
+      default: "minmax(0, 1fr) 420px",
       "@container (max-width: 50rem)": "minmax(0, 1fr)",
     },
+  },
+  reviewEvidence: {
+    display: "grid",
+    gap: tokens.space4,
+    backgroundColor: tokens.reviewCanvas,
+    paddingBlock: tokens.space6,
+    paddingInline: { default: tokens.space8, "@container (max-width: 50rem)": tokens.space4 },
+    minWidth: 0,
+  },
+  reviewDecision: {
+    display: "grid",
+    gap: tokens.space4,
+    paddingBlock: tokens.space5,
+    paddingInline: tokens.space6,
+    borderInlineStartWidth: 1,
+    borderInlineStartStyle: "solid",
+    borderInlineStartColor: tokens.border,
+    minWidth: 0,
   },
   layout: {
     display: "grid",
@@ -181,8 +199,8 @@ export function ReviewColumns({
 }) {
   return (
     <div {...stylex.props(styles.review)}>
-      <WorkflowSurface>{evidence}</WorkflowSurface>
-      <WorkflowSurface>{children}</WorkflowSurface>
+      <section {...stylex.props(styles.reviewEvidence)}>{evidence}</section>
+      <section {...stylex.props(styles.reviewDecision)}>{children}</section>
     </div>
   );
 }

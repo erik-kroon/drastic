@@ -1,5 +1,7 @@
 import { InvoiceDefaultsSelection } from "./customer-invoice-defaults";
 import { InvoiceTemplateActions } from "./invoice-templates";
+import { InvoiceEditorLayout } from "@open-erp/ui/components/invoice-editor-layout";
+import { InvoiceEditingPreview } from "./invoice-editing-preview";
 import { useState, type ReactNode } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
@@ -23,7 +25,6 @@ import {
   PageCaption,
 } from "@open-erp/ui/components/accounting-page";
 import {
-  DocumentPaper,
   DocumentTitleField,
   RecordHeading,
   RecordColumns,
@@ -397,7 +398,18 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
       }
     >
       {(calculation) => (
-        <DocumentPaper compact>
+        <InvoiceEditorLayout
+          preview={
+            <InvoiceEditingPreview
+              book={props.book}
+              locale={props.locale}
+              session={session}
+              scale={scale}
+              commercial={commercial}
+              calculation={calculation}
+            />
+          }
+        >
           {!baseline ? (
             <SelectField
               name="draftPurpose"
@@ -555,7 +567,7 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
               defaultValue={restoredField(session, "reason")}
             />
           ) : null}
-        </DocumentPaper>
+        </InvoiceEditorLayout>
       )}
     </InvoiceDraftSave>
   );

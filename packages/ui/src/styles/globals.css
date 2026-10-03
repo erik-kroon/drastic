@@ -1,5 +1,13 @@
 @import "./preflight.css";
 
+@font-face {
+  font-family: Inter;
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/InterVariable.woff2") format("woff2");
+}
+
 :root {
   --image-outline: oklch(0 0 0 / 0.1);
   --neutral-950: #0f172a;
@@ -35,14 +43,14 @@
   --blur-large: 8px;
   --background: oklch(0.9814 0.0045 258.3244);
   --foreground: var(--neutral-950);
-  --card: oklch(0.9958 0.0025 228.7829);
+  --card: #fff;
   --workspace-surface: #fff;
   --card-foreground: var(--neutral-950);
   --popover: oklch(0.9958 0.0025 228.7829);
   --popover-foreground: var(--neutral-950);
   --primary: #2448a5;
   --primary-foreground: #fff;
-  --secondary: oklch(0.9493 0.0103 247.9351);
+  --secondary: #e6e9ef;
   --secondary-foreground: var(--neutral-950);
   --muted: oklch(0.9307 0.0121 247.957);
   --muted-foreground: oklch(0.485 0.0257 244.172);
@@ -56,7 +64,7 @@
   --success: color-mix(in srgb, var(--success-color) 15%, var(--card));
   --success-foreground: color-mix(in srgb, var(--success-color) 40%, var(--neutral-950));
   --success-border: var(--success-color);
-  --border: oklch(0.875 0.0158 248.0085);
+  --border: #e6eaf0;
   --input: #d3d8df;
   --ring: var(--accent-color);
   --chart-1: var(--accent-color);
@@ -64,7 +72,7 @@
   --chart-3: oklch(0.7189 0.0993 74.6295);
   --chart-4: oklch(0.681 0.0896 300.0982);
   --chart-5: oklch(0.6688 0.1203 14.9022);
-  --sidebar: oklch(0.9814 0.0045 258.3244);
+  --sidebar: #f7f8fa;
   --sidebar-foreground: oklch(0.4993 0.0257 244.172);
   --sidebar-primary: var(--accent-color);
   --sidebar-primary-foreground: var(--neutral-950);

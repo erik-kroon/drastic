@@ -1205,11 +1205,13 @@ function minor(value: Schema.Json | undefined) {
 }
 
 function scale(value: Schema.Json | undefined) {
-  const candidate = text(value);
+  let candidate: number;
 
-  if (candidate === null || !/^[0-9]+$/u.test(candidate)) return 0;
+  if (typeof value === "number") candidate = value;
+  else if (typeof value === "string" && /^[0-9]+$/u.test(value)) candidate = Number(value);
+  else return null;
 
-  return Number(candidate);
+  return Number.isInteger(candidate) && candidate >= 0 && candidate <= 6 ? candidate : null;
 }
 
 function draftRegisterRow(row: DraftDb.SalesDraftRow): RegisterRow | null {
@@ -1226,8 +1228,16 @@ function draftRegisterRow(row: DraftDb.SalesDraftRow): RegisterRow | null {
   const legalName = text(customer.legalName);
   const currency = text(content.currency);
   const createdAt = text(body.createdAt);
+  const currencyScale = scale(content.currencyScale);
 
-  if (title === null || legalName === null || currency === null || createdAt === null) return null;
+  if (
+    title === null ||
+    legalName === null ||
+    currency === null ||
+    createdAt === null ||
+    currencyScale === null
+  )
+    return null;
 
   return {
     id: row.id,
@@ -1238,7 +1248,7 @@ function draftRegisterRow(row: DraftDb.SalesDraftRow): RegisterRow | null {
     date: createdAt,
     dueOn: text(content.dueDate),
     currency,
-    currencyScale: scale(content.currencyScale),
+    currencyScale,
     amountMinor: minor(totals.grossMinor),
     outstandingMinor: null,
     status: "draft",
@@ -1263,6 +1273,7 @@ function invoiceRegisterRow(row: InvoiceDb.SalesInvoiceRow): RegisterRow | null 
   const amount = minor(body.amountMinor);
   const status = text(body.status);
   const outstanding = text(body.outstandingMinor);
+  const currencyScale = scale(body.currencyScale);
 
   if (
     title === null ||
@@ -1270,7 +1281,8 @@ function invoiceRegisterRow(row: InvoiceDb.SalesInvoiceRow): RegisterRow | null 
     currency === null ||
     date === null ||
     amount === null ||
-    status === null
+    status === null ||
+    currencyScale === null
   ) {
     return null;
   }
@@ -1286,7 +1298,7 @@ function invoiceRegisterRow(row: InvoiceDb.SalesInvoiceRow): RegisterRow | null 
     date,
     dueOn,
     currency,
-    currencyScale: scale(body.currencyScale),
+    currencyScale,
     amountMinor: amount,
     outstandingMinor: outstanding,
     status,

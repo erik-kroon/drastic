@@ -4,7 +4,7 @@ import { useNavigate, defaultStringifySearch } from "@tanstack/react-router";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Bank from "@open-erp/contracts/bank-workspace";
 import * as Reconciliation from "@open-erp/contracts/reconciliation";
-import { ArrowLeft, ArrowRight, Upload, Landmark } from "lucide-react";
+import { ArrowLeft, ArrowRight, Landmark } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { Badge } from "@open-erp/ui/components/badge";
@@ -12,19 +12,27 @@ import { Link } from "@open-erp/ui/components/link";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { InputField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
-import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
-import { RecordHeading, RecordSummary, RecordFact } from "@open-erp/ui/components/record-layout";
+import {
+  BankWorkspaceLayout,
+  BankBalances,
+  BankInset,
+  BankToolbar,
+  BankTransactionRow,
+} from "@open-erp/ui/components/bank-workspace";
+import {
+  RegisterGroup,
+  RegisterNavigation,
+  RegisterTabs,
+} from "@open-erp/ui/components/register-workspace";
+import { RecordHeading } from "@open-erp/ui/components/record-layout";
 import { RecordSheet } from "@open-erp/ui/components/record-sheet";
 import { Disclosure } from "@open-erp/ui/components/disclosure";
 import {
-  PageContent,
   PageAction,
   PageCaption,
   PageEmpty,
-  RegisterFilters,
   RegisterSearch,
 } from "@open-erp/ui/components/accounting-page";
-import { PageTabs, PageTab } from "@open-erp/ui/components/workflow";
 import { AccountingStatus } from "@/components/accounting-status";
 import { StatementImports, statementImportsOptions } from "@/components/statement-imports";
 import { BankTransactionMatch } from "@/components/bank-transaction-match";
@@ -142,97 +150,97 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
   };
 
   return (
-    <>
-      <WorkspaceHeader
-        title={sv ? "Konton" : "Accounts"}
-        action={
-          <PageAction href={href({ ...clearRecord, view: "imports", record: "new" })}>
-            <Upload size={14} />
-            {sv ? "Importera kontoutdrag" : "Import statement"}
-          </PageAction>
-        }
-      />
-      <PageContent>
-        <PageTabs label={sv ? "Konton" : "Accounts"}>
-          <PageTab
-            active={search.view !== "imports"}
-            href={href({ ...clearRecord, view: undefined, record: undefined })}
-            onPointerEnter={preloadBank}
-            onFocus={preloadBank}
-          >
-            {sv ? "Bankkonton" : "Bank accounts"}
-          </PageTab>
-          <PageTab
-            active={search.view === "imports"}
-            href={href({ ...clearRecord, view: "imports", record: undefined })}
-            onPointerEnter={preloadStatements}
-            onFocus={preloadStatements}
-          >
-            {sv ? "Kontoutdrag" : "Statements"}
-          </PageTab>
-        </PageTabs>
-        {search.view === "imports" ? (
-          <>
-            {search.account ? (
-              <Box>
-                <PageAction
-                  quiet
-                  href={href({ ...clearRecord, view: undefined, record: undefined })}
-                >
-                  <ArrowLeft size={14} />
-                  {sv ? "Tillbaka till kontot" : "Back to account"}
-                </PageAction>
-              </Box>
-            ) : null}
-            <StatementImports
-              recordId={search.record}
-              onOpen={(record) => change({ ...clearRecord, record: record || undefined })}
-            />
-          </>
-        ) : (
-          <>
-            <BankScopeToolbar
+    <BankWorkspaceLayout
+      title="Bank"
+      action={
+        account ? (
+          <PageCaption>
+            {account.name} · {account.code}
+          </PageCaption>
+        ) : undefined
+      }
+      tabs={
+        <RegisterNavigation
+          label="Bank"
+          options={[
+            {
+              label: sv ? "Händelser" : "Events",
+              active: search.view !== "imports",
+              href: href({ ...clearRecord, view: undefined, record: undefined }),
+              preload: preloadBank,
+            },
+            {
+              label: sv ? "Importera kontoutdrag" : "Import statement",
+              active: search.view === "imports",
+              href: href({ ...clearRecord, view: "imports", record: undefined }),
+              preload: preloadStatements,
+            },
+          ]}
+        />
+      }
+    >
+      {search.view === "imports" ? (
+        <>
+          {search.account ? (
+            <Box>
+              <PageAction quiet href={href({ ...clearRecord, view: undefined, record: undefined })}>
+                <ArrowLeft size={14} />
+                {sv ? "Tillbaka till kontot" : "Back to account"}
+              </PageAction>
+            </Box>
+          ) : null}
+          <StatementImports
+            recordId={search.record}
+            onOpen={(record) => change({ ...clearRecord, record: record || undefined })}
+          />
+        </>
+      ) : (
+        <>
+          <AccountingStatus locale={locale} pending={workspace.isPending} error={workspace.error} />
+          {data && !search.account ? (
+            <BankAccountList
+              data={data}
               sv={sv}
+              href={href}
               from={from}
               to={to}
-              currency={book.currency}
+              money={money}
+              date={date}
+            />
+          ) : null}
+          {data && account ? (
+            <AccountActivity
+              data={data}
               account={account}
-              selected={!!search.account}
+              search={search}
+              sv={sv}
+              to={to}
               href={href}
-              fetching={workspace.isFetching}
-              refresh={() => void workspace.refetch()}
-              onPeriod={(from, to) => change({ ...clearRecord, from, to, page: undefined })}
+              change={change}
+              money={money}
+              date={date}
+              bookBase={workspacePath(book)}
             />
-            <AccountingStatus
-              locale={locale}
-              pending={workspace.isPending}
-              error={workspace.error}
-            />
-            {data && !search.account ? (
-              <BankAccountList
-                data={data}
+          ) : null}
+          <BankInset>
+            <Disclosure
+              label={`${sv ? "Period och bankkonto" : "Period and bank account"} · ${from} – ${to}`}
+            >
+              <BankScopeToolbar
                 sv={sv}
-                href={href}
                 from={from}
                 to={to}
-                money={money}
-                date={date}
-              />
-            ) : null}
-            {data && account ? (
-              <AccountActivity
-                data={data}
+                currency={book.currency}
                 account={account}
-                search={search}
-                sv={sv}
-                to={to}
+                selected={!!search.account}
                 href={href}
-                change={change}
-                money={money}
-                date={date}
-                bookBase={workspacePath(book)}
+                fetching={workspace.isFetching}
+                refresh={() => void workspace.refetch()}
+                onPeriod={(from, to) => change({ ...clearRecord, from, to, page: undefined })}
               />
-            ) : null}
+            </Disclosure>
+          </BankInset>
+          <BankInset>
             {account ? (
               <AccountReport
                 key={`${account.id}:${from}:${to}`}
@@ -246,29 +254,29 @@ export function BankAccountWorkspace({ search }: { search: BankSearch }) {
               />
             ) : null}
             <BankAdditionalTools sv={sv} base={base} search={search} />
-          </>
-        )}
-        {(search.statement && search.row) || search.plan ? (
-          <RecordSheet
-            title={sv ? "Matcha transaktion" : "Match transaction"}
-            closeLabel={sv ? "Stäng matchning" : "Close matching"}
-            onClose={() => change(clearRecord)}
-          >
-            <BankTransactionMatch
-              book={book}
-              locale={locale}
-              statementId={search.statement}
-              rowOrdinal={Number(search.row)}
-              planId={search.plan}
-              reversalId={search.undo}
-              accountId={search.account}
-              onPlan={(plan) => change({ ...search, plan })}
-              onReversal={(undo) => change({ ...search, undo })}
-            />
-          </RecordSheet>
-        ) : null}
-      </PageContent>
-    </>
+          </BankInset>
+        </>
+      )}
+      {(search.statement && search.row) || search.plan ? (
+        <RecordSheet
+          title={sv ? "Matcha transaktion" : "Match transaction"}
+          closeLabel={sv ? "Stäng matchning" : "Close matching"}
+          onClose={() => change(clearRecord)}
+        >
+          <BankTransactionMatch
+            book={book}
+            locale={locale}
+            statementId={search.statement}
+            rowOrdinal={Number(search.row)}
+            planId={search.plan}
+            reversalId={search.undo}
+            accountId={search.account}
+            onPlan={(plan) => change({ ...search, plan })}
+            onReversal={(undo) => change({ ...search, undo })}
+          />
+        </RecordSheet>
+      ) : null}
+    </BankWorkspaceLayout>
   );
 }
 
@@ -367,28 +375,27 @@ function AccountActivity(props: ActivityProps) {
 
   return (
     <>
-      <RecordSummary>
-        <RecordFact label={sv ? "Kontoutdragets saldo" : "Statement balance"}>
-          {money(account.statementBalanceMinor)}
-          <PageCaption>
-            {account.statementDate
-              ? date(account.statementDate)
+      <BankBalances
+        facts={[
+          {
+            label: sv ? "Bokfört saldo" : "Ledger balance",
+            amount: money(account.ledgerBalanceMinor),
+          },
+          {
+            label: account.statementDate
+              ? `${sv ? "Banksaldo" : "Statement balance"} · ${date(account.statementDate)}`
               : sv
                 ? "Kontoutdrag saknas"
-                : "No statement"}
-          </PageCaption>
-        </RecordFact>
-        <RecordFact label={sv ? "Bokfört saldo" : "Ledger balance"}>
-          {money(account.ledgerBalanceMinor)}
-          <PageCaption>{date(to)}</PageCaption>
-        </RecordFact>
-        <RecordFact label={sv ? "Differens vid periodens slut" : "Difference at period end"}>
-          {money(account.differenceMinor)}
-        </RecordFact>
-        <RecordFact label={sv ? "Banktransaktioner att matcha" : "Bank transactions to match"}>
-          {account.unmatchedCount}
-        </RecordFact>
-      </RecordSummary>
+                : "No statement",
+            amount: money(account.statementBalanceMinor),
+          },
+          {
+            label: `${sv ? "Skillnad vid periodens slut" : "Difference at period end"} · ${date(to)}`,
+            amount: money(account.differenceMinor),
+            warning: account.differenceMinor !== null && account.differenceMinor !== "0",
+          },
+        ]}
+      />
       <AccountTransactions {...props} />
       {data.reviews.length ? (
         <Disclosure label={sv ? "Senaste matchningsgranskningar" : "Recent matching reviews"}>
@@ -431,9 +438,24 @@ function AccountActivity(props: ActivityProps) {
   );
 }
 
+function bankEventGroups(data: typeof Bank.BankWorkspace.Type, tab: string, sv: boolean) {
+  if (tab === "ledger") return [{ label: sv ? "Bokföring" : "Ledger", rows: data.rows }];
+
+  return [
+    {
+      label: sv ? "Att matcha" : "To match",
+      rows: data.rows.filter((row) => row.remainingMinor !== "0"),
+    },
+    {
+      label: sv ? "Matchade" : "Matched",
+      rows: data.rows.filter((row) => row.remainingMinor === "0"),
+    },
+  ].filter((group) => group.rows.length > 0);
+}
+
 function AccountTransactions(props: ActivityProps) {
   const { data, search, sv, change } = props;
-  const { money, date, href } = props;
+  const { money, href } = props;
   const tab = search.tab ?? "unmatched";
 
   const clearRecord = {
@@ -451,136 +473,107 @@ function AccountTransactions(props: ActivityProps) {
 
   return (
     <>
-      <Box display="flex" justifyContent="between" alignItems="center" gap="lg" flexWrap="wrap">
-        <RegisterFilters>
-          {(["unmatched", "all", "matched", "ledger"] as const).map((value) => (
-            <Button
-              key={value}
-              variant={tab === value ? "secondary" : "ghost"}
-              onClick={() => change({ ...clearRecord, tab: value, page: undefined })}
-            >
-              {
-                (sv
-                  ? {
-                      unmatched: "Att matcha",
-                      all: "Alla transaktioner",
-                      matched: "Matchade",
-                      ledger: "Bokföring",
-                    }
-                  : {
-                      unmatched: "To match",
-                      all: "All transactions",
-                      matched: "Matched",
-                      ledger: "Ledger",
-                    })[value]
-              }{" "}
-              {data.counts[value]}
-            </Button>
-          ))}
-        </RegisterFilters>
-        <Box
-          as="form"
-          display="flex"
-          gap="sm"
-          onSubmit={(event) => {
-            event.preventDefault();
-            change({
-              ...clearRecord,
-              q: queryText.value.trim() || undefined,
-              page: undefined,
-            });
-          }}
-        >
-          <RegisterSearch
-            aria-label={sv ? "Sök transaktioner" : "Search transactions"}
-            placeholder={sv ? "Sök transaktion…" : "Search transaction…"}
-            value={queryText.value}
-            onChange={(event) => setQueryText({ ...queryText, value: event.target.value })}
+      <BankToolbar>
+        <Box display="flex" justifyContent="between" alignItems="center" gap="lg" flexWrap="wrap">
+          <RegisterTabs
+            label={sv ? "Transaktioner" : "Transactions"}
+            value={tab}
+            options={(
+              [
+                ["unmatched", sv ? "Att matcha" : "To match"],
+                ["all", sv ? "Alla transaktioner" : "All transactions"],
+                ["matched", sv ? "Matchade" : "Matched"],
+                ["ledger", sv ? "Bokföring" : "Ledger"],
+              ] as const
+            ).map(([value, label]) => ({ value, label: `${label} ${data.counts[value]}` }))}
+            onChange={(value) => {
+              if (
+                value === "all" ||
+                value === "unmatched" ||
+                value === "matched" ||
+                value === "ledger"
+              )
+                change({ ...clearRecord, tab: value, page: undefined });
+            }}
           />
-          <Button variant="ghost" type="submit">
-            {sv ? "Sök" : "Search"}
-          </Button>
+          <Box
+            as="form"
+            display="flex"
+            gap="sm"
+            onSubmit={(event) => {
+              event.preventDefault();
+              change({
+                ...clearRecord,
+                q: queryText.value.trim() || undefined,
+                page: undefined,
+              });
+            }}
+          >
+            <RegisterSearch
+              compact
+              aria-label={sv ? "Sök transaktioner" : "Search transactions"}
+              placeholder={sv ? "Sök transaktion…" : "Search transaction…"}
+              value={queryText.value}
+              onChange={(event) => setQueryText({ ...queryText, value: event.target.value })}
+            />
+            <Button size="sm" variant="ghost" type="submit">
+              {sv ? "Sök" : "Search"}
+            </Button>
+          </Box>
         </Box>
-      </Box>
+      </BankToolbar>
       {data.rows.length ? (
-        <DataTable
-          title={sv ? "Transaktioner" : "Transactions"}
-          columns={[
-            { id: "date", label: sv ? "Datum" : "Date" },
-            { id: "description", label: sv ? "Transaktion" : "Transaction" },
-            { id: "status", label: "Status" },
-            { id: "amount", label: sv ? "Belopp" : "Amount", numeric: true },
-            {
-              id: "remaining",
-              label: sv ? "Kvar att matcha" : "Remaining",
-              numeric: true,
-            },
-            { id: "action", label: "" },
-          ]}
-          rows={data.rows.map((row) => ({
-            id: row.id,
-            cells: [
-              date(row.date),
-              row.description,
-              <Badge key="status" variant={row.remainingMinor === "0" ? "secondary" : "warning"}>
-                {row.remainingMinor === "0"
-                  ? sv
-                    ? "Matchad"
-                    : "Matched"
-                  : row.allocatedMinor !== "0"
-                    ? sv
-                      ? "Delvis matchad"
-                      : "Partly matched"
-                    : sv
-                      ? "Att matcha"
-                      : "To match"}
-              </Badge>,
-              money(row.amountMinor),
-              money(row.remainingMinor),
-              row.statementId && row.rowOrdinal ? (
-                <PageAction
-                  key="open"
-                  quiet
-                  href={href({
-                    ...search,
-                    statement: row.statementId,
-                    row: String(row.rowOrdinal),
-                    plan: undefined,
-                    undo: undefined,
-                  })}
-                >
-                  {sv ? "Granska" : "Review"}
-                  <ArrowRight size={14} />
-                </PageAction>
-              ) : (
-                <PageAction
-                  key="voucher"
-                  quiet
-                  href={`${props.bookBase}/books${defaultStringifySearch({ view: "vouchers", record: row.voucherId, returnTo: encodeOwnerReturn({ owner: "bank", search }) })}`}
-                >
-                  {sv ? "Visa verifikation" : "View voucher"}
-                </PageAction>
-              ),
-            ],
-          }))}
-        />
+        <>
+          {bankEventGroups(data, tab, sv).map((group) => (
+            <Box key={group.label}>
+              <RegisterGroup title={group.label} count={group.rows.length} />
+              {group.rows.map((row) => (
+                <BankTransactionRow
+                  key={row.id}
+                  date={new Intl.DateTimeFormat(sv ? "sv" : "en", {
+                    day: "numeric",
+                    month: "short",
+                    timeZone: "UTC",
+                  }).format(new Date(row.date))}
+                  description={row.description}
+                  amount={formatMinorAmount(row.amountMinor, data.currencyScale, sv ? "sv" : "en")}
+                  warning={row.remainingMinor !== "0"}
+                  caption={
+                    row.remainingMinor === "0"
+                      ? undefined
+                      : `${row.allocatedMinor !== "0" ? (sv ? "Delvis matchad" : "Partly matched") : sv ? "Att matcha" : "To match"} · ${money(row.remainingMinor)} ${sv ? "kvar" : "remaining"}`
+                  }
+                  href={
+                    row.statementId && row.rowOrdinal !== null
+                      ? href({
+                          ...search,
+                          statement: row.statementId,
+                          row: String(row.rowOrdinal),
+                          plan: undefined,
+                          undo: undefined,
+                        })
+                      : `${props.bookBase}/books${defaultStringifySearch({ view: "vouchers", record: row.voucherId, returnTo: encodeOwnerReturn({ owner: "bank", search }) })}`
+                  }
+                />
+              ))}
+            </Box>
+          ))}
+        </>
       ) : (
-        <PageEmpty
-          title={sv ? "Inga transaktioner i den här vyn" : "No transactions in this view"}
-          detail={
-            search.q
-              ? sv
-                ? "Ändra sökningen eller välj en annan vy."
-                : "Change your search or choose another view."
-              : tab === "unmatched"
+        <BankInset>
+          <PageEmpty
+            title={sv ? "Inga transaktioner i den här vyn" : "No transactions in this view"}
+            detail={
+              search.q
                 ? sv
-                  ? "Välj Alla transaktioner för att se det importerade kontoutdraget."
-                  : "Choose All transactions to see the imported statement."
+                  ? "Ändra sökningen eller välj en annan vy."
+                  : "Change your search or choose another view."
                 : sv
                   ? "Välj en annan period eller importera ett kontoutdrag."
                   : "Choose another period or import a statement."
-          }
-        />
+            }
+          />
+        </BankInset>
       )}
       {data.total > 50 || data.page > 1 ? (
         <Box display="flex" justifyContent="between" alignItems="center">
@@ -635,24 +628,27 @@ function BankScopeToolbar(props: {
           </PageAction>
         </Box>
       ) : null}
-      <RecordHeading
-        title={account?.name ?? (sv ? "Dina bankkonton" : "Your bank accounts")}
-        subtitle={
-          account
-            ? `${account.code} · ${props.currency}`
-            : sv
-              ? "Se vilka konton som behöver stämmas av och fortsätt där arbetet väntar."
-              : "See which accounts need attention and continue reconciling."
-        }
-        action={
-          <Button variant="ghost" disabled={props.fetching} onClick={props.refresh}>
-            {sv ? "Uppdatera" : "Refresh"}
-          </Button>
-        }
-      />
+      {!props.selected ? (
+        <RecordHeading
+          title={account?.name ?? (sv ? "Dina bankkonton" : "Your bank accounts")}
+          subtitle={
+            account
+              ? `${account.code} · ${props.currency}`
+              : sv
+                ? "Se vilka konton som behöver stämmas av och fortsätt där arbetet väntar."
+                : "See which accounts need attention and continue reconciling."
+          }
+          action={
+            <Button variant="ghost" disabled={props.fetching} onClick={props.refresh}>
+              {sv ? "Uppdatera" : "Refresh"}
+            </Button>
+          }
+        />
+      ) : null}
       <Box
         as="form"
-        width="fit"
+        flexWrap="wrap"
+        width="full"
         display="flex"
         alignItems="end"
         gap="md"

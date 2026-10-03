@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
@@ -10,17 +11,14 @@ import { accountingCopy } from "@/lib/accounting-copy";
 import { formatMinorAmount, workQueryOptions } from "@/lib/workspace-api";
 import type { Locale } from "@/paraglide/runtime";
 
-export function ReviewEntry({
-  book,
-  action,
-  locale,
-  accounts,
-}: {
+export function ReviewEntry(props: {
   book: typeof Accounting.Book.Type;
   action: typeof Accounting.VoucherPostingAction.Type;
   locale: Locale;
   accounts: typeof Accounting.BookSetup.Type.accounts;
+  children?: ReactNode;
 }) {
+  const { book, action, locale, accounts } = props;
   const copy = accountingCopy(locale);
   const metadata = useQuery(workQueryOptions(book, {}));
   const scale = metadata.data?.currencyScale;
@@ -28,19 +26,6 @@ export function ReviewEntry({
 
   return (
     <Box display="grid" gap="lg" minWidth="zero">
-      <Box display="flex" flexWrap="wrap" justifyContent="between" alignItems="start" gap="md">
-        <Box display="grid" gap="sm">
-          <Heading>{action.description}</Heading>
-          <Text tone="muted">
-            {action.postingDate} · {copy.journal_series} {action.series}
-          </Text>
-        </Box>
-        {scale !== undefined ? (
-          <Text tone="metric">
-            {formatMinorAmount(total.toString(), scale, locale)} {action.currency}
-          </Text>
-        ) : null}
-      </Box>
       <ReviewColumns
         evidence={
           <>
@@ -57,11 +42,24 @@ export function ReviewEntry({
           </>
         }
       >
+        <Box display="flex" flexWrap="wrap" justifyContent="between" alignItems="start" gap="md">
+          <Box display="grid" gap="sm">
+            <Heading>{action.description}</Heading>
+            <Text tone="muted">
+              {action.postingDate} · {copy.journal_series} {action.series}
+            </Text>
+          </Box>
+          {scale !== undefined ? (
+            <Text tone="metric">
+              {formatMinorAmount(total.toString(), scale, locale)} {action.currency}
+            </Text>
+          ) : null}
+        </Box>
         <Heading>{frontendCopy(locale).accounting}</Heading>
         <Text>{action.rationale}</Text>
         <DataTable
           title={copy.journal_prepare}
-          narrow="stack"
+          narrow="scroll"
           columns={[
             { id: "account", label: copy.journal_account },
             {
@@ -111,6 +109,7 @@ export function ReviewEntry({
             </Text>
           ) : null}
         </Disclosure>
+        {props.children}
       </ReviewColumns>
     </Box>
   );

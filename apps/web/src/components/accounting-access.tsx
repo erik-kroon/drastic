@@ -5,6 +5,7 @@ import { useHydrated } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
+import { AccessPage, AccessForm, AccessSubmit } from "@open-erp/ui/components/access-page";
 import { InputField } from "@open-erp/ui/components/field";
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -69,8 +70,7 @@ export function AccountingAccess({
     );
 
   return (
-    <Box maxWidth="content" centered padding="lg" paddingBlock="2xl" display="grid" gap="xl">
-      <Text>OpenERP</Text>
+    <AccessPage>
       <AccountingStatus locale={locale} pending={books.isPending} error={books.error} />
       {books.isError ? (
         <Button
@@ -84,7 +84,7 @@ export function AccountingAccess({
         </Button>
       ) : null}
       {books.data === null ? <Login locale={locale} /> : null}
-    </Box>
+    </AccessPage>
   );
 }
 
@@ -209,18 +209,15 @@ function PasswordLogin({ locale }: { locale: Locale }) {
   });
 
   return (
-    <Box
-      as="form"
-      display="grid"
-      gap="lg"
+    <AccessForm
+      title={locale === "sv" ? "Logga in" : "Sign in"}
       onSubmit={(event) => {
         event.preventDefault();
         login.mutate();
       }}
     >
-      <Heading level={1}>{copy.journal_login}</Heading>
-      <Text tone="muted">{copy.journal_login_help}</Text>
       <InputField
+        compact
         label={copy.journal_email}
         ref={email}
         name="email"
@@ -231,6 +228,7 @@ function PasswordLogin({ locale }: { locale: Locale }) {
         disabled={login.isPending}
       />
       <InputField
+        compact
         label={copy.journal_password}
         ref={password}
         name="password"
@@ -241,13 +239,11 @@ function PasswordLogin({ locale }: { locale: Locale }) {
         required
         disabled={login.isPending}
       />
-      <Box>
-        <Button size="xl" type="submit" disabled={login.isPending}>
-          {copy.journal_login}
-        </Button>
-      </Box>
+      <AccessSubmit disabled={login.isPending}>
+        {locale === "sv" ? "Logga in" : "Sign in"}
+      </AccessSubmit>
       <AccountingStatus locale={locale} pending={login.isPending} error={login.error} />
-    </Box>
+    </AccessForm>
   );
 }
 

@@ -10,20 +10,26 @@ const styles = stylex.create({
   shell: {
     display: "grid",
     gridTemplateColumns: {
-      default: "220px minmax(0, 1fr)",
+      default: "224px minmax(0, 1fr)",
       "@media (max-width: 767px)": "minmax(0, 1fr)",
     },
     backgroundColor: tokens.sidebar,
     minHeight: "100dvh",
   },
+  focusedShell: { gridTemplateColumns: "minmax(0, 1fr)" },
+  focusedContent: { padding: 0 },
   sidebar: {
     display: { default: "flex", "@media (max-width: 767px)": "none" },
     flexDirection: "column",
+    gap: 1,
     height: "100dvh",
     insetBlockStart: 0,
     overflowY: "auto",
-    paddingInline: tokens.space3,
-    paddingBlock: tokens.space3,
+    paddingInline: tokens.space2,
+    paddingBlock: tokens.space2_5,
+    borderInlineEndWidth: 1,
+    borderInlineEndStyle: "solid",
+    borderInlineEndColor: tokens.border,
     position: "sticky",
   },
   brand: {
@@ -31,32 +37,51 @@ const styles = stylex.create({
     alignItems: "center",
     gap: tokens.space2,
     paddingInline: tokens.space2,
-    paddingBlock: tokens.space1,
-    marginBlockEnd: tokens.space6,
+    height: 32,
+    marginBlockEnd: tokens.space1_5,
+  },
+  companyMark: {
+    display: "grid",
+    placeItems: "center",
+    width: 20,
+    height: 20,
+    flexShrink: 0,
+    borderRadius: tokens.radiusCompanyMark,
+    backgroundColor: tokens.foreground,
+    color: tokens.primaryForeground,
+    fontSize: tokens.fontSizeSidebarInitials,
+    fontWeight: tokens.fontWeightSemibold,
+    lineHeight: tokens.lineHeight12Px,
+  },
+  companyLink: {
+    color: tokens.foreground,
+    textDecoration: "none",
+    ":focus-visible": { outline: "none", boxShadow: tokens.focusRing },
   },
   brandName: {
-    fontSize: tokens.fontSizeBrand,
+    fontSize: tokens.fontSizeControl,
     fontWeight: tokens.fontWeightSemibold,
-    letterSpacing: tokens.trackingHeading,
+    lineHeight: tokens.lineHeight16Px,
   },
   brandDetail: { color: tokens.mutedForeground, fontSize: tokens.fontSizeXs },
-  navGroup: { marginBlockEnd: tokens.space4 },
+  navGroup: { marginBlockEnd: tokens.space2 },
   navigation: { display: "grid", gap: 1 },
   navigationLabel: {
     color: tokens.mutedForeground,
-    fontSize: tokens.fontSize2xs,
+    fontSize: tokens.fontSizeCompact,
     fontWeight: tokens.fontWeightSemibold,
-    letterSpacing: tokens.trackingSection,
+    letterSpacing: tokens.trackingLabel,
     textTransform: "uppercase",
-    paddingInline: tokens.space3,
+    paddingInline: tokens.space2,
     marginBlockEnd: tokens.space1,
   },
   navItem: {
     color: { default: tokens.mutedForeground, ":hover": tokens.foreground },
     fontSize: tokens.fontSizeControl,
     justifyContent: "start",
-    minHeight: 34,
-    paddingInline: tokens.space3,
+    minHeight: 28,
+    lineHeight: tokens.lineHeight16Px,
+    paddingInline: tokens.space2,
     whiteSpace: "normal",
     textAlign: "start",
     width: "100%",
@@ -65,10 +90,10 @@ const styles = stylex.create({
   },
   navLink: {
     alignItems: "center",
-    borderRadius: tokens.radiusSurface,
+    borderRadius: tokens.radiusControl,
     display: "flex",
-    gap: 10,
-    paddingBlock: 7,
+    gap: tokens.space2,
+    paddingBlock: tokens.space1_5,
     textDecoration: "none",
     backgroundColor: { default: "transparent", ":hover": tokens.muted },
     transitionProperty: "background-color, color",
@@ -99,13 +124,8 @@ const styles = stylex.create({
   body: {
     minWidth: 0,
     backgroundColor: tokens.card,
-    borderRadius: tokens.radiusOverlay,
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: tokens.border,
-    marginBlock: 10,
-    marginInlineEnd: 10,
-    height: "calc(100dvh - 20px)",
+    borderRadius: tokens.radiusNone,
+    height: "100dvh",
     overflowY: "auto",
     containerType: "inline-size",
     "@media (max-width: 767px)": {
@@ -119,7 +139,7 @@ const styles = stylex.create({
   },
   content: {
     minWidth: 0,
-    paddingInline: { default: 24, "@media (max-width: 767px)": 16 },
+    paddingInline: { default: 20, "@media (max-width: 767px)": 16 },
     paddingBlockStart: 16,
     paddingBlockEnd: 32,
     "@media (max-width: 767px)": { paddingBlockEnd: "calc(88px + env(safe-area-inset-bottom))" },
@@ -138,16 +158,16 @@ const styles = stylex.create({
     borderBlockEndWidth: 1,
     borderBlockEndStyle: "solid",
     borderBlockEndColor: tokens.border,
-    paddingInline: { default: 24, "@media (max-width: 767px)": 16 },
+    paddingInline: { default: 20, "@media (max-width: 767px)": 16 },
     paddingBlock: 8,
-    marginInline: { default: -24, "@media (max-width: 767px)": -16 },
+    marginInline: { default: -20, "@media (max-width: 767px)": -16 },
     marginBlockStart: -16,
     marginBlockEnd: 16,
   },
   title: {
-    fontSize: tokens.fontSizeControl,
-    lineHeight: tokens.lineHeight20Px,
-    fontWeight: tokens.fontWeightMedium,
+    fontSize: tokens.fontSizeSm,
+    lineHeight: tokens.lineHeight18Px,
+    fontWeight: tokens.fontWeightSemibold,
   },
   scope: { display: "flex", alignItems: "center", gap: tokens.space2, minWidth: 0 },
   toolbar: {
@@ -225,13 +245,22 @@ const styles = stylex.create({
     gap: 8,
     listStyle: "none",
     borderRadius: tokens.radiusSurface,
-    padding: 10,
-    minHeight: 44,
+    paddingInline: tokens.space2,
+    paddingBlock: tokens.space1,
+    minHeight: 32,
+    lineHeight: tokens.lineHeight16Px,
     cursor: "pointer",
     ":hover": { backgroundColor: tokens.secondary },
     ":focus-visible": { outline: "none", boxShadow: tokens.focusRing },
   },
   accountDetails: {
+    position: "absolute",
+    insetBlockEnd: "100%",
+    insetInline: 0,
+    zIndex: 20,
+    maxHeight: "70dvh",
+    overflowY: "auto",
+    boxShadow: tokens.shadowFloating,
     display: "grid",
     gap: 12,
     padding: 12,
@@ -331,6 +360,7 @@ export function Workspace(props: {
   mobileNavigation: ReactNode;
   pageKey: string;
   children: ReactNode;
+  focused?: boolean;
 }) {
   const main = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
@@ -338,16 +368,20 @@ export function Workspace(props: {
   }, [props.pageKey]);
 
   return (
-    <div {...stylex.props(styles.shell)}>
-      <aside {...stylex.props(styles.sidebar)}>
-        {props.brand}
-        {props.navigation}
-        <div {...stylex.props(styles.footer)}>{props.footer}</div>
-      </aside>
+    <div {...stylex.props(styles.shell, props.focused && styles.focusedShell)}>
+      {!props.focused ? (
+        <aside {...stylex.props(styles.sidebar)}>
+          {props.brand}
+          {props.navigation}
+          <div {...stylex.props(styles.footer)}>{props.footer}</div>
+        </aside>
+      ) : null}
       <main ref={main} id="workspace-content" {...stylex.props(styles.body)}>
-        <div {...stylex.props(styles.content)}>{props.children}</div>
+        <div {...stylex.props(styles.content, props.focused && styles.focusedContent)}>
+          {props.children}
+        </div>
       </main>
-      {props.mobileNavigation}
+      {!props.focused ? props.mobileNavigation : null}
     </div>
   );
 }
@@ -358,7 +392,7 @@ export function WorkspaceAccount({
   children,
 }: {
   name: string;
-  detail: string;
+  detail?: string;
   children: ReactNode;
 }) {
   return (
@@ -366,10 +400,12 @@ export function WorkspaceAccount({
       <summary {...stylex.props(styles.accountSummary)}>
         <span {...stylex.props(styles.accountName)}>
           {name}
-          <span {...stylex.props(styles.brandDetail)}>
-            <br />
-            {detail}
-          </span>
+          {detail ? (
+            <span {...stylex.props(styles.brandDetail)}>
+              <br />
+              {detail}
+            </span>
+          ) : null}
         </span>
         <ChevronDown size={14} aria-hidden="true" />
       </summary>
@@ -450,6 +486,26 @@ export function WorkspaceBrand({
         {detail ? <p {...stylex.props(styles.brandDetail)}>{detail}</p> : null}
       </div>
     </div>
+  );
+}
+
+export function WorkspaceCompany({ name, href }: { name: string; href: string }) {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toLocaleUpperCase();
+
+  return (
+    <Link href={href} {...stylex.props(styles.brand, styles.companyLink)}>
+      <span aria-hidden="true" {...stylex.props(styles.companyMark)}>
+        {initials}
+      </span>
+      <span {...stylex.props(styles.brandName)}>{name}</span>
+      <ChevronDown size={12} aria-hidden="true" />
+    </Link>
   );
 }
 

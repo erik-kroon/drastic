@@ -1,13 +1,15 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
 import * as Sources from "@open-erp/contracts/source-intake";
-import { ArrowLeft, Upload, Download, FileText } from "lucide-react";
+import { ArrowLeft, Upload, Download } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
-import { DataTable } from "@open-erp/ui/components/data-table";
+import { DocumentRegister } from "@open-erp/ui/components/document-register";
+import { RegisterWorkspace, RegisterNavigation } from "@open-erp/ui/components/register-workspace";
+import { Disclosure } from "@open-erp/ui/components/disclosure";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { DocumentPreview } from "@open-erp/ui/components/document-preview";
 import { RecordHeading, RecordSplit, RecordSection } from "@open-erp/ui/components/record-layout";
@@ -20,17 +22,15 @@ import { defaultStringifySearch, useSearch } from "@tanstack/react-router";
 import { encodeOwnerReturn, useWorkReturn, workReturnHref } from "@/lib/work-return";
 import { downloadIntake } from "@/components/source-intake/download";
 
-export function DocumentInbox({
-  recordId,
-  onOpen,
-  filters: search,
-  onFilters,
-}: {
+export function DocumentInbox(props: {
+  standalone?: boolean;
   recordId?: string;
   onOpen: (id: string) => void;
   filters: typeof Sources.ArchiveFilters.Type;
   onFilters: (filters: typeof Sources.ArchiveFilters.Type) => void;
 }) {
+  const { recordId, onOpen, filters: search, onFilters } = props;
+  const standalone = props.standalone ?? false;
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
@@ -53,6 +53,7 @@ export function DocumentInbox({
     `${base}${defaultStringifySearch({ ...areaSearch, view: "documents", record: id })}`;
 
   const [filterError, setFilterError] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const sources = useQuery({
     queryKey: [...bookKey(book), "document-inbox", filters],
@@ -106,26 +107,159 @@ export function DocumentInbox({
     filters.retainedTo
   );
 
-  if (recordId && recordId !== "new")
-    return (
-      <Box display="grid" gap="xl">
-        <Box>
+  const actions = (
+    <Box display="flex" flexWrap="wrap" gap="md">
+      <Button
+        size="sm"
+        type="submit"
+        form="document-archive-filters"
+        value="export"
+        variant="outline"
+        disabled={archiveExport.isPending}
+      >
+        <Download size={14} />
+        {archiveExport.isPending ? labels.exportingArchive : labels.exportArchivePage}
+      </Button>
+      <Button size="sm" onClick={() => onOpen("new")}>
+        <Upload size={14} />
+        {labels.uploadDocument}
+      </Button>
+    </Box>
+  );
+
+  const filterForm = (
+    <Box
+      id="document-archive-filters"
+      as="form"
+      display="grid"
+      gap="md"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const fields = new FormData(event.currentTarget);
+
+        const submitter =
+          event.nativeEvent instanceof SubmitEvent ? event.nativeEvent.submitter : null;
+
+        const intent = submitter instanceof HTMLButtonElement ? submitter.value : null;
+
+        const decoded = Schema.decodeUnknownOption(Sources.ArchiveFilters)({
+          filename: fields.get("filename") || undefined,
+          sourceSystem: fields.get("sourceSystem") || undefined,
+          retainedFrom: fields.get("retainedFrom") || undefined,
+          retainedTo: fields.get("retainedTo") || undefined,
+        });
+
+        if (
+          Option.isNone(decoded) ||
+          (decoded.value.retainedFrom &&
+            decoded.value.retainedTo &&
+            decoded.value.retainedFrom > decoded.value.retainedTo)
+        ) {
+          setFilterError(labels.invalidArchiveFilters);
+          setFiltersOpen(true);
+
+          return;
+        }
+
+        setFilterError(null);
+
+        const changed =
+          decoded.value.filename !== filters.filename ||
+          decoded.value.sourceSystem !== filters.sourceSystem ||
+          decoded.value.retainedFrom !== filters.retainedFrom ||
+          decoded.value.retainedTo !== filters.retainedTo;
+
+        const applied = { ...decoded.value, cursor: changed ? undefined : filters.cursor };
+
+        onFilters(applied);
+
+        if (intent === "export") archiveExport.mutate(applied);
+        else archiveExport.reset();
+      }}
+    >
+      <Box key={JSON.stringify(filters)} display="flex" flexWrap="wrap" alignItems="end" gap="md">
+        <InputField
+          name="filename"
+          label={labels.exactFilename}
+          defaultValue={filters.filename}
+          maxLength={200}
+          autoComplete="off"
+          disabled={archiveExport.isPending}
+        />
+        <InputField
+          name="sourceSystem"
+          label={labels.sourceSystem}
+          defaultValue={filters.sourceSystem}
+          maxLength={200}
+          autoComplete="off"
+          disabled={archiveExport.isPending}
+        />
+        <InputField
+          name="retainedFrom"
+          type="date"
+          label={labels.retainedFrom}
+          defaultValue={filters.retainedFrom}
+          disabled={archiveExport.isPending}
+        />
+        <InputField
+          name="retainedTo"
+          type="date"
+          label={labels.retainedTo}
+          defaultValue={filters.retainedTo}
+          disabled={archiveExport.isPending}
+        />
+      </Box>
+      <Box display="flex" flexWrap="wrap" gap="md">
+        <Button type="submit" value="search" variant="outline" disabled={archiveExport.isPending}>
+          {labels.applyArchiveFilters}
+        </Button>
+        {hasFilters ? (
           <Button
+            type="button"
             variant="ghost"
+            disabled={archiveExport.isPending}
             onClick={() => {
-              pendingFocus.current = opener.current;
-              onOpen("");
+              onFilters({
+                filename: undefined,
+                sourceSystem: undefined,
+                retainedFrom: undefined,
+                retainedTo: undefined,
+                cursor: undefined,
+              });
+              setFilterError(null);
+              archiveExport.reset();
             }}
           >
-            <ArrowLeft size={14} />
-            {labels.allDocuments}
+            {labels.clearArchiveFilters}
           </Button>
-        </Box>
-        <DocumentDetail id={recordId} />
+        ) : null}
       </Box>
+      {filterError ? <Text role="alert">{filterError}</Text> : null}
+    </Box>
+  );
+
+  if (recordId && recordId !== "new")
+    return (
+      <ArchiveFrame standalone={standalone} title={labels.documents} href={href("")}>
+        <Box display="grid" gap="xl" padding={standalone ? "lg" : "none"}>
+          <Box>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                pendingFocus.current = opener.current;
+                onOpen("");
+              }}
+            >
+              <ArrowLeft size={14} />
+              {labels.allDocuments}
+            </Button>
+          </Box>
+          <DocumentDetail id={recordId} />
+        </Box>
+      </ArchiveFrame>
     );
 
-  return (
+  const content = (
     <Box
       ref={(node) => {
         if (!node || !sources.isSuccess || pendingFocus.current === undefined) return;
@@ -134,7 +268,7 @@ export function DocumentInbox({
           ? node.querySelector<HTMLAnchorElement>(`[data-document-id="${pendingFocus.current}"]`)
           : null;
 
-        const target = row ?? node.querySelector<HTMLHeadingElement>("h2");
+        const target = row ?? node;
 
         if (target) {
           if (!row) target.tabIndex = -1;
@@ -143,138 +277,16 @@ export function DocumentInbox({
         }
       }}
       display="grid"
-      gap="xl"
+      gap={standalone ? "none" : "xl"}
     >
-      <RecordHeading
-        title={labels.documents}
-        subtitle={labels.receiptsInvoicesAndStatementsOriginal}
-        action={
-          <Box display="flex" flexWrap="wrap" gap="md">
-            <Button
-              type="submit"
-              form="document-archive-filters"
-              value="export"
-              variant="outline"
-              disabled={archiveExport.isPending}
-            >
-              <Download size={14} />
-              {archiveExport.isPending ? labels.exportingArchive : labels.exportArchivePage}
-            </Button>
-            <Button onClick={() => onOpen("new")}>
-              <Upload size={14} />
-              {labels.uploadDocument}
-            </Button>
-          </Box>
-        }
-      />
-      <Box
-        id="document-archive-filters"
-        as="form"
-        display="grid"
-        gap="md"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const fields = new FormData(event.currentTarget);
-
-          const submitter =
-            event.nativeEvent instanceof SubmitEvent ? event.nativeEvent.submitter : null;
-
-          const intent = submitter instanceof HTMLButtonElement ? submitter.value : null;
-
-          const decoded = Schema.decodeUnknownOption(Sources.ArchiveFilters)({
-            filename: fields.get("filename") || undefined,
-            sourceSystem: fields.get("sourceSystem") || undefined,
-            retainedFrom: fields.get("retainedFrom") || undefined,
-            retainedTo: fields.get("retainedTo") || undefined,
-          });
-
-          if (
-            Option.isNone(decoded) ||
-            (decoded.value.retainedFrom &&
-              decoded.value.retainedTo &&
-              decoded.value.retainedFrom > decoded.value.retainedTo)
-          ) {
-            setFilterError(labels.invalidArchiveFilters);
-
-            return;
-          }
-
-          setFilterError(null);
-
-          const changed =
-            decoded.value.filename !== filters.filename ||
-            decoded.value.sourceSystem !== filters.sourceSystem ||
-            decoded.value.retainedFrom !== filters.retainedFrom ||
-            decoded.value.retainedTo !== filters.retainedTo;
-
-          const applied = { ...decoded.value, cursor: changed ? undefined : filters.cursor };
-
-          onFilters(applied);
-
-          if (intent === "export") archiveExport.mutate(applied);
-          else archiveExport.reset();
-        }}
-      >
-        <Box key={JSON.stringify(filters)} display="flex" flexWrap="wrap" alignItems="end" gap="md">
-          <InputField
-            name="filename"
-            label={labels.exactFilename}
-            defaultValue={filters.filename}
-            maxLength={200}
-            autoComplete="off"
-            disabled={archiveExport.isPending}
-          />
-          <InputField
-            name="sourceSystem"
-            label={labels.sourceSystem}
-            defaultValue={filters.sourceSystem}
-            maxLength={200}
-            autoComplete="off"
-            disabled={archiveExport.isPending}
-          />
-          <InputField
-            name="retainedFrom"
-            type="date"
-            label={labels.retainedFrom}
-            defaultValue={filters.retainedFrom}
-            disabled={archiveExport.isPending}
-          />
-          <InputField
-            name="retainedTo"
-            type="date"
-            label={labels.retainedTo}
-            defaultValue={filters.retainedTo}
-            disabled={archiveExport.isPending}
-          />
-        </Box>
-        <Box display="flex" flexWrap="wrap" gap="md">
-          <Button type="submit" value="search" variant="outline" disabled={archiveExport.isPending}>
-            {labels.applyArchiveFilters}
-          </Button>
-          {hasFilters ? (
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={archiveExport.isPending}
-              onClick={() => {
-                onFilters({
-                  filename: undefined,
-                  sourceSystem: undefined,
-                  retainedFrom: undefined,
-                  retainedTo: undefined,
-                  cursor: undefined,
-                });
-                setFilterError(null);
-                archiveExport.reset();
-              }}
-            >
-              {labels.clearArchiveFilters}
-            </Button>
-          ) : null}
-        </Box>
-        {filterError ? <Text role="alert">{filterError}</Text> : null}
-      </Box>
-      <PageCaption>{labels.archiveExportHelp}</PageCaption>
+      {!standalone ? (
+        <RecordHeading
+          title={labels.documents}
+          subtitle={labels.receiptsInvoicesAndStatementsOriginal}
+          action={actions}
+        />
+      ) : null}
+      {!standalone ? filterForm : null}
       <AccountingStatus
         locale={locale}
         pending={archiveExport.isPending}
@@ -296,36 +308,26 @@ export function DocumentInbox({
       ) : null}
       {sources.isSuccess ? (
         items.length ? (
-          <DataTable
+          <DocumentRegister
             title={labels.documents}
-            narrow="stack"
-            columns={[
-              { id: "name", label: labels.document },
-              { id: "source", label: labels.sourceSystem },
-              { id: "date", label: labels.uploaded },
-              { id: "type", label: labels.fileType },
-            ]}
+            headings={{
+              document: labels.document,
+              type: labels.fileType,
+              source: labels.sourceSystem,
+              date: labels.uploaded,
+            }}
+            onOpen={(id) => {
+              opener.current = id;
+            }}
             rows={items.map((occurrence) => ({
               id: occurrence.id,
-              cells: [
-                <PageAction
-                  key="open"
-                  quiet
-                  href={href(occurrence.id)}
-                  data-document-id={occurrence.id}
-                  onClick={() => {
-                    opener.current = occurrence.id;
-                  }}
-                >
-                  <FileText size={14} />
-                  {occurrence.filename}
-                </PageAction>,
-                occurrence.sourceSystem,
-                new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
-                  new Date(occurrence.retainedAt),
-                ),
-                occurrence.mediaType.split("/").at(-1)?.toUpperCase(),
-              ],
+              filename: occurrence.filename,
+              href: href(occurrence.id),
+              type: occurrence.mediaType.split("/").at(-1)?.toUpperCase() ?? occurrence.mediaType,
+              source: occurrence.sourceSystem,
+              date: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(
+                new Date(occurrence.retainedAt),
+              ),
             }))}
           />
         ) : (
@@ -348,7 +350,10 @@ export function DocumentInbox({
           </Button>
         </Box>
       ) : null}
-      <PageCaption>{labels.uploadingRetainsTheOriginalIt}</PageCaption>
+      <Box padding={standalone ? "lg" : "none"}>
+        <PageCaption>{labels.archiveExportHelp}</PageCaption>
+        <PageCaption>{labels.uploadingRetainsTheOriginalIt}</PageCaption>
+      </Box>
       {recordId === "new" ? (
         <FormDialog
           title={labels.uploadDocument}
@@ -360,6 +365,64 @@ export function DocumentInbox({
         </FormDialog>
       ) : null}
     </Box>
+  );
+
+  return (
+    <ArchiveFrame
+      standalone={standalone}
+      title={labels.documents}
+      href={href("")}
+      action={actions}
+      filters={
+        standalone ? (
+          <Disclosure
+            label={sv ? "Filnamn, källa och period" : "Filename, source and period"}
+            variant="toolbar"
+            open={filtersOpen}
+            onOpenChange={setFiltersOpen}
+          >
+            {filterForm}
+          </Disclosure>
+        ) : undefined
+      }
+    >
+      {content}
+    </ArchiveFrame>
+  );
+}
+
+function ArchiveFrame(props: {
+  standalone: boolean;
+  title: string;
+  href: string;
+  action?: ReactNode;
+  filters?: ReactNode;
+  children: ReactNode;
+}) {
+  const { locale } = useBookWorkspace();
+
+  if (!props.standalone) return props.children;
+
+  return (
+    <RegisterWorkspace
+      title={props.title}
+      action={props.action}
+      filters={props.filters}
+      tabs={
+        <RegisterNavigation
+          label={props.title}
+          options={[
+            {
+              label: locale === "sv" ? "Arkiv" : "Archive",
+              href: props.href,
+              active: true,
+            },
+          ]}
+        />
+      }
+    >
+      {props.children}
+    </RegisterWorkspace>
   );
 }
 

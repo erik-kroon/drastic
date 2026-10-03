@@ -7,7 +7,9 @@ const args = process.argv.slice(2);
 
 const typeAware = args.includes("--type-aware");
 
-const baseRef = args.find((arg) => arg !== "--type-aware") ?? "HEAD";
+const lintOnly = args.includes("--lint-only");
+
+const baseRef = args.find((arg) => arg !== "--type-aware" && arg !== "--lint-only") ?? "HEAD";
 
 const binDirectory = path.join(repoRoot, "node_modules", ".bin");
 
@@ -25,10 +27,15 @@ const sourceExtensions = new Set([".ts", ".tsx", ".mts", ".cts"]);
 
 const toolExtensions = new Set([...sourceExtensions, ".js", ".jsx", ".mjs", ".cjs"]);
 
-const gitLines = (...args: Array<string>) =>
-  Bun.spawnSync(["git", ...args], { cwd: repoRoot })
-    .stdout.toString()
-    .split("\n");
+const gitPaths = (...args: Array<string>) => {
+  const result = Bun.spawnSync(["git", ...args], { cwd: repoRoot });
+
+  if (result.exitCode !== 0) {
+    throw new Error(`git ${args.join(" ")} failed: ${result.stderr.toString()}`);
+  }
+
+  return result.stdout.toString().split("\0");
+};
 
 const isIgnoredPath = (relativePath: string) =>
   relativePath.split("/").some((segment) => segment.startsWith(".") || segment === "node_modules");
@@ -48,12 +55,11 @@ const nearestProjectConfig = (relativePath: string) => {
 };
 
 const changedFiles = [
-  ...gitLines("diff", "--name-only", "--diff-filter=d", baseRef),
-  ...gitLines("ls-files", "--others", "--exclude-standard"),
+  ...gitPaths("diff", "--name-only", "-z", "--diff-filter=d", baseRef, "--"),
+  ...gitPaths("ls-files", "-z", "--others", "--exclude-standard"),
 ];
 
-const toolFiles = changedFiles
-  .map((line) => line.trim())
+const toolFiles = [...new Set(changedFiles)]
   .filter((file) => file !== "")
   .filter((file) => !isIgnoredPath(file) && existsSync(path.join(repoRoot, file)))
   .filter((file) => toolExtensions.has(path.extname(file)));
@@ -194,21 +200,28 @@ const typeCheckProject = async (projectConfig: string, files: Array<string>) => 
 };
 
 // Bound both tool overlap and native worker pools so agents can share the machine.
-await run("oxfmt --write", "oxfmt", ["--threads", toolThreads, "--write", ...toolFiles]);
+if (!lintOnly) {
+  await run("oxfmt --write", "oxfmt", ["--threads", toolThreads, "--write", ...toolFiles]);
+}
 
 await run(typeAware ? "oxlint (type-aware)" : "oxlint", "oxlint", [
   "--threads",
   toolThreads,
   "--config",
-  typeAware ? ".oxlintrc.type-aware.json" : ".oxlintrc.json",
+  ".oxlintrc.changed.json",
+  "--max-warnings",
+  "0",
+  ...(typeAware ? ["--type-aware"] : []),
   ...toolFiles,
 ]);
 
-for (const [projectConfig, files] of typeCheckGroups) {
-  await typeCheckProject(projectConfig, files);
+if (!lintOnly) {
+  for (const [projectConfig, files] of typeCheckGroups) {
+    await typeCheckProject(projectConfig, files);
+  }
 }
 
-if (filesWithoutProject.length > 0) {
+if (!lintOnly && filesWithoutProject.length > 0) {
   console.log(
     `\nNo tsconfig.json covers ${filesWithoutProject.join(", ")}. Linted and formatted only.`,
   );

@@ -2,17 +2,19 @@ import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import * as Accounting from "@open-erp/contracts/accounting";
-import { BookOpen, CheckSquare, Building2 } from "lucide-react";
+import { BookOpen, CheckSquare, Building2, Settings } from "lucide-react";
 import { Button } from "@open-erp/ui/components/button";
 import { SelectControl } from "@open-erp/ui/components/select";
 import { ChoiceField } from "@open-erp/ui/components/choice-field";
 import { Link } from "@open-erp/ui/components/link";
 import {
   Workspace,
-  WorkspaceBrand,
+  WorkspaceCompany,
+  WorkspaceNavLink,
   WorkspaceAccount,
   WorkspaceMobileNavigation,
 } from "@open-erp/ui/components/workspace";
+import { BookSearch } from "@/components/book-search";
 import { BookNavigation } from "@/components/book-navigation";
 import { frontendCopy } from "@/lib/frontend-copy";
 import { BookContext, workspacePath } from "@/lib/book-context";
@@ -20,6 +22,7 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { SignOut } from "@/components/accounting-access";
 import { portfolioReturn } from "@/components/firms/portfolio-return";
 import { bookKey, bookPath, readAccounting, type Books } from "@/lib/accounting-api";
+import { authClient } from "@/lib/auth-client";
 import { accountingCopy } from "@/lib/accounting-copy";
 import { setLocale, type Locale } from "@/paraglide/runtime";
 
@@ -37,6 +40,7 @@ export function BookWorkspace({
   const copy = accountingCopy(locale);
   const navigate = useNavigate();
   const pathname = useLocation({ select: (location) => location.pathname });
+  const search = useLocation({ select: (location) => location.searchStr });
   const base = workspacePath(book);
   const [scopeBlocked, setScopeBlocked] = useState(true);
 
@@ -66,12 +70,27 @@ export function BookWorkspace({
     setScopeBlocked(false);
   }
 
+  const session = useQuery({
+    queryKey: ["auth-session"],
+    enabled: !scopeBlocked && !scopeUnavailable,
+    queryFn: async () => {
+      const result = await authClient.getSession();
+
+      if (result.error) throw new Error(result.error.message ?? "Session unavailable");
+
+      return result.data;
+    },
+    retry: false,
+    staleTime: 60_000,
+  });
+
   const labels = frontendCopy(locale);
 
   const navigation = (
     <BookNavigation
       base={base}
       pathname={pathname}
+      search={search}
       locale={locale}
       book={book}
       setup={setup.data && !scopeBlocked && !scopeUnavailable ? setup.data : undefined}
@@ -80,8 +99,13 @@ export function BookWorkspace({
 
   const account = (
     <WorkspaceAccount
-      name={book.name}
-      detail={`${book.currency} · ${book.profile === "synthetic-core-v1" ? copy.workspace_synthetic : copy.workspace_book_context}`}
+      name={
+        session.isSuccess && session.data
+          ? session.data.user.name
+          : locale === "sv"
+            ? "Konto"
+            : "Account"
+      }
     >
       {books.length > 1 ? (
         <SelectControl
@@ -121,14 +145,23 @@ export function BookWorkspace({
   return (
     <Workspace
       pageKey={pathname}
+      focused={pathname.startsWith(`${base}/reviews/`)}
       brand={
-        <WorkspaceBrand
-          icon={<BookOpen aria-hidden="true" size={20} strokeWidth={1.5} />}
-          name="OpenERP"
-        />
+        <>
+          <WorkspaceCompany name={book.name} href="/companies" />
+          {!scopeBlocked && !scopeUnavailable ? <BookSearch book={book} locale={locale} /> : null}
+        </>
       }
       navigation={navigation}
-      footer={account}
+      footer={
+        <>
+          <WorkspaceNavLink href={`${base}/settings`} active={pathname === `${base}/settings`}>
+            <Settings size={16} strokeWidth={1.5} aria-hidden="true" />
+            {labels.settings}
+          </WorkspaceNavLink>
+          {account}
+        </>
+      }
       mobileNavigation={
         <WorkspaceMobileNavigation
           label={labels.menu}

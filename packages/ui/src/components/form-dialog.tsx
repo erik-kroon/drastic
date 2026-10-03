@@ -29,6 +29,36 @@ const styles = stylex.create({
     "@media (max-width: 767px)": { width: "calc(100vw - 20px)", maxHeight: "95dvh", padding: 16 },
   },
   compact: { width: "min(560px, calc(100vw - 48px))" },
+  fullscreen: {
+    insetBlockStart: 0,
+    insetInlineStart: 0,
+    transform: "none",
+    width: "100vw",
+    height: "100dvh",
+    maxHeight: "100dvh",
+    padding: 0,
+    borderWidth: 0,
+    borderRadius: 0,
+    boxShadow: "none",
+    "@media (max-width: 767px)": { width: "100vw", maxHeight: "100dvh", padding: 0 },
+  },
+  fullscreenHeader: {
+    minHeight: 48,
+    paddingInline: tokens.space4,
+    marginBlockEnd: 0,
+    borderBlockEndWidth: 1,
+    borderBlockEndStyle: "solid",
+    borderBlockEndColor: tokens.border,
+    position: "sticky",
+    insetBlockStart: 0,
+    backgroundColor: tokens.card,
+    zIndex: 1,
+  },
+  fullscreenTitle: {
+    fontSize: tokens.fontSizeSm,
+    fontWeight: tokens.fontWeightSemibold,
+    lineHeight: tokens.lineHeight18Px,
+  },
   invoice: {
     width: "min(42rem, calc(100vw - 48px))",
     "@media (max-width: 767px)": { width: "calc(100vw - 20px)" },
@@ -64,7 +94,7 @@ export function FormDialog({
   children,
   size = "wide",
 }: {
-  size?: "compact" | "invoice" | "wide";
+  size?: "compact" | "invoice" | "wide" | "fullscreen";
   title: string;
   closeLabel: string;
   onClose: () => void;
@@ -93,10 +123,15 @@ export function FormDialog({
             styles.popup,
             size === "compact" && styles.compact,
             size === "invoice" && styles.invoice,
+            size === "fullscreen" && styles.fullscreen,
           )}
         >
-          <div {...stylex.props(styles.header)}>
-            <Dialog.Title {...stylex.props(styles.title)}>{title}</Dialog.Title>
+          <div {...stylex.props(styles.header, size === "fullscreen" && styles.fullscreenHeader)}>
+            <Dialog.Title
+              {...stylex.props(styles.title, size === "fullscreen" && styles.fullscreenTitle)}
+            >
+              {title}
+            </Dialog.Title>
             <Dialog.Close aria-label={closeLabel} {...stylex.props(styles.close)}>
               <X size={18} aria-hidden="true" />
             </Dialog.Close>
