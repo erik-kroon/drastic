@@ -176,24 +176,24 @@ const path = "/v1/entities/:entityId/books/:bookId/cash-bases";
 export const CashForecastApi = HttpApiGroup.make("cashForecast")
   .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" })
   .add(
-  HttpApiEndpoint.post("captureCashBasis", path, {
-    params: Accounting.Scope,
-    headers: Accounting.IdempotencyHeaders,
-    payload: CaptureCashBasis,
-    success: CashBasis,
-    error: accountingErrors,
-  }),
-  HttpApiEndpoint.get("getCashBasis", `${path}/:id`, {
-    params: Accounting.ChangePath,
-    success: CashBasisView,
-    error: accountingErrors,
-  }),
-  HttpApiEndpoint.get("exportCashBasis", `${path}/:id/export`, {
-    params: Accounting.ChangePath,
-    success: Schema.String.pipe(HttpApiSchema.asText({ contentType: "application/json" })),
-    error: accountingErrors,
-  }),
-);
+    HttpApiEndpoint.post("captureCashBasis", path, {
+      params: Accounting.Scope,
+      headers: Accounting.IdempotencyHeaders,
+      payload: CaptureCashBasis,
+      success: CashBasis,
+      error: accountingErrors,
+    }),
+    HttpApiEndpoint.get("getCashBasis", `${path}/:id`, {
+      params: Accounting.ChangePath,
+      success: CashBasisView,
+      error: accountingErrors,
+    }),
+    HttpApiEndpoint.get("exportCashBasis", `${path}/:id/export`, {
+      params: Accounting.ChangePath,
+      success: Schema.String.pipe(HttpApiSchema.asText({ contentType: "application/json" })),
+      error: accountingErrors,
+    }),
+  );
 
 export const CashForecastCapabilities = {
   cash_capture_basis: {
