@@ -176,7 +176,7 @@ test("real overview follows the server date despite browser clock skew and suppl
       }
 
       await page.clock.install({ time: new Date("2026-01-01T00:00:00Z") });
-      await page.clock.pauseAt(new Date("2026-01-01T00:00:00Z"));
+      await page.clock.pauseAt(new Date("2026-01-01T00:01:00Z"));
       await page.goto(`${workspace}/overview`);
       await page.clock.runFor(1000);
       await expect
@@ -327,6 +327,13 @@ test("real overview follows the server date despite browser clock skew and suppl
       await exited;
     }
 
-    await worker.close();
+    try {
+      await worker.close();
+    } finally {
+      await writeFile(
+        join(environment().artifacts, "business-date-worker.json"),
+        JSON.stringify(worker.getLogs(), null, 2),
+      );
+    }
   }
 }, 180000);

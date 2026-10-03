@@ -196,6 +196,7 @@ test("strict recovery qualifies the validated VAT match constraint without chang
     restoreCatalogDifferences?: object;
     selectorsBefore?: object;
     selectorUpgrade?: object;
+    currentReleaseUpgrade?: object;
     evaluation?: object;
   } = {};
 
@@ -206,6 +207,13 @@ test("strict recovery qualifies the validated VAT match constraint without chang
     files: manifest.files.filter(
       (file) => file.path.split("/").at(-1)! <= "0050-validate-vat-receipt-match.sql",
     ),
+  };
+
+  const selectorMigrationName = "0051-rule-selector-check-stability.sql";
+
+  const selectorRelease = {
+    ...manifest,
+    files: manifest.files.filter((file) => file.path.split("/").at(-1)! <= selectorMigrationName),
   };
 
   const pgBin = process.env.PG_BINDIR ?? (await run("pg_config", ["--bindir"])).stdout.trim();
@@ -402,7 +410,7 @@ test("strict recovery qualifies the validated VAT match constraint without chang
       "CHECK ((((cardinality(changed_selectors) >= 1) AND (cardinality(changed_selectors) <= 20)) AND (array_position(changed_selectors, NULL::text) IS NULL)))",
     );
 
-    const selectorMigration = (await migrate()).stdout;
+    const selectorMigration = (await migrate(selectorMigrationName)).stdout;
     const qualifiedConstraints = await constraints(source);
     const selectorsAfter = await selectorOutcomes(source);
 
@@ -410,7 +418,7 @@ test("strict recovery qualifies the validated VAT match constraint without chang
       "CHECK (((cardinality(changed_selectors) >= 1) AND (cardinality(changed_selectors) <= 20) AND (array_position(changed_selectors, NULL::text) IS NULL)))";
 
     const qualifiedTables = await tableFingerprints(source);
-    const qualifiedInventory = await databaseInventory(source, manifest);
+    const qualifiedInventory = await databaseInventory(source, selectorRelease);
     const qualifiedSchema = await schema();
 
     observed.selectorUpgrade = {
@@ -437,12 +445,42 @@ test("strict recovery qualifies the validated VAT match constraint without chang
       afterTables.filter((table) => table.table !== "openerp_migrations"),
     );
     expect(qualifiedInventory.migrations).toEqual(
-      manifest.files.map((file) => ({ name: file.path.split("/").at(-1), sha256: file.sha256 })),
+      selectorRelease.files.map((file) => ({
+        name: file.path.split("/").at(-1),
+        sha256: file.sha256,
+      })),
     );
 
-    await migrate();
-    expect(await databaseInventory(source, manifest)).toEqual(qualifiedInventory);
+    await migrate(selectorMigrationName);
+    expect(await databaseInventory(source, selectorRelease)).toEqual(qualifiedInventory);
     expect(await tableFingerprints(source)).toEqual(qualifiedTables);
+
+    const currentMigration = (await migrate()).stdout;
+    const currentInventory = await databaseInventory(source, manifest);
+    const currentTables = await tableFingerprints(source);
+
+    const retainedTables = new Set(
+      qualifiedTables.map((table) => `${table.schema}.${table.table}`),
+    );
+
+    expect(currentInventory.migrations).toEqual(
+      manifest.files.map((file) => ({ name: file.path.split("/").at(-1), sha256: file.sha256 })),
+    );
+    expect(
+      currentTables.filter(
+        (table) =>
+          retainedTables.has(`${table.schema}.${table.table}`) &&
+          table.table !== "openerp_migrations",
+      ),
+    ).toEqual(qualifiedTables.filter((table) => table.table !== "openerp_migrations"));
+    observed.currentReleaseUpgrade = {
+      migration: currentMigration,
+      inventory: currentInventory,
+      tables: currentTables,
+    };
+    await migrate();
+    expect(await databaseInventory(source, manifest)).toEqual(currentInventory);
+    expect(await tableFingerprints(source)).toEqual(currentTables);
 
     const bookId = `book_${suffix}`,
       entityId = `entity_${suffix}`,

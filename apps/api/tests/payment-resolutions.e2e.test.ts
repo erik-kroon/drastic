@@ -144,12 +144,26 @@ async function exportForInvoice(
   expect(live).toBeDefined();
   expect(live!.outstandingMinor).not.toBeNull();
 
+  const clock = await database();
+  let executionDate: string;
+
+  try {
+    const result = await clock.query<{ day: string }>(
+      "SELECT ((clock_timestamp() AT TIME ZONE 'UTC')::date + 1)::text AS day",
+    );
+
+    executionDate = result.rows[0]?.day ?? "";
+    expect(executionDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  } finally {
+    await clock.end();
+  }
+
   const preview = await post(
     book,
     batchPath,
     {
       profile: "synthetic-offline-pain001-v1",
-      executionDate: "2026-10-01",
+      executionDate,
       debtorName: "Synthetic debtor AB",
       debtorIban: "SE4550000000058398257466",
       debtorBic: "ESSESESS",
@@ -390,7 +404,14 @@ const Envelope = Schema.Struct({
   result: Schema.Unknown,
 });
 
-const Catalog = Schema.Struct({ tools: Schema.Array(Schema.Struct({ name: Schema.String })) });
+const Catalog = Schema.Struct({
+  tools: Schema.Array(
+    Schema.Struct({
+      name: Schema.String,
+      annotations: Schema.Struct({ readOnlyHint: Schema.Boolean, destructiveHint: Schema.Boolean }),
+    }),
+  ),
+});
 
 test("an agent reads the honest state and cannot assert what the owner did not establish", async () => {
   const { book, source, supplier, content } = await supplierFixture();
@@ -421,14 +442,19 @@ test("an agent reads the honest state and cannot assert what the owner did not e
 
   expect(catalog.status).toBe(200);
 
-  const names = Schema.decodeUnknownSync(Catalog)(
+  const tools = Schema.decodeUnknownSync(Catalog)(
     Schema.decodeUnknownSync(Envelope)(await catalog.json()).result,
-  ).tools.map((tool) => tool.name);
+  ).tools;
 
-  // Resolution is a read tool. It is not an approval or activation tool, and
-  // it carries no payment or filing authority.
+  const names = tools.map((tool) => tool.name);
+
   expect(names).toContain("payments_resolve_instruction");
-  expect(names.filter((name) => /approv|activat/.test(name))).toEqual([]);
+  expect(tools.filter((tool) => /approv|activat/.test(tool.name))).toEqual([
+    {
+      name: "purchases_list_supplier_settlement_cancellation_approvals",
+      annotations: { readOnlyHint: true, destructiveHint: false },
+    },
+  ]);
 
   const call = await fetch(url, {
     method: "POST",

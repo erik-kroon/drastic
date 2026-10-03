@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import * as Schema from "effect/Schema";
+import * as Match from "effect/Match";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Profiles from "@open-erp/contracts/company-profiles";
 import { expect, test } from "vitest";
@@ -45,7 +46,7 @@ async function prepared() {
 
   const release = {
     id: "company_activation_synthetic_v1",
-    jurisdiction: "ZZ",
+    jurisdiction: "QZ",
     family: "posting_eligibility",
     version: 1,
     checksum: `sha256:${"a".repeat(64)}`,
@@ -61,7 +62,7 @@ async function prepared() {
     rounding: { mode: "half_up", scale: 2 },
     validFrom: "2026-01-01",
     validTo: "2026-12-31",
-    sourceManifest: "Synthetic ZZ jurisdiction fixture; no company or statutory claim",
+    sourceManifest: "Synthetic QZ jurisdiction fixture; no company or statutory claim",
     qualificationStatus: "reviewed",
     recordClasses: ["synthetic"],
   };
@@ -72,7 +73,7 @@ async function prepared() {
       [book.bookId, reviewer.actorId],
     );
     await admin.query(
-      "insert into openerp.rule_releases(id,jurisdiction,family,version,checksum,body) values($1,'ZZ','posting_eligibility',1,$2,$3) on conflict(id) do nothing",
+      "insert into openerp.rule_releases(id,jurisdiction,family,version,checksum,body) values($1,'QZ','posting_eligibility',1,$2,$3) on conflict(id) do nothing",
       [release.id, release.checksum, release],
     );
   } finally {
@@ -82,7 +83,7 @@ async function prepared() {
   const facts: Array<typeof Profiles.FactRevision.Type> = [];
 
   for (const declaration of [
-    { factKind: "jurisdiction", value: { state: "known", value: "ZZ" } },
+    { factKind: "jurisdiction", value: { state: "known", value: "QZ" } },
     { factKind: "accounting_method", value: { state: "known", value: "accrual" } },
   ]) {
     const fact = await post(
@@ -412,22 +413,18 @@ test.each(["stale_account", "revoked_approver", "revoked_executor"])(
           [book.actorId],
         );
 
-      const status =
-        scenario === "stale_account" ? 409 : scenario === "revoked_approver" ? 403 : 401;
-
-      const code =
-        scenario === "stale_account"
-          ? "StaleDependency"
-          : scenario === "revoked_approver"
-            ? "ApprovalRequired"
-            : "Unauthorized";
+      const expected = Match.value(scenario).pipe(
+        Match.when("stale_account", () => ({ status: 409, code: "StaleDependency" as const })),
+        Match.when("revoked_approver", () => ({ status: 403, code: "ApprovalRequired" as const })),
+        Match.orElse(() => ({ status: 401, code: "Unauthorized" as const })),
+      );
 
       const refusal = await refuse(
         book,
         `${path}/${plan.id}/executions`,
         execution(plan, approval),
-        status,
-        code,
+        expected.status,
+        expected.code,
       );
 
       const after = await counts(book);

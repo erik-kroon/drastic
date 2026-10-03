@@ -9,7 +9,14 @@ const Envelope = Schema.Struct({
   result: Schema.Unknown,
 });
 
-const Catalog = Schema.Struct({ tools: Schema.Array(Schema.Struct({ name: Schema.String })) });
+const Catalog = Schema.Struct({
+  tools: Schema.Array(
+    Schema.Struct({
+      name: Schema.String,
+      annotations: Schema.Struct({ readOnlyHint: Schema.Boolean, destructiveHint: Schema.Boolean }),
+    }),
+  ),
+});
 
 const Initialized = Schema.Struct({
   protocolVersion: Schema.String,
@@ -20,7 +27,7 @@ const LedgerResult = Schema.Struct({
   structuredContent: Schema.Struct({ result: Accounting.LedgerSnapshot }),
 });
 
-test("MCP negotiates the protocol, exposes no approval tool, and reads the same committed ledger", async () => {
+test("MCP negotiates the protocol, exposes no approval write, and reads the same committed ledger", async () => {
   const book = await fixture();
   const url = `${environment().baseUrl}/api/mcp`;
 
@@ -73,12 +80,19 @@ test("MCP negotiates the protocol, exposes no approval tool, and reads the same 
 
   expect(catalogResponse.status).toBe(200);
 
-  const names = Schema.decodeUnknownSync(Catalog)(
+  const tools = Schema.decodeUnknownSync(Catalog)(
     Schema.decodeUnknownSync(Envelope)(await catalogResponse.json()).result,
-  ).tools.map((tool) => tool.name);
+  ).tools;
+
+  const names = tools.map((tool) => tool.name);
 
   expect(names).toContain("changes_execute");
-  expect(names.filter((name) => /approv|activat/.test(name))).toEqual([]);
+  expect(tools.filter((tool) => /approv|activat/.test(tool.name))).toEqual([
+    {
+      name: "purchases_list_supplier_settlement_cancellation_approvals",
+      annotations: { readOnlyHint: true, destructiveHint: false },
+    },
+  ]);
   await execute(book, await prepare(book));
 
   const response = await fetch(url, {

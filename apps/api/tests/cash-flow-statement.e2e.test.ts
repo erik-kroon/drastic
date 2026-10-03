@@ -278,7 +278,14 @@ const Envelope = Schema.Struct({
   result: Schema.Unknown,
 });
 
-const Catalog = Schema.Struct({ tools: Schema.Array(Schema.Struct({ name: Schema.String })) });
+const Catalog = Schema.Struct({
+  tools: Schema.Array(
+    Schema.Struct({
+      name: Schema.String,
+      annotations: Schema.Struct({ readOnlyHint: Schema.Boolean, destructiveHint: Schema.Boolean }),
+    }),
+  ),
+});
 
 const CashFlowResult = Schema.Struct({
   structuredContent: Schema.Struct({ result: CashFlow.CashFlowStatementReport }),
@@ -320,14 +327,21 @@ test("an agent reads the derived statement over MCP and is told when it is not c
 
   expect(catalog.status).toBe(200);
 
-  const names = Schema.decodeUnknownSync(Catalog)(
+  const tools = Schema.decodeUnknownSync(Catalog)(
     Schema.decodeUnknownSync(Envelope)(await catalog.json()).result,
-  ).tools.map((tool) => tool.name);
+  ).tools;
+
+  const names = tools.map((tool) => tool.name);
 
   // The report is an ordinary read tool. It is not an approval or activation
   // tool, and it carries no payment or filing authority.
   expect(names).toContain("reports_cash_flow_statement");
-  expect(names.filter((name) => /approv|activat/.test(name))).toEqual([]);
+  expect(tools.filter((tool) => /approv|activat/.test(tool.name))).toEqual([
+    {
+      name: "purchases_list_supplier_settlement_cancellation_approvals",
+      annotations: { readOnlyHint: true, destructiveHint: false },
+    },
+  ]);
 
   const call = await fetch(url, {
     method: "POST",
