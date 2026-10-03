@@ -790,7 +790,7 @@ test("unknown outcomes and terminal rejections remain explicit and never trigger
     const message = await prepare(context, await reviewed(context));
     await approve(context, message);
     const transport = await fixtureTransport(mode);
-    const worker = runner(context, transport);
+    let worker = runner(context, transport);
 
     try {
       const first = await waitStatus(
@@ -801,6 +801,19 @@ test("unknown outcomes and terminal rejections remain explicit and never trigger
 
       expect(first.delivered).toBe(false);
       expect(transport.wires.length).toBe(1);
+      await stop(worker);
+      const admin = await database();
+      let removedQueueRows = 0;
+      try {
+        const removed = await admin.query(
+          "DELETE FROM public.effect_mq_jobs WHERE name='payment-reminder' AND metadata->>'bookId'=$1",
+          [context.book.bookId],
+        );
+        removedQueueRows = removed.rowCount ?? 0;
+        expect(removedQueueRows).toBeGreaterThan(0);
+      } finally {
+        await admin.end();
+      }
       await post(
         context.author,
         `${base}/${message.id}/reconcile`,
@@ -808,6 +821,7 @@ test("unknown outcomes and terminal rejections remain explicit and never trigger
         View,
       );
 
+      worker = runner(context, transport);
       const again = await waitStatus(
         context,
         message,
@@ -817,6 +831,10 @@ test("unknown outcomes and terminal rejections remain explicit and never trigger
       expect(again.attempt?.id).toBe(first.attempt?.id);
       expect(transport.wires.length).toBe(1);
       expect(transport.reads).toContain(first.attempt?.externalIdentity);
+      await writeFile(
+        join(environment().artifacts, `reminder-pruned-${mode}-queue.json`),
+        JSON.stringify({ removedQueueRows, first, again, wire: transport.wires, providerReads: transport.reads }, null, 2),
+      );
     } finally {
       await stop(worker);
       await transport.close();
