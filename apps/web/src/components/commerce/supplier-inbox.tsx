@@ -207,14 +207,10 @@ export function SupplierInbox(
 
   const inboxItems = inbox.data?.pages.flatMap((page) => page.items) ?? [];
   const id = props.occurrenceId ?? "";
-  // The inbox list is the fact about which occurrences exist, so this survives a
-  // reload without inventing a second record of it. An occurrence that is not in
-  // the list yet is simply not open: the register form below is how it gets there.
-  const registered = inboxItems.some((item) => item.occurrence.occurrence.id === id);
 
   const view = useQuery({
     queryKey: [...bookKey(book), "supplier-inbox", id],
-    enabled: !!id && registered,
+    enabled: !!id,
     retry: false,
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
@@ -272,7 +268,7 @@ export function SupplierInbox(
         <Button type="button" variant="outline" onClick={() => setUpload(!upload)}>
           {sv ? "Ladda upp original" : "Upload original"}
         </Button>
-        {registered ? (
+        {id ? (
           <>
             <Button
               type="button"
@@ -330,7 +326,7 @@ export function SupplierInbox(
       />
       <AccountingStatus
         locale={locale}
-        pending={inbox.isPending || register.isPending || (registered && view.isPending)}
+        pending={inbox.isPending || register.isPending || (!!id && view.isPending)}
         error={inbox.error ?? register.error ?? view.error}
         write={register.isPending}
       />

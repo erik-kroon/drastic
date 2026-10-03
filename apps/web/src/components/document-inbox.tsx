@@ -1,4 +1,3 @@
-import * as Option from "effect/Option";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
