@@ -333,8 +333,6 @@ test("an agent reads the derived statement over MCP and is told when it is not c
 
   const names = tools.map((tool) => tool.name);
 
-  // The report is an ordinary read tool. It is not an approval or activation
-  // tool, and it carries no payment or filing authority.
   expect(names).toContain("reports_cash_flow_statement");
   expect(tools.filter((tool) => /approv|activat/.test(tool.name))).toEqual([
     {
