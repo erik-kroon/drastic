@@ -794,7 +794,7 @@ test("template article selections require current admission for new drafts and p
   const articleInput = {
     code: "TEMPLATE_SERVICE",
     expectedRevision: 0,
-    description: "Template consulting hour",
+    description: "Consulting hours",
     unit: "hour",
     unitPriceMinor: "100000",
     taxDescription: "Policy supplies tax treatment",
@@ -833,6 +833,35 @@ test("template article selections require current admission for new drafts and p
     target: newTarget(context),
     reason: "Copy a currently qualified article",
   };
+
+  const alteredUnit = await post(
+    context.author,
+    base,
+    {
+      ...input,
+      content: {
+        ...input.content,
+        lines: input.content.lines.map((line) => ({
+          ...line,
+          catalogSelection: { ...selection, unit: "day" },
+        })),
+      },
+    },
+    Template,
+  );
+
+  await failure(
+    await request(context.author, `${base}/${alteredUnit.id}/applications`, {
+      method: "POST",
+      body: JSON.stringify({
+        ...apply,
+        revision: alteredUnit.revision,
+        digest: alteredUnit.digest,
+      }),
+    }),
+    409,
+    "StaleDependency",
+  );
 
   const commandKey = key();
 
