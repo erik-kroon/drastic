@@ -1886,3 +1886,12 @@ export const invoiceTemplateRevisions = openerp.table("invoice_template_revision
   revision: bigint({ mode: "bigint" }).notNull(),
   body: jsonb().$type<Schema.JsonObject>().notNull(),
 });
+
+export const cashBases = openerp.table("cash_bases", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  content: text("content").notNull(),
+  sha256: text("sha256").notNull(),
+  byteLength: integer("byte_length").notNull(),
+});

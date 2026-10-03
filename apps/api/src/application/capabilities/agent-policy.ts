@@ -94,6 +94,7 @@ const writeClasses = {
   bank_prepare_match_reversal: "prepare",
   bank_execute_match_reversal: "execute_approved",
   bank_create_source_coverage: "prepare",
+  cash_capture_basis: "prepare",
   bank_prepare_signoff: "prepare",
   bank_prepare_inventory_signoff: "prepare",
   tax_account_create_control: "prepare",

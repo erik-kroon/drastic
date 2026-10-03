@@ -813,3 +813,13 @@ export function readControlAccount(
     "objects",
   );
 }
+
+export function readForecastItemIdentities(transaction: Transaction, bookId: string) {
+  return transaction.execute<{ readonly id: string }>(
+    sql`
+    select id from openerp.commerce_fx_items where book_id = ${bookId}
+    order by id collate "C" limit 10001
+  `,
+    "objects",
+  );
+}
