@@ -260,10 +260,31 @@ test("real overview follows the server date despite browser clock skew and suppl
         .toBe(serverToday);
 
       await page.clock.resume();
-      await page.goto(`${workspace}/accounts`);
-      await expect.poll(() => bankWindows.at(-1)).toEqual({ from: "2026-01-01", to: "2026-12-31" });
-      await page.goto(`${workspace}/accounts?from=2026-03-01&to=2026-03-31`);
-      await expect.poll(() => bankWindows.at(-1)).toEqual({ from: "2026-03-01", to: "2026-03-31" });
+      const bankPeriodReceipts = [];
+
+      for (const period of [
+        { query: "", from: "2026-01-01", to: "2026-12-31" },
+        { query: "?from=2026-03-01&to=2026-03-31", from: "2026-03-01", to: "2026-03-31" },
+      ]) {
+        await page.goto(`${workspace}/accounts${period.query}`);
+        await expect.poll(() => page.getByLabel("From", { exact: true }).inputValue()).toBe(period.from);
+        await expect.poll(() => page.getByLabel("To", { exact: true }).inputValue()).toBe(period.to);
+        const [response] = await Promise.all([
+          page.waitForResponse((candidate) => {
+            const requested = new URL(candidate.url());
+
+            return requested.pathname.endsWith("/bank-workspace") &&
+              requested.searchParams.get("startsOn") === period.from &&
+              requested.searchParams.get("endsOn") === period.to;
+          }),
+          page.getByRole("button", { name: "Refresh", exact: true }).click(),
+        ]);
+
+        expect(response.status()).toBe(200);
+        const payload: unknown = await response.json();
+        expect(payload).toMatchObject({ startsOn: period.from, endsOn: period.to });
+        bankPeriodReceipts.push({ period, status: response.status(), payload });
+      }
       await page.goto(`${workspace}/setup`);
       await expect.poll(() => admissionDates.at(-1)).toBe(serverToday);
       await page.goto(`${workspace}/purchases?view=supplier-drafts`);
@@ -291,6 +312,7 @@ test("real overview follows the server date despite browser clock skew and suppl
             browserClockIgnored: true,
             serverDatePolling: true,
             bankWindows,
+            bankPeriodReceipts,
             admissionDates,
             retainedDrafts: 201,
             loadMore: true,
