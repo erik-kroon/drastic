@@ -1272,3 +1272,25 @@ test("recovery v4 binds all five reminder families and preserves complete older 
     await transport.close();
   }
 }, 45000);
+
+
+test("the persistent runner refuses a fixture origin without an explicit port before admitting a message", async () => {
+  const context = await legalFixture();
+  const message = await prepare(context, await reviewed(context));
+  await approve(context, message);
+  const transport = await fixtureTransport();
+  const worker = runner(context, {...transport, endpoint: "http://127.0.0.1"});
+  try {
+    await expect.poll(() => worker.child.exitCode, {timeout: 15000}).not.toBe(null);
+    expect(worker.child.exitCode).not.toBe(0);
+    const retained = await read(context, message);
+    expect(retained.status).toBe("approved");
+    expect(retained.attempt).toBe(null);
+    expect(transport.wires).toEqual([]);
+    expect(transport.reads).toEqual([]);
+    await writeFile(join(environment().artifacts, "reminder-explicit-fixture-port.json"), JSON.stringify({exitCode: worker.child.exitCode, retained, wires: transport.wires}, null, 2));
+  } finally {
+    await stop(worker);
+    await transport.close();
+  }
+}, 30000);

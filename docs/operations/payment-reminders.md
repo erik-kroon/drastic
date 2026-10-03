@@ -27,6 +27,7 @@ The provider call runs outside the database transaction. A lost response leaves 
 | Two approvals or claims race | Approve/queue twice | One approval, one attempt, one external identity | Duplicate contact |
 | Provider accepts exact bytes | Read status | `provider_accepted`, delivered false | Acceptance is treated as delivery |
 | Fixture rejects transport authentication | Queue | Unknown outcome; no accepted/delivered observation | Unauthenticated transport establishes an external result |
+| Fixture origin omits an explicit port | Boot persistent runner | Process refuses before admission; intent remains approved and zero fixture requests | Implicit loopback port reaches an unintended service |
 | Persistent runner has no configured delivery profile | Queue | Approval stays unadmitted; zero fixture requests | Default runtime can contact a provider |
 | Fixture supplies authenticated delivered observation | Reconcile/read | Delivered observation retained, delivered true | Unauthenticated status can establish delivery |
 | Runner dies after fixture acceptance before observation commit | Restart runner | Same attempt/identity reconciled, no second POST | Crash creates duplicate contact |

@@ -42,13 +42,14 @@ export function configuredReminderDelivery(settings: {
   if (
     origin.protocol !== "http:" ||
     origin.hostname !== "127.0.0.1" ||
+    origin.port === "" ||
     origin.username ||
     origin.password ||
     origin.search ||
     origin.hash ||
     origin.pathname !== "/"
   )
-    throw new Error("Reminder fixture must use a bare loopback HTTP origin.");
+    throw new Error("Reminder fixture must use a bare loopback HTTP origin with an explicit port.");
 
   async function exchange(path: string, method: "POST" | "GET", input?: ReminderWireMessage) {
     const response = await fetch(new URL(path, origin), {
