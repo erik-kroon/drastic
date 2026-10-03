@@ -19,6 +19,44 @@ type Scope = typeof Accounting.Scope.Type;
 
 type Input = typeof Cash.CaptureCashBasis.Type;
 
+const sourceTables = [
+  "accounts",
+  "bank_active_matches",
+  "bank_capacity_reconciliations",
+  "bank_observations",
+  "bank_source_coverage_reports",
+  "bank_sources",
+  "bank_statements",
+  "books",
+  "cash_method_credit_lines",
+  "cash_method_credits",
+  "cash_method_lines",
+  "cash_method_recognitions",
+  "closing_inventories",
+  "commerce_allocation_legs",
+  "commerce_allocation_reversals",
+  "commerce_fx_items",
+  "commerce_fx_settlement_corrections",
+  "commerce_fx_settlements",
+  "commerce_invoice_revisions",
+  "commerce_invoices",
+  "customer_credit_notes",
+  "events",
+  "evidence",
+  "execution_receipts",
+  "invoice_cancellations",
+  "journal_lines",
+  "owner_operation_receipts",
+  "periods",
+  "supplier_credits",
+  "supplier_refund_principal_increases",
+  "supplier_settlement_cancellation_receipts",
+  "supplier_settlement_plans",
+  "supplier_settlement_receipts",
+  "vat_fact_components",
+  "vouchers",
+];
+
 type ForecastPayment = Effect.Success<
   ReturnType<typeof readForecastInvoicesInTransaction>
 >["payments"][number];
@@ -115,6 +153,8 @@ function readSources(
   input: Input,
 ) {
   return Effect.gen(function* () {
+    yield* requireTableAccess(transaction, sourceTables, false);
+
     const observations: Array<typeof Cash.CashOpeningObservation.Type> = [];
 
     for (const selection of input.accounts) {

@@ -1,3 +1,4 @@
+import { expect } from "vitest";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Bank from "@open-erp/contracts/reconciliation";
@@ -207,11 +208,32 @@ export async function supplierOpeningFixture(today: string) {
     Acceptance.SupplierAcceptanceReceipt,
   );
 
+  const fundingSource = await post(
+    book,
+    "/evidence",
+    {
+      title: "Independent synthetic opening funding100000",
+      content: JSON.stringify({
+        kind: "synthetic_opening_funding",
+        accountId: "account_bank",
+        date: "2026-09-22",
+        amountMinor: "100000",
+        purpose: "Separate source from supplier purchase acceptance",
+      }),
+      mediaType: "application/json",
+      origin: "P10 independently specified funding document",
+    },
+    Accounting.Evidence,
+  );
+
+  expect(fundingSource.id).not.toBe(source.id);
+  expect(fundingSource.sha256).not.toBe(source.sha256);
+
   const funding = await post(
     book,
     "/change-sets",
     {
-      ...journal(source.id, "100000"),
+      ...journal(fundingSource.id, "100000"),
       postingDate: "2026-09-22",
       lines: [
         {

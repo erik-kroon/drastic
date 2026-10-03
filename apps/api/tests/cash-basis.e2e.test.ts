@@ -634,7 +634,7 @@ test("P10 reads all canonical invoice amounts and retains immutable captures whe
       evidenceId: source.id,
       reason: "Synthetic later knowledge",
     },
-    Commerce.InvoiceRevision,
+    Commerce.Invoice,
   );
   const stale = await decoded(await request(context.book, `/cash-bases/${first.id}`), View);
   expect(stale.artifact.content).toBe(initial.artifact.content);
@@ -875,7 +875,7 @@ test("P10 keeps a same-day allocated residual blocked when the selected closing 
 
   const reversalApproval = await post(
     context.book,
-    `/commerce/allocation-reversal-plans/${reversal.id}/approvals`,
+    `/commerce/allocation-reversal-plans/${reversal.id}/approve`,
     { version: 1, digest: reversal.digest },
     Reversals.CommerceAllocationReversalApproval,
   );
@@ -1546,6 +1546,28 @@ test("P10 qualifies an actual supplier settlement receipt and preserves cancella
   ]);
   const initial = await decoded(await request(data.book, `/cash-bases/${basis.id}`), View);
 
+  const provenance = Schema.decodeSync(Schema.fromJsonString(Schema.Struct({
+    contributions: Schema.Array(Schema.Struct({
+      invoiceId: Schema.String,
+      paymentMembership: Schema.Array(Schema.Struct({
+        sourceOwner: Schema.NullOr(Schema.String),
+        sourceId: Schema.NullOr(Schema.String),
+      })),
+    })),
+  })))(initial.artifact.content);
+
+  await writeFile(
+    join(environment().artifacts, "cash-basis-supplier-provenance.json"),
+    JSON.stringify({ supplierReceiptId: receipt.id, expectedSourceOwner: "purchases/supplier-settlements", provenance }, null, 2),
+  );
+
+  expect(provenance.contributions).toEqual([
+    {
+      invoiceId: data.acceptance.registerInvoiceId,
+      paymentMembership: [{ sourceOwner: "purchases/supplier-settlements", sourceId: receipt.id }],
+    },
+  ]);
+
   const cancellation = await post(
     data.book,
     "/purchases/supplier-settlement-cancellation-plans",
@@ -1612,48 +1634,171 @@ test("P10 qualifies an actual supplier settlement receipt and preserves cancella
   );
 }, 120000);
 
-test("P10 preserves a canonical unknown residual after its recognition is corrected", async () => {
+test("P10 preserves canonical unknown from retained historical recognition and refuses generic correction", async () => {
   const context = await world();
   const { invoice } = await retainedInvoice(context);
 
   if (!invoice.recognition) throw new Error("Fixture requires the actual original recognition");
 
-  const correction = await post(
+  const protectedCorrection = await post(
     context.book,
     `/vouchers/${invoice.recognition.voucherId}/correction-proposals`,
     {
       accountingPeriodId: "period_2026",
       postingDate: context.today,
-      rationale: "Independent correction leaves the registered original unresolved",
+      rationale: "Registered recognition must keep its commerce owner",
     },
     Accounting.ChangeSet,
   );
 
-  await execute(context.book, correction);
+  const protectedApproval = await post(
+    context.book,
+    `/change-sets/${protectedCorrection.id}/approvals`,
+    { version: 1, planDigest: protectedCorrection.planDigest },
+    Accounting.Approval,
+  );
+
+  const protectedState = await persisted(context.book);
+
+  await failure(
+    await request(context.book, `/change-sets/${protectedCorrection.id}/execute`, {
+      method: "POST",
+      body: JSON.stringify({
+        version: 1,
+        planDigest: protectedCorrection.planDigest,
+        approvalId: protectedApproval.id,
+      }),
+    }),
+    422,
+    "UnsupportedProfile",
+  );
+
+  expect(await persisted(context.book)).toEqual(protectedState);
+
+  const source = await evidence(context.book);
+
+  const original = await post(
+    context.book,
+    "/change-sets",
+    {
+      ...journal(source.id, "1000"),
+      postingDate: context.today,
+      lines: [
+        {
+          accountId: "account_ar",
+          debitMinor: "1000",
+          creditMinor: "0",
+          description: "Historical receivable before discovery",
+        },
+        {
+          accountId: "account_revenue",
+          debitMinor: "0",
+          creditMinor: "1000",
+          description: "Historical revenue before discovery",
+        },
+      ],
+    },
+    Accounting.ChangeSet,
+  );
+
+  const originalReceipt = await execute(context.book, original);
+
+  const recognitionLine = original.groups[0]?.actions[0]?.lines.find(
+    (line) => line.accountId === "account_ar",
+  );
+
+  if (!recognitionLine) throw new Error("Historical fixture requires an actual receivable line");
+
+  const correction = await post(
+    context.book,
+    `/vouchers/${originalReceipt.voucherId}/correction-proposals`,
+    {
+      accountingPeriodId: "period_2026",
+      postingDate: context.today,
+      rationale: "Real correction before retained historical discovery",
+    },
+    Accounting.ChangeSet,
+  );
+
+  const correctionReceipt = await execute(context.book, correction);
+
+  const historicalId = `historical_${key()}`;
+
+  const admin = await database();
+
+  try {
+    await admin.query(
+      `
+      with added as (
+        insert into openerp.commerce_invoices
+          (book_id,id,direction,counterparty_id,counterparty_revision,document_number,issued_on,
+           amount_minor,control_account_id,recognition_voucher_id,recognition_line_id,evidence_id,current_revision,body)
+        select i.book_id,$5,i.direction,i.counterparty_id,i.counterparty_revision,$5,i.issued_on,
+          1000,i.control_account_id,v.id,$4,$6,1,
+          i.body || jsonb_build_object('id',$5::text,'documentNumber',$5::text,
+            'evidence',jsonb_build_object('evidenceId',$6::text,'sha256',$7::text),
+            'recognition',i.body->'recognition' || jsonb_build_object('voucherId',v.id,'lineId',$4::text,'eventId',v.event_id,'postingDate',v.posting_date::text))
+        from openerp.commerce_invoices i
+        join openerp.vouchers v on v.book_id=i.book_id and v.id=$3
+        join openerp.journal_lines l on l.book_id=v.book_id and l.voucher_id=v.id and l.id=$4
+        join openerp.vouchers reversed on reversed.book_id=v.book_id and reversed.corrects_voucher_id=v.id and reversed.id=$8 and reversed.posting_purpose='reversal'
+        where i.book_id=$1 and i.id=$2 and l.debit_minor=1000 and l.credit_minor=0
+        returning book_id,id,evidence_id
+      )
+      insert into openerp.commerce_invoice_revisions(book_id,invoice_id,revision,evidence_id,body)
+      select a.book_id,a.id,1,a.evidence_id,r.body || jsonb_build_object('id',a.id,
+        'evidence',jsonb_build_object('evidenceId',$6::text,'sha256',$7::text))
+      from added a join openerp.commerce_invoice_revisions r
+        on r.book_id=a.book_id and r.invoice_id=$2 and r.revision=1
+    `,
+      [
+        context.book.bookId,
+        invoice.id,
+        originalReceipt.voucherId,
+        recognitionLine.lineId,
+        historicalId,
+        source.id,
+        source.sha256,
+        correctionReceipt.voucherId,
+      ],
+    );
+  } finally {
+    await admin.end();
+  }
 
   const owner = await decoded(
-    await request(context.book, `/commerce/invoices/${invoice.id}`),
+    await request(context.book, `/commerce/invoices/${historicalId}`),
     Commerce.Invoice,
   );
 
   expect(owner.status).toBe("blocked");
   expect(owner.outstandingMinor).toBeNull();
+
   const basis = await capture(context);
-  expect(basis.contributions).toEqual([
+
+  expect(basis.contributions).toContainEqual(
     expect.objectContaining({
-      invoiceId: invoice.id,
+      invoiceId: historicalId,
       amountMinor: null,
       inclusion: "blocked",
       reason: "canonical_residual_unknown",
     }),
-  ]);
+  );
+
   expect(basis.companyCoverage).toBe("incomplete");
+
   await writeFile(
     join(environment().artifacts, "cash-basis-unknown-residual.json"),
     JSON.stringify(
       {
+        sourceBoundary:
+          "Disposable retained historical SQL fixture; not current registration admission or correction workflow",
         originalMinor: "1000",
-        correctedRecognition: invoice.recognition.voucherId,
+        originalReceipt,
+        correctionReceipt,
+        recognitionLineId: recognitionLine.lineId,
+        historicalId,
+        genericRegisteredCorrectionRefused: true,
         expectedResidual: "unknown",
         owner,
         basis,
@@ -1663,6 +1808,74 @@ test("P10 preserves a canonical unknown residual after its recognition is correc
     ),
   );
 }, 120000);
+
+test.each(["commerce_invoices", "bank_observations"])(
+  "P10 preserves saved bytes when native source SELECT is unavailable %s",
+  async (table) => {
+    const context = await world();
+    const basis = await capture(context);
+    const original = await decoded(await request(context.book, `/cash-bases/${basis.id}`), View);
+    const admin = await database();
+
+    try {
+      await admin.query(`REVOKE SELECT ON openerp.${table} FROM openerp_runtime`);
+
+      const response = await request(context.book, `/cash-bases/${basis.id}`);
+      const body = await response.text();
+
+      await writeFile(
+        join(environment().artifacts, `cash-basis-source-grant-${table}.json`),
+        JSON.stringify(
+          {
+            table,
+            basisId: basis.id,
+            status: response.status,
+            body,
+            originalSha256: original.artifact.sha256,
+          },
+          null,
+          2,
+        ),
+      );
+
+      expect(response.status).toBe(200);
+
+      const retained = Schema.decodeSync(
+        Schema.fromJsonString(
+          Schema.Struct({
+            ...View.fields,
+            dependencyStatus: Schema.String,
+            dependencyReason: Schema.NullOr(Schema.String),
+          }),
+        ),
+      )(body);
+
+      expect(retained.dependenciesCurrent).toBe(false);
+      expect(retained.dependencyStatus).toBe("unavailable");
+      expect(retained.dependencyReason).toBe("UnsupportedProfile");
+      expect(retained.artifact).toEqual(original.artifact);
+      expect(retained.basis).toEqual(original.basis);
+
+      const exported = await request(context.book, `/cash-bases/${basis.id}/export`);
+
+      expect(exported.status).toBe(200);
+      expect(await exported.text()).toBe(original.artifact.content);
+
+      await failure(
+        await request(context.book, "/cash-bases", {
+          method: "POST",
+          body: JSON.stringify(context.input),
+        }),
+        422,
+        "UnsupportedProfile",
+      );
+    } finally {
+      await admin.query(`GRANT SELECT ON openerp.${table} TO openerp_runtime`);
+      await admin.end();
+    }
+  },
+  120000,
+);
 
 test("P10 freezes body digest integrity independently of its artifact byte hash", async () => {
   const context = await world();
