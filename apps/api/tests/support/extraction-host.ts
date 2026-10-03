@@ -81,7 +81,12 @@ const result = await Effect.runPromise(
               }
             }
 
-            return new Uint8Array(await readFile(join(input.store, key.replaceAll("/", "_"))));
+            try {
+              return new Uint8Array(await readFile(join(input.store, key.replaceAll("/", "_"))));
+            } catch (error) {
+              if (error instanceof Error && "code" in error && error.code === "ENOENT") return null;
+              throw error;
+            }
           },
         },
       },
