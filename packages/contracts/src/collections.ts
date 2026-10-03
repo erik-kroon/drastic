@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
+import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
 
@@ -313,9 +313,9 @@ export const CollectionsApi = HttpApiGroup.make("collections")
   .add(
     HttpApiEndpoint.post("prepareReminder", `${base}/reminders`, {
       ...mutation,
-      payload: PrepareReminder.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      payload: PrepareReminder,
       success: ReminderMessage,
-    }),
+    }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
   )
   .add(
     HttpApiEndpoint.get("readReminder", `${base}/reminders/:id`, {
@@ -329,27 +329,27 @@ export const CollectionsApi = HttpApiGroup.make("collections")
       params: Accounting.ChangePath,
       headers: Accounting.IdempotencyHeaders,
       error: accountingErrors,
-      payload: ApproveReminder.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      payload: ApproveReminder,
       success: ReminderView,
-    }),
+    }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
   )
   .add(
     HttpApiEndpoint.post("cancelReminder", `${base}/reminders/:id/cancel`, {
       params: Accounting.ChangePath,
       headers: Accounting.IdempotencyHeaders,
       error: accountingErrors,
-      payload: ReminderCommand.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      payload: ReminderCommand,
       success: ReminderView,
-    }),
+    }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
   )
   .add(
     HttpApiEndpoint.post("reconcileReminder", `${base}/reminders/:id/reconcile`, {
       params: Accounting.ChangePath,
       headers: Accounting.IdempotencyHeaders,
       error: accountingErrors,
-      payload: ReminderCommand.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      payload: ReminderCommand,
       success: ReminderView,
-    }),
+    }).annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" }),
   )
   .add(
     HttpApiEndpoint.get("collectionWorklist", `${base}/worklist`, {
