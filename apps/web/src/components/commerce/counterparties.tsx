@@ -1,3 +1,4 @@
+import { CustomerInvoiceDefaults } from "./customer-invoice-defaults";
 import { useRef, useState } from "react";
 import {
   infiniteQueryOptions,
@@ -10,6 +11,8 @@ import * as Commerce from "@open-erp/contracts/commerce";
 import * as Crm from "@open-erp/contracts/crm-master";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Schema from "effect/Schema";
+import * as Match from "effect/Match";
+import * as Option from "effect/Option";
 import { Plus, ArrowLeft, Download } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
@@ -147,17 +150,11 @@ export function Counterparties(
   return (
     <Box display="grid" gap="xl">
       <RecordHeading
-        title={
-          role === "customer"
-            ? sv
-              ? "Kunder"
-              : "Customers"
-            : role === "supplier"
-              ? sv
-                ? "Leverantörer"
-                : "Suppliers"
-              : labels.customersSuppliers
-        }
+        title={Match.value(role).pipe(
+          Match.when("customer", () => (sv ? "Kunder" : "Customers")),
+          Match.when("supplier", () => (sv ? "Leverantörer" : "Suppliers")),
+          Match.orElse(() => labels.customersSuppliers),
+        )}
         subtitle={labels.yourContactsAndTheirSource}
         action={
           <Box display="flex" flexWrap="wrap" gap="md">
@@ -317,11 +314,12 @@ function ContactDetail(props: CommerceProps & { id: string }) {
           />
           <RecordSummary>
             <RecordFact label={labels.type}>
-              {party.data.role === "customer"
-                ? labels.customer
-                : party.data.role === "supplier"
-                  ? labels.supplier
-                  : labels.customerSupplier2}
+              {Match.value(party.data.role).pipe(
+                Match.when("customer", () => labels.customer),
+                Match.when("supplier", () => labels.supplier),
+                Match.when("both", () => labels.customerSupplier2),
+                Match.exhaustive,
+              )}
             </RecordFact>
             <RecordFact label={labels.updated}>
               {new Intl.DateTimeFormat(props.locale, { dateStyle: "medium" }).format(
@@ -330,6 +328,9 @@ function ContactDetail(props: CommerceProps & { id: string }) {
             </RecordFact>
           </RecordSummary>
           <Text>{party.data.reason}</Text>
+          {party.data.role !== "supplier" ? (
+            <CustomerInvoiceDefaults {...props} party={party.data} />
+          ) : null}
           <Annotations {...props} partyId={props.id} partyName={party.data.displayName} />
           <RecordSection title={labels.source}>
             <Evidence {...props} reference={party.data.evidence} />
@@ -524,9 +525,9 @@ function Annotations({
                 evidenceId: "pending",
               });
 
-              setInvalid(parsed._tag === "None");
+              setInvalid(Option.isNone(parsed));
 
-              if (parsed._tag === "Some")
+              if (Option.isSome(parsed))
                 save.mutate({
                   kind: parsed.value.kind,
                   label: parsed.value.label,

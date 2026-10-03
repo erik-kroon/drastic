@@ -2,6 +2,7 @@ import { readSealedDraft } from "../../db/posting-admission";
 import { admitAccountRole, admitLineOwner } from "../resource-admission";
 import { digest as digestNative } from "../json";
 import { equalJson } from "@open-erp/domain/canonicalization";
+import * as Crm from "@open-erp/contracts/crm-master";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import * as Recurring from "@open-erp/contracts/recurring-invoices";
 import * as Issuance from "@open-erp/contracts/invoice-issuance";
@@ -190,7 +191,11 @@ function draftRecord(
     calculatedLines: ReadonlyArray<JsonObject>;
     blockers: ReadonlyArray<{ readonly code: string; readonly lineId: string | null }>;
     calculationBasis: string;
-    commercial?: { input: typeof Drafts.CommercialContent.Type; digest: string };
+    commercial?: {
+      input: typeof Drafts.CommercialContent.Type;
+      digest: string;
+      copiedCustomerDefaults?: typeof Crm.CopiedCustomerInvoiceDefaults.Type;
+    };
   },
 ) {
   return Effect.gen(function* () {
@@ -227,10 +232,17 @@ function draftRecord(
       ),
     };
 
+    const withDefaults =
+      calculation.commercial?.copiedCustomerDefaults === undefined
+        ? withoutDigest
+        : Object.assign({}, withoutDigest, {
+            copiedCustomerDefaults: calculation.commercial.copiedCustomerDefaults,
+          });
+
     const withOccurrence: JsonObject =
       row.occurrence === undefined
-        ? withoutDigest
-        : Object.assign({}, withoutDigest, { occurrence: row.occurrence });
+        ? withDefaults
+        : Object.assign({}, withDefaults, { occurrence: row.occurrence });
 
     const digest = yield* digestNative(withOccurrence);
 
@@ -259,6 +271,7 @@ export const createInvoiceDraftInTransaction = Effect.fn("commerce.drafts.create
     if (request.previous) return request.previous;
     yield* requireTableAccess(transaction, DraftDb.invoiceDraftTables, false);
     yield* requireInsertAccess(transaction, ["invoice_drafts", "invoice_draft_revisions"]);
+    yield* lockBookForUpdate(transaction, command.scope);
     const books = yield* DraftDb.readBookCurrency(transaction, command.scope.bookId);
     const book = books[0];
 
@@ -379,6 +392,8 @@ export const calculateCommercialDraft = Effect.fn("commerce.drafts.calculateComm
     if (!book) return yield* failure("Forbidden");
     yield* requireNativeWriter(book.authority);
 
+    let prior: typeof Drafts.InvoiceDraftRevision.Type | undefined;
+
     if (input.target.kind === "existing") {
       const head = (yield* DraftDb.readDraftHead(
         transaction,
@@ -388,6 +403,7 @@ export const calculateCommercialDraft = Effect.fn("commerce.drafts.calculateComm
 
       if (!head) return yield* failure("NotFound");
       const draft = yield* decode(RevisionSchema, head.body);
+      prior = draft;
 
       if (draft.revision !== input.target.revision || draft.digest !== input.target.digest)
         return yield* failure("StaleDependency");
@@ -404,11 +420,12 @@ export const calculateCommercialDraft = Effect.fn("commerce.drafts.calculateComm
       command.scope,
       book,
       input.commercial,
+      prior,
     );
 
     if (calculation.inputDigest !== input.inputDigest) return yield* failure("StaleDependency");
 
-    return yield* decode(Drafts.CommercialDraftCalculation, {
+    const result = {
       scope: command.scope,
       target: input.target,
       inputDigest: calculation.inputDigest,
@@ -416,7 +433,14 @@ export const calculateCommercialDraft = Effect.fn("commerce.drafts.calculateComm
       totals: calculation.totals,
       calculatedLines: calculation.calculatedLines,
       blockers: calculation.blockers,
-    });
+    };
+
+    return yield* decode(
+      Drafts.CommercialDraftCalculation,
+      calculation.copiedCustomerDefaults === undefined
+        ? result
+        : { ...result, copiedCustomerDefaults: calculation.copiedCustomerDefaults },
+    );
   });
 });
 
@@ -449,6 +473,7 @@ export const reviseInvoiceDraft = Effect.fn("commerce.drafts.revise")(function* 
       if (request.previous) return request.previous;
       yield* requireTableAccess(transaction, DraftDb.invoiceDraftTables, false);
       yield* requireInsertAccess(transaction, ["invoice_draft_revisions"]);
+      yield* lockBookForUpdate(transaction, command.scope);
       const books = yield* DraftDb.readBookCurrency(transaction, command.scope.bookId);
       const book = books[0];
 
@@ -502,7 +527,13 @@ export const reviseInvoiceDraft = Effect.fn("commerce.drafts.revise")(function* 
 
       const calculation =
         "commercial" in input
-          ? yield* calculateCommercialContent(transaction, command.scope, book, input.commercial)
+          ? yield* calculateCommercialContent(
+              transaction,
+              command.scope,
+              book,
+              input.commercial,
+              previous,
+            )
           : yield* calculateDraft(transaction, command.scope, book, input.content);
 
       const content = calculation.content;

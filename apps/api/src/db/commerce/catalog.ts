@@ -6,12 +6,12 @@ export const catalogTables = ["catalog_articles", "catalog_article_revisions"] a
 
 export type ArticlePointerRow = {
   readonly code: string;
-  readonly currentRevision: bigint | null;
+  readonly currentRevision: string | null;
 };
 
 export type ArticleRevisionRow = {
   readonly code: string;
-  readonly revision: bigint;
+  readonly revision: string;
   readonly body: JsonObject;
 };
 
@@ -45,6 +45,7 @@ export function readCurrentArticlePage(
   bookId: string,
   after: string,
   limit: number,
+  includeArchived = false,
 ) {
   return transaction.execute<ArticlePageRow>(
     sql`
@@ -55,6 +56,7 @@ export function readCurrentArticlePage(
         join openerp.catalog_article_revisions r
           on r.book_id = a.book_id and r.code = a.code and r.revision = a.current_revision
         where a.book_id = ${bookId} and a.code collate "C" > ${after} collate "C"
+          and (${includeArchived} or coalesce(r.body->>'status', 'active') = 'active')
         order by a.code collate "C"
         limit ${limit + 1}
       ) page

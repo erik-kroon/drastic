@@ -1,3 +1,6 @@
+import { equalJson } from "@open-erp/domain/canonicalization";
+import { retainedArticle } from "./catalog";
+import { copiedDefaults, resolveCustomerDefaults } from "./customer-invoice-defaults";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
@@ -5,6 +8,7 @@ import * as Policy from "@open-erp/contracts/legal-sales-policy";
 import { commercialLineAmounts, exactCommercialBase } from "@open-erp/domain/commercial-invoice";
 import * as Policies from "../../db/commerce/legal-policies";
 import { digest } from "../json";
+import { customerDefaultsTables } from "../../db/commerce/customer-invoice-defaults";
 import * as CatalogDb from "../../db/commerce/catalog";
 import * as DraftDb from "../../db/commerce/invoice-lifecycle";
 import type { Transaction } from "../../db/transaction";
@@ -16,6 +20,7 @@ import {
   toJsonObject,
   decode,
   requireRetainedEvidence,
+  requireTableAccess,
   type JsonObject,
   type Scope,
 } from "./support";
@@ -111,7 +116,12 @@ function identityBlockers(identity: DraftIdentity, role: string) {
     : [];
 }
 
-function requireCatalogAgreement(transaction: Transaction, bookId: string, line: DraftLine) {
+function requireCatalogAgreement(
+  transaction: Transaction,
+  scope: Scope,
+  line: DraftLine,
+  commercial = false,
+) {
   const selection = line.catalogSelection;
 
   if (selection === undefined) return Effect.void;
@@ -119,7 +129,7 @@ function requireCatalogAgreement(transaction: Transaction, bookId: string, line:
   return Effect.gen(function* () {
     const article = (yield* CatalogDb.readArticleRevision(
       transaction,
-      bookId,
+      scope.bookId,
       selection.code,
       String(selection.revision),
     ))[0];
@@ -128,10 +138,22 @@ function requireCatalogAgreement(transaction: Transaction, bookId: string, line:
     const body = article.body;
 
     if (
+      selection.scope !== undefined &&
+      (selection.scope.bookId !== scope.bookId || selection.scope.entityId !== scope.entityId)
+    )
+      return yield* failure("StaleDependency");
+
+    if (
+      selection.digest !== undefined &&
+      selection.digest !== (yield* retainedArticle(scope, body)).digest
+    )
+      return yield* failure("StaleDependency");
+
+    if (
       textField(body, "unit") !== selection.unit ||
       textField(body, "description") !== line.description ||
       (textField(body, "unitPriceMinor") ?? null) !== line.unitPriceMinor ||
-      (textField(body, "taxDescription") ?? null) !== line.taxDescription
+      (!commercial && (textField(body, "taxDescription") ?? null) !== line.taxDescription)
     ) {
       return yield* failure("StaleDependency");
     }
@@ -146,9 +168,10 @@ function lineEvidence(transaction: Transaction, bookId: string, line: DraftLine)
 
 function calculateLine(
   transaction: Transaction,
-  bookId: string,
+  scope: Scope,
   line: DraftLine,
   blockers: Blocker[],
+  commercial: boolean,
 ) {
   return Effect.gen(function* () {
     yield* exactKeys(
@@ -157,11 +180,15 @@ function calculateLine(
     );
 
     if (line.catalogSelection !== undefined) {
-      yield* exactKeys(yield* toJsonObject(line.catalogSelection), selectionFields);
-      yield* requireCatalogAgreement(transaction, bookId, line);
+      yield* exactKeys(yield* toJsonObject(line.catalogSelection), [
+        ...selectionFields,
+        ...(line.catalogSelection.scope === undefined ? [] : ["scope"]),
+        ...(line.catalogSelection.digest === undefined ? [] : ["digest"]),
+      ]);
+      yield* requireCatalogAgreement(transaction, scope, line, commercial);
     }
 
-    const taxEvidence = yield* lineEvidence(transaction, bookId, line);
+    const taxEvidence = yield* lineEvidence(transaction, scope.bookId, line);
 
     if (line.taxMinor === null || taxEvidence === null || line.taxDescription === null) {
       blockers.push(blocker("tax_inputs_unreviewed", line.id));
@@ -207,6 +234,7 @@ export function calculateDraft(
   scope: Scope,
   book: DraftDb.BookCurrencyRow,
   content: DraftContent,
+  commercial = false,
 ) {
   return Effect.gen(function* () {
     yield* exactKeys(yield* toJsonObject(content), contentFields);
@@ -277,7 +305,9 @@ export function calculateDraft(
     for (const line of content.lines) {
       if (seen.has(line.id)) return yield* failure("InvalidJournal");
       seen.add(line.id);
-      const calculated = yield* calculateLine(transaction, scope.bookId, line, blockers);
+
+      const calculated = yield* calculateLine(transaction, scope, line, blockers, commercial);
+
       baseTotal += BigInt(line.baseMinor);
       discountTotal += BigInt(line.discountMinor);
       chargeTotal += BigInt(line.chargeMinor);
@@ -331,19 +361,128 @@ export const draftBounds = {
   initialReason,
 } as const;
 
+const resolveCommercialArticlePrice = Effect.fn("commerce.drafts.resolveCommercialArticlePrice")(
+  function* (
+    transaction: Transaction,
+    scope: Scope,
+    line: typeof Drafts.CommercialLine.Type,
+    prior: typeof Drafts.InvoiceDraftRevision.Type | undefined,
+  ) {
+    const selection = line.catalogSelection;
+
+    if (selection === undefined) return line.unitPriceMinor;
+
+    const previous =
+      prior?.purpose === "commercial"
+        ? prior.commercialInput.lines.find((item) => item.id === line.id)?.catalogSelection
+        : undefined;
+
+    const copied = previous !== undefined && equalJson(previous, selection);
+
+    const row = (yield* CatalogDb.readArticleRevision(
+      transaction,
+      scope.bookId,
+      selection.code,
+      String(selection.revision),
+    ))[0];
+
+    if (!row) return yield* failure("StaleDependency");
+    const article = yield* retainedArticle(scope, row.body);
+
+    if (article.unitPriceMinor !== line.unitPriceMinor) return yield* failure("StaleDependency");
+
+    if (
+      selection.scope !== undefined &&
+      (selection.scope.bookId !== scope.bookId || selection.scope.entityId !== scope.entityId)
+    )
+      return yield* failure("StaleDependency");
+
+    if (
+      (!copied && (selection.scope === undefined || selection.digest === undefined)) ||
+      (selection.digest !== undefined && selection.digest !== article.digest)
+    )
+      return yield* failure("StaleDependency");
+
+    if (!copied) {
+      const pointer = (yield* CatalogDb.readArticlePointer(
+        transaction,
+        scope.bookId,
+        selection.code,
+        "share",
+      ))[0];
+
+      if (pointer?.currentRevision !== String(selection.revision) || article.status === "archived")
+        return yield* failure("StaleDependency");
+    }
+
+    if (row.body.treatment !== undefined || !copied) {
+      if (!equalJson(article.treatment ?? { kind: "unresolved" }, line.treatment))
+        return yield* failure("StaleDependency");
+    }
+
+    return article.unitPriceMinor;
+  },
+);
+
+const resolveCopiedDraftDefaults = Effect.fn("commerce.drafts.resolveCopiedDefaults")(function* (
+  transaction: Transaction,
+  scope: Scope,
+  book: DraftDb.BookCurrencyRow,
+  input: typeof Drafts.CommercialContent.Type,
+  prior: typeof Drafts.InvoiceDraftRevision.Type | undefined,
+) {
+  const selection = input.customerDefaultsSelection;
+
+  if (selection !== undefined && selection.partyId !== input.counterpartyId)
+    return yield* failure("StaleDependency");
+
+  if (
+    selection !== undefined &&
+    (input.plannedIssueDate === null || input.dueDateOrigin === undefined)
+  )
+    return yield* failure("InvalidJournal");
+
+  if (selection === undefined && input.dueDateOrigin === "customer_default")
+    return yield* failure("InvalidJournal");
+
+  const priorSelection =
+    prior?.purpose === "commercial" ? prior.commercialInput.customerDefaultsSelection : undefined;
+
+  const copied =
+    priorSelection !== undefined && selection !== undefined && equalJson(priorSelection, selection);
+
+  if (selection !== undefined)
+    yield* requireTableAccess(transaction, customerDefaultsTables, false);
+
+  const defaults =
+    selection === undefined
+      ? undefined
+      : yield* resolveCustomerDefaults(transaction, scope, selection, !copied);
+
+  if (defaults !== undefined && defaults.currency !== book.currency)
+    return yield* failure("UnsupportedProfile");
+
+  return defaults === undefined || input.plannedIssueDate === null
+    ? undefined
+    : yield* copiedDefaults(defaults, input.plannedIssueDate);
+});
+
 export const calculateCommercialContent = Effect.fn("commerce.drafts.calculateCommercialContent")(
   function* (
     transaction: Transaction,
     scope: Scope,
     book: DraftDb.BookCurrencyRow,
     input: typeof Drafts.CommercialContent.Type,
+    prior?: typeof Drafts.InvoiceDraftRevision.Type,
   ) {
+    const snapshot = yield* resolveCopiedDraftDefaults(transaction, scope, book, input, prior);
     const lines: DraftLine[] = [];
     const seen = new Set<string>();
 
     for (const line of input.lines) {
       if (seen.has(line.id)) return yield* failure("InvalidJournal");
       seen.add(line.id);
+      const unitPriceMinor = yield* resolveCommercialArticlePrice(transaction, scope, line, prior);
       let taxEvidenceId: string | null = null;
       let taxDescription: string | null = null;
 
@@ -375,7 +514,7 @@ export const calculateCommercialContent = Effect.fn("commerce.drafts.calculateCo
 
       const amounts = commercialLineAmounts({
         quantity: line.quantity,
-        unitPriceMinor: line.unitPriceMinor,
+        unitPriceMinor,
         discountMinor: line.discountMinor,
         chargeMinor: line.chargeMinor,
         taxRule: taxDescription === null ? "unresolved" : "line-tax-half-up-minor-25-v1",
@@ -387,7 +526,7 @@ export const calculateCommercialContent = Effect.fn("commerce.drafts.calculateCo
         id: line.id,
         description: line.description,
         quantity: line.quantity,
-        unitPriceMinor: line.unitPriceMinor,
+        unitPriceMinor,
         baseMinor: amounts.success.base.toString(),
         discountMinor: line.discountMinor,
         chargeMinor: line.chargeMinor,
@@ -405,14 +544,25 @@ export const calculateCommercialContent = Effect.fn("commerce.drafts.calculateCo
     }
 
     const content: DraftContent = {
-      ...input,
+      title: input.title,
+      counterpartyId: input.counterpartyId,
+      counterpartyRevision: input.counterpartyRevision,
+      seller: input.seller,
+      customer: input.customer,
+      plannedIssueDate: input.plannedIssueDate,
+      supplyDate: input.supplyDate,
+      dueDate:
+        snapshot !== undefined && input.dueDateOrigin === "customer_default"
+          ? snapshot.dueDate
+          : input.dueDate,
+      paymentTerms: input.paymentTerms ?? snapshot?.paymentTerms ?? null,
       currency: book.currency,
       currencyScale: book.currencyScale,
       sourceTotalMinor: null,
       lines,
     };
 
-    const calculation = yield* calculateDraft(transaction, scope, book, content);
+    const calculation = yield* calculateDraft(transaction, scope, book, content, true);
 
     if (
       BigInt(calculation.totals.netMinor) >= maximumMinor ||
@@ -432,7 +582,12 @@ export const calculateCommercialContent = Effect.fn("commerce.drafts.calculateCo
         ),
         blocker("legal_issue_review_required", null),
       ],
-      commercial: { input, digest: inputDigest },
+      commercial: {
+        input,
+        digest: inputDigest,
+        copiedCustomerDefaults: snapshot,
+      },
+      copiedCustomerDefaults: snapshot,
       inputDigest,
     };
   },
@@ -445,6 +600,6 @@ export const recalculateInvoiceDraft = Effect.fn("commerce.drafts.recalculate")(
   draft: typeof Drafts.InvoiceDraftRevision.Type,
 ) {
   return draft.purpose === "commercial"
-    ? yield* calculateCommercialContent(transaction, scope, book, draft.commercialInput)
+    ? yield* calculateCommercialContent(transaction, scope, book, draft.commercialInput, draft)
     : yield* calculateDraft(transaction, scope, book, draft.content);
 });

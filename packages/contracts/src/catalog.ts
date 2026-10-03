@@ -3,7 +3,22 @@ import { accountingErrors } from "./accounting-errors";
 import * as Schema from "effect/Schema";
 import * as Accounting from "./accounting";
 
+export const ArticleTreatment = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal("unresolved") }),
+  Schema.Struct({
+    kind: Schema.Literal("legal_sales_policy"),
+    id: Accounting.Identifier,
+    digest: Accounting.Digest,
+  }),
+]);
+
+export const ArticleStatus = Schema.Literals(["active", "archived"]);
+
 export const Article = Schema.Struct({
+  scope: Schema.optional(Accounting.Scope),
+  digest: Schema.optional(Accounting.Digest),
+  status: Schema.optional(ArticleStatus),
+  treatment: Schema.optional(ArticleTreatment),
   code: Schema.String,
   revision: Schema.Finite,
   description: Schema.String,
@@ -13,6 +28,8 @@ export const Article = Schema.Struct({
 });
 
 export const SaveArticle = Schema.Struct({
+  status: Schema.optional(ArticleStatus),
+  treatment: Schema.optional(ArticleTreatment),
   code: Schema.String.check(Schema.isPattern(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/)),
   expectedRevision: Schema.Finite.check(
     Schema.isInt(),
@@ -35,7 +52,11 @@ export const ArticlePage = Schema.Struct({
 export const CatalogCapabilities = {
   catalog_list_articles: {
     description: "Read current book-scoped catalog article revisions with a stable page cursor.",
-    input: Schema.Struct({ scope: Accounting.Scope, after: Schema.optional(Schema.String) }),
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      after: Schema.optional(Schema.String),
+      status: Schema.optional(Schema.Literal("all")),
+    }),
     output: ArticlePage,
     readOnly: true,
   },
@@ -57,7 +78,10 @@ export const CatalogApi = HttpApiGroup.make("catalog")
   .add(
     HttpApiEndpoint.get("catalogArticles", path, {
       params: Accounting.Scope,
-      query: Schema.Struct({ after: Schema.optional(Schema.String) }),
+      query: Schema.Struct({
+        after: Schema.optional(Schema.String),
+        status: Schema.optional(Schema.Literal("all")),
+      }),
       success: ArticlePage,
       error: accountingErrors,
     }),

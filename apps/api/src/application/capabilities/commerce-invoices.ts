@@ -1,5 +1,9 @@
 import { Capabilities } from "@open-erp/contracts/capabilities";
 import { effectCapability } from "./shared";
+import {
+  getCustomerInvoiceDefaults,
+  getCustomerRecipient,
+} from "../commerce/customer-invoice-defaults";
 import { getArticle, listArticles } from "../commerce/catalog";
 import {
   getRecurringAgreement,
@@ -75,6 +79,14 @@ import {
 } from "../commerce/register";
 
 export const commerceInvoiceCapabilities = {
+  crm_get_invoice_defaults: effectCapability(
+    Capabilities.crm_get_invoice_defaults,
+    getCustomerInvoiceDefaults,
+  ),
+  crm_get_reviewed_recipient: effectCapability(
+    Capabilities.crm_get_reviewed_recipient,
+    getCustomerRecipient,
+  ),
   payments_check_bank_account: effectCapability(
     Capabilities.payments_check_bank_account,
     inspectBankAccountHint,
@@ -100,7 +112,7 @@ export const commerceInvoiceCapabilities = {
     invoiceDocumentHistory,
   ),
   catalog_list_articles: effectCapability(Capabilities.catalog_list_articles, (token, input) =>
-    listArticles(token, { scope: input.scope, after: input.after ?? "" }),
+    listArticles(token, { scope: input.scope, after: input.after ?? "", status: input.status }),
   ),
   catalog_get_article: effectCapability(Capabilities.catalog_get_article, getArticle),
   dimensions_list: effectCapability(Capabilities.dimensions_list, listDimensions),

@@ -25,6 +25,7 @@ type DraftLine = typeof Drafts.DraftLine.Type;
 export type EditableInvoiceLine = {
   id: string;
   defaults?: DraftLine;
+  treatment?: typeof Drafts.CommercialTreatment.Type;
   quantity: string;
   price: string;
   amount: string;
@@ -493,7 +494,7 @@ function CatalogArticleSelect(props: {
     if (!line.defaults) return;
     const defaults = { ...line.defaults };
     delete defaults.catalogSelection;
-    props.onChange({ ...line, defaults }, line.id);
+    props.onChange({ ...line, defaults, treatment: undefined }, line.id);
   };
 
   return (
@@ -537,6 +538,8 @@ function CatalogArticleSelect(props: {
             taxEvidenceId: null,
             sourceGrossMinor: null,
             catalogSelection: {
+              scope: article.scope,
+              digest: article.digest,
               code: article.code,
               revision: article.revision,
               unit: article.unit,
@@ -547,6 +550,7 @@ function CatalogArticleSelect(props: {
             {
               ...line,
               defaults,
+              treatment: article.treatment ?? { kind: "unresolved" },
               price: article.unitPriceMinor ? minorToDecimal(article.unitPriceMinor, scale) : "",
               amount: article.unitPriceMinor ? minorToDecimal(article.unitPriceMinor, scale) : "",
               tax: "",

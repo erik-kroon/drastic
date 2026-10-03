@@ -1836,3 +1836,40 @@ export const agentContextProgress = openerp.table("agent_context_progress", {
   position: bigint("position", { mode: "bigint" }).notNull(),
   body: jsonb().$type<Schema.JsonObject>().notNull(),
 });
+
+export const customerInvoiceDefaults = openerp.table("crm_customer_invoice_defaults", {
+  bookId: text("book_id").notNull(),
+  partyId: text("party_id").notNull(),
+  currentRevision: bigint("current_revision", { mode: "bigint" }).notNull(),
+});
+
+export const customerInvoiceDefaultsRevisions = openerp.table(
+  "crm_customer_invoice_defaults_revisions",
+  {
+    bookId: text("book_id").notNull(),
+    partyId: text("party_id").notNull(),
+    revision: bigint("revision", { mode: "bigint" }).notNull(),
+    body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+    recordedBy: text("recorded_by").notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+);
+
+export const customerRecipients = openerp.table("crm_customer_recipients", {
+  bookId: text("book_id").notNull(),
+  partyId: text("party_id").notNull(),
+  currentRevision: bigint("current_revision", { mode: "bigint" }).notNull(),
+});
+
+export const customerRecipientsRevisions = openerp.table("crm_customer_recipients_revisions", {
+  bookId: text("book_id").notNull(),
+  partyId: text("party_id").notNull(),
+  revision: bigint("revision", { mode: "bigint" }).notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  recordedBy: text("recorded_by").notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+});

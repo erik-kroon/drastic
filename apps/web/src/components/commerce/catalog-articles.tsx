@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as Option from "effect/Option";
+import * as Legal from "@open-erp/contracts/legal-sales-policy";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Catalog from "@open-erp/contracts/catalog";
@@ -7,7 +9,7 @@ import { Plus } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { DataTable } from "@open-erp/ui/components/data-table";
-import { InputField } from "@open-erp/ui/components/field";
+import { InputField, SelectField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
 import { PageCaption, PageEmpty, RecordOpen } from "@open-erp/ui/components/accounting-page";
 import { RecordHeading, RecordSection } from "@open-erp/ui/components/record-layout";
@@ -30,6 +32,8 @@ type ArticleForm = {
   unit: string;
   unitPrice: string;
   taxDescription: string;
+  treatment: typeof Catalog.ArticleTreatment.Type;
+  status: typeof Catalog.ArticleStatus.Type;
 };
 
 function emptyForm(): ArticleForm {
@@ -40,6 +44,8 @@ function emptyForm(): ArticleForm {
     unit: "",
     unitPrice: "",
     taxDescription: "",
+    treatment: { kind: "unresolved" },
+    status: "active",
   };
 }
 
@@ -51,6 +57,8 @@ function articleForm(article: Article, scale: number): ArticleForm {
     unit: article.unit,
     unitPrice: article.unitPriceMinor ? minorToDecimal(article.unitPriceMinor, scale) : "",
     taxDescription: article.taxDescription ?? "",
+    treatment: article.treatment ?? { kind: "unresolved" },
+    status: article.status ?? "active",
   };
 }
 
@@ -75,12 +83,21 @@ export function CatalogArticles(props: CommerceProps) {
   const [saved, setSaved] = useState(false);
   const metadata = useQuery(workQueryOptions(book, {}));
 
+  const policies = useQuery({
+    queryKey: [...commerceKey(book), "commercial-policies"],
+    queryFn: ({ signal }) =>
+      readAccounting(`${commercePath(book)}/legal-sales-policies`, Legal.LegalSalesPolicyHistory, {
+        signal,
+      }),
+    retry: false,
+  });
+
   const articles = useInfiniteQuery({
-    queryKey: [...commerceKey(book), "catalog-articles"],
+    queryKey: [...commerceKey(book), "catalog-articles", "all"],
     initialPageParam: "",
     queryFn: async ({ pageParam, signal }) =>
       readAccounting(
-        `${commercePath(book)}/articles${pageParam ? `?after=${encodeURIComponent(pageParam)}` : ""}`,
+        `${commercePath(book)}/articles?status=all${pageParam ? `&after=${encodeURIComponent(pageParam)}` : ""}`,
         Catalog.ArticlePage,
         { signal },
       ),
@@ -165,7 +182,7 @@ export function CatalogArticles(props: CommerceProps) {
                 >
                   {article.code}
                 </RecordOpen>,
-                article.description,
+                `${article.description}${article.status === "archived" ? (sv ? " · Arkiverad" : " · Archived") : ""}`,
                 article.unit,
                 scale === undefined || article.unitPriceMinor === null
                   ? "—"
@@ -209,11 +226,13 @@ export function CatalogArticles(props: CommerceProps) {
                 unit: form.unit,
                 unitPriceMinor: minor(form.unitPrice, scale),
                 taxDescription: form.taxDescription.trim() || null,
+                treatment: form.treatment,
+                status: form.status,
               });
 
-              setInvalid(parsed._tag === "None");
+              setInvalid(Option.isNone(parsed));
 
-              if (parsed._tag === "Some") save.mutate(parsed.value);
+              if (Option.isSome(parsed)) save.mutate(parsed.value);
             }}
           >
             <Box
@@ -282,6 +301,42 @@ export function CatalogArticles(props: CommerceProps) {
                   }}
                 />
               </Box>
+              <AccountingStatus
+                locale={locale}
+                pending={policies.isPending}
+                error={policies.error}
+              />
+              <SelectField
+                label={sv ? "Granskad momsprofil" : "Reviewed tax profile"}
+                value={form.treatment.kind === "legal_sales_policy" ? form.treatment.id : ""}
+                options={[
+                  { value: "", label: sv ? "Ej fastställd" : "Unresolved" },
+                  ...(policies.data?.items.map((policy) => ({
+                    value: policy.id,
+                    label: `${policy.candidate.input.sellerIdentity.legalName} · ${policy.candidate.input.vatTreatment}`,
+                  })) ?? []),
+                ]}
+                onValueChange={(id) => {
+                  const policy = policies.data?.items.find((item) => item.id === id);
+                  setForm({
+                    ...form,
+                    treatment: policy
+                      ? { kind: "legal_sales_policy", id: policy.id, digest: policy.digest }
+                      : { kind: "unresolved" },
+                  });
+                }}
+              />
+              <SelectField
+                label={sv ? "Artikelstatus" : "Article status"}
+                value={form.status}
+                options={[
+                  { value: "active", label: sv ? "Aktiv" : "Active" },
+                  { value: "archived", label: sv ? "Arkiverad" : "Archived" },
+                ]}
+                onValueChange={(status) =>
+                  setForm({ ...form, status: status === "archived" ? "archived" : "active" })
+                }
+              />
               <Box>
                 <Button type="submit" disabled={save.isPending}>
                   {save.isPending

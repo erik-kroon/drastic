@@ -4,6 +4,7 @@ import * as Accounting from "./accounting";
 import * as Commerce from "./commerce";
 import { accountingErrors } from "./accounting-errors";
 import { OccurrenceReference } from "@open-erp/domain/recurrence";
+import * as Crm from "./crm-master";
 import { SalesQuery, SalesPage } from "./sales-register";
 
 const Name = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200));
@@ -35,6 +36,8 @@ export const DraftLine = Schema.Struct({
   sourceGrossMinor: Schema.NullOr(Accounting.MinorUnits),
   catalogSelection: Schema.optional(
     Schema.Struct({
+      scope: Schema.optional(Accounting.Scope),
+      digest: Schema.optional(Accounting.Digest),
       code: Schema.String.check(Schema.isPattern(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/)),
       revision: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100000 })),
       unit: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(32)),
@@ -79,6 +82,8 @@ export const CommercialLine = Schema.Struct({
 });
 
 export const CommercialContent = Schema.Struct({
+  customerDefaultsSelection: Schema.optional(Crm.CustomerReference),
+  dueDateOrigin: Schema.optional(Schema.Literals(["customer_default", "override"])),
   title: Name,
   counterpartyId: Accounting.Identifier,
   counterpartyRevision: Commerce.Version,
@@ -183,6 +188,7 @@ export const InvoiceDraftRevision = Schema.Union([
     purpose: Schema.Literal("commercial"),
     calculationBasis: Schema.Literal("commercial_minor_v1"),
     commercialInput: CommercialContent,
+    copiedCustomerDefaults: Schema.optional(Crm.CopiedCustomerInvoiceDefaults),
     inputDigest: Accounting.Digest,
   }),
 ]);
@@ -220,6 +226,7 @@ export const CalculateCommercialDraft = Schema.Struct({
 });
 
 export const CommercialDraftCalculation = Schema.Struct({
+  copiedCustomerDefaults: Schema.optional(Crm.CopiedCustomerInvoiceDefaults),
   scope: Accounting.Scope,
   target: CalculationTarget,
   inputDigest: Accounting.Digest,

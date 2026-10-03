@@ -9,7 +9,11 @@ export const CatalogHandlers = HttpApiBuilder.group(Api, "catalog", (handlers) =
   handlers
     .handle("catalogArticles", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
-        Commerce.listArticles(token, { scope: scopeFromPath(params), after: query.after ?? "" }),
+        Commerce.listArticles(token, {
+          scope: scopeFromPath(params),
+          after: query.after ?? "",
+          status: query.status,
+        }),
       ),
     )
     .handle("catalogArticleRevision", ({ params }) =>

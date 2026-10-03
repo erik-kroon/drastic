@@ -1,3 +1,4 @@
+import { InvoiceDefaultsSelection } from "./customer-invoice-defaults";
 import { useState, type ReactNode } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
@@ -309,6 +310,8 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
     const composition = commercial
       ? {
           commercial: {
+            customerDefaultsSelection: session.state.customerDefaultsSelection,
+            dueDateOrigin: session.state.dueDateOrigin,
             title: next.title,
             counterpartyId: next.counterpartyId,
             counterpartyRevision: next.counterpartyRevision,
@@ -321,7 +324,7 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
             customer: { ...next.customer, evidenceId: customer?.evidenceId ?? evidenceId },
             plannedIssueDate: next.plannedIssueDate,
             supplyDate: next.supplyDate,
-            dueDate: next.dueDate,
+            dueDate: session.state.dueDateOrigin === "customer_default" ? null : next.dueDate,
             paymentTerms: next.paymentTerms,
             lines: next.lines.map((line) => {
               const compositionLine = {
@@ -331,9 +334,11 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
                 unitPriceMinor: line.unitPriceMinor,
                 discountMinor: line.discountMinor,
                 chargeMinor: line.chargeMinor,
-                treatment: policy
-                  ? { kind: "legal_sales_policy", id: policy.id, digest: policy.digest }
-                  : { kind: "unresolved" },
+                treatment:
+                  lines.find((item) => item.id === line.id)?.treatment ??
+                  (policy
+                    ? { kind: "legal_sales_policy", id: policy.id, digest: policy.digest }
+                    : { kind: "unresolved" }),
               };
 
               return "catalogSelection" in line
@@ -423,11 +428,22 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
                 name="commercialPolicy"
                 label={sv ? "Granskad momsprofil" : "Reviewed tax profile"}
                 defaultValue={restoredField(session, "commercialPolicy", policyId)}
-                onValueChange={(value) =>
+                onValueChange={(value) => {
+                  const policy = policies.data?.items.find((item) => item.id === value);
                   session.update({
                     fields: { ...session.state.fields, commercialPolicy: value ?? "" },
-                  })
-                }
+                    lines: session.state.lines.map((line) =>
+                      line.defaults?.catalogSelection
+                        ? line
+                        : {
+                            ...line,
+                            treatment: policy
+                              ? { kind: "legal_sales_policy", id: policy.id, digest: policy.digest }
+                              : { kind: "unresolved" },
+                          },
+                    ),
+                  });
+                }}
                 options={[
                   { value: "", label: sv ? "Ej fastställd" : "Unresolved" },
                   ...(policies.data?.items.map((policy) => ({
@@ -438,7 +454,13 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
               />
             </>
           ) : null}
-          <DraftDates content={content} locale={props.locale} session={session} />
+          <DraftDates
+            content={content}
+            locale={props.locale}
+            session={session}
+            calculation={calculation}
+          />
+          {commercial ? <InvoiceDefaultsSelection {...props} session={session} /> : null}
           <RecordColumns>
             <DraftCustomerPicker
               book={props.book}
@@ -484,7 +506,12 @@ function DraftEditor(props: CommerceProps & { session: DraftSession }) {
                     name="terms"
                     label={labels.paymentTerms}
                     maxLength={1000}
-                    defaultValue={restoredField(session, "terms", content?.paymentTerms ?? "")}
+                    value={restoredField(session, "terms", content?.paymentTerms ?? "")}
+                    onChange={(event) =>
+                      session.update({
+                        fields: { ...session.state.fields, terms: event.target.value },
+                      })
+                    }
                     placeholder={sv ? "Till exempel 30 dagar" : "For example, 30 days"}
                   />
                   {!commercial ? (
@@ -730,7 +757,9 @@ function DraftDates({
   content,
   locale,
   session,
+  calculation,
 }: {
+  calculation?: typeof Drafts.CommercialDraftCalculation.Type;
   content?: DraftContent;
   locale: CommerceProps["locale"];
   session: DraftSession;
@@ -762,7 +791,18 @@ function DraftDates({
           name="dueDate"
           label={labels.dueDate}
           type="date"
-          defaultValue={restoredField(session, "dueDate", content?.dueDate ?? "")}
+          value={
+            session.state.dueDateOrigin === "customer_default" && calculation
+              ? (calculation.content.dueDate ?? "")
+              : restoredField(session, "dueDate", content?.dueDate ?? "")
+          }
+          onChange={(event) =>
+            session.update({
+              fields: { ...session.state.fields, dueDate: event.target.value },
+              dueDateOrigin:
+                session.state.customerDefaultsSelection === undefined ? undefined : "override",
+            })
+          }
         />
         <InputField
           name="supplyDate"

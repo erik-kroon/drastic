@@ -4,6 +4,7 @@ import { useBlocker } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Commerce from "@open-erp/contracts/commerce";
+import * as Crm from "@open-erp/contracts/crm-master";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
@@ -26,6 +27,9 @@ const PendingSave = Schema.Struct({
 });
 
 const EditingState = Schema.Struct({
+  customerDefaultsSelection: Schema.optional(Crm.CustomerReference),
+  dueDateOrigin: Schema.optional(Schema.Literals(["customer_default", "override"])),
+  copiedCustomerDefaults: Schema.optional(Crm.CopiedCustomerInvoiceDefaults),
   purpose: Schema.optional(Schema.Literals(["commercial", "source_transcription"])),
   baseline: Schema.NullOr(Drafts.InvoiceDraftRevision),
   expected: Schema.optional(
@@ -38,6 +42,7 @@ const EditingState = Schema.Struct({
     Schema.Struct({
       id: Accounting.Identifier,
       defaults: Schema.optional(Drafts.DraftLine),
+      treatment: Schema.optional(Drafts.CommercialTreatment),
       quantity: Schema.String,
       price: Schema.String,
       amount: Schema.String,
@@ -205,19 +210,35 @@ function canonical(text: string | null) {
 class ConcurrentInvoiceEdit extends Error {}
 
 function initialState(baseline?: Draft): DraftEditingState {
-  return {
+  const state: DraftEditingState = {
     purpose: baseline ? (baseline.purpose ?? "source_transcription") : "commercial",
     baseline: baseline ?? null,
     draftKey: baseline?.draftKey ?? `draft_${crypto.randomUUID().replaceAll("-", "")}`,
     customer: baseline?.counterparty ?? null,
     fields: {},
     lines: baseline
-      ? baseline.content.lines.map((line) =>
-          editableInvoiceLine(baseline.content.currencyScale, line),
-        )
+      ? baseline.content.lines.map((line) => {
+          const editable = editableInvoiceLine(baseline.content.currencyScale, line);
+
+          if (baseline.purpose === "commercial")
+            editable.treatment = baseline.commercialInput.lines.find(
+              (item) => item.id === line.id,
+            )?.treatment;
+
+          return editable;
+        })
       : [editableInvoiceLine(0)],
     pending: null,
   };
+
+  return baseline?.purpose === "commercial"
+    ? {
+        ...state,
+        customerDefaultsSelection: baseline.commercialInput.customerDefaultsSelection,
+        dueDateOrigin: baseline.commercialInput.dueDateOrigin,
+        copiedCustomerDefaults: baseline.copiedCustomerDefaults,
+      }
+    : state;
 }
 
 function EditingSession(
@@ -543,5 +564,11 @@ export function selectDraftCustomer(
 
   for (const key of ["customerName", "customerRegistration", "customerAddress", "customerCountry"])
     delete fields[key];
-  session.update({ customer, fields });
+  session.update({
+    customer,
+    fields,
+    customerDefaultsSelection: undefined,
+    dueDateOrigin: undefined,
+    copiedCustomerDefaults: undefined,
+  });
 }
