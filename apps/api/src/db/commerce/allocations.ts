@@ -1081,3 +1081,25 @@ export function countInvoiceAllocationHistory(
     "objects",
   );
 }
+
+export function readForecastPaymentLegs(transaction: Transaction, bookId: string) {
+  return transaction.execute<{
+    readonly invoiceId: string;
+    readonly receiptId: string;
+    readonly ordinal: number;
+    readonly paymentVoucherId: string;
+    readonly paymentLineId: string;
+    readonly amountMinor: string;
+  }>(
+    sql`
+    select l.invoice_id as "invoiceId", l.receipt_id as "receiptId", l.ordinal,
+      l.payment_voucher_id as "paymentVoucherId", l.payment_line_id as "paymentLineId", l.amount_minor::text as "amountMinor"
+    from openerp.commerce_allocation_legs l
+    where l.book_id = ${bookId} and not exists (
+      select from openerp.commerce_allocation_reversals r where r.book_id = l.book_id and r.receipt_id = l.receipt_id
+    )
+    order by l.receipt_id collate "C", l.ordinal limit 10001
+  `,
+    "objects",
+  );
+}

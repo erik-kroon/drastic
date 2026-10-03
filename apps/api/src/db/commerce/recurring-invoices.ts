@@ -134,7 +134,6 @@ export function readAgreement(transaction: Transaction, bookId: string, agreemen
       select id, revision::text as revision, customer_id as "customerId", body
       from openerp.recurring_invoice_agreements
       where book_id = ${bookId} and id = ${agreementId}
-      for share
     `,
     "objects",
   );
@@ -151,14 +150,29 @@ export function readScheduleRevisions(
       from openerp.recurring_invoice_agreement_schedules
       where book_id = ${bookId} and agreement_id = ${agreementId}
       order by effective_from_cycle, revision
-      for share
     `,
     "objects",
   );
 }
 
-// The cycles that already own an occurrence, with the dates and service starts
-// they were frozen with. A proposed schedule is checked against exactly this set.
+export function readOccurrenceBeforeCycle(
+  transaction: Transaction,
+  bookId: string,
+  agreementId: string,
+  cycleOrdinal: string,
+) {
+  return transaction.execute<{ readonly id: string }>(
+    sql`
+      select id from openerp.recurring_invoice_occurrences
+      where book_id = ${bookId} and agreement_id = ${agreementId}
+        and cycle_ordinal < ${cycleOrdinal}::bigint
+      order by cycle_ordinal
+      limit 1
+    `,
+    "objects",
+  );
+}
+
 export function readFrozenCycles(
   transaction: Transaction,
   bookId: string,
@@ -173,7 +187,6 @@ export function readFrozenCycles(
       where book_id = ${bookId} and agreement_id = ${agreementId}
       order by cycle_ordinal
       limit ${bound + 1}
-      for share
     `,
     "objects",
   );
@@ -190,7 +203,6 @@ export function readTemplateRevisions(
       from openerp.recurring_invoice_template_revisions
       where book_id = ${bookId} and agreement_id = ${agreementId}
       order by effective_from_cycle, revision
-      for share
     `,
     "objects",
   );
@@ -244,7 +256,6 @@ export function readEvents(transaction: Transaction, bookId: string, agreementId
       from openerp.recurring_invoice_agreement_events
       where book_id = ${bookId} and agreement_id = ${agreementId}
       order by ordinal
-      for share
     `,
     "objects",
   );
@@ -299,7 +310,6 @@ export function readOccurrence(
       select ${occurrenceColumns}
       from openerp.recurring_invoice_occurrences
       where book_id = ${bookId} and agreement_id = ${agreementId} and cycle_ordinal = ${cycleOrdinal}::bigint
-      for share
     `,
     "objects",
   );
@@ -392,11 +402,11 @@ export function readOccurrencePage(
         order by cycle_ordinal
         limit 201
       ), coverage as (
-        select occurrence_id, min(document_number) as document_number,
+        select book_id, occurrence_id, min(document_number) as document_number,
           min(invoice_issue_id) as invoice_issue_id, min(posting_receipt_id) as posting_receipt_id
         from openerp.recurring_invoice_occurrence_issues
         where book_id = ${bookId}
-        group by occurrence_id
+        group by book_id, occurrence_id
       )
       select p.id, p.agreement_id as "agreementId", p.cycle_ordinal::text as "cycleOrdinal",
         p.cycle_date::text as "cycleDate", p.service_starts_on::text as "serviceStartsOn",

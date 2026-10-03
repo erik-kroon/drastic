@@ -110,6 +110,7 @@ const salesRegisterTables = [
     "invoice_drafts",
     "invoice_draft_revisions",
     "invoice_issues",
+    "ar_legal_issues",
   ]),
 ];
 
@@ -1451,3 +1452,36 @@ export const salesRegister = Effect.fn("commerce.register.sales")(function* (
     });
   });
 });
+
+export function readForecastInvoicesInTransaction(transaction: Transaction, bookId: string) {
+  return Effect.gen(function* () {
+    const identities = yield* InvoiceDb.readInvoiceIdentityPage(transaction, bookId, "", 10001);
+
+    if (identities.length > 10000) return yield* failure("UnsupportedProfile");
+    const invoices: Array<typeof Commerce.Invoice.Type> = [];
+
+    for (let offset = 0; offset < identities.length; offset += 1000) {
+      const page = identities.slice(offset, offset + 1000);
+
+      const rows = yield* InvoiceDb.readLiveInvoicePage(
+        transaction,
+        bookId,
+        page.map((entry) => entry.id),
+      );
+
+      if (rows.length !== page.length) return yield* failure("StaleDependency");
+
+      const decoded = yield* Schema.decodeUnknownEffect(Schema.Array(Commerce.Invoice))(
+        rows.map((row) => row.body),
+      ).pipe(Effect.mapError((cause) => failure("InternalError", cause)));
+
+      invoices.push(...decoded);
+    }
+
+    const payments = yield* AllocationDb.readForecastPaymentLegs(transaction, bookId);
+
+    if (payments.length > 10000) return yield* failure("UnsupportedProfile");
+
+    return { invoices, payments };
+  });
+}

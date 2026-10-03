@@ -8,11 +8,15 @@ The first-company engineering path is [Book Zero, daily work and Drastic Cash](p
 
 The [Document Intelligence first journey](plans/document-intelligence-delivery.md) records the PDF/image-to-review-to-draft implementation and normal self-host synthetic verification. Live provider use remains disabled.
 
+The [payment reminder owner](operations/payment-reminders.md) describes exact message review, operator approval, admission and honest local fixture outcomes. Its feature source is authored; runtime, recovery and timing verification remain open. Live provider use remains disabled.
+
 The [pdfcn decision](adr/0016-pdfcn-legal-documents.md) and [adoption record](plans/pdfcn-adoption.md) describe the current legal-invoice and credit-note presentation and its local E2E proof.
 
 The [evaluation input contract](operations/evaluation-contracts.md) records the operator-only immutable capture/read unit and its remaining packet-2 boundaries.
 
 [ADR 0017](adr/0017-bureau-first-product-focus.md) adopts the [product focus direction](plans/product-focus-review.md): a bureau-led documents/bank/invoicing/VAT wedge, one human-work queue, proportionate review and connected execution after approval. Native payroll and peripheral breadth are deferred; Cash follows the core loop. The [dependency-ordered delivery plan](plans/08-delivery.md#ready-order) gives the implementation sequence; the [design adoption backlog](ui-design-checklist.md#product-direction-adoption-backlog--2026-10-03) covers screen reconsideration only. Automatic posting remains unadopted, and implementation/provider gates remain open.
+
+The [daily-work product implementation](plans/18-daily-work-product-implementation.md) tracks the adopted Midday-inspired improvements, direct-main integration, and remaining Cash/search work.
 
 ## Reading order
 

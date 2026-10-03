@@ -29,7 +29,12 @@ import { copyArtifacts, filesIn, inspectRelease, readRecoveryPlan } from "./arti
 import { databaseInventory, roleInventory } from "./inventory";
 import { recoveryControls } from "./controls";
 import { captureObjects, objectReferences, verifyObjectInventory } from "./objects";
-import { captureWorkInventory, inspectWorkInventory, workInventoryPath } from "./durable-work";
+import {
+  captureWorkInventory,
+  inspectWorkInventory,
+  workInventoryPath,
+  workInventoryPaths,
+} from "./durable-work";
 import { readQueueSequences } from "./queue";
 
 async function diagnostic(
@@ -265,7 +270,7 @@ export async function inspectBundle(bundle: string, expectedDigest: string) {
     paths.some(
       (path) =>
         path !== "database.dump" &&
-        path !== workInventoryPath &&
+        !workInventoryPaths.includes(path) &&
         !path.startsWith("supplementary/") &&
         !path.startsWith("release/") &&
         !/^objects\/v1\/[a-z][a-z0-9_-]{2,127}\/[a-f0-9]{64}$/.test(path),
@@ -543,10 +548,10 @@ export async function restore(
     if (manifest.files.some((file) => file.path.startsWith("objects/")))
       await copyArtifacts(join(bundle, "objects"), join(receiptDirectory, "objects"));
 
-    if (sourceWork)
+    if (sourceWork && manifest.durableWork)
       await writePrivate(
-        join(receiptDirectory, workInventoryPath),
-        await readFile(join(bundle, workInventoryPath), "utf8"),
+        join(receiptDirectory, manifest.durableWork.file.path),
+        await readFile(join(bundle, manifest.durableWork.file.path), "utf8"),
       );
 
     for (const file of manifest.files.filter((file) => file.path !== "database.dump")) {

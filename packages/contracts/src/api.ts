@@ -30,6 +30,7 @@ import { CorrectionApi } from "./corrections";
 import { SettlementsApi } from "./settlements";
 import { BankMatchReversalsApi } from "./bank-match-reversals";
 import { BankMatchCandidatesApi } from "./bank-match-candidates";
+import { CashForecastApi } from "./cash-forecast";
 import { BankSourceCoverageApi } from "./bank-source-coverage";
 import { BankSignoffApi } from "./bank-signoffs";
 import { BankInventorySignoffApi } from "./bank-inventory-signoffs";
@@ -210,6 +211,7 @@ export class Api extends HttpApi.make("open-erp")
     BankMatchReversalsApi,
     BankMatchCandidatesApi,
     BankSourceCoverageApi,
+    CashForecastApi,
     BankSignoffApi,
     BankInventorySignoffApi,
     TaxAccountApi,

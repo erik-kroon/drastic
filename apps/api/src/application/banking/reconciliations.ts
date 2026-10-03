@@ -1,3 +1,6 @@
+import * as CashForecast from "@open-erp/contracts/cash-forecast";
+import * as Coverage from "@open-erp/contracts/bank-source-coverage";
+import * as CoverageDb from "../../db/banking/coverage";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Bank from "@open-erp/contracts/reconciliation";
 import * as Settlement from "@open-erp/contracts/settlements";
@@ -662,3 +665,103 @@ export const getBankCapacityReconciliation = Effect.fn("banking.reconciliation.c
     );
   },
 );
+
+export function readCashOpeningWitnessInTransaction(
+  transaction: Transaction,
+  scope: Scope,
+  book: BankDb.BookStateRow,
+  asOf: string,
+  selection: typeof CashForecast.CashAccountSelection.Type,
+) {
+  return Effect.gen(function* () {
+    const found = yield* readReportFreshness(
+      transaction,
+      scope,
+      book,
+      selection.reconciliationId,
+      "capacity",
+    );
+
+    const report = yield* Shared.decode(Settlement.BankCapacityReconciliation, found.body);
+
+    const storedCoverage = (yield* CoverageDb.readCoverageReport(
+      transaction,
+      scope.bookId,
+      selection.coverageReportId,
+    ))[0];
+
+    if (!storedCoverage) return yield* failure("NotFound");
+    const coverage = yield* Shared.decode(Coverage.BankSourceCoverageReport, storedCoverage.body);
+
+    const currentDigest = (yield* BankDb.readCoverageDependencyDigest(
+      transaction,
+      scope.bookId,
+      storedCoverage.inventoryId,
+    ))[0]?.digest;
+
+    const account = coverage.accounts.find((entry) => entry.accountId === selection.accountId);
+
+    if (report.accountId !== selection.accountId || !account) return yield* failure("NotFound");
+    const blockers: string[] = [];
+    const current = found.current.fresh && currentDigest === coverage.dependencyDigest;
+
+    if (!current) blockers.push("bank_witness_stale");
+
+    if (selection.review.eligibility !== "unrestricted_entity_bank")
+      blockers.push("account_eligibility_unqualified");
+
+    if (selection.review.balanceType !== "statement_closing")
+      blockers.push("balance_type_unqualified");
+
+    if (report.endsOn !== asOf) blockers.push("current_boundary_bridge_unavailable");
+
+    if (
+      report.status !== "complete" ||
+      !report.sourceCoverageComplete ||
+      report.bankClosingMinor === null
+    )
+      blockers.push("current_interval_incomplete");
+
+    if (
+      report.currency !== "SEK" ||
+      report.currencyScale !== 2 ||
+      coverage.currency !== "SEK" ||
+      coverage.currencyScale !== 2
+    )
+      blockers.push("currency_unqualified");
+
+    if (!account.declared || !account.active || account.sourceBankAccountId === null)
+      blockers.push("selected_account_not_declared_or_active");
+    const statements = new Map(account.statements.map((entry) => [entry.statement.id, entry]));
+
+    for (const statement of report.statements) {
+      const retained = statements.get(statement.id);
+
+      if (
+        !retained ||
+        retained.diagnostics.length > 0 ||
+        retained.statement.evidenceSha256 !== statement.evidenceSha256 ||
+        retained.statement.sourceBankAccountId !== account.sourceBankAccountId ||
+        !statement.completeness.declaredComplete
+      )
+        blockers.push("selected_statement_unqualified");
+    }
+
+    const closing = report.statements.filter((statement) => statement.endsOn === asOf);
+
+    if (closing.length !== 1 || closing[0]?.closingMinor !== report.bankClosingMinor)
+      blockers.push("closing_boundary_unavailable");
+
+    return {
+      accountId: selection.accountId,
+      amountMinor: report.bankClosingMinor,
+      effectiveOn: report.endsOn,
+      observedAt: null,
+      recordedAt: report.createdAt,
+      reconciliation: report,
+      coverageReport: coverage,
+      dependenciesCurrent: current,
+      blockers,
+    } satisfies typeof CashForecast.CashOpeningObservation.Type;
+  });
+}

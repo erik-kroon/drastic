@@ -1886,3 +1886,117 @@ export const invoiceTemplateRevisions = openerp.table("invoice_template_revision
   revision: bigint({ mode: "bigint" }).notNull(),
   body: jsonb().$type<Schema.JsonObject>().notNull(),
 });
+
+export const cashBases = openerp.table("cash_bases", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  content: text("content").notNull(),
+  sha256: text("sha256").notNull(),
+  byteLength: integer("byte_length").notNull(),
+});
+
+export const cashForecasts = openerp.table("cash_forecasts", {
+  bookId: text("book_id").notNull(),
+  id: text("id").notNull(),
+  basisId: text("basis_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(),
+  content: text("content").notNull(),
+  sha256: text("sha256").notNull(),
+  byteLength: integer("byte_length").notNull(),
+});
+
+export const reminderMessages = openerp.table("reminder_messages", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  prepareKey: text("prepare_key").notNull(),
+  requestDigest: text("request_digest").notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const reminderApprovals = openerp.table("reminder_approvals", {
+  bookId: text("book_id").notNull(),
+  messageId: text("message_id").notNull(),
+  actorId: text("actor_id").notNull(),
+  sessionId: text("session_id").notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const reminderAttempts = openerp.table("reminder_attempts", {
+  bookId: text("book_id").notNull(),
+  messageId: text("message_id").notNull(),
+  id: text().notNull(),
+  externalIdentity: text("external_identity").notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const reminderOutbox = openerp.table("reminder_outbox", {
+  bookId: text("book_id").notNull(),
+  messageId: text("message_id").notNull(),
+  state: text({
+    enum: [
+      "approved",
+      "admitted",
+      "reconciling",
+      "provider_accepted",
+      "delivered",
+      "outcome_unknown",
+      "failed",
+      "cancelled",
+      "refused",
+    ],
+  }).notNull(),
+  checkpoint: integer().notNull(),
+  cancelVersion: integer("cancel_version").notNull(),
+  reason: text(),
+  checkedAt: timestamp("checked_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const reminderObservations = openerp.table("reminder_observations", {
+  bookId: text("book_id").notNull(),
+  attemptId: text("attempt_id").notNull(),
+  observationId: text("observation_id").notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const recurringInvoiceDraftSchedules = openerp.table("recurring_invoice_draft_schedules", {
+  bookId: text("book_id").notNull(),
+  agreementId: text("agreement_id").notNull(),
+  enabled: boolean().notNull(),
+  generation: bigint("generation", { mode: "bigint" }).notNull(),
+  firstAutomaticCycle: bigint("first_automatic_cycle", { mode: "bigint" }).notNull(),
+  nextCycleOrdinal: bigint("next_cycle_ordinal", { mode: "bigint" }).notNull(),
+  requestedBy: text("requested_by").notNull(),
+  timeZone: text("time_zone").notNull(),
+  duePolicy: text("due_policy").notNull(),
+  changedAt: timestamp("changed_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const recurringInvoiceDraftScheduleEvents = openerp.table(
+  "recurring_invoice_draft_schedule_events",
+  {
+    bookId: text("book_id").notNull(),
+    agreementId: text("agreement_id").notNull(),
+    generation: bigint("generation", { mode: "bigint" }).notNull(),
+    body: jsonb().$type<Schema.JsonObject>().notNull(),
+  },
+);
+
+export const recurringInvoiceDraftJobs = openerp.table("recurring_invoice_draft_jobs", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  agreementId: text("agreement_id").notNull(),
+  cycleOrdinal: bigint("cycle_ordinal", { mode: "bigint" }).notNull(),
+  generation: bigint("generation", { mode: "bigint" }).notNull(),
+  scheduleGeneration: bigint("schedule_generation", { mode: "bigint" }).notNull(),
+  requestedBy: text("requested_by").notNull(),
+  executorId: text("executor_id").notNull(),
+  admitted: jsonb().$type<Schema.JsonObject>().notNull(),
+  state: text().notNull(),
+  reason: text(),
+  draftId: text("draft_id"),
+  dispatchedAt: timestamp("dispatched_at", { withTimezone: true, mode: "string" }),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+  settledAt: timestamp("settled_at", { withTimezone: true, mode: "string" }),
+});

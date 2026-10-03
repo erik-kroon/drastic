@@ -9,6 +9,10 @@ import {
   getCustomerInvoiceDefaults,
   getCustomerRecipient,
 } from "../commerce/customer-invoice-defaults";
+import {
+  listRecurringAgreements,
+  getRecurringDraftScheduling,
+} from "../commerce/recurring-draft-scheduling";
 import { getArticle, listArticles } from "../commerce/catalog";
 import {
   getRecurringAgreement,
@@ -357,6 +361,14 @@ export const commerceInvoiceCapabilities = {
   commerce_apply_allocation: effectCapability(
     Capabilities.commerce_apply_allocation,
     applyAllocation,
+  ),
+  commerce_list_recurring_agreements: effectCapability(
+    Capabilities.commerce_list_recurring_agreements,
+    listRecurringAgreements,
+  ),
+  commerce_get_recurring_draft_scheduling: effectCapability(
+    Capabilities.commerce_get_recurring_draft_scheduling,
+    getRecurringDraftScheduling,
   ),
   commerce_get_recurring_agreement: effectCapability(
     Capabilities.commerce_get_recurring_agreement,

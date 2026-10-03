@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { defaultStringifySearch, useSearch } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as ArLegal from "@open-erp/contracts/ar-legal-issue";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
@@ -67,16 +67,6 @@ function IssueWorkspace(props: IssueWorkspaceProps) {
   const reviewId = props.reviewId ?? localReviewId;
   const setReviewId = props.onReviewOpen ?? setLocalReviewId;
 
-  const drafts = useQuery({
-    queryKey: [...commerceKey(props.book), "invoice-drafts"],
-    queryFn: ({ signal }) =>
-      readAccounting(`${commercePath(props.book)}/invoice-drafts`, Drafts.InvoiceDraftList, {
-        signal,
-      }),
-    retry: false,
-    enabled: !props.recordId,
-  });
-
   return (
     <Box display="grid" gap="lg" minWidth="zero">
       {!reviewId ? (
@@ -98,24 +88,14 @@ function IssueWorkspace(props: IssueWorkspaceProps) {
         <Text>{copy.boundary}</Text>
       </Details>
       {!props.recordId ? (
-        <SelectField
-          label={props.locale === "sv" ? "Fakturautkast" : "Invoice draft"}
-          value={draftId}
-          onValueChange={(id) => {
-            setDraftId(id ?? "");
+        <IssueDraftPicker
+          {...props}
+          id={draftId}
+          onSelect={(id) => {
+            setDraftId(id);
             setReviewId("");
           }}
-          options={[
-            { value: "", label: props.locale === "sv" ? "Välj faktura" : "Choose invoice" },
-            ...(drafts.data?.items.map((item) => ({
-              value: item.id,
-              label: `${item.title} · ${item.customerName}`,
-            })) ?? []),
-          ]}
         />
-      ) : null}
-      {!props.recordId ? (
-        <AccountingStatus locale={props.locale} pending={drafts.isPending} error={drafts.error} />
       ) : null}
       {draftId ? (
         props.onBack ? (
@@ -145,6 +125,105 @@ function IssueWorkspace(props: IssueWorkspaceProps) {
         <Text>{copy.recovery}</Text>
         <Lookup label={copy.openReview} onOpen={setReviewId} />
       </Details>
+    </Box>
+  );
+}
+
+function IssueDraftPicker(props: CommerceProps & { id: string; onSelect: (id: string) => void }) {
+  const [draftSearch, setDraftSearch] = useState("");
+  const normalizedSearch = draftSearch.trim().toLowerCase();
+
+  const drafts = useInfiniteQuery({
+    queryKey: [...commerceKey(props.book), "invoice-drafts", "pages", normalizedSearch],
+    initialPageParam: "",
+    queryFn: async ({ pageParam, signal }) => {
+      const query = new URLSearchParams();
+
+      if (pageParam) query.set("after", pageParam);
+
+      if (normalizedSearch) query.set("search", normalizedSearch);
+
+      const result = await readAccounting(
+        `${commercePath(props.book)}/invoice-drafts?${query.toString()}`,
+        Drafts.InvoiceDraftList,
+        { signal },
+      );
+
+      checkScope(props.book, result.scope);
+
+      return result;
+    },
+    getNextPageParam: (page): string | undefined => page.continuation ?? undefined,
+    retry: false,
+  });
+
+  const selectedDraft = useQuery({
+    queryKey: [...commerceKey(props.book), "issue-draft", props.id],
+    enabled: props.id !== "",
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${commercePath(props.book)}/invoice-drafts/${encodeURIComponent(props.id)}`,
+        Drafts.InvoiceDraftView,
+        { signal },
+      );
+
+      checkScope(props.book, result.record.scope);
+
+      if (result.record.id !== props.id) throw new Error("Issue draft identity mismatch");
+
+      return result;
+    },
+    retry: false,
+  });
+
+  const options =
+    drafts.data?.pages.flatMap((page) =>
+      page.items.map((item) => ({ value: item.id, label: `${item.title} · ${item.customerName}` })),
+    ) ?? [];
+
+  const selectedRecord = selectedDraft.data?.record;
+
+  if (selectedRecord !== undefined && !options.some((item) => item.value === selectedRecord.id)) {
+    options.unshift({
+      value: selectedRecord.id,
+      label: `${selectedRecord.content.title} · ${selectedRecord.content.customer.legalName}`,
+    });
+  }
+
+  return (
+    <Box display="grid" gap="lg">
+      <InputField
+        label={props.locale === "sv" ? "Sök fakturautkast" : "Search invoice drafts"}
+        value={draftSearch}
+        maxLength={200}
+        onChange={(event) => setDraftSearch(event.target.value)}
+      />
+      <SelectField
+        label={props.locale === "sv" ? "Fakturautkast" : "Invoice draft"}
+        value={props.id}
+        onValueChange={(id) => props.onSelect(id ?? "")}
+        options={[
+          { value: "", label: props.locale === "sv" ? "Välj faktura" : "Choose invoice" },
+          ...options,
+        ]}
+      />
+      {drafts.hasNextPage ? (
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={drafts.isFetchingNextPage}
+          onClick={() => {
+            void drafts.fetchNextPage();
+          }}
+        >
+          {props.locale === "sv" ? "Visa fler fakturautkast" : "Load more drafts"}
+        </Button>
+      ) : null}
+      <AccountingStatus
+        locale={props.locale}
+        pending={drafts.isPending}
+        error={drafts.error ?? selectedDraft.error}
+      />
     </Box>
   );
 }

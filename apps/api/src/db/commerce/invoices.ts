@@ -394,7 +394,7 @@ export function readCustomerWorklistPage(
 ) {
   return transaction.execute<WorklistRow>(
     sql`
-      select entry.row as body, entry.total, entry.ordinal
+      select entry.row as body, entry.total::integer as total, entry.ordinal::integer as ordinal
       from (
         select ordered.row, ordered.total, ordered.ordinal
         from (

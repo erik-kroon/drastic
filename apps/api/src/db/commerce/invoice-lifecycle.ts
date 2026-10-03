@@ -83,8 +83,6 @@ export type DraftBodyRow = {
   readonly hasMore: boolean;
 };
 
-export type DraftCountRow = { readonly count: number };
-
 export type DraftOrdinalRow = { readonly ordinal: number };
 
 export type CounterRow = { readonly nextNumber: string };
@@ -141,17 +139,6 @@ export function readDraftByKey(transaction: Transaction, bookId: string, draftKe
       select exists (
         select from openerp.invoice_drafts d where d.book_id = ${bookId} and d.draft_key = ${draftKey}
       ) as present
-    `,
-    "objects",
-  );
-}
-
-export function readDraftCount(transaction: Transaction, bookId: string, bound: number) {
-  return transaction.execute<DraftCountRow>(
-    sql`
-      select count(*)::integer as count from (
-        select 1 from openerp.invoice_drafts d where d.book_id = ${bookId} limit ${bound + 1}
-      ) bounded
     `,
     "objects",
   );
@@ -273,16 +260,22 @@ export function readDraftSummaries(
   bookId: string,
   draftId: string | null,
   bound: number,
+  afterKey: string | null = null,
+  search = "",
 ) {
-  return transaction.execute<DraftBodyRow>(
+  return transaction.execute<{ readonly id: string; readonly body: JsonObject }>(
     sql`
-      select summary.body, count(*) over () as total, count(*) over () > ${bound} as "hasMore"
+      select source.id, summary.body
       from (
-        select r.body, d.draft_key
+        select d.id, r.body, d.draft_key
         from openerp.invoice_drafts d
         join openerp.invoice_draft_revisions r
           on r.book_id = d.book_id and r.draft_id = d.id and r.revision = d.current_revision
         where d.book_id = ${bookId} and (${draftId}::text is null or d.id = ${draftId})
+          and (${afterKey}::text is null or d.draft_key collate "C" > ${afterKey}::text collate "C")
+          and (${search}::text = '' or
+            concat(r.body->'content'->>'title', ' ', r.body->'content'->'customer'->>'legalName')
+              ilike ${"%" + search.replace(/[\\%_]/g, "\\$&") + "%"})
       ) source
       cross join lateral (
         select jsonb_build_object(
@@ -300,6 +293,7 @@ export function readDraftSummaries(
         ) as body
       ) summary
       order by source.draft_key collate "C", source.body->>'revision' collate "C"
+      limit ${bound + 1}
     `,
     "objects",
   );
@@ -1090,6 +1084,9 @@ export function readSalesDraftRows(transaction: Transaction, bookId: string) {
       where d.book_id = ${bookId}
         and not exists (
           select from openerp.invoice_issues i where i.book_id = d.book_id and i.draft_id = d.id
+        )
+        and not exists (
+          select from openerp.ar_legal_issues i where i.book_id = d.book_id and i.draft_id = d.id
         )
       order by d.id collate "C"
     `,

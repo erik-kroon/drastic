@@ -1679,3 +1679,39 @@ export const getSupplierSettlementCancellation = Effect.fn(
     }),
   );
 });
+
+export function readSettlementOpeningSourceInTransaction(
+  tx: Transaction,
+  scope: Scope,
+  allocationReceiptId: string,
+) {
+  return Effect.gen(function* () {
+    const rows = yield* Db.readReceiptByAllocation(tx, scope.bookId, allocationReceiptId);
+
+    if (rows.length > 1) return yield* failure("UnsupportedProfile");
+    const row = rows[0];
+
+    if (!row) return null;
+    const receipt = yield* decode(Settlement.SupplierSettlementReceipt, row.body);
+    const inverse = (yield* Db.readCancellationReceipt(tx, scope.bookId, receipt.id))[0];
+
+    if (inverse) return null;
+    const planRow = (yield* Db.readPlan(tx, scope.bookId, receipt.planId))[0];
+
+    if (!planRow) return yield* failure("StaleDependency");
+    const plan = yield* decode(Settlement.SupplierSettlementPlan, planRow.body);
+
+    return {
+      id: receipt.id,
+      invoiceId: plan.input.invoiceId,
+      voucherId: receipt.postingReceipt.voucherId,
+      lineId: plan.controlLineId,
+      bankLineId: plan.bankLineId,
+      bankAccountId: plan.basis.source.accountId,
+      statementId: plan.input.statementId,
+      rowOrdinal: plan.input.rowOrdinal,
+      evidenceId: plan.basis.sourceEvidence.evidenceId,
+      sha256: plan.basis.sourceEvidence.sha256,
+    };
+  });
+}

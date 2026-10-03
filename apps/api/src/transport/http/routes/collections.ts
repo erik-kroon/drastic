@@ -5,8 +5,51 @@ import { HttpApiBuilder } from "effect/http-api";
 import { authenticate } from "../auth";
 import * as Commerce from "../../../application/commerce/collections";
 
+import * as Reminders from "../../../application/commerce/reminders";
+
 export const CollectionsHandlers = HttpApiBuilder.group(Api, "collections", (handlers) =>
   handlers
+    .handle("prepareReminder", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Reminders.prepareReminder(token, {
+          scope: scopeFromPath(params),
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("readReminder", ({ params }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Reminders.readReminder(token, { scope: scopeFromPath(params), id: params.id }),
+      ),
+    )
+    .handle("approveReminder", ({ params, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Reminders.approveReminder(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          input: payload,
+        }),
+      ),
+    )
+    .handle("cancelReminder", ({ params, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Reminders.cancelReminder(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          input: payload,
+        }),
+      ),
+    )
+    .handle("reconcileReminder", ({ params, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Reminders.reconcileReminder(token, {
+          scope: scopeFromPath(params),
+          id: params.id,
+          input: payload,
+        }),
+      ),
+    )
     .handle("collectionWorklist", ({ params, query: search }) =>
       Effect.flatMap(authenticate, (token) =>
         Commerce.readWorklist(token, { scope: scopeFromPath(params), page: search.page ?? "1" }),

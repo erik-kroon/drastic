@@ -69,6 +69,7 @@ function Work() {
                 { value: "expense", label: attentionCopy(locale).expense },
                 { value: "document", label: attentionCopy(locale).document },
                 { value: "supplier", label: attentionCopy(locale).supplier },
+                { value: "recurring", label: attentionCopy(locale).recurring },
               ]}
               onValueChange={(kind) => {
                 if (
@@ -77,7 +78,8 @@ function Work() {
                   kind === "invoice" ||
                   kind === "expense" ||
                   kind === "document" ||
-                  kind === "supplier"
+                  kind === "supplier" ||
+                  kind === "recurring"
                 )
                   void navigate({ search: { ...filters, kind, after: undefined } });
               }}

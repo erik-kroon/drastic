@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
+import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import {
   AgreementEventKind,
   CycleOrdinal,
@@ -91,7 +91,7 @@ export const RecurringDateOffsets = Schema.Struct({
   dueDays: DayOffset,
 });
 
-export const RecurringTemplateInput = Schema.Struct({
+export const SourceRecurringTemplateInput = Schema.Struct({
   title: Title,
   counterpartyId: Accounting.Identifier,
   seller: Drafts.DraftIdentity,
@@ -103,6 +103,23 @@ export const RecurringTemplateInput = Schema.Struct({
   sourceTotalMinor: Schema.NullOr(Accounting.MinorUnits),
   lines: Schema.Array(Drafts.DraftLine).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
 });
+
+export const CommercialRecurringTemplateInput = Schema.Struct({
+  kind: Schema.Literal("commercial"),
+  title: Title,
+  counterpartyId: Accounting.Identifier,
+  seller: Drafts.DraftIdentity,
+  currency: SourceRecurringTemplateInput.fields.currency,
+  currencyScale: SourceRecurringTemplateInput.fields.currencyScale,
+  paymentTerms: Schema.NullOr(PaymentTerms),
+  dateOffsets: RecurringDateOffsets,
+  lines: Schema.Array(Drafts.CommercialLine).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
+});
+
+export const RecurringTemplateInput = Schema.Union([
+  SourceRecurringTemplateInput,
+  CommercialRecurringTemplateInput,
+]);
 
 export type RecurringTemplateInput = typeof RecurringTemplateInput.Type;
 
@@ -130,6 +147,13 @@ export const RecurringScheduleRevision = Schema.Struct({
   reason: Accounting.Description,
   createdAt: Schema.String,
   receipt: Commerce.CommandReceipt,
+  origin: Schema.optional(
+    Schema.Struct({
+      kind: Schema.Literal("retained_agreement"),
+      sourceCreatedAt: Schema.String,
+      sourceReceipt: Commerce.CommandReceipt,
+    }),
+  ),
   digest: Accounting.Digest,
 });
 
@@ -193,6 +217,14 @@ export const OccurrenceStatus = Schema.Literals(["drafted"]);
 
 export type OccurrenceStatus = typeof OccurrenceStatus.Type;
 
+export const RecurringCatchUpWitness = Schema.Struct({
+  agreementRevision: Commerce.Version,
+  agreementDigest: Accounting.Digest,
+  configurationDigest: Accounting.Digest,
+  eventDigest: Accounting.Digest,
+  eventOrdinal: Schema.Int,
+});
+
 export const RecurringOccurrence = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -204,6 +236,7 @@ export const RecurringOccurrence = Schema.Struct({
   selectedTemplateRevision: Commerce.Version,
   selectedTemplateDigest: Accounting.Digest,
   selectedScheduleRevision: Commerce.Version,
+  catchUpWitness: Schema.optional(RecurringCatchUpWitness),
   status: OccurrenceStatus,
   draftId: Accounting.Identifier,
   createdAt: Schema.String,
@@ -334,6 +367,71 @@ export const RecurringCyclePlan = Schema.Struct({
 
 export type RecurringCyclePlan = typeof RecurringCyclePlan.Type;
 
+export const RecurringSchedulingInput = Schema.Struct({
+  expectedGeneration: Schema.String.check(Schema.isPattern(/^(?:0|[1-9][0-9]{0,17})$/)),
+  enabled: Schema.Boolean,
+  firstAutomaticCycle: CycleOrdinal,
+  duePolicy: Schema.Literal("local_calendar_date_v1"),
+  confirmFirstAutomaticCycle: Schema.Literal(true),
+  reason: Accounting.Description,
+});
+
+export const RecurringCatchUpInput = Schema.Struct({
+  expectedGeneration: Commerce.Version,
+  cycleOrdinals: Schema.Array(CycleOrdinal).check(Schema.isMinLength(1), Schema.isMaxLength(20)),
+  confirmCatchUp: Schema.Literal(true),
+  reason: Accounting.Description,
+});
+
+export const RecurringDraftJobState = Schema.Literals([
+  "ready",
+  "drafted",
+  "skipped",
+  "existing",
+  "failed",
+]);
+
+export const RecurringDraftJob = Schema.Struct({
+  id: Accounting.Identifier,
+  cycleOrdinal: CycleOrdinal,
+  cycleDate: Accounting.AccountingDate,
+  generation: Commerce.Version,
+  state: RecurringDraftJobState,
+  reason: Schema.NullOr(Schema.String),
+  draftId: Schema.NullOr(Accounting.Identifier),
+});
+
+export const RecurringScheduling = Schema.Struct({
+  scope: Accounting.Scope,
+  agreementId: Accounting.Identifier,
+  enabled: Schema.Boolean,
+  generation: Commerce.Version,
+  firstAutomaticCycle: CycleOrdinal,
+  nextCycleOrdinal: CycleOrdinal,
+  nextCycleDate: Accounting.AccountingDate,
+  requestedBy: Accounting.Identifier,
+  timeZone: TimeZone,
+  duePolicy: Schema.Literal("local_calendar_date_v1"),
+  history: Schema.Array(RecurringDraftJob).check(Schema.isMaxLength(200)),
+  selectedJob: Schema.NullOr(RecurringDraftJob),
+  continuation: Schema.NullOr(Accounting.Identifier),
+});
+
+export const RecurringSchedulingQuery = Schema.Struct({
+  after: Schema.optional(Accounting.Identifier),
+  job: Schema.optional(Accounting.Identifier),
+});
+
+export const RecurringAgreementQuery = Schema.Struct({
+  after: Schema.optional(Accounting.Identifier),
+});
+
+export const RecurringAgreementPage = Schema.Struct({
+  scope: Accounting.Scope,
+  items: Schema.Array(RecurringAgreement).check(Schema.isMaxLength(100)),
+  continuation: Schema.NullOr(Accounting.Identifier),
+});
+
 const agreementPath = Schema.Struct({
   entityId: Accounting.Identifier,
   bookId: Accounting.Identifier,
@@ -357,70 +455,109 @@ const write = {
 
 const read = { params: agreementPath, error: accountingErrors };
 
-export const RecurringInvoicesApi = HttpApiGroup.make("recurringInvoices").add(
-  HttpApiEndpoint.post("proposeRecurringAgreement", path, {
-    params: Accounting.Scope,
-    headers: Accounting.IdempotencyHeaders,
-    error: accountingErrors,
-    payload: ProposeRecurringAgreement.annotate({ parseOptions: { onExcessProperty: "error" } }),
-    success: RecurringAgreement,
-  }),
-  HttpApiEndpoint.post("amendRecurringSchedule", `${path}/:agreementId/schedules`, {
-    ...write,
-    payload: AmendRecurringSchedule.annotate({ parseOptions: { onExcessProperty: "error" } }),
-    success: RecurringScheduleRevision,
-  }),
-  HttpApiEndpoint.post(
-    "proposeRecurringTemplateRevision",
-    `${path}/:agreementId/template-revisions`,
-    {
+export const RecurringInvoicesApi = HttpApiGroup.make("recurringInvoices")
+  .add(
+    HttpApiEndpoint.get("listRecurringAgreements", path, {
+      params: Accounting.Scope,
+      query: RecurringAgreementQuery,
+      error: accountingErrors,
+      success: RecurringAgreementPage,
+    }),
+    HttpApiEndpoint.post("setRecurringDraftScheduling", `${path}/:agreementId/scheduling`, {
       ...write,
-      payload: ProposeRecurringTemplateRevision.annotate({
-        parseOptions: { onExcessProperty: "error" },
-      }),
-      success: RecurringTemplateRevision,
-    },
-  ),
-  HttpApiEndpoint.post("recordRecurringAgreementEvent", `${path}/:agreementId/events`, {
-    ...write,
-    payload: RecordRecurringAgreementEvent.annotate({
-      parseOptions: { onExcessProperty: "error" },
+      payload: RecurringSchedulingInput,
+      success: RecurringScheduling,
     }),
-    success: RecurringAgreementEvent,
-  }),
-  HttpApiEndpoint.post("materializeRecurringOccurrence", `${path}/:agreementId/occurrences`, {
-    ...write,
-    payload: MaterializeRecurringOccurrence.annotate({
-      parseOptions: { onExcessProperty: "error" },
+    HttpApiEndpoint.get("getRecurringDraftScheduling", `${path}/:agreementId/scheduling`, {
+      ...read,
+      query: RecurringSchedulingQuery,
+      success: RecurringScheduling,
     }),
-    success: RecurringOccurrence,
-  }),
-  HttpApiEndpoint.get("planRecurringOccurrences", `${path}/:agreementId/plan`, {
-    params: agreementPath,
-    query: RecurringCyclePlanQuery,
-    error: accountingErrors,
-    success: RecurringCyclePlan,
-  }),
-  HttpApiEndpoint.get("getRecurringAgreement", `${path}/:agreementId`, {
-    ...read,
-    success: RecurringAgreementView,
-  }),
-  HttpApiEndpoint.get("listRecurringOccurrences", `${path}/:agreementId/occurrences`, {
-    ...read,
-    query: RecurringOccurrenceQuery,
-    success: RecurringOccurrenceList,
-  }),
-  HttpApiEndpoint.get("getRecurringOccurrence", `${path}/:agreementId/occurrences/:cycleOrdinal`, {
-    params: agreementOccurrencePath,
-    error: accountingErrors,
-    success: RecurringOccurrenceView,
-  }),
-);
+    HttpApiEndpoint.post("catchUpRecurringDrafts", `${path}/:agreementId/scheduling/catch-up`, {
+      ...write,
+      payload: RecurringCatchUpInput,
+      success: RecurringScheduling,
+    }),
+    HttpApiEndpoint.post("proposeRecurringAgreement", path, {
+      params: Accounting.Scope,
+      headers: Accounting.IdempotencyHeaders,
+      error: accountingErrors,
+      payload: ProposeRecurringAgreement,
+      success: RecurringAgreement,
+    }),
+    HttpApiEndpoint.post("amendRecurringSchedule", `${path}/:agreementId/schedules`, {
+      ...write,
+      payload: AmendRecurringSchedule,
+      success: RecurringScheduleRevision,
+    }),
+    HttpApiEndpoint.post(
+      "proposeRecurringTemplateRevision",
+      `${path}/:agreementId/template-revisions`,
+      {
+        ...write,
+        payload: ProposeRecurringTemplateRevision,
+        success: RecurringTemplateRevision,
+      },
+    ),
+    HttpApiEndpoint.post("recordRecurringAgreementEvent", `${path}/:agreementId/events`, {
+      ...write,
+      payload: RecordRecurringAgreementEvent,
+      success: RecurringAgreementEvent,
+    }),
+    HttpApiEndpoint.post("materializeRecurringOccurrence", `${path}/:agreementId/occurrences`, {
+      ...write,
+      payload: MaterializeRecurringOccurrence,
+      success: RecurringOccurrence,
+    }),
+    HttpApiEndpoint.get("planRecurringOccurrences", `${path}/:agreementId/plan`, {
+      params: agreementPath,
+      query: RecurringCyclePlanQuery,
+      error: accountingErrors,
+      success: RecurringCyclePlan,
+    }),
+    HttpApiEndpoint.get("getRecurringAgreement", `${path}/:agreementId`, {
+      ...read,
+      success: RecurringAgreementView,
+    }),
+    HttpApiEndpoint.get("listRecurringOccurrences", `${path}/:agreementId/occurrences`, {
+      ...read,
+      query: RecurringOccurrenceQuery,
+      success: RecurringOccurrenceList,
+    }),
+    HttpApiEndpoint.get(
+      "getRecurringOccurrence",
+      `${path}/:agreementId/occurrences/:cycleOrdinal`,
+      {
+        params: agreementOccurrencePath,
+        error: accountingErrors,
+        success: RecurringOccurrenceView,
+      },
+    ),
+  )
+  .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" });
 
 // Agreement events and template revisions change future billing, and a
 // materialized occurrence is a commercial draft. Ordinary MCP exposes the reads
 // only; the mutations stay behind operator HTTP authority.
 export const RecurringInvoiceCapabilities = {
+  commerce_list_recurring_agreements: {
+    description:
+      "Read the bounded, book-scoped recurring agreement directory and its continuation.",
+    input: Schema.Struct({ scope: Accounting.Scope, ...RecurringAgreementQuery.fields }),
+    output: RecurringAgreementPage,
+    readOnly: true,
+  },
+  commerce_get_recurring_draft_scheduling: {
+    description:
+      "Read retained recurring draft enrollment, examined cursor and bounded cycle job history. Queue dispatch is not financial issuance authority.",
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      agreementId: Accounting.Identifier,
+      ...RecurringSchedulingQuery.fields,
+    }),
+    output: RecurringScheduling,
+    readOnly: true,
+  },
   commerce_get_recurring_agreement: {
     description:
       "Read one recurring invoice agreement with its immutable schedule and template revision boundaries and its pause, resume and end events. Cycle identity is the anchor and cycle ordinal, never a schedule or template revision.",

@@ -112,6 +112,7 @@ export const CreateInvoiceDraft = Schema.Union([
   Schema.Struct({
     draftKey: Accounting.Identifier,
     commercial: CommercialContent,
+    occurrence: Schema.optional(OccurrenceReference),
   }),
 ]);
 
@@ -190,6 +191,12 @@ export const SourceInvoiceDraftRevision = Schema.Struct({
   digest: Accounting.Digest,
 });
 
+export const RecurringTemplateOrigin = Schema.Struct({
+  agreementId: Accounting.Identifier,
+  revision: Commerce.Version,
+  digest: Accounting.Digest,
+});
+
 export const InvoiceDraftRevision = Schema.Union([
   SourceInvoiceDraftRevision,
   Schema.Struct({
@@ -197,6 +204,7 @@ export const InvoiceDraftRevision = Schema.Union([
     purpose: Schema.Literal("commercial"),
     calculationBasis: Schema.Literal("commercial_minor_v1"),
     commercialInput: CommercialContent,
+    recurringTemplateOrigin: Schema.optional(RecurringTemplateOrigin),
     copiedCustomerDefaults: Schema.optional(Crm.CopiedCustomerInvoiceDefaults),
     inputDigest: Accounting.Digest,
   }),
@@ -261,18 +269,28 @@ export const InvoiceDraftSummary = Schema.Struct({
 
 export const InvoiceDraftList = Schema.Struct({
   scope: Accounting.Scope,
-  complete: Schema.Literal(true),
+  complete: Schema.Boolean,
   count: Schema.Int,
+  continuation: Schema.NullOr(Accounting.Identifier),
   capturedAt: Schema.String,
   digest: Accounting.Digest,
   items: Schema.Array(InvoiceDraftSummary).check(Schema.isMaxLength(200)),
 });
 
 export const InvoiceDraftHistory = Schema.Struct({
-  ...InvoiceDraftList.fields,
+  scope: InvoiceDraftList.fields.scope,
+  complete: Schema.Literal(true),
+  count: InvoiceDraftList.fields.count,
+  capturedAt: InvoiceDraftList.fields.capturedAt,
+  digest: InvoiceDraftList.fields.digest,
   id: Accounting.Identifier,
   currentRevision: Commerce.Version,
   items: Schema.Array(InvoiceDraftSummary).check(Schema.isMaxLength(50)),
+});
+
+export const InvoiceDraftQuery = Schema.Struct({
+  after: Schema.optional(Accounting.Identifier),
+  search: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
 });
 
 export const DraftRevisionQuery = Schema.Struct({ revision: Schema.optional(Commerce.Version) });
@@ -320,6 +338,7 @@ export const InvoiceDraftsApi = HttpApiGroup.make("invoiceDrafts")
     }),
     HttpApiEndpoint.get("listInvoiceDrafts", path, {
       params: Accounting.Scope,
+      query: InvoiceDraftQuery,
       success: InvoiceDraftList,
       error: accountingErrors,
     }),
@@ -352,8 +371,8 @@ export const InvoiceDraftCapabilities = {
   },
   commerce_list_invoice_drafts: {
     description:
-      "Read the complete bounded current commercial-draft list. Not the issued or posted invoice register.",
-    input: Schema.Struct({ scope: Accounting.Scope }),
+      "Read one scoped current-draft page, with search and an actual draft identifier for continuation. Count describes returned items; complete is true only when the first page contains the whole matching inventory. Financial issuance stays with its owner.",
+    input: Schema.Struct({ scope: Accounting.Scope, ...InvoiceDraftQuery.fields }),
     output: InvoiceDraftList,
     readOnly: true,
   },

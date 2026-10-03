@@ -370,6 +370,7 @@ const resolveCommercialArticlePrice = Effect.fn("commerce.drafts.resolveCommerci
     scope: Scope,
     line: typeof Drafts.CommercialLine.Type,
     prior: typeof Drafts.InvoiceDraftRevision.Type | undefined,
+    copiedLines?: ReadonlyArray<typeof Drafts.CommercialLine.Type>,
   ) {
     const selection = line.catalogSelection;
 
@@ -380,7 +381,11 @@ const resolveCommercialArticlePrice = Effect.fn("commerce.drafts.resolveCommerci
         ? prior.commercialInput.lines.find((item) => item.id === line.id)?.catalogSelection
         : undefined;
 
-    const copied = previous !== undefined && equalJson(previous, selection);
+    const recurringSelection = copiedLines?.find((item) => item.id === line.id)?.catalogSelection;
+
+    const copied =
+      (previous !== undefined && equalJson(previous, selection)) ||
+      (recurringSelection !== undefined && equalJson(recurringSelection, selection));
 
     const row = (yield* CatalogDb.readArticleRevision(
       transaction,
@@ -477,6 +482,7 @@ export const calculateCommercialContent = Effect.fn("commerce.drafts.calculateCo
     book: DraftDb.BookCurrencyRow,
     input: typeof Drafts.CommercialContent.Type,
     prior?: typeof Drafts.InvoiceDraftRevision.Type,
+    copiedLines?: ReadonlyArray<typeof Drafts.CommercialLine.Type>,
   ) {
     const snapshot = yield* resolveCopiedDraftDefaults(transaction, scope, book, input, prior);
     const lines: DraftLine[] = [];
@@ -485,7 +491,15 @@ export const calculateCommercialContent = Effect.fn("commerce.drafts.calculateCo
     for (const line of input.lines) {
       if (seen.has(line.id)) return yield* failure("InvalidJournal");
       seen.add(line.id);
-      const unitPriceMinor = yield* resolveCommercialArticlePrice(transaction, scope, line, prior);
+
+      const unitPriceMinor = yield* resolveCommercialArticlePrice(
+        transaction,
+        scope,
+        line,
+        prior,
+        copiedLines,
+      );
+
       let taxEvidenceId: string | null = null;
       let taxDescription: string | null = null;
 
@@ -592,6 +606,8 @@ export const calculateCommercialContent = Effect.fn("commerce.drafts.calculateCo
         input,
         digest: inputDigest,
         copiedCustomerDefaults: snapshot,
+        recurringTemplateOrigin:
+          prior?.purpose === "commercial" ? prior.recurringTemplateOrigin : undefined,
       },
       copiedCustomerDefaults: snapshot,
       inputDigest,

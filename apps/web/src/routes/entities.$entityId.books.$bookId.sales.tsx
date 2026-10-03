@@ -1,5 +1,7 @@
 import { createFileRoute, defaultStringifySearch } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
+import * as Accounting from "@open-erp/contracts/accounting";
+import { RecurringDraftRecovery } from "@/components/commerce/recurring-draft-recovery";
 import * as Sales from "@open-erp/contracts/sales-register";
 import { SalesWorkspace } from "@/components/commerce/sales-workspace";
 import { CollectionsWorkspace } from "@/components/commerce/collections";
@@ -22,6 +24,8 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/sales")(
       ),
       view: Schema.optional(Schema.String),
       record: Schema.optional(Schema.String),
+      reminder: Schema.optional(Accounting.Identifier),
+      job: Schema.optional(Accounting.Identifier),
       work: WorkReturnSearch,
       returnTo: OwnerReturnSearch,
       kind: Schema.optional(Schema.Literals(["draft", "invoice"])),
@@ -48,6 +52,8 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/sales")(
 
 function Page() {
   const search = Route.useSearch();
+
+  if (search.view === "recurring") return <RecurringPage />;
 
   if (search.view === "orders") return <OrdersPage />;
 
@@ -112,7 +118,23 @@ function CollectionsPage() {
       >
         {locale === "sv" ? "Till fakturor" : "Back to invoices"}
       </Link>
-      <CollectionsWorkspace book={book} locale={locale} />
+      <CollectionsWorkspace book={book} locale={locale} reminderId={search.reminder} />
+    </PageContent>
+  );
+}
+
+function RecurringPage() {
+  const { book, locale } = useBookWorkspace();
+  const search = Route.useSearch();
+
+  return (
+    <PageContent>
+      <RecurringDraftRecovery
+        book={book}
+        locale={locale}
+        agreementId={search.record}
+        jobId={search.job}
+      />
     </PageContent>
   );
 }

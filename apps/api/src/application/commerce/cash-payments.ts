@@ -77,13 +77,29 @@ export const readCashCoverageInTransaction = Effect.fn("commerce.cashPayment.rea
   },
 );
 
-export const readFinalCashSourceInTransaction = Effect.fn("commerce.cashPayment.readFinalSource")(
-  function* (tx: Transaction, scope: Scope, voucherId: string, lineId: string) {
+export function findFinalCashSourceInTransaction(
+  tx: Transaction,
+  scope: Scope,
+  voucherId: string,
+  lineId: string,
+) {
+  return Effect.gen(function* () {
     const rows = yield* Db.readFinalCashSource(tx, scope.bookId, voucherId, lineId);
 
-    if (rows.length !== 1 || !rows[0]) return yield* failure("UnsupportedProfile");
+    if (rows.length > 1) return yield* failure("UnsupportedProfile");
+    const row = rows[0];
 
-    return yield* decode(CashMethod.CashPaymentSource, rows[0].body);
+    return row ? yield* decode(CashMethod.CashPaymentSource, row.body) : null;
+  });
+}
+
+export const readFinalCashSourceInTransaction = Effect.fn("commerce.cashPayment.readFinalSource")(
+  function* (tx: Transaction, scope: Scope, voucherId: string, lineId: string) {
+    const source = yield* findFinalCashSourceInTransaction(tx, scope, voucherId, lineId);
+
+    if (!source) return yield* failure("UnsupportedProfile");
+
+    return source;
   },
 );
 

@@ -52,6 +52,9 @@ export function attentionPath(
   if (item.supplierReview)
     return `${workReturnHref(`${workspacePath(book)}/purchases`, "supplier-drafts", work)}&record=${encodeURIComponent(item.supplierReview.draftId)}&review=${encodeURIComponent(item.supplierReview.reviewId)}`;
 
+  if (item.kind === "recurring" && item.recurringAgreementId)
+    return `${workReturnHref(`${workspacePath(book)}/sales`, "recurring", work)}&record=${encodeURIComponent(item.recurringAgreementId)}&job=${encodeURIComponent(item.id)}`;
+
   if (item.kind === "journal")
     return `${reviewPath(book, item.id, item.revision)}${defaultStringifySearch(work)}`;
 
@@ -92,6 +95,8 @@ const english = {
   expense: "Expenses",
   document: "Incoming documents",
   supplier: "Supplier drafts",
+  recurring: "Recurring drafts",
+  recurring_draft_failed: "Review recurring draft failure",
   document_review: "Review original",
   document_reading_failed: "Review original after reading failed",
   document_reviewed: "Document review complete",
@@ -106,7 +111,7 @@ const english = {
   expense_review: "Review tax treatment",
   expense_reviewed: "Tax review saved",
   coverage:
-    "Journal proposals, customer and supplier drafts, incoming documents and expense reviews. Undated documents remain visible when filtering by period. Other period checks are available in Year-end.",
+    "Journal proposals, customer and supplier drafts, incoming documents, expense reviews and failed recurring drafts. Undated documents remain visible when filtering by period. Other period checks are available in Year-end.",
   emptyPage: "No work on this page",
   emptyPageDetail: "The list may have changed. Return to the first page of this view.",
   empty: "Nothing in this view",
@@ -134,6 +139,8 @@ const swedish: typeof english = {
   expense: "Utgifter",
   document: "Inkomna underlag",
   supplier: "Leverantörsutkast",
+  recurring: "Återkommande utkast",
+  recurring_draft_failed: "Granska fel i återkommande utkast",
   document_review: "Granska original",
   document_reading_failed: "Granska original efter misslyckad läsning",
   document_reviewed: "Underlag granskat",
@@ -148,7 +155,7 @@ const swedish: typeof english = {
   expense_review: "Granska moms",
   expense_reviewed: "Momsgranskning sparad",
   coverage:
-    "Bokföringsförslag, kund- och leverantörsutkast, inkomna underlag och utgiftsgranskningar. Odaterade underlag visas även vid periodfilter. Övriga periodkontroller finns under Årsavslut.",
+    "Bokföringsförslag, kund- och leverantörsutkast, inkomna underlag, utgiftsgranskningar och misslyckade återkommande utkast. Odaterade underlag visas även vid periodfilter. Övriga periodkontroller finns under Årsavslut.",
   emptyPage: "Inget arbete på den här sidan",
   emptyPageDetail: "Listan kan ha ändrats. Gå tillbaka till första sidan i den här vyn.",
   empty: "Inget i den här vyn",

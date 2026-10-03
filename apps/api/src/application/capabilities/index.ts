@@ -8,6 +8,7 @@ import { commerceLegalCapabilities } from "./commerce-legal";
 import { closingCapabilities } from "./closing";
 import { financialCloseCapabilities } from "./financial-close";
 import { collectionsCapabilities } from "./collections";
+import { cashForecastCapabilities } from "./cash-forecast";
 import { bankingCapabilities } from "./banking";
 import { bankingSyncCapabilities } from "./bank-sync-windows";
 import { bankingSourceRevisionCapabilities } from "./bank-source-revisions";
@@ -52,6 +53,7 @@ export const capabilities = {
   ...financialCloseCapabilities,
   ...collectionsCapabilities,
   ...bankingCapabilities,
+  ...cashForecastCapabilities,
   ...bankingSyncCapabilities,
   ...bankingSourceRevisionCapabilities,
   ...prepaymentCapabilities,

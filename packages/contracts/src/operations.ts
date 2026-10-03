@@ -199,7 +199,7 @@ export const QueueSequence = Schema.Struct({
   isCalled: Schema.Boolean,
 });
 
-export const RecoveryWorkInventory = Schema.Struct({
+export const RecoveryWorkInventoryV2 = Schema.Struct({
   version: Schema.Literal(2),
   queue: Schema.Struct({
     tables: Schema.Array(TableFingerprint).check(Schema.isMinLength(7), Schema.isMaxLength(7)),
@@ -269,10 +269,139 @@ export const RecoveryWorkInventory = Schema.Struct({
   resumptionAuthority: Schema.Literal("not-granted"),
 }).annotate({ parseOptions: { onExcessProperty: "error" } });
 
+export const RecurringWorkSummary = Schema.Struct({
+  ...RecoveryWorkSummary.fields,
+  recurringSchedules: Count,
+  enabledRecurringSchedules: Count,
+  recurringEvents: Count,
+  recurringJobs: Count,
+  readyRecurringJobs: Count,
+  failedRecurringJobs: Count,
+});
+
+export const RecoveryWorkInventoryV3 = Schema.Struct({
+  ...RecoveryWorkInventoryV2.fields,
+  version: Schema.Literal(3),
+  summary: RecurringWorkSummary,
+  recurringSchedules: Schema.Array(
+    Schema.Struct({
+      bookId: Schema.String,
+      agreementId: Schema.String,
+      enabled: Schema.Boolean,
+      generation: Count,
+      firstAutomaticCycle: Count,
+      nextCycleOrdinal: Count,
+      requestedBy: Schema.String,
+      timeZone: Schema.String,
+      duePolicy: Schema.Literal("local_calendar_date_v1"),
+    }),
+  ).check(Schema.isMaxLength(10000)),
+  recurringEvents: Schema.Array(
+    Schema.Struct({
+      bookId: Schema.String,
+      agreementId: Schema.String,
+      generation: Count,
+      bodySha256: Digest,
+    }),
+  ).check(Schema.isMaxLength(10000)),
+  recurringJobs: Schema.Array(
+    Schema.Struct({
+      bookId: Schema.String,
+      id: Schema.String,
+      agreementId: Schema.String,
+      cycleOrdinal: Count,
+      generation: Count,
+      scheduleGeneration: Count,
+      requestedBy: Schema.String,
+      executorId: Schema.String,
+      admittedSha256: Digest,
+      state: Schema.Literals(["ready", "drafted", "skipped", "existing", "failed"]),
+      reason: Schema.NullOr(Schema.String),
+      draftId: Schema.NullOr(Schema.String),
+      dispatchedAt: Schema.NullOr(Schema.String),
+      settledAt: Schema.NullOr(Schema.String),
+    }),
+  ).check(Schema.isMaxLength(10000)),
+}).annotate({ parseOptions: { onExcessProperty: "error" } });
+
+export const ReminderWorkSummary = Schema.Struct({
+  ...RecurringWorkSummary.fields,
+  reminderMessages: Count,
+  reminderApprovals: Count,
+  reminderAttempts: Count,
+  reminderOutbox: Count,
+  reminderObservations: Count,
+});
+
+export const RecoveryWorkInventoryV4 = Schema.Struct({
+  ...RecoveryWorkInventoryV3.fields,
+  version: Schema.Literal(4),
+  summary: ReminderWorkSummary,
+  providerAttemptHistory: Schema.Literal("payment-reminder-attempts-retained"),
+  reminderMessages: Schema.Array(
+    Schema.Struct({
+      bookId: Schema.String,
+      id: Schema.String,
+      bodySha256: Digest,
+    }),
+  ).check(Schema.isMaxLength(10000)),
+  reminderApprovals: Schema.Array(
+    Schema.Struct({
+      bookId: Schema.String,
+      messageId: Schema.String,
+      bodySha256: Digest,
+    }),
+  ).check(Schema.isMaxLength(10000)),
+  reminderAttempts: Schema.Array(
+    Schema.Struct({
+      bookId: Schema.String,
+      id: Schema.String,
+      messageId: Schema.String,
+      externalIdentity: Schema.String,
+      bodySha256: Digest,
+    }),
+  ).check(Schema.isMaxLength(10000)),
+  reminderOutbox: Schema.Array(
+    Schema.Struct({
+      bookId: Schema.String,
+      messageId: Schema.String,
+      state: Schema.Literals([
+        "approved",
+        "admitted",
+        "reconciling",
+        "provider_accepted",
+        "delivered",
+        "outcome_unknown",
+        "failed",
+        "cancelled",
+        "refused",
+      ]),
+      checkpoint: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 1000 })),
+      cancelVersion: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 1 })),
+      reason: Schema.NullOr(Schema.String),
+      checkedAt: Schema.String,
+    }),
+  ).check(Schema.isMaxLength(10000)),
+  reminderObservations: Schema.Array(
+    Schema.Struct({
+      bookId: Schema.String,
+      attemptId: Schema.String,
+      observationId: Schema.String,
+      bodySha256: Digest,
+    }),
+  ).check(Schema.isMaxLength(10000)),
+}).annotate({ parseOptions: { onExcessProperty: "error" } });
+
+export const RecoveryWorkInventory = Schema.Union([
+  RecoveryWorkInventoryV2,
+  RecoveryWorkInventoryV3,
+  RecoveryWorkInventoryV4,
+]);
+
 export const BackupWorkInventory = Schema.Struct({
   version: Schema.Literal(1),
   file: BackupFile,
-  summary: RecoveryWorkSummary,
+  summary: Schema.Union([ReminderWorkSummary, RecurringWorkSummary, RecoveryWorkSummary]),
   recoveryProcedurePath: Schema.NullOr(Schema.String),
 });
 
