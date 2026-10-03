@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, defaultStringifySearch } from "@tanstack/react-router";
+import { useNavigate, useRouter, defaultStringifySearch } from "@tanstack/react-router";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Sales from "@open-erp/contracts/sales-register";
 import { Plus, ArrowLeft, ArrowRight, Search } from "lucide-react";
@@ -71,6 +71,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
   const { book, locale } = useBookWorkspace();
   const client = useQueryClient();
   const navigate = useNavigate();
+  const router = useRouter();
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
   const base = `${workspacePath(book)}/sales`;
@@ -127,6 +128,8 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
   const focusRegister = () => {
     if (
       !pendingFocus.current ||
+      router.state.location.pathname !== base ||
+      router.state.location.search.record ||
       client.isFetching({ queryKey: registerOptions.queryKey, exact: true })
     )
       return;
@@ -159,7 +162,8 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
     });
   };
 
-  const open = (id: string, kind: "draft" | "invoice") =>
+  const open = (id: string, kind: "draft" | "invoice") => {
+    pendingFocus.current = false;
     change({
       ...search,
       view: undefined,
@@ -172,6 +176,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
       paymentPage: undefined,
       paymentHistoryPage: undefined,
     });
+  };
 
   const rowUrl = (row: typeof Sales.SalesRow.Type) => {
     return `${base}${defaultStringifySearch({
