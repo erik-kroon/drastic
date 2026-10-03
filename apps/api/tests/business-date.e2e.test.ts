@@ -267,15 +267,22 @@ test("real overview follows the server date despite browser clock skew and suppl
         { query: "?from=2026-03-01&to=2026-03-31", from: "2026-03-01", to: "2026-03-31" },
       ]) {
         await page.goto(`${workspace}/accounts${period.query}`);
-        await expect.poll(() => page.getByLabel("From", { exact: true }).inputValue()).toBe(period.from);
-        await expect.poll(() => page.getByLabel("To", { exact: true }).inputValue()).toBe(period.to);
+        await expect
+          .poll(() => page.getByLabel("From", { exact: true }).inputValue())
+          .toBe(period.from);
+        await expect
+          .poll(() => page.getByLabel("To", { exact: true }).inputValue())
+          .toBe(period.to);
+
         const [response] = await Promise.all([
           page.waitForResponse((candidate) => {
             const requested = new URL(candidate.url());
 
-            return requested.pathname.endsWith("/bank-workspace") &&
+            return (
+              requested.pathname.endsWith("/bank-workspace") &&
               requested.searchParams.get("startsOn") === period.from &&
-              requested.searchParams.get("endsOn") === period.to;
+              requested.searchParams.get("endsOn") === period.to
+            );
           }),
           page.getByRole("button", { name: "Refresh", exact: true }).click(),
         ]);
@@ -285,6 +292,7 @@ test("real overview follows the server date despite browser clock skew and suppl
         expect(payload).toMatchObject({ startsOn: period.from, endsOn: period.to });
         bankPeriodReceipts.push({ period, status: response.status(), payload });
       }
+
       await page.goto(`${workspace}/setup`);
       await expect.poll(() => admissionDates.at(-1)).toBe(serverToday);
       await page.goto(`${workspace}/purchases?view=supplier-drafts`);
