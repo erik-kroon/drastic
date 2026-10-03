@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, defaultStringifySearch } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
 import * as Sales from "@open-erp/contracts/sales-register";
 import { SalesWorkspace } from "@/components/commerce/sales-workspace";
@@ -6,7 +6,7 @@ import { CollectionsWorkspace } from "@/components/commerce/collections";
 import { SalesOrders } from "@/components/commerce/sales-orders";
 import { CatalogArticles } from "@/components/commerce/catalog-articles";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import { WorkReturnSearch } from "@/lib/work-return";
+import { WorkReturnSearch, OwnerReturnSearch } from "@/lib/work-return";
 import { Link } from "@open-erp/ui/components/link";
 import { PageContent } from "@open-erp/ui/components/accounting-page";
 
@@ -23,6 +23,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/sales")(
       view: Schema.optional(Schema.String),
       record: Schema.optional(Schema.String),
       work: WorkReturnSearch,
+      returnTo: OwnerReturnSearch,
       kind: Schema.optional(Schema.Literals(["draft", "invoice"])),
       stage: Schema.optional(Schema.Literals(["review", "payments"])),
       review: Schema.optional(Schema.String),
@@ -70,10 +71,13 @@ function Page() {
 
 function OrdersPage() {
   const { book, locale } = useBookWorkspace();
+  const search = Route.useSearch();
 
   return (
     <PageContent>
-      <Link href={`${workspacePath(book)}/sales`}>
+      <Link
+        href={`${workspacePath(book)}/sales${defaultStringifySearch({ ...search, view: undefined, record: undefined })}`}
+      >
         {locale === "sv" ? "Till fakturor" : "Back to invoices"}
       </Link>
       <SalesOrders book={book} locale={locale} />
@@ -83,10 +87,13 @@ function OrdersPage() {
 
 function CatalogPage() {
   const { book, locale } = useBookWorkspace();
+  const search = Route.useSearch();
 
   return (
     <PageContent>
-      <Link href={`${workspacePath(book)}/sales`}>
+      <Link
+        href={`${workspacePath(book)}/sales${defaultStringifySearch({ ...search, view: undefined, record: undefined })}`}
+      >
         {locale === "sv" ? "Till fakturor" : "Back to invoices"}
       </Link>
       <CatalogArticles book={book} locale={locale} />
@@ -96,10 +103,13 @@ function CatalogPage() {
 
 function CollectionsPage() {
   const { book, locale } = useBookWorkspace();
+  const search = Route.useSearch();
 
   return (
     <PageContent>
-      <Link href={`${workspacePath(book)}/sales`}>
+      <Link
+        href={`${workspacePath(book)}/sales${defaultStringifySearch({ ...search, view: undefined, record: undefined })}`}
+      >
         {locale === "sv" ? "Till fakturor" : "Back to invoices"}
       </Link>
       <CollectionsWorkspace book={book} locale={locale} />

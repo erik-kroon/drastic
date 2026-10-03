@@ -385,6 +385,7 @@ function EditingSession(
         }
         closeLabel={sv ? "Stäng" : "Close"}
         onClose={() => (dirty ? setClosing(true) : props.onClose())}
+        onEscape={() => (dirty ? setClosing(true) : props.onClose())}
       >
         <Box display="grid" gap="md">
           {restored && !state.pending ? (
@@ -424,6 +425,7 @@ function EditingSession(
           title={sv ? "Stäng fakturautkastet?" : "Close this invoice draft?"}
           closeLabel={sv ? "Fortsätt redigera" : "Keep editing"}
           onClose={cancelClose}
+          onEscape={cancelClose}
         >
           <Box display="grid" gap="lg">
             <Text>

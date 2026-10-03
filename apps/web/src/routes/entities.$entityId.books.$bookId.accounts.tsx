@@ -2,24 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
 import { FinanceArea } from "@/components/finance-area";
 import { BankAccountWorkspace } from "@/components/bank-account-workspace";
-import { AccountingDate, Identifier } from "@open-erp/contracts/accounting";
+import { BankOwnerQuery, OwnerReturnSearch } from "@/lib/work-return";
 
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/accounts")({
   validateSearch: Schema.decodeUnknownSync(
     Schema.Struct({
-      view: Schema.optional(Schema.String),
-      record: Schema.optional(Schema.String),
-      account: Schema.optional(Identifier),
-      from: Schema.optional(AccountingDate),
-      to: Schema.optional(AccountingDate),
-      tab: Schema.optional(Schema.Literals(["unmatched", "all", "matched", "ledger"])),
-      q: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
-      page: Schema.optional(Schema.Union([Schema.String, Schema.Int])),
-      statement: Schema.optional(Identifier),
-      row: Schema.optional(Schema.Union([Schema.String, Schema.Int])),
-      plan: Schema.optional(Identifier),
-      undo: Schema.optional(Identifier),
-      report: Schema.optional(Identifier),
+      ...BankOwnerQuery.fields,
+      returnTo: OwnerReturnSearch,
     }),
   ),
   component: Page,
@@ -39,5 +28,14 @@ function Page() {
       />
     );
 
-  return <FinanceArea area="accounts" view={search.view} record={search.record} />;
+  return (
+    <FinanceArea
+      area="accounts"
+      view={search.view}
+      record={search.record}
+      account={search.account}
+      bankSearch={search}
+      returnTo={search.returnTo}
+    />
+  );
 }

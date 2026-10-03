@@ -60,6 +60,7 @@ export function FormDialog({
   title,
   closeLabel,
   onClose,
+  onEscape,
   children,
   size = "wide",
 }: {
@@ -67,6 +68,7 @@ export function FormDialog({
   title: string;
   closeLabel: string;
   onClose: () => void;
+  onEscape?: () => void;
   children: ReactNode;
 }) {
   return (
@@ -76,6 +78,7 @@ export function FormDialog({
       onOpenChange={(open, event) => {
         if (event.reason === "escape-key") {
           event.cancel();
+          onEscape?.();
 
           return;
         }
