@@ -2,11 +2,14 @@ import { readFile } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
 import { Client } from "pg";
 import * as Schema from "effect/Schema";
+import * as Match from "effect/Match";
 import {
   BackupManifest,
   BookBoundary,
   RecoveryWorkInventory,
   RecoveryWorkInventoryV3,
+  RecoveryWorkInventoryV4,
+  ReminderWorkSummary,
   RecurringWorkSummary,
   RecoveryWorkSummary,
   TableFingerprint,
@@ -14,9 +17,13 @@ import {
 import { artifactPath, fingerprint, refuse } from "./safety";
 import { queueTables, readQueueSequences } from "./queue";
 
-export const workInventoryPath = "durable-work-v3.json";
+export const workInventoryPath = "durable-work-v4.json";
 
-export const workInventoryPaths = ["durable-work-v2.json", workInventoryPath];
+export const workInventoryPaths = [
+  "durable-work-v2.json",
+  "durable-work-v3.json",
+  workInventoryPath,
+];
 
 const inventoryByteLimit = 8388608;
 
@@ -33,7 +40,15 @@ const recurringWorkTables = [
   "recurring_invoice_draft_jobs",
 ];
 
-const workTables = [...legacyWorkTables, ...recurringWorkTables];
+const reminderWorkTables = [
+  "reminder_messages",
+  "reminder_approvals",
+  "reminder_attempts",
+  "reminder_outbox",
+  "reminder_observations",
+];
+
+const workTables = [...legacyWorkTables, ...recurringWorkTables, ...reminderWorkTables];
 
 function workSummary(
   inventory: Pick<typeof RecoveryWorkInventory.Type, "outbox" | "runs" | "jobs" | "savedRequests">,
@@ -91,6 +106,30 @@ function recurringSummary(
   });
 }
 
+function reminderSummary(
+  inventory: Omit<
+    typeof RecoveryWorkInventoryV4.Type,
+    | "summary"
+    | "version"
+    | "queue"
+    | "kind"
+    | "snapshot"
+    | "books"
+    | "providerAttemptHistory"
+    | "remoteWorkflowState"
+    | "resumptionAuthority"
+  >,
+) {
+  return Schema.decodeSync(ReminderWorkSummary)({
+    ...recurringSummary(inventory),
+    reminderMessages: String(inventory.reminderMessages.length),
+    reminderApprovals: String(inventory.reminderApprovals.length),
+    reminderAttempts: String(inventory.reminderAttempts.length),
+    reminderOutbox: String(inventory.reminderOutbox.length),
+    reminderObservations: String(inventory.reminderObservations.length),
+  });
+}
+
 function uniqueScopedIds(items: ReadonlyArray<{ bookId: string; id: string }>) {
   if (new Set(items.map((item) => JSON.stringify([item.bookId, item.id]))).size !== items.length)
     refuse("Durable work inventory contains duplicate scoped identities.");
@@ -100,7 +139,11 @@ function validateInventory(
   inventory: typeof RecoveryWorkInventory.Type,
   tables: ReadonlyArray<typeof TableFingerprint.Type>,
 ) {
-  const summary = inventory.version === 3 ? recurringSummary(inventory) : workSummary(inventory);
+  const summary = Match.value(inventory).pipe(
+    Match.when({ version: 4 }, reminderSummary),
+    Match.when({ version: 3 }, recurringSummary),
+    Match.orElse(workSummary),
+  );
 
   if (!isDeepStrictEqual(summary, inventory.summary))
     refuse("Durable work summary differs from its complete retained inventory.");
@@ -150,7 +193,7 @@ function validateInventory(
       refuse("Durable work belongs to an unrepresented book.");
   }
 
-  if (inventory.version === 3) {
+  if (inventory.version !== 2) {
     const recurringFamilies = [
       inventory.recurringSchedules.map((row) => ({ bookId: row.bookId, id: row.agreementId })),
       inventory.recurringEvents.map((row) => ({
@@ -201,6 +244,74 @@ function validateInventory(
           "Recurring examined cursor or complete enrollment event generation boundary is invalid.",
         );
     }
+  }
+
+  if (inventory.version === 4) {
+    const families = [
+      inventory.reminderMessages,
+      inventory.reminderApprovals.map((row) => ({ bookId: row.bookId, id: row.messageId })),
+      inventory.reminderAttempts,
+      inventory.reminderOutbox.map((row) => ({ bookId: row.bookId, id: row.messageId })),
+      inventory.reminderObservations.map((row) => ({
+        bookId: row.bookId,
+        id: JSON.stringify([row.attemptId, row.observationId]),
+      })),
+    ];
+
+    for (const [index, family] of families.entries()) {
+      const table = tables.find(
+        (row) => row.schema === "openerp" && row.table === reminderWorkTables[index],
+      );
+
+      if (!table || BigInt(table.rows) !== BigInt(family.length))
+        refuse("Reminder inventory differs from complete snapshot table counts.");
+      uniqueScopedIds(family);
+
+      if (family.some((row) => !bookIds.has(row.bookId)))
+        refuse("Reminder work belongs to an unrepresented book.");
+    }
+
+    const messages = new Set(
+      inventory.reminderMessages.map((row) => JSON.stringify([row.bookId, row.id])),
+    );
+
+    const approvals = new Set(
+      inventory.reminderApprovals.map((row) => JSON.stringify([row.bookId, row.messageId])),
+    );
+
+    const attempts = new Set(
+      inventory.reminderAttempts.map((row) => JSON.stringify([row.bookId, row.id])),
+    );
+
+    if (
+      inventory.reminderApprovals.some(
+        (row) => !messages.has(JSON.stringify([row.bookId, row.messageId])),
+      )
+    )
+      refuse("Reminder approval has no scoped retained message.");
+
+    if (
+      [...inventory.reminderAttempts, ...inventory.reminderOutbox].some(
+        (row) => !approvals.has(JSON.stringify([row.bookId, row.messageId])),
+      )
+    )
+      refuse("Reminder progress has no scoped retained approval.");
+
+    if (
+      inventory.reminderObservations.some(
+        (row) => !attempts.has(JSON.stringify([row.bookId, row.attemptId])),
+      )
+    )
+      refuse("Reminder observation has no scoped admitted attempt.");
+    uniqueScopedIds(
+      inventory.reminderAttempts.map((row) => ({ bookId: row.bookId, id: row.messageId })),
+    );
+
+    if (
+      new Set(inventory.reminderAttempts.map((row) => row.externalIdentity)).size !==
+      inventory.reminderAttempts.length
+    )
+      refuse("Reminder attempts contain duplicate external identities.");
   }
 
   const runIds = new Set(inventory.runs.map((run) => JSON.stringify([run.bookId, run.id])));
@@ -285,7 +396,43 @@ export async function captureWorkInventory(
     'settledAt',to_char(settled_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')) AS body
     FROM openerp.recurring_invoice_draft_jobs ORDER BY book_id COLLATE "C",id COLLATE "C"`);
 
+  const reminderMessages = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+    'bookId',book_id,'id',id,'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
+    FROM openerp.reminder_messages ORDER BY book_id COLLATE "C",id COLLATE "C"`);
+
+  const reminderApprovals = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+    'bookId',book_id,'messageId',message_id,'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
+    FROM openerp.reminder_approvals ORDER BY book_id COLLATE "C",message_id COLLATE "C"`);
+
+  const reminderAttempts = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+    'bookId',book_id,'id',id,'messageId',message_id,'externalIdentity',external_identity,'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
+    FROM openerp.reminder_attempts ORDER BY book_id COLLATE "C",id COLLATE "C"`);
+
+  const reminderOutbox = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+    'bookId',book_id,'messageId',message_id,'state',state,'checkpoint',checkpoint,'cancelVersion',cancel_version,'reason',reason,
+    'checkedAt',to_char(checked_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')) AS body
+    FROM openerp.reminder_outbox ORDER BY book_id COLLATE "C",message_id COLLATE "C"`);
+
+  const reminderObservations = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+    'bookId',book_id,'attemptId',attempt_id,'observationId',observation_id,'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
+    FROM openerp.reminder_observations ORDER BY book_id COLLATE "C",attempt_id COLLATE "C",observation_id COLLATE "C"`);
+
   const families = {
+    reminderMessages: Schema.decodeUnknownSync(RecoveryWorkInventoryV4.fields.reminderMessages)(
+      reminderMessages.rows.map((row) => row.body),
+    ),
+    reminderApprovals: Schema.decodeUnknownSync(RecoveryWorkInventoryV4.fields.reminderApprovals)(
+      reminderApprovals.rows.map((row) => row.body),
+    ),
+    reminderAttempts: Schema.decodeUnknownSync(RecoveryWorkInventoryV4.fields.reminderAttempts)(
+      reminderAttempts.rows.map((row) => row.body),
+    ),
+    reminderOutbox: Schema.decodeUnknownSync(RecoveryWorkInventoryV4.fields.reminderOutbox)(
+      reminderOutbox.rows.map((row) => row.body),
+    ),
+    reminderObservations: Schema.decodeUnknownSync(
+      RecoveryWorkInventoryV4.fields.reminderObservations,
+    )(reminderObservations.rows.map((row) => row.body)),
     recurringSchedules: Schema.decodeUnknownSync(RecoveryWorkInventoryV3.fields.recurringSchedules)(
       recurringSchedules.rows.map((row) => row.body),
     ),
@@ -309,8 +456,8 @@ export async function captureWorkInventory(
     ),
   };
 
-  const inventory = Schema.decodeSync(RecoveryWorkInventoryV3)({
-    version: 3,
+  const inventory = Schema.decodeSync(RecoveryWorkInventoryV4)({
+    version: 4,
     queue: {
       tables: tables.filter(
         (table) => table.schema === "public" && queueTables.includes(table.table),
@@ -321,8 +468,8 @@ export async function captureWorkInventory(
     snapshot,
     books: books.rows.map((row) => Schema.decodeUnknownSync(BookBoundary)(row.body)),
     ...families,
-    summary: recurringSummary(families),
-    providerAttemptHistory: "not-recorded-by-current-schema",
+    summary: reminderSummary(families),
+    providerAttemptHistory: "payment-reminder-attempts-retained",
     remoteWorkflowState: "not-inspected",
     resumptionAuthority: "not-granted",
   });
@@ -364,7 +511,7 @@ export async function inspectWorkInventory(bundle: string, manifest: typeof Back
   if (actual.bytes !== retained.file.bytes || actual.sha256 !== retained.file.sha256)
     refuse("Durable work artifact failed checksum validation.");
 
-  const inventory = Schema.decodeUnknownSync(RecoveryWorkInventory)(
+  const inventory = Schema.decodeUnknownSync(RecoveryWorkInventory, { onExcessProperty: "error" })(
     JSON.parse(await readFile(path, "utf8")),
   );
 

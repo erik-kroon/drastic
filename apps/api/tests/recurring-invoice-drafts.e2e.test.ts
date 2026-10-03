@@ -1138,7 +1138,7 @@ test("durable work inventory binds recurring enrollment, examined cursor and act
 
     const body = Schema.decodeUnknownSync(
       Schema.Struct({
-        version: Schema.Literal(3),
+        version: Schema.Literal(4),
         recurringSchedules: Schema.Array(
           Schema.Struct({
             bookId: Schema.String,

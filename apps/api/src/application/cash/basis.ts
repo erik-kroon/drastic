@@ -74,18 +74,22 @@ function readPaymentMemberships(
     >();
 
     for (const payment of payments) {
-      const cashSource = yield* findFinalCashSourceInTransaction(
+      const supplierSource = yield* readSettlementOpeningSourceInTransaction(
         transaction,
         scope,
-        payment.paymentVoucherId,
-        payment.paymentLineId,
+        payment.receiptId,
       );
 
-      const supplierSource = cashSource
+      const cashSource = supplierSource
         ? null
-        : yield* readSettlementOpeningSourceInTransaction(transaction, scope, payment.receiptId);
+        : yield* findFinalCashSourceInTransaction(
+            transaction,
+            scope,
+            payment.paymentVoucherId,
+            payment.paymentLineId,
+          );
 
-      const source = cashSource ?? supplierSource;
+      const source = supplierSource ?? cashSource;
 
       const sourceIdentityCurrent =
         supplierSource === null ||

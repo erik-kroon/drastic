@@ -306,7 +306,26 @@ async function stop(handle: Runner) {
 }
 
 async function settle(context: Context, amountMinor: string) {
-  const source = context.original.sourceEvidence.evidenceId;
+  const retained = await post(
+    context.book,
+    "/evidence",
+    {
+      title: "Synthetic reminder payment",
+      content: JSON.stringify({
+        kind: "synthetic_reminder_payment",
+        issueId: context.original.id,
+        amountMinor,
+        on: context.today,
+        identity: key(),
+      }),
+      mediaType: "application/json",
+      origin: "Disposable reminder payment fixture",
+    },
+    Accounting.Evidence,
+  );
+
+  const source = retained.id;
+  expect(source).not.toBe(context.original.sourceEvidence.evidenceId);
 
   const plan = await post(
     context.book,
@@ -1304,6 +1323,10 @@ test("recovery v4 binds all five reminder families and preserves complete older 
     if (!snapshot) throw new Error("Recovery snapshot missing");
     const tables = await tableFingerprints(admin);
     const captured = await captureWorkInventory(admin, tables, snapshot);
+    await writeFile(
+      join(environment().artifacts, "reminder-recovery-capture.json"),
+      JSON.stringify(captured, null, 2),
+    );
 
     const body = Schema.decodeUnknownSync(
       Schema.Struct({
