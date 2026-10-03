@@ -356,6 +356,14 @@
       "consumers": [
         "apps/api"
       ]
+    },
+    {
+      "leaf": "cash-forecast",
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/cash/forecast.ts",
+        "packages/contracts/src/cash-forecast.ts"
+      ]
     }
   ]
 }

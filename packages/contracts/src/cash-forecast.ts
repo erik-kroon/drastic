@@ -1,3 +1,4 @@
+import * as Forecast from "@open-erp/domain/cash-forecast";
 import * as Schema from "effect/Schema";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api";
 import * as Accounting from "./accounting";
@@ -171,11 +172,66 @@ export const CashBasisView = Schema.Struct({
   }),
 });
 
+export const CaptureCashForecast = Schema.Struct({
+  basisId: Accounting.Identifier,
+  basisDigest: Accounting.Digest,
+  horizonDays: Forecast.ForecastHorizon,
+  bufferMinor: Accounting.MinorUnits,
+  expectedDates: CaptureCashBasis.fields.expectedDates,
+});
+
+export const CashForecastSnapshot = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  actorId: Accounting.Identifier,
+  createdAt: Schema.String,
+  calculatorVersion: Schema.Literal("known_items_exact_v1"),
+  basisId: Accounting.Identifier,
+  basisDigest: Accounting.Digest,
+  input: CaptureCashForecast,
+  asOf: Accounting.CalendarDate,
+  recordedCutoff: Schema.String,
+  horizonDays: Forecast.ForecastHorizon,
+  endsOn: Accounting.CalendarDate,
+  label: Schema.Literal("known_items"),
+  companyCoverage: Schema.Literal("incomplete"),
+  quality: Schema.Struct({
+    opening: Schema.Literals(["qualified", "unavailable"]),
+    sourceCoverage: Schema.Literal("incomplete"),
+    datedContributions: Schema.Literals(["qualified", "incomplete"]),
+    dependenciesAtCapture: Schema.Literal("current"),
+  }),
+  result: Forecast.ForecastResult,
+  contributions: Schema.Array(Forecast.ForecastContribution).check(Schema.isMaxLength(10000)),
+  foreignObligations: CashBasis.fields.foreignObligations,
+  digest: Accounting.Digest,
+});
+
+export const CashForecastView = Schema.Struct({
+  forecast: CashForecastSnapshot,
+  dependenciesCurrent: Schema.Boolean,
+  dependencyStatus: CashBasisView.fields.dependencyStatus,
+  dependencyReason: CashBasisView.fields.dependencyReason,
+  artifact: CashBasisView.fields.artifact,
+});
+
 const path = "/v1/entities/:entityId/books/:bookId/cash-bases";
 
 export const CashForecastApi = HttpApiGroup.make("cashForecast")
   .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" })
   .add(
+    HttpApiEndpoint.post("captureCashForecast", "/v1/entities/:entityId/books/:bookId/cash-forecasts", {
+      params: Accounting.Scope, headers: Accounting.IdempotencyHeaders,
+      payload: CaptureCashForecast, success: CashForecastSnapshot, error: accountingErrors,
+    }),
+    HttpApiEndpoint.get("getCashForecast", "/v1/entities/:entityId/books/:bookId/cash-forecasts/:id", {
+      params: Accounting.ChangePath, success: CashForecastView, error: accountingErrors,
+    }),
+    HttpApiEndpoint.get("exportCashForecast", "/v1/entities/:entityId/books/:bookId/cash-forecasts/:id/export", {
+      params: Accounting.ChangePath,
+      success: Schema.String.pipe(HttpApiSchema.asText({ contentType: "application/json" })),
+      error: accountingErrors,
+    }),
     HttpApiEndpoint.post("captureCashBasis", path, {
       params: Accounting.Scope,
       headers: Accounting.IdempotencyHeaders,
@@ -196,6 +252,16 @@ export const CashForecastApi = HttpApiGroup.make("cashForecast")
   );
 
 export const CashForecastCapabilities = {
+  cash_capture_forecast: {
+    description: "Save an immutable exact known-items forecast from a current retained cash basis and reviewed date assumptions. Never posts or executes payments. Coverage remains incomplete.",
+    input: Schema.Struct({ scope: Accounting.Scope, idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"], input: CaptureCashForecast }),
+    output: CashForecastSnapshot, readOnly: false,
+  },
+  cash_get_forecast: {
+    description: "Read the original immutable forecast and exact JSON artifact, with current authority and separate dependency freshness. Historical results are never recalculated.",
+    input: Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier }),
+    output: CashForecastView, readOnly: true,
+  },
   cash_capture_basis: {
     description:
       "Capture immutable current known cash items from retained selected bank witnesses and canonical invoice residuals. Reviewed references contain no financial amounts. Preserves unavailable opening and company coverage gaps.",

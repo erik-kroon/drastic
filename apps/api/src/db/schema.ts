@@ -1895,3 +1895,9 @@ export const cashBases = openerp.table("cash_bases", {
   sha256: text("sha256").notNull(),
   byteLength: integer("byte_length").notNull(),
 });
+
+export const cashForecasts = openerp.table("cash_forecasts", {
+  bookId: text("book_id").notNull(), id: text("id").notNull(), basisId: text("basis_id").notNull(),
+  body: jsonb("body").$type<Schema.JsonObject>().notNull(), content: text("content").notNull(),
+  sha256: text("sha256").notNull(), byteLength: integer("byte_length").notNull(),
+});
