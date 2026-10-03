@@ -4,6 +4,18 @@
 
 Application operations live in [application/banking/source-statement.ts](../src/application/banking/source-statement.ts), with shared dispatch in [capabilities](../src/application/capabilities/).
 
+## Current document library
+
+[Source retention](../src/application/source-retention.ts) owns the book-scoped archive search and byte export. [The archive projection](../src/db/source-archive.ts) reads retained supplier and expense owners inside that transaction. Documents consumes the contract through TanStack Query; it does not supply financial facts to the API.
+
+`GET /source-archive` returns ten retained originals per page with structured owner facts. Search supports filename or retained supplier-name text, exact filename/source system/occurrence, supplier identity, document dates, retention dates, exact gross amount with currency and scale, and invoice/voucher relationships. Supplier, amount, currency, date and relationship predicates must match the same current owner fact. Historical revisions remain inspectable. Search excludes OCR body text and unreviewed extraction suggestions.
+
+An owner relationship requires retained evidence with a known source-reference kind, exact occurrence ID and complete SHA-256. All qualifying supplier and expense revisions are included, including owners outside supplier inbox. Accepted invoice links pin the accepted supplier draft revision; cash invoice links pin their retained draft basis and may have no voucher. Expense reviews carry their separate revision, digest and time alongside the source identity. Unknown values stay unknown, and withdrawn sources remain visibly marked. Up to 1000 facts per original are supported; larger populations refuse the page with `UnsupportedProfile`. Extraction suggestions stay separate and unreviewed, within their owner's 50-attempt/64-field bounds.
+
+The opaque cursor binds normalized filters, scope, retained cutoff and a validated original anchor. Uploads after that cutoff stay outside the traversal. Owner revisions remain live, explicitly reported as `live_owner_revisions`; this is not a frozen financial snapshot. `/source-archive/export` uses the same filtered page and cutoff, returns byte-identical originals, and refuses if any selected original is unavailable. Metadata listing does not check bytes. Exact-original detail metadata uses `occurrenceId` rather than the legacy capped purchase-link listing. Browser owner links retain revision selections and the Documents return context.
+
+Migration `0064-document-library-source-evidence.sql` indexes the measured supplier revision evidence lookup. The [P05 delivery evidence](../../../docs/plans/evidence/product-p05/remainder-checkpoint.md) records backend, browser navigation and comparable performance observations with their integration and zoom limits.
+
 ## Historical implementation notes
 
 The notes below record the superseded SQL implementation and its original validation. Migration filenames and statement-map instructions here are historical references, not installation steps or current ownership. Use the [API layout and replacement status](../README.md) and [local setup](../../../docs/local-development.md) for the current application.

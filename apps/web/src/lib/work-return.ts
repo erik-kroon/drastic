@@ -2,6 +2,7 @@ import type {} from "@/router";
 import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
 import * as Accounting from "@open-erp/contracts/accounting";
+import * as Commerce from "@open-erp/contracts/commerce";
 import * as Sales from "@open-erp/contracts/sales-register";
 import * as Sources from "@open-erp/contracts/source-intake";
 import { AttentionQuery } from "@open-erp/contracts/workspace";
@@ -68,6 +69,9 @@ export function useWorkReturn() {
 export const DocumentQuery = Schema.Struct({
   work: WorkReturnSearch,
   ...Sources.ArchiveFilters.fields,
+  draftRevision: Schema.optional(Commerce.Version),
+  expenseRevision: Schema.optional(Commerce.Version),
+  expenseReviewId: Schema.optional(Accounting.Identifier),
   view: Schema.optional(Schema.String),
   record: Schema.optional(Schema.String),
 });

@@ -693,6 +693,7 @@ const ArchiveTraversal = Schema.Struct({
 
 function normalizedArchiveFilters(filters: Filters) {
   return {
+    occurrenceId: filters.occurrenceId ?? null,
     sourceSystem: filters.sourceSystem ?? null,
     filename: filters.filename ?? null,
     retainedFrom: filters.retainedFrom ?? null,

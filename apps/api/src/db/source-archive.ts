@@ -31,6 +31,7 @@ function occurrencePredicates(bookId: string, selection: ArchiveSelection) {
   const filters = selection.filters;
 
   return sql`o.book_id = ${bookId}
+    and (${filters.occurrenceId ?? null}::text is null or o.id = ${filters.occurrenceId ?? null})
     and (o.body->>'retainedAt')::timestamptz <= ${selection.cutoff}::timestamptz
     and (${filters.sourceSystem ?? null}::text is null or o.source_system = ${filters.sourceSystem ?? null})
     and (${filters.filename ?? null}::text is null or o.body->>'filename' = ${filters.filename ?? null})
@@ -56,15 +57,18 @@ export function readArchiveAnchor(
 export function listArchive(transaction: Transaction, bookId: string, selection: ArchiveSelection) {
   const filters = selection.filters;
 
-  const hasFactFilters =
-    filters.supplierId !== undefined ||
-    filters.documentFrom !== undefined ||
-    filters.documentTo !== undefined ||
-    filters.currency !== undefined ||
-    filters.currencyScale !== undefined ||
-    filters.amountMinor !== undefined ||
-    filters.invoiceId !== undefined ||
-    filters.voucherId !== undefined;
+  const hasFactFilters = [
+    filters.supplierId,
+    filters.documentFrom,
+    filters.documentTo,
+    filters.currency,
+    filters.currencyScale,
+    filters.amountMinor,
+    filters.invoiceId,
+    filters.voucherId,
+  ].some((value) => value !== undefined);
+
+  const requiresOwnerSearch = hasFactFilters || filters.q !== undefined;
 
   return transaction.execute<{
     readonly id: string;
@@ -73,18 +77,26 @@ export function listArchive(transaction: Transaction, bookId: string, selection:
     readonly suggestions: ReadonlyArray<JsonObject>;
   }>(
     sql`
-    with source_references as materialized (
-      select e.id, case when e.content is json object and pg_input_is_valid(e.content, 'jsonb') then e.content::jsonb else null end as reference
+    with candidates as materialized (
+      select o.id, o.body, o.sha256 from openerp.intake_occurrences o
+      where ${occurrencePredicates(bookId, selection)}
+        and o.id > coalesce(${selection.after}::text, '')
+      order by o.id ${requiresOwnerSearch ? sql`` : sql`limit 11`}
+    ), parsed_references as materialized (
+      select e.id, case when pg_input_is_valid(e.content, 'jsonb') then e.content::jsonb else null end as reference
       from openerp.evidence e where e.book_id = ${bookId}
+    ), source_references as materialized (
+      select id, reference->>'kind' as kind,
+        case when jsonb_typeof(reference->'source'->'occurrenceId') = 'string'
+          then reference->'source'->>'occurrenceId' else null end as occurrence_id,
+        case when jsonb_typeof(reference->'source'->'sha256') = 'string'
+          then reference->'source'->>'sha256' else null end as source_hash
+      from parsed_references where jsonb_typeof(reference) = 'object'
     ), qualified as materialized (
       select e.id as evidence_id, o.id as occurrence_id
-      from source_references e join openerp.intake_occurrences o
-        on o.book_id = ${bookId}
-        and jsonb_typeof(e.reference->'source'->'occurrenceId') = 'string'
-        and jsonb_typeof(e.reference->'source'->'sha256') = 'string'
-        and e.reference->'source'->>'occurrenceId' = o.id
-        and e.reference->'source'->>'sha256' = o.sha256
-      where e.reference->>'kind' in ('expense_entry_v1', 'supplier_invoice_source_v1')
+      from source_references e join candidates o
+        on e.occurrence_id = o.id and e.source_hash = o.sha256
+      where e.kind in ('expense_entry_v1', 'supplier_invoice_source_v1')
     ), supplier_facts as (
       select q.occurrence_id, jsonb_build_object(
         'ownerKind', 'supplier_draft', 'ownerId', r.draft_id, 'revision', r.revision::text,
@@ -146,10 +158,9 @@ export function listArchive(transaction: Transaction, bookId: string, selection:
       where not exists (select 1 from openerp.expense_tax_reviews newer
         where newer.book_id = review.book_id and newer.source_id = review.source_id and newer.revision > review.revision)
     ), selected as (
-      select o.id, o.body from openerp.intake_occurrences o
-      where ${occurrencePredicates(bookId, selection)}
-        and o.id > coalesce(${selection.after}::text, '')
-        and ((not ${hasFactFilters} and (${filters.q ?? null}::text is null
+      select o.id, o.body from candidates o
+      join openerp.intake_occurrences original on original.book_id = ${bookId} and original.id = o.id
+      where ((not ${hasFactFilters} and (${filters.q ?? null}::text is null
           or strpos(lower(o.body->>'filename'), lower(${filters.q ?? null})) > 0))
           or exists (select 1 from facts f where f.occurrence_id = o.id
             and (f.fact->>'currentSource')::boolean
@@ -163,7 +174,7 @@ export function listArchive(transaction: Transaction, bookId: string, selection:
             and (${filters.amountMinor ?? null}::text is null or f.fact->>'grossMinor' = ${filters.amountMinor ?? null})
             and (${filters.invoiceId ?? null}::text is null or f.fact->>'invoiceId' = ${filters.invoiceId ?? null})
             and (${filters.voucherId ?? null}::text is null or f.fact->>'voucherId' = ${filters.voucherId ?? null})))
-      order by o.id limit 11 for share of o
+      order by o.id limit 11 for share of original
     )
     select selected.id, selected.body,
       coalesce((select jsonb_agg(f.fact order by f.fact->>'ownerKind', f.fact->>'ownerId',

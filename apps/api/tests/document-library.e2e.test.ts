@@ -169,8 +169,21 @@ test("P05 search derives qualified current and historical facts with exact same-
 
   for (const bad of [
     "not JSON " + first.id,
+    JSON.stringify(
+      JSON.stringify({
+        kind: "supplier_invoice_source_v1",
+        source: { occurrenceId: first.id, sha256: first.sha256 },
+      }),
+    ),
+    JSON.stringify([
+      {
+        kind: "supplier_invoice_source_v1",
+        source: { occurrenceId: first.id, sha256: first.sha256 },
+      },
+    ]),
     "{malformed " + first.id,
     '{"kind":"supplier_invoice_source_v1","ignored":"\\u0000"}',
+    '{"kind":"supplier_invoice_source_v1","ignored":"\\ud800"}',
     JSON.stringify({ kind: "unknown", source: { occurrenceId: first.id, sha256: first.sha256 } }),
     JSON.stringify({
       kind: "supplier_invoice_source_v1",
@@ -230,6 +243,11 @@ test("P05 search derives qualified current and historical facts with exact same-
     ),
   ).toEqual([first.id]);
   expect((await search(book, { retainedTo: "2026-09-22" })).items).toEqual([]);
+  expect((await search(book, { occurrenceId: first.id })).items.map((row) => row.id)).toEqual([
+    first.id,
+  ]);
+  const unrelatedBook = await fixture();
+  expect((await search(unrelatedBook, { occurrenceId: first.id })).items).toEqual([]);
   const all = await search(book);
   expect(all.items).toHaveLength(2);
   expect(all.items.find((row) => row.id === sameBytes.id)?.facts).toEqual([
@@ -417,6 +435,7 @@ test("P05 cursor captures membership, validates scope and anchor, and scales to 
   }
 
   const before = await persisted(book);
+  expect((await search(book, { occurrenceId: original.id })).items[0]?.facts).toHaveLength(1);
   const first = await search(book, { filename: "performance.csv" });
   await stage("first_archive_page");
   expect(first.items).toHaveLength(10);
@@ -518,7 +537,7 @@ test("P05 cursor captures membership, validates scope and anchor, and scales to 
   await stage("scope_and_cursor_refusals");
   const latencyMs: number[] = [];
 
-  for (let sample = 0; sample < 12; sample += 1) {
+  for (let sample = 0; sample < 35; sample += 1) {
     const start = performance.now();
     await search(book, {
       q: "Architecture review supplier",
@@ -527,7 +546,7 @@ test("P05 cursor captures membership, validates scope and anchor, and scales to 
       currencyScale: "2",
     });
 
-    if (sample >= 2) latencyMs.push(performance.now() - start);
+    if (sample >= 5) latencyMs.push(performance.now() - start);
     await stage(`timing_sample_${sample}`);
   }
 
@@ -541,9 +560,9 @@ test("P05 cursor captures membership, validates scope and anchor, and scales to 
       {
         fixtureOccurrences: 10002,
         fixtureSupplierRevisions: 10000,
-        warmups: 2,
+        warmups: 5,
         latencyMs,
-        p50: sorted[4],
+        p50: sorted[14],
         p95,
         surface: "public HTTP metadata archive",
         ids,

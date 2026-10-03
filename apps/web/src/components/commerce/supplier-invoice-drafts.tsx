@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import * as Suppliers from "@open-erp/contracts/supplier-invoice-drafts";
 import { ArrowLeft, Plus, Pencil } from "lucide-react";
@@ -60,8 +61,6 @@ export function SupplierInvoiceDrafts(
   props: CommerceProps & {
     recordId?: string;
     onOpen: (id: string) => void;
-    // The open supplier occurrence, addressed on its own so opening a draft does
-    // not displace the original it came from.
     occurrenceId?: string;
     onOpenOccurrence: (id: string) => void;
   },
@@ -269,7 +268,18 @@ function SupplierDraftResults(
 
 function SupplierDraftDetail(props: CommerceProps & { id: string }) {
   const sv = props.locale === "sv";
-  const [revision, setRevision] = useState("");
+  const search = useSearch({ strict: false });
+  const navigate = useNavigate();
+  const revision = search.draftRevision ?? "";
+
+  const setRevision = (value: string) => {
+    void navigate({
+      to: ".",
+      search: (previous) => ({ ...previous, draftRevision: value || undefined }),
+      resetScroll: false,
+    });
+  };
+
   const [editing, setEditing] = useState<Draft | null>(null);
 
   const draft = useQuery({

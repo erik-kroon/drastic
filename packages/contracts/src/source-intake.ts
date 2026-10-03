@@ -226,6 +226,7 @@ export const ArchiveCursor = Schema.String.check(
 
 export const ArchiveFilters = Schema.Struct({
   cursor: Schema.optional(ArchiveCursor),
+  occurrenceId: Schema.optional(A.Identifier),
   sourceSystem: Schema.optional(Label),
   filename: Schema.optional(Label),
   retainedFrom: Schema.optional(A.AccountingDate),

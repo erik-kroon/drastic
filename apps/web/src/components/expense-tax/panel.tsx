@@ -13,8 +13,10 @@ import { RegisterSearch, PageEmpty, PageCaption } from "@open-erp/ui/components/
 import { ExpenseEditor, ExpenseRevisionEditor } from "./expense-editor";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { useRef, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
+import * as Option from "effect/Option";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import * as Tax from "@open-erp/contracts/expense-tax";
 import { Box } from "@open-erp/ui/components/box";
@@ -395,9 +397,32 @@ function ExpenseTaxHistory({
   view,
 }: Pick<Props, "book" | "locale"> & { view: typeof Tax.TaxSourceView.Type }) {
   const copy = expenseTaxCopy(locale);
-  const [selected, setSelected] = useState<string | null>(null);
-  const source = view.sourceHistory.find((entry) => entry.id === selected);
-  const review = view.reviewHistory.find((entry) => entry.id === selected);
+  const search = useSearch({ strict: false });
+  const navigate = useNavigate();
+
+  const source = search.expenseRevision
+    ? view.sourceHistory.find((entry) => String(entry.revision) === search.expenseRevision)
+    : undefined;
+
+  const review = search.expenseReviewId
+    ? view.reviewHistory.find((entry) => entry.id === search.expenseReviewId)
+    : undefined;
+
+  const selected = review?.id ?? source?.id;
+
+  const setSelected = (id: string | null) => {
+    const sourceRevision = view.sourceHistory.find((entry) => entry.id === id);
+    const reviewRevision = view.reviewHistory.find((entry) => entry.id === id);
+    void navigate({
+      to: ".",
+      search: (previous) => ({
+        ...previous,
+        expenseRevision: sourceRevision ? String(sourceRevision.revision) : undefined,
+        expenseReviewId: reviewRevision?.id,
+      }),
+      resetScroll: false,
+    });
+  };
 
   const entries = [
     ...view.sourceHistory.map((entry) => ({
@@ -416,10 +441,18 @@ function ExpenseTaxHistory({
 
   return (
     <RecordSection title={copy.history}>
+      {(search.expenseRevision || search.expenseReviewId) && !selected ? (
+        <PageCaption>
+          {locale === "sv"
+            ? "Den valda versionen finns inte för detta underlag."
+            : "The selected revision is absent from this source."}
+        </PageCaption>
+      ) : null}
       <Box display="flex" gap="sm" flexWrap="wrap">
         {entries.map((entry) => (
           <Button
             key={entry.id}
+            aria-pressed={selected === entry.id}
             variant={selected === entry.id ? "secondary" : "outline"}
             onClick={() => setSelected(selected === entry.id ? null : entry.id)}
           >
@@ -565,7 +598,7 @@ function ExpenseTaxSnapshots({
                 endsOn: fields.get("endsOn"),
               });
 
-              if (decoded._tag === "None") {
+              if (Option.isNone(decoded)) {
                 setInvalid(true);
 
                 return;

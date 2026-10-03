@@ -1,6 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, test } from "vitest";
+import * as Schema from "effect/Schema";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Sales from "@open-erp/contracts/sales-register";
@@ -92,10 +93,28 @@ test("archive URL preserves its filters, cursor, detail selection and return foc
     expect(await page.getByLabel("Source system", { exact: true }).inputValue()).toBe(
       "navigation_fixture",
     );
+
+    const archiveResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+
+      return (
+        url.pathname.endsWith("/source-archive") &&
+        url.searchParams.get("sourceSystem") === "navigation_fixture" &&
+        !url.searchParams.has("cursor") &&
+        response.status() === 200
+      );
+    });
+
+    await page.reload();
+
+    const displayedPage = Schema.decodeUnknownSync(Source.ArchiveSearch)(
+      await (await archiveResponse).json(),
+    );
+
+    const displayedCursor = displayedPage.nextCursor;
+    expect(displayedCursor).toEqual(expect.any(String));
     await page.getByRole("button", { name: "Next documents", exact: true }).click();
-    await expect
-      .poll(() => new URL(page.url()).searchParams.get("cursor"))
-      .toBe(firstPage.nextCursor);
+    await expect.poll(() => new URL(page.url()).searchParams.get("cursor")).toBe(displayedCursor);
     await page.reload();
     await page.getByRole("link", { name: selected.filename, exact: true }).waitFor();
     expect(await page.getByRole("link", { name: /^navigation-.*\.txt$/ }).count()).toBe(3);
@@ -118,7 +137,7 @@ test("archive URL preserves its filters, cursor, detail selection and return foc
       if (sample >= 5) timings.push({ openMs, closeMs: performance.now() - closed });
     }
 
-    expect(new URL(page.url()).searchParams.get("cursor")).toBe(firstPage.nextCursor);
+    expect(new URL(page.url()).searchParams.get("cursor")).toBe(displayedCursor);
     expect(new URL(page.url()).searchParams.get("sourceSystem")).toBe("navigation_fixture");
     await page.screenshot({
       path: join(environment().artifacts, "archive-return.png"),
@@ -141,7 +160,7 @@ test("archive URL preserves its filters, cursor, detail selection and return foc
     await page.getByRole("link", { name: "Back to work", exact: true }).click();
     await page.getByRole("heading", { name: selected.filename, exact: true }).waitFor();
     expect(new URL(page.url()).searchParams.get("work")).toBe(queue);
-    expect(new URL(page.url()).searchParams.get("cursor")).toBe(firstPage.nextCursor);
+    expect(new URL(page.url()).searchParams.get("cursor")).toBe(displayedCursor);
     await page.getByRole("button", { name: "All documents", exact: true }).click();
 
     await page.goto(`${workspace}/purchases?view=documents&record=${selected.id}`);
@@ -150,7 +169,7 @@ test("archive URL preserves its filters, cursor, detail selection and return foc
       .poll(() => page.evaluate(() => document.activeElement?.textContent?.trim()))
       .toBe("Documents");
     await page.goto(
-      `${workspace}/purchases?view=documents&sourceSystem=navigation_fixture&cursor=${firstPage.nextCursor}`,
+      `${workspace}/purchases?view=documents&sourceSystem=navigation_fixture&cursor=${displayedCursor}`,
     );
     await page.setViewportSize({ width: 320, height: 800 });
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -172,7 +191,7 @@ test("archive URL preserves its filters, cursor, detail selection and return foc
           scope: { entityId: book.entityId, bookId: book.bookId },
           firstPageCount: 10,
           secondPageCount: 3,
-          cursor: firstPage.nextCursor,
+          cursor: displayedCursor,
           selected: { id: selected.id, filename: selected.filename },
           finalUrl: page.url(),
           nativeZoom: "not_observed",
