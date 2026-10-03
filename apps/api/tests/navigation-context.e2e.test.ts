@@ -9,6 +9,7 @@ import * as Bank from "@open-erp/contracts/reconciliation";
 import * as Source from "@open-erp/contracts/source-intake";
 import {
   decoded,
+  database,
   environment,
   fixture,
   evidence,
@@ -502,6 +503,19 @@ test("sales page two, secondary routes and browser history retain the register a
     await page.goForward();
     await expect.poll(() => new URL(page.url()).searchParams.get("stage")).toBe("review");
     expect(new URL(page.url()).searchParams.get("record")).toBe(selected.id);
+    await page.goto(`${workspace}/sales?status=draft&q=${encodeURIComponent(selected.title)}`);
+    await opener.click();
+    await page.getByRole("button", { name: "Edit draft", exact: true }).click();
+    await page.getByRole("textbox", { name: "Invoice · Draft", exact: true }).fill("Renamed outside the original filter");
+    await page.getByLabel("What changed?", { exact: true }).fill("Synthetic removed-opener journey");
+    await page.getByRole("button", { name: "Save draft", exact: true }).click();
+    await page.getByRole("dialog", { name: "Edit invoice", exact: true }).waitFor({ state: "hidden" });
+    await page.getByRole("button", { name: "Edit draft", exact: true }).waitFor();
+    await page.getByRole("button", { name: "Close invoice", exact: true }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get("record")).toBe(null);
+    await expect.poll(() => opener.count()).toBe(0);
+    await expect.poll(() => page.evaluate(() => document.activeElement?.textContent?.trim())).toBe("Invoicing");
+    expect(new URL(page.url()).searchParams.get("q")).toBe(selected.title);
     await writeFile(
       join(environment().artifacts, "navigation-sales.json"),
       JSON.stringify(
@@ -509,11 +523,116 @@ test("sales page two, secondary routes and browser history retain the register a
           selected: { id: selected.id, title: selected.title },
           fixtureSize: 53,
           page: 2,
+          removedOpener: { matchingRows: 0, focusedHeading: "Invoicing", query: selected.title },
           finalUrl: page.url(),
         },
         null,
         2,
       ),
     );
+  });
+}, 120000);
+
+
+test("a delayed archive response from another book cannot replace the current book", async () => {
+  const oldBook = await fixture();
+  const currentBook = await fixture();
+  const admin = await database();
+
+  try {
+    await admin.query(
+      "INSERT INTO openerp.memberships(book_id, actor_id, role) VALUES ($1, $2, 'operator')",
+      [currentBook.bookId, oldBook.actorId],
+    );
+    await admin.query("UPDATE openerp.books SET name = $1 WHERE id = $2", [
+      "Synthetic isolation book",
+      currentBook.bookId,
+    ]);
+  } finally {
+    await admin.end();
+  }
+
+  await withWorkspaceBrowser(oldBook, "navigation-book-isolation", async (page, workspace) => {
+    const origin = new URL(workspace).origin;
+
+    for (const [book, filename] of [
+      [oldBook, "old-book-original.txt"],
+      [currentBook, "current-book-original.txt"],
+    ] as const) {
+      await decoded(
+        await fetch(`${origin}${book.path}/source-occurrences`, {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${book.token}`,
+            "content-type": "application/json",
+            "idempotency-key": key(),
+          },
+          body: JSON.stringify({
+            occurrenceKey: key(),
+            sourceSystem: "navigation_isolation",
+            sourceAccountId: "documents",
+            sourceRevision: "1",
+            filename,
+            mediaType: "text/plain",
+            contentBase64: Buffer.from(`Synthetic ${filename}`).toString("base64"),
+          }),
+        }),
+        Source.SourceOccurrence,
+      );
+    }
+
+    const release = Promise.withResolvers<void>();
+    const completed = Promise.withResolvers<void>();
+    let captured = false;
+    let oldRequestFailed = false;
+    const oldArchive = `${origin}${oldBook.path}/source-archive`;
+
+    page.on("requestfailed", (request) => {
+      if (request.url().startsWith(oldArchive)) oldRequestFailed = true;
+    });
+    await page.route(`${oldArchive}*`, async (route) => {
+      const response = await route.fetch();
+      const body = await response.text();
+
+      expect(response.status()).toBe(200);
+      expect(JSON.parse(body).items[0].filename).toBe("old-book-original.txt");
+      captured = true;
+      await release.promise;
+      await route.fulfill({ response, body });
+      completed.resolve();
+    });
+
+    try {
+      await page.goto(`${workspace}/purchases?view=documents`);
+      await expect.poll(() => captured).toBe(true);
+      await page.getByRole("link", { name: "Change workspace", exact: true }).click();
+      await page.getByRole("link", { name: "Synthetic isolation book", exact: true }).click();
+      await page.getByRole("link", { name: "Purchases", exact: true }).first().click();
+      await page.getByRole("link", { name: "Documents", exact: true }).click();
+      await page.getByRole("link", { name: "current-book-original.txt", exact: true }).waitFor();
+      release.resolve();
+      await completed.promise;
+      await page.getByRole("link", { name: "current-book-original.txt", exact: true }).click();
+      await page.getByRole("heading", { name: "current-book-original.txt", exact: true }).waitFor();
+      await page.getByRole("button", { name: "All documents", exact: true }).click();
+      await page.getByRole("link", { name: "current-book-original.txt", exact: true }).waitFor();
+      await expect.poll(() => page.getByRole("link", { name: "old-book-original.txt", exact: true }).count()).toBe(0);
+      expect(await page.getByRole("link", { name: "current-book-original.txt", exact: true }).count()).toBe(1);
+      expect(new URL(page.url()).pathname).toBe(`/entities/${currentBook.entityId}/books/${currentBook.bookId}/purchases`);
+      await writeFile(
+        join(environment().artifacts, "navigation-book-isolation.json"),
+        JSON.stringify({
+          oldScope: { entityId: oldBook.entityId, bookId: oldBook.bookId },
+          currentScope: { entityId: currentBook.entityId, bookId: currentBook.bookId },
+          delayedResponseReleased: true,
+          oldRequestFailed,
+          oldVisibleRows: 0,
+          currentVisibleRows: 1,
+          finalUrl: page.url(),
+        }, null, 2),
+      );
+    } finally {
+      release.resolve();
+    }
   });
 }, 120000);
