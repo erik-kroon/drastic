@@ -112,6 +112,7 @@ export const CreateInvoiceDraft = Schema.Union([
   Schema.Struct({
     draftKey: Accounting.Identifier,
     commercial: CommercialContent,
+    occurrence: Schema.optional(OccurrenceReference),
   }),
 ]);
 
@@ -190,6 +191,12 @@ export const SourceInvoiceDraftRevision = Schema.Struct({
   digest: Accounting.Digest,
 });
 
+export const RecurringTemplateOrigin = Schema.Struct({
+  agreementId: Accounting.Identifier,
+  revision: Commerce.Version,
+  digest: Accounting.Digest,
+});
+
 export const InvoiceDraftRevision = Schema.Union([
   SourceInvoiceDraftRevision,
   Schema.Struct({
@@ -197,6 +204,7 @@ export const InvoiceDraftRevision = Schema.Union([
     purpose: Schema.Literal("commercial"),
     calculationBasis: Schema.Literal("commercial_minor_v1"),
     commercialInput: CommercialContent,
+    recurringTemplateOrigin: Schema.optional(RecurringTemplateOrigin),
     copiedCustomerDefaults: Schema.optional(Crm.CopiedCustomerInvoiceDefaults),
     inputDigest: Accounting.Digest,
   }),

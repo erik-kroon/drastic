@@ -4,10 +4,45 @@ import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/http-api";
 import { authenticate } from "../auth";
 import { capabilities } from "../../../application/capabilities";
+import * as Scheduling from "../../../application/commerce/recurring-draft-scheduling";
 import * as Recurring from "../../../application/commerce/recurring-invoices";
 
 export const RecurringInvoiceHandlers = HttpApiBuilder.group(Api, "recurringInvoices", (handlers) =>
   handlers
+    .handle("listRecurringAgreements", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Scheduling.listRecurringAgreements(token, { scope: scopeFromPath(params), ...query }),
+      ),
+    )
+    .handle("getRecurringDraftScheduling", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Scheduling.getRecurringDraftScheduling(token, {
+          scope: scopeFromPath(params),
+          agreementId: params.agreementId,
+          ...query,
+        }),
+      ),
+    )
+    .handle("setRecurringDraftScheduling", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Scheduling.setRecurringDraftScheduling(token, {
+          scope: scopeFromPath(params),
+          agreementId: params.agreementId,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
+    .handle("catchUpRecurringDrafts", ({ params, headers, payload }) =>
+      Effect.flatMap(authenticate, (token) =>
+        Scheduling.catchUpRecurringDrafts(token, {
+          scope: scopeFromPath(params),
+          agreementId: params.agreementId,
+          idempotencyKey: headers["idempotency-key"],
+          input: payload,
+        }),
+      ),
+    )
     .handle("proposeRecurringAgreement", ({ params, headers, payload }) =>
       Effect.flatMap(authenticate, (token) =>
         Recurring.proposeRecurringAgreement(token, {

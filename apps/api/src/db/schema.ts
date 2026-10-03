@@ -1955,3 +1955,45 @@ export const reminderObservations = openerp.table("reminder_observations", {
   body: jsonb().$type<Schema.JsonObject>().notNull(),
   recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
 });
+
+export const recurringInvoiceDraftSchedules = openerp.table("recurring_invoice_draft_schedules", {
+  bookId: text("book_id").notNull(),
+  agreementId: text("agreement_id").notNull(),
+  enabled: boolean().notNull(),
+  generation: bigint("generation", { mode: "bigint" }).notNull(),
+  firstAutomaticCycle: bigint("first_automatic_cycle", { mode: "bigint" }).notNull(),
+  nextCycleOrdinal: bigint("next_cycle_ordinal", { mode: "bigint" }).notNull(),
+  requestedBy: text("requested_by").notNull(),
+  timeZone: text("time_zone").notNull(),
+  duePolicy: text("due_policy").notNull(),
+  changedAt: timestamp("changed_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const recurringInvoiceDraftScheduleEvents = openerp.table(
+  "recurring_invoice_draft_schedule_events",
+  {
+    bookId: text("book_id").notNull(),
+    agreementId: text("agreement_id").notNull(),
+    generation: bigint("generation", { mode: "bigint" }).notNull(),
+    body: jsonb().$type<Schema.JsonObject>().notNull(),
+  },
+);
+
+export const recurringInvoiceDraftJobs = openerp.table("recurring_invoice_draft_jobs", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  agreementId: text("agreement_id").notNull(),
+  cycleOrdinal: bigint("cycle_ordinal", { mode: "bigint" }).notNull(),
+  generation: bigint("generation", { mode: "bigint" }).notNull(),
+  scheduleGeneration: bigint("schedule_generation", { mode: "bigint" }).notNull(),
+  requestedBy: text("requested_by").notNull(),
+  executorId: text("executor_id").notNull(),
+  admitted: jsonb().$type<Schema.JsonObject>().notNull(),
+  state: text().notNull(),
+  reason: text(),
+  draftId: text("draft_id"),
+  dispatchedAt: timestamp("dispatched_at", { withTimezone: true, mode: "string" }),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+  settledAt: timestamp("settled_at", { withTimezone: true, mode: "string" }),
+
+});

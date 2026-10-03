@@ -134,6 +134,7 @@ export const prepareArLegalIssue = Effect.fn("commerce.legalIssue.prepare")(func
 
       if (request.previous) return request.previous;
       const calculation = yield* calculateLegalIssue(tx, scope, input);
+      yield* occurrenceAtIssueAdmission(tx, scope, calculation.draftSnapshot);
 
       const ordinal =
         (yield* Db.readArLegalIssueHistory(tx, scope.bookId, input.draftId, 50)).length + 1;

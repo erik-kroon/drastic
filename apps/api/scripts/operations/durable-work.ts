@@ -6,17 +6,34 @@ import {
   BackupManifest,
   BookBoundary,
   RecoveryWorkInventory,
+  RecoveryWorkInventoryV3,
+  RecurringWorkSummary,
   RecoveryWorkSummary,
   TableFingerprint,
 } from "../../../../packages/contracts/src/operations";
 import { artifactPath, fingerprint, refuse } from "./safety";
 import { queueTables, readQueueSequences } from "./queue";
 
-export const workInventoryPath = "durable-work-v2.json";
+export const workInventoryPath = "durable-work-v3.json";
+
+export const workInventoryPaths = ["durable-work-v2.json", workInventoryPath];
 
 const inventoryByteLimit = 8388608;
 
-const workTables = ["outbox", "preparation_runs", "preparation_jobs", "posting_saved_requests"];
+const legacyWorkTables = [
+  "outbox",
+  "preparation_runs",
+  "preparation_jobs",
+  "posting_saved_requests",
+];
+
+const recurringWorkTables = [
+  "recurring_invoice_draft_schedules",
+  "recurring_invoice_draft_schedule_events",
+  "recurring_invoice_draft_jobs",
+];
+
+const workTables = [...legacyWorkTables, ...recurringWorkTables];
 
 function workSummary(
   inventory: Pick<typeof RecoveryWorkInventory.Type, "outbox" | "runs" | "jobs" | "savedRequests">,
@@ -45,6 +62,35 @@ function workSummary(
   });
 }
 
+function recurringSummary(
+  inventory: Pick<
+    typeof RecoveryWorkInventoryV3.Type,
+    | "outbox"
+    | "runs"
+    | "jobs"
+    | "savedRequests"
+    | "recurringSchedules"
+    | "recurringEvents"
+    | "recurringJobs"
+  >,
+) {
+  return Schema.decodeSync(RecurringWorkSummary)({
+    ...workSummary(inventory),
+    recurringSchedules: String(inventory.recurringSchedules.length),
+    enabledRecurringSchedules: String(
+      inventory.recurringSchedules.filter((row) => row.enabled).length,
+    ),
+    recurringEvents: String(inventory.recurringEvents.length),
+    recurringJobs: String(inventory.recurringJobs.length),
+    readyRecurringJobs: String(
+      inventory.recurringJobs.filter((row) => row.state === "ready").length,
+    ),
+    failedRecurringJobs: String(
+      inventory.recurringJobs.filter((row) => row.state === "failed").length,
+    ),
+  });
+}
+
 function uniqueScopedIds(items: ReadonlyArray<{ bookId: string; id: string }>) {
   if (new Set(items.map((item) => JSON.stringify([item.bookId, item.id]))).size !== items.length)
     refuse("Durable work inventory contains duplicate scoped identities.");
@@ -54,7 +100,9 @@ function validateInventory(
   inventory: typeof RecoveryWorkInventory.Type,
   tables: ReadonlyArray<typeof TableFingerprint.Type>,
 ) {
-  if (!isDeepStrictEqual(workSummary(inventory), inventory.summary))
+  const summary = inventory.version === 3 ? recurringSummary(inventory) : workSummary(inventory);
+
+  if (!isDeepStrictEqual(summary, inventory.summary))
     refuse("Durable work summary differs from its complete retained inventory.");
 
   const queue = tables.filter(
@@ -91,7 +139,7 @@ function validateInventory(
 
   for (const [index, family] of families.entries()) {
     const table = tables.find(
-      (item) => item.schema === "openerp" && item.table === workTables[index],
+      (item) => item.schema === "openerp" && item.table === legacyWorkTables[index],
     );
 
     if (!table || BigInt(table.rows) !== BigInt(family.length))
@@ -100,6 +148,59 @@ function validateInventory(
 
     if (family.some((item) => !bookIds.has(item.bookId)))
       refuse("Durable work belongs to an unrepresented book.");
+  }
+
+  if (inventory.version === 3) {
+    const recurringFamilies = [
+      inventory.recurringSchedules.map((row) => ({ bookId: row.bookId, id: row.agreementId })),
+      inventory.recurringEvents.map((row) => ({
+        bookId: row.bookId,
+        id: JSON.stringify([row.agreementId, row.generation]),
+      })),
+      inventory.recurringJobs,
+    ];
+
+    for (const [index, family] of recurringFamilies.entries()) {
+      const table = tables.find(
+        (item) => item.schema === "openerp" && item.table === recurringWorkTables[index],
+      );
+
+      if (!table || BigInt(table.rows) !== BigInt(family.length))
+        refuse("Recurring business progress differs from snapshot table counts.");
+      uniqueScopedIds(family);
+
+      if (family.some((row) => !bookIds.has(row.bookId)))
+        refuse("Recurring work belongs to an unrepresented book.");
+    }
+
+    const schedules = new Map(
+      inventory.recurringSchedules.map((row) => [
+        JSON.stringify([row.bookId, row.agreementId]),
+        row,
+      ]),
+    );
+
+    for (const row of [...inventory.recurringJobs, ...inventory.recurringEvents]) {
+      const schedule = schedules.get(JSON.stringify([row.bookId, row.agreementId]));
+
+      if (!schedule || BigInt(row.generation) < 1n)
+        refuse("Recurring progress has no scoped enrollment or positive generation.");
+    }
+
+    for (const schedule of inventory.recurringSchedules) {
+      const events = inventory.recurringEvents.filter(
+        (row) => row.bookId === schedule.bookId && row.agreementId === schedule.agreementId,
+      );
+
+      if (
+        BigInt(schedule.firstAutomaticCycle) > BigInt(schedule.nextCycleOrdinal) ||
+        BigInt(schedule.generation) !== BigInt(events.length) ||
+        events.some((row, index) => BigInt(row.generation) !== BigInt(index + 1))
+      )
+        refuse(
+          "Recurring examined cursor or complete enrollment event generation boundary is invalid.",
+        );
+    }
   }
 
   const runIds = new Set(inventory.runs.map((run) => JSON.stringify([run.bookId, run.id])));
@@ -165,23 +266,51 @@ export async function captureWorkInventory(
     'id',id,'authority',authority,'writerEpoch',writer_epoch::text,'committedSequence',committed_sequence::text) AS body
     FROM openerp.books ORDER BY id COLLATE "C"`);
 
+  const recurringSchedules = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+    'bookId',book_id,'agreementId',agreement_id,'enabled',enabled,'generation',generation::text,
+    'firstAutomaticCycle',first_automatic_cycle::text,'nextCycleOrdinal',next_cycle_ordinal::text,
+    'requestedBy',requested_by,'timeZone',time_zone,'duePolicy',due_policy) AS body
+    FROM openerp.recurring_invoice_draft_schedules ORDER BY book_id COLLATE "C",agreement_id COLLATE "C"`);
+
+  const recurringEvents = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+    'bookId',book_id,'agreementId',agreement_id,'generation',generation::text,
+    'bodySha256',encode(sha256(convert_to(body::text,'UTF8')),'hex')) AS body
+    FROM openerp.recurring_invoice_draft_schedule_events ORDER BY book_id COLLATE "C",agreement_id COLLATE "C",generation`);
+
+  const recurringJobs = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
+    'bookId',book_id,'id',id,'agreementId',agreement_id,'cycleOrdinal',cycle_ordinal::text,
+    'generation',generation::text,'scheduleGeneration',schedule_generation::text,'requestedBy',requested_by,'executorId',executor_id,
+    'admittedSha256',encode(sha256(convert_to(admitted::text,'UTF8')),'hex'),'state',state,'reason',reason,'draftId',draft_id,
+    'dispatchedAt',to_char(dispatched_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+    'settledAt',to_char(settled_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"')) AS body
+    FROM openerp.recurring_invoice_draft_jobs ORDER BY book_id COLLATE "C",id COLLATE "C"`);
+
   const families = {
-    outbox: Schema.decodeUnknownSync(RecoveryWorkInventory.fields.outbox)(
+    recurringSchedules: Schema.decodeUnknownSync(RecoveryWorkInventoryV3.fields.recurringSchedules)(
+      recurringSchedules.rows.map((row) => row.body),
+    ),
+    recurringEvents: Schema.decodeUnknownSync(RecoveryWorkInventoryV3.fields.recurringEvents)(
+      recurringEvents.rows.map((row) => row.body),
+    ),
+    recurringJobs: Schema.decodeUnknownSync(RecoveryWorkInventoryV3.fields.recurringJobs)(
+      recurringJobs.rows.map((row) => row.body),
+    ),
+    outbox: Schema.decodeUnknownSync(RecoveryWorkInventoryV3.fields.outbox)(
       outbox.rows.map((row) => row.body),
     ),
-    runs: Schema.decodeUnknownSync(RecoveryWorkInventory.fields.runs)(
+    runs: Schema.decodeUnknownSync(RecoveryWorkInventoryV3.fields.runs)(
       runs.rows.map((row) => row.body),
     ),
-    jobs: Schema.decodeUnknownSync(RecoveryWorkInventory.fields.jobs)(
+    jobs: Schema.decodeUnknownSync(RecoveryWorkInventoryV3.fields.jobs)(
       jobs.rows.map((row) => row.body),
     ),
-    savedRequests: Schema.decodeUnknownSync(RecoveryWorkInventory.fields.savedRequests)(
+    savedRequests: Schema.decodeUnknownSync(RecoveryWorkInventoryV3.fields.savedRequests)(
       requests.rows.map((row) => row.body),
     ),
   };
 
-  const inventory = Schema.decodeSync(RecoveryWorkInventory)({
-    version: 2,
+  const inventory = Schema.decodeSync(RecoveryWorkInventoryV3)({
+    version: 3,
     queue: {
       tables: tables.filter(
         (table) => table.schema === "public" && queueTables.includes(table.table),
@@ -192,7 +321,7 @@ export async function captureWorkInventory(
     snapshot,
     books: books.rows.map((row) => Schema.decodeUnknownSync(BookBoundary)(row.body)),
     ...families,
-    summary: workSummary(families),
+    summary: recurringSummary(families),
     providerAttemptHistory: "not-recorded-by-current-schema",
     remoteWorkflowState: "not-inspected",
     resumptionAuthority: "not-granted",
@@ -212,14 +341,14 @@ export async function inspectWorkInventory(bundle: string, manifest: typeof Back
   const retained = manifest.durableWork;
 
   if (!retained) {
-    if (manifest.files.some((file) => file.path === workInventoryPath))
+    if (manifest.files.some((file) => workInventoryPaths.includes(file.path)))
       refuse("A durable work file has no manifest descriptor.");
 
     return undefined;
   }
 
   if (
-    retained.file.path !== workInventoryPath ||
+    !workInventoryPaths.includes(retained.file.path) ||
     BigInt(retained.file.bytes) > BigInt(inventoryByteLimit) ||
     !manifest.files.some(
       (file) =>
@@ -238,6 +367,9 @@ export async function inspectWorkInventory(bundle: string, manifest: typeof Back
   const inventory = Schema.decodeUnknownSync(RecoveryWorkInventory)(
     JSON.parse(await readFile(path, "utf8")),
   );
+
+  if (retained.file.path !== `durable-work-v${inventory.version}.json`)
+    refuse("Durable work version differs from its qualified artifact path.");
 
   validateInventory(inventory, manifest.tables);
 

@@ -1,3 +1,8 @@
+import {
+  RecurringDraftQueue,
+  handleRecurringDraft,
+  runRecurringDraftDispatch,
+} from "../src/runtime/recurring-draft-queue";
 import { runMain } from "@effect/platform-bun/BunRuntime";
 import * as PgClient from "@effect/sql-pg/PgClient";
 import * as PgDrizzle from "drizzle-orm/effect-postgres";
@@ -117,6 +122,7 @@ const worker = Layer.mergeAll(
   ExtractionQueue.toLayer(handleExtraction, { concurrency: 2 }),
   PeriodWorkQueue.toLayer(handlePeriodWork, { concurrency: 2 }),
   CreditDocumentQueue.toLayer(handleCreditDocument, { concurrency: 2 }),
+  RecurringDraftQueue.toLayer(handleRecurringDraft, { concurrency: 2 }),
 ).pipe(Layer.provideMerge(Worker.layer({ concurrency: 2 })), Layer.provideMerge(services));
 
 const dispatchExtractions = Effect.forever(
@@ -182,9 +188,9 @@ const dispatchReminders = Effect.forever(
 );
 
 const main = Effect.all(
-  [dispatch, dispatchExtractions, dispatchPeriodWork, dispatchCredits, dispatchReminders],
+  [dispatch, dispatchExtractions, dispatchPeriodWork, dispatchCredits, dispatchReminders, runRecurringDraftDispatch()],
   {
-    concurrency: 5,
+    concurrency: 6,
   },
 ).pipe(Effect.provide(worker), Effect.scoped);
 

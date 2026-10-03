@@ -10,6 +10,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Effect from "effect/Effect";
 import { readInstant } from "../../db/commerce/access";
 import * as DraftDb from "../../db/commerce/invoice-lifecycle";
+import * as RecurrenceDb from "../../db/commerce/recurring-invoices";
 import { consumeOccurrenceCoverage, occurrenceAtIssueAdmission } from "./recurring-coverage";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
@@ -196,6 +197,7 @@ function draftRecord(
       input: typeof Drafts.CommercialContent.Type;
       digest: string;
       copiedCustomerDefaults?: typeof Crm.CopiedCustomerInvoiceDefaults.Type;
+      recurringTemplateOrigin?: typeof Drafts.RecurringTemplateOrigin.Type;
     };
   },
 ) {
@@ -233,10 +235,17 @@ function draftRecord(
       ),
     };
 
-    const withDefaults =
-      calculation.commercial?.copiedCustomerDefaults === undefined
+    const withOrigin =
+      calculation.commercial?.recurringTemplateOrigin === undefined
         ? withoutDigest
         : Object.assign({}, withoutDigest, {
+            recurringTemplateOrigin: calculation.commercial.recurringTemplateOrigin,
+          });
+
+    const withDefaults =
+      calculation.commercial?.copiedCustomerDefaults === undefined
+        ? withOrigin
+        : Object.assign({}, withOrigin, {
             copiedCustomerDefaults: calculation.commercial.copiedCustomerDefaults,
           });
 
@@ -268,6 +277,7 @@ export const createInvoiceDraftInTransaction = Effect.fn("commerce.drafts.create
     principal: Principal,
     command: CreateDraftCommand,
     templateSelection?: typeof Drafts.InvoiceTemplateSelection.Type,
+    recurringOrigin?: typeof Drafts.RecurringTemplateOrigin.Type,
   ) {
     const request = yield* replay(
       transaction,
@@ -291,7 +301,9 @@ export const createInvoiceDraftInTransaction = Effect.fn("commerce.drafts.create
     yield* exactKeys(
       yield* toJsonObject(command.input),
       "commercial" in command.input
-        ? ["commercial", "draftKey"]
+        ? command.input.occurrence === undefined
+          ? ["commercial", "draftKey"]
+          : ["commercial", "draftKey", "occurrence"]
         : command.input.occurrence === undefined
           ? ["content", "draftKey"]
           : createFields,
@@ -306,7 +318,7 @@ export const createInvoiceDraftInTransaction = Effect.fn("commerce.drafts.create
     if (!draftKey.test(input.draftKey)) return yield* failure("InvalidJournal");
 
     const occurrence =
-      "commercial" in input || input.occurrence === undefined
+      input.occurrence === undefined
         ? undefined
         : yield* toJsonObject(yield* decode(Recurring.OccurrenceReference, input.occurrence));
 
@@ -318,17 +330,51 @@ export const createInvoiceDraftInTransaction = Effect.fn("commerce.drafts.create
 
     if (existing[0]?.present === true) return yield* failure("IdempotencyConflict");
 
-    const counts = yield* DraftDb.readDraftCount(
-      transaction,
-      command.scope.bookId,
-      draftBounds.inventory,
-    );
+    let copiedLines: ReadonlyArray<typeof Drafts.CommercialLine.Type> | undefined;
 
-    if ((counts[0]?.count ?? 0) >= draftBounds.inventory) return yield* failure("InvalidJournal");
+    if (recurringOrigin !== undefined) {
+      if (!("commercial" in input) || input.occurrence?.agreementId !== recurringOrigin.agreementId)
+        return yield* failure("StaleDependency");
+
+      const rows = yield* RecurrenceDb.readTemplateRevisions(
+        transaction,
+        command.scope.bookId,
+        recurringOrigin.agreementId,
+      );
+
+      const row = rows.find((item) => item.revision === recurringOrigin.revision);
+
+      if (row === undefined) return yield* failure("StaleDependency");
+      const retained = yield* decode(Recurring.RecurringTemplateRevision, row.body);
+
+      if (
+        retained.digest !== recurringOrigin.digest ||
+        !("kind" in retained.template) ||
+        retained.scope.entityId !== command.scope.entityId ||
+        retained.scope.bookId !== command.scope.bookId ||
+        !equalJson(retained.template.lines, input.commercial.lines) ||
+        !equalJson(retained.template.seller, input.commercial.seller) ||
+        retained.template.counterpartyId !== input.commercial.counterpartyId
+      )
+        return yield* failure("StaleDependency");
+      copiedLines = retained.template.lines;
+    }
 
     const calculation =
       "commercial" in input
-        ? yield* calculateCommercialContent(transaction, command.scope, book, input.commercial)
+        ? yield* calculateCommercialContent(
+            transaction,
+            command.scope,
+            book,
+            input.commercial,
+            undefined,
+            copiedLines,
+          ).pipe(
+            Effect.map((computed) => ({
+              ...computed,
+              commercial: { ...computed.commercial, recurringTemplateOrigin: recurringOrigin },
+            })),
+          )
         : yield* calculateDraft(transaction, command.scope, book, input.content);
 
     const content = calculation.content;

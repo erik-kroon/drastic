@@ -34,7 +34,7 @@ const statuses = ["all", "open", "completed"] as const;
 
 const sorts = ["newest", "oldest"] as const;
 
-const workKinds = ["journal", "invoice", "expense", "document", "supplier"] as const;
+const workKinds = ["journal", "invoice", "expense", "document", "supplier", "recurring"] as const;
 
 const attentionKinds = ["all", ...workKinds] as const;
 
@@ -573,11 +573,13 @@ export const listAttention = Effect.fn("workspace.listAttention")(function* (
     return yield* decode(AttentionPageSchema, {
       scope: command.scope,
       checkedAt: yield* isoNow(transaction),
-      coverage: "journals_invoice_drafts_expense_reviews_documents_supplier_drafts",
+      coverage:
+        "journals_invoice_drafts_expense_reviews_documents_supplier_drafts_recurring_failures",
       filters: { kind, period, status, sort, q: search },
       counts: { open: counts.open, completed: counts.completed },
       total: counts.total,
       items: page.map((row) => ({
+        recurringAgreementId: row.recurringAgreementId,
         supplierReview:
           row.supplierReviewId && row.supplierDraftId
             ? { draftId: row.supplierDraftId, reviewId: row.supplierReviewId }

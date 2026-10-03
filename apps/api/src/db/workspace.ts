@@ -32,6 +32,8 @@ export const workspaceTables = [
   "expense_tax_source_revisions",
   "expense_tax_reviews",
   "command_receipts",
+  "recurring_invoice_draft_jobs",
+  "recurring_invoice_agreements",
 ] as const;
 
 export type ViewRow = {
@@ -85,6 +87,7 @@ export type WorkCountsRow = {
 };
 
 export type AttentionItemRow = {
+  readonly recurringAgreementId: string | null;
   readonly supplierDraftId: string | null;
   readonly supplierReviewId: string | null;
   readonly key: string;
@@ -392,6 +395,11 @@ export function readWorkItem(
         sql`select 1 from openerp.invoice_drafts d where d.book_id = ${bookId} and d.id = ${recordId}`,
     ),
     Match.when(
+      "recurring",
+      () =>
+        sql`select 1 from openerp.recurring_invoice_draft_jobs j where j.book_id = ${bookId} and j.id = ${recordId}`,
+    ),
+    Match.when(
       "document",
       () =>
         sql`select 1 from openerp.supplier_inbox i where i.book_id = ${bookId} and i.occurrence_id = ${recordId}`,
@@ -574,6 +582,19 @@ function attentionCte(bookId: string) {
       ) review on true
       where d.book_id = ${bookId}
       union all
+      select 'recurring_' || j.id, 'recurring', j.id,
+        'sha256:' || encode(sha256(convert_to(jsonb_build_object(
+          'admitted', j.admitted, 'state', j.state, 'reason', j.reason, 'generation', j.generation)::text, 'UTF8')), 'hex'),
+        j.generation::text, a.body->>'title', j.admitted->>'cycleDate',
+        to_char(coalesce(j.settled_at, j.created_at) at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+        null::text, null::text, null::integer, 'open', 'recurring_draft_failed'
+      from openerp.recurring_invoice_draft_jobs j
+      join openerp.recurring_invoice_agreements a on a.book_id = j.book_id and a.id = j.agreement_id
+      where j.book_id = ${bookId} and j.state = 'failed'
+        and not exists (select 1 from openerp.recurring_invoice_draft_jobs newer
+          where newer.book_id = j.book_id and newer.agreement_id = j.agreement_id
+            and newer.cycle_ordinal = j.cycle_ordinal and newer.generation > j.generation)
+      union all
       select 'expense_' || e.id, 'expense', e.id, e.source->>'digest', e.source_revision,
         e.source->'facts'->>'description', e.source->'facts'->>'issuedOn', e.source->>'recordedAt',
         e.source->'facts'->'amounts'->>'grossMinor', e.source->'facts'->>'currency',
@@ -669,6 +690,7 @@ export function listAttentionItems(
       )
       select c.key, c.kind, c.id, c.revision, c."sourceRevision", c.title, c.date, c.updated as "updatedAt",
         supplier.draft_id as "supplierDraftId", supplier.id as "supplierReviewId",
+        recurring.agreement_id as "recurringAgreementId",
         c.amount as "amountMinor", c.currency, c.scale as "currencyScale", c.state, c.reason,
         a.kind as "assignmentKind", a.record_id as "assignmentRecordId",
         a.assignee_id as "assignmentAssigneeId", a.due_on::text as "assignmentDueOn",
@@ -677,6 +699,8 @@ export function listAttentionItems(
           as "assignmentUpdatedAt",
         a.updated_by as "assignmentUpdatedBy"
       from candidates c
+      left join openerp.recurring_invoice_draft_jobs recurring
+        on recurring.book_id = ${bookId} and recurring.id = c.id and c.kind = 'recurring'
       left join openerp.supplier_acceptance_reviews supplier
         on supplier.book_id = ${bookId} and supplier.change_set_id = c.id and c.kind = 'journal'
       left join lateral (

@@ -51,16 +51,25 @@ export const WorkPage = Schema.Struct({
 export const AttentionQuery = Schema.Struct({
   ...WorkQuery.fields,
   kind: Schema.optional(
-    Schema.Literals(["all", "journal", "invoice", "expense", "document", "supplier"]),
+    Schema.Literals(["all", "journal", "invoice", "expense", "document", "supplier", "recurring"]),
   ),
   after: Schema.optional(
     Schema.String.check(
-      Schema.isPattern(/^(journal|invoice|expense|document|supplier)_[a-z][a-z0-9_-]{2,127}$/),
+      Schema.isPattern(
+        /^(journal|invoice|expense|document|supplier|recurring)_[a-z][a-z0-9_-]{2,127}$/,
+      ),
     ),
   ),
 });
 
-export const WorkKind = Schema.Literals(["journal", "invoice", "expense", "document", "supplier"]);
+export const WorkKind = Schema.Literals([
+  "journal",
+  "invoice",
+  "expense",
+  "document",
+  "supplier",
+  "recurring",
+]);
 
 export const Assignment = Schema.Struct({
   kind: WorkKind,
@@ -124,6 +133,7 @@ export const DeletedView = Schema.Struct({ scope: Accounting.Scope, id: Accounti
 export const AssignmentResult = Schema.Struct({ scope: Accounting.Scope, assignment: Assignment });
 
 export const AttentionItem = Schema.Struct({
+  recurringAgreementId: Schema.optional(Schema.NullOr(Accounting.Identifier)),
   supplierReview: Schema.optional(
     Schema.NullOr(
       Schema.Struct({ draftId: Accounting.Identifier, reviewId: Accounting.Identifier }),
@@ -131,7 +141,7 @@ export const AttentionItem = Schema.Struct({
   ),
   key: Schema.String,
   assignment: Schema.NullOr(Assignment),
-  kind: Schema.Literals(["journal", "invoice", "expense", "document", "supplier"]),
+  kind: Schema.Literals(["journal", "invoice", "expense", "document", "supplier", "recurring"]),
   id: Accounting.Identifier,
   revision: Accounting.Digest,
   title: Schema.String,
@@ -154,16 +164,27 @@ export const AttentionItem = Schema.Struct({
     "supplier_draft",
     "supplier_review_prepared",
     "supplier_accepted",
+    "recurring_draft_failed",
   ]),
 });
 
 export const AttentionPage = Schema.Struct({
   scope: Accounting.Scope,
   checkedAt: Schema.String,
-  coverage: Schema.Literal("journals_invoice_drafts_expense_reviews_documents_supplier_drafts"),
+  coverage: Schema.Literal(
+    "journals_invoice_drafts_expense_reviews_documents_supplier_drafts_recurring_failures",
+  ),
   filters: Schema.Struct({
     ...WorkPage.fields.filters.fields,
-    kind: Schema.Literals(["all", "journal", "invoice", "expense", "document", "supplier"]),
+    kind: Schema.Literals([
+      "all",
+      "journal",
+      "invoice",
+      "expense",
+      "document",
+      "supplier",
+      "recurring",
+    ]),
   }),
   total: Accounting.AggregateMinorUnits,
   counts: WorkPage.fields.counts,

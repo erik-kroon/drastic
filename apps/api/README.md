@@ -84,6 +84,8 @@ a committed issue cannot undo the invoice. The pure cycle calculation is
 `@open-erp/domain/recurrence`. Delivery state is not reported by this owner: the
 delivery owner is the only place a send outcome is produced.
 
+The commercial recurring draft scheduler, queue identity, selected catch-up witness, calendar basis and verification status are recorded in [the recurring draft implementation note](../../docs/plans/evidence/recurring-commercial-drafts.md). `runtime/recurring-draft-queue.ts` is registered by the persistent preparation runner; HTTP requests do not run a background listener. Migration `0065-recurring-commercial-drafts.sql` owns its retained schedules, schedule events and cycle jobs.
+
 The automation `recurring-rules.ts` owner is unrelated. It models bank-observation
 matching rules on the `synthetic-core-v1` profile, not commercial invoice
 recurrence, and the two share no table, identity or policy.

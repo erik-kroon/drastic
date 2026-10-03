@@ -7,6 +7,7 @@ import { failure } from "../failures";
 import { newId } from "../posting";
 import * as RecurrenceDb from "../../db/commerce/recurring-invoices";
 import {
+  decode,
   commandReceipt,
   requireInsertAccess,
   requireTableAccess,
@@ -116,7 +117,60 @@ export function occurrenceAtIssueAdmission(
 
     if (Result.isFailure(disposition)) return yield* unsupportedCycle(disposition);
 
-    if (disposition.success !== "due") return yield* failure("StaleDependency");
+    const retained = yield* decode(Recurring.RecurringOccurrence, occurrence.body);
+
+    if (retained.catchUpWitness !== undefined) {
+      const witness = retained.catchUpWitness;
+
+      const events = yield* RecurrenceDb.readEvents(
+        transaction,
+        scope.bookId,
+        occurrence.agreementId,
+      );
+
+      const agreementRow = (yield* RecurrenceDb.readAgreement(
+        transaction,
+        scope.bookId,
+        occurrence.agreementId,
+      ))[0];
+
+      if (agreementRow === undefined) return yield* failure("StaleDependency");
+      const agreement = yield* decode(Recurring.RecurringAgreement, agreementRow.body);
+
+      const schedules = yield* RecurrenceDb.readScheduleRevisions(
+        transaction,
+        scope.bookId,
+        occurrence.agreementId,
+      );
+
+      const templates = yield* RecurrenceDb.readTemplateRevisions(
+        transaction,
+        scope.bookId,
+        occurrence.agreementId,
+      );
+
+      const configurationDigest = yield* digest(
+        yield* toJsonObject({
+          schedules: schedules.map((row) => row.body),
+          templates: templates.map((row) => row.body),
+        }),
+      );
+
+      const eventDigest = yield* digest(
+        yield* toJsonObject({ events: events.map((row) => row.body) }),
+      );
+
+      if (
+        witness.agreementRevision !== agreement.revision ||
+        witness.agreementDigest !== agreement.digest ||
+        witness.eventOrdinal !== (events.at(-1)?.ordinal ?? 0) ||
+        witness.eventDigest !== eventDigest ||
+        witness.configurationDigest !== configurationDigest ||
+        events.some((event) => event.kind === "end") ||
+        (disposition.success === "paused" && events.at(-1)?.kind !== "resume")
+      )
+        return yield* failure("StaleDependency");
+    } else if (disposition.success !== "due") return yield* failure("StaleDependency");
 
     return yield* Effect.succeed(occurrence satisfies IssuedOccurrence);
   });
