@@ -934,7 +934,9 @@ test("the collections caller reviews recipient and exact bytes before a browser 
           .getByRole("button", { name: "Approve exact message for local transport", exact: true })
           .waitFor();
         expect(await page.getByText("billing@example.invalid", { exact: true }).count()).toBe(1);
-        expect(await page.locator("pre").first().innerText()).toContain("125.00 SEK");
+        expect(
+          await page.locator("pre:visible").filter({ hasText: "125.00 SEK" }).first().innerText(),
+        ).toContain("125.00 SEK");
         expect(transport.wires).toEqual([]);
         await page.screenshot({
           path: join(environment().artifacts, "reminder-exact-review.png"),
@@ -1533,10 +1535,22 @@ test("the retained reminder route reloads an unknown worker outcome and reconcil
         expect(transport.reads).toContain(externalIdentity);
         expect(transport.wires).toHaveLength(1);
         const retainedPath = page.url();
+
+        const wrongOwnerResponse = page.waitForResponse(
+          (response) =>
+            response.url().endsWith(`${base}/${context.original.id}`) &&
+            response.request().method() === "GET",
+        );
+
         await page.goto(
           `${workspace}/sales?view=collections&reminder=${encodeURIComponent(context.original.id)}`,
         );
-        await page.getByRole("alert").first().waitFor();
+        expect((await wrongOwnerResponse).status()).toBe(404);
+        await page
+          .getByRole("status")
+          .filter({ has: page.getByText("NotFound", { exact: true }) })
+          .first()
+          .waitFor();
         expect(
           await page
             .getByRole("button", { name: "Approve exact message for local transport", exact: true })

@@ -1,5 +1,5 @@
 {
   "extends": "@open-erp/config/tsconfig.base.json",
-  "compilerOptions": { "types": ["node"], "lib": ["ESNext", "DOM"], "jsx": "react-jsx" },
+  "compilerOptions": { "types": ["node", "bun"], "lib": ["ESNext", "DOM"], "jsx": "react-jsx" },
   "include": ["**/*.ts", "../../web/tests/**/*.ts"]
 }
