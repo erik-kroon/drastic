@@ -14,6 +14,8 @@ The [pdfcn decision](adr/0016-pdfcn-legal-documents.md) and [adoption record](pl
 
 The [evaluation input contract](operations/evaluation-contracts.md) records the operator-only immutable capture/read unit and its remaining packet-2 boundaries.
 
+The [daily-work product implementation](plans/18-daily-work-product-implementation.md) tracks the adopted Midday-inspired improvements, direct-main integration, and remaining Cash/search work.
+
 ## Reading order
 
 The [open-accounting decision](adr/0005-open-accounting-and-managed-services.md), [application-owned replacement](adr/0010-application-owned-accounting-replacement.md), [architecture follow-up](architecture-followup.md), [licensing policy](../LICENSING.md) and [self-host setup](../infra/self-host/README.md) describe the open-source distribution and the latest design reconciliation.
