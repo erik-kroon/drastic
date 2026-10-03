@@ -39,6 +39,7 @@ const Scheduling = Schema.Struct({
   duePolicy: Schema.Literal("local_calendar_date_v1"),
   history: Schema.Array(
     Schema.Struct({
+      id: Schema.String,
       cycleOrdinal: Schema.String,
       generation: Schema.String,
       state: Schema.String,
@@ -421,9 +422,12 @@ test("paused cycles and manual future occupancy remain explicit without catch-up
   let finished: typeof Scheduling.Type;
 
   try {
-    finished = await waitFor(context, recurring.path, (value) =>
-      value.history.some((item) => item.cycleOrdinal === "5" && item.state === "existing") &&
-      value.history.some((item) => item.cycleOrdinal === "4" && item.state === "drafted"),
+    finished = await waitFor(
+      context,
+      recurring.path,
+      (value) =>
+        value.history.some((item) => item.cycleOrdinal === "5" && item.state === "existing") &&
+        value.history.some((item) => item.cycleOrdinal === "4" && item.state === "drafted"),
     );
   } finally {
     await stop(process.child);

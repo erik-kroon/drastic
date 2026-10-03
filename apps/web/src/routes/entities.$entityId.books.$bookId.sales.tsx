@@ -3,7 +3,6 @@ import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
 import { RecurringDraftRecovery } from "@/components/commerce/recurring-draft-recovery";
 import * as Sales from "@open-erp/contracts/sales-register";
-import * as Accounting from "@open-erp/contracts/accounting";
 import { SalesWorkspace } from "@/components/commerce/sales-workspace";
 import { CollectionsWorkspace } from "@/components/commerce/collections";
 import { SalesOrders } from "@/components/commerce/sales-orders";

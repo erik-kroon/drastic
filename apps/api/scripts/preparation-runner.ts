@@ -188,7 +188,14 @@ const dispatchReminders = Effect.forever(
 );
 
 const main = Effect.all(
-  [dispatch, dispatchExtractions, dispatchPeriodWork, dispatchCredits, dispatchReminders, runRecurringDraftDispatch()],
+  [
+    dispatch,
+    dispatchExtractions,
+    dispatchPeriodWork,
+    dispatchCredits,
+    dispatchReminders,
+    runRecurringDraftDispatch(),
+  ],
   {
     concurrency: 6,
   },

@@ -220,18 +220,35 @@ const path = "/v1/entities/:entityId/books/:bookId/cash-bases";
 export const CashForecastApi = HttpApiGroup.make("cashForecast")
   .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" })
   .add(
-    HttpApiEndpoint.post("captureCashForecast", "/v1/entities/:entityId/books/:bookId/cash-forecasts", {
-      params: Accounting.Scope, headers: Accounting.IdempotencyHeaders,
-      payload: CaptureCashForecast, success: CashForecastSnapshot, error: accountingErrors,
-    }),
-    HttpApiEndpoint.get("getCashForecast", "/v1/entities/:entityId/books/:bookId/cash-forecasts/:id", {
-      params: Accounting.ChangePath, success: CashForecastView, error: accountingErrors,
-    }),
-    HttpApiEndpoint.get("exportCashForecast", "/v1/entities/:entityId/books/:bookId/cash-forecasts/:id/export", {
-      params: Accounting.ChangePath,
-      success: Schema.String.pipe(HttpApiSchema.asText({ contentType: "application/json" })),
-      error: accountingErrors,
-    }),
+    HttpApiEndpoint.post(
+      "captureCashForecast",
+      "/v1/entities/:entityId/books/:bookId/cash-forecasts",
+      {
+        params: Accounting.Scope,
+        headers: Accounting.IdempotencyHeaders,
+        payload: CaptureCashForecast,
+        success: CashForecastSnapshot,
+        error: accountingErrors,
+      },
+    ),
+    HttpApiEndpoint.get(
+      "getCashForecast",
+      "/v1/entities/:entityId/books/:bookId/cash-forecasts/:id",
+      {
+        params: Accounting.ChangePath,
+        success: CashForecastView,
+        error: accountingErrors,
+      },
+    ),
+    HttpApiEndpoint.get(
+      "exportCashForecast",
+      "/v1/entities/:entityId/books/:bookId/cash-forecasts/:id/export",
+      {
+        params: Accounting.ChangePath,
+        success: Schema.String.pipe(HttpApiSchema.asText({ contentType: "application/json" })),
+        error: accountingErrors,
+      },
+    ),
     HttpApiEndpoint.post("captureCashBasis", path, {
       params: Accounting.Scope,
       headers: Accounting.IdempotencyHeaders,
@@ -253,14 +270,22 @@ export const CashForecastApi = HttpApiGroup.make("cashForecast")
 
 export const CashForecastCapabilities = {
   cash_capture_forecast: {
-    description: "Save an immutable exact known-items forecast from a current retained cash basis and reviewed date assumptions. Never posts or executes payments. Coverage remains incomplete.",
-    input: Schema.Struct({ scope: Accounting.Scope, idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"], input: CaptureCashForecast }),
-    output: CashForecastSnapshot, readOnly: false,
+    description:
+      "Save an immutable exact known-items forecast from a current retained cash basis and reviewed date assumptions. Never posts or executes payments. Coverage remains incomplete.",
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
+      input: CaptureCashForecast,
+    }),
+    output: CashForecastSnapshot,
+    readOnly: false,
   },
   cash_get_forecast: {
-    description: "Read the original immutable forecast and exact JSON artifact, with current authority and separate dependency freshness. Historical results are never recalculated.",
+    description:
+      "Read the original immutable forecast and exact JSON artifact, with current authority and separate dependency freshness. Historical results are never recalculated.",
     input: Schema.Struct({ scope: Accounting.Scope, id: Accounting.Identifier }),
-    output: CashForecastView, readOnly: true,
+    output: CashForecastView,
+    readOnly: true,
   },
   cash_capture_basis: {
     description:

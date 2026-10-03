@@ -49,4 +49,3 @@ test("existing sales register admits its legal issue relation before reading dra
     await admin.end();
   }
 });
-

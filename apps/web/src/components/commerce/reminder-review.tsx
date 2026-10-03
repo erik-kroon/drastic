@@ -15,7 +15,11 @@ import { formatMinorAmount } from "@/lib/workspace-api";
 import { workspacePath } from "@/lib/book-context";
 import { CommandForm, checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
 
-export function ReminderReview({book, locale, initialReminderId = ""}: CommerceProps & {
+export function ReminderReview({
+  book,
+  locale,
+  initialReminderId = "",
+}: CommerceProps & {
   readonly initialReminderId?: string;
 }) {
   const sv = locale === "sv";
@@ -76,6 +80,7 @@ export function ReminderReview({book, locale, initialReminderId = ""}: CommerceP
       );
 
       checkScope(book, result.message.scope);
+
       if (result.message.id !== reminderId) throw new Error("Reminder identity mismatch.");
 
       return result;
@@ -184,7 +189,7 @@ function ReminderPreview({
 }) {
   const sv = locale === "sv";
   const base = `${commercePath(book)}/collections/reminders`;
-  const search = useSearch({strict: false});
+  const search = useSearch({ strict: false });
 
   const statuses = sv
     ? {
@@ -214,7 +219,9 @@ function ReminderPreview({
 
   return (
     <Box display="grid" gap="md" minWidth="zero">
-      <Link href={`${workspacePath(book)}/sales${defaultStringifySearch({...search, view: "collections", reminder: message.id})}`}>
+      <Link
+        href={`${workspacePath(book)}/sales${defaultStringifySearch({ ...search, view: "collections", reminder: message.id })}`}
+      >
         {sv ? "Öppna sparad påminnelse" : "Open retained reminder"}
       </Link>
       <Text>

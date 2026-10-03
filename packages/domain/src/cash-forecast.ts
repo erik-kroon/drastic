@@ -44,7 +44,10 @@ export const ForecastDay = Schema.Struct({
 
 export const ForecastMinimum = Schema.Struct({ amountMinor: SignedMinorUnits, on: CalendarDate });
 
-export const ForecastCurve = Schema.Struct({ minimum: ForecastMinimum, headroomMinor: SignedMinorUnits });
+export const ForecastCurve = Schema.Struct({
+  minimum: ForecastMinimum,
+  headroomMinor: SignedMinorUnits,
+});
 
 export const ForecastResult = Schema.Union([
   Schema.Struct({
@@ -68,6 +71,7 @@ export const ForecastResult = Schema.Union([
 export function forecastCalendarOffset(date: string, days: number) {
   const value = new Date(`${date}T12:00:00Z`);
   value.setUTCDate(value.getUTCDate() + days);
+
   return value.toISOString().slice(0, 10);
 }
 
@@ -93,16 +97,29 @@ function contribution(
       reason: event.reason,
     };
 
-  if (!isCalendarDate(event.dueOn) || (event.expectedOn !== null && !isCalendarDate(event.expectedOn)))
-    return { ...retained, scheduledOn: null, dateOrigin: null, disposition: "blocked", reason: "invalid_source_date" };
+  if (
+    !isCalendarDate(event.dueOn) ||
+    (event.expectedOn !== null && !isCalendarDate(event.expectedOn))
+  )
+    return {
+      ...retained,
+      scheduledOn: null,
+      dateOrigin: null,
+      disposition: "blocked",
+      reason: "invalid_source_date",
+    };
 
   const on = event.expectedOn ?? event.dueOn;
   const dateOrigin = event.expectedOn === null ? "contract_due_date" : "reviewed_expected_date";
 
   if (on < asOf)
     return {
-      ...retained, scheduledOn: null, dateOrigin, disposition: "undated",
-      reason: event.expectedOn === null ? "overdue_without_reviewed_date" : "reviewed_date_before_as_of",
+      ...retained,
+      scheduledOn: null,
+      dateOrigin,
+      disposition: "undated",
+      reason:
+        event.expectedOn === null ? "overdue_without_reviewed_date" : "reviewed_date_before_as_of",
     };
 
   return {
@@ -114,23 +131,35 @@ function contribution(
   };
 }
 
-export function calculateCashForecast(input: typeof ForecastCalculationInput.Type): {
+export type ForecastCalculation = {
   readonly result: typeof ForecastResult.Type;
   readonly contributions: ReadonlyArray<typeof ForecastContribution.Type>;
-} {
+};
+
+export function calculateCashForecast(
+  input: typeof ForecastCalculationInput.Type,
+): ForecastCalculation {
   const endsOn = forecastCalendarOffset(input.asOf, input.horizonDays - 1);
   const contributions = input.events.map((event) => contribution(event, input.asOf, endsOn));
 
   if (input.openingMinor === null)
     return {
-      result: { status: "unavailable", openingMinor: null, closingMinor: null, baseline: null, conservative: null, days: [] },
+      result: {
+        status: "unavailable",
+        openingMinor: null,
+        closingMinor: null,
+        baseline: null,
+        conservative: null,
+        days: [],
+      },
       contributions,
     };
 
   const totals = new Map<string, { inflow: bigint; outflow: bigint }>();
 
   for (const event of contributions) {
-    if (event.disposition !== "dated" || event.scheduledOn === null || event.amountMinor === null) continue;
+    if (event.disposition !== "dated" || event.scheduledOn === null || event.amountMinor === null)
+      continue;
     const current = totals.get(event.scheduledOn) ?? { inflow: 0n, outflow: 0n };
     const amount = BigInt(event.amountMinor);
 
@@ -151,10 +180,14 @@ export function calculateCashForecast(input: typeof ForecastCalculationInput.Typ
     closing = low + total.inflow;
 
     if (closing < baseline.amount) baseline = { amount: closing, on };
+
     if (low < conservative.amount) conservative = { amount: low, on };
     days.push({
-      on, inflowMinor: total.inflow.toString(), outflowMinor: total.outflow.toString(),
-      closingMinor: closing.toString(), conservativeLowMinor: low.toString(),
+      on,
+      inflowMinor: total.inflow.toString(),
+      outflowMinor: total.outflow.toString(),
+      closingMinor: closing.toString(),
+      conservativeLowMinor: low.toString(),
     });
   }
 
@@ -162,9 +195,18 @@ export function calculateCashForecast(input: typeof ForecastCalculationInput.Typ
 
   return {
     result: {
-      status: "available", openingMinor: input.openingMinor, closingMinor: closing.toString(), days,
-      baseline: { minimum: { amountMinor: baseline.amount.toString(), on: baseline.on }, headroomMinor: (baseline.amount - buffer).toString() },
-      conservative: { minimum: { amountMinor: conservative.amount.toString(), on: conservative.on }, headroomMinor: (conservative.amount - buffer).toString() },
+      status: "available",
+      openingMinor: input.openingMinor,
+      closingMinor: closing.toString(),
+      days,
+      baseline: {
+        minimum: { amountMinor: baseline.amount.toString(), on: baseline.on },
+        headroomMinor: (baseline.amount - buffer).toString(),
+      },
+      conservative: {
+        minimum: { amountMinor: conservative.amount.toString(), on: conservative.on },
+        headroomMinor: (conservative.amount - buffer).toString(),
+      },
     },
     contributions,
   };

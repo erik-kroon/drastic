@@ -1339,19 +1339,35 @@ test("P10 qualifies an actual supplier settlement receipt and preserves cancella
   ]);
   const initial = await decoded(await request(data.book, `/cash-bases/${basis.id}`), View);
 
-  const provenance = Schema.decodeSync(Schema.fromJsonString(Schema.Struct({
-    contributions: Schema.Array(Schema.Struct({
-      invoiceId: Schema.String,
-      paymentMembership: Schema.Array(Schema.Struct({
-        sourceOwner: Schema.NullOr(Schema.String),
-        sourceId: Schema.NullOr(Schema.String),
-      })),
-    })),
-  })))(initial.artifact.content);
+  const provenance = Schema.decodeSync(
+    Schema.fromJsonString(
+      Schema.Struct({
+        contributions: Schema.Array(
+          Schema.Struct({
+            invoiceId: Schema.String,
+            paymentMembership: Schema.Array(
+              Schema.Struct({
+                sourceOwner: Schema.NullOr(Schema.String),
+                sourceId: Schema.NullOr(Schema.String),
+              }),
+            ),
+          }),
+        ),
+      }),
+    ),
+  )(initial.artifact.content);
 
   await writeFile(
     join(environment().artifacts, "cash-basis-supplier-provenance.json"),
-    JSON.stringify({ supplierReceiptId: receipt.id, expectedSourceOwner: "purchases/supplier-settlements", provenance }, null, 2),
+    JSON.stringify(
+      {
+        supplierReceiptId: receipt.id,
+        expectedSourceOwner: "purchases/supplier-settlements",
+        provenance,
+      },
+      null,
+      2,
+    ),
   );
 
   expect(provenance.contributions).toEqual([
