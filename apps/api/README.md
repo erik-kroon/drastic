@@ -243,3 +243,9 @@ export its message, stack, parameters or cause. Public failures use a newly cons
 exporters or raw cause reporting requires a fresh credential-exposure review. Do not include raw database errors in response or operational logs.
 
 The adapter does not retry queries. An unavailable response does not establish that a write rolled back. Recover an uncertain command with its original input and idempotency key, not a new command.
+
+## Payment reminder delivery
+
+Migration `0066-payment-reminders.sql` adds immutable exact messages, browser approvals, admitted attempts and provider observations plus the scoped mutable outbox. `application/commerce/reminders.ts` composes retained legal issuance, canonical invoice residuals, current collection holds and reviewed recipient revisions. It freezes one external identity at admission and performs provider calls outside the transaction. Reconciliation records the admitted outcome without reauthorizing contact or rewriting the original message. Historical collection actions retain `sendAuthorized: false`.
+
+The persistent preparation runner registers `runtime/reminder-queue.ts`. Reminder transport is disabled by default. Its only selected adapter is `OPENERP_REMINDER_DELIVERY=local-fixture`, with a bare `http://127.0.0.1:<port>` origin and an authenticated fixture secret. No live provider configuration is available. See [the reminder contract and failure vectors](../../docs/operations/payment-reminders.md). Initial missing-route red proof exists; full runtime, recovery inventory and timing proof remain open.

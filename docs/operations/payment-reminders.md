@@ -38,3 +38,29 @@ The provider call runs outside the database transaction. A lost response leaves 
 The public HTTP E2E journey uses synthetic legal issuance, reviewed recipients, disposable PostgreSQL, the persistent Bun effect-mq runner and an authenticated loopback HTTP fixture. It retains request/message/attempt/observation receipts and fixture wire bytes. Expected amounts and states are literal test vectors. The pre-feature journey must fail because reminder routes do not exist. Required fast/full/strict gates, unchanged owner regressions, repeatable runtime journey, current source inventory and timing measurements remain open until observed.
 
 Timing uses five warmups and thirty measured samples. Existing collection read p95 may not exceed the larger of baseline times 1.20 or baseline plus 50ms. Added preview and admitted dispatch-to-observation p95 must stay at or below 2000ms. Queue wait is recorded separately. Root grants the shared workload lane before installation, checks, E2E or measurements.
+
+## Boundary map and reviewed choices
+
+| Owner | Responsibility |
+| --- | --- |
+| `application/commerce/legal-issuance.ts` and `db/commerce/documents.ts` | Retained issued legal document and actual customer party |
+| `db/commerce/invoices.ts` | Current exact residual, revision, allocation and cancellation/credit state |
+| `application/commerce/collections.ts` and `db/commerce/collections.ts` | Historical preparation records and current reminder hold |
+| `application/commerce/customer-invoice-defaults.ts` | Reviewed current recipient revision and `payment_reminder` purpose |
+| `application/commerce/reminders.ts` | Exact message preparation, browser approval, admission, cancellation and observation semantics |
+| `db/commerce/reminders.ts` and migration `0066` | Five owned durable record families, scoped uniqueness and constrained writes |
+| `runtime/reminder-queue.ts` and persistent Bun preparation runner | Scheduling, queue retries and recovery through the application owner |
+| Local fixture adapter | Authenticated loopback byte transport and same-identity reconciliation only |
+| Collections reminder review caller | Exact recipient/message review, approval and honest retained outcomes |
+
+The dedicated reminder owner was selected over a generic notification engine. Invoice delivery and payment reminders have different admission facts and existing legal delivery handoffs do not prove external transport. Combining their models would broaden behavior without removing a required reminder boundary.
+
+The independent root challenge retained five constraints. Observations after admission may be retained even after approval expiry, session expiry or payment. Unknown or absent reconciliation cannot authorize a new POST. Current authority precedes command replay, while a stale current residual blocks new admission without rewriting old attempts. The fixture is explicit, authenticated, loopback only and disabled by default. Recovery inventory must include all five reminder families and mutable outbox progress before integrated backup proof.
+
+## Recovery inventory obligation
+
+P08 owns recovery inventory v3. P09 will extend it with a distinct v4 schema after integration and retain sealed v2/v3 decoding. V4 must include complete scoped identities and fingerprints for all five reminder families, exact message/approval/attempt/observation body hashes and current outbox state, checkpoint, cancellation version, reason and checked instant. A row count alone cannot identify the approved bytes or the admitted external identity.
+
+Before recovery code, its failure vectors are fixed. An omitted family, duplicate scoped identity, wrong-book reference, missing approved message, missing attempt for an observation, changed immutable body, changed outbox checkpoint, mismatched table fingerprint, renamed artifact path, wrong source version or inventory exceeding its reviewed row/byte bound refuses qualification. V2/v3 artifacts continue to qualify only their original captured families. A successful inventory match grants no permission to resume contact. Restored admitted attempts reconcile their original identity; restored unadmitted approvals still require current authority and expiry checks.
+
+The performance baseline uses the owned detached pre-feature checkout and `OPENERP_REMINDER_BASELINE=1` with the named fixed-fixture test. Head qualification supplies its retained `performance.json` through `OPENERP_REMINDER_BASELINE_RECEIPT`. Ordinary E2E runs record absolute preview/dispatch budgets; without that receipt the comparison is explicitly `not_checked`, so they do not establish the accepted existing-operation regression budget.

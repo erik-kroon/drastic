@@ -4,7 +4,10 @@ import type { RetainedObjectStore } from "../adapters/storage/retained-objects";
 
 import type { DocumentReader } from "../adapters/document-reading/azure";
 
+import type { ReminderDelivery } from "../adapters/reminder-delivery/local-fixture";
+
 export interface Bindings {
+  readonly REMINDER_DELIVERY?: ReminderDelivery;
   readonly DOCUMENT_READER?: DocumentReader;
   readonly OPENERP_PREPARATION_TOKEN?: string;
   readonly EVIDENCE_BUCKET?: R2Bucket;

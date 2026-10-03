@@ -6,7 +6,22 @@ import {
   readWorklist,
 } from "../commerce/collections";
 
+import { prepareReminder, readReminder } from "../commerce/reminders";
+
 export const collectionsCapabilities = {
+  collections_prepare_reminder: effectCapability(
+    Capabilities.collections_prepare_reminder,
+    (token, input) =>
+      prepareReminder(token, {
+        scope: input.scope,
+        idempotencyKey: input.idempotencyKey,
+        input: { issueId: input.issueId, recipient: input.recipient },
+      }),
+  ),
+  collections_read_reminder: effectCapability(
+    Capabilities.collections_read_reminder,
+    (token, input) => readReminder(token, { scope: input.scope, id: input.reminderId }),
+  ),
   collections_worklist: effectCapability(Capabilities.collections_worklist, (token, input) =>
     readWorklist(token, { scope: input.scope, page: input.page ?? "1" }),
   ),

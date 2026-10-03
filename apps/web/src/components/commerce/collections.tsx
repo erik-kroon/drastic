@@ -12,6 +12,8 @@ import { readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { CommandForm, checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
 
+import { ReminderReview } from "./reminder-review";
+
 type CollectionHistoryData = Pick<
   typeof Collections.CollectionHistory.Type,
   "scope" | "customerId" | "statements" | "disputes" | "events"
@@ -80,9 +82,10 @@ export function CollectionsWorkspace({ book, locale }: CommerceProps) {
       <h2>{sv ? "Krav och kundutdrag" : "Collections and statements"}</h2>
       <Text tone="muted">
         {sv
-          ? "Utdrag är oföränderliga ögonblicksbilder. Betalningar efter bryttiden ändrar inte äldre utdrag. Påminnelser förbereds här; arbetsflödet skickar eller registrerar ingen leverans."
-          : "Statements are immutable snapshots. Later payments do not change an earlier snapshot. Reminders are prepared here; this workflow does not send or record delivery."}
+          ? "Utdrag är oföränderliga ögonblicksbilder. Betalningar efter bryttiden ändrar inte äldre utdrag. Historiska påminnelseåtgärder ger ingen sändbehörighet. Granska ett separat exakt meddelande för lokal leverans."
+          : "Statements are immutable snapshots. Later payments do not change an earlier snapshot. Historical reminder actions grant no send authority. Review a separate exact message for local delivery."}
       </Text>
+      <ReminderReview book={book} locale={locale} />
       <ReceivableWorklist
         locale={locale}
         data={worklist.data}

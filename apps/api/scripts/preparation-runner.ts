@@ -37,6 +37,13 @@ import {
   PreparationQueue,
 } from "../src/runtime/preparation-queue";
 
+import { configuredReminderDelivery } from "../src/adapters/reminder-delivery/local-fixture";
+import {
+  ReminderQueue,
+  dispatchPendingReminders,
+  handleReminder,
+} from "../src/runtime/reminder-queue";
+
 const connectionString = process.env.DATABASE_URL;
 
 const token = process.env.OPENERP_PREPARATION_TOKEN;
@@ -61,6 +68,11 @@ const evidenceStore = process.env.OPENERP_OBJECT_DIRECTORY
 
 const bindings: Bindings = {
   OPENERP_PREPARATION_TOKEN: token,
+  REMINDER_DELIVERY: configuredReminderDelivery({
+    OPENERP_REMINDER_DELIVERY: process.env.OPENERP_REMINDER_DELIVERY,
+    OPENERP_REMINDER_ENDPOINT: process.env.OPENERP_REMINDER_ENDPOINT,
+    OPENERP_REMINDER_SECRET: process.env.OPENERP_REMINDER_SECRET,
+  }),
   DOCUMENT_READER: reader,
   EVIDENCE_STORE: evidenceStore,
 };
@@ -100,6 +112,7 @@ const services = Layer.mergeAll(
 ).pipe(Layer.provide(postgres));
 
 const worker = Layer.mergeAll(
+  ReminderQueue.toLayer(handleReminder, { concurrency: 2 }),
   PreparationQueue.toLayer(handlePreparation, { concurrency: 2 }),
   ExtractionQueue.toLayer(handleExtraction, { concurrency: 2 }),
   PeriodWorkQueue.toLayer(handlePeriodWork, { concurrency: 2 }),
@@ -158,9 +171,22 @@ const dispatchCredits = Effect.forever(
   ),
 );
 
-const main = Effect.all([dispatch, dispatchExtractions, dispatchPeriodWork, dispatchCredits], {
-  concurrency: 4,
-}).pipe(Effect.provide(worker), Effect.scoped);
+const dispatchReminders = Effect.forever(
+  dispatchPendingReminders().pipe(
+    Effect.catch(() => Effect.logWarning("Reminder dispatch failed; its intent remains durable.")),
+    Effect.catchDefect(() =>
+      Effect.logWarning("Reminder dispatch defect; its intent remains durable."),
+    ),
+    Effect.andThen(Effect.sleep("1 second")),
+  ),
+);
+
+const main = Effect.all(
+  [dispatch, dispatchExtractions, dispatchPeriodWork, dispatchCredits, dispatchReminders],
+  {
+    concurrency: 5,
+  },
+).pipe(Effect.provide(worker), Effect.scoped);
 
 runMain(main.pipe(Effect.tapCause(() => Effect.logError("Preparation runner stopped."))), {
   disableErrorReporting: true,

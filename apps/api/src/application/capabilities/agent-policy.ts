@@ -15,6 +15,7 @@ type WriteClass =
 // describe transport policy; the operation must still enforce current authority.
 const writeClasses = {
   invoice_templates_apply: "prepare",
+  collections_prepare_reminder: "prepare",
   workspace_capture_context: "prepare",
   workspace_advance_context: "record",
   purchases_prepare_supplier_settlement: "prepare",

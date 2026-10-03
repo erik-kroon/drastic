@@ -140,6 +140,113 @@ export const CollectionStatementExport = Schema.Struct({
   body: Schema.String,
 });
 
+export const ReminderRecipientReference = Schema.Struct({
+  partyId: Accounting.Identifier,
+  revision: Schema.String.check(Schema.isPattern(/^[1-9][0-9]{0,3}$/)),
+  digest: Accounting.Digest,
+});
+
+export const PrepareReminder = Schema.Struct({
+  issueId: Accounting.Identifier,
+  recipient: ReminderRecipientReference,
+});
+
+export const ReminderMessage = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  issueId: Accounting.Identifier,
+  issueDigest: Accounting.Digest,
+  invoiceId: Accounting.Identifier,
+  invoiceNumber: Schema.String,
+  invoiceDigest: Accounting.Digest,
+  outstandingMinor: Accounting.AggregateMinorUnits,
+  currency: Schema.Literal("SEK"),
+  currencyScale: Schema.Literal(2),
+  dueOn: Accounting.AccountingDate,
+  recipient: Schema.Struct({
+    ...ReminderRecipientReference.fields,
+    channel: Schema.Literal("email"),
+    destination: Schema.String,
+  }),
+  preparedAt: Schema.String,
+  preparedBy: Accounting.Identifier,
+  subject: Schema.String,
+  plainText: Schema.String,
+  html: Schema.String,
+  encoding: Schema.Literal("UTF-8"),
+  attachments: Schema.Array(Schema.Never),
+  feeMinor: Schema.Literal("0"),
+  interestMinor: Schema.Literal("0"),
+  bankCoverage: Schema.Literal("not_qualified"),
+  provider: Schema.Literal("local-fixture-v1"),
+  digest: Accounting.Digest,
+});
+
+export const ApproveReminder = Schema.Struct({
+  messageDigest: Accounting.Digest,
+  acknowledgeExactMessage: Schema.Literal(true),
+});
+
+export const ReminderCommand = Schema.Struct({ messageDigest: Accounting.Digest });
+
+export const ReminderApproval = Schema.Struct({
+  id: Accounting.Identifier,
+  messageId: Accounting.Identifier,
+  messageDigest: Accounting.Digest,
+  approvedBy: Accounting.Identifier,
+  approvedAt: Schema.String,
+  expiresAt: Schema.String,
+  digest: Accounting.Digest,
+});
+
+export const ReminderAttempt = Schema.Struct({
+  id: Accounting.Identifier,
+  messageId: Accounting.Identifier,
+  messageDigest: Accounting.Digest,
+  approvalId: Accounting.Identifier,
+  externalIdentity: Schema.String,
+  admittedAt: Schema.String,
+  digest: Accounting.Digest,
+});
+
+export const ReminderProviderObservation = Schema.Struct({
+  kind: Schema.Literals(["accepted", "delivered", "rejected", "unknown"]),
+  observationId: Schema.String.check(Schema.isMaxLength(1024)),
+  externalIdentity: Schema.String.check(Schema.isMaxLength(1024)),
+});
+
+export const ReminderObservation = Schema.Struct({
+  ...ReminderProviderObservation.fields,
+  recordedAt: Schema.String,
+  provider: Schema.Literal("local-fixture-v1"),
+  digest: Accounting.Digest,
+});
+
+export const ReminderView = Schema.Struct({
+  message: ReminderMessage,
+  approval: Schema.NullOr(ReminderApproval),
+  attempt: Schema.NullOr(ReminderAttempt),
+  observations: Schema.Array(ReminderObservation),
+  status: Schema.Literals([
+    "prepared",
+    "approved",
+    "admitted",
+    "reconciling",
+    "provider_accepted",
+    "delivered",
+    "outcome_unknown",
+    "failed",
+    "cancelled",
+    "refused",
+  ]),
+  reason: Schema.NullOr(Schema.String),
+  delivered: Schema.Boolean,
+  currentOutstandingMinor: Schema.NullOr(Accounting.AggregateMinorUnits),
+  currentHoldReminders: Schema.Boolean,
+  currentSettlementCheckedAt: Schema.String,
+  liveProviderEnabled: Schema.Literal(false),
+});
+
 const historyQuery = Schema.Struct({
   after: Schema.optional(Schema.String.check(Schema.isMaxLength(256))),
 });
@@ -149,6 +256,24 @@ const worklistQuery = Schema.Struct({
 });
 
 export const CollectionsCapabilities = {
+  collections_prepare_reminder: {
+    description:
+      "Prepare exact payment-reminder bytes from an issued Swedish SEK invoice and reviewed recipient. Does not approve or contact a customer.",
+    input: Schema.Struct({
+      scope: Accounting.Scope,
+      idempotencyKey: Accounting.IdempotencyHeaders.fields["idempotency-key"],
+      ...PrepareReminder.fields,
+    }),
+    output: ReminderMessage,
+    readOnly: false,
+  },
+  collections_read_reminder: {
+    description:
+      "Read a retained exact reminder, admission and authenticated fixture observations separately from its current settlement. Live delivery remains disabled.",
+    input: Schema.Struct({ scope: Accounting.Scope, reminderId: Accounting.Identifier }),
+    output: ReminderView,
+    readOnly: true,
+  },
   collections_worklist: {
     description:
       "Read a paginated live customer receivable worklist with residual, dispute, hold and next-action state. It does not prepare or deliver reminders.",
@@ -185,6 +310,47 @@ const mutation = {
 };
 
 export const CollectionsApi = HttpApiGroup.make("collections")
+  .add(
+    HttpApiEndpoint.post("prepareReminder", `${base}/reminders`, {
+      ...mutation,
+      payload: PrepareReminder.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: ReminderMessage,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get("readReminder", `${base}/reminders/:id`, {
+      params: Accounting.ChangePath,
+      success: ReminderView,
+      error: accountingErrors,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post("approveReminder", `${base}/reminders/:id/approvals`, {
+      params: Accounting.ChangePath,
+      headers: Accounting.IdempotencyHeaders,
+      error: accountingErrors,
+      payload: ApproveReminder.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: ReminderView,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post("cancelReminder", `${base}/reminders/:id/cancel`, {
+      params: Accounting.ChangePath,
+      headers: Accounting.IdempotencyHeaders,
+      error: accountingErrors,
+      payload: ReminderCommand.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: ReminderView,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post("reconcileReminder", `${base}/reminders/:id/reconcile`, {
+      params: Accounting.ChangePath,
+      headers: Accounting.IdempotencyHeaders,
+      error: accountingErrors,
+      payload: ReminderCommand.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: ReminderView,
+    }),
+  )
   .add(
     HttpApiEndpoint.get("collectionWorklist", `${base}/worklist`, {
       params: Accounting.Scope,

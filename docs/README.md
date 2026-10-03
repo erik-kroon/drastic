@@ -8,6 +8,8 @@ The current first-company product direction is [Book Zero, daily work and Drasti
 
 The [Document Intelligence first journey](plans/document-intelligence-delivery.md) records the PDF/image-to-review-to-draft implementation and normal self-host synthetic verification. Live provider use remains disabled.
 
+The [payment reminder owner](operations/payment-reminders.md) describes exact message review, operator approval, admission and honest local fixture outcomes. Its feature source is authored; runtime, recovery and timing verification remain open. Live provider use remains disabled.
+
 The [pdfcn decision](adr/0016-pdfcn-legal-documents.md) and [adoption record](plans/pdfcn-adoption.md) describe the current legal-invoice and credit-note presentation and its local E2E proof.
 
 The [evaluation input contract](operations/evaluation-contracts.md) records the operator-only immutable capture/read unit and its remaining packet-2 boundaries.

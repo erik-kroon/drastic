@@ -1901,3 +1901,57 @@ export const cashForecasts = openerp.table("cash_forecasts", {
   body: jsonb("body").$type<Schema.JsonObject>().notNull(), content: text("content").notNull(),
   sha256: text("sha256").notNull(), byteLength: integer("byte_length").notNull(),
 });
+
+export const reminderMessages = openerp.table("reminder_messages", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  prepareKey: text("prepare_key").notNull(),
+  requestDigest: text("request_digest").notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const reminderApprovals = openerp.table("reminder_approvals", {
+  bookId: text("book_id").notNull(),
+  messageId: text("message_id").notNull(),
+  actorId: text("actor_id").notNull(),
+  sessionId: text("session_id").notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const reminderAttempts = openerp.table("reminder_attempts", {
+  bookId: text("book_id").notNull(),
+  messageId: text("message_id").notNull(),
+  id: text().notNull(),
+  externalIdentity: text("external_identity").notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const reminderOutbox = openerp.table("reminder_outbox", {
+  bookId: text("book_id").notNull(),
+  messageId: text("message_id").notNull(),
+  state: text({
+    enum: [
+      "approved",
+      "admitted",
+      "reconciling",
+      "provider_accepted",
+      "delivered",
+      "outcome_unknown",
+      "failed",
+      "cancelled",
+      "refused",
+    ],
+  }).notNull(),
+  checkpoint: integer().notNull(),
+  cancelVersion: integer("cancel_version").notNull(),
+  reason: text(),
+  checkedAt: timestamp("checked_at", { withTimezone: true, mode: "string" }).notNull(),
+});
+
+export const reminderObservations = openerp.table("reminder_observations", {
+  bookId: text("book_id").notNull(),
+  attemptId: text("attempt_id").notNull(),
+  observationId: text("observation_id").notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" }).notNull(),
+});

@@ -1,58 +1,145 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:http";
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
+import { arch, cpus, platform, totalmem } from "node:os";
 import { join } from "node:path";
 import * as Schema from "effect/Schema";
+import * as Match from "effect/Match";
 import { expect, test } from "vitest";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Commerce from "@open-erp/contracts/commerce";
+import { withWorkspaceBrowser } from "./support/workspace-browser";
 import { legalFixture } from "./support/legal-commerce";
-import { apiDirectory, createSession, database, decoded, environment, failure, fixture, journal, key, post, request } from "./support/fixtures";
+import {
+  apiDirectory,
+  createSession,
+  database,
+  decoded,
+  environment,
+  failure,
+  fixture,
+  journal,
+  key,
+  post,
+  request,
+} from "./support/fixtures";
 
-const Reference = Schema.Struct({ partyId: Schema.String, revision: Schema.String, digest: Accounting.Digest });
-const Recipient = Schema.Struct({ ...Reference.fields, destination: Schema.String });
-const Message = Schema.Struct({
-  id: Schema.String, scope: Accounting.Scope, issueId: Schema.String, invoiceId: Schema.String,
-  outstandingMinor: Schema.String, preparedAt: Schema.String, recipient: Recipient,
-  subject: Schema.String, plainText: Schema.String, html: Schema.String, digest: Accounting.Digest,
+const Reference = Schema.Struct({
+  partyId: Schema.String,
+  revision: Schema.String,
+  digest: Accounting.Digest,
 });
-const Observation = Schema.Struct({ kind: Schema.String, observationId: Schema.String, externalIdentity: Schema.String });
+
+const Recipient = Schema.Struct({ ...Reference.fields, destination: Schema.String });
+
+const Message = Schema.Struct({
+  id: Schema.String,
+  scope: Accounting.Scope,
+  issueId: Schema.String,
+  invoiceId: Schema.String,
+  outstandingMinor: Schema.String,
+  preparedAt: Schema.String,
+  recipient: Recipient,
+  subject: Schema.String,
+  plainText: Schema.String,
+  html: Schema.String,
+  digest: Accounting.Digest,
+});
+
+const Observation = Schema.Struct({
+  kind: Schema.String,
+  observationId: Schema.String,
+  externalIdentity: Schema.String,
+});
+
 const View = Schema.Struct({
-  message: Message, status: Schema.String, delivered: Schema.Boolean,
+  message: Message,
+  status: Schema.String,
+  delivered: Schema.Boolean,
   currentOutstandingMinor: Schema.NullOr(Schema.String),
-  attempt: Schema.NullOr(Schema.Struct({ id: Schema.String, externalIdentity: Schema.String, messageDigest: Accounting.Digest })),
+  attempt: Schema.NullOr(
+    Schema.Struct({
+      id: Schema.String,
+      externalIdentity: Schema.String,
+      messageDigest: Accounting.Digest,
+    }),
+  ),
   observations: Schema.Array(Observation),
 });
 
 const base = "/commerce/collections/reminders";
+
 type Context = Awaited<ReturnType<typeof legalFixture>>;
-type Wire = { externalIdentity: string; messageDigest: string; destination: string; subject: string; plainText: string; html: string };
+
+const WireSchema = Schema.Struct({
+  externalIdentity: Schema.String,
+  messageDigest: Accounting.Digest,
+  destination: Schema.String,
+  subject: Schema.String,
+  plainText: Schema.String,
+  html: Schema.String,
+});
+
+type Wire = typeof WireSchema.Type;
 
 async function reviewed(context: Context) {
-  return post(context.author, `/commerce/directory/${context.customer.id}/recipient`, {
-    expectedRevision: "0", expectedDigest: null, channel: "email", destination: "billing@example.invalid",
-    purposes: ["payment_reminder"], status: "reviewed", reviewEvidence: context.original.draftSnapshot.sellerEvidence,
-    reason: "Synthetic reminder recipient", acknowledgeReviewedRecipient: true,
-  }, Recipient);
+  return post(
+    context.author,
+    `/commerce/directory/${context.customer.id}/recipient`,
+    {
+      expectedRevision: "0",
+      expectedDigest: null,
+      channel: "email",
+      destination: "billing@example.invalid",
+      purposes: ["payment_reminder"],
+      status: "reviewed",
+      reviewEvidence: context.original.draftSnapshot.sellerEvidence,
+      reason: "Synthetic reminder recipient",
+      acknowledgeReviewedRecipient: true,
+    },
+    Recipient,
+  );
 }
 
 async function prepare(context: Context, recipient: typeof Recipient.Type, idempotencyKey = key()) {
-  return decoded(await request(context.author, base, { method: "POST", headers: { "idempotency-key": idempotencyKey }, body: JSON.stringify({
-    issueId: context.original.id, recipient: { partyId: recipient.partyId, revision: recipient.revision, digest: recipient.digest },
-  }) }), Message);
+  return decoded(
+    await request(context.author, base, {
+      method: "POST",
+      headers: { "idempotency-key": idempotencyKey },
+      body: JSON.stringify({
+        issueId: context.original.id,
+        recipient: {
+          partyId: recipient.partyId,
+          revision: recipient.revision,
+          digest: recipient.digest,
+        },
+      }),
+    }),
+    Message,
+  );
 }
 
 async function approve(context: Context, message: typeof Message.Type) {
-  return post(context.author, `${base}/${message.id}/approvals`, { messageDigest: message.digest, acknowledgeExactMessage: true }, View);
+  return post(
+    context.author,
+    `${base}/${message.id}/approvals`,
+    { messageDigest: message.digest, acknowledgeExactMessage: true },
+    View,
+  );
 }
 
 async function read(context: Context, message: typeof Message.Type) {
   return decoded(await request(context.author, `${base}/${message.id}`), View);
 }
 
-async function waitStatus(context: Context, message: typeof Message.Type, expected: string) {
-  const deadline = Date.now() + 25000;
+async function waitStatus(
+  context: Context,
+  message: typeof Message.Type,
+  expected: string,
+  timeoutMs = 25000,
+) {
+  const deadline = Date.now() + timeoutMs;
   let view = await read(context, message);
 
   while (view.status !== expected && Date.now() < deadline) {
@@ -73,6 +160,7 @@ async function fixtureTransport(mode: "accepted" | "unknown" | "rejected" | "cra
   let delivered = false;
   let crashed = false;
   let onAccepted: (() => void) | undefined;
+
   const server = createServer((incoming, outgoing) => {
     void (async () => {
       if (incoming.headers.authorization !== `Bearer ${secret}`) {
@@ -85,7 +173,11 @@ async function fixtureTransport(mode: "accepted" | "unknown" | "rejected" | "cra
         const chunks: Buffer[] = [];
 
         for await (const chunk of incoming) chunks.push(Buffer.from(chunk));
-        const wire: Wire = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+
+        const wire = Schema.decodeSync(Schema.fromJsonString(WireSchema))(
+          Buffer.concat(chunks).toString("utf8"),
+        );
+
         wires.push(wire);
         accepted.set(wire.externalIdentity, wire);
 
@@ -98,7 +190,17 @@ async function fixtureTransport(mode: "accepted" | "unknown" | "rejected" | "cra
         }
 
         outgoing.setHeader("content-type", "application/json");
-        outgoing.end(JSON.stringify({ kind: mode === "rejected" ? "rejected" : mode === "unknown" ? "unknown" : "accepted", observationId: `${wire.externalIdentity}/accepted`, externalIdentity: wire.externalIdentity }));
+        outgoing.end(
+          JSON.stringify({
+            kind: Match.value(mode).pipe(
+              Match.when("rejected", () => "rejected"),
+              Match.when("unknown", () => "unknown"),
+              Match.orElse(() => "accepted"),
+            ),
+            observationId: `${wire.externalIdentity}/accepted`,
+            externalIdentity: wire.externalIdentity,
+          }),
+        );
 
         return;
       }
@@ -106,70 +208,328 @@ async function fixtureTransport(mode: "accepted" | "unknown" | "rejected" | "cra
       const identity = decodeURIComponent((incoming.url ?? "").replace("/messages/", ""));
       reads.push(identity);
       outgoing.setHeader("content-type", "application/json");
-      outgoing.end(JSON.stringify({ kind: mode === "unknown" || !accepted.has(identity) ? "unknown" : delivered ? "delivered" : "accepted", observationId: `${identity}/${delivered ? "delivered" : "accepted"}`, externalIdentity: identity }));
+      outgoing.end(
+        JSON.stringify({
+          kind:
+            mode === "rejected"
+              ? "rejected"
+              : mode === "unknown" || !accepted.has(identity)
+                ? "unknown"
+                : delivered
+                  ? "delivered"
+                  : "accepted",
+          observationId: `${identity}/${delivered ? "delivered" : "accepted"}`,
+          externalIdentity: identity,
+        }),
+      );
     })().catch(() => outgoing.destroy());
   });
+
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
 
-  if (address === null || typeof address === "string") throw new Error("Loopback fixture port missing");
+  if (address === null || typeof address === "string")
+    throw new Error("Loopback fixture port missing");
 
   return {
-    endpoint: `http://127.0.0.1:${address.port}`, secret, wires, reads,
-    deliver: () => { delivered = true; },
-    onAccepted: (callback: () => void) => { onAccepted = callback; },
-    close: () => new Promise<void>((resolve) => { server.closeAllConnections(); server.close(() => resolve()); }),
+    endpoint: `http://127.0.0.1:${address.port}`,
+    secret,
+    wires,
+    reads,
+    deliver: () => {
+      delivered = true;
+    },
+    onAccepted: (callback: () => void) => {
+      onAccepted = callback;
+    },
+    close: () =>
+      new Promise<void>((resolve) => {
+        server.closeAllConnections();
+        server.close(() => resolve());
+      }),
   };
 }
 
-function runner(context: Context, transport: Awaited<ReturnType<typeof fixtureTransport>>) {
-  const child = spawn("bun", ["scripts/preparation-runner.ts"], { cwd: apiDirectory, env: {
-    ...process.env, DATABASE_URL: environment().runtimeUrl, OPENERP_PREPARATION_TOKEN: context.book.token,
-    OPENERP_REMINDER_DELIVERY: "local-fixture", OPENERP_REMINDER_ENDPOINT: transport.endpoint, OPENERP_REMINDER_SECRET: transport.secret,
-  }, stdio: "pipe" });
+type Runner = {
+  readonly child: ChildProcess;
+  readonly closed: Promise<void>;
+  readonly logPath: string;
+  output: string;
+};
 
-  return child;
+function runner(context: Context, transport: Awaited<ReturnType<typeof fixtureTransport>>) {
+  const child = spawn("bun", ["scripts/preparation-runner.ts"], {
+    cwd: apiDirectory,
+    env: {
+      ...process.env,
+      DATABASE_URL: environment().runtimeUrl,
+      OPENERP_PREPARATION_TOKEN: context.book.token,
+      OPENERP_DOCUMENT_READER: "disabled",
+      OPENERP_OBJECT_DIRECTORY: "",
+      EVIDENCE_STORE_ROOT: "",
+      OPENERP_REMINDER_DELIVERY: "local-fixture",
+      OPENERP_REMINDER_ENDPOINT: transport.endpoint,
+      OPENERP_REMINDER_SECRET: transport.secret,
+    },
+    stdio: "pipe",
+  });
+
+  const handle: Runner = {
+    child,
+    closed: new Promise<void>((resolve) => child.once("close", () => resolve())),
+    logPath: join(environment().artifacts, `reminder-runner-${context.book.bookId}-${key()}.log`),
+    output: "",
+  };
+
+  child.stdout?.on("data", (chunk: Buffer) => {
+    handle.output += chunk.toString("utf8");
+  });
+  child.stderr?.on("data", (chunk: Buffer) => {
+    handle.output += chunk.toString("utf8");
+  });
+
+  return handle;
 }
 
-async function stop(child: ChildProcess) {
-  if (child.exitCode !== null || child.signalCode !== null) return;
-  child.kill("SIGTERM");
-  await new Promise<void>((resolve) => child.once("exit", () => resolve()));
+async function stop(handle: Runner) {
+  if (handle.child.exitCode === null && handle.child.signalCode === null)
+    handle.child.kill("SIGTERM");
+  await handle.closed;
+  await writeFile(handle.logPath, handle.output);
 }
 
 async function settle(context: Context, amountMinor: string) {
   const source = context.original.sourceEvidence.evidenceId;
-  const plan = await post(context.book, "/change-sets", {
-    ...journal(source, amountMinor), postingDate: context.today, description: "Synthetic reminder settlement", lines: [
-      { accountId: "account_bank", debitMinor: amountMinor, creditMinor: "0", description: "Synthetic payment" },
-      { accountId: "account_ar", debitMinor: "0", creditMinor: amountMinor, description: "Synthetic receipt control" },
-    ],
-  }, Accounting.ChangeSet);
-  const approval = await post(context.book, `/change-sets/${plan.id}/approvals`, { version: plan.version, planDigest: plan.planDigest }, Accounting.Approval);
-  const receipt = await post(context.book, `/change-sets/${plan.id}/execute`, { version: plan.version, planDigest: plan.planDigest, approvalId: approval.id }, Accounting.ExecutionReceipt);
+
+  const plan = await post(
+    context.book,
+    "/change-sets",
+    {
+      ...journal(source, amountMinor),
+      postingDate: context.today,
+      description: "Synthetic reminder settlement",
+      lines: [
+        {
+          accountId: "account_bank",
+          debitMinor: amountMinor,
+          creditMinor: "0",
+          description: "Synthetic payment",
+        },
+        {
+          accountId: "account_ar",
+          debitMinor: "0",
+          creditMinor: amountMinor,
+          description: "Synthetic receipt control",
+        },
+      ],
+    },
+    Accounting.ChangeSet,
+  );
+
+  const approval = await post(
+    context.book,
+    `/change-sets/${plan.id}/approvals`,
+    { version: plan.version, planDigest: plan.planDigest },
+    Accounting.Approval,
+  );
+
+  const receipt = await post(
+    context.book,
+    `/change-sets/${plan.id}/execute`,
+    { version: plan.version, planDigest: plan.planDigest, approvalId: approval.id },
+    Accounting.ExecutionReceipt,
+  );
+
   const line = plan.groups[0]?.actions[0]?.lines.find((item) => item.accountId === "account_ar");
 
   if (!line) throw new Error("Retained payment line missing");
-  const allocation = await post(context.book, "/commerce/allocation-plans", {
-    voucherId: receipt.voucherId, lineId: line.lineId, evidenceId: source, rationale: "Synthetic reminder partial payment",
-    allocations: [{ invoiceId: context.original.registerInvoiceId, amountMinor }],
-  }, Commerce.AllocationPlan);
+
+  const allocation = await post(
+    context.book,
+    "/commerce/allocation-plans",
+    {
+      voucherId: receipt.voucherId,
+      lineId: line.lineId,
+      evidenceId: source,
+      rationale: "Synthetic reminder partial payment",
+      allocations: [{ invoiceId: context.original.registerInvoiceId, amountMinor }],
+    },
+    Commerce.AllocationPlan,
+  );
+
   const input = { version: 1, planDigest: allocation.digest };
-  const allocationApproval = await post(context.book, `/commerce/allocation-plans/${allocation.id}/approvals`, input, Commerce.AllocationApproval);
-  await post(context.book, `/commerce/allocation-plans/${allocation.id}/apply`, { ...input, approvalId: allocationApproval.id }, Commerce.AllocationReceipt);
+
+  const allocationApproval = await post(
+    context.book,
+    `/commerce/allocation-plans/${allocation.id}/approvals`,
+    input,
+    Commerce.AllocationApproval,
+  );
+
+  await post(
+    context.book,
+    `/commerce/allocation-plans/${allocation.id}/apply`,
+    { ...input, approvalId: allocationApproval.id },
+    Commerce.AllocationReceipt,
+  );
 }
 
 test("reminders bind exact debt and reviewed bytes, retain acceptance separately from delivered evidence and preserve admitted history", async () => {
   const context = await legalFixture();
   const recipient = await reviewed(context);
+
+  const historical = await post(
+    context.book,
+    "/commerce/collections/actions",
+    {
+      invoiceId: context.original.registerInvoiceId,
+      kind: "reminder_prepared",
+      note: "Historical synthetic preparation without send authority",
+      ownerId: context.book.actorId,
+      disputeId: null,
+    },
+    Schema.Struct({ id: Schema.String, sendAuthorized: Schema.Boolean }),
+  );
+
+  expect(historical.sendAuthorized).toBe(false);
   const prepareKey = key();
   const message = await prepare(context, recipient, prepareKey);
+  await failure(
+    await request(context.author, base, {
+      method: "POST",
+      body: JSON.stringify({
+        issueId: context.original.id,
+        recipient: {
+          partyId: recipient.partyId,
+          revision: recipient.revision,
+          digest: recipient.digest,
+        },
+        outstandingMinor: "1",
+      }),
+    }),
+    400,
+    "InvalidRequest",
+  );
+  await failure(
+    await request(context.author, base, {
+      method: "POST",
+      body: JSON.stringify({
+        issueId: context.original.id,
+        recipient: {
+          partyId: "foreign_customer",
+          revision: recipient.revision,
+          digest: recipient.digest,
+        },
+      }),
+    }),
+    409,
+    "StaleDependency",
+  );
   expect(message.outstandingMinor).toBe("12500");
-  expect(message.subject).toBe(`Payment reminder for invoice ${context.original.legalDocumentNumber}`);
-  expect(message.plainText).toBe(`Payment reminder\nInvoice: ${context.original.legalDocumentNumber}\nDue date: ${context.original.draftSnapshot.content.dueDate}\nOutstanding as of ${message.preparedAt}: 125.00 SEK\nNo reminder fee or interest is included.\nIf you have already paid, please contact us so we can review the payment.`);
+  expect(message.subject).toBe(
+    `Payment reminder for invoice ${context.original.legalDocumentNumber}`,
+  );
+  expect(message.plainText).toBe(
+    `Payment reminder\nInvoice: ${context.original.legalDocumentNumber}\nDue date: ${context.original.draftSnapshot.content.dueDate}\nOutstanding as of ${message.preparedAt}: 125.00 SEK\nNo reminder fee or interest is included.\nIf you have already paid, please contact us so we can review the payment.`,
+  );
   expect(message.html).toContain("125.00 SEK");
   expect(await prepare(context, recipient, prepareKey)).toEqual(message);
-  await failure(await request({ ...context.author, token: context.book.agentToken }, `${base}/${message.id}/approvals`, { method: "POST", body: JSON.stringify({ messageDigest: message.digest, acknowledgeExactMessage: true }) }), 403, "Forbidden");
+
+  for (const token of [context.book.agentToken, context.book.token])
+    await failure(
+      await request({ ...context.author, token }, `${base}/${message.id}/approvals`, {
+        method: "POST",
+        body: JSON.stringify({ messageDigest: message.digest, acknowledgeExactMessage: true }),
+      }),
+      403,
+      "Forbidden",
+    );
+
+  const catalogResponse = await fetch(`${environment().baseUrl}/api/mcp`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${context.book.agentToken}`,
+      "content-type": "application/json",
+      "MCP-Protocol-Version": "2025-11-25",
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
+  });
+
+  const catalog = Schema.decodeUnknownSync(
+    Schema.Struct({
+      result: Schema.Struct({ tools: Schema.Array(Schema.Struct({ name: Schema.String })) }),
+    }),
+  )(await catalogResponse.json());
+
+  const names = catalog.result.tools.map((tool) => tool.name);
+  expect(names).toContain("collections_prepare_reminder");
+  expect(names).toContain("collections_read_reminder");
+  expect(names).not.toContain("collections_approve_reminder");
+
+  const rpcRead = await fetch(`${environment().baseUrl}/api/mcp`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${context.book.agentToken}`,
+      "content-type": "application/json",
+      "MCP-Protocol-Version": "2025-11-25",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/call",
+      params: {
+        name: "collections_read_reminder",
+        arguments: { scope: message.scope, reminderId: message.id },
+      },
+    }),
+  });
+
+  const readResult = Schema.decodeUnknownSync(
+    Schema.Struct({
+      result: Schema.Struct({ structuredContent: Schema.Struct({ result: View }) }),
+    }),
+  )(await rpcRead.json());
+
+  expect(readResult.result.structuredContent.result.message).toEqual(message);
+
+  const rpcPrepare = await fetch(`${environment().baseUrl}/api/mcp`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${context.book.agentToken}`,
+      "content-type": "application/json",
+      "MCP-Protocol-Version": "2025-11-25",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: {
+        name: "collections_prepare_reminder",
+        arguments: {
+          scope: message.scope,
+          idempotencyKey: key(),
+          issueId: context.original.id,
+          recipient: {
+            partyId: recipient.partyId,
+            revision: recipient.revision,
+            digest: recipient.digest,
+          },
+        },
+      },
+    }),
+  });
+
+  const prepareResult = Schema.decodeUnknownSync(
+    Schema.Struct({
+      result: Schema.Struct({ structuredContent: Schema.Struct({ result: Message }) }),
+    }),
+  )(await rpcPrepare.json());
+
+  expect(prepareResult.result.structuredContent.result.outstandingMinor).toBe("12500");
+  expect(prepareResult.result.structuredContent.result.recipient.destination).toBe(
+    "billing@example.invalid",
+  );
+
   const other = await fixture();
   await failure(await request(other, `${base}/${message.id}`), 404, "NotFound");
   const approvals = await Promise.all([approve(context, message), approve(context, message)]);
@@ -181,60 +541,212 @@ test("reminders bind exact debt and reviewed bytes, retain acceptance separately
     const accepted = await waitStatus(context, message, "provider_accepted");
     expect(accepted.delivered).toBe(false);
     expect(accepted.attempt?.messageDigest).toBe(message.digest);
-    expect(transport.wires).toEqual([{ externalIdentity: accepted.attempt?.externalIdentity, messageDigest: message.digest, destination: "billing@example.invalid", subject: message.subject, plainText: message.plainText, html: message.html }]);
+    expect(transport.wires).toEqual([
+      {
+        externalIdentity: accepted.attempt?.externalIdentity,
+        messageDigest: message.digest,
+        destination: "billing@example.invalid",
+        subject: message.subject,
+        plainText: message.plainText,
+        html: message.html,
+      },
+    ]);
     await settle(context, "4000");
     const paid = await read(context, message);
     expect(paid.message.outstandingMinor).toBe("12500");
     expect(paid.currentOutstandingMinor).toBe("8500");
+    const adminSession = await database();
+
+    try {
+      await adminSession.query("DELETE FROM openerp_auth.session WHERE token = $1", [
+        context.author.token,
+      ]);
+    } finally {
+      await adminSession.end();
+    }
+
+    context.author.token = (await createSession(context.book)).token;
     transport.deliver();
-    await post(context.author, `${base}/${message.id}/reconcile`, { messageDigest: message.digest }, View);
+    await post(
+      context.author,
+      `${base}/${message.id}/reconcile`,
+      { messageDigest: message.digest },
+      View,
+    );
     const delivered = await waitStatus(context, message, "delivered");
     expect(delivered.delivered).toBe(true);
-    expect(delivered.observations.map((observation) => observation.kind)).toEqual(["accepted", "delivered"]);
+    expect(delivered.observations.map((observation) => observation.kind)).toEqual([
+      "accepted",
+      "delivered",
+    ]);
     const admin = await database();
 
-    try { await admin.query("DELETE FROM openerp.command_receipts WHERE book_id = $1", [context.book.bookId]); } finally { await admin.end(); }
+    try {
+      await admin.query("SET session_replication_role = replica");
+      await admin.query("DELETE FROM openerp.command_receipts WHERE book_id = $1", [
+        context.book.bookId,
+      ]);
+      await admin.query("SET session_replication_role = origin");
+    } finally {
+      await admin.end();
+    }
+
     expect((await approve(context, message)).attempt?.id).toBe(delivered.attempt?.id);
     expect(transport.wires.length).toBe(1);
-    await writeFile(join(environment().artifacts, "reminder-journey.json"), JSON.stringify({ message, accepted, paid, delivered, wire: transport.wires, providerReads: transport.reads }, null, 2));
-  } finally { await stop(worker); await transport.close(); }
+    await writeFile(
+      join(environment().artifacts, "reminder-journey.json"),
+      JSON.stringify(
+        {
+          historical,
+          message,
+          accepted,
+          paid,
+          delivered,
+          wire: transport.wires,
+          providerReads: transport.reads,
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await stop(worker);
+    await transport.close();
+  }
 });
 
 test("payment, holds, recipient withdrawal, cancellation and approval expiry refuse before admission", async () => {
-  for (const blocker of ["payment", "hold", "recipient", "cancel", "session", "expiry", "membership"] as const) {
+  for (const blocker of [
+    "payment",
+    "hold",
+    "recipient",
+    "cancel",
+    "session",
+    "expiry",
+    "approval_expiry",
+    "membership",
+  ] as const) {
     const context = await legalFixture();
+
+    if (blocker === "membership") context.author = context.reviewer;
     const recipient = await reviewed(context);
     const message = await prepare(context, recipient);
     await approve(context, message);
 
     if (blocker === "payment") await settle(context, "4000");
-    if (blocker === "hold") await post(context.book, "/commerce/collections/disputes", { invoiceId: message.invoiceId, reason: "Synthetic payment dispute", evidenceId: context.original.sourceEvidence.evidenceId, ownerId: context.book.actorId, holdReminders: true }, Schema.Unknown);
-    if (blocker === "recipient") await post(context.author, `/commerce/directory/${context.customer.id}/recipient`, { expectedRevision: recipient.revision, expectedDigest: recipient.digest, channel: "email", destination: "withdrawn@example.invalid", purposes: ["payment_reminder"], status: "withdrawn", reviewEvidence: context.original.draftSnapshot.sellerEvidence, reason: "Synthetic withdrawal", acknowledgeReviewedRecipient: true }, Schema.Unknown);
-    if (blocker === "cancel") await post(context.author, `${base}/${message.id}/cancel`, { messageDigest: message.digest }, View);
+
+    if (blocker === "hold")
+      await post(
+        context.book,
+        "/commerce/collections/disputes",
+        {
+          invoiceId: message.invoiceId,
+          reason: "Synthetic payment dispute",
+          evidenceId: context.original.sourceEvidence.evidenceId,
+          ownerId: context.book.actorId,
+          holdReminders: true,
+        },
+        Schema.Unknown,
+      );
+
+    if (blocker === "recipient")
+      await post(
+        context.author,
+        `/commerce/directory/${context.customer.id}/recipient`,
+        {
+          expectedRevision: recipient.revision,
+          expectedDigest: recipient.digest,
+          channel: "email",
+          destination: "withdrawn@example.invalid",
+          purposes: ["payment_reminder"],
+          status: "withdrawn",
+          reviewEvidence: context.original.draftSnapshot.sellerEvidence,
+          reason: "Synthetic withdrawal",
+          acknowledgeReviewedRecipient: true,
+        },
+        Schema.Unknown,
+      );
+
+    if (blocker === "cancel")
+      await post(
+        context.author,
+        `${base}/${message.id}/cancel`,
+        { messageDigest: message.digest },
+        View,
+      );
+
     if (blocker === "session") {
       const admin = await database();
-      try { await admin.query('DELETE FROM openerp_auth.session WHERE token = $1', [context.author.token]); } finally { await admin.end(); }
+
+      try {
+        await admin.query("DELETE FROM openerp_auth.session WHERE token = $1", [
+          context.author.token,
+        ]);
+      } finally {
+        await admin.end();
+      }
+
       context.author.token = (await createSession(context.book)).token;
     }
+
+    if (blocker === "approval_expiry") {
+      const admin = await database();
+
+      try {
+        await admin.query("SET session_replication_role = replica");
+        await admin.query(
+          "UPDATE openerp.reminder_approvals SET body = basis.body || jsonb_build_object('digest', openerp.digest(basis.body)) FROM (SELECT book_id, message_id, (body - 'digest') || jsonb_build_object('expiresAt', '2000-01-01T00:00:00.000Z') AS body FROM openerp.reminder_approvals WHERE book_id = $1 AND message_id = $2) basis WHERE reminder_approvals.book_id = basis.book_id AND reminder_approvals.message_id = basis.message_id",
+          [context.book.bookId, message.id],
+        );
+        await admin.query("SET session_replication_role = origin");
+      } finally {
+        await admin.end();
+      }
+    }
+
     if (blocker === "expiry" || blocker === "membership") {
       const admin = await database();
+
       try {
-        if (blocker === "expiry") await admin.query('UPDATE openerp_auth.session SET expires_at = now() - interval \'1 minute\' WHERE token = $1', [context.author.token]);
-        else await admin.query("DELETE FROM openerp.memberships WHERE book_id = $1 AND actor_id = $2", [context.book.bookId, context.book.actorId]);
-      } finally { await admin.end(); }
-      context.author = context.reviewer;
+        if (blocker === "expiry")
+          await admin.query(
+            "UPDATE openerp_auth.session SET expires_at = now() - interval '1 minute' WHERE token = $1",
+            [context.author.token],
+          );
+        else
+          await admin.query(
+            "DELETE FROM openerp.memberships WHERE book_id = $1 AND actor_id = $2",
+            [context.book.bookId, context.author.actorId],
+          );
+      } finally {
+        await admin.end();
+      }
+
+      context.author =
+        blocker === "membership"
+          ? { ...context.book, token: (await createSession(context.book)).token }
+          : context.reviewer;
     }
+
     const transport = await fixtureTransport();
     const worker = runner(context, transport);
 
     try {
-      const refused = await waitStatus(context, message, blocker === "cancel" ? "cancelled" : "refused");
+      const refused = await waitStatus(
+        context,
+        message,
+        blocker === "cancel" ? "cancelled" : "refused",
+      );
+
       expect(refused.attempt).toBe(null);
       expect(refused.currentOutstandingMinor).toBe(blocker === "payment" ? "8500" : "12500");
       expect(transport.wires).toEqual([]);
-    } finally { await stop(worker); await transport.close(); }
+    } finally {
+      await stop(worker);
+      await transport.close();
+    }
   }
-});
+}, 90000);
 
 test("a lost post-acceptance response survives persistent runner restart using the same identity without a second message", async () => {
   const context = await legalFixture();
@@ -242,21 +754,29 @@ test("a lost post-acceptance response survives persistent runner restart using t
   await approve(context, message);
   const transport = await fixtureTransport("crash");
   let worker = runner(context, transport);
-  transport.onAccepted(() => worker.kill("SIGKILL"));
+  transport.onAccepted(() => worker.child.kill("SIGKILL"));
 
   try {
     const deadline = Date.now() + 25000;
-    while (transport.wires.length === 0 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 100));
+
+    while (transport.wires.length === 0 && Date.now() < deadline)
+      await new Promise((resolve) => setTimeout(resolve, 100));
     expect(transport.wires.length).toBe(1);
     await stop(worker);
     worker = runner(context, transport);
-    const accepted = await waitStatus(context, message, "provider_accepted");
+    const accepted = await waitStatus(context, message, "provider_accepted", 75000);
     expect(transport.wires.length).toBe(1);
     expect(transport.reads).toContain(accepted.attempt?.externalIdentity);
     expect(accepted.delivered).toBe(false);
-    await writeFile(join(environment().artifacts, "reminder-restart.json"), JSON.stringify({ accepted, wire: transport.wires, reads: transport.reads }, null, 2));
-  } finally { await stop(worker); await transport.close(); }
-});
+    await writeFile(
+      join(environment().artifacts, "reminder-restart.json"),
+      JSON.stringify({ accepted, wire: transport.wires, reads: transport.reads }, null, 2),
+    );
+  } finally {
+    await stop(worker);
+    await transport.close();
+  }
+}, 90000);
 
 test("unknown outcomes and terminal rejections remain explicit and never trigger blind resend", async () => {
   for (const mode of ["unknown", "rejected"] as const) {
@@ -267,14 +787,299 @@ test("unknown outcomes and terminal rejections remain explicit and never trigger
     const worker = runner(context, transport);
 
     try {
-      const first = await waitStatus(context, message, mode === "unknown" ? "outcome_unknown" : "failed");
+      const first = await waitStatus(
+        context,
+        message,
+        mode === "unknown" ? "outcome_unknown" : "failed",
+      );
+
       expect(first.delivered).toBe(false);
       expect(transport.wires.length).toBe(1);
-      await post(context.author, `${base}/${message.id}/reconcile`, { messageDigest: message.digest }, View);
-      const again = await waitStatus(context, message, mode === "unknown" ? "outcome_unknown" : "failed");
+      await post(
+        context.author,
+        `${base}/${message.id}/reconcile`,
+        { messageDigest: message.digest },
+        View,
+      );
+
+      const again = await waitStatus(
+        context,
+        message,
+        mode === "unknown" ? "outcome_unknown" : "failed",
+      );
+
       expect(again.attempt?.id).toBe(first.attempt?.id);
       expect(transport.wires.length).toBe(1);
       expect(transport.reads).toContain(first.attempt?.externalIdentity);
-    } finally { await stop(worker); await transport.close(); }
+    } finally {
+      await stop(worker);
+      await transport.close();
+    }
+  }
+});
+
+test("the collections caller reviews recipient and exact bytes before a browser approval and shows retained local acceptance", async () => {
+  const context = await legalFixture();
+  await reviewed(context);
+  const transport = await fixtureTransport();
+  const worker = runner(context, transport);
+
+  try {
+    await withWorkspaceBrowser(context.book, "reminder-review", async (page, workspace) => {
+      await page.goto(`${workspace}/sales?view=collections`);
+      await page.getByLabel("Issued invoice ID", { exact: true }).fill(context.original.id);
+      await page.getByLabel("Issued invoice ID", { exact: true }).press("Tab");
+      await page.keyboard.press("Enter");
+      await page.getByRole("button", { name: "Prepare exact reminder", exact: true }).click();
+      await page
+        .getByRole("button", { name: "Approve exact message for local transport", exact: true })
+        .waitFor();
+      expect(await page.getByText("billing@example.invalid", { exact: true }).count()).toBe(1);
+      expect(await page.locator("pre").first().innerText()).toContain("125.00 SEK");
+      expect(transport.wires).toEqual([]);
+      await page.screenshot({
+        path: join(environment().artifacts, "reminder-exact-review.png"),
+        fullPage: true,
+      });
+
+      const approval = page.getByRole("button", {
+        name: "Approve exact message for local transport",
+        exact: true,
+      });
+
+      await approval.focus();
+      await page.keyboard.press("Enter");
+      await page.getByText("Accepted by local transport", { exact: true }).waitFor();
+      expect(transport.wires.length).toBe(1);
+      expect(transport.wires[0]?.destination).toBe("billing@example.invalid");
+      await page.screenshot({
+        path: join(environment().artifacts, "reminder-local-accepted.png"),
+        fullPage: true,
+      });
+      await writeFile(
+        join(environment().artifacts, "reminder-browser.json"),
+        JSON.stringify(
+          {
+            wire: transport.wires,
+            path: page.url(),
+            keyboardApproval: true,
+            browserZoomVerified: false,
+          },
+          null,
+          2,
+        ),
+      );
+    });
+  } finally {
+    await stop(worker);
+    await transport.close();
+  }
+}, 120000);
+
+test("fixed reminder fixtures retain five warmups and thirty public-boundary timing samples", async () => {
+  const context = await legalFixture();
+  const recipient = await reviewed(context);
+  const readSamples: number[] = [];
+
+  for (let index = 0; index < 35; index += 1) {
+    const started = performance.now();
+
+    const worklist = await decoded(
+      await request(context.book, "/commerce/collections/worklist"),
+      Schema.Struct({
+        items: Schema.Array(Schema.Struct({ residualMinor: Schema.NullOr(Schema.String) })),
+      }),
+    );
+
+    const durationMs = performance.now() - started;
+    expect(worklist.items[0]?.residualMinor).toBe("12500");
+
+    if (index >= 5) readSamples.push(durationMs);
+  }
+
+  const baseline = process.env.OPENERP_REMINDER_BASELINE === "1";
+  const previewSamples: number[] = [];
+  const dispatchSamples: number[] = [];
+  const queueWaitSamples: number[] = [];
+
+  if (baseline) {
+    await failure(
+      await request(context.author, base, {
+        method: "POST",
+        body: JSON.stringify({
+          issueId: context.original.id,
+          recipient: {
+            partyId: recipient.partyId,
+            revision: recipient.revision,
+            digest: recipient.digest,
+          },
+        }),
+      }),
+      404,
+      "NotFound",
+    );
+  } else {
+    const transport = await fixtureTransport();
+    const worker = runner(context, transport);
+
+    try {
+      for (let index = 0; index < 35; index += 1) {
+        const started = performance.now();
+        const message = await prepare(context, recipient);
+        const previewMs = performance.now() - started;
+        const approved = await approve(context, message);
+        const accepted = await waitStatus(context, message, "provider_accepted");
+        expect(message.outstandingMinor).toBe("12500");
+        const admin = await database();
+        let admittedAt: string;
+        let recordedAt: string;
+        let approvedAt: string;
+
+        try {
+          const times = await admin.query<{
+            admittedAt: string;
+            recordedAt: string;
+            approvedAt: string;
+          }>(
+            `SELECT a.body->>'admittedAt' AS "admittedAt", o.body->>'recordedAt' AS "recordedAt", p.body->>'approvedAt' AS "approvedAt" FROM openerp.reminder_attempts a JOIN openerp.reminder_observations o ON o.book_id = a.book_id AND o.attempt_id = a.id JOIN openerp.reminder_approvals p ON p.book_id = a.book_id AND p.message_id = a.message_id WHERE a.book_id = $1 AND a.message_id = $2 AND o.body->>'kind' = 'accepted'`,
+            [context.book.bookId, message.id],
+          );
+
+          const time = times.rows[0];
+
+          if (!time) throw new Error("Retained dispatch timestamps missing");
+          ({ admittedAt, recordedAt, approvedAt } = time);
+        } finally {
+          await admin.end();
+        }
+
+        expect(approved.status).toBe("approved");
+        expect(accepted.delivered).toBe(false);
+
+        if (index >= 5) {
+          previewSamples.push(previewMs);
+          dispatchSamples.push(Date.parse(recordedAt) - Date.parse(admittedAt));
+          queueWaitSamples.push(Date.parse(admittedAt) - Date.parse(approvedAt));
+        }
+      }
+
+      expect(transport.wires.length).toBe(35);
+    } finally {
+      await stop(worker);
+      await transport.close();
+    }
+  }
+
+  function summary(samples: number[]) {
+    const sorted = [...samples].sort((left, right) => left - right);
+
+    return { samples, p50Ms: sorted[14] ?? null, p95Ms: sorted[28] ?? null };
+  }
+
+  let existingBudgetMs: number | null = null;
+  const receiptPath = process.env.OPENERP_REMINDER_BASELINE_RECEIPT;
+
+  if (!baseline && receiptPath) {
+    const receipt = Schema.decodeSync(
+      Schema.fromJsonString(
+        Schema.Struct({
+          warmups: Schema.Literal(5),
+          measuredSamples: Schema.Literal(30),
+          feature: Schema.Literal("absent"),
+          existingWorklist: Schema.Struct({ p95Ms: Schema.Finite }),
+        }),
+      ),
+    )(await readFile(receiptPath, "utf8"));
+
+    existingBudgetMs = Math.max(
+      receipt.existingWorklist.p95Ms * 1.2,
+      receipt.existingWorklist.p95Ms + 50,
+    );
+  }
+
+  const results = {
+    machine: {
+      platform: platform(),
+      architecture: arch(),
+      cpuModel: cpus()[0]?.model ?? "unknown",
+      logicalCpus: cpus().length,
+      memoryBytes: totalmem(),
+      node: process.version,
+    },
+    comparison: existingBudgetMs === null ? "not_checked" : "baseline_budget_enforced",
+    existingBudgetMs,
+    warmups: 5,
+    measuredSamples: 30,
+    fixture: { issuedInvoices: 1, currency: "SEK", residualMinor: "12500", attachmentBytes: 0 },
+    feature: baseline ? "absent" : "present",
+    existingWorklist: summary(readSamples),
+    exactPreview: summary(previewSamples),
+    admittedToObservation: summary(dispatchSamples),
+    queueWait: summary(queueWaitSamples),
+  };
+
+  await writeFile(
+    join(environment().artifacts, "performance.json"),
+    JSON.stringify(results, null, 2),
+  );
+  expect(readSamples.length).toBe(30);
+
+  if (!baseline) {
+    if (existingBudgetMs !== null)
+      expect(results.existingWorklist.p95Ms).toBeLessThanOrEqual(existingBudgetMs);
+    expect(previewSamples.length).toBe(30);
+    expect(dispatchSamples.length).toBe(30);
+    expect(results.exactPreview.p95Ms).toBeLessThanOrEqual(2000);
+    expect(results.admittedToObservation.p95Ms).toBeLessThanOrEqual(2000);
+  }
+}, 120000);
+
+test("a 10000-minor reminder refuses a pre-admission 4000 payment and a newly approved 6000 message sends exact current bytes", async () => {
+  const context = await legalFixture([], {
+    sourceTotalMinor: "10000",
+    lines: [
+      {
+        id: "reminder_line",
+        description: "Synthetic reminder obligation",
+        quantity: "1",
+        unitPriceMinor: "8000",
+        baseMinor: "8000",
+        discountMinor: "0",
+        chargeMinor: "0",
+        taxMinor: "2000",
+        taxDescription: "se-domestic-standard-25-v1",
+        sourceGrossMinor: "10000",
+      },
+    ],
+  });
+
+  const recipient = await reviewed(context);
+  const stale = await prepare(context, recipient);
+  expect(stale.outstandingMinor).toBe("10000");
+  await approve(context, stale);
+  await settle(context, "4000");
+  const transport = await fixtureTransport();
+  const worker = runner(context, transport);
+
+  try {
+    const refused = await waitStatus(context, stale, "refused");
+    expect(refused.attempt).toBe(null);
+    expect(refused.currentOutstandingMinor).toBe("6000");
+    expect(transport.wires).toEqual([]);
+    const fresh = await prepare(context, recipient);
+    expect(fresh.outstandingMinor).toBe("6000");
+    expect(fresh.plainText).toContain("60.00 SEK");
+    await approve(context, fresh);
+    const accepted = await waitStatus(context, fresh, "provider_accepted");
+    expect(accepted.delivered).toBe(false);
+    expect(transport.wires.length).toBe(1);
+    expect(transport.wires[0]?.plainText).toBe(fresh.plainText);
+    await writeFile(
+      join(environment().artifacts, "reminder-10000-4000-6000.json"),
+      JSON.stringify({ stale, refused, fresh, accepted, wire: transport.wires }, null, 2),
+    );
+  } finally {
+    await stop(worker);
+    await transport.close();
   }
 });
