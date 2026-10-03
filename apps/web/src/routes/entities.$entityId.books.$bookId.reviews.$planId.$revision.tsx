@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { WorkQueueQuery } from "@/lib/work-return";
+import { OwnerReviewQuery, decodeOwnerReturn, ownerReturnHref } from "@/lib/work-return";
 import { createFileRoute, defaultStringifySearch } from "@tanstack/react-router";
 import { Box } from "@open-erp/ui/components/box";
 import { Link } from "@open-erp/ui/components/link";
@@ -9,7 +9,7 @@ import { PostingRecoveryReview } from "@/components/posting-recovery/review";
 import { accountingCopy } from "@/lib/accounting-copy";
 
 export const Route = createFileRoute("/entities/$entityId/books/$bookId/reviews/$planId/$revision")(
-  { component: Review, validateSearch: Schema.decodeUnknownSync(WorkQueueQuery) },
+  { component: Review, validateSearch: Schema.decodeUnknownSync(OwnerReviewQuery) },
 );
 
 function Review() {
@@ -17,13 +17,20 @@ function Review() {
   const { planId, revision } = Route.useParams();
   const { book, setup, locale } = useBookWorkspace();
   const copy = accountingCopy(locale);
+  const owner = decodeOwnerReturn(filters.returnTo);
 
   return (
     <Box display="grid" gap="xl" minWidth="zero">
       <WorkspaceHeader
         title={copy.workspace_review}
         action={
-          <Link href={`${workspacePath(book)}/work${defaultStringifySearch(filters)}`}>
+          <Link
+            href={
+              owner
+                ? ownerReturnHref(workspacePath(book), owner)
+                : `${workspacePath(book)}/work${defaultStringifySearch(filters)}`
+            }
+          >
             {copy.workspace_back}
           </Link>
         }

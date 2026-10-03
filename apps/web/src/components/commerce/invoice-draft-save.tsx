@@ -3,6 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Drafts from "@open-erp/contracts/invoice-drafts";
+import { canonicalizeJson } from "@open-erp/domain/canonicalization";
+import * as Result from "effect/Result";
+import * as Option from "effect/Option";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { FormActions } from "@open-erp/ui/components/form-actions";
@@ -18,8 +21,13 @@ type SaveProps = CommerceProps & {
   session: DraftSession;
   source: (fields: FormData) => typeof Accounting.CreateEvidence.Type;
   input: (fields: FormData, evidence: typeof Accounting.Evidence.Type) => unknown;
-  children: ReactNode;
-  footerSummary: ReactNode;
+  children:
+    | ReactNode
+    | ((calculation: typeof Drafts.CommercialDraftCalculation.Type | undefined) => ReactNode);
+  footerSummary:
+    | ReactNode
+    | ((calculation: typeof Drafts.CommercialDraftCalculation.Type | undefined) => ReactNode);
+  previewInput?: (fields: FormData) => unknown;
 };
 
 class InvalidDraftInput extends Error {}
@@ -33,6 +41,40 @@ export function InvoiceDraftSave(props: SaveProps) {
   const client = useQueryClient();
   const [invalid, setInvalid] = useState(false);
   const problem = useRef<HTMLDivElement>(null);
+
+  const editingKey = JSON.stringify([
+    session.state.fields,
+    session.state.lines,
+    session.state.customer,
+    session.state.expected,
+    session.state.purpose,
+  ]);
+
+  const [previewInput, setPreviewInput] = useState<{ key: string; json: string } | null>(null);
+
+  function capturePreview(element: HTMLFormElement | null) {
+    if (!element) return;
+
+    if (!props.previewInput) {
+      setPreviewInput(null);
+
+      return;
+    }
+
+    const candidate = Schema.decodeUnknownOption(
+      Schema.Struct({ commercial: Drafts.CommercialContent }),
+    )(props.previewInput(new FormData(element)));
+
+    const next = Option.isSome(candidate)
+      ? { key: editingKey, json: JSON.stringify(candidate.value.commercial) }
+      : null;
+
+    setPreviewInput((previous) =>
+      previous?.key === next?.key && previous?.json === next?.json ? previous : next,
+    );
+  }
+
+  const calculation = useCommercialPreview(props, previewInput, editingKey);
 
   const save = useMutation({
     mutationFn: async (pending: NonNullable<DraftEditingState["pending"]>) => {
@@ -66,7 +108,7 @@ export function InvoiceDraftSave(props: SaveProps) {
           props.input(fields, retained.outcome.result),
         );
 
-        if (parsed._tag === "None") throw new InvalidDraftInput();
+        if (Option.isNone(parsed)) throw new InvalidDraftInput();
         input = parsed.value;
       }
 
@@ -114,6 +156,7 @@ export function InvoiceDraftSave(props: SaveProps) {
   return (
     <Box
       as="form"
+      ref={capturePreview}
       display="grid"
       gap="lg"
       minWidth="zero"
@@ -136,9 +179,9 @@ export function InvoiceDraftSave(props: SaveProps) {
         if (pending || !session.state.customer || book.role !== "operator") return;
         const fields = new FormData(event.currentTarget);
         const source = Schema.decodeOption(Accounting.CreateEvidence)(props.source(fields));
-        setInvalid(source._tag === "None");
+        setInvalid(Option.isNone(source));
 
-        if (source._tag === "None") return;
+        if (Option.isNone(source)) return;
 
         const values = Object.fromEntries(
           Array.from(fields.entries()).map(([name, value]) => [name, String(value)]),
@@ -164,8 +207,9 @@ export function InvoiceDraftSave(props: SaveProps) {
         margin="none"
         padding="none"
       >
-        {props.children}
+        {typeof props.children === "function" ? props.children(calculation.data) : props.children}
       </Box>
+      {calculation.status}
       {invalid || invalidInput ? (
         <Text role="alert">
           {sv
@@ -209,6 +253,11 @@ export function InvoiceDraftSave(props: SaveProps) {
       ) : null}
       <DraftSaveFooter
         {...props}
+        footerSummary={
+          typeof props.footerSummary === "function"
+            ? props.footerSummary(calculation.data)
+            : props.footerSummary
+        }
         saving={save.isPending}
         problem={refused || invalidInput}
         conflict={conflict}
@@ -221,8 +270,78 @@ export function InvoiceDraftSave(props: SaveProps) {
   );
 }
 
+function useCommercialPreview(
+  props: SaveProps,
+  previewInput: { key: string; json: string } | null,
+  editingKey: string,
+) {
+  const { book, session } = props;
+  const baseline = session.state.baseline;
+  const currentPreview = previewInput?.key === editingKey ? previewInput : null;
+
+  const target: typeof Drafts.CalculationTarget.Type = baseline
+    ? {
+        kind: "existing",
+        id: baseline.id,
+        revision: session.state.expected?.revision ?? baseline.revision,
+        digest: session.state.expected?.digest ?? baseline.digest,
+      }
+    : { kind: "new" };
+
+  const preview = useQuery({
+    queryKey: [...bookKey(book), "commercial-preview", currentPreview?.json, target],
+    enabled: currentPreview !== null,
+    retry: false,
+    queryFn: async ({ signal }) => {
+      if (!currentPreview) throw new Error("Commercial preview input is missing");
+
+      const commercial = Schema.decodeSync(Schema.fromJsonString(Drafts.CommercialContent))(
+        currentPreview.json,
+      );
+
+      const canonical = canonicalizeJson(commercial);
+
+      if (Result.isFailure(canonical)) throw canonical.failure;
+      const bytes = new Uint8Array(canonical.success.bytes);
+      const hashed = await crypto.subtle.digest("SHA-256", bytes);
+      const inputDigest = `sha256:${Array.from(new Uint8Array(hashed), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+
+      const result = await readAccounting(
+        `${commercePath(book)}/invoice-drafts/calculate`,
+        Drafts.CommercialDraftCalculation,
+        {
+          method: "POST",
+          signal,
+          body: JSON.stringify({ target, commercial, inputDigest }),
+        },
+      );
+
+      checkScope(book, result.scope);
+
+      if (
+        result.inputDigest !== inputDigest ||
+        JSON.stringify(result.target) !== JSON.stringify(target)
+      )
+        throw new Error("Commercial preview identity mismatch");
+
+      return result;
+    },
+  });
+
+  return {
+    data: currentPreview === null ? undefined : preview.data,
+    status: props.previewInput ? (
+      <AccountingStatus
+        locale={props.locale}
+        pending={currentPreview !== null && preview.isPending}
+        error={currentPreview === null ? null : preview.error}
+      />
+    ) : null,
+  };
+}
+
 function DraftSaveFooter(
-  props: SaveProps & {
+  props: Omit<SaveProps, "footerSummary"> & { footerSummary: ReactNode } & {
     saving: boolean;
     problem: boolean;
     conflict: boolean;

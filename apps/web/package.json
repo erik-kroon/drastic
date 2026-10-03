@@ -25,7 +25,8 @@
     "effect": "4.0.0",
     "lucide-react": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "@open-erp/domain": "workspace:*"
   },
   "devDependencies": {
     "@open-erp/config": "workspace:*",

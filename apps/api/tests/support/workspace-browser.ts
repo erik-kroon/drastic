@@ -42,6 +42,7 @@ export async function withWorkspaceBrowser(
     workers: [
       {
         configPath: "wrangler.jsonc",
+        env: "e2e",
         secrets: {
           DATABASE_URL: environment().runtimeUrl,
           BETTER_AUTH_SECRET: randomBytes(32).toString("hex"),

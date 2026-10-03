@@ -1,6 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Identifier, Digest } from "@open-erp/contracts/accounting";
-import { WorkReturnSearch, decodeWorkReturn, workReturnHref } from "@/lib/work-return";
+import {
+  WorkReturnSearch,
+  decodeWorkReturn,
+  workReturnHref,
+  OwnerReturnSearch,
+  decodeOwnerReturn,
+  ownerReturnDestination,
+} from "@/lib/work-return";
 import { WorkReturnAction } from "@/components/work-return-action";
 import * as Schema from "effect/Schema";
 import { Plus } from "lucide-react";
@@ -21,6 +28,7 @@ const search = Schema.Struct({
   view: Schema.optional(Schema.Literals(["journal", "vouchers", "accounts"])),
   record: Schema.optional(Schema.String),
   work: WorkReturnSearch,
+  returnTo: OwnerReturnSearch,
   returnPlan: Schema.optional(Identifier),
   returnRevision: Schema.optional(Digest),
   returnVat: Schema.optional(Identifier),
@@ -45,10 +53,11 @@ function Books() {
   const navigate = useNavigate();
   const copy = frontendCopy(locale);
   const work = decodeWorkReturn(query.work);
+  const owner = decodeOwnerReturn(query.returnTo);
   const base = `${workspacePath(book)}/books`;
 
   const onPrepared = (id: string) => {
-    void navigate({ to: reviewPath(book, id), search: work ?? {} });
+    void navigate({ to: reviewPath(book, id), search: { ...work, returnTo: query.returnTo } });
   };
 
   return (
@@ -120,7 +129,7 @@ function Books() {
                 query.returnPlan
                   ? {
                       to: reviewPath(book, query.returnPlan, query.returnRevision),
-                      search: work ?? {},
+                      search: { ...work, returnTo: query.returnTo },
                       resetScroll: false,
                     }
                   : query.returnSupplier
@@ -131,13 +140,19 @@ function Books() {
                           record: query.returnSupplier,
                           review: query.returnSupplierReview,
                           work: query.work,
+                          returnTo: query.returnTo,
                         },
                         resetScroll: false,
                       }
                     : query.returnVat
                       ? {
                           to: `${workspacePath(book)}/tax`,
-                          search: { view: "actual-vat", record: query.returnVat, work: query.work },
+                          search: {
+                            view: "actual-vat",
+                            record: query.returnVat,
+                            work: query.work,
+                            returnTo: query.returnTo,
+                          },
                           resetScroll: false,
                         }
                       : returnReport
@@ -150,16 +165,22 @@ function Books() {
                             },
                             resetScroll: false,
                           }
-                        : {
-                            to: base,
-                            search: {
-                              view: "vouchers",
-                              q: query.q,
-                              period: query.period,
-                              work: query.work,
+                        : owner
+                          ? {
+                              ...ownerReturnDestination(workspacePath(book), owner),
+                              resetScroll: false,
+                            }
+                          : {
+                              to: base,
+                              search: {
+                                view: "vouchers",
+                                q: query.q,
+                                period: query.period,
+                                work: query.work,
+                                returnTo: query.returnTo,
+                              },
+                              resetScroll: false,
                             },
-                            resetScroll: false,
-                          },
               )
             }
           >

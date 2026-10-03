@@ -18,6 +18,7 @@ const sourceRoots = [
   "apps/api",
   "apps/web",
   "packages/contracts",
+  "packages/ui",
   "packages/domain",
   "jurisdictions/se",
   "packages/config",

@@ -1,5 +1,5 @@
 import * as Schema from "effect/Schema";
-import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
+import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import * as Commerce from "./commerce";
 import { accountingErrors } from "./accounting-errors";
@@ -58,7 +58,40 @@ export const DraftContent = Schema.Struct({
   lines: Schema.Array(DraftLine).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
 });
 
-export const CreateInvoiceDraft = Schema.Struct({
+export const CommercialTreatment = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal("unresolved") }),
+  Schema.Struct({
+    kind: Schema.Literal("legal_sales_policy"),
+    id: Accounting.Identifier,
+    digest: Accounting.Digest,
+  }),
+]);
+
+export const CommercialLine = Schema.Struct({
+  id: DraftLine.fields.id,
+  description: DraftLine.fields.description,
+  quantity: DraftLine.fields.quantity,
+  unitPriceMinor: Accounting.MinorUnits,
+  discountMinor: Accounting.MinorUnits,
+  chargeMinor: Accounting.MinorUnits,
+  treatment: CommercialTreatment,
+  catalogSelection: DraftLine.fields.catalogSelection,
+});
+
+export const CommercialContent = Schema.Struct({
+  title: Name,
+  counterpartyId: Accounting.Identifier,
+  counterpartyRevision: Commerce.Version,
+  seller: DraftIdentity,
+  customer: DraftIdentity,
+  plannedIssueDate: DraftContent.fields.plannedIssueDate,
+  supplyDate: DraftContent.fields.supplyDate,
+  dueDate: DraftContent.fields.dueDate,
+  paymentTerms: DraftContent.fields.paymentTerms,
+  lines: Schema.Array(CommercialLine).check(Schema.isMinLength(1), Schema.isMaxLength(50)),
+});
+
+export const SourceCreateInvoiceDraft = Schema.Struct({
   draftKey: Accounting.Identifier,
   content: DraftContent,
   // A draft produced by a recurring occurrence carries the narrow reference that
@@ -67,12 +100,32 @@ export const CreateInvoiceDraft = Schema.Struct({
   occurrence: Schema.optional(OccurrenceReference),
 });
 
-export const ReviseInvoiceDraft = Schema.Struct({
+export const CreateInvoiceDraft = Schema.Union([
+  SourceCreateInvoiceDraft,
+  Schema.Struct({
+    draftKey: Accounting.Identifier,
+    commercial: CommercialContent,
+  }),
+]);
+
+const revisionFields = {
   expectedRevision: Commerce.Version,
   expectedDigest: Accounting.Digest,
   reason: Accounting.Description,
+};
+
+export const SourceReviseInvoiceDraft = Schema.Struct({
+  ...revisionFields,
   content: DraftContent,
 });
+
+export const ReviseInvoiceDraft = Schema.Union([
+  Schema.Struct({
+    ...revisionFields,
+    commercial: CommercialContent,
+  }),
+  SourceReviseInvoiceDraft,
+]);
 
 export const DraftTotals = Schema.Struct({
   baseMinor: Accounting.AggregateMinorUnits,
@@ -98,7 +151,7 @@ export const DraftBlocker = Schema.Struct({
   lineId: Schema.NullOr(Accounting.Identifier),
 });
 
-export const InvoiceDraftRevision = Schema.Struct({
+export const SourceInvoiceDraftRevision = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
   draftKey: Accounting.Identifier,
@@ -108,6 +161,7 @@ export const InvoiceDraftRevision = Schema.Struct({
   recognized: Schema.Literal(false),
   delivered: Schema.Literal(false),
   calculationBasis: Schema.Literal("explicit_line_amounts_v1"),
+  purpose: Schema.optional(Schema.Literal("source_transcription")),
   content: DraftContent,
   occurrence: Schema.optional(OccurrenceReference),
   counterparty: Commerce.CounterpartyRevision,
@@ -122,10 +176,57 @@ export const InvoiceDraftRevision = Schema.Struct({
   digest: Accounting.Digest,
 });
 
+export const InvoiceDraftRevision = Schema.Union([
+  SourceInvoiceDraftRevision,
+  Schema.Struct({
+    ...SourceInvoiceDraftRevision.fields,
+    purpose: Schema.Literal("commercial"),
+    calculationBasis: Schema.Literal("commercial_minor_v1"),
+    commercialInput: CommercialContent,
+    inputDigest: Accounting.Digest,
+  }),
+]);
+
+export const DraftLifecycle = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal("editable") }),
+  Schema.Struct({
+    kind: Schema.Literals(["issued_synthetic", "issued_legal"]),
+    issueId: Accounting.Identifier,
+    registerInvoiceId: Accounting.Identifier,
+  }),
+]);
+
 export const InvoiceDraftView = Schema.Struct({
   record: InvoiceDraftRevision,
   currentRevision: Commerce.Version,
   currentDigest: Accounting.Digest,
+  lifecycle: DraftLifecycle,
+});
+
+export const CalculationTarget = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal("new") }),
+  Schema.Struct({
+    kind: Schema.Literal("existing"),
+    id: Accounting.Identifier,
+    revision: Commerce.Version,
+    digest: Accounting.Digest,
+  }),
+]);
+
+export const CalculateCommercialDraft = Schema.Struct({
+  target: CalculationTarget,
+  inputDigest: Accounting.Digest,
+  commercial: CommercialContent,
+});
+
+export const CommercialDraftCalculation = Schema.Struct({
+  scope: Accounting.Scope,
+  target: CalculationTarget,
+  inputDigest: Accounting.Digest,
+  content: DraftContent,
+  totals: DraftTotals,
+  calculatedLines: Schema.Array(CalculatedDraftLine),
+  blockers: Schema.Array(DraftBlocker),
 });
 
 export const InvoiceDraftSummary = Schema.Struct({
@@ -162,48 +263,56 @@ export const DraftRevisionQuery = Schema.Struct({ revision: Schema.optional(Comm
 
 const path = "/v1/entities/:entityId/books/:bookId/commerce/invoice-drafts";
 
-export const InvoiceDraftsApi = HttpApiGroup.make("invoiceDrafts").add(
-  HttpApiEndpoint.get(
-    "salesRegister",
-    "/v1/entities/:entityId/books/:bookId/commerce/sales-register",
-    {
+export const InvoiceDraftsApi = HttpApiGroup.make("invoiceDrafts")
+  .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" })
+  .add(
+    HttpApiEndpoint.post("calculateCommercialDraft", `${path}/calculate`, {
       params: Accounting.Scope,
-      query: SalesQuery,
-      success: SalesPage,
+      payload: CalculateCommercialDraft.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: CommercialDraftCalculation,
       error: accountingErrors,
-    },
-  ),
-  HttpApiEndpoint.post("createInvoiceDraft", path, {
-    params: Accounting.Scope,
-    headers: Accounting.IdempotencyHeaders,
-    payload: CreateInvoiceDraft.annotate({ parseOptions: { onExcessProperty: "error" } }),
-    success: InvoiceDraftRevision,
-    error: accountingErrors,
-  }),
-  HttpApiEndpoint.post("reviseInvoiceDraft", `${path}/:id/revisions`, {
-    params: Accounting.ChangePath,
-    headers: Accounting.IdempotencyHeaders,
-    payload: ReviseInvoiceDraft.annotate({ parseOptions: { onExcessProperty: "error" } }),
-    success: InvoiceDraftRevision,
-    error: accountingErrors,
-  }),
-  HttpApiEndpoint.get("getInvoiceDraft", `${path}/:id`, {
-    params: Accounting.ChangePath,
-    query: DraftRevisionQuery,
-    success: InvoiceDraftView,
-    error: accountingErrors,
-  }),
-  HttpApiEndpoint.get("listInvoiceDrafts", path, {
-    params: Accounting.Scope,
-    success: InvoiceDraftList,
-    error: accountingErrors,
-  }),
-  HttpApiEndpoint.get("invoiceDraftHistory", `${path}/:id/revisions`, {
-    params: Accounting.ChangePath,
-    success: InvoiceDraftHistory,
-    error: accountingErrors,
-  }),
-);
+    }),
+    HttpApiEndpoint.get(
+      "salesRegister",
+      "/v1/entities/:entityId/books/:bookId/commerce/sales-register",
+      {
+        params: Accounting.Scope,
+        query: SalesQuery,
+        success: SalesPage,
+        error: accountingErrors,
+      },
+    ),
+    HttpApiEndpoint.post("createInvoiceDraft", path, {
+      params: Accounting.Scope,
+      headers: Accounting.IdempotencyHeaders,
+      payload: CreateInvoiceDraft.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: InvoiceDraftRevision,
+      error: accountingErrors,
+    }),
+    HttpApiEndpoint.post("reviseInvoiceDraft", `${path}/:id/revisions`, {
+      params: Accounting.ChangePath,
+      headers: Accounting.IdempotencyHeaders,
+      payload: ReviseInvoiceDraft.annotate({ parseOptions: { onExcessProperty: "error" } }),
+      success: InvoiceDraftRevision,
+      error: accountingErrors,
+    }),
+    HttpApiEndpoint.get("getInvoiceDraft", `${path}/:id`, {
+      params: Accounting.ChangePath,
+      query: DraftRevisionQuery,
+      success: InvoiceDraftView,
+      error: accountingErrors,
+    }),
+    HttpApiEndpoint.get("listInvoiceDrafts", path, {
+      params: Accounting.Scope,
+      success: InvoiceDraftList,
+      error: accountingErrors,
+    }),
+    HttpApiEndpoint.get("invoiceDraftHistory", `${path}/:id/revisions`, {
+      params: Accounting.ChangePath,
+      success: InvoiceDraftHistory,
+      error: accountingErrors,
+    }),
+  );
 
 // Draft mutations require operator authority and are deliberately absent from ordinary MCP tools.
 export const InvoiceDraftCapabilities = {

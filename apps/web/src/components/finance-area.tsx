@@ -7,7 +7,14 @@ import { ArrowLeft } from "lucide-react";
 import { PageTabs, PageTab } from "@open-erp/ui/components/workflow";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath, reviewPath } from "@/lib/book-context";
-import { decodeWorkReturn, workReturnHref, type WorkReturn } from "@/lib/work-return";
+import {
+  decodeWorkReturn,
+  workReturnHref,
+  type WorkReturn,
+  type DocumentQuery,
+  type BankOwnerQuery,
+  useOwnerReturn,
+} from "@/lib/work-return";
 import { WorkReturnAction } from "@/components/work-return-action";
 import { frontendCopy } from "@/lib/frontend-copy";
 
@@ -157,6 +164,9 @@ export function FinanceArea(props: {
   record?: string;
   account?: string;
   work?: string;
+  archive?: typeof DocumentQuery.Type;
+  bankSearch?: typeof BankOwnerQuery.Type;
+  returnTo?: string;
   // The open supplier occurrence. It is a separate address from `record`, which the
   // supplier draft panel owns, so opening a draft does not displace the original.
   occurrence?: string;
@@ -175,13 +185,24 @@ export function FinanceArea(props: {
   const work = workReturnAreas.has(area) ? decodeWorkReturn(props.work) : undefined;
 
   const onPrepared = (id: string) => {
-    void navigate({ to: reviewPath(book, id), search: work ?? {} });
+    void navigate({ to: reviewPath(book, id), search: { ...work, returnTo: props.returnTo } });
   };
 
   // One place writes this area's search, so a selection cannot be dropped by a
   // navigation that forgot it. An empty id clears its own selection only.
   const navigateArea = (search: { record?: string; occurrence?: string }) => {
-    void navigate({ to: base, search: { view: selected, work: props.work, ...search } });
+    void navigate({
+      to: base,
+      search: {
+        ...props.archive,
+        ...props.bankSearch,
+        view: selected,
+        work: props.work,
+        returnTo: props.returnTo,
+        ...search,
+      },
+      resetScroll: false,
+    });
   };
 
   const onOpen = (id: string) =>
@@ -207,7 +228,28 @@ export function FinanceArea(props: {
           work={work}
         />
         <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
-          {selected === "documents" ? <DocumentInbox recordId={record} onOpen={onOpen} /> : null}
+          {selected === "documents" ? (
+            <DocumentInbox
+              key={`${book.entityId}:${book.id}`}
+              recordId={record}
+              filters={props.archive ?? {}}
+              onFilters={(filters) =>
+                void navigate({
+                  to: base,
+                  search: {
+                    ...props.archive,
+                    ...filters,
+                    record: undefined,
+                    work: props.work,
+                    returnTo: props.returnTo,
+                    view: "documents",
+                  },
+                  resetScroll: false,
+                })
+              }
+              onOpen={onOpen}
+            />
+          ) : null}
           {selected === "bank" ? <BankingWorkspace recordId={record} onOpen={onOpen} /> : null}
           {selected === "coverage" ? (
             <BankSourceCoveragePanel
@@ -385,8 +427,9 @@ function AreaActions(props: {
   work: WorkReturn | undefined;
 }) {
   const reportsRoot = props.area === "reports" && props.selected !== "library";
+  const owner = useOwnerReturn();
 
-  if (!reportsRoot && !props.work) return null;
+  if (!reportsRoot && !props.work && !owner) return null;
 
   return (
     <Box display="flex" alignItems="center" gap="lg" flexWrap="wrap">
@@ -408,6 +451,8 @@ function FinanceNavigation(props: {
   locale: "en" | "sv";
   work: WorkReturn | undefined;
 }) {
+  const owner = useOwnerReturn();
+
   if (props.area === "reports") return null;
   const tabs = areaTabs(props.area, props.locale);
 
@@ -418,7 +463,7 @@ function FinanceNavigation(props: {
       {tabs.map((tab) => (
         <PageTab
           key={tab.key}
-          href={workReturnHref(props.base, tab.key, props.work)}
+          href={workReturnHref(props.base, tab.key, props.work, owner)}
           active={props.selected === tab.key}
         >
           {tab.label}

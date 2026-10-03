@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, defaultStringifySearch } from "@tanstack/react-router";
 import type * as Accounting from "@open-erp/contracts/accounting";
@@ -26,7 +26,7 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { readAccounting } from "@/lib/accounting-api";
-import { decodeWorkReturn, encodeWorkReturn, workReturnHref } from "@/lib/work-return";
+import { decodeWorkReturn, encodeWorkReturn } from "@/lib/work-return";
 import { WorkReturnAction } from "@/components/work-return-action";
 import { commerceKey, commercePath, checkScope } from "./shared";
 import { InvoiceDraftIssueOverlay } from "./invoice-draft-issue-overlay";
@@ -46,6 +46,7 @@ export type SalesSearch = typeof Sales.SalesQuery.Type & {
   paymentPage?: string;
   paymentHistoryPage?: string;
   work?: string;
+  returnTo?: string;
 };
 
 export function salesRegisterOptions(book: typeof Accounting.Book.Type, query: URLSearchParams) {
@@ -73,8 +74,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
   const sv = locale === "sv";
   const labels = sv ? swedish : english;
   const base = `${workspacePath(book)}/sales`;
-  // The work queue this register was opened from, carried through the tabs and
-  // the record so returning lands on the same filtered list.
+  const opener = useRef<{ base: string; id: string } | undefined>(undefined);
   const work = decodeWorkReturn(search.work);
   const contacts = search.view === "parties";
   const status = search.status ?? (search.view === "drafts" && !search.record ? "draft" : "all");
@@ -109,19 +109,39 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
     void navigate({ to: base, search: next, replace, resetScroll: false });
   };
 
-  const close = () =>
-    change({
-      ...search,
-      view: contacts ? "parties" : undefined,
-      record: undefined,
-      kind: undefined,
-      stage: undefined,
-      review: undefined,
-      allocation: undefined,
-      release: undefined,
-      paymentPage: undefined,
-      paymentHistoryPage: undefined,
+  const registerSearch = {
+    ...search,
+    record: undefined,
+    kind: undefined,
+    stage: undefined,
+    review: undefined,
+    allocation: undefined,
+    release: undefined,
+    paymentPage: undefined,
+    paymentHistoryPage: undefined,
+  };
+
+  const close = () => {
+    void navigate({
+      to: base,
+      search: { ...registerSearch, view: contacts ? "parties" : undefined },
+      resetScroll: false,
+    }).then(() => {
+      const row =
+        opener.current?.base === base
+          ? document.querySelector<HTMLAnchorElement>(
+              `[data-sales-id="${CSS.escape(opener.current.id)}"]`,
+            )
+          : null;
+
+      const target = row ?? document.querySelector<HTMLHeadingElement>("main h1");
+
+      if (target) {
+        if (!row) target.tabIndex = -1;
+        target.focus();
+      }
     });
+  };
 
   const open = (id: string, kind: "draft" | "invoice") =>
     change({
@@ -146,10 +166,11 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
       record: row.id,
       kind: row.kind,
       work: encodeWorkReturn(work),
+      returnTo: search.returnTo,
     })}`;
   };
 
-  const tabHref = (view: string) => workReturnHref(base, view, work);
+  const tabHref = (view: string) => `${base}${defaultStringifySearch({ ...registerSearch, view })}`;
 
   const statuses: Array<{ value: typeof Sales.SalesStatus.Type; label: string }> = [
     { value: "all", label: labels.all },
@@ -189,7 +210,7 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
       <PageContent>
         <PageTabs label={labels.invoicing}>
           <PageTab
-            href={base}
+            href={`${base}${defaultStringifySearch({ ...registerSearch, view: undefined })}`}
             active={!contacts}
             onPointerEnter={preloadInvoices}
             onFocus={preloadInvoices}
@@ -347,7 +368,15 @@ export function SalesWorkspace({ search }: { search: SalesSearch }) {
                       id: row.id,
                       cells: [
                         <Box key="invoice" display="grid" gap="xs">
-                          <Link href={rowUrl(row)}>{row.number ?? row.title}</Link>
+                          <Link
+                            href={rowUrl(row)}
+                            data-sales-id={row.id}
+                            onClick={() => {
+                              opener.current = { base, id: row.id };
+                            }}
+                          >
+                            {row.number ?? row.title}
+                          </Link>
                           {row.number ? <Text tone="muted">{row.title}</Text> : null}
                         </Box>,
                         row.customer,

@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { defaultStringifySearch, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import * as Drafts from "@open-erp/contracts/invoice-drafts";
 import * as Issuance from "@open-erp/contracts/invoice-issuance";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
@@ -9,7 +11,7 @@ import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
 import { workspacePath } from "@/lib/book-context";
 import { InvoiceDrafts } from "./invoice-drafts";
-import { InvoiceIssueReviewPanel } from "./invoice-issuance";
+import { InvoiceIssueReviewPanel, LegalInvoiceInspector } from "./invoice-issuance";
 import { checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
 
 type Props = CommerceProps & {
@@ -42,9 +44,31 @@ function DraftIssueWorkspace(props: Props) {
 function SelectedDraftIssue(props: Props & { recordId: string; onOpen: (id: string) => void }) {
   const { book, locale, recordId, onOpen } = props;
   const sv = locale === "sv";
+  const search = useSearch({ from: "/entities/$entityId/books/$bookId/sales", shouldThrow: false });
+
+  const draft = useQuery({
+    queryKey: [...commerceKey(book), "invoice-draft-lifecycle", recordId],
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${commercePath(book)}/invoice-drafts/${encodeURIComponent(recordId)}`,
+        Drafts.InvoiceDraftView,
+        { signal },
+      );
+
+      checkScope(book, result.record.scope);
+
+      if (result.record.id !== recordId) throw new Error("Issue overlay draft mismatch");
+
+      return result;
+    },
+    staleTime: 0,
+    refetchOnMount: "always",
+    retry: false,
+  });
 
   const history = useQuery({
     queryKey: [...commerceKey(book), "invoice-issue-history", recordId],
+    enabled: draft.data?.lifecycle.kind === "issued_synthetic",
     queryFn: async ({ signal }) => {
       const result = await readAccounting(
         `${commercePath(book)}/invoice-drafts/${encodeURIComponent(recordId)}/issue-reviews`,
@@ -64,10 +88,9 @@ function SelectedDraftIssue(props: Props & { recordId: string; onOpen: (id: stri
   });
 
   const issued = history.data?.items.find((item) => item.issueId !== null);
-  // Do not expose the draft editor from an unchecked cache or failed live issue lookup.
-  const checked = history.isFetchedAfterMount && history.isSuccess;
+  const checked = draft.isFetchedAfterMount && draft.isSuccess;
 
-  if (checked && !issued)
+  if (checked && draft.data.lifecycle.kind === "editable")
     return (
       <InvoiceDrafts
         {...props}
@@ -77,7 +100,7 @@ function SelectedDraftIssue(props: Props & { recordId: string; onOpen: (id: stri
             <Button onClick={props.onReview}>{sv ? "Granska faktura" : "Review invoice"}</Button>
           ) : (
             <PageAction
-              href={`${workspacePath(book)}/sales?view=issue&record=${encodeURIComponent(recordId)}`}
+              href={`${workspacePath(book)}/sales${defaultStringifySearch({ ...search, view: "issue", record: recordId, kind: "draft", stage: undefined, review: undefined })}`}
             >
               {sv ? "Granska utfärdande" : "Review issuance"}
             </PageAction>
@@ -87,15 +110,15 @@ function SelectedDraftIssue(props: Props & { recordId: string; onOpen: (id: stri
           <>
             <Text tone="muted">
               {sv
-                ? "Inte utfärdad. Endast demoutfärdande är tillgängligt."
-                : "Not issued. Demo issuance is available."}
+                ? "Inte utfärdad. Granska fakturan innan utfärdande."
+                : "Not issued. Review the invoice before issuance."}
             </Text>
             <Box>
               <Button
                 variant="outline"
-                disabled={history.isFetching}
+                disabled={draft.isFetching}
                 onClick={() => {
-                  void history.refetch();
+                  void draft.refetch();
                 }}
               >
                 {sv ? "Uppdatera status" : "Refresh status"}
@@ -114,9 +137,9 @@ function SelectedDraftIssue(props: Props & { recordId: string; onOpen: (id: stri
         </Button>
         <Button
           variant="outline"
-          disabled={history.isFetching}
+          disabled={draft.isFetching}
           onClick={() => {
-            void history.refetch();
+            void draft.refetch();
           }}
         >
           {sv ? "Uppdatera status" : "Refresh status"}
@@ -124,9 +147,19 @@ function SelectedDraftIssue(props: Props & { recordId: string; onOpen: (id: stri
       </Box>
       <AccountingStatus
         locale={locale}
-        pending={!history.isFetchedAfterMount || history.isPending}
-        error={history.error}
+        pending={!draft.isFetchedAfterMount || draft.isPending}
+        error={draft.error}
       />
+      {checked && draft.data.lifecycle.kind === "issued_legal" ? (
+        <LegalInvoiceInspector
+          {...props}
+          draftId={recordId}
+          issueId={draft.data.lifecycle.issueId}
+        />
+      ) : null}
+      {checked && draft.data.lifecycle.kind === "issued_synthetic" ? (
+        <AccountingStatus locale={locale} pending={history.isPending} error={history.error} />
+      ) : null}
       {checked && issued ? (
         <>
           <Heading>{sv ? "Utfärdad demofaktura" : "Issued demo invoice"}</Heading>
@@ -138,7 +171,7 @@ function SelectedDraftIssue(props: Props & { recordId: string; onOpen: (id: stri
           <InvoiceIssueReviewPanel {...props} id={issued.id} readOnly />
         </>
       ) : null}
-      {history.isError ? (
+      {draft.isError ? (
         <Text>
           {sv
             ? "Utfärdandestatus kunde inte kontrolleras. Uppdatera innan du redigerar utkastet."
