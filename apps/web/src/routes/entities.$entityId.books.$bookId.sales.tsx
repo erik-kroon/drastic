@@ -1,6 +1,7 @@
 import { createFileRoute, defaultStringifySearch } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
 import * as Sales from "@open-erp/contracts/sales-register";
+import * as Accounting from "@open-erp/contracts/accounting";
 import { SalesWorkspace } from "@/components/commerce/sales-workspace";
 import { CollectionsWorkspace } from "@/components/commerce/collections";
 import { SalesOrders } from "@/components/commerce/sales-orders";
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/entities/$entityId/books/$bookId/sales")(
       ),
       view: Schema.optional(Schema.String),
       record: Schema.optional(Schema.String),
+      reminder: Schema.optional(Accounting.Identifier),
       work: WorkReturnSearch,
       returnTo: OwnerReturnSearch,
       kind: Schema.optional(Schema.Literals(["draft", "invoice"])),
@@ -112,7 +114,7 @@ function CollectionsPage() {
       >
         {locale === "sv" ? "Till fakturor" : "Back to invoices"}
       </Link>
-      <CollectionsWorkspace book={book} locale={locale} />
+      <CollectionsWorkspace book={book} locale={locale} reminderId={search.reminder} />
     </PageContent>
   );
 }

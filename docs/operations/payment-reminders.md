@@ -34,6 +34,8 @@ The provider call runs outside the database transaction. A lost response leaves 
 | Provider cannot establish result | Restart/reconcile | `outcome_unknown`; no blind resubmission | Unknown becomes failed/retryable send |
 | Terminal fixture rejection | Queue again | Failed retained rejection; one submission | Rejection retried as a new message |
 | Payment after admission | Read current state | Original sent-as-of bytes plus changed current residual | Settlements rewrite sent statement |
+| Qualified reminder URL names an invoice owner instead | Read in browser | Scoped not-found error and no approval control; no provider request | Falling back to an invoice or old cached reminder |
+| Browser reloads retained reminder after an unknown worker outcome | Open scoped retained-record URL then reconcile | Exact original bytes and unknown state reload; same-attempt readback, zero additional submissions | React-only state loses the durable outcome or invents a fresh send |
 | Command or queue history pruned | Repeat approval/queue | Durable uniqueness preserves attempt and identity | Idempotence depends only on transient history |
 
 ## Proof plan

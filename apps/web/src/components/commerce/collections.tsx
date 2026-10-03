@@ -19,7 +19,9 @@ type CollectionHistoryData = Pick<
   "scope" | "customerId" | "statements" | "disputes" | "events"
 >;
 
-export function CollectionsWorkspace({ book, locale }: CommerceProps) {
+export function CollectionsWorkspace({ book, locale, reminderId }: CommerceProps & {
+  readonly reminderId?: string;
+}) {
   const sv = locale === "sv";
   const [entry, setEntry] = useState("");
   const [customerId, setCustomerId] = useState("");
@@ -85,7 +87,7 @@ export function CollectionsWorkspace({ book, locale }: CommerceProps) {
           ? "Utdrag är oföränderliga ögonblicksbilder. Betalningar efter bryttiden ändrar inte äldre utdrag. Historiska påminnelseåtgärder ger ingen sändbehörighet. Granska ett separat exakt meddelande för lokal leverans."
           : "Statements are immutable snapshots. Later payments do not change an earlier snapshot. Historical reminder actions grant no send authority. Review a separate exact message for local delivery."}
       </Text>
-      <ReminderReview book={book} locale={locale} />
+      <ReminderReview key={`${book.entityId}/${book.bookId}/${reminderId ?? "new"}`} book={book} locale={locale} initialReminderId={reminderId} />
       <ReceivableWorklist
         locale={locale}
         data={worklist.data}

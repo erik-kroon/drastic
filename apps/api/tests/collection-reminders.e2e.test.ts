@@ -1294,3 +1294,39 @@ test("the persistent runner refuses a fixture origin without an explicit port be
     await transport.close();
   }
 }, 30000);
+
+
+test("the retained reminder route reloads an unknown worker outcome and reconciles the same attempt", async () => {
+  const context = await legalFixture();
+  const message = await prepare(context, await reviewed(context));
+  const transport = await fixtureTransport("unknown");
+  const worker = runner(context, transport);
+  try {
+    await withWorkspaceBrowser(context.book, "reminder-retained-reload", async (page, workspace) => {
+      await page.goto(`${workspace}/sales?view=collections&reminder=${encodeURIComponent(message.id)}`);
+      await page.getByRole("button", {name: "Approve exact message for local transport", exact: true}).click();
+      await page.getByText("Outcome unknown", {exact: true}).waitFor();
+      expect(transport.wires).toHaveLength(1);
+      const externalIdentity = transport.wires[0]?.externalIdentity;
+      await page.reload();
+      await page.getByText("Outcome unknown", {exact: true}).waitFor();
+      expect(await page.locator("pre").first().innerText()).toBe(message.plainText);
+      expect(await page.getByRole("button", {name: "Check the same dispatch attempt", exact: true}).count()).toBe(1);
+      await page.screenshot({path: join(environment().artifacts, "reminder-unknown-reloaded.png"), fullPage: true});
+      await page.getByRole("button", {name: "Check the same dispatch attempt", exact: true}).click();
+      await expect.poll(() => transport.reads.length, {timeout: 25000}).toBeGreaterThan(0);
+      await page.getByText("Outcome unknown", {exact: true}).waitFor();
+      expect(transport.reads).toContain(externalIdentity);
+      expect(transport.wires).toHaveLength(1);
+      const retainedPath = page.url();
+      await page.goto(`${workspace}/sales?view=collections&reminder=${encodeURIComponent(context.original.id)}`);
+      await page.getByRole("alert").first().waitFor();
+      expect(await page.getByRole("button", {name: "Approve exact message for local transport", exact: true}).count()).toBe(0);
+      expect(transport.wires).toHaveLength(1);
+      await writeFile(join(environment().artifacts, "reminder-retained-reload.json"), JSON.stringify({path: retainedPath, wrongOwnerRefused: true, messageId: message.id, externalIdentity, wires: transport.wires, reads: transport.reads, liveProviderEnabled: false}, null, 2));
+    });
+  } finally {
+    await stop(worker);
+    await transport.close();
+  }
+}, 120000);

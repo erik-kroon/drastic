@@ -105,6 +105,7 @@ const SalesOwnerQuery = Schema.Struct({
   page: pageNumber,
   view: Schema.optional(Schema.String),
   record: Schema.optional(Accounting.Identifier),
+  reminder: Schema.optional(Accounting.Identifier),
   kind: Schema.optional(Schema.Literals(["draft", "invoice"])),
   stage: Schema.optional(Schema.Literals(["review", "payments"])),
   review: Schema.optional(Accounting.Identifier),

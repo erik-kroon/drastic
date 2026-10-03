@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { defaultStringifySearch, useSearch } from "@tanstack/react-router";
 import * as Collections from "@open-erp/contracts/collections";
 import * as Ar from "@open-erp/contracts/ar-legal-issue";
 import * as Crm from "@open-erp/contracts/crm-master";
@@ -7,16 +8,20 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
 import { Text } from "@open-erp/ui/components/typography";
+import { Link } from "@open-erp/ui/components/link";
 import { AccountingStatus } from "@/components/accounting-status";
 import { readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
+import { workspacePath } from "@/lib/book-context";
 import { CommandForm, checkScope, commerceKey, commercePath, type CommerceProps } from "./shared";
 
-export function ReminderReview({ book, locale }: CommerceProps) {
+export function ReminderReview({book, locale, initialReminderId = ""}: CommerceProps & {
+  readonly initialReminderId?: string;
+}) {
   const sv = locale === "sv";
   const [issueEntry, setIssueEntry] = useState("");
   const [issueId, setIssueId] = useState("");
-  const [reminderId, setReminderId] = useState("");
+  const [reminderId, setReminderId] = useState(initialReminderId);
   const [message, setMessage] = useState<typeof Collections.ReminderMessage.Type | null>(null);
   const base = `${commercePath(book)}/collections/reminders`;
 
@@ -71,6 +76,7 @@ export function ReminderReview({ book, locale }: CommerceProps) {
       );
 
       checkScope(book, result.message.scope);
+      if (result.message.id !== reminderId) throw new Error("Reminder identity mismatch.");
 
       return result;
     },
@@ -178,6 +184,7 @@ function ReminderPreview({
 }) {
   const sv = locale === "sv";
   const base = `${commercePath(book)}/collections/reminders`;
+  const search = useSearch({strict: false});
 
   const statuses = sv
     ? {
@@ -207,6 +214,9 @@ function ReminderPreview({
 
   return (
     <Box display="grid" gap="md" minWidth="zero">
+      <Link href={`${workspacePath(book)}/sales${defaultStringifySearch({...search, view: "collections", reminder: message.id})}`}>
+        {sv ? "Öppna sparad påminnelse" : "Open retained reminder"}
+      </Link>
       <Text>
         <strong>{message.recipient.destination}</strong>
       </Text>
