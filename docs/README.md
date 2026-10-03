@@ -4,13 +4,15 @@ OpenERP turns retained evidence into reviewed accounting decisions, approved pos
 
 The repository contains a synthetic accounting implementation and ongoing domain work. Implementation, observed behavior, company readiness and external acceptance are separate claims. The [roadmap](roadmap.md) records progress and evidence; the [delivery plan](plans/README.md) specifies the remaining work.
 
-The current first-company product direction is [Book Zero, daily work and Drastic Cash](plans/15-book-zero-workflow-cash.md): an independently reviewed Drastic period, a usable daily review journey and a read-only payment forecast. It maps the supplied openERP-specific PRD to existing owners and gates. The wider Drastic Financial Platform PRD is not adopted as implementation scope by this update.
+The first-company engineering path is [Book Zero, daily work and Drastic Cash](plans/15-book-zero-workflow-cash.md): an independently reviewed Drastic period and a usable daily review journey, with its read-only payment forecast now sequenced later. It maps the supplied openERP-specific PRD to existing owners and gates. The wider Drastic Financial Platform PRD is not adopted as implementation scope by this update.
 
 The [Document Intelligence first journey](plans/document-intelligence-delivery.md) records the PDF/image-to-review-to-draft implementation and normal self-host synthetic verification. Live provider use remains disabled.
 
 The [pdfcn decision](adr/0016-pdfcn-legal-documents.md) and [adoption record](plans/pdfcn-adoption.md) describe the current legal-invoice and credit-note presentation and its local E2E proof.
 
 The [evaluation input contract](operations/evaluation-contracts.md) records the operator-only immutable capture/read unit and its remaining packet-2 boundaries.
+
+[ADR 0017](adr/0017-bureau-first-product-focus.md) adopts the [product focus direction](plans/product-focus-review.md): a bureau-led documents/bank/invoicing/VAT wedge, one human-work queue, proportionate review and connected execution after approval. Native payroll and peripheral breadth are deferred; Cash follows the core loop. The [dependency-ordered delivery plan](plans/08-delivery.md#ready-order) gives the implementation sequence; the [design adoption backlog](ui-design-checklist.md#product-direction-adoption-backlog--2026-10-03) covers screen reconsideration only. Automatic posting remains unadopted, and implementation/provider gates remain open.
 
 ## Reading order
 

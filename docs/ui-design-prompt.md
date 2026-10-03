@@ -10,6 +10,10 @@ OpenERP is an Accounted-derived accounting product. **Accounted is the starting 
 
 Design **how the product should look, function and flow**, even where that requires functionality that OpenERP has not implemented yet. Source code can explain existing records and constraints; it must not dictate the composition, navigation or intended interaction. Record missing implementation outside the product UI. Do not turn planned functionality into disabled controls merely because it has not been built.
 
+## Adopted product direction — 2026-10-03
+
+Read [ADR 0017](adr/0017-bureau-first-product-focus.md) and follow the [adoption backlog](ui-design-checklist.md#product-direction-adoption-backlog--2026-10-03) before the old inventory order. Reconsider bureau work, canonical Att göra tasks and accountant-versus-owner authority first. Build the documents/bank/invoicing/VAT loop with proportionate review and connected execution after approval as the target. Native payroll and peripheral modules are deferred; Cash is later optional work. Existing static ticks do not cover this change. Preserve their evidence and record new review separately. Automatic posting remains outside the adopted direction. Keep qualification and implementation dependencies outside target product UI; show actual missing facts, authority and unknown outcomes honestly.
+
 ## Read first
 
 - `docs/ui-design-checklist.md` — the working backlog, completion rules, and daily-work implementation plan UI crosswalk. Finish open crosswalk items in their owning screens; do not count an existing frame as coverage by itself.
@@ -47,6 +51,6 @@ Design visible focus, keyboard paths, readable contrast, reduced motion, localiz
 
 Keep foundations and shared patterns together, product areas clearly named, and state variants next to their primary screen. Label frames with the screen, route or intended route, viewport and state. Maintain the checklist, route mapping and a concise decision log. Related source routes may share a considered target screen; they do not require duplicate frames merely to raise coverage counts.
 
-Start with the shared shell and company context, then entry, companies, To do, overview and full evidence review. Stabilize these through careful work before banking, sales, purchases, bookkeeping, tax, reports, year-end, settings, firm work and the remaining surfaces.
+Follow the adoption backlog: bureau portfolio and scoped context, canonical To do, evidence/batch review, provenance and recovery, core documents/banking/invoicing/VAT, then onboarding. Reuse reviewed shell foundations where suitable. Reports, closing and import stay connected where the loop needs them; deferred breadth does not precede the core journey.
 
 The goal is a beautifully designed, coherent accounting product whose screens and user journeys have been thought through. The checklist is a backlog to work through carefully, not a target for mass-producing pages.

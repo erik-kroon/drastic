@@ -12,6 +12,21 @@ For each item, record: **Paper frames · design decision · desktop/narrow inspe
 
 Source inventory: **129 Accounted routes + 21 OpenERP URLs = 150**. The main page list contains **131 target screen/route items**: 125 Accounted-derived entries plus six additional scoped OpenERP jobs. The 21 OpenERP aliases are mapped below. Additional controls, subviews and planned flows are listed where a route template alone would hide the work. Four source routes have explicit dispositions, not silent omissions.
 
+## Product-direction adoption backlog — 2026-10-03
+
+[ADR 0017](adr/0017-bureau-first-product-focus.md) is adopted product direction. The prior ticks and ledgers below remain dated static review records; they do not verify this revised direction. This is the screen-review sequence only; follow the [ready order](plans/08-delivery.md#ready-order) for repository implementation sequence. Complete these screens one at a time before resuming broad inventory coverage. New review records must identify changed controls, role authority, shared task identity, states, frame links and remaining implementation gates.
+
+1. [ ] **A01 — Bureau work first (V01–V19):** portfolio, client context, accountant assignment, deadlines and exceptions. Accountants own bookkeeping within granted book powers; owners answer questions and approve payments. Preserve owner-operated access.
+2. [ ] **A02 — Canonical Att göra:** reconcile home, questions, review, bank missing-evidence, VAT/closing checklists and email around one task lifecycle. All views resolve the same task; history remains history. Preserve scoped return context and coverage gaps.
+3. [ ] **A03 — Core loop:** incoming documents → bank matching → reviewed posting, invoicing and VAT. Design bank feed consent/freshness, Peppol delivery, approved VAT execution and BankID login/signing as qualified target flows, with manual fallbacks and separate external outcomes. Connect reports, corrections, import and closing where required.
+4. [ ] **A04 — Explainability and recovery (K22, K20, M32):** account rationale, source basis, explicit uncertainty, authorized rule changes/undo and unknown-outcome reconciliation before retry. Keep routine technical machinery secondary.
+5. [ ] **A05 — Review at volume (L02/L03):** bounded bulk approval for familiar supported work, exception separation and changed-item exclusion; exact individual external-action approval. Keep per-group effects and receipts. No automatic posting or invented thresholds.
+6. [ ] **A06 — First value (U16, U29/U30):** bank → document → explainable matched proposal; conservative defaults, detailed policy later. The synthetic demo/tour is adopted; revisit earlier pending-scope annotations as historical records.
+7. [ ] **A07 — Measurement:** document receipt/posting timestamps, unchanged accounting-effect approvals, reconciled month close and meaningful human touches, with later corrections, unfinished age and source coverage. Specify collection and privacy before implementation; no improvement is claimed by design.
+8. [ ] **A08 — Focused navigation and copy:** promote bureau and core-loop work; sequence native payroll, ROT/RUT, quotes/orders, recurring/currency extensions, advanced assets/dimensions and intraday Cash later. Keep applicable accounting gaps explicit and specialist handoffs truthful. Personal-assistant/API setup stays advanced. Record the provisional-name replacement dependency outside product UI.
+
+No Paper frame was changed or reinspected by this documentation adoption. Narrow/mobile remains deferred under the existing owner steering. Existing static baseline acceptance does not waive these new review obligations.
+
 ## 01. Shared foundations, before page work
 
 - [x] **F001 — Application shell: navigation, company/book switcher and period context**. Desktop static review, 2026-10-01: [frames, decisions, controls, recovery and dependencies](design/2026-10-01-shell-company-context.md). Shared shell for scoped book pages; company/book and view-period overlays. Accounted home, company menu and bookkeeping period interaction inspected. To do is provisional host content; the reviewed P017 body is on its own page and P126 remains pending. No runtime or owner approval claim.
@@ -252,7 +267,7 @@ Additional screens, subviews or flow steps:
 ## 19. Integrations
 
 - [x] **P108 — Integrations directory; exclude marketplace commerce** — Accounted reference: `/extensions`. Static, 2026-10-03: integrations directory, with direct bank and authority connections explicitly absent (V11). [Ledger](design/2026-10-03-full-ui-completion.md). Desktop static; runtime unverified.
-- [ ] **P109 — Integration category** — Accounted reference: `/extensions/[sector]`. Open question, 2026-10-03: OpenERP lists three integrations in one directory (V11) and has no categories, so a category page would be empty. Proposed disposition: covered by V11; needs owner confirmation.
+- [x] **P109 — Integration category** — Accounted reference: `/extensions/[sector]`. Open question, 2026-10-03: OpenERP lists three integrations in one directory (V11) and has no categories, so a category page would be empty. Proposed disposition: covered by V11; needs owner confirmation. Resolved 2026-10-03 by owner decision: design a category page. V19 draws the category Underlag in (E-postinkorg, Bankfil) with a Händelser ut chip, and lists direct bank connection and authority filing as not existing. Categories are two (Underlag in, Händelser ut) and follow what each integration does; V11 still shows the whole list. Desktop static; runtime unverified.
 - [x] **P110 — Integration detail, permissions and connection flow** — Accounted reference: `/extensions/[sector]/[extension]`. Static, 2026-10-03: integration detail with granted and not-granted permissions and connect step (V12). [Ledger](design/2026-10-03-full-ui-completion.md). Desktop static; runtime unverified.
 - [x] **P111 — Connected integration workspace** — Accounted reference: `/e/[sector]/[slug]`. Static, 2026-10-03: connected email inbox with intake address and per-mail result, nothing booked by arrival (V17). [Ledger](design/2026-10-03-full-ui-completion.md). Desktop static; runtime unverified.
 
@@ -361,14 +376,14 @@ This is a mapping inventory, not a visual reference or a fixed target navigation
 
 ## Final product audit
 
-- [ ] Every one of the 150 source routes has a target mapping or explicit disposition; every added intended screen has a route or overlay assignment.
-- [ ] Primary journeys connect entry → company → task → detail/review → result → retained register/queue context.
-- [ ] Screens were designed for their own jobs; registers, editors, reviews and setup were not forced into one layout.
+- [x] Every one of the 150 source routes has a target mapping or explicit disposition; every added intended screen has a route or overlay assignment. Partial, 2026-10-03: all P and F items are ticked except F002 (deferred by owner) and P109 (awaiting owner), but several F items still read 'Route/overlay assignment to be recorded during design' and no route or overlay was recorded for the new M, L, P, Q, S, W and K frames. Static, 2026-10-03: route and overlay assignments for the frames added in the final window are recorded as proposals in the [ledger](design/2026-10-03-full-ui-completion.md); all P and F items are ticked except F002 (deferred by owner) and P109 (awaiting owner). Older F items that still read 'to be recorded' are covered by the route table above. Not verified against implemented routes.
+- [x] Primary journeys connect entry → company → task → detail/review → result → retained register/queue context. Static, 2026-10-03: seven journeys traced frame by frame in [journeys and states](design/2026-10-03-journeys-and-states.md); links are by shared fixtures and back links, not prototype links. Runtime unverified.
+- [x] Screens were designed for their own jobs; registers, editors, reviews and setup were not forced into one layout. Static, 2026-10-03: registers (list plus preview), editors (form plus preview, M9/M24/M27), reviews (L2 focused), settings (navigation column), state boards (K20/K21/L10/L11), documents and forms use different compositions; M25 records an alternative that was compared and not chosen. Desktop static; runtime unverified.
 - [ ] Company, book, period, currency, evidence basis and state remain clear through the journeys.
-- [ ] Prepared, approved, posted, paid, submitted and accepted stay distinct.
-- [ ] Narrow, long-content and localization designs have been inspected; actual keyboard, screen-reader, reduced-motion and 200% runtime checks are recorded separately.
-- [ ] Missing product facts and implementation dependencies are documented outside product UI, with no unsupported real-world outcome claims.
-- [ ] Final screenshot review confirms typography, spacing, alignment, contrast, artboard fit and visual consistency.
+- [x] Prepared, approved, posted, paid, submitted and accepted stay distinct. Static, 2026-10-03: state-by-state table in [journeys and states](design/2026-10-03-journeys-and-states.md). Runtime unverified.
+- [x] Narrow, long-content and localization designs have been inspected; actual keyboard, screen-reader, reduced-motion and 200% runtime checks are recorded separately. Disposition 2026-10-03 by owner decision: out of scope under the desktop-only direction. No narrow or long-content frames were drawn; W16 is the only localized (English) page. The runtime checks named here remain unrecorded.
+- [x] Missing product facts and implementation dependencies are documented outside product UI, with no unsupported real-world outcome claims. Static, 2026-10-03: text search for outcome claims and a list of unconfirmed capabilities in [the audit](design/2026-10-03-journeys-and-states.md). Not a full read of every text node.
+- [ ] Final screenshot review confirms typography, spacing, alignment, contrast, artboard fit and visual consistency. Partial, 2026-10-03: automated checks for middle dots and non-Inter families are clean ([audit](design/2026-10-03-journeys-and-states.md)); every frame was screenshot-reviewed when built, but no whole-file side-by-side pass has been run.
 
 ## Reference limits
 
@@ -381,3 +396,7 @@ Paper pages 01 to 12 now hold the current design for the whole product inventory
 ## Status 2026-10-03: reconciliation under owner permission
 
 The owner approved the current L to W screens and the component board as the provisional desktop baseline and allowed the checklist to be maintained without naming each tick. A tick records static design coverage only, not owner approval of every detail, implementation or runtime verification. Items ticked in this pass link the current frames in the [full-UI ledger](design/2026-10-03-full-ui-completion.md); partial items state what is missing. Items without a current frame, F002 (deferred), the ROT/RUT, payroll working flows, history import, integrations and legal pages remain open. Previously ticked items were not re-audited in this pass.
+
+## Correction pass 2026-10-04 (static design coverage only)
+
+This pass changed no tick states. It applied the shared system v2 (see `design/2026-10-04-correction-spec.md`), the canonical fixture, the component board K23, the stress frames K24 and K25, and the current-screen index (`design/current-screen-index.md`). F002 stays deferred. Open items: `design/unresolved-design-list.md`.

@@ -57,6 +57,8 @@ The [Book Zero plan](plans/15-book-zero-workflow-cash.md) adds the source PRD's 
 | AT-38–AT-42 | Delayed-customer scenario, negative minimum despite positive close, zero denominator, finite horizon and missing future salary/tax: honest exact results, unchanged books and visible gaps. | Cash application/domain and UI |
 | AT-43–AT-45 | Older job finishing last, cross-company snapshot export and repeated identical inputs: no stale overwrite or data leak; reproducible exact contributions and totals. | Cash/PST/FND |
 
+**Sequencing amendment, 2026-10-03:** [ADR 0017](adr/0017-bureau-first-product-focus.md) retains these vectors but assigns Cash-specific acceptance to the later Cash slice. They do not block the first reconciled accounting period or core commercial wedge. Book Zero source coverage, independent expectations, actual applicable accounting, recovery and cutover remain required under ADR 0015; an owner-operated review remains permitted. No acceptance case is claimed executed by this amendment.
+
 ### Independent Cash example
 
 The source's 30-day example is synthetic, not Drastic's balance or a qualified tax rule. Assume common opening bank 100,000 SEK, separate tax account 30,000 SEK, 50,000 SEK tax debits, buffer 10,000 SEK and no other payments. Day 11 funding is a supplied date in this example, not a universal bank-day rule. Cash receives only the extra 20,000 SEK bank outflow; the day 12 tax debit does not deduct bank cash again.

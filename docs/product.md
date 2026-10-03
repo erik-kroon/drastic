@@ -6,9 +6,17 @@ OpenERP should turn retained evidence into explicit accounting decisions, approv
 
 The initial candidate profile is one Swedish AB. Its actual legal form, accounting method, financial year, registrations, reporting framework and obligations must be established from records ([D-04](open-decisions.md)). “Swedish AB,” “K2,” calendar-year accounting and payroll are not defaults to invent.
 
+## Adopted commercial priority — 2026-10-03
+
+[ADR 0017](adr/0017-bureau-first-product-focus.md) adopts a bureau-first wedge: incoming documents, bank matching, invoicing and VAT. Accountants own bookkeeping within assigned authority; owners answer questions and approve payments. Keep owner-operated Book Zero available. Att göra owns all human tasks; other work views are filtered projections.
+
+Use bounded bulk approval for familiar supported work, individual review for exceptions, and exact-action approval for payments, messages and filings. Financial approval and receipts remain immutable; automatic posting is not adopted. Live bank feeds, Peppol, direct VAT filing and BankID are target capabilities after their own qualification gates, with manual/file fallbacks retained.
+
+Native payroll is deferred from the commercial wedge in favor of evaluating a specialist integration. Quotes/orders, incoming orders, recurring-billing and currency extensions, ROT/RUT, advanced assets/dimensions and Cash follow the core loop. Required import, corrections, reconciliation, reporting and closing remain in scope. Actual unsupported company transactions block their dependent release until a qualified treatment or handoff exists. Adopt visible assistant explanations, a bank-to-document-to-review onboarding/demo loop and the [success measures](plans/product-focus-review.md#success-measures). Choose a qualified replacement for the provisional public name before launch.
+
 ## Book Zero product priority
 
-The [Book Zero plan](plans/15-book-zero-workflow-cash.md) organizes the first delivery around Drastic AB: independently review a real historical period, finish routine work through the ordinary interface, and explain future payments through read-only Drastic Cash. Extend acceptance to the first financial year, a new real period and a separately approved single-writer transition. Work belongs in this delivery when the actual company, a priority journey or correct Cash coverage needs it.
+The [Book Zero plan](plans/15-book-zero-workflow-cash.md) organizes the first delivery around Drastic AB: independently review a real historical period, finish routine work through the ordinary interface, with read-only Drastic Cash sequenced later under ADR 0017. Extend acceptance to the first financial year, a new real period and a separately approved single-writer transition. Work belongs in the first delivery when the actual company or the core accounting journey needs it; Cash coverage requirements govern the later Cash slice.
 
 The source reports SEB and a first financial year of 2025-05-17–2026-04-30; these remain [company inputs to qualify](open-decisions.md#book-zero-company-and-review-inputs). Reconstruction from raw evidence and migration of old accounting are separate trials. A successful migration cannot by itself prove new accounting treatment.
 

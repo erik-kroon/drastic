@@ -21,6 +21,8 @@ The status describes a decision's authority, not implementation progress. “Est
 | [0015](0015-owner-delegated-decision-pass.md) | Accepted decision, 2026-09-28 | Owner-delegated decision pass: owner-operated private release with an owner-acceptance engineering gate, a bounded standing test permission, local-first operating mode, Accounted as a pinned non-authoritative reference, and dispositions for 23 product-scope capabilities. |
 | [0016](0016-pdfcn-legal-documents.md) | Accepted owner decision, 2026-09-30 | Adapt pinned pdfcn source for legal invoices and credit notes, with exact retained amounts, actual pagination and direct replacement of synthetic legal templates. |
 
+| [0017](0017-bureau-first-product-focus.md) | Accepted product direction, 2026-10-03 | Bureau-first accounting wedge, canonical human tasks, bounded bulk approval and qualified connected execution; native payroll and Cash sequenced later, automatic posting not adopted. |
+
 The separately authored [Swedish VAT profile boundary](0002-swedish-vat-profile-boundary.md) also uses the number 0002 in its filename. Refer to it by title and full filename to distinguish it from the posting ADR. It records a bounded research profile and source limitations; it does not activate statutory support.
 
 Create an ADR when an unresolved choice materially changes invariants, ownership, public contracts or operations. Do not create one for every class or library call. Record context, choice, alternatives, consequences, source evidence and the proof that would validate the choice.
