@@ -1,5 +1,6 @@
 import { existsSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 
 const repoRoot = path.resolve(import.meta.dir, "..");
 
@@ -13,7 +14,9 @@ const baseRef = args.find((arg) => arg !== "--type-aware" && arg !== "--lint-onl
 
 const binDirectory = path.join(repoRoot, "node_modules", ".bin");
 
-const temporaryConfigName = "tsconfig.changed.json";
+const invocationId = randomUUID();
+
+const temporaryConfigName = `.tsconfig.changed-${invocationId}.json`;
 
 const toolThreads = "2";
 
@@ -173,6 +176,11 @@ const typeCheckProject = async (projectConfig: string, files: Array<string>) => 
   const projectDirectory = path.dirname(projectConfig);
   const temporaryConfig = path.join(projectDirectory, temporaryConfigName);
 
+  const temporaryBuildInfo = path.join(
+    projectDirectory,
+    `.tsconfig.changed-${invocationId}.tsbuildinfo`,
+  );
+
   const scopedConfig = {
     extends: `./${path.relative(projectDirectory, projectConfig)}`,
     include: [],
@@ -181,6 +189,7 @@ const typeCheckProject = async (projectConfig: string, files: Array<string>) => 
 
   writeFileSync(temporaryConfig, `${JSON.stringify(scopedConfig, undefined, 2)}\n`);
   temporaryConfigs.add(temporaryConfig);
+  temporaryConfigs.add(temporaryBuildInfo);
 
   try {
     await run(`tsc --noEmit (${projectConfig})`, "tsc", [
@@ -189,13 +198,15 @@ const typeCheckProject = async (projectConfig: string, files: Array<string>) => 
       toolThreads,
       "--incremental",
       "--tsBuildInfoFile",
-      path.join(projectDirectory, "tsconfig.changed.tsbuildinfo"),
+      temporaryBuildInfo,
       "--project",
       temporaryConfig,
     ]);
   } finally {
     rmSync(temporaryConfig, { force: true });
     temporaryConfigs.delete(temporaryConfig);
+    rmSync(temporaryBuildInfo, { force: true });
+    temporaryConfigs.delete(temporaryBuildInfo);
   }
 };
 
