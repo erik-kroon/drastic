@@ -1,3 +1,5 @@
+import { openingPosition } from "./onboarding-opening";
+import { readOnboardingDeltaInTransaction } from "./onboarding-deltas";
 import {
   readOnboardingProjectionInTransaction,
   qualifiedBankExplanationsInTransaction,
@@ -120,9 +122,15 @@ function retain(
 function currentDigest(
   tx: Transaction,
   scope: Scope,
-  snapshot: Pick<Snapshot, "asOf" | "controlIds">,
+  snapshot: Pick<Snapshot, "asOf" | "controlIds" | "historicalRunIds" | "sourceImportPlanIds">,
 ) {
-  return Db.readDependencies(tx, scope, snapshot.asOf, snapshot.controlIds).pipe(
+  return Db.readDependencies(
+    tx,
+    scope,
+    snapshot.asOf,
+    snapshot.controlIds,
+    snapshot.sourceImportPlanIds?.length ? snapshot.historicalRunIds : [],
+  ).pipe(
     Effect.flatMap((rows) =>
       rows[0] === undefined ? failure("InternalError") : Effect.succeed(rows[0].digest),
     ),
@@ -130,9 +138,43 @@ function currentDigest(
 }
 
 export function onboardingSnapshotCurrent(tx: Transaction, snapshot: Snapshot) {
-  return currentDigest(tx, snapshot.scope, snapshot).pipe(
-    Effect.map((value) => value === snapshot.dependencyDigest),
-  );
+  return Effect.gen(function* () {
+    if ((yield* currentDigest(tx, snapshot.scope, snapshot)) !== snapshot.dependencyDigest)
+      return false;
+
+    if (snapshot.carriedLimitationDecisionIds.length > 0) {
+      const decisions = yield* records(tx, snapshot.scope, "decisions", O.OnboardingDecision);
+
+      if (
+        snapshot.carriedLimitationDecisionIds.some((id) => {
+          const acceptance = decisions.find((entry) => entry.id === id);
+
+          return (
+            !acceptance ||
+            decisions.some(
+              (entry) =>
+                entry.snapshotId === acceptance.snapshotId && entry.decision.kind === "reject",
+            )
+          );
+        })
+      )
+        return false;
+    }
+
+    if (snapshot.deltaId !== null) {
+      const delta = yield* readOnboardingDeltaInTransaction(tx, snapshot.scope, snapshot.deltaId);
+
+      if (
+        !delta.current ||
+        delta.blockers.length > 0 ||
+        delta.decisions.length !== snapshot.deltaDecisionIds.length ||
+        delta.decisions.some((entry) => !snapshot.deltaDecisionIds.includes(entry.id))
+      )
+        return false;
+    }
+
+    return true;
+  });
 }
 
 function requireCurrent(
@@ -339,6 +381,43 @@ function approvedSnapshot(tx: Transaction, scope: Scope, purpose: Snapshot["purp
   });
 }
 
+export const requireAcceptedOnboardingOpening = Effect.fn("onboarding.requireAcceptedOpening")(
+  function* (tx: Transaction, scope: Scope, sourcePlanId: string, runId: string) {
+    const snapshots = yield* records(tx, scope, "snapshots", O.OnboardingSnapshot);
+    const decisions = yield* records(tx, scope, "decisions", O.OnboardingDecision);
+
+    for (const snapshot of snapshots) {
+      if (
+        snapshot.purpose !== "opening" ||
+        !snapshot.sourceImportPlanIds?.includes(sourcePlanId) ||
+        !snapshot.historicalRunIds.includes(runId)
+      )
+        continue;
+
+      if (
+        decisions.some(
+          (decision) => decision.snapshotId === snapshot.id && decision.decision.kind === "reject",
+        )
+      )
+        continue;
+
+      if (
+        !decisions.some(
+          (decision) =>
+            decision.snapshotId === snapshot.id &&
+            decision.snapshotDigest === snapshot.digest &&
+            decision.decision.kind === "accept_opening",
+        )
+      )
+        continue;
+
+      if (yield* onboardingSnapshotCurrent(tx, snapshot)) return;
+    }
+
+    return yield* failure("ApprovalRequired");
+  },
+);
+
 function comparisons(
   controls: readonly Control[],
   balances: readonly { accountId: string; amount: string }[],
@@ -346,7 +425,12 @@ function comparisons(
   return Effect.gen(function* () {
     const result: Array<typeof O.OnboardingComparison.Type> = [];
 
-    for (const control of controls.filter((item) => item.kind !== "bank_reconciling_items")) {
+    for (const control of controls.filter(
+      (item) =>
+        item.kind !== "bank_reconciling_items" &&
+        item.kind !== "historical_originals" &&
+        item.kind !== "historical_payroll_handoff",
+    )) {
       const sums = new Map<string, bigint>();
 
       for (const fact of control.facts)
@@ -455,7 +539,9 @@ function requiredControlKinds(
           if (fact.factKind === "vat_registration" && fact.value.value === "registered")
             kinds.push("vat");
 
-          if (fact.factKind !== "vat_registration" && fact.value.value === true)
+          if (fact.factKind === "payroll_applicability" && fact.value.value === true)
+            kinds.push("historical_payroll_handoff");
+          else if (fact.factKind !== "vat_registration" && fact.value.value === true)
             blockers.push(`qualified_handoff_required:${kind}`);
         }
       }
@@ -485,6 +571,14 @@ function lifecycleBlockers(
       blockers.push("book_zero_not_accepted");
 
     if (input.purpose === "final_delta") {
+      if (input.deltaId === undefined) blockers.push("final_delta_comparison_missing");
+      else {
+        const delta = yield* readOnboardingDeltaInTransaction(tx, scope, input.deltaId);
+        blockers.push(...delta.blockers);
+
+        if (!delta.current) blockers.push("source_delta_changed");
+      }
+
       if (input.historicalRunIds.length === 0) blockers.push("final_delta_source_effects_missing");
       blockers.push(...(yield* deltaBlockers(tx, scope, input.historicalRunIds)));
     }
@@ -535,6 +629,67 @@ function lifecycleBlockers(
   });
 }
 
+function snapshotLimitations(
+  current: typeof O.OnboardingCase.Type,
+  purpose: Snapshot["purpose"],
+  controls: readonly Control[],
+  compared: Snapshot["comparisons"],
+) {
+  const originalIndex = controls.find((control) => control.kind === "historical_originals");
+  const needsOriginals = purpose !== "opening" && current.path !== "new_company";
+
+  const blockers =
+    needsOriginals && !originalIndex?.originalCoverage ? ["original_coverage_unqualified"] : [];
+
+  const permitted: Snapshot["permittedLimitations"][number][] = [];
+
+  if (
+    needsOriginals &&
+    originalIndex?.originalCoverage?.rows.some((row) => row.occurrenceId === null)
+  )
+    permitted.push("missing_historical_originals");
+
+  if (purpose !== "opening" && !controls.some((control) => control.kind === "tax"))
+    permitted.push("missing_tax_statement");
+
+  if (
+    purpose !== "opening" &&
+    controls.some(
+      (control) =>
+        control.kind === "historical_payroll_handoff" && control.payrollHandoff !== undefined,
+    )
+  )
+    permitted.push("historical_payroll_retained");
+
+  const bank = compared.filter((comparison) => comparison.kind === "bank");
+
+  if (
+    purpose !== "opening" &&
+    bank.some((comparison) => comparison.differenceMinor !== "0") &&
+    bank.every((comparison) => comparison.unexplainedDifferenceMinor === "0")
+  )
+    permitted.push("unreconciled_bank_difference");
+
+  return { blockers, permitted };
+}
+
+function controlMatchesBoundary(
+  control: Control,
+  current: typeof O.OnboardingCase.Type,
+  asOf: string,
+  currency: string,
+) {
+  if (control.asOf !== asOf || control.currency !== currency) return false;
+  const handoff = control.payrollHandoff;
+
+  return (
+    handoff === undefined ||
+    (handoff.incumbentSystem === current.configuration.incumbentSystem &&
+      handoff.historyStartsOn === current.configuration.dates.historyStartsOn &&
+      handoff.retainedThrough === current.configuration.dates.historyEndsOn)
+  );
+}
+
 export const captureOnboardingSnapshot = Effect.fn("onboarding.capture")(function* (
   token: string,
   command: Command<typeof O.CaptureOnboardingSnapshot.Type>,
@@ -580,15 +735,23 @@ export const captureOnboardingSnapshot = Effect.fn("onboarding.capture")(functio
 
         if (
           original.occurrence.sha256 !== control.sourceSha256 ||
-          control.asOf !== asOf ||
-          control.currency !== book.currency
+          !controlMatchesBoundary(control, current, asOf, book.currency)
         )
           return yield* failure("StaleDependency");
         controls.push(control);
       }
 
       const policy = yield* currentPolicy(tx, command.scope);
-      const balances = yield* Db.readBalances(tx, command.scope.bookId, asOf);
+
+      const position =
+        command.input.purpose === "opening"
+          ? yield* openingPosition(tx, command.scope, current, asOf, command.input.historicalRunIds)
+          : {
+              balances: yield* Db.readBalances(tx, command.scope.bookId, asOf),
+              sourceImportPlanIds: [],
+            };
+
+      const { balances, sourceImportPlanIds } = position;
 
       const explanations = yield* qualifiedBankExplanationsInTransaction(
         tx,
@@ -643,7 +806,13 @@ export const captureOnboardingSnapshot = Effect.fn("onboarding.capture")(functio
 
       for (const kind of required) if (!kinds.has(kind)) blockers.push(`missing_control:${kind}`);
 
-      if (compared.some((comparison) => comparison.unexplainedDifferenceMinor !== "0"))
+      if (
+        compared.some(
+          (comparison) =>
+            comparison.unexplainedDifferenceMinor !== "0" ||
+            (command.input.purpose === "opening" && comparison.differenceMinor !== "0"),
+        )
+      )
         blockers.push("independent_controls_differ");
       const trial = controls.find((control) => control.kind === "trial_balance");
 
@@ -657,7 +826,28 @@ export const captureOnboardingSnapshot = Effect.fn("onboarding.capture")(functio
       )
         blockers.push("trial_balance_account_coverage_missing");
 
+      const limitations = snapshotLimitations(current, command.input.purpose, controls, compared);
+      blockers.push(...limitations.blockers);
+
       if (policy === null) blockers.push("responsibilities_missing");
+
+      if (command.input.purpose === "book_zero" && current.path !== "new_company") {
+        const inventory = yield* Db.allHistoricalRunIds(tx, command.scope.bookId);
+
+        const runs = yield* Db.readHistoricalRuns(
+          tx,
+          command.scope.bookId,
+          command.input.historicalRunIds,
+        );
+
+        if (
+          inventory.length === 0 ||
+          inventory.some((run) => !command.input.historicalRunIds.includes(run.id)) ||
+          runs.length !== command.input.historicalRunIds.length ||
+          runs.some((run) => run.status !== "posted")
+        )
+          blockers.push("historical_effects_not_complete");
+      }
 
       blockers.push(
         ...(yield* lifecycleBlockers(tx, command.scope, command.input, asOf, book.authority)),
@@ -668,9 +858,18 @@ export const captureOnboardingSnapshot = Effect.fn("onboarding.capture")(functio
         scope: command.scope,
         purpose: command.input.purpose,
         deltaId: command.input.deltaId ?? null,
+        deltaDecisionIds: command.input.deltaId
+          ? (yield* readOnboardingDeltaInTransaction(
+              tx,
+              command.scope,
+              command.input.deltaId,
+            )).decisions.map((entry) => entry.id)
+          : [],
         dependencyDigest: yield* currentDigest(tx, command.scope, {
           asOf,
           controlIds: command.input.controlIds,
+          historicalRunIds: command.input.historicalRunIds,
+          sourceImportPlanIds,
         }),
         caseRevision: current.revision,
         bookSequence: book.committedSequence.toString(),
@@ -678,19 +877,24 @@ export const captureOnboardingSnapshot = Effect.fn("onboarding.capture")(functio
         asOf,
         controlIds: command.input.controlIds,
         historicalRunIds: command.input.historicalRunIds,
+        sourceImportPlanIds,
         closingCertificateId: command.input.closingCertificateId,
         responsibilityPolicyId: policy?.id ?? null,
         comparisons: compared,
         blockers,
-        permittedLimitations:
-          command.input.purpose === "opening" || kinds.has("tax") ? [] : ["missing_tax_statement"],
+        permittedLimitations: limitations.permitted,
         capturedBy: principal.actorId,
         capturedAt: yield* isoNow(tx),
       };
 
-      const snapshot = yield* decode(O.OnboardingSnapshot, {
+      const material = {
         ...body,
-        digest: yield* digest(body),
+        carriedLimitationDecisionIds: yield* carriedLimitations(tx, command.scope, body),
+      };
+
+      const snapshot = yield* decode(O.OnboardingSnapshot, {
+        ...material,
+        digest: yield* digest(material),
       });
 
       yield* retain(tx, command.scope, "snapshots", snapshot);
@@ -717,11 +921,98 @@ function acceptedLimitations(snapshot: Snapshot, decisions: readonly Decision[])
   return snapshot.permittedLimitations.every((limitation) =>
     decisions.some(
       (decision) =>
-        decision.snapshotId === snapshot.id &&
+        (decision.snapshotId === snapshot.id ||
+          snapshot.carriedLimitationDecisionIds.includes(decision.id)) &&
         decision.decision.kind === "accept_limitation" &&
         decision.decision.limitation === limitation,
     ),
   );
+}
+
+function limitationEvidence(
+  snapshot: Pick<
+    Snapshot,
+    "asOf" | "caseRevision" | "responsibilityPolicyId" | "comparisons" | "controlIds"
+  >,
+  limitation: Snapshot["permittedLimitations"][number],
+  controls: readonly Control[],
+) {
+  const kinds = (
+    {
+      unreconciled_bank_difference: ["bank", "bank_reconciling_items"],
+      missing_historical_originals: ["historical_originals"],
+      missing_tax_statement: ["tax"],
+      historical_payroll_retained: ["historical_payroll_handoff"],
+    } as const
+  )[limitation];
+
+  return {
+    asOf: snapshot.asOf,
+    caseRevision: snapshot.caseRevision,
+    controls: controls
+      .filter(
+        (control) =>
+          snapshot.controlIds.includes(control.id) && kinds.some((kind) => kind === control.kind),
+      )
+      .map((control) => control.id)
+      .sort(),
+    comparisons: snapshot.comparisons
+      .filter((comparison) => kinds.some((kind) => kind === comparison.kind))
+      .sort(
+        (left, right) =>
+          left.controlId.localeCompare(right.controlId) ||
+          left.accountId.localeCompare(right.accountId),
+      ),
+  };
+}
+
+function carriedLimitations(
+  tx: Transaction,
+  scope: Scope,
+  snapshot: Pick<
+    Snapshot,
+    | "asOf"
+    | "caseRevision"
+    | "responsibilityPolicyId"
+    | "comparisons"
+    | "controlIds"
+    | "permittedLimitations"
+  >,
+) {
+  return Effect.gen(function* () {
+    const snapshots = yield* records(tx, scope, "snapshots", O.OnboardingSnapshot);
+    const decisions = yield* records(tx, scope, "decisions", O.OnboardingDecision);
+    const controls = yield* records(tx, scope, "controls", O.OnboardingControl);
+    const result: string[] = [];
+
+    for (const limitation of snapshot.permittedLimitations) {
+      const expected = yield* digest(limitationEvidence(snapshot, limitation, controls));
+
+      for (const decision of decisions) {
+        if (
+          decision.decision.kind !== "accept_limitation" ||
+          decision.decision.limitation !== limitation
+        )
+          continue;
+        const previous = snapshots.find((entry) => entry.id === decision.snapshotId);
+
+        if (
+          !previous ||
+          decisions.some(
+            (entry) => entry.snapshotId === previous.id && entry.decision.kind === "reject",
+          )
+        )
+          continue;
+
+        if ((yield* digest(limitationEvidence(previous, limitation, controls))) === expected) {
+          result.push(decision.id);
+          break;
+        }
+      }
+    }
+
+    return result;
+  });
 }
 
 export const decideOnboardingSnapshot = Effect.fn("onboarding.decide")(function* (
@@ -772,6 +1063,12 @@ export const decideOnboardingSnapshot = Effect.fn("onboarding.decide")(function*
 
       const now = yield* isoNow(tx);
 
+      const actor = (yield* Db.readPeople(tx, command.scope.bookId)).find(
+        (entry) => entry.id === principal.actorId,
+      );
+
+      if (!actor) return yield* failure("Forbidden");
+
       const retained = yield* decode(O.OnboardingDecision, {
         id: newId("onboardingdecision"),
         scope: command.scope,
@@ -779,6 +1076,7 @@ export const decideOnboardingSnapshot = Effect.fn("onboarding.decide")(function*
         snapshotDigest: snapshot.digest,
         decision,
         actorId: principal.actorId,
+        actorName: actor.name,
         recordedAt: now,
         authority: principal,
         expiresAt: expires(now),
@@ -938,12 +1236,14 @@ export const executeOnboardingActivationInTransaction = Effect.fn("onboarding.ex
     if (promoted === undefined || BigInt(promoted.epoch) !== book.writerEpoch + 1n)
       return yield* failure("InternalError");
 
-    const historicalSnapshots = yield* records(tx, scope, "snapshots", O.OnboardingSnapshot);
     const limitationDecisions = yield* records(tx, scope, "decisions", O.OnboardingDecision);
-    const currentHistorical = yield* Effect.filter(historicalSnapshots, (entry) => onboardingSnapshotCurrent(tx, entry));
-    const retainedLimitations = limitationDecisions.filter((decision) => decision.decision.kind === "accept_limitation" &&
-      currentHistorical.some((entry) => entry.id === decision.snapshotId) &&
-      !limitationDecisions.some((rejection) => rejection.snapshotId === decision.snapshotId && rejection.decision.kind === "reject"));
+
+    const retainedLimitations = limitationDecisions.filter(
+      (decision) =>
+        decision.decision.kind === "accept_limitation" &&
+        (decision.snapshotId === snapshot.id ||
+          snapshot.carriedLimitationDecisionIds.includes(decision.id)),
+    );
 
     const receipt = yield* decode(O.OnboardingActivationReceipt, {
       id: newId("onboardingactivation"),

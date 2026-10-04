@@ -1,3 +1,5 @@
+import { readOnboardingWorkspace } from "./data";
+import { OnboardingDelta } from "./delta";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import * as Onboarding from "@open-erp/contracts/onboarding";
@@ -13,26 +15,18 @@ import { OnboardingSources } from "./sources";
 import { OnboardingImport, OnboardingMapping } from "./import";
 import { OnboardingOpening, OnboardingVerification } from "./verification";
 import { OnboardingResponsibilities } from "./responsibilities";
-import {
-  OnboardingCutover,
-  OnboardingDelta,
-  OnboardingActivation,
-  OnboardingFirstPeriod,
-} from "./transition";
+import { OnboardingCutover, OnboardingActivation, OnboardingFirstPeriod } from "./transition";
 import type { OnboardingView } from "./views";
 
 export function OnboardingPanel({ view }: { view: OnboardingView }) {
   const { book, locale } = useBookWorkspace();
   const navigate = useNavigate();
+
   const workspace = useQuery({
     queryKey: [...bookKey(book), "onboarding"],
     queryFn: async ({ signal }) => {
       try {
-        return await readAccounting(
-          `${bookPath(book)}/onboarding`,
-          Onboarding.OnboardingWorkspace,
-          { signal },
-        );
+        return await readOnboardingWorkspace(`${bookPath(book)}/onboarding`, signal);
       } catch (error) {
         if (error instanceof AccountingError && error.code === "NotFound") return null;
         throw error;
@@ -40,6 +34,7 @@ export function OnboardingPanel({ view }: { view: OnboardingView }) {
     },
     retry: false,
   });
+
   const lifecycle = useQuery({
     queryKey: [...bookKey(book), "onboarding", "lifecycle"],
     enabled: !!workspace.data && view !== "start",
@@ -51,6 +46,7 @@ export function OnboardingPanel({ view }: { view: OnboardingView }) {
       query.state.data?.intents.length && !query.state.data.activation ? 2_000 : false,
     retry: false,
   });
+
   const open = (next: OnboardingView) => {
     void navigate({
       to: "/entities/$entityId/books/$bookId/setup",
@@ -97,9 +93,12 @@ export function OnboardingPanel({ view }: { view: OnboardingView }) {
           ) : null}
         </SetupContent>
       );
+
     switch (view) {
       case "profile":
-        return <OnboardingProfile workspace={workspace.data} open={open} />;
+        return (
+          <OnboardingProfile workspace={workspace.data} lifecycle={lifecycle.data} open={open} />
+        );
       case "compatibility":
         return <OnboardingCompatibility workspace={workspace.data} open={open} />;
       case "workspace":
@@ -107,9 +106,13 @@ export function OnboardingPanel({ view }: { view: OnboardingView }) {
           <OnboardingWorkspace workspace={workspace.data} lifecycle={lifecycle.data} open={open} />
         );
       case "sources":
-        return <OnboardingSources workspace={workspace.data} open={open} />;
+        return (
+          <OnboardingSources workspace={workspace.data} lifecycle={lifecycle.data} open={open} />
+        );
       case "import":
-        return <OnboardingImport workspace={workspace.data} open={open} />;
+        return (
+          <OnboardingImport workspace={workspace.data} lifecycle={lifecycle.data} open={open} />
+        );
       case "mapping":
         return (
           <OnboardingMapping workspace={workspace.data} lifecycle={lifecycle.data} open={open} />

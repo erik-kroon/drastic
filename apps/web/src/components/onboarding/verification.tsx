@@ -1,5 +1,10 @@
+import {
+  SetupBlock,
+  SetupInlineAction,
+  SetupText,
+  setupLayoutStyles,
+} from "@open-erp/ui/components/setup-parts";
 import { useState } from "react";
-import * as stylex from "@stylexjs/stylex";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { InputField } from "@open-erp/ui/components/field";
 import {
@@ -13,21 +18,46 @@ import { SetupTable } from "@open-erp/ui/components/setup-table";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
-import { formatDate, formatMinor } from "./data";
+import { formatDate, formatMinor, formatMoment } from "./data";
 import {
   currentSnapshot,
   hasDecision,
   latestSnapshot,
-  personName,
   snapshotInput,
   useSnapshotCapture,
   useSnapshotDecision,
   type Lifecycle,
+  type Snapshot,
   type Workspace,
 } from "./lifecycle";
 import { Breadcrumb, type OpenOnboardingView } from "./shared";
 import { useSieSource } from "./sources";
-import { styles } from "./styles";
+
+function openingInvoiceDetails(
+  plan: ReturnType<typeof useSieSource>["plan"]["data"],
+  accountId: string | undefined,
+  snapshot: Snapshot | undefined,
+) {
+  const sourceAccounts =
+    plan?.input.mappings
+      .filter((mapping) => mapping.accountId === accountId)
+      .map((mapping) => mapping.sourceAccount) ?? [];
+
+  const sourceItems =
+    plan?.input.openItems.filter((item) => sourceAccounts.includes(item.sourceAccount)) ?? [];
+
+  const known =
+    !!snapshot &&
+    !!plan &&
+    snapshot.sourceImportPlanIds?.includes(plan.id) === true &&
+    sourceAccounts.length > 0 &&
+    sourceItems.every((item) => item.asOf === snapshot.asOf) &&
+    sourceAccounts.every((sourceAccount) =>
+      plan.input.openItemControls.some((control) => control.sourceAccount === sourceAccount),
+    );
+
+  return { known, items: sourceItems.filter((item) => item.asOf === snapshot?.asOf) };
+}
 
 export function OnboardingOpening({
   workspace,
@@ -45,39 +75,46 @@ export function OnboardingOpening({
   const sie = useSieSource(workspace);
   const balances = retained?.comparisons.filter((item) => item.kind === "trial_balance") ?? [];
   const [selection, setSelection] = useState<string | null>(null);
+
   const receivable = lifecycle.controls.find((control) => control.kind === "sales_open_items")
     ?.facts[0]?.accountId;
+
   const selected = selection ?? receivable ?? balances[0]?.accountId;
   const account = setup.accounts.find((item) => item.id === selected);
-  const openItems =
-    sie.plan.data?.input.openItems.filter((item) => item.sourceAccount === account?.code) ?? [];
+
+  const invoiceDetails = openingInvoiceDetails(sie.plan.data, selected, retained);
+  const openItems = invoiceDetails.items;
+
   const debit = balances.reduce(
     (sum, item) => sum + (BigInt(item.expectedMinor) > 0n ? BigInt(item.expectedMinor) : 0n),
     0n,
   );
+
   const credit = balances.reduce(
     (sum, item) => sum + (BigInt(item.expectedMinor) < 0n ? -BigInt(item.expectedMinor) : 0n),
     0n,
   );
+
   const difference = debit - credit;
+
   return (
-    <SetupPageContent styleX={styles.page}>
+    <SetupPageContent styleX={setupLayoutStyles(["page"])}>
       <Breadcrumb
         items={[{ label: "Setup", view: "workspace" }, { label: "Ingående balanser" }]}
         open={open}
       />
-      <div {...stylex.props(styles.title)}>
+      <SetupBlock layout={["title"]}>
         <SetupTitle>
           Ingående balanser per{" "}
           {formatDate(retained?.asOf ?? workspace.case.configuration.dates.openingOn)}
         </SetupTitle>
-      </div>
-      <p {...stylex.props(styles.subtitle)}>
+      </SetupBlock>
+      <SetupText as="p" layout={["subtitle"]}>
         Slutsaldon i tidigare bokföring vid kontrollpunkten.
         {workspace.case.recordClass === "synthetic" ? " Exempeldata." : ""}
-      </p>
-      <div {...stylex.props(styles.openingColumns, styles.section24)}>
-        <div {...stylex.props(styles.stack)}>
+      </SetupText>
+      <SetupBlock layout={["openingColumns", "section24"]}>
+        <SetupBlock layout={["stack"]}>
           <SetupTable
             title="Ingående balanser"
             width={tokens.setupOpeningWidth}
@@ -93,18 +130,19 @@ export function OnboardingOpening({
               ...balances.map((item) => {
                 const name = setup.accounts.find((candidate) => candidate.id === item.accountId);
                 const source = lifecycle.controls.find((control) => control.id === item.controlId);
+
                 return {
                   id: `${item.controlId}-${item.accountId}`,
-                  tone: selected === item.accountId ? "selected" : undefined,
+                  tone: selected === item.accountId ? ("selected" as const) : undefined,
                   cells: [
-                    <button
+                    <SetupInlineAction
                       type="button"
                       key="select"
-                      {...stylex.props(styles.crumbButton)}
+                      layout={["crumbButton"]}
                       onClick={() => setSelection(item.accountId)}
                     >
                       {name?.code ?? "Okänt konto"}
-                    </button>,
+                    </SetupInlineAction>,
                     name?.name ?? "Uppgift saknas",
                     BigInt(item.expectedMinor) > 0n ? formatMinor(item.expectedMinor) : "",
                     BigInt(item.expectedMinor) < 0n
@@ -132,12 +170,9 @@ export function OnboardingOpening({
                   retained ? formatMinor(difference.toString()) : "—",
                   "",
                   retained ? (
-                    <span
-                      key="balance"
-                      {...stylex.props(difference === 0n ? styles.success : styles.warning)}
-                    >
+                    <SetupText key="balance" layout={[difference === 0n ? "success" : "warning"]}>
                       {difference === 0n ? "✓ I balans" : "! Differens"}
-                    </span>
+                    </SetupText>
                   ) : (
                     "Ej kontrollerat"
                   ),
@@ -145,43 +180,43 @@ export function OnboardingOpening({
               },
             ]}
           />
-          <div {...stylex.props(styles.section)}>
+          <SetupBlock layout={["section"]}>
             <SetupCaption>
               I balans är bara första villkoret. Nästa steg visar varifrån saldona kommer.
             </SetupCaption>
-          </div>
-        </div>
-        <aside {...stylex.props(styles.stack4)}>
-          <h2 {...stylex.props(styles.semibold)}>
+          </SetupBlock>
+        </SetupBlock>
+        <SetupBlock as="aside" layout={["stack4"]}>
+          <SetupText as="h2" layout={["semibold"]}>
             {account ? `${account.code} ${account.name}` : "Öppna fakturor"}
-          </h2>
-          <p {...stylex.props(styles.secondary)}>
-            {openItems.length} öppna fakturor
+          </SetupText>
+          <SetupText as="p" layout={["secondary"]}>
+            {invoiceDetails.known ? openItems.length : "—"} öppna fakturor
             {openItems.length
               ? `, ${formatMinor(openItems.reduce((sum, item) => sum + BigInt(item.outstandingMinor), 0n).toString())}`
               : ""}
-          </p>
-          <div {...stylex.props(styles.rule, styles.section)}>
+          </SetupText>
+          <SetupBlock layout={["rule", "section"]}>
             {openItems.map((item) => (
-              <div key={item.sourceIdentity} {...stylex.props(styles.row)}>
-                <div {...stylex.props(styles.stack4)}>
-                  <span>{item.sourceIdentity}</span>
-                  <span {...stylex.props(styles.caption)}>{item.basis}</span>
-                </div>
-                <span>{formatMinor(item.outstandingMinor)}</span>
-              </div>
+              <SetupBlock key={item.sourceIdentity} layout={["row"]}>
+                <SetupBlock layout={["stack4"]}>
+                  <SetupText>{item.sourceIdentity}</SetupText>
+                  <SetupText layout={["caption"]}>{item.basis}</SetupText>
+                </SetupBlock>
+                <SetupText>{formatMinor(item.outstandingMinor)}</SetupText>
+              </SetupBlock>
             ))}
-          </div>
+          </SetupBlock>
           {workspace.case.recordClass === "synthetic" ? (
             <SetupCaption>
               Exempeldata. Fakturorna är öppna per{" "}
               {formatDate(retained?.asOf ?? workspace.case.configuration.dates.openingOn, false)}.
             </SetupCaption>
           ) : null}
-        </aside>
-      </div>
+        </SetupBlock>
+      </SetupBlock>
       {!snapshot ? (
-        <div {...stylex.props(styles.section20)}>
+        <SetupBlock layout={["section20"]}>
           <SetupButton
             disabled={capture.disabled}
             onClick={() =>
@@ -194,10 +229,57 @@ export function OnboardingOpening({
           >
             Kontrollera ingående balanser
           </SetupButton>
-        </div>
+        </SetupBlock>
+      ) : null}
+      {snapshot ? (
+        <OpeningAcceptance snapshot={snapshot} lifecycle={lifecycle} open={open} />
       ) : null}
       <AccountingStatus locale={locale} pending={capture.isPending} error={capture.error} write />
     </SetupPageContent>
+  );
+}
+
+function OpeningAcceptance({
+  snapshot,
+  lifecycle,
+  open,
+}: {
+  snapshot: NonNullable<ReturnType<typeof currentSnapshot>>;
+  lifecycle: Lifecycle;
+  open: OpenOnboardingView;
+}) {
+  const { locale } = useBookWorkspace();
+  const decide = useSnapshotDecision(() => open("import"));
+
+  return (
+    <SetupBlock layout={["section28", "actions8"]}>
+      <SetupButton
+        disabled={
+          decide.disabled ||
+          snapshot.blockers.length > 0 ||
+          lifecycle.responsibilities?.assignments.bookkeepingApproverId !==
+            lifecycle.viewerActorId ||
+          hasDecision(lifecycle, snapshot, "accept_opening")
+        }
+        onClick={() =>
+          decide.mutate(
+            decide.uncertain && decide.variables
+              ? decide.variables
+              : {
+                  snapshotId: snapshot.id,
+                  expectedDigest: snapshot.digest,
+                  decision: {
+                    kind: "accept_opening",
+                    reason: "Granskat öppningsläget mot oberoende kontroller",
+                  },
+                },
+          )
+        }
+      >
+        Godkänn öppningsläget
+      </SetupButton>
+      <AccountingStatus locale={locale} pending={decide.isPending} error={decide.error} write />
+    </SetupBlock>
   );
 }
 
@@ -209,6 +291,7 @@ const controlLabels = {
   vat: "MOMS",
   tax: "SKATTEKONTO",
 };
+
 const controlTitles = {
   trial_balance: "Ingående balans",
   bank: "Bank",
@@ -217,6 +300,51 @@ const controlTitles = {
   vat: "Kontrollkonton",
   tax: "Skattekonto",
 };
+
+function hasLimitation(
+  lifecycle: Lifecycle,
+  snapshot: NonNullable<ReturnType<typeof currentSnapshot>>,
+  limitation: NonNullable<(typeof snapshot.permittedLimitations)[number]>,
+) {
+  return lifecycle.decisions.some(
+    (item) =>
+      ((item.snapshotId === snapshot.id && item.snapshotDigest === snapshot.digest) ||
+        snapshot.carriedLimitationDecisionIds.includes(item.id)) &&
+      item.decision.kind === "accept_limitation" &&
+      item.decision.limitation === limitation,
+  );
+}
+
+function snapshotNeedsLimitations(
+  lifecycle: Lifecycle,
+  snapshot: NonNullable<ReturnType<typeof currentSnapshot>>,
+) {
+  return snapshot.permittedLimitations.some(
+    (limitation) => !hasLimitation(lifecycle, snapshot, limitation),
+  );
+}
+
+function controlReady(
+  group: { current: boolean; accepted?: Lifecycle["decisions"][number] } | undefined,
+) {
+  return Boolean(group?.current || group?.accepted);
+}
+
+function originalCoverageSummary(
+  lifecycle: Lifecycle,
+  retained: ReturnType<typeof currentSnapshot>,
+) {
+  const originalCoverage = lifecycle.controls.find(
+    (control) =>
+      retained?.controlIds.includes(control.id) && control.kind === "historical_originals",
+  )?.originalCoverage;
+
+  const missingOriginals = originalCoverage?.rows.filter((row) => row.occurrenceId === null).length;
+
+  return originalCoverage
+    ? `${originalCoverage.rows.length - (missingOriginals ?? 0)} av ${originalCoverage.rows.length} original. ${missingOriginals} historiska verifikat saknar original.`
+    : "Historiska original har inte verifierats.";
+}
 
 export function OnboardingVerification({
   workspace,
@@ -232,40 +360,55 @@ export function OnboardingVerification({
   const retained = snapshot ?? latestSnapshot(lifecycle, "book_zero");
   const capture = useSnapshotCapture();
   const decide = useSnapshotDecision();
+
   const [limitation, setLimitation] = useState<
-    "missing_tax_statement" | "missing_historical_originals" | null
+    "missing_tax_statement" | "missing_historical_originals" | "unreconciled_bank_difference" | null
   >(null);
+
   const [reason, setReason] = useState("");
-  const groups = Object.entries(controlLabels).map(([kind, label]) => {
-    const typed =
-      kind === "trial_balance"
-        ? "trial_balance"
-        : kind === "bank"
-          ? "bank"
-          : kind === "sales_open_items"
-            ? "sales_open_items"
-            : kind === "purchase_open_items"
-              ? "purchase_open_items"
-              : kind === "vat"
-                ? "vat"
-                : "tax";
+
+  const groups = (
+    ["trial_balance", "bank", "sales_open_items", "purchase_open_items", "vat", "tax"] as const
+  ).map((typed) => {
+    const label = controlLabels[typed];
     const items = retained?.comparisons.filter((item) => item.kind === typed) ?? [];
-    const current =
-      items.length > 0 && items.every((item) => BigInt(item.unexplainedDifferenceMinor) === 0n);
-    return { kind: typed, label, items, current };
+    const current = items.length > 0 && items.every((item) => BigInt(item.differenceMinor) === 0n);
+
+    const accepted = retained
+      ? lifecycle.decisions.find(
+          (entry) =>
+            ((entry.snapshotId === retained.id && entry.snapshotDigest === retained.digest) ||
+              retained.carriedLimitationDecisionIds.includes(entry.id)) &&
+            entry.decision.kind === "accept_limitation" &&
+            entry.decision.limitation ===
+              (typed === "bank" ? "unreconciled_bank_difference" : "missing_tax_statement"),
+        )
+      : undefined;
+
+    return {
+      kind: typed,
+      label,
+      items,
+      current,
+      accepted: typed === "bank" || typed === "tax" ? accepted : undefined,
+    };
   });
+
   const documentDecision = retained
     ? lifecycle.decisions.find(
         (decision) =>
-          decision.snapshotId === retained.id &&
-          decision.snapshotDigest === retained.digest &&
+          ((decision.snapshotId === retained.id && decision.snapshotDigest === retained.digest) ||
+            retained.carriedLimitationDecisionIds.includes(decision.id)) &&
           decision.decision.kind === "accept_limitation" &&
           decision.decision.limitation === "missing_historical_originals",
       )
     : undefined;
-  const complete = groups.filter((item) => item.current).length + (documentDecision ? 1 : 0);
+
+  const complete = groups.filter((item) => item.current).length;
+  const acceptedCount = groups.filter((item) => item.accepted).length + Number(!!documentDecision);
   const verified = hasDecision(lifecycle, snapshot, "accept_book_zero");
   const period = workspace.case.configuration.dates.acceptanceEndsOn;
+
   const periodName = period
     ? new Intl.DateTimeFormat("sv-SE", {
         month: "long",
@@ -273,50 +416,68 @@ export function OnboardingVerification({
         timeZone: "Europe/Stockholm",
       }).format(new Date(`${period}T12:00:00Z`))
     : "perioden";
+
   return (
-    <SetupPageContent styleX={[styles.page, styles.focusedEarly]}>
+    <SetupPageContent styleX={setupLayoutStyles(["page", "focusedEarly"])}>
       <Breadcrumb
         items={[{ label: "Setup", view: "workspace" }, { label: "Verifiera" }]}
         open={open}
       />
-      <div {...stylex.props(styles.earlyTitle)}>
+      <SetupBlock layout={["earlyTitle"]}>
         <SetupTitle>Verifiera bokföringen</SetupTitle>
-      </div>
-      <p {...stylex.props(styles.subtitle)}>
+      </SetupBlock>
+      <SetupText as="p" layout={["subtitle"]}>
         Book Zero, {periodName}. Jämför det importerade mot oberoende underlag.
-      </p>
-      <p {...stylex.props(styles.section20, styles.medium)}>
-        {complete} av 7 kontroller klara.
-        {groups.find((item) => item.kind === "tax")?.current ? "" : " Skattekonto blockerar."}
-      </p>
-      <div {...stylex.props(styles.controls, styles.section)}>
+      </SetupText>
+      <SetupText as="p" layout={["section20", "medium"]}>
+        {complete} kontroller stämmer, {acceptedCount} accepterade begränsningar.
+        {controlReady(groups.at(-1)) ? "" : " Skattekonto blockerar."}
+      </SetupText>
+      <SetupBlock layout={["controls", "section"]}>
         {groups.slice(0, 5).map((group) => (
           <VerificationControl key={group.kind} group={group} open={open} />
         ))}
-        <div {...stylex.props(styles.controlRow)}>
-          <span {...stylex.props(styles.controlTitle)}>DOKUMENT</span>
-          <div {...stylex.props(styles.stack4)}>
-            <span {...stylex.props(documentDecision ? styles.success : styles.warning)}>
-              {documentDecision ? "✓ Accepterad begränsning" : "! Begränsningen behöver beslut"}
-            </span>
-            <span {...stylex.props(styles.caption)}>
+        <SetupBlock layout={["controlRow"]}>
+          <SetupText layout={["controlTitle"]}>DOKUMENT</SetupText>
+          <SetupBlock layout={["stack4"]}>
+            <SetupText layout={["warning"]}>
               {documentDecision
-                ? `${personName(lifecycle, documentDecision.actorId)}, ${formatDate(documentDecision.recordedAt)}`
-                : "Historiska original har inte verifierats."}
-            </span>
-          </div>
-          <SetupButton variant="ghost" styleX={styles.plainAction} onClick={() => open("sources")}>
+                ? "! Accepterad dokumentbegränsning"
+                : "! Begränsningen behöver beslut"}
+            </SetupText>
+            <SetupText layout={["caption"]}>
+              {originalCoverageSummary(lifecycle, retained)}
+              {documentDecision ? (
+                <>
+                  <br />
+                  {documentDecision.actorName} accepterade{" "}
+                  {formatMoment(documentDecision.recordedAt)}.
+                </>
+              ) : null}
+            </SetupText>
+          </SetupBlock>
+          <SetupButton
+            variant="ghost"
+            styleX={setupLayoutStyles(["plainAction"])}
+            onClick={() => open("sources")}
+          >
             Visa underlag
           </SetupButton>
-        </div>
+        </SetupBlock>
         {groups.slice(5).map((group) => (
           <VerificationControl key={group.kind} group={group} open={open} />
         ))}
-      </div>
-      <div {...stylex.props(styles.section24, styles.stack8)}>
-        <div {...stylex.props(styles.actions12)}>
+      </SetupBlock>
+      <SetupBlock layout={["section24", "stack8"]}>
+        <SetupBlock layout={["actions12"]}>
           <SetupButton
-            disabled={decide.disabled || !snapshot || snapshot.blockers.length > 0 || verified}
+            disabled={
+              decide.disabled ||
+              !snapshot ||
+              snapshot.blockers.length > 0 ||
+              snapshotNeedsLimitations(lifecycle, snapshot) ||
+              verified
+            }
             onClick={() => {
               if (snapshot)
                 decide.mutate(
@@ -333,7 +494,7 @@ export function OnboardingVerification({
                 );
             }}
           >
-            Markera {periodName.split(" ")[0]} som verifierad
+            Spara verifiering med begränsningar
           </SetupButton>
           <SetupButton
             variant="outline"
@@ -347,11 +508,11 @@ export function OnboardingVerification({
           >
             Acceptera utan kontoutdrag
           </SetupButton>
-        </div>
+        </SetupBlock>
         <SetupCaption>
           Skattekonto saknar kontoutdrag. Att acceptera utan kontoutdrag sparas med namn och datum.
         </SetupCaption>
-      </div>
+      </SetupBlock>
       {!snapshot ? (
         <SetupButton
           disabled={capture.disabled}
@@ -364,6 +525,25 @@ export function OnboardingVerification({
           }
         >
           Kontrollera perioden
+        </SetupButton>
+      ) : null}
+      {snapshot?.permittedLimitations.includes("unreconciled_bank_difference") &&
+      !lifecycle.decisions.some(
+        (item) =>
+          ((item.snapshotId === snapshot.id && item.snapshotDigest === snapshot.digest) ||
+            snapshot.carriedLimitationDecisionIds.includes(item.id)) &&
+          item.decision.kind === "accept_limitation" &&
+          item.decision.limitation === "unreconciled_bank_difference",
+      ) ? (
+        <SetupButton
+          variant="outline"
+          disabled={decide.disabled}
+          onClick={() => {
+            setReason("");
+            setLimitation("unreconciled_bank_difference");
+          }}
+        >
+          Acceptera ej avstämd bankdifferens
         </SetupButton>
       ) : null}
       {snapshot?.permittedLimitations.includes("missing_historical_originals") &&
@@ -386,11 +566,13 @@ export function OnboardingVerification({
       />
       {limitation && snapshot ? (
         <FormDialog
-          size="compact"
+          size="setupDecision"
           title={
-            limitation === "missing_tax_statement"
-              ? "Acceptera utan kontoutdrag"
-              : "Acceptera saknade historiska original"
+            {
+              missing_tax_statement: "Acceptera utan kontoutdrag",
+              unreconciled_bank_difference: "Acceptera ej avstämd bankdifferens",
+              missing_historical_originals: "Acceptera saknade historiska original",
+            }[limitation]
           }
           closeLabel="Avbryt"
           onClose={() => setLimitation(null)}
@@ -398,8 +580,9 @@ export function OnboardingVerification({
             if (!decide.isPending && !decide.uncertain) setLimitation(null);
           }}
         >
-          <form
-            {...stylex.props(styles.stack12)}
+          <SetupBlock
+            as="form"
+            layout={["stack12"]}
             onSubmit={(event) => {
               event.preventDefault();
               decide.mutate(
@@ -413,9 +596,15 @@ export function OnboardingVerification({
               );
             }}
           >
+            <LimitationDetails lifecycle={lifecycle} snapshot={snapshot} limitation={limitation} />
             <InputField
               compact
-              label="Skäl"
+              label="Skäl, krävs"
+              placeholder={
+                limitation === "missing_tax_statement"
+                  ? "Skriv varför du går vidare utan utdraget"
+                  : "Skriv varför du accepterar begränsningen"
+              }
               required
               value={reason}
               disabled={decide.isPending || decide.uncertain}
@@ -426,7 +615,7 @@ export function OnboardingVerification({
                 type="submit"
                 disabled={decide.disabled || (!decide.uncertain && !reason.trim())}
               >
-                Acceptera
+                Acceptera begränsningen
               </SetupButton>
               <SetupButton
                 type="button"
@@ -443,10 +632,50 @@ export function OnboardingVerification({
               error={decide.error}
               write
             />
-          </form>
+          </SetupBlock>
         </FormDialog>
       ) : null}
     </SetupPageContent>
+  );
+}
+
+function LimitationDetails({
+  lifecycle,
+  snapshot,
+  limitation,
+}: {
+  lifecycle: Lifecycle;
+  snapshot: NonNullable<ReturnType<typeof currentSnapshot>>;
+  limitation:
+    | "missing_tax_statement"
+    | "missing_historical_originals"
+    | "unreconciled_bank_difference";
+}) {
+  const { setup } = useBookWorkspace();
+  const person = lifecycle.people.find((item) => item.id === lifecycle.viewerActorId);
+  const account = setup.accounts.find((item) => item.code === "1630");
+
+  const balance = snapshot.comparisons.find(
+    (item) => item.kind === "trial_balance" && item.accountId === account?.id,
+  );
+
+  return (
+    <SetupBlock layout={["stack4"]}>
+      {limitation === "missing_tax_statement" ? (
+        <SetupText layout={["caption"]}>
+          Skattekonto 1630, saldo {balance ? formatMinor(balance.actualMinor) : "okänt"} per{" "}
+          {formatDate(snapshot.asOf)}
+        </SetupText>
+      ) : null}
+      <SetupText layout={["caption", "semibold", "section"]}>DET HÄR SPARAS</SetupText>
+      <SetupText>Av: {person?.name ?? "Uppgift saknas"}</SetupText>
+      <SetupText>Tid: när du sparar</SetupText>
+      <SetupText layout={["caption", "note"]}>
+        {limitation === "missing_tax_statement"
+          ? "Saldot förblir okontrollerat och visas så i verifieringen. Begränsningen följer med in i aktiveringskvittot. Skickas ett utdrag senare kan kontrollen göras om."
+          : "Begränsningen sparas med ditt namn, tid och skäl och följer med in i aktiveringskvittot."}
+      </SetupText>
+    </SetupBlock>
   );
 }
 
@@ -464,34 +693,45 @@ function VerificationControl({
       explainedMinor: string;
     }[];
     current: boolean;
+    accepted?: Lifecycle["decisions"][number];
   };
   open: OpenOnboardingView;
 }) {
   const expected = group.items.reduce((sum, item) => sum + BigInt(item.expectedMinor), 0n);
   const actual = group.items.reduce((sum, item) => sum + BigInt(item.actualMinor), 0n);
   const explained = group.items.reduce((sum, item) => sum + BigInt(item.explainedMinor), 0n);
+
   return (
-    <div {...stylex.props(styles.controlRow, !group.current && styles.amberRow)}>
-      <span {...stylex.props(styles.controlTitle)}>{group.label}</span>
-      <div {...stylex.props(styles.stack4)}>
-        <span {...stylex.props(group.current ? styles.success : styles.warning)}>
-          {group.current
-            ? group.kind === "bank" && explained !== 0n
-              ? "✓ Bankdifferensen är förklarad"
-              : `✓ ${controlTitles[group.kind]} stämmer`
-            : group.items.length
-              ? `! ${controlTitles[group.kind]} har en differens`
-              : "! Kontoutdrag saknas"}
-        </span>
-        <span {...stylex.props(styles.caption)}>
+    <SetupBlock layout={["controlRow", !group.current && "amberRow"]}>
+      <SetupText layout={["controlTitle"]}>{group.label}</SetupText>
+      <SetupBlock layout={["stack4"]}>
+        <SetupText layout={[group.current ? "success" : "warning"]}>
+          {group.accepted
+            ? "! Accepterad begränsning, inte avstämt"
+            : group.current
+              ? `✓ ${controlTitles[group.kind]} stämmer`
+              : group.items.length
+                ? `! ${controlTitles[group.kind]} har en differens`
+                : "! Kontoutdrag saknas"}
+        </SetupText>
+        {group.accepted ? (
+          <SetupText layout={["caption"]}>
+            {group.accepted.actorName}, {formatMoment(group.accepted.recordedAt)}
+          </SetupText>
+        ) : null}
+        <SetupText layout={["caption"]}>
           {group.items.length
             ? `Bokfört ${formatMinor(actual.toString())}, underlag ${formatMinor(expected.toString())}, skillnad ${formatMinor((expected - actual).toString())}${explained !== 0n ? `, förklarat ${formatMinor(explained.toString())}` : ""}`
             : "Kan inte jämföras. Blockerar verifieringen."}
-        </span>
-      </div>
-      <SetupButton variant="ghost" styleX={styles.plainAction} onClick={() => open("sources")}>
+        </SetupText>
+      </SetupBlock>
+      <SetupButton
+        variant="ghost"
+        styleX={setupLayoutStyles(["plainAction"])}
+        onClick={() => open("sources")}
+      >
         Visa underlag
       </SetupButton>
-    </div>
+    </SetupBlock>
   );
 }

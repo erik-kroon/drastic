@@ -48,9 +48,17 @@ export function insertRecord(
 }
 
 export function readPeople(tx: Transaction, bookId: string) {
-  return tx.execute<{ id: string; name: string; enabled: boolean; role: string }>(
+  return tx.execute<{
+    id: string;
+    name: string;
+    enabled: boolean;
+    role: string;
+    affiliation: "company" | "bureau";
+  }>(
     sql`
-    select m.actor_id as id,a.name,coalesce(i.enabled,true) as enabled,m.role
+    select m.actor_id as id,a.name,coalesce(i.enabled,true) as enabled,m.role,
+      case when exists(select from openerp.firm_members fm join openerp.firm_clients fc on fc.firm_id=fm.firm_id
+        where fm.actor_id=m.actor_id and fm.active and fc.book_id=m.book_id) then 'bureau' else 'company' end as affiliation
     from openerp.memberships m join openerp.actors a on a.id=m.actor_id
     left join openerp.identity_admissions i on i.actor_id=m.actor_id
     where m.book_id=${bookId} order by m.actor_id`,
@@ -99,12 +107,22 @@ export function readReviewedFacts(tx: Transaction, entityId: string, asOf: strin
   );
 }
 
-export function readBalances(tx: Transaction, bookId: string, asOf: string) {
+export function readBalances(
+  tx: Transaction,
+  bookId: string,
+  asOf: string,
+  excludedRunIds: readonly string[] = [],
+) {
   return tx.execute<{ accountId: string; code: string; name: string; amount: string }>(
     sql`
     select a.id as "accountId",a.code,a.name,coalesce(sum(l.debit_minor-l.credit_minor),0)::text as amount
     from openerp.accounts a left join openerp.journal_lines l on l.book_id=a.book_id and l.account_id=a.id
-      and exists(select 1 from openerp.vouchers v where v.book_id=l.book_id and v.id=l.voucher_id and v.posting_date<=${asOf}::date)
+      and exists(select 1 from openerp.vouchers v where v.book_id=l.book_id and v.id=l.voucher_id and v.posting_date<=${asOf}::date
+        and not exists(select 1 from openerp.sie_financial_postings fp where fp.book_id=v.book_id and fp.voucher_id=v.id
+          and fp.run_id=any(array[${sql.join(
+            excludedRunIds.map((id) => sql`${id}`),
+            sql`, `,
+          )}]::text[])))
     where a.book_id=${bookId} group by a.id,a.code,a.name order by a.code`,
     "objects",
   );
@@ -115,6 +133,7 @@ export function readDependencies(
   scope: { bookId: string; entityId: string },
   asOf: string,
   controlIds: readonly string[],
+  sourceRunIds: readonly string[] = [],
 ) {
   return tx.execute<{ digest: string }>(
     sql`
@@ -130,12 +149,37 @@ export function readDependencies(
       'periods',(select coalesce(jsonb_agg(to_jsonb(p) order by p.id),'[]') from openerp.periods p where p.book_id=${scope.bookId} and p.starts_on<=${asOf}::date),
       'accounts',(select coalesce(jsonb_agg(to_jsonb(a) order by a.id),'[]') from openerp.accounts a where a.book_id=${scope.bookId}),
       'sources',(select coalesce(jsonb_agg(body order by id),'[]') from openerp.onboarding_sources where book_id=${scope.bookId}),
-      'controls',(select coalesce(jsonb_agg(body order by id),'[]') from openerp.onboarding_controls where book_id=${scope.bookId} and id=any(${[...controlIds]}::text[])),
-      'ledger',(select coalesce(jsonb_agg(to_jsonb(v) order by v.id),'[]') from openerp.vouchers v where v.book_id=${scope.bookId} and v.posting_date<=${asOf}::date),
+      'controls',(select coalesce(jsonb_agg(body order by id),'[]') from openerp.onboarding_controls where book_id=${scope.bookId} and id=any(array[${sql.join(
+        controlIds.map((value) => sql`${value}`),
+        sql`, `,
+      )}]::text[])),
+      'latest_controls',(select coalesce(jsonb_agg(body order by kind),'[]') from (
+        select distinct on (body->>'kind') body,body->>'kind' as kind
+        from openerp.onboarding_controls
+        where book_id=${scope.bookId} and body->>'asOf'=${asOf}
+          and body->>'kind' in (select body->>'kind' from openerp.onboarding_controls
+            where book_id=${scope.bookId} and id=any(array[${sql.join(
+              controlIds.map((value) => sql`${value}`),
+              sql`, `,
+            )}]::text[]))
+        order by body->>'kind',body->>'qualifiedAt' desc,id desc
+      ) latest),
+      'ledger',(select coalesce(jsonb_agg(to_jsonb(v) order by v.id),'[]') from openerp.vouchers v where v.book_id=${scope.bookId} and v.posting_date<=${asOf}::date and not exists(select 1 from openerp.sie_financial_postings fp where fp.book_id=v.book_id and fp.voucher_id=v.id
+        and fp.run_id=any(array[${sql.join(
+          sourceRunIds.map((id) => sql`${id}`),
+          sql`, `,
+        )}]::text[]))),
       'lines',(select coalesce(jsonb_agg(to_jsonb(l) order by l.voucher_id,l.id),'[]') from openerp.journal_lines l where l.book_id=${scope.bookId}
-        and exists(select 1 from openerp.vouchers v where v.book_id=l.book_id and v.id=l.voucher_id and v.posting_date<=${asOf}::date)),
+        and exists(select 1 from openerp.vouchers v where v.book_id=l.book_id and v.id=l.voucher_id and v.posting_date<=${asOf}::date and not exists(select 1 from openerp.sie_financial_postings fp where fp.book_id=v.book_id and fp.voucher_id=v.id
+        and fp.run_id=any(array[${sql.join(
+          sourceRunIds.map((id) => sql`${id}`),
+          sql`, `,
+        )}]::text[])))),
       'imports',(select coalesce(jsonb_agg(to_jsonb(p) order by p.id),'[]') from openerp.sie_source_plans p where p.book_id=${scope.bookId}),
-      'runs',(select coalesce(jsonb_agg(to_jsonb(r) order by r.id),'[]') from openerp.sie_financial_runs r where r.book_id=${scope.bookId}),
+      'runs',(select coalesce(jsonb_agg(case when r.id=any(array[${sql.join(
+        sourceRunIds.map((id) => sql`${id}`),
+        sql`, `,
+      )}]::text[]) then to_jsonb(r)-'status'-'next_ordinal'-'fence'-'lease_until' else to_jsonb(r) end order by r.id),'[]') from openerp.sie_financial_runs r where r.book_id=${scope.bookId}),
       'bank_active_matches',(select coalesce(jsonb_agg(to_jsonb(s) order by to_jsonb(s)::text),'[]') from openerp.bank_active_matches s where s.book_id=${scope.bookId}),
       'bank_active_allocations',(select coalesce(jsonb_agg(to_jsonb(s) order by to_jsonb(s)::text),'[]') from openerp.bank_active_allocation_legs s where s.book_id=${scope.bookId}),
       'bank_observations',(select coalesce(jsonb_agg(to_jsonb(s) order by to_jsonb(s)::text),'[]') from openerp.bank_observations s where s.book_id=${scope.bookId}),
@@ -170,16 +214,21 @@ export function readHistoricalRuns(tx: Transaction, bookId: string, ids: readonl
     status: string;
     sourceRunId: string;
     sourceSha256: string;
+    planId: string;
+    planDigest: string;
     vouchers: Schema.Json[];
     mappings: Schema.Json[];
   }>(
     sql`
-    select r.id,r.status,r.source_run_id as "sourceRunId",p.body->>'sourceSha256' as "sourceSha256",
+    select r.id,r.status,r.source_run_id as "sourceRunId",p.id as "planId",p.body->>'digest' as "planDigest",p.body->>'sourceSha256' as "sourceSha256",
       coalesce((select jsonb_agg(v.body order by v.ordinal) from openerp.sie_source_vouchers v where v.book_id=r.book_id and v.run_id=r.source_run_id),'[]') as vouchers,
       p.body->'input'->'mappings' as mappings
     from openerp.sie_financial_runs r join openerp.sie_source_runs s on s.book_id=r.book_id and s.id=r.source_run_id
     join openerp.sie_source_plans p on p.book_id=s.book_id and p.id=s.plan_id
-    where r.book_id=${bookId} and r.id=any(${[...ids]}::text[]) order by r.id`,
+    where r.book_id=${bookId} and r.id=any(array[${sql.join(
+      ids.map((value) => sql`${value}`),
+      sql`, `,
+    )}]::text[]) order by r.id`,
     "objects",
   );
 }

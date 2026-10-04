@@ -33,6 +33,7 @@ export const FactKind = Schema.Literals([
   "payroll_registration",
   "reporting_framework",
   "base_currency",
+  "account_chart",
   "payroll_applicability",
   "asset_applicability",
   "foreign_currency_applicability",
@@ -78,6 +79,11 @@ const factFields = {
 };
 
 export const RecordFactRevision = Schema.Union([
+  Schema.Struct({
+    factKind: Schema.Literal("account_chart"),
+    value: factValue(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200))),
+    ...factFields,
+  }),
   Schema.Struct({
     factKind: Schema.Literal("jurisdiction"),
     value: factValue(Jurisdiction),
@@ -164,6 +170,17 @@ export const RecordRoleBinding = Schema.Struct({
 });
 
 export const FactRevision = Schema.Union([
+  Schema.Struct({
+    id: Accounting.Identifier,
+    entityId: Accounting.Identifier,
+    factKind: Schema.Literal("account_chart"),
+    value: factValue(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200))),
+    ...factFields,
+    recordedBy: Accounting.Identifier,
+    recordedAt: Schema.String,
+    digest: Accounting.Digest,
+    receipt: CommandReceipt,
+  }),
   Schema.Struct({
     id: Accounting.Identifier,
     entityId: Accounting.Identifier,

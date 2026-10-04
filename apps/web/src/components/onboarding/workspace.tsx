@@ -1,11 +1,46 @@
-import * as stylex from "@stylexjs/stylex";
+import { factText } from "./profile";
+import { onboardingBlocker } from "./blockers";
+import * as Schema from "effect/Schema";
+import {
+  SetupBlock,
+  SetupInlineAction,
+  SetupText,
+  setupLayoutStyles,
+} from "@open-erp/ui/components/setup-parts";
 import * as Onboarding from "@open-erp/contracts/onboarding";
 import { SetupButton, SetupPageContent, SetupTitle } from "@open-erp/ui/components/setup-workspace";
 import { useBookWorkspace } from "@/lib/book-context";
-import { formatDate } from "./data";
+import { formatDate, useOnboardingFacts } from "./data";
 import { Breadcrumb, type OpenOnboardingView } from "./shared";
 import { sourceLabels } from "./sources";
-import { styles } from "./styles";
+
+function profileSummary(facts: ReturnType<typeof useOnboardingFacts>["data"]) {
+  const kinds = [
+    "jurisdiction",
+    "legal_form",
+    "reporting_framework",
+    "accounting_method",
+    "base_currency",
+  ] as const;
+
+  const values: string[] = [];
+
+  const labels = new Map([
+    ["SE", "Sverige"],
+    ["Aktiebolag", "AB"],
+    ["Fakturametoden", "fakturametoden"],
+  ]);
+
+  for (const kind of kinds) {
+    const fact = facts?.find((entry) => entry.revision.factKind === kind);
+
+    if (!fact || fact.review?.result !== "confirmed") return "Företagsfakta behöver bekräftas";
+    const text = factText(fact);
+    values.push(labels.get(text) ?? text);
+  }
+
+  return values.join(", ");
+}
 
 export function OnboardingWorkspace({
   workspace,
@@ -16,10 +51,16 @@ export function OnboardingWorkspace({
   lifecycle: typeof Onboarding.OnboardingLifecycle.Type;
   open: OpenOnboardingView;
 }) {
-  const { book } = useBookWorkspace();
+  const { book, setup } = useBookWorkspace();
+
+  const facts = useOnboardingFacts(
+    workspace.case.configuration.dates.candidateLiveOn ?? setup.today,
+  );
+
   function task(id: typeof Onboarding.OnboardingTask.Type.id) {
     return workspace.tasks.find((item) => item.id === id);
   }
+
   const groups: Array<{
     label: string;
     rows: Array<{
@@ -40,7 +81,7 @@ export function OnboardingWorkspace({
         },
         {
           label: "Bokföringsprofil",
-          detail: task("company")?.blockers.join(", ") ?? "",
+          detail: profileSummary(facts.data),
           state: task("company")?.state ?? "needs_information",
           view: "profile",
         },
@@ -72,14 +113,9 @@ export function OnboardingWorkspace({
       label: "Källor",
       rows: ["previous_books", "bank", "other", "tax"].map((category) => {
         const source = workspace.sources.filter((item) => item.category === category);
-        const typed =
-          category === "previous_books"
-            ? "previous_books"
-            : category === "bank"
-              ? "bank"
-              : category === "tax"
-                ? "tax"
-                : "other";
+
+        const typed = Schema.decodeUnknownSync(Onboarding.SourceCategory)(category);
+
         return {
           label: sourceLabels[typed],
           detail: source.length
@@ -156,65 +192,81 @@ export function OnboardingWorkspace({
       ],
     },
   ];
+
   const blockers =
     lifecycle.snapshots.find((item) => item.current && item.snapshot.purpose === "activation")
       ?.snapshot.blockers ?? workspace.cutover.blockers;
+
   return (
-    <SetupPageContent styleX={[styles.page, styles.workspace]}>
+    <SetupPageContent styleX={setupLayoutStyles(["page", "workspace"])}>
       <Breadcrumb items={[{ label: book.name }, { label: "Setup" }]} open={open} />
-      <div {...stylex.props(styles.earlyTitle)}>
+      <SetupBlock layout={["earlyTitle"]}>
         <SetupTitle>Setup</SetupTitle>
-      </div>
-      <div {...stylex.props(styles.columns, styles.tableSpace)}>
-        <div {...stylex.props(styles.checklist)}>
+      </SetupBlock>
+      <SetupBlock layout={["columns", "tableSpace"]}>
+        <SetupBlock layout={["checklist"]}>
           {groups.map((group) => (
-            <section key={group.label}>
-              <h2 {...stylex.props(styles.semibold)}>{group.label}</h2>
+            <SetupBlock as="section" key={group.label}>
+              <SetupText as="h2" layout={["checklistHeading"]}>
+                {group.label}
+              </SetupText>
               {group.rows.map((row) => (
-                <div key={row.label} {...stylex.props(styles.checklistRow)}>
-                  <button
+                <SetupBlock key={row.label} layout={["checklistRow"]}>
+                  <SetupInlineAction
                     type="button"
                     onClick={() => open(row.view)}
-                    {...stylex.props(styles.checklistLabel, styles.crumbButton)}
+                    layout={["checklistLabel", "crumbButton"]}
                   >
                     {row.label}
-                  </button>
-                  <span {...stylex.props(styles.checklistDetail)}>{row.detail}</span>
-                  <span
-                    {...stylex.props(
-                      styles.checklistStatus,
-                      row.state === "complete"
-                        ? styles.success
-                        : row.state === "blocked"
-                          ? styles.warning
-                          : styles.secondary,
-                    )}
+                  </SetupInlineAction>
+                  <SetupText layout={["checklistDetail"]}>{row.detail}</SetupText>
+                  <SetupText
+                    layout={[
+                      "checklistStatus",
+                      (
+                        {
+                          complete: "success",
+                          blocked: "warning",
+                          in_progress: "secondary",
+                          needs_information: "secondary",
+                          not_started: "secondary",
+                        } as const
+                      )[row.state],
+                    ]}
                   >
-                    {row.state === "complete"
-                      ? "✓ Klar"
-                      : row.state === "blocked"
-                        ? "! Blockerad"
-                        : row.state === "in_progress"
-                          ? "○ Pågår"
-                          : "○ Ej påbörjad"}
-                  </span>
-                </div>
+                    {
+                      {
+                        complete: "✓ Klar",
+                        blocked: "! Blockerad",
+                        in_progress: "○ Pågår",
+                        needs_information: "○ Ej påbörjad",
+                        not_started: "○ Ej påbörjad",
+                      }[row.state]
+                    }
+                  </SetupText>
+                </SetupBlock>
               ))}
-            </section>
+            </SetupBlock>
           ))}
-        </div>
-        <aside {...stylex.props(styles.blockers)}>
-          <h2 {...stylex.props(styles.semibold)}>Det som blockerar go live</h2>
-          {blockers.map((blocker) => (
-            <p key={blocker} {...stylex.props(styles.secondary)}>
-              {blocker}
-            </p>
-          ))}
-          <div>
+        </SetupBlock>
+        <SetupBlock as="aside" layout={["blockers"]}>
+          <SetupText as="h2" layout={["semibold"]}>
+            Det som blockerar go live
+          </SetupText>
+          {blockers.map((blocker) => {
+            const task = onboardingBlocker(blocker);
+
+            return (
+              <SetupInlineAction key={blocker} layout={["primary"]} onClick={() => open(task.view)}>
+                {task.label}
+              </SetupInlineAction>
+            );
+          })}
+          <SetupBlock>
             <SetupButton onClick={() => open("import")}>Fortsätt med import</SetupButton>
-          </div>
-        </aside>
-      </div>
+          </SetupBlock>
+        </SetupBlock>
+      </SetupBlock>
     </SetupPageContent>
   );
 }

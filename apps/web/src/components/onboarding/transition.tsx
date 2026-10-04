@@ -1,5 +1,11 @@
+import * as Predicate from "effect/Predicate";
+import {
+  SetupBlock,
+  SetupInlineAction,
+  SetupText,
+  setupLayoutStyles,
+} from "@open-erp/ui/components/setup-parts";
 import { useQuery } from "@tanstack/react-query";
-import * as stylex from "@stylexjs/stylex";
 import * as Onboarding from "@open-erp/contracts/onboarding";
 import * as Closing from "@open-erp/contracts/closing";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
@@ -10,9 +16,7 @@ import {
   SetupPageContent,
   SetupTitle,
 } from "@open-erp/ui/components/setup-workspace";
-import { SetupTable } from "@open-erp/ui/components/setup-table";
 import { Link } from "@open-erp/ui/components/link";
-import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
@@ -29,7 +33,6 @@ import {
   type Workspace,
 } from "./lifecycle";
 import { Breadcrumb, PendingRead, SetupLink, type OpenOnboardingView } from "./shared";
-import { styles } from "./styles";
 
 export function OnboardingCutover({
   workspace,
@@ -48,10 +51,22 @@ export function OnboardingCutover({
   const opening = currentSnapshot(lifecycle, "opening");
   const bookZero = currentSnapshot(lifecycle, "book_zero");
   const delta = currentSnapshot(lifecycle, "final_delta");
+
   const bank = lifecycle.projection.bankStatements.toSorted((a, b) =>
     b.endsOn.localeCompare(a.endsOn),
   )[0];
+
   const dates = workspace.case.configuration.dates;
+
+  const acceptedLimitations =
+    !!bookZero &&
+    lifecycle.decisions.some(
+      (decision) =>
+        decision.decision.kind === "accept_limitation" &&
+        ((decision.snapshotId === bookZero.id && decision.snapshotDigest === bookZero.digest) ||
+          bookZero.carriedLimitationDecisionIds.includes(decision.id)),
+    );
+
   const gates = [
     {
       label: "Historisk import accepterad",
@@ -59,7 +74,7 @@ export function OnboardingCutover({
       view: "opening",
     },
     {
-      label: `${dates.acceptanceEndsOn ? new Intl.DateTimeFormat("sv-SE", { month: "long", timeZone: "Europe/Stockholm" }).format(new Date(`${dates.acceptanceEndsOn}T12:00:00Z`)) : "Perioden"} verifierad`,
+      label: `${dates.acceptanceEndsOn ? new Intl.DateTimeFormat("sv-SE", { month: "long", timeZone: "Europe/Stockholm" }).format(new Date(`${dates.acceptanceEndsOn}T12:00:00Z`)) : "Perioden"} ${acceptedLimitations ? "verifierad med accepterade begränsningar" : "verifierad"}`,
       passed: hasDecision(lifecycle, bookZero, "accept_book_zero"),
       view: "verification",
     },
@@ -92,10 +107,12 @@ export function OnboardingCutover({
       view: "delta",
     },
   ] as const;
+
   const ready = snapshot && snapshot.blockers.length === 0;
+
   return (
     <>
-      <SetupPageContent styleX={[styles.page, styles.inset]}>
+      <SetupPageContent styleX={setupLayoutStyles(["page", "inset"])}>
         <Breadcrumb
           items={[
             { label: book.name },
@@ -104,46 +121,58 @@ export function OnboardingCutover({
           ]}
           open={open}
         />
-        <div {...stylex.props(styles.title)}>
+        <SetupBlock layout={["title"]}>
           <SetupTitle>Övergång till OpenERP</SetupTitle>
-        </div>
-        <div {...stylex.props(styles.authority, styles.section24)}>
-          <section {...stylex.props(styles.authorityCard)}>
-            <h2 {...stylex.props(styles.medium)}>
+        </SetupBlock>
+        <SetupBlock layout={["authority", "section24"]}>
+          <SetupBlock as="section" layout={["authorityCard"]}>
+            <SetupText as="h2" layout={["medium"]}>
               {workspace.case.configuration.incumbentSystem ?? "Tidigare bokföringsprogram"}
-            </h2>
-            <p {...stylex.props(styles.secondary)}>
+            </SetupText>
+            <SetupText as="p" layout={["secondary"]}>
               Gällande bokföring till {formatDate(dates.historyEndsOn)}
-            </p>
-          </section>
-          <section {...stylex.props(styles.authorityCard)}>
-            <h2 {...stylex.props(styles.medium)}>OpenERP</h2>
-            <p {...stylex.props(styles.secondary)}>
+            </SetupText>
+          </SetupBlock>
+          <SetupBlock as="section" layout={["authorityCard"]}>
+            <SetupText as="h2" layout={["medium"]}>
+              OpenERP
+            </SetupText>
+            <SetupText as="p" layout={["secondary"]}>
               {lifecycle.activation ? "Gällande från" : "Verifierar, gällande från"}{" "}
               {formatDate(lifecycle.activation?.authoritativeFrom ?? dates.candidateLiveOn)}
-            </p>
-          </section>
-        </div>
-        <h2 {...stylex.props(styles.section24, styles.semibold)}>
+            </SetupText>
+          </SetupBlock>
+        </SetupBlock>
+        <SetupText as="h2" layout={["section24", "semibold"]}>
           Det som ska vara klart före övergången
-        </h2>
-        <div {...stylex.props(styles.controls, styles.tableSpace)}>
+        </SetupText>
+        <SetupBlock layout={["controls", "tableSpace"]}>
           {gates.map((gate) => (
-            <div key={gate.label} {...stylex.props(styles.gate, !gate.passed && styles.amberRow)}>
-              <button
+            <SetupBlock key={gate.label} layout={["gate", !gate.passed && "amberRow"]}>
+              <SetupInlineAction
                 type="button"
                 onClick={() => open(gate.view)}
-                {...stylex.props(styles.gateTitle, styles.crumbButton)}
+                layout={["gateTitle", "crumbButton"]}
               >
                 {gate.label}
-              </button>
-              <span {...stylex.props(gate.passed ? styles.success : styles.warning)}>
-                {gate.passed ? "✓ Klar" : "! Inte gjord"}
-              </span>
-            </div>
+              </SetupInlineAction>
+              <SetupText
+                layout={[
+                  gate.passed && !(gate.view === "verification" && acceptedLimitations)
+                    ? "success"
+                    : "warning",
+                ]}
+              >
+                {gate.passed
+                  ? gate.view === "verification" && acceptedLimitations
+                    ? "! Accepterad"
+                    : "✓ Klar"
+                  : "! Inte gjord"}
+              </SetupText>
+            </SetupBlock>
           ))}
-        </div>
-        <div {...stylex.props(styles.section24, styles.stack8)}>
+        </SetupBlock>
+        <SetupBlock layout={["section24", "stack8"]}>
           <SetupButton
             disabled={capture.disabled || (!!snapshot && !ready)}
             onClick={() => {
@@ -166,10 +195,10 @@ export function OnboardingCutover({
                   : "Övergången behöver kontrolleras")}
             </SetupCaption>
           ) : null}
-          <p {...stylex.props(styles.secondary, styles.tableSpace)}>
+          <SetupText as="p" layout={["secondary", "tableSpace"]}>
             Efter övergången är tidigare system skrivskyddat.
-          </p>
-        </div>
+          </SetupText>
+        </SetupBlock>
         <AccountingStatus locale={locale} pending={capture.isPending} error={capture.error} write />
       </SetupPageContent>
       {confirmation ? (
@@ -191,31 +220,42 @@ function ActivationConfirmation({
   const { book, locale } = useBookWorkspace();
   const snapshot = currentSnapshot(lifecycle, "activation");
   const confirm = useSnapshotDecision();
+
   const intent = useOnboardingCommand(
     `${bookPath(book)}/onboarding/activation-intents`,
     Onboarding.RequestOnboardingActivation,
     Onboarding.OnboardingActivationIntent,
   );
+
   const policy = lifecycle.responsibilities;
+
   const decisions = lifecycle.decisions.filter(
     (item) =>
       item.snapshotId === snapshot?.id &&
       item.snapshotDigest === snapshot.digest &&
       item.decision.kind === "confirm_activation",
   );
+
   const required = policy?.assignments.activationConfirmerIds ?? [];
   const waiting = required.filter((id) => !decisions.some((decision) => decision.actorId === id));
   const ownPending = waiting.includes(lifecycle.viewerActorId);
+
   const pendingIntent =
     lifecycle.intents.some(
       (item) => item.snapshotId === snapshot?.id && item.snapshotDigest === snapshot.digest,
     ) && !lifecycle.activation;
+
   const date = workspace.case.configuration.dates.candidateLiveOn;
+
   const month = workspace.case.configuration.dates.acceptanceEndsOn
     ? new Intl.DateTimeFormat("sv-SE", { month: "long", timeZone: "Europe/Stockholm" }).format(
         new Date(`${workspace.case.configuration.dates.acceptanceEndsOn}T12:00:00Z`),
       )
     : "kontrollperiod";
+
+  if (!snapshot && latestSnapshot(lifecycle, "activation") && !lifecycle.activation)
+    return <StaleActivationConfirmation lifecycle={lifecycle} open={open} />;
+
   return (
     <FormDialog
       size="setup"
@@ -227,21 +267,24 @@ function ActivationConfirmation({
           open("cutover");
       }}
     >
-      <h2 {...stylex.props(styles.dialogHeading, styles.section)}>Det här händer</h2>
-      <div {...stylex.props(styles.dialogCopy, styles.tableSpace)}>
-        <p>OpenERP blir gällande från {formatDate(date, false)}.</p>
-        <p>Tidigare system blir skrivskyddat.</p>
-        <p>Verifierad {month} sparas som kvitto: Aktiveringskvitto.</p>
-      </div>
-      <h2 {...stylex.props(styles.dialogHeading, styles.section20)}>
+      <SetupText as="h2" layout={["dialogHeading", "section"]}>
+        Det här händer
+      </SetupText>
+      <SetupBlock layout={["dialogCopy", "tableSpace"]}>
+        <SetupText as="p">OpenERP blir gällande från {formatDate(date, false)}.</SetupText>
+        <SetupText as="p">Tidigare system blir skrivskyddat.</SetupText>
+        <SetupText as="p">Verifierad {month} sparas som kvitto: Aktiveringskvitto.</SetupText>
+      </SetupBlock>
+      <SetupText as="h2" layout={["dialogHeading", "section20"]}>
         {required.length === 2 ? "Två personer bekräftar" : `${required.length} personer bekräftar`}
-      </h2>
-      <div {...stylex.props(styles.tableSpace)}>
+      </SetupText>
+      <SetupBlock layout={["tableSpace"]}>
         {required.map((id) => {
           const decision = decisions.find((item) => item.actorId === id);
+
           return (
-            <div key={id} {...stylex.props(styles.gate)}>
-              <button
+            <SetupBlock key={id} layout={["gate"]}>
+              <SetupInlineAction
                 type="button"
                 disabled={
                   !!decision ||
@@ -265,20 +308,20 @@ function ActivationConfirmation({
                           },
                     );
                 }}
-                {...stylex.props(styles.periodLabel, styles.crumbButton)}
+                layout={["periodLabel", "crumbButton"]}
               >
                 {personName(lifecycle, id)} bekräftar
-              </button>
-              <span {...stylex.props(decision ? styles.success : styles.warning)}>
+              </SetupInlineAction>
+              <SetupText layout={[decision ? "success" : "warning"]}>
                 {decision
                   ? `✓ Bekräftad ${formatMoment(decision.recordedAt).replace(/ \d{4} /, " ")}`
                   : "! Väntar"}
-              </span>
-            </div>
+              </SetupText>
+            </SetupBlock>
           );
         })}
-      </div>
-      <div {...stylex.props(styles.section20)}>
+      </SetupBlock>
+      <SetupBlock layout={["section20"]}>
         <SetupActions>
           <SetupButton
             disabled={
@@ -310,8 +353,8 @@ function ActivationConfirmation({
             Avbryt
           </SetupButton>
         </SetupActions>
-      </div>
-      <div {...stylex.props(styles.tableSpace)}>
+      </SetupBlock>
+      <SetupBlock layout={["tableSpace"]}>
         <SetupCaption>
           {pendingIntent
             ? "Övergången bearbetas"
@@ -321,9 +364,11 @@ function ActivationConfirmation({
                 ? "Övergången är genomförd"
                 : ""}
         </SetupCaption>
-      </div>
+      </SetupBlock>
       {ownPending && snapshot?.blockers.length ? (
-        <p role="status">{snapshot.blockers.join(", ")}</p>
+        <SetupText as="p" role="status">
+          {snapshot.blockers.join(", ")}
+        </SetupText>
       ) : null}
       {lifecycle.activation ? (
         <SetupLink onClick={() => open("activation")}>Visa aktiveringskvitto</SetupLink>
@@ -338,107 +383,63 @@ function ActivationConfirmation({
   );
 }
 
-export function OnboardingDelta({
-  workspace,
+function StaleActivationConfirmation({
   lifecycle,
   open,
 }: {
-  workspace: Workspace;
   lifecycle: Lifecycle;
   open: OpenOnboardingView;
 }) {
-  const { book, locale } = useBookWorkspace();
-  const snapshot = currentSnapshot(lifecycle, "final_delta");
-  const retained = snapshot ?? latestSnapshot(lifecycle, "final_delta");
-  const capture = useSnapshotCapture();
-  const decision = useSnapshotDecision();
-  const accepted = hasDecision(lifecycle, snapshot, "accept_final_delta");
+  const previous = latestSnapshot(lifecycle, "activation");
+  const required = lifecycle.responsibilities?.assignments.activationConfirmerIds ?? [];
+
   return (
-    <SetupPageContent styleX={[styles.page, styles.inset]}>
-      <Breadcrumb
-        items={[
-          { label: book.name },
-          { label: "Setup", view: "workspace" },
-          { label: "Slutlig deltaimport" },
-        ]}
-        open={open}
-      />
-      <div {...stylex.props(styles.title)}>
-        <SetupTitle>Slutlig deltaimport</SetupTitle>
-      </div>
-      <p {...stylex.props(styles.subtitle)}>
-        Det som ändrats i tidigare system sedan förra importen.
-      </p>
-      <div {...stylex.props(styles.section24)}>
-        <SetupTable
-          title="Ändringar sedan tidigare import"
-          width={tokens.setupInnerWidth}
-          columns={[
-            { id: "voucher", label: "Verifikat", width: tokens.setupColumn96 },
-            { id: "date", label: "Datum", width: tokens.setupColumn96 },
-            { id: "text", label: "Text", width: tokens.setupColumn300 },
-            { id: "amount", label: "Belopp", width: tokens.setupColumn120, numeric: true },
-            { id: "decision", label: "Beslut", width: tokens.setupDeltaDecisionWidth },
-          ]}
-          rows={[]}
-        />
-      </div>
-      <p {...stylex.props(styles.note, styles.secondary)}>
-        Samma källor och mappningar används, så inget dubbleras.
-      </p>
-      <div {...stylex.props(styles.section20)}>
-        {snapshot ? (
-          <SetupButton
-            disabled={decision.disabled || snapshot.blockers.length > 0 || accepted}
-            onClick={() =>
-              decision.mutate(
-                decision.uncertain && decision.variables
-                  ? decision.variables
-                  : {
-                      snapshotId: snapshot.id,
-                      expectedDigest: snapshot.digest,
-                      decision: {
-                        kind: "accept_final_delta",
-                        reason: "Slutlig deltaimport kontrollerad i setup",
-                      },
-                    },
-              )
-            }
-          >
-            Acceptera deltaimporten
+    <FormDialog
+      size="setup"
+      title="Övergången kunde inte genomföras"
+      closeLabel="Stäng"
+      onClose={() => open("cutover")}
+      onEscape={() => open("cutover")}
+    >
+      <SetupText as="p" role="alert" layout={["blocked", "note"]}>
+        Underlaget har ändrats. Dina bekräftelser gäller det tidigare läget.
+      </SetupText>
+      <SetupText layout={["caption", "semibold", "section"]}>
+        {required.length === 2 ? "TVÅ PERSONER BEKRÄFTAR" : "PERSONER SOM BEKRÄFTAR"}
+      </SetupText>
+      <SetupBlock layout={["tableSpace"]}>
+        {required.map((id) => {
+          const confirmed = lifecycle.decisions.some(
+            (decision) =>
+              decision.snapshotId === previous?.id &&
+              decision.snapshotDigest === previous.digest &&
+              decision.actorId === id &&
+              decision.decision.kind === "confirm_activation",
+          );
+
+          return (
+            <SetupBlock key={id} layout={["gate"]}>
+              <SetupText layout={["periodLabel"]}>{personName(lifecycle, id)} bekräftar</SetupText>
+              <SetupText layout={[confirmed ? "warning" : "secondary"]}>
+                {confirmed ? "! Behöver bekräfta på nytt" : "Ej bekräftad"}
+              </SetupText>
+            </SetupBlock>
+          );
+        })}
+      </SetupBlock>
+      <SetupText as="p" layout={["caption", "note"]}>
+        Ingenting har aktiverats. Tidigare system är fortfarande det gällande. Granska underlaget,
+        verifiera om och bekräfta båda på nytt.
+      </SetupText>
+      <SetupBlock layout={["section"]}>
+        <SetupActions>
+          <SetupButton onClick={() => open("verification")}>Granska ändringen</SetupButton>
+          <SetupButton variant="outline" onClick={() => open("cutover")}>
+            Stäng
           </SetupButton>
-        ) : (
-          <SetupButton
-            disabled={capture.disabled}
-            onClick={() =>
-              capture.mutate(
-                capture.uncertain && capture.variables
-                  ? capture.variables
-                  : snapshotInput(workspace, lifecycle, "final_delta"),
-              )
-            }
-          >
-            Kontrollera deltaimporten
-          </SetupButton>
-        )}
-      </div>
-      {retained ? (
-        <div {...stylex.props(styles.section20, styles.stack4)}>
-          <p {...stylex.props(accepted ? styles.success : styles.warning)}>
-            {accepted ? "✓ Accepterad" : "! Behöver beslut"} {formatMoment(retained.capturedAt)}
-          </p>
-          <p {...stylex.props(styles.secondary)}>{retained.blockers.join(", ")}</p>
-        </div>
-      ) : null}
-      <p role="status">Ändrade och borttagna källposter behöver granskas i importen.</p>
-      <Link href={`${workspacePath(book)}/history`}>Öppna historisk import</Link>
-      <AccountingStatus
-        locale={locale}
-        pending={capture.isPending || decision.isPending}
-        error={capture.error ?? decision.error}
-        write
-      />
-    </SetupPageContent>
+        </SetupActions>
+      </SetupBlock>
+    </FormDialog>
   );
 }
 
@@ -450,26 +451,39 @@ export function OnboardingActivation({
   open: OpenOnboardingView;
 }) {
   const receipt = lifecycle.activation;
+  const { book } = useBookWorkspace();
+
+  const artifact = useQuery({
+    queryKey: [...bookKey(book), "onboarding", "activation-artifact", receipt?.id],
+    enabled: !!receipt,
+    queryFn: ({ signal }) =>
+      readAccounting(
+        `${bookPath(book)}/onboarding/activation-artifact`,
+        Onboarding.OnboardingActivationArtifact,
+        { signal },
+      ),
+    retry: false,
+  });
+
   const name = receipt?.projection.companyName ?? lifecycle.projection.companyName;
+
   const facts =
     receipt?.projection.companyFacts.filter(
       (item) => item.review?.result === "confirmed" && item.revision.value.state === "known",
     ) ?? [];
+
   const ruleFacts = facts
     .map((item) => {
       const value = item.revision.value;
+
       if (value.state !== "known") return "";
-      return typeof value.value === "object" ? "" : String(value.value);
+
+      return Predicate.isObject(value.value) ? "" : String(value.value);
     })
     .filter(Boolean);
-  const accepted = receipt
-    ? lifecycle.decisions.filter(
-        (item) =>
-          item.snapshotId === receipt.snapshot.id &&
-          item.snapshotDigest === receipt.snapshot.digest &&
-          item.decision.kind === "accept_limitation",
-      )
-    : [];
+
+  const accepted = receipt?.acceptedLimitations ?? [];
+
   const rows = receipt
     ? [
         { label: "Aktiverad", value: formatMoment(receipt.activatedAt) },
@@ -477,36 +491,40 @@ export function OnboardingActivation({
         {
           label: "Importerat",
           value: (
-            <div {...stylex.props(styles.stack4)}>
+            <SetupBlock layout={["stack4"]}>
               {[
                 { value: receipt.projection.counts.importedVouchers, label: "verifikat" },
                 { value: receipt.projection.counts.customerInvoices, label: "kundfakturor" },
                 { value: receipt.projection.counts.supplierInvoices, label: "leverantörsfakturor" },
                 { value: receipt.projection.counts.bankObservations, label: "bankhändelser" },
-                { value: receipt.projection.counts.retainedOriginals, label: "original" },
+                { value: receipt.projection.counts.retainedOriginals ?? "—", label: "original" },
                 ...(receipt.projection.counts.assets === null
                   ? []
                   : [{ value: receipt.projection.counts.assets, label: "anläggningstillgångar" }]),
               ].map((item) => (
-                <p key={item.label}>
+                <SetupText as="p" key={item.label}>
                   {item.value} {item.label}
-                </p>
+                </SetupText>
               ))}
-            </div>
+            </SetupBlock>
           ),
         },
         { label: "Kontrollperiod", value: `✓ ${formatDate(receipt.snapshot.asOf)}, verifierad` },
         {
           label: "Kända begränsningar",
           value: (
-            <div {...stylex.props(styles.stack4)}>
+            <SetupBlock layout={["stack4"]}>
               {accepted.map((item) => (
-                <p key={item.id}>
+                <SetupText as="p" key={item.id}>
                   {item.decision.kind === "accept_limitation" ? item.decision.reason : ""}
-                </p>
+                  {", "}
+                  {item.actorName}
+                  {", "}
+                  {formatMoment(item.recordedAt)}
+                </SetupText>
               ))}
-              <p>Exempeldata. Ingen myndighetsinlämning har genomförts.</p>
-            </div>
+              <SetupText as="p">Exempeldata. Ingen myndighetsinlämning har genomförts.</SetupText>
+            </SetupBlock>
           ),
         },
         {
@@ -515,52 +533,103 @@ export function OnboardingActivation({
         },
         {
           label: "Godkänt av",
-          value: [
-            ...new Set(receipt.confirmations.map((item) => personName(lifecycle, item.actorId))),
-          ].join(" och "),
+          value: [...new Set(receipt.confirmations.map((item) => item.actorName))].join(" och "),
         },
       ]
     : [];
+
   return (
-    <SetupPageContent styleX={[styles.page, styles.inset]}>
+    <SetupPageContent styleX={setupLayoutStyles(["page", "inset"])}>
       <Breadcrumb
         items={[{ label: name }, { label: "Setup", view: "workspace" }, { label: "Aktivering" }]}
         open={open}
       />
-      <div {...stylex.props(styles.headingRow, styles.title)}>
+      <SetupBlock layout={["headingRow", "title"]}>
         <SetupTitle>Aktivering av {name}</SetupTitle>
         <SetupButton
           variant="outline"
-          disabled={!receipt}
+          disabled={!artifact.data}
           onClick={() => {
-            if (!receipt) return;
-            const uri = URL.createObjectURL(
-              new Blob([JSON.stringify(receipt, null, 2)], { type: "application/json" }),
+            if (!artifact.data) return;
+
+            const bytes = Uint8Array.from(atob(artifact.data.contentBase64), (character) =>
+              character.charCodeAt(0),
             );
+
+            const uri = URL.createObjectURL(new Blob([bytes], { type: artifact.data.mediaType }));
+
             const anchor = document.createElement("a");
             anchor.href = uri;
-            anchor.download = "aktiveringskvitto.json";
+            anchor.download = artifact.data.filename;
             anchor.click();
             URL.revokeObjectURL(uri);
           }}
         >
-          Ladda ner
+          Ladda ner aktiveringskvitto (PDF)
         </SetupButton>
-      </div>
-      <p {...stylex.props(styles.subtitle)}>Sparad uppgift om övergången. Den ändras inte.</p>
-      <div {...stylex.props(styles.facts, styles.section24)}>
+      </SetupBlock>
+      <SetupText as="p" layout={["subtitle"]}>
+        Sparad uppgift om övergången. Den ändras inte.
+      </SetupText>
+      <SetupBlock layout={["facts", "section24"]}>
         {rows.map((row) => (
-          <div key={row.label} {...stylex.props(styles.factRow)}>
-            <span {...stylex.props(styles.factLabel)}>{row.label}</span>
-            <div>{row.value}</div>
-          </div>
+          <SetupBlock key={row.label} layout={["factRow"]}>
+            <SetupText layout={["factLabel"]}>{row.label}</SetupText>
+            <SetupBlock>{row.value}</SetupBlock>
+          </SetupBlock>
         ))}
-      </div>
+      </SetupBlock>
       {!receipt ? (
-        <p role="status">Övergången är inte genomförd. Aktiveringskvitto saknas.</p>
+        <SetupText as="p" role="status">
+          Övergången är inte genomförd. Aktiveringskvitto saknas.
+        </SetupText>
       ) : null}
     </SetupPageContent>
   );
+}
+
+function openItemsReady(
+  snapshot: ReturnType<typeof currentSnapshot>,
+  kind: "sales_open_items" | "purchase_open_items",
+) {
+  const comparisons = snapshot?.comparisons.filter((item) => item.kind === kind) ?? [];
+
+  return (
+    comparisons.length > 0 &&
+    comparisons.every((item) => BigInt(item.unexplainedDifferenceMinor) === 0n)
+  );
+}
+
+function useFirstPeriodClosing(
+  period: ReturnType<typeof useBookWorkspace>["setup"]["periods"][number] | undefined,
+) {
+  const { book } = useBookWorkspace();
+
+  const readiness = useQuery({
+    queryKey: [...bookKey(book), "closing-readiness", period?.id],
+    enabled: !!period,
+    queryFn: ({ signal }) =>
+      readAccounting(
+        `${bookPath(book)}/periods/${encodeURIComponent(period?.id ?? "")}/closing-readiness`,
+        Closing.ClosingReadiness,
+        { signal },
+      ),
+    retry: false,
+  });
+
+  const history = useQuery({
+    queryKey: [...bookKey(book), "closing-history", period?.id],
+    enabled: !!period && period.locked,
+    queryFn: ({ signal }) =>
+      readAccounting(
+        `${bookPath(book)}/periods/${encodeURIComponent(period?.id ?? "")}/closing-history`,
+        Closing.ClosingHistory,
+        { signal },
+      ),
+    retry: false,
+  });
+
+  return { readiness, history };
 }
 
 export function OnboardingFirstPeriod({
@@ -574,39 +643,23 @@ export function OnboardingFirstPeriod({
 }) {
   const { book, setup, locale } = useBookWorkspace();
   const date = workspace.case.configuration.dates.candidateLiveOn;
+
   const period = setup.periods.find(
     (item) => date !== null && item.startsOn <= date && item.endsOn >= date,
   );
-  const readiness = useQuery({
-    queryKey: [...bookKey(book), "closing-readiness", period?.id],
-    enabled: !!period,
-    queryFn: ({ signal }) =>
-      readAccounting(
-        `${bookPath(book)}/periods/${encodeURIComponent(period?.id ?? "")}/closing-readiness`,
-        Closing.ClosingReadiness,
-        { signal },
-      ),
-    retry: false,
-  });
-  const history = useQuery({
-    queryKey: [...bookKey(book), "closing-history", period?.id],
-    enabled: !!period && period.locked,
-    queryFn: ({ signal }) =>
-      readAccounting(
-        `${bookPath(book)}/periods/${encodeURIComponent(period?.id ?? "")}/closing-history`,
-        Closing.ClosingHistory,
-        { signal },
-      ),
-    retry: false,
-  });
+
+  const { readiness, history } = useFirstPeriodClosing(period);
+
   const certificate = history.data?.items.find((item) => item.certificateId)?.certificateId;
   const snapshot = currentSnapshot(lifecycle, "first_live");
   const capture = useSnapshotCapture();
+
   const complete = useOnboardingCommand(
     `${bookPath(book)}/onboarding/first-period-completions`,
     Onboarding.CompleteOnboardingFirstPeriod,
     Onboarding.OnboardingFirstPeriodCompletion,
   );
+
   const month = date
     ? new Intl.DateTimeFormat("sv-SE", {
         month: "long",
@@ -614,10 +667,13 @@ export function OnboardingFirstPeriod({
         timeZone: "Europe/Stockholm",
       }).format(new Date(`${date}T12:00:00Z`))
     : "ej angiven";
+
   const bank = lifecycle.projection.bankStatements.toSorted((a, b) =>
     b.endsOn.localeCompare(a.endsOn),
   )[0];
+
   const bankReady = !!bank && !!date && bank.endsOn >= date;
+
   const rows = [
     {
       label: "Bank",
@@ -638,33 +694,17 @@ export function OnboardingFirstPeriod({
     },
     {
       label: "Kundfakturor",
-      text:
-        snapshot?.comparisons.some((item) => item.kind === "sales_open_items") &&
-        snapshot.comparisons
-          .filter((item) => item.kind === "sales_open_items")
-          .every((item) => BigInt(item.unexplainedDifferenceMinor) === 0n)
-          ? "✓ Reskontra stämmer"
-          : "○ Väntar på kontroll",
-      ready:
-        snapshot?.comparisons.some((item) => item.kind === "sales_open_items") &&
-        snapshot.comparisons
-          .filter((item) => item.kind === "sales_open_items")
-          .every((item) => BigInt(item.unexplainedDifferenceMinor) === 0n),
+      text: openItemsReady(snapshot, "sales_open_items")
+        ? "✓ Reskontra stämmer"
+        : "○ Väntar på kontroll",
+      ready: openItemsReady(snapshot, "sales_open_items"),
     },
     {
       label: "Leverantörsfakturor",
-      text:
-        snapshot?.comparisons.some((item) => item.kind === "purchase_open_items") &&
-        snapshot.comparisons
-          .filter((item) => item.kind === "purchase_open_items")
-          .every((item) => BigInt(item.unexplainedDifferenceMinor) === 0n)
-          ? "✓ Reskontra stämmer"
-          : "○ Väntar på kontroll",
-      ready:
-        snapshot?.comparisons.some((item) => item.kind === "purchase_open_items") &&
-        snapshot.comparisons
-          .filter((item) => item.kind === "purchase_open_items")
-          .every((item) => BigInt(item.unexplainedDifferenceMinor) === 0n),
+      text: openItemsReady(snapshot, "purchase_open_items")
+        ? "✓ Reskontra stämmer"
+        : "○ Väntar på kontroll",
+      ready: openItemsReady(snapshot, "purchase_open_items"),
     },
     {
       label: "Period",
@@ -672,8 +712,9 @@ export function OnboardingFirstPeriod({
       ready: false,
     },
   ];
+
   return (
-    <SetupPageContent styleX={[styles.page, styles.inset]}>
+    <SetupPageContent styleX={setupLayoutStyles(["page", "inset"])}>
       <Breadcrumb
         items={[
           { label: book.name },
@@ -682,28 +723,30 @@ export function OnboardingFirstPeriod({
         ]}
         open={open}
       />
-      <div {...stylex.props(styles.title)}>
+      <SetupBlock layout={["title"]}>
         <SetupTitle>Första perioden, {month}</SetupTitle>
-      </div>
-      <div {...stylex.props(styles.banner, styles.section24)}>
-        <h2 {...stylex.props(styles.medium)}>Setup</h2>
-        <p {...stylex.props(styles.secondary)}>
+      </SetupBlock>
+      <SetupBlock layout={["banner", "section24"]}>
+        <SetupText as="h2" layout={["medium"]}>
+          Setup
+        </SetupText>
+        <SetupText as="p" layout={["secondary"]}>
           {lifecycle.completion?.current
             ? "Setup är klar."
             : `Setup är klar när ${month.split(" ")[0]} är stängd och stämmer.`}
-        </p>
-      </div>
-      <div {...stylex.props(styles.controls, styles.section24)}>
+        </SetupText>
+      </SetupBlock>
+      <SetupBlock layout={["controls", "section24"]}>
         {rows.map((row) => (
-          <div key={row.label} {...stylex.props(styles.periodRow)}>
-            <span {...stylex.props(styles.periodLabel)}>{row.label}</span>
-            <span {...stylex.props(row.ready ? styles.success : styles.secondary)}>{row.text}</span>
-          </div>
+          <SetupBlock key={row.label} layout={["periodRow"]}>
+            <SetupText layout={["periodLabel"]}>{row.label}</SetupText>
+            <SetupText layout={[row.ready ? "success" : "secondary"]}>{row.text}</SetupText>
+          </SetupBlock>
         ))}
-      </div>
-      <div {...stylex.props(styles.section24)}>
+      </SetupBlock>
+      <SetupBlock layout={["section24"]}>
         <Link href={`${workspacePath(book)}/work`}>Öppna Att göra</Link>
-      </div>
+      </SetupBlock>
       <PendingRead
         pending={!!period && readiness.isPending}
         error={readiness.error ?? history.error}

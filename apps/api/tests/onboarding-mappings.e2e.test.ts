@@ -16,6 +16,7 @@ import {
 
 test("retained account mapping survives reload, remembered defaults remain proposals and conflicts preserve the ledger", async () => {
   const book = await fixture();
+
   const original =
     '#FLAGGA 0\n#PROGRAM "Synthetic export" 1\n#FORMAT PC8\n#SIETYP 4\n#GEN 20261004\n#FNAMN "Synthetic"\n#RAR 0 20260101 20261231\n#KONTO 2999 "Other liabilities"\n#IB 0 2999 0.00\n#UB 0 2999 0.00\n#VER A 1 20260922 "Synthetic mapping source"\n{\n#TRANS 2999 {} -125.00\n#TRANS 1930 {} 125.00\n}\n';
 
@@ -40,7 +41,9 @@ test("retained account mapping survives reload, remembered defaults remain propo
     { encoding: "utf-8" },
     Sie.SiePreview,
   );
+
   const before = await persisted(book);
+
   const input = {
     previewId: preview.id,
     expectedPreviewDigest: preview.digest,
@@ -49,7 +52,9 @@ test("retained account mapping survives reload, remembered defaults remain propo
     remember: true,
     expectedRevision: 0,
   };
+
   const key = "mapping-e2e-first-review";
+
   const saved = await decoded(
     await request(book, "/onboarding/account-mappings", {
       method: "POST",
@@ -58,6 +63,7 @@ test("retained account mapping survives reload, remembered defaults remain propo
     }),
     Mapping.OnboardingMapping,
   );
+
   expect(
     await decoded(
       await request(book, "/onboarding/account-mappings", {
@@ -68,10 +74,12 @@ test("retained account mapping survives reload, remembered defaults remain propo
       Mapping.OnboardingMapping,
     ),
   ).toEqual(saved);
+
   const reloaded = await decoded(
     await request(book, `/onboarding/account-mappings?previewId=${preview.id}`),
     Mapping.OnboardingMappings,
   );
+
   expect(reloaded.current).toEqual([saved]);
   expect(reloaded.proposedDefaults).toEqual([
     { sourceAccount: "2999", accountId: "account_clearing" },
@@ -102,16 +110,74 @@ test("retained account mapping survives reload, remembered defaults remain propo
     403,
     "Forbidden",
   );
+
+  const nextOccurrence = await post(
+    book,
+    "/source-occurrences",
+    {
+      sourceSystem: "mapping-fixture",
+      sourceAccountId: "ledger-export",
+      occurrenceKey: "mapping-second",
+      sourceRevision: "2",
+      filename: "next-source.se",
+      mediaType: "application/octet-stream",
+      contentBase64: Buffer.from(original).toString("base64"),
+    },
+    Intake.SourceOccurrence,
+  );
+
+  const nextPreview = await post(
+    book,
+    `/source-occurrences/${nextOccurrence.id}/sie-previews`,
+    { encoding: "utf-8" },
+    Sie.SiePreview,
+  );
+
+  const proposed = await decoded(
+    await request(book, `/onboarding/account-mappings?previewId=${nextPreview.id}`),
+    Mapping.OnboardingMappings,
+  );
+
+  expect(proposed.current).toEqual([]);
+  expect(proposed.proposedDefaults).toEqual([
+    { sourceAccount: "2999", accountId: "account_clearing" },
+  ]);
+
+  const superseded = await post(
+    book,
+    `/source-occurrences/${occurrence.id}/sie-previews`,
+    { encoding: "utf-8" },
+    Sie.SiePreview,
+  );
+
+  expect(superseded.id).not.toBe(preview.id);
+  await failure(
+    await request(book, "/onboarding/account-mappings", {
+      method: "POST",
+      body: JSON.stringify({ ...input, expectedRevision: 1 }),
+    }),
+    409,
+    "StaleDependency",
+  );
+
   const cleared = await post(
     book,
     "/onboarding/account-mappings",
-    { ...input, remember: false, expectedRevision: 1 },
+    {
+      ...input,
+      previewId: nextPreview.id,
+      expectedPreviewDigest: nextPreview.digest,
+      remember: false,
+      expectedRevision: 1,
+    },
     Mapping.OnboardingMapping,
   );
+
   const final = await decoded(
-    await request(book, `/onboarding/account-mappings?previewId=${preview.id}`),
+    await request(book, `/onboarding/account-mappings?previewId=${nextPreview.id}`),
     Mapping.OnboardingMappings,
   );
+
   expect(final.current).toEqual([cleared]);
   expect(final.proposedDefaults).toEqual([]);
   expect(final.history).toHaveLength(2);

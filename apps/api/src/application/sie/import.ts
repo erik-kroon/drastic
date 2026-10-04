@@ -4,7 +4,13 @@ import type * as Schema from "effect/Schema";
 import * as Db from "../../db/sie-import";
 import * as PostingDb from "../../db/posting";
 import type { Transaction } from "../../db/transaction";
-import { decode, requireInsertAccess, withBook, type Scope } from "../commerce/support";
+import {
+  decode,
+  requireInsertAccess,
+  withBook,
+  type Principal,
+  type Scope,
+} from "../commerce/support";
 import { failure } from "../failures";
 import { digest, isoNow, newId, replay, saveCommand } from "../posting";
 import { checkControls } from "./source-controls";
@@ -161,6 +167,84 @@ export const getSource = Effect.fn("sie.getSource")(function* (token: string, co
   });
 });
 
+export const sealSourcePlanInTransaction = Effect.fn("sie.sealSourcePlanInTransaction")(function* (
+  transaction: Transaction,
+  principal: Principal,
+  command: Command & { readonly input: typeof Sie.SealSiePlan.Type },
+) {
+  const { scope, id, idempotencyKey, input } = command;
+  const operation = "seal_sie_source_plan";
+
+  const request = yield* replay(
+    transaction,
+    scope,
+    idempotencyKey,
+    operation,
+    principal.actorId,
+    { previewId: id, input },
+    Sie.SiePlan,
+  );
+
+  if (request.previous) return request.previous;
+  yield* requireInsertAccess(transaction, ["sie_source_plans", "command_receipts"]);
+  const preview = yield* readPreview(transaction, scope, id);
+  const source = (yield* Db.readSource(transaction, scope.bookId, preview.occurrenceId))[0];
+
+  if (!source) return yield* failure("MissingEvidence");
+
+  if (source.sourceSystem.startsWith("synthetic_") !== (input.sourceKind === "synthetic"))
+    return yield* failure("UnsupportedProfile");
+  const history = yield* Db.listPreviews(transaction, scope.bookId, preview.occurrenceId);
+
+  if (history[0]?.body.id !== id) return yield* failure("StaleDependency");
+
+  if (!preview.ready || input.digest !== preview.digest) return yield* failure("ApprovalRequired");
+
+  if (history.some((row) => row.body.id === id && row.planId !== null))
+    return yield* failure("IdempotencyConflict");
+
+  const accounts = yield* PostingDb.readAccounts(transaction, scope.bookId, [
+    ...new Set(input.mappings.map((m) => m.accountId)),
+  ]);
+
+  if (input.mappings.some((m) => !accounts.some((a) => a.id === m.accountId)))
+    return yield* failure("InvalidJournal");
+  yield* checkControls(preview, input);
+
+  const body = {
+    id: newId("sieplan"),
+    scope,
+    previewId: id,
+    previewDigest: preview.digest,
+    sourceSha256: preview.sourceSha256,
+    input,
+    voucherCount: preview.vouchers.length,
+    createdBy: principal.actorId,
+    createdAt: yield* isoNow(transaction),
+    financialAdmission: "unsupported" as const,
+    unreconstructableDetail: true as const,
+  };
+
+  const result = yield* decode(Sie.SiePlan, {
+    ...body,
+    digest: yield* digest(body),
+    receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
+  });
+
+  yield* Db.insertPlan(transaction, scope.bookId, result.id, id, result);
+  yield* saveCommand(
+    transaction,
+    scope,
+    idempotencyKey,
+    request.expected,
+    operation,
+    principal.actorId,
+    result,
+  );
+
+  return result;
+});
+
 export const sealSourcePlan = Effect.fn("sie.sealSourcePlan")(function* (
   token: string,
   command: Command & { readonly input: typeof Sie.SealSiePlan.Type },
@@ -170,78 +254,7 @@ export const sealSourcePlan = Effect.fn("sie.sealSourcePlan")(function* (
     command.scope,
     true,
     function* (transaction, principal) {
-      const { scope, id, idempotencyKey, input } = command;
-      const operation = "seal_sie_source_plan";
-
-      const request = yield* replay(
-        transaction,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { previewId: id, input },
-        Sie.SiePlan,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireInsertAccess(transaction, ["sie_source_plans", "command_receipts"]);
-      const preview = yield* readPreview(transaction, scope, id);
-      const source = (yield* Db.readSource(transaction, scope.bookId, preview.occurrenceId))[0];
-
-      if (!source) return yield* failure("MissingEvidence");
-
-      if (source.sourceSystem.startsWith("synthetic_") !== (input.sourceKind === "synthetic"))
-        return yield* failure("UnsupportedProfile");
-      const history = yield* Db.listPreviews(transaction, scope.bookId, preview.occurrenceId);
-
-      if (history[0]?.body.id !== id) return yield* failure("StaleDependency");
-
-      if (!preview.ready || input.digest !== preview.digest)
-        return yield* failure("ApprovalRequired");
-
-      if (history.some((row) => row.body.id === id && row.planId !== null))
-        return yield* failure("IdempotencyConflict");
-
-      const accounts = yield* PostingDb.readAccounts(transaction, scope.bookId, [
-        ...new Set(input.mappings.map((m) => m.accountId)),
-      ]);
-
-      if (input.mappings.some((m) => !accounts.some((a) => a.id === m.accountId)))
-        return yield* failure("InvalidJournal");
-      yield* checkControls(preview, input);
-
-      const body = {
-        id: newId("sieplan"),
-        scope,
-        previewId: id,
-        previewDigest: preview.digest,
-        sourceSha256: preview.sourceSha256,
-        input,
-        voucherCount: preview.vouchers.length,
-        createdBy: principal.actorId,
-        createdAt: yield* isoNow(transaction),
-        financialAdmission: "unsupported" as const,
-        unreconstructableDetail: true as const,
-      };
-
-      const result = yield* decode(Sie.SiePlan, {
-        ...body,
-        digest: yield* digest(body),
-        receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
-      });
-
-      yield* Db.insertPlan(transaction, scope.bookId, result.id, id, result);
-      yield* saveCommand(
-        transaction,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
+      return yield* sealSourcePlanInTransaction(transaction, principal, command);
     },
     "update",
   );
@@ -256,6 +269,65 @@ export const getSourcePlan = Effect.fn("sie.getSourcePlan")(function* (
   });
 });
 
+export const startSourceRunInTransaction = Effect.fn("sie.startSourceRunInTransaction")(function* (
+  transaction: Transaction,
+  principal: Principal,
+  command: Command & { readonly digest: string },
+) {
+  const { scope, id, idempotencyKey } = command;
+  const operation = "start_sie_source_run";
+
+  const request = yield* replay(
+    transaction,
+    scope,
+    idempotencyKey,
+    operation,
+    principal.actorId,
+    { planId: id, digest: command.digest },
+    Sie.SieRunStart,
+  );
+
+  if (request.previous) return request.previous;
+  yield* requireInsertAccess(transaction, ["sie_source_runs", "command_receipts"]);
+  const plan = yield* readPlan(transaction, scope, id);
+
+  if (plan.digest !== command.digest) return yield* failure("StaleDependency");
+  const preview = yield* readPreview(transaction, scope, plan.previewId);
+  const history = yield* Db.listPreviews(transaction, scope.bookId, preview.occurrenceId);
+
+  if (history[0]?.body.id !== preview.id) return yield* failure("StaleDependency");
+
+  if (history.some((row) => row.runId !== null)) return yield* failure("IdempotencyConflict");
+
+  const row = {
+    id: newId("sierun"),
+    planId: id,
+    nextOrdinal: 1,
+    fence: "1",
+    leaseUntil: new Date(Date.parse(yield* isoNow(transaction)) + 900000).toISOString(),
+    status: "running" as const,
+  };
+
+  const result = yield* decode(Sie.SieRunStart, {
+    ...row,
+    planDigest: plan.digest,
+    financialAdmission: "unsupported",
+  });
+
+  yield* Db.insertRun(transaction, scope.bookId, row);
+  yield* saveCommand(
+    transaction,
+    scope,
+    idempotencyKey,
+    request.expected,
+    operation,
+    principal.actorId,
+    result,
+  );
+
+  return result;
+});
+
 export const startSourceRun = Effect.fn("sie.startSourceRun")(function* (
   token: string,
   command: Command & { readonly digest: string },
@@ -265,58 +337,7 @@ export const startSourceRun = Effect.fn("sie.startSourceRun")(function* (
     command.scope,
     true,
     function* (transaction, principal) {
-      const { scope, id, idempotencyKey } = command;
-      const operation = "start_sie_source_run";
-
-      const request = yield* replay(
-        transaction,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { planId: id, digest: command.digest },
-        Sie.SieRunStart,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireInsertAccess(transaction, ["sie_source_runs", "command_receipts"]);
-      const plan = yield* readPlan(transaction, scope, id);
-
-      if (plan.digest !== command.digest) return yield* failure("StaleDependency");
-      const preview = yield* readPreview(transaction, scope, plan.previewId);
-      const history = yield* Db.listPreviews(transaction, scope.bookId, preview.occurrenceId);
-
-      if (history[0]?.body.id !== preview.id) return yield* failure("StaleDependency");
-
-      if (history.some((row) => row.runId !== null)) return yield* failure("IdempotencyConflict");
-
-      const row = {
-        id: newId("sierun"),
-        planId: id,
-        nextOrdinal: 1,
-        fence: "1",
-        leaseUntil: new Date(Date.parse(yield* isoNow(transaction)) + 900000).toISOString(),
-        status: "running" as const,
-      };
-
-      const result = yield* decode(Sie.SieRunStart, {
-        ...row,
-        planDigest: plan.digest,
-        financialAdmission: "unsupported",
-      });
-
-      yield* Db.insertRun(transaction, scope.bookId, row);
-      yield* saveCommand(
-        transaction,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
+      return yield* startSourceRunInTransaction(transaction, principal, command);
     },
     "update",
   );
@@ -341,6 +362,102 @@ export const getSourceRun = Effect.fn("sie.getSourceRun")(function* (
   });
 });
 
+export const advanceSourceRunInTransaction = Effect.fn("sie.advanceSourceRunInTransaction")(
+  function* (
+    transaction: Transaction,
+    principal: Principal,
+    command: Command & {
+      readonly input: {
+        readonly fence: string;
+        readonly planDigest: string;
+        readonly firstOrdinal: number;
+      };
+    },
+  ) {
+    const { scope, id, idempotencyKey, input } = command;
+    const operation = "advance_sie_source_run";
+
+    const request = yield* replay(
+      transaction,
+      scope,
+      idempotencyKey,
+      operation,
+      principal.actorId,
+      { runId: id, input },
+      Sie.SieChunk,
+    );
+
+    if (request.previous) return request.previous;
+    yield* requireInsertAccess(transaction, [
+      "sie_source_vouchers",
+      "sie_source_chunks",
+      "command_receipts",
+    ]);
+    const run = yield* readRun(transaction, scope, id);
+    const plan = yield* readPlan(transaction, scope, run.planId);
+    const preview = yield* readPreview(transaction, scope, plan.previewId);
+    const now = Date.parse(yield* isoNow(transaction));
+
+    if (
+      run.status !== "running" ||
+      run.leaseUntil === null ||
+      Date.parse(run.leaseUntil) <= now ||
+      input.fence !== run.fence ||
+      input.planDigest !== plan.digest ||
+      input.firstOrdinal !== run.nextOrdinal
+    )
+      return yield* failure("StaleDependency");
+    const firstOrdinal = run.nextOrdinal;
+    const lastOrdinal = Math.min(plan.voucherCount, firstOrdinal + 199);
+
+    if (firstOrdinal > plan.voucherCount) return yield* failure("IdempotencyConflict");
+
+    const vouchers = preview.vouchers
+      .filter((v) => v.ordinal >= firstOrdinal && v.ordinal <= lastOrdinal)
+      .sort((a, b) => a.ordinal - b.ordinal);
+
+    if (
+      vouchers.length !== lastOrdinal - firstOrdinal + 1 ||
+      vouchers.some((v, i) => v.ordinal !== firstOrdinal + i)
+    )
+      return yield* failure("MissingEvidence");
+
+    if (vouchers.reduce((sum, v) => sum + v.transactions.length, 0) > 2000)
+      return yield* failure("UnsupportedProfile");
+
+    const result = yield* decode(Sie.SieChunk, {
+      runId: id,
+      planDigest: plan.digest,
+      firstOrdinal,
+      lastOrdinal,
+      fence: run.fence,
+      voucherCount: vouchers.length,
+      membershipDigest: yield* digest(vouchers),
+      receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
+    });
+
+    yield* Db.insertVouchers(transaction, scope.bookId, id, vouchers);
+    yield* Db.insertChunk(transaction, scope.bookId, id, firstOrdinal, result);
+    yield* Db.advanceRun(transaction, scope.bookId, {
+      ...run,
+      nextOrdinal: lastOrdinal + 1,
+      leaseUntil: lastOrdinal === plan.voucherCount ? null : new Date(now + 900000).toISOString(),
+      status: lastOrdinal === plan.voucherCount ? "staged" : "running",
+    });
+    yield* saveCommand(
+      transaction,
+      scope,
+      idempotencyKey,
+      request.expected,
+      operation,
+      principal.actorId,
+      result,
+    );
+
+    return result;
+  },
+);
+
 export const advanceSourceRun = Effect.fn("sie.advanceSourceRun")(function* (
   token: string,
   command: Command & {
@@ -356,87 +473,7 @@ export const advanceSourceRun = Effect.fn("sie.advanceSourceRun")(function* (
     command.scope,
     true,
     function* (transaction, principal) {
-      const { scope, id, idempotencyKey, input } = command;
-      const operation = "advance_sie_source_run";
-
-      const request = yield* replay(
-        transaction,
-        scope,
-        idempotencyKey,
-        operation,
-        principal.actorId,
-        { runId: id, input },
-        Sie.SieChunk,
-      );
-
-      if (request.previous) return request.previous;
-      yield* requireInsertAccess(transaction, [
-        "sie_source_vouchers",
-        "sie_source_chunks",
-        "command_receipts",
-      ]);
-      const run = yield* readRun(transaction, scope, id);
-      const plan = yield* readPlan(transaction, scope, run.planId);
-      const preview = yield* readPreview(transaction, scope, plan.previewId);
-      const now = Date.parse(yield* isoNow(transaction));
-
-      if (
-        run.status !== "running" ||
-        run.leaseUntil === null ||
-        Date.parse(run.leaseUntil) <= now ||
-        input.fence !== run.fence ||
-        input.planDigest !== plan.digest ||
-        input.firstOrdinal !== run.nextOrdinal
-      )
-        return yield* failure("StaleDependency");
-      const firstOrdinal = run.nextOrdinal;
-      const lastOrdinal = Math.min(plan.voucherCount, firstOrdinal + 199);
-
-      if (firstOrdinal > plan.voucherCount) return yield* failure("IdempotencyConflict");
-
-      const vouchers = preview.vouchers
-        .filter((v) => v.ordinal >= firstOrdinal && v.ordinal <= lastOrdinal)
-        .sort((a, b) => a.ordinal - b.ordinal);
-
-      if (
-        vouchers.length !== lastOrdinal - firstOrdinal + 1 ||
-        vouchers.some((v, i) => v.ordinal !== firstOrdinal + i)
-      )
-        return yield* failure("MissingEvidence");
-
-      if (vouchers.reduce((sum, v) => sum + v.transactions.length, 0) > 2000)
-        return yield* failure("UnsupportedProfile");
-
-      const result = yield* decode(Sie.SieChunk, {
-        runId: id,
-        planDigest: plan.digest,
-        firstOrdinal,
-        lastOrdinal,
-        fence: run.fence,
-        voucherCount: vouchers.length,
-        membershipDigest: yield* digest(vouchers),
-        receipt: { key: idempotencyKey, operation, actorId: principal.actorId },
-      });
-
-      yield* Db.insertVouchers(transaction, scope.bookId, id, vouchers);
-      yield* Db.insertChunk(transaction, scope.bookId, id, firstOrdinal, result);
-      yield* Db.advanceRun(transaction, scope.bookId, {
-        ...run,
-        nextOrdinal: lastOrdinal + 1,
-        leaseUntil: lastOrdinal === plan.voucherCount ? null : new Date(now + 900000).toISOString(),
-        status: lastOrdinal === plan.voucherCount ? "staged" : "running",
-      });
-      yield* saveCommand(
-        transaction,
-        scope,
-        idempotencyKey,
-        request.expected,
-        operation,
-        principal.actorId,
-        result,
-      );
-
-      return result;
+      return yield* advanceSourceRunInTransaction(transaction, principal, command);
     },
     "update",
   );

@@ -1,3 +1,4 @@
+import { qualifyAttachedControlInTransaction } from "./onboarding-controls";
 import { readOnboardingLifecycleInTransaction } from "./onboarding-lifecycle";
 import * as Effect from "effect/Effect";
 import * as Onboarding from "@open-erp/contracts/onboarding";
@@ -226,6 +227,13 @@ export const attachOnboardingSource = Effect.fn("onboarding.attachSource")(funct
       });
     }
 
+    yield* qualifyAttachedControlInTransaction(
+      transaction,
+      command.scope,
+      principal.actorId,
+      result.occurrence.id,
+    );
+
     yield* saveCommand(
       transaction,
       command.scope,
@@ -244,6 +252,7 @@ function qualifyProfile(
   transaction: Transaction,
   profile: typeof Profiles.CompanyProfile.Type,
   recordClass: Case["recordClass"],
+  payrollHandoff: typeof Onboarding.OnboardingPayrollHandoff.Type | undefined,
 ) {
   return Effect.gen(function* () {
     const qualification: Array<typeof Onboarding.OnboardingQualification.Type> = [];
@@ -284,7 +293,9 @@ function qualifyProfile(
         family: family.family,
         state:
           family.family === "payroll"
-            ? "not_supported"
+            ? payrollHandoff
+              ? "supported_with_handoff"
+              : "not_supported"
             : family.status === "resolved" && additionalGaps.length === 0
               ? "supported"
               : family.gaps.some((gap) => gap.state === "inapplicable_release")
@@ -295,7 +306,9 @@ function qualifyProfile(
         gaps,
         reason:
           family.family === "payroll"
-            ? "Native payroll is commercially deferred; an applicable obligation requires qualified specialist treatment."
+            ? payrollHandoff
+              ? `Tidigare löneperioder ligger kvar i ${payrollHandoff.incumbentSystem} till och med ${payrollHandoff.retainedThrough}.`
+              : "Tidigare löneperioder behöver en kvalificerad överlämning."
             : family.status === "resolved" && additionalGaps.length === 0
               ? "The existing owner resolved this dated profile. Complete workflow qualification and external outcomes remain separate."
               : "Reviewed company facts, rule releases or activation are missing for this date.",
@@ -470,8 +483,6 @@ export const getOnboarding = Effect.fn("onboarding.get")(function* (
       },
     );
 
-    const qualification = yield* qualifyProfile(transaction, profile, current.recordClass);
-
     const sourceRows = yield* Db.readSources(
       transaction,
       command.scope.bookId,
@@ -512,6 +523,21 @@ export const getOnboarding = Effect.fn("onboarding.get")(function* (
       transaction,
       command.scope,
       principal.actorId,
+    );
+
+    const payrollHandoff = lifecycle.controls.find(
+      (control) =>
+        control.kind === "historical_payroll_handoff" &&
+        control.payrollHandoff?.incumbentSystem === current.configuration.incumbentSystem &&
+        control.payrollHandoff.historyStartsOn === dates.historyStartsOn &&
+        control.payrollHandoff.retainedThrough === dates.historyEndsOn,
+    )?.payrollHandoff;
+
+    const qualification = yield* qualifyProfile(
+      transaction,
+      profile,
+      current.recordClass,
+      payrollHandoff,
     );
 
     const completeTasks = completedLifecycleTasks(lifecycle);

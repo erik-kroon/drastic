@@ -1148,6 +1148,25 @@ function executionApproval(
   });
 }
 
+function requireOnboardingPostingAuthority(
+  transaction: Transaction,
+  scope: Scope,
+  owner?: PostingOwner,
+) {
+  return Effect.gen(function* () {
+    const onboardingCases = yield* OnboardingCaseDb.readCurrent(transaction, scope.bookId);
+
+    if (
+      onboardingCases.length > 0 &&
+      owner?.kind !== "historical_import" &&
+      owner?.kind !== "onboarding_delta" &&
+      (yield* OnboardingLifecycleDb.readRecords(transaction, "activations", scope.bookId))
+        .length === 0
+    )
+      return yield* failure("ApprovalRequired");
+  });
+}
+
 export const executeChangeInTransaction = Effect.fn("posting.execute")(function* (
   transaction: Transaction,
   principal: Principal,
@@ -1175,15 +1194,8 @@ export const executeChangeInTransaction = Effect.fn("posting.execute")(function*
 
     if (request.previous) return request.previous;
 
-    const onboardingCases = yield* OnboardingCaseDb.readCurrent(transaction, command.scope.bookId);
+    yield* requireOnboardingPostingAuthority(transaction, command.scope, command.owner);
 
-    if (
-      onboardingCases.length > 0 &&
-      command.owner?.kind !== "historical_import" &&
-      (yield* OnboardingLifecycleDb.readRecords(transaction, "activations", command.scope.bookId))
-        .length === 0
-    )
-      return yield* failure("ApprovalRequired");
     yield* assertPeriodWorkFence(transaction, command.scope.bookId, command.changeSetId);
 
     const plan = yield* lockPlan(transaction, command.scope, command.changeSetId);

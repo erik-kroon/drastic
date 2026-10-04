@@ -1,3 +1,4 @@
+import { effectiveDeltaSources } from "./onboarding-deltas";
 import { sql } from "drizzle-orm";
 import type * as Schema from "effect/Schema";
 import type { Transaction } from "./transaction";
@@ -48,11 +49,15 @@ export function readProjectionMaterial(
         where s.book_id=b.id order by s.id limit 1001) x),
       'counts',jsonb_build_object(
         'retainedVouchers',(select count(*)::int from openerp.vouchers v where v.book_id=b.id),
-        'importedVouchers',(select count(*)::int from openerp.sie_financial_postings p where p.book_id=b.id),
+        'importedVouchers',(select count(*)::int from (${effectiveDeltaSources(scope.bookId)}) effective where body<>'null'::jsonb),
         'customerInvoices',(select count(*)::int from openerp.commerce_invoices i where i.book_id=b.id and i.direction='customer'),
         'supplierInvoices',(select count(*)::int from openerp.commerce_invoices i where i.book_id=b.id and i.direction='supplier'),
         'bankObservations',(select count(*)::int from openerp.bank_observations o where o.book_id=b.id),
-        'retainedOriginals',(select count(distinct o.sha256)::int from openerp.intake_occurrences o where o.book_id=b.id),
+        'retainedOriginals',case when exists(select from openerp.onboarding_controls c where c.book_id=b.id and c.body->>'kind'='historical_originals' and c.body->>'asOf'=(select r.body->'configuration'->'dates'->>'historyEndsOn' from openerp.onboarding_revisions r where r.book_id=b.id order by r.revision desc limit 1)) then (select count(*)::int from jsonb_array_elements((
+          select c.body->'originalCoverage'->'rows' from openerp.onboarding_controls c
+          where c.book_id=b.id and c.body->>'kind'='historical_originals' and c.body->>'asOf'=(select r.body->'configuration'->'dates'->>'historyEndsOn' from openerp.onboarding_revisions r where r.book_id=b.id order by r.revision desc limit 1)
+          order by c.body->>'qualifiedAt' desc,c.id desc limit 1
+        )) row where row->>'occurrenceId' is not null) else null end,
         'assets',null)
     ) as body from openerp.books b join openerp.entities e on e.id=b.entity_id
     where b.id=${scope.bookId} and e.id=${scope.entityId}
@@ -84,7 +89,10 @@ export function readBankTimingLines(
         where (a.book_id,a.voucher_id,a.line_id)=(l.book_id,l.voucher_id,l.id) and o.observed_on<=${asOf}::date),0) end)::text as "remainingMinor",
       array(select ev.evidence_id from openerp.events ev where ev.book_id=v.book_id and ev.id=v.event_id) as "evidenceIds"
     from openerp.journal_lines l join openerp.vouchers v on(v.book_id,v.id)=(l.book_id,l.voucher_id)
-    where l.book_id=${bookId} and v.id||':'||l.id=any(${[...identities]}::text[])
+    where l.book_id=${bookId} and v.id||':'||l.id=any(array[${sql.join(
+      identities.map((value) => sql`${value}`),
+      sql`, `,
+    )}]::text[])
       and v.posting_date<=${asOf}::date and v.corrects_voucher_id is null and v.posting_purpose<>'reversal'
       and not exists(select from openerp.vouchers r where r.book_id=v.book_id and r.corrects_voucher_id=v.id)
     order by v.id,l.id

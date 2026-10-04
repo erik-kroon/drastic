@@ -1,3 +1,4 @@
+import * as Historical from "./historical-migration";
 import * as Schema from "effect/Schema";
 import { HttpApi, HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as A from "./accounting";
@@ -91,6 +92,84 @@ export const StartOnboarding = Schema.Struct({ path: OnboardingPath });
 export const SaveOnboarding = Schema.Struct({
   expectedRevision: Revision,
   configuration: OnboardingConfiguration,
+});
+
+export const PrepareOnboardingImportPlan = Schema.Struct({
+  expectedRevision: Revision,
+  previewId: A.Identifier,
+  expectedPreviewDigest: A.Digest,
+  openingControlId: A.Identifier,
+  closingControlId: A.Identifier,
+  mappings: Sie.SealSiePlan.fields.mappings,
+  rationale: A.Description,
+});
+
+export const StartOnboardingImport = Schema.Struct({
+  expectedRevision: Revision,
+  sourcePlanId: A.Identifier,
+  expectedSourcePlanDigest: A.Digest,
+});
+
+export const OnboardingImportStart = Schema.Struct({
+  plan: Sie.SiePlan,
+  sourceRun: Sie.SieRunStart,
+  financialRun: Historical.RunStart,
+});
+
+export const PrepareOnboardingImportBatch = Schema.Struct({
+  financialRunId: A.Identifier,
+  expectedFence: Schema.String,
+  expectedNextOrdinal: Schema.Int,
+  expectedSourcePlanDigest: A.Digest,
+  rationale: A.Description,
+});
+
+export const OnboardingImportBatch = Schema.Struct({
+  id: A.Identifier,
+  scope: A.Scope,
+  financialRunId: A.Identifier,
+  sourcePlanId: A.Identifier,
+  sourcePlanDigest: A.Digest,
+  fence: Schema.String,
+  firstOrdinal: Schema.Int,
+  proposals: Schema.Array(
+    Schema.Struct({
+      ordinal: Schema.Int,
+      sourceReference: Schema.String,
+      change: A.ChangeSet,
+    }),
+  ).check(Schema.isMinLength(1), Schema.isMaxLength(20)),
+  preparedBy: A.Identifier,
+  preparedAt: Schema.String,
+  digest: A.Digest,
+});
+
+export const ApproveOnboardingImportBatch = Schema.Struct({
+  batchId: A.Identifier,
+  expectedDigest: A.Digest,
+});
+
+export const OnboardingImportBatchApproval = Schema.Struct({
+  id: A.Identifier,
+  scope: A.Scope,
+  batchId: A.Identifier,
+  batchDigest: A.Digest,
+  approvals: Schema.Array(A.Approval).check(Schema.isMinLength(1), Schema.isMaxLength(20)),
+  approvedBy: A.Identifier,
+  approvedAt: Schema.String,
+});
+
+export const ExecuteOnboardingImportBatch = Schema.Struct({
+  ...ApproveOnboardingImportBatch.fields,
+  approvalId: A.Identifier,
+});
+
+export const OnboardingImportBatchWorkspace = Schema.Struct({
+  run: Historical.Run,
+  total: Schema.Int,
+  batch: Schema.NullOr(OnboardingImportBatch),
+  approval: Schema.NullOr(OnboardingImportBatchApproval),
+  approvalCurrent: Schema.Boolean,
 });
 
 export const AttachOnboardingSource = Schema.Struct({
@@ -194,11 +273,29 @@ export const OnboardingControlKind = Schema.Literals([
   "trial_balance",
   "bank",
   "bank_reconciling_items",
+  "historical_originals",
+  "historical_payroll_handoff",
   "sales_open_items",
   "purchase_open_items",
   "vat",
   "tax",
 ]);
+
+export const OnboardingOriginalCoverage = Schema.Struct({
+  rows: Schema.Array(
+    Schema.Struct({
+      sourceIdentity: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256)),
+      occurrenceId: Schema.NullOr(A.Identifier),
+      sourceSha256: Schema.NullOr(A.Digest),
+    }),
+  ).check(Schema.isMinLength(1), Schema.isMaxLength(1000)),
+});
+
+export const OnboardingPayrollHandoff = Schema.Struct({
+  incumbentSystem: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
+  historyStartsOn: A.AccountingDate,
+  retainedThrough: A.AccountingDate,
+});
 
 export const OnboardingControl = Schema.Struct({
   id: A.Identifier,
@@ -208,6 +305,8 @@ export const OnboardingControl = Schema.Struct({
   sourceSystem: Schema.String,
   sourceAccountId: Schema.String,
   kind: OnboardingControlKind,
+  originalCoverage: Schema.optionalKey(OnboardingOriginalCoverage),
+  payrollHandoff: Schema.optionalKey(OnboardingPayrollHandoff),
   parserVersion: Schema.Literal("onboarding_csv_v1"),
   asOf: A.AccountingDate,
   currency: Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/)),
@@ -236,7 +335,7 @@ export const ResponsibilityAssignments = Schema.Struct({
   paymentApproverId: A.Identifier,
   vatResponsibleId: A.Identifier,
   activationConfirmerIds: Schema.Array(A.Identifier).check(
-    Schema.isMinLength(1),
+    Schema.isMinLength(2),
     Schema.isMaxLength(10),
   ),
 });
@@ -291,18 +390,26 @@ export const OnboardingSnapshot = Schema.Struct({
   digest: A.Digest,
   dependencyDigest: A.Digest,
   deltaId: Schema.NullOr(A.Identifier),
+  deltaDecisionIds: Schema.Array(A.Identifier),
   caseRevision: Revision,
   bookSequence: A.AggregateMinorUnits,
   writerEpoch: A.AggregateMinorUnits,
   asOf: A.AccountingDate,
   controlIds: Schema.Array(A.Identifier),
   historicalRunIds: Schema.Array(A.Identifier),
+  sourceImportPlanIds: Schema.optional(Schema.Array(A.Identifier)),
   closingCertificateId: Schema.NullOr(A.Identifier),
   responsibilityPolicyId: Schema.NullOr(A.Identifier),
   comparisons: Schema.Array(OnboardingComparison),
   blockers: Schema.Array(Schema.String),
+  carriedLimitationDecisionIds: Schema.Array(A.Identifier),
   permittedLimitations: Schema.Array(
-    Schema.Literals(["missing_historical_originals", "missing_tax_statement"]),
+    Schema.Literals([
+      "missing_historical_originals",
+      "historical_payroll_retained",
+      "missing_tax_statement",
+      "unreconciled_bank_difference",
+    ]),
   ),
   capturedBy: A.Identifier,
   capturedAt: Schema.String,
@@ -324,7 +431,12 @@ export const DecideOnboardingSnapshot = Schema.Struct({
     }),
     Schema.Struct({
       kind: Schema.Literal("accept_limitation"),
-      limitation: Schema.Literals(["missing_historical_originals", "missing_tax_statement"]),
+      limitation: Schema.Literals([
+        "missing_historical_originals",
+        "historical_payroll_retained",
+        "missing_tax_statement",
+        "unreconciled_bank_difference",
+      ]),
       reason: A.Description,
     }),
   ]),
@@ -339,7 +451,7 @@ export const OnboardingAuthorityWitness = Schema.Union([
   Schema.Struct({
     kind: Schema.Literal("betterAuthSession"),
     actorId: A.Identifier,
-    sessionId: A.Identifier,
+    sessionId: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256)),
   }),
 ]);
 
@@ -350,6 +462,7 @@ export const OnboardingDecision = Schema.Struct({
   snapshotDigest: A.Digest,
   decision: DecideOnboardingSnapshot.fields.decision,
   actorId: A.Identifier,
+  actorName: Schema.String.check(Schema.isMinLength(1)),
   recordedAt: Schema.String,
   authority: OnboardingAuthorityWitness,
   expiresAt: Schema.String,
@@ -422,7 +535,7 @@ export const OnboardingProjection = Schema.Struct({
     customerInvoices: Schema.Int,
     supplierInvoices: Schema.Int,
     bankObservations: Schema.Int,
-    retainedOriginals: Schema.Int,
+    retainedOriginals: Schema.NullOr(Schema.Int),
     assets: Schema.NullOr(Schema.Int),
   }),
 });
@@ -481,6 +594,7 @@ export const OnboardingLifecycle = Schema.Struct({
       name: Schema.String,
       enabled: Schema.Boolean,
       role: Schema.String,
+      affiliation: Schema.Literals(["company", "bureau"]),
     }),
   ),
   controls: Schema.Array(OnboardingControl),
@@ -494,6 +608,13 @@ export const OnboardingLifecycle = Schema.Struct({
   ),
 });
 
+export const OnboardingActivationArtifact = Schema.Struct({
+  receiptId: A.Identifier,
+  filename: Schema.String,
+  mediaType: Schema.Literal("application/pdf"),
+  contentBase64: Schema.String,
+});
+
 const base = "/v1/entities/:entityId/books/:bookId/onboarding";
 
 const scoped = { params: A.Scope, error: accountingErrors };
@@ -503,6 +624,36 @@ const mutation = { ...scoped, headers: A.IdempotencyHeaders };
 export const OnboardingApi = HttpApiGroup.make("onboarding")
   .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" })
   .add(
+    HttpApiEndpoint.get("getOnboardingImportBatch", `${base}/import-batches`, {
+      ...scoped,
+      query: Schema.Struct({ financialRunId: A.Identifier }),
+      success: OnboardingImportBatchWorkspace,
+    }),
+    HttpApiEndpoint.post("prepareOnboardingImportBatch", `${base}/import-batches`, {
+      ...mutation,
+      payload: PrepareOnboardingImportBatch,
+      success: OnboardingImportBatch,
+    }),
+    HttpApiEndpoint.post("approveOnboardingImportBatch", `${base}/import-batch-approvals`, {
+      ...mutation,
+      payload: ApproveOnboardingImportBatch,
+      success: OnboardingImportBatchApproval,
+    }),
+    HttpApiEndpoint.post("executeOnboardingImportBatch", `${base}/import-batch-executions`, {
+      ...mutation,
+      payload: ExecuteOnboardingImportBatch,
+      success: Historical.Chunk,
+    }),
+    HttpApiEndpoint.post("startOnboardingImport", `${base}/imports`, {
+      ...mutation,
+      payload: StartOnboardingImport,
+      success: OnboardingImportStart,
+    }),
+    HttpApiEndpoint.post("prepareOnboardingImportPlan", `${base}/import-plans`, {
+      ...mutation,
+      payload: PrepareOnboardingImportPlan,
+      success: Sie.SiePlan,
+    }),
     HttpApiEndpoint.get("getOnboarding", base, {
       ...scoped,
       query: Schema.Struct({
@@ -510,6 +661,10 @@ export const OnboardingApi = HttpApiGroup.make("onboarding")
         importAfter: Schema.optional(A.Identifier),
       }),
       success: OnboardingWorkspace,
+    }),
+    HttpApiEndpoint.get("getOnboardingActivationArtifact", `${base}/activation-artifact`, {
+      ...scoped,
+      success: OnboardingActivationArtifact,
     }),
     HttpApiEndpoint.get("getOnboardingLifecycle", `${base}/lifecycle`, {
       ...scoped,

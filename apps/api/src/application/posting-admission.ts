@@ -1,3 +1,4 @@
+import * as DeltaDb from "../db/onboarding-deltas";
 import * as SupplierSettlementDb from "../db/purchases/supplier-settlements";
 import * as Subledgers from "@open-erp/contracts/subledgers";
 import { equalJson } from "@open-erp/domain/canonicalization";
@@ -35,6 +36,7 @@ export type PostingOwner = {
     | "asset_disposal"
     | "asset_impairment"
     | "historical_import"
+    | "onboarding_delta"
     | "commerce_fx"
     | "vat_reclassification"
     | "corporate_income_tax"
@@ -45,6 +47,35 @@ export type PostingOwner = {
     | "cash_credit";
   readonly id: string;
 };
+
+function admitDeltaReservation(
+  tx: Transaction,
+  scope: Scope,
+  changeId: string,
+  owner?: PostingOwner,
+) {
+  return Effect.gen(function* () {
+    const deltaReservations = yield* DeltaDb.readDeltaPostingReservation(
+      tx,
+      scope.bookId,
+      changeId,
+    );
+
+    if (deltaReservations.length > 0 || owner?.kind === "onboarding_delta") {
+      const reservation = deltaReservations[0];
+
+      if (owner?.kind !== "onboarding_delta") return yield* failure("ApprovalRequired");
+
+      if (
+        !reservation ||
+        deltaReservations.length !== 1 ||
+        reservation.id !== owner.id ||
+        reservation.posted
+      )
+        return yield* failure("StaleDependency");
+    }
+  });
+}
 
 export const admitPosting = Effect.fn("posting.admitOwnedSources")(function* (
   tx: Transaction,
@@ -59,6 +90,8 @@ export const admitPosting = Effect.fn("posting.admitOwnedSources")(function* (
 
   if (!eventId || !year || !date || !Array.isArray(action.evidenceRefs))
     return yield* failure("InvalidJournal");
+
+  yield* admitDeltaReservation(tx, scope, changeId, owner);
 
   // A close freezes cumulative BS balances, including earlier open years. The
   // owning transfer precedes its certificate in the same transaction; replay

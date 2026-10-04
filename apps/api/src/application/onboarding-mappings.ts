@@ -38,6 +38,7 @@ export const saveOnboardingMapping = Effect.fn("onboarding.mapping.save")(functi
     (tx, principal) =>
       Effect.gen(function* () {
         const input = yield* toJsonObject(command.input);
+
         const replayed = yield* replay(
           tx,
           command.scope,
@@ -49,11 +50,20 @@ export const saveOnboardingMapping = Effect.fn("onboarding.mapping.save")(functi
         );
 
         if (replayed.previous) return replayed.previous;
+
         const { preview, occurrence } = yield* mappingSource(
           tx,
           command.scope,
           command.input.previewId,
         );
+
+        const versions = yield* SourceDb.listPreviews(
+          tx,
+          command.scope.bookId,
+          preview.occurrenceId,
+        );
+
+        if (versions[0]?.body.id !== preview.id) return yield* failure("StaleDependency");
 
         if (preview.digest !== command.input.expectedPreviewDigest)
           return yield* failure("StaleDependency");
@@ -65,6 +75,7 @@ export const saveOnboardingMapping = Effect.fn("onboarding.mapping.save")(functi
           !preview.controls.some((control) => control.account === command.input.sourceAccount)
         )
           return yield* failure("InvalidJournal");
+
         const target = (yield* Ledger.readAccounts(tx, command.scope.bookId, [
           command.input.accountId,
         ]))[0];
@@ -72,6 +83,7 @@ export const saveOnboardingMapping = Effect.fn("onboarding.mapping.save")(functi
         if (!target) return yield* failure("AccountMissing");
 
         if (!target.active) return yield* failure("AccountInactive");
+
         const rows = yield* Db.readMappingHistory(
           tx,
           command.scope.bookId,
@@ -80,9 +92,11 @@ export const saveOnboardingMapping = Effect.fn("onboarding.mapping.save")(functi
         );
 
         if (rows.length > 1000) return yield* failure("UnsupportedProfile");
+
         const history = yield* Effect.forEach(rows, (row) =>
           decode(Mapping.OnboardingMapping, row.body),
         );
+
         const latest = history.find(
           (choice) => choice.sourceAccount === command.input.sourceAccount,
         );
@@ -141,6 +155,7 @@ export const getOnboardingMappings = Effect.fn("onboarding.mapping.get")(functio
   return yield* withAdmittedPrincipal({ token }, command.scope, { operatorOnly: false }, (tx) =>
     Effect.gen(function* () {
       const { preview, occurrence } = yield* mappingSource(tx, command.scope, command.previewId);
+
       const rows = yield* Db.readMappingHistory(
         tx,
         command.scope.bookId,
@@ -149,16 +164,18 @@ export const getOnboardingMappings = Effect.fn("onboarding.mapping.get")(functio
       );
 
       if (rows.length > 1000) return yield* failure("UnsupportedProfile");
+
       const history = yield* Effect.forEach(rows, (row) =>
         decode(Mapping.OnboardingMapping, row.body),
       );
+
       const seen = new Set<string>();
 
       const current = history.filter((choice) => {
         if (seen.has(choice.sourceAccount)) return false;
         seen.add(choice.sourceAccount);
 
-        return choice.remember || choice.previewId === preview.id;
+        return choice.previewId === preview.id && choice.previewDigest === preview.digest;
       });
 
       const proposedDefaults = yield* Db.rememberedMappingDefaults(

@@ -1,10 +1,12 @@
+import { qualifyPayrollHandoff } from "./onboarding-payroll-handoff";
+import { qualifyOriginalIndex } from "./onboarding-originals";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as A from "@open-erp/contracts/accounting";
 import * as O from "@open-erp/contracts/onboarding";
 import { readSourceBytesInTransaction } from "./source-retention";
 import { failure } from "./failures";
-import { decode, type Scope } from "./commerce/support";
+import { decode, toJsonObject, type Scope } from "./commerce/support";
 import { isoNow, newId } from "./posting";
 import * as Db from "../db/onboarding-lifecycle";
 import type { Transaction } from "../db/transaction";
@@ -31,6 +33,12 @@ export const qualifyControlInTransaction = Effect.fn("onboarding.qualifyControl"
 
   if (/^openerp(?:[_-]|$)/i.test(original.occurrence.sourceSystem))
     return yield* failure("InvalidJournal");
+
+  if (input.kind === "historical_payroll_handoff")
+    return yield* qualifyPayrollHandoff(tx, scope, actorId, input, original);
+
+  if (input.kind === "historical_originals")
+    return yield* qualifyOriginalIndex(tx, scope, actorId, input, original);
 
   const text = yield* Effect.try({
     try: () => new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(original.bytes),
@@ -112,3 +120,45 @@ export const qualifyControlInTransaction = Effect.fn("onboarding.qualifyControl"
     qualifiedAt: yield* isoNow(tx),
   });
 });
+
+export const qualifyAttachedControlInTransaction = Effect.fn("onboarding.qualifyAttachedControl")(
+  function* (tx: Transaction, scope: Scope, actorId: string, occurrenceId: string) {
+    const original = yield* readSourceBytesInTransaction(tx, scope, occurrenceId);
+
+    if (original.occurrence.mediaType !== "text/csv") return;
+
+    const text = yield* Effect.try({
+      try: () => new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(original.bytes),
+      catch: () => failure("UnsupportedProfile"),
+    }).pipe(Effect.catch(() => Effect.succeed("")));
+
+    const header = text.replace(/\r\n/g, "\n").split("\n")[0];
+    let kind: typeof O.OnboardingControlKind.Type;
+
+    if (header === "as_of,currency,source_identity,original_occurrence_id")
+      kind = "historical_originals";
+    else if (header === "source_system,history_starts_on,retained_through,currency")
+      kind = "historical_payroll_handoff";
+    else if (header === "kind,as_of,currency,source_identity,account_code,amount_minor") {
+      kind = yield* Schema.decodeUnknownEffect(O.OnboardingControlKind)(
+        text.split("\n")[1]?.split(",")[0],
+      ).pipe(Effect.mapError(() => failure("InvalidJournal")));
+    } else return;
+    const existing = yield* Db.readRecords(tx, "controls", scope.bookId);
+
+    if (existing.some((row) => row.body.occurrenceId === occurrenceId && row.body.kind === kind))
+      return;
+
+    const control = yield* qualifyControlInTransaction(tx, scope, actorId, {
+      occurrenceId,
+      kind,
+      provenance: `${original.occurrence.filename}, ${original.occurrence.sourceSystem}`,
+    });
+
+    yield* Db.insertRecord(tx, "controls", {
+      bookId: scope.bookId,
+      id: control.id,
+      body: yield* toJsonObject(control),
+    });
+  },
+);

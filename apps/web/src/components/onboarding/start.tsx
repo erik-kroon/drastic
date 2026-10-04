@@ -37,12 +37,15 @@ export function OnboardingStart({
   const { book, locale } = useBookWorkspace();
   const sv = locale === "sv";
   const title = sv ? "Hur vill du börja?" : "How would you like to start?";
+
   const [selected, setSelected] = useState<typeof Onboarding.OnboardingPath.Type>(
     saved?.path ?? "existing_company",
   );
+
   const keys = useRef(new Map<string, string>());
   const cache = useQueryClient();
   const path = `${bookPath(book)}/onboarding`;
+
   const mutation = useMutation({
     mutationFn: (input: typeof Onboarding.StartOnboarding.Type) =>
       readAccounting(
@@ -55,6 +58,7 @@ export function OnboardingStart({
       onContinue();
     },
   });
+
   const uncertain = isUncertainWriteError(mutation.error);
   const disabled = book.role !== "operator" || mutation.isPending;
 
@@ -63,11 +67,15 @@ export function OnboardingStart({
       focused
       onSubmit={(event) => {
         event.preventDefault();
+
         if (disabled) return;
+
         if (saved) {
           onContinue();
+
           return;
         }
+
         mutation.mutate(uncertain && mutation.variables ? mutation.variables : { path: selected });
       }}
     >

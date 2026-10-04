@@ -4,8 +4,11 @@ import { bookPath } from "@/lib/accounting-api";
 import { useOnboardingCommand } from "./data";
 
 export type Lifecycle = typeof Onboarding.OnboardingLifecycle.Type;
+
 export type OnboardingCase = typeof Onboarding.OnboardingCase.Type;
+
 export type Workspace = typeof Onboarding.OnboardingWorkspace.Type;
+
 export type Snapshot = typeof Onboarding.OnboardingSnapshot.Type;
 
 export function currentSnapshot(
@@ -47,11 +50,36 @@ export function snapshotInput(
   lifecycle: Lifecycle,
   purpose: typeof Onboarding.OnboardingPurpose.Type,
 ): typeof Onboarding.CaptureOnboardingSnapshot.Type {
+  const dates = workspace.case.configuration.dates;
+
+  const historicalBoundary = dates.candidateLiveOn
+    ? new Date(Date.parse(`${dates.candidateLiveOn}T00:00:00Z`) - 86_400_000)
+        .toISOString()
+        .slice(0, 10)
+    : null;
+
+  const asOf = {
+    opening: dates.openingOn,
+    book_zero: dates.acceptanceEndsOn,
+    final_delta: historicalBoundary,
+    activation: historicalBoundary,
+    first_live: dates.provingPeriodEndsOn,
+  }[purpose];
+
+  const selected = new Map<typeof Onboarding.OnboardingControlKind.Type, string>();
+
+  for (const control of lifecycle.controls.toSorted((left, right) =>
+    right.qualifiedAt.localeCompare(left.qualifiedAt),
+  )) {
+    if (control.asOf === asOf && !selected.has(control.kind))
+      selected.set(control.kind, control.id);
+  }
+
   return {
     purpose,
-    controlIds: lifecycle.controls.map((item) => item.id),
+    controlIds: [...selected.values()],
     historicalRunIds: workspace.imports.flatMap((item) =>
-      item.financialState === "posted" && item.financialRunId ? [item.financialRunId] : [],
+      item.financialRunId ? [item.financialRunId] : [],
     ),
     closingCertificateId: null,
   };
@@ -59,6 +87,7 @@ export function snapshotInput(
 
 export function useSnapshotCapture(onSuccess?: (snapshot: Snapshot) => void) {
   const { book } = useBookWorkspace();
+
   return useOnboardingCommand(
     `${bookPath(book)}/onboarding/snapshots`,
     Onboarding.CaptureOnboardingSnapshot,
@@ -69,6 +98,7 @@ export function useSnapshotCapture(onSuccess?: (snapshot: Snapshot) => void) {
 
 export function useSnapshotDecision(onSuccess?: () => void) {
   const { book } = useBookWorkspace();
+
   return useOnboardingCommand(
     `${bookPath(book)}/onboarding/decisions`,
     Onboarding.DecideOnboardingSnapshot,

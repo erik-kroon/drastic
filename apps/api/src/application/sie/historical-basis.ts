@@ -27,7 +27,7 @@ import {
 
 type Selection = typeof Historical.SelectBasis.Type;
 
-const select = Effect.fn("historical.selectBasisInTransaction")(function* (
+export const selectBasisInTransaction = Effect.fn("historical.selectBasisInTransaction")(function* (
   tx: Transaction,
   principal: Principal,
   scope: Scope,
@@ -141,7 +141,7 @@ export const selectBasis = Effect.fn("historical.selectBasis")(function* (
       );
 
       if (request.previous) return request.previous;
-      const result = yield* select(tx, principal, command.scope, command.input);
+      const result = yield* selectBasisInTransaction(tx, principal, command.scope, command.input);
       yield* saveCommand(
         tx,
         command.scope,
@@ -269,7 +269,7 @@ export const prepareOpening = Effect.fn("historical.prepareOpening")(function* (
       if (request.previous) return request.previous;
       const proposal = yield* openingProposal(tx, principal, command);
 
-      const basis = yield* select(tx, principal, command.scope, {
+      const basis = yield* selectBasisInTransaction(tx, principal, command.scope, {
         fiscalYearId: command.input.fiscalYearId,
         cutoverOn: command.input.cutoverOn,
         sourcePlanId: command.input.sourcePlanId,

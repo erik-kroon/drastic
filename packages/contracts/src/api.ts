@@ -93,6 +93,7 @@ import { FirmApi } from "./firms";
 import { WorkspaceApi } from "./workspace";
 import { describeAuthentication } from "./api-authentication";
 import { OnboardingApi } from "./onboarding";
+import { OnboardingDeltasApi } from "./onboarding-deltas";
 import { OnboardingMappingsApi } from "./onboarding-mappings";
 
 export { AccountingErrorStatus } from "./accounting-errors";
@@ -195,6 +196,7 @@ export class Api extends HttpApi.make("open-erp")
     CompanySetupApi,
     OnboardingApi,
     OnboardingMappingsApi,
+    OnboardingDeltasApi,
     CompanyProfileApi,
     EvaluationsApi,
 

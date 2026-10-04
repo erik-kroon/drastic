@@ -37,6 +37,20 @@ const styles = stylex.create({
     borderRadius: tokens.radiusSurface,
     boxShadow: tokens.shadowNone,
   },
+  setupDecision: {
+    insetBlockStart: tokens.setupDecisionDialogTop,
+    borderWidth: 0,
+    borderRadius: tokens.setupDecisionDialogRadius,
+    paddingBlockStart: tokens.setupDecisionDialogPaddingTop,
+    paddingBlockEnd: tokens.space5,
+    paddingInline: tokens.space6,
+  },
+  setupDecisionBackdrop: { backgroundColor: tokens.setupDecisionBackdrop },
+  setupDecisionTitle: {
+    fontSize: tokens.fontSizeBase,
+    fontWeight: tokens.fontWeightSemibold,
+    lineHeight: tokens.lineHeight22Px,
+  },
   setupHeader: { marginBlockEnd: 0 },
   register: {
     width: "min(520px, calc(100vw - 48px))",
@@ -124,7 +138,7 @@ export function FormDialog({
   children,
   size = "wide",
 }: {
-  size?: "compact" | "register" | "invoice" | "wide" | "fullscreen" | "setup";
+  size?: "compact" | "register" | "invoice" | "wide" | "fullscreen" | "setup" | "setupDecision";
   title: string;
   closeLabel: string;
   onClose: () => void;
@@ -132,6 +146,8 @@ export function FormDialog({
   finalFocus?: Dialog.Popup.Props["finalFocus"];
   children: ReactNode;
 }) {
+  const isSetup = size === "setup" || size === "setupDecision";
+
   return (
     <Dialog.Root
       open
@@ -148,13 +164,19 @@ export function FormDialog({
       }}
     >
       <Dialog.Portal>
-        <Dialog.Backdrop {...stylex.props(styles.backdrop)} />
+        <Dialog.Backdrop
+          {...stylex.props(
+            styles.backdrop,
+            size === "setupDecision" && styles.setupDecisionBackdrop,
+          )}
+        />
         <Dialog.Popup
           finalFocus={finalFocus}
           {...stylex.props(
             styles.popup,
             size === "compact" && styles.compact,
-            size === "setup" && styles.setup,
+            isSetup && styles.setup,
+            size === "setupDecision" && styles.setupDecision,
             size === "register" && styles.register,
             size === "invoice" && styles.invoice,
             size === "fullscreen" && styles.fullscreen,
@@ -165,7 +187,7 @@ export function FormDialog({
               styles.header,
               size === "fullscreen" && styles.fullscreenHeader,
               size === "register" && styles.registerHeader,
-              size === "setup" && styles.setupHeader,
+              isSetup && styles.setupHeader,
             )}
           >
             <Dialog.Title
@@ -173,12 +195,13 @@ export function FormDialog({
                 styles.title,
                 size === "fullscreen" && styles.fullscreenTitle,
                 size === "register" && styles.registerTitle,
-                size === "setup" && styles.registerTitle,
+                isSetup && styles.registerTitle,
+                size === "setupDecision" && styles.setupDecisionTitle,
               )}
             >
               {title}
             </Dialog.Title>
-            {size !== "setup" ? (
+            {!isSetup ? (
               <Dialog.Close aria-label={closeLabel} {...stylex.props(styles.close)}>
                 <X size={18} aria-hidden="true" />
               </Dialog.Close>
