@@ -4,7 +4,7 @@ import * as Runs from "@open-erp/contracts/payroll-runs";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
-import { DataTable } from "@open-erp/ui/components/data-table";
+import { PayrollPayslipCard } from "@open-erp/ui/components/payroll-review";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { Text } from "@open-erp/ui/components/typography";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -40,9 +40,9 @@ export function PayrollPayslips(props: {
       ))}
       {selected ? (
         <FormDialog
-          title={sv ? "Lönespecifikation" : "Payslip"}
+          title={props.book.name}
           closeLabel={sv ? "Stäng" : "Close"}
-          size="register"
+          size="fullscreen"
           finalFocus={returnFocus}
           onClose={() => setSelected(null)}
           onEscape={() => setSelected(null)}
@@ -127,65 +127,58 @@ function PrivatePayslip(props: {
   const { document, artifact } = saved.data;
   const amount = (value: string) => formatMinorAmount(value, document.currencyScale, props.locale);
 
+  const month = new Intl.DateTimeFormat(props.locale, {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${document.earningsPeriod.startsOn}T12:00:00Z`));
+
+  const paymentDate = new Intl.DateTimeFormat(props.locale, {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  }).format(new Date(`${document.expectedPaymentOn}T12:00:00Z`));
+
   return (
-    <Box display="grid" gap="md">
-      <Text>
-        {document.personRef}, {sv ? "planerad utbetalning" : "planned payment"}{" "}
-        {document.expectedPaymentOn}
-      </Text>
-      <DataTable
-        title={sv ? "Lönespecifikation" : "Payslip"}
-        minWidth="fit"
-        narrow="stack"
-        columns={[
-          { id: "description", label: sv ? "Belopp" : "Amount", width: "fill" },
-          { id: "value", label: document.currency, numeric: true },
-        ]}
-        rows={[
-          { id: "gross", cells: [sv ? "Bruttolön" : "Gross pay", amount(document.grossMinor)] },
-          {
-            id: "reimbursement",
-            cells: [
-              sv ? "Kontant ersättning" : "Cash reimbursement",
-              amount(document.cashReimbursementMinor),
-            ],
-          },
-          {
-            id: "tax",
-            cells: [
-              sv ? "Preliminärskatt" : "Withholding",
-              amount((-BigInt(document.withholdingMinor)).toString()),
-            ],
-          },
-          {
-            id: "deduction",
-            cells: [
-              sv ? "Nettoavdrag" : "Net deductions",
-              amount((-BigInt(document.netDeductionMinor)).toString()),
-            ],
-          },
-          {
-            id: "payable",
-            cells: [
-              <strong key="label">{sv ? "Att betala" : "Payable"}</strong>,
-              <strong key="amount">{amount(document.payableMinor)}</strong>,
-            ],
-          },
-        ]}
-      />
-      <Text tone="muted">
-        {sv
-          ? "Bokförd, inte utbetald. Originalet är sparat för den här körningen."
-          : "Posted, not paid. The original is saved for this run."}
-      </Text>
+    <PayrollPayslipCard
+      title={`${sv ? "Lönespecifikation" : "Payslip"} ${month}`}
+      subtitle={`${document.personRef}, ${sv ? "planerad utbetalning" : "planned payment"} ${paymentDate}`}
+      rows={[
+        { id: "gross", label: sv ? "Bruttolön" : "Gross pay", amount: amount(document.grossMinor) },
+        {
+          id: "reimbursement",
+          label: sv ? "Kontant ersättning" : "Cash reimbursement",
+          amount: amount(document.cashReimbursementMinor),
+        },
+        {
+          id: "tax",
+          label: sv ? "Preliminärskatt" : "Withholding",
+          amount: amount((-BigInt(document.withholdingMinor)).toString()),
+        },
+        {
+          id: "deduction",
+          label: sv ? "Nettoavdrag" : "Net deductions",
+          amount: amount((-BigInt(document.netDeductionMinor)).toString()),
+        },
+        {
+          id: "payable",
+          label: sv ? "Att betala" : "Payable",
+          amount: amount(document.payableMinor),
+          total: true,
+        },
+      ]}
+      note={
+        sv
+          ? `Bokförd, inte utbetald. Originalet är sparat för den här körningen.${artifact ? "" : " PDF är inte sparad ännu."}`
+          : `Posted, not paid. The original is saved for this run.${artifact ? "" : " The PDF is not saved yet."}`
+      }
+    >
       {artifact ? (
         <Button variant="outline" disabled={download.isPending} onClick={() => download.mutate()}>
           {sv ? "Ladda ned PDF" : "Download PDF"}
         </Button>
-      ) : (
-        <Text tone="muted">{sv ? "PDF är inte sparad ännu." : "The PDF is not saved yet."}</Text>
-      )}
+      ) : null}
       <AccountingStatus locale={props.locale} pending={download.isPending} error={download.error} />
-    </Box>
+    </PayrollPayslipCard>
   );
 }

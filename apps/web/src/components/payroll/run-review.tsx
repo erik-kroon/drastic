@@ -3,9 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Runs from "@open-erp/contracts/payroll-runs";
 import type * as Accounting from "@open-erp/contracts/accounting";
 import { Box } from "@open-erp/ui/components/box";
-import { Text } from "@open-erp/ui/components/typography";
 import { DataTable } from "@open-erp/ui/components/data-table";
-import { RegisterWorkspace } from "@open-erp/ui/components/register-workspace";
+import { PayrollReviewLayout, PayrollInputStatus } from "@open-erp/ui/components/payroll-review";
 import { Button } from "@open-erp/ui/components/button";
 import { Link } from "@open-erp/ui/components/link";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -22,7 +21,6 @@ export function PayrollRunReview(props: {
 }) {
   const client = useQueryClient();
   const [keys] = useState(() => new Map<string, string>());
-  const [approval, setApproval] = useState<typeof Runs.PayrollRunApproval.Type | null>(null);
   const root = `${bookPath(props.book)}/payroll/runs/${encodeURIComponent(props.runId)}`;
   const queryKey = [...bookKey(props.book), "payroll", "runs", props.runId];
 
@@ -58,11 +56,9 @@ export function PayrollRunReview(props: {
     },
     onSuccess: async (saved) => {
       if (saved.runId !== props.runId) throw new Error("Payroll approval scope mismatch");
-      setApproval(saved);
       await refresh();
     },
     onError: async () => {
-      setApproval(null);
       await refresh();
     },
   });
@@ -73,7 +69,7 @@ export function PayrollRunReview(props: {
       approved,
     }: {
       run: typeof Runs.PayrollRun.Type;
-      approved: typeof Runs.PayrollRunApproval.Type;
+      approved: typeof Runs.PayrollRunActiveApproval.Type;
     }) => {
       if (approved.runId !== run.id || approved.runDigest !== run.digest)
         throw new Error("Payroll approval basis mismatch");
@@ -97,8 +93,7 @@ export function PayrollRunReview(props: {
     return <AccountingStatus locale={props.locale} pending={view.isPending} error={view.error} />;
   const { run } = view.data;
 
-  const approved =
-    approval?.runId === run.id && approval.runDigest === run.digest ? approval : null;
+  const approved = view.data.approval;
 
   return (
     <PayrollRunFrame
@@ -152,8 +147,36 @@ function PayrollRunFrame(props: {
       };
 
   return (
-    <RegisterWorkspace
-      title={`${sv ? "Lönekörning" : "Payroll run"} ${calculation.earningsPeriod.startsOn} — ${calculation.earningsPeriod.endsOn}`}
+    <PayrollReviewLayout
+      title={sv ? "Skatt och löner" : "Tax and payroll"}
+      breadcrumb={
+        <Link href={`${workspacePath(props.book)}/tax?view=payroll`}>
+          / {sv ? "Löner" : "Payroll"} /
+        </Link>
+      }
+      stateLabel={
+        <>
+          {new Intl.DateTimeFormat(props.locale, {
+            month: "long",
+            year: "numeric",
+            timeZone: "UTC",
+          })
+            .format(new Date(`${calculation.earningsPeriod.startsOn}T00:00:00Z`))
+            .replace(/^./u, (letter) => letter.toLocaleUpperCase(props.locale))}
+          ,{" "}
+          {execution
+            ? sv
+              ? "bokförd"
+              : "posted"
+            : props.approved
+              ? sv
+                ? "godkänd"
+                : "approved"
+              : sv
+                ? "förberedd"
+                : "prepared"}
+        </>
+      }
       action={
         !execution ? (
           <Button
@@ -164,11 +187,14 @@ function PayrollRunFrame(props: {
           </Button>
         ) : undefined
       }
+      notice={notes[state]}
+      amounts={<PayrollAmounts run={run} locale={props.locale} />}
+      footnote={
+        sv
+          ? "Ändras underlaget måste körningen förberedas och godkännas igen. Bokföring skapar lönebesked och skuld, inte en betalning."
+          : "Changed inputs require a new preparation and approval. Posting creates payslips and liabilities, not a payment."
+      }
     >
-      <Box paddingBlock="sm" paddingInline="lg" backgroundColor="muted">
-        <Text tone="muted">{notes[state]}</Text>
-      </Box>
-      <PayrollAmounts run={run} locale={props.locale} />
       <Box display="grid" gap="sm" padding="lg">
         <AccountingStatus locale={props.locale} pending={props.pending} error={props.error} write />
         {execution ? (
@@ -178,16 +204,11 @@ function PayrollRunFrame(props: {
             {sv ? "Visa verifikat" : "View voucher"} {execution.postingReceipt.voucherNumber}
           </Link>
         ) : null}
-        <Text tone="muted">
-          {sv
-            ? "Ändras underlaget måste körningen förberedas och godkännas igen. Bokföring skapar lönebesked och skuld, inte en betalning."
-            : "Changed inputs require a new preparation and approval. Posting creates payslips and liabilities, not a payment."}
-        </Text>
         {execution ? (
           <PayrollPayslips book={props.book} locale={props.locale} documents={execution.payslips} />
         ) : null}
       </Box>
-    </RegisterWorkspace>
+    </PayrollReviewLayout>
   );
 }
 
@@ -215,7 +236,11 @@ function PayrollAmounts({ run, locale }: { run: typeof Runs.PayrollRun.Type; loc
 
     return {
       id: row.calculationId,
-      cells: [employee.personRef, ...fields.map((field) => amount(row[field]))],
+      cells: [
+        employee.personRef,
+        ...fields.map((field) => amount(row[field])),
+        <PayrollInputStatus key="inputs">{sv ? "Komplett" : "Complete"}</PayrollInputStatus>,
+      ],
     };
   });
 
@@ -231,8 +256,9 @@ function PayrollAmounts({ run, locale }: { run: typeof Runs.PayrollRun.Type; loc
     <DataTable
       title={sv ? "Lönebelopp" : "Payroll amounts"}
       narrow="scroll"
+      presentation="register"
       columns={[
-        { id: "employee", label: sv ? "Anställd" : "Employee", width: 180 },
+        { id: "employee", label: sv ? "Anställd" : "Employee", width: 200 },
         { id: "gross", label: sv ? "Brutto" : "Gross", numeric: true, width: 120 },
         { id: "tax", label: sv ? "Skatt" : "Tax", numeric: true, width: 120 },
         { id: "net", label: sv ? "Netto" : "Net", numeric: true, width: 120 },
@@ -242,12 +268,13 @@ function PayrollAmounts({ run, locale }: { run: typeof Runs.PayrollRun.Type; loc
           numeric: true,
           width: 140,
         },
+        { id: "inputs", label: sv ? "Indata" : "Inputs", width: "fill", inset: true },
       ]}
       rows={[
         ...rows,
         {
           id: "total",
-          cells: [<strong key="total">{sv ? "Summa" : "Total"}</strong>, ...totals],
+          cells: [<strong key="total">{sv ? "Summa" : "Total"}</strong>, ...totals, null],
         },
       ]}
     />
