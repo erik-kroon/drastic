@@ -100,7 +100,9 @@
     "./supplier-settlements": "./src/supplier-settlements.ts",
     "./invoice-templates": "./src/invoice-templates.ts",
     "./cash-forecast": "./src/cash-forecast.ts",
-    "./onboarding": "./src/onboarding.ts"
+    "./onboarding": "./src/onboarding.ts",
+    "./onboarding-mappings": "./src/onboarding-mappings.ts",
+    "./onboarding-deltas": "./src/onboarding-deltas.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

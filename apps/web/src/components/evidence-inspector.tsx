@@ -54,8 +54,8 @@ export function EvidenceInspector(props: {
       {!props.expanded ? (
         <Box>
           <Button
-            size="xl"
-            variant="outline"
+            size={props.compact ? "sm" : "xl"}
+            variant={props.compact ? "ghost" : "outline"}
             aria-expanded={open}
             aria-controls={panelId}
             onClick={() => setOpen(!open)}

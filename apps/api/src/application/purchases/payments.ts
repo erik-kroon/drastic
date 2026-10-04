@@ -1,3 +1,4 @@
+import { requireOnboardingResponsibility } from "../onboarding-policy";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Payments from "@open-erp/contracts/supplier-payment-batches";
 import * as Effect from "effect/Effect";
@@ -773,6 +774,12 @@ export const exportSupplierPaymentBatch = Effect.fn("purchases.payments.exportBa
       );
 
       if (request.previous) return request.previous;
+      yield* requireOnboardingResponsibility(
+        tx,
+        command.scope,
+        principal.actorId,
+        "paymentApproverId",
+      );
       const row = (yield* PaymentDb.readPreview(tx, scope.bookId, previewId))[0];
 
       if (!row) return yield* failure("NotFound");

@@ -72,6 +72,8 @@ type SessionProps = CommerceProps & {
 };
 
 export function InvoiceDraftSession(props: SessionProps) {
+  if (props.initialCustomer) checkScope(props.book, props.initialCustomer.scope);
+
   const [downloadError, setDownloadError] = useState(false);
   const actor = useSavedPostingRequests(props.book);
   const actorId = actor.data?.actorId;
@@ -211,7 +213,10 @@ function canonical(text: string | null) {
 
 class ConcurrentInvoiceEdit extends Error {}
 
-function initialState(baseline?: Draft, customer?: typeof Commerce.CounterpartyRevision.Type): DraftEditingState {
+function initialState(
+  baseline?: Draft,
+  customer?: typeof Commerce.CounterpartyRevision.Type,
+): DraftEditingState {
   const state: DraftEditingState = {
     purpose: baseline ? (baseline.purpose ?? "source_transcription") : "commercial",
     baseline: baseline ?? null,
@@ -247,7 +252,11 @@ function EditingSession(
   props: SessionProps & { identity: string; actorId: string; restored: DraftEditingState | null },
 ) {
   const sv = props.locale === "sv";
-  const [state, setState] = useState(() => props.restored ?? initialState(props.baseline, props.initialCustomer));
+
+  const [state, setState] = useState(
+    () => props.restored ?? initialState(props.baseline, props.initialCustomer),
+  );
+
   const current = useRef(state);
   const leaving = useRef(false);
   const retained = useRef(props.restored ? JSON.stringify(props.restored) : null);

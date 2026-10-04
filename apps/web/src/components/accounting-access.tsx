@@ -13,6 +13,23 @@ import { Books, booksKey, readAccounting } from "@/lib/accounting-api";
 import { authClient } from "@/lib/auth-client";
 import { accountingCopy } from "@/lib/accounting-copy";
 import type { Locale } from "@/paraglide/runtime";
+import * as stylex from "@stylexjs/stylex";
+import { tokens } from "@open-erp/ui/theme/tokens.stylex";
+
+const styles = stylex.create({
+  compactLogout: {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: 0,
+    borderWidth: 0,
+    backgroundColor: tokens.transparent,
+    color: tokens.captionForeground,
+    fontSize: tokens.fontSizeControl,
+    lineHeight: tokens.lineHeight16Px,
+    cursor: "pointer",
+    ":focus-visible": { outline: tokens.setupControlFocus, outlineOffset: 2 },
+  },
+});
 
 export function AccountingAccess({
   locale,
@@ -227,7 +244,7 @@ function PasswordLogin({ locale }: { locale: Locale }) {
   );
 }
 
-export function SignOut({ locale }: { locale: Locale }) {
+export function SignOut({ locale, compact = false }: { locale: Locale; compact?: boolean }) {
   const client = useQueryClient();
   const copy = accountingCopy(locale);
 
@@ -261,8 +278,9 @@ export function SignOut({ locale }: { locale: Locale }) {
     <Box display="grid" gap="sm">
       <Button
         static
-        size="xl"
-        variant="ghost"
+        size={compact ? "sm" : "xl"}
+        variant={compact ? "unstyled" : "ghost"}
+        styleX={compact && styles.compactLogout}
         disabled={logout.isPending}
         onClick={() => logout.mutate()}
       >

@@ -16,6 +16,7 @@ import {
 } from "../../../../packages/contracts/src/operations";
 import { artifactPath, fingerprint, refuse } from "./safety";
 import { queueTables, readQueueSequences } from "./queue";
+import { requireFencedBackupBoundary } from "./snapshot";
 
 export const workInventoryPath = "durable-work-v4.json";
 
@@ -372,6 +373,8 @@ export async function captureWorkInventory(
       WHERE c.book_id=r.book_id AND c.key=r.command_key)) AS body
     FROM openerp.posting_saved_requests r LEFT JOIN openerp.posting_request_outcomes o
       ON o.book_id=r.book_id AND o.key=r.key ORDER BY r.book_id COLLATE "C",r.key COLLATE "C"`);
+
+  await requireFencedBackupBoundary(client);
 
   const books = await client.query<{ body: unknown }>(`SELECT jsonb_build_object(
     'id',id,'authority',authority,'writerEpoch',writer_epoch::text,'committedSequence',committed_sequence::text) AS body

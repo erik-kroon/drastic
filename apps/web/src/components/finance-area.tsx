@@ -329,12 +329,15 @@ function OwnedFinanceArea(props: {
         <ClosingWorkspace
           title={copy.closing}
           navigation={
-            <FinanceNavigation
-              area={area}
-              selected={selected}
-              base={base}
-              locale={locale}
-              work={work}
+            <RegisterNavigation
+              label={copy.closing}
+              options={[
+                {
+                  label: locale === "sv" ? "Perioder" : "Periods",
+                  href: workReturnHref(base, "closing", work),
+                  active: true,
+                },
+              ]}
             />
           }
           recordId={record}

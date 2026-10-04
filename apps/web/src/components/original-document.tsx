@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
+import { PdfThumbnail } from "@open-erp/ui/components/pdf-thumbnail";
 import { DocumentPreview } from "@open-erp/ui/components/document-preview";
 import { PageAction, PageCaption } from "@open-erp/ui/components/accounting-page";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -12,7 +13,7 @@ import { useWorkReturn, workReturnHref } from "@/lib/work-return";
 import { workspacePath } from "@/lib/book-context";
 
 export function OriginalDocument(
-  props: CommerceProps & { id: string; sha256?: string; compact?: boolean },
+  props: CommerceProps & { id: string; sha256?: string; compact?: boolean; archive?: boolean },
 ) {
   const work = useWorkReturn();
   const query = useQuery(sourceDocumentOptions(props.book, props.id));
@@ -49,12 +50,22 @@ export function OriginalDocument(
       ) : null}
       {source && !query.isError && !mismatch ? (
         <>
-          <DocumentPreview
-            compact={props.compact}
-            content={source.contentBase64}
-            mediaType={source.occurrence.mediaType}
-            filename={source.occurrence.filename}
-          />
+          {props.archive && source.occurrence.mediaType === "application/pdf" ? (
+            <PdfThumbnail
+              key={source.occurrence.id}
+              content={source.contentBase64}
+              filename={source.occurrence.filename}
+              locale={props.locale}
+            />
+          ) : (
+            <DocumentPreview
+              compact={props.compact}
+              archive={props.archive}
+              content={source.contentBase64}
+              mediaType={source.occurrence.mediaType}
+              filename={source.occurrence.filename}
+            />
+          )}
           {!props.compact ? (
             <Box>
               <Button
@@ -74,7 +85,7 @@ export function OriginalDocument(
               </Button>
             </Box>
           ) : null}
-          <PageCaption>{source.occurrence.filename}</PageCaption>
+          {!props.archive ? <PageCaption>{source.occurrence.filename}</PageCaption> : null}
           {!props.compact ? (
             <PageAction
               quiet

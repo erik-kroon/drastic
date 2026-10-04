@@ -1,3 +1,6 @@
+import { requireOnboardingResponsibility } from "./onboarding-policy";
+import * as OnboardingCaseDb from "../db/onboarding";
+import * as OnboardingLifecycleDb from "../db/onboarding-lifecycle";
 import * as SupplierSettlementDb from "../db/purchases/supplier-settlements";
 import { equalJson } from "@open-erp/domain/canonicalization";
 import { swedishBusinessDate } from "@open-erp/domain/values";
@@ -977,6 +980,13 @@ export const approveChangeInTransaction = Effect.fn("posting.approveChangeInTran
       );
 
       if (request.previous) return request.previous;
+
+      yield* requireOnboardingResponsibility(
+        transaction,
+        command.scope,
+        principal.actorId,
+        "bookkeepingApproverId",
+      );
       const plan = yield* readPlan(transaction, command.scope, command.changeSetId);
 
       if (command.input.planDigest !== plan.planDigest || command.input.version !== plan.version) {
@@ -1165,6 +1175,15 @@ export const executeChangeInTransaction = Effect.fn("posting.execute")(function*
 
     if (request.previous) return request.previous;
 
+    const onboardingCases = yield* OnboardingCaseDb.readCurrent(transaction, command.scope.bookId);
+
+    if (
+      onboardingCases.length > 0 &&
+      command.owner?.kind !== "historical_import" &&
+      (yield* OnboardingLifecycleDb.readRecords(transaction, "activations", command.scope.bookId))
+        .length === 0
+    )
+      return yield* failure("ApprovalRequired");
     yield* assertPeriodWorkFence(transaction, command.scope.bookId, command.changeSetId);
 
     const plan = yield* lockPlan(transaction, command.scope, command.changeSetId);
@@ -1214,6 +1233,13 @@ export const executeChangeInTransaction = Effect.fn("posting.execute")(function*
       command.scope,
       plan,
       command.input.approvalId,
+    );
+
+    yield* requireOnboardingResponsibility(
+      transaction,
+      command.scope,
+      approval.actorId,
+      "bookkeepingApproverId",
     );
 
     const counter = yield* Db.allocateSeriesCounter(

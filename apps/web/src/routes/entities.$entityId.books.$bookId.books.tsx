@@ -10,7 +10,6 @@ import {
 } from "@/lib/work-return";
 import { WorkReturnAction } from "@/components/work-return-action";
 import * as Schema from "effect/Schema";
-import { Plus } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Text } from "@open-erp/ui/components/typography";
 import { WorkspaceHeader } from "@open-erp/ui/components/workspace";
@@ -20,7 +19,8 @@ import { PageAction, PageContent } from "@open-erp/ui/components/accounting-page
 import { RegisterNavigation } from "@open-erp/ui/components/register-workspace";
 import { useBookWorkspace, workspacePath, reviewPath } from "@/lib/book-context";
 import { PostingDraft } from "@/components/posting-recovery/draft";
-import { PostedRecords, PostedRecord } from "@/components/posted-records";
+import { PostedRecord } from "@/components/posted-records";
+import { VoucherWorkspace } from "@/components/voucher-workspace";
 import { ChartOfAccounts } from "@/components/account-register";
 import { frontendCopy } from "@/lib/frontend-copy";
 import { accountingCopy } from "@/lib/accounting-copy";
@@ -69,50 +69,63 @@ function Books() {
     void navigate({ to: reviewPath(book, id), search: { ...work, returnTo: query.returnTo } });
   };
 
+  const navigation = (
+    <RegisterNavigation
+      label={copy.bookkeeping}
+      options={[
+        {
+          label: copy.vouchers,
+          href: workReturnHref(base, "vouchers", work),
+          active: view !== "accounts",
+        },
+        {
+          label: copy.chart,
+          href: workReturnHref(base, "accounts", work),
+          active: view === "accounts",
+        },
+        {
+          label: locale === "sv" ? "Periodiseringar" : "Deferrals",
+          href: `${workspacePath(book)}/reports?view=subledgers`,
+          active: false,
+        },
+        {
+          label: locale === "sv" ? "Tillgångar" : "Assets",
+          href: `${workspacePath(book)}/reports?view=subledgers`,
+          active: false,
+        },
+        {
+          label: locale === "sv" ? "Dimensioner" : "Dimensions",
+          href: `${workspacePath(book)}/settings?view=accounting`,
+          active: false,
+        },
+        {
+          label: locale === "sv" ? "Åtgärder" : "Actions",
+          href: `${workspacePath(book)}/history`,
+          active: false,
+        },
+      ]}
+    />
+  );
+
+  const action = (
+    <Box display="flex" flexWrap="wrap" alignItems="center" gap="md">
+      <WorkReturnAction work={work} />
+      <PageAction compact href={workReturnHref(base, "journal", work)}>
+        {copy.newEntry}
+      </PageAction>
+    </Box>
+  );
+
   return (
     <>
-      <WorkspaceHeader
-        title={copy.bookkeeping}
-        navigation={
-          <RegisterNavigation
-            label={copy.bookkeeping}
-            options={[
-              {
-                label: copy.vouchers,
-                href: workReturnHref(base, "vouchers", work),
-                active: view !== "accounts",
-              },
-              {
-                label: copy.chart,
-                href: workReturnHref(base, "accounts", work),
-                active: view === "accounts",
-              },
-              {
-                label: locale === "sv" ? "Periodiseringar och tillgångar" : "Deferrals and assets",
-                href: `${workspacePath(book)}/reports?view=subledgers`,
-                active: false,
-              },
-              {
-                label: locale === "sv" ? "Åtgärder" : "Actions",
-                href: `${workspacePath(book)}/history`,
-                active: false,
-              },
-            ]}
-          />
-        }
-        action={
-          <Box display="flex" flexWrap="wrap" alignItems="center" gap="md">
-            <WorkReturnAction work={work} />
-            <PageAction compact href={workReturnHref(base, "journal", work)}>
-              <Plus size={14} aria-hidden="true" />
-              {copy.newEntry}
-            </PageAction>
-          </Box>
-        }
-      />
+      {view === "accounts" ? (
+        <WorkspaceHeader title={copy.bookkeeping} navigation={navigation} action={action} />
+      ) : null}
       <PageContent>
         {view !== "accounts" ? (
-          <PostedRecords
+          <VoucherWorkspace
+            navigation={navigation}
+            action={action}
             book={book}
             locale={locale}
             setup={setup}

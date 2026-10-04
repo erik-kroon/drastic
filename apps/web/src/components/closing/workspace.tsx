@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import * as Closing from "@open-erp/contracts/closing";
-import { LockKeyhole } from "lucide-react";
 import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import {
@@ -8,11 +7,14 @@ import {
   RegisterGroup,
   RegisterRow,
   RegisterCheckRow,
+  RegisterDetailHeading,
+  RegisterNavigation,
 } from "@open-erp/ui/components/register-workspace";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Text } from "@open-erp/ui/components/typography";
-import { RecordHeading, RecordSection } from "@open-erp/ui/components/record-layout";
+import { ContactPreviewLayout } from "@open-erp/ui/components/contact-register";
+import { WorkReviewFooter, WorkReviewAction } from "@open-erp/ui/components/work-controls";
 import { PageAction, PageCaption, PageEmpty } from "@open-erp/ui/components/accounting-page";
 import { Disclosure } from "@open-erp/ui/components/workflow";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -70,11 +72,8 @@ export function ClosingWorkspace({
     return <PageEmpty title={labels.noAccountingPeriod} detail={labels.setUpAnAccountingPeriod} />;
 
   const detail = (
-    <Box display="grid" gap="lg">
-      <RecordHeading
-        title={`${period.startsOn} – ${period.endsOn}`}
-        subtitle={labels.seeWhatIsCompleteAnd}
-      />
+    <ContactPreviewLayout>
+      <RegisterDetailHeading title={`${period.startsOn} – ${period.endsOn}`} />
       <AccountingStatus locale={locale} pending={readiness.isPending} error={readiness.error} />
       {basis ? (
         <>
@@ -89,15 +88,7 @@ export function ClosingWorkspace({
             base={workspacePath(book)}
             onReviewScope={() => setReviewingScope(true)}
           />
-          <Box display="flex" gap="md" flexWrap="wrap">
-            <Button onClick={() => setReviewingScope(true)} disabled={book.role !== "operator"}>
-              {sv ? "Granska periodens områden" : "Review period scope"}
-            </Button>
-            <Button variant="outline" onClick={() => setPreparing(!preparing)}>
-              <LockKeyhole size={14} />
-              {preparing ? labels.closePeriodControls : labels.preparePeriodLock}
-            </Button>
-          </Box>
+
           {preparing ? (
             <FormDialog
               size="compact"
@@ -140,19 +131,60 @@ export function ClosingWorkspace({
           {proposal ? (
             <ClosingReview key={proposal} book={book} locale={locale} id={proposal} />
           ) : null}
-          <Disclosure title={labels.remainingYearEndRequirements}>
+          <Disclosure compact title={labels.remainingYearEndRequirements}>
             {basis.statutoryBlockers.map((blocker) => (
               <Text key={blocker}>{blocker}</Text>
             ))}
+            <PageCaption>{labels.aPeriodLockProtectsThe}</PageCaption>
           </Disclosure>
-          <PageCaption>{labels.aPeriodLockProtectsThe}</PageCaption>
+          <WorkReviewFooter>
+            <Box display="grid" gap="sm">
+              <WorkReviewAction
+                variant="outline"
+                disabled={!basis.technicalCloseAllowed || book.role !== "operator"}
+                onClick={() => setPreparing(true)}
+              >
+                {basis.locked
+                  ? sv
+                    ? "Öppna perioden igen"
+                    : "Reopen period"
+                  : sv
+                    ? "Lås perioden"
+                    : "Lock period"}
+              </WorkReviewAction>
+              <Disclosure compact title={sv ? "Granska låsvillkoren" : "Review lock conditions"}>
+                <Button variant="outline" onClick={() => setPreparing(true)}>
+                  {labels.preparePeriodLock}
+                </Button>
+              </Disclosure>
+            </Box>
+          </WorkReviewFooter>
         </>
       ) : null}
-    </Box>
+    </ContactPreviewLayout>
   );
 
   return (
-    <RegisterWorkspace title={title} tabs={navigation} detail={detail} detailSize="wide">
+    <RegisterWorkspace
+      title={title}
+      tabs={
+        navigation ?? (
+          <RegisterNavigation
+            label={title}
+            options={[
+              {
+                label: sv ? "Perioder" : "Periods",
+                href: `${workspacePath(book)}/closing`,
+                active: true,
+              },
+            ]}
+          />
+        )
+      }
+      detail={detail}
+      detailSize="wide"
+      headingSpacing="work"
+    >
       <RegisterGroup title={labels.period} count={setup.periods.length} />
       {[...setup.periods].reverse().map((item) => (
         <RegisterRow
@@ -221,13 +253,12 @@ function ReadinessChecklist({
   base: string;
   onReviewScope: () => void;
 }) {
-  const labels = locale === "sv" ? swedish : english;
   const pending = checks.filter((check) => !check.passed);
   const completed = checks.filter((check) => check.passed);
 
   return (
-    <RecordSection title={labels.readinessChecklist}>
-      <Box display="grid" gap="sm">
+    <Box display="grid" gap="none" marginBlockStart="md">
+      <Box display="grid" gap="none">
         {pending.map((check) => (
           <ReadinessCheck
             key={check.code}
@@ -239,6 +270,7 @@ function ReadinessChecklist({
         ))}
       </Box>
       <Disclosure
+        compact
         title={`${completed.length} ${locale === "sv" ? "kontroller klara" : "checks completed"}`}
       >
         <Box display="grid" gap="sm">
@@ -253,9 +285,9 @@ function ReadinessChecklist({
           ))}
         </Box>
       </Disclosure>
-      <Disclosure title={locale === "sv" ? "Kontrollernas detaljer" : "Check details"}>
+      <Disclosure compact title={locale === "sv" ? "Kontrollernas detaljer" : "Check details"}>
         <DataTable
-          title={labels.readinessChecklist}
+          title={locale === "sv" ? "Checklista" : "Readiness checklist"}
           columns={[
             { id: "check", label: locale === "sv" ? "Kontroll" : "Check" },
             { id: "detail", label: locale === "sv" ? "Underlag" : "Basis" },
@@ -269,7 +301,7 @@ function ReadinessChecklist({
           }))}
         />
       </Disclosure>
-    </RecordSection>
+    </Box>
   );
 }
 

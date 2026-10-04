@@ -29,6 +29,15 @@ const styles = stylex.create({
     "@media (max-width: 767px)": { width: "calc(100vw - 20px)", maxHeight: "95dvh", padding: 16 },
   },
   compact: { width: "min(560px, calc(100vw - 48px))" },
+  setup: {
+    width: tokens.setupDialogWidth,
+    insetBlockStart: tokens.setupDialogTop,
+    transform: "translateX(-50%)",
+    borderColor: tokens.input,
+    borderRadius: tokens.radiusSurface,
+    boxShadow: tokens.shadowNone,
+  },
+  setupHeader: { marginBlockEnd: 0 },
   register: {
     width: "min(520px, calc(100vw - 48px))",
     insetBlockStart: 90,
@@ -115,7 +124,7 @@ export function FormDialog({
   children,
   size = "wide",
 }: {
-  size?: "compact" | "register" | "invoice" | "wide" | "fullscreen";
+  size?: "compact" | "register" | "invoice" | "wide" | "fullscreen" | "setup";
   title: string;
   closeLabel: string;
   onClose: () => void;
@@ -145,6 +154,7 @@ export function FormDialog({
           {...stylex.props(
             styles.popup,
             size === "compact" && styles.compact,
+            size === "setup" && styles.setup,
             size === "register" && styles.register,
             size === "invoice" && styles.invoice,
             size === "fullscreen" && styles.fullscreen,
@@ -155,6 +165,7 @@ export function FormDialog({
               styles.header,
               size === "fullscreen" && styles.fullscreenHeader,
               size === "register" && styles.registerHeader,
+              size === "setup" && styles.setupHeader,
             )}
           >
             <Dialog.Title
@@ -162,13 +173,16 @@ export function FormDialog({
                 styles.title,
                 size === "fullscreen" && styles.fullscreenTitle,
                 size === "register" && styles.registerTitle,
+                size === "setup" && styles.registerTitle,
               )}
             >
               {title}
             </Dialog.Title>
-            <Dialog.Close aria-label={closeLabel} {...stylex.props(styles.close)}>
-              <X size={18} aria-hidden="true" />
-            </Dialog.Close>
+            {size !== "setup" ? (
+              <Dialog.Close aria-label={closeLabel} {...stylex.props(styles.close)}>
+                <X size={18} aria-hidden="true" />
+              </Dialog.Close>
+            ) : null}
           </div>
           {children}
         </Dialog.Popup>

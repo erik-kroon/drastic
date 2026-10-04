@@ -239,6 +239,7 @@ const styles = stylex.create({
   actions: { display: "grid", gap: 10, marginBlockStart: "auto", paddingBlockStart: tokens.space4 },
   lines: { marginBlockStart: 20 },
   reviewLines: { marginBlockStart: tokens.space2 },
+  unlabelledLines: { marginBlockStart: tokens.space3_5 },
   lineList: {
     borderBlockStartWidth: 1,
     borderBlockStartStyle: "solid",
@@ -336,24 +337,38 @@ export function RegisterDetailLines({
   title,
   lines,
   rowSize = "standard",
+  hideHeading = false,
 }: {
   title: string;
-  lines: readonly { id: string; description: string; amount: string }[];
+  lines: readonly { id: string; description: string; amount: string; href?: string }[];
   rowSize?: "standard" | "review";
+  hideHeading?: boolean;
 }) {
   return (
     <section
-      {...stylex.props(styles.lines, rowSize === "review" && styles.reviewLines)}
+      {...stylex.props(
+        styles.lines,
+        rowSize === "review" && styles.reviewLines,
+        hideHeading && styles.unlabelledLines,
+      )}
       aria-label={title}
     >
-      <h2 {...stylex.props(styles.linesTitle)}>{title}</h2>
+      {hideHeading ? null : <h2 {...stylex.props(styles.linesTitle)}>{title}</h2>}
       <dl {...stylex.props(styles.lineList)}>
         {lines.map((line) => (
           <div
             key={line.id}
             {...stylex.props(styles.line, rowSize === "review" && styles.reviewLine)}
           >
-            <dt {...stylex.props(styles.lineDescription)}>{line.description}</dt>
+            <dt {...stylex.props(styles.lineDescription)}>
+              {line.href ? (
+                <Link href={line.href} {...stylex.props(styles.detailLink)}>
+                  {line.description}
+                </Link>
+              ) : (
+                line.description
+              )}
+            </dt>
             <dd {...stylex.props(styles.lineAmount)}>{line.amount}</dd>
           </div>
         ))}

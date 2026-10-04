@@ -39,7 +39,7 @@ const releaseFiles = [
 
 const sourceExtensions = /\.(ts|tsx|js|jsx|json|sql|css|svg|md|txt)$/;
 
-const sourceMetadataFiles = [".gitignore", ".prettierignore"];
+const sourceMetadataFiles = [".gitignore", ".prettierignore", "LICENSE"];
 
 const requiredRuntimeFiles = [
   "apps/api/src/db/connection.ts",
@@ -73,6 +73,8 @@ async function sourceFiles(root: string, prefix: string): Promise<string[]> {
   const files: string[] = [];
 
   for (const entry of await readdir(path, { withFileTypes: true })) {
+    if (entry.name === "tsconfig.changed.tsbuildinfo" && entry.isFile()) continue;
+
     const name = `${prefix}/${entry.name}`;
 
     if (entry.name.startsWith(".") && !sourceMetadataFiles.includes(entry.name))

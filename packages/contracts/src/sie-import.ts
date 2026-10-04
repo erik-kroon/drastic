@@ -26,7 +26,7 @@ const Transaction = Schema.Struct({
   amount: Schema.String,
 });
 
-const Voucher = Schema.Struct({
+export const Voucher = Schema.Struct({
   ordinal: Schema.Int,
   series: Schema.String,
   number: Schema.String,

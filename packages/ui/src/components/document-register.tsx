@@ -38,11 +38,19 @@ const styles = stylex.create({
     paddingInlineEnd: tokens.space5,
     color: tokens.mutedForeground,
   },
+  selected: { backgroundColor: tokens.registerSelected, boxShadow: tokens.selectionIndicator },
   row: {
     ":hover": { backgroundColor: tokens.sidebar },
     ":focus-within": { backgroundColor: tokens.registerSelected },
   },
   link: {
+    width: "100%",
+    backgroundColor: tokens.transparent,
+    borderWidth: 0,
+    padding: 0,
+    font: "inherit",
+    textAlign: "start",
+    cursor: "pointer",
     display: "flex",
     alignItems: "center",
     minHeight: 39,
@@ -66,6 +74,8 @@ export function DocumentRegister(props: {
     href: string;
   }[];
   onOpen: (id: string) => void;
+  onSelect?: (id: string) => void;
+  selected?: string;
 }) {
   return (
     <div {...stylex.props(styles.scroll)}>
@@ -93,16 +103,31 @@ export function DocumentRegister(props: {
         </thead>
         <tbody>
           {props.rows.map((row) => (
-            <tr key={row.id} {...stylex.props(styles.row)}>
+            <tr
+              key={row.id}
+              {...stylex.props(styles.row, props.selected === row.id && styles.selected)}
+            >
               <td {...stylex.props(styles.cell, styles.first)}>
-                <Link
-                  href={row.href}
-                  data-document-id={row.id}
-                  onClick={() => props.onOpen(row.id)}
-                  {...stylex.props(styles.link)}
-                >
-                  {row.filename}
-                </Link>
+                {props.onSelect ? (
+                  <button
+                    type="button"
+                    data-document-id={row.id}
+                    aria-pressed={props.selected === row.id}
+                    onClick={() => props.onSelect?.(row.id)}
+                    {...stylex.props(styles.link)}
+                  >
+                    {row.filename}
+                  </button>
+                ) : (
+                  <Link
+                    href={row.href}
+                    data-document-id={row.id}
+                    onClick={() => props.onOpen(row.id)}
+                    {...stylex.props(styles.link)}
+                  >
+                    {row.filename}
+                  </Link>
+                )}
               </td>
               {props.headings.facts ? <td {...stylex.props(styles.cell)}>{row.facts}</td> : null}
               <td {...stylex.props(styles.cell, styles.type)}>{row.type}</td>

@@ -1,3 +1,4 @@
+import { readOnboardingLifecycleInTransaction } from "./onboarding-lifecycle";
 import * as Effect from "effect/Effect";
 import * as Onboarding from "@open-erp/contracts/onboarding";
 import * as Intake from "@open-erp/contracts/source-intake";
@@ -409,11 +410,48 @@ function tasks(
   ];
 }
 
+function completedLifecycleTasks(lifecycle: typeof Onboarding.OnboardingLifecycle.Type) {
+  const accepted = (purpose: typeof Onboarding.OnboardingPurpose.Type) =>
+    lifecycle.snapshots.some(
+      (view) =>
+        view.current &&
+        view.snapshot.purpose === purpose &&
+        lifecycle.decisions.some(
+          (decision) =>
+            decision.snapshotId === view.snapshot.id &&
+            decision.decision.kind === `accept_${purpose}`,
+        ) &&
+        !lifecycle.decisions.some(
+          (decision) =>
+            decision.snapshotId === view.snapshot.id && decision.decision.kind === "reject",
+        ),
+    );
+
+  const completeTasks = new Set<Task["id"]>();
+
+  if (accepted("opening")) completeTasks.add("opening");
+
+  if (accepted("book_zero")) completeTasks.add("reconciliation");
+
+  if (accepted("final_delta")) completeTasks.add("final_delta");
+
+  if (lifecycle.responsibilities !== null) completeTasks.add("responsibilities");
+
+  if (lifecycle.activation !== null) {
+    completeTasks.add("cutover");
+    completeTasks.add("go_live");
+  }
+
+  if (lifecycle.completion?.current === true) completeTasks.add("proving_period");
+
+  return completeTasks;
+}
+
 export const getOnboarding = Effect.fn("onboarding.get")(function* (
   token: string,
   command: { scope: Scope; sourceAfter?: string; importAfter?: string },
 ) {
-  return yield* withBook(token, command.scope, false, function* (transaction) {
+  return yield* withBook(token, command.scope, false, function* (transaction, principal) {
     yield* requireTableAccess(transaction, Db.onboardingTables, false);
     yield* Ledger.lockBookForShare(transaction, command.scope);
     const current = yield* currentCase(transaction, command.scope);
@@ -470,7 +508,18 @@ export const getOnboarding = Effect.fn("onboarding.get")(function* (
       profile.families.find((family) => family.family === "posting_eligibility")?.status ===
       "resolved";
 
-    const work = tasks(profileComplete, scopeComplete, BigInt(sourceCount) > 0n, hasOperators);
+    const lifecycle = yield* readOnboardingLifecycleInTransaction(
+      transaction,
+      command.scope,
+      principal.actorId,
+    );
+
+    const completeTasks = completedLifecycleTasks(lifecycle);
+
+    const work = tasks(profileComplete, scopeComplete, BigInt(sourceCount) > 0n, hasOperators).map(
+      (task) =>
+        completeTasks.has(task.id) ? { ...task, state: "complete" as const, blockers: [] } : task,
+    );
 
     return yield* decode(Onboarding.OnboardingWorkspace, {
       case: current,
@@ -486,10 +535,21 @@ export const getOnboarding = Effect.fn("onboarding.get")(function* (
       tasks: work,
       cutover: {
         ready: false,
-        authority: "not_established",
+        authority: lifecycle.activation !== null ? "native" : "not_established",
         candidateLiveOn: dates.candidateLiveOn,
         blockers: [...new Set(work.flatMap((task) => task.blockers))],
       },
     });
   });
 });
+
+export {
+  qualifyOnboardingControl,
+  saveOnboardingResponsibilities,
+  captureOnboardingSnapshot,
+  decideOnboardingSnapshot,
+  requestOnboardingActivation,
+  completeOnboardingFirstPeriod,
+  getOnboardingLifecycle,
+  executeOnboardingActivationInTransaction,
+} from "./onboarding-lifecycle";

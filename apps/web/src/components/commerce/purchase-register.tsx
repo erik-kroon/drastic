@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import * as Accounting from "@open-erp/contracts/accounting";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Suppliers from "@open-erp/contracts/supplier-invoice-drafts";
 import { Box } from "@open-erp/ui/components/box";
@@ -10,19 +11,20 @@ import {
   PageEmpty,
   RegisterSearch,
 } from "@open-erp/ui/components/accounting-page";
-import { SelectControl } from "@open-erp/ui/components/select";
+import { WorkFilter, WorkPreviewActions } from "@open-erp/ui/components/work-controls";
 import {
   RegisterWorkspace,
   RegisterNavigation,
   RegisterGroup,
   RegisterRow,
   RegisterDetailHeading,
-  RegisterDetailActions,
+  RegisterDetailLines,
+  RegisterFilter,
   type RegisterStatus,
 } from "@open-erp/ui/components/register-workspace";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
-import { readAccounting } from "@/lib/accounting-api";
+import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
 import { formatMinorAmount } from "@/lib/workspace-api";
 import { useOwnerReturn, decodeWorkReturn, workReturnHref } from "@/lib/work-return";
 import { checkScope, commerceKey, commercePath } from "./shared";
@@ -96,7 +98,9 @@ export function PurchaseRegister({ workSearch }: { workSearch?: string }) {
     drafts: drafts.isError ? [] : (drafts.data?.pages.flatMap((page) => page.items) ?? []),
     locale,
     today: setup.today,
-  }).filter((row) => matchesPurchase(row, status, q, locale));
+  })
+    .filter((row) => matchesPurchase(row, status, q, locale))
+    .sort(comparePurchaseRows);
 
   const selected = rows.find((row) => row.key === selection) ?? rows[0];
   const groups = [...new Set(rows.map((row) => row.group))];
@@ -107,6 +111,7 @@ export function PurchaseRegister({ workSearch }: { workSearch?: string }) {
   return (
     <RegisterWorkspace
       title={sv ? "Inköp" : "Purchases"}
+      headingSpacing="work"
       tabs={
         <RegisterNavigation
           label={sv ? "Inköp" : "Purchases"}
@@ -141,11 +146,10 @@ export function PurchaseRegister({ workSearch }: { workSearch?: string }) {
       }
       filters={
         <>
-          <SelectControl
-            size="compact"
-            aria-label="Status"
+          <RegisterFilter
+            label="Status"
             value={status}
-            onValueChange={(value) => setStatus(value ?? "open")}
+            onValueChange={setStatus}
             options={[
               { value: "open", label: sv ? "Utestående" : "Outstanding" },
               { value: "all", label: sv ? "Alla" : "All" },
@@ -153,31 +157,27 @@ export function PurchaseRegister({ workSearch }: { workSearch?: string }) {
               { value: "completed", label: sv ? "Avslutade" : "Completed" },
             ]}
           />
-          <RegisterSearch
-            compact
-            aria-label={sv ? "Sök leverantörsfakturor" : "Search supplier invoices"}
-            placeholder={sv ? "Sök" : "Search"}
-            value={q}
-            onChange={(event) => setQ(event.target.value)}
-          />
+          <WorkFilter label={sv ? "Sök" : "Search"}>
+            {" "}
+            <RegisterSearch
+              compact
+              aria-label={sv ? "Sök leverantörsfakturor" : "Search supplier invoices"}
+              placeholder={sv ? "Sök" : "Search"}
+              value={q}
+              onChange={(event) => setQ(event.target.value)}
+            />
+          </WorkFilter>
         </>
       }
       detail={
         selected ? (
-          <>
-            <RegisterDetailHeading
-              title={selected.supplier}
-              amount={selected.amount}
-              caption={selected.number ?? selected.state}
-            />
-            <PageCaption>
-              {selected.state}, {selected.currency}
-            </PageCaption>
-            <PageCaption>{selected.date}</PageCaption>
-            <RegisterDetailActions>
-              <PageAction href={href(selected)}>{sv ? "Öppna faktura" : "Open invoice"}</PageAction>
-            </RegisterDetailActions>
-          </>
+          <PurchasePreview
+            row={selected}
+            invoice={invoices.data?.pages
+              .flatMap((page) => page.items)
+              .find((invoice) => invoice.id === selected.id)}
+            href={href(selected)}
+          />
         ) : (
           <PageCaption>
             {sv
@@ -196,8 +196,11 @@ export function PurchaseRegister({ workSearch }: { workSearch?: string }) {
             .map((row) => (
               <RegisterRow
                 key={row.key}
-                title={row.supplier}
-                prefix={row.number ?? undefined}
+                title={
+                  row.number
+                    ? `${row.supplier}, ${sv ? "faktura" : "invoice"} ${row.number}`
+                    : row.supplier
+                }
                 state={row.state}
                 status={row.status}
                 amount={row.amount}
@@ -222,6 +225,111 @@ export function PurchaseRegister({ workSearch }: { workSearch?: string }) {
         </PageAction>
       </Box>
     </RegisterWorkspace>
+  );
+}
+
+function PurchasePreview(props: {
+  row: PurchaseRow;
+  invoice: typeof Commerce.Invoice.Type | undefined;
+  href: string;
+}) {
+  const { book, setup, locale } = useBookWorkspace();
+  const sv = locale === "sv";
+  const voucherId = props.invoice?.recognition?.voucherId;
+
+  const voucher = useQuery({
+    queryKey: [...bookKey(book), "voucher", voucherId],
+    enabled: !!voucherId,
+    queryFn: async ({ signal }) => {
+      const result = await readAccounting(
+        `${bookPath(book)}/vouchers/${encodeURIComponent(voucherId ?? "")}`,
+        Accounting.Voucher,
+        { signal },
+      );
+
+      if (
+        result.id !== voucherId ||
+        !setup.periods.some((period) => period.id === result.action.accountingPeriodId)
+      )
+        throw new Error("Supplier voucher mismatch");
+
+      return result;
+    },
+    retry: false,
+  });
+
+  const current = voucher.isError ? undefined : voucher.data;
+  const currencyScale = props.invoice?.currencyScale;
+
+  const date = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  }).format(new Date(props.row.date));
+
+  return (
+    <>
+      <RegisterDetailHeading
+        title={props.row.supplier}
+        amount={props.row.amount}
+        caption={`${props.row.number ?? props.row.state}, ${sv ? "förfallodatum" : "due"} ${date}`}
+      />
+      <AccountingStatus
+        locale={locale}
+        pending={!!voucherId && voucher.isPending}
+        error={voucher.error}
+      />
+      {voucher.isError ? (
+        <Button
+          variant="outline"
+          disabled={voucher.isFetching}
+          onClick={() => {
+            void voucher.refetch();
+          }}
+        >
+          {sv ? "Försök igen" : "Try again"}
+        </Button>
+      ) : null}
+      {current && currencyScale !== undefined ? (
+        <RegisterDetailLines
+          title={`${sv ? "Bokfört som" : "Posted as"} ${current.action.series}${current.number}`}
+          lines={current.action.lines.flatMap((line) => {
+            const account = setup.accounts.find((item) => item.id === line.accountId);
+            const amounts = [];
+
+            if (BigInt(line.debitMinor) > 0n)
+              amounts.push({ side: "debit", value: line.debitMinor });
+
+            if (BigInt(line.creditMinor) > 0n)
+              amounts.push({ side: "credit", value: `-${line.creditMinor}` });
+
+            return amounts.map((amount) => ({
+              id: `${line.lineId}:${amount.side}`,
+              description: account ? `${account.code} ${account.name}` : line.description,
+              amount: formatMinorAmount(amount.value, currencyScale, locale),
+            }));
+          })}
+        />
+      ) : null}
+      <WorkPreviewActions
+        href={props.href}
+        label={sv ? "Öppna faktura" : "Open invoice"}
+        secondaryHref={`${workspacePath(book)}/purchases?view=supplier-payment-files`}
+        secondaryLabel={sv ? "Förbered betalfil" : "Prepare payment file"}
+        secondarySize="text"
+      />
+    </>
+  );
+}
+
+function comparePurchaseRows(left: PurchaseRow, right: PurchaseRow) {
+  const priority = (row: PurchaseRow) =>
+    row.status === "overdue" ? 0 : row.kind === "draft" ? 2 : row.status === "completed" ? 3 : 1;
+
+  return (
+    priority(left) - priority(right) ||
+    left.date.localeCompare(right.date) ||
+    left.key.localeCompare(right.key)
   );
 }
 
@@ -306,12 +414,16 @@ function purchaseRows(props: {
             : formatMinorAmount(invoice.outstandingMinor, invoice.currencyScale, props.locale),
         currency: invoice.currency,
         date: invoice.currentRevision.dueOn,
-        state: overdue ? (sv ? "Förfallen" : "Overdue") : labels[invoice.status],
+        state: completed
+          ? labels[invoice.status]
+          : `${overdue ? (sv ? "Förföll" : "Due") : sv ? "Förfaller" : "Due"} ${new Intl.DateTimeFormat(props.locale, { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(invoice.currentRevision.dueOn))}`,
         status: completed
           ? "completed"
-          : overdue || invoice.status === "blocked"
-            ? "warning"
-            : "pending",
+          : overdue
+            ? "overdue"
+            : invoice.status === "blocked"
+              ? "warning"
+              : "pending",
         group: completed
           ? sv
             ? "Avslutade"

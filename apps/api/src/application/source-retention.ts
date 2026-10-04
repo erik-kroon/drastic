@@ -609,6 +609,33 @@ export function readSourceOccurrenceInTransaction(
   );
 }
 
+export function readSourceBytesInTransaction(
+  transaction: Transaction,
+  scope: Scope,
+  occurrenceId: string,
+) {
+  return Effect.gen(function* () {
+    yield* requireRetentionAccess(transaction, false);
+    const storage = yield* readStorage(transaction, scope, occurrenceId);
+
+    const bytes =
+      storage.object === null
+        ? storage.contentBase64 === null
+          ? null
+          : Buffer.from(storage.contentBase64, "base64")
+        : yield* readRetainedObject(yield* objectStore, storage.object);
+
+    if (
+      bytes === null ||
+      bytes.byteLength !== storage.occurrence.byteLength ||
+      (yield* sourceDigest(bytes)) !== storage.occurrence.sha256
+    )
+      return yield* failure("MissingEvidence");
+
+    return { occurrence: storage.occurrence, bytes };
+  });
+}
+
 function readOccurrenceView(token: string, scope: Scope, occurrenceId: string) {
   return withBook(token, scope, false, function* (transaction) {
     yield* requireRetentionAccess(transaction, false);

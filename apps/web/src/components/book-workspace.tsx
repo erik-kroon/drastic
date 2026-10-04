@@ -24,6 +24,7 @@ import { SignOut } from "@/components/accounting-access";
 import { portfolioReturn } from "@/components/firms/portfolio-return";
 import { bookKey, bookPath, readAccounting, type Books } from "@/lib/accounting-api";
 import { authClient } from "@/lib/auth-client";
+import { SetupWorkspace } from "@open-erp/ui/components/setup-workspace";
 import { accountingCopy } from "@/lib/accounting-copy";
 import { setLocale, type Locale } from "@/paraglide/runtime";
 
@@ -143,6 +144,48 @@ export function BookWorkspace({
     </WorkspaceAccount>
   );
 
+  const content = (
+    <>
+      <AccountingStatus
+        locale={locale}
+        pending={setup.isPending || (scopeBlocked && setup.isFetching)}
+        error={setup.error}
+      />
+      {setup.isError ? (
+        <Button
+          size="xl"
+          variant="outline"
+          disabled={setup.isFetching}
+          onClick={() => {
+            void setup.refetch();
+          }}
+        >
+          {copy.journal_retry}
+        </Button>
+      ) : null}
+      {setup.data && !setup.isError && !scopeBlocked && !scopeUnavailable ? (
+        <BookContext value={{ book, setup: setup.data, locale }}>{children}</BookContext>
+      ) : null}
+    </>
+  );
+
+  if (pathname === `${base}/setup`) {
+    return (
+      <SetupWorkspace
+        account={
+          !scopeBlocked && !scopeUnavailable && session.isSuccess && session.data ? (
+            <>
+              <span>{`${session.data.user.name},\u00a0`}</span>
+              <SignOut locale={locale} compact />
+            </>
+          ) : null
+        }
+      >
+        {content}
+      </SetupWorkspace>
+    );
+  }
+
   return (
     <Workspace
       pageKey={pathname}
@@ -197,26 +240,7 @@ export function BookWorkspace({
         </WorkspaceMobileNavigation>
       }
     >
-      <AccountingStatus
-        locale={locale}
-        pending={setup.isPending || (scopeBlocked && setup.isFetching)}
-        error={setup.error}
-      />
-      {setup.isError ? (
-        <Button
-          size="xl"
-          variant="outline"
-          disabled={setup.isFetching}
-          onClick={() => {
-            void setup.refetch();
-          }}
-        >
-          {copy.journal_retry}
-        </Button>
-      ) : null}
-      {setup.data && !setup.isError && !scopeBlocked && !scopeUnavailable ? (
-        <BookContext value={{ book, setup: setup.data, locale }}>{children}</BookContext>
-      ) : null}
+      {content}
     </Workspace>
   );
 }

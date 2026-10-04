@@ -8,13 +8,20 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import { InputField } from "@open-erp/ui/components/field";
 import { DocumentRegister } from "@open-erp/ui/components/document-register";
-import { RegisterWorkspace, RegisterNavigation } from "@open-erp/ui/components/register-workspace";
+import {
+  RegisterWorkspace,
+  RegisterNavigation,
+  RegisterDetailHeading,
+  RegisterDetailLines,
+} from "@open-erp/ui/components/register-workspace";
 import { Disclosure } from "@open-erp/ui/components/disclosure";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { DocumentPreview } from "@open-erp/ui/components/document-preview";
 import { RecordHeading, RecordSplit, RecordSection } from "@open-erp/ui/components/record-layout";
 import { PageEmpty, PageAction, PageCaption } from "@open-erp/ui/components/accounting-page";
 import { Text } from "@open-erp/ui/components/typography";
+import { OriginalDocument } from "@/components/original-document";
+import { WorkReviewFooter, WorkPreviewActions } from "@open-erp/ui/components/work-controls";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { bookKey, bookPath, mutationOptions, readAccounting } from "@/lib/accounting-api";
@@ -109,30 +116,17 @@ export function DocumentInbox(props: {
     },
   });
 
-  const items = sources.data?.items ?? [];
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selection = archiveSelection(sources.isError, sources.data, selectedId);
+  const items = selection.items;
+  const selected = selection.selected;
 
   const hasFilters = Object.entries(filters).some(
     ([name, value]) => name !== "cursor" && value !== undefined,
   );
 
   const actions = (
-    <Box display="flex" flexWrap="wrap" gap="md">
-      <Button
-        size="sm"
-        type="submit"
-        form="document-archive-filters"
-        value="export"
-        variant="outline"
-        disabled={archiveExport.isPending}
-      >
-        <Download size={14} />
-        {archiveExport.isPending ? labels.exportingArchive : labels.exportArchivePage}
-      </Button>
-      <Button size="sm" onClick={() => onOpen("new")}>
-        <Upload size={14} />
-        {labels.uploadDocument}
-      </Button>
-    </Box>
+    <ArchiveActions standalone={standalone} pending={archiveExport.isPending} onOpen={onOpen} />
   );
 
   const filterForm = (
@@ -322,6 +316,27 @@ export function DocumentInbox(props: {
           </Button>
         ) : null}
       </Box>
+      {standalone ? (
+        <>
+          {" "}
+          <Button
+            size="sm"
+            type="submit"
+            form="document-archive-filters"
+            value="export"
+            variant="outline"
+            disabled={archiveExport.isPending}
+          >
+            <Download size={14} />
+            {archiveExport.isPending ? labels.exportingArchive : labels.exportArchivePage}
+          </Button>{" "}
+          <Box padding="none">
+            <PageCaption>{labels.archiveSearchHelp}</PageCaption>
+            <PageCaption>{labels.archiveExportHelp}</PageCaption>
+            <PageCaption>{labels.uploadingRetainsTheOriginalIt}</PageCaption>
+          </Box>
+        </>
+      ) : null}
       {filterError ? <Text role="alert">{filterError}</Text> : null}
     </Box>
   );
@@ -353,16 +368,21 @@ export function DocumentInbox(props: {
         if (!node || !sources.isSuccess || pendingFocus.current === undefined) return;
 
         const row = pendingFocus.current
-          ? node.querySelector<HTMLAnchorElement>(`[data-document-id="${pendingFocus.current}"]`)
+          ? node.querySelector<HTMLElement>(`[data-document-id="${pendingFocus.current}"]`)
           : null;
 
         const target =
           row ?? node.closest("section")?.querySelector<HTMLHeadingElement>("h1") ?? node;
 
         if (target) {
-          if (!row) target.tabIndex = -1;
-          target.focus();
-          pendingFocus.current = undefined;
+          const expected = pendingFocus.current;
+          requestAnimationFrame(() => {
+            if (!target.isConnected || pendingFocus.current !== expected) return;
+
+            if (!row) target.tabIndex = -1;
+            target.focus();
+            pendingFocus.current = undefined;
+          });
         }
       }}
       display="grid"
@@ -397,29 +417,15 @@ export function DocumentInbox(props: {
       ) : null}
       {sources.isSuccess ? (
         items.length ? (
-          <DocumentRegister
-            title={labels.documents}
-            headings={{
-              document: labels.document,
-              facts: labels.savedFacts,
-              type: labels.fileType,
-              source: labels.sourceSystem,
-              date: labels.uploaded,
-            }}
+          <ArchiveRows
+            items={items}
+            standalone={standalone}
+            selectedId={selected?.id}
+            onSelect={setSelectedId}
             onOpen={(id) => {
               opener.current = id;
             }}
-            rows={items.map((occurrence) => ({
-              id: occurrence.id,
-              filename: occurrence.filename,
-              facts: <DocumentFactSummary row={occurrence} />,
-              href: href(occurrence.id),
-              type: occurrence.mediaType.split("/").at(-1)?.toUpperCase() ?? occurrence.mediaType,
-              source: occurrence.sourceSystem,
-              date: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(
-                new Date(occurrence.retainedAt),
-              ),
-            }))}
+            href={href}
           />
         ) : (
           <PageEmpty
@@ -441,11 +447,13 @@ export function DocumentInbox(props: {
           </Button>
         </Box>
       ) : null}
-      <Box padding={standalone ? "lg" : "none"}>
-        <PageCaption>{labels.archiveSearchHelp}</PageCaption>
-        <PageCaption>{labels.archiveExportHelp}</PageCaption>
-        <PageCaption>{labels.uploadingRetainsTheOriginalIt}</PageCaption>
-      </Box>
+      {!standalone ? (
+        <Box padding="none">
+          <PageCaption>{labels.archiveSearchHelp}</PageCaption>
+          <PageCaption>{labels.archiveExportHelp}</PageCaption>
+          <PageCaption>{labels.uploadingRetainsTheOriginalIt}</PageCaption>
+        </Box>
+      ) : null}
       {recordId === "new" ? (
         <FormDialog
           title={labels.uploadDocument}
@@ -465,6 +473,7 @@ export function DocumentInbox(props: {
       title={labels.documents}
       href={href("")}
       action={actions}
+      detail={<ArchiveSelectionPreview standalone={standalone} row={selected} href={href} />}
       filters={
         standalone ? (
           <Disclosure
@@ -483,11 +492,149 @@ export function DocumentInbox(props: {
   );
 }
 
+function ArchiveActions(props: {
+  standalone: boolean;
+  pending: boolean;
+  onOpen: (id: string) => void;
+}) {
+  const { locale } = useBookWorkspace();
+  const sv = locale === "sv";
+  const labels = sv ? swedish : english;
+
+  return (
+    <Box display="flex" flexWrap="wrap" gap="md">
+      {!props.standalone ? (
+        <Button
+          size="sm"
+          type="submit"
+          form="document-archive-filters"
+          value="export"
+          variant="outline"
+          disabled={props.pending}
+        >
+          <Download size={14} />
+          {props.pending ? labels.exportingArchive : labels.exportArchivePage}
+        </Button>
+      ) : null}
+      <Button size="sm" onClick={() => props.onOpen("new")}>
+        {props.standalone ? (sv ? "Ladda upp" : "Upload") : labels.uploadDocument}
+      </Button>
+    </Box>
+  );
+}
+
+function archiveSelection(
+  failed: boolean,
+  page: typeof Sources.ArchiveSearch.Type | undefined,
+  id: string | null,
+) {
+  const items = failed ? [] : [...(page?.items ?? [])].sort((left, right) => right.retainedAt.localeCompare(left.retainedAt) || left.id.localeCompare(right.id));
+
+  return { items, selected: items.find((item) => item.id === id) ?? items[0] };
+}
+
+function ArchiveRows(props: {
+  items: readonly (typeof Sources.DocumentSearchRow.Type)[];
+  standalone: boolean;
+  selectedId?: string;
+  onSelect: (id: string) => void;
+  onOpen: (id: string) => void;
+  href: (id: string) => string;
+}) {
+  const { locale } = useBookWorkspace();
+  const labels = locale === "sv" ? swedish : english;
+
+  return (
+    <DocumentRegister
+      title={labels.documents}
+      headings={{
+        document: labels.document,
+        facts: props.standalone ? undefined : labels.savedFacts,
+        type: labels.fileType,
+        source: labels.sourceSystem,
+        date: labels.uploaded,
+      }}
+      selected={props.standalone ? props.selectedId : undefined}
+      onSelect={props.standalone ? props.onSelect : undefined}
+      onOpen={props.onOpen}
+      rows={props.items.map((occurrence) => ({
+        id: occurrence.id,
+        filename: occurrence.filename,
+        facts: <DocumentFactSummary row={occurrence} />,
+        href: props.href(occurrence.id),
+        type: occurrence.mediaType.split("/").at(-1)?.toUpperCase() ?? occurrence.mediaType,
+        source: occurrence.sourceSystem,
+        date: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(
+          new Date(occurrence.retainedAt),
+        ),
+      }))}
+    />
+  );
+}
+
+function ArchiveSelectionPreview(props: {
+  standalone: boolean;
+  row: typeof Sources.DocumentSearchRow.Type | undefined;
+  href: (id: string) => string;
+}) {
+  if (!props.standalone || !props.row) return null;
+
+  return <ArchivePreview row={props.row} href={props.href(props.row.id)} />;
+}
+
+function ArchivePreview({
+  row,
+  href,
+}: {
+  row: typeof Sources.DocumentSearchRow.Type;
+  href: string;
+}) {
+  const { book, locale } = useBookWorkspace();
+  const sv = locale === "sv";
+
+  return (
+    <>
+      <RegisterDetailHeading
+        title={row.filename.replace(/\.pdf$/iu, "")}
+        caption={`${row.mediaType === "application/pdf" ? "PDF" : row.mediaType}, ${new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(row.retainedAt))}`}
+      />
+      <Box marginBlockStart="md">
+        <OriginalDocument
+          compact
+          archive
+          book={book}
+          locale={locale}
+          id={row.id}
+          sha256={row.sha256}
+        />
+      </Box>
+      <RegisterDetailLines
+        title={sv ? "Ursprung" : "Origin"}
+        lines={[
+          {
+            id: "source",
+            description: row.sourceSystem,
+            amount: new Intl.DateTimeFormat(locale, {
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: "UTC",
+            }).format(new Date(row.retainedAt)),
+          },
+        ]}
+      />
+      <WorkReviewFooter>
+        <WorkPreviewActions href={href} label={sv ? "Öppna dokument" : "Open document"} />
+      </WorkReviewFooter>
+    </>
+  );
+}
+
 function ArchiveFrame(props: {
   standalone: boolean;
   title: string;
   href: string;
   action?: ReactNode;
+  detail?: ReactNode;
   filters?: ReactNode;
   children: ReactNode;
 }) {
@@ -499,6 +646,8 @@ function ArchiveFrame(props: {
     <RegisterWorkspace
       title={props.title}
       action={props.action}
+      detail={props.detail}
+      headingSpacing="work"
       filters={props.filters}
       tabs={
         <RegisterNavigation

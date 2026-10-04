@@ -98,6 +98,64 @@ export const onboardingSources = openerp.table("onboarding_sources", {
   body: jsonb().$type<Schema.JsonObject>().notNull(),
 });
 
+export const onboardingControls = openerp.table("onboarding_controls", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  snapshotId: text("snapshot_id"),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const onboardingResponsibilities = openerp.table("onboarding_responsibilities", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  snapshotId: text("snapshot_id"),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const onboardingSnapshots = openerp.table("onboarding_snapshots", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  snapshotId: text("snapshot_id"),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const onboardingDecisions = openerp.table("onboarding_decisions", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  snapshotId: text("snapshot_id"),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const onboardingActivationIntents = openerp.table("onboarding_activation_intents", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  snapshotId: text("snapshot_id"),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const onboardingOperationalProofs = openerp.table("onboarding_operational_proofs", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  snapshotId: text("snapshot_id"),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const onboardingActivationReceipts = openerp.table("onboarding_activation_receipts", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  snapshotId: text("snapshot_id"),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const onboardingFirstPeriodCompletions = openerp.table(
+  "onboarding_first_period_completions",
+  {
+    bookId: text("book_id").notNull(),
+    id: text().notNull(),
+    snapshotId: text("snapshot_id"),
+    body: jsonb().$type<Schema.JsonObject>().notNull(),
+  },
+);
 export const credentials = openerp.table("credentials", {
   tokenHash: text("token_hash").primaryKey(),
   actorId: text("actor_id").notNull(),

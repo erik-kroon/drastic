@@ -28,6 +28,11 @@ const styles = stylex.create({
     backgroundColor: tokens.muted,
     borderRadius: tokens.radiusMd,
   },
+  archive: {
+    height: tokens.archivePreviewHeight,
+    minHeight: tokens.archivePreviewHeight,
+    maxHeight: tokens.archivePreviewHeight,
+  },
   compact: {
     width: "100%",
     height: tokens.sourcePreviewHeight,
@@ -47,11 +52,13 @@ export function DocumentPreview({
   mediaType,
   filename,
   compact = false,
+  archive = false,
 }: {
   content: string;
   mediaType: string;
   filename: string;
   compact?: boolean;
+  archive?: boolean;
 }) {
   const [url, setUrl] = useState("");
   useEffect(() => {
@@ -69,13 +76,25 @@ export function DocumentPreview({
       <iframe
         title={filename}
         src={url}
-        {...stylex.props(styles.frame, compact && styles.compact)}
+        {...stylex.props(
+          styles.frame,
+          (compact || archive) && styles.compact,
+          archive && styles.archive,
+        )}
       />
     );
 
   if (mediaType === "image/png" || mediaType === "image/jpeg")
     return (
-      <img src={url} alt={filename} {...stylex.props(styles.image, compact && styles.compact)} />
+      <img
+        src={url}
+        alt={filename}
+        {...stylex.props(
+          styles.image,
+          (compact || archive) && styles.compact,
+          archive && styles.archive,
+        )}
+      />
     );
 
   if (
@@ -89,7 +108,17 @@ export function DocumentPreview({
     Uint8Array.from(atob(content), (char) => char.charCodeAt(0)),
   );
 
-  return <pre {...stylex.props(styles.text, compact && styles.compact)}>{text}</pre>;
+  return (
+    <pre
+      {...stylex.props(
+        styles.text,
+        (compact || archive) && styles.compact,
+        archive && styles.archive,
+      )}
+    >
+      {text}
+    </pre>
+  );
 }
 
 export function HtmlDocumentPreview({ title, html }: { title: string; html: string }) {

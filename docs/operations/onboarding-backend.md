@@ -65,6 +65,31 @@ commercial readiness. Actual-company support also requires explicit rule-release
 currency coverage, and statement support requires explicit reporting framework
 coverage. Native payroll remains deferred.
 
+## Lifecycle implementation contract
+
+Onboarding remains a coordinator around the existing accounting owners. The
+lifecycle adds retained control qualification, review snapshots, responsibility
+policies, acceptance decisions, activation intents, operational proof and durable
+receipts. These names describe the work in progress; they do not establish a
+passed delivery gate before the executable evidence is recorded.
+
+Independent comparisons read retained source bytes and retained accounting
+records inside the owning transaction. A request names sources and reviewers;
+it never supplies a booked amount or a completed gate. Each review is tied to
+its exact dependencies and date boundary. A later affected import, changed
+profile or revoked reviewer invalidates the effective acceptance without erasing
+its historical decision.
+
+The operational executor is a separate maintenance boundary. Ordinary browser
+credentials cannot insert operational proof or promote writer authority. Local
+synthetic restore and writer-fence evidence does not establish a production
+provider outcome or authorize Drastic's cutover.
+
+The UI delivery covers U32 through U46 in Paper's Enthusiastic lantern file.
+Setup is the persistent workspace. Inventory, parsing, import, reconciliation
+and acceptance remain distinct, and first-live-period completion requires a
+current closing certificate rather than a setup checkbox.
+
 ## Remaining delivery gates
 
 The workspace currently retains setup and shows truthful blockers. It does not

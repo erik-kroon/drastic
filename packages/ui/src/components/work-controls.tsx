@@ -66,7 +66,11 @@ const styles = stylex.create({
     borderRadius: tokens.radiusControl,
     ":focus-visible": { outline: "none", boxShadow: tokens.focusRing },
   },
-  reviewAction: { width: "100%", height: tokens.controlHeight },
+  reviewAction: {
+    width: "100%",
+    height: tokens.controlHeight,
+    ":disabled": { backgroundColor: tokens.border, color: tokens.captionForeground, opacity: 1 },
+  },
   source: { marginBlockStart: tokens.space3_5 },
   reviewFooter: { marginBlockStart: "auto", paddingBlockStart: tokens.space4 },
   previewActions: {
@@ -91,6 +95,7 @@ const styles = stylex.create({
     ":hover": { backgroundColor: tokens.primaryHoverBackground },
     ":focus-visible": { outline: "none", boxShadow: tokens.focusRing },
   },
+  previewSecondaryText: { minHeight: tokens.lineHeight16Px },
   previewSecondary: {
     alignSelf: "flex-end",
     display: "flex",
@@ -175,20 +180,30 @@ export function WorkPreviewActions({
   label,
   secondaryHref,
   secondaryLabel,
+  secondarySize = "control",
 }: {
   href: string;
   label: string;
-  secondaryHref: string;
-  secondaryLabel: string;
+  secondaryHref?: string;
+  secondaryLabel?: string;
+  secondarySize?: "control" | "text";
 }) {
   return (
     <div {...stylex.props(styles.previewActions)}>
       <Link href={href} {...stylex.props(styles.previewPrimary)}>
         {label}
       </Link>
-      <Link href={secondaryHref} {...stylex.props(styles.previewSecondary)}>
-        {secondaryLabel}
-      </Link>
+      {secondaryHref && secondaryLabel ? (
+        <Link
+          href={secondaryHref}
+          {...stylex.props(
+            styles.previewSecondary,
+            secondarySize === "text" && styles.previewSecondaryText,
+          )}
+        >
+          {secondaryLabel}
+        </Link>
+      ) : null}
     </div>
   );
 }
