@@ -7,6 +7,7 @@ import type { Transaction } from "../db/transaction";
 import { databaseFailure } from "../db/transaction";
 import { decode, type Scope } from "./commerce/support";
 import { failure } from "./failures";
+import { readAssetHandoffCount } from "./onboarding-asset-handoff";
 
 export const readOnboardingProjectionInTransaction = Effect.fn("onboarding.readProjection")(
   function* (tx: Transaction, scope: Scope) {
@@ -38,7 +39,23 @@ export const readOnboardingProjectionInTransaction = Effect.fn("onboarding.readP
 
     const decoded = yield* Effect.forEach(invoices, (item) => decode(Commerce.Invoice, item.body));
 
-    return yield* decode(O.OnboardingProjection, { ...material, invoices: decoded });
+    const projection = yield* decode(
+      O.OnboardingProjection,
+      Object.assign({}, material, { invoices: decoded }),
+    );
+
+    return {
+      ...projection,
+      counts: {
+        retainedVouchers: projection.counts.retainedVouchers,
+        importedVouchers: projection.counts.importedVouchers,
+        customerInvoices: projection.counts.customerInvoices,
+        supplierInvoices: projection.counts.supplierInvoices,
+        bankObservations: projection.counts.bankObservations,
+        retainedOriginals: projection.counts.retainedOriginals,
+        assets: yield* readAssetHandoffCount(tx, scope),
+      },
+    };
   },
 );
 

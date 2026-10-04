@@ -19,7 +19,8 @@ export function effectiveDeltaSources(bookId: string, excludedDeltaId?: string) 
     select distinct on ("sourceSystem","sourceAccountId","sourceReference","sourceYear") * from (
       select o.source_system as "sourceSystem",o.source_account_id as "sourceAccountId",
         p.source_reference as "sourceReference",v.body,p.voucher_id as "voucherId",p.source_digest as "sourceDigest",
-        substring(v.body->>'date',1,4) as "sourceYear",(p.receipt->>'sequence')::numeric as sequence
+        substring(v.body->>'date',1,4) as "sourceYear",(p.receipt->>'sequence')::numeric as sequence,
+        coalesce((select record->'fields'->>3 from jsonb_array_elements(preview.body->'records') record where record->>'ordinal'=v.body->>'recordOrdinal' and record->>'tag'='VER'),'') as description
       from openerp.sie_financial_postings p
       join openerp.sie_financial_runs f on(f.book_id,f.id)=(p.book_id,p.run_id)
       join openerp.sie_source_runs r on(r.book_id,r.id)=(f.book_id,f.source_run_id)
@@ -30,8 +31,11 @@ export function effectiveDeltaSources(bookId: string, excludedDeltaId?: string) 
       where p.book_id=${bookId}
       union all
       select e.body->>'sourceSystem',e.body->>'sourceAccountId',e.source_reference,
-        e.body->'candidate',e.body->>'effectiveVoucherId',e.body->>'sourceDigest',e.body->>'sourceYear',e.executed_sequence
+        e.body->'candidate',e.body->>'effectiveVoucherId',e.body->>'sourceDigest',e.body->>'sourceYear',e.executed_sequence,
+        coalesce((select record->'fields'->>3 from jsonb_array_elements(candidate.body->'records') record where record->>'ordinal'=e.body->'candidate'->>'recordOrdinal' and record->>'tag'='VER'),'')
       from openerp.onboarding_delta_effects e
+      join openerp.onboarding_source_deltas delta on(delta.book_id,delta.id)=(e.book_id,e.delta_id)
+      join openerp.sie_source_previews candidate on(candidate.book_id,candidate.id)=(delta.book_id,delta.candidate_preview_id)
       where e.book_id=${bookId} and (${excludedDeltaId ?? null}::text is null or e.delta_id<>${excludedDeltaId ?? null})
     ) versions order by "sourceSystem","sourceAccountId","sourceReference","sourceYear",sequence desc
   `;
@@ -49,9 +53,10 @@ export function readDeltaBaseline(
     body: Schema.JsonObject;
     voucherId: string;
     sourceDigest: string;
+    description: string;
   }>(
     sql`
-    select "sourceReference",body,"voucherId","sourceDigest" from (${effectiveDeltaSources(bookId, excludedDeltaId)}) effective
+    select "sourceReference",body,"voucherId","sourceDigest",description from (${effectiveDeltaSources(bookId, excludedDeltaId)}) effective
     where "sourceSystem"=${sourceSystem} and "sourceAccountId"=${sourceAccountId} and body<>'null'::jsonb
     order by "sourceReference" limit 10001
   `,

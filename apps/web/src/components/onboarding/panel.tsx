@@ -136,6 +136,7 @@ export function OnboardingPanel({ view }: { view: OnboardingView }) {
             lifecycle={lifecycle.data}
             open={open}
             viewerId={lifecycle.data.viewerActorId}
+            example={workspace.data.case.path === "demo"}
           />
         );
       case "cutover":

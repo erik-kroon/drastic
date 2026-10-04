@@ -16,6 +16,19 @@ const styles = stylex.create({
   },
   sourceRow: { height: tokens.setupSourceRowHeight },
   compactRow: { height: tokens.controlHeightLg },
+  openingRow: { paddingInline: 0 },
+  deltaRow: { paddingInline: 0, height: tokens.controlHeightIconLg },
+  deltaLastCell: { paddingInlineStart: tokens.space6 },
+  firstOpeningCell: { paddingInlineStart: tokens.space2 },
+  lastOpeningCell: { paddingInlineStart: tokens.space4 },
+  group: {
+    height: tokens.controlHeightSm,
+    paddingInline: tokens.space2,
+    color: tokens.captionForeground,
+    fontSize: tokens.fontSizeCompact,
+    fontWeight: tokens.fontWeightSemibold,
+    letterSpacing: tokens.trackingGroup,
+  },
   header: {
     height: tokens.controlHeight,
     backgroundColor: tokens.sidebar,
@@ -41,6 +54,7 @@ export function SetupTable({
   columns,
   rows,
   density = "standard",
+  layout,
 }: {
   title: string;
   width: string;
@@ -49,18 +63,25 @@ export function SetupTable({
     id: string;
     cells: readonly ReactNode[];
     tone?: "selected" | "warning" | "blocked";
+    group?: string;
   }[];
   density?: "standard" | "source" | "compact";
+  layout?: "opening" | "delta";
 }) {
   return (
     <div role="table" aria-label={title} {...stylex.props(styles.table(width))}>
       <div role="rowgroup">
-        <div role="row" {...stylex.props(styles.row, styles.header)}>
-          {columns.map((column) => (
+        <div role="row" {...stylex.props(styles.row, styles.header, !!layout && styles.openingRow)}>
+          {columns.map((column, index) => (
             <div
               key={column.id}
               role="columnheader"
-              {...stylex.props(styles.cell(column.width, column.numeric ?? false))}
+              {...stylex.props(
+                styles.cell(column.width, column.numeric ?? false),
+                !!layout && index === 0 && styles.firstOpeningCell,
+                layout === "opening" && index === columns.length - 1 && styles.lastOpeningCell,
+                layout === "delta" && index === columns.length - 1 && styles.deltaLastCell,
+              )}
             >
               {column.label}
             </div>
@@ -68,31 +89,46 @@ export function SetupTable({
         </div>
       </div>
       <div role="rowgroup">
-        {rows.map((row) => (
-          <div
-            key={row.id}
-            role="row"
-            aria-selected={row.tone === "selected" ? true : undefined}
-            {...stylex.props(
-              styles.row,
-              density === "source" && styles.sourceRow,
-              density === "compact" && styles.compactRow,
-              row.tone === "selected" && styles.selected,
-              row.tone === "warning" && styles.warning,
-              row.tone === "blocked" && styles.blocked,
-            )}
-          >
-            {columns.map((column, index) => (
-              <div
-                key={column.id}
-                role="cell"
-                {...stylex.props(styles.cell(column.width, column.numeric ?? false))}
-              >
-                {row.cells[index]}
+        {rows.map((row) =>
+          row.group ? (
+            <div key={row.id} role="row" {...stylex.props(styles.row, styles.group)}>
+              <div role="cell" aria-colspan={columns.length}>
+                {row.group}
               </div>
-            ))}
-          </div>
-        ))}
+            </div>
+          ) : (
+            <div
+              key={row.id}
+              role="row"
+              aria-selected={row.tone === "selected" ? true : undefined}
+              {...stylex.props(
+                styles.row,
+                layout === "opening" && styles.openingRow,
+                density === "source" && styles.sourceRow,
+                density === "compact" && styles.compactRow,
+                layout === "delta" && styles.deltaRow,
+                row.tone === "selected" && styles.selected,
+                row.tone === "warning" && styles.warning,
+                row.tone === "blocked" && styles.blocked,
+              )}
+            >
+              {columns.map((column, index) => (
+                <div
+                  key={column.id}
+                  role="cell"
+                  {...stylex.props(
+                    styles.cell(column.width, column.numeric ?? false),
+                    !!layout && index === 0 && styles.firstOpeningCell,
+                    layout === "opening" && index === columns.length - 1 && styles.lastOpeningCell,
+                    layout === "delta" && index === columns.length - 1 && styles.deltaLastCell,
+                  )}
+                >
+                  {row.cells[index]}
+                </div>
+              ))}
+            </div>
+          ),
+        )}
       </div>
     </div>
   );

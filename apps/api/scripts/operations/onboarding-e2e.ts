@@ -7,6 +7,7 @@ import { Client } from "pg";
 import * as Effect from "effect/Effect";
 import * as Redacted from "effect/Redacted";
 import { Database, databaseLayer } from "../../src/db/connection";
+import { recordCompanyFact } from "../../src/application/company-profiles";
 import {
   createEvidence,
   prepareJournal,
@@ -121,6 +122,7 @@ try {
     OPENERP_ACCESS_TOKEN: token,
   });
   const scope = { entityId: "ops-entity", bookId: "ops-book" };
+
   const invoke = <A, E>(effect: Effect.Effect<A, E, Database>) =>
     Effect.runPromise(
       effect.pipe(
@@ -188,6 +190,7 @@ try {
       input: { planDigest: plan.planDigest, version: plan.version },
     }),
   );
+
   const posted = await invoke(
     executeChange(token, {
       scope,
@@ -196,15 +199,18 @@ try {
       input: { planDigest: plan.planDigest, version: plan.version, approvalId: approval.id },
     }),
   );
+
   assert.ok(posted.voucherId);
   const source = new Client({ connectionString: sourceUrl });
   await source.connect();
   await source.query(
     "insert into openerp.intake_contents(book_id,sha256,bytes) select 'ops-book','sha256:'||encode(sha256(convert_to('original synthetic statement','UTF8')),'hex'),convert_to('original synthetic statement','UTF8')",
   );
+
   const balances = await source.query<{ account: string; amount: string }>(
     "select account_id as account,sum(debit_minor-credit_minor)::text as amount from openerp.journal_lines where book_id='ops-book' group by account_id order by account_id",
   );
+
   assert.deepEqual(balances.rows, [
     { account: "account_bank", amount: "12500" },
     { account: "account_clearing", amount: "-12500" },
@@ -218,6 +224,22 @@ try {
     "1",
   );
   await source.end();
+  await invoke(
+    recordCompanyFact(token, {
+      scope,
+      idempotencyKey: randomUUID(),
+      input: {
+        factKind: "account_chart",
+        value: { state: "known", value: "Independent synthetic chart" },
+        effectiveFrom: "2026-01-01",
+        effectiveTo: null,
+        supersedesId: null,
+        evidence: [{ evidenceId: evidence.id, sha256: evidence.sha256 }],
+        note: "Entity-owned fact evidence must survive scoped recovery closure",
+      },
+    }),
+  );
+
   const pgEnv = {
     ...process.env,
     PGHOST: "127.0.0.1",
@@ -225,6 +247,7 @@ try {
     PGUSER: "postgres",
     PGPASSWORD: password,
   };
+
   await run(
     [
       join(pgBin, "pg_dump"),
@@ -245,6 +268,7 @@ try {
     ],
     pgEnv,
   );
+
   const prior = new Client({
     host: "127.0.0.1",
     port,
@@ -252,6 +276,7 @@ try {
     password,
     database: "openerp_ops_prior_onboarding",
   });
+
   await prior.connect();
   await prior.query(
     `create role onboarding_prior_writer login password ${prior.escapeLiteral(password)}; grant openerp_runtime to onboarding_prior_writer; grant connect on database openerp_ops_prior_onboarding to onboarding_prior_writer`,
@@ -306,6 +331,7 @@ try {
     ["bun", "apps/api/scripts/operations/onboarding-cli.ts", "observe", configPath],
     { stdout: "pipe", stderr: "pipe" },
   );
+
   const deadline = Date.now() + 20000;
   let fencedStage = false;
 
@@ -371,11 +397,13 @@ try {
     ),
     (cause: Error & { code?: string }) => cause.code === "42501",
   );
+
   const proofPrivilege = (
     await runtimeProbe.query<{ allowed: boolean }>(
       "select has_table_privilege(current_user,'openerp.onboarding_operational_proofs','INSERT') as allowed",
     )
   ).rows[0];
+
   assert.equal(proofPrivilege?.allowed, false);
   await runtimeProbe.end();
   const observationPath = join(scratch, "observation", "observation.json");

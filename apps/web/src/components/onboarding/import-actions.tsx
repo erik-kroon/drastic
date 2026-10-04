@@ -149,7 +149,13 @@ export function ImportPrimaryAction(props: {
   );
 }
 
-export function ImportPauseAction({ run }: { run: Workspace["imports"][number] | undefined }) {
+export function ImportPauseAction({
+  run,
+  open,
+}: {
+  run: Workspace["imports"][number] | undefined;
+  open: OpenOnboardingView;
+}) {
   const { book, locale } = useBookWorkspace();
 
   const pause = useOnboardingCommand(
@@ -162,14 +168,20 @@ export function ImportPauseAction({ run }: { run: Workspace["imports"][number] |
     <>
       <SetupButton
         variant="outline"
-        disabled={!run?.financialRunId || run.financialState === "posted" || pause.disabled}
-        onClick={() =>
+        disabled={run?.financialState === "posted" || pause.disabled}
+        onClick={() => {
+          if (!run?.financialRunId) {
+            open("workspace");
+
+            return;
+          }
+
           pause.mutate(
             pause.uncertain && pause.variables
               ? pause.variables
               : { action: run?.financialState === "paused" ? "resume" : "pause" },
-          )
-        }
+          );
+        }}
       >
         {run?.financialState === "paused" ? "Återuppta import" : "Pausa import"}
       </SetupButton>

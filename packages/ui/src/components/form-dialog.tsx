@@ -31,6 +31,8 @@ const styles = stylex.create({
   compact: { width: "min(560px, calc(100vw - 48px))" },
   setup: {
     width: tokens.setupDialogWidth,
+    fontSize: tokens.fontSizeControl,
+    lineHeight: tokens.lineHeight16Px,
     insetBlockStart: tokens.setupDialogTop,
     transform: "translateX(-50%)",
     borderColor: tokens.input,

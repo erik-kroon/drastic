@@ -10,14 +10,30 @@ import type { Transaction } from "../db/transaction";
 
 const absolute = (value: bigint) => (value < 0n ? -value : value);
 
-export function parseOpeningInvoiceRows(lines: readonly string[], provenance: string) {
+export function parseOpeningInvoiceRows(
+  lines: readonly string[],
+  provenance: string,
+  counterparties = false,
+) {
   return Effect.gen(function* () {
     if (!lines.length || lines.length > 500) return yield* failure("UnsupportedProfile");
 
     const rows = yield* Effect.forEach(lines, (line) => {
       const fields = line.split(",");
 
-      if (fields.length !== 8) return failure("InvalidJournal");
+      if (fields.length !== (counterparties ? 9 : 8)) return failure("InvalidJournal");
+
+      const item = {
+        asOf: fields[1],
+        currency: fields[2],
+        sourceIdentity: fields[3],
+        sourceAccount: fields[4],
+        originalMinor: fields[5],
+        outstandingMinor: fields[6],
+        assertedState: fields[7],
+        detailAvailability: "source_asserted",
+        basis: provenance,
+      };
 
       return Schema.decodeUnknownEffect(
         Schema.Struct({
@@ -26,17 +42,7 @@ export function parseOpeningInvoiceRows(lines: readonly string[], provenance: st
         }),
       )({
         kind: fields[0],
-        item: {
-          asOf: fields[1],
-          currency: fields[2],
-          sourceIdentity: fields[3],
-          sourceAccount: fields[4],
-          originalMinor: fields[5],
-          outstandingMinor: fields[6],
-          assertedState: fields[7],
-          detailAvailability: "source_asserted",
-          basis: provenance,
-        },
+        item: counterparties ? { ...item, counterpartyName: fields[8] } : item,
       }).pipe(Effect.mapError(() => failure("InvalidJournal")));
     });
 
@@ -51,6 +57,7 @@ export function parseOpeningInvoiceRows(lines: readonly string[], provenance: st
         absolute(outstanding) > absolute(original) ||
         original * outstanding < 0n ||
         (item.assertedState === "unpaid" && original !== outstanding) ||
+        (item.assertedState === "paid" && outstanding !== 0n) ||
         (item.assertedState === "partly_paid" &&
           (outstanding === 0n || absolute(outstanding) >= absolute(original)))
       )

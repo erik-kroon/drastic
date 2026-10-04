@@ -64,9 +64,13 @@ export function SavedOpenItems({ plan }: { plan: typeof Sie.SiePlan.Type }) {
                   ? sv
                     ? "Obetald enligt källan"
                     : "Unpaid according to source"
-                  : sv
-                    ? "Delbetald enligt källan"
-                    : "Partly paid according to source"}
+                  : item.assertedState === "paid"
+                    ? sv
+                      ? "Betald enligt källan"
+                      : "Paid according to source"
+                    : sv
+                      ? "Delbetald enligt källan"
+                      : "Partly paid according to source"}
             </Text>
             <Text>
               {item.detailAvailability === "unreconstructable"
@@ -199,6 +203,7 @@ export function OpenItemEntry({ disabled, sourceAccounts, onAdd, onDraftChange }
                 { value: "unknown", label: sv ? "Okänd" : "Unknown" },
                 { value: "unpaid", label: sv ? "Obetald" : "Unpaid" },
                 { value: "partly_paid", label: sv ? "Delbetald" : "Partly paid" },
+                { value: "paid", label: sv ? "Betald" : "Paid" },
               ]}
               onValueChange={(value) => {
                 field.handleChange(

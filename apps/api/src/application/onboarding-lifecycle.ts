@@ -1,4 +1,6 @@
+import { readFirstPeriodProgress } from "./onboarding-first-period";
 import { openingPosition } from "./onboarding-opening";
+import { readAssetHandoffCount } from "./onboarding-asset-handoff";
 import { readOnboardingDeltaInTransaction } from "./onboarding-deltas";
 import {
   readOnboardingProjectionInTransaction,
@@ -427,8 +429,10 @@ function comparisons(
 
     for (const control of controls.filter(
       (item) =>
+        item.kind !== "historical_import_review" &&
         item.kind !== "bank_reconciling_items" &&
         item.kind !== "historical_originals" &&
+        item.kind !== "historical_asset_register" &&
         item.kind !== "historical_payroll_handoff",
     )) {
       const sums = new Map<string, bigint>();
@@ -541,7 +545,12 @@ function requiredControlKinds(
 
           if (fact.factKind === "payroll_applicability" && fact.value.value === true)
             kinds.push("historical_payroll_handoff");
-          else if (fact.factKind !== "vat_registration" && fact.value.value === true)
+          else if (fact.factKind === "asset_applicability" && fact.value.value === true) {
+            kinds.push("historical_asset_register");
+
+            if ((yield* readAssetHandoffCount(tx, scope)) === null)
+              blockers.push("qualified_handoff_required:asset_applicability");
+          } else if (fact.factKind !== "vat_registration" && fact.value.value === true)
             blockers.push(`qualified_handoff_required:${kind}`);
         }
       }
@@ -1356,17 +1365,38 @@ export function readOnboardingLifecycleInTransaction(
   viewerActorId: string,
 ) {
   return Effect.gen(function* () {
-    yield* currentOnboardingCase(tx, scope);
+    const current = yield* currentOnboardingCase(tx, scope);
     const snapshots = yield* records(tx, scope, "snapshots", O.OnboardingSnapshot);
     const completions = yield* records(tx, scope, "completions", O.OnboardingFirstPeriodCompletion);
     const completion = completions.sort((a, b) => b.completedAt.localeCompare(a.completedAt))[0];
+    const proofs = yield* records(tx, scope, "proofs", O.OnboardingOperationalProof);
+    let operationalProof: typeof O.OnboardingOperationalProof.Type | null = null;
+
+    for (const proof of proofs.toSorted((a, b) => b.observedAt.localeCompare(a.observedAt))) {
+      const snapshot = snapshots.find((item) => item.id === proof.snapshotId);
+
+      if (
+        snapshot &&
+        snapshot.digest === proof.snapshotDigest &&
+        (yield* onboardingSnapshotCurrent(tx, snapshot))
+      ) {
+        operationalProof = proof;
+        break;
+      }
+    }
+
+    const projection = yield* readOnboardingProjectionInTransaction(tx, scope);
+    const controls = yield* records(tx, scope, "controls", O.OnboardingControl);
+
+    const activation =
+      (yield* records(tx, scope, "activations", O.OnboardingActivationReceipt))[0] ?? null;
 
     return {
       scope,
-      projection: yield* readOnboardingProjectionInTransaction(tx, scope),
+      projection,
       viewerActorId,
       people: yield* Db.readPeople(tx, scope.bookId),
-      controls: yield* records(tx, scope, "controls", O.OnboardingControl),
+      controls,
       responsibilities: yield* currentPolicy(tx, scope),
       snapshots: yield* Effect.forEach(snapshots, (snapshot) =>
         onboardingSnapshotCurrent(tx, snapshot).pipe(
@@ -1375,8 +1405,15 @@ export function readOnboardingLifecycleInTransaction(
       ),
       decisions: yield* records(tx, scope, "decisions", O.OnboardingDecision),
       intents: yield* records(tx, scope, "intents", O.OnboardingActivationIntent),
-      activation:
-        (yield* records(tx, scope, "activations", O.OnboardingActivationReceipt))[0] ?? null,
+      operationalProof,
+      activation,
+      firstPeriodProgress: yield* readFirstPeriodProgress(
+        tx,
+        current,
+        projection,
+        controls,
+        activation,
+      ),
       completion:
         completion === undefined
           ? null

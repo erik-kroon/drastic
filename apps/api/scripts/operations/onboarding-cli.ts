@@ -1,6 +1,7 @@
 import * as Effect from "effect/Effect";
 import {
   activateOnboardingLocally,
+  retainOnboardingObservation,
   observeOnboardingOperations,
   prepareOnboardingTargetFence,
 } from "./onboarding";
@@ -15,11 +16,17 @@ await Effect.runPromise(
 
       if (!configPath)
         refuse(
-          "Use onboarding-cli.ts observe|fence-target|activate <private-configuration.json> [activation-intent-id]. Synthetic isolated local systems only.",
+          "Use onboarding-cli.ts observe|observe-retain|fence-target|activate <private-configuration.json> [activation-intent-id]. Synthetic isolated local systems only.",
         );
 
       if (action === "observe" && intentId === undefined && process.argv.length === 4) {
         await observeOnboardingOperations(configPath);
+      } else if (
+        action === "observe-retain" &&
+        intentId === undefined &&
+        process.argv.length === 4
+      ) {
+        await retainOnboardingObservation(configPath);
       } else if (action === "fence-target" && intentId === undefined && process.argv.length === 4) {
         await prepareOnboardingTargetFence(configPath);
       } else if (action === "activate" && intentId !== undefined && process.argv.length === 5) {

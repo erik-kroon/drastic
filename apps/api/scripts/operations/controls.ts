@@ -97,12 +97,19 @@ export async function recoveryControls(
               WHERE c.book_id=r.book_id AND c.key=r.command_key)`
           : "true";
 
+      const evidenceScope =
+        table.schema === "openerp" &&
+        table.table === "company_fact_revisions" &&
+        column.name === "body"
+          ? "EXISTS(SELECT FROM openerp.books b WHERE b.id=e.book_id AND b.entity_id=r.entity)"
+          : "e.book_id=r.book";
+
       const refs = await client.query<{ count: string; invalid: boolean; external: boolean }>(`
-        WITH objects AS (SELECT to_jsonb(r)->>'book_id' AS book, (${requiresEvidence}) AS requires_evidence, j.value
+        WITH objects AS (SELECT to_jsonb(r)->>'book_id' AS book, to_jsonb(r)->>'entity_id' AS entity, (${requiresEvidence}) AS requires_evidence, j.value
           FROM ONLY ${identifier} r CROSS JOIN LATERAL jsonb_path_query(r.${field}::jsonb, '$.** ? (@.type() == "object")') j(value)),
         refs AS (SELECT * FROM objects WHERE value ? 'evidenceId')
         SELECT (SELECT count(*)::text FROM refs) AS count,
-          EXISTS(SELECT FROM refs r LEFT JOIN openerp.evidence e ON e.book_id=r.book AND e.id=r.value->>'evidenceId'
+          EXISTS(SELECT FROM refs r LEFT JOIN openerp.evidence e ON (${evidenceScope}) AND e.id=r.value->>'evidenceId'
             WHERE r.requires_evidence AND (e.id IS NULL OR (r.value ? 'sha256' AND r.value->>'sha256' IS DISTINCT FROM e.sha256)
               OR (r.value ? 'evidenceSha256' AND r.value->>'evidenceSha256' IS DISTINCT FROM e.sha256))) AS invalid,
           EXISTS(SELECT FROM objects WHERE value ?| ARRAY['objectKey','storageKey','blobKey','objectVersion','storageVersion','blobVersion','object_key','storage_key','blob_key','object_version','storage_version','blob_version']) AS external`);

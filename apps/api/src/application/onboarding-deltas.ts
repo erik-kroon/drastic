@@ -11,11 +11,12 @@ import { decode, toJsonObject, type Scope } from "./commerce/support";
 import { digest, isoNow, newId, replay, saveCommand } from "./posting";
 import { failure } from "./failures";
 
-function voucherFacts(voucher: typeof Sie.Voucher.Type) {
+function voucherFacts(voucher: typeof Sie.Voucher.Type, description: string) {
   return {
     series: voucher.series,
     number: voucher.number,
     date: voucher.date,
+    description,
     transactions: voucher.transactions.map((line) => ({
       kind: line.kind,
       account: line.account,
@@ -85,7 +86,7 @@ function deltaMaterial(tx: Transaction, scope: Scope, previewId: string, exclude
         sourceReference: row.sourceReference,
         voucherId: row.voucherId,
         sourceDigest: row.sourceDigest,
-        facts: voucherFacts(row.voucher),
+        facts: voucherFacts(row.voucher, row.description),
       })),
     );
 
@@ -203,8 +204,15 @@ export const compareOnboardingDelta = Effect.fn("onboarding.delta.compare")(func
 
           if (previous)
             kind =
-              (yield* digest(voucherFacts(previous.voucher))) ===
-              (yield* digest(voucherFacts(candidate)))
+              (yield* digest(voucherFacts(previous.voucher, previous.description))) ===
+              (yield* digest(
+                voucherFacts(
+                  candidate,
+                  material.preview.records.find(
+                    (record) => record.ordinal === candidate.recordOrdinal,
+                  )?.fields[3] ?? "",
+                ),
+              ))
                 ? "unchanged"
                 : "changed";
           rows.push({

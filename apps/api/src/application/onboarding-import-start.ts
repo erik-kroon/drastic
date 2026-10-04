@@ -1,3 +1,4 @@
+import { requireResolvedImportReview } from "./onboarding-import-review";
 import * as O from "@open-erp/contracts/onboarding";
 import * as Sie from "@open-erp/contracts/sie-import";
 import * as Effect from "effect/Effect";
@@ -63,6 +64,7 @@ export const startOnboardingImport = Effect.fn("onboarding.import.start")(functi
 
         if (!previewRecord) return yield* failure("NotFound");
         const preview = yield* decode(Sie.SiePreview, previewRecord.body);
+        yield* requireResolvedImportReview(tx, scope, preview.id);
 
         for (const voucher of preview.vouchers) {
           const date = `${voucher.date.slice(0, 4)}-${voucher.date.slice(4, 6)}-${voucher.date.slice(6, 8)}`;

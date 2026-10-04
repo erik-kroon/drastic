@@ -1,3 +1,5 @@
+import { importReadiness, missingSourceAccounts } from "./import-readiness";
+import * as Match from "effect/Match";
 import {
   ImportBatchesDialog,
   ImportPrimaryAction,
@@ -34,51 +36,6 @@ import { type Lifecycle, type Workspace } from "./lifecycle";
 import { Breadcrumb, PendingRead, SetupLink, type OpenOnboardingView } from "./shared";
 import { useSieSource } from "./sources";
 
-function missingSourceAccounts(
-  preview: typeof Sie.SiePreview.Type | undefined,
-  accounts: ReturnType<typeof useBookWorkspace>["setup"]["accounts"],
-) {
-  return [
-    ...new Set(
-      preview?.vouchers.flatMap((voucher) =>
-        voucher.transactions
-          .filter(
-            (item) => !accounts.some((account) => account.active && account.code === item.account),
-          )
-          .map((item) => item.account),
-      ) ?? [],
-    ),
-  ];
-}
-
-function importReadiness(
-  preview: typeof Sie.SiePreview.Type | undefined,
-  unresolvedAccounts: readonly string[],
-) {
-  if (!preview) return { total: null, ready: null, decisions: null };
-
-  const affected = new Set(
-    preview.vouchers
-      .filter((voucher) =>
-        voucher.transactions.some((line) => unresolvedAccounts.includes(line.account)),
-      )
-      .map((voucher) => voucher.ordinal),
-  );
-
-  for (const diagnostic of preview.diagnostics) {
-    const record = preview.records.find((entry) => entry.line === diagnostic.line);
-
-    if (record?.voucherOrdinal) affected.add(record.voucherOrdinal);
-    else for (const voucher of preview.vouchers) affected.add(voucher.ordinal);
-  }
-
-  return {
-    total: preview.vouchers.length,
-    ready: preview.vouchers.length - affected.size,
-    decisions: affected.size,
-  };
-}
-
 export function OnboardingImport({
   workspace,
   lifecycle,
@@ -111,12 +68,20 @@ export function OnboardingImport({
     (account) => !sie.mappings.data?.current.some((mapping) => mapping.sourceAccount === account),
   );
 
-  const readiness = importReadiness(sie.preview.data, missingAccounts);
+  const importReview = lifecycle.controls
+    .filter((control) => control.importReview?.previewId === sie.preview.data?.id)
+    .toSorted(
+      (left, right) =>
+        right.qualifiedAt.localeCompare(left.qualifiedAt) || right.id.localeCompare(left.id),
+    )[0]?.importReview;
+
+  const findings = importReview?.findings.filter((finding) => finding.state === "pending") ?? [];
+  const readiness = importReadiness(sie.preview.data, missingAccounts, findings);
 
   const diagnostics = sie.preview.data?.diagnostics ?? [];
 
   return (
-    <SetupPageContent styleX={setupLayoutStyles(["page", "inset"])}>
+    <SetupPageContent styleX={setupLayoutStyles(["page", "inset", "importPage"])}>
       <Breadcrumb
         items={[{ label: "Setup", view: "workspace" }, { label: "Import" }]}
         open={open}
@@ -124,7 +89,7 @@ export function OnboardingImport({
       <SetupBlock layout={["title"]}>
         <SetupTitle>Import av historik</SetupTitle>
       </SetupBlock>
-      <SetupText as="p" layout={["subtitle"]}>
+      <SetupText as="p" layout={["subtitle", "mappingSubtitle"]}>
         Tidigare bokföring{sie.source ? `, ${sie.source.occurrence.filename}` : ""}
         {workspace.case.configuration.dates.historyStartsOn &&
         workspace.case.configuration.dates.historyEndsOn
@@ -148,13 +113,32 @@ export function OnboardingImport({
           { value: readiness.ready?.toString() ?? "—", label: "✓ klara" },
           { value: readiness.decisions?.toString() ?? "—", label: "! behöver beslut" },
         ].map((item) => (
-          <SetupBlock key={item.label} layout={["statistic"]}>
-            <SetupText layout={["statisticNumber"]}>{item.value}</SetupText>
-            <SetupText layout={["secondary"]}>{item.label}</SetupText>
+          <SetupBlock key={item.label} layout={["statistic", "importStatistic"]}>
+            <SetupText
+              layout={[
+                "statisticNumber",
+                "importStatisticNumber",
+                item.label === "✓ klara" && "success",
+                item.label === "! behöver beslut" && "warning",
+              ]}
+            >
+              {item.value}
+            </SetupText>
+            <SetupText
+              layout={[
+                Match.value(item.label).pipe(
+                  Match.when("✓ klara", () => "success" as const),
+                  Match.when("! behöver beslut", () => "warning" as const),
+                  Match.orElse(() => "secondary" as const),
+                ),
+              ]}
+            >
+              {item.label}
+            </SetupText>
           </SetupBlock>
         ))}
       </SetupBlock>
-      <SetupText as="h2" layout={["semibold", "section28"]}>
+      <SetupText as="h2" layout={["dialogHeading", "section28"]}>
         Undantag att lösa
       </SetupText>
       <SetupBlock layout={["controls", "tableSpace"]}>
@@ -165,17 +149,17 @@ export function OnboardingImport({
             ).length ?? 0;
 
           return (
-            <SetupBlock key={account} layout={["controlRow"]}>
-              <SetupBlock layout={["stack4"]}>
-                <SetupText>
+            <SetupBlock key={account} layout={["controlRow", "importRow"]}>
+              <SetupBlock layout={["stack4", "importLabel"]}>
+                <SetupText layout={["semibold"]}>
                   {sie.preview.data?.vouchers.filter((voucher) =>
                     voucher.transactions.some((line) => line.account === account),
                   ).length ?? 0}{" "}
                   behöver kontomappning
                 </SetupText>
-                <SetupText layout={["warning"]}>! Behöver åtgärd</SetupText>
+                <SetupText layout={["warning", "caption"]}>! Behöver åtgärd</SetupText>
               </SetupBlock>
-              <SetupText layout={["secondary"]}>
+              <SetupText layout={["importDetail"]}>
                 {sie.preview.data?.vouchers.filter((voucher) =>
                   voucher.transactions.some((line) => line.account === account),
                 ).length ?? 0}{" "}
@@ -187,6 +171,31 @@ export function OnboardingImport({
             </SetupBlock>
           );
         })}
+        {findings.map((finding) => (
+          <SetupBlock
+            key={`${finding.kind}-${finding.voucherOrdinal}`}
+            layout={["controlRow", "importRow"]}
+          >
+            <SetupBlock layout={["stack4", "importLabel"]}>
+              <SetupText layout={["semibold"]}>
+                {finding.kind === "duplicate_candidate" ? "1 dubblettkandidat" : "1 stöds inte"}
+              </SetupText>
+              <SetupText
+                layout={["caption", finding.kind === "duplicate_candidate" ? "warning" : "blocked"]}
+              >
+                {finding.kind === "duplicate_candidate" ? "! Behöver åtgärd" : "Blockerad"}
+              </SetupText>
+            </SetupBlock>
+            <SetupText layout={["importDetail"]}>
+              {finding.kind === "duplicate_candidate"
+                ? `${finding.counterpartyName} faktura ${finding.documentNumber} finns redan.`
+                : "Okänd valutakod blockerar. Källan måste rättas före godkännande."}
+            </SetupText>
+            <SetupLink onClick={() => open("sources")}>
+              {finding.kind === "duplicate_candidate" ? "Jämför de två" : "Visa posten"}
+            </SetupLink>
+          </SetupBlock>
+        ))}
         {diagnostics.map((item, index) => (
           <SetupBlock key={`${item.code}-${item.line}-${index}`} layout={["controlRow"]}>
             <SetupBlock layout={["stack4"]}>
@@ -210,13 +219,13 @@ export function OnboardingImport({
           open={open}
           continueImport={() => setImporting(true)}
         />
-        <ImportPauseAction run={run} />
+        <ImportPauseAction run={run} open={open} />
       </SetupBlock>
       <SetupBlock layout={["note"]}>
         <SetupCaption>
           {run?.financialState === "posted"
             ? "Historiken är inlagd. OpenERP blir gällande först efter bekräftad övergång."
-            : "Inget har gjorts gällande. Ingenting bokförs förrän du godkänt."}
+            : "Inget har gjorts gällande. Ingenting bokförs förrän du godkänner öppningsläget."}
         </SetupCaption>
       </SetupBlock>
       {!sie.source ? (
@@ -255,6 +264,13 @@ export function sourceAmount(amount: string) {
 
   return formatMinor(
     (sign * (BigInt(match[2] ?? "0") * 100n + BigInt((match[3] ?? "").padEnd(2, "0")))).toString(),
+  );
+}
+
+function mappingDate(value: string | undefined) {
+  return formatDate(
+    value ? `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}` : null,
+    false,
   );
 }
 
@@ -340,7 +356,7 @@ export function OnboardingMapping({
 
   return (
     <SetupContent
-      styleX={setupLayoutStyles(["page", "focused"])}
+      styleX={setupLayoutStyles(["mappingPage", "focused"])}
       onSubmit={(event) => {
         event.preventDefault();
 
@@ -373,10 +389,10 @@ export function OnboardingMapping({
           {model.account ? `Konto ${model.account} saknas i kontoplanen` : "Kontomappning"}
         </SetupTitle>
       </SetupBlock>
-      <SetupText as="p" layout={["subtitle"]}>
+      <SetupText as="p" layout={["mappingSubtitle"]}>
         Förekommer i {model.rows.length} poster
         {model.rows.length
-          ? `, från ${formatDate(model.rows[0]?.voucher.date ?? null, false)} till ${formatDate(model.rows.at(-1)?.voucher.date ?? null, false)}`
+          ? `, från ${mappingDate(model.rows[0]?.voucher.date)} till ${mappingDate(model.rows.at(-1)?.voucher.date)}`
           : ""}
         .
       </SetupText>
@@ -390,10 +406,10 @@ export function OnboardingMapping({
           void model.sie.inventory.refetch();
         }}
       />
-      <SetupBlock as="label" id="mapping-label" layout={["section28"]}>
+      <SetupBlock as="label" id="mapping-label" layout={["section28", "medium"]}>
         Mappa alla förekomster till
       </SetupBlock>
-      <SetupBlock layout={["tableSpace"]}>
+      <SetupBlock layout={["mappingField"]}>
         <SelectControl
           aria-labelledby="mapping-label"
           value={model.choice}
@@ -406,8 +422,16 @@ export function OnboardingMapping({
           styleX={setupLayoutStyles(["select"])}
         />
       </SetupBlock>
-      <SetupCaption>Du bestämmer.</SetupCaption>
-      <SetupText as="h2" layout={["section28"]}>
+      <SetupBlock layout={["mappingHint"]}>
+        <SetupCaption>
+          {model.sie.mappings.data?.proposedDefaults.some(
+            (entry) => entry.sourceAccount === model.account && entry.accountId === model.choice,
+          )
+            ? "Förslag från OpenERP. Du bestämmer."
+            : "Du bestämmer."}
+        </SetupCaption>
+      </SetupBlock>
+      <SetupText as="h2" layout={["mappingHeading"]}>
         Så här ser det ut, {model.showAll ? model.rows.length : Math.min(3, model.rows.length)} av{" "}
         {model.rows.length} poster
       </SetupText>
@@ -426,7 +450,7 @@ export function OnboardingMapping({
             ({ voucher, line }, index) => ({
               id: `${voucher.ordinal}-${line.recordOrdinal}-${index}`,
               cells: [
-                formatDate(voucher.date, false),
+                mappingDate(voucher.date),
                 `${voucher.series}${voucher.number}`,
                 model.sie.preview.data?.records.find(
                   (record) => record.ordinal === voucher.recordOrdinal,

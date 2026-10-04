@@ -3,9 +3,12 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as O from "@open-erp/contracts/onboarding";
 import { Database } from "./connection";
-import { executeOnboardingActivationInTransaction } from "../application/onboarding-lifecycle";
+import {
+  executeOnboardingActivationInTransaction,
+  onboardingSnapshotCurrent,
+} from "../application/onboarding-lifecycle";
 import { failure } from "../application/failures";
-import { withTransaction } from "./transaction";
+import { withTransaction, type Transaction } from "./transaction";
 
 export const fenceOnboardingTarget = Effect.fn("onboarding.operations.fenceTarget")(function* (
   bookId: string,
@@ -34,18 +37,19 @@ export const fenceOnboardingTarget = Effect.fn("onboarding.operations.fenceTarge
   );
 });
 
-export const retainProofAndActivate = Effect.fn("onboarding.operations.activate")(function* (
+const retainOperationalProofInTransaction = Effect.fn(
+  "onboarding.operations.retainProofInTransaction",
+)(function* (
+  tx: Transaction,
   proof: typeof O.OnboardingOperationalProof.Type,
-  intentId: string,
   priorDatabase: string,
   priorWriterRoles: readonly string[],
 ) {
-  return yield* withTransaction((tx) =>
-    Effect.gen(function* () {
-      yield* tx.execute(sql`set local role openerp_onboarding_operations`);
+  return yield* Effect.gen(function* () {
+    yield* tx.execute(sql`set local role openerp_onboarding_operations`);
 
-      const fence = yield* tx.execute<{ safe: boolean }>(
-        sql`
+    const fence = yield* tx.execute<{ safe: boolean }>(
+      sql`
       select not datallowconn and datconnlimit=0
         and not exists(select from pg_stat_activity where datname=${priorDatabase})
         and not exists(select from pg_roles where rolname=any(array[${sql.join(
@@ -57,48 +61,74 @@ export const retainProofAndActivate = Effect.fn("onboarding.operations.activate"
           sql`, `,
         )}]::text[])) as safe
       from pg_database where datname=${priorDatabase}`,
-        "objects",
-      );
+      "objects",
+    );
 
-      if (fence[0]?.safe !== true) return yield* failure("StaleDependency");
+    if (fence[0]?.safe !== true) return yield* failure("StaleDependency");
 
-      const snapshots = yield* tx.execute<{ body: unknown }>(
-        sql`
+    const snapshots = yield* tx.execute<{ body: unknown }>(
+      sql`
       select body from openerp.onboarding_snapshots where book_id=${proof.scope.bookId} and id=${proof.snapshotId}`,
-        "objects",
-      );
+      "objects",
+    );
 
-      const snapshot = yield* Schema.decodeUnknownEffect(O.OnboardingSnapshot)(snapshots[0]?.body);
+    const snapshot = yield* Schema.decodeUnknownEffect(O.OnboardingSnapshot)(snapshots[0]?.body);
+
+    if (
+      snapshot.digest !== proof.snapshotDigest ||
+      snapshot.scope.entityId !== proof.scope.entityId ||
+      snapshot.purpose !== "activation" ||
+      Date.parse(proof.expiresAt) <= Date.now() ||
+      !(yield* onboardingSnapshotCurrent(tx, snapshot))
+    )
+      return yield* failure("StaleDependency");
+
+    const retained = yield* tx.execute<{ body: unknown }>(
+      sql`
+      select body from openerp.onboarding_operational_proofs where book_id=${proof.scope.bookId} and id=${proof.id}`,
+      "objects",
+    );
+
+    if (retained[0] !== undefined) {
+      const existing = yield* Schema.decodeUnknownEffect(O.OnboardingOperationalProof)(
+        retained[0].body,
+      );
 
       if (
-        snapshot.digest !== proof.snapshotDigest ||
-        snapshot.scope.entityId !== proof.scope.entityId ||
-        snapshot.purpose !== "activation"
+        existing.artifactDigest !== proof.artifactDigest ||
+        existing.snapshotDigest !== proof.snapshotDigest
       )
-        return yield* failure("StaleDependency");
-
-      const retained = yield* tx.execute<{ body: unknown }>(
-        sql`
-      select body from openerp.onboarding_operational_proofs where book_id=${proof.scope.bookId} and id=${proof.id}`,
-        "objects",
-      );
-
-      if (retained[0] !== undefined) {
-        const existing = yield* Schema.decodeUnknownEffect(O.OnboardingOperationalProof)(
-          retained[0].body,
-        );
-
-        if (
-          existing.artifactDigest !== proof.artifactDigest ||
-          existing.snapshotDigest !== proof.snapshotDigest
-        )
-          return yield* failure("IdempotencyConflict");
-      } else {
-        yield* tx.execute(sql`insert into openerp.onboarding_operational_proofs(book_id,id,snapshot_id,body)
+        return yield* failure("IdempotencyConflict");
+    } else {
+      yield* tx.execute(sql`insert into openerp.onboarding_operational_proofs(book_id,id,snapshot_id,body)
         values(${proof.scope.bookId},${proof.id},${proof.snapshotId},${JSON.stringify(proof)}::jsonb)`);
-      }
+    }
+
+    return proof;
+  });
+});
+
+export const retainProofAndActivate = Effect.fn("onboarding.operations.activate")(function* (
+  proof: typeof O.OnboardingOperationalProof.Type,
+  intentId: string,
+  priorDatabase: string,
+  priorWriterRoles: readonly string[],
+) {
+  return yield* withTransaction((tx) =>
+    Effect.gen(function* () {
+      yield* retainOperationalProofInTransaction(tx, proof, priorDatabase, priorWriterRoles);
 
       return yield* executeOnboardingActivationInTransaction(tx, proof.scope, intentId, proof.id);
     }),
+  );
+});
+
+export const retainOperationalProof = Effect.fn("onboarding.operations.retainProof")(function* (
+  proof: typeof O.OnboardingOperationalProof.Type,
+  priorDatabase: string,
+  priorWriterRoles: readonly string[],
+) {
+  return yield* withTransaction((tx) =>
+    retainOperationalProofInTransaction(tx, proof, priorDatabase, priorWriterRoles),
   );
 });

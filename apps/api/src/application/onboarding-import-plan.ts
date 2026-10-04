@@ -1,3 +1,4 @@
+import { requireResolvedImportReview } from "./onboarding-import-review";
 import { openingInvoiceDetails } from "./onboarding-open-items";
 import * as Mapping from "@open-erp/contracts/onboarding-mappings";
 import * as MappingDb from "../db/onboarding-mappings";
@@ -169,6 +170,7 @@ export const prepareOnboardingImportPlan = Effect.fn("onboarding.import.prepareP
         if (!configuration || !record) return yield* failure("NotFound");
         const current = yield* decode(O.OnboardingCase, configuration.body);
         const preview = yield* decode(Sie.SiePreview, record.body);
+        yield* requireResolvedImportReview(tx, scope, preview.id);
         const dates = current.configuration.dates;
 
         if (

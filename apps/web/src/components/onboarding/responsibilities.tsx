@@ -7,12 +7,7 @@ import {
 } from "@open-erp/ui/components/setup-parts";
 import { useState } from "react";
 import * as Onboarding from "@open-erp/contracts/onboarding";
-import {
-  SetupButton,
-  SetupCaption,
-  SetupContent,
-  SetupTitle,
-} from "@open-erp/ui/components/setup-workspace";
+import { SetupButton, SetupContent, SetupTitle } from "@open-erp/ui/components/setup-workspace";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
 import { bookPath } from "@/lib/accounting-api";
@@ -25,7 +20,7 @@ const roles = [
   {
     key: "bookkeepingApproverId",
     label: "Vem godkänner bokföringsförslag?",
-    effect: "granskar och godkänner bokföring",
+    effect: "granskar och godkänner förslag",
   },
   {
     key: "paymentApproverId",
@@ -35,7 +30,7 @@ const roles = [
   {
     key: "vatResponsibleId",
     label: "Vem hanterar momsdeklarationen?",
-    effect: "hanterar momsdeklarationen",
+    effect: "hanterar moms",
   },
 ] as const;
 
@@ -72,10 +67,13 @@ function RoleAssignment(props: {
   const selected = choices.some((person) => person.id === props.personId) ? props.personId : "";
 
   return (
-    <SetupBlock as="fieldset" disabled={props.disabled} layout={["stack8"]}>
-      <SetupText as="legend" layout={["semibold"]}>
-        {props.role.label}
-      </SetupText>
+    <SetupBlock
+      as="fieldset"
+      aria-label={props.role.label}
+      disabled={props.disabled}
+      layout={["stack8"]}
+    >
+      <SetupText layout={["semibold"]}>{props.role.label}</SetupText>
       <SetupBlock layout={["radioOptions"]}>
         {(
           [
@@ -87,6 +85,7 @@ function RoleAssignment(props: {
           <SetupBlock as="label" key={choice.value} layout={["radioOption"]}>
             <SetupRadio
               type="radio"
+              layout={["responsibilityRadio"]}
               name={`${props.role.key}-category`}
               value={choice.value}
               checked={category === choice.value}
@@ -95,22 +94,29 @@ function RoleAssignment(props: {
                 props.onChange(choice.value === "self" ? (props.viewerId ?? "") : "");
               }}
             />
-            {choice.label}
+            <SetupText layout={[category === choice.value && "medium"]}>{choice.label}</SetupText>
           </SetupBlock>
         ))}
       </SetupBlock>
-      <SelectControl
-        aria-label={`Person som ${props.role.effect}`}
-        value={selected}
-        options={choices.map((person) => ({
-          value: person.id,
-          label: `${category === "bureau" ? "Person på byrån" : "Person på företaget"}: ${person.name}`,
-        }))}
-        onValueChange={(value) => props.onChange(value ?? "")}
-        disabled={props.disabled || category === "self"}
-        placeholder="Välj person"
-        styleX={setupLayoutStyles(["personSelect"])}
-      />
+      {category === "self" ? (
+        <SetupBlock layout={["personSelf"]}>
+          Jag:{" "}
+          {props.people.find((person) => person.id === props.viewerId)?.name ?? "Uppgift saknas"}
+        </SetupBlock>
+      ) : (
+        <SelectControl
+          aria-label={`Person som ${props.role.effect}`}
+          value={selected}
+          options={choices.map((person) => ({
+            value: person.id,
+            label: `${category === "bureau" ? "Person på byrån" : "Person på företaget"}: ${person.name}${person.bureauName ? `, ${person.bureauName}` : ""}`,
+          }))}
+          onValueChange={(value) => props.onChange(value ?? "")}
+          disabled={props.disabled}
+          placeholder="Välj person"
+          styleX={setupLayoutStyles(["personSelect"])}
+        />
+      )}
     </SetupBlock>
   );
 }
@@ -119,10 +125,12 @@ export function OnboardingResponsibilities({
   lifecycle,
   open,
   viewerId,
+  example,
 }: {
   lifecycle: Lifecycle;
   open: OpenOnboardingView;
   viewerId: string | null;
+  example: boolean;
 }) {
   const { book, locale } = useBookWorkspace();
 
@@ -161,7 +169,7 @@ export function OnboardingResponsibilities({
 
   return (
     <SetupContent
-      styleX={setupLayoutStyles(["page", "focused", "focusedEarly"])}
+      styleX={setupLayoutStyles(["page", "focused", "focusedEarly", "responsibilityPage"])}
       onSubmit={(event) => {
         event.preventDefault();
 
@@ -189,8 +197,9 @@ export function OnboardingResponsibilities({
       <SetupBlock layout={["earlyTitle"]}>
         <SetupTitle>Vem gör vad?</SetupTitle>
       </SetupBlock>
-      <SetupText as="p" layout={["subtitle"]}>
-        Välj ansvarskategori och namnge personen som utför uppgiften.
+      <SetupText as="p" layout={["subtitle", "responsibilitySubtitle"]}>
+        {example ? "Exempeldata. " : ""}Välj ansvarskategori och namnge personen som utför
+        uppgiften.
       </SetupText>
       <SetupBlock layout={["responsibilityGroups"]}>
         {roles.map((role) => (
@@ -206,30 +215,39 @@ export function OnboardingResponsibilities({
         ))}
       </SetupBlock>
       <SetupBlock as="section" layout={["rule", "section24"]}>
-        <SetupText as="h2" layout={["semibold", "note"]}>
+        <SetupText as="h2" layout={["semibold", "responsibilityHeading"]}>
           Så blir det
         </SetupText>
         {[...effects].map(([id, effect]) => (
-          <SetupBlock key={id} layout={["row"]}>
-            <SetupText layout={["name"]}>{personName(lifecycle, id)}</SetupText>
-            <SetupText layout={["secondary"]}>{effect.join(", ")}</SetupText>
+          <SetupBlock key={id} layout={["responsibilityRow"]}>
+            <SetupText layout={["name", "medium"]}>{personName(lifecycle, id)}</SetupText>
+            <SetupText layout={["secondary"]}>
+              {[lifecycle.people.find((person) => person.id === id)?.bureauName, ...effect]
+                .filter(Boolean)
+                .join(", ")}
+            </SetupText>
           </SetupBlock>
         ))}
-        <SetupBlock layout={["row"]}>
-          <SetupText layout={["name"]}>OpenERP</SetupText>
+        <SetupBlock layout={["responsibilityRow", "responsibilityLastRow"]}>
+          <SetupText layout={["name", "medium"]}>OpenERP</SetupText>
           <SetupText layout={["secondary"]}>läser underlag och förbereder förslag</SetupText>
         </SetupBlock>
       </SetupBlock>
       <SetupBlock layout={["section20"]}>
-        <SetupButton type="submit" disabled={save.disabled || !ready}>
+        <SetupButton
+          type="submit"
+          styleX={setupLayoutStyles(["responsibilityButton"])}
+          disabled={save.disabled || !ready}
+        >
           Spara ansvar
         </SetupButton>
       </SetupBlock>
       <SetupBlock layout={["note"]}>
-        <SetupCaption>
-          Inget bokförs eller skickas utan rätt godkännande. Detaljerade behörigheter sätts i
-          inställningarna.
-        </SetupCaption>
+        <SetupText layout={["caption", "responsibilityCaption"]}>
+          {personName(lifecycle, assignments.preparerId).split(" ")[0]} förbereder,{" "}
+          {personName(lifecycle, assignments.bookkeepingApproverId).split(" ")[0]} godkänner. Inget
+          bokförs eller skickas utan rätt godkännande.
+        </SetupText>
       </SetupBlock>
       <AccountingStatus locale={locale} pending={save.isPending} error={save.error} write />
       {!enabledPeople.length ? (

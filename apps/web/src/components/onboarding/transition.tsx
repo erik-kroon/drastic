@@ -1,4 +1,3 @@
-import * as Predicate from "effect/Predicate";
 import {
   SetupBlock,
   SetupInlineAction,
@@ -20,7 +19,7 @@ import { Link } from "@open-erp/ui/components/link";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace, workspacePath } from "@/lib/book-context";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
-import { formatDate, formatMoment, useOnboardingCommand } from "./data";
+import { formatDate, formatMinor, formatMoment, useOnboardingCommand } from "./data";
 import {
   currentSnapshot,
   hasDecision,
@@ -74,7 +73,7 @@ export function OnboardingCutover({
       view: "opening",
     },
     {
-      label: `${dates.acceptanceEndsOn ? new Intl.DateTimeFormat("sv-SE", { month: "long", timeZone: "Europe/Stockholm" }).format(new Date(`${dates.acceptanceEndsOn}T12:00:00Z`)) : "Perioden"} ${acceptedLimitations ? "verifierad med accepterade begränsningar" : "verifierad"}`,
+      label: `${dates.acceptanceEndsOn ? new Intl.DateTimeFormat("sv-SE", { month: "long", timeZone: "Europe/Stockholm" }).format(new Date(`${dates.acceptanceEndsOn}T12:00:00Z`)).replace(/^./, (letter) => letter.toUpperCase()) : "Perioden"} ${acceptedLimitations ? "verifierad med accepterade begränsningar" : "verifierad"}`,
       passed: hasDecision(lifecycle, bookZero, "accept_book_zero"),
       view: "verification",
     },
@@ -98,7 +97,8 @@ export function OnboardingCutover({
     {
       label: "Säkerhetskopia gjord",
       passed:
-        lifecycle.activation?.operationalProof.applicationRecovery === "restricted_reads_verified",
+        (lifecycle.activation?.operationalProof ?? lifecycle.operationalProof)
+          ?.applicationRecovery === "restricted_reads_verified",
       view: "cutover",
     },
     {
@@ -108,11 +108,11 @@ export function OnboardingCutover({
     },
   ] as const;
 
-  const ready = snapshot && snapshot.blockers.length === 0;
+  const ready = snapshot && snapshot.blockers.length === 0 && gates.every((gate) => gate.passed);
 
   return (
     <>
-      <SetupPageContent styleX={setupLayoutStyles(["page", "inset"])}>
+      <SetupPageContent styleX={setupLayoutStyles(["page", "inset", "cutoverPage"])}>
         <Breadcrumb
           items={[
             { label: book.name },
@@ -125,16 +125,16 @@ export function OnboardingCutover({
           <SetupTitle>Övergång till OpenERP</SetupTitle>
         </SetupBlock>
         <SetupBlock layout={["authority", "section24"]}>
-          <SetupBlock as="section" layout={["authorityCard"]}>
-            <SetupText as="h2" layout={["medium"]}>
+          <SetupBlock as="section" layout={["authorityCard", "authorityIncumbent"]}>
+            <SetupText as="h2" layout={["authorityTitle"]}>
               {workspace.case.configuration.incumbentSystem ?? "Tidigare bokföringsprogram"}
             </SetupText>
             <SetupText as="p" layout={["secondary"]}>
               Gällande bokföring till {formatDate(dates.historyEndsOn)}
             </SetupText>
           </SetupBlock>
-          <SetupBlock as="section" layout={["authorityCard"]}>
-            <SetupText as="h2" layout={["medium"]}>
+          <SetupBlock as="section" layout={["authorityCard", "authorityCandidate"]}>
+            <SetupText as="h2" layout={["authorityTitle"]}>
               OpenERP
             </SetupText>
             <SetupText as="p" layout={["secondary"]}>
@@ -143,7 +143,7 @@ export function OnboardingCutover({
             </SetupText>
           </SetupBlock>
         </SetupBlock>
-        <SetupText as="h2" layout={["section24", "semibold"]}>
+        <SetupText as="h2" layout={["section28", "authorityTitle"]}>
           Det som ska vara klart före övergången
         </SetupText>
         <SetupBlock layout={["controls", "tableSpace"]}>
@@ -172,9 +172,9 @@ export function OnboardingCutover({
             </SetupBlock>
           ))}
         </SetupBlock>
-        <SetupBlock layout={["section24", "stack8"]}>
+        <SetupBlock layout={["section24", "stack8", "cutoverActions"]}>
           <SetupButton
-            disabled={capture.disabled || (!!snapshot && !ready)}
+            disabled={confirmation || capture.disabled || (!!snapshot && !ready)}
             onClick={() => {
               if (snapshot) open("confirmation");
               else
@@ -187,14 +187,14 @@ export function OnboardingCutover({
           >
             Bekräfta övergång
           </SetupButton>
-          {!ready ? (
-            <SetupCaption>
-              {snapshot?.blockers.join(", ") ||
+          <SetupCaption>
+            {ready
+              ? `Slutlig deltaimport gjord, ${lifecycle.projection.counts.importedVouchers} verifikat`
+              : snapshot?.blockers.join(", ") ||
                 (!gates.at(-1)?.passed
                   ? "Slutlig deltaimport saknas"
                   : "Övergången behöver kontrolleras")}
-            </SetupCaption>
-          ) : null}
+          </SetupCaption>
           <SetupText as="p" layout={["secondary", "tableSpace"]}>
             Efter övergången är tidigare system skrivskyddat.
           </SetupText>
@@ -240,6 +240,9 @@ function ActivationConfirmation({
   const waiting = required.filter((id) => !decisions.some((decision) => decision.actorId === id));
   const ownPending = waiting.includes(lifecycle.viewerActorId);
 
+  const proofFresh =
+    !!lifecycle.operationalProof && Date.parse(lifecycle.operationalProof.expiresAt) > Date.now();
+
   const pendingIntent =
     lifecycle.intents.some(
       (item) => item.snapshotId === snapshot?.id && item.snapshotDigest === snapshot.digest,
@@ -273,7 +276,10 @@ function ActivationConfirmation({
       <SetupBlock layout={["dialogCopy", "tableSpace"]}>
         <SetupText as="p">OpenERP blir gällande från {formatDate(date, false)}.</SetupText>
         <SetupText as="p">Tidigare system blir skrivskyddat.</SetupText>
-        <SetupText as="p">Verifierad {month} sparas som kvitto: Aktiveringskvitto.</SetupText>
+        <SetupText as="p">
+          {month.charAt(0).toUpperCase() + month.slice(1)} och accepterade begränsningar sparas i
+          aktiveringskvittot.
+        </SetupText>
       </SetupBlock>
       <SetupText as="h2" layout={["dialogHeading", "section20"]}>
         {required.length === 2 ? "Två personer bekräftar" : `${required.length} personer bekräftar`}
@@ -326,6 +332,7 @@ function ActivationConfirmation({
           <SetupButton
             disabled={
               intent.disabled ||
+              !proofFresh ||
               waiting.length > 0 ||
               !required.length ||
               !snapshot ||
@@ -472,17 +479,55 @@ export function OnboardingActivation({
       (item) => item.review?.result === "confirmed" && item.revision.value.state === "known",
     ) ?? [];
 
-  const ruleFacts = facts
-    .map((item) => {
-      const value = item.revision.value;
+  const factValues = new Map(
+    facts.map((item) => [
+      item.revision.factKind,
+      item.revision.value.state === "known" ? item.revision.value.value : null,
+    ]),
+  );
 
-      if (value.state !== "known") return "";
+  const ruleFacts = [
+    factValues.get("jurisdiction"),
+    factValues.get("legal_form") === "aktiebolag" ? "AB" : factValues.get("legal_form"),
+    factValues.get("accounting_method") === "accrual"
+      ? "fakturametoden"
+      : factValues.get("accounting_method"),
+    factValues.get("vat_period") === "quarterly" ? "kvartalsmoms" : factValues.get("vat_period"),
+    factValues.get("reporting_framework"),
+    factValues.get("base_currency"),
+  ].filter((value) => typeof value === "string");
 
-      return Predicate.isObject(value.value) ? "" : String(value.value);
-    })
-    .filter(Boolean);
+  const limitationOrder = [
+    "missing_historical_originals",
+    "historical_payroll_retained",
+    "unreconciled_bank_difference",
+    "missing_tax_statement",
+  ];
 
-  const accepted = receipt?.acceptedLimitations ?? [];
+  const accepted = (receipt?.acceptedLimitations ?? []).toSorted(
+    (left, right) =>
+      limitationOrder.indexOf(
+        left.decision.kind === "accept_limitation" ? left.decision.limitation : "",
+      ) -
+      limitationOrder.indexOf(
+        right.decision.kind === "accept_limitation" ? right.decision.limitation : "",
+      ),
+  );
+
+  const originalControl = lifecycle.controls.find(
+    (control) =>
+      receipt?.snapshot.controlIds.includes(control.id) && control.kind === "historical_originals",
+  );
+
+  const missingOriginals = originalControl?.originalCoverage?.rows.filter(
+    (row) => row.occurrenceId === null,
+  ).length;
+
+  const taxAccount = lifecycle.projection.accounts.find((account) => account.code === "1630");
+
+  const taxBalance = receipt?.snapshot.comparisons.find(
+    (comparison) => comparison.kind === "trial_balance" && comparison.accountId === taxAccount?.id,
+  )?.actualMinor;
 
   const rows = receipt
     ? [
@@ -506,24 +551,44 @@ export function OnboardingActivation({
                   {item.value} {item.label}
                 </SetupText>
               ))}
+              <SetupText as="p" layout={["receiptDetail"]}>
+                Kontomappning och historiska källor bevarade med övergången.
+              </SetupText>
             </SetupBlock>
           ),
         },
-        { label: "Kontrollperiod", value: `✓ ${formatDate(receipt.snapshot.asOf)}, verifierad` },
+        {
+          label: "Kontrollperiod",
+          value: `${new Intl.DateTimeFormat("sv-SE", { month: "long", year: "numeric" }).format(new Date(`${receipt.snapshot.asOf}T12:00:00Z`)).replace(/^./, (letter) => letter.toUpperCase())}, verifierad med ${accepted.length} accepterade begränsningar`,
+        },
         {
           label: "Kända begränsningar",
           value: (
             <SetupBlock layout={["stack4"]}>
               {accepted.map((item) => (
-                <SetupText as="p" key={item.id}>
-                  {item.decision.kind === "accept_limitation" ? item.decision.reason : ""}
-                  {", "}
+                <SetupText
+                  as="p"
+                  key={item.id}
+                  layout={[
+                    item.decision.kind === "accept_limitation" &&
+                      (item.decision.limitation === "unreconciled_bank_difference" ||
+                        item.decision.limitation === "missing_tax_statement") &&
+                      "receiptDetail",
+                  ]}
+                >
+                  {item.decision.kind === "accept_limitation"
+                    ? {
+                        missing_historical_originals: `${missingOriginals ?? "Historiska"} historiska verifikat saknar original.`,
+                        historical_payroll_retained: `Löner före ${formatDate(receipt.authoritativeFrom, false)} kvar i tidigare system.`,
+                        unreconciled_bank_difference: `Bank per ${formatDate(receipt.snapshot.asOf, false)}: ${formatMinor((-BigInt(receipt.snapshot.comparisons.find((comparison) => comparison.kind === "bank")?.differenceMinor ?? "0")).toString())}, förklarad men inte avstämd.`,
+                        missing_tax_statement: `Skattekonto: kontoutdrag saknas, ${taxBalance ? formatMinor(taxBalance) : "saldo"} ej kontrollerat.`,
+                      }[item.decision.limitation]
+                    : ""}{" "}
                   {item.actorName}
                   {", "}
                   {formatMoment(item.recordedAt)}
                 </SetupText>
               ))}
-              <SetupText as="p">Exempeldata. Ingen myndighetsinlämning har genomförts.</SetupText>
             </SetupBlock>
           ),
         },
@@ -539,7 +604,7 @@ export function OnboardingActivation({
     : [];
 
   return (
-    <SetupPageContent styleX={setupLayoutStyles(["page", "inset"])}>
+    <SetupPageContent styleX={setupLayoutStyles(["page", "inset", "receiptPage"])}>
       <Breadcrumb
         items={[{ label: name }, { label: "Setup", view: "workspace" }, { label: "Aktivering" }]}
         open={open}
@@ -568,14 +633,20 @@ export function OnboardingActivation({
           Ladda ner aktiveringskvitto (PDF)
         </SetupButton>
       </SetupBlock>
-      <SetupText as="p" layout={["subtitle"]}>
-        Sparad uppgift om övergången. Den ändras inte.
+      <SetupText as="p" layout={["subtitle", "mappingSubtitle"]}>
+        Exempeldata. Sparad övergång: tidigare system till{" "}
+        {receipt ? formatDate(receipt.snapshot.asOf, false) : "—"}, OpenERP från{" "}
+        {receipt ? formatDate(receipt.authoritativeFrom, false) : "—"}.
       </SetupText>
-      <SetupBlock layout={["facts", "section24"]}>
+      <SetupBlock layout={["facts", "section20"]}>
         {rows.map((row) => (
-          <SetupBlock key={row.label} layout={["factRow"]}>
+          <SetupBlock key={row.label} layout={["factRow", "receiptRow"]}>
             <SetupText layout={["factLabel"]}>{row.label}</SetupText>
-            <SetupBlock>{row.value}</SetupBlock>
+            <SetupBlock
+              layout={[row.label === "Kontrollperiod" && accepted.length > 0 && "warning"]}
+            >
+              {row.value}
+            </SetupBlock>
           </SetupBlock>
         ))}
       </SetupBlock>
@@ -585,18 +656,6 @@ export function OnboardingActivation({
         </SetupText>
       ) : null}
     </SetupPageContent>
-  );
-}
-
-function openItemsReady(
-  snapshot: ReturnType<typeof currentSnapshot>,
-  kind: "sales_open_items" | "purchase_open_items",
-) {
-  const comparisons = snapshot?.comparisons.filter((item) => item.kind === kind) ?? [];
-
-  return (
-    comparisons.length > 0 &&
-    comparisons.every((item) => BigInt(item.unexplainedDifferenceMinor) === 0n)
   );
 }
 
@@ -630,6 +689,65 @@ function useFirstPeriodClosing(
   });
 
   return { readiness, history };
+}
+
+function firstPeriodRows(lifecycle: Lifecycle, month: string, locked: boolean) {
+  const progress = lifecycle.firstPeriodProgress;
+
+  const historicalBankLimitation = lifecycle.activation?.acceptedLimitations.some(
+    (decision) =>
+      decision.decision.kind === "accept_limitation" &&
+      decision.decision.limitation === "unreconciled_bank_difference",
+  );
+
+  const documentsReady = progress?.originalCoverage === true;
+
+  return [
+    {
+      label: "Bank",
+      text: progress?.bankThrough
+        ? `Aktuell till ${formatDate(progress.bankThrough, false)}${historicalBankLimitation ? ", historisk bankbegränsning i kvittot" : ""}`
+        : "! Underlag saknas",
+      ready: false,
+      warning: false,
+    },
+    {
+      label: "Dokument",
+      text: documentsReady
+        ? `✓ ${(month.split(" ")[0] ?? "Perioden").replace(/^./, (letter) => letter.toUpperCase())}: inga luckor, historiska undantag i kvittot`
+        : progress?.originalCoverage === false
+          ? "! Original saknas"
+          : "○ Inte verifierade",
+      ready: documentsReady,
+      warning: false,
+    },
+    {
+      label: "Bokföring",
+      text: progress?.pendingProposals
+        ? `! ${progress.pendingProposals} förslag väntar`
+        : "○ Väntar på kontroll",
+      ready: false,
+      warning: (progress?.pendingProposals ?? 0) > 0,
+    },
+    {
+      label: "Kundfakturor",
+      text: progress?.salesMatches === true ? "✓ Reskontra stämmer" : "○ Väntar på kontroll",
+      ready: progress?.salesMatches === true,
+      warning: false,
+    },
+    {
+      label: "Leverantörsfakturor",
+      text: progress?.purchaseMatches === true ? "✓ Reskontra stämmer" : "○ Väntar på kontroll",
+      ready: progress?.purchaseMatches === true,
+      warning: false,
+    },
+    {
+      label: "Period",
+      text: `${month.charAt(0).toUpperCase()}${month.slice(1)}, ${locked ? "stängd" : "ej stängd"}`,
+      ready: false,
+      warning: false,
+    },
+  ];
 }
 
 export function OnboardingFirstPeriod({
@@ -668,53 +786,10 @@ export function OnboardingFirstPeriod({
       }).format(new Date(`${date}T12:00:00Z`))
     : "ej angiven";
 
-  const bank = lifecycle.projection.bankStatements.toSorted((a, b) =>
-    b.endsOn.localeCompare(a.endsOn),
-  )[0];
-
-  const bankReady = !!bank && !!date && bank.endsOn >= date;
-
-  const rows = [
-    {
-      label: "Bank",
-      text: bank
-        ? `${bankReady ? "✓ Aktuell" : "! Underlag saknas"} till ${formatDate(bank.endsOn, false)}`
-        : "! Underlag saknas",
-      ready: bankReady,
-    },
-    { label: "Dokument", text: "○ Inte verifierade", ready: false },
-    {
-      label: "Bokföring",
-      text:
-        readiness.data?.checks
-          .filter((item) => !item.passed)
-          .map((item) => item.detail)
-          .join(", ") || "○ Väntar på kontroll",
-      ready: readiness.data?.technicalCloseAllowed ?? false,
-    },
-    {
-      label: "Kundfakturor",
-      text: openItemsReady(snapshot, "sales_open_items")
-        ? "✓ Reskontra stämmer"
-        : "○ Väntar på kontroll",
-      ready: openItemsReady(snapshot, "sales_open_items"),
-    },
-    {
-      label: "Leverantörsfakturor",
-      text: openItemsReady(snapshot, "purchase_open_items")
-        ? "✓ Reskontra stämmer"
-        : "○ Väntar på kontroll",
-      ready: openItemsReady(snapshot, "purchase_open_items"),
-    },
-    {
-      label: "Period",
-      text: `${month.charAt(0).toUpperCase()}${month.slice(1)}, ${period?.locked ? "stängd" : "ej stängd"}`,
-      ready: false,
-    },
-  ];
+  const rows = firstPeriodRows(lifecycle, month, period?.locked ?? false);
 
   return (
-    <SetupPageContent styleX={setupLayoutStyles(["page", "inset"])}>
+    <SetupPageContent styleX={setupLayoutStyles(["page", "inset", "firstPeriodPage"])}>
       <Breadcrumb
         items={[
           { label: book.name },
@@ -726,8 +801,8 @@ export function OnboardingFirstPeriod({
       <SetupBlock layout={["title"]}>
         <SetupTitle>Första perioden, {month}</SetupTitle>
       </SetupBlock>
-      <SetupBlock layout={["banner", "section24"]}>
-        <SetupText as="h2" layout={["medium"]}>
+      <SetupBlock layout={["banner", "firstPeriodBanner", "section"]}>
+        <SetupText as="h2" layout={["firstPeriodTitle"]}>
           Setup
         </SetupText>
         <SetupText as="p" layout={["secondary"]}>
@@ -736,16 +811,22 @@ export function OnboardingFirstPeriod({
             : `Setup är klar när ${month.split(" ")[0]} är stängd och stämmer.`}
         </SetupText>
       </SetupBlock>
-      <SetupBlock layout={["controls", "section24"]}>
+      <SetupBlock layout={["controls", "section20"]}>
         {rows.map((row) => (
-          <SetupBlock key={row.label} layout={["periodRow"]}>
-            <SetupText layout={["periodLabel"]}>{row.label}</SetupText>
-            <SetupText layout={[row.ready ? "success" : "secondary"]}>{row.text}</SetupText>
+          <SetupBlock key={row.label} layout={["periodRow", row.warning && "firstPeriodWarning"]}>
+            <SetupText layout={["periodLabel", row.warning && "firstPeriodWarningLabel"]}>
+              {row.label}
+            </SetupText>
+            <SetupText layout={[row.warning ? "warning" : row.ready ? "success" : "secondary"]}>
+              {row.text}
+            </SetupText>
           </SetupBlock>
         ))}
       </SetupBlock>
-      <SetupBlock layout={["section24"]}>
-        <Link href={`${workspacePath(book)}/work`}>Öppna Att göra</Link>
+      <SetupBlock layout={["section20"]}>
+        <SetupButton nativeButton={false} render={<Link href={`${workspacePath(book)}/work`} />}>
+          Öppna Att göra
+        </SetupButton>
       </SetupBlock>
       <PendingRead
         pending={!!period && readiness.isPending}
@@ -772,7 +853,7 @@ export function OnboardingFirstPeriod({
           Kontrollera första perioden
         </SetupButton>
       ) : null}
-      {snapshot && !lifecycle.completion?.current ? (
+      {certificate && snapshot && !lifecycle.completion?.current ? (
         <SetupButton
           disabled={complete.disabled || snapshot.blockers.length > 0 || !lifecycle.activation}
           onClick={() =>

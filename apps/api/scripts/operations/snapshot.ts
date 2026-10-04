@@ -169,15 +169,14 @@ export async function requireFencedBackupBoundary(client: Client) {
       b.profile<>'synthetic-core-v1'
       or not exists(select from openerp.onboarding_cases c where c.book_id=b.id and c.record_class='synthetic')
       or not exists(select from openerp.onboarding_snapshots s
-        join openerp.onboarding_activation_intents i on i.book_id=s.book_id and i.snapshot_id=s.id
         join openerp.onboarding_operation_runs r on r.book_id=s.book_id and r.body->>'snapshotId'=s.id
         where s.book_id=b.id and s.body->>'purpose'='activation'
-          and i.body->>'snapshotDigest'=s.body->>'digest'
+          and s.body->>'writerEpoch'=b.writer_epoch::text
           and exists(select from openerp.onboarding_operation_stages x where x.book_id=r.book_id and x.operation_id=r.id
             and x.body->>'reconnectRefused'='true' and x.body->>'oldSessionWriteRefused'='true')))) as safe`);
 
   if (boundary.rows[0]?.safe !== true)
     refuse(
-      "A fenced backup requires the exact synthetic onboarding case, activation snapshot/intent and retained physical operation boundary.",
+      "A fenced backup requires the exact synthetic onboarding case, current activation snapshot and retained physical operation boundary.",
     );
 }

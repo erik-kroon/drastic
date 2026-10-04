@@ -59,6 +59,18 @@ function openingInvoiceDetails(
   return { known, items: sourceItems.filter((item) => item.asOf === snapshot?.asOf) };
 }
 
+function openingSourceText(
+  details: ReturnType<typeof openingInvoiceDetails>,
+  code: string | undefined,
+  provenance: string | undefined,
+) {
+  if (details.known) return `${details.items.length} öppna fakturor`;
+
+  if (code === "1630") return "Slutsaldo, utdrag saknas";
+
+  return provenance ?? "Källa saknas";
+}
+
 export function OnboardingOpening({
   workspace,
   lifecycle,
@@ -83,7 +95,6 @@ export function OnboardingOpening({
   const account = setup.accounts.find((item) => item.id === selected);
 
   const invoiceDetails = openingInvoiceDetails(sie.plan.data, selected, retained);
-  const openItems = invoiceDetails.items;
 
   const debit = balances.reduce(
     (sum, item) => sum + (BigInt(item.expectedMinor) > 0n ? BigInt(item.expectedMinor) : 0n),
@@ -97,8 +108,33 @@ export function OnboardingOpening({
 
   const difference = debit - credit;
 
+  const namedGroups = [
+    { code: "1930", label: "BANK" },
+    { code: "1510", label: "KUNDFORDRINGAR" },
+    { code: "2440", label: "LEVERANTÖRSSKULDER" },
+    { code: "2650", label: "MOMS" },
+    { code: "1630", label: "SKATTEKONTO" },
+  ];
+
+  const otherBalances = balances.filter(
+    (item) =>
+      !namedGroups.some(
+        (group) =>
+          setup.accounts.find((candidate) => candidate.id === item.accountId)?.code === group.code,
+      ),
+  );
+
+  const shownBalances = namedGroups.flatMap((group) => {
+    const item = balances.find(
+      (balance) =>
+        setup.accounts.find((candidate) => candidate.id === balance.accountId)?.code === group.code,
+    );
+
+    return item ? [{ ...item, group: group.label }] : [];
+  });
+
   return (
-    <SetupPageContent styleX={setupLayoutStyles(["page"])}>
+    <SetupPageContent styleX={setupLayoutStyles(["openingPage"])}>
       <Breadcrumb
         items={[{ label: "Setup", view: "workspace" }, { label: "Ingående balanser" }]}
         open={open}
@@ -109,9 +145,14 @@ export function OnboardingOpening({
           {formatDate(retained?.asOf ?? workspace.case.configuration.dates.openingOn)}
         </SetupTitle>
       </SetupBlock>
-      <SetupText as="p" layout={["subtitle"]}>
+      <SetupText as="p" layout={["openingSubtitle"]}>
         Slutsaldon i tidigare bokföring vid kontrollpunkten.
         {workspace.case.recordClass === "synthetic" ? " Exempeldata." : ""}
+        {retained?.sourceImportPlanIds?.length &&
+        !hasDecision(lifecycle, snapshot, "accept_opening") &&
+        lifecycle.projection.counts.importedVouchers === 0
+          ? " Inget är bokfört än."
+          : ""}
       </SetupText>
       <SetupBlock layout={["openingColumns", "section24"]}>
         <SetupBlock layout={["stack"]}>
@@ -119,6 +160,7 @@ export function OnboardingOpening({
             title="Ingående balanser"
             width={tokens.setupOpeningWidth}
             density="compact"
+            layout="opening"
             columns={[
               { id: "account", label: "Konto", width: tokens.setupColumn60 },
               { id: "name", label: "Namn", width: tokens.setupColumn150 },
@@ -127,31 +169,71 @@ export function OnboardingOpening({
               { id: "source", label: "Källa", width: tokens.setupOpeningSourceWidth },
             ]}
             rows={[
-              ...balances.map((item) => {
+              ...shownBalances.flatMap((item) => {
                 const name = setup.accounts.find((candidate) => candidate.id === item.accountId);
                 const source = lifecycle.controls.find((control) => control.id === item.controlId);
 
-                return {
-                  id: `${item.controlId}-${item.accountId}`,
-                  tone: selected === item.accountId ? ("selected" as const) : undefined,
-                  cells: [
-                    <SetupInlineAction
-                      type="button"
-                      key="select"
-                      layout={["crumbButton"]}
-                      onClick={() => setSelection(item.accountId)}
-                    >
-                      {name?.code ?? "Okänt konto"}
-                    </SetupInlineAction>,
-                    name?.name ?? "Uppgift saknas",
-                    BigInt(item.expectedMinor) > 0n ? formatMinor(item.expectedMinor) : "",
-                    BigInt(item.expectedMinor) < 0n
-                      ? formatMinor((-BigInt(item.expectedMinor)).toString())
-                      : "",
-                    source?.provenance ?? "Källa saknas",
-                  ],
-                };
+                const details = openingInvoiceDetails(sie.plan.data, item.accountId, retained);
+
+                return [
+                  { id: `group-${item.accountId}`, group: item.group, cells: [] },
+                  {
+                    id: `${item.controlId}-${item.accountId}`,
+                    tone: selected === item.accountId ? ("selected" as const) : undefined,
+                    cells: [
+                      <SetupInlineAction
+                        type="button"
+                        key="select"
+                        layout={["crumbButton"]}
+                        onClick={() => setSelection(item.accountId)}
+                      >
+                        {name?.code ?? "Okänt konto"}
+                      </SetupInlineAction>,
+                      name?.name ?? "Uppgift saknas",
+                      BigInt(item.expectedMinor) > 0n ? formatMinor(item.expectedMinor) : "",
+                      BigInt(item.expectedMinor) < 0n
+                        ? formatMinor((-BigInt(item.expectedMinor)).toString())
+                        : "",
+                      openingSourceText(details, name?.code, source?.provenance),
+                    ],
+                  },
+                ];
               }),
+              ...(otherBalances.length
+                ? [
+                    { id: "other-group", group: "ÖVRIGA KONTON", cells: [] },
+                    {
+                      id: "other",
+                      cells: [
+                        "",
+                        "Övriga konton",
+                        formatMinor(
+                          otherBalances
+                            .reduce(
+                              (sum, item) =>
+                                sum +
+                                (BigInt(item.expectedMinor) > 0n ? BigInt(item.expectedMinor) : 0n),
+                              0n,
+                            )
+                            .toString(),
+                        ),
+                        formatMinor(
+                          otherBalances
+                            .reduce(
+                              (sum, item) =>
+                                sum +
+                                (BigInt(item.expectedMinor) < 0n
+                                  ? -BigInt(item.expectedMinor)
+                                  : 0n),
+                              0n,
+                            )
+                            .toString(),
+                        ),
+                        "Tillgångar, eget kapital, resultat",
+                      ],
+                    },
+                  ]
+                : []),
               {
                 id: "sum",
                 cells: [
@@ -180,40 +262,17 @@ export function OnboardingOpening({
               },
             ]}
           />
-          <SetupBlock layout={["section"]}>
-            <SetupCaption>
-              I balans är bara första villkoret. Nästa steg visar varifrån saldona kommer.
-            </SetupCaption>
-          </SetupBlock>
-        </SetupBlock>
-        <SetupBlock as="aside" layout={["stack4"]}>
-          <SetupText as="h2" layout={["semibold"]}>
-            {account ? `${account.code} ${account.name}` : "Öppna fakturor"}
+          <SetupText as="p" layout={["openingNote"]}>
+            I balans är bara första villkoret. Nästa steg visar varifrån varje belopp kommer och
+            jämför med oberoende kontroller.
           </SetupText>
-          <SetupText as="p" layout={["secondary"]}>
-            {invoiceDetails.known ? openItems.length : "—"} öppna fakturor
-            {openItems.length
-              ? `, ${formatMinor(openItems.reduce((sum, item) => sum + BigInt(item.outstandingMinor), 0n).toString())}`
-              : ""}
-          </SetupText>
-          <SetupBlock layout={["rule", "section"]}>
-            {openItems.map((item) => (
-              <SetupBlock key={item.sourceIdentity} layout={["row"]}>
-                <SetupBlock layout={["stack4"]}>
-                  <SetupText>{item.sourceIdentity}</SetupText>
-                  <SetupText layout={["caption"]}>{item.basis}</SetupText>
-                </SetupBlock>
-                <SetupText>{formatMinor(item.outstandingMinor)}</SetupText>
-              </SetupBlock>
-            ))}
-          </SetupBlock>
-          {workspace.case.recordClass === "synthetic" ? (
-            <SetupCaption>
-              Exempeldata. Fakturorna är öppna per{" "}
-              {formatDate(retained?.asOf ?? workspace.case.configuration.dates.openingOn, false)}.
-            </SetupCaption>
-          ) : null}
         </SetupBlock>
+        <OpeningInvoices
+          details={invoiceDetails}
+          label={account ? `${account.code} ${account.name}` : "Öppna fakturor"}
+          synthetic={workspace.case.recordClass === "synthetic"}
+          asOf={retained?.asOf ?? workspace.case.configuration.dates.openingOn}
+        />
       </SetupBlock>
       {!snapshot ? (
         <SetupBlock layout={["section20"]}>
@@ -236,6 +295,60 @@ export function OnboardingOpening({
       ) : null}
       <AccountingStatus locale={locale} pending={capture.isPending} error={capture.error} write />
     </SetupPageContent>
+  );
+}
+
+function OpeningInvoices({
+  details,
+  label,
+  synthetic,
+  asOf,
+}: {
+  details: ReturnType<typeof openingInvoiceDetails>;
+  label: string;
+  synthetic: boolean;
+  asOf: string | null;
+}) {
+  const openItems = details.items;
+
+  return (
+    <SetupBlock as="aside" layout={["openingDetail"]}>
+      <SetupText as="h2" layout={["openingDetailTitle", "semibold"]}>
+        {label}
+      </SetupText>
+      <SetupText as="p" layout={["secondary", "openingSubtitle"]}>
+        {details.known ? openItems.length : "—"} öppna fakturor
+        {openItems.length
+          ? `, ${formatMinor(openItems.reduce((sum, item) => sum + BigInt(item.outstandingMinor), 0n).toString())}`
+          : ""}
+      </SetupText>
+      <SetupBlock layout={["rule", "section"]}>
+        {openItems.map((item) => (
+          <SetupBlock key={item.sourceIdentity} layout={["openingInvoice"]}>
+            <SetupBlock layout={["openingInvoiceText"]}>
+              <SetupText layout={["primary"]}>{item.sourceIdentity}</SetupText>
+              {item.counterpartyName ? (
+                <SetupText layout={["caption"]}>{item.counterpartyName}</SetupText>
+              ) : null}
+            </SetupBlock>
+            <SetupText>{formatMinor(item.outstandingMinor)}</SetupText>
+          </SetupBlock>
+        ))}
+        {details.known ? (
+          <SetupBlock layout={["openingInvoiceSum"]}>
+            <SetupText>Summa</SetupText>
+            <SetupText>
+              {formatMinor(
+                openItems.reduce((sum, item) => sum + BigInt(item.outstandingMinor), 0n).toString(),
+              )}
+            </SetupText>
+          </SetupBlock>
+        ) : null}
+      </SetupBlock>
+      {synthetic ? (
+        <SetupCaption>Exempeldata. Fakturorna är öppna per {formatDate(asOf, false)}.</SetupCaption>
+      ) : null}
+    </SetupBlock>
   );
 }
 
@@ -367,11 +480,18 @@ export function OnboardingVerification({
 
   const [reason, setReason] = useState("");
 
+  const opening = currentSnapshot(lifecycle, "opening");
+
   const groups = (
     ["trial_balance", "bank", "sales_open_items", "purchase_open_items", "vat", "tax"] as const
   ).map((typed) => {
     const label = controlLabels[typed];
-    const items = retained?.comparisons.filter((item) => item.kind === typed) ?? [];
+
+    const items =
+      (typed === "trial_balance" ? opening : retained)?.comparisons.filter(
+        (item) => item.kind === typed,
+      ) ?? [];
+
     const current = items.length > 0 && items.every((item) => BigInt(item.differenceMinor) === 0n);
 
     const accepted = retained
@@ -418,7 +538,7 @@ export function OnboardingVerification({
     : "perioden";
 
   return (
-    <SetupPageContent styleX={setupLayoutStyles(["page", "focusedEarly"])}>
+    <SetupPageContent styleX={setupLayoutStyles(["verificationPage", "focusedEarly"])}>
       <Breadcrumb
         items={[{ label: "Setup", view: "workspace" }, { label: "Verifiera" }]}
         open={open}
@@ -426,26 +546,34 @@ export function OnboardingVerification({
       <SetupBlock layout={["earlyTitle"]}>
         <SetupTitle>Verifiera bokföringen</SetupTitle>
       </SetupBlock>
-      <SetupText as="p" layout={["subtitle"]}>
-        Book Zero, {periodName}. Jämför det importerade mot oberoende underlag.
+      <SetupText as="p" layout={["openingSubtitle"]}>
+        {workspace.case.recordClass === "synthetic" ? "Exempeldata. " : ""}Book Zero, {periodName},
+        kontroll före slutlig deltaimport.
       </SetupText>
-      <SetupText as="p" layout={["section20", "medium"]}>
-        {complete} kontroller stämmer, {acceptedCount} accepterade begränsningar.
+      <SetupText as="p" layout={["verificationSummary"]}>
+        {complete} kontroller stämmer, {acceptedCount} begränsningar accepterade.
         {controlReady(groups.at(-1)) ? "" : " Skattekonto blockerar."}
       </SetupText>
-      <SetupBlock layout={["controls", "section"]}>
+      <SetupBlock layout={["controls"]}>
         {groups.slice(0, 5).map((group) => (
-          <VerificationControl key={group.kind} group={group} open={open} />
+          <VerificationControl
+            key={group.kind}
+            group={group}
+            lifecycle={lifecycle}
+            snapshot={retained}
+            opening={opening}
+            open={open}
+          />
         ))}
-        <SetupBlock layout={["controlRow"]}>
-          <SetupText layout={["controlTitle"]}>DOKUMENT</SetupText>
-          <SetupBlock layout={["stack4"]}>
-            <SetupText layout={["warning"]}>
+        <SetupBlock layout={["controlRow", "verificationRow", "verificationTall"]}>
+          <SetupText layout={["verificationLabel"]}>DOKUMENT</SetupText>
+          <SetupBlock layout={["verificationDetail"]}>
+            <SetupText layout={["warning", "verificationHeading"]}>
               {documentDecision
                 ? "! Accepterad dokumentbegränsning"
                 : "! Begränsningen behöver beslut"}
             </SetupText>
-            <SetupText layout={["caption"]}>
+            <SetupText layout={["verificationCaption"]}>
               {originalCoverageSummary(lifecycle, retained)}
               {documentDecision ? (
                 <>
@@ -458,14 +586,21 @@ export function OnboardingVerification({
           </SetupBlock>
           <SetupButton
             variant="ghost"
-            styleX={setupLayoutStyles(["plainAction"])}
+            styleX={setupLayoutStyles(["plainAction", "verificationAction"])}
             onClick={() => open("sources")}
           >
             Visa underlag
           </SetupButton>
         </SetupBlock>
         {groups.slice(5).map((group) => (
-          <VerificationControl key={group.kind} group={group} open={open} />
+          <VerificationControl
+            key={group.kind}
+            group={group}
+            lifecycle={lifecycle}
+            snapshot={retained}
+            opening={opening}
+            open={open}
+          />
         ))}
       </SetupBlock>
       <SetupBlock layout={["section24", "stack8"]}>
@@ -664,7 +799,7 @@ function LimitationDetails({
       {limitation === "missing_tax_statement" ? (
         <SetupText layout={["caption"]}>
           Skattekonto 1630, saldo {balance ? formatMinor(balance.actualMinor) : "okänt"} per{" "}
-          {formatDate(snapshot.asOf)}
+          {formatDate(snapshot.asOf, false)}
         </SetupText>
       ) : null}
       <SetupText layout={["caption", "semibold", "section"]}>DET HÄR SPARAS</SetupText>
@@ -679,56 +814,127 @@ function LimitationDetails({
   );
 }
 
-function VerificationControl({
-  group,
-  open,
-}: {
+function VerificationControl(props: {
   group: {
     kind: keyof typeof controlLabels;
     label: string;
-    items: readonly {
-      expectedMinor: string;
-      actualMinor: string;
-      differenceMinor: string;
-      explainedMinor: string;
-    }[];
+    items: Snapshot["comparisons"];
     current: boolean;
     accepted?: Lifecycle["decisions"][number];
   };
+  lifecycle: Lifecycle;
+  snapshot: Snapshot | undefined;
+  opening: Snapshot | undefined;
   open: OpenOnboardingView;
 }) {
+  const { group, lifecycle, snapshot, opening } = props;
+  const { setup } = useBookWorkspace();
   const expected = group.items.reduce((sum, item) => sum + BigInt(item.expectedMinor), 0n);
   const actual = group.items.reduce((sum, item) => sum + BigInt(item.actualMinor), 0n);
-  const explained = group.items.reduce((sum, item) => sum + BigInt(item.explainedMinor), 0n);
+  const positive = (value: bigint) => formatMinor((value < 0n ? -value : value).toString());
+
+  const controls = lifecycle.controls.filter((control) =>
+    group.items.some((item) => item.controlId === control.id),
+  );
+
+  const identities = controls.flatMap(
+    (control) =>
+      control.openItemDetails
+        ?.filter((item) => BigInt(item.outstandingMinor) !== 0n)
+        .map((item) => item.sourceIdentity) ?? [],
+  );
+
+  const first = identities[0];
+  const prefix = first?.slice(0, first.lastIndexOf("-") + 1);
+
+  const names = identities
+    .map((identity, index) =>
+      index && prefix && identity.startsWith(prefix) ? identity.slice(prefix.length) : identity,
+    )
+    .join(", ");
+
+  const accounts = group.items
+    .map((item) => setup.accounts.find((account) => account.id === item.accountId))
+    .filter((account) => !!account);
+
+  const tax = snapshot?.comparisons.find(
+    (item) =>
+      item.kind === "trial_balance" &&
+      setup.accounts.find((account) => account.id === item.accountId)?.code === "1630",
+  );
+
+  const debit = group.items.reduce(
+    (sum, item) => sum + (BigInt(item.expectedMinor) > 0n ? BigInt(item.expectedMinor) : 0n),
+    0n,
+  );
+
+  const credit = group.items.reduce(
+    (sum, item) => sum + (BigInt(item.expectedMinor) < 0n ? -BigInt(item.expectedMinor) : 0n),
+    0n,
+  );
+
+  const title = group.accepted
+    ? group.kind === "bank"
+      ? "! Accepterad bankbegränsning, inte avstämd"
+      : "! Accepterad skattekontobegränsning"
+    : group.current
+      ? `✓ ${controlTitles[group.kind]} stämmer${group.kind === "vat" ? " mot källan" : ""}`
+      : group.items.length
+        ? `! ${controlTitles[group.kind]} har en differens`
+        : "! Kontoutdrag saknas";
 
   return (
-    <SetupBlock layout={["controlRow", !group.current && "amberRow"]}>
-      <SetupText layout={["controlTitle"]}>{group.label}</SetupText>
-      <SetupBlock layout={["stack4"]}>
-        <SetupText layout={[group.current ? "success" : "warning"]}>
-          {group.accepted
-            ? "! Accepterad begränsning, inte avstämt"
-            : group.current
-              ? `✓ ${controlTitles[group.kind]} stämmer`
-              : group.items.length
-                ? `! ${controlTitles[group.kind]} har en differens`
-                : "! Kontoutdrag saknas"}
+    <SetupBlock
+      layout={[
+        "controlRow",
+        "verificationRow",
+        group.kind === "bank" && "verificationTall",
+        group.kind === "tax" && !group.current && "verificationTax",
+      ]}
+    >
+      <SetupText
+        layout={[
+          "verificationLabel",
+          group.kind === "tax" && !group.current && "verificationTaxLabel",
+        ]}
+      >
+        {group.label}
+      </SetupText>
+      <SetupBlock layout={["verificationDetail"]}>
+        <SetupText
+          layout={[group.current && !group.accepted ? "success" : "warning", "verificationHeading"]}
+        >
+          {title}
         </SetupText>
-        {group.accepted ? (
-          <SetupText layout={["caption"]}>
-            {group.accepted.actorName}, {formatMoment(group.accepted.recordedAt)}
-          </SetupText>
-        ) : null}
-        <SetupText layout={["caption"]}>
-          {group.items.length
-            ? `Bokfört ${formatMinor(actual.toString())}, underlag ${formatMinor(expected.toString())}, skillnad ${formatMinor((expected - actual).toString())}${explained !== 0n ? `, förklarat ${formatMinor(explained.toString())}` : ""}`
-            : "Kan inte jämföras. Blockerar verifieringen."}
+        <SetupText layout={["verificationCaption"]}>
+          {group.kind === "trial_balance" ? (
+            `Debet ${formatMinor(debit.toString())}, kredit ${formatMinor(credit.toString())}, differens ${formatMinor((debit - credit).toString())} per ${opening ? formatDate(opening.asOf, false) : "kontrollpunkten"}`
+          ) : group.kind === "sales_open_items" || group.kind === "purchase_open_items" ? (
+            `Reskontra ${positive(actual)}, öppna fakturor ${positive(expected)}${names ? ` (${names})` : ""}`
+          ) : group.kind === "vat" ? (
+            `${accounts.map((account) => `${account.name} ${account.code}`).join(", ")} jämförd med källan`
+          ) : group.kind === "bank" ? (
+            <>
+              {" "}
+              {snapshot ? formatDate(snapshot.asOf, false) : "Kontrollpunkten"}: bokfört{" "}
+              {formatMinor(actual.toString())}, bank {formatMinor(expected.toString())}, differens{" "}
+              {formatMinor((expected - actual).toString())}.<br />
+              {group.items.some((item) => BigInt(item.explainedMinor) !== 0n)
+                ? "Utbetalning förklarar, men är inte avstämd. "
+                : ""}
+              {group.accepted
+                ? `${group.accepted.actorName} accepterade ${formatMoment(group.accepted.recordedAt)}.`
+                : "Beslut om begränsningen saknas."}
+            </>
+          ) : (
+            `Skattekonto 1630 saldo ${tax ? formatMinor(tax.actualMinor) : "okänt"} kan inte jämföras. ${group.accepted ? "Accepterad begränsning, saldot förblir okontrollerat." : "Blockerar tills utdrag mottagits eller medvetet accepterats."}`
+          )}
         </SetupText>
       </SetupBlock>
       <SetupButton
         variant="ghost"
-        styleX={setupLayoutStyles(["plainAction"])}
-        onClick={() => open("sources")}
+        styleX={setupLayoutStyles(["plainAction", "verificationAction"])}
+        onClick={() => props.open("sources")}
       >
         Visa underlag
       </SetupButton>

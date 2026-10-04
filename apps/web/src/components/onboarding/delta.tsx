@@ -3,12 +3,7 @@ import { DeltaEffectsDialog } from "./delta-effects";
 import { useQuery } from "@tanstack/react-query";
 import * as Delta from "@open-erp/contracts/onboarding-deltas";
 import { SetupBlock, SetupText, setupLayoutStyles } from "@open-erp/ui/components/setup-parts";
-import {
-  SetupButton,
-  SetupCaption,
-  SetupPageContent,
-  SetupTitle,
-} from "@open-erp/ui/components/setup-workspace";
+import { SetupButton, SetupPageContent, SetupTitle } from "@open-erp/ui/components/setup-workspace";
 import { SetupTable } from "@open-erp/ui/components/setup-table";
 import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 import { AccountingStatus } from "@/components/accounting-status";
@@ -64,10 +59,14 @@ function DeltaChoice({
           },
     );
 
+  if (row.kind === "new" && saved?.choice === "use_change")
+    return <SetupText layout={["secondary"]}>Ny, importeras</SetupText>;
+
   return (
     <SetupBlock layout={["actions8"]}>
       <SetupButton
         variant="outline"
+        layout={["deltaChoice", saved?.choice === "use_change" && "deltaChosen"]}
         disabled={
           command.disabled ||
           !view.current ||
@@ -80,6 +79,7 @@ function DeltaChoice({
       </SetupButton>
       {row.kind !== "new" ? (
         <SetupButton
+          layout={["deltaChoice", saved?.choice === "keep_previous" && "deltaChosen"]}
           variant="outline"
           disabled={
             command.disabled ||
@@ -170,7 +170,7 @@ export function OnboardingDelta({
   const updatedCount = changes.filter((row) => row.kind === "changed").length;
 
   return (
-    <SetupPageContent styleX={setupLayoutStyles(["page", "inset"])}>
+    <SetupPageContent styleX={setupLayoutStyles(["deltaPage", "inset"])}>
       <Breadcrumb
         items={[
           { label: book.name },
@@ -184,13 +184,14 @@ export function OnboardingDelta({
           {completed ? "Slutlig deltaimport, klar" : "Slutlig deltaimport, granska före import"}
         </SetupTitle>
       </SetupBlock>
-      <SetupText as="p" layout={["subtitle"]}>
-        Det som ändrats i tidigare system sedan förra importen.
+      <SetupText as="p" layout={["openingSubtitle"]}>
+        Exempeldata. Ändringar sedan förra importen. Endast bokföringsdatum till{" "}
+        {formatDate(workspace.case.configuration.dates.historyEndsOn, false)}.
       </SetupText>
       {view ? (
-        <SetupText as="p" layout={["section20"]}>
-          {newCount} nya verifikat, {updatedCount} uppdaterade, {removedCount} borttagna. Totalt
-          efter import {baselineCount + newCount - removedCount} verifikat.
+        <SetupText as="p" layout={["deltaSummary"]}>
+          {newCount} nya, {updatedCount} ändrade, {removedCount} borttagna. {baselineCount} +{" "}
+          {newCount} = {baselineCount + newCount - removedCount} verifikat efter import.
         </SetupText>
       ) : null}
       {completed && snapshot ? (
@@ -201,10 +202,11 @@ export function OnboardingDelta({
           </SetupText>
         </SetupBlock>
       ) : (
-        <SetupBlock layout={["section24"]}>
+        <SetupBlock layout={["section"]}>
           <SetupTable
             title="Ändringar sedan tidigare import"
             width={tokens.setupInnerWidth}
+            layout="delta"
             columns={[
               { id: "voucher", label: "Verifikat", width: tokens.setupColumn96 },
               { id: "date", label: "Datum", width: tokens.setupColumn96 },
@@ -212,40 +214,54 @@ export function OnboardingDelta({
               { id: "amount", label: "Belopp", width: tokens.setupColumn120, numeric: true },
               { id: "decision", label: "Beslut", width: tokens.setupDeltaDecisionWidth },
             ]}
-            rows={changes.slice(0, 4).map((row) => {
-              const voucher = row.candidate ?? row.previous;
+            rows={[
+              ...changes.filter((row) => row.kind === "new").slice(0, 2),
+              ...changes.filter((row) => row.kind === "changed").toReversed(),
+              ...changes.filter((row) => row.kind !== "changed").slice(2),
+            ]
+              .slice(0, 4)
+              .map((row) => {
+                const voucher = row.candidate ?? row.previous;
 
-              return {
-                id: row.sourceReference,
-                cells: [
-                  row.sourceReference.replace(":", ""),
-                  formatDate(
-                    voucher
-                      ? `${voucher.date.slice(0, 4)}-${voucher.date.slice(4, 6)}-${voucher.date.slice(6, 8)}`
-                      : null,
-                    false,
-                  ),
-                  source.preview.data?.records.find(
-                    (record) => record.ordinal === voucher?.recordOrdinal,
-                  )?.fields[3] ?? "",
-                  sourceAmount(voucher?.transactions[0]?.amount ?? "0"),
-                  view ? <DeltaChoice key={row.sourceReference} view={view} row={row} /> : null,
-                ],
-              };
-            })}
+                return {
+                  id: row.sourceReference,
+                  cells: [
+                    row.sourceReference.replace(":", ""),
+                    formatDate(
+                      voucher
+                        ? `${voucher.date.slice(0, 4)}-${voucher.date.slice(4, 6)}-${voucher.date.slice(6, 8)}`
+                        : null,
+                      false,
+                    ),
+                    source.preview.data?.records.find(
+                      (record) => record.ordinal === voucher?.recordOrdinal,
+                    )?.fields[3] ?? "",
+                    sourceAmount(
+                      voucher?.transactions.find((line) => line.account === "1930")?.amount ??
+                        voucher?.transactions[0]?.amount ??
+                        "0",
+                    ),
+                    view ? <DeltaChoice key={row.sourceReference} view={view} row={row} /> : null,
+                  ],
+                };
+              })}
           />
-          <SetupCaption>
+          <SetupText as="p" layout={["note", "secondary"]}>
             Visar {Math.min(4, changes.length)} av {changes.length} ändringar. Samma källidentiteter
             och mappningar. Från{" "}
             {formatDate(workspace.case.configuration.dates.candidateLiveOn, false)} hör allt till
             OpenERP.
-          </SetupCaption>
+          </SetupText>
         </SetupBlock>
       )}
       {!completed ? (
-        <SetupBlock layout={["section20"]}>
+        <SetupBlock layout={["section"]}>
           {view?.blockers.includes("source_change_not_posted") ? (
-            <SetupButton disabled={!deltaChoicesReady(view)} onClick={() => setImporting(true)}>
+            <SetupButton
+              layout={["deltaPrimary"]}
+              disabled={!deltaChoicesReady(view)}
+              onClick={() => setImporting(true)}
+            >
               Importera ändringarna
             </SetupButton>
           ) : snapshot && view ? (
@@ -302,13 +318,16 @@ export function OnboardingDelta({
               Kontrollera deltaimporten
             </SetupButton>
           )}
-          {view?.blockers.map((blocker) => (
-            <SetupText as="p" key={blocker} layout={["warning"]}>
-              {onboardingBlocker(blocker).label}
-            </SetupText>
-          ))}
+          {view?.blockers
+            .filter((blocker) => blocker !== "source_change_not_posted")
+            .map((blocker) => (
+              <SetupText as="p" key={blocker} layout={["warning"]}>
+                {onboardingBlocker(blocker).label}
+              </SetupText>
+            ))}
         </SetupBlock>
       ) : null}
+      <DeltaCompletionExample completed={completed} recordClass={workspace.case.recordClass} />
       {importing && view ? (
         <DeltaEffectsDialog
           view={view}
@@ -330,5 +349,32 @@ export function OnboardingDelta({
         write
       />
     </SetupPageContent>
+  );
+}
+
+function DeltaCompletionExample({
+  completed,
+  recordClass,
+}: {
+  completed: boolean;
+  recordClass: Workspace["case"]["recordClass"];
+}) {
+  if (completed || recordClass !== "synthetic") return null;
+
+  return (
+    <SetupBlock layout={["deltaExample"]}>
+      <SetupText layout={["semibold", "secondary"]}>
+        Exempel: klart efter import, ersätter granskningen
+      </SetupText>
+      <SetupText>
+        Importerat 2 okt 09:40. Totalt 434 verifikat, 2 uppdaterade.
+        <br />
+        A412 och A398: ändringen använd, Elin Sund 2 okt 09:40.
+        <br />
+        September kontrollerad igen, accepterade begränsningar kvar.
+        <br />
+        Bokföring till 30 sep. Oktober hanteras i OpenERP.
+      </SetupText>
+    </SetupBlock>
   );
 }

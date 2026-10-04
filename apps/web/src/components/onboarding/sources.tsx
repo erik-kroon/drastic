@@ -1,3 +1,4 @@
+import { originalCoverage, sourceScope } from "./source-inventory";
 import * as Mapping from "@open-erp/contracts/onboarding-mappings";
 import { formatDate, formatMoment } from "./data";
 import { currentSnapshot, useSnapshotDecision, type Lifecycle } from "./lifecycle";
@@ -138,6 +139,14 @@ export function OnboardingSources({
     .toSorted((left, right) => right.linkedAt.localeCompare(left.linkedAt));
 
   const occurrence = sources[0]?.occurrence;
+  const coverage = originalCoverage(workspace, lifecycle);
+  const missingOriginals = coverage?.rows.filter((item) => item.occurrenceId === null).length;
+
+  const payrollRetained = lifecycle.controls.some(
+    (item) =>
+      item.kind === "historical_payroll_handoff" &&
+      item.asOf === workspace.case.configuration.dates.historyEndsOn,
+  );
 
   const sourceContent = useQuery({
     queryKey: [...bookKey(book), "source", occurrence?.id],
@@ -161,7 +170,7 @@ export function OnboardingSources({
         <SetupTitle>Källor</SetupTitle>
       </SetupBlock>
       <SetupText as="p" layout={["subtitle"]}>
-        Det här är underlaget OpenERP har fått. Inget är ännu en bokföring.
+        Det här är underlaget OpenERP har fått. Inget är ännu en bokföringsändring.
       </SetupText>
       <SetupBlock layout={["columns", "section"]}>
         <SetupTable
@@ -179,7 +188,12 @@ export function OnboardingSources({
 
             return {
               id: category,
-              tone: selected === category ? "selected" : undefined,
+              tone:
+                selected === category
+                  ? "selected"
+                  : category === "tax" && !received.length
+                    ? "warning"
+                    : undefined,
               cells: [
                 <SetupInlineAction
                   key="category"
@@ -190,29 +204,50 @@ export function OnboardingSources({
                   {sourceLabels[category]}
                 </SetupInlineAction>,
                 received.length ? (
-                  received.map((item) => item.occurrence.filename).join(", ")
+                  <SetupText layout={["secondary"]}>
+                    {sourceScope(category, workspace, lifecycle)}
+                  </SetupText>
                 ) : (
                   <SetupLink key="upload" onClick={() => setUploading(category)}>
                     Ladda upp {category === "tax" ? "kontoutdrag" : "underlag"}
                   </SetupLink>
                 ),
-                received.length ? "Ja" : "Nej",
-                <SetupText key="status" layout={[received.length ? "success" : "warning"]}>
-                  {received.length ? "✓ Mottagen" : "! Ej levererat"}
+                received.length && !(category === "payroll" && payrollRetained) ? "Ja" : "Nej",
+                <SetupText
+                  key="status"
+                  layout={[
+                    category === "payroll" && payrollRetained
+                      ? "secondary"
+                      : category === "other" && missingOriginals
+                        ? "warning"
+                        : received.length
+                          ? "success"
+                          : "warning",
+                  ]}
+                >
+                  {category === "payroll" && payrollRetained
+                    ? "○ Inte importerade"
+                    : category === "other" && missingOriginals
+                      ? `! ${missingOriginals} saknar original`
+                      : received.length
+                        ? "✓ Mottagen"
+                        : "! Ej levererat"}
                 </SetupText>,
               ],
             };
           })}
         />
-        <SetupBlock as="aside" layout={["detail"]}>
-          <SetupText as="h2" layout={["semibold"]}>
-            {sourceLabels[selected]}
+        <SetupBlock as="aside" layout={["sourceDetail"]}>
+          <SetupText as="h2" layout={["sourceDetailHeading"]}>
+            {selected === "other" && missingOriginals
+              ? `${missingOriginals} verifikat saknar original`
+              : sourceLabels[selected]}
           </SetupText>
           {sources.length ? (
             <>
-              <SetupText as="p">
-                {sources.map((item) => item.occurrence.filename).join(", ")}
-              </SetupText>
+              {selected !== "other" || !coverage ? (
+                <SetupText as="p">{sourceScope(selected, workspace, lifecycle)}</SetupText>
+              ) : null}
               <SetupText as="p" layout={["secondary"]}>
                 Du kan acceptera begränsningen senare, med namn och datum.
               </SetupText>
@@ -227,6 +262,7 @@ export function OnboardingSources({
               Ladda upp {selected === "other" ? "original" : "underlag"}
             </SetupButton>
             <SetupButton
+              styleX={setupLayoutStyles(["plainAction"])}
               variant="outline"
               disabled={!occurrence}
               onClick={() => setInspecting(true)}

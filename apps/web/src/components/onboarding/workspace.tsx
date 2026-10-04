@@ -1,6 +1,8 @@
 import { factText } from "./profile";
-import { onboardingBlocker } from "./blockers";
-import * as Schema from "effect/Schema";
+import { importReadiness, missingSourceAccounts } from "./import-readiness";
+import { originalCoverage, sourceScope } from "./source-inventory";
+import { useSieSource } from "./sources";
+
 import {
   SetupBlock,
   SetupInlineAction,
@@ -42,21 +44,50 @@ function profileSummary(facts: ReturnType<typeof useOnboardingFacts>["data"]) {
   return values.join(", ");
 }
 
-export function OnboardingWorkspace({
-  workspace,
-  lifecycle,
-  open,
-}: {
-  workspace: typeof Onboarding.OnboardingWorkspace.Type;
-  lifecycle: typeof Onboarding.OnboardingLifecycle.Type;
-  open: OpenOnboardingView;
-}) {
-  const { book, setup } = useBookWorkspace();
+function workspaceRowStatus(
+  row: { label: string; state: typeof Onboarding.OnboardingTask.Type.state },
+  group: string,
+  missingOriginals: number | undefined,
+  decisions: number | null,
+  blockerCount: number,
+  hasImports: boolean,
+) {
+  return row.label === "Bokföringsprofil" && row.state === "complete"
+    ? "✓ Bekräftad"
+    : row.label === "Dokument" && missingOriginals
+      ? `! ${missingOriginals} saknar original`
+      : row.label === "Skattekonto" && group === "Källor"
+        ? "! Ej levererat"
+        : row.label === "Historisk import" && decisions
+          ? `! ${decisions} undantag`
+          : row.label === "Övergång" && blockerCount
+            ? `Blockerad av ${blockerCount} saker`
+            : row.label === "Ingående balanser" && !hasImports
+              ? "○ Väntar på import"
+              : group === "Verifiering" && !hasImports
+                ? "○ Väntar"
+                : group === "Källor" && row.state === "complete"
+                  ? "✓ Mottagen"
+                  : {
+                      complete: "✓ Klar",
+                      blocked: "! Blockerad",
+                      in_progress: "○ Pågår",
+                      needs_information: "○ Ej påbörjad",
+                      not_started: "○ Ej påbörjad",
+                    }[row.state];
+}
 
-  const facts = useOnboardingFacts(
-    workspace.case.configuration.dates.candidateLiveOn ?? setup.today,
-  );
-
+function workspaceGroups(
+  workspace: typeof Onboarding.OnboardingWorkspace.Type,
+  lifecycle: typeof Onboarding.OnboardingLifecycle.Type,
+  book: { name: string },
+  facts: ReturnType<typeof useOnboardingFacts>,
+  sie: ReturnType<typeof useSieSource>,
+  readiness: ReturnType<typeof importReadiness>,
+  coverage: ReturnType<typeof originalCoverage>,
+  missingOriginals: number | undefined,
+  companyConfirmed: boolean,
+) {
   function task(id: typeof Onboarding.OnboardingTask.Type.id) {
     return workspace.tasks.find((item) => item.id === id);
   }
@@ -76,22 +107,22 @@ export function OnboardingWorkspace({
         {
           label: "Identitet",
           detail: book.name,
-          state: task("company")?.state ?? "needs_information",
+          state: companyConfirmed ? "complete" : "needs_information",
           view: "profile",
         },
         {
           label: "Bokföringsprofil",
           detail: profileSummary(facts.data),
-          state: task("company")?.state ?? "needs_information",
+          state: companyConfirmed ? "complete" : "needs_information",
           view: "profile",
         },
         {
           label: "Kompatibilitet",
           detail: workspace.qualification.filter((item) => item.state === "supported_with_handoff")
             .length
-            ? `${workspace.qualification.filter((item) => item.state === "supported_with_handoff").length} delar stöds med överlämning`
+            ? `Fakta, stöd och ${workspace.qualification.filter((item) => item.state === "supported_with_handoff").length} överlämningar`
             : "",
-          state: task("compatibility")?.state ?? "needs_information",
+          state: workspace.qualification.length ? "complete" : "needs_information",
           view: "compatibility",
         },
       ],
@@ -103,7 +134,7 @@ export function OnboardingWorkspace({
           label: "Ansvar",
           detail: lifecycle.responsibilities
             ? "Ansvar är satt"
-            : "Vem bokför och godkänner är inte satt",
+            : "Vem bereder och godkänner är inte satt",
           state: lifecycle.responsibilities ? "complete" : "needs_information",
           view: "responsibilities",
         },
@@ -111,30 +142,35 @@ export function OnboardingWorkspace({
     },
     {
       label: "Källor",
-      rows: ["previous_books", "bank", "other", "tax"].map((category) => {
-        const source = workspace.sources.filter((item) => item.category === category);
-
-        const typed = Schema.decodeUnknownSync(Onboarding.SourceCategory)(category);
-
-        return {
-          label: sourceLabels[typed],
-          detail: source.length
-            ? source.map((item) => item.occurrence.filename).join(", ")
-            : "Underlag har inte levererats",
-          state: source.length ? "complete" : "needs_information",
-          view: "sources",
-        };
-      }),
+      rows: (["previous_books", "bank", "other", "tax"] as const).map((category) => ({
+        label: sourceLabels[category],
+        detail:
+          category === "other" && coverage
+            ? `${coverage.rows.length - (missingOriginals ?? 0)} av ${coverage.rows.length} original bevarade`
+            : category === "previous_books" && sie.preview.data
+              ? `${sie.source?.occurrence.filename}, ${sie.preview.data.vouchers.length} verifikat`
+              : category === "bank"
+                ? `Konto ${lifecycle.projection.accounts.find((account) => account.id === lifecycle.projection.bankStatements[0]?.accountId)?.code ?? ""}, ${lifecycle.projection.bankStatements.reduce((total, statement) => total + statement.rows.length, 0)} bankhändelser`
+                : sourceScope(category, workspace, lifecycle) || "Kontoutdrag har inte levererats",
+        state:
+          category === "other" && missingOriginals
+            ? "blocked"
+            : workspace.sources.some((item) => item.category === category)
+              ? "complete"
+              : "needs_information",
+        view: "sources",
+      })),
     },
     {
       label: "Migrering",
       rows: [
         {
           label: "Historisk import",
-          detail: workspace.imports.length
-            ? `${workspace.imports.filter((item) => item.financialState === "posted").length} av ${workspace.imports.length} importer klara`
-            : "",
-          state: task("import")?.state ?? "needs_information",
+          detail:
+            readiness.total === null
+              ? ""
+              : `${readiness.ready} av ${readiness.total} verifikat klara`,
+          state: readiness.decisions ? "blocked" : (task("import")?.state ?? "needs_information"),
           view: "import",
         },
         {
@@ -193,9 +229,68 @@ export function OnboardingWorkspace({
     },
   ];
 
-  const blockers =
-    lifecycle.snapshots.find((item) => item.current && item.snapshot.purpose === "activation")
-      ?.snapshot.blockers ?? workspace.cutover.blockers;
+  return groups;
+}
+
+export function OnboardingWorkspace({
+  workspace,
+  lifecycle,
+  open,
+}: {
+  workspace: typeof Onboarding.OnboardingWorkspace.Type;
+  lifecycle: typeof Onboarding.OnboardingLifecycle.Type;
+  open: OpenOnboardingView;
+}) {
+  const { book, setup } = useBookWorkspace();
+
+  const facts = useOnboardingFacts(
+    workspace.case.configuration.dates.candidateLiveOn ?? setup.today,
+  );
+
+  const sie = useSieSource(workspace);
+
+  const pendingFindings =
+    lifecycle.controls
+      .filter((control) => control.importReview?.previewId === sie.preview.data?.id)
+      .toSorted((left, right) => right.qualifiedAt.localeCompare(left.qualifiedAt))[0]
+      ?.importReview?.findings.filter((finding) => finding.state === "pending") ?? [];
+
+  const missingAccounts = missingSourceAccounts(sie.preview.data, setup.accounts).filter(
+    (account) => !sie.mappings.data?.current.some((mapping) => mapping.sourceAccount === account),
+  );
+
+  const readiness = importReadiness(sie.preview.data, missingAccounts, pendingFindings);
+  const coverage = originalCoverage(workspace, lifecycle);
+  const missingOriginals = coverage?.rows.filter((item) => item.occurrenceId === null).length;
+
+  const companyConfirmed =
+    facts.data?.length && facts.data.every((fact) => fact.review?.result === "confirmed");
+
+  const groups = workspaceGroups(
+    workspace,
+    lifecycle,
+    book,
+    facts,
+    sie,
+    readiness,
+    coverage,
+    missingOriginals,
+    !!companyConfirmed,
+  );
+
+  const blockers: Array<{ label: string; view: Parameters<OpenOnboardingView>[0] }> = [];
+
+  if (!lifecycle.responsibilities)
+    blockers.push({ label: "Ansvar behöver sparas", view: "responsibilities" });
+
+  if (missingOriginals)
+    blockers.push({ label: `${missingOriginals} verifikat saknar original`, view: "sources" });
+
+  if (!workspace.sources.some((item) => item.category === "tax"))
+    blockers.push({ label: "Skattekonto är inte levererat", view: "sources" });
+
+  if (readiness.decisions)
+    blockers.push({ label: `${readiness.decisions} undantag i historisk import`, view: "import" });
 
   return (
     <SetupPageContent styleX={setupLayoutStyles(["page", "workspace"])}>
@@ -215,7 +310,7 @@ export function OnboardingWorkspace({
                   <SetupInlineAction
                     type="button"
                     onClick={() => open(row.view)}
-                    layout={["checklistLabel", "crumbButton"]}
+                    layout={["crumbButton", "checklistLabel"]}
                   >
                     {row.label}
                   </SetupInlineAction>
@@ -223,6 +318,9 @@ export function OnboardingWorkspace({
                   <SetupText
                     layout={[
                       "checklistStatus",
+                      ...(row.state === "blocked" || row.label === "Bokföringsprofil"
+                        ? ["workspaceStatus" as const]
+                        : []),
                       (
                         {
                           complete: "success",
@@ -234,15 +332,14 @@ export function OnboardingWorkspace({
                       )[row.state],
                     ]}
                   >
-                    {
-                      {
-                        complete: "✓ Klar",
-                        blocked: "! Blockerad",
-                        in_progress: "○ Pågår",
-                        needs_information: "○ Ej påbörjad",
-                        not_started: "○ Ej påbörjad",
-                      }[row.state]
-                    }
+                    {workspaceRowStatus(
+                      row,
+                      group.label,
+                      missingOriginals,
+                      readiness.decisions,
+                      blockers.length,
+                      workspace.imports.length > 0,
+                    )}
                   </SetupText>
                 </SetupBlock>
               ))}
@@ -250,19 +347,21 @@ export function OnboardingWorkspace({
           ))}
         </SetupBlock>
         <SetupBlock as="aside" layout={["blockers"]}>
-          <SetupText as="h2" layout={["semibold"]}>
+          <SetupText as="h2" layout={["workspaceBlockerHeading"]}>
             Det som blockerar go live
           </SetupText>
           {blockers.map((blocker) => {
-            const task = onboardingBlocker(blocker);
-
             return (
-              <SetupInlineAction key={blocker} layout={["primary"]} onClick={() => open(task.view)}>
-                {task.label}
+              <SetupInlineAction
+                key={blocker.label}
+                layout={["primary"]}
+                onClick={() => open(blocker.view)}
+              >
+                {blocker.label}
               </SetupInlineAction>
             );
           })}
-          <SetupBlock>
+          <SetupBlock layout={["workspaceContinue"]}>
             <SetupButton onClick={() => open("import")}>Fortsätt med import</SetupButton>
           </SetupBlock>
         </SetupBlock>

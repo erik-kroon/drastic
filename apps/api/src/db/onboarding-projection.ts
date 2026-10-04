@@ -4,6 +4,20 @@ import type * as Schema from "effect/Schema";
 import type { Transaction } from "./transaction";
 import { statementBodyColumns } from "./banking/statements";
 
+export function readAssetHandoffBases(tx: Transaction, bookId: string) {
+  return tx.execute<{ basis: Schema.JsonObject; revision: Schema.JsonObject }>(
+    sql`
+    select b.body as basis,r.body as revision from openerp.subledger_bases b
+    join lateral (select body from openerp.subledger_schedule_revisions
+      where book_id=b.book_id and schedule_id=b.schedule_id order by revision desc limit 1) r on true
+    where b.book_id=${bookId} and b.body->'input'->>'kind'='imported_opening'
+      and not exists(select from openerp.vouchers v where v.book_id=b.book_id and v.corrects_voucher_id=b.voucher_id)
+    order by b.schedule_id limit 1001
+  `,
+    "objects",
+  );
+}
+
 export function readProjectionMaterial(
   tx: Transaction,
   scope: { entityId: string; bookId: string },
@@ -95,7 +109,21 @@ export function readBankTimingLines(
     )}]::text[])
       and v.posting_date<=${asOf}::date and v.corrects_voucher_id is null and v.posting_purpose<>'reversal'
       and not exists(select from openerp.vouchers r where r.book_id=v.book_id and r.corrects_voucher_id=v.id)
-    order by v.id,l.id
+    union all
+    select s.id||':'||o.row_ordinal::text as identity,s.account_id as "accountId",
+      (case when exists(select from openerp.bank_active_matches m
+        where (m.book_id,m.statement_id,m.row_ordinal)=(o.book_id,o.statement_id,o.row_ordinal))
+      then 0 else -(o.amount_minor-coalesce((select sum(a.amount_minor)
+        from openerp.bank_active_allocation_legs a
+        where (a.book_id,a.statement_id,a.row_ordinal)=(o.book_id,o.statement_id,o.row_ordinal)),0)) end)::text as "remainingMinor",
+      array[s.evidence_id] as "evidenceIds"
+    from openerp.bank_observations o join openerp.bank_statements s
+      on(s.book_id,s.id)=(o.book_id,o.statement_id)
+    where o.book_id=${bookId} and s.id||':'||o.row_ordinal::text=any(array[${sql.join(
+      identities.map((value) => sql`${value}`),
+      sql`, `,
+    )}]::text[]) and o.observed_on<=${asOf}::date and s.ends_on<=${asOf}::date
+    order by identity
   `,
     "objects",
   );

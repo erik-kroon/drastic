@@ -26,6 +26,13 @@ await mkdir(artifacts, { recursive: true });
 
 const pgBin = process.env.PG_BINDIR ?? (await run("pg_config", ["--bindir"])).stdout.trim();
 
+const databaseName = process.env.PAPER_DATABASE ?? "postgres";
+
+if (!/^(postgres|openerp_ops_source_[a-z0-9_]{1,40})$/.test(databaseName))
+  throw new Error(
+    "Use a dedicated synthetic operational database or the default disposable database.",
+  );
+
 const webPortText = process.env.PAPER_PORT ?? "3000";
 
 const webPort = Number(webPortText);
@@ -90,6 +97,16 @@ async function cleanup() {
   return cleaning;
 }
 
+process.on("SIGUSR2", () => {
+  if (worker)
+    void worker
+      .update((options) => ({ ...options }))
+      .then(
+        () => console.info(JSON.stringify({ reloaded: true, url })),
+        (error) => console.error(error),
+      );
+});
+
 process.once("SIGINT", () => {
   void cleanup().then(() => process.exit(0));
 });
@@ -115,9 +132,9 @@ try {
 
   await new Promise((done, reject) => socket.close((error) => (error ? reject(error) : done())));
 
-  const adminUrl = `postgresql://postgres:${pgPassword}@127.0.0.1:${port}/postgres`;
+  const adminUrl = `postgresql://postgres:${pgPassword}@127.0.0.1:${port}/${databaseName}`;
 
-  const runtimeUrl = `postgresql://paper_runtime:${runtimePassword}@127.0.0.1:${port}/postgres`;
+  const runtimeUrl = `postgresql://paper_runtime:${runtimePassword}@127.0.0.1:${port}/${databaseName}`;
 
   await run(join(pgBin, "initdb"), [
     "-D",
@@ -141,6 +158,20 @@ try {
     "start",
   ]);
   postgresStarted = true;
+
+  if (databaseName !== "postgres") {
+    const clusterAdmin = new Client({
+      connectionString: `postgresql://postgres:${pgPassword}@127.0.0.1:${port}/postgres`,
+    });
+
+    await clusterAdmin.connect();
+
+    try {
+      await clusterAdmin.query(`CREATE DATABASE ${databaseName}`);
+    } finally {
+      await clusterAdmin.end();
+    }
+  }
 
   const migrated = await run("bun", ["scripts/migrate.ts"], {
     cwd: api,
@@ -232,6 +263,7 @@ try {
       password: loginPassword,
       accessToken,
       apiUrl: listening.url.origin,
+      databaseName,
       workspace: `${url}/entities/${fixture.entity.id}/books/${fixture.book.id}`,
     }),
     { mode: 0o600 },

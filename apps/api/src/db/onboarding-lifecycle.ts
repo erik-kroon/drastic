@@ -54,11 +54,16 @@ export function readPeople(tx: Transaction, bookId: string) {
     enabled: boolean;
     role: string;
     affiliation: "company" | "bureau";
+    bureauName: string | null;
   }>(
     sql`
     select m.actor_id as id,a.name,coalesce(i.enabled,true) as enabled,m.role,
       case when exists(select from openerp.firm_members fm join openerp.firm_clients fc on fc.firm_id=fm.firm_id
-        where fm.actor_id=m.actor_id and fm.active and fc.book_id=m.book_id) then 'bureau' else 'company' end as affiliation
+        where fm.actor_id=m.actor_id and fm.active and fc.book_id=m.book_id) then 'bureau' else 'company' end as affiliation,
+      (select string_agg(f.name, ', ' order by f.name) from openerp.firm_members fm
+        join openerp.firm_clients fc on fc.firm_id=fm.firm_id
+        join openerp.firms f on f.id=fm.firm_id
+        where fm.actor_id=m.actor_id and fm.active and fc.book_id=m.book_id) as "bureauName"
     from openerp.memberships m join openerp.actors a on a.id=m.actor_id
     left join openerp.identity_admissions i on i.actor_id=m.actor_id
     where m.book_id=${bookId} order by m.actor_id`,

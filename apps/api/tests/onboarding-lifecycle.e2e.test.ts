@@ -1,5 +1,8 @@
+import * as Bank from "@open-erp/contracts/reconciliation";
 import * as Delta from "@open-erp/contracts/onboarding-deltas";
 import * as Accounting from "@open-erp/contracts/accounting";
+import * as Subledgers from "@open-erp/contracts/subledgers";
+import * as SubledgerControls from "@open-erp/contracts/subledger-controls";
 import * as Profiles from "@open-erp/contracts/company-profiles";
 import * as Sie from "@open-erp/contracts/sie-import";
 import * as Historical from "@open-erp/contracts/historical-migration";
@@ -8,6 +11,7 @@ import * as Onboarding from "@open-erp/contracts/onboarding";
 import * as Intake from "@open-erp/contracts/source-intake";
 import {
   approve,
+  journal,
   createSession,
   database,
   evidence,
@@ -26,6 +30,13 @@ test("retained onboarding controls derive exact money and refuse unqualified or 
   const other = await fixture();
   await post(book, "/onboarding", { path: "demo" }, Onboarding.OnboardingCase);
   await post(other, "/onboarding", { path: "demo" }, Onboarding.OnboardingCase);
+
+  const beforeActivation = await decoded(
+    await request(book, "/onboarding/lifecycle"),
+    Onboarding.OnboardingLifecycle,
+  );
+
+  expect(beforeActivation.firstPeriodProgress).toBeNull();
 
   const original = await post(
     book,
@@ -1436,6 +1447,42 @@ async function verifyDeltaEffects(
   );
 
   expect(onboarding.projection.counts.importedVouchers).toBe(2);
+
+  const describedSource = await post(
+    book,
+    "/source-occurrences",
+    {
+      sourceSystem: "synthetic_incumbent",
+      sourceAccountId: "incumbent_book",
+      occurrenceKey: key(),
+      sourceRevision: "description_only",
+      filename: "description-only.sie",
+      mediaType: "application/octet-stream",
+      contentBase64: Buffer.from(
+        '#FLAGGA 0\n#FORMAT UTF8\n#SIETYP 4\n#RAR 0 20260101 20261231\n#KONTO 1930 "Bank"\n#KONTO 2999 "Clearing"\n#IB 0 1930 0.00\n#UB 0 1930 126.00\n#IB 0 2999 0.00\n#UB 0 2999 -126.00\n#VER A 1 20260831 "Changed movement"\n{\n#TRANS 1930 {} 125.00\n#TRANS 2999 {} -125.00\n}\n#VER A 3 20260930 "Corrected retained description"\n{\n#TRANS 1930 {} 1.00\n#TRANS 2999 {} -1.00\n}\n',
+      ).toString("base64"),
+    },
+    Intake.SourceOccurrence,
+  );
+
+  const describedPreview = await post(
+    book,
+    `/source-occurrences/${describedSource.id}/sie-previews`,
+    { encoding: "utf-8" },
+    Sie.SiePreview,
+  );
+
+  const beforeDescription = await persisted(book);
+
+  const describedDelta = await post(
+    book,
+    "/onboarding/source-deltas",
+    { candidatePreviewId: describedPreview.id, expectedPreviewDigest: describedPreview.digest },
+    Delta.OnboardingDelta,
+  );
+
+  expect(describedDelta.rows.map((row) => row.kind)).toEqual(["unchanged", "changed"]);
+  expect(await persisted(book)).toEqual(beforeDescription);
   await saveSanitizedJourney("onboarding-delta-effects", { delta, effects, completed, next });
 }
 
@@ -1508,9 +1555,14 @@ test("opening invoices derive from retained rows and reconcile against separate 
   const header =
     "kind,as_of,currency,source_identity,account_code,original_minor,outstanding_minor,state\n";
 
-  async function invoices(amount: string, currency = "SEK", asOf = "2026-08-31") {
+  async function invoices(
+    amount: string,
+    currency = "SEK",
+    asOf = "2026-08-31",
+    counterparty?: string,
+  ) {
     return retain(
-      `${header}sales_open_items,${asOf},${currency},F-001,1510,${amount},${amount},unpaid\n`,
+      `${counterparty ? header.trimEnd() + ",counterparty_name\n" : header}sales_open_items,${asOf},${currency},F-001,1510,${amount},${amount},unpaid${counterparty ? "," + counterparty : ""}\n`,
       "opening-invoices.csv",
       "independent_invoice_export",
     );
@@ -1595,7 +1647,7 @@ test("opening invoices derive from retained rows and reconcile against separate 
     422,
     "InvalidJournal",
   );
-  const original = await invoices("12600");
+  const original = await invoices("12600", "SEK", "2026-08-31", "Independent customer AB");
 
   const detail = await post(
     book,
@@ -1609,17 +1661,642 @@ test("opening invoices derive from retained rows and reconcile against separate 
   );
 
   expect(detail.openItemDetails?.[0]?.outstandingMinor).toBe("12600");
+  expect(detail.openItemDetails?.[0]?.counterpartyName).toBe("Independent customer AB");
   const plan = await post(book, "/onboarding/import-plans", input, Sie.SiePlan);
   expect(plan.input.openItems).toHaveLength(1);
   expect(plan.input.openItems[0]?.sourceIdentity).toBe("F-001");
   expect(plan.input.openItems[0]?.outstandingMinor).toBe("12600");
+  expect(plan.input.openItems[0]?.counterpartyName).toBe("Independent customer AB");
   expect(plan.input.openItems[0]?.basis).toContain(original.sha256);
   expect(plan.input.openItemControls[0]?.basis).toContain(august.sourceSha256);
   expect(plan.input.openItemControls[0]?.independentOutstandingMinor).toBe("12600");
+
+  const paidInventory = await retain(
+    header + "sales_open_items,2026-09-30,SEK,settled-001,1510,12500,0,paid\n",
+    "settled-invoice.csv",
+    "independent_invoice_inventory",
+  );
+
+  const paidControl = await post(
+    book,
+    "/onboarding/controls",
+    {
+      occurrenceId: paidInventory.id,
+      kind: "sales_open_items",
+      provenance: "Retained settled inventory",
+    },
+    Onboarding.OnboardingControl,
+  );
+
+  expect(paidControl.openItemDetails?.[0]?.assertedState).toBe("paid");
+  expect(paidControl.openItemDetails?.[0]?.outstandingMinor).toBe("0");
+
+  const inconsistentPaid = await retain(
+    header + "sales_open_items,2026-09-30,SEK,settled-002,1510,12500,100,paid\n",
+    "invalid-settled-invoice.csv",
+    "independent_invoice_inventory",
+  );
+
+  await failure(
+    await request(book, "/onboarding/controls", {
+      method: "POST",
+      body: JSON.stringify({
+        occurrenceId: inconsistentPaid.id,
+        kind: "sales_open_items",
+        provenance: "Invalid paid assertion",
+      }),
+    }),
+    422,
+    "InvalidJournal",
+  );
   await saveSanitizedJourney("onboarding-opening-invoices", {
     source: original.id,
     invoiceControl: detail.id,
     independentControl: august.id,
     plan,
+  });
+});
+
+test("responsibility people expose only current book-scoped bureau affiliation", async () => {
+  const book = await fixture();
+  const accountant = await fixture();
+  await createSession(accountant);
+  await post(book, "/onboarding", { path: "demo" }, Onboarding.OnboardingCase);
+  await post(accountant, "/onboarding", { path: "demo" }, Onboarding.OnboardingCase);
+  const admin = await database();
+  const firmId = `firm_${key()}`;
+
+  try {
+    await admin.query(
+      "insert into openerp.memberships(book_id,actor_id,role) values($1,$2,'operator')",
+      [book.bookId, accountant.actorId],
+    );
+    await admin.query(
+      "insert into openerp.firms(id,name,created_by) values($1,'Synthetic bureau',$2)",
+      [firmId, book.actorId],
+    );
+    await admin.query(
+      "insert into openerp.firm_members(firm_id,actor_id,role,active,revision) values($1,$2,'accountant',true,1)",
+      [firmId, accountant.actorId],
+    );
+    await admin.query(
+      "insert into openerp.firm_clients(firm_id,book_id,note,revision) values($1,$2,'Synthetic onboarding fixture',1)",
+      [firmId, book.bookId],
+    );
+
+    const current = await decoded(
+      await request(book, "/onboarding/lifecycle"),
+      Onboarding.OnboardingLifecycle,
+    );
+
+    expect(current.people.find((person) => person.id === accountant.actorId)).toMatchObject({
+      affiliation: "bureau",
+      bureauName: "Synthetic bureau",
+    });
+
+    const other = await decoded(
+      await request(accountant, "/onboarding/lifecycle"),
+      Onboarding.OnboardingLifecycle,
+    );
+
+    expect(other.people.find((person) => person.id === accountant.actorId)).toMatchObject({
+      affiliation: "company",
+      bureauName: null,
+    });
+    await admin.query(
+      "update openerp.firm_members set active=false where firm_id=$1 and actor_id=$2",
+      [firmId, accountant.actorId],
+    );
+
+    const disabled = await decoded(
+      await request(book, "/onboarding/lifecycle"),
+      Onboarding.OnboardingLifecycle,
+    );
+
+    expect(disabled.people.find((person) => person.id === accountant.actorId)).toMatchObject({
+      affiliation: "company",
+      bureauName: null,
+    });
+    await saveSanitizedJourney("onboarding-responsibility-bureau", {
+      scopedPeople: current.people,
+      otherBookPeople: other.people,
+      inactivePeople: disabled.people,
+    });
+  } finally {
+    await admin.end();
+  }
+});
+
+test("received asset registers derive carrying values from independent retained evidence", async () => {
+  const book = await fixture([
+    { id: "account_assets", code: "1210", name: "Synthetic assets" },
+    { id: "account_expense", code: "6540", name: "Synthetic depreciation" },
+  ]);
+
+  const originalEvidence = await evidence(book);
+
+  const recognition = await post(
+    book,
+    "/change-sets",
+    {
+      ...journal(originalEvidence.id),
+      postingDate: "2026-08-31",
+      lines: [
+        {
+          accountId: "account_assets",
+          debitMinor: "15000",
+          creditMinor: "0",
+          description: "Original cost",
+        },
+        {
+          accountId: "account_assets",
+          debitMinor: "0",
+          creditMinor: "5000",
+          description: "Accumulated depreciation",
+        },
+        {
+          accountId: "account_clearing",
+          debitMinor: "0",
+          creditMinor: "10000",
+          description: "Imported net opening",
+        },
+      ],
+    },
+    Accounting.ChangeSet,
+  );
+
+  const independent = await fixture();
+  const reviewer = { ...book, actorId: independent.actorId, token: independent.token };
+  const membershipDb = await database();
+
+  try {
+    await membershipDb.query(
+      "insert into openerp.memberships(book_id,actor_id,role) values($1,$2,'operator')",
+      [book.bookId, reviewer.actorId],
+    );
+  } finally {
+    await membershipDb.end();
+  }
+
+  const approval = await approve(reviewer, recognition);
+
+  const posted = await post(
+    book,
+    `/change-sets/${recognition.id}/execute`,
+    {
+      planDigest: recognition.planDigest,
+      version: recognition.version,
+      approvalId: approval.id,
+    },
+    Accounting.ExecutionReceipt,
+  );
+
+  const voucher = await decoded(
+    await request(book, `/vouchers/${posted.voucherId}`),
+    Accounting.Voucher,
+  );
+
+  await post(book, "/onboarding", { path: "demo" }, Onboarding.OnboardingCase);
+  await post(
+    book,
+    "/onboarding/revisions",
+    {
+      expectedRevision: 1,
+      configuration: {
+        migrationDepth: "current_fiscal_year",
+        incumbentSystem: "Independent predecessor",
+        dates: {
+          historyStartsOn: "2026-01-01",
+          historyEndsOn: "2026-09-30",
+          detailStartsOn: "2026-01-01",
+          openingOn: "2026-08-31",
+          acceptanceStartsOn: "2026-09-01",
+          acceptanceEndsOn: "2026-09-30",
+          candidateLiveOn: "2026-10-01",
+          provingPeriodEndsOn: "2026-10-31",
+        },
+      },
+    },
+    Onboarding.OnboardingCase,
+  );
+
+  async function retainAssetSource(content: string) {
+    return post(
+      book,
+      "/source-occurrences",
+      {
+        sourceSystem: "independent_asset_register",
+        sourceAccountId: "independent_book",
+        occurrenceKey: key(),
+        sourceRevision: key(),
+        filename: "asset-register.csv",
+        mediaType: "text/csv",
+        contentBase64: Buffer.from(content).toString("base64"),
+      },
+      Intake.SourceOccurrence,
+    );
+  }
+
+  const balanceSource = await retainAssetSource(
+    "kind,as_of,currency,source_identity,account_code,amount_minor\ntrial_balance,2026-09-30,SEK,assets,1210,10000\ntrial_balance,2026-09-30,SEK,equity,2999,-10000\n",
+  );
+
+  const balanceControl = await post(
+    book,
+    "/onboarding/controls",
+    {
+      occurrenceId: balanceSource.id,
+      kind: "trial_balance",
+      provenance: "Independent carrying-value control",
+    },
+    Onboarding.OnboardingControl,
+  );
+
+  const header =
+    "as_of,currency,source_identity,account_code,cost_minor,accumulated_depreciation_minor\n";
+
+  const registerSource = await retainAssetSource(
+    header + "2026-09-30,SEK,asset-1,1210,15000,5000\n",
+  );
+
+  const register = await post(
+    book,
+    "/onboarding/controls",
+    {
+      occurrenceId: registerSource.id,
+      kind: "historical_asset_register",
+      provenance: "Independent retained register",
+    },
+    Onboarding.OnboardingControl,
+  );
+
+  expect(register.assetRegister?.rows[0]?.carryingMinor).toBe("10000");
+  expect(register.assetRegister?.trialBalanceControlId).toBe(balanceControl.id);
+
+  const receivedOnly = await decoded(
+    await request(book, "/onboarding/lifecycle"),
+    Onboarding.OnboardingLifecycle,
+  );
+
+  expect(receivedOnly.projection.counts.assets).toBeNull();
+
+  const reviewEvidence = await post(
+    book,
+    "/evidence",
+    {
+      title: "Retained asset register review",
+      mediaType: "text/plain",
+      content: header + "2026-09-30,SEK,asset-1,1210,15000,5000\n",
+      origin: "Independent synthetic register",
+    },
+    Accounting.Evidence,
+  );
+
+  const schedule = await post(
+    book,
+    "/schedules",
+    {
+      sourceKey: "onboarding_asset_1",
+      terms: {
+        kind: "asset",
+        name: "Retained asset 1",
+        evidenceId: originalEvidence.id,
+        rationale: "Remaining synthetic depreciation",
+        costMinor: "10000",
+        residualMinor: "0",
+        usefulPeriods: 1,
+        allocationPolicy: "equal_minor_final_remainder_v1",
+        debitAccountId: "account_expense",
+        creditAccountId: "account_assets",
+        series: "A",
+        periods: [{ postingDate: "2026-10-31", accountingPeriodId: "period_2026" }],
+        taxAssessment: "not_applicable",
+      },
+    },
+    Subledgers.ScheduleRevision,
+  );
+
+  const basis = await post(
+    book,
+    "/subledger-controls/bases",
+    {
+      scheduleId: schedule.scheduleId,
+      expectedDigest: schedule.digest,
+      kind: "imported_opening",
+      effectiveOn: "2026-08-31",
+      evidenceId: originalEvidence.id,
+      sourceLocator: `onboarding_asset:${register.sourceSha256}:asset-1`,
+      reviewEvidenceId: reviewEvidence.id,
+      rationale: "Exact retained historical carrying basis",
+      originalCostMinor: "15000",
+      accumulatedMinor: "5000",
+      carryingMinor: "10000",
+      voucherId: voucher.id,
+      lineIds: voucher.action.lines
+        .filter((line) => line.accountId === "account_assets")
+        .map((line) => line.lineId),
+    },
+    SubledgerControls.SubledgerBasis,
+  );
+
+  const handedOff = await decoded(
+    await request(book, "/onboarding/lifecycle"),
+    Onboarding.OnboardingLifecycle,
+  );
+
+  expect(handedOff.projection.counts.assets).toBe(1);
+
+  const rejectionSnapshot = await post(
+    book,
+    "/onboarding/snapshots",
+    {
+      purpose: "book_zero",
+      controlIds: [balanceControl.id, register.id],
+      historicalRunIds: [],
+      closingCertificateId: null,
+    },
+    Onboarding.OnboardingSnapshot,
+  );
+
+  await post(
+    book,
+    "/onboarding/decisions",
+    {
+      snapshotId: rejectionSnapshot.id,
+      expectedDigest: rejectionSnapshot.digest,
+      decision: { kind: "reject", reason: "Independent asset evidence rejected" },
+    },
+    Onboarding.OnboardingDecision,
+  );
+
+  const rejectedHandoff = await decoded(
+    await request(book, "/onboarding/lifecycle"),
+    Onboarding.OnboardingLifecycle,
+  );
+
+  expect(rejectedHandoff.projection.counts.assets).toBeNull();
+  await failure(
+    await request(book, "/onboarding/controls", {
+      method: "POST",
+      body: JSON.stringify({
+        occurrenceId: registerSource.id,
+        kind: "historical_asset_register",
+        provenance: "Rejected independent balance cannot qualify",
+      }),
+    }),
+    403,
+    "ApprovalRequired",
+  );
+
+  const replacementBalanceSource = await post(
+    book,
+    "/source-occurrences",
+    {
+      sourceSystem: "independent_asset_balance",
+      sourceAccountId: "control_book",
+      occurrenceKey: key(),
+      sourceRevision: "2",
+      filename: "replacement-assets-balance.csv",
+      mediaType: "text/csv",
+      contentBase64: Buffer.from(
+        "kind,as_of,currency,source_identity,account_code,amount_minor\ntrial_balance,2026-09-30,SEK,asset-replacement,1210,10000\ntrial_balance,2026-09-30,SEK,clearing-replacement,2999,-10000\n",
+      ).toString("base64"),
+    },
+    Intake.SourceOccurrence,
+  );
+
+  await post(
+    book,
+    "/onboarding/controls",
+    {
+      occurrenceId: replacementBalanceSource.id,
+      kind: "trial_balance",
+      provenance: "New independent balance after rejection",
+    },
+    Onboarding.OnboardingControl,
+  );
+
+  const revisedAssetSource = await retainAssetSource(
+    header + "2026-09-30,SEK,asset-1,1210,16000,6000\n",
+  );
+
+  await post(
+    book,
+    "/onboarding/controls",
+    {
+      occurrenceId: revisedAssetSource.id,
+      kind: "historical_asset_register",
+      provenance: "Changed gross and accumulated source values",
+    },
+    Onboarding.OnboardingControl,
+  );
+
+  const staleHandoff = await decoded(
+    await request(book, "/onboarding/lifecycle"),
+    Onboarding.OnboardingLifecycle,
+  );
+
+  expect(staleHandoff.projection.counts.assets).toBeNull();
+
+  for (const content of [
+    header + "2026-09-30,SEK,asset-1,1210,15000,4000\n",
+    header + "2026-09-30,SEK,asset-1,1210,15000,16000\n",
+    header + "2026-09-30,SEK,asset-1,1210,15000,5000\n2026-09-30,SEK,asset-1,1210,15000,5000\n",
+  ]) {
+    const invalid = await retainAssetSource(content);
+    await failure(
+      await request(book, "/onboarding/controls", {
+        method: "POST",
+        body: JSON.stringify({
+          occurrenceId: invalid.id,
+          kind: "historical_asset_register",
+          provenance: "Invalid independent register",
+        }),
+      }),
+      422,
+      "InvalidJournal",
+    );
+  }
+
+  const admin = await database();
+
+  try {
+    await admin.query(
+      "update openerp.accounts set active=false where book_id=$1 and id='account_assets'",
+      [book.bookId],
+    );
+  } finally {
+    await admin.end();
+  }
+
+  await failure(
+    await request(book, "/onboarding/controls", {
+      method: "POST",
+      body: JSON.stringify({
+        occurrenceId: registerSource.id,
+        kind: "historical_asset_register",
+        provenance: "Inactive destination refuses",
+      }),
+    }),
+    422,
+    "AccountInactive",
+  );
+  await saveSanitizedJourney("onboarding-received-assets", {
+    register,
+    independentControl: balanceControl.id,
+    basis,
+    receivedOnly: receivedOnly.projection.counts.assets,
+    handedOff: handedOff.projection.counts.assets,
+    changedSource: staleHandoff.projection.counts.assets,
+  });
+});
+
+test("bank-side explanations derive the opposite signed variance from retained observations", async () => {
+  const book = await fixture();
+  await post(book, "/onboarding", { path: "demo" }, Onboarding.OnboardingCase);
+  await post(
+    book,
+    "/onboarding/revisions",
+    {
+      expectedRevision: 1,
+      configuration: {
+        migrationDepth: "current_fiscal_year",
+        incumbentSystem: "Independent predecessor",
+        dates: {
+          historyStartsOn: "2026-01-01",
+          historyEndsOn: "2026-09-30",
+          detailStartsOn: "2026-01-01",
+          openingOn: "2026-08-31",
+          acceptanceStartsOn: "2026-09-01",
+          acceptanceEndsOn: "2026-09-30",
+          candidateLiveOn: "2026-10-01",
+          provingPeriodEndsOn: "2026-10-31",
+        },
+      },
+    },
+    Onboarding.OnboardingCase,
+  );
+
+  const source = {
+    kind: "synthetic_bank_statement_v1",
+    statementIdentifier: key(),
+    sourceBankAccountId: "independent_statement",
+    accountId: "account_bank",
+    currency: "SEK",
+    startsOn: "2026-09-01",
+    endsOn: "2026-09-30",
+    openingMinor: "0",
+    closingMinor: "-875000",
+    completeness: { declaredComplete: true, basis: "Independent synthetic bank outflow" },
+    rows: [
+      {
+        rowOrdinal: 1,
+        providerId: null,
+        date: "2026-09-28",
+        description: "Unmatched bank outflow",
+        amountMinor: "-875000",
+      },
+    ],
+  } as const;
+
+  const retained = await post(
+    book,
+    "/evidence",
+    {
+      title: "Independent bank outflow",
+      mediaType: "application/json",
+      content: JSON.stringify(source),
+      origin: "Synthetic bank fixture",
+    },
+    Accounting.Evidence,
+  );
+
+  const statement = await post(
+    book,
+    "/bank-statements",
+    { ...source, evidenceId: retained.id, existingMatches: [] },
+    Bank.StatementImportReceipt,
+  );
+
+  async function bankSideControl(
+    kind: "bank" | "bank_reconciling_items",
+    identity: string,
+    amount: string,
+  ) {
+    const occurrence = await post(
+      book,
+      "/source-occurrences",
+      {
+        sourceSystem: "independent_bank_control",
+        sourceAccountId: "independent_statement",
+        occurrenceKey: key(),
+        sourceRevision: "1",
+        filename: "bank-control.csv",
+        mediaType: "text/csv",
+        contentBase64: Buffer.from(
+          `kind,as_of,currency,source_identity,account_code,amount_minor\n${kind},2026-09-30,SEK,${identity},1930,${amount}\n`,
+        ).toString("base64"),
+      },
+      Intake.SourceOccurrence,
+    );
+
+    return post(
+      book,
+      "/onboarding/controls",
+      { occurrenceId: occurrence.id, kind, provenance: "Independent retained bank evidence" },
+      Onboarding.OnboardingControl,
+    );
+  }
+
+  const bankControl = await bankSideControl("bank", "closing", "-875000");
+
+  const explanation = await bankSideControl(
+    "bank_reconciling_items",
+    `${statement.statement.id}:1`,
+    "875000",
+  );
+
+  const snapshot = await post(
+    book,
+    "/onboarding/snapshots",
+    {
+      purpose: "book_zero",
+      controlIds: [bankControl.id, explanation.id],
+      historicalRunIds: [],
+      closingCertificateId: null,
+    },
+    Onboarding.OnboardingSnapshot,
+  );
+
+  expect(snapshot.comparisons.find((item) => item.kind === "bank")).toMatchObject({
+    differenceMinor: "875000",
+    explainedMinor: "875000",
+    unexplainedDifferenceMinor: "0",
+    evidenceIds: [retained.id],
+  });
+  expect(snapshot.permittedLimitations).toContain("unreconciled_bank_difference");
+
+  const incorrect = await bankSideControl(
+    "bank_reconciling_items",
+    `${statement.statement.id}:1`,
+    "-875000",
+  );
+
+  await failure(
+    await request(book, "/onboarding/snapshots", {
+      method: "POST",
+      body: JSON.stringify({
+        purpose: "book_zero",
+        controlIds: [bankControl.id, incorrect.id],
+        historicalRunIds: [],
+        closingCertificateId: null,
+      }),
+    }),
+    409,
+    "StaleDependency",
+  );
+  await saveSanitizedJourney("onboarding-bank-side-variance", {
+    snapshot,
+    statementId: statement.statement.id,
   });
 });

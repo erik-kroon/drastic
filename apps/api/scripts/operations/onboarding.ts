@@ -8,7 +8,11 @@ import * as Schema from "effect/Schema";
 import * as Redacted from "effect/Redacted";
 import { databaseLayer } from "../../src/db/connection";
 import * as O from "@open-erp/contracts/onboarding";
-import { fenceOnboardingTarget, retainProofAndActivate } from "../../src/db/onboarding-operations";
+import {
+  fenceOnboardingTarget,
+  retainProofAndActivate,
+  retainOperationalProof,
+} from "../../src/db/onboarding-operations";
 import { readOnboardingRecovery } from "../../src/application/onboarding-recovery-read";
 import { captureRelease } from "./artifacts";
 import { backup, restore } from "./workflows";
@@ -139,17 +143,22 @@ async function absentProviders(client: Client) {
 }
 
 async function observedFence(admin: Client, database: string, roles: readonly string[]) {
-  const result = await admin.query<{ safe: boolean }>(
-    `
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const result = await admin.query<{ safe: boolean }>(
+      `
     select not datallowconn and datconnlimit=0
       and not exists(select from pg_stat_activity where datname=$1 and pid<>pg_backend_pid())
       and not exists(select from pg_roles where rolname=any($2::text[]) and (rolcanlogin or rolinherit or rolsuper or rolcreaterole or rolcreatedb or rolreplication or rolbypassrls))
       and not exists(select from pg_auth_members m join pg_roles r on r.oid=m.member where r.rolname=any($2::text[])) as safe
     from pg_database where datname=$1`,
-    [database, roles],
-  );
+      [database, roles],
+    );
 
-  if (result.rows[0]?.safe !== true) refuse("The prior writer fence is not physically current.");
+    if (result.rows[0]?.safe === true) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+
+  refuse("The prior writer fence is not physically current.");
 }
 
 export async function observeOnboardingOperations(configPath: string) {
@@ -176,6 +185,7 @@ export async function observeOnboardingOperations(configPath: string) {
   );
 
   const roles = writers.map((writer) => writer.role);
+
   const commandDigest = hash(
     configBytes + hash(JSON.stringify(target)) + hash(JSON.stringify(writers)),
   );
@@ -209,6 +219,7 @@ export async function observeOnboardingOperations(configPath: string) {
         }),
       ],
     );
+
     const run = (
       await source.query<{ digest: string }>(
         "select configuration_digest as digest from openerp.onboarding_operation_runs where book_id=$1 and id=$2",
@@ -218,6 +229,7 @@ export async function observeOnboardingOperations(configPath: string) {
 
     if (run?.digest !== commandDigest)
       refuse("An operational key cannot be reused with changed private inputs.");
+
     const book = (
       await source.query<{ entity: string; authority: string }>(
         "select entity_id as entity,authority from openerp.books where id=$1",
@@ -226,12 +238,14 @@ export async function observeOnboardingOperations(configPath: string) {
     ).rows[0];
 
     if (!book) refuse("The configured book does not exist.");
+
     const snapshotRow = (
       await source.query<{ body: unknown }>(
         "select body from openerp.onboarding_snapshots where book_id=$1 and id=$2",
         [config.bookId, config.snapshotId],
       )
     ).rows[0];
+
     const snapshot = snapshotRow
       ? Schema.decodeUnknownSync(O.OnboardingSnapshot)(snapshotRow.body)
       : null;
@@ -263,6 +277,7 @@ export async function observeOnboardingOperations(configPath: string) {
 
       if (saved) {
         const observation = Schema.decodeUnknownSync(Observation)(JSON.parse(saved));
+
         const retained = await source.query(
           "select 1 from openerp.onboarding_operation_stages where book_id=$1 and operation_id=$2 and body->>'observationDigest'=$3",
           [config.bookId, config.operationId, hash(JSON.stringify(observation))],
@@ -629,6 +644,7 @@ export async function observeOnboardingOperations(configPath: string) {
       try {
         await setup.query("set default_transaction_read_only=off");
         await setup.query(`revoke all on database ${restoreId} from public`);
+
         const otherRoles = await setup.query<{ name: string }>(
           "select rolname as name from pg_roles where not rolsuper and rolname<>$1",
           [probeRole],
@@ -651,6 +667,7 @@ export async function observeOnboardingOperations(configPath: string) {
 
       await admin.query(`alter role ${admin.escapeIdentifier(probeRole)} login`);
       await admin.query(`alter database ${restoreId} connection limit 1`);
+
       const recovered = await recoveryRead(target, restoreDatabase, config.bookId, {
         role: probeRole,
         password: probePassword,
@@ -752,7 +769,7 @@ export async function prepareOnboardingTargetFence(configPath: string) {
   );
 }
 
-export async function activateOnboardingLocally(configPath: string, intentId: string) {
+async function retainObservedOnboarding(configPath: string, intentId?: string) {
   const observation = await observeOnboardingOperations(configPath);
 
   if (observation.snapshotDigest === null)
@@ -778,7 +795,7 @@ export async function activateOnboardingLocally(configPath: string, intentId: st
       targetDatabase: target.database,
       observedAt: observation.observedAt,
       expiresAt: new Date(Date.parse(observation.observedAt) + 15 * 60 * 1000).toISOString(),
-      artifactDigest: artifact.sha256,
+      artifactDigest: `sha256:${artifact.sha256}`,
       writerExclusion: "old_credentials_denied",
       acknowledgedEffects: "reconciled",
       applicationRecovery: "restricted_reads_verified",
@@ -794,12 +811,21 @@ export async function activateOnboardingLocally(configPath: string, intentId: st
     url.password = target.password;
 
     return await Effect.runPromise(
-      retainProofAndActivate(
-        proof,
-        intentId,
-        config.priorDatabase,
-        observation.priorWriterRoles,
-      ).pipe(
+      Effect.gen(function* () {
+        if (intentId === undefined)
+          return yield* retainOperationalProof(
+            proof,
+            config.priorDatabase,
+            observation.priorWriterRoles,
+          );
+
+        return yield* retainProofAndActivate(
+          proof,
+          intentId,
+          config.priorDatabase,
+          observation.priorWriterRoles,
+        );
+      }).pipe(
         Effect.provide(
           databaseLayer({
             connectionString: Redacted.make(url.toString()),
@@ -813,4 +839,12 @@ export async function activateOnboardingLocally(configPath: string, intentId: st
   } finally {
     await admin.end();
   }
+}
+
+export function retainOnboardingObservation(configPath: string) {
+  return retainObservedOnboarding(configPath);
+}
+
+export function activateOnboardingLocally(configPath: string, intentId: string) {
+  return retainObservedOnboarding(configPath, intentId);
 }

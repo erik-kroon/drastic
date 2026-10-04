@@ -1,3 +1,5 @@
+import { qualifyImportReview } from "./onboarding-import-review";
+import { qualifyAssetRegister } from "./onboarding-asset-register";
 import { parseOpeningInvoiceRows } from "./onboarding-open-items";
 import { qualifyPayrollHandoff } from "./onboarding-payroll-handoff";
 import { qualifyOriginalIndex } from "./onboarding-originals";
@@ -29,7 +31,10 @@ export const qualifyControlInTransaction = Effect.fn("onboarding.qualifyControl"
 ) {
   const original = yield* readSourceBytesInTransaction(tx, scope, input.occurrenceId);
 
-  if (original.occurrence.mediaType !== "text/csv" || original.bytes.byteLength > 65536)
+  const expectedMediaType =
+    input.kind === "historical_import_review" ? "application/json" : "text/csv";
+
+  if (original.occurrence.mediaType !== expectedMediaType || original.bytes.byteLength > 65536)
     return yield* failure("UnsupportedProfile");
 
   if (/^openerp(?:[_-]|$)/i.test(original.occurrence.sourceSystem))
@@ -38,8 +43,14 @@ export const qualifyControlInTransaction = Effect.fn("onboarding.qualifyControl"
   if (input.kind === "historical_payroll_handoff")
     return yield* qualifyPayrollHandoff(tx, scope, actorId, input, original);
 
+  if (input.kind === "historical_asset_register")
+    return yield* qualifyAssetRegister(tx, scope, actorId, input, original);
+
   if (input.kind === "historical_originals")
     return yield* qualifyOriginalIndex(tx, scope, actorId, input, original);
+
+  if (input.kind === "historical_import_review")
+    return yield* qualifyImportReview(tx, scope, actorId, input, original);
 
   const text = yield* Effect.try({
     try: () => new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(original.bytes),
@@ -52,12 +63,15 @@ export const qualifyControlInTransaction = Effect.fn("onboarding.qualifyControl"
 
   const detailed =
     header ===
-    "kind,as_of,currency,source_identity,account_code,original_minor,outstanding_minor,state";
+      "kind,as_of,currency,source_identity,account_code,original_minor,outstanding_minor,state" ||
+    header ===
+      "kind,as_of,currency,source_identity,account_code,original_minor,outstanding_minor,state,counterparty_name";
 
   const invoiceRows = detailed
     ? yield* parseOpeningInvoiceRows(
         lines,
         `${original.occurrence.id}, ${original.occurrence.sha256}`,
+        header.endsWith(",counterparty_name"),
       )
     : undefined;
 
@@ -158,14 +172,21 @@ export const qualifyAttachedControlInTransaction = Effect.fn("onboarding.qualify
     const header = text.replace(/\r\n/g, "\n").split("\n")[0];
     let kind: typeof O.OnboardingControlKind.Type;
 
-    if (header === "as_of,currency,source_identity,original_occurrence_id")
+    if (
+      header ===
+      "as_of,currency,source_identity,account_code,cost_minor,accumulated_depreciation_minor"
+    )
+      kind = "historical_asset_register";
+    else if (header === "as_of,currency,source_identity,original_occurrence_id")
       kind = "historical_originals";
     else if (header === "source_system,history_starts_on,retained_through,currency")
       kind = "historical_payroll_handoff";
     else if (
       header === "kind,as_of,currency,source_identity,account_code,amount_minor" ||
       header ===
-        "kind,as_of,currency,source_identity,account_code,original_minor,outstanding_minor,state"
+        "kind,as_of,currency,source_identity,account_code,original_minor,outstanding_minor,state" ||
+      header ===
+        "kind,as_of,currency,source_identity,account_code,original_minor,outstanding_minor,state,counterparty_name"
     ) {
       kind = yield* Schema.decodeUnknownEffect(O.OnboardingControlKind)(
         text.split("\n")[1]?.split(",")[0],

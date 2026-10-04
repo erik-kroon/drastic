@@ -274,7 +274,9 @@ export const OnboardingControlKind = Schema.Literals([
   "bank",
   "bank_reconciling_items",
   "historical_originals",
+  "historical_asset_register",
   "historical_payroll_handoff",
+  "historical_import_review",
   "sales_open_items",
   "purchase_open_items",
   "vat",
@@ -297,6 +299,36 @@ export const OnboardingPayrollHandoff = Schema.Struct({
   retainedThrough: A.AccountingDate,
 });
 
+export const OnboardingAssetRegister = Schema.Struct({
+  trialBalanceControlId: A.Identifier,
+  trialBalanceSourceSha256: A.Digest,
+  rows: Schema.Array(
+    Schema.Struct({
+      sourceIdentity: A.Identifier,
+      accountId: A.Identifier,
+      costMinor: A.MinorUnits,
+      accumulatedDepreciationMinor: A.MinorUnits,
+      carryingMinor: A.MinorUnits,
+    }),
+  ).check(Schema.isMinLength(1), Schema.isMaxLength(500)),
+});
+
+export const OnboardingImportReview = Schema.Struct({
+  previewId: A.Identifier,
+  previewDigest: A.Digest,
+  findings: Schema.Array(
+    Schema.Struct({
+      voucherOrdinal: Schema.Int,
+      kind: Schema.Literals(["duplicate_candidate", "unsupported_currency"]),
+      documentNumber: Schema.String,
+      counterpartyName: Schema.String,
+      currency: Schema.String,
+      occurrenceIds: Schema.Array(A.Identifier),
+      state: Schema.Literals(["pending", "dismissed", "corrected"]),
+    }),
+  ),
+});
+
 export const OnboardingControl = Schema.Struct({
   id: A.Identifier,
   scope: A.Scope,
@@ -305,7 +337,9 @@ export const OnboardingControl = Schema.Struct({
   sourceSystem: Schema.String,
   sourceAccountId: Schema.String,
   kind: OnboardingControlKind,
+  importReview: Schema.optionalKey(OnboardingImportReview),
   originalCoverage: Schema.optionalKey(OnboardingOriginalCoverage),
+  assetRegister: Schema.optionalKey(OnboardingAssetRegister),
   openItemDetails: Schema.optionalKey(
     Schema.Array(Sie.HistoricalOpenItem).check(Schema.isMinLength(1), Schema.isMaxLength(500)),
   ),
@@ -587,6 +621,15 @@ export const OnboardingFirstPeriodCompletion = Schema.Struct({
   statutoryReady: Schema.Literal(false),
 });
 
+export const OnboardingFirstPeriodProgress = Schema.Struct({
+  checkedOn: A.AccountingDate,
+  bankThrough: Schema.NullOr(A.AccountingDate),
+  originalCoverage: Schema.NullOr(Schema.Boolean),
+  salesMatches: Schema.NullOr(Schema.Boolean),
+  purchaseMatches: Schema.NullOr(Schema.Boolean),
+  pendingProposals: Schema.Int,
+});
+
 export const OnboardingLifecycle = Schema.Struct({
   scope: A.Scope,
   projection: OnboardingProjection,
@@ -598,6 +641,7 @@ export const OnboardingLifecycle = Schema.Struct({
       enabled: Schema.Boolean,
       role: Schema.String,
       affiliation: Schema.Literals(["company", "bureau"]),
+      bureauName: Schema.NullOr(Schema.String),
     }),
   ),
   controls: Schema.Array(OnboardingControl),
@@ -605,6 +649,8 @@ export const OnboardingLifecycle = Schema.Struct({
   snapshots: Schema.Array(Schema.Struct({ snapshot: OnboardingSnapshot, current: Schema.Boolean })),
   decisions: Schema.Array(OnboardingDecision),
   intents: Schema.Array(OnboardingActivationIntent),
+  operationalProof: Schema.NullOr(OnboardingOperationalProof),
+  firstPeriodProgress: Schema.NullOr(OnboardingFirstPeriodProgress),
   activation: Schema.NullOr(OnboardingActivationReceipt),
   completion: Schema.NullOr(
     Schema.Struct({ receipt: OnboardingFirstPeriodCompletion, current: Schema.Boolean }),

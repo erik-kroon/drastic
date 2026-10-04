@@ -60,6 +60,7 @@ const requireConsistentItems = Effect.fn("historical.requireItemStates")(functio
 
     if (
       (item.assertedState === "unpaid" && original !== outstanding) ||
+      (item.assertedState === "paid" && outstanding !== 0n) ||
       (item.assertedState === "partly_paid" &&
         (original === 0n || outstanding === 0n || absolute(outstanding) >= absolute(original))) ||
       (item.assertedState !== "unknown" && original * outstanding < 0n) ||

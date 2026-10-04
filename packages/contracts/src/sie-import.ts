@@ -104,12 +104,15 @@ export const OpeningControl = Schema.Struct({
 
 export const HistoricalOpenItem = Schema.Struct({
   sourceIdentity: Label,
+  counterpartyName: Schema.optional(
+    Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(256)),
+  ),
   sourceAccount: Mapping.fields.sourceAccount,
   currency: Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/)),
   originalMinor: A.SignedMinorUnits,
   outstandingMinor: A.SignedMinorUnits,
   asOf: A.AccountingDate,
-  assertedState: Schema.Literals(["unpaid", "partly_paid", "unknown"]),
+  assertedState: Schema.Literals(["unpaid", "partly_paid", "paid", "unknown"]),
   detailAvailability: Schema.Literals(["source_asserted", "unreconstructable"]),
   basis: A.Description,
 });

@@ -15,7 +15,7 @@ import { withAdmittedPrincipal } from "./identity";
 import { decode, type Scope } from "./commerce/support";
 import { failure } from "./failures";
 
-async function renderReceipt(receipt: typeof O.OnboardingActivationReceipt.Type) {
+export async function renderOnboardingReceipt(receipt: typeof O.OnboardingActivationReceipt.Type) {
   const name = legalDocumentText(receipt.projection.companyName);
 
   const presentation = (
@@ -70,7 +70,7 @@ async function renderReceipt(receipt: typeof O.OnboardingActivationReceipt.Type)
           {receipt.acceptedLimitations.map((entry) => (
             <Text key={entry.id}>
               {entry.decision.kind === "accept_limitation"
-                ? legalDocumentText(entry.decision.reason)
+                ? `${entry.decision.limitation}, ${legalDocumentText(entry.decision.reason)}`
                 : ""}
               {", "}
               {legalDocumentText(entry.actorName)}
@@ -110,7 +110,7 @@ async function renderReceipt(receipt: typeof O.OnboardingActivationReceipt.Type)
       metadata: {
         title: `Aktiveringskvitto, ${name}`,
         creator: "OpenERP",
-        creationDate: receipt.activatedAt,
+        creationDate: receipt.activatedAt.slice(0, 19),
       },
     }),
   );
@@ -150,7 +150,7 @@ export const getOnboardingActivationArtifact = Effect.fn("onboarding.receipt.art
   );
 
   return yield* Effect.tryPromise({
-    try: () => renderReceipt(receipt),
+    try: () => renderOnboardingReceipt(receipt),
     catch: () => failure("UnsupportedProfile"),
   });
 });
