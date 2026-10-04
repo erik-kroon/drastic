@@ -159,6 +159,7 @@ export const ReminderMessage = Schema.Struct({
   invoiceId: Accounting.Identifier,
   invoiceNumber: Schema.String,
   invoiceDigest: Accounting.Digest,
+  disputeBasisDigest: Schema.optional(Accounting.Digest),
   outstandingMinor: Accounting.AggregateMinorUnits,
   currency: Schema.Literal("SEK"),
   currencyScale: Schema.Literal(2),
