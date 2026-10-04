@@ -394,19 +394,22 @@ function SalesDocumentRegister({
         <DataTable
           title={sv ? "Offerter och order" : "Quotes and orders"}
           narrow="stack"
+          presentation="register"
           columns={[
-            { id: "title", label: sv ? "Offert eller order" : "Quote or order", width: "fill" },
+            { id: "title", label: sv ? "Offert eller order" : "Quote or order", width: 130 },
             { id: "customer", label: sv ? "Kund" : "Customer", width: 330 },
+            { id: "validity", label: sv ? "Giltig till" : "Valid until", width: 120 },
             { id: "amount", label: sv ? "Belopp" : "Amount", width: 120, numeric: true },
-            { id: "status", label: sv ? "Status" : "Status", width: 150 },
+            { id: "status", label: "Status", width: "fill", inset: true },
           ]}
           rows={items.map((item) => ({
             id: item.id,
             cells: [
-              <RecordOpen key="title" onClick={() => onOpen(item.id)}>
+              <RecordOpen key="title" presentation="register" onClick={() => onOpen(item.id)}>
                 {item.content.title}
               </RecordOpen>,
               item.content.customer.legalName,
+              "—",
               documentAmount(item, locale),
               documentStatus(item, sv),
             ],

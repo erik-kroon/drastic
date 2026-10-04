@@ -72,16 +72,22 @@ export const AccrualPair = Schema.Struct({
 
 export type AccrualPair = typeof AccrualPair.Type;
 
-// One employee's frozen run components. The payable is derived, never
-// supplied: payable = gross - withholding - deductions. Reimbursements
-// already recognized elsewhere arrive with their clearing, not as new
-// benefit expense.
 export const RunEmployee = Schema.Struct({
   employeeId: Identifier,
   grossMinor: MinorUnits,
   withholdingMinor: MinorUnits,
   cashReimbursementMinor: MinorUnits,
   reimbursementAlreadyRecognized: Schema.Boolean,
+  fundingTransfers: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        sourceId: Identifier,
+        kind: Schema.Literals(["gross", "reimbursement"]),
+        amountMinor: MinorUnits,
+        liabilityAccountId: Identifier,
+      }),
+    ),
+  ),
   deductions: Schema.Array(DeductionLine),
   employerContributionMinor: MinorUnits,
   accruals: Schema.Array(AccrualPair),
@@ -169,11 +175,31 @@ export function compilePayRunJournal(input: PayRunInput): Checked<PayRunPlan> {
   for (const employee of input.employees) {
     const gross = BigInt(employee.grossMinor);
     const withholding = BigInt(employee.withholdingMinor);
+    const transfers = employee.fundingTransfers ?? [];
+
+    const transferredGross = transfers
+      .filter((row) => row.kind === "gross")
+      .reduce((sum, row) => sum + BigInt(row.amountMinor), 0n);
+
+    const transferredReimbursement = transfers
+      .filter((row) => row.kind === "reimbursement")
+      .reduce((sum, row) => sum + BigInt(row.amountMinor), 0n);
+
+    if (
+      new Set(transfers.map((row) => row.sourceId)).size !== transfers.length ||
+      transfers.some((row) => BigInt(row.amountMinor) <= 0n) ||
+      transferredGross > gross ||
+      transferredReimbursement > BigInt(employee.cashReimbursementMinor)
+    )
+      return fail(
+        "UnbalancedJournal",
+        "Retained funding transfers exceed or duplicate this employee's payroll components.",
+      );
     let deductions = 0n;
 
     for (const deduction of employee.deductions) deductions += BigInt(deduction.amountMinor);
 
-    const payable = gross - withholding - deductions;
+    const payable = gross + BigInt(employee.cashReimbursementMinor) - withholding - deductions;
 
     if (payable < 0n) {
       return fail(
@@ -184,14 +210,14 @@ export function compilePayRunJournal(input: PayRunInput): Checked<PayRunPlan> {
 
     addSigned(journal, {
       accountId: input.roles.salaryExpenseAccountId,
-      signedMinor: gross,
+      signedMinor: gross - transferredGross,
       description: `Salary expense ${employee.employeeId}`,
     });
 
     if (!employee.reimbursementAlreadyRecognized) {
       addSigned(journal, {
         accountId: input.roles.reimbursementExpenseAccountId,
-        signedMinor: BigInt(employee.cashReimbursementMinor),
+        signedMinor: BigInt(employee.cashReimbursementMinor) - transferredReimbursement,
         description: `Reimbursement ${employee.employeeId}`,
       });
     } else if (BigInt(employee.cashReimbursementMinor) !== 0n) {
@@ -200,6 +226,13 @@ export function compilePayRunJournal(input: PayRunInput): Checked<PayRunPlan> {
         `No benefit expense is added when its cost is already recognized for ${employee.employeeId}.`,
       );
     }
+
+    for (const transfer of transfers)
+      addSigned(journal, {
+        accountId: transfer.liabilityAccountId,
+        signedMinor: BigInt(transfer.amountMinor),
+        description: `Existing payroll entitlement ${transfer.sourceId}`,
+      });
 
     addSigned(journal, {
       accountId: input.roles.netPayLiabilityAccountId,

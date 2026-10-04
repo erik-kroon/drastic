@@ -22,6 +22,7 @@ import * as PayrollFoundationDb from "../../db/payroll-foundation";
 import * as Db from "../../db/payroll/calculations";
 import type { Transaction } from "../../db/transaction";
 import { calculateRegularPayroll } from "./calculation-basis";
+import { captureInputs, appendInputComponents } from "./inputs";
 
 // A frozen regular-payroll calculation. It posts no journal, pays no salary,
 // makes no declaration and reserves no monthly contribution capacity; execution
@@ -193,7 +194,7 @@ function basisInputRefs(
       version: id,
       reason: "Exact reviewed account role binding",
     })),
-    ...basis.evidenceIds.map((id) => ({
+    ...[...new Set(basis.evidenceIds)].map((id) => ({
       kind: "evidence" as const,
       resourceId: id,
       version: id,
@@ -273,7 +274,17 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
       // duplicate-economics work.
       if (request.previous) return request.previous;
 
-      const prepared = yield* decode(Payroll.PreparePayRun, input);
+      const submitted = yield* decode(Payroll.PreparePayRun, input);
+
+      const payrollInputs = yield* captureInputs(
+        transaction,
+        command.scope,
+        submitted.employment.employeeId,
+        submitted.work.earningsPeriod.startsOn.slice(0, 7),
+        submitted.inputIds ?? [],
+      );
+
+      const prepared = yield* appendInputComponents(submitted, payrollInputs);
       const employeeId = prepared.employment.employeeId;
       const period = prepared.work.earningsPeriod;
       const paymentOn = prepared.work.expectedPaymentOn;
@@ -328,7 +339,7 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
         period,
       );
 
-      const employment = (yield* Db.lockRevisionHead(
+      const employment = (yield* Db.readRevisionHead(
         transaction,
         command.scope.bookId,
         employeeId,
@@ -336,7 +347,7 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
         period.startsOn,
       ))[0];
 
-      const work = (yield* Db.lockRevisionHead(
+      const work = (yield* Db.readRevisionHead(
         transaction,
         command.scope.bookId,
         employeeId,
@@ -344,7 +355,7 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
         period.startsOn,
       ))[0];
 
-      const opening = (yield* Db.lockRevisionHead(
+      const opening = (yield* Db.readRevisionHead(
         transaction,
         command.scope.bookId,
         employeeId,
@@ -430,6 +441,7 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
           evidenceIds: [employment.evidenceId, work.evidenceId, opening.evidenceId],
           calculatorVersion: release.calculatorVersion,
           sourceCoverage: "complete",
+          payrollInputs,
           reviewedInput: prepared,
         }),
       );
@@ -439,8 +451,13 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
 
       const calculationId = newId("paycalc");
       const planId = newId("payplan");
-      const now = yield* Ledger.readDatabaseTime(transaction);
-      const recordedAt = new Date(now.now).toISOString();
+      const clockRow = (yield* Db.readRecordedAt(transaction))[0];
+
+      if (!clockRow) return yield* failure("InternalError");
+
+      const clock = yield* decode(Schema.Struct({ recordedAt: Schema.String }), clockRow);
+
+      const recordedAt = clock.recordedAt;
 
       const inputRefs = basisInputRefs(
         basis,

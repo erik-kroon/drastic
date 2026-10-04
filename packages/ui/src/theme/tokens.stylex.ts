@@ -204,6 +204,7 @@ export const tokens = stylex.defineConsts({
   registerSelected: "#eef3fc",
   setupAuthorityBorder: "#d8e3f7",
   setupIncumbentBackground: "#f1f3f7",
+  setupBannerBorder: "#d8e3f7",
   rowDivider: "var(--row-divider)",
   registerWarning: "#8a5a00",
   registerSuccess: "#1e6256",

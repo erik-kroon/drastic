@@ -663,20 +663,22 @@ export function readAllocationUsage(transaction: Transaction, bookId: string, ef
           where l.book_id = ${bookId} and (l.claim_id = ${effectId} or l.settlement_id = ${effectId})), 0)
         + coalesce((select sum(a.amount_minor) from openerp.owner_operation_allocations a
           where a.book_id = ${bookId} and a.claim_id = ${effectId}), 0)
+        + coalesce((select sum(a.amount_minor) from openerp.treasury_loan_allocations a
+          where a.book_id = ${bookId} and (a.claim_id = ${effectId} or a.settlement_id = ${effectId})), 0)
       )::text as total,
       (
         (select count(*) from openerp.owner_allocation_legs l
           where l.book_id = ${bookId} and (l.claim_id = ${effectId} or l.settlement_id = ${effectId}))
         + (select count(*) from openerp.owner_operation_allocations a
           where a.book_id = ${bookId} and a.claim_id = ${effectId})
+        + (select count(*) from openerp.treasury_loan_allocations a
+          where a.book_id = ${bookId} and (a.claim_id = ${effectId} or a.settlement_id = ${effectId}))
       )::text as legs
     `,
     "objects",
   );
 }
 
-// The control view reads both retained allocation authorities, so a claim's
-// consumed amount and the owner's allocations count each leg exactly once.
 export function listAllocationLegs(
   transaction: Transaction,
   bookId: string,
@@ -700,6 +702,12 @@ export function listAllocationLegs(
         from openerp.owner_operation_allocations a
         join openerp.owner_operation_receipts r on r.book_id = a.book_id and r.id = a.receipt_id
         join openerp.owner_effects e on e.book_id = r.book_id and e.id = r.owner_effect_id
+        where a.book_id = ${bookId} and e.posting_date <= ${endsOn}::date and ${ownerFilter}
+        union all
+        select a.event_id as "receiptId", 1 as ordinal, a.claim_id as "claimId",
+          a.settlement_id as "settlementId", a.amount_minor::text as "amountMinor"
+        from openerp.treasury_loan_allocations a
+        join openerp.owner_effects e on e.book_id = a.book_id and e.id = a.settlement_id
         where a.book_id = ${bookId} and e.posting_date <= ${endsOn}::date and ${ownerFilter}
       ) legs
       order by legs."receiptId" collate "C", legs.ordinal

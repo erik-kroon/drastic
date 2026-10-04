@@ -9,6 +9,7 @@ import { PageAction, PageCaption, PageEmpty } from "@open-erp/ui/components/acco
 import { RecordHeading, RecordSection } from "@open-erp/ui/components/record-layout";
 import { Text } from "@open-erp/ui/components/typography";
 import { Disclosure } from "@open-erp/ui/components/workflow";
+import { VatOverview } from "@open-erp/ui/components/vat-overview";
 import { AccountingStatus } from "@/components/accounting-status";
 import { CommandForm, Evidence, checkScope } from "@/components/commerce/shared";
 import { bookKey, bookPath, readAccounting } from "@/lib/accounting-api";
@@ -37,9 +38,11 @@ export function ActualVatReturnsPanel(props: { recordId: string; onOpen: (id: st
     retry: false,
   });
 
-  const items = list.data?.items.filter(
-    (item) => !period || (item.startsOn >= period.startsOn && item.endsOn <= period.endsOn),
-  );
+  const items = list.isError
+    ? undefined
+    : list.data?.items.filter(
+        (item) => !period || (item.startsOn >= period.startsOn && item.endsOn <= period.endsOn),
+      );
 
   if (props.recordId)
     return (
@@ -55,6 +58,38 @@ export function ActualVatReturnsPanel(props: { recordId: string; onOpen: (id: st
           <ActualDetail id={props.recordId} onOpen={props.onOpen} />
         )}
       </Box>
+    );
+
+  if (list.isSuccess && items?.length === 0)
+    return (
+      <VatOverview
+        caption={
+          sv
+            ? "Underlag för momsdeklaration, ingen sparad beräkning"
+            : "VAT return basis, no saved calculation"
+        }
+        amount="—"
+        rows={(sv
+          ? ["Utgående moms", "Ingående moms", "Moms att betala"]
+          : ["Output VAT", "Input VAT", "VAT payable"]
+        ).map((label) => ({ label, amount: "—" }))}
+        notice={
+          sv
+            ? "Momsbelopp och deklarationsperiod är inte verifierade. Förbered en period för att granska underlaget. OpenERP deklarerar eller betalar inte."
+            : "VAT amounts and the filing period are not verified. Prepare a period to review the basis. OpenERP does not submit returns or pay."
+        }
+      >
+        <Box display="grid" gap="md">
+          <Box>
+            <Button disabled={book.role !== "operator"} onClick={() => props.onOpen("new")}>
+              {sv ? "Förbered period" : "Prepare period"}
+            </Button>
+          </Box>
+          <Disclosure compact title={sv ? "Granska periodens underlag" : "Review period sources"}>
+            <PeriodActions />
+          </Disclosure>
+        </Box>
+      </VatOverview>
     );
 
   return (

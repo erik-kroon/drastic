@@ -36,6 +36,18 @@ const styles = stylex.create({
     ":hover": { color: tokens.mutedForeground },
     ":focus-visible": { outline: "none", boxShadow: tokens.focusRing },
   },
+  toolbarTrigger: {
+    minHeight: tokens.controlHeightXs,
+    height: tokens.controlHeightXs,
+    paddingBlock: tokens.space0,
+    paddingInline: tokens.space2_5,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: tokens.input,
+    borderRadius: tokens.radiusControl,
+    fontSize: tokens.fontSizeControl,
+    fontWeight: tokens.fontWeightNormal,
+  },
   icon: { flexShrink: 0, color: tokens.mutedForeground },
 });
 
@@ -69,7 +81,7 @@ export function Disclosure({
         onOpenChange?.(event.currentTarget.open);
       }}
     >
-      <summary {...stylex.props(styles.trigger)}>
+      <summary {...stylex.props(styles.trigger, variant === "toolbar" && styles.toolbarTrigger)}>
         {label}
         {(onOpenChange ? open : expanded) ? (
           <Minus size={14} strokeWidth={1.5} aria-hidden="true" {...stylex.props(styles.icon)} />

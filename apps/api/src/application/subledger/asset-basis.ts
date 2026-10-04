@@ -20,10 +20,21 @@ type ImpairmentInput = typeof Controls.PrepareAssetImpairment.Type;
 
 type DisposalInput = typeof Controls.PrepareAssetDisposal.Type;
 
+type AssetCaptureInput = Pick<
+  DisposalInput,
+  | "scheduleId"
+  | "expectedDigest"
+  | "expectedBasisDigest"
+  | "postingDate"
+  | "evidenceId"
+  | "reviewEvidenceId"
+  | "lossAccountId"
+> & { readonly profile: string; readonly accumulatedImpairmentAccountId?: string };
+
 const scanConsumed = Effect.fn("subledger.scanAssetOccurrences")(function* (
   tx: Transaction,
   scope: Scope,
-  input: ImpairmentInput | DisposalInput,
+  input: AssetCaptureInput,
   occurrences: ReadonlyArray<OccurrenceState>,
 ) {
   let recognized = 0n;
@@ -43,7 +54,7 @@ const scanConsumed = Effect.fn("subledger.scanAssetOccurrences")(function* (
       return yield* failure("UnsupportedProfile");
 
     if (state.state === "posted" || state.state === "reversed") {
-      if (input.profile === "synthetic_asset_impairment_v1" && suffix)
+      if (input.profile !== "synthetic_no_proceeds_asset_disposal_v1" && suffix)
         return yield* failure("UnsupportedProfile");
       prefixCount++;
 
@@ -85,10 +96,10 @@ const scanConsumed = Effect.fn("subledger.scanAssetOccurrences")(function* (
   return { recognized, reversed, lastConsumed, suffix, prefixCount };
 });
 
-const capture = Effect.fn("subledger.captureAssetBasis")(function* (
+export const captureAssetBasis = Effect.fn("subledger.captureAssetBasis")(function* (
   tx: Transaction,
   scope: Scope,
-  input: ImpairmentInput | DisposalInput,
+  input: AssetCaptureInput,
 ) {
   const book = yield* readBook(tx, scope);
 
@@ -129,7 +140,12 @@ const capture = Effect.fn("subledger.captureAssetBasis")(function* (
 
   if (impairments.some((effect) => effect.postingDate > input.postingDate))
     return yield* failure("StaleDependency");
-  const prior = impairments.reduce((sum, effect) => sum + BigInt(effect.impairmentMinor), 0n);
+  const effective = yield* Schedules.listBookImpairments(tx, scope.bookId);
+  const assetEffects = effective.filter((effect) => effect.scheduleId === input.scheduleId);
+
+  if (assetEffects.some((effect) => effect.postingDate > input.postingDate))
+    return yield* failure("StaleDependency");
+  const prior = assetEffects.reduce((sum, effect) => sum + BigInt(effect.impairmentMinor), 0n);
   const carrying = BigInt(basis.input.carryingMinor) - scan.recognized - prior;
   const source = (yield* Ledger.readEvidence(tx, scope.bookId, input.evidenceId))[0];
   const review = (yield* Ledger.readEvidence(tx, scope.bookId, input.reviewEvidenceId))[0];
@@ -142,8 +158,8 @@ const capture = Effect.fn("subledger.captureAssetBasis")(function* (
       schedule.terms.debitAccountId,
       schedule.terms.creditAccountId,
       input.lossAccountId,
-      ...impairments.map((i) => i.accumulatedImpairmentAccountId),
-      ...("accumulatedImpairmentAccountId" in input ? [input.accumulatedImpairmentAccountId] : []),
+      ...assetEffects.map((i) => i.accumulatedImpairmentAccountId),
+      ...(input.accumulatedImpairmentAccountId ? [input.accumulatedImpairmentAccountId] : []),
     ]),
   ];
 
@@ -158,6 +174,7 @@ const capture = Effect.fn("subledger.captureAssetBasis")(function* (
     basis,
     occurrences,
     impairments,
+    assetEffects,
     prior,
     carrying,
     source,
@@ -171,7 +188,7 @@ export const impairmentBasis = Effect.fn("subledger.impairmentBasis")(function* 
   scope: Scope,
   input: ImpairmentInput,
 ) {
-  const state = yield* capture(tx, scope, input);
+  const state = yield* captureAssetBasis(tx, scope, input);
 
   if (!state.suffix || !(yield* readPostingBasis(tx, scope, state.schedule)).supported)
     return yield* failure("StaleDependency");
@@ -228,7 +245,7 @@ export const disposalBasis = Effect.fn("subledger.disposalBasis")(function* (
   scope: Scope,
   input: DisposalInput,
 ) {
-  const state = yield* capture(tx, scope, input);
+  const state = yield* captureAssetBasis(tx, scope, input);
   const basis = state.basis;
   const schedule = state.schedule;
 
@@ -267,14 +284,14 @@ export const disposalBasis = Effect.fn("subledger.disposalBasis")(function* (
 
   if (
     controls.has(input.lossAccountId) ||
-    state.impairments.some(
+    state.assetEffects.some(
       (effect) => effect.accumulatedImpairmentAccountId === input.lossAccountId,
     )
   )
     return yield* failure("InvalidJournal");
 
   const contra = [
-    ...new Set(state.impairments.map((effect) => effect.accumulatedImpairmentAccountId)),
+    ...new Set(state.assetEffects.map((effect) => effect.accumulatedImpairmentAccountId)),
   ];
 
   if (contra.length > 1) return yield* failure("UnsupportedProfile");

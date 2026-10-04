@@ -1,5 +1,6 @@
-import { admitPosting } from "../posting-admission";
+import { admitPosting, type PostingOwner } from "../posting-admission";
 import * as Accounting from "@open-erp/contracts/accounting";
+import * as ForeignCashDb from "../../db/banking/foreign-cash";
 import * as CommerceFx from "@open-erp/contracts/commerce-fx";
 import * as Commerce from "@open-erp/contracts/commerce";
 import * as Rates from "@open-erp/contracts/exchange-rates";
@@ -403,6 +404,13 @@ export function readItemState(transaction: Transaction, scope: Scope, itemId: st
     if (!itemRow) return yield* failure("NotFound");
     const settlementRows = yield* FxDb.readSettlements(transaction, scope.bookId, itemId);
     const correctionRows = yield* FxDb.readCorrections(transaction, scope.bookId, itemId);
+
+    const foreignCashRows = yield* ForeignCashDb.readObligationConsumptions(
+      transaction,
+      scope.bookId,
+      itemId,
+    );
+
     const correctionsBySettlement = new Map(correctionRows.map((row) => [row.settlementId, row]));
 
     const full = settlementRows.find((row) => row.profile === fullSettlementProfile);
@@ -419,13 +427,13 @@ export function readItemState(transaction: Transaction, scope: Scope, itemId: st
     const activeOriginal = settlementRows.reduce(
       (total, row) =>
         total + (correctionsBySettlement.has(row.id) ? 0n : BigInt(row.originalReleasedMinor)),
-      0n,
+      foreignCashRows.reduce((total, row) => total + BigInt(row.originalReleasedMinor), 0n),
     );
 
     const activeCarrying = settlementRows.reduce(
       (total, row) =>
         total + (correctionsBySettlement.has(row.id) ? 0n : BigInt(row.carryingReleasedMinor)),
-      0n,
+      foreignCashRows.reduce((total, row) => total + BigInt(row.carryingReleasedMinor), 0n),
     );
 
     const initialOriginalValue = itemRow.body.initialOriginalMinor;
@@ -449,7 +457,7 @@ export function readItemState(transaction: Transaction, scope: Scope, itemId: st
           : "settled"
         : activeOriginal === initialOriginal && activeCarrying === initialCarrying
           ? "settled"
-          : settlementRows.length === 0
+          : settlementRows.length === 0 && foreignCashRows.length === 0
             ? "open"
             : "partially_settled";
 
@@ -486,7 +494,7 @@ export function readItemState(transaction: Transaction, scope: Scope, itemId: st
 
     const item = yield* decode(ItemSchema, itemValue);
 
-    return { itemRow, item, settlementRows, correctionRows, full, fullCorrection };
+    return { itemRow, item, settlementRows, correctionRows, foreignCashRows, full, fullCorrection };
   });
 }
 
@@ -1089,6 +1097,15 @@ function correctionSnapshot(
     if (!settlementRow) return yield* failure("NotFound");
 
     if (
+      (yield* ForeignCashDb.readObligationConsumptions(
+        transaction,
+        scope.bookId,
+        settlementRow.itemId,
+      )).length > 0
+    )
+      return yield* failure("UnsupportedProfile");
+
+    if (
       (yield* FxDb.readCorrectionBySettlement(transaction, scope.bookId, settlementRow.id)).length >
       0
     ) {
@@ -1376,12 +1393,13 @@ function reviewDigest(value: JsonObject) {
   );
 }
 
-export function makePlanAndPost(
+export function postOwnedJournal(
   transaction: Transaction,
   scope: Scope,
   principal: Principal,
   approval: FxDb.FxApprovalRow,
   action: JsonObject,
+  origin?: PostingOwner,
 ) {
   return Effect.gen(function* () {
     const createdAt = yield* isoNow(transaction);
@@ -1416,10 +1434,16 @@ export function makePlanAndPost(
       actorId: approval.actorId,
       expiresAt: approval.expiresAt,
     });
-    yield* admitPosting(transaction, scope, changeSetId, action, {
-      kind: "commerce_fx",
-      id: approval.reviewId,
-    });
+    yield* admitPosting(
+      transaction,
+      scope,
+      changeSetId,
+      action,
+      origin ?? {
+        kind: "commerce_fx",
+        id: approval.reviewId,
+      },
+    );
     const consumedAt = yield* isoNow(transaction);
     const consumed = yield* Db.consumeApproval(transaction, scope.bookId, approval.id, consumedAt);
 
@@ -1999,7 +2023,7 @@ function postFeeSettlementGroup(
       realizedLineId,
     );
 
-    const posted = yield* makePlanAndPost(transaction, scope, principal, approval, action);
+    const posted = yield* postOwnedJournal(transaction, scope, principal, approval, action);
     const settlementId = newId("fx_fee_settlement");
 
     const cashAccountId = requiredText(
@@ -2169,7 +2193,7 @@ function executeReview(
       const counterLineId = newId("line");
       const book = yield* readBook(transaction, scope);
       const action = recognitionAction(recognition, eventId, lineId, counterLineId, book.currency);
-      const posted = yield* makePlanAndPost(transaction, scope, principal, approval, action);
+      const posted = yield* postOwnedJournal(transaction, scope, principal, approval, action);
 
       const source = {
         kind: recognition.input.profile,
@@ -2305,7 +2329,7 @@ function executeReview(
         settlementDigest,
       );
 
-      const posted = yield* makePlanAndPost(transaction, scope, principal, approval, action);
+      const posted = yield* postOwnedJournal(transaction, scope, principal, approval, action);
       const settlementId = newId(partialSettlement ? "fx_partial_settlement" : "fx_settlement");
 
       const bodyWithoutDigest =
@@ -2433,7 +2457,7 @@ function executeReview(
       correctionEvidence,
     );
 
-    const posted = yield* makePlanAndPost(transaction, scope, principal, approval, action);
+    const posted = yield* postOwnedJournal(transaction, scope, principal, approval, action);
     const correctionId = newId("fx_settlement_correction");
 
     const bodyWithoutDigest: JsonObject = {

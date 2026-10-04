@@ -39,6 +39,34 @@ export type ReminderFailure = typeof ReminderFailure.Type;
 
 export type Checked<A> = Result.Result<A, ReminderFailure>;
 
+export type SealedDispatchBasis = {
+  readonly messageDigest: string;
+  readonly approvedDigest: string;
+  readonly approvedResidualMinor: string;
+  readonly current: {
+    readonly residualMinor: string;
+    readonly sourceCurrent: boolean;
+  } | null;
+  readonly cancelled: boolean;
+};
+
+export function checkSealedDispatchBasis(input: SealedDispatchBasis): Checked<void> {
+  if (input.cancelled) return fail("CancelledIntent", "A cancelled intent admits no dispatch.");
+
+  if (input.messageDigest !== input.approvedDigest)
+    return fail("DigestMismatch", "Dispatch requires approval of the exact sealed message.");
+
+  if (
+    input.current === null ||
+    !input.current.sourceCurrent ||
+    BigInt(input.current.residualMinor) <= 0n ||
+    BigInt(input.current.residualMinor) !== BigInt(input.approvedResidualMinor)
+  )
+    return fail("StaleReminderBasis", "The retained collectible basis changed before dispatch.");
+
+  return Result.succeed(undefined);
+}
+
 function fail(code: ReminderFailureCode, message: string): Checked<never> {
   return Result.fail({ code, message });
 }

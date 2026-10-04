@@ -4,7 +4,7 @@ Status: accepted design, 2026-09-25, selected by the user. The first queue adapt
 
 ## Context
 
-The [application-owned accounting plan](../plans/application-owned-accounting.md) moves workflows into Effect application operations. Preparation previously used Cloudflare Workflows and a Cron dispatcher. Implementing generic queue claims, retries, scheduling and attempt history ourselves would duplicate an existing Effect-native library.
+The [application-owned accounting plan](../archive/completed/application-owned-accounting.md) moves workflows into Effect application operations. Preparation previously used Cloudflare Workflows and a Cron dispatcher. Implementing generic queue claims, retries, scheduling and attempt history ourselves would duplicate an existing Effect-native library.
 
 Source inspection found that effect-mq uses our Drizzle Effect driver family and compatible declared Effect 4 peer ranges. Its persistent worker and PostgreSQL listener fit a Bun process. A regular API Worker invocation does not own that process lifetime. The installed package is `0.7.0` at source revision `b5898fbae56fe926c28768a5a8ff9ad74f1e57a0`; its store started against our pinned dependencies on disposable PostgreSQL 17.
 

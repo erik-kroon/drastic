@@ -25,6 +25,7 @@ import {
   jobSchedules,
 } from "../src/db/schema";
 import { RequestEnvironment, type Bindings } from "../src/runtime/environment";
+import { PayslipQueue, dispatchPayslips, handlePayslip } from "../src/runtime/payslip-queue";
 import {
   CreditDocumentQueue,
   dispatchCreditDocuments,
@@ -122,6 +123,7 @@ const worker = Layer.mergeAll(
   ExtractionQueue.toLayer(handleExtraction, { concurrency: 2 }),
   PeriodWorkQueue.toLayer(handlePeriodWork, { concurrency: 2 }),
   CreditDocumentQueue.toLayer(handleCreditDocument, { concurrency: 2 }),
+  PayslipQueue.toLayer(handlePayslip, { concurrency: 2 }),
   RecurringDraftQueue.toLayer(handleRecurringDraft, { concurrency: 2 }),
 ).pipe(Layer.provideMerge(Worker.layer({ concurrency: 2 })), Layer.provideMerge(services));
 
@@ -165,6 +167,18 @@ const dispatch = Effect.forever(
   ),
 );
 
+const dispatchPayslipDocuments = Effect.forever(
+  dispatchPayslips().pipe(
+    Effect.catch(() =>
+      Effect.logWarning("Payslip dispatch failed; render intent remains pending."),
+    ),
+    Effect.catchDefect(() =>
+      Effect.logWarning("Payslip dispatch defect; render intent remains pending."),
+    ),
+    Effect.andThen(Effect.sleep("30 seconds")),
+  ),
+);
+
 const dispatchCredits = Effect.forever(
   dispatchCreditDocuments().pipe(
     Effect.catch(() =>
@@ -193,11 +207,12 @@ const main = Effect.all(
     dispatchExtractions,
     dispatchPeriodWork,
     dispatchCredits,
+    dispatchPayslipDocuments,
     dispatchReminders,
     runRecurringDraftDispatch(),
   ],
   {
-    concurrency: 6,
+    concurrency: 7,
   },
 ).pipe(Effect.provide(worker), Effect.scoped);
 

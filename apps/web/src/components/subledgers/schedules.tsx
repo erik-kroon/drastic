@@ -1762,6 +1762,7 @@ function amendmentKindLabel(
     | "remaining_estimate_v1"
     | "remaining_lifetime_v1"
     | "impairment_v1"
+    | "valuation_v1"
     | undefined,
   locale: Locale,
   none: string,
@@ -1775,6 +1776,8 @@ function amendmentKindLabel(
     return locale === "sv" ? "Återstående livslängd" : "Remaining lifetime";
 
   if (kind === "impairment_v1") return locale === "sv" ? "Nedskrivning" : "Impairment";
+
+  if (kind === "valuation_v1") return locale === "sv" ? "Värdering" : "Valuation";
 
   return none;
 }
@@ -1812,7 +1815,7 @@ function ScheduleAmendmentReadout(props: {
   const basisDigest = view.postingBasis?.basisDigest ?? amendment?.basisDigest;
 
   const futureMinor =
-    amendment && "remainingMinor" in amendment.input
+    amendment && "input" in amendment && "remainingMinor" in amendment.input
       ? amendment.input.remainingMinor
       : amendment?.kind === "impairment_v1"
         ? amendment.input.futureMinor
@@ -1889,7 +1892,7 @@ function ScheduleDateAmendmentForm(props: {
   const current = props.schedule.current;
 
   const futureMinor =
-    current.amendment && "remainingMinor" in current.amendment.input
+    current.amendment && "input" in current.amendment && "remainingMinor" in current.amendment.input
       ? current.amendment.input.remainingMinor
       : undefined;
 
@@ -2005,12 +2008,14 @@ function ScheduleEstimateAmendmentForm(props: {
   const current = props.schedule.current;
 
   const futureMinor =
-    current.amendment && "remainingMinor" in current.amendment.input
+    current.amendment && "input" in current.amendment && "remainingMinor" in current.amendment.input
       ? current.amendment.input.remainingMinor
       : undefined;
 
   const residualMinor =
-    current.amendment && current.amendment.kind !== "future_dates_v1"
+    current.amendment &&
+    "input" in current.amendment &&
+    current.amendment.kind !== "future_dates_v1"
       ? current.amendment.input.residualMinor
       : current.terms.residualMinor;
 

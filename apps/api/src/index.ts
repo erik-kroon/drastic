@@ -1,9 +1,13 @@
+import { ForeignCashHandlers } from "./transport/http/routes/foreign-cash";
+import { PayrollInputHandlers } from "./transport/http/routes/payroll-inputs";
+import { TreasuryLoanHandlers } from "./transport/http/routes/treasury-loans";
 import { SupplierSettlementHandlers } from "./transport/http/routes/supplier-settlements";
 import { EvaluationHandlers } from "./transport/http/routes/evaluations";
 import { DeadlineHandlers } from "./transport/http/routes/deadlines";
 import { RuleImpactHandlers } from "./transport/http/routes/rule-impact";
 import { DeadlineFeedRoutes } from "./transport/http/routes/deadline-feed";
 import { PayrollFoundationHandlers } from "./transport/http/routes/payroll-foundation";
+import { PayrollRunHandlers } from "./transport/http/routes/payroll-runs";
 import { PayrollCalculationHandlers } from "./transport/http/routes/payroll-calculations";
 import { CrmMasterHandlers } from "./transport/http/routes/crm-master";
 import { InvoiceTemplateHandlers } from "./transport/http/routes/invoice-templates";
@@ -214,6 +218,10 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     InvoiceTemplateHandlers,
     PayrollFoundationHandlers,
     PayrollCalculationHandlers,
+    PayrollRunHandlers,
+    ForeignCashHandlers,
+    PayrollInputHandlers,
+    TreasuryLoanHandlers,
     DeadlineHandlers,
     RuleImpactHandlers,
     DimensionHandlers,

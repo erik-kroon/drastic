@@ -1,110 +1,41 @@
-# OpenERP
+# OpenERP agent rules
 
-This repository is the starting point for the OpenERP product.
+## Work
+- Use Linear MCP to track work in the existing OpenERP project.
+- Make one issue for each result that can be finished and checked.
+- Add source links, done checks, and an owner or blocker to each issue.
+- Do not ticket finished or deferred work. Do not make one issue per register row.
+- Before code changes, read `docs/README.md` and `docs/open-decisions.md`. For `NEXT-nn`, also read its dossier and spec.
+- For code work, read and follow the `software-engineering` skill.
+- Keep plans, code, and check results distinct. Update docs when facts or decisions change.
 
-## Documentation
+## Frontend design and code
+- Use Paper MCP to design frontend screens. Work on one screen at a time in `Enthusiastic lantern`.
+- Follow `docs/ui-design-prompt.md`, `docs/ui-design-checklist.md`, and `verification/paper/baseline/`.
+- Read frame code and styles with Paper `get_jsx` and `get_computed_styles`. Use shared components and UI tokens. Draft designs are not approval or proof of implementation.
+- Use only copy and states shown in each frame. Follow its selection style. Do not use middle-dot separators.
+- Keep route files thin. Compose pages from owned components; do not put the full interface in a page or route.
+- Build with StyleX and existing UI components. A screen is done when its parity check passes and its diff is saved. See `verification/paper/`.
 
-- Start at `docs/README.md` for maintained scope, architecture, domain invariants and delivery gates.
-- Check `docs/open-decisions.md` before treating an unresolved company fact or contract choice as settled.
-- For a `NEXT-nn` work item, read `docs/plans/12-next-implementation-dossier.md` and its packet under `docs/specs/` for the implementation design. Bind its proposed names to the real owners, resolve its released-slice prerequisite, and keep its vectors as obligations; it is design input, not authority. A capability with an owner in the dossier plan is not thereby implemented or verified.
-- Keep working design, implemented behavior and verified results distinct. Update the relevant maintained docs when a material decision changes.
+## Safety and checks
+- Follow accounting and code ownership in `docs/README.md` and `apps/api/README.md`. Read financial amounts from stored records, not client input.
+- Keep anti-slop Oxlint rules enabled. Fix lint and TypeScript errors; do not suppress warnings or weaken checks.
+- Run `bun run check:changed` after each coherent code edit. Run `bun run check:changed:full` before handoff and after Promise or async changes.
+- Use synthetic test data. Do not use real company data, live providers, production systems, payments, deployments, or statutory submissions without task-specific authorization.
+- For each new `packages/domain` leaf, wire it to a real application owner or record the blocker in `docs/plans/domain-leaf-integration.json`. Run `bun run check:integration`.
+- If dependency manifests change, update `bun.lock` and verify with `bun install --frozen-lockfile`.
 
-## Packet delivery
+## Testing
+Choose tests in this order of priority:
 
-A `packages/domain` leaf that no application owner consumes is dead code. Delivering a packet therefore means wiring it up, not only writing its calculation:
+1. Full E2E tests with nothing mocked out. Exercise real application flows with Playwright or equivalent, using synthetic test accounts and data. Production test accounts require task-specific authorization under the safety rules above. Save a verifiable, repeatable artifact at the end of each E2E run.
+2. Integration tests across data and API boundaries, especially where schemas can drift.
+3. Golden tests grounded in representative data examples, covering regressions and edge cases. Use synthetic or sanitized fixtures that comply with the safety rules above.
 
-- A packet is delivered when a named `apps/api` application owner composes the leaf, or when the packet's own text says a *different* owner holds the workflow and that owner is given the leaf. Writing the leaf and stopping is not delivery.
-- If you cannot wire it, say so in the same change: add an entry to `docs/plans/domain-leaf-integration.json` marking the leaf `deferred` with the real blocker and what would unblock it. A deferral naming a missing owner is a legitimate answer. Silence is not.
-- Never mark a leaf `wired` to make a check pass. The entry is verified against real imports.
-- `bun run check:integration` enforces this and runs in CI. New undeclared leaves, placeholder deferral reasons, and stale `deferred` claims for leaves that now have consumers all fail it.
-- An owner that exists but takes its financial facts from the request is not wired either. Derive the value from retained data inside the owning transaction; a client may name a source and cite evidence, never state the amount.
-
-## Scope
-
-- `apps/web` owns product routes, application composition, and visible product behavior.
-- `apps/api` owns Effect application workflows, HTTP/MCP transports, database access and runtime adapters. See `apps/api/README.md` for internal boundaries.
-- `packages/domain` owns transport-independent accounting models, exact-money schemas and errors.
-- `packages/contracts` owns shared Effect Schema API contracts and composes the domain schemas.
-- `jurisdictions/se` owns pure Swedish VAT calculations and SIE rendering.
-- `packages/ui` owns reusable interface primitives, StyleX tokens, and global styles.
-- `packages/config` owns shared TypeScript configuration.
-- `infra/alchemy` owns Cloudflare Worker deployment.
-
-## Data rules
-
-- Use TanStack Query for remote server state in `apps/web`.
-- Create a request-scoped QueryClient through the TanStack Start router integration.
-- Validate API responses and inputs with contracts from `packages/contracts`.
-- Keep backend workflows in Effect and run them only at an owning Worker or Bun runtime boundary.
-- Use the native Effect/Drizzle PostgreSQL adapter for application database access. Reuse `apps/api/src/db/connection.ts` and typed table mappings in `apps/api/src/db/schema.ts`; pass the caller's transaction through nested persistence.
-- Better Auth owns browser authentication. Its official Drizzle adapter uses Promise queries through the same scoped PostgreSQL connection acquisition; accounting workflows remain native Effect. Keep API tokens for automation and book authorization in the backend.
-- The application process owns accounting policy, authorization, calculations and scoped writes. PostgreSQL owns the reviewed DDL, constraints, grants and the narrow integrity layer; it does not own feature workflows through stored functions. The runtime role has only the scoped table/column permissions required by the application.
-- Use one book-scoped financial transaction for each atomic posting, correction or other financial group. Lock authority before the book, then periods/accounts, domain resources, approval and counters. Financial transactions use no session-level tenant context or advisory locks.
-- Use [ADR 0009](docs/adr/0009-effect-mq-background-jobs.md) and [ADR 0010](docs/adr/0010-application-owned-accounting-replacement.md) for durable work and the application-owned replacement. effect-mq owns queue claims, retries and leases in a separate Bun process; the application owns outbox intent, business progress, current authority, cancellation versions and financial receipts.
-
-## Interface rules
-
-- Use StyleX and the existing UI tokens. Do not add another styling system.
-- Reuse owned UI components before creating new controls.
-- Keep primary actions clear, accessible, and usable at narrow widths.
-- Respect keyboard focus, reduced motion, readable contrast, and 200% zoom.
-- Keep interface copy direct and specific.
-
-### Paper product design
-
-- Start with `docs/ui-design-prompt.md` and work through `docs/ui-design-checklist.md` one screen at a time in Paper's **Enthusiastic lantern** file.
-- Accounted is the product and workflow baseline. Study its actual screens, then carefully improve the intended OpenERP experience. Current OpenERP UI, dashboards, local screenshots and historical verification screenshots are excluded as visual references.
-- Design how the product should look, function and flow. Current OpenERP route/component/backend completeness is implementation context, not a design ceiling. Record implementation dependencies outside the product UI.
-- Existing Paper screens are drafts to reconsider, not approved templates. Do not mass-produce frames, force each task into one generic layout, or mark a checklist item complete merely because a frame exists.
-- Preserve accounting truth, sourced facts and explicit product boundaries. A planned design is not evidence of an implemented operation or an actual external result.
-
-### Design-to-code parity
-
-The current Paper baseline is `verification/paper/baseline/` (exported 1440 by 900 frames, one per surface) with the shared system and fixture in `verification/paper/baseline/2026-10-04-correction-spec.md` and the surface map in `verification/paper/baseline/current-screen-index.md`. Older exports in `docs/design/implementation/` are historical. Scope is desktop only; narrow widths are out of scope.
-
-- Read the real values: call Paper `get_jsx` and `get_computed_styles` for the frame's node, never estimate from a screenshot. Build or adjust shared components (sidebar, tabs, table row, buttons, fields) from the component board K23 first, then compose screens from them.
-- Use only copy, tabs, columns and states that exist in the frame. Do not add tabs, columns, helper text or data the frame does not show. Hide engineering vocabulary (revision, digest, frozen, checksum, receipt ids) unless the frame shows it.
-- No middle dot (·) in product copy. Join values with a comma, a slash or separate elements.
-- Selection follows the frame: sidebar items use a plain filled row with no accent bar; register rows use the 3 px left accent. Do not reuse one selection style for the other.
-- Use tokens from `packages/ui`; do not add ad hoc colors, sizes or fonts.
-- A screen is done only when `node verification/paper/parity.mjs <session-file>` passes for its manifest entry in `verification/paper/parity-manifest.json`. Add the entry with the screen. The run writes `actual`, `diff` and `report.json` under `test-results/paper/parity/`; keep the diff image as the artifact. A passing build or lint does not establish parity.
-
-## Quality rules
-
-- Keep anti-slop Oxlint rules enabled as errors.
-- Prefer deletion and direct local code over speculative abstractions.
-- Do not add dependencies when the platform or existing UI package solves the need.
-- Focused unit, property/conformance, regression and integration/E2E tests needed for existing or explicitly adopted workflows are authorised by the owner-delegated decision pass dated 2026-09-28 ([ADR 0015](docs/adr/0015-owner-delegated-decision-pass.md)). Use synthetic fixtures and disposable isolated local/CI systems. Real local PostgreSQL, workerd, Bun and selected browser/REST/MCP tests are within this engineering scope. Prefer the repository's current test/check infrastructure.
-- That permission does not authorise real company-data use, live provider credentials, customer contact, production migrations/resets, deployment, payments or statutory submissions. Do not broaden product scope through a test, weaken expectations to get green output or use production functions as their own expected-result oracle. Preserve narrower existing task restrictions, including the dated document-intelligence authorisation and its no-live-provider limit. Unrelated test work needs separate task authority.
-- Never weaken lint or type rules to make a check pass.
-- When dependency manifests change, update and commit `bun.lock` with them and verify `bun install --frozen-lockfile` before handoff. CI must keep frozen installs enabled.
-
-## Commands
-
-Run `bun run check:changed` after each coherent edit. This is the fast feedback gate: it formats changed source files, then runs normal lint (including anti-slop rules) and incremental TypeScript checks sequentially, one project at a time. The runner limits native worker pools to two (`--threads`, TypeScript `--checkers`, and `GOMAXPROCS`) so several agents can share the machine. Type checks include the changed files' imports. The first run for a project is slower; keep the ignored `tsconfig.changed.tsbuildinfo` caches so later runs reuse compiler work.
-
-Run `bun run check:changed:full` before handoff and after changes involving async or Promise handling. It adds type-aware lint, including floating/misused Promise checks, which the fast gate does not run. A passing fast gate does not replace this fuller gate. Both commands compare against `HEAD` by default and accept a base ref, e.g. `bun run check:changed:full main` to cover committed branch changes too.
-
-Changed-file checks fail on every warning and error in each selected file, including pre-existing findings. They also enforce the vendored Effect rules in `.oxlintrc.changed.json`; existing workspace lint keeps its current rule scope. Use `bun run lint:changed <base-ref>` for the same lint gate without formatting or type checking. CI runs this command against the pull request's base SHA. Fix spacing with `bunx oxlint --fix <files>`; fix other findings through real types, constructors and Effect handlers. A `SAFETY:` comment documents a checked invariant but does not override the production assertion ban. Do not suppress findings to pass the gate.
-
-Do not run full-workspace `check`, `lint` or `check-types` scans after every edit. Reserve them for final integration checks when shared configuration, dependencies or cross-workspace changes warrant broader coverage. The changed-file commands select source files, so configuration-only edits need the relevant broader check.
-
-### Check process ownership
-
-- Run one check at a time per worktree. Run it once and inspect that result; do not rerun just to count or filter errors. Do not pipe a running check through `head` or hide its progress behind `grep`. Capture output once if needed, retain the check's exit status, then inspect the saved output.
-- Let `check:changed` format its inputs. Do not pre-format or append whitespace just to make a file appear changed. Use a base ref to select committed work.
-- Each tool has a 60-second deadline. The runner kills that tool's process group on timeout and cleans up its children on SIGINT/SIGTERM or normal exit. A timeout is a failure, never a passing or completed verification. Inspect CPU load and process ownership before extending a timeout; contention needs less concurrent work, not a longer deadline. Only for a measured, legitimate longer check, set `CHECK_CHANGED_TIMEOUT_SECONDS` and allow the outer shell enough time for all sequential stages plus cleanup. Do not bypass the runner with an unbounded direct compiler invocation after a timeout.
-- After cancellation or an outer timeout, inspect `ps -Ao pid,ppid,pgid,etime,pcpu,command` before retrying. Confirm ownership by exact worktree path and process ancestry; PPID 1 identifies an orphan but does not by itself authorize killing it. Stop only your task's abandoned check processes: send TERM to their exact PIDs, inspect again, then KILL those same verified processes if they remain. Never use broad `pkill node`, `pkill bun`, or `pkill tsc` commands.
-- SIGKILL cannot run cleanup handlers. If the runner was hard-killed, use the process inspection above to remove its surviving children. Confirm they are gone before starting one replacement check. If it stalls again, inspect the named stage rather than stacking more runs.
-- Existing worktrees may contain an older runner and older instructions. Inspect that worktree's `scripts/check-changed.ts` and `package.json` before assuming timeout, cleanup, or fast/full behavior is available.
-
-```bash
-bun run dev
-bun run check:changed
-bun run check:changed:full
-bun run check
-bun run check:integration
-bun run lint
-bun run check-types
-bun run build
-```
+- Unit tests are exceptional; avoid tests that duplicate implementation details or add maintenance bloat. Never write unit tests after writing the implementation.
+- Coding agents must use [TesterArmy e2e](https://tester.army/e2e) for new browser E2E tests, with Luna (`gpt-6-luna`) for agent steps. Read its [coding-agent guide](https://e2e.tester.army/docs/coding-agents.md) and the installed `.agents/skills/e2e/SKILL.md` before writing or running tests. If the skill is missing, install it with `npx skills add tester-army/e2e`.
+- Route Luna requests through the local [openai-api-server-via-codex](https://github.com/hotchpotch/openai-api-server-via-codex) server using the existing authorized Codex login. Start it with `uvx openai-api-server-via-codex`; use `http://127.0.0.1:18080/v1` as the provider base URL. Keep the server bound to loopback.
+- Configure `e2e.config.ts` explicitly with an AI SDK provider instance; do not rely on the proxy's default model. Use `createOpenAICompatible` from `@ai-sdk/openai-compatible`, with `name: 'codex'` and the base URL above, then set `agents.default.model` to `codex.chatModel('gpt-6-luna')`. See the [model configuration guide](https://e2e.tester.army/docs/models.md). Use the configured local API key if the proxy requires one; keep credentials out of tracked files and evidence.
+- If Luna, Codex authentication, or the proxy is unavailable, report the blocker and the unverified behavior. Do not silently switch models or providers or claim agent-driven E2E verification from a mocked run.
+- Before building a system in isolation, first list all the ways it could fail, then write the code.
+- Follow the test scope in `docs/adr/0015-owner-delegated-decision-pass.md`.

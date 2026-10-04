@@ -106,8 +106,6 @@ export function readAccountStateRows(
 
 export type ConflictRow = { readonly conflict: boolean };
 
-// A single bounded lookup answers whether the three selected VAT control accounts
-// already carry an incompatible bank, commerce, owner, tax-account or subledger role.
 export function readAccountRoleConflicts(
   transaction: Transaction,
   bookId: string,
@@ -122,10 +120,10 @@ export function readAccountRoleConflicts(
         )}]::text[]) as account_id
       )
       select
-        exists(select from openerp.bank_sources s where s.book_id = ${bookId} and s.account_id = any(selected.account_id))
-        or exists(select from openerp.commerce_control_accounts c where c.book_id = ${bookId} and c.account_id = any(selected.account_id))
-        or exists(select from openerp.owner_control_accounts c where c.book_id = ${bookId} and c.account_id = any(selected.account_id))
-        or exists(select from openerp.tax_account_sources s where s.book_id = ${bookId} and s.account_id = any(selected.account_id))
+        exists(select from openerp.bank_sources s where s.book_id = ${bookId} and s.account_id in (select account_id from selected))
+        or exists(select from openerp.commerce_control_accounts c where c.book_id = ${bookId} and c.account_id in (select account_id from selected))
+        or exists(select from openerp.owner_control_accounts c where c.book_id = ${bookId} and c.account_id in (select account_id from selected))
+        or exists(select from openerp.tax_account_sources s where s.book_id = ${bookId} and s.account_id in (select account_id from selected))
         or exists(
           select from openerp.subledger_schedules s
           cross join lateral (
@@ -134,8 +132,8 @@ export function readAccountRoleConflicts(
             order by r.revision desc limit 1
           ) r
           where s.book_id = ${bookId} and (
-            r.body->'terms'->>'debitAccountId' = any(selected.account_id)
-            or r.body->'terms'->>'creditAccountId' = any(selected.account_id)
+            r.body->'terms'->>'debitAccountId' in (select account_id from selected)
+            or r.body->'terms'->>'creditAccountId' in (select account_id from selected)
           )
         ) as conflict
     `,
@@ -145,7 +143,6 @@ export function readAccountRoleConflicts(
 
 export type RetainedOwnerRow = { readonly conflict: boolean };
 
-// Foreign-currency items and retained impairments own VAT control accounts exclusively.
 export function readRetainedAccountOwners(
   transaction: Transaction,
   bookId: string,
@@ -163,17 +160,21 @@ export function readRetainedAccountOwners(
           select from openerp.commerce_fx_items i where i.book_id = ${bookId}
             and exists(
               select from jsonb_array_elements(i.body->'accountBindings') role
-              where role->>'accountId' = any(selected.account_id)
+              where role->>'accountId' in (select account_id from selected)
             )
         ) end as conflict
       ), impairment as (
         select case when to_regclass('openerp.subledger_impairments') is null then false else exists(
           select from openerp.subledger_impairments i where i.book_id = ${bookId}
-            and (i.loss_account_id = any(selected.account_id)
-              or i.accumulated_impairment_account_id = any(selected.account_id))
+            and (i.loss_account_id in (select account_id from selected)
+              or i.accumulated_impairment_account_id in (select account_id from selected))
         ) end as conflict
       )
-      select fx.conflict or impairment.conflict as conflict from fx, impairment
+      select fx.conflict or impairment.conflict or exists(
+        select from openerp.subledger_valuations v where v.book_id=${bookId}
+          and (v.accumulated_impairment_account_id in (select account_id from selected)
+            or v.income_or_loss_account_id in (select account_id from selected))
+      ) as conflict from fx, impairment
     `,
     "objects",
   );

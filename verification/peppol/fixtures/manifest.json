@@ -1,0 +1,14 @@
+{
+  "source": "https://docs.peppol.eu/poacc/billing/3.0/files/BIS-Billing3-Examples.zip",
+  "sourceArchiveSha256": "e7ec4705e8c35bc65c59f763aa8788517e07a2ed56b5805950fe0ac739bad759",
+  "files": [
+    {
+      "path": "base-creditnote-correction.xml",
+      "sha256": "08e0ad82e0dbe7e16d7533c01761843343a56954ea24881d0f7f1cce06f8879e"
+    },
+    {
+      "path": "base-example.xml",
+      "sha256": "1b7cc3ff1834c8963f2c93f30f171b58002cbf0b2c52dc8765e7e83aebb9f7c9"
+    }
+  ]
+}

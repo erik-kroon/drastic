@@ -10,6 +10,7 @@ import { failure } from "../failures";
 import { isoNow, newId, replay, saveCommand } from "../posting";
 import * as BankDb from "../../db/banking/shared";
 import * as ReportDb from "../../db/banking/reports";
+import * as ForeignCashDb from "../../db/banking/foreign-cash";
 import * as StatementDb from "../../db/banking/statements";
 import type { Transaction } from "../../db/transaction";
 import * as Shared from "./shared";
@@ -191,6 +192,9 @@ function readReportScope(
     const account = (yield* BankDb.readAccount(transaction, scope.bookId, input.accountId))[0];
 
     if (!account) return yield* failure("InvalidJournal");
+
+    if ((yield* ForeignCashDb.readAccount(transaction, scope.bookId, input.accountId)).length > 0)
+      return yield* failure("UnsupportedProfile");
 
     if (
       (yield* StatementDb.readStatementCut(

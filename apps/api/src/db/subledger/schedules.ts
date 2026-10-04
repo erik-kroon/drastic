@@ -24,6 +24,8 @@ export type ScheduleRow = {
 };
 
 export type PreparationRow = {
+  readonly revision: number;
+  readonly basis: JsonObject | null;
   readonly attempt: number;
   readonly changeSetId: string;
   readonly plan: JsonObject;
@@ -238,10 +240,11 @@ export function readPeriods(
     readonly startsOn: string;
     readonly endsOn: string;
     readonly locked: boolean;
+    readonly version: string;
   }>(
     sql`
       select p.id, p.fiscal_year_id as "fiscalYearId", p.starts_on::text as "startsOn",
-        p.ends_on::text as "endsOn", p.locked
+        p.ends_on::text as "endsOn", p.locked, p.version::text as version
       from openerp.periods p
       where p.book_id = ${bookId} and p.id in ${periodIds}
       order by p.id
@@ -258,7 +261,8 @@ export function readLatestPreparation(
 ) {
   return transaction.execute<PreparationRow>(
     sql`
-      select p.attempt, p.change_set_id as "changeSetId", c.plan, c.digest as "planDigest"
+      select p.revision, p.basis_dependency as basis, p.attempt,
+        p.change_set_id as "changeSetId", c.plan, c.digest as "planDigest"
       from openerp.subledger_preparations p
       join openerp.change_sets c on c.book_id = p.book_id and c.id = p.change_set_id
       where p.book_id = ${bookId} and p.schedule_id = ${scheduleId} and p.ordinal = ${ordinal}
@@ -278,13 +282,14 @@ export function insertPreparation(
     readonly ordinal: number;
     readonly attempt: number;
     readonly changeSetId: string;
+    readonly basis: JsonObject;
   },
 ) {
   return transaction.execute(
     sql`
       insert into openerp.subledger_preparations
-        (book_id, schedule_id, revision, ordinal, attempt, change_set_id)
-      values (${row.bookId}, ${row.scheduleId}, ${row.revision}, ${row.ordinal}, ${row.attempt}, ${row.changeSetId})
+        (book_id, schedule_id, revision, ordinal, attempt, change_set_id, basis_dependency)
+      values (${row.bookId}, ${row.scheduleId}, ${row.revision}, ${row.ordinal}, ${row.attempt}, ${row.changeSetId}, ${JSON.stringify(row.basis)}::jsonb)
     `,
     "objects",
   );
@@ -576,6 +581,9 @@ export function readRevisionAt(
         where i.book_id = ${bookId} and i.schedule_id = ${scheduleId}
           and i.posting_date <= ${asOfDate}::date
         union
+        select e.schedule_revision from openerp.subledger_valuations e
+        where e.book_id=${bookId} and e.schedule_id=${scheduleId} and e.posting_date<=${asOfDate}::date
+        union
         select r.revision
         from openerp.subledger_disposals d
         join openerp.subledger_schedule_revisions r
@@ -621,13 +629,18 @@ export function listBookDisposals(transaction: Transaction, bookId: string) {
 export function listBookImpairments(transaction: Transaction, bookId: string) {
   return transaction.execute<BookImpairmentRow>(
     sql`
-      select i.schedule_id as "scheduleId", i.ordinal, i.posting_date::text as "postingDate",
+      select i.schedule_id as "scheduleId", i.schedule_revision as ordinal, i.posting_date::text as "postingDate",
         i.impairment_minor::text as "impairmentMinor",
         i.accumulated_impairment_account_id as "accumulatedImpairmentAccountId",
         i.posting_receipt_id as "postingReceiptId", i.body
       from openerp.subledger_impairments i
       where i.book_id = ${bookId}
-      order by i.schedule_id collate "C", i.ordinal
+      union all
+      select e.schedule_id, e.schedule_revision, e.posting_date::text,
+        (case when e.direction='increase' then e.magnitude_minor::numeric else -e.magnitude_minor::numeric end)::text,
+        e.accumulated_impairment_account_id, e.posting_receipt_id, e.body
+      from openerp.subledger_valuations e where e.book_id=${bookId}
+      order by "scheduleId", ordinal
     `,
     "objects",
   );
@@ -649,8 +662,12 @@ export function countPreparationReviews(transaction: Transaction, bookId: string
   return transaction.execute<BoundaryRow>(
     sql`
       select count(*)::int as total
-      from (select 1 from openerp.subledger_impairment_reviews r
-        where r.book_id = ${bookId} limit 4001) bounded
+      from (
+        select 1 from openerp.subledger_impairment_reviews r where r.book_id=${bookId}
+        union all
+        select 1 from openerp.subledger_valuation_reviews r where r.book_id=${bookId}
+        limit 4001
+      ) bounded
     `,
     "objects",
   );

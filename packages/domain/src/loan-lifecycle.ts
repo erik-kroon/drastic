@@ -4,27 +4,6 @@ import { AccountingDate, Description, Identifier } from "./values";
 import { MinorUnits, SignedMinorUnits } from "./money";
 import { assertBalancedJournal, type PurchaseJournalLine } from "./purchasing";
 
-// Pure loan lifecycle math for one book-currency borrowing. NEXT-32 leaf:
-// principal timeline, deterministic simple-interest accrual over exact
-// rational segments, idempotent cumulative targets and repayment
-// allocation. NEXT-06 recognizes funding and loan principal; this leaf
-// takes that owned balance as its opening and never re-recognizes it: a
-// capital contribution cannot become a loan here, and one original
-// funding event never supplies two principal registers.
-//
-// OPEN SCOPE DECISION (D-04): whether lending is product scope for the
-// selected company and which owner holds the obligation is undecided, so
-// persistence, schedule ownership and control publication stay with the
-// future subledger/owners port (APP-SLICE-READY, unreleased). No tax
-// deduction, related-party price or legal loan validity is inferred from
-// this arithmetic. Excluded until qualified profiles exist:
-// effective-interest amortized-cost instruments, origination-fee
-// capitalization, leases, foreign-currency borrowing and debt conversion.
-//
-// No database and no runtime. Timelines, rates and conventions arrive as
-// reviewed exact inputs. A bound failure is an error rather than a reset
-// principal, an altered cash payment or an independent daily rounding.
-
 export const LoanFailureCode = Schema.Literals([
   "NegativePrincipal",
   "UnsupportedConvention",
@@ -210,6 +189,10 @@ export function calculateInterest(input: AccrualInput): Checked<InterestCalculat
   const ordered = [...boundaries].sort();
   const rates = [...input.rateSegments].sort((a, b) => (a.effectiveOn < b.effectiveOn ? -1 : 1));
 
+  if (new Set(rates.map((rate) => rate.effectiveOn)).size !== rates.length) {
+    return fail("IncompleteTimeline", "An effective date must have exactly one evidenced rate.");
+  }
+
   let numerator = 0n;
   let denominator = 1n;
   const witness: Array<AccrualWitnessSegment> = [];
@@ -228,7 +211,7 @@ export function calculateInterest(input: AccrualInput): Checked<InterestCalculat
       return Result.fail(principal.failure);
     }
 
-    let rate = rates[0];
+    let rate: RateSegment | undefined;
 
     for (const candidate of rates) {
       if (candidate.effectiveOn <= from) rate = candidate;
@@ -244,7 +227,6 @@ export function calculateInterest(input: AccrualInput): Checked<InterestCalculat
       return Result.fail(days.failure);
     }
 
-    // P * rate * days / (rateDen * yearLength), accumulated exactly.
     const termNumerator = BigInt(principal.success) * BigInt(rate.rateNumerator) * days.success;
     const termDenominator = BigInt(rate.rateDenominator) * yearLength(input.convention);
 

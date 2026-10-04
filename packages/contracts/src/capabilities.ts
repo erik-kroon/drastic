@@ -1,3 +1,6 @@
+import { ForeignCashCapabilities } from "./foreign-cash";
+import { PayrollInputCapabilities } from "./payroll-inputs";
+import { LoanCapabilities } from "./treasury-loans";
 import { SupplierSettlementCapabilities } from "./supplier-settlements";
 import { EvaluationCapabilities } from "./evaluations";
 import { CompanySetupCapabilities } from "./company-setup";
@@ -79,6 +82,7 @@ import { CollectionsCapabilities } from "./collections";
 import { DeadlinesCapabilities } from "./deadlines";
 import { RuleImpactCapabilities } from "./rule-impact";
 import { SupplierInboxCapabilities } from "./supplier-inbox";
+import { PayrollRunCapabilities } from "./payroll-runs";
 import { PayrollCalculationCapabilities } from "./payroll-calculations";
 import { CorporateTaxCapabilities } from "./corporate-tax";
 import { AnnualReportCapabilities } from "./annual-report";
@@ -186,6 +190,10 @@ export const Capabilities = {
   ...BankInventorySignoffCapabilities,
   ...TaxAccountCapabilities,
   ...PayrollCalculationCapabilities,
+  ...PayrollRunCapabilities,
+  ...ForeignCashCapabilities,
+  ...PayrollInputCapabilities,
+  ...LoanCapabilities,
   ...CorporateTaxCapabilities,
   ...AnnualReportCapabilities,
   rules_propose: {

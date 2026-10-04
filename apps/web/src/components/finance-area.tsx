@@ -162,6 +162,10 @@ const ExchangeRateReviewsPanel = lazy(() =>
   })),
 );
 
+const PayrollWorkspace = lazy(() =>
+  import("@/components/payroll/workspace").then((module) => ({ default: module.PayrollWorkspace })),
+);
+
 const workReturnAreas = new Set(["sales", "purchases", "tax"]);
 
 const trialBalanceModes = new Set(["trial", "ledger"]);
@@ -172,6 +176,14 @@ function isTrialBalanceMode(value: string | undefined): value is "trial" | "ledg
 
 export function FinanceArea(props: ComponentProps<typeof OwnedFinanceArea>) {
   const { locale } = useBookWorkspace();
+
+  if (props.area === "tax" && props.view === "payroll") {
+    return (
+      <Suspense fallback={<AccountingStatus locale={locale} pending error={null} />}>
+        <PayrollWorkspace recordId={props.record} />
+      </Suspense>
+    );
+  }
 
   if (props.area === "purchases" && props.view === "documents") {
     return <DocumentArea {...props} />;
@@ -644,6 +656,7 @@ function areaTabs(
       { key: "vat", label: sv ? "Momsdeklarationer" : "VAT returns" },
       { key: "reclassify", label: sv ? "Momsomklassning" : "VAT reclassification" },
       { key: "expenses", label: sv ? "Momsgranskning" : "Expense tax review" },
+      { key: "payroll", label: sv ? "Löner" : "Payroll" },
     ],
     closing: [{ key: "closing", label: copy.closing }],
   }[area];

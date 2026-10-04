@@ -1,77 +1,45 @@
 # OpenERP documentation
 
-OpenERP turns retained evidence into reviewed accounting decisions, approved postings, reconciled books and reproducible reports. These documents define the product, its accounting boundaries and the work needed to deliver it.
+OpenERP turns retained evidence into reviewed accounting decisions, approved postings, reconciled books and reproducible reports.
 
-The repository contains a synthetic accounting implementation and ongoing domain work. Implementation, observed behavior, company readiness and external acceptance are separate claims. The [roadmap](roadmap.md) records progress and evidence; the [delivery plan](plans/README.md) specifies the remaining work.
+**Start with [work status and backlog](work-status.md) to see what is done and what remains.** It consolidates the accounting packets, NEXT designs, parity requirements, product work, defects, decisions, release gates and UI checklist. Each entry names its scope, source and remaining action. [The roadmap](roadmap.md) gives milestone order; [the area plans](plans/README.md) retain the detailed delivery contracts.
 
-The first-company engineering path is [Book Zero, daily work and Drastic Cash](plans/15-book-zero-workflow-cash.md): an independently reviewed Drastic period and a usable daily review journey, with its read-only payment forecast now sequenced later. It maps the supplied openERP-specific PRD to existing owners and gates. The wider Drastic Financial Platform PRD is not adopted as implementation scope by this update.
-
-The [Document Intelligence first journey](plans/document-intelligence-delivery.md) records the PDF/image-to-review-to-draft implementation and normal self-host synthetic verification. Live provider use remains disabled.
-
-The [payment reminder owner](operations/payment-reminders.md) describes exact message review, operator approval, admission and honest local fixture outcomes. Its feature source is authored; runtime, recovery and timing verification remain open. Live provider use remains disabled.
-
-The [pdfcn decision](adr/0016-pdfcn-legal-documents.md) and [adoption record](plans/pdfcn-adoption.md) describe the current legal-invoice and credit-note presentation and its local E2E proof.
-
-The [evaluation input contract](operations/evaluation-contracts.md) records the operator-only immutable capture/read unit and its remaining packet-2 boundaries.
-
-[ADR 0017](adr/0017-bureau-first-product-focus.md) adopts the [product focus direction](plans/product-focus-review.md): a bureau-led documents/bank/invoicing/VAT wedge, one human-work queue, proportionate review and connected execution after approval. Native payroll and peripheral breadth are deferred; Cash follows the core loop. The [dependency-ordered delivery plan](plans/08-delivery.md#ready-order) gives the implementation sequence; the [design adoption backlog](ui-design-checklist.md#product-direction-adoption-backlog--2026-10-03) covers screen reconsideration only. Automatic posting remains unadopted, and implementation/provider gates remain open.
-
-The [daily-work product implementation](plans/18-daily-work-product-implementation.md) tracks the adopted Midday-inspired improvements, direct-main integration, and remaining Cash/search work.
+[ADR 0017](adr/0017-bureau-first-product-focus.md) prioritizes the bureau-led documents/bank/invoicing/VAT loop, one human-work queue and connected execution after approval. Native payroll and peripheral breadth follow that loop; Cash is sequenced later. [Book Zero](plans/15-book-zero-workflow-cash.md) retains the first-company accounting and reconciliation requirements. Automatic posting remains unadopted.
 
 ## Reading order
 
-[Onboarding backend](operations/onboarding-backend.md) describes retained setup cases, company-fact provenance, source/import progress, frontend contracts and the acceptance/cutover gates still required.
+| Need | Start here |
+| --- | --- |
+| Find unmerged or uncommitted work | [Local/origin work audit](work-audit.md) |
+| Find the next work item or check completion | [Work status and backlog](work-status.md) |
+| Understand the product and supported boundaries | [Product](product.md), [frontend](frontend.md), [compliance](compliance.md), [design coverage](design-coverage.md) |
+| Implement an accounting packet | [Area contracts and delivery order](plans/README.md) |
+| Resolve a company fact, rule, provider or operational gate | [Open decisions](open-decisions.md) |
+| Understand transaction, data and runtime ownership | [Architecture](architecture.md), [domain](domain.md), [ADRs](adr/README.md) |
+| Run the product or operate a supported workflow | [Local development](local-development.md), [operation/review contracts](operations.md), [operations index](operations/README.md), [self-host setup](../infra/self-host/README.md) |
+| Design or implement a screen | [UI prompt](ui-design-prompt.md), [UI checklist](ui-design-checklist.md), [current design index](design/current-screen-index.md), [Paper implementation baseline](../verification/paper/README.md) |
+| Establish acceptance | [Scenarios](verification.md), [verification strategy](verification-strategy.md), [packet acceptance](plans/09-acceptance.md) |
+| Consult retained external design or research | [Specifications and provenance](specs/README.md), [official sources](sources/README.md) |
+| Understand a completed change or an older checkpoint | [Archive index](archive/README.md), [dated implementation evidence](plans/evidence/) |
 
-[Private company-source inventory](operations/private-company-source.md) describes the configurable retained-source root, private receipts and the Drastic September acceptance boundary.
+The [current foundation reconciliation](plans/current-foundation-reconciliation.md) binds core observations to live application owners and identifies the Drastic September 2026 source prerequisites. It is a scoped observation, not a second backlog.
 
-The [open-accounting decision](adr/0005-open-accounting-and-managed-services.md), [application-owned replacement](adr/0010-application-owned-accounting-replacement.md), [architecture follow-up](architecture-followup.md), [licensing policy](../LICENSING.md) and [self-host setup](../infra/self-host/README.md) describe the open-source distribution and the latest design reconciliation.
-
-[Cloudflare delivery and verification](operations/cloudflare.md) records stage isolation, private originals, durable preparation and the hosted observations still required.
-
-| Document                                               | Question it answers                                                                                      |
-| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| [Book Zero delivery](plans/15-book-zero-workflow-cash.md) | How do the Drastic period, daily work and Cash requirements fit the existing plan? |
-| [Product scope](product.md)                            | Who is the product for, and what must it do?                                                             |
-| [Local development](local-development.md)              | How do I run the source against an isolated PostgreSQL database?                                         |
-| [Customer frontend plan](frontend.md)                  | How should founders, finance teams and accountants navigate, review and finish work?                     |
-| [Interface design brief](ui-design-brief.md)            | What should each OpenERP page help a user see and do, and what should Paper explore first?                |
-| [Paper design prompt](ui-design-prompt.md)             | How do we carefully rebuild the intended product from Accounted, one screen and flow at a time?           |
-| [Screen design checklist](ui-design-checklist.md)      | Which pages, subviews and flows remain to be designed and reviewed in Enthusiastic lantern?                |
-| [Architecture](architecture.md)                        | Which module owns each responsibility, and where does it run?                                            |
-| [Domain and invariants](domain.md)                     | What do the records mean, and what must never become false?                                              |
-| [Operations and review](operations.md)                 | How do people and agents prepare, approve, execute and recover work?                                     |
-| [Compliance and interoperability](compliance.md)       | Which capabilities need dated rules, formats and external acceptance?                                    |
-| [Roadmap](roadmap.md)                                  | What has been observed, and what proves each phase complete?                                             |
-| [Accounting delivery plan](plans/README.md)            | What remains across posting, corrections, imports, commerce, accounting depth, year-end and operations?  |
-| [Accounted comparison reconciliation](plans/16-comparison-reconciliation.md) | Which FWD proposals still apply, and which existing owners deliver them? |
-| [Reference parity backlog](plans/11-parity-backlog.md)  | What does the reference implementation still owe us, as work packets and preserved rule logic?             |
-| [Reference parity ledger](plans/14-parity-ledger.md) | Which parts of the reference are we at parity with, better than, or short — and which shortfalls have no owner? |
-| [ERPNext/Frappe reference review](plans/17-erpnext-reference-review.md) | Which ERPNext/Frappe concepts and algorithms are adoptable, under which license terms, and where would they live? |
-| [Reference-derived defects](plans/13-reference-derived-defects.md) | What is already shipped that is wrong, and how is it fixed without editing the reviewed baseline? |
-| [NEXT dossier plan](plans/12-next-implementation-dossier.md) | What does the vendored NEXT-01…125 implementation design say for each work item, and which maintained packet owns it? |
-| [Vendored specifications](specs/README.md)             | Which external design documents are stored here, at which pinned revision, and how to verify them?           |
-| [Owner-delegated decision pass](adr/0015-owner-delegated-decision-pass.md) | What was decided on 2026-09-28 about operating mode, test permission and product scope, and what is still open. |
-| [FND-01 reconciliation](plans/fnd01-reconciliation.md) | Which contracts and callers exist, what must remain compatible, and what does the pinned evidence prove? |
-| [Verification scenarios](verification.md)              | Which failures must the real application withstand?                                                      |
-| [Verification strategy](verification-strategy.md)      | How should the runtime, browser and database produce repeatable evidence?                                |
-| [Design coverage](design-coverage.md)                  | Where are the detailed requirements, edge cases and proof gates owned?                                   |
-| [Open decisions](open-decisions.md)                    | Which company facts, contracts and evidence are still needed?                                            |
-| [Architecture decisions](adr/README.md)                | What choices have been made, and why?                                                                    |
-| [Official sources](sources/README.md)                  | Which primary sources need review before rules and integrations can be activated?                        |
+The wider Drastic Financial Platform PRD remains context rather than adopted OpenERP implementation scope. The [open-accounting decision](adr/0005-open-accounting-and-managed-services.md), [licensing policy](../LICENSING.md) and distribution documents retain their own boundaries.
 
 ## Authority and status
 
-The user's current request and [repository instructions](../AGENTS.md) govern the work. A design document specifies intended behavior; it does not grant operational authority or prove that behavior has been implemented.
+The user's current request and [repository instructions](../AGENTS.md) govern work. The work register owns current status summaries. Requirement documents own behavior, invariants, dependencies and acceptance. ADRs own decisions; evidence and archives retain dated observations.
 
-- **Established:** observed in repository code or explicitly required by the user or repository instructions.
-- **Working decision:** the selected design, with its rationale and consequences. It remains revisable.
-- **Open:** a missing decision, fact or proof with a named gate in [open decisions](open-decisions.md).
-- **Verified:** a specific observation tied to an artifact, environment and revision. A build does not verify financial behavior.
+“Done” applies to the scope stated in an entry. Source implementation, local synthetic proof, actual-company reconciliation and external acknowledgment remain distinct. A checked UI design item records static design coverage; screen completion still requires the repository's parity gate. A provider simulator or local artifact cannot establish an external result.
+
+The [D-register](open-decisions.md) remains the authority for company facts and affected-stage gates. Missing facts stay explicit. A historical execution record cannot grant authority in a new task.
 
 ## Maintaining the docs
 
-High-level documents own requirements and invariants. The area plans own detailed delivery contracts and work packets. The roadmap owns progress and links to evidence. The coverage map connects these owners without creating a second specification. `docs/specs` holds externally produced design material kept byte-identical and separately rooted; it is evidence of a design's existence and revision, never a maintained requirement.
+1. Update requirements in their existing owner; preserve stable IDs and the accounting dependency graph.
+2. Update status, established scope, remaining action and evidence links in [work-items.json](work-items.json). Run `python3 docs/plans/check-plan.py` to regenerate the readable register and validate namespace coverage, archive preservation and local links.
+3. Preserve dated proof with its revision, environment, expected/observed result and limitations. Update the work entry to point to later proof rather than asking readers to reconstruct chronology.
+4. Archive completed increments and superseded execution logs with their unresolved obligations represented in the work register. Keep an old-path pointer and its anchors when other documents still link there. Do not archive a current requirement merely because one implementation slice is done.
+5. Keep `docs/specs/` and retained evidence byte-stable. External dossiers remain design input; a preserved proposal does not become a maintained requirement through its filename.
 
-Change a material working decision through its ADR and update the affected requirements, operations and proof gates together. Record an unresolved question once and link its identifier. Do not create empty modules just to match an architecture diagram.
-
-Executable wire schemas belong in `packages/contracts`; generated OpenAPI and MCP descriptions follow those schemas. Preserve supported routes and sealed-record interpretation. Retain dated research and runtime evidence with their limitations, and distinguish planned behavior from implementation and observed results.
+Executable wire schemas stay in `packages/contracts`; generated OpenAPI and MCP descriptions follow them. Material decisions update the ADR, affected requirements and qualification gates together. Avoid another status ledger or a new plan for work already owned by an existing packet.

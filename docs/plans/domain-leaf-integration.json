@@ -96,9 +96,11 @@
     },
     {
       "leaf": "collection-reminders",
-      "status": "deferred",
-      "reason": "Packet keeps sealed-message delivery and dispute handling with the commerce/delivery owners.",
-      "unblockedBy": "A delivery owner sends the sealed message and calls this leaf for reminder admission."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/commerce/reminders.ts"
+      ],
+      "note": "Existing exact-message owner composes sealed first-dispatch policy. New messages bind retained dispute and resolution history; changes after approval refuse. Same-identity recovery, human approval, cancellation, local fixture transport and durable inventory are verified by the public reminder E2E suite. Local synthetic proof only; external delivery remains separately qualified. Evidence docs/plans/evidence/domain-owner-completion/reminder-green/."
     },
     {
       "leaf": "customer-credits",
@@ -130,9 +132,11 @@
     },
     {
       "leaf": "employee-claims",
-      "status": "deferred",
-      "reason": "Packet keeps the payout-route handoff with the claim/payroll owners.",
-      "unblockedBy": "A payroll owner pays a reviewed claim and calls this leaf."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/payroll/input-basis.ts"
+      ],
+      "note": "Retained application lifecycle and exact human approval are verified by stable-source synthetic public HTTP/MCP E2E proof. Evidence: docs/plans/evidence/domain-owner-completion/loan-cash-inputs-final-green/. Local proof does not establish actual-company or provider qualification."
     },
     {
       "leaf": "errors",
@@ -164,9 +168,11 @@
     },
     {
       "leaf": "foreign-cash",
-      "status": "deferred",
-      "reason": "Reviewed and repaired as a pure leaf. Packet keeps cash mutation and reconciliation with the banking owners, which are not built.",
-      "unblockedBy": "A banking owner owns foreign cash holdings, then its application owner calls this leaf."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/banking/foreign-cash.ts"
+      ],
+      "note": "Retained application lifecycle and exact human approval are verified by stable-source synthetic public HTTP/MCP E2E proof. Evidence: docs/plans/evidence/domain-owner-completion/loan-cash-inputs-final-green/. Local proof does not establish actual-company or provider qualification."
     },
     {
       "leaf": "fx-chain-repair",
@@ -190,9 +196,10 @@
     },
     {
       "leaf": "impairment-reversal",
-      "status": "deferred",
-      "reason": "Packet keeps valuation and persistence with the asset owners.",
-      "unblockedBy": "An asset owner persists carrying amounts and calls this leaf for a reversal."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/subledger/valuation-basis.ts"
+      ]
     },
     {
       "leaf": "ledger",
@@ -203,15 +210,19 @@
     },
     {
       "leaf": "loan-lifecycle",
-      "status": "deferred",
-      "reason": "Packet keeps the treasury handoff with the treasury owners; no loan owner exists.",
-      "unblockedBy": "A treasury owner persists a loan timeline and calls this leaf for accrual."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/treasury/loan-basis.ts"
+      ],
+      "note": "Retained application lifecycle and exact human approval are verified by stable-source synthetic public HTTP/MCP E2E proof. Evidence: docs/plans/evidence/domain-owner-completion/loan-cash-inputs-final-green/. Local proof does not establish actual-company or provider qualification."
     },
     {
       "leaf": "mileage-reimbursement",
-      "status": "deferred",
-      "reason": "Packet keeps payroll handoff with the claim/payroll owners.",
-      "unblockedBy": "A payroll owner settles a reviewed claim and calls this leaf for the distance split."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/payroll/input-basis.ts"
+      ],
+      "note": "Retained application lifecycle and exact human approval are verified by stable-source synthetic public HTTP/MCP E2E proof. Evidence: docs/plans/evidence/domain-owner-completion/loan-cash-inputs-final-green/. Local proof does not establish actual-company or provider qualification."
     },
     {
       "leaf": "money",
@@ -252,9 +263,10 @@
     },
     {
       "leaf": "payroll-runs",
-      "status": "deferred",
-      "reason": "Packet keeps the payroll run posting and payslips with the payroll owners.",
-      "unblockedBy": "A payroll owner owns a run and calls this leaf for its journal."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/payroll/run-basis.ts"
+      ]
     },
     {
       "leaf": "peppol-exchange",
@@ -346,9 +358,11 @@
     },
     {
       "leaf": "variable-pay",
-      "status": "deferred",
-      "reason": "Packet keeps the payroll handoff with the payroll owners.",
-      "unblockedBy": "A payroll owner runs a pay period and calls this leaf for variable components."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/payroll/input-basis.ts"
+      ],
+      "note": "Retained application lifecycle and exact human approval are verified by stable-source synthetic public HTTP/MCP E2E proof. Evidence: docs/plans/evidence/domain-owner-completion/loan-cash-inputs-final-green/. Local proof does not establish actual-company or provider qualification."
     },
     {
       "leaf": "vat-assessment",

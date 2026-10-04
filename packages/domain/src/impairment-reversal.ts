@@ -3,18 +3,6 @@ import * as Schema from "effect/Schema";
 import { AccountingDate, Description, Identifier } from "./values";
 import { MinorUnits } from "./money";
 
-// Pure impairment math for one asset.
-// NEXT-42 leaf: economic reversal with a qualified counterfactual cap
-// and an explicit zero-carrying-but-owned state. Three events stay
-// distinct: error correction repairs a mistaken record, economic
-// reversal reflects newly evidenced recovery, disposal ends ownership.
-// The cap never comes from the impaired schedule itself but from a
-// replayed without-impairment basis under a qualified policy. No tax
-// reversal is inferred from a book reversal, and a disposed asset is
-// never revived here. The application owns schedule persistence,
-// version checks and consumer notification; the asset owners keep the
-// ordinary depreciation and disposal records this leaf reads.
-
 export const ImpairmentFailureCode = Schema.Literals([
   "IncompleteCounterfactualEvidence",
   "TargetBelowCarrying",
@@ -57,8 +45,6 @@ export const AssetBasis = Schema.Struct({
 
 export type AssetBasis = typeof AssetBasis.Type;
 
-// Carrying is gross less ordinary accumulation less impairment contra.
-// Each role reconciles independently, never just the net.
 export function currentCarrying(basis: AssetBasis): Checked<typeof MinorUnits.Type> {
   const carrying =
     BigInt(basis.grossMinor) -
@@ -83,10 +69,6 @@ export const CounterfactualInput = Schema.Struct({
 
 export type CounterfactualInput = typeof CounterfactualInput.Type;
 
-// Replays the without-impairment basis through the assessment date: only
-// estimate revisions the policy permits enter the counterfactual, and
-// impairment-caused schedule changes stay out unless independently
-// justified. No counterfactual evidence means no approvable reversal.
 export function calculateCounterfactual(
   input: CounterfactualInput,
 ): Checked<typeof MinorUnits.Type> {
@@ -157,10 +139,6 @@ export const CompileReversalInput = Schema.Struct({
 
 export type CompileReversalInput = typeof CompileReversalInput.Type;
 
-// Compiles an economic reversal capped by the counterfactual: the target
-// must clear current carrying and stay within min(H, B + I). The journal
-// debits accumulated impairment and credits qualified reversal income,
-// and the approved future schedule must foot exactly to the target.
 export function compileEconomicReversal(
   input: CompileReversalInput,
 ): Checked<EconomicReversalPlan> {
@@ -252,10 +230,6 @@ export const ZeroCarryingInput = Schema.Struct({
 
 export type ZeroCarryingInput = typeof ZeroCarryingInput.Type;
 
-// A qualified complete write-down moves carrying to an explicit
-// zero-carrying-but-owned state with no future installments and no
-// residual. Empty installments are valid only here, and the asset stays
-// in inventory and control reporting.
 export function compileZeroCarryingDecision(input: ZeroCarryingInput): Checked<ZeroCarryingPlan> {
   if (!input.basis.owned || input.basis.scheduleState === "disposed") {
     return fail("AssetNotOwned", "Only a still-owned asset writes down to zero carrying.");
@@ -316,8 +290,6 @@ export const ZeroDisposalPlan = Schema.Struct({
 
 export type ZeroDisposalPlan = typeof ZeroDisposalPlan.Type;
 
-// Disposing a zero-carrying asset without proceeds releases gross and
-// contra together. No second loss posts: the economics already ran.
 export function disposeZeroCarryingAsset(input: ZeroDisposalInput): Checked<ZeroDisposalPlan> {
   const carrying =
     BigInt(input.grossMinor) -
@@ -349,8 +321,6 @@ export const ReviveInput = Schema.Struct({
 
 export type ReviveInput = typeof ReviveInput.Type;
 
-// A disposed asset never revives through valuation; reacquisition is
-// another evidenced event.
 export function refuseRevival(input: ReviveInput): Checked<typeof Identifier.Type> {
   if (input.scheduleState === "disposed") {
     return fail("DisposalRevivalRefused", "A disposed asset cannot be revived by valuation.");
@@ -367,9 +337,6 @@ export const CorrectionScopeInput = Schema.Struct({
 
 export type CorrectionScopeInput = typeof CorrectionScopeInput.Type;
 
-// Immediate correction of the new event is allowed only while its
-// consequences remain unconsumed and restorable with a complete
-// replacement schedule.
 export function assertCorrectableEvent(
   input: CorrectionScopeInput,
 ): Checked<typeof Identifier.Type> {

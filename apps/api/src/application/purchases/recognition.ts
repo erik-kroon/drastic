@@ -1,3 +1,4 @@
+import * as PayrollInputDb from "../../db/payroll/inputs";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Recognition from "@open-erp/contracts/supplier-recognition";
 import {
@@ -465,6 +466,13 @@ export type RecognitionWrite = {
 export const recordRecognitionInTransaction = Effect.fn(
   "purchases.recognition.recordInTransaction",
 )(function* (transaction: Transaction, command: RecognitionWrite) {
+  if (
+    (yield* PayrollInputDb.readComponents(transaction, command.bookId, [
+      `purchase:${command.economicKey}`,
+    ])).length > 0
+  )
+    return yield* failure("AlreadyPosted");
+
   const recordedAt = yield* isoNow(transaction);
   const recognitionId = command.recognitionId;
 

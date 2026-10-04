@@ -6,7 +6,7 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as Result from "effect/Result";
 import { failure } from "../failures";
-import { commandReceipt, ensureEvent, makePlanAndPost, readItemState } from "./fx";
+import { commandReceipt, ensureEvent, postOwnedJournal, readItemState } from "./fx";
 import * as FxDb from "../../db/commerce/fx";
 import * as Rates from "@open-erp/contracts/exchange-rates";
 import * as ChainDb from "../../db/commerce/fx-chain-repair";
@@ -695,7 +695,7 @@ export const executeFxChainRepair = Effect.fn("commerceFx.executeChainRepair")(f
       `fx_chain_repair_${review.id}`,
     );
 
-    const posted = yield* makePlanAndPost(transaction, command.scope, principal, approval, {
+    const posted = yield* postOwnedJournal(transaction, command.scope, principal, approval, {
       kind: "post_voucher",
       correctsVoucherId: null,
       eventId,

@@ -36,7 +36,7 @@ Actual original documents
 
 Three limits are part of the decision, not caveats added to it:
 
-- **This is an engineering gate, not a legal one.** Statutory audit and reporting obligations, where they apply to the company, are unaffected. Nothing in this repository states, implies or is permitted to imply that a product decision waives them. [docs/compliance.md](../docs/compliance.md) is unchanged and remains the compliance authority.
+- **This is an engineering gate, not a legal one.** Statutory audit and reporting obligations, where they apply to the company, are unaffected. Nothing in this repository states, implies or is permitted to imply that a product decision waives them. [docs/compliance.md](../compliance.md) is unchanged and remains the compliance authority.
 - **"Independent" is redefined for acceptance, and only for acceptance.** It means independent inputs and independently derived expectations — computed from primary rule sources and the source documents, not by calling the production function or a second model. It does not mean professional certification, and the word must not be used interchangeably with certification anywhere in the maintained documents.
 - **Owner approval is a real human act.** The owner remains the person who confirms business facts and authorizes real company actions. A guessed registration, a synthesized signature or a simulated bank payment is not evidence, and the product must keep refusing to treat it as such.
 

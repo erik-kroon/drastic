@@ -135,4 +135,4 @@ The [completion evidence](../plans/evidence/application-owned-replacement-comple
 | Operations and recovery | Backup/restore captures the new baseline and queue/application work inventories, keeps the database quarantined and does not claim provider acceptance or promotion. |
 | Browser and company gates | Approved browser journeys, applicable Swedish profiles, real-company facts and provider receipts remain separate evidence. Synthetic success cannot activate a company or statutory profile. |
 
-Implementation and observed results are recorded separately in the [replacement plan](../plans/application-owned-accounting.md) and its dated evidence. Local replacement verification does not establish company, statutory-profile or hosted-provider acceptance.
+Implementation and observed results are recorded separately in the [replacement plan](../archive/completed/application-owned-accounting.md) and its dated evidence. Local replacement verification does not establish company, statutory-profile or hosted-provider acceptance.

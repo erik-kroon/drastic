@@ -1,8 +1,12 @@
+import { ForeignCashApi } from "./foreign-cash";
+import { PayrollInputApi } from "./payroll-inputs";
+import { LoanApi } from "./treasury-loans";
 import { SupplierSettlementsApi } from "./supplier-settlements";
 import { EvaluationsApi } from "./evaluations";
 import { DeadlinesApi } from "./deadlines";
 import { RuleImpactApi } from "./rule-impact";
 import { PayrollFoundationApi } from "./payroll-foundation";
+import { PayrollRunApi } from "./payroll-runs";
 import { PayrollCalculationApi } from "./payroll-calculations";
 import { CorporateTaxApi } from "./corporate-tax";
 import { AnnualReportApi } from "./annual-report";
@@ -270,6 +274,10 @@ export class Api extends HttpApi.make("open-erp")
     InvoiceTemplatesApi,
     PayrollFoundationApi,
     PayrollCalculationApi,
+    PayrollRunApi,
+    ForeignCashApi,
+    PayrollInputApi,
+    LoanApi,
     CorporateTaxApi,
     AnnualReportApi,
     DeadlinesApi,

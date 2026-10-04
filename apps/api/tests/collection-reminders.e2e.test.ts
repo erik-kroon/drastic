@@ -677,6 +677,7 @@ test("payment, holds, recipient withdrawal, cancellation and approval expiry ref
   for (const blocker of [
     "payment",
     "hold",
+    "resolved_hold",
     "recipient",
     "cancel",
     "session",
@@ -693,8 +694,8 @@ test("payment, holds, recipient withdrawal, cancellation and approval expiry ref
 
     if (blocker === "payment") await settle(context, "4000");
 
-    if (blocker === "hold")
-      await post(
+    if (blocker === "hold" || blocker === "resolved_hold") {
+      const dispute = await post(
         context.book,
         "/commerce/collections/disputes",
         {
@@ -704,8 +705,23 @@ test("payment, holds, recipient withdrawal, cancellation and approval expiry ref
           ownerId: context.book.actorId,
           holdReminders: true,
         },
-        Schema.Unknown,
+        Schema.Struct({ id: Schema.String }),
       );
+
+      if (blocker === "resolved_hold")
+        await post(
+          context.book,
+          "/commerce/collections/actions",
+          {
+            invoiceId: message.invoiceId,
+            kind: "dispute_resolved",
+            note: "Synthetic dispute resolved after reminder approval",
+            ownerId: context.book.actorId,
+            disputeId: dispute.id,
+          },
+          Schema.Unknown,
+        );
+    }
 
     if (blocker === "recipient")
       await post(

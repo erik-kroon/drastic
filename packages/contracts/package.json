@@ -89,6 +89,7 @@
     "./catalog": "./src/catalog.ts",
     "./payroll-foundation": "./src/payroll-foundation.ts",
     "./roles": "./src/roles.ts",
+    "./payroll-runs": "./src/payroll-runs.ts",
     "./payroll-calculations": "./src/payroll-calculations.ts",
     "./corporate-tax": "./src/corporate-tax.ts",
     "./annual-report": "./src/annual-report.ts",
@@ -102,7 +103,10 @@
     "./cash-forecast": "./src/cash-forecast.ts",
     "./onboarding": "./src/onboarding.ts",
     "./onboarding-mappings": "./src/onboarding-mappings.ts",
-    "./onboarding-deltas": "./src/onboarding-deltas.ts"
+    "./onboarding-deltas": "./src/onboarding-deltas.ts",
+    "./treasury-loans": "./src/treasury-loans.ts",
+    "./foreign-cash": "./src/foreign-cash.ts",
+    "./payroll-inputs": "./src/payroll-inputs.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

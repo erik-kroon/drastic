@@ -162,6 +162,7 @@ const styles = stylex.create({
     fontWeight: tokens.fontWeightMedium,
     backgroundColor: { default: "transparent", ":hover": tokens.muted },
   },
+  registerRecord: { paddingInline: 0, fontWeight: tokens.fontWeightNormal },
   choices: { display: "flex", flexWrap: "wrap", gap: 4, minWidth: 0 },
   choice: {
     display: "inline-flex",
@@ -319,9 +320,21 @@ export function RecordToggle({
   );
 }
 
-export function RecordOpen({ children, ...props }: ComponentProps<"button">) {
+export function RecordOpen({
+  children,
+  presentation = "default",
+  ...props
+}: ComponentProps<"button"> & { presentation?: "default" | "register" }) {
   return (
-    <button {...props} type="button" {...stylex.props(styles.record, styles.openRecord)}>
+    <button
+      {...props}
+      type="button"
+      {...stylex.props(
+        styles.record,
+        styles.openRecord,
+        presentation === "register" && styles.registerRecord,
+      )}
+    >
       {children}
     </button>
   );

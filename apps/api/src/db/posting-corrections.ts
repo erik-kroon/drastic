@@ -490,6 +490,14 @@ export function readImpactResources(
           join openerp.vouchers v on(v.book_id,v.event_id)=(e.book_id,e.id) where (r.book_id,r.schedule_id)=(i.book_id,i.schedule_id) and v.id=${voucherId}
           and exists(select from jsonb_array_elements(r.body->'occurrences') o where o->>'eventKey'=e.event_key)))
       union all
+      select jsonb_build_object('kind','schedule','id',i.schedule_id,'detail','A valuation owns this voucher or its carrying-basis history. Its asset owner must correct it.',
+        'path','/schedules/'||i.schedule_id,'blocks',true,'dependencyDigest',i.body->>'digest')
+      from openerp.subledger_valuations i where i.book_id=${bookId} and (i.voucher_id=${voucherId}
+        or exists(select from openerp.subledger_bases b where (b.book_id,b.schedule_id)=(i.book_id,i.schedule_id) and b.voucher_id=${voucherId})
+        or exists(select from openerp.subledger_schedule_revisions r join openerp.events e on e.book_id=r.book_id and e.evidence_id=r.evidence_id
+          join openerp.vouchers v on(v.book_id,v.event_id)=(e.book_id,e.id) where (r.book_id,r.schedule_id)=(i.book_id,i.schedule_id) and v.id=${voucherId}
+          and exists(select from jsonb_array_elements(r.body->'occurrences') o where o->>'eventKey'=e.event_key)))
+      union all
       select jsonb_build_object('kind','vat_control_reclassification','id',e.id,'detail','VAT reclassification owns this voucher or its source contribution. Generic correction is unsupported.',
         'path','/vat-returns/reclassifications/'||e.review_id,'blocks',true,'dependencyDigest',e.body->>'digest')
       from openerp.vat_control_reclassification_effects e where e.book_id=${bookId} and (e.voucher_id=${voucherId}

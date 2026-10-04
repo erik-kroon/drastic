@@ -7,6 +7,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
+import { payrollAccounts, seedPayroll } from "./seed-payroll.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
 
@@ -36,6 +37,16 @@ if (!/^(postgres|openerp_ops_source_[a-z0-9_]{1,40})$/.test(databaseName))
 const webPortText = process.env.PAPER_PORT ?? "3000";
 
 const webPort = Number(webPortText);
+
+const payrollHook = process.env.PAPER_PAYROLL;
+
+const onboardingHook = process.env.PAPER_ONBOARDING;
+
+if (onboardingHook !== undefined && onboardingHook !== "0" && onboardingHook !== "1")
+  throw new Error("PAPER_ONBOARDING must be 0 or 1");
+
+if (payrollHook !== undefined && payrollHook !== "0" && payrollHook !== "1")
+  throw new Error("PAPER_PAYROLL must be 0 or 1");
 
 if (
   !/^[0-9]+$/.test(webPortText) ||
@@ -196,6 +207,15 @@ try {
   fixture.entity.name = "Synthetic Paper visual fixture";
   fixture.actor.name = "Elin Sund";
   fixture.actor.tokenExpiresAt = new Date(Date.now() + 86_400_000).toISOString();
+
+  if (payrollHook === "1") fixture.accounts.push(...payrollAccounts);
+
+  if (onboardingHook === "1")
+    fixture.accounts.push(
+      { id: "account_receivable", code: "1510", name: "Synthetic customer receivables" },
+      { id: "account_payable", code: "2440", name: "Synthetic supplier payables" },
+      { id: "account_vat", code: "2650", name: "Synthetic VAT control" },
+    );
   const manifest = join(scratch, "book.json");
   await writeFile(manifest, JSON.stringify(fixture));
   await run("bun", ["scripts/provision.ts", manifest], {
@@ -228,6 +248,19 @@ try {
   });
 
   const listening = await worker.listen();
+
+  if (payrollHook === "1") {
+    const payroll = await seedPayroll({
+      apiUrl: listening.url.origin,
+      adminUrl,
+      accessToken,
+      fixture,
+      artifacts,
+    });
+
+    console.log(JSON.stringify(payroll));
+  }
+
   web = spawn(
     "bun",
     [

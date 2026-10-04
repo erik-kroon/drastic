@@ -1,7 +1,9 @@
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Collections from "@open-erp/contracts/collections";
 import * as Ar from "@open-erp/contracts/ar-legal-issue";
+import { checkSealedDispatchBasis } from "@open-erp/domain/collection-reminders";
 import * as Effect from "effect/Effect";
+import * as Result from "effect/Result";
 import { readInstant } from "../../db/commerce/access";
 import * as ReminderDb from "../../db/commerce/reminders";
 import * as DocumentDb from "../../db/commerce/documents";
@@ -99,7 +101,18 @@ function source(
     )
       return yield* failure("StaleDependency");
 
-    return { issue, invoice, destination, invoiceDigest: yield* digest(invoice.body) };
+    const disputes = yield* CollectionDb.readReminderDisputeBasis(tx, scope.bookId, invoice.id);
+
+    if (disputes.length > 1000) return yield* failure("UnsupportedProfile");
+
+    return {
+      issue,
+      invoice,
+      outstandingMinor: invoice.outstandingMinor,
+      destination,
+      invoiceDigest: yield* digest(invoice.body),
+      disputeBasisDigest: yield* digest(disputes),
+    };
   });
 }
 
@@ -175,6 +188,7 @@ export const prepareReminder = Effect.fn("commerce.reminders.prepare")(function*
         invoiceId: basis.invoice.id,
         invoiceNumber: number,
         invoiceDigest: basis.invoiceDigest,
+        disputeBasisDigest: basis.disputeBasisDigest,
         outstandingMinor,
         currency: "SEK",
         currencyScale: 2,
@@ -294,7 +308,8 @@ export const approveReminder = Effect.fn("commerce.reminders.approve")(function*
 
       if (
         current.invoiceDigest !== message.invoiceDigest ||
-        current.issue.digest !== message.issueDigest
+        current.issue.digest !== message.issueDigest ||
+        current.disputeBasisDigest !== message.disputeBasisDigest
       )
         return yield* failure("StaleDependency");
       const approvedAt = yield* retainedNow(tx);
@@ -520,19 +535,29 @@ function admitDispatch(token: string, payload: Payload) {
       }
 
       const checked = yield* source(tx, payload.scope, message.issueId, message.recipient).pipe(
-        Effect.map(
-          (current) =>
+        Effect.map((current) => ({
+          residualMinor: current.outstandingMinor,
+          sourceCurrent:
             current.invoiceDigest === message.invoiceDigest &&
-            current.issue.digest === message.issueDigest,
-        ),
+            current.issue.digest === message.issueDigest &&
+            current.disputeBasisDigest === message.disputeBasisDigest,
+        })),
         Effect.mapError(databaseFailure),
         Effect.catchIf(
           (error) => error.code === "StaleDependency" || error.code === "NotFound",
-          () => Effect.succeed(false),
+          () => Effect.succeed(null),
         ),
       );
 
-      if (!checked || approval.messageDigest !== message.digest || outbox.cancelVersion !== 0) {
+      const admission = checkSealedDispatchBasis({
+        messageDigest: message.digest,
+        approvedDigest: approval.messageDigest,
+        approvedResidualMinor: message.outstandingMinor,
+        current: checked,
+        cancelled: outbox.cancelVersion !== 0,
+      });
+
+      if (Result.isFailure(admission)) {
         yield* ReminderDb.advanceOutbox(
           tx,
           payload.scope.bookId,

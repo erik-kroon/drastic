@@ -156,6 +156,34 @@ export function readOpenReminderHold(transaction: Transaction, bookId: string, i
   );
 }
 
+export function readReminderDisputeBasis(
+  transaction: Transaction,
+  bookId: string,
+  invoiceId: string,
+) {
+  return transaction.execute<{
+    readonly kind: string;
+    readonly id: string;
+    readonly body: JsonObject;
+  }>(
+    sql`
+      select kind, id, body from (
+        select 'dispute' as kind, d.id, d.body
+        from openerp.collection_disputes d
+        where d.book_id = ${bookId} and d.invoice_id = ${invoiceId}
+        union all
+        select 'resolution' as kind, e.id, e.body
+        from openerp.collection_events e
+        where e.book_id = ${bookId} and e.invoice_id = ${invoiceId}
+          and e.kind = 'dispute_resolved'
+      ) basis
+      order by kind collate "C", id collate "C"
+      limit 1001
+    `,
+    "objects",
+  );
+}
+
 export function insertDispute(
   transaction: Transaction,
   row: {

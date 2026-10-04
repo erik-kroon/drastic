@@ -1,4 +1,5 @@
 import * as Schema from "effect/Schema";
+import { PayrollInputSnapshot } from "./payroll-inputs";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 import * as Accounting from "./accounting";
 import { accountingErrors } from "./accounting-errors";
@@ -332,6 +333,7 @@ export const WorkInput = Schema.Struct({
 });
 
 export const PreparePayRun = Schema.Struct({
+  inputIds: Schema.optional(Schema.Array(Accounting.Identifier).check(Schema.isMaxLength(100))),
   recordClass: Schema.Literals(["actual_company", "synthetic"]),
   employment: EmploymentForCalculation,
   work: WorkInput,
@@ -375,6 +377,7 @@ export const PayrollBenefitBasis = Schema.Struct({
 // The exact retained basis. A later employee change does not rewrite it; a new
 // relevant dated input makes a new execution require a new calculation.
 export const PayrollCalculationBasis = Schema.Struct({
+  payrollInputs: Schema.optional(Schema.Array(PayrollInputSnapshot).check(Schema.isMaxLength(100))),
   employeeId: Accounting.Identifier,
   employmentRevisionId: Accounting.Identifier,
   workRevisionId: Accounting.Identifier,
@@ -435,23 +438,30 @@ export const PayrollFrozenCalculation = Schema.Struct({
   roundingResiduals: Schema.Array(FormulaStep).check(Schema.isMinLength(1)),
 });
 
-export const PayrollCalculationInputRef = Schema.Struct({
-  kind: Schema.Literals([
-    "employment_revision",
-    "work_revision",
-    "opening_revision",
-    "prior_frozen_calculation",
-    "rule_release",
-    "company_activation",
-    "company_fact_revision",
-    "company_fact_review",
-    "company_role_binding",
-    "evidence",
-  ]),
-  resourceId: Accounting.Identifier,
-  version: Accounting.Identifier,
-  reason: Accounting.Description,
-});
+export const PayrollCalculationInputRef = Schema.Union([
+  Schema.Struct({
+    kind: Schema.Literal("rule_release"),
+    resourceId: Accounting.Identifier,
+    version: Accounting.Digest,
+    reason: Accounting.Description,
+  }),
+  Schema.Struct({
+    kind: Schema.Literals([
+      "employment_revision",
+      "work_revision",
+      "opening_revision",
+      "prior_frozen_calculation",
+      "company_activation",
+      "company_fact_revision",
+      "company_fact_review",
+      "company_role_binding",
+      "evidence",
+    ]),
+    resourceId: Accounting.Identifier,
+    version: Accounting.Identifier,
+    reason: Accounting.Description,
+  }),
+]);
 
 // A frozen calculation has no financial effect. It posts no journal, pays no
 // salary, makes no declaration and reserves no monthly contribution capacity.

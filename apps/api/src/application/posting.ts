@@ -4,7 +4,15 @@ import * as OnboardingLifecycleDb from "../db/onboarding-lifecycle";
 import * as SupplierSettlementDb from "../db/purchases/supplier-settlements";
 import { equalJson } from "@open-erp/domain/canonicalization";
 import { swedishBusinessDate } from "@open-erp/domain/values";
-import { admitPosting, type PostingOwner } from "./posting-admission";
+import {
+  admitPosting,
+  admitPayrollRun,
+  admitTreasuryLoan,
+  admitPayrollInput,
+  admitForeignCash,
+  admitScheduleEvent,
+  type PostingOwner,
+} from "./posting-admission";
 import { recordHistoricalOpening, readReservedCommand } from "../db/posting-admission";
 import {
   applyOriginalAssignmentsInTransaction,
@@ -134,6 +142,41 @@ function readPlan(transaction: Transaction, scope: Scope, changeSetId: string) {
     }),
   );
 }
+
+const admitRetainedPlanOwnership = Effect.fn("posting.admitRetainedPlanOwnership")(function* (
+  transaction: Transaction,
+  command: { scope: Scope; changeSetId: string; owner?: PostingOwner },
+) {
+  const plan = yield* readPlan(transaction, command.scope, command.changeSetId);
+
+  for (const group of plan.groups) {
+    for (const action of group.actions) {
+      yield* admitScheduleEvent(transaction, command.scope, action.eventId);
+      yield* admitPayrollInput(
+        transaction,
+        command.scope,
+        command.changeSetId,
+        command.owner,
+        action,
+      );
+      yield* admitForeignCash(transaction, command.scope, command.owner, action);
+      yield* admitTreasuryLoan(
+        transaction,
+        command.scope,
+        command.changeSetId,
+        command.owner,
+        action,
+      );
+      yield* admitPayrollRun(
+        transaction,
+        command.scope,
+        command.changeSetId,
+        command.owner,
+        action,
+      );
+    }
+  }
+});
 
 function lockPlan(transaction: Transaction, scope: Scope, changeSetId: string) {
   return Db.lockPlan(transaction, scope.bookId, changeSetId).pipe(
@@ -967,6 +1010,8 @@ export const approveChangeInTransaction = Effect.fn("posting.approveChangeInTran
     },
   ) {
     return yield* Effect.gen(function* () {
+      yield* admitRetainedPlanOwnership(transaction, command);
+
       yield* readSupplierPostingReservation(transaction, command);
 
       const request = yield* replay(
@@ -1180,6 +1225,8 @@ export const executeChangeInTransaction = Effect.fn("posting.execute")(function*
   },
 ) {
   return yield* Effect.gen(function* () {
+    yield* admitRetainedPlanOwnership(transaction, command);
+
     const settlement = yield* readSupplierPostingReservation(transaction, command);
 
     const request = yield* replay(

@@ -3,6 +3,7 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as Controls from "@open-erp/contracts/subledger-controls";
 import * as Subledgers from "@open-erp/contracts/subledgers";
 import * as Effect from "effect/Effect";
+import * as Match from "effect/Match";
 import * as Schema from "effect/Schema";
 
 import * as Db from "../../db/posting";
@@ -469,10 +470,16 @@ function scheduleBasisEffects(asOfDate: string, schedule: CapturedSchedule) {
 
   for (const line of lines) {
     if (!isJsonObject(line)) continue;
-    const ordinal = textField(line, "ordinal");
+    const ordinal = line.ordinal;
     const accountId = textField(line, "accountId");
 
-    if (ordinal === undefined || !/^[1-9][0-9]{0,4}$/.test(ordinal) || accountId === undefined) {
+    if (
+      typeof ordinal !== "number" ||
+      !Number.isSafeInteger(ordinal) ||
+      ordinal < 1 ||
+      ordinal > 99999 ||
+      accountId === undefined
+    ) {
       continue;
     }
 
@@ -480,7 +487,7 @@ function scheduleBasisEffects(asOfDate: string, schedule: CapturedSchedule) {
       scheduleId: schedule.revision.scheduleId,
       kind: "basis",
       voucherId: schedule.basisVoucherId,
-      ordinal: Number(ordinal),
+      ordinal,
       accountId,
       expectedMinor:
         minor(textField(line, "debitMinor") ?? "0") - minor(textField(line, "creditMinor") ?? "0"),
@@ -550,9 +557,13 @@ function impairmentEffects(
       if (receipt === undefined) continue;
       effects.push({
         scheduleId: impairment.scheduleId,
-        kind: "impairment",
+        kind: Match.value(textField(impairment.body, "kind")).pipe(
+          Match.when("economic_reversal", () => "economic_reversal"),
+          Match.when("error_correction", () => "valuation_correction"),
+          Match.orElse(() => "impairment"),
+        ),
         voucherId: receipt.voucherId,
-        ordinal: 2,
+        ordinal: textField(impairment.body, "kind") === undefined ? 2 : 1,
         accountId: impairment.accumulatedImpairmentAccountId,
         expectedMinor: -minor(impairment.impairmentMinor),
       });

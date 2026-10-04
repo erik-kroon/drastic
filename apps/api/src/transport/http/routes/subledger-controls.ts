@@ -4,12 +4,47 @@ import * as Effect from "effect/Effect";
 import { HttpApiBuilder } from "effect/http-api";
 import { authenticate } from "../auth";
 import * as Controls from "../../../application/subledger/controls";
+import * as Valuations from "../../../application/subledger/valuations";
 
 export const SubledgerControlsHandlers = HttpApiBuilder.group(
   Api,
   "subledgerControls",
   (handlers) =>
     handlers
+      .handle("prepareAssetValuation", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Valuations.prepare(token, {
+            scope: scopeFromPath(params),
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
+        ),
+      )
+      .handle("approveAssetValuation", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Valuations.approve(token, {
+            scope: scopeFromPath(params),
+            id: params.id,
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
+        ),
+      )
+      .handle("executeAssetValuation", ({ params, headers, payload }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Valuations.execute(token, {
+            scope: scopeFromPath(params),
+            id: params.id,
+            idempotencyKey: headers["idempotency-key"],
+            input: payload,
+          }),
+        ),
+      )
+      .handle("getAssetValuation", ({ params }) =>
+        Effect.flatMap(authenticate, (token) =>
+          Valuations.get(token, { scope: scopeFromPath(params), id: params.id }),
+        ),
+      )
       .handle("prepareAssetImpairment", ({ params, headers, payload }) =>
         Effect.flatMap(authenticate, (token) =>
           Controls.prepareImpairment(token, {
