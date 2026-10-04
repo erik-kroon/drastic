@@ -1438,3 +1438,188 @@ async function verifyDeltaEffects(
   expect(onboarding.projection.counts.importedVouchers).toBe(2);
   await saveSanitizedJourney("onboarding-delta-effects", { delta, effects, completed, next });
 }
+
+test("opening invoices derive from retained rows and reconcile against separate opening controls", async () => {
+  const book = await fixture([{ id: "account_ar", code: "1510", name: "Synthetic receivables" }]);
+  await post(book, "/onboarding", { path: "demo" }, Onboarding.OnboardingCase);
+  await post(
+    book,
+    "/onboarding/revisions",
+    {
+      expectedRevision: 1,
+      configuration: {
+        migrationDepth: "current_fiscal_year",
+        incumbentSystem: "Independent synthetic predecessor",
+        dates: {
+          historyStartsOn: "2026-01-01",
+          historyEndsOn: "2026-09-30",
+          detailStartsOn: "2026-01-01",
+          openingOn: "2026-08-31",
+          acceptanceStartsOn: "2026-09-01",
+          acceptanceEndsOn: "2026-09-30",
+          candidateLiveOn: "2026-10-01",
+          provingPeriodEndsOn: "2026-10-31",
+        },
+      },
+    },
+    Onboarding.OnboardingCase,
+  );
+
+  async function retain(content: string, filename: string, sourceSystem: string) {
+    return post(
+      book,
+      "/source-occurrences",
+      {
+        sourceSystem,
+        sourceAccountId: "independent_book",
+        occurrenceKey: key(),
+        sourceRevision: key(),
+        filename,
+        mediaType: filename.endsWith(".csv") ? "text/csv" : "application/octet-stream",
+        contentBase64: Buffer.from(content).toString("base64"),
+      },
+      Intake.SourceOccurrence,
+    );
+  }
+
+  async function balance(asOf: string, amount: string) {
+    const original = await retain(
+      `kind,as_of,currency,source_identity,account_code,amount_minor\ntrial_balance,${asOf},SEK,ar,1510,${amount}\ntrial_balance,${asOf},SEK,clearing,2999,${-BigInt(amount)}\n`,
+      "independent-balance.csv",
+      "independent_trial_balance",
+    );
+
+    return post(
+      book,
+      "/onboarding/controls",
+      {
+        occurrenceId: original.id,
+        kind: "trial_balance",
+        provenance: "Separate independent trial balance",
+      },
+      Onboarding.OnboardingControl,
+    );
+  }
+
+  const initial = await balance("2025-12-31", "12500");
+  const closing = await balance("2026-09-30", "12500");
+  const august = await balance("2026-08-31", "12600");
+
+  const header =
+    "kind,as_of,currency,source_identity,account_code,original_minor,outstanding_minor,state\n";
+
+  async function invoices(amount: string, currency = "SEK", asOf = "2026-08-31") {
+    return retain(
+      `${header}sales_open_items,${asOf},${currency},F-001,1510,${amount},${amount},unpaid\n`,
+      "opening-invoices.csv",
+      "independent_invoice_export",
+    );
+  }
+
+  const unsupported = await invoices("12600", "XBT");
+  await failure(
+    await request(book, "/onboarding/controls", {
+      method: "POST",
+      body: JSON.stringify({
+        occurrenceId: unsupported.id,
+        kind: "sales_open_items",
+        provenance: "Unsupported currency",
+      }),
+    }),
+    422,
+    "UnsupportedProfile",
+  );
+  const malformed = await invoices("12600", "SEK", "2026-02-30");
+  await failure(
+    await request(book, "/onboarding/controls", {
+      method: "POST",
+      body: JSON.stringify({
+        occurrenceId: malformed.id,
+        kind: "sales_open_items",
+        provenance: "Impossible date",
+      }),
+    }),
+    422,
+    "InvalidJournal",
+  );
+  const mismatch = await invoices("12500");
+  await post(
+    book,
+    "/onboarding/controls",
+    {
+      occurrenceId: mismatch.id,
+      kind: "sales_open_items",
+      provenance: "Retained unmatched invoice detail",
+    },
+    Onboarding.OnboardingControl,
+  );
+
+  const source = await retain(
+    '#FLAGGA 0\n#FORMAT UTF8\n#SIETYP 4\n#RAR 0 20260101 20261231\n#KONTO 1510 "Receivables"\n#KONTO 2999 "Clearing"\n#IB 0 1510 125.00\n#UB 0 1510 125.00\n#IB 0 2999 -125.00\n#UB 0 2999 -125.00\n#VER A 1 20260831 "Synthetic movement"\n{\n#TRANS 1510 {} 1.00\n#TRANS 2999 {} -1.00\n}\n#VER A 2 20260929 "Synthetic opposite movement"\n{\n#TRANS 1510 {} -1.00\n#TRANS 2999 {} 1.00\n}\n',
+    "initial.sie",
+    "synthetic_incumbent",
+  );
+
+  await post(
+    book,
+    "/onboarding/sources",
+    { occurrenceId: source.id, category: "previous_books" },
+    Onboarding.OnboardingSource,
+  );
+
+  const preview = await post(
+    book,
+    `/source-occurrences/${source.id}/sie-previews`,
+    { encoding: "utf-8" },
+    Sie.SiePreview,
+  );
+
+  const input = {
+    expectedRevision: 2,
+    previewId: preview.id,
+    expectedPreviewDigest: preview.digest,
+    openingControlId: initial.id,
+    closingControlId: closing.id,
+    mappings: [
+      { sourceAccount: "1510", accountId: "account_ar" },
+      { sourceAccount: "2999", accountId: "account_clearing" },
+    ],
+    rationale: "Retained opening invoices and separate trial balance",
+  };
+
+  await failure(
+    await request(book, "/onboarding/import-plans", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+    422,
+    "InvalidJournal",
+  );
+  const original = await invoices("12600");
+
+  const detail = await post(
+    book,
+    "/onboarding/controls",
+    {
+      occurrenceId: original.id,
+      kind: "sales_open_items",
+      provenance: "Current retained invoice detail",
+    },
+    Onboarding.OnboardingControl,
+  );
+
+  expect(detail.openItemDetails?.[0]?.outstandingMinor).toBe("12600");
+  const plan = await post(book, "/onboarding/import-plans", input, Sie.SiePlan);
+  expect(plan.input.openItems).toHaveLength(1);
+  expect(plan.input.openItems[0]?.sourceIdentity).toBe("F-001");
+  expect(plan.input.openItems[0]?.outstandingMinor).toBe("12600");
+  expect(plan.input.openItems[0]?.basis).toContain(original.sha256);
+  expect(plan.input.openItemControls[0]?.basis).toContain(august.sourceSha256);
+  expect(plan.input.openItemControls[0]?.independentOutstandingMinor).toBe("12600");
+  await saveSanitizedJourney("onboarding-opening-invoices", {
+    source: original.id,
+    invoiceControl: detail.id,
+    independentControl: august.id,
+    plan,
+  });
+});

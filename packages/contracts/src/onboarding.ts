@@ -306,6 +306,9 @@ export const OnboardingControl = Schema.Struct({
   sourceAccountId: Schema.String,
   kind: OnboardingControlKind,
   originalCoverage: Schema.optionalKey(OnboardingOriginalCoverage),
+  openItemDetails: Schema.optionalKey(
+    Schema.Array(Sie.HistoricalOpenItem).check(Schema.isMinLength(1), Schema.isMaxLength(500)),
+  ),
   payrollHandoff: Schema.optionalKey(OnboardingPayrollHandoff),
   parserVersion: Schema.Literal("onboarding_csv_v1"),
   asOf: A.AccountingDate,

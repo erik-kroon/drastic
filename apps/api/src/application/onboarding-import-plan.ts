@@ -1,3 +1,4 @@
+import { openingInvoiceDetails } from "./onboarding-open-items";
 import * as Mapping from "@open-erp/contracts/onboarding-mappings";
 import * as MappingDb from "../db/onboarding-mappings";
 import * as Ledger from "../db/posting";
@@ -245,8 +246,7 @@ export const prepareOnboardingImportPlan = Effect.fn("onboarding.import.prepareP
             digest: preview.digest,
             mappings: input.mappings,
             openingControls: yield* independentControls(preview, opening, closing, input.mappings),
-            openItems: [],
-            openItemControls: [],
+            ...(yield* openingInvoiceDetails(tx, scope, dates.openingOn, input.mappings)),
             rationale: input.rationale,
             openingPolicy: "unreconstructable_detail",
             sourceKind: original.sourceSystem.startsWith("synthetic_")

@@ -1,3 +1,4 @@
+import { parseOpeningInvoiceRows } from "./onboarding-open-items";
 import { qualifyPayrollHandoff } from "./onboarding-payroll-handoff";
 import { qualifyOriginalIndex } from "./onboarding-originals";
 import * as Effect from "effect/Effect";
@@ -49,27 +50,47 @@ export const qualifyControlInTransaction = Effect.fn("onboarding.qualifyControl"
   const header = sourceLines[0];
   const lines = sourceLines.slice(1);
 
+  const detailed =
+    header ===
+    "kind,as_of,currency,source_identity,account_code,original_minor,outstanding_minor,state";
+
+  const invoiceRows = detailed
+    ? yield* parseOpeningInvoiceRows(
+        lines,
+        `${original.occurrence.id}, ${original.occurrence.sha256}`,
+      )
+    : undefined;
+
   if (
-    header !== "kind,as_of,currency,source_identity,account_code,amount_minor" ||
+    (!detailed && header !== "kind,as_of,currency,source_identity,account_code,amount_minor") ||
     lines.length === 0 ||
     lines.length > 1000
   )
     return yield* failure("UnsupportedProfile");
 
-  const rows = yield* Effect.forEach(lines, (line) => {
-    const fields = line.split(",");
+  const rows =
+    invoiceRows?.map((row) => ({
+      kind: row.kind,
+      asOf: row.item.asOf,
+      currency: row.item.currency,
+      sourceIdentity: row.item.sourceIdentity,
+      accountCode: row.item.sourceAccount,
+      amountMinor: row.item.outstandingMinor,
+    })) ??
+    (yield* Effect.forEach(lines, (line) => {
+      const fields = line.split(",");
 
-    return fields.length !== 6
-      ? failure("InvalidJournal")
-      : Schema.decodeUnknownEffect(Row)({
-          kind: fields[0],
-          asOf: fields[1],
-          currency: fields[2],
-          sourceIdentity: fields[3],
-          accountCode: fields[4],
-          amountMinor: fields[5],
-        }).pipe(Effect.mapError(() => failure("InvalidJournal")));
-  });
+      return fields.length !== 6
+        ? failure("InvalidJournal")
+        : Schema.decodeUnknownEffect(Row)({
+            kind: fields[0],
+            asOf: fields[1],
+            currency: fields[2],
+            sourceIdentity: fields[3],
+            accountCode: fields[4],
+            amountMinor: fields[5],
+          }).pipe(Effect.mapError(() => failure("InvalidJournal")));
+    }));
 
   const first = rows[0];
 
@@ -103,7 +124,7 @@ export const qualifyControlInTransaction = Effect.fn("onboarding.qualifyControl"
     });
   }
 
-  return yield* decode(O.OnboardingControl, {
+  const result = yield* decode(O.OnboardingControl, {
     id: newId("onboardingcontrol"),
     scope,
     occurrenceId: original.occurrence.id,
@@ -119,6 +140,8 @@ export const qualifyControlInTransaction = Effect.fn("onboarding.qualifyControl"
     qualifiedBy: actorId,
     qualifiedAt: yield* isoNow(tx),
   });
+
+  return invoiceRows ? { ...result, openItemDetails: invoiceRows.map((row) => row.item) } : result;
 });
 
 export const qualifyAttachedControlInTransaction = Effect.fn("onboarding.qualifyAttachedControl")(
@@ -139,7 +162,11 @@ export const qualifyAttachedControlInTransaction = Effect.fn("onboarding.qualify
       kind = "historical_originals";
     else if (header === "source_system,history_starts_on,retained_through,currency")
       kind = "historical_payroll_handoff";
-    else if (header === "kind,as_of,currency,source_identity,account_code,amount_minor") {
+    else if (
+      header === "kind,as_of,currency,source_identity,account_code,amount_minor" ||
+      header ===
+        "kind,as_of,currency,source_identity,account_code,original_minor,outstanding_minor,state"
+    ) {
       kind = yield* Schema.decodeUnknownEffect(O.OnboardingControlKind)(
         text.split("\n")[1]?.split(",")[0],
       ).pipe(Effect.mapError(() => failure("InvalidJournal")));
