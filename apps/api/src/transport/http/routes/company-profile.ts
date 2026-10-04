@@ -7,6 +7,11 @@ import { scopeFromPath } from "../scope";
 
 export const CompanyProfileHandlers = HttpApiBuilder.group(Api, "companyProfile", (handlers) =>
   handlers
+    .handle("listCompanyFacts", ({ params, query }) =>
+      Effect.flatMap(authenticate, (token) =>
+        CompanyProfiles.listCompanyFacts(token, { scope: scopeFromPath(params), ...query }),
+      ),
+    )
     .handle("getCompanyProfile", ({ params, query }) =>
       Effect.flatMap(authenticate, (token) =>
         CompanyProfiles.getCompanyProfile(token, {

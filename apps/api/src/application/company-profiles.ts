@@ -195,6 +195,40 @@ export const getCompanyProfile = Effect.fn("companyProfiles.get")(function* (
   });
 });
 
+export const listCompanyFacts = Effect.fn("companyProfiles.listFacts")(function* (
+  token: string,
+  command: { scope: Scope; after?: string },
+) {
+  return yield* withBook(token, command.scope, false, function* (transaction) {
+    yield* requireProfileTables(transaction, false);
+    yield* Ledger.lockBookForShare(transaction, command.scope);
+    const rows = yield* Db.readFactPage(transaction, command.scope.entityId, command.after ?? "");
+    const visible = rows.slice(0, 50);
+
+    const reviews = yield* Db.readFactReviews(
+      transaction,
+      command.scope.entityId,
+      visible.map((row) => row.id),
+    );
+
+    const items: Array<(typeof Profiles.CompanyFactPage.Type.items)[number]> = [];
+
+    for (const row of visible) {
+      const review = reviews.find((entry) => entry.factRevisionId === row.id);
+      items.push({
+        revision: yield* decode(Profiles.FactRevision, row.body),
+        review: review ? yield* decode(Profiles.FactReview, review.body) : null,
+      });
+    }
+
+    return {
+      scope: command.scope,
+      items,
+      nextCursor: rows.length > 50 ? (visible.at(-1)?.id ?? null) : null,
+    };
+  });
+});
+
 export const recordCompanyFact = Effect.fn("companyProfiles.recordFact")(function* (
   token: string,
   command: {

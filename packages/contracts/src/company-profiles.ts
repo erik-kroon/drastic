@@ -31,6 +31,11 @@ export const FactKind = Schema.Literals([
   "vat_period",
   "fiscal_year",
   "payroll_registration",
+  "reporting_framework",
+  "base_currency",
+  "payroll_applicability",
+  "asset_applicability",
+  "foreign_currency_applicability",
 ]);
 
 export const RecordClass = Schema.Literals(["actual_company", "synthetic"]);
@@ -111,6 +116,31 @@ export const RecordFactRevision = Schema.Union([
   Schema.Struct({
     factKind: Schema.Literal("payroll_registration"),
     value: factValue(Registration),
+    ...factFields,
+  }),
+  Schema.Struct({
+    factKind: Schema.Literal("reporting_framework"),
+    value: factValue(Schema.Literals(["K2", "K3"])),
+    ...factFields,
+  }),
+  Schema.Struct({
+    factKind: Schema.Literal("base_currency"),
+    value: factValue(Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/))),
+    ...factFields,
+  }),
+  Schema.Struct({
+    factKind: Schema.Literal("payroll_applicability"),
+    value: factValue(Schema.Boolean),
+    ...factFields,
+  }),
+  Schema.Struct({
+    factKind: Schema.Literal("asset_applicability"),
+    value: factValue(Schema.Boolean),
+    ...factFields,
+  }),
+  Schema.Struct({
+    factKind: Schema.Literal("foreign_currency_applicability"),
+    value: factValue(Schema.Boolean),
     ...factFields,
   }),
 ]);
@@ -222,6 +252,61 @@ export const FactRevision = Schema.Union([
     digest: Accounting.Digest,
     receipt: CommandReceipt,
   }),
+  Schema.Struct({
+    id: Accounting.Identifier,
+    entityId: Accounting.Identifier,
+    factKind: Schema.Literal("reporting_framework"),
+    value: factValue(Schema.Literals(["K2", "K3"])),
+    ...factFields,
+    recordedBy: Accounting.Identifier,
+    recordedAt: Schema.String,
+    digest: Accounting.Digest,
+    receipt: CommandReceipt,
+  }),
+  Schema.Struct({
+    id: Accounting.Identifier,
+    entityId: Accounting.Identifier,
+    factKind: Schema.Literal("base_currency"),
+    value: factValue(Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/))),
+    ...factFields,
+    recordedBy: Accounting.Identifier,
+    recordedAt: Schema.String,
+    digest: Accounting.Digest,
+    receipt: CommandReceipt,
+  }),
+  Schema.Struct({
+    id: Accounting.Identifier,
+    entityId: Accounting.Identifier,
+    factKind: Schema.Literal("payroll_applicability"),
+    value: factValue(Schema.Boolean),
+    ...factFields,
+    recordedBy: Accounting.Identifier,
+    recordedAt: Schema.String,
+    digest: Accounting.Digest,
+    receipt: CommandReceipt,
+  }),
+  Schema.Struct({
+    id: Accounting.Identifier,
+    entityId: Accounting.Identifier,
+    factKind: Schema.Literal("asset_applicability"),
+    value: factValue(Schema.Boolean),
+    ...factFields,
+    recordedBy: Accounting.Identifier,
+    recordedAt: Schema.String,
+    digest: Accounting.Digest,
+    receipt: CommandReceipt,
+  }),
+  Schema.Struct({
+    id: Accounting.Identifier,
+    entityId: Accounting.Identifier,
+    factKind: Schema.Literal("foreign_currency_applicability"),
+    value: factValue(Schema.Boolean),
+    ...factFields,
+    recordedBy: Accounting.Identifier,
+    recordedAt: Schema.String,
+    digest: Accounting.Digest,
+    receipt: CommandReceipt,
+  }),
 ]);
 
 export const FactReview = Schema.Struct({
@@ -234,6 +319,12 @@ export const FactReview = Schema.Struct({
   reviewedAt: Schema.String,
   digest: Accounting.Digest,
   receipt: CommandReceipt,
+});
+
+export const CompanyFactPage = Schema.Struct({
+  scope: Accounting.Scope,
+  items: Schema.Array(Schema.Struct({ revision: FactRevision, review: Schema.NullOr(FactReview) })),
+  nextCursor: Schema.NullOr(Accounting.Identifier),
 });
 
 export const RoleBinding = Schema.Struct({
@@ -423,6 +514,10 @@ export const CompanyActivationImpact = Schema.Struct({
 // A release is reviewed executable data for one family, never a prompt or arbitrary
 // code. An empty applicability list constrains nothing.
 export const ReleaseApplicability = Schema.Struct({
+  reportingFrameworks: Schema.optional(Schema.Array(Schema.Literals(["K2", "K3"]))),
+  baseCurrencies: Schema.optional(
+    Schema.Array(Schema.String.check(Schema.isPattern(/^[A-Z]{3}$/))),
+  ),
   legalForms: Schema.Array(LegalForm),
   accountingMethods: Schema.Array(AccountingMethod),
   vatRegistrations: Schema.Array(Registration),
@@ -584,6 +679,12 @@ const planMutation = {
 export const CompanyProfileApi = HttpApiGroup.make("companyProfile")
   .annotate(HttpApi.PayloadParseOptions, { onExcessProperty: "error" })
   .add(
+    HttpApiEndpoint.get("listCompanyFacts", `${bookPath}/company-facts`, {
+      params: Accounting.Scope,
+      query: Schema.Struct({ after: Schema.optional(Accounting.Identifier) }),
+      success: CompanyFactPage,
+      error: accountingErrors,
+    }),
     HttpApiEndpoint.get("getCompanyProfile", `${bookPath}/company-profile`, {
       params: Accounting.Scope,
       query: Schema.Struct({ recordClass: RecordClass, ...ProfileDates.fields }),

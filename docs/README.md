@@ -20,6 +20,8 @@ The [daily-work product implementation](plans/18-daily-work-product-implementati
 
 ## Reading order
 
+[Onboarding backend](operations/onboarding-backend.md) describes retained setup cases, company-fact provenance, source/import progress, frontend contracts and the acceptance/cutover gates still required.
+
 [Private company-source inventory](operations/private-company-source.md) describes the configurable retained-source root, private receipts and the Drastic September acceptance boundary.
 
 The [open-accounting decision](adr/0005-open-accounting-and-managed-services.md), [application-owned replacement](adr/0010-application-owned-accounting-replacement.md), [architecture follow-up](architecture-followup.md), [licensing policy](../LICENSING.md) and [self-host setup](../infra/self-host/README.md) describe the open-source distribution and the latest design reconciliation.

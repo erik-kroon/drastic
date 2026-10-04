@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { and, eq, gt, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import {
@@ -91,6 +91,15 @@ export type ActivationSelectionRow = {
 const noFactReviews: ReadonlyArray<FactReviewRow> = [];
 
 const noSelections: ReadonlyArray<ActivationSelectionRow> = [];
+
+export function readFactPage(transaction: Transaction, entityId: string, after: string) {
+  return transaction
+    .select({ id: companyFactRevisions.id, body: companyFactRevisions.body })
+    .from(companyFactRevisions)
+    .where(and(eq(companyFactRevisions.entityId, entityId), gt(companyFactRevisions.id, after)))
+    .orderBy(companyFactRevisions.id)
+    .limit(51);
+}
 
 // One set-based load over the widest interval the selection can ask about, so a
 // per-kind or per-date lookup never runs a separate statement.

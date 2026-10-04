@@ -68,6 +68,41 @@ const styles = stylex.create({
   },
   reviewAction: { width: "100%", height: tokens.controlHeight },
   source: { marginBlockStart: tokens.space3_5 },
+  reviewFooter: { marginBlockStart: "auto", paddingBlockStart: tokens.space4 },
+  previewActions: {
+    display: "flex",
+    flexDirection: "column",
+    gap: tokens.space2_5,
+    marginBlockStart: "auto",
+    paddingBlockStart: tokens.space4,
+  },
+  previewPrimary: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: tokens.controlHeight,
+    backgroundColor: tokens.primary,
+    color: tokens.primaryForeground,
+    borderRadius: tokens.radiusControl,
+    fontSize: tokens.fontSizeControl,
+    fontWeight: tokens.fontWeightMedium,
+    lineHeight: tokens.lineHeight16Px,
+    textDecoration: "none",
+    ":hover": { backgroundColor: tokens.primaryHoverBackground },
+    ":focus-visible": { outline: "none", boxShadow: tokens.focusRing },
+  },
+  previewSecondary: {
+    alignSelf: "flex-end",
+    display: "flex",
+    alignItems: "center",
+    minHeight: tokens.controlHeightSm,
+    color: tokens.primary,
+    fontSize: tokens.fontSizeControl,
+    lineHeight: tokens.lineHeight16Px,
+    textDecoration: "none",
+    ":hover": { textDecoration: "underline" },
+    ":focus-visible": { outline: "none", boxShadow: tokens.focusRing },
+  },
 });
 
 export function WorkFilter({ label, children }: { label: string; children: ReactNode }) {
@@ -129,4 +164,31 @@ export function WorkReviewAction(props: Omit<ComponentProps<typeof Button>, "sty
 
 export function WorkSource({ children }: { children: ReactNode }) {
   return <div {...stylex.props(styles.source)}>{children}</div>;
+}
+
+export function WorkReviewFooter({ children }: { children: ReactNode }) {
+  return <div {...stylex.props(styles.reviewFooter)}>{children}</div>;
+}
+
+export function WorkPreviewActions({
+  href,
+  label,
+  secondaryHref,
+  secondaryLabel,
+}: {
+  href: string;
+  label: string;
+  secondaryHref: string;
+  secondaryLabel: string;
+}) {
+  return (
+    <div {...stylex.props(styles.previewActions)}>
+      <Link href={href} {...stylex.props(styles.previewPrimary)}>
+        {label}
+      </Link>
+      <Link href={secondaryHref} {...stylex.props(styles.previewSecondary)}>
+        {secondaryLabel}
+      </Link>
+    </div>
+  );
 }

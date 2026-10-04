@@ -27,6 +27,18 @@ export const Annotation = Schema.Struct({
 
 export const DirectoryEntry = Schema.Struct({
   party: Commerce.CounterpartyRevision,
+  financial: Schema.optional(
+    Schema.Array(
+      Schema.Struct({
+        currency: Schema.String,
+        currencyScale: Schema.Int,
+        year: Schema.String,
+        outstandingMinor: Schema.NullOr(Accounting.AggregateMinorUnits),
+        invoicedYearMinor: Accounting.AggregateMinorUnits,
+        overdue: Schema.Boolean,
+      }),
+    ),
+  ),
   annotations: Schema.Array(
     Schema.Struct({
       id: Accounting.Identifier,

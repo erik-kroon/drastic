@@ -1,6 +1,7 @@
 import * as Crm from "@open-erp/contracts/crm-master";
 import * as Effect from "effect/Effect";
 import * as CrmDb from "../../db/commerce/crm-master";
+import { customerDirectoryFinancials } from "./customer-directory";
 import { newId, replay, saveCommand } from "../posting";
 import { lockBookForUpdate } from "../../db/posting";
 import { failure } from "../failures";
@@ -58,8 +59,17 @@ export const readDirectory = Effect.fn("commerce.crm.readDirectory")(function* (
 
     const last = rows[rows.length - 1];
 
+    const financials = yield* customerDirectoryFinancials(
+      transaction,
+      input.scope.bookId,
+      rows.map((row) => row.id),
+    );
+
     return yield* decode(DirectoryPageSchema, {
-      items: rows.map(directoryEntry),
+      items: rows.map((row) => ({
+        ...directoryEntry(row),
+        financial: financials.get(row.id) ?? [],
+      })),
       next: last?.hasMore === true ? last.id : null,
     });
   });

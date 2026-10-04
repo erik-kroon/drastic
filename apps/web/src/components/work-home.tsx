@@ -10,6 +10,7 @@ import {
   WorkSort,
   WorkHeaderAction,
   WorkSource,
+  WorkPreviewActions,
 } from "@open-erp/ui/components/work-controls";
 import { PageAction, PageCaption, PageEmpty } from "@open-erp/ui/components/accounting-page";
 import {
@@ -18,7 +19,6 @@ import {
   RegisterRow,
   RegisterTabs,
   RegisterDetailHeading,
-  RegisterDetailActions,
   RegisterDetailLines,
   type RegisterStatus,
 } from "@open-erp/ui/components/register-workspace";
@@ -135,12 +135,12 @@ export function WorkHome() {
               </WorkSource>
             ) : null}
             <WorkProposalPreview work={work} page={page} selected={selected} />
-            <RegisterDetailActions>
-              <PageAction href={selected.href}>{selected.action}</PageAction>
-              <PageAction quiet href={workQueueHref(base, filters)}>
-                {sv ? "Visa i arbetslistan" : "Show in work queue"}
-              </PageAction>
-            </RegisterDetailActions>
+            <WorkPreviewActions
+              href={selected.href}
+              label={selected.action}
+              secondaryHref={workQueueHref(base, filters)}
+              secondaryLabel={sv ? "Visa i arbetslistan" : "Show in work queue"}
+            />
           </>
         ) : (
           <PageCaption>
@@ -331,7 +331,7 @@ function homeRows(
   kind: typeof Workspace.WorkKind.Type | "all",
   filters: WorkReturn,
 ) {
-  const { locale, base } = work;
+  const { book, locale, base } = work;
   const sv = locale === "sv";
   const copy = attentionCopy(locale);
 

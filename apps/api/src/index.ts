@@ -14,6 +14,7 @@ import { DimensionHandlers } from "./transport/http/routes/dimensions";
 import { SupplierInboxHandlers } from "./transport/http/routes/supplier-inbox";
 import { SupplierExtractionHandlers } from "./transport/http/routes/supplier-extraction";
 import { CompanySetupHandlers } from "./transport/http/routes/company-setup";
+import { OnboardingHandlers } from "./transport/http/routes/onboarding";
 import { CompanyProfileHandlers } from "./transport/http/routes/company-profile";
 import { Api } from "@open-erp/contracts/api";
 import * as Context from "effect/Context";
@@ -134,6 +135,7 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     WorkspaceHandlers,
     FirmHandlers,
     CompanySetupHandlers,
+    OnboardingHandlers,
     CompanyProfileHandlers,
     EvaluationHandlers,
 

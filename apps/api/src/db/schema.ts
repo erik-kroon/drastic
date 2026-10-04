@@ -74,6 +74,30 @@ export const actors = openerp.table("actors", {
   name: text().notNull(),
 });
 
+export const onboardingCases = openerp.table("onboarding_cases", {
+  bookId: text("book_id").notNull(),
+  id: text().notNull(),
+  path: text().notNull(),
+  recordClass: text("record_class").notNull(),
+  recordedBy: text("recorded_by").notNull(),
+});
+
+export const onboardingRevisions = openerp.table("onboarding_revisions", {
+  bookId: text("book_id").notNull(),
+  caseId: text("case_id").notNull(),
+  revision: integer().notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
+export const onboardingSources = openerp.table("onboarding_sources", {
+  bookId: text("book_id").notNull(),
+  caseId: text("case_id").notNull(),
+  id: text().notNull(),
+  occurrenceId: text("occurrence_id").notNull(),
+  category: text().notNull(),
+  body: jsonb().$type<Schema.JsonObject>().notNull(),
+});
+
 export const credentials = openerp.table("credentials", {
   tokenHash: text("token_hash").primaryKey(),
   actorId: text("actor_id").notNull(),

@@ -65,6 +65,7 @@ export type DraftSession = {
 
 type SessionProps = CommerceProps & {
   baseline?: Draft;
+  initialCustomer?: typeof Commerce.CounterpartyRevision.Type;
   onClose: () => void;
   onSaved: (record: Draft) => void;
   children: (session: DraftSession) => ReactNode;
@@ -80,7 +81,7 @@ export function InvoiceDraftSession(props: SessionProps) {
     actorId,
     props.book.entityId,
     props.book.id,
-    props.baseline?.id ?? "new",
+    props.baseline?.id ?? (props.initialCustomer ? `new:${props.initialCustomer.id}` : "new"),
   ]);
 
   const local = useQuery({
@@ -210,12 +211,12 @@ function canonical(text: string | null) {
 
 class ConcurrentInvoiceEdit extends Error {}
 
-function initialState(baseline?: Draft): DraftEditingState {
+function initialState(baseline?: Draft, customer?: typeof Commerce.CounterpartyRevision.Type): DraftEditingState {
   const state: DraftEditingState = {
     purpose: baseline ? (baseline.purpose ?? "source_transcription") : "commercial",
     baseline: baseline ?? null,
     draftKey: baseline?.draftKey ?? `draft_${crypto.randomUUID().replaceAll("-", "")}`,
-    customer: baseline?.counterparty ?? null,
+    customer: baseline?.counterparty ?? customer ?? null,
     fields: {},
     lines: baseline
       ? baseline.content.lines.map((line) => {
@@ -246,7 +247,7 @@ function EditingSession(
   props: SessionProps & { identity: string; actorId: string; restored: DraftEditingState | null },
 ) {
   const sv = props.locale === "sv";
-  const [state, setState] = useState(() => props.restored ?? initialState(props.baseline));
+  const [state, setState] = useState(() => props.restored ?? initialState(props.baseline, props.initialCustomer));
   const current = useRef(state);
   const leaving = useRef(false);
   const retained = useRef(props.restored ? JSON.stringify(props.restored) : null);

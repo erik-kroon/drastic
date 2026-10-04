@@ -9,6 +9,7 @@ import {
 import { Heading, Text } from "@open-erp/ui/components/typography";
 import { Disclosure, ReviewColumns } from "@open-erp/ui/components/workflow";
 import { EvidenceInspector } from "@/components/evidence-inspector";
+import { WorkReviewFooter } from "@open-erp/ui/components/work-controls";
 import { accountingCopy } from "@/lib/accounting-copy";
 import { formatMinorAmount, workQueryOptions } from "@/lib/workspace-api";
 import type { Locale } from "@/paraglide/runtime";
@@ -19,6 +20,7 @@ export function ReviewEntry(props: {
   locale: Locale;
   accounts: typeof Accounting.BookSetup.Type.accounts;
   children?: ReactNode;
+  footer?: ReactNode;
 }) {
   const { book, action, locale, accounts } = props;
   const copy = accountingCopy(locale);
@@ -97,6 +99,7 @@ export function ReviewEntry(props: {
           ) : null}
         </Disclosure>
         {props.children}
+        {props.footer ? <WorkReviewFooter>{props.footer}</WorkReviewFooter> : null}
       </ReviewColumns>
     </Box>
   );

@@ -7,7 +7,7 @@ import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 const styles = stylex.create({
   review: {
     display: "grid",
-    alignItems: "start",
+    alignItems: "stretch",
     minWidth: 0,
     gap: 0,
     gridTemplateColumns: {
@@ -24,7 +24,9 @@ const styles = stylex.create({
     minWidth: 0,
   },
   reviewDecision: {
-    display: "grid",
+    display: "flex",
+    flexDirection: "column",
+    minHeight: "calc(100dvh - 48px)",
     gap: tokens.space4,
     paddingBlock: tokens.space5,
     paddingInline: tokens.space6,
@@ -132,6 +134,8 @@ const styles = stylex.create({
     "::marker": { color: tokens.mutedForeground },
   },
   details: { paddingBlockStart: tokens.space4, color: tokens.foreground },
+  compactDisclosure: { paddingBlock: 0, borderBlockStartWidth: 0, fontSize: tokens.fontSizeControl },
+  compactSummary: { minHeight: tokens.controlHeightSm },
   note: {
     display: "grid",
     gap: tokens.space2,
@@ -261,14 +265,16 @@ export function Disclosure({
   title,
   children,
   defaultOpen = false,
+  compact = false,
 }: {
   title: string;
   children: ReactNode;
   defaultOpen?: boolean;
+  compact?: boolean;
 }) {
   return (
-    <details open={defaultOpen} {...stylex.props(styles.disclosure)}>
-      <summary {...stylex.props(styles.summary)}>{title}</summary>
+    <details open={defaultOpen} {...stylex.props(styles.disclosure, compact && styles.compactDisclosure)}>
+      <summary {...stylex.props(styles.summary, compact && styles.compactSummary)}>{title}</summary>
       <div {...stylex.props(styles.details)}>{children}</div>
     </details>
   );

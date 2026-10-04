@@ -545,12 +545,12 @@ export function RegisterDetailHeading({
 }: {
   title: string;
   amount?: string;
-  caption: string;
+  caption?: string;
   note?: string;
 }) {
   return (
     <div>
-      <p {...stylex.props(styles.caption)}>{caption}</p>
+      {caption ? <p {...stylex.props(styles.caption)}>{caption}</p> : null}
       <h2 {...stylex.props(styles.detailTitle)}>{title}</h2>
       {amount !== undefined ? <p {...stylex.props(styles.detailAmount)}>{amount}</p> : null}
       {note ? <p {...stylex.props(styles.detailNote)}>{note}</p> : null}

@@ -64,7 +64,7 @@ type Draft = typeof Drafts.InvoiceDraftRevision.Type;
 type DraftActions = { issueAction?: ReactNode; issueStatus?: ReactNode; contextual?: boolean };
 
 export function NewInvoiceDraft(
-  props: CommerceProps & { onSaved: (id: string) => void; onClose: () => void },
+  props: CommerceProps & { onSaved: (id: string) => void; onClose: () => void; initialCustomer?: typeof Commerce.CounterpartyRevision.Type },
 ) {
   return (
     <InvoiceDraftSession {...props} onSaved={(record) => props.onSaved(record.id)}>

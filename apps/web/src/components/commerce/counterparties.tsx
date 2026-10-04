@@ -1,4 +1,5 @@
 import { CustomerInvoiceDefaults } from "./customer-invoice-defaults";
+import { CustomerPreview } from "./customer-preview";
 import { useRef, useState } from "react";
 import {
   infiniteQueryOptions,
@@ -303,6 +304,13 @@ export function ContactDetail(props: CommerceProps & { id: string; compact?: boo
     },
     retry: false,
   });
+
+  if (props.compact && party.isSuccess && party.data.role !== "supplier")
+    return (
+      <CustomerPreview {...props} party={party.data}>
+        <ContactDetail {...props} compact={false} />
+      </CustomerPreview>
+    );
 
   return (
     <Box display="grid" gap="xl">

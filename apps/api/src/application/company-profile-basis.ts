@@ -73,6 +73,9 @@ const factOperations = new Map<string, ReadonlyArray<Family>>([
   ["vat_period", ["vat"]],
   ["fiscal_year", ["statements"]],
   ["payroll_registration", ["payroll"]],
+  ["reporting_framework", ["statements", "corporate_tax"]],
+  ["base_currency", families],
+  ["payroll_applicability", ["payroll"]],
 ]);
 
 // A family whose selector date was never supplied has no selector. Normalising a
@@ -127,7 +130,9 @@ export function applicabilityHolds(
     allowed(applicability.legalForms, value("legal_form")) &&
     allowed(applicability.accountingMethods, value("accounting_method")) &&
     allowed(applicability.vatRegistrations, value("vat_registration")) &&
-    allowed(applicability.payrollRegistrations, value("payroll_registration"))
+    allowed(applicability.payrollRegistrations, value("payroll_registration")) &&
+    allowed(applicability.reportingFrameworks ?? [], value("reporting_framework")) &&
+    allowed(applicability.baseCurrencies ?? [], value("base_currency"))
   );
 }
 

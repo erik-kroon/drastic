@@ -1,0 +1,91 @@
+# Onboarding backend
+
+## Failure contracts before implementation
+
+The coordinator persists customer onboarding intent and composes retained owners;
+it does not accept financial amounts, verified facts or completed gates from a
+client. Its HTTP commands must satisfy these contracts:
+
+- Current scoped admission refuses anonymous, cross-book and agent mutations.
+- One case per book; exact command replay returns the original revision, while a
+  reused key with changed input refuses. Concurrent configuration saves use an
+  expected revision so one winner cannot overwrite another.
+- Configuration and receipt inserts share one transaction; rejected commands do
+  not change case history, ledger, writer authority or counters.
+- Dates distinguish retained history, detailed history, opening boundary,
+  acceptance period, candidate live date and proving-period end. Unknown dates
+  stay null. Impossible ordering refuses; no company-specific dates default.
+- A source link names an already-retained book-scoped occurrence. Filenames,
+  hashes and lengths come from that owner, never the request. Cross-book links
+  refuse; retries cannot duplicate a link. Presence does not prove coverage.
+- Qualification reuses reviewed facts and rule/activation witnesses. Saved setup
+  fields and synthetic witnesses cannot qualify actual-company onboarding.
+- Reporting framework, base currency and payroll/asset/foreign-currency
+  applicability are independently evidenced facts. Recording K3 or EUR cannot
+  substitute K2 or SEK; recording employer registration cannot settle payroll
+  applicability. New fact kinds do not advertise a new supported treatment.
+- Workstream reads derive source/import progress from retained rows. Parsed or
+  staged imports do not establish reconciled books. Payroll is commercially
+  deferred and cannot become native-supported through onboarding configuration.
+- Missing opening, independent controls, operational proof and single-writer
+  evidence keep cutover blocked. A recorded candidate date is not go-live.
+- Immutable case revisions and source-link records survive return/retry; live
+  workspace status is recomputed rather than cached as an obsolete percentage.
+
+Public E2E fixtures remain synthetic and retain a sanitized repeatable journey.
+No actual company or external provider is exercised.
+
+## Frontend integration
+
+All routes are authenticated and book-scoped below
+`/api/v1/entities/:entityId/books/:bookId`. Use the shared schemas in
+`packages/contracts/src/onboarding.ts`; mutations require an idempotency key and
+human operator admission.
+
+| Route | Result |
+| --- | --- |
+| `POST /onboarding` | Start one immutable-path case: new company, existing company, bureau or demo |
+| `GET /onboarding` | Current revision, dated qualification, source inventory, import progress and blockers |
+| `POST /onboarding/revisions` | Save configuration with `expectedRevision`; stale saves conflict |
+| `GET /onboarding/revisions` | Retained configuration history, paged by `before` revision |
+| `POST /onboarding/sources` | Link a retained occurrence ID and category; metadata comes from intake |
+| `GET /company-facts` | Immutable facts with their retained reviews, paged by `after` ID |
+
+Workspace source/import pages use `sourceAfter` and `importAfter`. A page is not
+complete coverage: use the returned cursors and distinguish the inventory count
+from the rows displayed. Import progress exposes synthetic versus reviewed SIE
+sources; synthetic staging cannot establish actual-company acceptance.
+
+Existing company-fact recording/review, rule release activation, source intake
+and SIE preview/plan/run endpoints remain their owning workflows. The coordinator
+does not create a second importer or ledger. Recording a fact is distinct from
+reviewing it, and confirming an unknown value does not make that value known.
+Qualification describes only the existing dated profile witness, not end-to-end
+commercial readiness. Actual-company support also requires explicit rule-release
+currency coverage, and statement support requires explicit reporting framework
+coverage. Native payroll remains deferred.
+
+## Remaining delivery gates
+
+The workspace currently retains setup and shows truthful blockers. It does not
+yet implement acceptance decisions for independent opening/control comparisons,
+capability responsibility policies, final-delta acceptance, restore/single-writer
+proof, authorized promotion, activation receipts or first-live-period closure.
+Those rows therefore cannot be completed by a client flag. Cutover `ready` remains
+false and authority remains `not_established`; the candidate date is intent only.
+
+A complete historical scope requires history bounds as well as opening,
+acceptance and candidate dates, plus detailed-history start unless opening-only.
+Drastic AB's actual fiscal-year start, reviewed facts and private source material
+must supply these values. None is derived from the example dates or defaults.
+
+## Focused verification
+
+Run the HTTP/database E2E journey with disposable synthetic data:
+
+```sh
+OPENERP_E2E_ARTIFACTS=test-results/onboarding-backend bun run test:e2e apps/api/tests/onboarding.e2e.test.ts apps/api/tests/company-profile-admission.e2e.test.ts
+```
+
+The run retains its environment/source manifest and sanitized journeys. It is
+engineering evidence, not Drastic acceptance or production migration evidence.

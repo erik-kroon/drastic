@@ -56,36 +56,29 @@ export function PostingRecoveryReview(props: {
 
   return (
     <Box as="section" id="journal-review" tabIndex={-1} display="grid" gap="lg" minWidth="zero">
-      <Box
-        display="flex"
-        flexWrap="wrap"
-        justifyContent="between"
-        alignItems="center"
-        gap="md"
-        padding="md"
-      >
-        {recovery.data && !recovery.isError ? (
-          <Box role="status" display="grid" gap="sm">
-            <Text>{copy[recovery.data.summary.postingStatus]}</Text>
-            <Text tone="muted">
-              {copy.checked}:{" "}
-              {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
-                new Date(recovery.data.checkedAt),
-              )}
-            </Text>
-          </Box>
-        ) : null}
-        <Button
-          size="xl"
-          variant="outline"
-          disabled={recovery.isFetching}
-          onClick={() => {
-            void recovery.refetch();
-          }}
+      {!recovery.data ||
+      recovery.isError ||
+      (props.expectedDigest && recovery.data.plan.planDigest !== props.expectedDigest) ? (
+        <Box
+          display="flex"
+          flexWrap="wrap"
+          justifyContent="between"
+          alignItems="center"
+          gap="md"
+          padding="md"
         >
-          {copy.refresh}
-        </Button>
-      </Box>
+          <Button
+            size="xl"
+            variant="outline"
+            disabled={recovery.isFetching}
+            onClick={() => {
+              void recovery.refetch();
+            }}
+          >
+            {copy.refresh}
+          </Button>
+        </Box>
+      ) : null}
       {recovery.isPending ? <Text role="status">{copy.pending}</Text> : null}
       {recovery.isError ? (
         <Text role="alert">
@@ -115,6 +108,9 @@ export function PostingRecoveryReview(props: {
             locale={locale}
             accounts={accounts}
             refreshing={recovery.isFetching}
+            onRefresh={() => {
+              void recovery.refetch();
+            }}
             returnSearch={props.returnSearch}
           />
           <Disclosure title={copy.history}>
@@ -148,6 +144,7 @@ function RecoveryDetail(props: {
   locale: Locale;
   accounts: typeof Accounting.BookSetup.Type.accounts;
   refreshing: boolean;
+  onRefresh: () => void;
   returnSearch?: string;
 }) {
   const { book, current, locale, accounts } = props;
@@ -323,10 +320,29 @@ function RecoveryDetail(props: {
               action={action}
               locale={locale}
               accounts={accounts}
+              footer={
+                group === current.plan.groups.at(-1) && index === group.actions.length - 1
+                  ? approval
+                  : null
+              }
             >
-              {group === current.plan.groups.at(-1) && index === group.actions.length - 1
-                ? approval
-                : null}
+              {group === current.plan.groups.at(-1) && index === group.actions.length - 1 ? (
+                <Box role="status" display="grid" gap="sm">
+                  <Text>{copy[current.summary.postingStatus]}</Text>
+                  <Text tone="muted">
+                    {copy.checked}:{" "}
+                    {new Intl.DateTimeFormat(locale, {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    }).format(new Date(current.checkedAt))}
+                  </Text>
+                  <Box>
+                    <Button variant="ghost" disabled={props.refreshing} onClick={props.onRefresh}>
+                      {copy.refresh}
+                    </Button>
+                  </Box>
+                </Box>
+              ) : null}
             </ReviewEntry>
           ))}
         </Box>

@@ -92,6 +92,7 @@ import { CashMethodApi } from "./cash-method";
 import { FirmApi } from "./firms";
 import { WorkspaceApi } from "./workspace";
 import { describeAuthentication } from "./api-authentication";
+import { OnboardingApi } from "./onboarding";
 
 export { AccountingErrorStatus } from "./accounting-errors";
 
@@ -191,6 +192,7 @@ export class Api extends HttpApi.make("open-erp")
     WorkspaceApi,
     FirmApi,
     CompanySetupApi,
+    OnboardingApi,
     CompanyProfileApi,
     EvaluationsApi,
 
