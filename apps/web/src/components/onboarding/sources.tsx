@@ -1,7 +1,13 @@
+import * as Option from "effect/Option";
+import {
+  SetupBlock,
+  SetupInlineAction,
+  SetupText,
+  setupLayoutStyles,
+} from "@open-erp/ui/components/setup-parts";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
-import * as stylex from "@stylexjs/stylex";
 import * as Intake from "@open-erp/contracts/source-intake";
 import * as Onboarding from "@open-erp/contracts/onboarding";
 import * as Sie from "@open-erp/contracts/sie-import";
@@ -26,7 +32,6 @@ import {
 } from "@/lib/accounting-api";
 import { useBookWorkspace } from "@/lib/book-context";
 import { Breadcrumb, PendingRead, SetupLink, type OpenOnboardingView } from "./shared";
-import { styles } from "./styles";
 
 export const sourceLabels = {
   company: "Företag",
@@ -39,6 +44,7 @@ export const sourceLabels = {
   payroll: "Löner",
   other: "Dokument",
 };
+
 const categories: Array<typeof Onboarding.SourceCategory.Type> = [
   "previous_books",
   "bank",
@@ -53,6 +59,7 @@ const categories: Array<typeof Onboarding.SourceCategory.Type> = [
 export function useSieSource(workspace: typeof Onboarding.OnboardingWorkspace.Type) {
   const { book } = useBookWorkspace();
   const source = workspace.sources.find((item) => item.category === "previous_books");
+
   const inventory = useQuery({
     queryKey: [...bookKey(book), "sie-inventory", source?.occurrence.id],
     enabled: !!source,
@@ -64,7 +71,9 @@ export function useSieSource(workspace: typeof Onboarding.OnboardingWorkspace.Ty
       ),
     retry: false,
   });
+
   const latest = inventory.data?.items.toSorted((a, b) => b.ordinal - a.ordinal)[0];
+
   const preview = useQuery({
     queryKey: [...bookKey(book), "sie-preview", latest?.id],
     enabled: !!latest,
@@ -76,6 +85,7 @@ export function useSieSource(workspace: typeof Onboarding.OnboardingWorkspace.Ty
       ),
     retry: false,
   });
+
   const plan = useQuery({
     queryKey: [...bookKey(book), "sie-plan", latest?.planId],
     enabled: !!latest?.planId,
@@ -87,6 +97,7 @@ export function useSieSource(workspace: typeof Onboarding.OnboardingWorkspace.Ty
       ),
     retry: false,
   });
+
   return { source, inventory, latest, preview, plan };
 }
 
@@ -103,6 +114,7 @@ export function OnboardingSources({
   const [inspecting, setInspecting] = useState(false);
   const sources = workspace.sources.filter((item) => item.category === selected);
   const occurrence = sources[0]?.occurrence;
+
   const sourceContent = useQuery({
     queryKey: [...bookKey(book), "source", occurrence?.id],
     enabled: inspecting && !!occurrence,
@@ -114,19 +126,20 @@ export function OnboardingSources({
       ),
     retry: false,
   });
+
   return (
-    <SetupPageContent styleX={[styles.page, styles.workspace]}>
+    <SetupPageContent styleX={setupLayoutStyles(["page", "workspace"])}>
       <Breadcrumb
         items={[{ label: "Setup", view: "workspace" }, { label: "Källor" }]}
         open={open}
       />
-      <div {...stylex.props(styles.earlyTitle)}>
+      <SetupBlock layout={["earlyTitle"]}>
         <SetupTitle>Källor</SetupTitle>
-      </div>
-      <p {...stylex.props(styles.subtitle)}>
+      </SetupBlock>
+      <SetupText as="p" layout={["subtitle"]}>
         Det här är underlaget OpenERP har fått. Inget är ännu en bokföring.
-      </p>
-      <div {...stylex.props(styles.columns, styles.section)}>
+      </SetupText>
+      <SetupBlock layout={["columns", "section"]}>
         <SetupTable
           title="Källor"
           width={tokens.setupSourcesWidth}
@@ -139,18 +152,19 @@ export function OnboardingSources({
           ]}
           rows={categories.map((category) => {
             const received = workspace.sources.filter((item) => item.category === category);
+
             return {
               id: category,
               tone: selected === category ? "selected" : undefined,
               cells: [
-                <button
+                <SetupInlineAction
                   key="category"
                   type="button"
                   onClick={() => setSelected(category)}
-                  {...stylex.props(styles.crumbButton)}
+                  layout={["crumbButton"]}
                 >
                   {sourceLabels[category]}
-                </button>,
+                </SetupInlineAction>,
                 received.length ? (
                   received.map((item) => item.occurrence.filename).join(", ")
                 ) : (
@@ -159,27 +173,30 @@ export function OnboardingSources({
                   </SetupLink>
                 ),
                 received.length ? "Ja" : "Nej",
-                <span
-                  key="status"
-                  {...stylex.props(received.length ? styles.success : styles.warning)}
-                >
+                <SetupText key="status" layout={[received.length ? "success" : "warning"]}>
                   {received.length ? "✓ Mottagen" : "! Ej levererat"}
-                </span>,
+                </SetupText>,
               ],
             };
           })}
         />
-        <aside {...stylex.props(styles.detail)}>
-          <h2 {...stylex.props(styles.semibold)}>{sourceLabels[selected]}</h2>
+        <SetupBlock as="aside" layout={["detail"]}>
+          <SetupText as="h2" layout={["semibold"]}>
+            {sourceLabels[selected]}
+          </SetupText>
           {sources.length ? (
             <>
-              <p>{sources.map((item) => item.occurrence.filename).join(", ")}</p>
-              <p {...stylex.props(styles.secondary)}>
+              <SetupText as="p">
+                {sources.map((item) => item.occurrence.filename).join(", ")}
+              </SetupText>
+              <SetupText as="p" layout={["secondary"]}>
                 Du kan acceptera begränsningen senare, med namn och datum.
-              </p>
+              </SetupText>
             </>
           ) : (
-            <p {...stylex.props(styles.secondary)}>Underlag har inte levererats.</p>
+            <SetupText as="p" layout={["secondary"]}>
+              Underlag har inte levererats.
+            </SetupText>
           )}
           <SetupActions>
             <SetupButton variant="outline" onClick={() => setUploading(selected)}>
@@ -193,11 +210,11 @@ export function OnboardingSources({
               Visa dem
             </SetupButton>
           </SetupActions>
-        </aside>
-      </div>
-      <div {...stylex.props(styles.section20)}>
+        </SetupBlock>
+      </SetupBlock>
+      <SetupBlock layout={["section20"]}>
         <SetupCaption>Ursprungsfilen ändras aldrig. Rättelser sparas som beslut.</SetupCaption>
-      </div>
+      </SetupBlock>
       {uploading ? (
         <UploadSource category={uploading} workspace={workspace} close={() => setUploading(null)} />
       ) : null}
@@ -230,6 +247,7 @@ function SourceDownload({ source }: { source: typeof Intake.SourceOccurrenceView
         const bytes = Uint8Array.from(atob(source.contentBase64), (character) =>
           character.charCodeAt(0),
         );
+
         const uri = URL.createObjectURL(new Blob([bytes], { type: source.occurrence.mediaType }));
         const anchor = document.createElement("a");
         anchor.href = uri;
@@ -253,22 +271,28 @@ function UploadSource({
   close: () => void;
 }) {
   const { book, locale } = useBookWorkspace();
+
   const [sourceSystem, setSourceSystem] = useState(
     workspace.case.configuration.incumbentSystem ?? "",
   );
+
   const [account, setAccount] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const cache = useQueryClient();
   const keys = useRef(new Map<string, string>());
+
   const save = useMutation({
     mutationFn: async (input: typeof Intake.RetainSource.Type) => {
       const sourcePath = `${bookPath(book)}/source-occurrences`;
+
       const source = await readAccounting(
         sourcePath,
         Intake.SourceOccurrence,
         mutationOptions(sourcePath, JSON.stringify(input), keys.current),
       );
+
       const linkPath = `${bookPath(book)}/onboarding/sources`;
+
       return readAccounting(
         linkPath,
         Onboarding.OnboardingSource,
@@ -284,23 +308,35 @@ function UploadSource({
       close();
     },
   });
+
   const uncertain = isUncertainWriteError(save.error);
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState<string | null>(null);
+
   async function submit() {
     if (save.isPending || reading || book.role !== "operator") return;
+
     if (uncertain && save.variables) {
       save.mutate(save.variables);
+
       return;
     }
+
     if (!file) return;
     setReading(true);
     setReadError(null);
+
     try {
       if (file.size > Intake.maxSourceBytes) throw new Error("Filen är större än 5 MB.");
       const bytes = new Uint8Array(await file.arrayBuffer());
       let content = "";
+
       for (const byte of bytes) content += String.fromCharCode(byte);
+
+      const mediaType = Option.getOrUndefined(
+        Schema.decodeUnknownOption(Intake.SourceMediaType)(file.type),
+      );
+
       save.mutate(
         Schema.decodeUnknownSync(Intake.RetainSource)({
           sourceSystem,
@@ -309,9 +345,7 @@ function UploadSource({
           sourceRevision: "1",
           filename: file.name,
           contentBase64: btoa(content),
-          ...(Schema.decodeUnknownOption(Intake.SourceMediaType)(file.type)._tag === "Some"
-            ? { mediaType: file.type }
-            : {}),
+          mediaType,
         }),
       );
     } catch (error) {
@@ -320,6 +354,7 @@ function UploadSource({
       setReading(false);
     }
   }
+
   return (
     <FormDialog
       title={`Ladda upp ${sourceLabels[category].toLowerCase()}`}
@@ -330,8 +365,9 @@ function UploadSource({
         if (!save.isPending && !reading && !uncertain) close();
       }}
     >
-      <form
-        {...stylex.props(styles.stack12)}
+      <SetupBlock
+        as="form"
+        layout={["stack12"]}
         onSubmit={(event) => {
           event.preventDefault();
           void submit();
@@ -377,14 +413,18 @@ function UploadSource({
             Avbryt
           </SetupButton>
         </SetupActions>
-        {readError ? <p role="alert">{readError}</p> : null}
+        {readError ? (
+          <SetupText as="p" role="alert">
+            {readError}
+          </SetupText>
+        ) : null}
         <AccountingStatus
           locale={locale}
           pending={save.isPending || reading}
           error={save.error}
           write
         />
-      </form>
+      </SetupBlock>
     </FormDialog>
   );
 }

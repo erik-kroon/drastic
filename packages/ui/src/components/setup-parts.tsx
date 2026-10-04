@@ -25,6 +25,7 @@ const styles = stylex.create({
     backgroundColor: "transparent",
     color: "inherit",
     fontSize: "inherit",
+    textAlign: "start",
     cursor: "pointer",
     ":focus-visible": { outline: tokens.setupControlFocus, outlineOffset: 2 },
   },
@@ -62,8 +63,24 @@ const styles = stylex.create({
     flexDirection: "column",
     gap: tokens.space4,
   },
-  checklistRow: { display: "flex", alignItems: "center", height: tokens.setupChecklistRowHeight },
-  checklistLabel: { width: tokens.setupColumn150, flexShrink: 0 },
+  checklistHeading: {
+    paddingBlockEnd: tokens.space1_5,
+    borderBlockEndWidth: 1,
+    borderBlockEndStyle: "solid",
+    borderBlockEndColor: tokens.border,
+    fontSize: tokens.fontSizeSm,
+    lineHeight: tokens.lineHeight18Px,
+    fontWeight: tokens.fontWeightSemibold,
+  },
+  checklistRow: {
+    display: "flex",
+    alignItems: "center",
+    height: tokens.setupChecklistRowHeight,
+    borderBlockEndWidth: 1,
+    borderBlockEndStyle: "solid",
+    borderBlockEndColor: tokens.borderAlpha50,
+  },
+  checklistLabel: { width: tokens.setupColumn150, flexShrink: 0, color: tokens.primary },
   checklistDetail: {
     width: tokens.setupChecklistDetailWidth,
     color: tokens.mutedForeground,
@@ -73,9 +90,7 @@ const styles = stylex.create({
   blockers: {
     width: tokens.setupDetailWidth,
     padding: tokens.space4,
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: tokens.input,
+    backgroundColor: tokens.sidebar,
     borderRadius: tokens.radiusSurface,
     display: "flex",
     flexDirection: "column",
@@ -232,9 +247,9 @@ const styles = stylex.create({
     borderRadius: tokens.radiusSurface,
     margin: 0,
     backgroundColor: tokens.workspaceSurface,
-    ":checked": { borderWidth: 5, borderColor: tokens.primary },
     ":focus-visible": { outline: tokens.setupControlFocus, outlineOffset: 2 },
   },
+  radioSelected: { borderWidth: 5, borderColor: tokens.primary },
   radioOptions: { display: "flex", gap: tokens.space5 },
   radioOption: { display: "flex", alignItems: "center", gap: tokens.space2 },
   responsibilityGroups: {
@@ -256,23 +271,53 @@ export type SetupVariant = keyof typeof styles;
 export type SetupLayout = readonly (SetupVariant | false | null | undefined)[];
 
 export function setupLayoutStyles(layout: SetupLayout = []) {
-  return layout.map((variant) => variant ? styles[variant] : null);
+  return layout.map((variant) => (variant ? styles[variant] : null));
 }
 
-type BlockElement = "div" | "section" | "aside" | "nav" | "form" | "fieldset" | "label" | "ul" | "li";
+type BlockElement =
+  | "div"
+  | "section"
+  | "aside"
+  | "nav"
+  | "form"
+  | "fieldset"
+  | "label"
+  | "ul"
+  | "li";
 
-export function SetupBlock<T extends BlockElement = "div">({ as, layout, ...props }: Omit<ComponentPropsWithRef<T>, "className" | "style"> & { as?: T; layout?: SetupLayout }) {
+export function SetupBlock<T extends BlockElement = "div">({
+  as,
+  layout,
+  ...props
+}: Omit<ComponentPropsWithRef<T>, "className" | "style"> & { as?: T; layout?: SetupLayout }) {
   return createElement(as ?? "div", { ...props, ...stylex.props(setupLayoutStyles(layout)) });
 }
 
-export function SetupText<T extends "span" | "p" | "h2" = "span">({ as, layout, ...props }: Omit<ComponentPropsWithRef<T>, "className" | "style"> & { as?: T; layout?: SetupLayout }) {
+export function SetupText<T extends "span" | "p" | "h2" = "span">({
+  as,
+  layout,
+  ...props
+}: Omit<ComponentPropsWithRef<T>, "className" | "style"> & { as?: T; layout?: SetupLayout }) {
   return createElement(as ?? "span", { ...props, ...stylex.props(setupLayoutStyles(layout)) });
 }
 
-export function SetupInlineAction({ layout, ...props }: Omit<ComponentPropsWithRef<"button">, "className" | "style"> & { layout?: SetupLayout }) {
-  return <button type="button" {...props} {...stylex.props(styles.crumbButton, setupLayoutStyles(layout))} />;
+export function SetupInlineAction({
+  layout,
+  ...props
+}: Omit<ComponentPropsWithRef<"button">, "className" | "style"> & { layout?: SetupLayout }) {
+  return (
+    <button
+      type="button"
+      {...props}
+      {...stylex.props(styles.crumbButton, setupLayoutStyles(layout))}
+    />
+  );
 }
 
-export function SetupRadio({ layout, ...props }: Omit<ComponentPropsWithRef<"input">, "className" | "style"> & { layout?: SetupLayout }) {
-  return <input {...props} {...stylex.props(styles.radio, setupLayoutStyles(layout))} />;
+export function SetupRadio({
+  layout,
+  checked,
+  ...props
+}: Omit<ComponentPropsWithRef<"input">, "className" | "style"> & { layout?: SetupLayout }) {
+  return <input {...props} checked={checked} {...stylex.props(styles.radio, checked && styles.radioSelected, setupLayoutStyles(layout))} />;
 }

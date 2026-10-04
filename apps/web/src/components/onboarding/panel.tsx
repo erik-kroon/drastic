@@ -24,6 +24,7 @@ import type { OnboardingView } from "./views";
 export function OnboardingPanel({ view }: { view: OnboardingView }) {
   const { book, locale } = useBookWorkspace();
   const navigate = useNavigate();
+
   const workspace = useQuery({
     queryKey: [...bookKey(book), "onboarding"],
     queryFn: async ({ signal }) => {
@@ -40,6 +41,7 @@ export function OnboardingPanel({ view }: { view: OnboardingView }) {
     },
     retry: false,
   });
+
   const lifecycle = useQuery({
     queryKey: [...bookKey(book), "onboarding", "lifecycle"],
     enabled: !!workspace.data && view !== "start",
@@ -51,6 +53,7 @@ export function OnboardingPanel({ view }: { view: OnboardingView }) {
       query.state.data?.intents.length && !query.state.data.activation ? 2_000 : false,
     retry: false,
   });
+
   const open = (next: OnboardingView) => {
     void navigate({
       to: "/entities/$entityId/books/$bookId/setup",
@@ -97,6 +100,7 @@ export function OnboardingPanel({ view }: { view: OnboardingView }) {
           ) : null}
         </SetupContent>
       );
+
     switch (view) {
       case "profile":
         return <OnboardingProfile workspace={workspace.data} open={open} />;

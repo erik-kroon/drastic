@@ -18,6 +18,7 @@ export function useOnboardingCommand<
   const { book } = useBookWorkspace();
   const cache = useQueryClient();
   const keys = useRef(new Map<string, string>());
+
   const mutation = useMutation({
     mutationFn: (value: I["Type"]) =>
       readAccounting(
@@ -30,35 +31,44 @@ export function useOnboardingCommand<
       onSuccess?.(result);
     },
   });
+
   const uncertain = isUncertainWriteError(mutation.error);
+
   return { ...mutation, uncertain, disabled: book.role !== "operator" || mutation.isPending };
 }
 
 export function useOnboardingFacts(asOf: string) {
   const { book } = useBookWorkspace();
+
   return useQuery({
     queryKey: [...bookKey(book), "company-facts", asOf],
     queryFn: async ({ signal }) => {
       const items: Array<(typeof Profiles.CompanyFactPage.Type.items)[number]> = [];
       const cursors = new Set<string>();
       let after: string | null = null;
+
       do {
-        const page = await readAccounting(
+        const page: typeof Profiles.CompanyFactPage.Type = await readAccounting(
           `${bookPath(book)}/company-facts${after ? `?after=${encodeURIComponent(after)}` : ""}`,
           Profiles.CompanyFactPage,
           { signal },
         );
+
         items.push(...page.items);
         after = page.nextCursor;
+
         if (after && cursors.has(after))
           throw new Error("The company facts cursor did not advance.");
+
         if (after) cursors.add(after);
       } while (after);
+
       const applicable = items.filter(
         (item) =>
           item.revision.effectiveFrom <= asOf &&
           (item.revision.effectiveTo === null || item.revision.effectiveTo >= asOf),
       );
+
       return applicable.filter(
         (item) =>
           !applicable.some((candidate) => candidate.revision.supersedesId === item.revision.id),
@@ -70,10 +80,11 @@ export function useOnboardingFacts(asOf: string) {
 
 export function formatDate(value: string | null, year = true) {
   if (!value) return "Ej angivet";
+
   return new Intl.DateTimeFormat("sv-SE", {
     day: "numeric",
     month: "short",
-    ...(year ? { year: "numeric" } : {}),
+    year: year ? "numeric" : undefined,
     timeZone: "Europe/Stockholm",
   })
     .format(new Date(value.length === 10 ? `${value}T12:00:00Z` : value))
@@ -87,5 +98,6 @@ export function formatMoment(value: string) {
 export function formatMinor(value: string) {
   const amount = BigInt(value);
   const magnitude = amount < 0n ? -amount : amount;
+
   return `${amount < 0n ? "−" : ""}${new Intl.NumberFormat("sv-SE").format(magnitude / 100n)},${(magnitude % 100n).toString().padStart(2, "0")}`;
 }

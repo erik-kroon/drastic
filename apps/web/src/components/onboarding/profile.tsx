@@ -1,7 +1,8 @@
+import * as Predicate from "effect/Predicate";
+import { SetupBlock, SetupText, setupLayoutStyles } from "@open-erp/ui/components/setup-parts";
 import { useRef, useState } from "react";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import * as Schema from "effect/Schema";
-import * as stylex from "@stylexjs/stylex";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Profiles from "@open-erp/contracts/company-profiles";
 import * as Onboarding from "@open-erp/contracts/onboarding";
@@ -28,9 +29,9 @@ import {
 } from "@/lib/accounting-api";
 import { formatDate, useOnboardingCommand, useOnboardingFacts } from "./data";
 import { PendingRead, SetupLink, type OpenOnboardingView } from "./shared";
-import { styles } from "./styles";
 
 type Fact = (typeof Profiles.CompanyFactPage.Type.items)[number];
+
 const labels = {
   legal_form: "Företagsform",
   fiscal_year: "Räkenskapsår",
@@ -39,7 +40,9 @@ const labels = {
   base_currency: "Valuta",
   reporting_framework: "Regelverk",
 } satisfies Partial<Record<typeof Profiles.FactKind.Type, string>>;
+
 type VisibleFact = keyof typeof labels;
+
 const kinds: VisibleFact[] = [
   "legal_form",
   "fiscal_year",
@@ -48,6 +51,7 @@ const kinds: VisibleFact[] = [
   "base_currency",
   "reporting_framework",
 ];
+
 const values = {
   aktiebolag: "Aktiebolag",
   enskild_firma: "Enskild firma",
@@ -60,10 +64,13 @@ const values = {
 
 function factText(fact: Fact | undefined) {
   if (!fact || fact.revision.value.state === "unknown") return "Ej angivet";
+
   if (fact.revision.value.state === "not_applicable") return "Inte tillämpligt";
   const value = fact.revision.value.value;
+
   if (typeof value === "object")
     return `${formatDate(value.startsOn, false)} till ${formatDate(value.endsOn, false)}`;
+
   if (typeof value === "string" && value in values)
     return values[
       Schema.decodeUnknownSync(
@@ -78,6 +85,7 @@ function factText(fact: Fact | undefined) {
         ]),
       )(value)
     ];
+
   return String(value);
 }
 
@@ -89,15 +97,19 @@ export function OnboardingProfile({
   open: OpenOnboardingView;
 }) {
   const { book, setup } = useBookWorkspace();
+
   const facts = useOnboardingFacts(
     workspace.case.configuration.dates.candidateLiveOn ?? setup.today,
   );
+
   const [editing, setEditing] = useState<VisibleFact | null>(null);
+
   const evidenceIds = [
     ...new Set(
       facts.data?.flatMap((fact) => fact.revision.evidence.map((item) => item.evidenceId)) ?? [],
     ),
   ];
+
   const evidence = useQueries({
     queries: evidenceIds.map((id) => ({
       queryKey: [...bookKey(book), "evidence", id],
@@ -110,21 +122,28 @@ export function OnboardingProfile({
       retry: false,
     })),
   });
+
   const [confirming, setConfirming] = useState<Fact | null>(null);
+
   const confirm = useOnboardingCommand(
     `${bookPath(book)}/company-facts/${encodeURIComponent(confirming?.revision.id ?? "unselected")}/reviews`,
     Profiles.ReviewFactRevision,
     Profiles.FactReview,
     () => setConfirming(null),
   );
+
   const missing = kinds.filter((kind) => {
     const fact = facts.data?.find((item) => item.revision.factKind === kind);
+
     return !fact || fact.revision.value.state === "unknown" || fact.review?.result !== "confirmed";
   });
+
   return (
-    <SetupPageContent styleX={styles.page}>
+    <SetupPageContent styleX={setupLayoutStyles(["page"])}>
       <SetupTitle>Företagsprofil</SetupTitle>
-      <p {...stylex.props(styles.subtitle)}>Vi läser först ur dina underlag och frågar sedan.</p>
+      <SetupText as="p" layout={["subtitle"]}>
+        Vi läser först ur dina underlag och frågar sedan.
+      </SetupText>
       <PendingRead
         pending={facts.isPending}
         error={facts.error}
@@ -133,7 +152,7 @@ export function OnboardingProfile({
         }}
       />
       {facts.data ? (
-        <div {...stylex.props(styles.section)}>
+        <SetupBlock layout={["section"]}>
           <SetupTable
             title="Företagsprofil"
             width={tokens.setupWorkspaceWidth}
@@ -149,36 +168,36 @@ export function OnboardingProfile({
               const fact = facts.data.find((item) => item.revision.factKind === kind);
               const known = fact?.revision.value.state === "known";
               const confirmed = known && fact.review?.result === "confirmed";
+
               const source = evidence.find((item) =>
                 fact?.revision.evidence.some((ref) => ref.evidenceId === item.data?.id),
               )?.data;
+
               return {
                 id: kind,
                 tone: !known ? "warning" : undefined,
                 cells: [
-                  <span key="label" {...stylex.props(styles.secondary)}>
+                  <SetupText key="label" layout={["secondary"]}>
                     {labels[kind]}
-                  </span>,
+                  </SetupText>,
                   factText(fact),
                   fact ? formatDate(fact.revision.effectiveFrom) : "Ej angivet",
                   source?.title ?? "Ej angiven",
-                  <span
+                  <SetupText
                     key="status"
-                    {...stylex.props(
-                      confirmed ? styles.success : known ? styles.secondary : styles.warning,
-                    )}
+                    layout={[confirmed ? "success" : known ? "secondary" : "warning"]}
                   >
                     {confirmed
                       ? "✓ Bekräftad"
                       : known
                         ? "○ Läst, behöver bekräftas"
                         : "! Behöver uppgift"}
-                  </span>,
-                  <div key="actions" {...stylex.props(styles.actions)}>
+                  </SetupText>,
+                  <SetupBlock key="actions" layout={["actions"]}>
                     {known && !confirmed ? (
                       <SetupButton
                         variant="ghost"
-                        styleX={styles.plainAction}
+                        styleX={setupLayoutStyles(["plainAction"])}
                         disabled={confirm.disabled}
                         onClick={() => setConfirming(fact)}
                       >
@@ -187,35 +206,35 @@ export function OnboardingProfile({
                     ) : null}
                     <SetupButton
                       variant="ghost"
-                      styleX={styles.plainAction}
+                      styleX={setupLayoutStyles(["plainAction"])}
                       disabled={book.role !== "operator"}
                       onClick={() => setEditing(kind)}
                     >
                       Ändra
                     </SetupButton>
-                  </div>,
+                  </SetupBlock>,
                 ],
               };
             })}
           />
-        </div>
+        </SetupBlock>
       ) : null}
-      <div {...stylex.props(styles.section20, styles.actions)}>
+      <SetupBlock layout={["section20", "actions"]}>
         <SetupButton onClick={() => open("compatibility")}>
           Gå vidare till kompatibilitet
         </SetupButton>
         {missing.length ? (
-          <span {...stylex.props(styles.warning)}>
+          <SetupText layout={["warning"]}>
             {missing.length} {missing.length === 1 ? "uppgift saknas" : "uppgifter saknas"}:{" "}
             {missing.map((kind) => labels[kind].toLowerCase()).join(", ")}
-          </span>
+          </SetupText>
         ) : null}
-      </div>
-      <div {...stylex.props(styles.note)}>
+      </SetupBlock>
+      <SetupBlock layout={["note"]}>
         <SetupCaption>
           Vi bekräftar inte något åt dig. Osäkra uppgifter stannar som osäkra.
         </SetupCaption>
-      </div>
+      </SetupBlock>
       {confirming ? (
         <FormDialog
           size="compact"
@@ -241,9 +260,9 @@ export function OnboardingProfile({
                     },
               );
             }}
-            styleX={styles.focused}
+            styleX={setupLayoutStyles(["focused"])}
           >
-            <p>{factText(confirming)}</p>
+            <SetupText as="p">{factText(confirming)}</SetupText>
             <SetupButton type="submit" disabled={confirm.isPending}>
               Bekräfta
             </SetupButton>
@@ -276,10 +295,15 @@ function FactEditor({
   const known = saved?.revision.value.state === "known" ? saved.revision.value.value : "";
   const [value, setValue] = useState(typeof known === "string" ? known : "");
   const [from, setFrom] = useState(saved?.revision.effectiveFrom ?? "");
-  const [startsOn, setStartsOn] = useState(typeof known === "object" ? known.startsOn : "");
-  const [endsOn, setEndsOn] = useState(typeof known === "object" ? known.endsOn : "");
+
+  const [startsOn, setStartsOn] = useState(
+    Predicate.hasProperty(known, "startsOn") ? known.startsOn : "",
+  );
+
+  const [endsOn, setEndsOn] = useState(Predicate.hasProperty(known, "endsOn") ? known.endsOn : "");
   const cache = useQueryClient();
   const keys = useRef(new Map<string, string>());
+
   const save = useMutation({
     mutationFn: async (input: {
       factKind: VisibleFact;
@@ -290,6 +314,7 @@ function FactEditor({
       note: string;
     }) => {
       const path = `${bookPath(book)}/evidence`;
+
       const evidence = await readAccounting(
         path,
         Accounting.Evidence,
@@ -304,11 +329,14 @@ function FactEditor({
           keys.current,
         ),
       );
+
       const command = Schema.decodeUnknownSync(Profiles.RecordFactRevision)({
         ...input,
         evidence: [{ evidenceId: evidence.id, sha256: evidence.sha256 }],
       });
+
       const factPath = `${bookPath(book)}/company-facts`;
+
       return readAccounting(
         factPath,
         Profiles.FactRevision,
@@ -320,30 +348,31 @@ function FactEditor({
       close();
     },
   });
+
   const uncertain = isUncertainWriteError(save.error);
-  const options =
-    kind === "legal_form"
-      ? [
-          { value: "aktiebolag", label: "Aktiebolag" },
-          { value: "enskild_firma", label: "Enskild firma" },
-        ]
-      : kind === "accounting_method"
-        ? [
-            { value: "accrual", label: "Fakturametoden" },
-            { value: "cash", label: "Kontantmetoden" },
-          ]
-        : kind === "vat_period"
-          ? [
-              { value: "quarterly", label: "Kvartal" },
-              { value: "monthly", label: "Månad" },
-              { value: "yearly", label: "År" },
-            ]
-          : kind === "reporting_framework"
-            ? [
-                { value: "K2", label: "K2" },
-                { value: "K3", label: "K3" },
-              ]
-            : null;
+
+  const options = {
+    legal_form: [
+      { value: "aktiebolag", label: "Aktiebolag" },
+      { value: "enskild_firma", label: "Enskild firma" },
+    ],
+    accounting_method: [
+      { value: "accrual", label: "Fakturametoden" },
+      { value: "cash", label: "Kontantmetoden" },
+    ],
+    vat_period: [
+      { value: "quarterly", label: "Kvartal" },
+      { value: "monthly", label: "Månad" },
+      { value: "yearly", label: "År" },
+    ],
+    reporting_framework: [
+      { value: "K2", label: "K2" },
+      { value: "K3", label: "K3" },
+    ],
+    fiscal_year: null,
+    base_currency: null,
+  }[kind];
+
   return (
     <FormDialog
       size="compact"
@@ -354,14 +383,19 @@ function FactEditor({
         if (!save.isPending && !uncertain) close();
       }}
     >
-      <form
+      <SetupBlock
+        as="form"
         onSubmit={(event) => {
           event.preventDefault();
+
           if (save.isPending || book.role !== "operator") return;
+
           if (uncertain && save.variables) {
             save.mutate(save.variables);
+
             return;
           }
+
           save.mutate({
             factKind: kind,
             value: { state: "known", value: kind === "fiscal_year" ? { startsOn, endsOn } : value },
@@ -371,7 +405,7 @@ function FactEditor({
             note: "Angivet i företagsprofilen",
           });
         }}
-        {...stylex.props(styles.stack12)}
+        layout={["stack12"]}
       >
         {kind === "fiscal_year" ? (
           <>
@@ -446,7 +480,7 @@ function FactEditor({
           </SetupButton>
         </SetupActions>
         <AccountingStatus locale={locale} pending={save.isPending} error={save.error} write />
-      </form>
+      </SetupBlock>
     </FormDialog>
   );
 }
@@ -459,6 +493,7 @@ export function OnboardingCompatibility({
   open: OpenOnboardingView;
 }) {
   const { book } = useBookWorkspace();
+
   const familyLabels = {
     posting_eligibility: "Bokföring",
     vat: "Moms",
@@ -466,10 +501,11 @@ export function OnboardingCompatibility({
     statements: "Årsredovisning",
     corporate_tax: "Inkomstdeklaration",
   };
+
   return (
-    <SetupPageContent styleX={styles.page}>
+    <SetupPageContent styleX={setupLayoutStyles(["page"])}>
       <SetupTitle>Vad OpenERP stöder för {book.name}</SetupTitle>
-      <div {...stylex.props(styles.section)}>
+      <SetupBlock layout={["section"]}>
         <SetupTable
           title="Kompatibilitet"
           width={tokens.setupWorkspaceWidth}
@@ -480,45 +516,49 @@ export function OnboardingCompatibility({
           ]}
           rows={workspace.qualification.map((item) => ({
             id: item.family,
-            tone:
-              item.state === "needs_information"
-                ? "warning"
-                : item.state === "not_supported"
-                  ? "blocked"
-                  : undefined,
+            tone: (
+              {
+                needs_information: "warning",
+                not_supported: "blocked",
+                supported: undefined,
+                supported_with_handoff: undefined,
+              } as const
+            )[item.state],
             cells: [
               familyLabels[item.family],
-              <span
+              <SetupText
                 key="status"
-                {...stylex.props(
-                  item.state === "supported"
-                    ? styles.success
-                    : item.state === "supported_with_handoff"
-                      ? styles.primary
-                      : item.state === "not_supported"
-                        ? styles.blocked
-                        : styles.warning,
-                  styles.medium,
-                )}
+                layout={[
+                  (
+                    {
+                      supported: "success",
+                      supported_with_handoff: "primary",
+                      not_supported: "blocked",
+                      needs_information: "warning",
+                    } as const
+                  )[item.state],
+                  "medium",
+                ]}
               >
-                {item.state === "supported"
-                  ? "✓ Stöds"
-                  : item.state === "supported_with_handoff"
-                    ? "→ Stöds med överlämning"
-                    : item.state === "not_supported"
-                      ? "× Stöds inte"
-                      : "! Behöver uppgift"}
-              </span>,
-              <span key="detail" {...stylex.props(styles.secondary)}>
+                {
+                  {
+                    supported: "✓ Stöds",
+                    supported_with_handoff: "→ Stöds med överlämning",
+                    not_supported: "× Stöds inte",
+                    needs_information: "! Behöver uppgift",
+                  }[item.state]
+                }
+              </SetupText>,
+              <SetupText key="detail" layout={["secondary"]}>
                 {item.reason}
-              </span>,
+              </SetupText>,
             ],
           }))}
         />
-      </div>
-      <div {...stylex.props(styles.section20)}>
+      </SetupBlock>
+      <SetupBlock layout={["section20"]}>
         <SetupButton onClick={() => open("workspace")}>Öppna Setup</SetupButton>
-      </div>
+      </SetupBlock>
       <SetupLink onClick={() => open("profile")}>Företagsprofil</SetupLink>
     </SetupPageContent>
   );

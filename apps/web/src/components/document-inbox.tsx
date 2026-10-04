@@ -477,7 +477,7 @@ export function DocumentInbox(props: {
       filters={
         standalone ? (
           <Disclosure
-            label={sv ? "Filnamn, källa och period" : "Filename, source and period"}
+            label={sv ? "Sök och filter" : "Search and filters"}
             variant="toolbar"
             open={filtersOpen}
             onOpenChange={setFiltersOpen}
@@ -528,7 +528,12 @@ function archiveSelection(
   page: typeof Sources.ArchiveSearch.Type | undefined,
   id: string | null,
 ) {
-  const items = failed ? [] : [...(page?.items ?? [])].sort((left, right) => right.retainedAt.localeCompare(left.retainedAt) || left.id.localeCompare(right.id));
+  const items = failed
+    ? []
+    : [...(page?.items ?? [])].sort(
+        (left, right) =>
+          right.retainedAt.localeCompare(left.retainedAt) || left.id.localeCompare(right.id),
+      );
 
   return { items, selected: items.find((item) => item.id === id) ?? items[0] };
 }

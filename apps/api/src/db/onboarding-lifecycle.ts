@@ -130,7 +130,7 @@ export function readDependencies(
       'periods',(select coalesce(jsonb_agg(to_jsonb(p) order by p.id),'[]') from openerp.periods p where p.book_id=${scope.bookId} and p.starts_on<=${asOf}::date),
       'accounts',(select coalesce(jsonb_agg(to_jsonb(a) order by a.id),'[]') from openerp.accounts a where a.book_id=${scope.bookId}),
       'sources',(select coalesce(jsonb_agg(body order by id),'[]') from openerp.onboarding_sources where book_id=${scope.bookId}),
-      'controls',(select coalesce(jsonb_agg(body order by id),'[]') from openerp.onboarding_controls where book_id=${scope.bookId} and id=any(${[...controlIds]}::text[])),
+      'controls',(select coalesce(jsonb_agg(body order by id),'[]') from openerp.onboarding_controls where book_id=${scope.bookId} and id=any(array[${sql.join(controlIds.map((value) => sql`${value}`), sql`, `)}]::text[])),
       'ledger',(select coalesce(jsonb_agg(to_jsonb(v) order by v.id),'[]') from openerp.vouchers v where v.book_id=${scope.bookId} and v.posting_date<=${asOf}::date),
       'lines',(select coalesce(jsonb_agg(to_jsonb(l) order by l.voucher_id,l.id),'[]') from openerp.journal_lines l where l.book_id=${scope.bookId}
         and exists(select 1 from openerp.vouchers v where v.book_id=l.book_id and v.id=l.voucher_id and v.posting_date<=${asOf}::date)),
@@ -179,7 +179,7 @@ export function readHistoricalRuns(tx: Transaction, bookId: string, ids: readonl
       p.body->'input'->'mappings' as mappings
     from openerp.sie_financial_runs r join openerp.sie_source_runs s on s.book_id=r.book_id and s.id=r.source_run_id
     join openerp.sie_source_plans p on p.book_id=s.book_id and p.id=s.plan_id
-    where r.book_id=${bookId} and r.id=any(${[...ids]}::text[]) order by r.id`,
+    where r.book_id=${bookId} and r.id=any(array[${sql.join(ids.map((value) => sql`${value}`), sql`, `)}]::text[]) order by r.id`,
     "objects",
   );
 }

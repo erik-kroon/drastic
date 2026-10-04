@@ -643,7 +643,13 @@ export const captureOnboardingSnapshot = Effect.fn("onboarding.capture")(functio
 
       for (const kind of required) if (!kinds.has(kind)) blockers.push(`missing_control:${kind}`);
 
-      if (compared.some((comparison) => comparison.unexplainedDifferenceMinor !== "0"))
+      if (
+        compared.some(
+          (comparison) =>
+            comparison.unexplainedDifferenceMinor !== "0" ||
+            (command.input.purpose === "opening" && comparison.differenceMinor !== "0"),
+        )
+      )
         blockers.push("independent_controls_differ");
       const trial = controls.find((control) => control.kind === "trial_balance");
 
@@ -682,8 +688,20 @@ export const captureOnboardingSnapshot = Effect.fn("onboarding.capture")(functio
         responsibilityPolicyId: policy?.id ?? null,
         comparisons: compared,
         blockers,
-        permittedLimitations:
-          command.input.purpose === "opening" || kinds.has("tax") ? [] : ["missing_tax_statement"],
+        permittedLimitations: [
+          ...(command.input.purpose === "opening" || kinds.has("tax")
+            ? []
+            : ["missing_tax_statement"]),
+          ...(command.input.purpose !== "opening" &&
+          compared.some(
+            (comparison) => comparison.kind === "bank" && comparison.differenceMinor !== "0",
+          ) &&
+          compared
+            .filter((comparison) => comparison.kind === "bank")
+            .every((comparison) => comparison.unexplainedDifferenceMinor === "0")
+            ? ["unreconciled_bank_difference"]
+            : []),
+        ],
         capturedBy: principal.actorId,
         capturedAt: yield* isoNow(tx),
       };
@@ -940,10 +958,20 @@ export const executeOnboardingActivationInTransaction = Effect.fn("onboarding.ex
 
     const historicalSnapshots = yield* records(tx, scope, "snapshots", O.OnboardingSnapshot);
     const limitationDecisions = yield* records(tx, scope, "decisions", O.OnboardingDecision);
-    const currentHistorical = yield* Effect.filter(historicalSnapshots, (entry) => onboardingSnapshotCurrent(tx, entry));
-    const retainedLimitations = limitationDecisions.filter((decision) => decision.decision.kind === "accept_limitation" &&
-      currentHistorical.some((entry) => entry.id === decision.snapshotId) &&
-      !limitationDecisions.some((rejection) => rejection.snapshotId === decision.snapshotId && rejection.decision.kind === "reject"));
+
+    const currentHistorical = yield* Effect.filter(historicalSnapshots, (entry) =>
+      onboardingSnapshotCurrent(tx, entry),
+    );
+
+    const retainedLimitations = limitationDecisions.filter(
+      (decision) =>
+        decision.decision.kind === "accept_limitation" &&
+        currentHistorical.some((entry) => entry.id === decision.snapshotId) &&
+        !limitationDecisions.some(
+          (rejection) =>
+            rejection.snapshotId === decision.snapshotId && rejection.decision.kind === "reject",
+        ),
+    );
 
     const receipt = yield* decode(O.OnboardingActivationReceipt, {
       id: newId("onboardingactivation"),

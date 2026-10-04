@@ -1,11 +1,16 @@
-import * as stylex from "@stylexjs/stylex";
+import * as Schema from "effect/Schema";
+import {
+  SetupBlock,
+  SetupInlineAction,
+  SetupText,
+  setupLayoutStyles,
+} from "@open-erp/ui/components/setup-parts";
 import * as Onboarding from "@open-erp/contracts/onboarding";
 import { SetupButton, SetupPageContent, SetupTitle } from "@open-erp/ui/components/setup-workspace";
 import { useBookWorkspace } from "@/lib/book-context";
 import { formatDate } from "./data";
 import { Breadcrumb, type OpenOnboardingView } from "./shared";
 import { sourceLabels } from "./sources";
-import { styles } from "./styles";
 
 export function OnboardingWorkspace({
   workspace,
@@ -17,9 +22,11 @@ export function OnboardingWorkspace({
   open: OpenOnboardingView;
 }) {
   const { book } = useBookWorkspace();
+
   function task(id: typeof Onboarding.OnboardingTask.Type.id) {
     return workspace.tasks.find((item) => item.id === id);
   }
+
   const groups: Array<{
     label: string;
     rows: Array<{
@@ -72,14 +79,9 @@ export function OnboardingWorkspace({
       label: "Källor",
       rows: ["previous_books", "bank", "other", "tax"].map((category) => {
         const source = workspace.sources.filter((item) => item.category === category);
-        const typed =
-          category === "previous_books"
-            ? "previous_books"
-            : category === "bank"
-              ? "bank"
-              : category === "tax"
-                ? "tax"
-                : "other";
+
+        const typed = Schema.decodeUnknownSync(Onboarding.SourceCategory)(category);
+
         return {
           label: sourceLabels[typed],
           detail: source.length
@@ -156,65 +158,77 @@ export function OnboardingWorkspace({
       ],
     },
   ];
+
   const blockers =
     lifecycle.snapshots.find((item) => item.current && item.snapshot.purpose === "activation")
       ?.snapshot.blockers ?? workspace.cutover.blockers;
+
   return (
-    <SetupPageContent styleX={[styles.page, styles.workspace]}>
+    <SetupPageContent styleX={setupLayoutStyles(["page", "workspace"])}>
       <Breadcrumb items={[{ label: book.name }, { label: "Setup" }]} open={open} />
-      <div {...stylex.props(styles.earlyTitle)}>
+      <SetupBlock layout={["earlyTitle"]}>
         <SetupTitle>Setup</SetupTitle>
-      </div>
-      <div {...stylex.props(styles.columns, styles.tableSpace)}>
-        <div {...stylex.props(styles.checklist)}>
+      </SetupBlock>
+      <SetupBlock layout={["columns", "tableSpace"]}>
+        <SetupBlock layout={["checklist"]}>
           {groups.map((group) => (
-            <section key={group.label}>
-              <h2 {...stylex.props(styles.semibold)}>{group.label}</h2>
+            <SetupBlock as="section" key={group.label}>
+              <SetupText as="h2" layout={["checklistHeading"]}>
+                {group.label}
+              </SetupText>
               {group.rows.map((row) => (
-                <div key={row.label} {...stylex.props(styles.checklistRow)}>
-                  <button
+                <SetupBlock key={row.label} layout={["checklistRow"]}>
+                  <SetupInlineAction
                     type="button"
                     onClick={() => open(row.view)}
-                    {...stylex.props(styles.checklistLabel, styles.crumbButton)}
+                    layout={["checklistLabel", "crumbButton"]}
                   >
                     {row.label}
-                  </button>
-                  <span {...stylex.props(styles.checklistDetail)}>{row.detail}</span>
-                  <span
-                    {...stylex.props(
-                      styles.checklistStatus,
-                      row.state === "complete"
-                        ? styles.success
-                        : row.state === "blocked"
-                          ? styles.warning
-                          : styles.secondary,
-                    )}
+                  </SetupInlineAction>
+                  <SetupText layout={["checklistDetail"]}>{row.detail}</SetupText>
+                  <SetupText
+                    layout={[
+                      "checklistStatus",
+                      (
+                        {
+                          complete: "success",
+                          blocked: "warning",
+                          in_progress: "secondary",
+                          needs_information: "secondary",
+                          not_started: "secondary",
+                        } as const
+                      )[row.state],
+                    ]}
                   >
-                    {row.state === "complete"
-                      ? "✓ Klar"
-                      : row.state === "blocked"
-                        ? "! Blockerad"
-                        : row.state === "in_progress"
-                          ? "○ Pågår"
-                          : "○ Ej påbörjad"}
-                  </span>
-                </div>
+                    {
+                      {
+                        complete: "✓ Klar",
+                        blocked: "! Blockerad",
+                        in_progress: "○ Pågår",
+                        needs_information: "○ Ej påbörjad",
+                        not_started: "○ Ej påbörjad",
+                      }[row.state]
+                    }
+                  </SetupText>
+                </SetupBlock>
               ))}
-            </section>
+            </SetupBlock>
           ))}
-        </div>
-        <aside {...stylex.props(styles.blockers)}>
-          <h2 {...stylex.props(styles.semibold)}>Det som blockerar go live</h2>
+        </SetupBlock>
+        <SetupBlock as="aside" layout={["blockers"]}>
+          <SetupText as="h2" layout={["checklistHeading"]}>
+            Det som blockerar go live
+          </SetupText>
           {blockers.map((blocker) => (
-            <p key={blocker} {...stylex.props(styles.secondary)}>
+            <SetupText as="p" key={blocker} layout={["secondary"]}>
               {blocker}
-            </p>
+            </SetupText>
           ))}
-          <div>
+          <SetupBlock>
             <SetupButton onClick={() => open("import")}>Fortsätt med import</SetupButton>
-          </div>
-        </aside>
-      </div>
+          </SetupBlock>
+        </SetupBlock>
+      </SetupBlock>
     </SetupPageContent>
   );
 }

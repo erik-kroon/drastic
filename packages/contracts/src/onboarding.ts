@@ -302,7 +302,11 @@ export const OnboardingSnapshot = Schema.Struct({
   comparisons: Schema.Array(OnboardingComparison),
   blockers: Schema.Array(Schema.String),
   permittedLimitations: Schema.Array(
-    Schema.Literals(["missing_historical_originals", "missing_tax_statement"]),
+    Schema.Literals([
+      "missing_historical_originals",
+      "missing_tax_statement",
+      "unreconciled_bank_difference",
+    ]),
   ),
   capturedBy: A.Identifier,
   capturedAt: Schema.String,
@@ -324,7 +328,11 @@ export const DecideOnboardingSnapshot = Schema.Struct({
     }),
     Schema.Struct({
       kind: Schema.Literal("accept_limitation"),
-      limitation: Schema.Literals(["missing_historical_originals", "missing_tax_statement"]),
+      limitation: Schema.Literals([
+        "missing_historical_originals",
+        "missing_tax_statement",
+        "unreconciled_bank_difference",
+      ]),
       reason: A.Description,
     }),
   ]),

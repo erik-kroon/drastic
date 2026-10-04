@@ -1,10 +1,10 @@
 # Architecture and ownership
 
-Status: existing ownership is established by [AGENTS.md](../AGENTS.md); accounting implementation is partial and the application-owned replacement is a working design. [ADR 0001](adr/0001-checkout-runtime-and-accounting-boundary.md) records the runtime baseline; [ADR 0004](adr/0004-complete-accounting-delivery-contract.md) records the financial delivery boundary; [ADR 0010](adr/0010-application-owned-accounting-replacement.md) records the selected ownership, clean baseline, caller cutover and no-compatibility decision.
+Status: existing ownership is established by [AGENTS.md](../AGENTS.md); accounting delivery is partial. The application-owned replacement has [bounded local cutover evidence](plans/evidence/application-owned-replacement-complete.md); company and deployment qualification remain open in [the work register](work-status.md). [ADR 0001](adr/0001-checkout-runtime-and-accounting-boundary.md) records the runtime baseline; [ADR 0004](adr/0004-complete-accounting-delivery-contract.md) records the financial delivery boundary; [ADR 0010](adr/0010-application-owned-accounting-replacement.md) records the selected ownership, clean baseline, caller cutover and no-compatibility decision.
 
 ## Repository ownership
 
-This map defines ownership. The [planning baseline](plans/evidence/planning-baseline.json) is a dated source inventory; the [roadmap](roadmap.md) records evidence and remaining gates.
+This map defines ownership. The [planning baseline](plans/evidence/planning-baseline.json) is a dated source inventory; the [roadmap](archive/history/roadmap-through-2026-10-04.md) records evidence and remaining gates.
 
 | Owner                | Observed responsibility                                                                                             |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------- |
@@ -34,7 +34,7 @@ flowchart TD
     Operations --> PG[(PostgreSQL authority)]
     Operations --> Objects[Evidence and artifact storage]
     PG --> Outbox[Transactional outbox and run checkpoints]
-    Outbox --> Jobs[Planned effect-mq Bun runner]
+    Outbox --> Jobs[effect-mq Bun runner]
     Jobs --> Operations
     Jobs --> Providers[Providers and isolated validators]
 ```
@@ -53,7 +53,7 @@ P02 extends the existing customer draft lifecycle with an explicit commercial pu
 
 The browser consumes `/commerce/invoice-drafts/calculate` through TanStack Query, validates the returned scope, input digest and expected revision, and discards replies for superseded inputs. Calculated base and tax fields are read-only. Preview is not an issuance approval. The existing domestic Swedish 25% accrual owner still checks identities, effective policy, account profile, period, current dependencies and approval before consuming a legal number or posting. Unresolved treatment retains unknown VAT and gross. Customer cash-method issuance remains absent.
 
-Current draft reads separately report the canonical editable, synthetic-issued or legal-issued lifecycle. A historical draft revision remains readable with its original digest while the current seal prevents editing. The existing legal invoice and pdfcn owners keep number, posting and frozen-document authority. The failure contract and repeatable local evidence are described in [P02 commercial drafts](plans/p02-commercial-draft-failures.md).
+Current draft reads separately report the canonical editable, synthetic-issued or legal-issued lifecycle. A historical draft revision remains readable with its original digest while the current seal prevents editing. The existing legal invoice and pdfcn owners keep number, posting and frozen-document authority. The failure contract and repeatable local evidence are described in [P02 commercial drafts](archive/completed/p02-commercial-draft-failures.md).
 
 ## Planned module boundaries
 
@@ -87,7 +87,7 @@ Each operation receives trusted actor/entity/book context. Connections and trans
 
 The authoritative Hyperdrive configuration disables query caching. API financial operations use explicit transactions with row locks and no session-level tenant context, advisory locks or `LISTEN/NOTIFY` dependency. The selected effect-mq Bun runner has a separate session-preserving PostgreSQL listener for queue delivery, with polling recovery; see [ADR 0009](adr/0009-effect-mq-background-jobs.md). The listener is not loaded in the API Worker and does not supply financial identity or state. Verify adapter support and cancellation against the selected runtime before relying on it. The [Cloudflare driver](https://developers.cloudflare.com/hyperdrive/examples/connect-to-postgres/) and [local development](https://developers.cloudflare.com/hyperdrive/configuration/local-development/) documentation are integration references, not proof that this checkout connects successfully.
 
-Persist run checkpoints and outbox records in PostgreSQL. The current hosted preparation adapter uses Cloudflare Workflows and a Cron Trigger; the self-host task process is not connected yet. [ADR 0009](adr/0009-effect-mq-background-jobs.md) selects effect-mq on a persistent Bun worker to replace that background path in both installations. It consumes committed application-outbox work and calls shared application operations. effect-mq owns queue retries and leases; domain progress, current authority, cancellation versions and financial receipts remain application responsibilities. At-least-once delivery must converge through effect identities and receipts. See [Cloudflare delivery](operations/cloudflare.md) for the current implementation and the [replacement plan](plans/application-owned-accounting.md#selected-background-jobs-effect-mq) for the selected design and proof gates.
+Persist run checkpoints and outbox records in PostgreSQL. The preparation adapter uses effect-mq on a separate persistent Bun worker, with an opt-in self-host process. The former Cloudflare Workflow and Cron dispatcher have been removed. [ADR 0009](adr/0009-effect-mq-background-jobs.md) owns this selection; hosted process placement and complete deployment/recovery qualification remain open. It consumes committed application-outbox work and calls shared application operations. effect-mq owns queue retries and leases; domain progress, current authority, cancellation versions and financial receipts remain application responsibilities. At-least-once delivery must converge through effect identities and receipts. See [Cloudflare delivery](operations/cloudflare.md) for the current implementation and the [replacement plan](archive/completed/application-owned-accounting.md#selected-background-jobs-effect-mq) for the selected design and proof gates.
 
 Native document validators belong behind a bounded process/container interface when needed. Deployment location, archive retention and restore are explicit decisions ([D-07](open-decisions.md)); an R2 setting alone is not a complete archival design.
 
@@ -109,4 +109,4 @@ The existing commercial calculator resolves selected defaults inside the caller'
 
 Catalog revisions retain active/archived state and an optional qualified legal-sales-policy reference separately from free-text tax descriptions. New commercial selections bind book scope and digest and reject stale or archived revisions. Already-saved selections remain readable and issueable after archive. Source-transcription agreement checks remain unchanged. The language preference controls copied payment terms. Full document localization remains unimplemented; the legal PDF renderer produces its existing Swedish output profile.
 
-Migration0062 adds scoped pointer/revision tables with immutable bodies and narrow runtime grants. Existing draft and article bodies remain unchanged. [P06 failure contract](plans/p06-invoice-defaults-failures.md) distinguishes proposed behavior, implementation and runtime proof.
+Migration0062 adds scoped pointer/revision tables with immutable bodies and narrow runtime grants. Existing draft and article bodies remain unchanged. [P06 failure contract](archive/completed/p06-invoice-defaults-failures.md) distinguishes proposed behavior, implementation and runtime proof.

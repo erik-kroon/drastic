@@ -48,8 +48,8 @@ export const retainProofAndActivate = Effect.fn("onboarding.operations.activate"
         sql`
       select not datallowconn and datconnlimit=0
         and not exists(select from pg_stat_activity where datname=${priorDatabase})
-        and not exists(select from pg_roles where rolname=any(${[...priorWriterRoles]}::text[]) and (rolcanlogin or rolinherit or rolsuper or rolcreaterole or rolcreatedb or rolreplication or rolbypassrls))
-        and not exists(select from pg_auth_members m join pg_roles r on r.oid=m.member where r.rolname=any(${[...priorWriterRoles]}::text[])) as safe
+        and not exists(select from pg_roles where rolname=any(array[${sql.join(priorWriterRoles.map((value) => sql`${value}`), sql`, `)}]::text[]) and (rolcanlogin or rolinherit or rolsuper or rolcreaterole or rolcreatedb or rolreplication or rolbypassrls))
+        and not exists(select from pg_auth_members m join pg_roles r on r.oid=m.member where r.rolname=any(array[${sql.join(priorWriterRoles.map((value) => sql`${value}`), sql`, `)}]::text[])) as safe
       from pg_database where datname=${priorDatabase}`,
         "objects",
       );

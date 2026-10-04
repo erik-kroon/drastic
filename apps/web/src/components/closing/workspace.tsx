@@ -4,12 +4,11 @@ import { Box } from "@open-erp/ui/components/box";
 import { Button } from "@open-erp/ui/components/button";
 import {
   RegisterWorkspace,
-  RegisterGroup,
-  RegisterRow,
   RegisterCheckRow,
   RegisterDetailHeading,
   RegisterNavigation,
 } from "@open-erp/ui/components/register-workspace";
+import { PeriodRegister } from "@open-erp/ui/components/period-register";
 import { FormDialog } from "@open-erp/ui/components/form-dialog";
 import { DataTable } from "@open-erp/ui/components/data-table";
 import { Text } from "@open-erp/ui/components/typography";
@@ -73,15 +72,21 @@ export function ClosingWorkspace({
 
   const detail = (
     <ContactPreviewLayout>
-      <RegisterDetailHeading title={`${period.startsOn} – ${period.endsOn}`} />
+      <RegisterDetailHeading
+        title={`${period.startsOn} – ${period.endsOn}`}
+        note={
+          basis
+            ? basis.locked
+              ? labels.locked
+              : sv
+                ? `${basis.checks.filter((check) => !check.passed).length} kontroller återstår innan perioden kan låsas.`
+                : `${basis.checks.filter((check) => !check.passed).length} checks remain before the period can be locked.`
+            : undefined
+        }
+      />
       <AccountingStatus locale={locale} pending={readiness.isPending} error={readiness.error} />
       {basis ? (
         <>
-          <PageCaption>
-            {basis.locked ? labels.locked : labels.open},{" "}
-            {basis.checks.filter((check) => check.passed).length} / {basis.checks.length}{" "}
-            {labels.checksComplete.toLocaleLowerCase(locale)}
-          </PageCaption>
           <ReadinessChecklist
             checks={basis.checks}
             locale={locale}
@@ -136,12 +141,17 @@ export function ClosingWorkspace({
               <Text key={blocker}>{blocker}</Text>
             ))}
             <PageCaption>{labels.aPeriodLockProtectsThe}</PageCaption>
+            <Button variant="outline" onClick={() => setPreparing(true)}>
+              {labels.preparePeriodLock}
+            </Button>
           </Disclosure>
           <WorkReviewFooter>
             <Box display="grid" gap="sm">
               <WorkReviewAction
                 variant="outline"
-                disabled={!basis.technicalCloseAllowed || book.role !== "operator"}
+                disabled={
+                  (!basis.locked && !basis.technicalCloseAllowed) || book.role !== "operator"
+                }
                 onClick={() => setPreparing(true)}
               >
                 {basis.locked
@@ -152,11 +162,11 @@ export function ClosingWorkspace({
                     ? "Lås perioden"
                     : "Lock period"}
               </WorkReviewAction>
-              <Disclosure compact title={sv ? "Granska låsvillkoren" : "Review lock conditions"}>
-                <Button variant="outline" onClick={() => setPreparing(true)}>
-                  {labels.preparePeriodLock}
-                </Button>
-              </Disclosure>
+              <PageCaption>
+                {sv
+                  ? "Knappen blir tillgänglig när alla kontroller är klara."
+                  : "The button becomes available when all checks are complete."}
+              </PageCaption>
             </Box>
           </WorkReviewFooter>
         </>
@@ -185,23 +195,31 @@ export function ClosingWorkspace({
       detailSize="wide"
       headingSpacing="work"
     >
-      <RegisterGroup title={labels.period} count={setup.periods.length} />
-      {[...setup.periods].reverse().map((item) => (
-        <RegisterRow
-          key={item.id}
-          title={`${item.startsOn} – ${item.endsOn}`}
-          status={item.locked ? "completed" : "open"}
-          state={item.locked ? labels.locked : labels.open}
-          amount=""
-          selected={item.id === period.id}
-          onSelect={() => {
-            setProposal("");
-            setPreparing(false);
-            setReviewingScope(false);
-            onOpen(item.id);
-          }}
-        />
-      ))}
+      <PeriodRegister
+        labels={{
+          period: labels.period,
+          status: sv ? "Status" : "Status",
+          result: sv ? "Resultat" : "Result",
+        }}
+        selected={period.id}
+        rows={[...setup.periods].reverse().map((item) => ({
+          id: item.id,
+          period: `${item.startsOn} – ${item.endsOn}`,
+          locked: item.locked,
+          status: item.locked
+            ? labels.locked
+            : basis && item.id === period.id
+              ? `${labels.open}, ${basis.checks.filter((check) => !check.passed).length} ${sv ? "kvar" : "remaining"}`
+              : labels.open,
+          result: "—",
+        }))}
+        onSelect={(id) => {
+          setProposal("");
+          setPreparing(false);
+          setReviewingScope(false);
+          onOpen(id);
+        }}
+      />
     </RegisterWorkspace>
   );
 }

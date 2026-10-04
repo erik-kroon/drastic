@@ -1,9 +1,13 @@
+import {
+  SetupBlock,
+  SetupInlineAction,
+  SetupText,
+  setupLayoutStyles,
+} from "@open-erp/ui/components/setup-parts";
 import type { ReactNode } from "react";
-import * as stylex from "@stylexjs/stylex";
 import { SetupButton } from "@open-erp/ui/components/setup-workspace";
 import { AccountingStatus } from "@/components/accounting-status";
 import { useBookWorkspace } from "@/lib/book-context";
-import { styles } from "./styles";
 import type { OnboardingView } from "./views";
 
 export type OpenOnboardingView = (view: OnboardingView) => void;
@@ -16,24 +20,26 @@ export function Breadcrumb({
   open: OpenOnboardingView;
 }) {
   return (
-    <nav aria-label="Sökväg" {...stylex.props(styles.crumb)}>
+    <SetupBlock as="nav" aria-label="Sökväg" layout={["crumb"]}>
       {items.map((item, index) => (
-        <span key={`${index}-${item.label}`} {...stylex.props(styles.actions)}>
-          {index > 0 ? <span aria-hidden="true">/</span> : null}
+        <SetupText key={`${index}-${item.label}`} layout={["actions"]}>
+          {index > 0 ? <SetupText aria-hidden="true">/</SetupText> : null}
           {item.view ? (
-            <button
+            <SetupInlineAction
               type="button"
-              onClick={() => open(item.view)}
-              {...stylex.props(styles.crumbButton)}
+              onClick={() => {
+                if (item.view) open(item.view);
+              }}
+              layout={["crumbButton"]}
             >
               {item.label}
-            </button>
+            </SetupInlineAction>
           ) : (
-            <span aria-current="page">{item.label}</span>
+            <SetupText aria-current="page">{item.label}</SetupText>
           )}
-        </span>
+        </SetupText>
       ))}
-    </nav>
+    </SetupBlock>
   );
 }
 
@@ -50,6 +56,7 @@ export function CommandStatus({
   };
 }) {
   const { locale } = useBookWorkspace();
+
   return (
     <AccountingStatus locale={locale} pending={command.isPending} error={command.error} write />
   );
@@ -65,6 +72,7 @@ export function PendingRead({
   retry: () => void;
 }) {
   const { locale } = useBookWorkspace();
+
   return (
     <>
       <AccountingStatus locale={locale} pending={pending} error={error} />
@@ -79,7 +87,12 @@ export function PendingRead({
 
 export function SetupLink({ children, onClick }: { children: ReactNode; onClick: () => void }) {
   return (
-    <SetupButton type="button" variant="ghost" styleX={styles.plainAction} onClick={onClick}>
+    <SetupButton
+      type="button"
+      variant="ghost"
+      styleX={setupLayoutStyles(["plainAction"])}
+      onClick={onClick}
+    >
       {children}
     </SetupButton>
   );

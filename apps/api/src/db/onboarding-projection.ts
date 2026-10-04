@@ -84,7 +84,7 @@ export function readBankTimingLines(
         where (a.book_id,a.voucher_id,a.line_id)=(l.book_id,l.voucher_id,l.id) and o.observed_on<=${asOf}::date),0) end)::text as "remainingMinor",
       array(select ev.evidence_id from openerp.events ev where ev.book_id=v.book_id and ev.id=v.event_id) as "evidenceIds"
     from openerp.journal_lines l join openerp.vouchers v on(v.book_id,v.id)=(l.book_id,l.voucher_id)
-    where l.book_id=${bookId} and v.id||':'||l.id=any(${[...identities]}::text[])
+    where l.book_id=${bookId} and v.id||':'||l.id=any(array[${sql.join(identities.map((value) => sql`${value}`), sql`, `)}]::text[])
       and v.posting_date<=${asOf}::date and v.corrects_voucher_id is null and v.posting_purpose<>'reversal'
       and not exists(select from openerp.vouchers r where r.book_id=v.book_id and r.corrects_voucher_id=v.id)
     order by v.id,l.id
