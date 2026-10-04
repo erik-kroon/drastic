@@ -4,7 +4,7 @@ import { AccountingError, FailureCode } from "@open-erp/domain/errors";
 import * as Effect from "effect/Effect";
 import * as Result from "effect/Result";
 import { failure } from "../failures";
-import { commandReceipt, ensureEvent, makePlanAndPost, readItemState } from "./fx";
+import { commandReceipt, ensureEvent, postOwnedJournal, readItemState } from "./fx";
 import * as FxDb from "../../db/commerce/fx";
 import * as RemeasurementDb from "../../db/commerce/fx-remeasurement";
 import * as Rates from "@open-erp/contracts/exchange-rates";
@@ -672,7 +672,7 @@ export const executeFxRemeasurement = Effect.fn("commerceFx.executeRemeasurement
 
     if (rateEvidence === undefined) return yield* failure("NotFound");
 
-    const posted = yield* makePlanAndPost(transaction, command.scope, principal, approval, {
+    const posted = yield* postOwnedJournal(transaction, command.scope, principal, approval, {
       kind: "post_voucher",
       correctsVoucherId: null,
       eventId,

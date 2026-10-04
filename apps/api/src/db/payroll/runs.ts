@@ -12,6 +12,7 @@ export const runTables = [
   "payroll_payslip_documents",
   "payroll_payslip_artifacts",
   "payroll_payslip_render_failures",
+  "payroll_run_reservation_releases",
 ] as const;
 
 export type BodyRow = { readonly body: Schema.JsonObject };
@@ -40,6 +41,26 @@ export function readRuns(tx: Transaction, bookId: string, after: string) {
 export function readExecution(tx: Transaction, bookId: string, runId: string) {
   return tx.execute<BodyRow>(
     sql`select body from openerp.payroll_run_executions where book_id=${bookId} and run_id=${runId}`,
+    "objects",
+  );
+}
+
+export function readActiveApproval(tx: Transaction, run: typeof Runs.PayrollRun.Type) {
+  return tx.execute<{
+    readonly id: string;
+    readonly actorId: string;
+    readonly expiresAt: string;
+  }>(
+    sql`select a.id,a.actor_id as "actorId",a.expires_at::text as "expiresAt"
+      from openerp.approvals a
+      join openerp.memberships m on m.book_id=a.book_id and m.actor_id=a.actor_id and m.role='operator'
+      join openerp.payroll_access p on p.book_id=a.book_id and p.actor_id=a.actor_id
+      left join openerp.identity_admissions i on i.actor_id=a.actor_id
+      where a.book_id=${run.scope.bookId} and a.change_set_id=${run.postingPlan.id} and a.digest=${run.postingPlan.planDigest}
+      and a.consumed_at is null and a.expires_at>clock_timestamp() and coalesce(i.enabled,true)
+      and not exists(select from openerp.posting_approval_revocations v where v.book_id=a.book_id and v.approval_id=a.id)
+      and not exists(select from openerp.payroll_run_reservation_releases r where r.book_id=a.book_id and r.approval_id=a.id)
+      order by a.expires_at desc,a.id desc limit 1`,
     "objects",
   );
 }

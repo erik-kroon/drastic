@@ -7,6 +7,8 @@ import * as Accounting from "@open-erp/contracts/accounting";
 import * as CashMethod from "@open-erp/contracts/cash-method";
 import * as Db from "../db/posting-admission";
 import * as PayrollRuns from "../db/payroll/runs";
+import * as TreasuryLoans from "../db/treasury/loans";
+import * as PayrollInputs from "../db/payroll/inputs";
 import * as Impact from "../db/posting-corrections";
 import * as Schedules from "../db/subledger/schedules";
 import * as Acceptance from "../db/purchases/acceptance";
@@ -45,7 +47,10 @@ export type PostingOwner = {
     | "cash_allocation"
     | "cash_year_end"
     | "cash_credit"
-    | "payroll_run";
+    | "payroll_run"
+    | "payroll_input"
+    | "foreign_cash"
+    | "treasury_loan";
   readonly id: string;
 };
 
@@ -88,6 +93,9 @@ export const admitPosting = Effect.fn("posting.admitOwnedSources")(function* (
     return yield* failure("UnsupportedProfile");
 
   yield* admitPayrollRun(tx, scope, changeId, owner, action);
+  yield* admitTreasuryLoan(tx, scope, changeId, owner, action);
+  yield* admitPayrollInput(tx, scope, changeId, owner, action);
+  yield* admitForeignCash(tx, scope, owner, action);
 
   yield* admitSupplierSettlement(tx, scope, changeId, eventId, action, owner);
 
@@ -564,4 +572,101 @@ export const admitPayrollRun = Effect.fn("posting.admitPayrollRun")(function* (
 
   if (action !== undefined && !equalJson(plan.groups[0]?.actions[0], action))
     return yield* failure("StaleDependency");
+});
+
+export const admitTreasuryLoan = Effect.fn("posting.admitTreasuryLoan")(function* (
+  tx: Transaction,
+  scope: Scope,
+  changeId: string,
+  owner?: PostingOwner,
+  action?: JsonObject,
+) {
+  const rows = yield* TreasuryLoans.readReviewByPlan(
+    tx,
+    scope.bookId,
+    changeId,
+    action && textField(action, "eventId"),
+  );
+
+  const row = rows[0];
+
+  if (!row && owner?.kind !== "treasury_loan") return;
+
+  if (rows.length !== 1 || !row || owner?.kind !== "treasury_loan" || owner.id !== row.id)
+    return yield* failure("ApprovalRequired");
+
+  const plan = yield* decode(Accounting.ChangeSet, objectField(row.body, "postingPlan"));
+
+  if (plan.id !== changeId) return yield* failure("ApprovalRequired");
+
+  if (action !== undefined && !equalJson(plan.groups[0]?.actions[0], action))
+    return yield* failure("StaleDependency");
+});
+
+export const admitPayrollInput = Effect.fn("posting.admitPayrollInput")(function* (
+  tx: Transaction,
+  scope: Scope,
+  changeId: string,
+  owner?: PostingOwner,
+  action?: JsonObject,
+) {
+  const rows = yield* PayrollInputs.readReviewByPlan(
+    tx,
+    scope.bookId,
+    changeId,
+    action && textField(action, "eventId"),
+  );
+
+  const row = rows[0];
+
+  if (!row && owner?.kind !== "payroll_input") return;
+
+  if (rows.length !== 1 || !row || owner?.kind !== "payroll_input" || owner.id !== row.id)
+    return yield* failure("ApprovalRequired");
+
+  const plan = yield* decode(Accounting.ChangeSet, objectField(row.body, "postingPlan"));
+
+  if (plan.id !== changeId) return yield* failure("ApprovalRequired");
+
+  if (action !== undefined && !equalJson(plan.groups[0]?.actions[0], action))
+    return yield* failure("StaleDependency");
+});
+
+export const admitForeignCash = Effect.fn("posting.admitForeignCash")(function* (
+  tx: Transaction,
+  scope: Scope,
+  owner: PostingOwner | undefined,
+  action: JsonObject,
+) {
+  const event = textField(action, "eventId");
+
+  if (!event) return yield* failure("InvalidJournal");
+
+  const rows = yield* Db.readForeignCashPosting(tx, scope.bookId, event);
+  const row = rows[0];
+
+  if (row || owner?.kind === "foreign_cash") {
+    if (rows.length !== 1 || !row || owner?.kind !== "foreign_cash" || owner.id !== row.id)
+      return yield* failure("ApprovalRequired");
+
+    if (!equalJson(objectField(row.body, "postingAction"), action))
+      return yield* failure("StaleDependency");
+  }
+
+  if (!Array.isArray(action.lines)) return yield* failure("InvalidJournal");
+
+  for (const line of action.lines) {
+    if (line === null || typeof line !== "object" || Array.isArray(line))
+      return yield* failure("InvalidJournal");
+
+    const account = textField(line, "accountId");
+
+    if (!account) return yield* failure("InvalidJournal");
+
+    if (
+      (yield* Db.readForeignCashAccount(tx, scope.bookId, account)).length > 0 &&
+      owner?.kind !== "foreign_cash"
+    )
+      return yield* failure("ApprovalRequired");
+  }
 });

@@ -1,3 +1,4 @@
+import * as PayrollInputDb from "../../db/payroll/inputs";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as FundingBank from "../../db/banking/statements";
 import * as Operation from "@open-erp/contracts/owner-operations";
@@ -1251,6 +1252,13 @@ const reviewBlockers = Effect.fn("owner.operations.blockers")(function* (
   }
 
   if (review.recognition !== null) {
+    if (
+      (yield* PayrollInputDb.readComponents(transaction, scope.bookId, [
+        `purchase:${review.recognition.economicKey}`,
+      ])).length > 0
+    )
+      blockers.push("An employee claim owns this purchase document.");
+
     if (
       (yield* OperationDb.readRecognitionByEconomicKey(
         transaction,

@@ -4,7 +4,7 @@ import * as Db from "../db/posting-admission";
 import type { Transaction } from "../db/transaction";
 import { failure } from "./failures";
 
-type Family = "bank" | "commerce" | "owner" | "vat" | "tax" | "subledger";
+type Family = "bank" | "commerce" | "owner" | "vat" | "tax" | "subledger" | "treasury";
 
 export const admitAccountRole = Effect.fn("resources.admitAccountRole")(function* (
   tx: Transaction,
@@ -40,6 +40,24 @@ export const admitBankMatch = Effect.fn("resources.admitBankMatch")(function* (
   },
   ownerId?: string,
 ) {
+  if ((yield* Db.readForeignCashObservation(tx, book, leg.statementId, leg.rowOrdinal)).length > 0)
+    return yield* failure("UnsupportedProfile");
+
+  const foreignClaim = (yield* Db.readForeignCashBookClaim(
+    tx,
+    book,
+    leg.statementId,
+    leg.rowOrdinal,
+  ))[0];
+
+  if (
+    foreignClaim &&
+    (foreignClaim.reviewId !== ownerId ||
+      foreignClaim.voucherId !== leg.voucherId ||
+      foreignClaim.lineId !== leg.lineId)
+  )
+    return yield* failure("ApprovalRequired");
+
   const claim = (yield* SettlementDb.readClaim(tx, book, leg.statementId, leg.rowOrdinal))[0];
 
   if (claim) {

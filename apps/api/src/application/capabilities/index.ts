@@ -1,3 +1,6 @@
+import { foreignCashCapabilities } from "./foreign-cash";
+import { payrollInputCapabilities } from "./payroll-inputs";
+import { treasuryLoanCapabilities } from "./treasury-loans";
 import { supplierSettlementCapabilities } from "./supplier-settlements";
 import { evaluationCapabilities } from "./evaluations";
 import { companyFirmCapabilities } from "./company-firms";
@@ -82,6 +85,9 @@ export const capabilities = {
   ...ledgerCapabilities,
   ...payrollCalculationCapabilities,
   ...payrollRunCapabilities,
+  ...foreignCashCapabilities,
+  ...payrollInputCapabilities,
+  ...treasuryLoanCapabilities,
   ...dimensionCapabilities,
   ...corporateTaxCapabilities,
 } satisfies Record<keyof typeof Capabilities, { readonly readOnly: boolean }>;

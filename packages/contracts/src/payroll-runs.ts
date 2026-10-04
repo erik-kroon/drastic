@@ -81,6 +81,14 @@ export const PayrollRunApproval = Schema.Struct({
   receipt: CommandReceipt,
 });
 
+export const PayrollRunActiveApproval = Schema.Struct({
+  runId: PayrollRunApproval.fields.runId,
+  runDigest: PayrollRunApproval.fields.runDigest,
+  id: PayrollRunApproval.fields.id,
+  actorId: PayrollRunApproval.fields.actorId,
+  expiresAt: PayrollRunApproval.fields.expiresAt,
+});
+
 export const PayrollPayslipDocument = Schema.Struct({
   id: Accounting.Identifier,
   scope: Accounting.Scope,
@@ -126,6 +134,7 @@ export const PayrollRunExecution = Schema.Struct({
 
 export const PayrollRunView = Schema.Struct({
   run: PayrollRun,
+  approval: Schema.NullOr(PayrollRunActiveApproval),
   execution: Schema.NullOr(PayrollRunExecution),
 });
 

@@ -396,3 +396,18 @@ export function readDatabaseTime(transaction: Transaction) {
     "objects",
   );
 }
+
+export function readOwnedTreasuryVoucherPresence(
+  transaction: Transaction,
+  bookId: string,
+  legs: Json,
+) {
+  return transaction.execute<{ readonly present: boolean }>(
+    sql`
+    select exists(select from jsonb_array_elements(${JSON.stringify(legs)}::jsonb) leg
+      join (select voucher_id from openerp.treasury_loan_events where book_id=${bookId}
+        union all select voucher_id from openerp.bank_foreign_cash_book_consumptions where book_id=${bookId}) e
+        on e.voucher_id=leg->>'voucherId') as present`,
+    "objects",
+  );
+}

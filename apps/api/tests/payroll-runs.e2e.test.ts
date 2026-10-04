@@ -24,6 +24,9 @@ test("regular payroll executes one atomic unpaid run and retains original paysli
   expect(await persisted(book)).toEqual(before);
   expect(run.employeeObligations.map((row) => row.payableMinor)).toEqual(["2090000"]);
   expect(
+    (await decoded(await request(book, `/payroll/runs/${run.id}`), Runs.PayrollRunView)).approval,
+  ).toBeNull();
+  expect(
     run.postingPlan.groups[0]?.actions[0]?.lines.reduce(
       (sum, line) => sum + BigInt(line.debitMinor),
       0n,
@@ -36,6 +39,21 @@ test("regular payroll executes one atomic unpaid run and retains original paysli
     { runDigest: run.digest },
     Runs.PayrollRunApproval,
   );
+
+  const approvedView = await decoded(
+    await request(book, `/payroll/runs/${run.id}`),
+    Runs.PayrollRunView,
+  );
+
+  expect(approvedView.approval).toEqual({
+    runId: run.id,
+    runDigest: run.digest,
+    id: approval.id,
+    actorId: approval.actorId,
+    expiresAt: approval.expiresAt,
+  });
+  expect(approvedView.execution).toBeNull();
+  expect(await persisted(book)).toEqual(before);
 
   const executionInput = { runDigest: run.digest, approvalId: approval.id };
   const executionKey = key();
@@ -51,6 +69,9 @@ test("regular payroll executes one atomic unpaid run and retains original paysli
   const receipt = await decoded(first, Runs.PayrollRunExecution);
   expect(await decoded(second, Runs.PayrollRunExecution)).toEqual(receipt);
   expect(receipt.status).toBe("posted_unpaid");
+  expect(
+    (await decoded(await request(book, `/payroll/runs/${run.id}`), Runs.PayrollRunView)).approval,
+  ).toBeNull();
   await failure(
     await request(book, `/payroll/runs/${run.id}/executions`, {
       method: "POST",
@@ -113,7 +134,11 @@ test("regular payroll executes one atomic unpaid run and retains original paysli
   expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
   await writeFile(
     join(environment().artifacts, "payroll-runs-proof.json"),
-    JSON.stringify({ input, calculation, run, approval, receipt, register, artifact }, null, 2),
+    JSON.stringify(
+      { input, calculation, run, approval, approvedView, receipt, register, artifact },
+      null,
+      2,
+    ),
   );
   await writeFile(join(environment().artifacts, "payroll-payslip.pdf"), pdf);
 });
@@ -401,22 +426,13 @@ test("competing run keys consume one earning identity and one monthly reservatio
   const left = await post(book, "/payroll/runs", input, Runs.PayrollRun);
   const right = await post(book, "/payroll/runs", input, Runs.PayrollRun);
 
-  const approvals = await Promise.all(
-    [left, right].map((run) =>
-      post(
-        book,
-        `/payroll/runs/${run.id}/approvals`,
-        { runDigest: run.digest },
-        Runs.PayrollRunApproval,
-      ),
-    ),
-  );
+  const runs = [left, right];
 
   const responses = await Promise.all(
-    [left, right].map((run, ordinal) =>
-      request(book, `/payroll/runs/${run.id}/executions`, {
+    runs.map((run) =>
+      request(book, `/payroll/runs/${run.id}/approvals`, {
         method: "POST",
-        body: JSON.stringify({ runDigest: run.digest, approvalId: approvals[ordinal]?.id }),
+        body: JSON.stringify({ runDigest: run.digest }),
       }),
     ),
   );
@@ -424,12 +440,31 @@ test("competing run keys consume one earning identity and one monthly reservatio
   expect(responses.map((response) => response.status).sort((left, right) => left - right)).toEqual([
     200, 409,
   ]);
-  const winning = responses.find((response) => response.status === 200);
+  const winningIndex = responses.findIndex((response) => response.status === 200);
+  const winning = responses[winningIndex];
   const losing = responses.find((response) => response.status === 409);
+  const run = runs[winningIndex];
 
-  if (!winning || !losing) throw new Error("Missing competing execution outcome");
-  const receipt = await decoded(winning, Runs.PayrollRunExecution);
+  if (!winning || !losing || !run) throw new Error("Missing competing approval outcome");
+  const approval = await decoded(winning, Runs.PayrollRunApproval);
   await failure(losing, 409, "AlreadyPosted");
+  expect(await payrollRegisterCounts(book.bookId)).toEqual({
+    vouchers: 0,
+    executions: 0,
+    obligations: 0,
+    earnings: 0,
+    months: 0,
+    documents: 0,
+    intents: 0,
+  });
+
+  const receipt = await post(
+    book,
+    `/payroll/runs/${run.id}/executions`,
+    { runDigest: run.digest, approvalId: approval.id },
+    Runs.PayrollRunExecution,
+  );
+
   expect(receipt.employeeObligations.map((row) => row.payableMinor)).toEqual(["2090000"]);
   expect(await payrollRegisterCounts(book.bookId)).toEqual({
     vouchers: 1,

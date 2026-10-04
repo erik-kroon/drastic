@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as BankDb from "../../db/banking/shared";
 import * as SourceDb from "../../db/banking/source-statement";
+import * as ForeignCashDb from "../../db/banking/foreign-cash";
 import * as StatementDb from "../../db/banking/statements";
 import type { Transaction } from "../../db/transaction";
 import { failure } from "../failures";
@@ -126,9 +127,17 @@ export function admitReviewedStatement(
     const source = statementSourceOf(input);
     const account = (yield* BankDb.readAccount(transaction, scope.bookId, source.accountId))[0];
 
+    const foreign = (yield* ForeignCashDb.readAccount(
+      transaction,
+      scope.bookId,
+      source.accountId,
+    ))[0];
+
+    const expectedCurrency = foreign ? foreign.body.nativeCurrency : book.currency;
+
     if (
       !account?.active ||
-      book.currency !== source.currency ||
+      expectedCurrency !== source.currency ||
       !Shared.isCalendarDate(source.startsOn) ||
       !Shared.isCalendarDate(source.endsOn) ||
       source.startsOn > source.endsOn ||

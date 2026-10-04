@@ -15,6 +15,7 @@ import type { Transaction } from "../../db/transaction";
 import { decode, requireTableAccess, type Scope } from "../commerce/support";
 import { resolveCompanyProfileInTransaction } from "../company-profiles";
 import { failure } from "../failures";
+import { captureInputs } from "./inputs";
 
 export const requirePayrollAccess = Effect.fn("payroll.runAccess")(function* (
   tx: Transaction,
@@ -33,6 +34,7 @@ export const currentCalculation = Effect.fn("payroll.currentRunCalculation")(fun
   tx: Transaction,
   scope: Scope,
   calculationId: string,
+  runId?: string,
 ) {
   const row = (yield* Db.readCalculation(tx, scope.bookId, calculationId))[0];
 
@@ -76,6 +78,17 @@ export const currentCalculation = Effect.fn("payroll.currentRunCalculation")(fun
     return yield* failure("StaleDependency");
 
   yield* requireCalculationProfile(tx, scope, basis);
+
+  const inputs = yield* captureInputs(
+    tx,
+    scope,
+    retained.employeeId,
+    period.startsOn.slice(0, 7),
+    (basis.payrollInputs ?? []).map((row) => row.inputId),
+    runId,
+  );
+
+  if (!equalJson(inputs, basis.payrollInputs ?? [])) return yield* failure("StaleDependency");
 
   if (
     (yield* RunDb.readReservedMonth(
@@ -233,6 +246,28 @@ export const compileRun = Effect.fn("payroll.compileRun")(function* (
       withholdingMinor: calculated.withholdingMinor,
       cashReimbursementMinor: calculated.cashReimbursementMinor,
       reimbursementAlreadyRecognized: false,
+      fundingTransfers: (source.basis.payrollInputs ?? []).flatMap((row) => [
+        ...(row.reimbursementMinor === "0"
+          ? []
+          : [
+              {
+                sourceId: `${row.inputId}_exempt`,
+                kind: "reimbursement" as const,
+                amountMinor: row.reimbursementMinor,
+                liabilityAccountId: row.liabilityAccountId,
+              },
+            ]),
+        ...(row.grossRecognizedMinor === "0"
+          ? []
+          : [
+              {
+                sourceId: `${row.inputId}_gross`,
+                kind: "gross" as const,
+                amountMinor: row.grossRecognizedMinor,
+                liabilityAccountId: row.taxableLiabilityAccountId ?? row.liabilityAccountId,
+              },
+            ]),
+      ]),
       deductions,
       employerContributionMinor: calculated.employerContributionMinor,
       accruals,

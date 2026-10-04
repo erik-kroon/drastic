@@ -7,6 +7,9 @@ import { swedishBusinessDate } from "@open-erp/domain/values";
 import {
   admitPosting,
   admitPayrollRun,
+  admitTreasuryLoan,
+  admitPayrollInput,
+  admitForeignCash,
   admitScheduleEvent,
   type PostingOwner,
 } from "./posting-admission";
@@ -149,6 +152,21 @@ const admitRetainedPlanOwnership = Effect.fn("posting.admitRetainedPlanOwnership
   for (const group of plan.groups) {
     for (const action of group.actions) {
       yield* admitScheduleEvent(transaction, command.scope, action.eventId);
+      yield* admitPayrollInput(
+        transaction,
+        command.scope,
+        command.changeSetId,
+        command.owner,
+        action,
+      );
+      yield* admitForeignCash(transaction, command.scope, command.owner, action);
+      yield* admitTreasuryLoan(
+        transaction,
+        command.scope,
+        command.changeSetId,
+        command.owner,
+        action,
+      );
       yield* admitPayrollRun(
         transaction,
         command.scope,

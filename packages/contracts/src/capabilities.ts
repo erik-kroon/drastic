@@ -1,3 +1,6 @@
+import { ForeignCashCapabilities } from "./foreign-cash";
+import { PayrollInputCapabilities } from "./payroll-inputs";
+import { LoanCapabilities } from "./treasury-loans";
 import { SupplierSettlementCapabilities } from "./supplier-settlements";
 import { EvaluationCapabilities } from "./evaluations";
 import { CompanySetupCapabilities } from "./company-setup";
@@ -188,6 +191,9 @@ export const Capabilities = {
   ...TaxAccountCapabilities,
   ...PayrollCalculationCapabilities,
   ...PayrollRunCapabilities,
+  ...ForeignCashCapabilities,
+  ...PayrollInputCapabilities,
+  ...LoanCapabilities,
   ...CorporateTaxCapabilities,
   ...AnnualReportCapabilities,
   rules_propose: {

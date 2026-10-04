@@ -141,6 +141,9 @@ function reversalSnapshot(
   legs: Json,
 ) {
   return Effect.gen(function* () {
+    if ((yield* ReversalDb.readOwnedTreasuryVoucherPresence(transaction, bookId, legs))[0]?.present)
+      return yield* Shared.unsupported();
+
     if ((yield* readConsumedCashMatches(transaction, bookId, legs))[0]?.present)
       return yield* Shared.unsupported();
 

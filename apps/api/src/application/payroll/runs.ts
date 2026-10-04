@@ -18,6 +18,7 @@ import {
   saveCommand,
 } from "../posting";
 import { compileRun, currentCalculation, requirePayrollAccess } from "./run-basis";
+import { reserveInputs, consumeInputs, reserveMonth } from "./inputs";
 
 export const checkedRun = Effect.fn("payroll.checkedRun")(function* (
   tx: Transaction,
@@ -46,7 +47,7 @@ export const checkedRun = Effect.fn("payroll.checkedRun")(function* (
       return yield* failure("AlreadyPosted");
 
     for (const employee of run.employees) {
-      const latest = yield* currentCalculation(tx, scope, employee.calculation.id);
+      const latest = yield* currentCalculation(tx, scope, employee.calculation.id, run.id);
 
       if (!equalJson(latest, employee)) return yield* failure("StaleDependency");
     }
@@ -214,6 +215,24 @@ export const approveRun = Effect.fn("payroll.approveRun")(function* (
         receipt: { key: command.idempotencyKey, operation, actorId: principal.actorId },
       });
 
+      yield* reserveInputs(
+        tx,
+        command.scope,
+        run.id,
+        run.employees.flatMap((employee) => employee.calculation.basis.payrollInputs ?? []),
+        approval.id,
+      );
+
+      for (const employee of run.employees)
+        yield* reserveMonth(
+          tx,
+          command.scope,
+          run.id,
+          approval.id,
+          employee.calculation.employeeId,
+          employee.calculation.calculation.earningsPeriod.startsOn.slice(0, 7),
+        );
+
       yield* saveCommand(
         tx,
         command.scope,
@@ -356,6 +375,13 @@ export const executeRun = Effect.fn("payroll.executeRun")(function* (
       for (const employee of run.employees)
         yield* Db.insertReservations(tx, command.scope.bookId, run.id, employee);
 
+      yield* consumeInputs(
+        tx,
+        command.scope,
+        run.id,
+        run.employees.flatMap((employee) => employee.calculation.basis.payrollInputs ?? []),
+      );
+
       for (const document of payslips) {
         yield* Db.insertDocument(tx, document);
         yield* Ledger.insertOutbox(tx, {
@@ -393,7 +419,19 @@ const runView = Effect.fn("payroll.runView")(function* (
 ) {
   const row = (yield* Db.readExecution(tx, run.scope.bookId, run.id))[0];
 
-  return { run, execution: row ? yield* decode(Runs.PayrollRunExecution, row.body) : null };
+  const approval = row ? undefined : (yield* Db.readActiveApproval(tx, run))[0];
+
+  return {
+    run,
+    approval: approval
+      ? yield* decode(Runs.PayrollRunActiveApproval, {
+          ...approval,
+          runId: run.id,
+          runDigest: run.digest,
+        })
+      : null,
+    execution: row ? yield* decode(Runs.PayrollRunExecution, row.body) : null,
+  };
 });
 
 export const getRun = Effect.fn("payroll.getRun")(function* (

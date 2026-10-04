@@ -1,3 +1,6 @@
+import { ForeignCashHandlers } from "./transport/http/routes/foreign-cash";
+import { PayrollInputHandlers } from "./transport/http/routes/payroll-inputs";
+import { TreasuryLoanHandlers } from "./transport/http/routes/treasury-loans";
 import { SupplierSettlementHandlers } from "./transport/http/routes/supplier-settlements";
 import { EvaluationHandlers } from "./transport/http/routes/evaluations";
 import { DeadlineHandlers } from "./transport/http/routes/deadlines";
@@ -214,6 +217,9 @@ const ApiRoutes = HttpApiBuilder.layer(Api, { openapiPath: "/api/openapi.json" }
     PayrollFoundationHandlers,
     PayrollCalculationHandlers,
     PayrollRunHandlers,
+    ForeignCashHandlers,
+    PayrollInputHandlers,
+    TreasuryLoanHandlers,
     DeadlineHandlers,
     RuleImpactHandlers,
     DimensionHandlers,

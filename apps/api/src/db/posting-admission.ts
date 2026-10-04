@@ -184,7 +184,11 @@ export function readOwnerAttachments(tx: Transaction, book: string, change: stri
 export function readProtectedCorrections(tx: Transaction, book: string, voucher: string) {
   return tx.execute<{ readonly kind: string }>(
     sql`
-    select 'payroll_run' as kind from openerp.payroll_run_executions where book_id=${book} and voucher_id=${voucher}
+    select 'payroll_input' as kind from openerp.payroll_input_executions where book_id=${book} and voucher_id=${voucher}
+ union all select 'foreign_cash_opening' as kind from openerp.bank_foreign_cash_opening_lines where book_id=${book} and voucher_id=${voucher}
+ union all select 'foreign_cash' as kind from openerp.bank_foreign_cash_effects where book_id=${book} and voucher_id=${voucher}
+ union all select 'treasury_loan' as kind from openerp.treasury_loan_events where book_id=${book} and voucher_id=${voucher}
+ union all select 'payroll_run' as kind from openerp.payroll_run_executions where book_id=${book} and voucher_id=${voucher}
  union all select 'supplier_settlement' as kind from openerp.supplier_settlement_receipts where book_id=${book} and voucher_id=${voucher}
  union all select 'owner' as kind from openerp.owner_effects where book_id=${book} and voucher_id=${voucher}
      union all select 'cash_allocation' from openerp.cash_method_recognitions where book_id=${book}
@@ -229,7 +233,8 @@ export function readAccountRoles(tx: Transaction, book: string, account: string)
     union all select 'commerce' from openerp.commerce_control_accounts where book_id=${book} and account_id=${account}
     union all select 'owner' from openerp.owner_control_accounts where book_id=${book} and account_id=${account}
     union all select 'vat' from openerp.vat_control_account_roles where book_id=${book} and account_id=${account}
-    union all select 'tax' from openerp.tax_account_sources where book_id=${book} and account_id=${account}`,
+    union all select 'tax' from openerp.tax_account_sources where book_id=${book} and account_id=${account}
+    union all select 'treasury' from openerp.treasury_loan_account_roles where book_id=${book} and account_id=${account}`,
     "objects",
   );
 }
@@ -258,12 +263,14 @@ export function readLineOwners(tx: Transaction, book: string, voucher: string, l
     select 'owner' as owner from openerp.owner_effects where book_id=${book} and voucher_id=${voucher} and line_id=${line}
     union all select 'commerce' from openerp.commerce_invoices where book_id=${book} and recognition_voucher_id=${voucher} and recognition_line_id=${line}
     union all select 'commerce' from openerp.commerce_active_allocation_legs where book_id=${book} and payment_voucher_id=${voucher} and payment_line_id=${line}
+    union all select 'bank' from openerp.bank_foreign_cash_book_consumptions where book_id=${book} and voucher_id=${voucher} and line_id=${line}
     union all select 'bank' from openerp.bank_active_matches where book_id=${book} and voucher_id=${voucher} and line_id=${line}
     union all select 'bank' from openerp.bank_active_allocation_legs where book_id=${book} and voucher_id=${voucher} and line_id=${line}
     union all select 'tax' from openerp.tax_account_match_capacity where book_id=${book} and voucher_id=${voucher} and line_id=${line}
     union all select 'fx' from openerp.commerce_fx_items where book_id=${book} and voucher_id=${voucher} and line_id=${line}
     union all select 'fx' from openerp.commerce_fx_settlements where book_id=${book} and voucher_id=${voucher} and ${line} in(cash_line_id,control_line_id,realized_line_id)
     union all select 'fx' from openerp.commerce_fx_settlement_sources s join openerp.commerce_fx_settlements t on(t.book_id,t.id)=(s.book_id,s.settlement_id) where s.book_id=${book} and t.voucher_id=${voucher} and s.journal_line_id=${line}
+    union all select 'treasury' from openerp.treasury_loan_events e join openerp.journal_lines l on l.book_id=e.book_id and l.voucher_id=e.voucher_id where e.book_id=${book} and e.voucher_id=${voucher} and l.id=${line} and exists(select from openerp.treasury_loan_account_roles r where r.book_id=l.book_id and r.account_id=l.account_id)
     union all select 'asset_valuation' from openerp.subledger_valuations where book_id=${book} and voucher_id=${voucher} and ${line} in(contra_line_id,result_line_id)`,
     "objects",
   );
@@ -360,6 +367,59 @@ export function readExpenseSourceConflicts(
 export function readDisposalVoucher(tx: Transaction, book: string, voucher: string) {
   return tx.execute<{ readonly id: string }>(
     sql`select r.id from openerp.subledger_disposal_reviews r join openerp.vouchers v on(v.book_id,v.change_set_id)=(r.book_id,r.change_set_id) where v.book_id=${book} and v.id=${voucher}`,
+    "objects",
+  );
+}
+
+export function readForeignCashPosting(tx: Transaction, book: string, event: string) {
+  return tx.execute<{ readonly id: string; readonly body: JsonObject }>(
+    sql`
+    select id,body from openerp.bank_foreign_cash_reviews where book_id=${book}
+      and body->'postingAction'->>'eventId'=${event}`,
+    "objects",
+  );
+}
+
+export function readForeignCashAccount(tx: Transaction, book: string, account: string) {
+  return tx.execute<{ readonly accountId: string }>(
+    sql`
+    select account_id as "accountId" from openerp.bank_foreign_cash_accounts
+      where book_id=${book} and account_id=${account}`,
+    "objects",
+  );
+}
+
+export function readForeignCashObservation(
+  tx: Transaction,
+  book: string,
+  statement: string,
+  ordinal: number,
+) {
+  return tx.execute<{ readonly accountId: string }>(
+    sql`
+    select s.account_id as "accountId" from openerp.bank_observations o
+    join openerp.bank_statements s on (s.book_id,s.id)=(o.book_id,o.statement_id)
+    join openerp.bank_foreign_cash_accounts a on (a.book_id,a.account_id)=(s.book_id,s.account_id)
+    where o.book_id=${book} and o.statement_id=${statement} and o.row_ordinal=${ordinal}`,
+    "objects",
+  );
+}
+
+export function readForeignCashBookClaim(
+  tx: Transaction,
+  book: string,
+  statement: string,
+  ordinal: number,
+) {
+  return tx.execute<{
+    readonly reviewId: string;
+    readonly voucherId: string;
+    readonly lineId: string;
+  }>(
+    sql`
+    select review_id as "reviewId",voucher_id as "voucherId",line_id as "lineId"
+    from openerp.bank_foreign_cash_book_consumptions where book_id=${book}
+      and statement_id=${statement} and row_ordinal=${ordinal}`,
     "objects",
   );
 }
