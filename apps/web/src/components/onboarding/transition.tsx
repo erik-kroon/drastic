@@ -263,7 +263,7 @@ function ActivationConfirmation({
           const decision = decisions.find((item) => item.actorId === id);
 
           return (
-            <SetupBlock key={id} layout={["gate"]}>
+            <SetupBlock key={id} layout={["gate", "dialogRow"]}>
               <SetupInlineAction
                 type="button"
                 disabled={
@@ -730,7 +730,7 @@ export function OnboardingFirstPeriod({
   ];
 
   return (
-    <SetupPageContent styleX={setupLayoutStyles(["page", "inset"])}>
+    <SetupPageContent styleX={setupLayoutStyles(["page", "inset", "periodPage"])}>
       <Breadcrumb
         items={[
           { label: book.name },
@@ -742,8 +742,8 @@ export function OnboardingFirstPeriod({
       <SetupBlock layout={["title"]}>
         <SetupTitle>Första perioden, {month}</SetupTitle>
       </SetupBlock>
-      <SetupBlock layout={["banner", "section24"]}>
-        <SetupText as="h2" layout={["medium"]}>
+      <SetupBlock layout={["banner", "periodBanner", "section"]}>
+        <SetupText as="h2" layout={["semibold", "primary"]}>
           Setup
         </SetupText>
         <SetupText as="p" layout={["secondary"]}>
@@ -752,7 +752,7 @@ export function OnboardingFirstPeriod({
             : `Setup är klar när ${month.split(" ")[0]} är stängd och stämmer.`}
         </SetupText>
       </SetupBlock>
-      <SetupBlock layout={["controls", "section24"]}>
+      <SetupBlock layout={["controls", "section20"]}>
         {rows.map((row) => (
           <SetupBlock key={row.label} layout={["periodRow"]}>
             <SetupText layout={["periodLabel"]}>{row.label}</SetupText>
@@ -760,8 +760,10 @@ export function OnboardingFirstPeriod({
           </SetupBlock>
         ))}
       </SetupBlock>
-      <SetupBlock layout={["section24"]}>
-        <Link href={`${workspacePath(book)}/work`}>Öppna Att göra</Link>
+      <SetupBlock layout={["section20"]}>
+        <SetupButton render={<Link href={`${workspacePath(book)}/work`} />}>
+          Öppna Att göra
+        </SetupButton>
       </SetupBlock>
       <PendingRead
         pending={!!period && readiness.isPending}

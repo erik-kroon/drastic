@@ -305,7 +305,7 @@ export function OnboardingVerification({
     : "perioden";
 
   return (
-    <SetupPageContent styleX={setupLayoutStyles(["page", "focusedEarly"])}>
+    <SetupPageContent styleX={setupLayoutStyles(["page", "focusedEarly", "periodPage"])}>
       <Breadcrumb
         items={[{ label: "Setup", view: "workspace" }, { label: "Verifiera" }]}
         open={open}
@@ -313,10 +313,10 @@ export function OnboardingVerification({
       <SetupBlock layout={["earlyTitle"]}>
         <SetupTitle>Verifiera bokföringen</SetupTitle>
       </SetupBlock>
-      <SetupText as="p" layout={["subtitle"]}>
+      <SetupText as="p" layout={["subtitle", "verificationSubtitle"]}>
         Book Zero, {periodName}. Jämför det importerade mot oberoende underlag.
       </SetupText>
-      <SetupText as="p" layout={["section20", "medium"]}>
+      <SetupText as="p" layout={["section20", "verificationSummary"]}>
         {complete} av 7 kontroller klara.
         {groups.find((item) => item.kind === "tax")?.current ? "" : " Skattekonto blockerar."}
       </SetupText>
@@ -324,13 +324,13 @@ export function OnboardingVerification({
         {groups.slice(0, 5).map((group) => (
           <VerificationControl key={group.kind} group={group} open={open} />
         ))}
-        <SetupBlock layout={["controlRow"]}>
-          <SetupText layout={["controlTitle"]}>DOKUMENT</SetupText>
-          <SetupBlock layout={["stack4"]}>
-            <SetupText layout={["warning"]}>
+        <SetupBlock layout={["controlRow", "verificationTallRow"]}>
+          <SetupText layout={["verificationLabel"]}>DOKUMENT</SetupText>
+          <SetupBlock layout={["stack4", "verificationBody"]}>
+            <SetupText layout={["warning", "verificationStatus"]}>
               {documentDecision ? "! Accepterad begränsning" : "! Begränsningen behöver beslut"}
             </SetupText>
-            <SetupText layout={["caption"]}>
+            <SetupText layout={["caption", "verificationDetail"]}>
               {documentDecision
                 ? `${personName(lifecycle, documentDecision.actorId)}, ${formatDate(documentDecision.recordedAt)}`
                 : "Historiska original har inte verifierats."}
@@ -338,7 +338,7 @@ export function OnboardingVerification({
           </SetupBlock>
           <SetupButton
             variant="ghost"
-            styleX={setupLayoutStyles(["plainAction"])}
+            styleX={setupLayoutStyles(["plainAction", "verificationAction"])}
             onClick={() => open("sources")}
           >
             Visa underlag
@@ -535,17 +535,25 @@ function VerificationControl({
   const explained = group.items.reduce((sum, item) => sum + BigInt(item.explainedMinor), 0n);
 
   return (
-    <SetupBlock layout={["controlRow", !group.current && "amberRow"]}>
-      <SetupText layout={["controlTitle"]}>{group.label}</SetupText>
-      <SetupBlock layout={["stack4"]}>
-        <SetupText layout={[group.current ? "success" : "warning"]}>
+    <SetupBlock
+      layout={[
+        "controlRow",
+        group.kind === "bank" && "verificationTallRow",
+        group.kind === "tax" && "verificationTaxRow",
+        !group.current && "amberRow",
+        group.kind === "tax" && !group.current && "verificationTaxWarning",
+      ]}
+    >
+      <SetupText layout={["verificationLabel"]}>{group.label}</SetupText>
+      <SetupBlock layout={["stack4", "verificationBody"]}>
+        <SetupText layout={[group.current ? "success" : "warning", "verificationStatus"]}>
           {group.current
             ? `✓ ${controlTitles[group.kind]} stämmer`
             : group.items.length
               ? `! ${controlTitles[group.kind]} har en differens`
               : "! Kontoutdrag saknas"}
         </SetupText>
-        <SetupText layout={["caption"]}>
+        <SetupText layout={["caption", "verificationDetail"]}>
           {group.items.length
             ? `Bokfört ${formatMinor(actual.toString())}, underlag ${formatMinor(expected.toString())}, skillnad ${formatMinor((expected - actual).toString())}${explained !== 0n ? `, förklarat ${formatMinor(explained.toString())}` : ""}`
             : "Kan inte jämföras. Blockerar verifieringen."}
@@ -553,7 +561,7 @@ function VerificationControl({
       </SetupBlock>
       <SetupButton
         variant="ghost"
-        styleX={setupLayoutStyles(["plainAction"])}
+        styleX={setupLayoutStyles(["plainAction", "verificationAction"])}
         onClick={() => open("sources")}
       >
         Visa underlag

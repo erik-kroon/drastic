@@ -103,7 +103,9 @@ export function OnboardingPanel({ view }: { view: OnboardingView }) {
 
     switch (view) {
       case "profile":
-        return <OnboardingProfile workspace={workspace.data} open={open} />;
+        return (
+          <OnboardingProfile workspace={workspace.data} lifecycle={lifecycle.data} open={open} />
+        );
       case "compatibility":
         return <OnboardingCompatibility workspace={workspace.data} open={open} />;
       case "workspace":

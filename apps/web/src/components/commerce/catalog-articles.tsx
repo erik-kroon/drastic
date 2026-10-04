@@ -164,17 +164,20 @@ export function CatalogArticles(props: CommerceProps & { navigation: ReactNode }
           <DataTable
             title={labels.currentRevisions}
             narrow="stack"
+            presentation="register"
             columns={[
               { id: "description", label: labels.article, width: "fill" },
               { id: "unit", label: labels.unit, width: 90 },
               { id: "tax", label: labels.vat, width: 80, numeric: true },
               { id: "price", label: labels.price, numeric: true, width: 120 },
+              { id: "revenueAccount", label: labels.revenueAccount, numeric: true, width: 110 },
             ]}
             rows={items.map((article) => ({
               id: article.code,
               cells: [
                 <RecordOpen
                   key="description"
+                  presentation="register"
                   data-article-code={article.code}
                   aria-label={`${article.description}, ${article.code}`}
                   onClick={() => {
@@ -195,6 +198,7 @@ export function CatalogArticles(props: CommerceProps & { navigation: ReactNode }
                 scale === undefined || article.unitPriceMinor === null
                   ? "—"
                   : formatMinorAmount(article.unitPriceMinor, scale, locale),
+                "—",
               ],
             }))}
           />
@@ -387,6 +391,7 @@ export function CatalogArticles(props: CommerceProps & { navigation: ReactNode }
 const english = {
   sales: "Sales",
   article: "Article",
+  revenueAccount: "Revenue account",
   vat: "VAT",
   price: "Price",
   title: "Article catalog",
@@ -416,6 +421,7 @@ const english = {
 const swedish: typeof english = {
   sales: "Försäljning",
   article: "Artikel",
+  revenueAccount: "Intäktskonto",
   vat: "Moms",
   price: "Pris",
   title: "Artikelkatalog",

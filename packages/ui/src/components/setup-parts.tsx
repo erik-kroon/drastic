@@ -4,6 +4,46 @@ import { tokens } from "@open-erp/ui/theme/tokens.stylex";
 
 const styles = stylex.create({
   page: { gap: tokens.space1 },
+  periodPage: { gap: tokens.space0 },
+  verificationLabel: {
+    width: 112,
+    flexShrink: 0,
+    fontSize: tokens.fontSizeCompact,
+    fontWeight: tokens.fontWeightSemibold,
+    letterSpacing: tokens.trackingGroup,
+    lineHeight: tokens.lineHeight14Px,
+    color: tokens.captionForeground,
+  },
+  verificationSummary: {
+    fontSize: tokens.fontSizeXl,
+    fontWeight: tokens.fontWeightSemibold,
+    lineHeight: tokens.lineHeight24Px,
+  },
+  verificationBody: { flex: "1", gap: tokens.space0_5 },
+  verificationStatus: {
+    fontSize: tokens.fontSizeSm,
+    fontWeight: tokens.fontWeightSemibold,
+    lineHeight: tokens.lineHeight18Px,
+  },
+  verificationDetail: { color: tokens.mutedForeground },
+  verificationSubtitle: { marginBlockStart: tokens.space1 },
+  verificationTallRow: { minHeight: 80 },
+  verificationTaxRow: { minHeight: 60 },
+  verificationTaxWarning: {
+    paddingInlineStart: 13,
+    paddingInlineEnd: 0,
+    borderInlineStartWidth: 3,
+    borderInlineStartStyle: "solid",
+    borderInlineStartColor: tokens.warningForeground,
+  },
+  verificationAction: {
+    width: 100,
+    flexShrink: 0,
+    justifyContent: "end",
+    color: tokens.primary,
+    paddingInline: 0,
+    whiteSpace: "nowrap",
+  },
   inset: { paddingInlineEnd: tokens.space8 },
   workspace: { width: tokens.setupWorkspaceWithGutter, paddingBlockStart: tokens.space8 },
   focused: {
@@ -223,6 +263,18 @@ const styles = stylex.create({
     backgroundColor: tokens.registerSelected,
     borderRadius: tokens.radiusSurface,
   },
+  periodBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: tokens.space2,
+    paddingBlock: tokens.space2,
+    paddingInline: tokens.space3,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: tokens.setupBannerBorder,
+    borderRadius: tokens.radiusControl,
+  },
   periodRow: {
     display: "flex",
     alignItems: "center",
@@ -263,7 +315,14 @@ const styles = stylex.create({
     fontWeight: tokens.fontWeightSemibold,
     lineHeight: tokens.lineHeight18Px,
   },
-  dialogCopy: { display: "flex", flexDirection: "column", gap: tokens.space1_5 },
+  dialogCopy: {
+    display: "flex",
+    flexDirection: "column",
+    gap: tokens.space1_5,
+    fontSize: tokens.fontSizeControl,
+    lineHeight: tokens.lineHeight16Px,
+  },
+  dialogRow: { fontSize: tokens.fontSizeControl, lineHeight: tokens.lineHeight16Px },
 });
 
 export type SetupVariant = keyof typeof styles;
@@ -319,5 +378,11 @@ export function SetupRadio({
   checked,
   ...props
 }: Omit<ComponentPropsWithRef<"input">, "className" | "style"> & { layout?: SetupLayout }) {
-  return <input {...props} checked={checked} {...stylex.props(styles.radio, checked && styles.radioSelected, setupLayoutStyles(layout))} />;
+  return (
+    <input
+      {...props}
+      checked={checked}
+      {...stylex.props(styles.radio, checked && styles.radioSelected, setupLayoutStyles(layout))}
+    />
+  );
 }

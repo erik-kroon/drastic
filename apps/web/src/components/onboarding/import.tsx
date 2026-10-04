@@ -379,7 +379,9 @@ export function OnboardingMapping({
         .
       </SetupText>
       <PendingRead
-        pending={sie.inventory.isPending || (!!sie.latest && sie.preview.isPending)}
+        pending={
+          !!sie.source && (sie.inventory.isPending || (!!sie.latest && sie.preview.isPending))
+        }
         error={sie.inventory.error ?? sie.preview.error}
         retry={() => {
           void sie.inventory.refetch();

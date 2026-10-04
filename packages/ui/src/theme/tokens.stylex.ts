@@ -202,6 +202,7 @@ export const tokens = stylex.defineConsts({
   spaceNegative5: "-1.25rem",
   spaceNegative8: "-2rem",
   registerSelected: "#eef3fc",
+  setupBannerBorder: "#d8e3f7",
   rowDivider: "var(--row-divider)",
   registerWarning: "#8a5a00",
   registerSuccess: "#1e6256",

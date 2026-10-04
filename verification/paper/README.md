@@ -1,5 +1,13 @@
 # Paper product implementation proof
 
+Empty-book onboarding verification fixture obligations, before implementation: admit additional synthetic receivable, payable and VAT accounts only through the launcher's bootstrap; reject an invalid fixture flag before starting processes; use private loopback sessions and real source-retention/control/snapshot owners; independently specify all comparison amounts as zero in a fresh empty book; refuse existing onboarding cases or posted vouchers; reject every failed request and any nonzero comparison; retain redacted identities and snapshot blockers. Missing tax evidence remains missing. Capturing a blocked snapshot must not approve opening balances, bypass verification, activate the company, or assert an external outcome.
+
+Onboarding profile fixture obligations, before implementation: use only the launcher's private local scratch database; refuse existing company facts rather than replace them; provision a separate synthetic preparer and use real local human sessions for fact recording and review; refuse any failed API read or write; preserve the rule that a person cannot review their own recorded fact; retain only redacted fact/source/review identities. Six supported company facts can be retained; a BAS chart release is not a supported company fact and must not be invented. This fixture does not activate a company, approve a posting, or assert any external outcome.
+
+Profile decision display obligations, before implementation: show only the review attached to the currently applicable fact revision; resolve the reviewer's name from the lifecycle's scoped people read and keep an unknown person explicit; opening a decision must not create a new review or change the fact; Escape must close it and return focus to the invoking button. Accounting method and reporting framework use Paper's named-review and Visa beslut states when a confirmed review exists.
+
+Parity reporting obligations, before this reporting change: a route/readiness failure remains a failed entry and must not stop later entries from being reported; missing images and wrong image sizes remain failures; the existing 24-channel pixel tolerance and 1% final gate remain unchanged; the 5%, 2.5% and 1% milestones use the measured ratio before display rounding. Captures keep their rendering conditions and actual/diff images.
+
 Customer register projection obligations, recorded before implementation: use exact retained counterparty identities, never match names; exclude supplier invoices and drafts; retain separate currency and scale groups; never turn an unknown outstanding amount into zero; use the invoice owner's live amount after credit and cancellation; sum current-year issued invoices only; reject truncated invoice coverage rather than publish a partial total. The projection is read-only and must run inside the directory owner's scoped transaction. Verify independent synthetic amounts, selection, search and edit recovery through the real API and browser.
 
 Customer invoice-entry obligations: pass the retained scoped customer to the existing draft editor; initialize only a new editor; isolate retained unsaved edits by customer; do not overwrite a restored editor's choices; preserve close, discard and save recovery; creating a draft must not issue or post an invoice. Keep the existing operator requirement.
@@ -43,6 +51,32 @@ Before the isolated launcher was written, its failure obligations were:
 - A screen or operation without proof remains incomplete. A passing build does not establish pixel parity.
 
 ## Run
+
+### 2026-10-04 parity checkpoint
+
+Second 5% follow-up: latest per-frame evidence reaches 25/27 below 5%. U40 is 3.55% in `parity-2026-10-04-verification/`; U44 is 3.08% in `parity-2026-10-04-onboarding-controls/`. U34 remains 18.07% (`parity-2026-10-04-compatibility/`), U42 remains 15.81% with this fixture. Repeat with `PAPER_ONBOARDING=1 node verification/paper/start.mjs`, then `node verification/paper/seed-onboarding-controls.mjs <private-session-file>` on the fresh book. The fixture retains independent zero-balance CSV sources, six independently prepared/reviewed profile facts, a real two-person responsibility policy, and a blocked Book Zero snapshot. Its nine comparisons are checked against independently specified zero amounts. It does not accept opening balances, accept limitations, confirm activation, or run a live provider.
+
+T3 observed seven 100px evidence-action lanes at x868 and the disabled verification button. The preview host disconnected during the subsequent click, so that navigation and the new confirmation close check were not observed in this follow-up. Existing parity harness captures remain valid pixel measurements.
+
+5% priority follow-up: `test-results/paper/parity-2026-10-04-progress.json` combines the latest retained result per frame and names each contributing report. It is explicitly not a single combined-fixture run. The confirmed count is now 23/27 below 5%, with U34, U40, U42 and U44 still failing that stage. New receipts: `parity-2026-10-04-fixtures/` P1 2.40%; `parity-2026-10-04-vouchers/` Q1 2.48%; `parity-2026-10-04-customers/` M3 3.10%; `parity-2026-10-04-first-period/` U46 3.99%. U46 previously measured 5.33%; the horizontal banner, section spacing and primary Att göra link now match Paper geometry while unknown readiness stays unknown. T3 observed its 936×34 banner at x32/y156 and navigation to the real work route.
+
+Repeat Q1 by running `node verification/paper/seed-voucher-reference.mjs <private-session-file>` in a fresh launcher before the harness. This uses the retained alternate voucher book and the synthetic operator's human session for approval and execution, preserving the approval policy. Repeat P1 with `node verification/paper/seed-documents.mjs <private-session-file>`. Use a fresh sales fixture for M3, rather than rerunning a partially failed seed that leaves duplicate counterpart identities.
+
+The existing Playwright parity harness measures unscaled 1440×900 PNGs at device scale 1. T3 remains the interaction-check surface; its saved 1280×800 preview images are not pixel-measurement inputs. Pixel tolerance stays 24 per RGB channel. Reports record strict `<5%`, `<2.5%`, and `<1%` milestones, and keep failed routes as failed entries. `PARITY_OUT` retains independent measurement rounds.
+
+Retained evidence:
+
+- `test-results/paper/parity-2026-10-04-audit/`: all 27 manifest checks, 19 below 5%, 8 below 2.5%, 3 below 1%. Missing document/voucher fixtures and duplicate customer identities fail visibly.
+- `test-results/paper/parity-2026-10-04-articles/`: M5 0.59%, down from 1.18%. Missing revenue-account ownership and sales tabs still prevent whole-screen completion.
+- `test-results/paper/parity-2026-10-04-sales/`: fresh sales fixture, M1 1.86%, M3 3.10%, M12 initially 2.30%, M5 0.96% with this fixture's article values.
+- `test-results/paper/parity-2026-10-04-orders/`: M12 1.64% after register-column changes. Titles remain titles; unsupported expiry is unknown. Document numbering, expiry and transition history are owner blockers.
+- U33 in the audit is 2.67% with six independently prepared and reviewed facts. BAS release, source descriptions and designed review history remain incomplete.
+
+Repeat sales measurements in a fresh launcher: `node verification/paper/seed-sales.mjs <private-session-file>`, then `PARITY_OUT=test-results/paper/parity-sales-repeat node verification/paper/parity.mjs <private-session-file> M`. The seed signs in as the launcher's synthetic human operator before review and execution; it preserves posting approval rather than executing with an agent token. It never uses a live provider.
+
+For the profile fixture, first create the existing-company onboarding case through the product, then run `node verification/paper/seed-onboarding-profile.mjs <private-session-file>`. It refuses existing facts. Measure with `PARITY_OUT=test-results/paper/parity-profile-repeat node verification/paper/parity.mjs <private-session-file> U33`.
+
+T3 observed order detail opening, Escape closing, focus returning to the invoking title and no page overflow at 1440px. Profile decision and article editor close/focus checks also passed. `bun run check:changed:full` passed at this checkpoint. These are partial implementation results; the final gate has not passed for all screens. Work is tracked in DRA-141, DRA-143 and DRA-144.
 
 `node verification/paper/start.mjs` starts disposable PostgreSQL, the real API Worker and the web app on port 3000. It prints the preview URL and the private local session-file path. Use the T3 collaborative browser to sign in, drive the product, capture screenshots and inspect layout. The launcher installs cancellation cleanup, but terminal cancellation left PostgreSQL running in one observed run; verify the exact owned processes and stop the scratch cluster with its `pg_ctl -D <scratch>/pgdata -m fast -w stop` before removing that scratch directory if cleanup fails.
 

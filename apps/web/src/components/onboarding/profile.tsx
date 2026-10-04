@@ -27,7 +27,8 @@ import {
   mutationOptions,
   readAccounting,
 } from "@/lib/accounting-api";
-import { formatDate, useOnboardingCommand, useOnboardingFacts } from "./data";
+import { formatDate, formatMoment, useOnboardingCommand, useOnboardingFacts } from "./data";
+import { personName } from "./lifecycle";
 import { PendingRead, SetupLink, type OpenOnboardingView } from "./shared";
 
 type Fact = (typeof Profiles.CompanyFactPage.Type.items)[number];
@@ -91,9 +92,11 @@ function factText(fact: Fact | undefined) {
 
 export function OnboardingProfile({
   workspace,
+  lifecycle,
   open,
 }: {
   workspace: typeof Onboarding.OnboardingWorkspace.Type;
+  lifecycle: typeof Onboarding.OnboardingLifecycle.Type;
   open: OpenOnboardingView;
 }) {
   const { book, setup } = useBookWorkspace();
@@ -124,6 +127,7 @@ export function OnboardingProfile({
   });
 
   const [confirming, setConfirming] = useState<Fact | null>(null);
+  const [decision, setDecision] = useState<Fact | null>(null);
 
   const confirm = useOnboardingCommand(
     `${bookPath(book)}/company-facts/${encodeURIComponent(confirming?.revision.id ?? "unselected")}/reviews`,
@@ -142,7 +146,7 @@ export function OnboardingProfile({
     <SetupPageContent styleX={setupLayoutStyles(["page"])}>
       <SetupTitle>Företagsprofil</SetupTitle>
       <SetupText as="p" layout={["subtitle"]}>
-        Vi läser först ur dina underlag och frågar sedan.
+        Fakta, källor och giltighet för företaget.
       </SetupText>
       <PendingRead
         pending={facts.isPending}
@@ -169,6 +173,9 @@ export function OnboardingProfile({
               const known = fact?.revision.value.state === "known";
               const confirmed = known && fact.review?.result === "confirmed";
 
+              const namedReview =
+                confirmed && (kind === "accounting_method" || kind === "reporting_framework");
+
               const source = evidence.find((item) =>
                 fact?.revision.evidence.some((ref) => ref.evidenceId === item.data?.id),
               )?.data;
@@ -188,12 +195,23 @@ export function OnboardingProfile({
                     layout={[confirmed ? "success" : known ? "secondary" : "warning"]}
                   >
                     {confirmed
-                      ? "✓ Bekräftad"
+                      ? namedReview && fact.review
+                        ? `✓ Bekräftad av ${personName(lifecycle, fact.review.reviewer)}`
+                        : "✓ Bekräftad"
                       : known
                         ? "○ Läst, behöver bekräftas"
                         : "! Behöver uppgift"}
                   </SetupText>,
                   <SetupBlock key="actions" layout={["actions"]}>
+                    {namedReview ? (
+                      <SetupButton
+                        variant="ghost"
+                        styleX={setupLayoutStyles(["plainAction"])}
+                        onClick={() => setDecision(fact)}
+                      >
+                        Visa beslut
+                      </SetupButton>
+                    ) : null}
                     {known && !confirmed ? (
                       <SetupButton
                         variant="ghost"
@@ -268,6 +286,22 @@ export function OnboardingProfile({
             </SetupButton>
             <AccountingStatus locale="sv" pending={confirm.isPending} error={confirm.error} write />
           </SetupContent>
+        </FormDialog>
+      ) : null}
+      {decision?.review ? (
+        <FormDialog
+          size="compact"
+          title="Visa beslut"
+          closeLabel="Stäng"
+          onClose={() => setDecision(null)}
+          onEscape={() => setDecision(null)}
+        >
+          <SetupBlock layout={["stack12"]}>
+            <SetupText>{factText(decision)}</SetupText>
+            <SetupText>Bekräftad av {personName(lifecycle, decision.review.reviewer)}</SetupText>
+            <SetupCaption>{formatMoment(decision.review.reviewedAt)}</SetupCaption>
+            <SetupText>{decision.review.rationale}</SetupText>
+          </SetupBlock>
         </FormDialog>
       ) : null}
       {editing ? (

@@ -16,6 +16,11 @@ const styles = stylex.create({
     ":focus-visible": { boxShadow: tokens.focusRing },
   },
   table: { borderCollapse: "collapse", width: "100%", fontSize: tokens.fontSizeControl },
+  registerTable: {
+    lineHeight: tokens.lineHeight16Px,
+    borderCollapse: "separate",
+    borderSpacing: 0,
+  },
   wide: { minWidth: "36rem" },
   expanded: { minWidth: "56rem" },
   stackedTable: { "@container (max-width: 36rem)": { display: "block", minWidth: 0 } },
@@ -86,6 +91,13 @@ const styles = stylex.create({
     verticalAlign: "middle",
   },
   row: { ":hover": { backgroundColor: tokens.sidebar } },
+  registerCell: {
+    paddingInlineEnd: 0,
+    borderBottomColor: tokens.rowDivider,
+    ":last-child": { paddingInlineEnd: tokens.space5 },
+  },
+  registerHeaderCell: { borderBottomColor: tokens.border },
+  insetColumn: { paddingInlineStart: tokens.space6 },
   contentColumn: {
     width: 1,
     whiteSpace: "nowrap",
@@ -106,6 +118,7 @@ export interface DataGridColumn<Row> {
   cell: (row: Row) => ReactNode;
   numeric?: boolean;
   width?: "content" | "fill" | number;
+  inset?: boolean;
 }
 
 /** Read-only adaptation of the 2.0 grid. The caller owns server filters and cursor pagination. */
@@ -118,6 +131,7 @@ export function DataGrid<Row extends object>({
   narrow = "scroll",
   minWidth = "standard",
   renderDetail,
+  presentation = "table",
 }: {
   title: string;
   columns: readonly DataGridColumn<Row>[];
@@ -127,8 +141,17 @@ export function DataGrid<Row extends object>({
   narrow?: "scroll" | "stack";
   minWidth?: "standard" | "wide" | "fit";
   renderDetail?: (row: Row) => ReactNode;
+  presentation?: "table" | "register";
 }) {
   const column = createColumnHelper<typeof features, Row>();
+
+  function columnWidth(index: number) {
+    const width = columns[index]?.width;
+
+    if (typeof width !== "number") return undefined;
+
+    return width + (presentation === "register" && index === columns.length - 1 ? 20 : 0);
+  }
 
   const table = useTable({
     features,
@@ -156,6 +179,7 @@ export function DataGrid<Row extends object>({
       <table
         {...stylex.props(
           styles.table,
+          presentation === "register" && styles.registerTable,
           columns.length > 2 && minWidth !== "fit" && styles.wide,
           minWidth === "wide" && styles.expanded,
           narrow === "stack" && styles.stackedTable,
@@ -177,15 +201,14 @@ export function DataGrid<Row extends object>({
                   {...stylex.props(
                     styles.cell,
                     styles.headerCell,
+                    presentation === "register" && styles.registerCell,
+                    presentation === "register" && styles.registerHeaderCell,
                     columns[index]?.width === "content" && styles.contentColumn,
                     columns[index]?.width === "fill" && styles.fillColumn,
                     typeof columns[index]?.width === "number" &&
-                      styles.fixedColumn(
-                        typeof columns[index]?.width === "number"
-                          ? columns[index]?.width
-                          : undefined,
-                      ),
+                      styles.fixedColumn(columnWidth(index)),
                     columns[index]?.numeric && styles.numeric,
+                    columns[index]?.inset && styles.insetColumn,
                   )}
                 >
                   <table.FlexRender header={header} />
@@ -210,15 +233,13 @@ export function DataGrid<Row extends object>({
                       role="cell"
                       {...stylex.props(
                         styles.cell,
+                        presentation === "register" && styles.registerCell,
                         columns[index]?.width === "content" && styles.contentColumn,
                         columns[index]?.width === "fill" && styles.fillColumn,
                         typeof columns[index]?.width === "number" &&
-                          styles.fixedColumn(
-                            typeof columns[index]?.width === "number"
-                              ? columns[index]?.width
-                              : undefined,
-                          ),
+                          styles.fixedColumn(columnWidth(index)),
                         columns[index]?.numeric && styles.numeric,
+                        columns[index]?.inset && styles.insetColumn,
                         narrow === "stack" && styles.stackedCell,
                       )}
                     >
