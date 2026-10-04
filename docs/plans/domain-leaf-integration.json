@@ -192,9 +192,10 @@
     },
     {
       "leaf": "impairment-reversal",
-      "status": "deferred",
-      "reason": "Packet keeps valuation and persistence with the asset owners.",
-      "unblockedBy": "An asset owner persists carrying amounts and calls this leaf for a reversal."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/subledger/valuation-basis.ts"
+      ]
     },
     {
       "leaf": "ledger",
@@ -254,9 +255,10 @@
     },
     {
       "leaf": "payroll-runs",
-      "status": "deferred",
-      "reason": "Packet keeps the payroll run posting and payslips with the payroll owners.",
-      "unblockedBy": "A payroll owner owns a run and calls this leaf for its journal."
+      "status": "wired",
+      "consumers": [
+        "apps/api/src/application/payroll/run-basis.ts"
+      ]
     },
     {
       "leaf": "peppol-exchange",

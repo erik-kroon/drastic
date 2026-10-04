@@ -89,6 +89,7 @@
     "./catalog": "./src/catalog.ts",
     "./payroll-foundation": "./src/payroll-foundation.ts",
     "./roles": "./src/roles.ts",
+    "./payroll-runs": "./src/payroll-runs.ts",
     "./payroll-calculations": "./src/payroll-calculations.ts",
     "./corporate-tax": "./src/corporate-tax.ts",
     "./annual-report": "./src/annual-report.ts",

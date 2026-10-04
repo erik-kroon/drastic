@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import * as Match from "effect/Match";
 import type { Transaction } from "./transaction";
 import type { JsonObject } from "./commerce/access";
 
@@ -46,6 +47,7 @@ export function readOwnedSources(
       union all select 'supplier_refund',id,change_set_id,evidence_id,body from openerp.supplier_refund_reviews where book_id=${book}
       union all select 'asset_disposal',id,change_set_id,evidence_id,body from openerp.subledger_disposal_reviews where book_id=${book}
       union all select 'asset_impairment',id,change_set_id,evidence_id,body from openerp.subledger_impairment_reviews where book_id=${book}
+      union all select 'asset_valuation',id,change_set_id,evidence_id,body from openerp.subledger_valuation_reviews where book_id=${book}
       union all select 'legal_issue',id,null,body->'sourceEvidence'->>'evidenceId',body from openerp.ar_legal_issue_reviews where book_id=${book}
       union all select 'legal_credit',id,change_set_id,evidence_id,body from openerp.customer_credit_reviews where book_id=${book}
       union all select 'owner_operation',id,change_set_id,evidence_id,body from openerp.owner_operation_reviews where book_id=${book}
@@ -132,6 +134,15 @@ export function readSchedulePreparation(tx: Transaction, book: string, change: s
   );
 }
 
+export function readRetiredScheduleEvent(tx: Transaction, book: string, event: string) {
+  return tx.execute<{ readonly scheduleId: string }>(
+    sql`select r.schedule_id as "scheduleId" from openerp.subledger_retired_occurrences r
+      join openerp.events e on (e.book_id,e.event_key)=(r.book_id,r.event_key)
+      where r.book_id=${book} and e.id=${event} limit 1`,
+    "objects",
+  );
+}
+
 export function readLinkedScheduleEvents(
   tx: Transaction,
   book: string,
@@ -173,7 +184,8 @@ export function readOwnerAttachments(tx: Transaction, book: string, change: stri
 export function readProtectedCorrections(tx: Transaction, book: string, voucher: string) {
   return tx.execute<{ readonly kind: string }>(
     sql`
-    select 'supplier_settlement' as kind from openerp.supplier_settlement_receipts where book_id=${book} and voucher_id=${voucher}
+    select 'payroll_run' as kind from openerp.payroll_run_executions where book_id=${book} and voucher_id=${voucher}
+ union all select 'supplier_settlement' as kind from openerp.supplier_settlement_receipts where book_id=${book} and voucher_id=${voucher}
  union all select 'owner' as kind from openerp.owner_effects where book_id=${book} and voucher_id=${voucher}
      union all select 'cash_allocation' from openerp.cash_method_recognitions where book_id=${book}
        and (voucher_id=${voucher} or source_payment_voucher_id=${voucher})
@@ -192,15 +204,18 @@ export function readProtectedCorrections(tx: Transaction, book: string, voucher:
     union all select 'fx_settlement' from openerp.commerce_fx_settlements where book_id=${book} and voucher_id=${voucher}
     union all select 'fx_correction' from openerp.commerce_fx_settlement_corrections c join openerp.execution_receipts e on(e.book_id,e.id)=(c.book_id,c.posting_receipt_id) where c.book_id=${book} and e.voucher_id=${voucher}
     union all select 'asset_impairment' from openerp.subledger_impairments where book_id=${book} and voucher_id=${voucher}
+    union all select 'asset_valuation' from openerp.subledger_valuations where book_id=${book} and voucher_id=${voucher}
     union all select 'asset_basis' from openerp.subledger_bases b where b.book_id=${book} and b.voucher_id=${voucher} and (
       exists(select from openerp.subledger_impairments i where(i.book_id,i.schedule_id)=(b.book_id,b.schedule_id)) or
+      exists(select from openerp.subledger_valuations i where(i.book_id,i.schedule_id)=(b.book_id,b.schedule_id)) or
       exists(select from openerp.subledger_disposals d where(d.book_id,d.schedule_id)=(b.book_id,b.schedule_id)))
     union all select 'asset_history' from openerp.subledger_disposal_reviews r join openerp.subledger_disposals d on(d.book_id,d.review_id)=(r.book_id,r.id)
       where r.book_id=${book} and (r.body->'basis'->'carryingBasis'->'input'->>'voucherId'=${voucher} or exists(select from jsonb_array_elements(r.body->'basis'->'occurrences') o where ${voucher} in(o->>'voucherId',o->>'reversalVoucherId')))
     union all select 'impaired_schedule_history' from openerp.subledger_schedule_revisions r join openerp.events e on e.book_id=r.book_id and e.evidence_id=r.evidence_id
       join openerp.vouchers v on v.book_id=e.book_id and v.event_id=e.id and v.id=${voucher}
       where r.book_id=${book} and exists(select from jsonb_array_elements(r.body->'occurrences') o where o->>'eventKey'=e.event_key)
-        and exists(select from openerp.subledger_impairments i where(i.book_id,i.schedule_id)=(r.book_id,r.schedule_id))
+        and (exists(select from openerp.subledger_impairments i where(i.book_id,i.schedule_id)=(r.book_id,r.schedule_id))
+          or exists(select from openerp.subledger_valuations i where(i.book_id,i.schedule_id)=(r.book_id,r.schedule_id)))
     union all select 'corporate_income_tax' from openerp.corporate_tax_effects where book_id=${book} and voucher_id=${voucher}
     limit 1001`,
     "objects",
@@ -248,7 +263,8 @@ export function readLineOwners(tx: Transaction, book: string, voucher: string, l
     union all select 'tax' from openerp.tax_account_match_capacity where book_id=${book} and voucher_id=${voucher} and line_id=${line}
     union all select 'fx' from openerp.commerce_fx_items where book_id=${book} and voucher_id=${voucher} and line_id=${line}
     union all select 'fx' from openerp.commerce_fx_settlements where book_id=${book} and voucher_id=${voucher} and ${line} in(cash_line_id,control_line_id,realized_line_id)
-    union all select 'fx' from openerp.commerce_fx_settlement_sources s join openerp.commerce_fx_settlements t on(t.book_id,t.id)=(s.book_id,s.settlement_id) where s.book_id=${book} and t.voucher_id=${voucher} and s.journal_line_id=${line}`,
+    union all select 'fx' from openerp.commerce_fx_settlement_sources s join openerp.commerce_fx_settlements t on(t.book_id,t.id)=(s.book_id,s.settlement_id) where s.book_id=${book} and t.voucher_id=${voucher} and s.journal_line_id=${line}
+    union all select 'asset_valuation' from openerp.subledger_valuations where book_id=${book} and voucher_id=${voucher} and ${line} in(contra_line_id,result_line_id)`,
     "objects",
   );
 }
@@ -301,13 +317,25 @@ export function readSealedDraft(
   kind: "customer" | "supplier" | "register",
 ) {
   return tx.execute<{ readonly id: string }>(
-    kind === "supplier"
-      ? sql`select id from openerp.supplier_acceptances where book_id=${book} and draft_id=${id}
+    Match.value(kind).pipe(
+      Match.when(
+        "supplier",
+        () => sql`select id from openerp.supplier_acceptances where book_id=${book} and draft_id=${id}
           union all select id from openerp.commerce_invoices where book_id=${book} and cash_method_source_draft_id=${id}
-          union all select id from openerp.cash_method_credits where book_id=${book} and draft_id=${id}`
-      : kind === "register"
-        ? sql`select id from openerp.ar_legal_issues where book_id=${book} and register_invoice_id=${id}`
-        : sql`select id from openerp.invoice_issues where book_id=${book} and draft_id=${id} union all select id from openerp.ar_legal_issues where book_id=${book} and draft_id=${id}`,
+          union all select id from openerp.cash_method_credits where book_id=${book} and draft_id=${id}`,
+      ),
+      Match.when(
+        "register",
+        () =>
+          sql`select id from openerp.ar_legal_issues where book_id=${book} and register_invoice_id=${id}`,
+      ),
+      Match.when(
+        "customer",
+        () =>
+          sql`select id from openerp.invoice_issues where book_id=${book} and draft_id=${id} union all select id from openerp.ar_legal_issues where book_id=${book} and draft_id=${id}`,
+      ),
+      Match.exhaustive,
+    ),
     "objects",
   );
 }

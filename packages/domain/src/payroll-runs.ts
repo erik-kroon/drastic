@@ -72,10 +72,6 @@ export const AccrualPair = Schema.Struct({
 
 export type AccrualPair = typeof AccrualPair.Type;
 
-// One employee's frozen run components. The payable is derived, never
-// supplied: payable = gross - withholding - deductions. Reimbursements
-// already recognized elsewhere arrive with their clearing, not as new
-// benefit expense.
 export const RunEmployee = Schema.Struct({
   employeeId: Identifier,
   grossMinor: MinorUnits,
@@ -173,7 +169,7 @@ export function compilePayRunJournal(input: PayRunInput): Checked<PayRunPlan> {
 
     for (const deduction of employee.deductions) deductions += BigInt(deduction.amountMinor);
 
-    const payable = gross - withholding - deductions;
+    const payable = gross + BigInt(employee.cashReimbursementMinor) - withholding - deductions;
 
     if (payable < 0n) {
       return fail(

@@ -6,6 +6,7 @@ import { CommandReceipt } from "./reconciliation";
 import {
   AssetDisposal,
   AssetImpairment,
+  AssetValuationEvent as importedAssetValuationEvent,
   OccurrenceState,
   PrepareAssetImpairment,
   ScheduleRevision,
@@ -86,6 +87,8 @@ const EffectKind = Schema.Literals([
   "occurrence",
   "occurrence_reversal",
   "impairment",
+  "economic_reversal",
+  "valuation_correction",
   "disposal_release",
 ]);
 
@@ -364,6 +367,96 @@ export const AssetImpairmentReviewList = Schema.Struct({
   coverage: Schema.Literal("not_established"),
 });
 
+export const PrepareAssetValuation = Schema.Struct({
+  profile: Schema.Literal("synthetic_asset_valuation_v1"),
+  policyRelease: Schema.Literal("synthetic_without_impairment_v1"),
+  scheduleId: Accounting.Identifier,
+  decisionKey: Schema.String.check(Schema.isPattern(/^[a-zA-Z0-9_-]{8,128}$/)),
+  kind: Schema.Literals(["economic_reversal", "full_impairment", "error_correction"]),
+  correctionOf: Schema.NullOr(Accounting.Identifier),
+  expectedDigest: Accounting.Digest,
+  expectedBasisDigest: Accounting.Digest,
+  postingDate: Accounting.AccountingDate,
+  accountingPeriodId: Accounting.Identifier,
+  series: Schema.String.check(Schema.isPattern(/^[A-Z0-9]{1,16}$/)),
+  targetCarryingMinor: Accounting.MinorUnits,
+  residualMinor: Accounting.MinorUnits,
+  installments: Schema.Array(
+    Schema.Struct({
+      postingDate: Accounting.AccountingDate,
+      accountingPeriodId: Accounting.Identifier,
+      amountMinor: Accounting.MinorUnits.check(Schema.isPattern(/^[1-9][0-9]{0,37}$/)),
+    }),
+  ).check(Schema.isMaxLength(120)),
+  accumulatedImpairmentAccountId: Accounting.Identifier,
+  incomeOrLossAccountId: Accounting.Identifier,
+  evidenceId: Accounting.Identifier,
+  reviewEvidenceId: Accounting.Identifier,
+  rationale: Accounting.Description,
+  taxAssessment: Schema.Literal("not_applicable"),
+  acknowledgeSyntheticOnly: Schema.Literal(true),
+});
+
+export const AssetValuationBasis = Schema.Struct({
+  installmentPeriods: Schema.Array(
+    Schema.Struct({
+      id: Accounting.Identifier,
+      fiscalYearId: Accounting.Identifier,
+      startsOn: Accounting.AccountingDate,
+      endsOn: Accounting.AccountingDate,
+      version: Accounting.MinorUnits,
+    }),
+  ),
+  profileWitness: Schema.Struct({
+    profile: Schema.Literal("synthetic-core-v1"),
+    profileVersion: Accounting.MinorUnits,
+    writerEpoch: Accounting.MinorUnits,
+    authority: Schema.Literal("native"),
+    policyRelease: Schema.Literal("synthetic_without_impairment_v1"),
+  }),
+  schedule: ScheduleRevision,
+  carryingBasis: SubledgerBasis,
+  occurrences: Schema.Array(OccurrenceState),
+  currentCarryingMinor: Accounting.MinorUnits,
+  recognizedMinor: Accounting.MinorUnits,
+  netImpairmentMinor: Accounting.MinorUnits,
+  counterfactualCarryingMinor: Accounting.MinorUnits,
+  counterfactualRevisionDigests: Schema.Array(Accounting.Digest),
+  sourceSha256: Schema.String,
+  reviewSha256: Schema.String,
+  direction: Schema.Literals(["increase", "decrease"]),
+  magnitudeMinor: Accounting.MinorUnits,
+  resultingImpairmentMinor: Accounting.MinorUnits,
+  state: Schema.Literals(["active", "zero_carrying_in_use"]),
+});
+
+export const AssetValuationReview = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  ordinal: Schema.Int,
+  input: PrepareAssetValuation,
+  basis: AssetValuationBasis,
+  proposedRevision: ScheduleRevision,
+  evidence: Accounting.Evidence,
+  postingPlan: Accounting.ChangeSet,
+  createdAt: Schema.String,
+  legalPolicyApproved: Schema.Literal(false),
+  receipt: CommandReceipt,
+  digest: Accounting.Digest,
+});
+
+export const ApproveAssetValuation = ApproveAssetImpairment;
+
+export const ExecuteAssetValuation = ExecuteAssetImpairment;
+
+export const AssetValuationApproval = AssetImpairmentApproval;
+
+export const AssetValuationView = Schema.Struct({
+  review: AssetValuationReview,
+  approvals: Schema.Array(AssetValuationApproval),
+  event: Schema.NullOr(importedAssetValuationEvent),
+});
+
 const path = "/v1/entities/:entityId/books/:bookId/subledger-controls";
 
 const scoped = { params: Accounting.Scope, error: accountingErrors };
@@ -371,6 +464,28 @@ const scoped = { params: Accounting.Scope, error: accountingErrors };
 const identified = { params: Accounting.ChangePath, error: accountingErrors };
 
 export const SubledgerControlsApi = HttpApiGroup.make("subledgerControls").add(
+  HttpApiEndpoint.post("prepareAssetValuation", `${path}/valuations/prepare`, {
+    ...scoped,
+    headers: Accounting.IdempotencyHeaders,
+    payload: PrepareAssetValuation.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: AssetValuationReview,
+  }),
+  HttpApiEndpoint.post("approveAssetValuation", `${path}/valuations/:id/approve`, {
+    ...identified,
+    headers: Accounting.IdempotencyHeaders,
+    payload: ApproveAssetValuation.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: AssetValuationApproval,
+  }),
+  HttpApiEndpoint.post("executeAssetValuation", `${path}/valuations/:id/execute`, {
+    ...identified,
+    headers: Accounting.IdempotencyHeaders,
+    payload: ExecuteAssetValuation.annotate({ parseOptions: { onExcessProperty: "error" } }),
+    success: importedAssetValuationEvent,
+  }),
+  HttpApiEndpoint.get("getAssetValuation", `${path}/valuations/:id`, {
+    ...identified,
+    success: AssetValuationView,
+  }),
   HttpApiEndpoint.post("prepareAssetImpairment", `${path}/impairments/prepare`, {
     ...scoped,
     headers: Accounting.IdempotencyHeaders,

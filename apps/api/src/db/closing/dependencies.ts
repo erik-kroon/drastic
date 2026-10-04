@@ -233,6 +233,8 @@ export const closingDependencyTables = [
   "subledger_disposals",
   "subledger_impairments",
   "subledger_impairment_reviews",
+  "subledger_valuations",
+  "subledger_valuation_reviews",
   "subledger_control_snapshots",
   "vat_fact_components",
   "vat_fact_revisions",
@@ -297,6 +299,10 @@ function scheduleRevisionAt(bookId: string, schedule: SQL, endsOn: string) {
           select impairment.schedule_revision from openerp.subledger_impairments impairment
             where impairment.book_id = ${bookId} and impairment.schedule_id = ${schedule}
               and impairment.posting_date <= ${endsOn}::date
+          union
+          select valuation.schedule_revision from openerp.subledger_valuations valuation
+            where valuation.book_id=${bookId} and valuation.schedule_id=${schedule}
+              and valuation.posting_date<=${endsOn}::date
           union
           select disposed.revision from openerp.subledger_disposals disposal
             join openerp.subledger_schedule_revisions disposed
@@ -743,8 +749,13 @@ export function readSubledgerImpairmentDigests(
     sql`
       select i.schedule_id as "scheduleId",
         coalesce(jsonb_agg(i.body->>'digest' order by i.ordinal), '[]'::jsonb) as digests
-      from openerp.subledger_impairments i
-      where i.book_id = ${bookId} and i.posting_date <= ${endsOn}::date
+      from (
+        select schedule_id, schedule_revision as ordinal, body from openerp.subledger_impairments
+          where book_id=${bookId} and posting_date<=${endsOn}::date
+        union all
+        select schedule_id, schedule_revision, body from openerp.subledger_valuations
+          where book_id=${bookId} and posting_date<=${endsOn}::date
+      ) i
       group by i.schedule_id
     `,
     "objects",
@@ -758,8 +769,11 @@ export function countSubledgerImpairments(
 ) {
   return transaction.execute<CountRow>(
     sql`
-      select count(*)::integer as total from openerp.subledger_impairments
-      where book_id = ${bookId} and posting_date <= ${endsOn}::date
+      select count(*)::integer as total from (
+        select id from openerp.subledger_impairments where book_id=${bookId} and posting_date<=${endsOn}::date
+        union all
+        select id from openerp.subledger_valuations where book_id=${bookId} and posting_date<=${endsOn}::date
+      ) effects
     `,
     "objects",
   );
@@ -859,7 +873,11 @@ export function readSubledgerControlImpairmentDigests(transaction: Transaction, 
   return transaction.execute<{ readonly digest: string | null }>(
     sql`
       select i.body->>'digest' as digest
-      from openerp.subledger_impairments i where i.book_id = ${bookId}
+      from (
+        select schedule_id, schedule_revision as ordinal, body from openerp.subledger_impairments where book_id=${bookId}
+        union all
+        select schedule_id, schedule_revision, body from openerp.subledger_valuations where book_id=${bookId}
+      ) i
       order by i.schedule_id collate "C", i.ordinal
       limit 4001
     `,
@@ -871,8 +889,12 @@ export function countSubledgerControlImpairmentReviews(transaction: Transaction,
   return transaction.execute<CountRow>(
     sql`
       select count(*)::integer as total
-      from (select 1 from openerp.subledger_impairment_reviews r
-        where r.book_id = ${bookId} limit 4001) bounded
+      from (
+        select 1 from openerp.subledger_impairment_reviews r where r.book_id=${bookId}
+        union all
+        select 1 from openerp.subledger_valuation_reviews r where r.book_id=${bookId}
+        limit 4001
+      ) bounded
     `,
     "objects",
   );

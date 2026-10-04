@@ -2,10 +2,12 @@ import { admitAccountRole } from "../resource-admission";
 import { digest as digestNative } from "../json";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as Subledgers from "@open-erp/contracts/subledgers";
+import { equalJson } from "@open-erp/domain/canonicalization";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
 import * as Db from "../../db/posting";
+import * as ValuationsDb from "../../db/subledger/valuations";
 import * as SchedulesDb from "../../db/subledger/schedules";
 import { databaseFailure, type Transaction } from "../../db/transaction";
 import { failure } from "../failures";
@@ -60,6 +62,7 @@ const amendmentKinds = [
   "remaining_estimate_v1",
   "remaining_lifetime_v1",
   "impairment_v1",
+  "valuation_v1",
 ];
 
 function unsupported() {
@@ -306,18 +309,14 @@ function estimateCurrent(transaction: Transaction, scope: Scope, revision: Revis
     const amendment = objectField(revision, "amendment");
     let impairment = 0n;
 
-    if (textField(amendment, "kind") === "impairment_v1") {
+    if (["impairment_v1", "valuation_v1"].includes(textField(amendment, "kind") ?? "")) {
       const net = textField(amendment, "netImpairmentMinor");
 
       if (net === undefined) return false;
       impairment = minor(net);
     } else {
-      for (const row of yield* SchedulesDb.readImpairments(
-        transaction,
-        scope.bookId,
-        revision.scheduleId,
-      )) {
-        impairment += minor(row.impairmentMinor);
+      for (const row of yield* SchedulesDb.listBookImpairments(transaction, scope.bookId)) {
+        if (row.scheduleId === revision.scheduleId) impairment += minor(row.impairmentMinor);
       }
     }
 
@@ -714,7 +713,16 @@ export const getSchedule = Effect.fn("subledger.getSchedule")(function* (
       const impairments = yield* Effect.forEach(impairmentRows, (row) => toJsonObject(row.body));
       let netImpairment = 0n;
 
-      for (const row of impairmentRows) netImpairment += minor(row.impairmentMinor);
+      for (const row of yield* SchedulesDb.listBookImpairments(transaction, command.scope.bookId)) {
+        if (row.scheduleId === command.scheduleId) netImpairment += minor(row.impairmentMinor);
+      }
+
+      const valuations = (yield* ValuationsDb.events(
+        transaction,
+        command.scope.bookId,
+        command.scheduleId,
+      )).map((row) => row.body);
+
       let basisReversed = false;
 
       if (basis !== undefined) {
@@ -745,11 +753,14 @@ export const getSchedule = Effect.fn("subledger.getSchedule")(function* (
         occurrences: states,
         recognizedMinor: recognized.toString(),
         remainingMinor:
-          disposal === undefined ? (minor(current.terms.costMinor) - recognized).toString() : "0",
+          disposal === undefined
+            ? (minor(current.terms.costMinor) - recognized - netImpairment).toString()
+            : "0",
         carryingMinor:
           disposal !== undefined ? "0" : carrying === null ? null : carrying.toString(),
         netImpairmentMinor: netImpairment.toString(),
         impairments,
+        valuations,
         revisionAllowed: yield* revisionAllowed(transaction, command.scope, current),
         postingBasis: yield* readPostingBasis(transaction, command.scope, current),
         controlAccountReconciled: false,
@@ -906,6 +917,9 @@ export const prepareScheduleOccurrence = Effect.fn("subledger.prepareScheduleOcc
           const occurrence = current.occurrences[ordinal - 1];
 
           if (occurrence === undefined) return yield* failure("NotFound");
+          const postingBasis = yield* readPostingBasis(transaction, command.scope, current);
+
+          if (!postingBasis.supported) return yield* failure("StaleDependency");
 
           const posted = yield* SchedulesDb.readPostedOccurrenceVouchers(
             transaction,
@@ -937,7 +951,11 @@ export const prepareScheduleOccurrence = Effect.fn("subledger.prepareScheduleOcc
           let planDigest = retained?.planDigest;
           let current_ = false;
 
-          if (changeSetId !== undefined) {
+          if (
+            changeSetId !== undefined &&
+            retained?.revision === current.revision &&
+            equalJson(retained.basis, postingBasis)
+          ) {
             const plan = yield* decode(Accounting.ChangeSet, retained?.plan ?? {});
             const validated = yield* validateDependencies(transaction, command.scope, plan);
 
@@ -1005,6 +1023,7 @@ export const prepareScheduleOccurrence = Effect.fn("subledger.prepareScheduleOcc
               ordinal,
               attempt,
               changeSetId: plan.id,
+              basis: postingBasis,
             });
           }
 
@@ -1339,11 +1358,10 @@ const amendSchedule = Effect.fn("subledger.amendSchedule")(function* (
         const residual =
           change.kind === "estimate" ? change.input.residualMinor : current.terms.residualMinor;
 
-        const impairments = yield* SchedulesDb.readImpairments(
+        const impairments = (yield* SchedulesDb.listBookImpairments(
           transaction,
           scope.bookId,
-          scheduleId,
-        );
+        )).filter((row) => row.scheduleId === scheduleId);
 
         const impaired = impairments.reduce((total, row) => total + minor(row.impairmentMinor), 0n);
 

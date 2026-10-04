@@ -27,6 +27,8 @@ export const ScheduleTerms = Schema.Struct({
 
 export const RetainedScheduleTerms = Schema.Struct({
   ...ScheduleTerms.fields,
+  usefulPeriods: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 120 })),
+  periods: Schema.Array(SchedulePeriod).check(Schema.isMaxLength(120)),
   allocationPolicy: Schema.Literals([
     "equal_minor_final_remainder_v1",
     "explicit_remaining_minor_v1",
@@ -144,12 +146,28 @@ export const ScheduleOccurrence = Schema.Struct({
   amountMinor: Accounting.MinorUnits,
 });
 
+export const AssetScheduleState = Schema.Literals([
+  "active",
+  "exhausted",
+  "zero_carrying_in_use",
+  "disposed",
+]);
+
+export const ScheduleValuationAmendment = Schema.Struct({
+  kind: Schema.Literal("valuation_v1"),
+  reviewId: Accounting.Identifier,
+  netImpairmentMinor: Accounting.MinorUnits,
+  basisDigest: Accounting.Digest,
+  basisScheduleDigest: Accounting.Digest,
+});
+
 export const ScheduleRevision = Schema.Struct({
   scheduleId: Accounting.Identifier,
   sourceKey: Schema.String,
   revision: Schema.Int,
   scope: Accounting.Scope,
   terms: RetainedScheduleTerms,
+  state: Schema.optional(AssetScheduleState),
   currency: Schema.String,
   currencyScale: Schema.Int,
   sourceSha256: Schema.String,
@@ -163,11 +181,28 @@ export const ScheduleRevision = Schema.Struct({
       ScheduleEstimateAmendment,
       ScheduleLifetimeAmendment,
       ScheduleImpairmentAmendment,
+      ScheduleValuationAmendment,
     ]),
   ),
   createdAt: Schema.String,
   receipt: CommandReceipt,
-});
+}).check(
+  Schema.makeFilter((revision) => {
+    if (revision.terms.periods.length !== revision.terms.usefulPeriods)
+      return "Schedule periods must match useful periods.";
+
+    if (revision.terms.usefulPeriods > 0) return undefined;
+
+    if (
+      revision.state === "zero_carrying_in_use" &&
+      revision.amendment?.kind === "valuation_v1" &&
+      revision.terms.residualMinor === "0"
+    )
+      return undefined;
+
+    return "An empty schedule requires the owned zero-carrying valuation state.";
+  }),
+);
 
 export const OccurrenceState = Schema.Struct({
   ...ScheduleOccurrence.fields,
@@ -259,6 +294,32 @@ export const AssetImpairment = Schema.Struct({
   digest: Accounting.Digest,
 });
 
+export const AssetValuationEvent = Schema.Struct({
+  id: Accounting.Identifier,
+  scope: Accounting.Scope,
+  scheduleId: Accounting.Identifier,
+  reviewId: Accounting.Identifier,
+  approvalId: Accounting.Identifier,
+  decisionKey: Schema.String,
+  kind: Schema.Literals(["economic_reversal", "full_impairment", "error_correction"]),
+  direction: Schema.Literals(["increase", "decrease"]),
+  correctionOf: Schema.NullOr(Accounting.Identifier),
+  magnitudeMinor: Accounting.MinorUnits,
+  netImpairmentMinor: Accounting.MinorUnits,
+  carryingMinor: Accounting.MinorUnits,
+  accumulatedImpairmentAccountId: Accounting.Identifier,
+  incomeOrLossAccountId: Accounting.Identifier,
+  postingDate: Accounting.AccountingDate,
+  scheduleRevision: Schema.Int,
+  scheduleDigest: Accounting.Digest,
+  postingReceipt: Accounting.ExecutionReceipt,
+  state: AssetScheduleState,
+  legalPolicyApproved: Schema.Literal(false),
+  createdAt: Schema.String,
+  receipt: CommandReceipt,
+  digest: Accounting.Digest,
+});
+
 export const ScheduleBasisTaxMatches = Schema.Struct({
   roleCompatibility: Schema.Literal("not_assessed"),
   matches: Schema.Array(
@@ -283,6 +344,7 @@ export const ScheduleView = Schema.Struct({
   carryingMinor: Schema.NullOr(Accounting.MinorUnits),
   netImpairmentMinor: Accounting.MinorUnits,
   impairments: Schema.Array(AssetImpairment),
+  valuations: Schema.optional(Schema.Array(AssetValuationEvent)),
   revisionAllowed: Schema.Boolean,
   postingBasis: Schema.optional(SchedulePostingBasis),
   controlAccountReconciled: Schema.Literal(false),

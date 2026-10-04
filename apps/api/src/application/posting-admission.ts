@@ -6,6 +6,7 @@ import * as Schema from "effect/Schema";
 import * as Accounting from "@open-erp/contracts/accounting";
 import * as CashMethod from "@open-erp/contracts/cash-method";
 import * as Db from "../db/posting-admission";
+import * as PayrollRuns from "../db/payroll/runs";
 import * as Impact from "../db/posting-corrections";
 import * as Schedules from "../db/subledger/schedules";
 import * as Acceptance from "../db/purchases/acceptance";
@@ -34,6 +35,7 @@ export type PostingOwner = {
     | "vat_assessment"
     | "asset_disposal"
     | "asset_impairment"
+    | "asset_valuation"
     | "historical_import"
     | "commerce_fx"
     | "vat_reclassification"
@@ -42,7 +44,8 @@ export type PostingOwner = {
     | "owner_operation"
     | "cash_allocation"
     | "cash_year_end"
-    | "cash_credit";
+    | "cash_credit"
+    | "payroll_run";
   readonly id: string;
 };
 
@@ -83,6 +86,8 @@ export const admitPosting = Effect.fn("posting.admitOwnedSources")(function* (
 
   if (action.postingPurpose === "result_transfer_v1" && owner?.kind !== "financial_close")
     return yield* failure("UnsupportedProfile");
+
+  yield* admitPayrollRun(tx, scope, changeId, owner, action);
 
   yield* admitSupplierSettlement(tx, scope, changeId, eventId, action, owner);
 
@@ -408,6 +413,8 @@ const admitCorrectionsAndSchedules = Effect.fn("posting.admitCorrectionsAndSched
   action: JsonObject,
   owner?: PostingOwner,
 ) {
+  yield* admitScheduleEvent(tx, scope, eventId);
+
   const cancellationRows =
     owner?.kind === "supplier_settlement_cancellation"
       ? yield* SupplierSettlementDb.readCancellationPlan(tx, scope.bookId, owner.id)
@@ -522,4 +529,39 @@ const admitSupplierSettlement = Effect.fn("posting.admitSupplierSettlement")(fun
 
     if (!equalJson(plan.groups[0]?.actions[0], action)) return yield* failure("StaleDependency");
   }
+});
+
+export const admitScheduleEvent = Effect.fn("posting.admitScheduleEvent")(function* (
+  tx: Transaction,
+  scope: Scope,
+  eventId: string,
+) {
+  if ((yield* Db.readRetiredScheduleEvent(tx, scope.bookId, eventId)).length)
+    return yield* failure("StaleDependency");
+});
+
+export const admitPayrollRun = Effect.fn("posting.admitPayrollRun")(function* (
+  tx: Transaction,
+  scope: Scope,
+  changeId: string,
+  owner?: PostingOwner,
+  action?: JsonObject,
+) {
+  const row = (yield* PayrollRuns.readRunByPlan(
+    tx,
+    scope.bookId,
+    changeId,
+    action && textField(action, "eventId"),
+  ))[0];
+
+  if (!row && owner?.kind !== "payroll_run") return;
+
+  if (!row || owner?.kind !== "payroll_run" || owner.id !== row.id)
+    return yield* failure("ApprovalRequired");
+  const plan = yield* decode(Accounting.ChangeSet, objectField(row.body, "postingPlan"));
+
+  if (plan.id !== changeId) return yield* failure("ApprovalRequired");
+
+  if (action !== undefined && !equalJson(plan.groups[0]?.actions[0], action))
+    return yield* failure("StaleDependency");
 });

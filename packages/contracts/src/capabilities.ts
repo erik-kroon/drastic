@@ -79,6 +79,7 @@ import { CollectionsCapabilities } from "./collections";
 import { DeadlinesCapabilities } from "./deadlines";
 import { RuleImpactCapabilities } from "./rule-impact";
 import { SupplierInboxCapabilities } from "./supplier-inbox";
+import { PayrollRunCapabilities } from "./payroll-runs";
 import { PayrollCalculationCapabilities } from "./payroll-calculations";
 import { CorporateTaxCapabilities } from "./corporate-tax";
 import { AnnualReportCapabilities } from "./annual-report";
@@ -186,6 +187,7 @@ export const Capabilities = {
   ...BankInventorySignoffCapabilities,
   ...TaxAccountCapabilities,
   ...PayrollCalculationCapabilities,
+  ...PayrollRunCapabilities,
   ...CorporateTaxCapabilities,
   ...AnnualReportCapabilities,
   rules_propose: {

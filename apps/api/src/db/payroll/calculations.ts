@@ -14,6 +14,13 @@ export const payrollCalculationTables = [
   "payroll_calculation_inputs",
 ] as const;
 
+export function readRecordedAt(transaction: Transaction) {
+  return transaction.execute<{ readonly recordedAt: string }>(
+    sql`select clock_timestamp()::text as "recordedAt"`,
+    "objects",
+  );
+}
+
 export type RuleReleaseRow = {
   readonly id: string;
   readonly jurisdiction: string;
@@ -116,15 +123,14 @@ const revisionColumns = {
 // would depend on the plan, and the same input could bind to a different revision
 // on a re-run. The current-pointer check below still refuses a head the pointer
 // does not name.
-function headQuery(
+export function readRevisionHead(
   transaction: Transaction,
   bookId: string,
   employeeId: string,
   kind: string,
   latestEffectiveOn: string,
-  lock: "share" | "update",
 ) {
-  const rows = transaction
+  return transaction
     .select(revisionColumns)
     .from(payrollRevisions)
     .where(
@@ -141,28 +147,6 @@ function headQuery(
       sql`${payrollRevisions.id} desc`,
     )
     .limit(1);
-
-  return lock === "update" ? rows.for("update") : rows;
-}
-
-export function lockRevisionHead(
-  transaction: Transaction,
-  bookId: string,
-  employeeId: string,
-  kind: string,
-  latestEffectiveOn: string,
-) {
-  return headQuery(transaction, bookId, employeeId, kind, latestEffectiveOn, "update");
-}
-
-export function readRevisionHead(
-  transaction: Transaction,
-  bookId: string,
-  employeeId: string,
-  kind: string,
-  latestEffectiveOn: string,
-) {
-  return headQuery(transaction, bookId, employeeId, kind, latestEffectiveOn, "share");
 }
 
 // A revision is the head for a date only while the current pointer still names
@@ -245,8 +229,7 @@ export function readMonthEarningEvents(
         eq(payrollCalculations.employeeId, employeeId),
         sql`left(${payrollCalculations.earningsPeriodStart}::text, 7) = ${monthPrefix}`,
       ),
-    )
-    .orderBy(asc(payrollCalculations.earningsPeriodStart));
+    );
 }
 
 // The highest immutable revision of one stable earning event. A changed input is a

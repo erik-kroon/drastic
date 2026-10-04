@@ -193,7 +193,7 @@ function basisInputRefs(
       version: id,
       reason: "Exact reviewed account role binding",
     })),
-    ...basis.evidenceIds.map((id) => ({
+    ...[...new Set(basis.evidenceIds)].map((id) => ({
       kind: "evidence" as const,
       resourceId: id,
       version: id,
@@ -328,7 +328,7 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
         period,
       );
 
-      const employment = (yield* Db.lockRevisionHead(
+      const employment = (yield* Db.readRevisionHead(
         transaction,
         command.scope.bookId,
         employeeId,
@@ -336,7 +336,7 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
         period.startsOn,
       ))[0];
 
-      const work = (yield* Db.lockRevisionHead(
+      const work = (yield* Db.readRevisionHead(
         transaction,
         command.scope.bookId,
         employeeId,
@@ -344,7 +344,7 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
         period.startsOn,
       ))[0];
 
-      const opening = (yield* Db.lockRevisionHead(
+      const opening = (yield* Db.readRevisionHead(
         transaction,
         command.scope.bookId,
         employeeId,
@@ -439,8 +439,13 @@ export const prepareCalculation = Effect.fn("payroll.prepareCalculation")(functi
 
       const calculationId = newId("paycalc");
       const planId = newId("payplan");
-      const now = yield* Ledger.readDatabaseTime(transaction);
-      const recordedAt = new Date(now.now).toISOString();
+      const clockRow = (yield* Db.readRecordedAt(transaction))[0];
+
+      if (!clockRow) return yield* failure("InternalError");
+
+      const clock = yield* decode(Schema.Struct({ recordedAt: Schema.String }), clockRow);
+
+      const recordedAt = clock.recordedAt;
 
       const inputRefs = basisInputRefs(
         basis,

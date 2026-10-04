@@ -35,6 +35,7 @@ import { reviewCapabilities } from "./review";
 import { sieCapabilities } from "./sie";
 import { sie4ECapabilities } from "./sie4e";
 import { ledgerCapabilities } from "./ledger";
+import { payrollRunCapabilities } from "./payroll-runs";
 import { payrollCalculationCapabilities } from "./payroll-calculations";
 import { dimensionCapabilities } from "./dimensions";
 import { corporateTaxCapabilities } from "./corporate-tax";
@@ -80,6 +81,7 @@ export const capabilities = {
   ...sie4ECapabilities,
   ...ledgerCapabilities,
   ...payrollCalculationCapabilities,
+  ...payrollRunCapabilities,
   ...dimensionCapabilities,
   ...corporateTaxCapabilities,
 } satisfies Record<keyof typeof Capabilities, { readonly readOnly: boolean }>;
